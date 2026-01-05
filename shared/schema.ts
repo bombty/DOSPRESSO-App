@@ -1099,6 +1099,83 @@ export type InsertChecklistAssignment = z.infer<typeof insertChecklistAssignment
 export type ChecklistAssignment = typeof checklistAssignments.$inferSelect;
 
 // ========================================
+// CHECKLIST COMPLETION TRACKING
+// ========================================
+
+// Checklist completion status enum
+export const checklistCompletionStatusEnum = ["pending", "in_progress", "completed", "incomplete", "late"] as const;
+export type ChecklistCompletionStatus = typeof checklistCompletionStatusEnum[number];
+
+// Checklist completions - tracks each instance of a user completing a checklist
+export const checklistCompletions = pgTable("checklist_completions", {
+  id: serial("id").primaryKey(),
+  assignmentId: integer("assignment_id").notNull().references(() => checklistAssignments.id, { onDelete: "cascade" }),
+  checklistId: integer("checklist_id").notNull().references(() => checklists.id, { onDelete: "cascade" }),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  branchId: integer("branch_id").references(() => branches.id, { onDelete: "set null" }),
+  shiftId: integer("shift_id").references(() => shifts.id, { onDelete: "set null" }),
+  status: varchar("status", { length: 20 }).notNull().default("pending"), // pending, in_progress, completed, incomplete, late
+  scheduledDate: date("scheduled_date").notNull(), // The date this completion is for
+  timeWindowStart: time("time_window_start", { precision: 0 }), // Copied from checklist template
+  timeWindowEnd: time("time_window_end", { precision: 0 }), // Copied from checklist template
+  startedAt: timestamp("started_at"), // When user started the checklist
+  completedAt: timestamp("completed_at"), // When user finished all tasks
+  submittedAt: timestamp("submitted_at"), // When user submitted for review
+  isLate: boolean("is_late").default(false), // Started or completed after time window
+  lateMinutes: integer("late_minutes").default(0), // How many minutes late
+  totalTasks: integer("total_tasks").notNull().default(0),
+  completedTasks: integer("completed_tasks").notNull().default(0),
+  score: integer("score").default(0), // 0-100 based on completion quality
+  reviewedById: varchar("reviewed_by_id").references(() => users.id, { onDelete: "set null" }),
+  reviewedAt: timestamp("reviewed_at"),
+  reviewNote: text("review_note"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => ({
+  assignmentIdx: index("checklist_completions_assignment_idx").on(table.assignmentId),
+  userIdx: index("checklist_completions_user_idx").on(table.userId),
+  dateIdx: index("checklist_completions_date_idx").on(table.scheduledDate),
+  statusIdx: index("checklist_completions_status_idx").on(table.status),
+}));
+
+export const insertChecklistCompletionSchema = createInsertSchema(checklistCompletions).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertChecklistCompletion = z.infer<typeof insertChecklistCompletionSchema>;
+export type ChecklistCompletion = typeof checklistCompletions.$inferSelect;
+
+// Checklist task completions - tracks each task completion within a checklist
+export const checklistTaskCompletions = pgTable("checklist_task_completions", {
+  id: serial("id").primaryKey(),
+  completionId: integer("completion_id").notNull().references(() => checklistCompletions.id, { onDelete: "cascade" }),
+  taskId: integer("task_id").notNull().references(() => checklistTasks.id, { onDelete: "cascade" }),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  isCompleted: boolean("is_completed").default(false),
+  completedAt: timestamp("completed_at"),
+  photoUrl: text("photo_url"), // Photo evidence if required
+  notes: text("notes"), // Optional notes from staff
+  isLate: boolean("is_late").default(false), // Completed after task time window
+  taskOrder: integer("task_order").notNull(), // Order in which this task should be completed
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => ({
+  completionIdx: index("checklist_task_completions_completion_idx").on(table.completionId),
+  taskIdx: index("checklist_task_completions_task_idx").on(table.taskId),
+}));
+
+export const insertChecklistTaskCompletionSchema = createInsertSchema(checklistTaskCompletions).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertChecklistTaskCompletion = z.infer<typeof insertChecklistTaskCompletionSchema>;
+export type ChecklistTaskCompletion = typeof checklistTaskCompletions.$inferSelect;
+
+// ========================================
 // TASK MANAGEMENT TABLES
 // ========================================
 

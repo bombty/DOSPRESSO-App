@@ -14,6 +14,10 @@ import type {
   InsertChecklistTask,
   ChecklistAssignment,
   InsertChecklistAssignment,
+  ChecklistCompletion,
+  InsertChecklistCompletion,
+  ChecklistTaskCompletion,
+  InsertChecklistTaskCompletion,
   Equipment,
   InsertEquipment,
   EquipmentFault,
@@ -163,6 +167,8 @@ import {
   checklists,
   checklistTasks,
   checklistAssignments,
+  checklistCompletions,
+  checklistTaskCompletions,
   equipment,
   equipmentFaults,
   faultStageTransitions,
@@ -398,6 +404,16 @@ export interface IStorage {
   updateChecklistAssignment(id: number, updates: Partial<InsertChecklistAssignment>): Promise<ChecklistAssignment | undefined>;
   deleteChecklistAssignment(id: number): Promise<void>;
   getMyChecklistAssignments(userId: string, branchId?: number, role?: string): Promise<Array<Checklist & { assignment: ChecklistAssignment; tasks: ChecklistTask[] }>>;
+  
+  // Checklist Completion operations
+  startChecklistCompletion(data: { assignmentId: number; checklistId: number; userId: string; branchId?: number; shiftId?: number }): Promise<ChecklistCompletion>;
+  getChecklistCompletion(id: number): Promise<ChecklistCompletion | undefined>;
+  getChecklistCompletionWithTasks(id: number): Promise<(ChecklistCompletion & { taskCompletions: ChecklistTaskCompletion[]; checklist: Checklist; tasks: ChecklistTask[] }) | undefined>;
+  getUserChecklistCompletions(userId: string, date?: string): Promise<ChecklistCompletion[]>;
+  completeChecklistTask(data: { completionId: number; taskId: number; userId: string; photoUrl?: string; notes?: string }): Promise<ChecklistTaskCompletion>;
+  submitChecklistCompletion(id: number): Promise<ChecklistCompletion | undefined>;
+  getManagerChecklistCompletions(branchId?: number, date?: string, status?: string): Promise<Array<ChecklistCompletion & { user: User; checklist: Checklist }>>;
+  updateChecklistCompletionScore(id: number, score: number, reviewedById: string, reviewNote?: string): Promise<ChecklistCompletion | undefined>;
   
   // Equipment operations
   getEquipment(branchId?: number): Promise<Equipment[]>;
@@ -1481,6 +1497,269 @@ export class DatabaseStorage implements IStorage {
     }
 
     return result;
+  }
+
+  // ========================================
+  // CHECKLIST COMPLETION OPERATIONS
+  // ========================================
+
+  async startChecklistCompletion(data: { assignmentId: number; checklistId: number; userId: string; branchId?: number; shiftId?: number }): Promise<ChecklistCompletion> {
+    const today = new Date().toISOString().split('T')[0];
+    const now = new Date();
+    
+    // Get checklist to copy time window
+    const checklist = await db.select().from(checklists).where(eq(checklists.id, data.checklistId)).limit(1);
+    const timeWindowStart = checklist[0]?.timeWindowStart;
+    const timeWindowEnd = checklist[0]?.timeWindowEnd;
+    
+    // Get total tasks count
+    const taskCount = await db.select().from(checklistTasks).where(eq(checklistTasks.checklistId, data.checklistId));
+    
+    // Check if late start
+    let isLate = false;
+    let lateMinutes = 0;
+    if (timeWindowEnd) {
+      const currentTime = now.toTimeString().split(' ')[0];
+      if (currentTime > timeWindowEnd) {
+        isLate = true;
+        // Calculate late minutes
+        const [endH, endM] = timeWindowEnd.split(':').map(Number);
+        const [curH, curM] = currentTime.split(':').map(Number);
+        lateMinutes = (curH * 60 + curM) - (endH * 60 + endM);
+      }
+    }
+    
+    const [completion] = await db.insert(checklistCompletions).values({
+      assignmentId: data.assignmentId,
+      checklistId: data.checklistId,
+      userId: data.userId,
+      branchId: data.branchId || null,
+      shiftId: data.shiftId || null,
+      status: 'in_progress',
+      scheduledDate: today,
+      timeWindowStart,
+      timeWindowEnd,
+      startedAt: now,
+      isLate,
+      lateMinutes,
+      totalTasks: taskCount.length,
+      completedTasks: 0,
+    }).returning();
+    
+    // Pre-create task completion records for sequential tracking
+    const tasksToComplete = await db.select().from(checklistTasks)
+      .where(eq(checklistTasks.checklistId, data.checklistId))
+      .orderBy(checklistTasks.order);
+    
+    if (tasksToComplete.length > 0) {
+      await db.insert(checklistTaskCompletions).values(
+        tasksToComplete.map((task, index) => ({
+          completionId: completion.id,
+          taskId: task.id,
+          userId: data.userId,
+          isCompleted: false,
+          taskOrder: index + 1,
+        }))
+      );
+    }
+    
+    return completion;
+  }
+
+  async getChecklistCompletion(id: number): Promise<ChecklistCompletion | undefined> {
+    const [completion] = await db.select().from(checklistCompletions).where(eq(checklistCompletions.id, id));
+    return completion;
+  }
+
+  async getChecklistCompletionWithTasks(id: number): Promise<(ChecklistCompletion & { taskCompletions: ChecklistTaskCompletion[]; checklist: Checklist; tasks: ChecklistTask[] }) | undefined> {
+    const [completion] = await db.select().from(checklistCompletions).where(eq(checklistCompletions.id, id));
+    if (!completion) return undefined;
+    
+    const taskCompletionList = await db.select().from(checklistTaskCompletions)
+      .where(eq(checklistTaskCompletions.completionId, id))
+      .orderBy(checklistTaskCompletions.taskOrder);
+    
+    const [checklistData] = await db.select().from(checklists).where(eq(checklists.id, completion.checklistId));
+    
+    const taskList = await db.select().from(checklistTasks)
+      .where(eq(checklistTasks.checklistId, completion.checklistId))
+      .orderBy(checklistTasks.order);
+    
+    return {
+      ...completion,
+      taskCompletions: taskCompletionList,
+      checklist: checklistData,
+      tasks: taskList,
+    };
+  }
+
+  async getUserChecklistCompletions(userId: string, date?: string): Promise<ChecklistCompletion[]> {
+    const targetDate = date || new Date().toISOString().split('T')[0];
+    return db.select().from(checklistCompletions)
+      .where(and(
+        eq(checklistCompletions.userId, userId),
+        eq(checklistCompletions.scheduledDate, targetDate)
+      ))
+      .orderBy(desc(checklistCompletions.createdAt));
+  }
+
+  async completeChecklistTask(data: { completionId: number; taskId: number; userId: string; photoUrl?: string; notes?: string }): Promise<ChecklistTaskCompletion> {
+    const now = new Date();
+    
+    // Get the task completion record
+    const [existingTaskCompletion] = await db.select().from(checklistTaskCompletions)
+      .where(and(
+        eq(checklistTaskCompletions.completionId, data.completionId),
+        eq(checklistTaskCompletions.taskId, data.taskId)
+      ));
+    
+    if (!existingTaskCompletion) {
+      throw new Error('Task completion record not found');
+    }
+    
+    // Check if task has time window and if late
+    const [task] = await db.select().from(checklistTasks).where(eq(checklistTasks.id, data.taskId));
+    let isLate = false;
+    if (task?.taskTimeEnd) {
+      const currentTime = now.toTimeString().split(' ')[0];
+      if (currentTime > task.taskTimeEnd) {
+        isLate = true;
+      }
+    }
+    
+    // Update task completion
+    const [updated] = await db.update(checklistTaskCompletions)
+      .set({
+        isCompleted: true,
+        completedAt: now,
+        photoUrl: data.photoUrl || null,
+        notes: data.notes || null,
+        isLate,
+        updatedAt: now,
+      })
+      .where(eq(checklistTaskCompletions.id, existingTaskCompletion.id))
+      .returning();
+    
+    // Update completion's completedTasks count
+    const completedCount = await db.select().from(checklistTaskCompletions)
+      .where(and(
+        eq(checklistTaskCompletions.completionId, data.completionId),
+        eq(checklistTaskCompletions.isCompleted, true)
+      ));
+    
+    await db.update(checklistCompletions)
+      .set({
+        completedTasks: completedCount.length,
+        updatedAt: now,
+      })
+      .where(eq(checklistCompletions.id, data.completionId));
+    
+    return updated;
+  }
+
+  async submitChecklistCompletion(id: number): Promise<ChecklistCompletion | undefined> {
+    const now = new Date();
+    
+    // Get the completion to check status
+    const [completion] = await db.select().from(checklistCompletions).where(eq(checklistCompletions.id, id));
+    if (!completion) return undefined;
+    
+    // Determine final status based on completion and timing
+    let status = 'completed';
+    let score = 100;
+    
+    // Check how many tasks were completed
+    const taskCompletions = await db.select().from(checklistTaskCompletions)
+      .where(eq(checklistTaskCompletions.completionId, id));
+    
+    const completedCount = taskCompletions.filter(tc => tc.isCompleted).length;
+    const totalCount = taskCompletions.length;
+    
+    if (completedCount < totalCount) {
+      status = 'incomplete';
+      score = Math.round((completedCount / totalCount) * 100);
+    }
+    
+    // Penalty for late completion
+    if (completion.isLate) {
+      status = 'late';
+      score = Math.min(score, 80); // Max 80 if late
+    }
+    
+    // Check individual late tasks
+    const lateTasks = taskCompletions.filter(tc => tc.isLate).length;
+    if (lateTasks > 0) {
+      score -= lateTasks * 5; // -5 per late task
+    }
+    
+    score = Math.max(0, score); // Ensure non-negative
+    
+    const [updated] = await db.update(checklistCompletions)
+      .set({
+        status,
+        completedAt: now,
+        submittedAt: now,
+        score,
+        updatedAt: now,
+      })
+      .where(eq(checklistCompletions.id, id))
+      .returning();
+    
+    return updated;
+  }
+
+  async getManagerChecklistCompletions(branchId?: number, date?: string, status?: string): Promise<Array<ChecklistCompletion & { user: User; checklist: Checklist }>> {
+    const conditions: SQL[] = [];
+    
+    if (branchId) {
+      conditions.push(eq(checklistCompletions.branchId, branchId));
+    }
+    
+    if (date) {
+      conditions.push(eq(checklistCompletions.scheduledDate, date));
+    }
+    
+    if (status) {
+      conditions.push(eq(checklistCompletions.status, status));
+    }
+    
+    const completionList = await db.select().from(checklistCompletions)
+      .where(conditions.length > 0 ? and(...conditions) : undefined)
+      .orderBy(desc(checklistCompletions.createdAt));
+    
+    if (completionList.length === 0) return [];
+    
+    // Get users and checklists
+    const userIds = [...new Set(completionList.map(c => c.userId))];
+    const checklistIds = [...new Set(completionList.map(c => c.checklistId))];
+    
+    const userList = await db.select().from(users).where(inArray(users.id, userIds));
+    const checklistList = await db.select().from(checklists).where(inArray(checklists.id, checklistIds));
+    
+    const userMap = new Map(userList.map(u => [u.id, u]));
+    const checklistMap = new Map(checklistList.map(c => [c.id, c]));
+    
+    return completionList.map(c => ({
+      ...c,
+      user: userMap.get(c.userId)!,
+      checklist: checklistMap.get(c.checklistId)!,
+    })).filter(c => c.user && c.checklist);
+  }
+
+  async updateChecklistCompletionScore(id: number, score: number, reviewedById: string, reviewNote?: string): Promise<ChecklistCompletion | undefined> {
+    const now = new Date();
+    const [updated] = await db.update(checklistCompletions)
+      .set({
+        score,
+        reviewedById,
+        reviewedAt: now,
+        reviewNote: reviewNote || null,
+        updatedAt: now,
+      })
+      .where(eq(checklistCompletions.id, id))
+      .returning();
+    
+    return updated;
   }
 
   // Health Score Calculation (0-100)
