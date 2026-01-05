@@ -121,7 +121,8 @@ function CoreMetricsGrid({
   avgHealth,
   criticalEquipment,
   inModal = false,
-  periodLabel = ""
+  periodLabel = "",
+  onNavigate
 }: { 
   pendingTasks: number;
   completedTasks: number;
@@ -131,13 +132,15 @@ function CoreMetricsGrid({
   criticalEquipment: number;
   inModal?: boolean;
   periodLabel?: string;
+  onNavigate?: (path: string) => void;
 }) {
   return (
     <div className="space-y-3">
       <div className={`grid ${inModal ? 'grid-cols-4' : 'grid-cols-2'} gap-2`}>
         <div 
-          className="p-2 bg-yellow-500/10 rounded border border-yellow-500/20" 
+          className="p-2 bg-yellow-500/10 rounded border border-yellow-500/20 cursor-pointer hover-elevate" 
           data-testid="card-pending-tasks"
+          onClick={() => onNavigate?.('/gorevler')}
         >
           <p className="text-xs text-muted-foreground flex items-center gap-1">
             <Clock className="h-3 w-3" /> Bekleyen
@@ -148,8 +151,9 @@ function CoreMetricsGrid({
         </div>
 
         <div 
-          className="p-2 bg-green-500/10 rounded border border-green-500/20" 
+          className="p-2 bg-green-500/10 rounded border border-green-500/20 cursor-pointer hover-elevate" 
           data-testid="card-completed-tasks"
+          onClick={() => onNavigate?.('/gorevler')}
         >
           <p className="text-xs text-muted-foreground flex items-center gap-1">
             <CheckCircle2 className="h-3 w-3" /> Tamamlanan
@@ -160,10 +164,11 @@ function CoreMetricsGrid({
         </div>
 
         <div 
-          className={`p-2 rounded border ${
+          className={`p-2 rounded border cursor-pointer hover-elevate ${
             activeFaults > 0 ? 'bg-destructive/10 border-destructive/20' : 'bg-green-500/10 border-green-500/20'
           }`}
           data-testid="card-active-faults"
+          onClick={() => onNavigate?.('/ariza')}
         >
           <p className="text-xs text-muted-foreground flex items-center gap-1">
             <Wrench className="h-3 w-3" /> Aktif Arıza
@@ -174,10 +179,11 @@ function CoreMetricsGrid({
         </div>
 
         <div 
-          className={`p-2 rounded border ${
+          className={`p-2 rounded border cursor-pointer hover-elevate ${
             overdueChecklists > 0 ? 'bg-orange-500/10 border-orange-500/20' : 'bg-green-500/10 border-green-500/20'
           }`}
           data-testid="card-overdue-checklists"
+          onClick={() => onNavigate?.('/checklistler')}
         >
           <p className="text-xs text-muted-foreground flex items-center gap-1">
             <AlertTriangle className="h-3 w-3" /> Geciken
@@ -188,7 +194,11 @@ function CoreMetricsGrid({
         </div>
       </div>
 
-      <div className="p-2 bg-background/50 rounded border border-primary/10" data-testid="card-avg-health">
+      <div 
+        className="p-2 bg-background/50 rounded border border-primary/10 cursor-pointer hover-elevate" 
+        data-testid="card-avg-health"
+        onClick={() => onNavigate?.('/ekipman')}
+      >
         <div className="flex justify-between items-center mb-1">
           <p className="text-xs text-muted-foreground flex items-center gap-1">
             <Wrench className="h-3 w-3" /> Ekipman Sağlığı
@@ -509,6 +519,7 @@ export function EnhancedAnalyticsCard() {
               criticalEquipment={daily.criticalEquipment}
               inModal={inModal}
               periodLabel="Bugün"
+              onNavigate={navigate}
             />
           </>
         )}
@@ -536,10 +547,11 @@ export function EnhancedAnalyticsCard() {
               criticalEquipment={weekly.criticalEquipment}
               inModal={inModal}
               periodLabel="Bu Hafta"
+              onNavigate={navigate}
             />
 
             {/* Checklist completion bar */}
-            <div className="p-2 bg-background/50 rounded border border-primary/10 cursor-pointer hover-elevate" onClick={() => navigate('/checklists')} data-testid="card-weekly-checklist-bar">
+            <div className="p-2 bg-background/50 rounded border border-primary/10 cursor-pointer hover-elevate" onClick={() => navigate('/checklistler')} data-testid="card-weekly-checklist-bar">
               <div className="flex justify-between items-center mb-1">
                 <p className="text-xs text-muted-foreground">Tamamlanma Oranı</p>
                 <span className={`text-xs font-medium ${
@@ -611,6 +623,7 @@ export function EnhancedAnalyticsCard() {
               criticalEquipment={monthly.criticalEquipment}
               inModal={inModal}
               periodLabel="Bu Ay"
+              onNavigate={navigate}
             />
 
             {/* Fault Stats */}

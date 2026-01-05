@@ -101,7 +101,7 @@ export function PersonalSummaryCard() {
 
           <div 
             className="p-2 bg-background/50 rounded border border-primary/10 cursor-pointer hover-elevate" 
-            onClick={() => navigate('/checklists')}
+            onClick={() => navigate('/checklistler')}
             data-testid="card-my-checklists"
           >
             <p className="text-xs text-muted-foreground flex items-center gap-1">
