@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, type ReactNode } from "react";
 import { Switch, Route, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider, useQuery } from "@tanstack/react-query";
@@ -9,6 +9,7 @@ import { InboxDialog } from "@/components/inbox-dialog";
 import { AppHeader } from "@/components/app-header";
 import { QRScannerModal } from "@/components/qr-scanner-modal";
 import { useAuth } from "@/hooks/useAuth";
+import { ProtectedRoute } from "@/components/protected-route";
 import logoPath from "@assets/IMG_6637_1765138781125.png";
 import FaultHub from "@/pages/ariza";
 import FaultDetail from "@/pages/ariza-detay";
@@ -163,6 +164,18 @@ const PUBLIC_PATH_PREFIXES = [
 
 function isPublicPath(path: string) {
   return PUBLIC_PATH_PREFIXES.some((p) => path === p || path.startsWith(p + "/"));
+}
+
+function AdminOnly({ children }: { children: ReactNode }) {
+  return <ProtectedRoute allowedRoles={["admin"]}>{children}</ProtectedRoute>;
+}
+
+function HQOnly({ children }: { children: ReactNode }) {
+  return <ProtectedRoute allowedGroups={["admin", "hq"]}>{children}</ProtectedRoute>;
+}
+
+function FabrikaOnly({ children }: { children: ReactNode }) {
+  return <ProtectedRoute allowedGroups={["admin", "hq", "fabrika"]}>{children}</ProtectedRoute>;
 }
 
 function AuthCatchAllToLogin() {
@@ -325,24 +338,24 @@ function Router() {
           <Route path="/kayip-esya" component={KayipEsya} />
           <Route path="/kayip-esya-hq" component={KayipEsyaHQ} />
           <Route path="/destek" component={Destek} />
-          <Route path="/admin/yetkilendirme" component={AdminYetkilendirme} />
-          <Route path="/admin/aktivite-loglari" component={AdminAktiviteLoglar} />
-          <Route path="/admin/yedekleme" component={AdminYedekleme} />
-          <Route path="/admin/kullanicilar" component={AdminKullanicilar} />
-          <Route path="/admin/email-ayarlari" component={AdminEmailAyarlari} />
-          <Route path="/admin/servis-mail-ayarlari" component={AdminServisMailAyarlari} />
-          <Route path="/admin/bannerlar" component={AdminBannerlar} />
-          <Route path="/admin/duyurular" component={AdminDuyurular} />
-          <Route path="/admin/yapay-zeka-ayarlari" component={AdminYapayZekaAyarlari} />
-          <Route path="/admin/kalite-denetim-sablonlari" component={AdminKaliteDenetimSablonlari} />
-          <Route path="/admin/kalite-denetim-sablonu/:id" component={AdminKaliteDenetimSablonuDuzenle} />
-          <Route path="/admin/toplu-veri-yonetimi" component={AdminTopluVeriYonetimi} />
-          <Route path="/admin/fabrika-istasyonlar" component={AdminFabrikaIstasyonlar} />
-          <Route path="/admin/fabrika-fire-sebepleri" component={AdminFabrikaFireSebepleri} />
-          <Route path="/admin/fabrika-pin-yonetimi" component={AdminFabrikaPinYonetimi} />
-          <Route path="/admin/fabrika-kalite-kriterleri" component={AdminFabrikaKaliteKriterleri} />
-          <Route path="/admin/seed" component={AdminSeed} />
-          <Route path="/admin" component={AdminDashboard} />
+          <Route path="/admin/yetkilendirme">{() => <AdminOnly><AdminYetkilendirme /></AdminOnly>}</Route>
+          <Route path="/admin/aktivite-loglari">{() => <AdminOnly><AdminAktiviteLoglar /></AdminOnly>}</Route>
+          <Route path="/admin/yedekleme">{() => <AdminOnly><AdminYedekleme /></AdminOnly>}</Route>
+          <Route path="/admin/kullanicilar">{() => <AdminOnly><AdminKullanicilar /></AdminOnly>}</Route>
+          <Route path="/admin/email-ayarlari">{() => <AdminOnly><AdminEmailAyarlari /></AdminOnly>}</Route>
+          <Route path="/admin/servis-mail-ayarlari">{() => <AdminOnly><AdminServisMailAyarlari /></AdminOnly>}</Route>
+          <Route path="/admin/bannerlar">{() => <AdminOnly><AdminBannerlar /></AdminOnly>}</Route>
+          <Route path="/admin/duyurular">{() => <AdminOnly><AdminDuyurular /></AdminOnly>}</Route>
+          <Route path="/admin/yapay-zeka-ayarlari">{() => <AdminOnly><AdminYapayZekaAyarlari /></AdminOnly>}</Route>
+          <Route path="/admin/kalite-denetim-sablonlari">{() => <AdminOnly><AdminKaliteDenetimSablonlari /></AdminOnly>}</Route>
+          <Route path="/admin/kalite-denetim-sablonu/:id">{() => <AdminOnly><AdminKaliteDenetimSablonuDuzenle /></AdminOnly>}</Route>
+          <Route path="/admin/toplu-veri-yonetimi">{() => <AdminOnly><AdminTopluVeriYonetimi /></AdminOnly>}</Route>
+          <Route path="/admin/fabrika-istasyonlar">{() => <AdminOnly><AdminFabrikaIstasyonlar /></AdminOnly>}</Route>
+          <Route path="/admin/fabrika-fire-sebepleri">{() => <AdminOnly><AdminFabrikaFireSebepleri /></AdminOnly>}</Route>
+          <Route path="/admin/fabrika-pin-yonetimi">{() => <AdminOnly><AdminFabrikaPinYonetimi /></AdminOnly>}</Route>
+          <Route path="/admin/fabrika-kalite-kriterleri">{() => <AdminOnly><AdminFabrikaKaliteKriterleri /></AdminOnly>}</Route>
+          <Route path="/admin/seed">{() => <AdminOnly><AdminSeed /></AdminOnly>}</Route>
+          <Route path="/admin">{() => <AdminOnly><AdminDashboard /></AdminOnly>}</Route>
         </>
       )}
       
