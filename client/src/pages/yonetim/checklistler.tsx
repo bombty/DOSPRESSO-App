@@ -4,7 +4,7 @@ import { queryClient } from "@/lib/queryClient";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Pencil, Trash2, ChevronDown, ChevronUp, AlertCircle } from "lucide-react";
+import { Plus, Pencil, Trash2, ChevronDown, ChevronUp, AlertCircle, UserPlus } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -39,6 +39,8 @@ export default function AdminChecklistManagement() {
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [selectedChecklist, setSelectedChecklist] = useState<Checklist | null>(null);
+  const [assignDialogOpen, setAssignDialogOpen] = useState(false);
+  const [assignChecklist, setAssignChecklist] = useState<Checklist | null>(null);
   const [expandedChecklistId, setExpandedChecklistId] = useState<number | null>(null);
 
   const { data: checklists, isLoading } = useQuery<Checklist[]>({
@@ -205,6 +207,14 @@ export default function AdminChecklistManagement() {
                           <Button
                             variant="ghost"
                             size="icon"
+                            onClick={() => { setAssignChecklist(checklist); setAssignDialogOpen(true); }}
+                            data-testid={`button-assign-${checklist.id}`}
+                          >
+                            <UserPlus className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
                             onClick={() => handleEdit(checklist)}
                             data-testid={`button-edit-${checklist.id}`}
                           >
@@ -266,6 +276,17 @@ export default function AdminChecklistManagement() {
           )}
         </DialogContent>
       </Dialog>
+
+      {assignChecklist && (
+        <AssignmentDialog
+          checklist={assignChecklist}
+          open={assignDialogOpen}
+          onClose={() => {
+            setAssignDialogOpen(false);
+            setAssignChecklist(null);
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -583,5 +604,248 @@ function ChecklistFormDialog({
         </Button>
       </DialogFooter>
     </>
+  );
+}
+
+// Assignment Dialog Component
+interface AssignmentDialogProps {
+  checklist: Checklist;
+  open: boolean;
+  onClose: () => void;
+}
+
+function AssignmentDialog({ checklist, open, onClose }: AssignmentDialogProps) {
+  const { toast } = useToast();
+  const [scope, setScope] = useState<'user' | 'branch' | 'role'>('branch');
+  const [selectedBranchId, setSelectedBranchId] = useState<string>('');
+  const [selectedUserId, setSelectedUserId] = useState<string>('');
+  const [selectedRole, setSelectedRole] = useState<string>('');
+
+  const { data: branches = [] } = useQuery<any[]>({
+    queryKey: ['/api/branches'],
+  });
+
+  const { data: users = [] } = useQuery<any[]>({
+    queryKey: ['/api/users'],
+    enabled: scope === 'user',
+  });
+
+  const { data: assignments = [] } = useQuery<any[]>({
+    queryKey: ['/api/checklist-assignments', checklist.id],
+    queryFn: async () => {
+      const res = await fetch(`/api/checklist-assignments?checklistId=${checklist.id}`);
+      if (!res.ok) return [];
+      return res.json();
+    },
+    enabled: open,
+  });
+
+  const createAssignmentMutation = useMutation({
+    mutationFn: async (data: any) => {
+      const res = await fetch('/api/checklist-assignments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/checklist-assignments', checklist.id] });
+      toast({ title: 'Başarılı', description: 'Atama oluşturuldu' });
+      setSelectedBranchId('');
+      setSelectedUserId('');
+      setSelectedRole('');
+    },
+    onError: (err: Error) => {
+      toast({ title: 'Hata', description: err.message, variant: 'destructive' });
+    },
+  });
+
+  const deleteAssignmentMutation = useMutation({
+    mutationFn: async (id: number) => {
+      const res = await fetch(`/api/checklist-assignments/${id}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error(await res.text());
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/checklist-assignments', checklist.id] });
+      toast({ title: 'Başarılı', description: 'Atama silindi' });
+    },
+    onError: (err: Error) => {
+      toast({ title: 'Hata', description: err.message, variant: 'destructive' });
+    },
+  });
+
+  const handleCreateAssignment = () => {
+    const data: any = {
+      checklistId: checklist.id,
+      scope,
+    };
+
+    if (scope === 'user') {
+      if (!selectedUserId) {
+        toast({ title: 'Hata', description: 'Kullanıcı seçiniz', variant: 'destructive' });
+        return;
+      }
+      data.assignedUserId = selectedUserId;
+    } else if (scope === 'branch') {
+      if (!selectedBranchId) {
+        toast({ title: 'Hata', description: 'Şube seçiniz', variant: 'destructive' });
+        return;
+      }
+      data.branchId = parseInt(selectedBranchId);
+    } else if (scope === 'role') {
+      if (!selectedBranchId || !selectedRole) {
+        toast({ title: 'Hata', description: 'Şube ve rol seçiniz', variant: 'destructive' });
+        return;
+      }
+      data.branchId = parseInt(selectedBranchId);
+      data.role = selectedRole;
+    }
+
+    createAssignmentMutation.mutate(data);
+  };
+
+  const roleOptions = [
+    { value: 'stajyer', label: 'Stajyer' },
+    { value: 'bar_buddy', label: 'Bar Buddy' },
+    { value: 'barista', label: 'Barista' },
+    { value: 'supervisor_buddy', label: 'Supervisor Buddy' },
+    { value: 'supervisor', label: 'Supervisor' },
+  ];
+
+  const getAssignmentLabel = (assignment: any) => {
+    if (assignment.scope === 'user') {
+      const user = users.find((u: any) => u.id === assignment.assignedUserId);
+      return `Kullanıcı: ${user?.firstName || user?.username || assignment.assignedUserId}`;
+    } else if (assignment.scope === 'branch') {
+      const branch = branches.find((b: any) => b.id === assignment.branchId);
+      return `Şube: ${branch?.name || assignment.branchId} (Tüm personel)`;
+    } else if (assignment.scope === 'role') {
+      const branch = branches.find((b: any) => b.id === assignment.branchId);
+      const roleLabel = roleOptions.find(r => r.value === assignment.role)?.label || assignment.role;
+      return `${branch?.name || assignment.branchId} - ${roleLabel}`;
+    }
+    return 'Bilinmeyen';
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle>Checklist Atamaları: {checklist.title}</DialogTitle>
+          <DialogDescription>Bu checklist'i şubelere, rollere veya kullanıcılara atayın</DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4">
+          {/* Current Assignments */}
+          {assignments.length > 0 && (
+            <div>
+              <Label className="text-sm font-semibold">Mevcut Atamalar</Label>
+              <div className="mt-2 space-y-2">
+                {assignments.map((assignment: any) => (
+                  <div key={assignment.id} className="flex items-center justify-between p-2 bg-muted rounded-md">
+                    <span className="text-sm">{getAssignmentLabel(assignment)}</span>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => deleteAssignmentMutation.mutate(assignment.id)}
+                      data-testid={`button-delete-assignment-${assignment.id}`}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <Separator />
+
+          {/* New Assignment Form */}
+          <div className="space-y-3">
+            <Label className="text-sm font-semibold">Yeni Atama</Label>
+
+            <div>
+              <Label htmlFor="scope">Atama Türü</Label>
+              <Select value={scope} onValueChange={(v) => setScope(v as any)}>
+                <SelectTrigger data-testid="select-scope">
+                  <SelectValue placeholder="Tür seçin" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="branch">Tüm Şube</SelectItem>
+                  <SelectItem value="role">Rol Bazlı</SelectItem>
+                  <SelectItem value="user">Kullanıcı</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {(scope === 'branch' || scope === 'role') && (
+              <div>
+                <Label htmlFor="branch">Şube</Label>
+                <Select value={selectedBranchId} onValueChange={setSelectedBranchId}>
+                  <SelectTrigger data-testid="select-branch">
+                    <SelectValue placeholder="Şube seçin" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {branches.map((branch: any) => (
+                      <SelectItem key={branch.id} value={String(branch.id)}>
+                        {branch.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {scope === 'role' && (
+              <div>
+                <Label htmlFor="role">Rol</Label>
+                <Select value={selectedRole} onValueChange={setSelectedRole}>
+                  <SelectTrigger data-testid="select-role">
+                    <SelectValue placeholder="Rol seçin" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {roleOptions.map((role) => (
+                      <SelectItem key={role.value} value={role.value}>
+                        {role.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {scope === 'user' && (
+              <div>
+                <Label htmlFor="user">Kullanıcı</Label>
+                <Select value={selectedUserId} onValueChange={setSelectedUserId}>
+                  <SelectTrigger data-testid="select-user">
+                    <SelectValue placeholder="Kullanıcı seçin" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {users.map((user: any) => (
+                      <SelectItem key={user.id} value={user.id}>
+                        {user.firstName} {user.lastName} ({user.username})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            <Button
+              onClick={handleCreateAssignment}
+              disabled={createAssignmentMutation.isPending}
+              className="w-full"
+              data-testid="button-create-assignment"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Atama Ekle
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
