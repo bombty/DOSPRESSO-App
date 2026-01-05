@@ -8,6 +8,7 @@ import { QuickTaskModal } from "@/components/quick-task-modal";
 import { ShiftStatusCard } from "@/components/shift-status-card";
 import { ShiftChecklistCard } from "@/components/shift-checklist-card";
 import { EnhancedAnalyticsCard } from "@/components/enhanced-analytics-card";
+import { PersonalSummaryCard } from "@/components/personal-summary-card";
 import { AnnouncementBannerCarousel } from "@/components/AnnouncementBannerCarousel";
 import {
   Accordion,
@@ -1005,6 +1006,9 @@ export function CardGridHub() {
 
       {/* Shift Checklists - Branch users only */}
       {isBranch && <ShiftChecklistCard />}
+
+      {/* Personal Summary Card - Non-supervisor branch roles (barista, etc.) */}
+      {isBranch && user?.role !== "supervisor" && user?.role !== "supervisor_buddy" && <PersonalSummaryCard />}
 
       {/* Analytics Card - Branch supervisors + HQ roles */}
       {(isBranch && (user?.role === 'supervisor' || user?.role === 'supervisor_buddy')) && <EnhancedAnalyticsCard />}

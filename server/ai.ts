@@ -2380,6 +2380,53 @@ export async function generateBranchSummaryReport(
   }
 }
 
+// AI-powered personal summary for individual employees
+export async function generatePersonalSummaryReport(
+  data: {
+    firstName: string;
+    completedTasks: number;
+    pendingTasks: number;
+    completedChecklists: number;
+    pendingChecklists: number;
+    performanceScore: number | null;
+    hasShiftToday: boolean;
+    shiftTime?: string;
+  },
+  userId: string
+): Promise<string> {
+  if (!aiRateLimiter.canMakeRequest(userId, 'personal_summary', 5)) {
+    const taskStatus = data.pendingTasks > 0 ? `${data.pendingTasks} bekleyen görev` : 'Tüm görevler tamam';
+    const checklistStatus = data.pendingChecklists > 0 ? `${data.pendingChecklists} checklist bekliyor` : 'Checklistler tamam';
+    return `${data.firstName}, ${taskStatus}, ${checklistStatus}.`;
+  }
+
+  try {
+    const response = await openai.chat.completions.create({
+      model: SUMMARY_MODEL,
+      messages: [
+        {
+          role: "system",
+          content: `Sen DOSPRESSO kahve franchise yönetim sisteminin kişisel asistanısın. Çalışanlara motive edici, kısa ve samimi günlük özetler hazırlarsın. Türkçe kullan, 2. tekil şahıs (sen) ile hitap et.`
+        },
+        {
+          role: "user",
+          content: `${data.firstName} için kişisel günlük özet hazırla. Veriler: ${data.completedTasks} tamamlanan görev, ${data.pendingTasks} bekleyen görev, ${data.completedChecklists} tamamlanan checklist, ${data.pendingChecklists} bekleyen checklist, performans puanı: ${data.performanceScore ?? 'henüz yok'}, bugün vardiya: ${data.hasShiftToday ? `Evet (${data.shiftTime})` : 'Hayır'}. Motive edici, kısa (2-3 cümle) bir özet ver. Bekleyen iş varsa nazik bir hatırlatma ekle.`
+        }
+      ],
+      max_tokens: 150,
+      temperature: 0.7
+    });
+
+    const summary = response.choices[0]?.message?.content?.trim() || `${data.firstName}, bugün ${data.pendingTasks} görev ve ${data.pendingChecklists} checklist bekliyor.`;
+    aiRateLimiter.incrementRequest(userId, 'personal_summary');
+    return summary;
+  } catch (error: Error | unknown) {
+    console.error("Personal summary generation error:", error);
+    const taskStatus = data.pendingTasks > 0 ? `${data.pendingTasks} bekleyen görev` : 'Tüm görevler tamam';
+    return `${data.firstName}, ${taskStatus}.`;
+  }
+}
+
 // AI-powered article draft generator for Knowledge Base
 export interface ArticleDraftResponse {
   title: string;
