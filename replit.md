@@ -32,7 +32,7 @@ The frontend utilizes React 18+ with TypeScript and Vite, employing Shadcn/ui (N
 - **HR & Shift Management**: Personnel management, leave requests, overtime, attendance, AI-powered fair shift planning with coverage guarantees, and comprehensive leave/public holiday management.
 - **Enhanced Analytics Dashboard**: Tabbed interface showing daily/weekly/monthly metrics with AI-generated summaries.
 - **DOSPRESSO Academy (LMS)**: A comprehensive training system including career progression, quiz system, gamification, certification, AI learning paths, and advanced analytics.
-- **Checklist Management System**: Time-windowed tasks with HQ/Supervisor editable time slots, photo validation, manager notifications, performance weighting, and daily reminders.
+- **Checklist Management System**: Time-windowed tasks with HQ/Supervisor editable time slots, photo validation, manager notifications, performance weighting, and daily reminders. Includes scope-based assignment system (user/branch/role) via `checklist_assignments` table with date range support. Admin UI at `/yonetim/checklistler` allows assigning checklists to specific users, entire branches, or role-based groups. Kiosk users see personalized checklists via `/api/checklists/my-assignments` endpoint.
 - **Recipe Management System**: Supports 14 categories and 55+ recipes with two cup sizes, separate measurements/steps, and automatic version tracking.
 - **Quiz System**: MCQ and True/False questions, dynamic options, points, explanations, cooldowns, and attempt tracking.
 - **New Shop Opening Management System**: A 7-phase workflow tracking for franchise openings with hierarchical tasks, RACI assignments, and procurement/bidding.
