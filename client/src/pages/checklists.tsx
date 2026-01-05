@@ -20,7 +20,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { insertChecklistSchema, updateChecklistSchema, type Checklist, type InsertChecklist, type ChecklistTask, type UpdateChecklist } from "@shared/schema";
+import { insertChecklistSchema, updateChecklistSchema, type Checklist, type InsertChecklist, type ChecklistTask, type UpdateChecklist, type UserRoleType } from "@shared/schema";
 import { z } from "zod";
 import { FileText, Plus, Camera, ChevronDown, Sparkles, Edit, Trash2, MoveUp, MoveDown } from "lucide-react";
 
@@ -52,13 +52,22 @@ export default function Checklists() {
 
   const isCoach = user?.role === 'coach';
   const isSupervisor = user?.role === 'supervisor' || user?.role === 'supervisor_buddy';
+  
+  // Determine if user can manage checklists (HQ roles, supervisors, coaches)
+  const canManageChecklists = isHQRole((user?.role || 'barista') as UserRoleType) || isCoach || isSupervisor;
+  
+  // Regular employees (barista, etc.) should only see their assigned checklists
+  const checklistEndpoint = canManageChecklists ? "/api/checklists" : "/api/checklists/my-assignments";
 
   const { data: checklists, isLoading } = useQuery<Checklist[]>({
-    queryKey: ["/api/checklists"],
+    queryKey: [checklistEndpoint],
   });
 
+  // Only managers need the separate checklist-tasks endpoint
+  // Regular employees get tasks embedded in my-assignments response
   const { data: checklistTasks } = useQuery<ChecklistTask[]>({
     queryKey: ["/api/checklist-tasks"],
+    enabled: canManageChecklists, // Only fetch for managers
   });
 
   const form = useForm<InsertChecklist>({
@@ -122,6 +131,7 @@ export default function Checklists() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/checklists"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/checklists/my-assignments"] });
       toast({ title: "Başarılı", description: "Checklist oluşturuldu" });
       setIsAddDialogOpen(false);
       form.reset();
@@ -204,6 +214,7 @@ export default function Checklists() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/checklists"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/checklists/my-assignments"] });
       queryClient.invalidateQueries({ queryKey: ["/api/checklist-tasks"] });
       toast({ title: "Başarılı", description: "Checklist güncellendi" });
       setIsEditDialogOpen(false);
@@ -238,8 +249,14 @@ export default function Checklists() {
     remove(index);
   };
 
-  const getTasksForChecklist = (checklistId: number) => {
-    return checklistTasks?.filter(task => task.checklistId === checklistId) || [];
+  const getTasksForChecklist = (checklistId: number): ChecklistTask[] => {
+    // For managers, use the separate checklistTasks endpoint
+    if (canManageChecklists && checklistTasks) {
+      return checklistTasks.filter(task => task.checklistId === checklistId) || [];
+    }
+    // For regular employees, use embedded tasks from my-assignments response
+    const checklist = checklists?.find(c => c.id === checklistId) as any;
+    return checklist?.tasks || [];
   };
 
   const frequencyLabels: Record<string, string> = {
@@ -253,16 +270,21 @@ export default function Checklists() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-semibold" data-testid="text-page-title">Checklistler</h1>
-          <p className="text-muted-foreground mt-1">Görev şablonlarını ve rutin kontrolleri yönetin</p>
+          <p className="text-muted-foreground mt-1">
+            {canManageChecklists 
+              ? "Görev şablonlarını ve rutin kontrolleri yönetin" 
+              : "Size atanan görevleri görüntüleyin"}
+          </p>
         </div>
-        <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-          <DialogTrigger asChild>
-            <Button data-testid="button-add-checklist">
-              <Plus className="mr-2 h-4 w-4" />
-              Yeni Checklist
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
+        {canManageChecklists && (
+          <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+            <DialogTrigger asChild>
+              <Button data-testid="button-add-checklist">
+                <Plus className="mr-2 h-4 w-4" />
+                Yeni Checklist
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
             <DialogHeader>
               <DialogTitle>Yeni Checklist Oluştur</DialogTitle>
             </DialogHeader>
@@ -341,6 +363,7 @@ export default function Checklists() {
             </Form>
           </DialogContent>
         </Dialog>
+        )}
       </div>
 
       {isLoading ? (
