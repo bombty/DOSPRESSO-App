@@ -2736,7 +2736,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: 'Checklist tamamlama bulunamadı' });
       }
       
-      // TODO: Update employee performance score here
+      // Update employee performance score with checklist data
+      if (completion.userId && completion.branchId) {
+        const today = new Date().toISOString().split('T')[0];
+        await storage.updateEmployeeChecklistPerformance(
+          completion.userId, 
+          completion.branchId, 
+          today, 
+          completion.score || 100
+        );
+      }
       
       res.json(completion);
     } catch (error: any) {

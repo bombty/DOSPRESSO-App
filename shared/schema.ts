@@ -4262,6 +4262,9 @@ export const employeePerformanceScores = pgTable("employee_performance_scores", 
   // Shift compliance
   shiftComplianceScore: integer("shift_compliance_score").notNull().default(100), // 0-100
   overtimeComplianceScore: integer("overtime_compliance_score").notNull().default(100), // 0-100
+  // Checklist compliance (40% weight in daily total)
+  checklistScore: integer("checklist_score").notNull().default(100), // 0-100
+  checklistsCompleted: integer("checklists_completed").notNull().default(0), // Count of completed checklists
   // Totals
   dailyTotalScore: integer("daily_total_score").notNull().default(100), // Weighted average
   weeklyTotalScore: integer("weekly_total_score").notNull().default(100), // Week average

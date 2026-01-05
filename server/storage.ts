@@ -414,6 +414,7 @@ export interface IStorage {
   submitChecklistCompletion(id: number): Promise<ChecklistCompletion | undefined>;
   getManagerChecklistCompletions(branchId?: number, date?: string, status?: string): Promise<Array<ChecklistCompletion & { user: User; checklist: Checklist }>>;
   updateChecklistCompletionScore(id: number, score: number, reviewedById: string, reviewNote?: string): Promise<ChecklistCompletion | undefined>;
+  updateEmployeeChecklistPerformance(userId: string, branchId: number, date: string, checklistScore: number): Promise<void>;
   
   // Equipment operations
   getEquipment(branchId?: number): Promise<Equipment[]>;
@@ -1760,6 +1761,42 @@ export class DatabaseStorage implements IStorage {
       .returning();
     
     return updated;
+  }
+
+  async updateEmployeeChecklistPerformance(userId: string, branchId: number, date: string, checklistScore: number): Promise<void> {
+    const weekNumber = this.getWeekNumber(new Date(date));
+    
+    // Get all checklist completions for this user on this date to calculate average
+    const todayCompletions = await db
+      .select()
+      .from(checklistCompletions)
+      .where(and(
+        eq(checklistCompletions.userId, userId),
+        eq(checklistCompletions.status, 'submitted'),
+        sql`DATE(${checklistCompletions.submittedAt}) = ${date}`
+      ));
+    
+    if (todayCompletions.length === 0) return;
+    
+    const totalScore = todayCompletions.reduce((sum, c) => sum + (c.score || 100), 0);
+    const avgChecklistScore = Math.round(totalScore / todayCompletions.length);
+    
+    // Upsert performance score
+    await db.insert(employeePerformanceScores).values({
+      userId,
+      branchId,
+      date,
+      week: weekNumber,
+      checklistScore: avgChecklistScore,
+      checklistsCompleted: todayCompletions.length,
+    }).onConflictDoUpdate({
+      target: [employeePerformanceScores.userId, employeePerformanceScores.date],
+      set: {
+        checklistScore: avgChecklistScore,
+        checklistsCompleted: todayCompletions.length,
+        updatedAt: new Date(),
+      },
+    });
   }
 
   // Health Score Calculation (0-100)
