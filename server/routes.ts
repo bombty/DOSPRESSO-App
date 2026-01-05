@@ -13097,18 +13097,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const items = await storage.getLostFoundItems(filters);
       
-      // Enrich with user and branch info
-      const enrichedItems = await Promise.all(items.map(async (item) => {
-        const foundBy = await storage.getUser(item.foundById);
-        const branch = await storage.getBranch(item.branchId);
-        const handoveredBy = item.handoveredById ? await storage.getUser(item.handoveredById) : null;
+      // Batch fetch users and branches to avoid N+1
+      const userIds = [...new Set(items.flatMap(i => [i.foundById, i.handoveredById].filter(Boolean) as string[]))];
+      const branchIds = [...new Set(items.map(i => i.branchId))];
+      const [usersMap, branchesMap] = await Promise.all([
+        storage.getUsersByIds(userIds),
+        storage.getBranchesByIds(branchIds)
+      ]);
+      
+      const enrichedItems = items.map(item => {
+        const foundBy = usersMap.get(item.foundById);
+        const branch = branchesMap.get(item.branchId);
+        const handoveredBy = item.handoveredById ? usersMap.get(item.handoveredById) : null;
         return {
           ...item,
           foundByName: foundBy ? `${foundBy.firstName} ${foundBy.lastName}` : 'Bilinmiyor',
           branchName: branch?.name || 'Bilinmiyor',
           handoveredByName: handoveredBy ? `${handoveredBy.firstName} ${handoveredBy.lastName}` : null,
         };
-      }));
+      });
       
       res.json(enrichedItems);
     } catch (error: Error | unknown) {
@@ -13131,17 +13138,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const items = await storage.getLostFoundItems(filters);
       
-      const enrichedItems = await Promise.all(items.map(async (item) => {
-        const foundBy = await storage.getUser(item.foundById);
-        const branch = await storage.getBranch(item.branchId);
-        const handoveredBy = item.handoveredById ? await storage.getUser(item.handoveredById) : null;
+      // Batch fetch users and branches to avoid N+1
+      const userIds = [...new Set(items.flatMap(i => [i.foundById, i.handoveredById].filter(Boolean) as string[]))];
+      const branchIds = [...new Set(items.map(i => i.branchId))];
+      const [usersMap, branchesMap] = await Promise.all([
+        storage.getUsersByIds(userIds),
+        storage.getBranchesByIds(branchIds)
+      ]);
+      
+      const enrichedItems = items.map(item => {
+        const foundBy = usersMap.get(item.foundById);
+        const branch = branchesMap.get(item.branchId);
+        const handoveredBy = item.handoveredById ? usersMap.get(item.handoveredById) : null;
         return {
           ...item,
           foundByName: foundBy ? `${foundBy.firstName} ${foundBy.lastName}` : 'Bilinmiyor',
           branchName: branch?.name || 'Bilinmiyor',
           handoveredByName: handoveredBy ? `${handoveredBy.firstName} ${handoveredBy.lastName}` : null,
         };
-      }));
+      });
       
       res.json(enrichedItems);
     } catch (error: Error | unknown) {

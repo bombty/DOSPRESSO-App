@@ -302,8 +302,10 @@ export interface IStorage {
   // User operations
   getUser(id: string): Promise<User | undefined>;
   getUserById(id: string): Promise<User | undefined>;
+  getUsersByIds(ids: string[]): Promise<Map<string, User>>;
   getUserByUsername(username: string): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
+  getBranchesByIds(ids: number[]): Promise<Map<number, Branch>>;
   getEmployeeForBranch(employeeId: string, allowedBranchId: number | null): Promise<User | undefined>;
   upsertUser(user: UpsertUser): Promise<User>;
   createUser(user: UpsertUser): Promise<User>;
@@ -834,6 +836,20 @@ export class DatabaseStorage implements IStorage {
   async getUserById(id: string): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.id, id));
     return user as User | undefined;
+  }
+
+  async getUsersByIds(ids: string[]): Promise<Map<string, User>> {
+    if (ids.length === 0) return new Map();
+    const uniqueIds = [...new Set(ids)];
+    const result = await db.select().from(users).where(inArray(users.id, uniqueIds));
+    return new Map(result.map(u => [u.id, u as User]));
+  }
+
+  async getBranchesByIds(ids: number[]): Promise<Map<number, Branch>> {
+    if (ids.length === 0) return new Map();
+    const uniqueIds = [...new Set(ids)];
+    const result = await db.select().from(branches).where(inArray(branches.id, uniqueIds));
+    return new Map(result.map(b => [b.id, b as Branch]));
   }
 
   async getUserByUsername(username: string): Promise<User | undefined> {
