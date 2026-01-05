@@ -65,6 +65,7 @@ interface Checklist {
   pendingTasks: number;
   completedTasks: number;
   totalTasks: number;
+  assignmentId?: number;
 }
 
 interface Task {
@@ -116,6 +117,7 @@ export default function BranchKiosk() {
   const [elapsedTime, setElapsedTime] = useState(0);
   const [shiftSummary, setShiftSummary] = useState<any>(null);
   const [autoLogoutCountdown, setAutoLogoutCountdown] = useState(15);
+  const [startingChecklistId, setStartingChecklistId] = useState<number | null>(null);
   
   // Double confirmation dialogs state
   const [showEndShiftConfirm1, setShowEndShiftConfirm1] = useState(false);
@@ -148,6 +150,37 @@ export default function BranchKiosk() {
     setKioskUsername('');
     },
   });
+  const startChecklistMutation = useMutation({
+    mutationFn: async (data: { assignmentId: number; checklistId: number }) => {
+      const res = await apiRequest('POST', '/api/checklist-completions/start', {
+        assignmentId: data.assignmentId,
+        checklistId: data.checklistId,
+        branchId: branchId,
+      });
+      return res.json();
+    },
+    onSuccess: (data) => {
+      setStartingChecklistId(null);
+      setLocation(`/sube/checklist-execution/${data.id}`);
+    },
+    onError: (error: any) => {
+      setStartingChecklistId(null);
+      toast({ title: "Hata", description: error.message || "Checklist başlatılamadı", variant: "destructive" });
+    },
+  });
+
+  const handleStartChecklist = (checklist: Checklist) => {
+    if (!checklist.assignmentId) {
+      toast({ title: "Hata", description: "Atama bilgisi bulunamadı", variant: "destructive" });
+      return;
+    }
+    setStartingChecklistId(checklist.id);
+    startChecklistMutation.mutate({
+      assignmentId: checklist.assignmentId,
+      checklistId: checklist.id,
+    });
+  };
+
 
   const loginMutation = useMutation({
     mutationFn: async (data: { userId: string; pin: string }) => {
@@ -746,11 +779,18 @@ export default function BranchKiosk() {
                 {userChecklists.map((checklist) => (
                   <div
                     key={checklist.id}
-                    className="flex items-center gap-3 p-3 rounded-lg border bg-card"
+                    className="flex items-center gap-3 p-3 rounded-lg border bg-card cursor-pointer hover-elevate"
                     data-testid={`checklist-item-${checklist.id}`}
+                    onClick={() => handleStartChecklist(checklist)}
                   >
-                    <div className="p-2 rounded-full bg-green-100 text-green-600">
-                      <CheckCircle2 className="h-4 w-4" />
+                    <div className={`p-2 rounded-full ${checklist.pendingTasks === 0 ? 'bg-green-100 text-green-600' : 'bg-amber-100 text-amber-600'}`}>
+                      {startingChecklistId === checklist.id ? (
+                        <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                      ) : checklist.pendingTasks === 0 ? (
+                        <CheckCircle2 className="h-4 w-4" />
+                      ) : (
+                        <ListTodo className="h-4 w-4" />
+                      )}
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="font-medium truncate">{checklist.name}</p>

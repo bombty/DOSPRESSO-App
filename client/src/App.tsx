@@ -121,6 +121,7 @@ import FabrikaUretimPlanlama from "@/pages/fabrika/uretim-planlama";
 import FabrikaVardiyaUyumluluk from "@/pages/fabrika/vardiya-uyumluluk";
 import SubeKiosk from "@/pages/sube/kiosk";
 import SubeDashboard from "@/pages/sube/dashboard";
+import ChecklistExecutionPage from "@/pages/sube/checklist-execution";
 import HQFabrikaAnalitik from "@/pages/hq-fabrika-analitik";
 import CanliTakip from "@/pages/canli-takip";
 import AdminDashboard from "@/pages/admin/index";
@@ -203,6 +204,7 @@ function Router() {
       <Route path="/feedback" component={MusteriFeedbackPublic} />
       <Route path="/misafir-geri-bildirim/:token" component={MisafirGeriBildirimPublic} />
       <Route path="/fabrika/kiosk" component={FabrikaKiosk} />
+      <Route path="/sube/checklist-execution/:completionId" component={ChecklistExecutionPage} />
       <Route path="/sube/kiosk/:branchId" component={SubeKiosk} />
       <Route path="/sube/kiosk" component={SubeKiosk} />
       <Route path="/sube/dashboard" component={SubeDashboard} />

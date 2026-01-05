@@ -2629,6 +2629,171 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+
+  // ========================================
+  // CHECKLIST COMPLETION ROUTES
+  // ========================================
+
+  // POST /api/checklist-completions/start - Start a checklist
+  app.post('/api/checklist-completions/start', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const { assignmentId, checklistId, branchId, shiftId } = req.body;
+      
+      if (!assignmentId || !checklistId) {
+        return res.status(400).json({ message: 'assignmentId ve checklistId zorunludur' });
+      }
+      
+      // Check if there's already an in-progress completion for today
+      const today = new Date().toISOString().split('T')[0];
+      const existingCompletions = await storage.getUserChecklistCompletions(user.id, today);
+      const inProgress = existingCompletions.find(c => 
+        c.checklistId === checklistId && c.status === 'in_progress'
+      );
+      
+      if (inProgress) {
+        // Return existing in-progress completion
+        const completionWithTasks = await storage.getChecklistCompletionWithTasks(inProgress.id);
+        return res.json(completionWithTasks);
+      }
+      
+      const completion = await storage.startChecklistCompletion({
+        assignmentId,
+        checklistId,
+        userId: user.id,
+        branchId: branchId || user.branchId,
+        shiftId,
+      });
+      
+      const completionWithTasks = await storage.getChecklistCompletionWithTasks(completion.id);
+      res.status(201).json(completionWithTasks);
+    } catch (error: any) {
+      console.error('Error starting checklist completion:', error);
+      res.status(500).json({ message: 'Checklist başlatılamadı' });
+    }
+  });
+
+  // GET /api/checklist-completions/:id - Get completion with tasks
+  app.get('/api/checklist-completions/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const completion = await storage.getChecklistCompletionWithTasks(id);
+      
+      if (!completion) {
+        return res.status(404).json({ message: 'Checklist tamamlama bulunamadı' });
+      }
+      
+      res.json(completion);
+    } catch (error: any) {
+      console.error('Error fetching checklist completion:', error);
+      res.status(500).json({ message: 'Veri getirilemedi' });
+    }
+  });
+
+  // GET /api/checklist-completions/my/today - Get user's completions for today
+  app.get('/api/checklist-completions/my/today', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const date = req.query.date as string || new Date().toISOString().split('T')[0];
+      const completions = await storage.getUserChecklistCompletions(user.id, date);
+      res.json(completions);
+    } catch (error: any) {
+      console.error('Error fetching user completions:', error);
+      res.status(500).json({ message: 'Veri getirilemedi' });
+    }
+  });
+
+  // POST /api/checklist-completions/:completionId/tasks/:taskId/complete - Complete a task
+  app.post('/api/checklist-completions/:completionId/tasks/:taskId/complete', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const completionId = parseInt(req.params.completionId);
+      const taskId = parseInt(req.params.taskId);
+      const { photoUrl, notes } = req.body;
+      
+      const taskCompletion = await storage.completeChecklistTask({
+        completionId,
+        taskId,
+        userId: user.id,
+        photoUrl,
+        notes,
+      });
+      
+      res.json(taskCompletion);
+    } catch (error: any) {
+      console.error('Error completing task:', error);
+      res.status(500).json({ message: 'Görev tamamlanamadı' });
+    }
+  });
+
+  // POST /api/checklist-completions/:id/submit - Submit completed checklist
+  app.post('/api/checklist-completions/:id/submit', isAuthenticated, async (req: any, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const completion = await storage.submitChecklistCompletion(id);
+      
+      if (!completion) {
+        return res.status(404).json({ message: 'Checklist tamamlama bulunamadı' });
+      }
+      
+      // TODO: Update employee performance score here
+      
+      res.json(completion);
+    } catch (error: any) {
+      console.error('Error submitting checklist:', error);
+      res.status(500).json({ message: 'Checklist gönderilemedi' });
+    }
+  });
+
+  // GET /api/checklist-completions/manager/all - Manager view of all completions
+  app.get('/api/checklist-completions/manager/all', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      ensurePermission(user, 'checklists', 'view');
+      
+      const { branchId, date, status } = req.query;
+      
+      // If user has branch restriction, use their branch
+      const effectiveBranchId = user.role === 'admin' || user.role === 'hq_manager' 
+        ? (branchId ? parseInt(branchId as string) : undefined)
+        : user.branchId;
+      
+      const completions = await storage.getManagerChecklistCompletions(
+        effectiveBranchId,
+        date as string,
+        status as string
+      );
+      
+      res.json(completions);
+    } catch (error: any) {
+      console.error('Error fetching manager completions:', error);
+      res.status(500).json({ message: 'Veri getirilemedi' });
+    }
+  });
+
+  // PATCH /api/checklist-completions/:id/review - Manager review and score update
+  app.patch('/api/checklist-completions/:id/review', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      ensurePermission(user, 'checklists', 'edit');
+      
+      const id = parseInt(req.params.id);
+      const { score, reviewNote } = req.body;
+      
+      const updated = await storage.updateChecklistCompletionScore(id, score, user.id, reviewNote);
+      
+      if (!updated) {
+        return res.status(404).json({ message: 'Checklist tamamlama bulunamadı' });
+      }
+      
+      res.json(updated);
+    } catch (error: any) {
+      console.error('Error reviewing completion:', error);
+      res.status(500).json({ message: 'Değerlendirme kaydedilemedi' });
+    }
+  });
+
+
   app.get('/api/checklists/:id', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
@@ -27116,27 +27281,31 @@ DOSPRESSO İnsan Kaynakları Ekibi`
         ))
         .orderBy(tasks.dueDate);
 
-      // Get user's checklist assignments for today
+      // Get user's checklist assignments for today using new assignment system
+      const userProfile = await storage.getUser(userId);
+      const myAssignments = await storage.getMyChecklistAssignments(
+        userId,
+        userProfile?.branchId || undefined,
+        userProfile?.role || undefined
+      );
+      
+      // Get today's completions for this user to check status
       const today = new Date().toISOString().split('T')[0];
-      const userChecklists = [];
-      const allChecklists = await storage.getChecklists();
-      for (const checklist of allChecklists) {
-        const checklistTasks = await storage.getChecklistTasks(checklist.id);
-        const isAssigned = checklistTasks.some((t: any) => 
-          t.assignedBaristaId === userId || t.assignedSupervisorId === userId
-        );
-        if (isAssigned) {
-          const pendingTasks = checklistTasks.filter((t: any) => !t.completedAt).length;
-          const completedTasks = checklistTasks.filter((t: any) => t.completedAt).length;
-          userChecklists.push({
-            id: checklist.id,
-            name: checklist.name,
-            pendingTasks,
-            completedTasks,
-            totalTasks: checklistTasks.length
-          });
-        }
-      }
+      const todayCompletions = await storage.getUserChecklistCompletions(userId, today);
+      
+      const userChecklists = myAssignments.map(item => {
+        const todayCompletion = todayCompletions.find(c => c.checklistId === item.id);
+        const completedTasks = todayCompletion?.completedTasks || 0;
+        const totalTasks = item.tasks.length;
+        return {
+          id: item.id,
+          name: item.title,
+          assignmentId: item.assignment.id,
+          pendingTasks: totalTasks - completedTasks,
+          completedTasks,
+          totalTasks,
+        };
+      })
 
       res.json({
         activeSession: session,
