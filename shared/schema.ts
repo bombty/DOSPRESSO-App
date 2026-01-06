@@ -994,12 +994,20 @@ export const insertChecklistSchema = createInsertSchema(checklists).omit({
 export type InsertChecklist = z.infer<typeof insertChecklistSchema>;
 export type Checklist = typeof checklists.$inferSelect;
 
+// AI verification types for checklist tasks
+export const aiVerificationTypeEnum = ["none", "cleanliness", "arrangement", "machine_settings", "general"] as const;
+export type AiVerificationType = typeof aiVerificationTypeEnum[number];
+
 // Checklist Tasks (many-to-many between checklists and task templates)
 export const checklistTasks = pgTable("checklist_tasks", {
   id: serial("id").primaryKey(),
   checklistId: integer("checklist_id").notNull().references(() => checklists.id, { onDelete: "cascade" }),
   taskDescription: text("task_description").notNull(),
   requiresPhoto: boolean("requires_photo").default(false),
+  // AI verification settings
+  referencePhotoUrl: text("reference_photo_url"), // Reference photo for AI comparison
+  tolerancePercent: integer("tolerance_percent").default(80), // Minimum acceptable similarity (0-100)
+  aiVerificationType: varchar("ai_verification_type", { length: 50 }).default("none"), // none, cleanliness, arrangement, machine_settings, general
   taskTimeStart: time("task_time_start", { precision: 0 }),
   taskTimeEnd: time("task_time_end", { precision: 0 }),
   order: integer("order").notNull(),
@@ -1041,6 +1049,10 @@ export const updateChecklistSchema = z.object({
       id: z.number().nullable().optional(),
       taskDescription: z.string().min(1),
       requiresPhoto: z.boolean().default(false),
+      // AI verification settings
+      referencePhotoUrl: z.string().nullable().optional(),
+      tolerancePercent: z.number().min(0).max(100).default(80),
+      aiVerificationType: z.enum(["none", "cleanliness", "arrangement", "machine_settings", "general"]).default("none"),
       taskTimeStart: z.string().nullable().optional(),
       taskTimeEnd: z.string().nullable().optional(),
       order: z.number(),
@@ -1147,6 +1159,10 @@ export const insertChecklistCompletionSchema = createInsertSchema(checklistCompl
 export type InsertChecklistCompletion = z.infer<typeof insertChecklistCompletionSchema>;
 export type ChecklistCompletion = typeof checklistCompletions.$inferSelect;
 
+// AI verification result types
+export const aiVerificationResultEnum = ["passed", "failed", "pending", "skipped"] as const;
+export type AiVerificationResult = typeof aiVerificationResultEnum[number];
+
 // Checklist task completions - tracks each task completion within a checklist
 export const checklistTaskCompletions = pgTable("checklist_task_completions", {
   id: serial("id").primaryKey(),
@@ -1159,11 +1175,18 @@ export const checklistTaskCompletions = pgTable("checklist_task_completions", {
   notes: text("notes"), // Optional notes from staff
   isLate: boolean("is_late").default(false), // Completed after task time window
   taskOrder: integer("task_order").notNull(), // Order in which this task should be completed
+  // AI verification results (stored permanently even after photo deletion)
+  aiVerificationResult: varchar("ai_verification_result", { length: 20 }).default("skipped"), // passed, failed, pending, skipped
+  aiSimilarityScore: integer("ai_similarity_score"), // 0-100 similarity percentage
+  aiVerificationNote: text("ai_verification_note"), // AI analysis explanation
+  photoExpiresAt: timestamp("photo_expires_at"), // When photo will be auto-deleted (2 weeks from upload)
+  photoDeleted: boolean("photo_deleted").default(false), // Flag to indicate photo was auto-deleted
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => ({
   completionIdx: index("checklist_task_completions_completion_idx").on(table.completionId),
   taskIdx: index("checklist_task_completions_task_idx").on(table.taskId),
+  photoExpiresIdx: index("checklist_task_completions_photo_expires_idx").on(table.photoExpiresAt),
 }));
 
 export const insertChecklistTaskCompletionSchema = createInsertSchema(checklistTaskCompletions).omit({
