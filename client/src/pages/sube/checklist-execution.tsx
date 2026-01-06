@@ -31,7 +31,10 @@ import {
   Timer,
   Send,
   ImageIcon,
-  Loader2
+  Loader2,
+  BrainCircuit,
+  XCircle,
+  CheckCircle
 } from "lucide-react";
 
 interface ChecklistTask {
@@ -41,6 +44,9 @@ interface ChecklistTask {
   taskTimeStart: string | null;
   taskTimeEnd: string | null;
   order: number;
+  aiVerificationType: string | null;
+  tolerancePercent: number | null;
+  referencePhotoUrl: string | null;
 }
 
 interface TaskCompletion {
@@ -52,6 +58,8 @@ interface TaskCompletion {
   notes: string | null;
   isLate: boolean;
   taskOrder: number;
+  aiVerificationResult: string | null;
+  aiSimilarityScore: number | null;
 }
 
 interface Checklist {
@@ -378,6 +386,12 @@ export default function ChecklistExecutionPage() {
                           Fotoğraf zorunlu
                         </Badge>
                       )}
+                      {task.aiVerificationType && task.aiVerificationType !== 'none' && (
+                        <Badge variant="secondary" className="text-xs">
+                          <BrainCircuit className="w-3 h-3 mr-1" />
+                          AI kontrol
+                        </Badge>
+                      )}
                       {isLate && !isCompleted && (
                         <Badge variant="destructive" className="text-xs">
                           <AlertTriangle className="w-3 h-3 mr-1" />
@@ -392,12 +406,34 @@ export default function ChecklistExecutionPage() {
                     </div>
 
                     {isCompleted && taskCompletion?.photoUrl && (
-                      <div className="mt-2">
+                      <div className="mt-2 space-y-2">
                         <img 
                           src={taskCompletion.photoUrl} 
                           alt="Görev fotoğrafı" 
                           className="h-20 w-20 object-cover rounded-md"
                         />
+                        {taskCompletion.aiVerificationResult && (
+                          <div className={`flex items-center gap-2 p-2 rounded-md text-sm ${
+                            taskCompletion.aiVerificationResult === 'passed' 
+                              ? 'bg-green-500/10 text-green-600' 
+                              : taskCompletion.aiVerificationResult === 'failed'
+                                ? 'bg-red-500/10 text-red-600'
+                                : 'bg-muted'
+                          }`}>
+                            {taskCompletion.aiVerificationResult === 'passed' ? (
+                              <CheckCircle className="h-4 w-4" />
+                            ) : taskCompletion.aiVerificationResult === 'failed' ? (
+                              <XCircle className="h-4 w-4" />
+                            ) : (
+                              <BrainCircuit className="h-4 w-4" />
+                            )}
+                            <span>
+                              AI: %{taskCompletion.aiSimilarityScore || 0} benzerlik
+                              {taskCompletion.aiVerificationResult === 'passed' ? ' ✓' : 
+                               taskCompletion.aiVerificationResult === 'failed' ? ' ✗' : ''}
+                            </span>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>

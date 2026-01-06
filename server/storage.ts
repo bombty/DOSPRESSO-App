@@ -1801,33 +1801,61 @@ export class DatabaseStorage implements IStorage {
         isNotNull(checklistTaskCompletions.photoUrl)
       ));
     
-    let deletedCount = 0;
-    const { Client } = await import("@replit/object-storage");
-    const client = new Client();
+    // No expired photos found - nothing to do
+    if (expiredPhotos.length === 0) {
+      console.log(`🗑️ No expired checklist photos found`);
+      return 0;
+    }
     
+    let deletedCount = 0;
+    let storageDeletedCount = 0;
+    const bucketId = process.env.DEFAULT_OBJECT_STORAGE_BUCKET_ID;
+    
+    // Try to initialize Object Storage client if bucket is configured
+    let client: any = null;
+    if (bucketId) {
+      try {
+        const { Client } = await import("@replit/object-storage");
+        client = new Client();
+      } catch (initError: any) {
+        console.log(`⚠️ Object Storage client init failed: ${initError?.message || initError}, will only update database`);
+      }
+    } else {
+      console.log("⚠️ Object Storage bucket not configured, will only update database");
+    }
+    
+    // Process each expired photo
     for (const completion of expiredPhotos) {
-      if (completion.photoUrl) {
-        try {
-          // Delete from S3
-          await client.delete(completion.photoUrl);
-          
-          // Update record - keep AI verification data, just mark photo as deleted
-          await db.update(checklistTaskCompletions)
-            .set({
-              photoDeleted: true,
-              photoUrl: null, // Clear the URL
-              updatedAt: now,
-            })
-            .where(eq(checklistTaskCompletions.id, completion.id));
-          
-          deletedCount++;
-        } catch (error) {
-          console.error(`Error deleting expired photo ${completion.photoUrl}:`, error);
+      try {
+        // Try to delete from Object Storage if client is available
+        if (client && completion.photoUrl) {
+          try {
+            await client.delete(completion.photoUrl);
+            storageDeletedCount++;
+          } catch (storageError: any) {
+            console.log(`⚠️ Storage delete failed for ${completion.photoUrl}: ${storageError?.message || storageError}`);
+          }
         }
+        
+        // Always update database - mark photo as deleted and clear URL
+        await db.update(checklistTaskCompletions)
+          .set({
+            photoDeleted: true,
+            photoUrl: null,
+            updatedAt: now,
+          })
+          .where(eq(checklistTaskCompletions.id, completion.id));
+        deletedCount++;
+      } catch (error) {
+        console.error(`Error processing expired photo for completion ${completion.id}:`, error);
       }
     }
     
-    console.log(`🗑️ Deleted ${deletedCount} expired checklist photos`);
+    if (storageDeletedCount > 0) {
+      console.log(`🗑️ Deleted ${deletedCount} expired checklist photos (${storageDeletedCount} from storage, ${deletedCount - storageDeletedCount} DB only)`);
+    } else {
+      console.log(`🗑️ Marked ${deletedCount} expired checklist photos as deleted (DB only)`);
+    }
     return deletedCount;
   }
 

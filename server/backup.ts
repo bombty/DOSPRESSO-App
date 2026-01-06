@@ -206,7 +206,7 @@ async function verifyDataIntegrity(): Promise<{ valid: boolean; issues: string[]
 }
 
 // Create a backup snapshot and persist to database + object storage
-async function createBackupSnapshot(backupType: 'weekly' | 'manual' = 'weekly'): Promise<schema.BackupRecord> {
+async function createBackupSnapshot(backupType: 'daily' | 'weekly' | 'manual' = 'daily'): Promise<schema.BackupRecord> {
   const startTime = Date.now();
   const backupId = `backup_${Date.now()}_${Math.random().toString(36).substring(7)}`;
   
@@ -273,7 +273,7 @@ async function createBackupSnapshot(backupType: 'weekly' | 'manual' = 'weekly'):
     console.log(`💾 Backup veritabanına kaydedildi (ID: ${backupRecord.id})`);
     
     return backupRecord;
-  } catch (error: Error | unknown) {
+  } catch (error: any) {
     const duration = Date.now() - startTime;
     
     // Insert failed backup record to database
@@ -285,7 +285,7 @@ async function createBackupSnapshot(backupType: 'weekly' | 'manual' = 'weekly'):
           success: false,
           tablesBackedUp: [],
           recordCounts: {},
-          errorMessage: error.message,
+          errorMessage: error?.message || String(error),
           durationMs: duration,
           backupType,
         })
@@ -300,7 +300,7 @@ async function createBackupSnapshot(backupType: 'weekly' | 'manual' = 'weekly'):
         success: false,
         tablesBackedUp: [],
         recordCounts: {},
-        errorMessage: error.message,
+        errorMessage: error?.message || String(error),
         durationMs: duration,
         backupType,
       };
@@ -357,14 +357,22 @@ export async function startWeeklyBackupScheduler(): Promise<void> {
     return;
   }
   
+  // Skip backup scheduler if object storage not configured
+  const bucketId = process.env.DEFAULT_OBJECT_STORAGE_BUCKET_ID;
+  if (!bucketId) {
+    console.log('⚠️ Object storage bucket yapılandırılmadı, backup scheduler başlatılmadı');
+    return;
+  }
+  
   backupSchedulerRunning = true;
   console.log('📅 Günlük backup scheduler başlatıldı');
   
   // Load backup history from database
   await loadBackupHistory();
   
-  // Run initial backup on startup
-  runBackupWithNotification();
+  // Skip initial backup on startup - only schedule for midnight
+  // This prevents Object Storage initialization errors on startup
+  console.log('⏳ İlk backup atlandı - gece yarısı çalıştırılacak');
   
   // Calculate time until next midnight (Turkey time, UTC+3)
   const scheduleNextBackup = () => {
@@ -391,11 +399,16 @@ export async function startWeeklyBackupScheduler(): Promise<void> {
 }
 
 // Run backup and send notifications
-async function runBackupWithNotification(): Promise<schema.BackupRecord> {
-  console.log('🔄 Günlük backup çalıştırılıyor...');
-  const backupRecord = await createBackupSnapshot('daily');
-  await notifyAdminsAboutBackup(backupRecord);
-  return backupRecord;
+async function runBackupWithNotification(): Promise<schema.BackupRecord | null> {
+  try {
+    console.log('🔄 Günlük backup çalıştırılıyor...');
+    const backupRecord = await createBackupSnapshot('daily');
+    await notifyAdminsAboutBackup(backupRecord);
+    return backupRecord;
+  } catch (error: any) {
+    console.error('❌ Backup sırasında hata oluştu:', error?.message || error);
+    return null;
+  }
 }
 
 // Manual backup trigger (for API endpoint)
@@ -487,11 +500,11 @@ export async function performHealthCheck(): Promise<{
     }
     
     return { status, checks, details };
-  } catch (error: Error | unknown) {
+  } catch (error: any) {
     return {
       status: 'critical',
       checks: { database: false, integrity: false, recentBackup: false },
-      details: [`❌ Sağlık kontrolü hatası: ${error.message}`],
+      details: [`❌ Sağlık kontrolü hatası: ${error?.message || String(error)}`],
     };
   }
 }
