@@ -55,7 +55,7 @@ The frontend utilizes React 18+ with TypeScript and Vite, employing Shadcn/ui (N
 - **Shift Scheduling**: Fair algorithm ensuring full-time employees work minimum 6 days/week at 45 hours, part-time 3 days/25 hours.
 - **Analytics Architecture**: Three-period tabbed interface with real-time metric aggregation, AI-powered summaries (OpenAI gpt-4o-mini), and conditional alerts.
 - **Checklist Scoring**: 40% weight in compositeScore, max score 4/5 if not on-time, scored by supervisor, daily reminders active.
-- **Performance Score Data Flows**: Task ratings and checklist completions automatically update employeeSatisfactionScores/employeePerformanceScores tables. Task rating → performanceScore chain handles both new ratings and re-ratings correctly (adjusts sum without double-counting).
+- **Performance Score Data Flows**: Task ratings and checklist completions automatically update employeeSatisfactionScores/employeePerformanceScores tables. Task rating → performanceScore chain handles both new ratings and re-ratings correctly (adjusts sum without double-counting). Quiz approval → career progress chain updates averageQuizScore from all approved quizzes with idempotent handling (prevents double-counting on re-approvals).
 - **Reminder System**: 5-minute interval checks for task reminders, overdue notifications, maintenance alerts, and checklist completion reminders.
 - **Branch Dashboard**: Comprehensive dashboard at `/sube/dashboard` with real-time stats (active staff, breaks, total work time), alert management, kiosk mode access, tabs for shifts/tasks/checklists/daily summary, and quick access buttons. Supports both regular user authentication and branch-specific login sessions via sessionStorage.
 

@@ -2438,6 +2438,18 @@ export class DatabaseStorage implements IStorage {
       throw new Error(`Invalid approval status: ${status}. Must be 'approved', 'rejected', or 'pending'`);
     }
 
+    // Get current attempt to check previous status
+    const [currentAttempt] = await db.select()
+      .from(userQuizAttempts)
+      .where(eq(userQuizAttempts.id, id))
+      .limit(1);
+    
+    if (!currentAttempt) return undefined;
+    
+    const wasAlreadyApproved = currentAttempt.approvalStatus === 'approved';
+    const isBecomingApproved = status === 'approved' && !wasAlreadyApproved;
+    const isLeavingApproved = wasAlreadyApproved && status !== 'approved';
+
     const [updated] = await db
       .update(userQuizAttempts)
       .set({
@@ -2447,7 +2459,51 @@ export class DatabaseStorage implements IStorage {
       })
       .where(eq(userQuizAttempts.id, id))
       .returning();
+    
+    // Recalc career progress when approval status changes (either direction)
+    if (updated && (isBecomingApproved || isLeavingApproved)) {
+      await this.recalculateCareerProgress(updated.userId);
+    }
+    
     return updated;
+  }
+  
+  async recalculateCareerProgress(userId: string): Promise<void> {
+    // Calculate average from all approved quizzes
+    const allApproved = await db.select()
+      .from(userQuizAttempts)
+      .where(and(
+        eq(userQuizAttempts.userId, userId),
+        eq(userQuizAttempts.approvalStatus, 'approved')
+      ));
+    
+    const totalScore = allApproved.reduce((sum, a) => sum + (a.score || 0), 0);
+    const totalCount = allApproved.length;
+    const newAverage = totalCount > 0 ? totalScore / totalCount : 0;
+    
+    const progress = await this.getUserCareerProgress(userId);
+    
+    if (progress) {
+      await this.updateUserCareerProgress(userId, {
+        averageQuizScore: newAverage,
+        totalQuizzesAttempted: totalCount,
+      });
+    } else if (totalCount > 0) {
+      // Get first career level for new users
+      const [firstLevel] = await db.select()
+        .from(careerLevels)
+        .orderBy(careerLevels.levelNumber)
+        .limit(1);
+      
+      if (firstLevel) {
+        await db.insert(userCareerProgress).values({
+          userId,
+          currentCareerLevelId: firstLevel.id,
+          averageQuizScore: newAverage,
+          totalQuizzesAttempted: totalCount,
+        });
+      }
+    }
   }
 
   // Employee Warnings operations
