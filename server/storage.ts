@@ -610,6 +610,7 @@ export interface IStorage {
   // AI helper methods
   getTasksByBranch(branchId: number): Promise<Task[]>;
   getShiftsByBranch(branchId: number): Promise<Shift[]>;
+  getShiftsByUser(userId: string): Promise<Shift[]>;
   getUsersByBranch(branchId: number): Promise<User[]>;
   getFaultsByBranch(branchId: number): Promise<EquipmentFault[]>;
   
@@ -3811,6 +3812,10 @@ export class DatabaseStorage implements IStorage {
 
   async getShiftsByBranch(branchId: number): Promise<Shift[]> {
     return this.getShifts(branchId);
+  }
+
+  async getShiftsByUser(userId: string): Promise<Shift[]> {
+    return this.getShifts(undefined, userId);
   }
 
   async getUsersByBranch(branchId: number): Promise<User[]> {
