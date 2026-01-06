@@ -132,6 +132,9 @@ const MODULE_GROUPS = [
       { key: "tasks", label: "Görevler" },
       { key: "checklists", label: "Checklistler" },
       { key: "branches", label: "Şubeler" },
+      { key: "canli_takip", label: "Canlı Takip" },
+      { key: "qr_tara", label: "QR Tara" },
+      { key: "nfc_giris", label: "NFC Giriş" },
     ]
   },
   {
@@ -150,6 +153,9 @@ const MODULE_GROUPS = [
       { key: "quality_audit", label: "Kalite Denetimi" },
       { key: "audit_templates", label: "Denetim Şablonları" },
       { key: "capa", label: "CAPA Yönetimi" },
+      { key: "denetimler", label: "Denetimler" },
+      { key: "misafir_memnuniyeti", label: "Misafir Memnuniyeti" },
+      { key: "sikayetler", label: "Şikayetler" },
     ]
   },
   {
@@ -167,6 +173,7 @@ const MODULE_GROUPS = [
       { key: "academy.ai", label: "AI Asistan" },
       { key: "academy.social", label: "Sosyal & Takımlar" },
       { key: "academy.supervisor", label: "Supervisor Görünümü" },
+      { key: "bilgi_bankasi", label: "Bilgi Bankası" },
     ]
   },
   {
@@ -178,6 +185,8 @@ const MODULE_GROUPS = [
       { key: "hr", label: "İK Yönetimi" },
       { key: "attendance", label: "Devam Takibi" },
       { key: "leave_requests", label: "İzin Talepleri" },
+      { key: "personel_onboarding", label: "Personel Onboarding" },
+      { key: "mesai_talepleri", label: "Mesai Talepleri" },
     ]
   },
   {
@@ -211,6 +220,7 @@ const MODULE_GROUPS = [
     modules: [
       { key: "projects", label: "Projeler" },
       { key: "new_branch_projects", label: "Yeni Şube Açılış" },
+      { key: "kampanya_yonetimi", label: "Kampanya Yönetimi" },
     ]
   },
   {
@@ -225,6 +235,8 @@ const MODULE_GROUPS = [
       { key: "factory_stations", label: "İstasyon Yönetimi" },
       { key: "factory_waste_reasons", label: "Fire Sebepleri" },
       { key: "factory_pins", label: "PIN Yönetimi" },
+      { key: "factory_uretim_planlama", label: "Üretim Planlama" },
+      { key: "factory_vardiya_uyumluluk", label: "Vardiya Uyumluluk" },
     ]
   },
   {
@@ -232,9 +244,11 @@ const MODULE_GROUPS = [
     icon: MessageSquare,
     modules: [
       { key: "support", label: "Destek Talepleri" },
+      { key: "hq_destek", label: "HQ Destek" },
       { key: "notifications", label: "Bildirimler" },
       { key: "announcements", label: "Duyurular" },
       { key: "messages", label: "Mesajlar" },
+      { key: "ai_asistan", label: "AI Asistan" },
     ]
   },
   {
@@ -248,6 +262,11 @@ const MODULE_GROUPS = [
       { key: "content_management", label: "İçerik Yönetimi" },
       { key: "admin_panel", label: "Admin Panel" },
       { key: "authorization", label: "Yetkilendirme" },
+      { key: "banner_editor", label: "Banner Editörü" },
+      { key: "aktivite_loglari", label: "Aktivite Logları" },
+      { key: "email_ayarlari", label: "Email Ayarları" },
+      { key: "ai_ayarlari", label: "Yapay Zeka Ayarları" },
+      { key: "yedekleme", label: "Yedekleme" },
     ]
   },
 ];
@@ -267,15 +286,15 @@ const MEGA_MODULE_CONFIG = [
 
 // Varsayılan modül-mega modül eşleştirmeleri (9 mega modül)
 const DEFAULT_MODULE_MEGA_MAPPING: Record<string, string[]> = {
-  "operations": ["dashboard", "tasks", "checklists", "branches", "lost_found", "lost_found_hq"],
+  "operations": ["dashboard", "tasks", "checklists", "branches", "lost_found", "lost_found_hq", "canli_takip", "qr_tara", "nfc_giris"],
   "equipment": ["equipment", "faults", "equipment_analytics"],
-  "hr": ["shifts", "shift_planning", "hr", "attendance", "leave_requests", "accounting"],
-  "training": ["academy.general", "academy.hq", "academy.analytics", "academy.badges", "academy.certificates", "academy.leaderboard", "academy.quizzes", "academy.learning_paths", "academy.ai", "academy.social", "academy.supervisor"],
+  "hr": ["shifts", "shift_planning", "hr", "attendance", "leave_requests", "accounting", "personel_onboarding", "mesai_talepleri"],
+  "training": ["academy.general", "academy.hq", "academy.analytics", "academy.badges", "academy.certificates", "academy.leaderboard", "academy.quizzes", "academy.learning_paths", "academy.ai", "academy.social", "academy.supervisor", "bilgi_bankasi"],
   "kitchen": ["recipes", "menu", "tarifler"],
-  "factory": ["factory_kiosk", "factory_dashboard", "factory_quality", "factory_analytics", "factory_ai_reports", "factory_stations", "factory_waste_reasons", "factory_pins", "factory_compliance"],
-  "reports": ["reports", "e2e_reports", "cash_reports", "hr_reports", "quality_audit", "audit_templates", "capa"],
-  "newshop": ["projects", "new_branch_projects"],
-  "admin": ["settings", "bulk_data", "users", "menu_management", "content_management", "admin_panel", "authorization", "support", "notifications", "announcements", "messages"],
+  "factory": ["factory_kiosk", "factory_dashboard", "factory_quality", "factory_analytics", "factory_ai_reports", "factory_stations", "factory_waste_reasons", "factory_pins", "factory_compliance", "factory_uretim_planlama", "factory_vardiya_uyumluluk"],
+  "reports": ["reports", "e2e_reports", "cash_reports", "hr_reports", "quality_audit", "audit_templates", "capa", "denetimler", "misafir_memnuniyeti", "sikayetler"],
+  "newshop": ["projects", "new_branch_projects", "kampanya_yonetimi"],
+  "admin": ["settings", "bulk_data", "users", "menu_management", "content_management", "admin_panel", "authorization", "support", "hq_destek", "notifications", "announcements", "messages", "ai_asistan", "banner_editor", "aktivite_loglari", "email_ayarlari", "ai_ayarlari", "yedekleme"],
 };
 
 // Draggable Module Item Component with inline edit
@@ -997,12 +1016,43 @@ export default function AdminYetkilendirme() {
               </div>
 
               <div className="space-y-3">
-                {MODULE_GROUPS.map((group) => (
+                {MODULE_GROUPS.map((group) => {
+                  // Check if all modules in group have view permission
+                  const allModulesEnabled = group.modules.every(m => getPermission(m.key, "view"));
+                  const someModulesEnabled = group.modules.some(m => getPermission(m.key, "view"));
+                  
+                  // Toggle all modules in group
+                  const handleGroupToggle = () => {
+                    const newValue = !allModulesEnabled;
+                    group.modules.forEach(module => {
+                      setPermissions(prev => ({
+                        ...prev,
+                        [module.key]: { view: newValue, edit: newValue ? (prev[module.key]?.edit || false) : false }
+                      }));
+                    });
+                    setHasChanges(true);
+                  };
+                  
+                  return (
                   <Card key={group.name}>
                     <CardHeader className="py-2 md:py-3">
-                      <CardTitle className="text-sm flex items-center gap-2">
-                        <group.icon className="h-4 w-4" />
-                        {group.name}
+                      <CardTitle className="text-sm flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2">
+                          <group.icon className="h-4 w-4" />
+                          {group.name}
+                          <Badge variant="secondary" className="text-[10px] px-1.5">
+                            {group.modules.filter(m => getPermission(m.key, "view")).length}/{group.modules.length}
+                          </Badge>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[10px] text-muted-foreground">Tümü</span>
+                          <Switch
+                            checked={allModulesEnabled}
+                            onCheckedChange={handleGroupToggle}
+                            className="scale-75"
+                            data-testid={`switch-group-${group.name}`}
+                          />
+                        </div>
                       </CardTitle>
                     </CardHeader>
                     <CardContent className="pt-0 pb-2 md:pb-4">
@@ -1128,7 +1178,8 @@ export default function AdminYetkilendirme() {
                       </div>
                     </CardContent>
                   </Card>
-                ))}
+                  );
+                })}
               </div>
             </>
           ) : (

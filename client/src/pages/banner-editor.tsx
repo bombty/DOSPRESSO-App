@@ -1,7 +1,9 @@
 import { useState, useRef, useCallback } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
-import { Redirect, Link } from "wouter";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { Redirect, Link, useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,6 +12,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Slider } from "@/components/ui/slider";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
 import { 
   ArrowLeft, 
   Download, 
@@ -27,7 +33,9 @@ import {
   AlignCenter,
   AlignRight,
   Bold,
-  Italic
+  Italic,
+  Send,
+  Loader2
 } from "lucide-react";
 
 const PRESET_COLORS = [
@@ -54,16 +62,95 @@ const GRADIENT_PRESETS = [
   { name: "Gold", from: "#b8860b", to: "#f5e6d3" },
 ];
 
-const DONUT_ICONS = [
-  { id: "donut-classic", emoji: "🍩", name: "Klasik" },
-  { id: "donut-choco", emoji: "🍫", name: "Cikolatali" },
-  { id: "donut-pink", emoji: "💗", name: "Cilekli" },
-  { id: "coffee", emoji: "☕", name: "Kahve" },
-  { id: "star", emoji: "⭐", name: "Yildiz" },
-  { id: "heart", emoji: "❤️", name: "Kalp" },
-  { id: "sparkle", emoji: "✨", name: "Isiltili" },
-  { id: "cake", emoji: "🎂", name: "Pasta" },
-];
+const ICON_CATEGORIES = {
+  food: {
+    name: "Yiyecek & İçecek",
+    icons: [
+      { id: "donut-classic", emoji: "🍩", name: "Donut" },
+      { id: "coffee", emoji: "☕", name: "Kahve" },
+      { id: "cake", emoji: "🎂", name: "Pasta" },
+      { id: "croissant", emoji: "🥐", name: "Kruvasan" },
+      { id: "cookie", emoji: "🍪", name: "Kurabiye" },
+      { id: "chocolate", emoji: "🍫", name: "Çikolata" },
+      { id: "cupcake", emoji: "🧁", name: "Cupcake" },
+      { id: "ice-cream", emoji: "🍨", name: "Dondurma" },
+      { id: "milk", emoji: "🥛", name: "Süt" },
+      { id: "tea", emoji: "🍵", name: "Çay" },
+      { id: "juice", emoji: "🧃", name: "Meyve Suyu" },
+      { id: "pizza", emoji: "🍕", name: "Pizza" },
+      { id: "burger", emoji: "🍔", name: "Burger" },
+      { id: "sandwich", emoji: "🥪", name: "Sandviç" },
+      { id: "bread", emoji: "🍞", name: "Ekmek" },
+    ]
+  },
+  smileys: {
+    name: "Yüz İfadeleri",
+    icons: [
+      { id: "smile", emoji: "😊", name: "Gülümseyen" },
+      { id: "laugh", emoji: "😄", name: "Gülen" },
+      { id: "wink", emoji: "😉", name: "Göz Kırpan" },
+      { id: "heart-eyes", emoji: "😍", name: "Aşık" },
+      { id: "cool", emoji: "😎", name: "Havalı" },
+      { id: "party", emoji: "🥳", name: "Parti" },
+      { id: "star-eyes", emoji: "🤩", name: "Yıldız Gözlü" },
+      { id: "think", emoji: "🤔", name: "Düşünen" },
+      { id: "chef", emoji: "👨‍🍳", name: "Şef" },
+      { id: "thumbs-up", emoji: "👍", name: "Beğen" },
+      { id: "clap", emoji: "👏", name: "Alkış" },
+      { id: "wave", emoji: "👋", name: "El Salla" },
+    ]
+  },
+  symbols: {
+    name: "Semboller",
+    icons: [
+      { id: "star", emoji: "⭐", name: "Yıldız" },
+      { id: "heart", emoji: "❤️", name: "Kalp" },
+      { id: "sparkle", emoji: "✨", name: "Işıltı" },
+      { id: "fire", emoji: "🔥", name: "Ateş" },
+      { id: "crown", emoji: "👑", name: "Taç" },
+      { id: "gift", emoji: "🎁", name: "Hediye" },
+      { id: "trophy", emoji: "🏆", name: "Kupa" },
+      { id: "medal", emoji: "🏅", name: "Madalya" },
+      { id: "ribbon", emoji: "🎀", name: "Kurdele" },
+      { id: "balloon", emoji: "🎈", name: "Balon" },
+      { id: "confetti", emoji: "🎉", name: "Konfeti" },
+      { id: "check", emoji: "✅", name: "Onay" },
+      { id: "new", emoji: "🆕", name: "Yeni" },
+      { id: "percent", emoji: "💯", name: "Yüzde" },
+      { id: "money", emoji: "💰", name: "Para" },
+      { id: "tag", emoji: "🏷️", name: "Etiket" },
+    ]
+  },
+  nature: {
+    name: "Doğa & Mevsimler",
+    icons: [
+      { id: "sun", emoji: "☀️", name: "Güneş" },
+      { id: "rainbow", emoji: "🌈", name: "Gökkuşağı" },
+      { id: "flower", emoji: "🌸", name: "Çiçek" },
+      { id: "leaf", emoji: "🍃", name: "Yaprak" },
+      { id: "snowflake", emoji: "❄️", name: "Kar" },
+      { id: "moon", emoji: "🌙", name: "Ay" },
+      { id: "cloud", emoji: "☁️", name: "Bulut" },
+      { id: "tree", emoji: "🌳", name: "Ağaç" },
+    ]
+  },
+  arrows: {
+    name: "Oklar & İşaretler",
+    icons: [
+      { id: "arrow-right", emoji: "➡️", name: "Sağ Ok" },
+      { id: "arrow-left", emoji: "⬅️", name: "Sol Ok" },
+      { id: "arrow-up", emoji: "⬆️", name: "Yukarı Ok" },
+      { id: "arrow-down", emoji: "⬇️", name: "Aşağı Ok" },
+      { id: "point-right", emoji: "👉", name: "İşaret" },
+      { id: "exclaim", emoji: "❗", name: "Ünlem" },
+      { id: "question", emoji: "❓", name: "Soru" },
+      { id: "star-burst", emoji: "💥", name: "Patlama" },
+    ]
+  }
+};
+
+// Flattened icons for backward compatibility
+const DONUT_ICONS = Object.values(ICON_CATEGORIES).flatMap(cat => cat.icons);
 
 type TextElement = {
   id: string;
@@ -98,9 +185,31 @@ type ImageElement = {
   rotation: number;
 };
 
+// Role options for announcements
+const ROLE_OPTIONS = [
+  { value: "admin", label: "Admin" },
+  { value: "supervisor", label: "Supervisor" },
+  { value: "branch_manager", label: "Şube Müdürü" },
+  { value: "branch_assistant", label: "Şube Müdür Yardımcısı" },
+  { value: "staff", label: "Personel" },
+  { value: "barista", label: "Barista" },
+  { value: "cashier", label: "Kasiyer" },
+];
+
+const CATEGORY_OPTIONS = [
+  { value: "general", label: "Genel" },
+  { value: "new_product", label: "Yeni Ürün" },
+  { value: "campaign", label: "Kampanya" },
+  { value: "policy", label: "Politika" },
+  { value: "training", label: "Eğitim" },
+  { value: "event", label: "Etkinlik" },
+  { value: "urgent", label: "Acil" },
+];
+
 export default function BannerEditor() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const [, setLocation] = useLocation();
   const canvasRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -116,6 +225,53 @@ export default function BannerEditor() {
 
   const [selectedElement, setSelectedElement] = useState<{ type: "text" | "icon" | "image"; id: string } | null>(null);
   const [dragging, setDragging] = useState<{ type: string; id: string; offsetX: number; offsetY: number } | null>(null);
+
+  // Publish dialog state
+  const [publishDialogOpen, setPublishDialogOpen] = useState(false);
+  const [publishTitle, setPublishTitle] = useState("");
+  const [publishMessage, setPublishMessage] = useState("");
+  const [publishCategory, setPublishCategory] = useState("general");
+  const [publishPriority, setPublishPriority] = useState("normal");
+  const [showOnDashboard, setShowOnDashboard] = useState(true);
+  const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
+  const [selectedBranches, setSelectedBranches] = useState<number[]>([]);
+
+  // Fetch branches for targeting
+  const { data: branches } = useQuery<{ id: number; name: string }[]>({
+    queryKey: ["/api/branches"],
+  });
+
+  // Publish mutation
+  const publishMutation = useMutation({
+    mutationFn: async (data: { 
+      imageData: string;
+      title: string;
+      message: string;
+      category: string;
+      priority: string;
+      showOnDashboard: boolean;
+      targetRoles: string[];
+      targetBranches: number[];
+    }) => {
+      return apiRequest("/api/announcements/from-banner", {
+        method: "POST",
+        body: JSON.stringify(data),
+      });
+    },
+    onSuccess: () => {
+      toast({ title: "Başarılı", description: "Duyuru yayınlandı!" });
+      queryClient.invalidateQueries({ queryKey: ["/api/announcements"] });
+      setPublishDialogOpen(false);
+      setLocation("/duyurular");
+    },
+    onError: (error: Error) => {
+      toast({ 
+        title: "Hata", 
+        description: error.message || "Duyuru yayınlanamadı", 
+        variant: "destructive" 
+      });
+    }
+  });
 
   if (!user || !["admin", "supervisor"].includes(user.role || "")) {
     return <Redirect to="/" />;
@@ -285,6 +441,52 @@ export default function BannerEditor() {
     }
   };
 
+  const handlePublish = async () => {
+    if (!canvasRef.current) return;
+    if (!publishTitle.trim()) {
+      toast({ title: "Hata", description: "Başlık gerekli", variant: "destructive" });
+      return;
+    }
+
+    try {
+      const html2canvas = (await import("html2canvas")).default;
+      const canvas = await html2canvas(canvasRef.current, {
+        backgroundColor: null,
+        scale: 2,
+        useCORS: true,
+        allowTaint: true,
+      });
+
+      const imageData = canvas.toDataURL("image/png");
+      
+      publishMutation.mutate({
+        imageData,
+        title: publishTitle,
+        message: publishMessage || publishTitle,
+        category: publishCategory,
+        priority: publishPriority,
+        showOnDashboard,
+        targetRoles: selectedRoles,
+        targetBranches: selectedBranches,
+      });
+    } catch (error) {
+      console.error("Publish error:", error);
+      toast({ title: "Hata", description: "Banner yayınlanamadı", variant: "destructive" });
+    }
+  };
+
+  const toggleRole = (role: string) => {
+    setSelectedRoles(prev => 
+      prev.includes(role) ? prev.filter(r => r !== role) : [...prev, role]
+    );
+  };
+
+  const toggleBranch = (branchId: number) => {
+    setSelectedBranches(prev => 
+      prev.includes(branchId) ? prev.filter(b => b !== branchId) : [...prev, branchId]
+    );
+  };
+
   const selectedText = selectedElement?.type === "text" ? textElements.find((t) => t.id === selectedElement.id) : null;
   const selectedIcon = selectedElement?.type === "icon" ? iconElements.find((i) => i.id === selectedElement.id) : null;
   const selectedImage = selectedElement?.type === "image" ? imageElements.find((i) => i.id === selectedElement.id) : null;
@@ -300,10 +502,16 @@ export default function BannerEditor() {
           </Link>
           <h1 className="text-lg font-semibold">Banner Editoru</h1>
         </div>
-        <Button onClick={exportAsPNG} className="gap-2" data-testid="button-export-png">
-          <Download className="h-4 w-4" />
-          PNG Indir
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button onClick={exportAsPNG} variant="outline" className="gap-2" data-testid="button-export-png">
+            <Download className="h-4 w-4" />
+            PNG İndir
+          </Button>
+          <Button onClick={() => setPublishDialogOpen(true)} className="gap-2" data-testid="button-publish-banner">
+            <Send className="h-4 w-4" />
+            Duyuru Olarak Yayınla
+          </Button>
+        </div>
       </div>
 
       <div className="grid lg:grid-cols-[1fr,320px] gap-4 p-4">
@@ -311,23 +519,26 @@ export default function BannerEditor() {
           <CardHeader className="pb-2">
             <CardTitle className="text-sm flex items-center gap-2">
               <ImageIcon className="h-4 w-4" />
-              Onizleme (800x400)
+              Önizleme (Responsive - 2:1 Oran)
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div
               ref={canvasRef}
-              className="relative w-full rounded-lg overflow-hidden cursor-crosshair"
+              className="relative w-full rounded-lg overflow-hidden cursor-crosshair mx-auto"
               style={{
                 ...getBackgroundStyle(),
                 aspectRatio: "2/1",
-                maxWidth: "800px",
-                margin: "0 auto",
+                maxWidth: "min(800px, 100%)",
               }}
               onMouseMove={handleMouseMove}
               onMouseUp={handleMouseUp}
               onMouseLeave={handleMouseUp}
-              onClick={() => setSelectedElement(null)}
+              onClick={(e) => {
+                if (e.target === e.currentTarget) {
+                  setSelectedElement(null);
+                }
+              }}
               data-testid="banner-canvas"
             >
               {imageElements.map((img) => (
@@ -590,22 +801,31 @@ export default function BannerEditor() {
             <TabsContent value="icons" className="space-y-4 mt-4">
               <Card>
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-sm">Ikon Galerisi</CardTitle>
+                  <CardTitle className="text-sm">İkon Galerisi ({DONUT_ICONS.length} ikon)</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="grid grid-cols-4 gap-2">
-                    {DONUT_ICONS.map((icon) => (
-                      <button
-                        key={icon.id}
-                        className="p-3 rounded-lg border-2 border-muted hover:border-primary transition-colors flex flex-col items-center gap-1"
-                        onClick={() => addIconElement(icon.id, icon.emoji)}
-                        data-testid={`icon-${icon.id}`}
-                      >
-                        <span className="text-2xl">{icon.emoji}</span>
-                        <span className="text-xs text-muted-foreground">{icon.name}</span>
-                      </button>
-                    ))}
-                  </div>
+                  <ScrollArea className="h-64">
+                    <div className="space-y-4">
+                      {Object.entries(ICON_CATEGORIES).map(([catKey, category]) => (
+                        <div key={catKey}>
+                          <h4 className="text-xs font-medium text-muted-foreground mb-2">{category.name}</h4>
+                          <div className="grid grid-cols-5 gap-1">
+                            {category.icons.map((icon) => (
+                              <button
+                                key={icon.id}
+                                className="p-2 rounded-lg border border-muted hover:border-primary hover:bg-muted/50 transition-colors flex flex-col items-center gap-0.5"
+                                onClick={() => addIconElement(icon.id, icon.emoji)}
+                                title={icon.name}
+                                data-testid={`icon-${icon.id}`}
+                              >
+                                <span className="text-xl">{icon.emoji}</span>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </ScrollArea>
                   {selectedIcon && (
                     <div className="mt-4 space-y-3 pt-4 border-t">
                       <div>
@@ -716,6 +936,137 @@ export default function BannerEditor() {
           </Tabs>
         </div>
       </div>
+
+      {/* Publish Dialog */}
+      <Dialog open={publishDialogOpen} onOpenChange={setPublishDialogOpen}>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Banner'ı Duyuru Olarak Yayınla</DialogTitle>
+            <DialogDescription>
+              Bu banner otomatik olarak duyurular paneline eklenecektir.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Duyuru Başlığı *</Label>
+              <Input 
+                placeholder="Duyuru başlığı girin..."
+                value={publishTitle}
+                onChange={(e) => setPublishTitle(e.target.value)}
+                data-testid="input-publish-title"
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label>Açıklama</Label>
+              <Textarea 
+                placeholder="Duyuru açıklaması (opsiyonel)..."
+                value={publishMessage}
+                onChange={(e) => setPublishMessage(e.target.value)}
+                rows={3}
+                data-testid="input-publish-message"
+              />
+            </div>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Kategori</Label>
+                <Select value={publishCategory} onValueChange={setPublishCategory}>
+                  <SelectTrigger data-testid="select-category">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {CATEGORY_OPTIONS.map(opt => (
+                      <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div className="space-y-2">
+                <Label>Öncelik</Label>
+                <Select value={publishPriority} onValueChange={setPublishPriority}>
+                  <SelectTrigger data-testid="select-priority">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="low">Düşük</SelectItem>
+                    <SelectItem value="normal">Normal</SelectItem>
+                    <SelectItem value="high">Yüksek</SelectItem>
+                    <SelectItem value="urgent">Acil</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <Label>Dashboard'da Göster</Label>
+              <Switch 
+                checked={showOnDashboard} 
+                onCheckedChange={setShowOnDashboard}
+                data-testid="switch-dashboard"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Hedef Roller (boş = herkes)</Label>
+              <div className="grid grid-cols-2 gap-2">
+                {ROLE_OPTIONS.map(role => (
+                  <label key={role.value} className="flex items-center gap-2 text-sm">
+                    <Checkbox 
+                      checked={selectedRoles.includes(role.value)}
+                      onCheckedChange={() => toggleRole(role.value)}
+                    />
+                    {role.label}
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Hedef Şubeler (boş = tüm şubeler)</Label>
+              <ScrollArea className="h-32 border rounded-md p-2">
+                {branches?.map(branch => (
+                  <label key={branch.id} className="flex items-center gap-2 text-sm py-1">
+                    <Checkbox 
+                      checked={selectedBranches.includes(branch.id)}
+                      onCheckedChange={() => toggleBranch(branch.id)}
+                    />
+                    {branch.name}
+                  </label>
+                ))}
+                {!branches?.length && (
+                  <p className="text-sm text-muted-foreground">Şube bulunamadı</p>
+                )}
+              </ScrollArea>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPublishDialogOpen(false)}>
+              İptal
+            </Button>
+            <Button 
+              onClick={handlePublish} 
+              disabled={publishMutation.isPending || !publishTitle.trim()}
+              data-testid="button-confirm-publish"
+            >
+              {publishMutation.isPending ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Yayınlanıyor...
+                </>
+              ) : (
+                <>
+                  <Send className="h-4 w-4 mr-2" />
+                  Yayınla
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -234,9 +234,13 @@ export function CardGridHub() {
     { id: "settings", label: "Sistem Ayarları", path: "/yonetim/ayarlar", moduleKey: "settings" },
     { id: "announcements", label: "Duyurular", path: "/admin/duyurular", moduleKey: "announcements" },
     { id: "banners", label: "Banner Yönetimi", path: "/admin/bannerlar", moduleKey: "admin_settings" },
+    { id: "banner-editor", label: "Banner Editörü", path: "/banner-editor", moduleKey: "admin_settings" },
     { id: "email-settings", label: "Email Ayarları", path: "/admin/email-ayarlari", moduleKey: "admin_settings" },
     { id: "ai-settings", label: "Yapay Zeka Ayarları", path: "/admin/yapay-zeka-ayarlari", moduleKey: "ai_assistant" },
     { id: "backup", label: "Yedekleme", path: "/admin/yedekleme", moduleKey: "admin_settings" },
+    { id: "activity-logs", label: "Aktivite Logları", path: "/admin/aktivite-loglari", moduleKey: "admin_settings" },
+    { id: "bulk-data", label: "Toplu Veri Yönetimi", path: "/admin/toplu-veri-yonetimi", moduleKey: "admin_settings" },
+    { id: "quality-templates", label: "Kalite Denetim Şablonları", path: "/admin/kalite-denetim-sablonlari", moduleKey: "quality_audit" },
   ];
 
   // Group menu sections into 9 mega-modules (always show all 9)

@@ -22612,6 +22612,70 @@ DOSPRESSO İnsan Kaynakları Ekibi`
     }
   });
 
+  // POST /api/announcements/from-banner - Banner editörden direkt duyuru oluştur
+  app.post('/api/announcements/from-banner', isAuthenticated, async (req: any, res) => {
+    try {
+      const userRole = req.user?.role;
+      const allowedRoles = ['admin', 'supervisor', 'coach'];
+      if (!allowedRoles.includes(userRole)) {
+        return res.status(403).json({ message: "Yetkiniz yok" });
+      }
+      
+      const { imageData, title, message, category, priority, showOnDashboard, targetRoles, targetBranches } = req.body;
+      
+      if (!title || !imageData) {
+        return res.status(400).json({ message: "Başlık ve banner görseli gerekli" });
+      }
+
+      // Save banner image to object storage
+      let bannerImageUrl = null;
+      try {
+        const { Client } = await import('@replit/object-storage');
+        const client = new Client();
+        
+        // Convert base64 to buffer
+        const base64Data = imageData.replace(/^data:image\/\w+;base64,/, '');
+        const buffer = Buffer.from(base64Data, 'base64');
+        
+        // Generate unique filename
+        const timestamp = Date.now();
+        const filename = `banners/banner_${timestamp}.png`;
+        
+        // Upload to object storage
+        await client.uploadFromBytes(filename, buffer);
+        
+        // Get public URL
+        const bucketId = process.env.DEFAULT_OBJECT_STORAGE_BUCKET_ID;
+        bannerImageUrl = `https://objectstorage.us-west-2.replit.dev/${bucketId}/${filename}`;
+      } catch (uploadError: any) {
+        console.error("Banner upload error:", uploadError);
+        // Continue without image if upload fails
+      }
+      
+      const [newAnnouncement] = await db.insert(announcements)
+        .values({
+          createdById: req.user.id,
+          title,
+          message: message || title,
+          category: category || 'general',
+          targetRoles: targetRoles?.length ? targetRoles : null,
+          targetBranches: targetBranches?.length ? targetBranches : null,
+          priority: priority || 'normal',
+          bannerImageUrl,
+          bannerTitle: title,
+          showOnDashboard: showOnDashboard || false,
+          bannerPriority: priority === 'urgent' ? 10 : priority === 'high' ? 5 : 0,
+          isPinned: priority === 'urgent',
+        })
+        .returning();
+      
+      res.json(newAnnouncement);
+    } catch (error: any) {
+      console.error("Create banner announcement error:", error);
+      res.status(500).json({ message: "Duyuru oluşturulamadı: " + error.message });
+    }
+  });
+
   // PATCH /api/admin/announcements/:id - Duyuru güncelle
   app.patch('/api/admin/announcements/:id', isAuthenticated, async (req: any, res) => {
     try {
