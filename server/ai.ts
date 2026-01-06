@@ -2503,3 +2503,224 @@ JSON formatında yanıt ver:
     throw new Error("Makale taslağı oluşturulamadı: " + ((error as Error).message || "Bilinmeyen hata"));
   }
 }
+
+// ========================================
+// AI CHECKLIST PHOTO VERIFICATION
+// ========================================
+
+// Verification types and their prompts
+const AI_VERIFICATION_PROMPTS: Record<string, string> = {
+  cleanliness: `Temizlik kontrolü yapıyorsun. Referans fotoğraf ile yüklenen fotoğrafı karşılaştır:
+    - Yüzey temizliği ve parlaklığı
+    - Leke, toz veya pislik var mı
+    - Düzen ve organizasyon
+    - Genel hijyen standardı`,
+  arrangement: `Düzenleme/yerleşim kontrolü yapıyorsun. Referans fotoğraf ile yüklenen fotoğrafı karşılaştır:
+    - Objelerin konumları doğru mu
+    - Sıralama ve hizalama uyumlu mu
+    - Eşyalar düzenli yerleştirilmiş mi
+    - Eksik veya fazla öğe var mı`,
+  machine_settings: `Makine ayarları kontrolü yapıyorsun. Referans fotoğraf ile yüklenen fotoğrafı karşılaştır:
+    - Gösterge/kadran okumaları uyumlu mu
+    - Basınç, sıcaklık değerleri doğru mu
+    - Ayar düğmeleri doğru pozisyonda mı
+    - LED göstergeler doğru renkte mi`,
+  general: `Genel görsel karşılaştırma yapıyorsun. Referans fotoğraf ile yüklenen fotoğrafı karşılaştır:
+    - Görsel benzerlik
+    - Belirgin farklılıklar
+    - Standartlara uygunluk
+    - Genel durum değerlendirmesi`,
+};
+
+export interface ChecklistPhotoVerificationResult {
+  passed: boolean;
+  similarityScore: number; // 0-100
+  verificationNote: string;
+  details?: {
+    matchingAspects: string[];
+    differences: string[];
+    suggestions?: string[];
+  };
+}
+
+export async function verifyChecklistPhoto(
+  referencePhotoBase64: string,
+  uploadedPhotoBase64: string,
+  verificationType: string,
+  tolerancePercent: number,
+  taskDescription: string,
+  userId?: string,
+  branchId?: number
+): Promise<ChecklistPhotoVerificationResult> {
+  const effectiveUserId = userId || 'system';
+  
+  // Rate limit: 100 verifications per user per day
+  if (!aiRateLimiter.canMakeRequest(effectiveUserId, 'checklist_photo_verify', 100)) {
+    console.warn(`⚠️ RATE LIMIT - User ${effectiveUserId} exceeded daily checklist photo verification quota`);
+    const error = new Error('Günlük fotoğraf doğrulama limitiniz doldu. Lütfen daha sonra tekrar deneyin.');
+    (error as any).statusCode = 429;
+    throw error;
+  }
+
+  const verificationPrompt = AI_VERIFICATION_PROMPTS[verificationType] || AI_VERIFICATION_PROMPTS.general;
+
+  try {
+    const response = await openai.chat.completions.create({
+      model: VISION_MODEL, // gpt-4o for vision tasks
+      messages: [
+        {
+          role: "system",
+          content: `Sen DOSPRESSO kahve franchise yönetim sisteminin AI kalite kontrol asistanısın. 
+          Checklist görevleri için fotoğraf doğrulama yapıyorsun.
+          Görev: "${taskDescription}"
+          Tolerans seviyesi: %${tolerancePercent} (bu değerin altındaki benzerlik başarısız sayılır)
+          
+          ${verificationPrompt}
+          
+          JSON formatında yanıt ver:
+          {
+            "similarityScore": 0-100 arası sayı (görsel benzerlik yüzdesi),
+            "passed": true/false (similarityScore >= ${tolerancePercent} ise true),
+            "verificationNote": "Kısa açıklama (max 100 karakter)",
+            "matchingAspects": ["Uyumlu nokta 1", "Uyumlu nokta 2"],
+            "differences": ["Farklılık 1", "Farklılık 2"],
+            "suggestions": ["İyileştirme önerisi 1"]
+          }`
+        },
+        {
+          role: "user",
+          content: [
+            {
+              type: "text",
+              text: "Referans fotoğraf (ilk) ve yüklenen fotoğrafı (ikinci) karşılaştır:"
+            },
+            {
+              type: "image_url",
+              image_url: {
+                url: referencePhotoBase64.startsWith('data:') 
+                  ? referencePhotoBase64 
+                  : `data:image/webp;base64,${referencePhotoBase64}`,
+                detail: "low" // Cost optimization
+              }
+            },
+            {
+              type: "image_url",
+              image_url: {
+                url: uploadedPhotoBase64.startsWith('data:') 
+                  ? uploadedPhotoBase64 
+                  : `data:image/webp;base64,${uploadedPhotoBase64}`,
+                detail: "low" // Cost optimization
+              }
+            }
+          ]
+        }
+      ],
+      response_format: { type: "json_object" },
+      max_tokens: 500,
+      temperature: 0.3 // Lower temperature for consistent scoring
+    });
+
+    const content = response.choices[0]?.message?.content;
+    if (!content) throw new Error("Boş yanıt");
+
+    const result = JSON.parse(content);
+    const similarityScore = Math.min(100, Math.max(0, Number(result.similarityScore) || 0));
+    const passed = similarityScore >= tolerancePercent;
+
+    aiRateLimiter.incrementRequest(effectiveUserId, 'checklist_photo_verify');
+    
+    // Log AI usage for analytics
+    console.log(`✅ Checklist photo verification: ${passed ? 'PASSED' : 'FAILED'} (${similarityScore}% similarity, ${tolerancePercent}% required)`);
+
+    return {
+      passed,
+      similarityScore,
+      verificationNote: result.verificationNote || (passed ? 'Fotoğraf uyumlu' : 'Fotoğraf uyumsuz'),
+      details: {
+        matchingAspects: result.matchingAspects || [],
+        differences: result.differences || [],
+        suggestions: result.suggestions || [],
+      }
+    };
+  } catch (error: Error | unknown) {
+    console.error("Checklist photo verification error:", error);
+    
+    // Return a failed result instead of throwing for graceful handling
+    return {
+      passed: false,
+      similarityScore: 0,
+      verificationNote: 'AI doğrulama yapılamadı: ' + ((error as Error).message || 'Bilinmeyen hata'),
+      details: {
+        matchingAspects: [],
+        differences: ['AI analiz hatası'],
+        suggestions: ['Fotoğrafı tekrar yükleyip deneyin'],
+      }
+    };
+  }
+}
+
+// Verify photo without reference (just quality check)
+export async function verifyPhotoQuality(
+  photoBase64: string,
+  verificationType: string,
+  taskDescription: string,
+  userId?: string
+): Promise<{ passed: boolean; score: number; note: string }> {
+  const effectiveUserId = userId || 'system';
+  
+  if (!aiRateLimiter.canMakeRequest(effectiveUserId, 'photo_quality_check', 100)) {
+    return { passed: true, score: 70, note: 'Rate limit - varsayılan kabul' };
+  }
+
+  try {
+    const response = await openai.chat.completions.create({
+      model: VISION_MODEL,
+      messages: [
+        {
+          role: "system",
+          content: `Sen DOSPRESSO kalite kontrol asistanısın. Fotoğrafın görev için yeterli olup olmadığını kontrol et.
+          Görev: "${taskDescription}"
+          Kontrol türü: ${verificationType}
+          
+          JSON yanıt ver:
+          {
+            "score": 0-100 arası kalite puanı,
+            "passed": true/false (score >= 60 ise true),
+            "note": "Kısa açıklama"
+          }`
+        },
+        {
+          role: "user",
+          content: [
+            { type: "text", text: "Bu fotoğrafı değerlendir:" },
+            {
+              type: "image_url",
+              image_url: {
+                url: photoBase64.startsWith('data:') ? photoBase64 : `data:image/webp;base64,${photoBase64}`,
+                detail: "low"
+              }
+            }
+          ]
+        }
+      ],
+      response_format: { type: "json_object" },
+      max_tokens: 200,
+      temperature: 0.3
+    });
+
+    const content = response.choices[0]?.message?.content;
+    if (!content) throw new Error("Boş yanıt");
+
+    const result = JSON.parse(content);
+    aiRateLimiter.incrementRequest(effectiveUserId, 'photo_quality_check');
+    
+    return {
+      passed: result.passed ?? true,
+      score: Number(result.score) || 70,
+      note: result.note || 'Kontrol tamamlandı'
+    };
+  } catch (error) {
+    console.error("Photo quality check error:", error);
+    return { passed: true, score: 70, note: 'Kontrol yapılamadı - varsayılan kabul' };
+  }
+}

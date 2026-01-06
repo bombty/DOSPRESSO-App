@@ -19,6 +19,37 @@ export async function compressAndConvertImage(base64Data: string): Promise<Buffe
   }
 }
 
+// Checklist photo compression - optimized for minimum file size while maintaining AI readability
+export const CHECKLIST_PHOTO_CONFIG = {
+  maxWidth: 800,
+  maxHeight: 800,
+  quality: 70,
+};
+
+export async function compressChecklistPhoto(imageBuffer: Buffer): Promise<Buffer> {
+  try {
+    const compressed = await sharp(imageBuffer)
+      .resize(CHECKLIST_PHOTO_CONFIG.maxWidth, CHECKLIST_PHOTO_CONFIG.maxHeight, {
+        fit: 'inside',
+        withoutEnlargement: true,
+      })
+      .webp({ quality: CHECKLIST_PHOTO_CONFIG.quality })
+      .toBuffer();
+    
+    console.log(`📸 Checklist photo compressed: ${imageBuffer.length} → ${compressed.length} bytes`);
+    return compressed;
+  } catch (error) {
+    console.error('Error compressing checklist photo:', error);
+    throw error;
+  }
+}
+
+// Compress base64 checklist photo
+export async function compressChecklistPhotoBase64(base64Data: string): Promise<Buffer> {
+  const buffer = Buffer.from(base64Data.replace(/^data:image\/\w+;base64,/, ''), 'base64');
+  return compressChecklistPhoto(buffer);
+}
+
 export function getImageMimeType(buffer: Buffer): string {
   const header = buffer.toString('hex', 0, 4);
   if (header.startsWith('ffd8ff')) return 'image/jpeg';
