@@ -2450,6 +2450,9 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
             requiresPhoto: task.requiresPhoto,
             taskTimeStart: task.taskTimeStart || null,
             taskTimeEnd: task.taskTimeEnd || null,
+            aiVerificationType: task.aiVerificationType || null,
+            tolerancePercent: task.tolerancePercent || null,
+            referencePhotoUrl: task.referencePhotoUrl || null,
             order: task.order,
             checklistId: 0,
           })

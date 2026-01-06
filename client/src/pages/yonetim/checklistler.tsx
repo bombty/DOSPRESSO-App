@@ -4,7 +4,8 @@ import { queryClient } from "@/lib/queryClient";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Pencil, Trash2, ChevronDown, ChevronUp, AlertCircle, UserPlus } from "lucide-react";
+import { Plus, Pencil, Trash2, ChevronDown, ChevronUp, AlertCircle, UserPlus, Camera, Upload, X, BrainCircuit } from "lucide-react";
+import { Slider } from "@/components/ui/slider";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -247,6 +248,12 @@ export default function AdminChecklistManagement() {
                                 {task.requiresPhoto && (
                                   <Badge variant="outline" className="text-xs">Fotoğraf</Badge>
                                 )}
+                                {task.aiVerificationType && task.aiVerificationType !== "none" && (
+                                  <Badge variant="secondary" className="text-xs">
+                                    <BrainCircuit className="h-3 w-3 mr-1" />
+                                    AI
+                                  </Badge>
+                                )}
                               </div>
                             ))}
                           </div>
@@ -309,7 +316,16 @@ function ChecklistFormDialog({
   const [isActive, setIsActive] = useState(checklist?.isActive ?? true);
   const [timeWindowStart, setTimeWindowStart] = useState(checklist?.timeWindowStart || "");
   const [timeWindowEnd, setTimeWindowEnd] = useState(checklist?.timeWindowEnd || "");
-  const [tasks, setTasks] = useState<Array<{ taskDescription: string; requiresPhoto: boolean; order: number; taskTimeStart?: string; taskTimeEnd?: string }>>([]);
+  const [tasks, setTasks] = useState<Array<{ 
+    taskDescription: string; 
+    requiresPhoto: boolean; 
+    order: number; 
+    taskTimeStart?: string; 
+    taskTimeEnd?: string;
+    aiVerificationType?: string;
+    tolerancePercent?: number;
+    referencePhotoUrl?: string;
+  }>>([]);
 
   const { data: existingTasks } = useQuery<ChecklistTask[]>({
     queryKey: ['/api/checklist-tasks'],
@@ -320,7 +336,16 @@ function ChecklistFormDialog({
     if (mode === "edit" && existingTasks && checklist) {
       const checklistTasks = existingTasks
         .filter((t) => t.checklistId === checklist.id)
-        .map((t) => ({ taskDescription: t.taskDescription, requiresPhoto: t.requiresPhoto || false, order: t.order, taskTimeStart: t.taskTimeStart || "", taskTimeEnd: t.taskTimeEnd || "" }));
+        .map((t) => ({ 
+          taskDescription: t.taskDescription, 
+          requiresPhoto: t.requiresPhoto || false, 
+          order: t.order, 
+          taskTimeStart: t.taskTimeStart || "", 
+          taskTimeEnd: t.taskTimeEnd || "",
+          aiVerificationType: t.aiVerificationType || "none",
+          tolerancePercent: t.tolerancePercent ?? 70,
+          referencePhotoUrl: t.referencePhotoUrl || "",
+        }));
       setTasks(checklistTasks);
     }
   }, [mode, existingTasks, checklist]);
@@ -396,7 +421,14 @@ function ChecklistFormDialog({
   };
 
   const addTask = () => {
-    setTasks([...tasks, { taskDescription: "", requiresPhoto: false, order: tasks.length + 1 }]);
+    setTasks([...tasks, { 
+      taskDescription: "", 
+      requiresPhoto: false, 
+      order: tasks.length + 1,
+      aiVerificationType: "none",
+      tolerancePercent: 70,
+      referencePhotoUrl: "",
+    }]);
   };
 
   const removeTask = (index: number) => {
@@ -575,6 +607,93 @@ function ChecklistFormDialog({
                       />
                       <Label className="text-sm cursor-pointer">Fotoğraf gerekli</Label>
                     </div>
+                    
+                    {task.requiresPhoto && (
+                      <div className="p-3 bg-muted/50 rounded-lg space-y-3 mt-2">
+                        <div className="flex items-center gap-2 text-sm font-medium">
+                          <BrainCircuit className="h-4 w-4 text-primary" />
+                          <span>AI Doğrulama Ayarları</span>
+                        </div>
+                        
+                        <div className="flex flex-col gap-1">
+                          <Label className="text-xs">Doğrulama Tipi</Label>
+                          <Select 
+                            value={task.aiVerificationType || "none"} 
+                            onValueChange={(val) => updateTask(index, 'aiVerificationType', val)}
+                          >
+                            <SelectTrigger className="w-full" data-testid={`select-ai-type-${index}`}>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="none">AI Doğrulama Yok</SelectItem>
+                              <SelectItem value="cleanliness">Temizlik Kontrolü</SelectItem>
+                              <SelectItem value="arrangement">Düzen Kontrolü</SelectItem>
+                              <SelectItem value="machine_settings">Makine Ayarları</SelectItem>
+                              <SelectItem value="general">Genel Karşılaştırma</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        
+                        {task.aiVerificationType && task.aiVerificationType !== "none" && (
+                          <>
+                            <div className="flex flex-col gap-2">
+                              <div className="flex items-center justify-between">
+                                <Label className="text-xs">Tolerans Oranı</Label>
+                                <span className="text-xs text-muted-foreground font-medium">
+                                  %{task.tolerancePercent || 70}
+                                </span>
+                              </div>
+                              <Slider
+                                value={[task.tolerancePercent || 70]}
+                                onValueChange={(val) => updateTask(index, 'tolerancePercent', val[0])}
+                                min={30}
+                                max={100}
+                                step={5}
+                                className="w-full"
+                                data-testid={`slider-tolerance-${index}`}
+                              />
+                              <p className="text-xs text-muted-foreground">
+                                Düşük tolerans = daha sıkı kontrol
+                              </p>
+                            </div>
+                            
+                            <div className="flex flex-col gap-2">
+                              <Label className="text-xs">Referans Fotoğraf URL</Label>
+                              <div className="flex gap-2">
+                                <Input
+                                  value={task.referencePhotoUrl || ""}
+                                  onChange={(e) => updateTask(index, 'referencePhotoUrl', e.target.value)}
+                                  placeholder="Referans fotoğraf URL'si..."
+                                  className="flex-1"
+                                  data-testid={`input-reference-photo-${index}`}
+                                />
+                              </div>
+                              {task.referencePhotoUrl && (
+                                <div className="relative w-24 h-24 rounded-md overflow-hidden border">
+                                  <img 
+                                    src={task.referencePhotoUrl} 
+                                    alt="Referans" 
+                                    className="w-full h-full object-cover"
+                                  />
+                                  <Button
+                                    type="button"
+                                    variant="destructive"
+                                    size="icon"
+                                    className="absolute top-1 right-1 h-5 w-5"
+                                    onClick={() => updateTask(index, 'referencePhotoUrl', '')}
+                                  >
+                                    <X className="h-3 w-3" />
+                                  </Button>
+                                </div>
+                              )}
+                              <p className="text-xs text-muted-foreground">
+                                Object Storage'a yüklenen referans fotoğraf URL'si
+                              </p>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    )}
                   </div>
                   <Button
                     type="button"

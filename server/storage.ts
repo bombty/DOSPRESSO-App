@@ -1324,6 +1324,9 @@ export class DatabaseStorage implements IStorage {
               requiresPhoto: t.requiresPhoto ?? false,
               taskTimeStart: t.taskTimeStart || null,
               taskTimeEnd: t.taskTimeEnd || null,
+              aiVerificationType: t.aiVerificationType || null,
+              tolerancePercent: t.tolerancePercent || null,
+              referencePhotoUrl: t.referencePhotoUrl || null,
               order: t.order,
             }))
           );
@@ -1339,6 +1342,9 @@ export class DatabaseStorage implements IStorage {
                   requiresPhoto: t.requiresPhoto ?? false,
                   taskTimeStart: t.taskTimeStart || null,
                   taskTimeEnd: t.taskTimeEnd || null,
+              aiVerificationType: t.aiVerificationType || null,
+              tolerancePercent: t.tolerancePercent || null,
+              referencePhotoUrl: t.referencePhotoUrl || null,
                   order: t.order,
                 })
                 .where(eq(checklistTasks.id, t.id as number))
