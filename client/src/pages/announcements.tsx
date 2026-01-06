@@ -517,7 +517,7 @@ export default function Announcements() {
                     <div className="flex items-center gap-1">
                       <User className="w-3 h-3" />
                       <span data-testid={`text-author-${announcement.id}`}>
-                        {announcement.createdBy.fullName}
+                        {announcement.createdBy?.fullName || "Bilinmeyen"}
                       </span>
                     </div>
                     

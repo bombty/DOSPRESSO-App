@@ -5,6 +5,7 @@ import { isHQRole, type UserRoleType } from "@shared/schema";
 import { Link } from "wouter";
 import jsPDF from "jspdf";
 import "jspdf-autotable";
+import { createPDFWithHeader, addSection, addTable, savePDF, checkPageBreak } from "@/lib/pdfHelper";
 import {
   Card,
   CardContent,

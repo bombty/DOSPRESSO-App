@@ -20,6 +20,7 @@ import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ArrowLeft, AlertTriangle, Clock, CheckCircle2, DollarSign, User, FileDown, Copy, Download, Send } from "lucide-react";
 import jsPDF from "jspdf";
+import { createPDFWithHeader, addSection, addKeyValue, addParagraph, savePDF, checkPageBreak } from "@/lib/pdfHelper";
 import { format } from "date-fns";
 import { tr } from "date-fns/locale";
 

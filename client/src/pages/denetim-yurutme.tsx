@@ -23,6 +23,7 @@ import {
 import { format } from "date-fns";
 import { tr } from "date-fns/locale";
 import jsPDF from "jspdf";
+import { createPDFWithHeader, addSection, addKeyValue, addTable, savePDF, checkPageBreak } from "@/lib/pdfHelper";
 
 type AuditTemplateItem = {
   id: number;

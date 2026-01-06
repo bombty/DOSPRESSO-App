@@ -12,9 +12,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
-import jsPDF from "jspdf";
-import "jspdf-autotable";
-import dospressoLogo from "@assets/IMG_5044_1766485101341.jpeg";
+import { createPDFWithHeader, addTable, addSection, addParagraph, savePDF } from "@/lib/pdfHelper";
 
 interface PerformerData {
   id: number;
@@ -250,12 +248,11 @@ export function EnhancedAnalyticsCard() {
 
   // PDF generation function
   const generatePDF = async (period: 'daily' | 'weekly' | 'monthly') => {
-    // Pre-check: Validate data exists before generating PDF
     const targetData = period === 'daily' ? daily : period === 'weekly' ? weekly : monthly;
     if (!targetData) {
       toast({
-        title: "PDF oluşturulamadı",
-        description: "Rapor verileri henüz yüklenmedi. Lütfen sayfayı yenileyip tekrar deneyin.",
+        title: "PDF olusturulamadi",
+        description: "Rapor verileri henuz yuklenmedi. Lutfen sayfayi yenileyip tekrar deneyin.",
         variant: "destructive"
       });
       return;
@@ -264,86 +261,21 @@ export function EnhancedAnalyticsCard() {
     setGeneratingPdf(period);
     
     try {
-      const doc = new jsPDF();
-      const pageWidth = doc.internal.pageSize.getWidth();
-      let yPos = 15;
-      
-      // Load and add logo with proper error handling
-      try {
-        const img = new Image();
-        img.crossOrigin = 'anonymous';
-        
-        const logoLoaded = await new Promise<boolean>((resolve) => {
-          img.onload = () => {
-            // Verify image actually loaded with dimensions
-            if (img.naturalWidth > 0 && img.naturalHeight > 0) {
-              resolve(true);
-            } else {
-              resolve(false);
-            }
-          };
-          img.onerror = () => resolve(false);
-          // Set timeout for slow loading
-          setTimeout(() => resolve(false), 3000);
-          img.src = dospressoLogo;
-        });
-        
-        if (logoLoaded) {
-          doc.addImage(img, 'JPEG', pageWidth / 2 - 25, yPos, 50, 20);
-          yPos += 28;
-        } else {
-          yPos += 5;
-        }
-      } catch {
-        // Logo yüklenemezse sessizce devam et
-        yPos += 5;
-      }
-      
-      // Company header
-      doc.setFontSize(18);
-      doc.setTextColor(44, 62, 80);
-      doc.text('DOSPRESSO Donut Coffee', pageWidth / 2, yPos, { align: 'center' });
-      yPos += 8;
-      
-      // Branch name
-      doc.setFontSize(12);
-      doc.setTextColor(100, 100, 100);
-      const branchName = (user as any)?.branch_name || (user as any)?.branchName || 'Genel Merkez';
-      doc.text(`Şube: ${branchName}`, pageWidth / 2, yPos, { align: 'center' });
-      yPos += 12;
-      
-      // Report title and date
       const periodLabels = {
-        daily: 'Günlük Özet Rapor',
-        weekly: 'Haftalık Özet Rapor',
-        monthly: 'Aylık Özet Rapor'
+        daily: 'Gunluk Ozet Rapor',
+        weekly: 'Haftalik Ozet Rapor',
+        monthly: 'Aylik Ozet Rapor'
       };
+
+      const branchName = (user as any)?.branch_name || (user as any)?.branchName || 'Genel Merkez';
       
-      doc.setFontSize(16);
-      doc.setTextColor(52, 73, 94);
-      doc.text(periodLabels[period], pageWidth / 2, yPos, { align: 'center' });
-      yPos += 8;
-      
-      doc.setFontSize(10);
-      doc.setTextColor(120, 120, 120);
-      const now = new Date();
-      const dateStr = now.toLocaleDateString('tr-TR', { 
-        weekday: 'long', 
-        year: 'numeric', 
-        month: 'long', 
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
+      const { doc, yPos: startY } = await createPDFWithHeader({
+        title: periodLabels[period],
+        branchName,
+        reportDate: new Date()
       });
-      doc.text(`Rapor Tarihi: ${dateStr}`, pageWidth / 2, yPos, { align: 'center' });
-      yPos += 12;
-      
-      // Divider line
-      doc.setDrawColor(200, 200, 200);
-      doc.line(20, yPos, pageWidth - 20, yPos);
-      yPos += 10;
-      
-      // Get data based on period
+
+      let yPos = startY;
       let data: any;
       let summaryText = '';
       
@@ -359,113 +291,72 @@ export function EnhancedAnalyticsCard() {
       }
       
       if (!data) {
-        doc.text('Veri bulunamadı', pageWidth / 2, yPos, { align: 'center' });
-        doc.save(`DOSPRESSO_${period}_rapor_${now.toISOString().split('T')[0]}.pdf`);
+        doc.text('Veri bulunamadi', 105, yPos, { align: 'center' });
+        savePDF(doc, `DOSPRESSO_${period}_rapor.pdf`);
         return;
       }
       
-      // AI Summary Section
       if (summaryText) {
-        doc.setFontSize(11);
-        doc.setTextColor(52, 73, 94);
-        doc.text('AI Özet:', 20, yPos);
-        yPos += 6;
-        
-        doc.setFontSize(10);
-        doc.setTextColor(80, 80, 80);
-        const summaryLines = doc.splitTextToSize(summaryText, pageWidth - 40);
-        doc.text(summaryLines, 20, yPos);
-        yPos += summaryLines.length * 5 + 8;
+        yPos = addSection(doc, 'AI Ozet', yPos);
+        yPos = addParagraph(doc, summaryText, yPos);
       }
       
-      // Main metrics table
-      doc.setFontSize(12);
-      doc.setTextColor(52, 73, 94);
-      doc.text('Temel Metrikler', 20, yPos);
-      yPos += 6;
+      yPos = addSection(doc, 'Temel Metrikler', yPos);
       
-      const metricsData = [
-        ['Metrik', 'Değer'],
-        ['Bekleyen Görevler', String(data.pendingTasks || 0)],
-        ['Tamamlanan Görevler', String(data.completedTasks || 0)],
-        ['Aktif Arızalar', String(data.activeFaults || 0)],
+      const metricsBody = [
+        ['Bekleyen Gorevler', String(data.pendingTasks || 0)],
+        ['Tamamlanan Gorevler', String(data.completedTasks || 0)],
+        ['Aktif Arizalar', String(data.activeFaults || 0)],
         ['Geciken Checklistler', String(data.overdueChecklists || 0)],
         ['Kritik Ekipman', String(data.criticalEquipment || 0)],
-        ['Ekipman Sağlığı', `%${data.avgHealth || 0}`],
+        ['Ekipman Sagligi', `%${data.avgHealth || 0}`],
       ];
       
       if (period === 'monthly' && monthly) {
-        metricsData.push(
-          ['Toplam Arıza', String(monthly.totalFaults || 0)],
-          ['Çözülen Arıza', String(monthly.resolvedFaults || 0)],
-          ['Toplam Görev', String(monthly.totalTasks || 0)]
+        metricsBody.push(
+          ['Toplam Ariza', String(monthly.totalFaults || 0)],
+          ['Cozulen Ariza', String(monthly.resolvedFaults || 0)],
+          ['Toplam Gorev', String(monthly.totalTasks || 0)]
         );
       }
       
       if (period === 'weekly' && weekly) {
-        metricsData.push(['Tamamlanma Oranı', `%${weekly.checklistCompletionRate || 0}`]);
+        metricsBody.push(['Tamamlanma Orani', `%${weekly.checklistCompletionRate || 0}`]);
       }
       
-      (doc as any).autoTable({
-        startY: yPos,
-        head: [metricsData[0]],
-        body: metricsData.slice(1),
-        theme: 'striped',
-        headStyles: { fillColor: [52, 73, 94], textColor: 255 },
-        styles: { fontSize: 10, cellPadding: 3 },
-        margin: { left: 20, right: 20 },
-      });
+      yPos = addTable(doc, {
+        head: [['Metrik', 'Deger']],
+        body: metricsBody
+      }, yPos);
       
-      yPos = (doc as any).lastAutoTable.finalY + 10;
+      yPos += 10;
       
-      // Top performers (for weekly/monthly)
       const topPerformers = (period === 'weekly' ? weekly?.topPerformers : monthly?.topPerformers) || [];
       if (topPerformers.length > 0 && (role === 'supervisor' || role === 'admin' || role === 'coach')) {
-        doc.setFontSize(12);
-        doc.setTextColor(52, 73, 94);
-        doc.text('En İyi Performans Gösterenler', 20, yPos);
-        yPos += 6;
+        yPos = addSection(doc, 'En Iyi Performans Gosterenler', yPos);
         
         const perfData = topPerformers.map(p => [
           p.name,
           `%${p.completionRate}`,
           String(p.score),
-          `${p.absences} gün`
+          `${p.absences} gun`
         ]);
         
-        (doc as any).autoTable({
-          startY: yPos,
-          head: [['İsim', 'Tamamlama', 'Puan', 'Devamsızlık']],
-          body: perfData,
-          theme: 'striped',
-          headStyles: { fillColor: [39, 174, 96], textColor: 255 },
-          styles: { fontSize: 9, cellPadding: 2 },
-          margin: { left: 20, right: 20 },
-        });
-        
-        yPos = (doc as any).lastAutoTable.finalY + 10;
+        yPos = addTable(doc, {
+          head: [['Isim', 'Tamamlama', 'Puan', 'Devamsizlik']],
+          body: perfData
+        }, yPos);
       }
       
-      // Footer
-      const pageCount = doc.internal.pages.length - 1;
-      doc.setFontSize(8);
-      doc.setTextColor(150, 150, 150);
-      doc.text(
-        `DOSPRESSO Franchise Yönetim Sistemi - Sayfa 1/${pageCount}`,
-        pageWidth / 2,
-        doc.internal.pageSize.getHeight() - 10,
-        { align: 'center' }
-      );
-      
-      // Save PDF
+      const now = new Date();
       const filename = `DOSPRESSO_${periodLabels[period].replace(/ /g, '_')}_${now.toISOString().split('T')[0]}.pdf`;
-      doc.save(filename);
+      savePDF(doc, filename);
       
     } catch (error) {
-      console.error('PDF oluşturma hatası:', error);
+      console.error('PDF olusturma hatasi:', error);
       toast({
-        title: "PDF oluşturulamadı",
-        description: "Rapor oluşturulurken bir hata oluştu. Lütfen tekrar deneyin.",
+        title: "PDF olusturulamadi",
+        description: "Rapor olusturulurken bir hata olustu. Lutfen tekrar deneyin.",
         variant: "destructive"
       });
     } finally {
