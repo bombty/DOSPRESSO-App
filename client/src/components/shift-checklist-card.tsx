@@ -119,7 +119,7 @@ export function ShiftChecklistCard() {
           >
             <Checkbox
               checked={item.isCompleted}
-              onChange={() => toggleMutation.mutate(item.id)}
+              onCheckedChange={() => toggleMutation.mutate(item.id)}
               className="mt-1"
               data-testid={`checkbox-checklist-${item.id}`}
             />

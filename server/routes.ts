@@ -13597,6 +13597,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // PATCH /api/shift-checklists/:id - Update shift checklist completion status
+  app.patch('/api/shift-checklists/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const id = parseInt(req.params.id);
+      
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Gecersiz checklist ID'si" });
+      }
+
+      const { isCompleted } = req.body;
+      
+      const shiftChecklist = await storage.getShiftChecklistById(id);
+      if (!shiftChecklist) {
+        return res.status(404).json({ message: "Shift checklist bulunamadi" });
+      }
+
+      const updated = await storage.updateShiftChecklist(id, {
+        isCompleted,
+        completedAt: isCompleted ? new Date() : null
+      });
+
+      res.json(updated);
+    } catch (error) {
+      console.error('Shift checklist guncelleme hatasi:', error);
+      res.status(500).json({ message: "Sunucu hatasi" });
+    }
+  });
+
   // DELETE /api/shifts/:id - Delete a shift (AFTER reset-weekly to avoid :id matching reset-weekly)
   app.delete('/api/shifts/:id', isAuthenticated, async (req: any, res) => {
     try {
