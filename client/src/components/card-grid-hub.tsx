@@ -10,6 +10,12 @@ import { ShiftChecklistCard } from "@/components/shift-checklist-card";
 import { EnhancedAnalyticsCard } from "@/components/enhanced-analytics-card";
 import { PersonalSummaryCard } from "@/components/personal-summary-card";
 import { AnnouncementBannerCarousel } from "@/components/AnnouncementBannerCarousel";
+import { 
+  getMenuSectionMapping, 
+  getMegaModuleTitles, 
+  MEGA_MODULE_ORDER,
+  matchesMegaModule 
+} from "@/lib/megaModuleConfig";
 import {
   Accordion,
   AccordionContent,
@@ -105,126 +111,21 @@ export function CardGridHub() {
     }));
     // Don't filter by items.length - preserve section metadata
 
-  // 8 Mega-module definitions - comprehensive mapping of ALL known section IDs
-  // MENU_BLUEPRINT Section IDs: dashboard-hq, dashboard-branch, fabrika, equipment-maintenance, 
-  // branch-management, operations, hr-shifts, training-academy, analytics-reports, 
-  // quality-customer, finance, projects, communication, management
-  const MEGA_MODULE_MAPPING: Record<string, string[]> = {
-    "operations": [
-      // MENU_BLUEPRINT section IDs
-      "dashboard-hq", "dashboard-branch", "operations", "branch-management",
-      // English variations
-      "tasks", "tasks-hq", "tasks-branch", "tasks-section", "operations-hq", "operations-branch",
-      "checklists", "checklists-hq", "checklists-branch", "checklists-section",
-      "dashboard", "lost-found", "lost-found-hq",
-      // Turkish DB slugs
-      "operasyon", "subeler"
-    ],
-    "equipment": [
-      // MENU_BLUEPRINT section IDs
-      "equipment-maintenance",
-      // English variations
-      "equipment", "equipment-hq", "equipment-branch", "equipment-section",
-      "faults", "faults-hq", "faults-branch", "faults-section",
-      "maintenance", "maintenance-hq", "maintenance-section",
-      "qr-scan"
-    ],
-    "hr": [
-      // MENU_BLUEPRINT section IDs
-      "hr-shifts", "finance",
-      // English variations
-      "hr", "hr-hq", "hr-branch", "hr-section", "personel", "personel-section",
-      "shifts", "shifts-hq", "shifts-branch", "shifts-section",
-      "attendance", "attendance-section", "payroll", "payroll-section",
-      "branch-shift-tracking",
-      // Turkish DB slugs  
-      "vardiya", "vardiyalar", "ik", "finans"
-    ],
-    "training": [
-      // MENU_BLUEPRINT section IDs
-      "training-academy",
-      // English variations
-      "training", "training-hq", "training-branch", "training-section",
-      "academy", "academy-hq", "academy-branch", "academy-section",
-      "education", "education-section", "knowledge-base",
-      // Turkish DB slugs
-      "akademi", "bilgi-bankasi"
-    ],
-    "kitchen": [
-      // MENU_BLUEPRINT section IDs - Sadece mutfak ve tarifler
-      "kitchen", "kitchen-hq", "kitchen-branch", "kitchen-section",
-      "recipes", "recipes-hq", "recipes-branch", "recipes-section", "tarifler",
-      "menu", "menu-section"
-    ],
-    "factory": [
-      // MENU_BLUEPRINT section IDs - Fabrika & Üretim
-      "fabrika",
-      // English variations
-      "factory", "factory-dashboard", "factory-kiosk", "factory-quality", 
-      "factory-stations", "factory-analytics", "factory-compliance",
-      "factory-pins", "factory-waste", "factory-ai-reports",
-      "production", "production-section", "uretim"
-    ],
-    "reports": [
-      // MENU_BLUEPRINT section IDs
-      "analytics-reports", "quality-customer",
-      // English variations
-      "reports", "reports-hq", "reports-branch", "reports-section", "raporlar",
-      "analytics", "analytics-hq", "analytics-section",
-      "quality", "quality-hq", "quality-branch", "quality-section",
-      "performance-dashboard", "ai-chat", "quality-control", "customer-satisfaction",
-      // Turkish DB slugs
-      "kalite"
-    ],
-    "newshop": [
-      // MENU_BLUEPRINT section IDs
-      "projects",
-      // English variations
-      "projects-hq", "projects-section", "project-list",
-      "newshop", "newshop-section", "new-shop", "new-shop-opening",
-      // Turkish DB slugs
-      "projeler"
-    ],
-    "admin": [
-      // MENU_BLUEPRINT section IDs
-      "management", "communication",
-      // English variations
-      "admin", "admin-hq", "admin-section",
-      "settings", "settings-hq", "settings-section",
-      "support", "support-hq", "support-section",
-      "system", "system-section",
-      "management-hq", "management-section",
-      "users", "announcements", "bulk-data",
-      "hq-support", "notifications", "messages",
-      // Turkish DB slugs
-      "yonetim", "ayarlar", "destek", "ai"
-    ],
-  };
+  // Get mega-module mapping from shared config (localStorage with fallback)
+  const MEGA_MODULE_MAPPING = getMenuSectionMapping();
+  const megaModuleTitles = getMegaModuleTitles();
 
   const MEGA_MODULE_CONFIG = [
-    { id: "operations", title: "Operasyonlar", icon: "ClipboardList", color: "bg-green-500" },
-    { id: "equipment", title: "Ekipman & Bakım", icon: "Wrench", color: "bg-orange-500" },
-    { id: "hr", title: "Personel & İK", icon: "Users", color: "bg-pink-500" },
-    { id: "training", title: "Eğitim & Akademi", icon: "GraduationCap", color: "bg-blue-500" },
-    { id: "kitchen", title: "Mutfak & Reçeteler", icon: "Coffee", color: "bg-amber-600" },
-    { id: "factory", title: "Fabrika & Üretim", icon: "Factory", color: "bg-indigo-600" },
-    { id: "reports", title: "Raporlar & Analitik", icon: "BarChart3", color: "bg-cyan-500" },
-    { id: "newshop", title: "Yeni Mağaza Açılışı", icon: "FolderKanban", color: "bg-violet-600" },
-    { id: "admin", title: "Yönetim & Ayarlar", icon: "Shield", color: "bg-slate-600" },
+    { id: "operations", title: megaModuleTitles["operations"] || "Operasyonlar", icon: "ClipboardList", color: "bg-green-500" },
+    { id: "equipment", title: megaModuleTitles["equipment"] || "Ekipman & Bakım", icon: "Wrench", color: "bg-orange-500" },
+    { id: "hr", title: megaModuleTitles["hr"] || "Personel & İK", icon: "Users", color: "bg-pink-500" },
+    { id: "training", title: megaModuleTitles["training"] || "Eğitim & Akademi", icon: "GraduationCap", color: "bg-blue-500" },
+    { id: "kitchen", title: megaModuleTitles["kitchen"] || "Mutfak & Reçeteler", icon: "Coffee", color: "bg-amber-600" },
+    { id: "factory", title: megaModuleTitles["factory"] || "Fabrika & Üretim", icon: "Factory", color: "bg-indigo-600" },
+    { id: "reports", title: megaModuleTitles["reports"] || "Raporlar & Analitik", icon: "BarChart3", color: "bg-cyan-500" },
+    { id: "newshop", title: megaModuleTitles["newshop"] || "Yeni Mağaza Açılışı", icon: "FolderKanban", color: "bg-violet-600" },
+    { id: "admin", title: megaModuleTitles["admin"] || "Yönetim & Ayarlar", icon: "Shield", color: "bg-slate-600" },
   ];
-
-  // Helper: check if a section ID matches any of the mapped IDs
-  const matchesMegaModule = (sectionId: string, mappedIds: string[]): boolean => {
-    const normalizedId = sectionId.toLowerCase().trim();
-    return mappedIds.some((mapped) => {
-      const normalizedMapped = mapped.toLowerCase().trim();
-      // Exact match or prefix/suffix match
-      return normalizedId === normalizedMapped || 
-             normalizedId.startsWith(normalizedMapped + "-") ||
-             normalizedId.endsWith("-" + normalizedMapped) ||
-             normalizedId.includes(normalizedMapped);
-    });
-  };
 
   // Fallback admin items for admin users if API doesn't return management section
   const ADMIN_FALLBACK_ITEMS = [
