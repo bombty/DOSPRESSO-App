@@ -752,9 +752,12 @@ export interface IStorage {
   getPersonnelProfile(userId: string): Promise<{
     id: string;
     username: string;
+    firstName: string | null;
+    lastName: string | null;
     fullName: string;
     email: string;
     phoneNumber: string | null;
+    profileImageUrl: string | null;
     role: string;
     branchId: number | null;
     branchName: string | null;
@@ -5779,9 +5782,12 @@ export class DatabaseStorage implements IStorage {
   async getPersonnelProfile(userId: string): Promise<{
     id: string;
     username: string;
+    firstName: string | null;
+    lastName: string | null;
     fullName: string;
     email: string;
     phoneNumber: string | null;
+    profileImageUrl: string | null;
     role: string;
     branchId: number | null;
     branchName: string | null;
@@ -5891,9 +5897,12 @@ export class DatabaseStorage implements IStorage {
     return {
       id: user.id,
       username: user.username || '',
+      firstName: user.firstName || null,
+      lastName: user.lastName || null,
       fullName: `${user.firstName || ''} ${user.lastName || ''}`.trim(),
       email: user.email || '',
       phoneNumber: user.phoneNumber,
+      profileImageUrl: user.profileImageUrl || null,
       role: user.role,
       branchId: user.branchId,
       branchName,
