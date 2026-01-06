@@ -88,6 +88,7 @@ import {
   onboardingDocuments,
   licenseRenewals,
   threadParticipants,
+  messages,
   announcements,
   announcementReadStatus,
   hasPermission,
@@ -239,6 +240,9 @@ import {
   insertBranchWeeklyAttendanceSummarySchema,
   insertBranchMonthlyPayrollSummarySchema,
   insertBranchKioskSettingsSchema,
+  dashboardAlerts,
+  checklistAssignments,
+  checklistCompletions,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, sql, and, or, isNull, isNotNull, inArray, lte, gte } from "drizzle-orm";
@@ -388,6 +392,27 @@ async function checkProjectAccessByPhaseId(user: any, phaseId: number): Promise<
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
+
+// Rate limiting for kiosk login attempts
+const kioskLoginAttempts = new Map<string, { count: number; lastAttempt: number; blockedUntil?: number }>();
+const RATE_LIMIT_WINDOW = 15 * 60 * 1000;
+const MAX_ATTEMPTS = 5;
+const BLOCK_DURATION = 30 * 60 * 1000;
+
+function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter?: number; remainingAttempts?: number } {
+  const now = Date.now();
+  const record = kioskLoginAttempts.get(identifier);
+  if (!record) { kioskLoginAttempts.set(identifier, { count: 1, lastAttempt: now }); return { allowed: true, remainingAttempts: MAX_ATTEMPTS - 1 }; }
+  if (record.blockedUntil && now < record.blockedUntil) { return { allowed: false, retryAfter: Math.ceil((record.blockedUntil - now) / 1000) }; }
+  if (now - record.lastAttempt > RATE_LIMIT_WINDOW) { kioskLoginAttempts.set(identifier, { count: 1, lastAttempt: now }); return { allowed: true, remainingAttempts: MAX_ATTEMPTS - 1 }; }
+  record.count++; record.lastAttempt = now;
+  if (record.count > MAX_ATTEMPTS) { record.blockedUntil = now + BLOCK_DURATION; kioskLoginAttempts.set(identifier, record); return { allowed: false, retryAfter: BLOCK_DURATION / 1000 }; }
+  kioskLoginAttempts.set(identifier, record);
+  return { allowed: true, remainingAttempts: MAX_ATTEMPTS - record.count };
+}
+
+function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.delete(identifier); }
+
   await setupAuth(app);
 
   // GET /api/health - Public health check for Docker/load balancer
@@ -24925,6 +24950,10 @@ DOSPRESSO İnsan Kaynakları Ekibi`
   app.post('/api/factory/kiosk/login', async (req, res) => {
     try {
       const { userId, pin } = req.body;
+      const clientIp = req.ip || req.socket.remoteAddress || 'unknown';
+      const rateLimitId = `factory_${clientIp}_${userId || 'unknown'}`;
+      const rateCheck = checkKioskRateLimit(rateLimitId);
+      if (!rateCheck.allowed) { return res.status(429).json({ message: `Çok fazla deneme. ${Math.ceil((rateCheck.retryAfter || 1800) / 60)} dakika sonra tekrar deneyin.`, retryAfter: rateCheck.retryAfter }); }
       
       if (!userId || !pin) {
         return res.status(400).json({ message: "Kullanıcı ve PIN gerekli" });
@@ -27088,6 +27117,10 @@ DOSPRESSO İnsan Kaynakları Ekibi`
   app.post('/api/branches/:branchId/kiosk/login', async (req, res) => {
     try {
       const branchId = parseInt(req.params.branchId);
+      const clientIp = req.ip || req.socket.remoteAddress || 'unknown';
+      const rateLimitId = `branch_${branchId}_${clientIp}_${userId || 'unknown'}`;
+      const rateCheck = checkKioskRateLimit(rateLimitId);
+      if (!rateCheck.allowed) { return res.status(429).json({ message: `Çok fazla deneme. ${Math.ceil((rateCheck.retryAfter || 1800) / 60)} dakika sonra tekrar deneyin.`, retryAfter: rateCheck.retryAfter }); }
       const { userId, pin } = req.body;
       
       if (!userId || !pin) {
@@ -28057,6 +28090,124 @@ DOSPRESSO İnsan Kaynakları Ekibi`
     } catch (error: any) {
       console.error("Error approving monthly payroll:", error);
       res.status(500).json({ message: "Puantaj onaylanamadı" });
+    }
+  });
+
+  // Branch Dashboard - Comprehensive stats for branch dashboard
+  app.get('/api/branch-dashboard/:branchId', async (req, res) => {
+    try {
+      const branchId = parseInt(req.params.branchId);
+      if (isNaN(branchId)) {
+        return res.status(400).json({ message: "Geçersiz şube ID" });
+      }
+      const [branch] = await db.select({ id: branches.id, name: branches.name, city: branches.city, address: branches.address }).from(branches).where(eq(branches.id, branchId));
+      if (!branch) { return res.status(404).json({ message: "Şube bulunamadı" }); }
+      const today = new Date().toISOString().split('T')[0];
+      const activeSessionsResult = await db.select({ count: sql<number>`count(*)::int` }).from(branchShiftSessions).where(and(eq(branchShiftSessions.branchId, branchId), or(eq(branchShiftSessions.status, 'active'), eq(branchShiftSessions.status, 'on_break'))));
+      const activeStaff = activeSessionsResult[0]?.count || 0;
+      const shiftsResult = await db.select({ count: sql<number>`count(*)::int` }).from(shifts).where(and(eq(shifts.branchId, branchId), sql`DATE(${shifts.startTime}) = ${today}`));
+      const totalShifts = shiftsResult[0]?.count || 0;
+      const tasksResult = await db.select({ status: tasks.status, count: sql<number>`count(*)::int` }).from(tasks).where(and(eq(tasks.branchId, branchId), sql`DATE(${tasks.dueDate}) = ${today}`)).groupBy(tasks.status);
+      let completedTasks = 0, pendingTasks = 0;
+      for (const t of tasksResult) { if (t.status === 'completed' || t.status === 'verified') { completedTasks += t.count; } else if (t.status !== 'cancelled') { pendingTasks += t.count; } }
+      const checklistsResult = await db.select({ status: checklistCompletions.status, count: sql<number>`count(*)::int` }).from(checklistCompletions).where(and(eq(checklistCompletions.branchId, branchId), eq(checklistCompletions.scheduledDate, today))).groupBy(checklistCompletions.status);
+      let completedChecklists = 0, pendingChecklists = 0;
+      for (const c of checklistsResult) { if (c.status === 'completed' || c.status === 'submitted' || c.status === 'reviewed') { completedChecklists += c.count; } else { pendingChecklists += c.count; } }
+      const alertsResult = await db.select().from(dashboardAlerts).where(and(eq(dashboardAlerts.context, 'branch'), eq(dashboardAlerts.contextId, branchId), eq(dashboardAlerts.status, 'active'))).orderBy(desc(dashboardAlerts.occurredAt)).limit(20);
+      const activeAlerts = alertsResult.length;
+      const criticalAlerts = alertsResult.filter(a => a.severity === 'critical').length;
+      const todayShifts = await db.select({ id: shifts.id, userId: shifts.userId, startTime: shifts.startTime, endTime: shifts.endTime, status: shifts.status }).from(shifts).where(and(eq(shifts.branchId, branchId), sql`DATE(${shifts.startTime}) = ${today}`)).limit(50);
+      const todayTasks = await db.select({ id: tasks.id, title: tasks.title, status: tasks.status, priority: tasks.priority, dueDate: tasks.dueDate, assignedToId: tasks.assignedToId }).from(tasks).where(and(eq(tasks.branchId, branchId), sql`DATE(${tasks.dueDate}) = ${today}`)).orderBy(desc(tasks.priority)).limit(50);
+      const todayChecklists = await db.select({ id: checklistCompletions.id, checklistId: checklistCompletions.checklistId, userId: checklistCompletions.userId, status: checklistCompletions.status, scheduledDate: checklistCompletions.scheduledDate, score: checklistCompletions.score }).from(checklistCompletions).where(and(eq(checklistCompletions.branchId, branchId), eq(checklistCompletions.scheduledDate, today))).limit(50);
+      res.json({ branch, stats: { activeStaff, totalShifts, completedTasks, pendingTasks, completedChecklists, pendingChecklists, activeAlerts, criticalAlerts }, alerts: alertsResult, todayShifts, todayTasks, todayChecklists });
+    } catch (error: any) {
+      console.error("Error fetching branch dashboard:", error);
+      res.status(500).json({ message: "Dashboard verisi alınamadı", error: error.message });
+    }
+  });
+
+  // ===== MESSAGING SYSTEM =====
+  app.get('/api/messages', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user!.id;
+      const userThreads = await db.select({ threadId: threadParticipants.threadId, joinedAt: threadParticipants.joinedAt, lastReadAt: threadParticipants.lastReadAt }).from(threadParticipants).where(eq(threadParticipants.userId, userId));
+      if (userThreads.length === 0) { return res.json([]); }
+      const threadSummaries = [];
+      for (const ut of userThreads) {
+        const [lastMessage] = await db.select().from(messages).where(eq(messages.threadId, ut.threadId)).orderBy(desc(messages.createdAt)).limit(1);
+        if (!lastMessage) continue;
+        const participants = await db.select({ id: users.id, firstName: users.firstName, lastName: users.lastName, profileImageUrl: users.profileImageUrl }).from(threadParticipants).innerJoin(users, eq(users.id, threadParticipants.userId)).where(eq(threadParticipants.threadId, ut.threadId));
+        const unreadResult = await db.select({ count: sql<number>`count(*)::int` }).from(messages).where(and(eq(messages.threadId, ut.threadId), ut.lastReadAt ? sql`${messages.createdAt} > ${ut.lastReadAt}` : sql`1=1`, sql`${messages.senderId} != ${userId}`));
+        threadSummaries.push({ threadId: ut.threadId, participants, lastMessageBody: lastMessage.body, lastMessageAt: lastMessage.createdAt, unreadCount: unreadResult[0]?.count || 0 });
+      }
+      threadSummaries.sort((a, b) => new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime());
+      res.json(threadSummaries);
+    } catch (error: any) {
+      console.error("Error fetching message threads:", error);
+      res.status(500).json({ message: "Mesaj dizileri alınamadı", error: error.message });
+    }
+  });
+  app.get('/api/messages/unread-count', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user!.id;
+      const userThreads = await db.select({ threadId: threadParticipants.threadId, lastReadAt: threadParticipants.lastReadAt }).from(threadParticipants).where(eq(threadParticipants.userId, userId));
+      let totalUnread = 0;
+      for (const ut of userThreads) {
+        const unreadResult = await db.select({ count: sql<number>`count(*)::int` }).from(messages).where(and(eq(messages.threadId, ut.threadId), ut.lastReadAt ? sql`${messages.createdAt} > ${ut.lastReadAt}` : sql`1=1`, sql`${messages.senderId} != ${userId}`));
+        totalUnread += unreadResult[0]?.count || 0;
+      }
+      res.json({ unreadCount: totalUnread });
+    } catch (error: any) {
+      console.error("Error getting unread count:", error);
+      res.status(500).json({ message: "Okunmamış mesaj sayısı alınamadı" });
+    }
+  });
+  app.get('/api/messages/:threadId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user!.id;
+      const threadId = req.params.threadId;
+      const [participant] = await db.select().from(threadParticipants).where(and(eq(threadParticipants.threadId, threadId), eq(threadParticipants.userId, userId)));
+      if (!participant) { return res.status(403).json({ message: "Bu mesaj dizisine erişim yetkiniz yok" }); }
+      const threadMessages = await db.select().from(messages).where(eq(messages.threadId, threadId)).orderBy(messages.createdAt);
+      const participants = await db.select({ id: users.id, firstName: users.firstName, lastName: users.lastName, profileImageUrl: users.profileImageUrl, role: users.role }).from(threadParticipants).innerJoin(users, eq(users.id, threadParticipants.userId)).where(eq(threadParticipants.threadId, threadId));
+      res.json({ messages: threadMessages, participants });
+    } catch (error: any) {
+      console.error("Error fetching thread messages:", error);
+      res.status(500).json({ message: "Mesajlar alınamadı", error: error.message });
+    }
+  });
+  app.post('/api/messages', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user!.id;
+      const { threadId, recipientId, recipientRole, subject, body, attachments } = req.body;
+      if (!body || body.trim() === '') { return res.status(400).json({ message: "Mesaj içeriği gerekli" }); }
+      let targetThreadId = threadId;
+      if (!targetThreadId) {
+        targetThreadId = `thread_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        await db.insert(threadParticipants).values({ threadId: targetThreadId, userId: userId });
+        if (recipientId) { await db.insert(threadParticipants).values({ threadId: targetThreadId, userId: recipientId }).onConflictDoNothing(); }
+        else if (recipientRole) {
+          const roleUsers = await db.select({ id: users.id }).from(users).where(eq(users.role, recipientRole));
+          for (const u of roleUsers) { if (u.id !== userId) { await db.insert(threadParticipants).values({ threadId: targetThreadId, userId: u.id }).onConflictDoNothing(); } }
+        }
+      }
+      const [newMessage] = await db.insert(messages).values({ threadId: targetThreadId, senderId: userId, recipientId, recipientRole, subject: subject || null, body: body.trim(), attachments: attachments || null }).returning();
+      await db.update(threadParticipants).set({ lastReadAt: new Date() }).where(and(eq(threadParticipants.threadId, targetThreadId), eq(threadParticipants.userId, userId)));
+      res.json(newMessage);
+    } catch (error: any) {
+      console.error("Error creating message:", error);
+      res.status(500).json({ message: "Mesaj gönderilemedi", error: error.message });
+    }
+  });
+  app.post('/api/messages/:threadId/read', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user!.id;
+      const threadId = req.params.threadId;
+      await db.update(threadParticipants).set({ lastReadAt: new Date() }).where(and(eq(threadParticipants.threadId, threadId), eq(threadParticipants.userId, userId)));
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("Error marking thread as read:", error);
+      res.status(500).json({ message: "Mesaj okundu olarak işaretlenemedi" });
     }
   });
 

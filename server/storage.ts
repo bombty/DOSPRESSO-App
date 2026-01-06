@@ -417,6 +417,7 @@ export interface IStorage {
   getManagerChecklistCompletions(branchId?: number, date?: string, status?: string): Promise<Array<ChecklistCompletion & { user: User; checklist: Checklist }>>;
   updateChecklistCompletionScore(id: number, score: number, reviewedById: string, reviewNote?: string): Promise<ChecklistCompletion | undefined>;
   updateEmployeeChecklistPerformance(userId: string, branchId: number, date: string, checklistScore: number): Promise<void>;
+  updateEmployeeTaskPerformance(userId: string, branchId: number, date: string, taskScore: number, isNewRating: boolean, previousScore: number): Promise<void>;
   
   // Equipment operations
   getEquipment(branchId?: number): Promise<Equipment[]>;
@@ -1816,6 +1817,69 @@ export class DatabaseStorage implements IStorage {
         updatedAt: new Date(),
       },
     });
+  }
+
+  async updateEmployeeTaskPerformance(userId: string, branchId: number, date: string, taskScore: number, isNewRating: boolean, previousScore: number): Promise<void> {
+    // Update employeeSatisfactionScores with new task rating
+    const existing = await db
+      .select()
+      .from(employeeSatisfactionScores)
+      .where(eq(employeeSatisfactionScores.userId, userId));
+    
+    if (existing.length > 0) {
+      const current = existing[0];
+      
+      // Handle new rating vs re-rating differently
+      let newCount: number;
+      let newSum: number;
+      
+      if (isNewRating) {
+        // New rating - increment count and add score
+        newCount = (current.taskRatingCount || 0) + 1;
+        newSum = (current.taskRatingSum || 0) + taskScore;
+      } else {
+        // Re-rating - keep count, adjust sum (subtract old, add new)
+        newCount = current.taskRatingCount || 1;
+        newSum = (current.taskRatingSum || 0) - previousScore + taskScore;
+      }
+      
+      const newAvg = newCount > 0 ? newSum / newCount : 0;
+      
+      // Calculate on-time rate
+      const totalTasks = (current.taskOnTimeCount || 0) + (current.taskLateCount || 0);
+      const onTimeRate = totalTasks > 0 
+        ? ((current.taskOnTimeCount || 0) / totalTasks) 
+        : 0;
+      
+      // Calculate composite score
+      const compositeScore = this.calculateCompositeScore(
+        newAvg,
+        current.checklistScoreAvg || 0,
+        onTimeRate
+      );
+      
+      await db.update(employeeSatisfactionScores)
+        .set({
+          taskRatingCount: newCount,
+          taskRatingSum: newSum,
+          taskSatisfactionAvg: newAvg,
+          compositeScore,
+          updatedAt: new Date(),
+        })
+        .where(eq(employeeSatisfactionScores.userId, userId));
+    } else {
+      // Create new record (only possible for new ratings)
+      const compositeScore = this.calculateCompositeScore(taskScore, 0, 0);
+      
+      await db.insert(employeeSatisfactionScores).values({
+        userId,
+        branchId,
+        taskRatingCount: 1,
+        taskRatingSum: taskScore,
+        taskSatisfactionAvg: taskScore,
+        compositeScore,
+      });
+    }
   }
 
   // Health Score Calculation (0-100)
@@ -7011,8 +7075,13 @@ export class DatabaseStorage implements IStorage {
       .from(taskRatings)
       .where(eq(taskRatings.taskId, taskId));
     
+    let rating: TaskRating;
+    let isNewRating = false;
+    let previousScore = 0;
+    
     if (existing.length > 0) {
-      const [rating] = await db.update(taskRatings)
+      previousScore = existing[0].finalRating || 0;
+      const [updated] = await db.update(taskRatings)
         .set({ 
           rawRating: score, 
           finalRating: score, 
@@ -7020,18 +7089,34 @@ export class DatabaseStorage implements IStorage {
         })
         .where(eq(taskRatings.taskId, taskId))
         .returning();
-      return rating;
+      rating = updated;
+    } else {
+      isNewRating = true;
+      const [inserted] = await db.insert(taskRatings)
+        .values({
+          taskId,
+          ratedById: ratedBy,
+          ratedUserId: task.assignedToId || '',
+          rawRating: score,
+          finalRating: score,
+        })
+        .returning();
+      rating = inserted;
     }
     
-    const [rating] = await db.insert(taskRatings)
-      .values({
-        taskId,
-        ratedById: ratedBy,
-        ratedUserId: task.assignedToId || '',
-        rawRating: score,
-        finalRating: score,
-      })
-      .returning();
+    // Update employee performance score with task rating
+    if (task.assignedToId && task.branchId) {
+      const today = new Date().toISOString().split('T')[0];
+      await this.updateEmployeeTaskPerformance(
+        task.assignedToId, 
+        task.branchId, 
+        today, 
+        score, 
+        isNewRating,
+        previousScore
+      );
+    }
+    
     return rating;
   }
 
