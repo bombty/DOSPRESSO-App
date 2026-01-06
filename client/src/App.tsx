@@ -134,6 +134,7 @@ import AdminKullanicilar from "@/pages/admin/kullanicilar";
 import AdminEmailAyarlari from "@/pages/admin/email-ayarlari";
 import AdminServisMailAyarlari from "@/pages/admin/servis-mail-ayarlari";
 import AdminBannerlar from "@/pages/admin/bannerlar";
+import BannerEditor from "@/pages/banner-editor";
 import AdminDuyurular from "@/pages/admin/duyurular";
 import AdminYapayZekaAyarlari from "@/pages/admin/yapay-zeka-ayarlari";
 import AdminKaliteDenetimSablonlari from "@/pages/admin/kalite-denetim-şablonları";
@@ -345,6 +346,7 @@ function Router() {
           <Route path="/admin/email-ayarlari">{() => <AdminOnly><AdminEmailAyarlari /></AdminOnly>}</Route>
           <Route path="/admin/servis-mail-ayarlari">{() => <AdminOnly><AdminServisMailAyarlari /></AdminOnly>}</Route>
           <Route path="/admin/bannerlar">{() => <AdminOnly><AdminBannerlar /></AdminOnly>}</Route>
+          <Route path="/admin/banner-editor">{() => <AdminOnly><BannerEditor /></AdminOnly>}</Route>
           <Route path="/admin/duyurular">{() => <AdminOnly><AdminDuyurular /></AdminOnly>}</Route>
           <Route path="/admin/yapay-zeka-ayarlari">{() => <AdminOnly><AdminYapayZekaAyarlari /></AdminOnly>}</Route>
           <Route path="/admin/kalite-denetim-sablonlari">{() => <AdminOnly><AdminKaliteDenetimSablonlari /></AdminOnly>}</Route>

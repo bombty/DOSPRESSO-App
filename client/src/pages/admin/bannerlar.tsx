@@ -213,10 +213,18 @@ export default function AdminBannerlar() {
             </p>
           </div>
         </div>
-        <Button onClick={() => setCreateDialog(true)} data-testid="button-create-banner">
-          <Plus className="h-4 w-4 mr-2" />
-          Yeni Banner
-        </Button>
+        <div className="flex gap-2">
+          <Link href="/admin/banner-editor">
+            <Button variant="outline" data-testid="button-banner-editor">
+              <Image className="h-4 w-4 mr-2" />
+              Banner Editoru
+            </Button>
+          </Link>
+          <Button onClick={() => setCreateDialog(true)} data-testid="button-create-banner">
+            <Plus className="h-4 w-4 mr-2" />
+            Yeni Banner
+          </Button>
+        </div>
       </div>
 
       <ScrollArea className="h-[calc(100vh-200px)]">
