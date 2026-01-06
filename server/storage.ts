@@ -1,5 +1,5 @@
 import { db } from "./db";
-import { eq, desc, asc, and, or, sql, inArray, gte, lte, type SQL } from "drizzle-orm";
+import { eq, desc, asc, and, or, sql, inArray, gte, lte, isNotNull, type SQL } from "drizzle-orm";
 import { randomBytes } from "crypto";
 import type {
   User,
@@ -413,6 +413,20 @@ export interface IStorage {
   getChecklistCompletionWithTasks(id: number): Promise<(ChecklistCompletion & { taskCompletions: ChecklistTaskCompletion[]; checklist: Checklist; tasks: ChecklistTask[] }) | undefined>;
   getUserChecklistCompletions(userId: string, date?: string): Promise<ChecklistCompletion[]>;
   completeChecklistTask(data: { completionId: number; taskId: number; userId: string; photoUrl?: string; notes?: string }): Promise<ChecklistTaskCompletion>;
+  getChecklistTaskById(taskId: number): Promise<ChecklistTask | undefined>;
+  uploadChecklistPhoto(photoBuffer: Buffer, completionId: number, taskId: number): Promise<string>;
+  getChecklistReferencePhoto(photoUrl: string): Promise<Buffer | null>;
+  completeChecklistTaskWithVerification(data: {
+    completionId: number;
+    taskId: number;
+    userId: string;
+    photoUrl: string;
+    photoExpiresAt: Date;
+    aiVerificationResult: string;
+    aiSimilarityScore: number;
+    aiVerificationNote: string;
+  }): Promise<ChecklistTaskCompletion>;
+  deleteExpiredChecklistPhotos(): Promise<number>;
   submitChecklistCompletion(id: number): Promise<ChecklistCompletion | undefined>;
   getManagerChecklistCompletions(branchId?: number, date?: string, status?: string): Promise<Array<ChecklistCompletion & { user: User; checklist: Checklist }>>;
   updateChecklistCompletionScore(id: number, score: number, reviewedById: string, reviewNote?: string): Promise<ChecklistCompletion | undefined>;
@@ -1676,6 +1690,139 @@ export class DatabaseStorage implements IStorage {
       .where(eq(checklistCompletions.id, data.completionId));
     
     return updated;
+  }
+
+  async getChecklistTaskById(taskId: number): Promise<ChecklistTask | undefined> {
+    const [task] = await db.select().from(checklistTasks).where(eq(checklistTasks.id, taskId));
+    return task;
+  }
+
+  async uploadChecklistPhoto(photoBuffer: Buffer, completionId: number, taskId: number): Promise<string> {
+    const filename = `checklist-photos/${completionId}/${taskId}_${Date.now()}.webp`;
+    const { Client } = await import("@replit/object-storage");
+    const client = new Client();
+    await client.uploadFromBytes(filename, photoBuffer);
+    return filename;
+  }
+
+  async getChecklistReferencePhoto(photoUrl: string): Promise<Buffer | null> {
+    try {
+      const { Client } = await import("@replit/object-storage");
+      const client = new Client();
+      const data = await client.downloadAsBytes(photoUrl);
+      return Buffer.from(data);
+    } catch (error) {
+      console.error('Error reading reference photo:', error);
+      return null;
+    }
+  }
+
+  async completeChecklistTaskWithVerification(data: {
+    completionId: number;
+    taskId: number;
+    userId: string;
+    photoUrl: string;
+    photoExpiresAt: Date;
+    aiVerificationResult: string;
+    aiSimilarityScore: number;
+    aiVerificationNote: string;
+  }): Promise<ChecklistTaskCompletion> {
+    const now = new Date();
+    
+    // Get the task completion record
+    const [existingTaskCompletion] = await db.select().from(checklistTaskCompletions)
+      .where(and(
+        eq(checklistTaskCompletions.completionId, data.completionId),
+        eq(checklistTaskCompletions.taskId, data.taskId)
+      ));
+    
+    if (!existingTaskCompletion) {
+      throw new Error('Task completion record not found');
+    }
+    
+    // Check if task has time window and if late
+    const [task] = await db.select().from(checklistTasks).where(eq(checklistTasks.id, data.taskId));
+    let isLate = false;
+    if (task?.taskTimeEnd) {
+      const currentTime = now.toTimeString().split(' ')[0];
+      if (currentTime > task.taskTimeEnd) {
+        isLate = true;
+      }
+    }
+    
+    // Update task completion with AI verification data
+    const [updated] = await db.update(checklistTaskCompletions)
+      .set({
+        isCompleted: true,
+        completedAt: now,
+        photoUrl: data.photoUrl,
+        isLate,
+        aiVerificationResult: data.aiVerificationResult,
+        aiSimilarityScore: data.aiSimilarityScore,
+        aiVerificationNote: data.aiVerificationNote,
+        photoExpiresAt: data.photoExpiresAt,
+        photoDeleted: false,
+        updatedAt: now,
+      })
+      .where(eq(checklistTaskCompletions.id, existingTaskCompletion.id))
+      .returning();
+    
+    // Update completion's completedTasks count
+    const completedCount = await db.select().from(checklistTaskCompletions)
+      .where(and(
+        eq(checklistTaskCompletions.completionId, data.completionId),
+        eq(checklistTaskCompletions.isCompleted, true)
+      ));
+    
+    await db.update(checklistCompletions)
+      .set({
+        completedTasks: completedCount.length,
+        updatedAt: now,
+      })
+      .where(eq(checklistCompletions.id, data.completionId));
+    
+    return updated;
+  }
+
+  async deleteExpiredChecklistPhotos(): Promise<number> {
+    const now = new Date();
+    
+    // Find all task completions with expired photos that haven't been deleted
+    const expiredPhotos = await db.select().from(checklistTaskCompletions)
+      .where(and(
+        lte(checklistTaskCompletions.photoExpiresAt, now),
+        eq(checklistTaskCompletions.photoDeleted, false),
+        isNotNull(checklistTaskCompletions.photoUrl)
+      ));
+    
+    let deletedCount = 0;
+    const { Client } = await import("@replit/object-storage");
+    const client = new Client();
+    
+    for (const completion of expiredPhotos) {
+      if (completion.photoUrl) {
+        try {
+          // Delete from S3
+          await client.delete(completion.photoUrl);
+          
+          // Update record - keep AI verification data, just mark photo as deleted
+          await db.update(checklistTaskCompletions)
+            .set({
+              photoDeleted: true,
+              photoUrl: null, // Clear the URL
+              updatedAt: now,
+            })
+            .where(eq(checklistTaskCompletions.id, completion.id));
+          
+          deletedCount++;
+        } catch (error) {
+          console.error(`Error deleting expired photo ${completion.photoUrl}:`, error);
+        }
+      }
+    }
+    
+    console.log(`🗑️ Deleted ${deletedCount} expired checklist photos`);
+    return deletedCount;
   }
 
   async submitChecklistCompletion(id: number): Promise<ChecklistCompletion | undefined> {

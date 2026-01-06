@@ -322,3 +322,39 @@ export function stopSLACheckSystem() {
     console.log("SLA kontrol sistemi durduruldu");
   }
 }
+
+// ========================================
+// EXPIRED PHOTO CLEANUP SYSTEM
+// ========================================
+
+// Check for expired photos every 6 hours
+const PHOTO_CLEANUP_INTERVAL = 6 * 60 * 60 * 1000; // 6 hours
+let photoCleanupInterval: NodeJS.Timeout | null = null;
+
+async function cleanupExpiredPhotos() {
+  try {
+    const deletedCount = await storage.deleteExpiredChecklistPhotos();
+    if (deletedCount > 0) {
+      console.log(`🗑️ Photo cleanup: ${deletedCount} expired checklist photos deleted`);
+    }
+  } catch (error) {
+    console.error("Photo cleanup error:", error);
+  }
+}
+
+export function startPhotoCleanupSystem() {
+  console.log("Fotoğraf temizleme sistemi başlatıldı - Her 6 saatte bir kontrol edilecek");
+  
+  // Run initial cleanup
+  cleanupExpiredPhotos();
+  
+  photoCleanupInterval = setInterval(cleanupExpiredPhotos, PHOTO_CLEANUP_INTERVAL);
+}
+
+export function stopPhotoCleanupSystem() {
+  if (photoCleanupInterval) {
+    clearInterval(photoCleanupInterval);
+    photoCleanupInterval = null;
+    console.log("Fotoğraf temizleme sistemi durduruldu");
+  }
+}

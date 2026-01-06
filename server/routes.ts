@@ -246,10 +246,11 @@ import {
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, sql, and, or, isNull, isNotNull, inArray, lte, gte } from "drizzle-orm";
-import { analyzeTaskPhoto, analyzeFaultPhoto, analyzeDressCodePhoto, generateArticleEmbeddings, generateEmbedding, answerQuestionWithRAG, answerTechnicalQuestion, generateAISummary, generateQuizQuestionsFromLesson, generateFlashcardsFromLesson, evaluateBranchPerformance, diagnoseFault, generateTrainingModule, processUploadedFile, generateBranchSummaryReport, generateArticleDraft, generatePersonalSummaryReport } from "./ai";
+import { analyzeTaskPhoto, analyzeFaultPhoto, analyzeDressCodePhoto, generateArticleEmbeddings, generateEmbedding, answerQuestionWithRAG, answerTechnicalQuestion, generateAISummary, generateQuizQuestionsFromLesson, generateFlashcardsFromLesson, evaluateBranchPerformance, diagnoseFault, generateTrainingModule, processUploadedFile, generateBranchSummaryReport, generateArticleDraft, generatePersonalSummaryReport, verifyChecklistPhoto } from "./ai";
 import multer from "multer";
 import { generateTrainingMaterialBundle } from "./ai-motor";
 import { updateEmployeeLocation, getActiveBranchEmployees, getEmployeeLocation, removeEmployeeLocation, startTrackingCleanup } from "./tracking";
+import { compressChecklistPhotoBase64 } from "./photo-utils";
 import { sendNotificationEmail } from "./email";
 import { startReminderSystem } from "./reminders";
 import bcrypt from "bcrypt";
@@ -2748,6 +2749,100 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
     } catch (error: any) {
       console.error('Error completing task:', error);
       res.status(500).json({ message: 'Görev tamamlanamadı' });
+    }
+  });
+
+  // POST /api/checklist-completions/:completionId/tasks/:taskId/verify-photo - AI verify photo for task
+  app.post('/api/checklist-completions/:completionId/tasks/:taskId/verify-photo', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const completionId = parseInt(req.params.completionId);
+      const taskId = parseInt(req.params.taskId);
+      const { photoBase64 } = req.body;
+      
+      if (!photoBase64) {
+        return res.status(400).json({ message: 'Fotoğraf gereklidir' });
+      }
+      
+      // Get task details including AI verification settings
+      const task = await storage.getChecklistTaskById(taskId);
+      if (!task) {
+        return res.status(404).json({ message: 'Görev bulunamadı' });
+      }
+      
+      // Compress uploaded photo
+      const compressedPhoto = await compressChecklistPhotoBase64(photoBase64);
+      const compressedBase64 = `data:image/webp;base64,${compressedPhoto.toString('base64')}`;
+      
+      // Upload compressed photo to S3
+      const photoUrl = await storage.uploadChecklistPhoto(compressedPhoto, completionId, taskId);
+      
+      // Calculate photo expiry (2 weeks from now)
+      const photoExpiresAt = new Date();
+      photoExpiresAt.setDate(photoExpiresAt.getDate() + 14);
+      
+      // Default verification result for tasks without AI verification
+      let verificationResult = {
+        passed: true,
+        similarityScore: 100,
+        verificationNote: 'Fotoğraf kaydedildi',
+        details: { matchingAspects: [], differences: [], suggestions: [] }
+      };
+      
+      // If task has AI verification enabled and reference photo exists
+      if (task.aiVerificationType && task.aiVerificationType !== 'none' && task.referencePhotoUrl) {
+        // Fetch reference photo from S3
+        const referencePhotoData = await storage.getChecklistReferencePhoto(task.referencePhotoUrl);
+        
+        if (referencePhotoData) {
+          const referenceBase64 = `data:image/webp;base64,${referencePhotoData.toString('base64')}`;
+          
+          // Run AI verification
+          verificationResult = await verifyChecklistPhoto(
+            referenceBase64,
+            compressedBase64,
+            task.aiVerificationType,
+            task.tolerancePercent || 80,
+            task.taskDescription,
+            user.id,
+            user.branchId
+          );
+        }
+      }
+      
+      // Save task completion with AI verification results
+      const taskCompletion = await storage.completeChecklistTaskWithVerification({
+        completionId,
+        taskId,
+        userId: user.id,
+        photoUrl,
+        photoExpiresAt,
+        aiVerificationResult: verificationResult.passed ? 'passed' : 'failed',
+        aiSimilarityScore: verificationResult.similarityScore,
+        aiVerificationNote: verificationResult.verificationNote,
+      });
+      
+      // Create notification if verification failed
+      if (!verificationResult.passed) {
+        await storage.createNotification({
+          userId: user.id,
+          title: 'AI Fotoğraf Doğrulama Başarısız',
+          message: `"${task.taskDescription}" görevi için yüklenen fotoğraf %${verificationResult.similarityScore} benzerlik skoru aldı. Gereken: %${task.tolerancePercent || 80}`,
+          type: 'warning',
+          priority: 'normal',
+          relatedType: 'checklist',
+          relatedId: completionId,
+          branchId: user.branchId,
+        });
+      }
+      
+      res.json({
+        taskCompletion,
+        verification: verificationResult,
+      });
+    } catch (error: any) {
+      console.error('Error verifying task photo:', error);
+      res.status(500).json({ message: 'Fotoğraf doğrulanamadı: ' + error.message });
     }
   });
 
