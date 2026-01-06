@@ -466,7 +466,11 @@ export default function ChecklistExecutionPage() {
                         ) : (
                           <ObjectUploader
                             onGetUploadParameters={async () => {
-                              const res = await fetch('/api/upload/url');
+                              const res = await fetch('/api/objects/upload', {
+                                method: 'POST',
+                                credentials: 'include',
+                                headers: { 'Content-Type': 'application/json' }
+                              });
                               const data = await res.json();
                               return { method: 'PUT' as const, url: data.url };
                             }}
