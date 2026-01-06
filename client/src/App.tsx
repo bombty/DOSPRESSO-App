@@ -339,6 +339,7 @@ function Router() {
           <Route path="/kayip-esya" component={KayipEsya} />
           <Route path="/kayip-esya-hq" component={KayipEsyaHQ} />
           <Route path="/destek" component={Destek} />
+          <Route path="/banner-editor">{() => <AdminOnly><BannerEditor /></AdminOnly>}</Route>
           <Route path="/admin/yetkilendirme">{() => <AdminOnly><AdminYetkilendirme /></AdminOnly>}</Route>
           <Route path="/admin/aktivite-loglari">{() => <AdminOnly><AdminAktiviteLoglar /></AdminOnly>}</Route>
           <Route path="/admin/yedekleme">{() => <AdminOnly><AdminYedekleme /></AdminOnly>}</Route>
