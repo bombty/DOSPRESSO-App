@@ -15,13 +15,13 @@ import { useToast } from "@/hooks/use-toast";
 import { Separator } from "@/components/ui/separator";
 import { useAuth } from "@/hooks/useAuth";
 import { isHQRole } from "@shared/schema";
-import type { Checklist, ChecklistTask } from "@shared/schema";
+import type { Checklist, ChecklistTask, UserRoleType } from "@shared/schema";
 
 export default function AdminChecklistManagement() {
   const { user } = useAuth();
   const { toast } = useToast();
   
-  if (!user || !isHQRole(user.role)) {
+  if (!user || !isHQRole(user.role as UserRoleType)) {
     return (
       <Card>
         <CardContent className="py-12">
