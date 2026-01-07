@@ -854,6 +854,12 @@ export default function AdminYetkilendirme() {
   // Fetch role-specific grants
   const { data: roleGrants = [], refetch: refetchGrants } = useQuery<RoleGrant[]>({
     queryKey: ["/api/admin/role-grants", selectedRole],
+    queryFn: async () => {
+      if (!selectedRole) return [];
+      const response = await fetch(`/api/admin/role-grants/${encodeURIComponent(selectedRole)}`);
+      if (!response.ok) throw new Error('Failed to fetch role grants');
+      return response.json();
+    },
     enabled: user?.role === "admin" && !!selectedRole,
   });
 

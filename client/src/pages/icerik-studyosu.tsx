@@ -128,6 +128,7 @@ export default function IcerikStudyosu() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/announcements'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/banners'] });
       queryClient.invalidateQueries({ queryKey: ['/api/announcements/banners'] });
       toast({ title: "Başarılı", description: "Duyuru yayınlandı" });
       setIsPublishDialogOpen(false);

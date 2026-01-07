@@ -243,6 +243,8 @@ import {
   dashboardAlerts,
   checklistAssignments,
   checklistCompletions,
+  megaModuleConfig,
+  megaModuleItems,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, sql, and, or, isNull, isNotNull, inArray, lte, gte } from "drizzle-orm";
