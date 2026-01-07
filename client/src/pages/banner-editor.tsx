@@ -62,6 +62,38 @@ const GRADIENT_PRESETS = [
   { name: "Gold", from: "#b8860b", to: "#f5e6d3" },
 ];
 
+// Background type options
+type BackgroundType = "solid" | "linear" | "radial" | "pattern";
+
+const PATTERN_PRESETS = [
+  { name: "Çizgili", id: "stripes", style: "repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(255,255,255,0.1) 10px, rgba(255,255,255,0.1) 20px)" },
+  { name: "Noktalı", id: "dots", style: "radial-gradient(circle, rgba(255,255,255,0.15) 2px, transparent 2px)" },
+  { name: "Grid", id: "grid", style: "linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)" },
+  { name: "Dalga", id: "wave", style: "repeating-linear-gradient(135deg, transparent, transparent 5px, rgba(255,255,255,0.08) 5px, rgba(255,255,255,0.08) 10px)" },
+];
+
+const FONT_OPTIONS = [
+  { name: "Inter", value: "Inter, sans-serif" },
+  { name: "Poppins", value: "'Poppins', sans-serif" },
+  { name: "Playfair", value: "'Playfair Display', serif" },
+  { name: "Bebas Neue", value: "'Bebas Neue', sans-serif" },
+  { name: "Rubik", value: "'Rubik', sans-serif" },
+  { name: "Lora", value: "'Lora', serif" },
+  { name: "Montserrat", value: "'Montserrat', sans-serif" },
+];
+
+type TextEffect = {
+  shadow: boolean;
+  shadowColor: string;
+  shadowBlur: number;
+  outline: boolean;
+  outlineColor: string;
+  outlineWidth: number;
+  glow: boolean;
+  glowColor: string;
+  glowIntensity: number;
+};
+
 const ICON_CATEGORIES = {
   food: {
     name: "Yiyecek & İçecek",
@@ -163,6 +195,7 @@ type TextElement = {
   bold: boolean;
   italic: boolean;
   align: "left" | "center" | "right";
+  effects: TextEffect;
 };
 
 type IconElement = {
@@ -214,10 +247,12 @@ export default function BannerEditor() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [backgroundColor, setBackgroundColor] = useState("#4a2c2a");
-  const [useGradient, setUseGradient] = useState(false);
+  const [backgroundType, setBackgroundType] = useState<BackgroundType>("linear");
   const [gradientFrom, setGradientFrom] = useState("#4a2c2a");
   const [gradientTo, setGradientTo] = useState("#d4a574");
   const [gradientDirection, setGradientDirection] = useState("to-r");
+  const [radialPosition, setRadialPosition] = useState("center");
+  const [selectedPattern, setSelectedPattern] = useState<string | null>(null);
 
   const [textElements, setTextElements] = useState<TextElement[]>([]);
   const [iconElements, setIconElements] = useState<IconElement[]>([]);
@@ -313,6 +348,32 @@ export default function BannerEditor() {
     return <Redirect to="/" />;
   }
 
+  const defaultTextEffect: TextEffect = {
+    shadow: false,
+    shadowColor: "#000000",
+    shadowBlur: 4,
+    outline: false,
+    outlineColor: "#000000",
+    outlineWidth: 2,
+    glow: false,
+    glowColor: "#ffffff",
+    glowIntensity: 10,
+  };
+
+  const getTextWithDefaults = (text: Partial<TextElement> & { id: string }): TextElement => ({
+    id: text.id,
+    text: text.text ?? "Yeni Metin",
+    x: text.x ?? 50,
+    y: text.y ?? 50,
+    fontSize: text.fontSize ?? 24,
+    color: text.color ?? "#ffffff",
+    fontFamily: text.fontFamily ?? "Inter, sans-serif",
+    bold: text.bold ?? false,
+    italic: text.italic ?? false,
+    align: text.align ?? "center",
+    effects: { ...defaultTextEffect, ...(text.effects || {}) },
+  });
+
   const addTextElement = () => {
     const newText: TextElement = {
       id: `text-${Date.now()}`,
@@ -321,10 +382,11 @@ export default function BannerEditor() {
       y: 50,
       fontSize: 24,
       color: "#ffffff",
-      fontFamily: "Inter",
+      fontFamily: "Inter, sans-serif",
       bold: false,
       italic: false,
       align: "center",
+      effects: { ...defaultTextEffect },
     };
     setTextElements([...textElements, newText]);
     setSelectedElement({ type: "text", id: newText.id });
@@ -436,21 +498,60 @@ export default function BannerEditor() {
     setDragging(null);
   };
 
-  const getBackgroundStyle = () => {
-    if (useGradient) {
-      const directions: Record<string, string> = {
-        "to-r": "to right",
-        "to-l": "to left",
-        "to-t": "to top",
-        "to-b": "to bottom",
-        "to-br": "to bottom right",
-        "to-bl": "to bottom left",
-      };
+  const getBackgroundStyle = (): React.CSSProperties => {
+    const directions: Record<string, string> = {
+      "to-r": "to right",
+      "to-l": "to left",
+      "to-t": "to top",
+      "to-b": "to bottom",
+      "to-br": "to bottom right",
+      "to-bl": "to bottom left",
+    };
+
+    const radialPositions: Record<string, string> = {
+      "center": "circle at center",
+      "top-left": "circle at top left",
+      "top-right": "circle at top right",
+      "bottom-left": "circle at bottom left",
+      "bottom-right": "circle at bottom right",
+      "top": "circle at top",
+      "bottom": "circle at bottom",
+      "left": "circle at left",
+      "right": "circle at right",
+    };
+
+    let baseBackground = "";
+    let patternOverlay = "";
+
+    switch (backgroundType) {
+      case "solid":
+        baseBackground = backgroundColor;
+        break;
+      case "linear":
+        baseBackground = `linear-gradient(${directions[gradientDirection]}, ${gradientFrom}, ${gradientTo})`;
+        break;
+      case "radial":
+        baseBackground = `radial-gradient(${radialPositions[radialPosition]}, ${gradientFrom}, ${gradientTo})`;
+        break;
+      case "pattern":
+        baseBackground = `linear-gradient(${directions[gradientDirection]}, ${gradientFrom}, ${gradientTo})`;
+        if (selectedPattern) {
+          const pattern = PATTERN_PRESETS.find(p => p.id === selectedPattern);
+          if (pattern) {
+            patternOverlay = pattern.style;
+          }
+        }
+        break;
+    }
+
+    if (patternOverlay) {
       return {
-        background: `linear-gradient(${directions[gradientDirection]}, ${gradientFrom}, ${gradientTo})`,
+        background: `${patternOverlay}, ${baseBackground}`,
+        backgroundSize: selectedPattern === "dots" ? "20px 20px" : selectedPattern === "grid" ? "20px 20px" : "auto",
       };
     }
-    return { backgroundColor };
+
+    return { background: baseBackground };
   };
 
   const exportAsPNG = async () => {
@@ -554,7 +655,8 @@ export default function BannerEditor() {
     );
   };
 
-  const selectedText = selectedElement?.type === "text" ? textElements.find((t) => t.id === selectedElement.id) : null;
+  const rawSelectedText = selectedElement?.type === "text" ? textElements.find((t) => t.id === selectedElement.id) : null;
+  const selectedText = rawSelectedText ? getTextWithDefaults(rawSelectedText) : null;
   const selectedIcon = selectedElement?.type === "icon" ? iconElements.find((i) => i.id === selectedElement.id) : null;
   const selectedImage = selectedElement?.type === "image" ? imageElements.find((i) => i.id === selectedElement.id) : null;
 
@@ -648,26 +750,49 @@ export default function BannerEditor() {
                 </div>
               ))}
 
-              {textElements.map((text) => (
-                <div
-                  key={text.id}
-                  className={`absolute cursor-move select-none whitespace-nowrap ${selectedElement?.id === text.id ? "ring-2 ring-primary ring-offset-2 rounded px-1" : ""}`}
-                  style={{
-                    left: text.x,
-                    top: text.y,
-                    fontSize: text.fontSize,
-                    color: text.color,
-                    fontFamily: text.fontFamily,
-                    fontWeight: text.bold ? "bold" : "normal",
-                    fontStyle: text.italic ? "italic" : "normal",
-                    textAlign: text.align,
-                  }}
-                  onMouseDown={(e) => handleMouseDown(e, "text", text.id)}
-                  data-testid={`text-element-${text.id}`}
-                >
-                  {text.text}
-                </div>
-              ))}
+              {textElements.map((rawText) => {
+                const text = getTextWithDefaults(rawText);
+                const getTextEffectStyle = (): React.CSSProperties => {
+                  const styles: React.CSSProperties = {};
+                  const shadows: string[] = [];
+                  
+                  if (text.effects.shadow) {
+                    shadows.push(`2px 2px ${text.effects.shadowBlur}px ${text.effects.shadowColor}`);
+                  }
+                  if (text.effects.glow) {
+                    shadows.push(`0 0 ${text.effects.glowIntensity}px ${text.effects.glowColor}`);
+                  }
+                  if (shadows.length > 0) {
+                    styles.textShadow = shadows.join(", ");
+                  }
+                  if (text.effects.outline) {
+                    styles.WebkitTextStroke = `${text.effects.outlineWidth}px ${text.effects.outlineColor}`;
+                  }
+                  return styles;
+                };
+
+                return (
+                  <div
+                    key={text.id}
+                    className={`absolute cursor-move select-none whitespace-nowrap ${selectedElement?.id === text.id ? "ring-2 ring-primary ring-offset-2 rounded px-1" : ""}`}
+                    style={{
+                      left: text.x,
+                      top: text.y,
+                      fontSize: text.fontSize,
+                      color: text.color,
+                      fontFamily: text.fontFamily,
+                      fontWeight: text.bold ? "bold" : "normal",
+                      fontStyle: text.italic ? "italic" : "normal",
+                      textAlign: text.align,
+                      ...getTextEffectStyle(),
+                    }}
+                    onMouseDown={(e) => handleMouseDown(e, "text", text.id)}
+                    data-testid={`text-element-${text.id}`}
+                  >
+                    {text.text}
+                  </div>
+                );
+              })}
             </div>
           </CardContent>
         </Card>
@@ -692,22 +817,45 @@ export default function BannerEditor() {
             <TabsContent value="background" className="space-y-4 mt-4">
               <Card>
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-sm">Arka Plan</CardTitle>
+                  <CardTitle className="text-sm">Arka Plan Tipi</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      id="useGradient"
-                      checked={useGradient}
-                      onChange={(e) => setUseGradient(e.target.checked)}
-                      className="rounded"
-                      data-testid="checkbox-gradient"
-                    />
-                    <Label htmlFor="useGradient">Degrade Kullan</Label>
+                  <div className="grid grid-cols-4 gap-1">
+                    <Button 
+                      size="sm" 
+                      variant={backgroundType === "solid" ? "default" : "outline"}
+                      onClick={() => setBackgroundType("solid")}
+                      data-testid="btn-bg-solid"
+                    >
+                      Düz
+                    </Button>
+                    <Button 
+                      size="sm" 
+                      variant={backgroundType === "linear" ? "default" : "outline"}
+                      onClick={() => setBackgroundType("linear")}
+                      data-testid="btn-bg-linear"
+                    >
+                      Lineer
+                    </Button>
+                    <Button 
+                      size="sm" 
+                      variant={backgroundType === "radial" ? "default" : "outline"}
+                      onClick={() => setBackgroundType("radial")}
+                      data-testid="btn-bg-radial"
+                    >
+                      Radial
+                    </Button>
+                    <Button 
+                      size="sm" 
+                      variant={backgroundType === "pattern" ? "default" : "outline"}
+                      onClick={() => setBackgroundType("pattern")}
+                      data-testid="btn-bg-pattern"
+                    >
+                      Desen
+                    </Button>
                   </div>
 
-                  {!useGradient ? (
+                  {backgroundType === "solid" && (
                     <div className="space-y-2">
                       <Label>Tek Renk</Label>
                       <div className="flex gap-2">
@@ -738,11 +886,13 @@ export default function BannerEditor() {
                         ))}
                       </div>
                     </div>
-                  ) : (
+                  )}
+
+                  {(backgroundType === "linear" || backgroundType === "radial" || backgroundType === "pattern") && (
                     <div className="space-y-3">
                       <div className="grid grid-cols-2 gap-2">
                         <div>
-                          <Label className="text-xs">Baslangic</Label>
+                          <Label className="text-xs">Başlangıç</Label>
                           <input
                             type="color"
                             value={gradientFrom}
@@ -752,7 +902,7 @@ export default function BannerEditor() {
                           />
                         </div>
                         <div>
-                          <Label className="text-xs">Bitis</Label>
+                          <Label className="text-xs">Bitiş</Label>
                           <input
                             type="color"
                             value={gradientTo}
@@ -780,6 +930,50 @@ export default function BannerEditor() {
                       </div>
                     </div>
                   )}
+
+                  {backgroundType === "radial" && (
+                    <div className="space-y-2">
+                      <Label className="text-xs">Işık Noktası (Spotlight)</Label>
+                      <Select value={radialPosition} onValueChange={setRadialPosition}>
+                        <SelectTrigger data-testid="select-radial-position">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="center">Merkez</SelectItem>
+                          <SelectItem value="top-left">Sol Üst</SelectItem>
+                          <SelectItem value="top-right">Sağ Üst</SelectItem>
+                          <SelectItem value="bottom-left">Sol Alt</SelectItem>
+                          <SelectItem value="bottom-right">Sağ Alt</SelectItem>
+                          <SelectItem value="top">Üst</SelectItem>
+                          <SelectItem value="bottom">Alt</SelectItem>
+                          <SelectItem value="left">Sol</SelectItem>
+                          <SelectItem value="right">Sağ</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+
+                  {backgroundType === "pattern" && (
+                    <div className="space-y-2">
+                      <Label className="text-xs">Desen Seç</Label>
+                      <div className="grid grid-cols-2 gap-2">
+                        {PATTERN_PRESETS.map((pattern) => (
+                          <button
+                            key={pattern.id}
+                            className={`h-12 rounded text-xs text-white font-medium border-2 transition-colors ${selectedPattern === pattern.id ? "border-primary" : "border-transparent hover:border-muted"}`}
+                            style={{ 
+                              background: `${pattern.style}, linear-gradient(to right, ${gradientFrom}, ${gradientTo})`,
+                              backgroundSize: pattern.id === "dots" ? "20px 20px" : pattern.id === "grid" ? "20px 20px" : "auto",
+                            }}
+                            onClick={() => setSelectedPattern(pattern.id)}
+                            data-testid={`pattern-${pattern.id}`}
+                          >
+                            {pattern.name}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </TabsContent>
@@ -797,72 +991,219 @@ export default function BannerEditor() {
                 </CardHeader>
                 <CardContent className="space-y-3">
                   {selectedText && (
-                    <>
-                      <div>
-                        <Label className="text-xs">Metin</Label>
-                        <Textarea
-                          value={selectedText.text}
-                          onChange={(e) => updateTextElement(selectedText.id, { text: e.target.value })}
-                          className="mt-1"
-                          data-testid="input-text-content"
-                        />
-                      </div>
-                      <div className="grid grid-cols-2 gap-2">
+                    <ScrollArea className="h-[400px] pr-3">
+                      <div className="space-y-3">
                         <div>
-                          <Label className="text-xs">Font Boyutu</Label>
-                          <Slider
-                            value={[selectedText.fontSize]}
-                            onValueChange={([v]) => updateTextElement(selectedText.id, { fontSize: v })}
-                            min={12}
-                            max={72}
-                            step={1}
-                            className="mt-2"
-                            data-testid="slider-font-size"
-                          />
-                          <span className="text-xs text-muted-foreground">{selectedText.fontSize}px</span>
-                        </div>
-                        <div>
-                          <Label className="text-xs">Renk</Label>
-                          <input
-                            type="color"
-                            value={selectedText.color}
-                            onChange={(e) => updateTextElement(selectedText.id, { color: e.target.value })}
-                            className="w-full h-8 rounded cursor-pointer mt-1"
-                            data-testid="input-text-color"
+                          <Label className="text-xs">Metin</Label>
+                          <Textarea
+                            value={selectedText.text}
+                            onChange={(e) => updateTextElement(selectedText.id, { text: e.target.value })}
+                            className="mt-1"
+                            data-testid="input-text-content"
                           />
                         </div>
+
+                        <div>
+                          <Label className="text-xs">Font Ailesi</Label>
+                          <Select 
+                            value={selectedText.fontFamily} 
+                            onValueChange={(v) => updateTextElement(selectedText.id, { fontFamily: v })}
+                          >
+                            <SelectTrigger data-testid="select-font-family">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {FONT_OPTIONS.map((font) => (
+                                <SelectItem key={font.value} value={font.value} style={{ fontFamily: font.value }}>
+                                  {font.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <Label className="text-xs">Font Boyutu</Label>
+                            <Slider
+                              value={[selectedText.fontSize]}
+                              onValueChange={([v]) => updateTextElement(selectedText.id, { fontSize: v })}
+                              min={12}
+                              max={72}
+                              step={1}
+                              className="mt-2"
+                              data-testid="slider-font-size"
+                            />
+                            <span className="text-xs text-muted-foreground">{selectedText.fontSize}px</span>
+                          </div>
+                          <div>
+                            <Label className="text-xs">Renk</Label>
+                            <input
+                              type="color"
+                              value={selectedText.color}
+                              onChange={(e) => updateTextElement(selectedText.id, { color: e.target.value })}
+                              className="w-full h-8 rounded cursor-pointer mt-1"
+                              data-testid="input-text-color"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="flex gap-1">
+                          <Button
+                            size="sm"
+                            variant={selectedText.bold ? "default" : "outline"}
+                            onClick={() => updateTextElement(selectedText.id, { bold: !selectedText.bold })}
+                            data-testid="button-text-bold"
+                          >
+                            <Bold className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant={selectedText.italic ? "default" : "outline"}
+                            onClick={() => updateTextElement(selectedText.id, { italic: !selectedText.italic })}
+                            data-testid="button-text-italic"
+                          >
+                            <Italic className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            onClick={deleteSelectedElement}
+                            data-testid="button-delete-text"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+
+                        <div className="pt-3 border-t space-y-3">
+                          <Label className="text-xs font-medium">Metin Efektleri</Label>
+                          
+                          <div className="space-y-2">
+                            <div className="flex items-center justify-between">
+                              <Label className="text-xs">Gölge</Label>
+                              <Switch
+                                checked={selectedText.effects.shadow}
+                                onCheckedChange={(v) => updateTextElement(selectedText.id, { 
+                                  effects: { ...selectedText.effects, shadow: v } 
+                                })}
+                                data-testid="switch-text-shadow"
+                              />
+                            </div>
+                            {selectedText.effects.shadow && (
+                              <div className="grid grid-cols-2 gap-2 pl-2">
+                                <div>
+                                  <Label className="text-xs">Renk</Label>
+                                  <input
+                                    type="color"
+                                    value={selectedText.effects.shadowColor}
+                                    onChange={(e) => updateTextElement(selectedText.id, { 
+                                      effects: { ...selectedText.effects, shadowColor: e.target.value } 
+                                    })}
+                                    className="w-full h-6 rounded cursor-pointer"
+                                  />
+                                </div>
+                                <div>
+                                  <Label className="text-xs">Bulanıklık</Label>
+                                  <Slider
+                                    value={[selectedText.effects.shadowBlur]}
+                                    onValueChange={([v]) => updateTextElement(selectedText.id, { 
+                                      effects: { ...selectedText.effects, shadowBlur: v } 
+                                    })}
+                                    min={1}
+                                    max={20}
+                                    step={1}
+                                  />
+                                </div>
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="space-y-2">
+                            <div className="flex items-center justify-between">
+                              <Label className="text-xs">Dış Çizgi (Outline)</Label>
+                              <Switch
+                                checked={selectedText.effects.outline}
+                                onCheckedChange={(v) => updateTextElement(selectedText.id, { 
+                                  effects: { ...selectedText.effects, outline: v } 
+                                })}
+                                data-testid="switch-text-outline"
+                              />
+                            </div>
+                            {selectedText.effects.outline && (
+                              <div className="grid grid-cols-2 gap-2 pl-2">
+                                <div>
+                                  <Label className="text-xs">Renk</Label>
+                                  <input
+                                    type="color"
+                                    value={selectedText.effects.outlineColor}
+                                    onChange={(e) => updateTextElement(selectedText.id, { 
+                                      effects: { ...selectedText.effects, outlineColor: e.target.value } 
+                                    })}
+                                    className="w-full h-6 rounded cursor-pointer"
+                                  />
+                                </div>
+                                <div>
+                                  <Label className="text-xs">Kalınlık</Label>
+                                  <Slider
+                                    value={[selectedText.effects.outlineWidth]}
+                                    onValueChange={([v]) => updateTextElement(selectedText.id, { 
+                                      effects: { ...selectedText.effects, outlineWidth: v } 
+                                    })}
+                                    min={1}
+                                    max={5}
+                                    step={1}
+                                  />
+                                </div>
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="space-y-2">
+                            <div className="flex items-center justify-between">
+                              <Label className="text-xs">Parlaklık (Glow)</Label>
+                              <Switch
+                                checked={selectedText.effects.glow}
+                                onCheckedChange={(v) => updateTextElement(selectedText.id, { 
+                                  effects: { ...selectedText.effects, glow: v } 
+                                })}
+                                data-testid="switch-text-glow"
+                              />
+                            </div>
+                            {selectedText.effects.glow && (
+                              <div className="grid grid-cols-2 gap-2 pl-2">
+                                <div>
+                                  <Label className="text-xs">Renk</Label>
+                                  <input
+                                    type="color"
+                                    value={selectedText.effects.glowColor}
+                                    onChange={(e) => updateTextElement(selectedText.id, { 
+                                      effects: { ...selectedText.effects, glowColor: e.target.value } 
+                                    })}
+                                    className="w-full h-6 rounded cursor-pointer"
+                                  />
+                                </div>
+                                <div>
+                                  <Label className="text-xs">Yoğunluk</Label>
+                                  <Slider
+                                    value={[selectedText.effects.glowIntensity]}
+                                    onValueChange={([v]) => updateTextElement(selectedText.id, { 
+                                      effects: { ...selectedText.effects, glowIntensity: v } 
+                                    })}
+                                    min={5}
+                                    max={30}
+                                    step={1}
+                                  />
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </div>
                       </div>
-                      <div className="flex gap-1">
-                        <Button
-                          size="sm"
-                          variant={selectedText.bold ? "default" : "outline"}
-                          onClick={() => updateTextElement(selectedText.id, { bold: !selectedText.bold })}
-                          data-testid="button-text-bold"
-                        >
-                          <Bold className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant={selectedText.italic ? "default" : "outline"}
-                          onClick={() => updateTextElement(selectedText.id, { italic: !selectedText.italic })}
-                          data-testid="button-text-italic"
-                        >
-                          <Italic className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="destructive"
-                          onClick={deleteSelectedElement}
-                          data-testid="button-delete-text"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </>
+                    </ScrollArea>
                   )}
                   {!selectedText && (
                     <p className="text-sm text-muted-foreground text-center py-4">
-                      Bir metin secin veya yeni metin ekleyin
+                      Bir metin seçin veya yeni metin ekleyin
                     </p>
                   )}
                 </CardContent>

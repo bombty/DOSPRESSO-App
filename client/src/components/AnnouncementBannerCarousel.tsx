@@ -89,11 +89,11 @@ export function AnnouncementBannerCarousel() {
         onClick={() => handleBannerClick(currentBanner.id)}
       >
         <Card 
-          className="overflow-hidden cursor-pointer group"
+          className="overflow-hidden cursor-pointer group rounded-lg"
           data-testid={`banner-carousel-${currentBanner.id}`}
         >
           <CardContent className="p-0">
-            <div className="relative aspect-[3/1] min-h-[120px] max-h-[200px]">
+            <div className="relative w-full" style={{ aspectRatio: '4/1', minHeight: '100px', maxHeight: '180px' }}>
               {currentBanner.bannerImageUrl && !imageLoadErrors[currentBanner.id] ? (
                 <>
                   <img 

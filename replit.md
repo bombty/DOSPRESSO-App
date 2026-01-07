@@ -39,6 +39,11 @@ The frontend utilizes React 18+ with TypeScript and Vite, employing Shadcn/ui (N
 - **New Shop Opening Management System**: A 7-phase workflow tracking for franchise openings with hierarchical tasks, RACI assignments, and procurement/bidding.
 - **Admin Features**: Email settings (SMTP), banner management with photo upload, AI settings, project task detail pages, and milestone management.
 - **Content Studio (İçerik Stüdyosu)**: Unified content management at `/icerik-studyosu` consolidating banner creation and announcement publishing. Features three tabs: Taslaklar (drafts with isActive=false), Yayınlanmış (published announcements), and Carousel (active banners). Supports draft-to-publish workflow with targeting options (roles/branches) and scheduling. Old routes (/duyurular, /admin/bannerlar, /admin/duyurular) redirect to this unified studio. Banner Editor opens inline as a dialog for creating visual content.
+- **Advanced Banner Editor**: Visual banner creation at `/banner-editor` with:
+  - **4 Background Types**: Solid color, linear gradient (6 directions), radial gradient (9 spotlight positions: center, corners, edges), and pattern overlays (stripes, dots, grid, wave)
+  - **7 Font Families**: Inter, Poppins, Playfair Display, Bebas Neue, Rubik, Lora, Montserrat via Google Fonts
+  - **Text Effects**: Shadow (color + blur control), Outline (color + stroke width), Glow (color + intensity) with toggle switches
+  - **Legacy Data Compatibility**: `getTextWithDefaults()` helper safely initializes missing properties for backward compatibility
 - **Global Search & Calendar View**: Functionality for finding information across the platform and visualizing tasks/milestones.
 - **Unified Dashboard Alert System**: Real-time alerts for both branch and factory dashboards via `dashboard_alerts` table. Supports 12 trigger types (late clock-in, quality issues, production delays, missing staff, etc.) with severity levels (critical/warning/info) and visual feedback (color-coded cards, pulsing banners for critical). API endpoints at `/api/alerts/:context/:contextId` for CRUD operations with acknowledge/resolve/dismiss workflows.
 
