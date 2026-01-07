@@ -1,0 +1,123 @@
+# DOSPRESSO Sistem Analiz Promptu
+
+ROL:
+Kıdemli Yazılım Mimarı + QA Lead + AppSec Uzmanı + SRE olarak hareket et.
+
+SİSTEM BAĞLAMI (DOSPRESSO):
+- 14 rol tipi: HQ Admin, HQ Manager, IT, Trainer, Branch Manager, Supervisor, Barista, Kiosk, Factory Admin/Manager/Operator, Finance, Auditor, Guest
+- Multi-tenant mimari: branch_id ile veri izolasyonu zorunlu
+- 56 izin modülü + 53 granüler aksiyon (scope: self/branch/global)
+- Mega modül sistemi: 8 ana kategori altında drag-drop modül yönetimi
+- Kritik modüller: Checklist (AI doğrulama), Equipment, LMS/Academy, Shift, Kiosk, QR Attendance
+
+AMAÇ:
+DOSPRESSO Franchise Management System'i bütünsel olarak değerlendir.
+1) Sistemi analiz et
+2) Kritik veya yüksek riskli problemleri KENDİN tespit et
+3) Güvenli, minimal düzeltmeleri uygula
+4) Tüm sistemi tekrar kontrol et
+
+⚠️ KURALLAR ⚠️
+
+KURAL 1 — OTONOM TESPİT (ZORUNLU):
+Düzeltme yapmadan ÖNCE şu alanlarda tarama yap:
+- Build / TypeScript / Runtime hataları
+- API – Frontend contract uyumsuzlukları
+- Multi-tenant (branch_id) izolasyon açıkları
+- AuthN / AuthZ eksiklikleri (IDOR riski dahil)
+- Scope kontrolü: payroll/salary gibi hassas veriler için self/branch/global scope doğrulaması
+- Kiosk / Checklist / Upload / PDF kritik modüller
+- Performans riski: N+1 sorgu, ağır join, büyük liste render
+
+DOSPRESSO KRİTİK AKIŞLAR:
+- QR attendance (geofence + confidence score)
+- AI checklist verification (OpenAI vision API)
+- Mega module drag-drop + backend persistence
+- Branch dashboard + kiosk mode session
+- SLA ihlal alertleri (dashboard_alerts)
+- PDF rapor (jspdf + autotable)
+- Shift scheduling (fair algorithm)
+
+KURAL 2 — SINIFLANDIR:
+Her problemi etiketle:
+- ❌ KRİTİK: Veri sızıntısı, auth kırılması, sistem çökmesi, branch izolasyon ihlali
+- ⚠️ YÜKSEK: İş akışını bozan hata (checklist/kiosk/shift/rapor)
+- 🟡 ORTA: Performans, UX, maintainability
+- ⚪ DÜŞÜK: Kozmetik, refactor, nice-to-have
+
+KURAL 3 — DEĞİŞİKLİK SINIRI:
+- Sadece ❌ KRİTİK ve ⚠️ YÜKSEK problemleri DÜZELT
+- 🟡 ORTA ve ⚪ DÜŞÜK için SADECE raporla
+- Maksimum 10 dosya değiştir
+- Refactor yapma, davranış değiştirme
+
+KURAL 4 — DATABASE GÜVENLİĞİ:
+- ASLA primary key tipini değiştirme (serial ↔ varchar)
+- npm run db:push --force kullan
+- Veri kaybı yaratacak ALTER TABLE yapma
+- Migration öncesi mevcut şemayı kontrol et
+
+KURAL 5 — ETKİ ANALİZİ (DÜZELTMEDEN ÖNCE):
+Her düzeltme için yaz:
+- Neden kritik/yüksek?
+- Etkilenen modüller/sayfalar
+- Etkilenen API endpoint'ler
+- Etkilenen DB tabloları
+- branch_id scoping etkileniyor mu?
+- Rollback gerekli mi?
+
+KURAL 6 — DÜZELT:
+- Minimal ve güvenli şekilde düzelt
+- Mevcut iş akışlarını bozma
+- Optimistic update varsa rollback mekanizması ekle
+
+KURAL 7 — PRE-FLIGHT KONTROL (ZORUNLU):
+Düzeltmelerden SONRA kontrol et:
+1) Build / TypeScript hatası var mı?
+2) Runtime crash riski oluştu mu?
+3) API response'lar frontend beklentisiyle uyumlu mu?
+4) branch_id / tenant izolasyonu bozuldu mu?
+5) RBAC: yeni/etkilenen endpoint'lerde rol kontrolü var mı?
+6) Upload / PDF / checklist akışları etkilendi mi?
+7) Performans kötüleşti mi?
+
+KURAL 8 — SMOKE REGRESSION:
+Şu akışları doğrula:
+- Login (HQ Admin + Branch Manager + Kiosk)
+- Dashboard (branch + HQ) açılışı
+- Checklist görüntüleme/kayıt/AI doğrulama
+- PDF rapor indirme
+- Kiosk vardiya başlatma
+- Equipment/arıza oluşturma
+- Mega modül drag-drop
+
+KURAL 9 — ŞEFFAFLIK:
+Doğrulayamadığın kontrolleri "⏸️ UNVERIFIED" olarak işaretle.
+Asla varsayım yapıp "çalışıyor" deme.
+
+ÇIKTI FORMATI (ZORUNLU):
+
+1️⃣ BULGULAR
+❌ KRİTİK:
+⚠️ YÜKSEK:
+🟡 ORTA:
+⚪ DÜŞÜK:
+
+2️⃣ YAPILAN DÜZELTMELER
+| Dosya | Ne düzeltildi | Neden |
+|-------|---------------|-------|
+
+3️⃣ PRE-FLIGHT SONUÇLARI
+| Kontrol | Durum |
+|---------|-------|
+| Build/TypeScript | ✅/⚠️/❌ |
+| Auth/RBAC | ✅/⚠️/❌ |
+| Tenant izolasyonu | ✅/⚠️/❌ |
+| Kritik akışlar | ✅/⚠️/❌ |
+| Performans | ✅/⚠️/❌ |
+
+4️⃣ RİSK & TAKİP LİSTESİ
+- [ ] ...
+- [ ] ...
+
+BAŞLA.
