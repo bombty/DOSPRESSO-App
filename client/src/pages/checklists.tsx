@@ -37,6 +37,8 @@ const EditChecklistFormSchema = z.object({
     id: z.number().optional(),
     taskDescription: z.string().min(1, "Görev açıklaması gerekli"),
     requiresPhoto: z.boolean(),
+    tolerancePercent: z.number().default(70),
+    aiVerificationType: z.enum(["none", "cleanliness", "arrangement", "machine_settings", "general"]).default("none"),
   })).min(1, "En az bir görev olmalı"),
 });
 
@@ -348,6 +350,8 @@ export default function Checklists() {
         id: t.id,
         taskDescription: t.taskDescription,
         requiresPhoto: t.requiresPhoto ?? false,
+        tolerancePercent: t.tolerancePercent ?? 70,
+        aiVerificationType: t.aiVerificationType ?? "none",
       })),
     });
     
@@ -376,12 +380,16 @@ export default function Checklists() {
             taskDescription: t.taskDescription,
             requiresPhoto: t.requiresPhoto,
             order: idx,
+            tolerancePercent: t.tolerancePercent ?? 70,
+            aiVerificationType: (t.aiVerificationType ?? "none") as "none" | "cleanliness" | "arrangement" | "machine_settings" | "general",
           })),
           ...uniqueRemovedIds.map(id => ({
             id,
             taskDescription: "",
             requiresPhoto: false,
             order: 0,
+            tolerancePercent: 70,
+            aiVerificationType: "none" as const,
             _action: "delete" as const,
           })),
         ],
@@ -1014,7 +1022,7 @@ export default function Checklists() {
                       type="button"
                       size="sm"
                       variant="outline"
-                      onClick={() => append({ id: undefined, taskDescription: "", requiresPhoto: false })}
+                      onClick={() => append({ id: undefined, taskDescription: "", requiresPhoto: false, tolerancePercent: 70, aiVerificationType: "none" })}
                       data-testid="button-add-task"
                     >
                       <Plus className="h-4 w-4 mr-1" />

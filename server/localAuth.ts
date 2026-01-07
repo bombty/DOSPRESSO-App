@@ -308,16 +308,34 @@ export function deleteKioskSession(token: string): void {
   kioskSessions.delete(token);
 }
 
+// Kiosk işlemlerine web oturumu ile de erişebilen yetkili roller
+const KIOSK_AUTHORIZED_ROLES = [
+  'admin', 'fabrika_mudur', 'fabrika_operator', 'fabrika',
+  'supervisor', 'supervisor_buddy', 'coach'
+];
+
 export const isKioskAuthenticated: RequestHandler = (req, res, next) => {
+  // Önce kiosk token'ı kontrol et
   const token = req.headers['x-kiosk-token'] as string;
-  if (!token) {
-    return res.status(401).json({ message: "Kiosk oturumu gerekli" });
+  if (token) {
+    const session = validateKioskSession(token);
+    if (session) {
+      (req as any).kioskUserId = session.userId;
+      (req as any).kioskStationId = session.stationId;
+      (req as any).authMethod = 'kiosk_token';
+      return next();
+    }
   }
-  const session = validateKioskSession(token);
-  if (!session) {
-    return res.status(401).json({ message: "Geçersiz veya süresi dolmuş oturum" });
+  
+  // Kiosk token yoksa veya geçersizse, web oturumunu kontrol et
+  if (req.isAuthenticated() && req.user) {
+    const user = req.user as any;
+    if (KIOSK_AUTHORIZED_ROLES.includes(user.role)) {
+      (req as any).kioskUserId = user.id;
+      (req as any).authMethod = 'web_session';
+      return next();
+    }
   }
-  (req as any).kioskUserId = session.userId;
-  (req as any).kioskStationId = session.stationId;
-  next();
+  
+  return res.status(401).json({ message: "Kiosk oturumu gerekli" });
 };

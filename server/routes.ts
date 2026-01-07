@@ -272,6 +272,20 @@ const trainingFileUpload = multer({
   }
 });
 
+// General file upload multer for checklist photos etc.
+const generalFileUpload = multer({
+  storage: uploadStorage,
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB max
+  fileFilter: (req, file, cb) => {
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/heic'];
+    if (allowedTypes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Sadece resim dosyaları yüklenebilir (JPEG, PNG, WebP, HEIC).'));
+    }
+  }
+});
+
 // Helper to generate branch summary report
 async function generateBranchSummary(pendingTasks: number, activeFaults: number, overdueChecklists: number, maintenanceReminders: number, criticalEquipment: number, avgHealth: number, period: 'daily' | 'weekly' | 'monthly', userId: string): Promise<string> {
   try {
@@ -747,6 +761,61 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
         return res.status(400).json({ message: "Invalid upload data", errors: error.errors });
       }
       res.status(500).json({ message: "Upload failed" });
+    }
+  });
+
+  // POST /api/upload - General file upload endpoint using multipart/form-data
+  app.post('/api/upload', isAuthenticated, generalFileUpload.single('file'), async (req: any, res) => {
+    try {
+      const { Client } = await import('@replit/object-storage');
+      const crypto = await import('crypto');
+      
+      const file = req.file;
+      if (!file) {
+        return res.status(400).json({ message: "Dosya gerekli" });
+      }
+      
+      // Optional folder parameter
+      const folder = req.body.folder || 'general';
+      
+      // Generate unique filename
+      const timestamp = Date.now();
+      const randomStr = crypto.randomBytes(8).toString('hex');
+      const ext = file.originalname.split('.').pop() || 'jpg';
+      const filename = `${timestamp}_${randomStr}.${ext}`;
+      
+      // Generate a secure access token for this file
+      const accessToken = crypto.randomBytes(32).toString('hex');
+      
+      // Upload to Object Storage
+      const client = new Client();
+      const path = `.private/${folder}/${req.user.id}/${filename}`;
+      const { ok, error } = await client.uploadFromBytes(path, file.buffer);
+      
+      if (!ok) {
+        console.error("Object Storage upload failed:", error);
+        return res.status(500).json({ message: "Yükleme başarısız", error });
+      }
+      
+      // Store access token mapping
+      if (!global.fileAccessTokens) {
+        global.fileAccessTokens = new Map();
+      }
+      global.fileAccessTokens.set(accessToken, {
+        path,
+        userId: req.user.id,
+        expiresAt: Date.now() + (24 * 60 * 60 * 1000), // 24 hours
+      });
+      
+      // Generate a fully qualified download URL with token
+      const protocol = req.protocol || 'https';
+      const host = req.get('host') || process.env.REPLIT_DEV_DOMAIN || 'localhost:5000';
+      const url = `${protocol}://${host}/api/files/public/${accessToken}`;
+      
+      res.json({ url, path, size: file.buffer.length, filename });
+    } catch (error: any) {
+      console.error("Error uploading file:", error);
+      res.status(500).json({ message: "Yükleme başarısız", error: error.message });
     }
   });
 
