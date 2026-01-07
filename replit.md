@@ -70,6 +70,12 @@ The frontend utilizes React 18+ with TypeScript and Vite, employing Shadcn/ui (N
 ## Recent Changes (January 2026)
 - **Banner Draft Save Fix**: Made startDate and endDate nullable in banners table to allow saving drafts without date requirements
 - **PDF Generation Fix**: Resolved "No unicode cmap for font" error by switching to Helvetica font and implementing comprehensive Turkish character sanitization in pdfHelper.ts
+- **Employee of Month System**: Complete implementation with multi-criteria scoring:
+  - 6 new database tables: `staff_qr_ratings`, `staff_qr_tokens`, `employee_of_month_weights`, `monthly_employee_performance`, `employee_of_month_awards`, `manager_monthly_ratings`
+  - Weighted scoring: Attendance 20%, Checklist 20%, Tasks 15%, Customer Rating 15%, Manager Rating 20%, Leave Deduction 10%
+  - Manager evaluation system with 5 criteria: work performance, teamwork, initiative, customer relations, punctuality
+  - Branch-specific visibility: each branch sees only their winner, HQ/Admin sees all
+  - API endpoints: GET/POST /api/manager-ratings, employee-of-month calculations, performance tracking
 
 ## External Dependencies
 ### Third-Party Services

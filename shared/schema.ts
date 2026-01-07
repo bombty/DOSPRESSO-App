@@ -8654,10 +8654,11 @@ export const employeeOfMonthWeights = pgTable("employee_of_month_weights", {
   branchId: integer("branch_id").references(() => branches.id, { onDelete: "cascade" }), // null = global default
   
   // Puanlama ağırlıkları (toplam 100 olmalı)
-  attendanceWeight: integer("attendance_weight").default(25).notNull(), // Vardiya uyumu, zamanında gelme
-  checklistWeight: integer("checklist_weight").default(25).notNull(), // Checklist tamamlama oranı
-  taskWeight: integer("task_weight").default(20).notNull(), // Görev performansı
-  customerRatingWeight: integer("customer_rating_weight").default(20).notNull(), // QR müşteri değerlendirmesi
+  attendanceWeight: integer("attendance_weight").default(20).notNull(), // Vardiya uyumu, zamanında gelme
+  checklistWeight: integer("checklist_weight").default(20).notNull(), // Checklist tamamlama oranı
+  taskWeight: integer("task_weight").default(15).notNull(), // Görev performansı
+  customerRatingWeight: integer("customer_rating_weight").default(15).notNull(), // QR müşteri değerlendirmesi
+  managerRatingWeight: integer("manager_rating_weight").default(20).notNull(), // Yönetici değerlendirmesi
   leaveDeductionWeight: integer("leave_deduction_weight").default(10).notNull(), // İzin kesintisi (rapor, ücretsiz izin)
   
   // Bonus puanlar (opsiyonel)
@@ -8692,6 +8693,7 @@ export const monthlyEmployeePerformance = pgTable("monthly_employee_performance"
   checklistScore: integer("checklist_score").default(0), // Checklist tamamlama skoru
   taskScore: integer("task_score").default(0), // Görev performans skoru
   customerRatingScore: integer("customer_rating_score").default(0), // QR değerlendirme skoru
+  managerRatingScore: integer("manager_rating_score").default(0), // Yönetici değerlendirme skoru
   
   // Detaylı metrikler
   totalShifts: integer("total_shifts").default(0),
@@ -8791,3 +8793,64 @@ export const insertEmployeeOfMonthAwardSchema = createInsertSchema(employeeOfMon
 
 export type InsertEmployeeOfMonthAward = z.infer<typeof insertEmployeeOfMonthAwardSchema>;
 export type EmployeeOfMonthAward = typeof employeeOfMonthAwards.$inferSelect;
+
+// ========================================
+// YÖNETİCİ AYLIK PERSONEL DEĞERLENDİRME
+// ========================================
+
+// Yönetici Aylık Personel Değerlendirmesi
+export const managerMonthlyRatings = pgTable("manager_monthly_ratings", {
+  id: serial("id").primaryKey(),
+  
+  // Değerlendiren yönetici
+  managerId: varchar("manager_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  
+  // Değerlendirilen personel
+  employeeId: varchar("employee_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  branchId: integer("branch_id").notNull().references(() => branches.id, { onDelete: "cascade" }),
+  
+  // Dönem
+  month: integer("month").notNull(), // 1-12
+  year: integer("year").notNull(),
+  
+  // Değerlendirme kriterleri (1-5 puan)
+  workPerformanceRating: integer("work_performance_rating").notNull(), // Genel çalışma performansı
+  teamworkRating: integer("teamwork_rating").notNull(), // Ekip uyumu ve iletişim
+  initiativeRating: integer("initiative_rating").notNull(), // İnisiyatif ve problem çözme
+  customerRelationsRating: integer("customer_relations_rating").notNull(), // Müşteri ilişkileri
+  punctualityRating: integer("punctuality_rating").notNull(), // Dakiklik ve güvenilirlik
+  
+  // Ortalama puan (otomatik hesaplanır)
+  averageRating: numeric("average_rating", { precision: 3, scale: 2 }).notNull(),
+  
+  // Yorum ve öneriler
+  strengths: text("strengths"), // Güçlü yönler
+  areasToImprove: text("areas_to_improve"), // Geliştirilmesi gereken alanlar
+  generalComment: text("general_comment"), // Genel yorum
+  
+  // Durum
+  status: varchar("status", { length: 20 }).default("submitted").notNull(), // draft, submitted
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  unique("manager_rating_unique").on(table.managerId, table.employeeId, table.month, table.year),
+  index("manager_rating_employee_idx").on(table.employeeId),
+  index("manager_rating_branch_idx").on(table.branchId),
+  index("manager_rating_period_idx").on(table.month, table.year),
+]);
+
+export const insertManagerMonthlyRatingSchema = createInsertSchema(managerMonthlyRatings).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  workPerformanceRating: z.number().int().min(1).max(5),
+  teamworkRating: z.number().int().min(1).max(5),
+  initiativeRating: z.number().int().min(1).max(5),
+  customerRelationsRating: z.number().int().min(1).max(5),
+  punctualityRating: z.number().int().min(1).max(5),
+});
+
+export type InsertManagerMonthlyRating = z.infer<typeof insertManagerMonthlyRatingSchema>;
+export type ManagerMonthlyRating = typeof managerMonthlyRatings.$inferSelect;

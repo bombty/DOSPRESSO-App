@@ -250,6 +250,7 @@ import {
   employeeOfMonthWeights,
   monthlyEmployeePerformance,
   employeeOfMonthAwards,
+  managerMonthlyRatings,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, sql, and, or, isNull, isNotNull, inArray, lte, gte } from "drizzle-orm";
@@ -28826,7 +28827,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`
       
       if (!weights || weights.length === 0) {
         weights = await db.select().from(employeeOfMonthWeights)
-          .where(sql\`\${employeeOfMonthWeights.branchId} IS NULL\`)
+          .where(sql`\${employeeOfMonthWeights.branchId} IS NULL`)
           .limit(1);
       }
 
@@ -28858,14 +28859,14 @@ DOSPRESSO İnsan Kaynakları Ekibi`
 
       const { branchId, attendanceWeight, checklistWeight, taskWeight, customerRatingWeight, leaveDeductionWeight, bonusMaxPoints } = req.body;
 
-      const total = (attendanceWeight || 25) + (checklistWeight || 25) + (taskWeight || 20) + (customerRatingWeight || 20) + (leaveDeductionWeight || 10);
+      const total = (attendanceWeight || 20) + (checklistWeight || 20) + (taskWeight || 15) + (customerRatingWeight || 15) + (managerRatingWeight || 20) + (leaveDeductionWeight || 10);
       if (total !== 100) {
-        return res.status(400).json({ message: \`Ağırlıklar toplamı 100 olmalı (şu an: \${total})\` });
+        return res.status(400).json({ message: `Ağırlıklar toplamı 100 olmalı (şu an: \${total})` });
       }
 
       const existingCondition = branchId 
         ? eq(employeeOfMonthWeights.branchId, branchId)
-        : sql\`\${employeeOfMonthWeights.branchId} IS NULL\`;
+        : sql`\${employeeOfMonthWeights.branchId} IS NULL`;
 
       const existing = await db.select().from(employeeOfMonthWeights).where(existingCondition).limit(1);
 
@@ -28916,9 +28917,9 @@ DOSPRESSO İnsan Kaynakları Ekibi`
         .where(eq(employeeOfMonthWeights.branchId, branchId)).limit(1);
       if (weights.length === 0) {
         weights = await db.select().from(employeeOfMonthWeights)
-          .where(sql\`\${employeeOfMonthWeights.branchId} IS NULL\`).limit(1);
+          .where(sql`\${employeeOfMonthWeights.branchId} IS NULL`).limit(1);
       }
-      const w = weights[0] || { attendanceWeight: 25, checklistWeight: 25, taskWeight: 20, customerRatingWeight: 20, leaveDeductionWeight: 10 };
+      const w = weights[0] || { attendanceWeight: 20, checklistWeight: 20, taskWeight: 15, customerRatingWeight: 15, managerRatingWeight: 20, leaveDeductionWeight: 10 };
 
       const employees = await db.select().from(users)
         .where(and(eq(users.branchId, branchId), eq(users.isActive, true)));
@@ -28932,8 +28933,8 @@ DOSPRESSO İnsan Kaynakları Ekibi`
         const shifts = await db.select().from(branchShiftDailySummary)
           .where(and(
             eq(branchShiftDailySummary.userId, emp.id),
-            sql\`\${branchShiftDailySummary.workDate} >= \${startDate.toISOString().split('T')[0]}\`,
-            sql\`\${branchShiftDailySummary.workDate} <= \${endDate.toISOString().split('T')[0]}\`
+            sql`\${branchShiftDailySummary.workDate} >= \${startDate.toISOString().split('T')[0]}`,
+            sql`\${branchShiftDailySummary.workDate} <= \${endDate.toISOString().split('T')[0]}`
           ));
 
         const totalShifts = shifts.length;
@@ -28944,8 +28945,8 @@ DOSPRESSO İnsan Kaynakları Ekibi`
         const checklists = await db.select().from(checklistLogs)
           .where(and(
             eq(checklistLogs.completedBy, emp.id),
-            sql\`\${checklistLogs.completedAt} >= \${startDate.toISOString()}\`,
-            sql\`\${checklistLogs.completedAt} <= \${endDate.toISOString()}\`
+            sql`\${checklistLogs.completedAt} >= \${startDate.toISOString()}`,
+            sql`\${checklistLogs.completedAt} <= \${endDate.toISOString()}`
           ));
         
         const totalChecklists = checklists.length;
@@ -28956,8 +28957,8 @@ DOSPRESSO İnsan Kaynakları Ekibi`
         const taskRatings = await db.select().from(taskRatingsTable)
           .where(and(
             eq(taskRatingsTable.userId, emp.id),
-            sql\`\${taskRatingsTable.createdAt} >= \${startDate.toISOString()}\`,
-            sql\`\${taskRatingsTable.createdAt} <= \${endDate.toISOString()}\`
+            sql`\${taskRatingsTable.createdAt} >= \${startDate.toISOString()}`,
+            sql`\${taskRatingsTable.createdAt} <= \${endDate.toISOString()}`
           ));
         
         const avgTaskRating = taskRatings.length > 0 
@@ -28968,8 +28969,8 @@ DOSPRESSO İnsan Kaynakları Ekibi`
         const qrRatings = await db.select().from(staffQrRatings)
           .where(and(
             eq(staffQrRatings.staffId, emp.id),
-            sql\`\${staffQrRatings.createdAt} >= \${startDate.toISOString()}\`,
-            sql\`\${staffQrRatings.createdAt} <= \${endDate.toISOString()}\`,
+            sql`\${staffQrRatings.createdAt} >= \${startDate.toISOString()}`,
+            sql`\${staffQrRatings.createdAt} <= \${endDate.toISOString()}`,
             eq(staffQrRatings.status, 'active')
           ));
 
@@ -28977,13 +28978,26 @@ DOSPRESSO İnsan Kaynakları Ekibi`
           ? qrRatings.reduce((sum, r) => sum + r.overallRating, 0) / qrRatings.length
           : 0;
         const customerRatingScore = Math.round((avgCustomerRating / 5) * 100);
+        // Manager rating calculation
+        const managerRatings = await db.select().from(managerMonthlyRatings)
+          .where(and(
+            eq(managerMonthlyRatings.employeeId, emp.id),
+            eq(managerMonthlyRatings.month, month),
+            eq(managerMonthlyRatings.year, year),
+            eq(managerMonthlyRatings.status, "submitted")
+          ));
+        const avgManagerRating = managerRatings.length > 0
+          ? managerRatings.reduce((sum, r) => sum + parseFloat(r.averageRating || "0"), 0) / managerRatings.length
+          : 0;
+        const managerRatingScore = Math.round((avgManagerRating / 5) * 100);
+
 
         const leaves = await db.select().from(leaveRequests)
           .where(and(
             eq(leaveRequests.userId, emp.id),
             eq(leaveRequests.status, 'approved'),
-            sql\`\${leaveRequests.startDate} <= \${endDate.toISOString().split('T')[0]}\`,
-            sql\`\${leaveRequests.endDate} >= \${startDate.toISOString().split('T')[0]}\`
+            sql`\${leaveRequests.startDate} <= \${endDate.toISOString().split('T')[0]}`,
+            sql`\${leaveRequests.endDate} >= \${startDate.toISOString().split('T')[0]}`
           ));
 
         const unpaidLeaveDays = leaves.filter(l => l.leaveType === 'unpaid').reduce((sum, l) => sum + (l.totalDays || 0), 0);
@@ -28994,7 +29008,8 @@ DOSPRESSO İnsan Kaynakları Ekibi`
           (attendanceScore * w.attendanceWeight / 100) +
           (checklistScore * w.checklistWeight / 100) +
           (taskScore * w.taskWeight / 100) +
-          (customerRatingScore * w.customerRatingWeight / 100) -
+          (customerRatingScore * w.customerRatingWeight / 100) +
+          (managerRatingScore * (w.managerRatingWeight || 20) / 100) -
           (leaveDeduction * w.leaveDeductionWeight / 100)
         );
 
@@ -29014,6 +29029,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`
           checklistScore,
           taskScore,
           customerRatingScore,
+          managerRatingScore,
           totalShifts,
           onTimeShifts,
           lateShifts,
@@ -29056,7 +29072,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`
 
       res.json({
         success: true,
-        message: \`\${performances.length} personel için performans hesaplandı\`,
+        message: `\${performances.length} personel için performans hesaplandı`,
         performances,
       });
     } catch (error: any) {
@@ -29205,6 +29221,104 @@ DOSPRESSO İnsan Kaynakları Ekibi`
     }
   });
 
+
+  // ========================================
+  // YÖNETİCİ AYLIK PERSONEL DEĞERLENDİRME API
+  // ========================================
+
+  // GET /api/manager-ratings - Yönetici değerlendirmelerini listele
+  app.get("/api/manager-ratings", isAuthenticated, async (req: any, res) => {
+    try {
+      const userRole = req.user?.role;
+      const userId = req.user?.id;
+      const userBranchId = req.user?.branchId;
+      const { branchId, month, year, employeeId } = req.query;
+
+      const conditions = [];
+      
+      if (month) conditions.push(eq(managerMonthlyRatings.month, parseInt(month as string)));
+      if (year) conditions.push(eq(managerMonthlyRatings.year, parseInt(year as string)));
+      if (employeeId) conditions.push(eq(managerMonthlyRatings.employeeId, employeeId as string));
+
+      // Role-based filtering
+      if (userRole === "admin" || userRole === "coach") {
+        if (branchId) conditions.push(eq(managerMonthlyRatings.branchId, parseInt(branchId as string)));
+      } else if (userRole === "supervisor") {
+        conditions.push(eq(managerMonthlyRatings.branchId, userBranchId));
+      } else {
+        conditions.push(eq(managerMonthlyRatings.employeeId, userId));
+      }
+
+      const ratings = await db.select().from(managerMonthlyRatings)
+        .where(conditions.length > 0 ? and(...conditions) : undefined)
+        .orderBy(desc(managerMonthlyRatings.createdAt));
+
+      const enriched = await Promise.all(ratings.map(async (r) => {
+        const employee = await db.select({ firstName: users.firstName, lastName: users.lastName })
+          .from(users).where(eq(users.id, r.employeeId)).limit(1);
+        const manager = await db.select({ firstName: users.firstName, lastName: users.lastName })
+          .from(users).where(eq(users.id, r.managerId)).limit(1);
+        return { ...r, employee: employee[0] || null, manager: manager[0] || null };
+      }));
+
+      res.json(enriched);
+    } catch (error: any) {
+      console.error("Error fetching manager ratings:", error);
+      res.status(500).json({ message: "Degerlendirmeler alinamadi" });
+    }
+  });
+
+  // POST /api/manager-ratings - Yeni değerlendirme ekle
+  app.post("/api/manager-ratings", isAuthenticated, async (req: any, res) => {
+    try {
+      const userRole = req.user?.role;
+      const managerId = req.user?.id;
+
+      if (!["admin", "supervisor", "coach"].includes(userRole)) {
+        return res.status(403).json({ message: "Yetkiniz yok" });
+      }
+
+      const {
+        employeeId, branchId, month, year,
+        workPerformanceRating, teamworkRating, initiativeRating,
+        customerRelationsRating, punctualityRating,
+        strengths, areasToImprove, generalComment
+      } = req.body;
+
+      const ratings = [workPerformanceRating, teamworkRating, initiativeRating, customerRelationsRating, punctualityRating];
+      if (ratings.some(r => !r || r < 1 || r > 5)) {
+        return res.status(400).json({ message: "Tum puanlar 1-5 arasi olmali" });
+      }
+
+      const averageRating = (ratings.reduce((sum, r) => sum + r, 0) / ratings.length).toFixed(2);
+
+      const [rating] = await db.insert(managerMonthlyRatings).values({
+        managerId,
+        employeeId,
+        branchId,
+        month,
+        year,
+        workPerformanceRating,
+        teamworkRating,
+        initiativeRating,
+        customerRelationsRating,
+        punctualityRating,
+        averageRating,
+        strengths,
+        areasToImprove,
+        generalComment,
+        status: "submitted",
+      }).returning();
+
+      res.json({ success: true, rating });
+    } catch (error: any) {
+      console.error("Error creating manager rating:", error);
+      if (error.code === "23505") {
+        return res.status(400).json({ message: "Bu personeli bu ay zaten degerlendirdiniz" });
+      }
+      res.status(500).json({ message: "Degerlendirme kaydedilemedi" });
+    }
+  });
   const httpServer = createServer(app);
   return httpServer;
 }
