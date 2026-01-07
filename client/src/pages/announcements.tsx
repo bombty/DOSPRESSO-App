@@ -294,7 +294,7 @@ export default function Announcements() {
               </DialogHeader>
               <Form {...form}>
                 <form onSubmit={form.handleSubmit(handleSubmit)} className="flex flex-col flex-1 min-h-0">
-                  <ScrollArea className="flex-1 px-6">
+                  <div className="flex-1 max-h-[55vh] overflow-y-auto px-6">
                     <div className="space-y-4 pb-4">
                     <FormField
                       control={form.control}
@@ -562,7 +562,7 @@ export default function Announcements() {
                     />
 
                     </div>
-                  </ScrollArea>
+                  </div>
                   <DialogFooter className="p-6 pt-4 border-t shrink-0">
                     <Button 
                       type="button" 
@@ -841,7 +841,7 @@ export default function Announcements() {
           </DialogHeader>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(handleEditSubmit)} className="flex flex-col flex-1 min-h-0">
-              <ScrollArea className="flex-1 px-6">
+              <div className="flex-1 max-h-[55vh] overflow-y-auto px-6">
                 <div className="space-y-4 pb-4">
                   <FormField
                     control={form.control}
@@ -966,7 +966,7 @@ export default function Announcements() {
                     />
                   </div>
                 </div>
-              </ScrollArea>
+              </div>
               <DialogFooter className="p-6 pt-4 border-t shrink-0">
                 <Button type="button" variant="outline" onClick={() => setIsEditDialogOpen(false)} data-testid="button-edit-cancel">
                   İptal
