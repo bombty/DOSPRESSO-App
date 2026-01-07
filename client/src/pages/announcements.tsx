@@ -387,10 +387,10 @@ export default function Announcements() {
                           onGetUploadParameters={async () => {
                             const response = await apiRequest('POST', '/api/object-storage/presigned-url', {
                               filename: `banner-${Date.now()}.jpg`,
-                              contentType: 'image/jpeg',
+                              contentType: 'image/jpeg'
                             });
                             const data = await response.json();
-                            return { method: 'PUT' as const, url: data.url };
+                            return { method: 'PUT', url: data.url };
                           }}
                           onComplete={(result) => {
                             if (result.successful.length > 0) {
@@ -937,10 +937,10 @@ export default function Announcements() {
                         onGetUploadParameters={async () => {
                           const response = await apiRequest('POST', '/api/object-storage/presigned-url', {
                             filename: `banner-${Date.now()}.jpg`,
-                            contentType: 'image/jpeg',
+                            contentType: 'image/jpeg'
                           });
                           const data = await response.json();
-                          return { method: 'PUT' as const, url: data.url };
+                          return { method: 'PUT', url: data.url };
                         }}
                         onComplete={(result) => {
                           if (result.successful.length > 0) {
