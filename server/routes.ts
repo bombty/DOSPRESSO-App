@@ -28496,6 +28496,124 @@ DOSPRESSO İnsan Kaynakları Ekibi`
     }
   });
 
+  // ===== MEGA MODULE MANAGEMENT =====
+  // GET /api/admin/mega-modules - Tüm mega modül konfigürasyonlarını getir
+  app.get('/api/admin/mega-modules', isAuthenticated, async (req: any, res) => {
+    try {
+      const userRole = req.user?.role;
+      if (userRole !== 'admin') {
+        return res.status(403).json({ message: "Yetkiniz yok" });
+      }
+      const configs = await db.select().from(megaModuleConfig).orderBy(megaModuleConfig.sortOrder);
+      const items = await db.select().from(megaModuleItems).orderBy(megaModuleItems.sortOrder);
+      res.json({ configs, items });
+    } catch (error: any) {
+      console.error("Error fetching mega modules:", error);
+      res.status(500).json({ message: "Mega modül verileri alınamadı" });
+    }
+  });
+
+  // POST /api/admin/mega-modules/config - Mega modül konfigürasyonu kaydet
+  app.post('/api/admin/mega-modules/config', isAuthenticated, async (req: any, res) => {
+    try {
+      const userRole = req.user?.role;
+      if (userRole !== 'admin') {
+        return res.status(403).json({ message: "Yetkiniz yok" });
+      }
+      const { configs } = req.body;
+      if (!Array.isArray(configs)) {
+        return res.status(400).json({ message: "Geçersiz veri formatı" });
+      }
+      for (const config of configs) {
+        const existing = await db.select().from(megaModuleConfig).where(eq(megaModuleConfig.megaModuleId, config.megaModuleId)).limit(1);
+        if (existing.length > 0) {
+          await db.update(megaModuleConfig).set({
+            megaModuleName: config.megaModuleName,
+            megaModuleNameTr: config.megaModuleNameTr,
+            icon: config.icon,
+            color: config.color,
+            sortOrder: config.sortOrder,
+            isActive: config.isActive,
+            updatedAt: new Date(),
+          }).where(eq(megaModuleConfig.megaModuleId, config.megaModuleId));
+        } else {
+          await db.insert(megaModuleConfig).values({
+            megaModuleId: config.megaModuleId,
+            megaModuleName: config.megaModuleName,
+            megaModuleNameTr: config.megaModuleNameTr,
+            icon: config.icon,
+            color: config.color,
+            sortOrder: config.sortOrder,
+            isActive: config.isActive ?? true,
+          });
+        }
+      }
+      res.json({ success: true, message: "Mega modül konfigürasyonu kaydedildi" });
+    } catch (error: any) {
+      console.error("Error saving mega module config:", error);
+      res.status(500).json({ message: "Mega modül konfigürasyonu kaydedilemedi" });
+    }
+  });
+
+  // POST /api/admin/mega-modules/items - Modül atamalarını kaydet (transaction ile)
+  app.post('/api/admin/mega-modules/items', isAuthenticated, async (req: any, res) => {
+    try {
+      const userRole = req.user?.role;
+      if (userRole !== 'admin') {
+        return res.status(403).json({ message: "Yetkiniz yok" });
+      }
+      const { items } = req.body;
+      if (!Array.isArray(items)) {
+        return res.status(400).json({ message: "Geçersiz veri formatı" });
+      }
+      // Use transaction to ensure atomic update
+      await db.transaction(async (tx) => {
+        await tx.delete(megaModuleItems);
+        if (items.length > 0) {
+          await tx.insert(megaModuleItems).values(items.map((item: any, index: number) => ({
+            megaModuleId: item.megaModuleId,
+            subModuleId: item.subModuleId,
+            subModulePath: item.subModulePath,
+            subModuleName: item.subModuleName,
+            subModuleNameTr: item.subModuleNameTr,
+            icon: item.icon,
+            sortOrder: item.sortOrder ?? index,
+            isActive: item.isActive ?? true,
+          })));
+        }
+      });
+      res.json({ success: true, message: "Modül atamaları kaydedildi" });
+    } catch (error: any) {
+      console.error("Error saving mega module items:", error);
+      res.status(500).json({ message: "Modül atamaları kaydedilemedi" });
+    }
+  });
+
+  // PUT /api/admin/mega-modules/items/:subModuleId - Tek bir modül atamasını güncelle
+  app.put('/api/admin/mega-modules/items/:subModuleId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userRole = req.user?.role;
+      if (userRole !== 'admin') {
+        return res.status(403).json({ message: "Yetkiniz yok" });
+      }
+      const { subModuleId } = req.params;
+      const { megaModuleId, sortOrder } = req.body;
+      const existing = await db.select().from(megaModuleItems).where(eq(megaModuleItems.subModuleId, subModuleId)).limit(1);
+      if (existing.length > 0) {
+        await db.update(megaModuleItems).set({
+          megaModuleId: megaModuleId ?? existing[0].megaModuleId,
+          sortOrder: sortOrder ?? existing[0].sortOrder,
+        }).where(eq(megaModuleItems.subModuleId, subModuleId));
+        res.json({ success: true });
+      } else {
+        res.status(404).json({ message: "Modül ataması bulunamadı" });
+      }
+    } catch (error: any) {
+      console.error("Error updating mega module item:", error);
+      res.status(500).json({ message: "Modül ataması güncellenemedi" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

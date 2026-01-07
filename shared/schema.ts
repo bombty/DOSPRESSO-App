@@ -2496,6 +2496,12 @@ export const announcements = pgTable("announcements", {
   bannerPriority: integer("banner_priority").default(0),
   isPinned: boolean("is_pinned").default(false),
   
+  // Zengin içerik alanları
+  detailedContent: text("detailed_content"), // Uzun açıklama/makale içeriği
+  ctaLink: text("cta_link"), // Call-to-action buton linki
+  ctaText: varchar("cta_text", { length: 50 }), // Buton metni (örn: "Daha Fazla")
+  mediaUrls: text("media_urls").array().default(sql`ARRAY[]::text[]`), // Ek görseller/videolar
+  
   publishedAt: timestamp("published_at").defaultNow(),
   expiresAt: timestamp("expires_at"),
   createdAt: timestamp("created_at").defaultNow(),
