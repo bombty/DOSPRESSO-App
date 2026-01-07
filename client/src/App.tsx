@@ -98,6 +98,7 @@ import MusteriFeedbackPublic from "@/pages/musteri-feedback-public";
 import PublicStaffRating from "@/pages/public-staff-rating";
 import StaffQrTokensPage from "@/pages/staff-qr-tokens";
 import EmployeeOfMonthPage from "@/pages/employee-of-month";
+import AdvancedReportsPage from "@/pages/advanced-reports";
 import KampanyaYonetimi from "@/pages/kampanya-yonetimi";
 import FranchiseAcilis from "@/pages/franchise-acilis";
 import DenetimSablonlari from "@/pages/denetim-sablonlari";
@@ -244,6 +245,7 @@ function Router() {
           <Route path="/personel-detay/:id" component={PersonelDetay} />
           <Route path="/personel-qr-tokenlar" component={StaffQrTokensPage} />
           <Route path="/ayin-elemani" component={EmployeeOfMonthPage} />
+          <Route path="/gelismis-raporlar" component={AdvancedReportsPage} />
           <Route path="/personel-duzenle/:id" component={PersonelDuzenle} />
           <Route path="/personel-onboarding" component={PersonelOnboarding} />
           <Route path="/vardiyalar" component={Vardiyalar} />
