@@ -216,6 +216,9 @@ type ImageElement = {
   width: number;
   height: number;
   rotation: number;
+  scale: number;
+  borderColor: string;
+  borderWidth: number;
 };
 
 // Role options for announcements
@@ -374,6 +377,19 @@ export default function BannerEditor() {
     effects: { ...defaultTextEffect, ...(text.effects || {}) },
   });
 
+  const getImageWithDefaults = (img: Partial<ImageElement> & { id: string; src: string }): ImageElement => ({
+    id: img.id,
+    src: img.src,
+    x: img.x ?? 100,
+    y: img.y ?? 100,
+    width: img.width ?? 100,
+    height: img.height ?? 100,
+    rotation: img.rotation ?? 0,
+    scale: img.scale ?? 100,
+    borderColor: img.borderColor ?? "transparent",
+    borderWidth: img.borderWidth ?? 0,
+  });
+
   const addTextElement = () => {
     const newText: TextElement = {
       id: `text-${Date.now()}`,
@@ -421,6 +437,9 @@ export default function BannerEditor() {
         width: 100,
         height: 100,
         rotation: 0,
+        scale: 100,
+        borderColor: "transparent",
+        borderWidth: 0,
       };
       setImageElements([...imageElements, newImage]);
       setSelectedElement({ type: "image", id: newImage.id });
@@ -658,36 +677,43 @@ export default function BannerEditor() {
   const rawSelectedText = selectedElement?.type === "text" ? textElements.find((t) => t.id === selectedElement.id) : null;
   const selectedText = rawSelectedText ? getTextWithDefaults(rawSelectedText) : null;
   const selectedIcon = selectedElement?.type === "icon" ? iconElements.find((i) => i.id === selectedElement.id) : null;
-  const selectedImage = selectedElement?.type === "image" ? imageElements.find((i) => i.id === selectedElement.id) : null;
+  const rawSelectedImage = selectedElement?.type === "image" ? imageElements.find((i) => i.id === selectedElement.id) : null;
+  const selectedImage = rawSelectedImage ? getImageWithDefaults(rawSelectedImage) : null;
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="sticky top-0 z-20 flex items-center justify-between gap-3 border-b bg-background/95 backdrop-blur px-4 py-3">
-        <div className="flex items-center gap-3">
-          <Link href="/admin/bannerlar">
-            <Button variant="ghost" size="icon" data-testid="button-back">
-              <ArrowLeft className="h-5 w-5" />
+    <div className="min-h-screen bg-background flex flex-col">
+      <div className="sticky top-0 z-20 border-b bg-background/95 backdrop-blur px-3 py-2">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <Link href="/icerik-studyosu">
+              <Button variant="ghost" size="icon" data-testid="button-back">
+                <ArrowLeft className="h-5 w-5" />
+              </Button>
+            </Link>
+            <h1 className="text-base sm:text-lg font-semibold">Banner Editoru</h1>
+          </div>
+          <div className="flex items-center gap-1 sm:gap-2 overflow-x-auto pb-1 sm:pb-0">
+            <Button onClick={exportAsPNG} variant="outline" size="sm" className="gap-1 shrink-0 text-xs sm:text-sm" data-testid="button-export-png">
+              <Download className="h-3 w-3 sm:h-4 sm:w-4" />
+              <span className="hidden sm:inline">PNG İndir</span>
+              <span className="sm:hidden">PNG</span>
             </Button>
-          </Link>
-          <h1 className="text-lg font-semibold">Banner Editoru</h1>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button onClick={exportAsPNG} variant="outline" className="gap-2" data-testid="button-export-png">
-            <Download className="h-4 w-4" />
-            PNG İndir
-          </Button>
-          <Button onClick={() => setSaveDraftDialogOpen(true)} variant="secondary" className="gap-2" data-testid="button-save-draft">
-            <Cookie className="h-4 w-4" />
-            Taslak Kaydet
-          </Button>
-          <Button onClick={() => setPublishDialogOpen(true)} className="gap-2" data-testid="button-publish-banner">
-            <Send className="h-4 w-4" />
-            Duyuru Olarak Yayınla
-          </Button>
+            <Button onClick={() => setSaveDraftDialogOpen(true)} variant="secondary" size="sm" className="gap-1 shrink-0 text-xs sm:text-sm" data-testid="button-save-draft">
+              <Cookie className="h-3 w-3 sm:h-4 sm:w-4" />
+              <span className="hidden sm:inline">Taslak Kaydet</span>
+              <span className="sm:hidden">Taslak</span>
+            </Button>
+            <Button onClick={() => setPublishDialogOpen(true)} size="sm" className="gap-1 shrink-0 text-xs sm:text-sm" data-testid="button-publish-banner">
+              <Send className="h-3 w-3 sm:h-4 sm:w-4" />
+              <span className="hidden sm:inline">Duyuru Olarak Yayınla</span>
+              <span className="sm:hidden">Yayınla</span>
+            </Button>
+          </div>
         </div>
       </div>
 
-      <div className="grid lg:grid-cols-[1fr,320px] gap-4 p-4">
+      <div className="flex-1 overflow-auto">
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr,320px] gap-3 p-3 sm:p-4">
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm flex items-center gap-2">
@@ -714,23 +740,30 @@ export default function BannerEditor() {
               }}
               data-testid="banner-canvas"
             >
-              {imageElements.map((img) => (
-                <div
-                  key={img.id}
-                  className={`absolute cursor-move ${selectedElement?.id === img.id ? "ring-2 ring-primary ring-offset-2" : ""}`}
-                  style={{
-                    left: img.x,
-                    top: img.y,
-                    width: img.width,
-                    height: img.height,
-                    transform: `rotate(${img.rotation}deg)`,
-                  }}
-                  onMouseDown={(e) => handleMouseDown(e, "image", img.id)}
-                  data-testid={`image-element-${img.id}`}
-                >
-                  <img src={img.src} alt="" className="w-full h-full object-cover rounded" />
-                </div>
-              ))}
+              {imageElements.map((rawImg) => {
+                const img = getImageWithDefaults(rawImg);
+                const scaledWidth = (img.width * img.scale) / 100;
+                const scaledHeight = (img.height * img.scale) / 100;
+                return (
+                  <div
+                    key={img.id}
+                    className={`absolute cursor-move ${selectedElement?.id === img.id ? "ring-2 ring-primary ring-offset-2" : ""}`}
+                    style={{
+                      left: img.x,
+                      top: img.y,
+                      width: scaledWidth,
+                      height: scaledHeight,
+                      transform: `rotate(${img.rotation}deg)`,
+                      border: img.borderWidth > 0 ? `${img.borderWidth}px solid ${img.borderColor}` : "none",
+                      borderRadius: "0.25rem",
+                    }}
+                    onMouseDown={(e) => handleMouseDown(e, "image", img.id)}
+                    data-testid={`image-element-${img.id}`}
+                  >
+                    <img src={img.src} alt="" className="w-full h-full object-cover rounded" />
+                  </div>
+                );
+              })}
 
               {iconElements.map((icon) => (
                 <div
@@ -1301,6 +1334,18 @@ export default function BannerEditor() {
                   {selectedImage && (
                     <div className="space-y-3 pt-4 border-t">
                       <div>
+                        <Label className="text-xs">Genel Olcek: {selectedImage.scale}%</Label>
+                        <Slider
+                          value={[selectedImage.scale]}
+                          onValueChange={([v]) => updateImageElement(selectedImage.id, { scale: v })}
+                          min={25}
+                          max={200}
+                          step={5}
+                          className="mt-2"
+                          data-testid="slider-image-scale"
+                        />
+                      </div>
+                      <div>
                         <Label className="text-xs">Genislik: {selectedImage.width}px</Label>
                         <Slider
                           value={[selectedImage.width]}
@@ -1336,6 +1381,35 @@ export default function BannerEditor() {
                           data-testid="slider-image-rotation"
                         />
                       </div>
+                      <div className="pt-2 border-t">
+                        <Label className="text-xs font-medium">Cerceve / Outline</Label>
+                        <div className="space-y-2 mt-2">
+                          <div className="grid grid-cols-2 gap-2">
+                            <div>
+                              <Label className="text-xs">Renk</Label>
+                              <input
+                                type="color"
+                                value={selectedImage.borderColor === "transparent" ? "#000000" : selectedImage.borderColor}
+                                onChange={(e) => updateImageElement(selectedImage.id, { borderColor: e.target.value })}
+                                className="w-full h-7 rounded cursor-pointer"
+                                data-testid="input-image-border-color"
+                              />
+                            </div>
+                            <div>
+                              <Label className="text-xs">Kalinlik: {selectedImage.borderWidth}px</Label>
+                              <Slider
+                                value={[selectedImage.borderWidth]}
+                                onValueChange={([v]) => updateImageElement(selectedImage.id, { borderWidth: v })}
+                                min={0}
+                                max={10}
+                                step={1}
+                                className="mt-2"
+                                data-testid="slider-image-border-width"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      </div>
                       <Button size="sm" variant="destructive" onClick={deleteSelectedElement} className="w-full" data-testid="button-delete-image">
                         <Trash2 className="h-4 w-4 mr-1" />
                         Fotografi Sil
@@ -1346,6 +1420,7 @@ export default function BannerEditor() {
               </Card>
             </TabsContent>
           </Tabs>
+        </div>
         </div>
       </div>
 

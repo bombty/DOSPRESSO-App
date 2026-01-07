@@ -3,7 +3,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Redirect } from "wouter";
+import { Redirect, useLocation } from "wouter";
 import { isHQRole, type Announcement, type Branch, insertAnnouncementSchema, type InsertAnnouncement } from "@shared/schema";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -70,6 +70,7 @@ const categoryLabels: Record<string, string> = {
 export default function IcerikStudyosu() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const [, navigate] = useLocation();
   const [activeTab, setActiveTab] = useState("drafts");
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [isPublishDialogOpen, setIsPublishDialogOpen] = useState(false);
@@ -356,6 +357,14 @@ export default function IcerikStudyosu() {
                       <Button 
                         variant="ghost" 
                         size="icon"
+                        onClick={() => navigate(`/banner-editor?announcementId=${announcement.id}`)}
+                        data-testid={`button-edit-${announcement.id}`}
+                      >
+                        <Pencil className="w-3 h-3" />
+                      </Button>
+                      <Button 
+                        variant="ghost" 
+                        size="icon"
                         onClick={() => handleDeleteClick("announcement", announcement.id)}
                         data-testid={`button-delete-${announcement.id}`}
                       >
@@ -408,7 +417,12 @@ export default function IcerikStudyosu() {
                       </p>
                     )}
                     <div className="flex gap-1 mt-2">
-                      <Button variant="ghost" size="icon" data-testid={`button-edit-carousel-${banner.id}`}>
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        onClick={() => navigate(`/banner-editor?bannerId=${banner.id}`)}
+                        data-testid={`button-edit-carousel-${banner.id}`}
+                      >
                         <Pencil className="w-3 h-3" />
                       </Button>
                       <Button 
