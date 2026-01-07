@@ -551,23 +551,59 @@ export default function AdminYetkilendirme() {
   const [activeTab, setActiveTab] = useState<string>("permissions");
   const [activeModuleId, setActiveModuleId] = useState<string | null>(null);
   
-  // Mega module mappings state (loaded from localStorage initially, will sync with API later)
-  const [moduleMappings, setModuleMappings] = useState<Record<string, string[]>>(() => {
-    const saved = localStorage.getItem("megaModuleMappings");
-    return saved ? JSON.parse(saved) : DEFAULT_MODULE_MEGA_MAPPING;
+  // Mega module mappings state - now synced with backend API
+  const [moduleMappings, setModuleMappings] = useState<Record<string, string[]>>(DEFAULT_MODULE_MEGA_MAPPING);
+  const [megaModuleTitles, setMegaModuleTitles] = useState<Record<string, string>>({});
+  const [customModuleLabels, setCustomModuleLabels] = useState<Record<string, string>>({});
+  const [isSaving, setIsSaving] = useState(false);
+  
+  // Fetch mega module data from backend API
+  const { data: megaModuleData, isLoading: megaModuleLoading } = useQuery<{
+    configs: Array<{ megaModuleId: string; megaModuleName: string; megaModuleNameTr: string }>;
+    items: Array<{ megaModuleId: string; subModuleId: string; subModuleName: string; subModuleNameTr: string }>;
+  }>({
+    queryKey: ["/api/admin/mega-modules"],
+    enabled: user?.role === "admin",
   });
   
-  // Custom mega module titles (overrides default titles)
-  const [megaModuleTitles, setMegaModuleTitles] = useState<Record<string, string>>(() => {
-    const saved = localStorage.getItem("megaModuleTitles");
-    return saved ? JSON.parse(saved) : {};
-  });
-  
-  // Custom module labels (overrides default labels)
-  const [customModuleLabels, setCustomModuleLabels] = useState<Record<string, string>>(() => {
-    const saved = localStorage.getItem("customModuleLabels");
-    return saved ? JSON.parse(saved) : {};
-  });
+  // Initialize state from API data when loaded
+  useEffect(() => {
+    if (megaModuleData) {
+      // Build module mappings from items
+      const newMappings: Record<string, string[]> = {};
+      MEGA_MODULE_CONFIG.forEach(m => { newMappings[m.id] = []; });
+      
+      megaModuleData.items.forEach(item => {
+        if (newMappings[item.megaModuleId]) {
+          newMappings[item.megaModuleId].push(item.subModuleId);
+        }
+      });
+      
+      // Only update if we have data from API
+      const hasData = Object.values(newMappings).some(arr => arr.length > 0);
+      if (hasData) {
+        setModuleMappings(newMappings);
+      }
+      
+      // Build mega module titles from configs
+      const newTitles: Record<string, string> = {};
+      megaModuleData.configs.forEach(c => {
+        if (c.megaModuleNameTr) {
+          newTitles[c.megaModuleId] = c.megaModuleNameTr;
+        }
+      });
+      setMegaModuleTitles(newTitles);
+      
+      // Build custom module labels from items
+      const newLabels: Record<string, string> = {};
+      megaModuleData.items.forEach(item => {
+        if (item.subModuleNameTr) {
+          newLabels[item.subModuleId] = item.subModuleNameTr;
+        }
+      });
+      setCustomModuleLabels(newLabels);
+    }
+  }, [megaModuleData]);
   
   // DnD sensors
   const sensors = useSensors(
@@ -591,30 +627,105 @@ export default function AdminYetkilendirme() {
     return labels;
   }, [customModuleLabels]);
   
+  // Save mega module configs to backend API
+  const saveMegaModuleConfigs = async (titles: Record<string, string>) => {
+    const configs = MEGA_MODULE_CONFIG.map(m => ({
+      megaModuleId: m.id,
+      megaModuleName: m.title,
+      megaModuleNameTr: titles[m.id] || m.title,
+      icon: m.icon.name || "LayoutDashboard",
+      color: m.color,
+      sortOrder: MEGA_MODULE_CONFIG.indexOf(m),
+      isActive: true,
+    }));
+    await apiRequest("POST", "/api/admin/mega-modules/config", { configs });
+  };
+  
+  // Get default module labels from MODULE_GROUPS
+  const getDefaultModuleLabel = (modId: string): string => {
+    for (const group of MODULE_GROUPS) {
+      const mod = group.modules.find(m => m.key === modId);
+      if (mod) return mod.label;
+    }
+    return modId;
+  };
+  
+  // Save mega module items to backend API
+  const saveMegaModuleItems = async (mappings: Record<string, string[]>, labels: Record<string, string>) => {
+    const items: Array<{
+      megaModuleId: string;
+      subModuleId: string;
+      subModulePath: string;
+      subModuleName: string;
+      subModuleNameTr: string;
+      icon: string;
+      sortOrder: number;
+      isActive: boolean;
+    }> = [];
+    
+    Object.entries(mappings).forEach(([megaId, moduleIds]) => {
+      moduleIds.forEach((modId, index) => {
+        const defaultLabel = getDefaultModuleLabel(modId);
+        items.push({
+          megaModuleId: megaId,
+          subModuleId: modId,
+          subModulePath: `/${modId.replace(/\./g, "/")}`,
+          subModuleName: defaultLabel,
+          subModuleNameTr: labels[modId] || defaultLabel,
+          icon: "FileText",
+          sortOrder: index,
+          isActive: true,
+        });
+      });
+    });
+    
+    await apiRequest("POST", "/api/admin/mega-modules/items", { items });
+  };
+  
   // Handler for mega module title change
-  const handleMegaTitleChange = (megaModuleId: string, newTitle: string) => {
-    setMegaModuleTitles(prev => {
-      const updated = { ...prev, [megaModuleId]: newTitle };
-      localStorage.setItem("megaModuleTitles", JSON.stringify(updated));
-      return updated;
-    });
-    toast({
-      title: "Başlık güncellendi",
-      description: `"${newTitle}" olarak kaydedildi`,
-    });
+  const handleMegaTitleChange = async (megaModuleId: string, newTitle: string) => {
+    const previousTitles = { ...megaModuleTitles };
+    const updated = { ...megaModuleTitles, [megaModuleId]: newTitle };
+    setMegaModuleTitles(updated);
+    
+    try {
+      await saveMegaModuleConfigs(updated);
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/mega-modules"] });
+      toast({
+        title: "Başlık güncellendi",
+        description: `"${newTitle}" olarak kaydedildi`,
+      });
+    } catch (error) {
+      setMegaModuleTitles(previousTitles); // Rollback
+      toast({
+        title: "Hata",
+        description: "Başlık kaydedilemedi",
+        variant: "destructive",
+      });
+    }
   };
   
   // Handler for module label change
-  const handleModuleLabelChange = (moduleId: string, newLabel: string) => {
-    setCustomModuleLabels(prev => {
-      const updated = { ...prev, [moduleId]: newLabel };
-      localStorage.setItem("customModuleLabels", JSON.stringify(updated));
-      return updated;
-    });
-    toast({
-      title: "Modül adı güncellendi",
-      description: `"${newLabel}" olarak kaydedildi`,
-    });
+  const handleModuleLabelChange = async (moduleId: string, newLabel: string) => {
+    const previousLabels = { ...customModuleLabels };
+    const updated = { ...customModuleLabels, [moduleId]: newLabel };
+    setCustomModuleLabels(updated);
+    
+    try {
+      await saveMegaModuleItems(moduleMappings, updated);
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/mega-modules"] });
+      toast({
+        title: "Modül adı güncellendi",
+        description: `"${newLabel}" olarak kaydedildi`,
+      });
+    } catch (error) {
+      setCustomModuleLabels(previousLabels); // Rollback
+      toast({
+        title: "Hata",
+        description: "Modül adı kaydedilemedi",
+        variant: "destructive",
+      });
+    }
   };
   
   // Handle drag end - move or reorder modules
@@ -669,31 +780,43 @@ export default function AdminYetkilendirme() {
       const newIndex = modules.indexOf(overId);
       
       if (oldIndex !== -1 && newIndex !== -1 && oldIndex !== newIndex) {
-        setModuleMappings(prev => {
-          const newMappings = { ...prev };
-          newMappings[actualSourceId] = arrayMove(prev[actualSourceId], oldIndex, newIndex);
-          localStorage.setItem("megaModuleMappings", JSON.stringify(newMappings));
-          return newMappings;
+        const previousMappings = { ...moduleMappings };
+        const newMappings = { ...moduleMappings };
+        newMappings[actualSourceId] = arrayMove(moduleMappings[actualSourceId], oldIndex, newIndex);
+        setModuleMappings(newMappings);
+        
+        // Save to backend API with rollback on failure
+        saveMegaModuleItems(newMappings, customModuleLabels).then(() => {
+          queryClient.invalidateQueries({ queryKey: ["/api/admin/mega-modules"] });
+          toast({ title: "Sıralama güncellendi" });
+        }).catch(() => {
+          setModuleMappings(previousMappings); // Rollback
+          toast({ title: "Hata", description: "Değişiklikler kaydedilemedi", variant: "destructive" });
         });
       }
       return;
     }
     
     // Move module from source to target
-    setModuleMappings(prev => {
-      const newMappings = { ...prev };
-      newMappings[actualSourceId] = prev[actualSourceId].filter(id => id !== activeId);
-      newMappings[targetMegaId!] = [...prev[targetMegaId!], activeId];
-      
-      // Save to localStorage
-      localStorage.setItem("megaModuleMappings", JSON.stringify(newMappings));
-      
-      return newMappings;
-    });
+    const previousMappings = { ...moduleMappings };
+    const newMappings = { ...moduleMappings };
+    newMappings[actualSourceId] = moduleMappings[actualSourceId].filter(id => id !== activeId);
+    newMappings[targetMegaId!] = [...moduleMappings[targetMegaId!], activeId];
+    setModuleMappings(newMappings);
     
-    toast({
-      title: "Modül taşındı",
-      description: `${allModuleLabels[activeId] || activeId} başarıyla taşındı`,
+    // Get the current label for toast message
+    const moduleLabel = customModuleLabels[activeId] || getDefaultModuleLabel(activeId);
+    
+    // Save to backend API with rollback on failure
+    saveMegaModuleItems(newMappings, customModuleLabels).then(() => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/mega-modules"] });
+      toast({
+        title: "Modül taşındı",
+        description: `${moduleLabel} başarıyla taşındı`,
+      });
+    }).catch(() => {
+      setModuleMappings(previousMappings); // Rollback
+      toast({ title: "Hata", description: "Değişiklikler kaydedilemedi", variant: "destructive" });
     });
   };
   
@@ -702,14 +825,24 @@ export default function AdminYetkilendirme() {
   };
   
   // Reset mappings to default (also resets titles and labels)
-  const handleResetMappings = () => {
-    setModuleMappings(DEFAULT_MODULE_MEGA_MAPPING);
-    setMegaModuleTitles({});
-    setCustomModuleLabels({});
-    localStorage.setItem("megaModuleMappings", JSON.stringify(DEFAULT_MODULE_MEGA_MAPPING));
-    localStorage.removeItem("megaModuleTitles");
-    localStorage.removeItem("customModuleLabels");
-    toast({ title: "Varsayılana sıfırlandı", description: "Tüm başlıklar ve modül isimleri sıfırlandı" });
+  const handleResetMappings = async () => {
+    setIsSaving(true);
+    try {
+      setModuleMappings(DEFAULT_MODULE_MEGA_MAPPING);
+      setMegaModuleTitles({});
+      setCustomModuleLabels({});
+      
+      // Save defaults to backend API
+      await saveMegaModuleConfigs({});
+      await saveMegaModuleItems(DEFAULT_MODULE_MEGA_MAPPING, {});
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/mega-modules"] });
+      
+      toast({ title: "Varsayılana sıfırlandı", description: "Tüm başlıklar ve modül isimleri sıfırlandı" });
+    } catch (error) {
+      toast({ title: "Hata", description: "Sıfırlama işlemi başarısız", variant: "destructive" });
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   // Fetch all granular permission actions grouped by module

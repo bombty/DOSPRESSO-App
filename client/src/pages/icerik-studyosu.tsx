@@ -102,6 +102,9 @@ export default function IcerikStudyosu() {
     defaultValues: {
       title: "",
       message: "",
+      detailedContent: null,
+      ctaLink: null,
+      ctaText: null,
       priority: "normal",
       category: "general",
       targetRoles: null,
@@ -118,6 +121,9 @@ export default function IcerikStudyosu() {
       await apiRequest('POST', '/api/announcements', { 
         ...data, 
         bannerImageUrl: bannerImageUrl || null,
+        detailedContent: data.detailedContent || null,
+        ctaLink: data.ctaLink || null,
+        ctaText: data.ctaText || null,
       });
     },
     onSuccess: () => {
@@ -160,6 +166,9 @@ export default function IcerikStudyosu() {
     form.reset({
       title: banner.title,
       message: "",
+      detailedContent: null,
+      ctaLink: null,
+      ctaText: null,
       priority: "normal",
       category: "general",
       targetRoles: null,
@@ -504,14 +513,76 @@ export default function IcerikStudyosu() {
                     name="message"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Açıklama</FormLabel>
+                        <FormLabel>Kısa Açıklama</FormLabel>
                         <FormControl>
-                          <Textarea {...field} placeholder="Duyuru içeriği..." rows={3} data-testid="input-publish-message" />
+                          <Textarea {...field} placeholder="Duyuru özeti (kart görünümünde gösterilir)..." rows={2} data-testid="input-publish-message" />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
+
+                  <FormField
+                    control={form.control}
+                    name="detailedContent"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Detaylı İçerik (Opsiyonel)</FormLabel>
+                        <FormControl>
+                          <Textarea 
+                            {...field} 
+                            value={field.value || ""} 
+                            placeholder="Duyuru detayları, ek bilgiler, talimatlar vb..." 
+                            rows={4} 
+                            data-testid="input-publish-detailed-content" 
+                          />
+                        </FormControl>
+                        <FormDescription className="text-xs">
+                          Duyuru detay sayfasında gösterilir
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <FormField
+                      control={form.control}
+                      name="ctaText"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>CTA Buton Metni</FormLabel>
+                          <FormControl>
+                            <Input 
+                              {...field} 
+                              value={field.value || ""} 
+                              placeholder="Detayları Gör" 
+                              data-testid="input-publish-cta-text" 
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="ctaLink"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>CTA Link</FormLabel>
+                          <FormControl>
+                            <Input 
+                              {...field} 
+                              value={field.value || ""} 
+                              placeholder="https://..." 
+                              data-testid="input-publish-cta-link" 
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
 
                   <div className="grid grid-cols-2 gap-3">
                     <FormField
