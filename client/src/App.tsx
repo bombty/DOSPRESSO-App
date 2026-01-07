@@ -95,6 +95,8 @@ import KaliteDenetimi from "@/pages/kalite-denetimi";
 import MisafirGeriBildirim from "@/pages/musteri-geribildirimi";
 import Sikayetler from "@/pages/sikayetler";
 import MusteriFeedbackPublic from "@/pages/musteri-feedback-public";
+import PublicStaffRating from "@/pages/public-staff-rating";
+import StaffQrTokensPage from "@/pages/staff-qr-tokens";
 import KampanyaYonetimi from "@/pages/kampanya-yonetimi";
 import FranchiseAcilis from "@/pages/franchise-acilis";
 import DenetimSablonlari from "@/pages/denetim-sablonlari";
@@ -218,6 +220,7 @@ function Router() {
       <Route path="/forgot-password" component={ForgotPassword} />
       <Route path="/reset-password/:token" component={ResetPassword} />
       <Route path="/feedback" component={MusteriFeedbackPublic} />
+      <Route path="/personel-degerlendirme/:token" component={PublicStaffRating} />
       <Route path="/misafir-geri-bildirim/:token" component={MisafirGeriBildirimPublic} />
       <Route path="/fabrika/kiosk" component={FabrikaKiosk} />
       <Route path="/sube/checklist-execution/:completionId" component={ChecklistExecutionPage} />
@@ -238,6 +241,7 @@ function Router() {
           <Route path="/subeler" component={Subeler} />
           <Route path="/personel/:id" component={PersonelProfil} />
           <Route path="/personel-detay/:id" component={PersonelDetay} />
+          <Route path="/personel-qr-tokenlar" component={StaffQrTokensPage} />
           <Route path="/personel-duzenle/:id" component={PersonelDuzenle} />
           <Route path="/personel-onboarding" component={PersonelOnboarding} />
           <Route path="/vardiyalar" component={Vardiyalar} />

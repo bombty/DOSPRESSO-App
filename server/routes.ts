@@ -29269,6 +29269,178 @@ DOSPRESSO İnsan Kaynakları Ekibi`
   });
 
   // POST /api/manager-ratings - Yeni değerlendirme ekle
+
+  // ========================================
+  // PUBLIC PERSONEL DEGERLENDIRME API
+  // ========================================
+
+  // GET /api/public/staff-rating/validate/:token - Token dogrula
+  app.get("/api/public/staff-rating/validate/:token", async (req, res) => {
+    try {
+      const { token } = req.params;
+      
+      const [tokenRecord] = await db.select().from(staffQrTokens)
+        .where(and(
+          eq(staffQrTokens.token, token),
+          eq(staffQrTokens.isActive, true)
+        )).limit(1);
+      
+      if (!tokenRecord) {
+        return res.status(404).json({ message: "Gecersiz veya suresi dolmus QR kodu" });
+      }
+      
+      // Check if expired
+      if (tokenRecord.expiresAt && new Date(tokenRecord.expiresAt) < new Date()) {
+        return res.status(400).json({ message: "QR kodunun suresi dolmus" });
+      }
+      
+      // Get staff and branch info
+      const [staff] = await db.select({ firstName: users.firstName, lastName: users.lastName })
+        .from(users).where(eq(users.id, tokenRecord.staffId)).limit(1);
+      const [branch] = await db.select({ name: branches.name })
+        .from(branches).where(eq(branches.id, tokenRecord.branchId)).limit(1);
+      
+      res.json({
+        valid: true,
+        staffName: staff ? staff.firstName + " " + staff.lastName : "Personel",
+        branchName: branch?.name || "Sube",
+        staffId: tokenRecord.staffId,
+        branchId: tokenRecord.branchId,
+      });
+    } catch (error: any) {
+      console.error("Error validating staff rating token:", error);
+      res.status(500).json({ message: "Token dogrulanamadi" });
+    }
+  });
+
+  // POST /api/public/staff-rating - Degerlendirme kaydet
+  app.post("/api/public/staff-rating", async (req, res) => {
+    try {
+      const { token, overallRating, serviceRating, friendlinessRating, speedRating, comment } = req.body;
+      
+      if (!token || !overallRating) {
+        return res.status(400).json({ message: "Token ve genel puan zorunludur" });
+      }
+      
+      // Validate token
+      const [tokenRecord] = await db.select().from(staffQrTokens)
+        .where(and(
+          eq(staffQrTokens.token, token),
+          eq(staffQrTokens.isActive, true)
+        )).limit(1);
+      
+      if (!tokenRecord) {
+        return res.status(404).json({ message: "Gecersiz QR kodu" });
+      }
+      
+      if (tokenRecord.expiresAt && new Date(tokenRecord.expiresAt) < new Date()) {
+        return res.status(400).json({ message: "QR kodunun suresi dolmus" });
+      }
+      
+      // Save rating
+      const [rating] = await db.insert(staffQrRatings).values({
+        staffId: tokenRecord.staffId,
+        branchId: tokenRecord.branchId,
+        tokenId: tokenRecord.id,
+        overallRating,
+        serviceRating: serviceRating || null,
+        friendlinessRating: friendlinessRating || null,
+        speedRating: speedRating || null,
+        comment: comment || null,
+        status: "active",
+      }).returning();
+      
+      // Update token usage
+      await db.update(staffQrTokens).set({
+        usageCount: (tokenRecord.usageCount || 0) + 1,
+        lastUsedAt: new Date(),
+      }).where(eq(staffQrTokens.id, tokenRecord.id));
+      
+      res.json({ success: true, message: "Degerlendirme kaydedildi" });
+    } catch (error: any) {
+      console.error("Error saving staff rating:", error);
+      res.status(500).json({ message: "Degerlendirme kaydedilemedi" });
+    }
+  });
+
+  // ========================================
+  // STAFF QR TOKEN YONETIM API
+  // ========================================
+
+  // GET /api/staff-qr-tokens - Token listesi
+  app.get("/api/staff-qr-tokens", isAuthenticated, async (req: any, res) => {
+    try {
+      const userRole = req.user?.role;
+      const userBranchId = req.user?.branchId;
+      
+      let conditions = [];
+      if (userRole === "supervisor" && userBranchId) {
+        conditions.push(eq(staffQrTokens.branchId, userBranchId));
+      }
+      
+      const tokens = await db.select().from(staffQrTokens)
+        .where(conditions.length > 0 ? and(...conditions) : undefined)
+        .orderBy(desc(staffQrTokens.createdAt));
+      
+      const enriched = await Promise.all(tokens.map(async (t) => {
+        const [staff] = await db.select({ firstName: users.firstName, lastName: users.lastName })
+          .from(users).where(eq(users.id, t.staffId)).limit(1);
+        const [branch] = await db.select({ name: branches.name })
+          .from(branches).where(eq(branches.id, t.branchId)).limit(1);
+        return { ...t, staff, branch };
+      }));
+      
+      res.json(enriched);
+    } catch (error: any) {
+      console.error("Error fetching staff tokens:", error);
+      res.status(500).json({ message: "Tokenlar alinamadi" });
+    }
+  });
+
+  // POST /api/staff-qr-tokens - Yeni token olustur
+  app.post("/api/staff-qr-tokens", isAuthenticated, async (req: any, res) => {
+    try {
+      const { branchId, staffId, expiresAt } = req.body;
+      
+      if (!branchId || !staffId) {
+        return res.status(400).json({ message: "Sube ve personel zorunlu" });
+      }
+      
+      // Generate unique token
+      const token = require("crypto").randomBytes(16).toString("hex");
+      
+      const [newToken] = await db.insert(staffQrTokens).values({
+        staffId,
+        branchId,
+        token,
+        expiresAt: expiresAt ? new Date(expiresAt) : null,
+        isActive: true,
+        usageCount: 0,
+      }).returning();
+      
+      res.json({ success: true, token: newToken });
+    } catch (error: any) {
+      console.error("Error creating staff token:", error);
+      if (error.code === "23505") {
+        return res.status(400).json({ message: "Bu personel icin zaten token var" });
+      }
+      res.status(500).json({ message: "Token olusturulamadi" });
+    }
+  });
+
+  // DELETE /api/staff-qr-tokens/:id - Token sil
+  app.delete("/api/staff-qr-tokens/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      await db.delete(staffQrTokens).where(eq(staffQrTokens.id, parseInt(id)));
+      res.json({ success: true, message: "Token silindi" });
+    } catch (error: any) {
+      console.error("Error deleting staff token:", error);
+      res.status(500).json({ message: "Token silinemedi" });
+    }
+  });
+
+
   app.post("/api/manager-ratings", isAuthenticated, async (req: any, res) => {
     try {
       const userRole = req.user?.role;
