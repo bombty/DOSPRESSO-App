@@ -76,6 +76,12 @@ The frontend utilizes React 18+ with TypeScript and Vite, employing Shadcn/ui (N
   - Manager evaluation system with 5 criteria: work performance, teamwork, initiative, customer relations, punctuality
   - Branch-specific visibility: each branch sees only their winner, HQ/Admin sees all
   - API endpoints: GET/POST /api/manager-ratings, employee-of-month calculations, performance tracking
+  - Frontend Pages:
+    - `/ayin-elemani` - Employee of Month dashboard with rankings, weights chart, and awards history
+    - `/personel-qr-tokenlar` - QR token management for staff ratings
+    - `/personel-degerlendirme/:token` - Public customer rating page (no auth required)
+    - `/gelismis-raporlar` - Advanced PDF reports with charts (performance, employee, branch reports)
+    - `/performansim` - Personal performance dashboard with radar chart, history, and AI motivation tips
 
 ## External Dependencies
 ### Third-Party Services
