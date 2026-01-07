@@ -2,6 +2,8 @@ import jsPDF from "jspdf";
 import autoTable, { RowInput } from "jspdf-autotable";
 
 const DOSPRESSO_LOGO_PATH = "/dospresso-logo.jpeg";
+const ROBOTO_REGULAR_PATH = "/fonts/Roboto-Regular.ttf";
+const ROBOTO_BOLD_PATH = "/fonts/Roboto-Bold.ttf";
 
 const COLORS = {
   navy: { r: 30, g: 58, b: 95 },
@@ -27,6 +29,87 @@ export interface TableOptions {
   theme?: "striped" | "grid" | "plain";
 }
 
+let fontsLoaded = false;
+let fontLoadPromise: Promise<void> | null = null;
+let robotoRegularBase64: string | null = null;
+let robotoBoldBase64: string | null = null;
+
+async function arrayBufferToBase64(buffer: ArrayBuffer): Promise<string> {
+  const bytes = new Uint8Array(buffer);
+  let binary = '';
+  for (let i = 0; i < bytes.length; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary);
+}
+
+function isBrowser(): boolean {
+  return typeof window !== 'undefined' && typeof fetch !== 'undefined';
+}
+
+async function loadFonts(doc: jsPDF): Promise<void> {
+  if (!isBrowser()) {
+    return;
+  }
+
+  if (fontsLoaded && robotoRegularBase64 && robotoBoldBase64) {
+    doc.addFileToVFS("Roboto-Regular.ttf", robotoRegularBase64);
+    doc.addFont("Roboto-Regular.ttf", "Roboto", "normal");
+    doc.addFileToVFS("Roboto-Bold.ttf", robotoBoldBase64);
+    doc.addFont("Roboto-Bold.ttf", "Roboto", "bold");
+    doc.setFont("Roboto");
+    return;
+  }
+
+  if (fontLoadPromise) {
+    await fontLoadPromise;
+    if (fontsLoaded && robotoRegularBase64 && robotoBoldBase64) {
+      doc.addFileToVFS("Roboto-Regular.ttf", robotoRegularBase64);
+      doc.addFont("Roboto-Regular.ttf", "Roboto", "normal");
+      doc.addFileToVFS("Roboto-Bold.ttf", robotoBoldBase64);
+      doc.addFont("Roboto-Bold.ttf", "Roboto", "bold");
+      doc.setFont("Roboto");
+    }
+    return;
+  }
+
+  fontLoadPromise = (async () => {
+    try {
+      const [regularResponse, boldResponse] = await Promise.all([
+        fetch(ROBOTO_REGULAR_PATH),
+        fetch(ROBOTO_BOLD_PATH),
+      ]);
+
+      if (!regularResponse.ok || !boldResponse.ok) {
+        console.warn("Font dosyaları yüklenemedi, varsayılan font kullanılacak");
+        return;
+      }
+
+      const [regularBuffer, boldBuffer] = await Promise.all([
+        regularResponse.arrayBuffer(),
+        boldResponse.arrayBuffer(),
+      ]);
+
+      robotoRegularBase64 = await arrayBufferToBase64(regularBuffer);
+      robotoBoldBase64 = await arrayBufferToBase64(boldBuffer);
+
+      fontsLoaded = true;
+    } catch (error) {
+      console.warn("Font yükleme hatası:", error);
+    }
+  })();
+
+  await fontLoadPromise;
+
+  if (fontsLoaded && robotoRegularBase64 && robotoBoldBase64) {
+    doc.addFileToVFS("Roboto-Regular.ttf", robotoRegularBase64);
+    doc.addFont("Roboto-Regular.ttf", "Roboto", "normal");
+    doc.addFileToVFS("Roboto-Bold.ttf", robotoBoldBase64);
+    doc.addFont("Roboto-Bold.ttf", "Roboto", "bold");
+    doc.setFont("Roboto");
+  }
+}
+
 export async function loadLogo(): Promise<HTMLImageElement | null> {
   return new Promise((resolve) => {
     const img = new Image();
@@ -47,6 +130,9 @@ export async function loadLogo(): Promise<HTMLImageElement | null> {
 export async function createPDFWithHeader(options: PDFOptions): Promise<{ doc: jsPDF; yPos: number }> {
   const { title, subtitle, branchName, reportDate, orientation = "portrait" } = options;
   const doc = new jsPDF({ orientation });
+  
+  await loadFonts(doc);
+  
   const pageWidth = doc.internal.pageSize.getWidth();
   let yPos = 15;
 
@@ -88,7 +174,7 @@ export async function createPDFWithHeader(options: PDFOptions): Promise<{ doc: j
   if (branchName) {
     doc.setFontSize(11);
     doc.setTextColor(COLORS.gray.r, COLORS.gray.g, COLORS.gray.b);
-    doc.text(`Sube: ${branchName}`, pageWidth / 2, yPos, { align: "center" });
+    doc.text(`Şube: ${branchName}`, pageWidth / 2, yPos, { align: "center" });
     yPos += 6;
   }
 
@@ -127,10 +213,12 @@ export function addTable(doc: jsPDF, options: TableOptions, startY: number): num
       textColor: [255, 255, 255],
       fontSize: 10,
       fontStyle: "bold",
+      font: "Roboto",
     },
     bodyStyles: {
       fontSize: 9,
       textColor: [50, 50, 50],
+      font: "Roboto",
     },
     alternateRowStyles: {
       fillColor: [245, 245, 245],
@@ -139,6 +227,7 @@ export function addTable(doc: jsPDF, options: TableOptions, startY: number): num
       cellPadding: 4,
       lineColor: [200, 200, 200],
       lineWidth: 0.1,
+      font: "Roboto",
     },
     margin: { left: 20, right: 20 },
   });
@@ -151,7 +240,13 @@ export function addSection(doc: jsPDF, title: string, yPos: number): number {
   
   doc.setFontSize(13);
   doc.setTextColor(COLORS.brown.r, COLORS.brown.g, COLORS.brown.b);
+  if (fontsLoaded) {
+    doc.setFont("Roboto", "bold");
+  }
   doc.text(title, 20, yPos);
+  if (fontsLoaded) {
+    doc.setFont("Roboto", "normal");
+  }
   yPos += 3;
   
   doc.setDrawColor(COLORS.brown.r, COLORS.brown.g, COLORS.brown.b);
@@ -223,17 +318,5 @@ export function savePDF(doc: jsPDF, filename: string): void {
 
 export function sanitizeText(text: string): string {
   if (!text) return "";
-  return text
-    .replace(/ğ/g, "g")
-    .replace(/Ğ/g, "G")
-    .replace(/ü/g, "u")
-    .replace(/Ü/g, "U")
-    .replace(/ş/g, "s")
-    .replace(/Ş/g, "S")
-    .replace(/ı/g, "i")
-    .replace(/İ/g, "I")
-    .replace(/ö/g, "o")
-    .replace(/Ö/g, "O")
-    .replace(/ç/g, "c")
-    .replace(/Ç/g, "C");
+  return text;
 }
