@@ -22942,14 +22942,21 @@ DOSPRESSO İnsan Kaynakları Ekibi`
         
         // Generate unique filename
         const timestamp = Date.now();
-        const filename = `banners/banner_${timestamp}.png`;
+        const filename = `public/banners/banner_${timestamp}.png`;
         
         // Upload to object storage
-        await client.uploadFromBytes(filename, buffer);
+        const uploadResult = await client.uploadFromBytes(filename, buffer);
+        if (!uploadResult.ok) {
+          console.error("Banner upload failed:", uploadResult.error);
+        } else {
+          console.log("Banner uploaded successfully to:", filename);
+        }
         
-        // Get public URL
-        const bucketId = process.env.DEFAULT_OBJECT_STORAGE_BUCKET_ID;
-        bannerImageUrl = `https://objectstorage.us-west-2.replit.dev/${bucketId}/${filename}`;
+        // Get public URL only if upload succeeded
+        if (uploadResult.ok) {
+          const bucketId = process.env.DEFAULT_OBJECT_STORAGE_BUCKET_ID;
+          bannerImageUrl = `https://objectstorage.us-west-2.replit.dev/${bucketId}/${filename}`;
+        }
       } catch (uploadError: any) {
         console.error("Banner upload error:", uploadError);
         // Continue without image if upload fails
