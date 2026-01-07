@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -23,6 +23,7 @@ import autoTable, { RowInput } from "jspdf-autotable";
 import * as XLSX from "xlsx";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { addChartToPDF } from "@/lib/pdfHelper";
 import dospressoNavyLogo from "@assets/IMG_5044_1765665383658.jpeg";
 import { useAuth } from "@/hooks/useAuth";
 import { isHQRole, type UserRoleType } from "@shared/schema";
@@ -87,7 +88,13 @@ export default function Raporlar() {
     return d;
   });
   const [trendEndDate, setTrendEndDate] = useState<Date>(new Date());
+  const [isExportingPDF, setIsExportingPDF] = useState(false);
   const { toast } = useToast();
+
+  // Chart refs for PDF export
+  const comparisonChartRef = useRef<HTMLDivElement>(null);
+  const trendChartRef = useRef<HTMLDivElement>(null);
+  const qualityChartRef = useRef<HTMLDivElement>(null);
 
   // Fetch reports
   const { data: reports = [], isLoading } = useQuery<DetailedReport[]>({
@@ -395,7 +402,133 @@ export default function Raporlar() {
     });
   };
 
-  // Simple chart export
+  // Enhanced chart export with visual capture
+  const exportChartWithVisual = async (
+    chartName: string, 
+    chartData: any[], 
+    chartRef: React.RefObject<HTMLDivElement>
+  ) => {
+    if (isExportingPDF) return;
+    setIsExportingPDF(true);
+    
+    try {
+      const doc = new jsPDF();
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const pageHeight = doc.internal.pageSize.getHeight();
+      const margin = 20;
+      let yPos = margin;
+
+      // Add logo
+      try {
+        const img = new Image();
+        img.crossOrigin = "anonymous";
+        await new Promise<void>((resolve, reject) => {
+          img.onload = () => resolve();
+          img.onerror = reject;
+          img.src = dospressoNavyLogo;
+        });
+        doc.addImage(img, "JPEG", margin, yPos, 50, 25);
+      } catch (e) {
+        console.log("Logo yüklenemedi");
+      }
+
+      // Header - Date
+      const today = new Date().toLocaleDateString("tr-TR", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      });
+      doc.setFontSize(10);
+      doc.setTextColor(100);
+      doc.text(today, pageWidth - margin, yPos + 10, { align: "right" });
+
+      yPos += 35;
+
+      // Title
+      doc.setFontSize(20);
+      doc.setTextColor(30, 41, 82);
+      doc.text(chartName, pageWidth / 2, yPos, { align: "center" });
+      yPos += 10;
+
+      // Subtitle
+      doc.setFontSize(12);
+      doc.setTextColor(100);
+      doc.text("Analiz Raporu", pageWidth / 2, yPos, { align: "center" });
+      yPos += 15;
+
+      // Divider line
+      doc.setDrawColor(30, 41, 82);
+      doc.setLineWidth(0.5);
+      doc.line(margin, yPos, pageWidth - margin, yPos);
+      yPos += 15;
+
+      // Add chart visual if ref is available
+      if (chartRef.current) {
+        try {
+          yPos = await addChartToPDF(doc, chartRef.current, yPos, { 
+            title: "Grafik Görünümü",
+            maxHeight: 180
+          });
+        } catch (chartError) {
+          console.error("Chart yakalama hatası:", chartError);
+        }
+      }
+
+      // Add data table
+      if (chartData && chartData.length > 0) {
+        yPos += 5;
+        doc.setFontSize(12);
+        doc.setTextColor(30, 41, 82);
+        doc.text("Veri Tablosu", margin, yPos);
+        yPos += 8;
+
+        const headers = Object.keys(chartData[0]);
+        const tableData: RowInput[] = chartData.map((row) =>
+          Object.values(row).map((val) => String(val ?? ""))
+        );
+
+        autoTable(doc, {
+          head: [headers],
+          body: tableData,
+          startY: yPos,
+          margin: { left: margin, right: margin },
+          headStyles: {
+            fillColor: [30, 41, 82],
+            textColor: 255,
+            fontStyle: "bold",
+          },
+          alternateRowStyles: { fillColor: [245, 247, 250] },
+          styles: { fontSize: 9 },
+        });
+      }
+
+      // Footer
+      const footerY = pageHeight - 15;
+      doc.setFontSize(8);
+      doc.setTextColor(150);
+      doc.text("DOSPRESSO Franchise Management System", pageWidth / 2, footerY, {
+        align: "center",
+      });
+      doc.text(`Sayfa 1`, pageWidth - margin, footerY, { align: "right" });
+
+      doc.save(`${chartName.replace(/\s+/g, "_")}_Rapor.pdf`);
+      toast({
+        title: "Başarılı",
+        description: "PDF raporu grafik görseli ile indirildi",
+      });
+    } catch (error) {
+      console.error("PDF export error:", error);
+      toast({
+        title: "Hata",
+        description: "PDF oluşturulurken bir hata oluştu",
+        variant: "destructive",
+      });
+    } finally {
+      setIsExportingPDF(false);
+    }
+  };
+
+  // Simple chart export fallback
   const exportChartToPDF = (chartName: string, chartData: any[]) => {
     exportProfessionalPDF(chartName, "Analiz Raporu", null, chartData);
   };
@@ -689,28 +822,31 @@ export default function Raporlar() {
               <Button
                 size="sm"
                 variant="outline"
+                disabled={isExportingPDF}
                 onClick={() =>
-                  exportChartToPDF("Şube Karşılaştırması", comparisonData)
+                  exportChartWithVisual("Şube Karşılaştırması", comparisonData, comparisonChartRef)
                 }
                 data-testid="button-export-comparison-pdf"
               >
                 <Download className="h-4 w-4 mr-1" />
-                PDF
+                {isExportingPDF ? "İndiriliyor..." : "PDF"}
               </Button>
             </CardHeader>
             <CardContent>
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={comparisonData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="branch" />
-                  <YAxis />
-                  <Tooltip />
-                  <Legend />
-                  <Bar dataKey="faults" fill="#ef4444" name="Arızalar" />
-                  <Bar dataKey="tasks" fill="#3b82f6" name="Görevler" />
-                  <Bar dataKey="health" fill="#10b981" name="Sağlık Puanı" />
-                </BarChart>
-              </ResponsiveContainer>
+              <div ref={comparisonChartRef}>
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart data={comparisonData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="branch" />
+                    <YAxis />
+                    <Tooltip />
+                    <Legend />
+                    <Bar dataKey="faults" fill="#ef4444" name="Arızalar" />
+                    <Bar dataKey="tasks" fill="#3b82f6" name="Görevler" />
+                    <Bar dataKey="health" fill="#10b981" name="Sağlık Puanı" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
@@ -727,11 +863,12 @@ export default function Raporlar() {
                 <Button
                   size="sm"
                   variant="outline"
-                  onClick={() => exportChartToPDF("Trend Analizi", trendData)}
+                  disabled={isExportingPDF}
+                  onClick={() => exportChartWithVisual("Trend Analizi", trendData, trendChartRef)}
                   data-testid="button-export-trends-pdf"
                 >
                   <Download className="h-4 w-4 mr-1" />
-                  PDF
+                  {isExportingPDF ? "İndiriliyor..." : "PDF"}
                 </Button>
               </div>
               <div className="flex flex-wrap gap-4 items-center">
@@ -776,17 +913,19 @@ export default function Raporlar() {
               </div>
             </CardHeader>
             <CardContent>
-              <ResponsiveContainer width="100%" height={300}>
-                <LineChart data={trendData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="date" />
-                  <YAxis />
-                  <Tooltip />
-                  <Legend />
-                  <Line type="monotone" dataKey="faults" stroke="#ef4444" name="Arızalar" />
-                  <Line type="monotone" dataKey="tasks" stroke="#3b82f6" name="Görevler" />
-                </LineChart>
-              </ResponsiveContainer>
+              <div ref={trendChartRef}>
+                <ResponsiveContainer width="100%" height={300}>
+                  <LineChart data={trendData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="date" />
+                    <YAxis />
+                    <Tooltip />
+                    <Legend />
+                    <Line type="monotone" dataKey="faults" stroke="#ef4444" name="Arızalar" />
+                    <Line type="monotone" dataKey="tasks" stroke="#3b82f6" name="Görevler" />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>

@@ -1,5 +1,6 @@
 import jsPDF from "jspdf";
 import autoTable, { RowInput } from "jspdf-autotable";
+import html2canvas from "html2canvas";
 
 const DOSPRESSO_LOGO_PATH = "/dospresso-logo.jpeg";
 const ROBOTO_REGULAR_PATH = "/fonts/Roboto-Regular.ttf";
@@ -319,4 +320,146 @@ export function savePDF(doc: jsPDF, filename: string): void {
 export function sanitizeText(text: string): string {
   if (!text) return "";
   return text;
+}
+
+/**
+ * Wait for charts to render completely by checking for canvas/svg elements
+ * @param element - The DOM element containing the chart
+ * @param timeout - Maximum wait time in ms (default 2000)
+ */
+export async function waitForChartRender(element: HTMLElement, timeout: number = 2000): Promise<void> {
+  return new Promise((resolve) => {
+    const startTime = Date.now();
+    
+    const checkRender = () => {
+      // Check for Recharts SVG elements
+      const svgElements = element.querySelectorAll('svg');
+      const hasVisibleChart = Array.from(svgElements).some(svg => {
+        const rect = svg.getBoundingClientRect();
+        return rect.width > 0 && rect.height > 0;
+      });
+      
+      if (hasVisibleChart || Date.now() - startTime >= timeout) {
+        // Give extra time for animations to complete
+        setTimeout(resolve, 300);
+      } else {
+        requestAnimationFrame(checkRender);
+      }
+    };
+    
+    checkRender();
+  });
+}
+
+/**
+ * Capture a DOM element as canvas using html2canvas
+ * @param element - The DOM element to capture
+ * @param options - html2canvas options
+ */
+export async function captureElementAsCanvas(
+  element: HTMLElement,
+  options: Partial<{
+    backgroundColor: string;
+    scale: number;
+    useCORS: boolean;
+    logging: boolean;
+  }> = {}
+): Promise<HTMLCanvasElement | null> {
+  try {
+    // Wait for chart render first
+    await waitForChartRender(element);
+    
+    const canvas = await html2canvas(element, {
+      backgroundColor: options.backgroundColor || '#ffffff',
+      scale: options.scale || 2,
+      useCORS: options.useCORS !== false,
+      logging: options.logging || false,
+      allowTaint: true,
+    });
+    
+    return canvas;
+  } catch (error) {
+    console.error('Grafik yakalama hatası:', error);
+    return null;
+  }
+}
+
+/**
+ * Add a chart image to PDF document
+ * @param doc - jsPDF document instance
+ * @param chartElement - The DOM element containing the chart
+ * @param yPos - Current Y position in PDF
+ * @param options - Image placement options
+ */
+export async function addChartToPDF(
+  doc: jsPDF,
+  chartElement: HTMLElement,
+  yPos: number,
+  options: {
+    title?: string;
+    maxWidth?: number;
+    maxHeight?: number;
+  } = {}
+): Promise<number> {
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const margin = 20;
+  
+  // Add title if provided
+  if (options.title) {
+    yPos = checkPageBreak(doc, yPos, 50);
+    doc.setFontSize(12);
+    doc.setTextColor(COLORS.brown.r, COLORS.brown.g, COLORS.brown.b);
+    doc.text(options.title, margin, yPos);
+    yPos += 8;
+  }
+  
+  // Capture chart
+  const canvas = await captureElementAsCanvas(chartElement);
+  if (!canvas) {
+    doc.setFontSize(10);
+    doc.setTextColor(COLORS.gray.r, COLORS.gray.g, COLORS.gray.b);
+    doc.text('Grafik yüklenemedi', margin, yPos);
+    return yPos + 10;
+  }
+  
+  // Calculate image dimensions
+  const imgData = canvas.toDataURL('image/png');
+  const imgWidth = options.maxWidth || pageWidth - margin * 2;
+  const aspectRatio = canvas.height / canvas.width;
+  let imgHeight = imgWidth * aspectRatio;
+  
+  // Limit height if needed
+  const maxH = options.maxHeight || (pageHeight - yPos - 40);
+  if (imgHeight > maxH) {
+    imgHeight = maxH;
+  }
+  
+  // Check if we need a new page
+  yPos = checkPageBreak(doc, yPos, imgHeight + 10);
+  
+  // Add image to PDF
+  doc.addImage(imgData, 'PNG', margin, yPos, imgWidth, imgHeight);
+  
+  return yPos + imgHeight + 10;
+}
+
+/**
+ * Capture multiple chart elements and add them to PDF
+ * @param doc - jsPDF document
+ * @param charts - Array of { element, title } objects
+ * @param startY - Starting Y position
+ */
+export async function addMultipleChartsToPDF(
+  doc: jsPDF,
+  charts: Array<{ element: HTMLElement; title: string }>,
+  startY: number
+): Promise<number> {
+  let yPos = startY;
+  
+  for (const chart of charts) {
+    yPos = await addChartToPDF(doc, chart.element, yPos, { title: chart.title });
+  }
+  
+  return yPos;
 }

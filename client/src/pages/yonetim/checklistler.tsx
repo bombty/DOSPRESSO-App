@@ -4,7 +4,23 @@ import { queryClient } from "@/lib/queryClient";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Pencil, Trash2, ChevronDown, ChevronUp, AlertCircle, UserPlus, Camera, Upload, X, BrainCircuit, ImagePlus } from "lucide-react";
+import { Plus, Pencil, Trash2, ChevronDown, ChevronUp, AlertCircle, UserPlus, Camera, Upload, X, BrainCircuit, ImagePlus, GripVertical } from "lucide-react";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  useSortable,
+  SortableContext,
+  verticalListSortingStrategy,
+  arrayMove,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { ObjectUploader } from "@/components/ObjectUploader";
 import { Slider } from "@/components/ui/slider";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
@@ -18,6 +34,55 @@ import { Separator } from "@/components/ui/separator";
 import { useAuth } from "@/hooks/useAuth";
 import { isHQRole } from "@shared/schema";
 import type { Checklist, ChecklistTask, UserRoleType } from "@shared/schema";
+import { apiRequest } from "@/lib/queryClient";
+
+// Sortable Task Item Component
+function SortableTaskItem({ 
+  task, 
+  index 
+}: { 
+  task: ChecklistTask; 
+  index: number;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: task.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className="flex items-center gap-2 text-sm py-1.5 px-2 rounded-md border bg-background"
+      data-testid={`sortable-task-${task.id}`}
+    >
+      <div {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing">
+        <GripVertical className="h-4 w-4 text-muted-foreground" />
+      </div>
+      <span className="text-muted-foreground min-w-[24px]">{index + 1}.</span>
+      <span className="flex-1">{task.taskDescription}</span>
+      {task.requiresPhoto && (
+        <Badge variant="outline" className="text-xs">Fotoğraf</Badge>
+      )}
+      {task.aiVerificationType && task.aiVerificationType !== "none" && (
+        <Badge variant="secondary" className="text-xs">
+          <BrainCircuit className="h-3 w-3 mr-1" />
+          AI
+        </Badge>
+      )}
+    </div>
+  );
+}
 
 export default function AdminChecklistManagement() {
   const { user } = useAuth();
@@ -54,6 +119,12 @@ export default function AdminChecklistManagement() {
     enabled: !!checklists,
   });
 
+  // DnD sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(KeyboardSensor)
+  );
+
   const deleteChecklistMutation = useMutation({
     mutationFn: async (id: number) => {
       const res = await fetch(`/api/checklists/${id}`, { method: 'DELETE' });
@@ -68,6 +139,38 @@ export default function AdminChecklistManagement() {
       toast({ title: "Hata", description: error.message, variant: "destructive" });
     },
   });
+
+  const reorderTasksMutation = useMutation({
+    mutationFn: async ({ checklistId, taskIds }: { checklistId: number; taskIds: number[] }) => {
+      return apiRequest("PATCH", "/api/checklist-tasks/reorder", { checklistId, taskIds });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/checklist-tasks'] });
+      toast({ title: "Başarılı", description: "Görev sırası güncellendi" });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Hata", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const handleTaskDragEnd = (checklistId: number) => (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    // Get current sorted tasks fresh from query data
+    const currentTasks = checklistTasks
+      .filter((t) => t.checklistId === checklistId)
+      .sort((a, b) => a.order - b.order);
+
+    const oldIndex = currentTasks.findIndex((t) => t.id === active.id);
+    const newIndex = currentTasks.findIndex((t) => t.id === over.id);
+
+    if (oldIndex !== -1 && newIndex !== -1) {
+      const reorderedTasks = arrayMove(currentTasks, oldIndex, newIndex);
+      const taskIds = reorderedTasks.map((t) => t.id);
+      reorderTasksMutation.mutate({ checklistId, taskIds });
+    }
+  };
 
   const filteredChecklists = checklists?.filter((c) => {
     if (filterFrequency !== "all" && c.frequency !== filterFrequency) return false;
@@ -237,26 +340,32 @@ export default function AdminChecklistManagement() {
                         <>
                           <Separator className="my-3" />
                           <div className="w-full space-y-1 md:space-y-1">
-                            <h4 className="font-medium text-sm mb-2">Görevler:</h4>
-                            {tasks.map((task, index) => (
-                              <div
-                                key={task.id}
-                                className="flex items-center gap-2 text-sm py-1"
-                                data-testid={`task-item-${task.id}`}
+                            <div className="flex items-center justify-between mb-2">
+                              <h4 className="font-medium text-sm">Görevler:</h4>
+                              <span className="text-xs text-muted-foreground">Sıralamak için sürükleyin</span>
+                            </div>
+                            <DndContext
+                              sensors={sensors}
+                              collisionDetection={closestCenter}
+                              onDragEnd={handleTaskDragEnd(checklist.id)}
+                            >
+                              <SortableContext
+                                items={tasks.map((t) => t.id)}
+                                strategy={verticalListSortingStrategy}
                               >
-                                <span className="text-muted-foreground">{index + 1}.</span>
-                                <span className="flex-1">{task.taskDescription}</span>
-                                {task.requiresPhoto && (
-                                  <Badge variant="outline" className="text-xs">Fotoğraf</Badge>
-                                )}
-                                {task.aiVerificationType && task.aiVerificationType !== "none" && (
-                                  <Badge variant="secondary" className="text-xs">
-                                    <BrainCircuit className="h-3 w-3 mr-1" />
-                                    AI
-                                  </Badge>
-                                )}
-                              </div>
-                            ))}
+                                <div className="space-y-1">
+                                  {tasks
+                                    .sort((a, b) => a.order - b.order)
+                                    .map((task, index) => (
+                                      <SortableTaskItem 
+                                        key={task.id} 
+                                        task={task} 
+                                        index={index} 
+                                      />
+                                    ))}
+                                </div>
+                              </SortableContext>
+                            </DndContext>
                           </div>
                         </>
                       )}

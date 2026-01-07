@@ -3077,6 +3077,35 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
     }
   });
 
+  // PATCH /api/checklist-tasks/reorder - Reorder checklist tasks
+  app.patch('/api/checklist-tasks/reorder', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      ensurePermission(user, 'checklists', 'edit');
+      
+      const { checklistId, taskIds } = req.body;
+      
+      if (!checklistId || !Array.isArray(taskIds) || taskIds.length === 0) {
+        return res.status(400).json({ message: "checklistId ve taskIds dizisi gerekli" });
+      }
+      
+      // Update order for each task
+      for (let i = 0; i < taskIds.length; i++) {
+        await db.update(checklistTasks)
+          .set({ order: i + 1 })
+          .where(and(
+            eq(checklistTasks.id, taskIds[i]),
+            eq(checklistTasks.checklistId, checklistId)
+          ));
+      }
+      
+      res.json({ success: true, message: "Görev sırası güncellendi" });
+    } catch (error: any) {
+      console.error("Error reordering checklist tasks:", error);
+      res.status(500).json({ message: "Görev sırası güncellenemedi: " + error.message });
+    }
+  });
+
   app.post('/api/checklists/:id/tasks', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
