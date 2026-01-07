@@ -2825,8 +2825,11 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
         aiVerificationNote: verificationResult.verificationNote,
       });
       
-      // Create notification if verification failed
+      // Create notification and update performance if verification failed
       if (!verificationResult.passed) {
+        const today = new Date().toISOString().split('T')[0];
+        
+        // 1. Create notification for user
         await storage.createNotification({
           userId: user.id,
           title: 'AI Fotoğraf Doğrulama Başarısız',
@@ -2837,6 +2840,38 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
           relatedId: completionId,
           branchId: user.branchId,
         });
+        
+        // 2. Update employee performance score
+        await storage.updateEmployeeAIVerificationScore(
+          user.id,
+          user.branchId,
+          today,
+          verificationResult.passed,
+          verificationResult.similarityScore
+        );
+        
+        // 3. Create dashboard alert for critical AI verification failures (below 50% similarity)
+        if (verificationResult.similarityScore < 50) {
+          await storage.createDashboardAlert({
+            context: 'branch',
+            contextId: user.branchId,
+            triggerType: 'ai_verification_failed',
+            severity: 'warning',
+            status: 'active',
+            title: 'AI Doğrulama Başarısız',
+            message: `${user.firstName} ${user.lastName} - "${task.taskDescription}" görevi %${verificationResult.similarityScore} benzerlik skoru aldı`,
+            payload: JSON.stringify({
+              userId: user.id,
+              taskId,
+              completionId,
+              similarityScore: verificationResult.similarityScore,
+              requiredScore: task.tolerancePercent || 80,
+            }),
+            relatedUserId: user.id,
+            relatedChecklistId: completionId,
+            occurredAt: new Date(),
+          });
+        }
       }
       
       res.json({

@@ -159,6 +159,8 @@ import type {
   InsertFactoryInventory,
   ShiftSwapRequest,
   InsertShiftSwapRequest,
+  DashboardAlert,
+  InsertDashboardAlert,
 } from "@shared/schema";
 import {
   users,
@@ -228,6 +230,7 @@ import {
   equipmentTroubleshootingSteps,
   equipmentTroubleshootingCompletion,
   employeePerformanceScores,
+  dashboardAlerts,
   branchQualityAudits,
   auditTemplates,
   auditTemplateItems,
@@ -432,6 +435,10 @@ export interface IStorage {
   updateChecklistCompletionScore(id: number, score: number, reviewedById: string, reviewNote?: string): Promise<ChecklistCompletion | undefined>;
   updateEmployeeChecklistPerformance(userId: string, branchId: number, date: string, checklistScore: number): Promise<void>;
   updateEmployeeTaskPerformance(userId: string, branchId: number, date: string, taskScore: number, isNewRating: boolean, previousScore: number): Promise<void>;
+  updateEmployeeAIVerificationScore(userId: string, branchId: number, date: string, passed: boolean, similarityScore: number): Promise<void>;
+  
+  // Dashboard Alerts
+  createDashboardAlert(alert: InsertDashboardAlert): Promise<DashboardAlert>;
   
   // Equipment operations
   getEquipment(branchId?: number): Promise<Equipment[]>;
@@ -2062,6 +2069,55 @@ export class DatabaseStorage implements IStorage {
         compositeScore,
       });
     }
+  }
+
+  async updateEmployeeAIVerificationScore(userId: string, branchId: number, date: string, passed: boolean, similarityScore: number): Promise<void> {
+    // AI doğrulama başarısızlığında performans skorunu düşür
+    if (!passed) {
+      const weekNumber = this.getWeekNumber(new Date(date));
+      
+      // Mevcut performans kaydını al veya oluştur
+      const existing = await db
+        .select()
+        .from(employeePerformanceScores)
+        .where(and(
+          eq(employeePerformanceScores.userId, userId),
+          eq(employeePerformanceScores.date, date)
+        ));
+      
+      if (existing.length > 0) {
+        // Mevcut checklist skorunu AI başarısızlığı nedeniyle düşür
+        const currentScore = existing[0].checklistScore || 100;
+        const penaltyPercent = Math.max(0, 100 - similarityScore); // AI skoru ne kadar düşükse ceza o kadar yüksek
+        const penalty = Math.round(penaltyPercent * 0.2); // Maksimum %20 ceza
+        const newScore = Math.max(0, currentScore - penalty);
+        
+        await db.update(employeePerformanceScores)
+          .set({
+            checklistScore: newScore,
+            updatedAt: new Date(),
+          })
+          .where(eq(employeePerformanceScores.id, existing[0].id));
+      } else {
+        // Yeni kayıt oluştur düşük başlangıç skoruyla
+        const penaltyPercent = Math.max(0, 100 - similarityScore);
+        const penalty = Math.round(penaltyPercent * 0.2);
+        
+        await db.insert(employeePerformanceScores).values({
+          userId,
+          branchId,
+          date,
+          week: weekNumber,
+          checklistScore: Math.max(0, 100 - penalty),
+          checklistsCompleted: 0,
+        });
+      }
+    }
+  }
+
+  async createDashboardAlert(alert: InsertDashboardAlert): Promise<DashboardAlert> {
+    const [created] = await db.insert(dashboardAlerts).values(alert).returning();
+    return created;
   }
 
   // Health Score Calculation (0-100)
