@@ -241,6 +241,36 @@ export default function BannerEditor() {
     queryKey: ["/api/branches"],
   });
 
+  // Draft save state
+  const [draftTitle, setDraftTitle] = useState("");
+  const [saveDraftDialogOpen, setSaveDraftDialogOpen] = useState(false);
+  const [isSavingDraft, setIsSavingDraft] = useState(false);
+
+  // Save as draft mutation - saves to banners table with isActive=false
+  const saveDraftMutation = useMutation({
+    mutationFn: async (data: { imageUrl: string; title: string }) => {
+      return apiRequest("POST", "/api/admin/banners", {
+        title: data.title,
+        imageUrl: data.imageUrl,
+        isActive: false,
+      });
+    },
+    onSuccess: () => {
+      toast({ title: "Başarılı", description: "Taslak kaydedildi!" });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/banners"] });
+      setSaveDraftDialogOpen(false);
+      setDraftTitle("");
+      setLocation("/icerik-studyosu");
+    },
+    onError: (error: Error) => {
+      toast({ 
+        title: "Hata", 
+        description: error.message || "Taslak kaydedilemedi", 
+        variant: "destructive" 
+      });
+    }
+  });
+
   // Publish mutation
   const publishMutation = useMutation({
     mutationFn: async (data: { 
@@ -253,16 +283,22 @@ export default function BannerEditor() {
       targetRoles: string[];
       targetBranches: number[];
     }) => {
-      return apiRequest("/api/announcements/from-banner", {
-        method: "POST",
-        body: JSON.stringify(data),
+      return apiRequest("POST", "/api/announcements/from-banner", {
+        imageData: data.imageData,
+        title: data.title,
+        message: data.message,
+        category: data.category,
+        priority: data.priority,
+        showOnDashboard: data.showOnDashboard,
+        targetRoles: data.targetRoles,
+        targetBranches: data.targetBranches,
       });
     },
     onSuccess: () => {
       toast({ title: "Başarılı", description: "Duyuru yayınlandı!" });
       queryClient.invalidateQueries({ queryKey: ["/api/announcements"] });
       setPublishDialogOpen(false);
-      setLocation("/duyurular");
+      setLocation("/icerik-studyosu");
     },
     onError: (error: Error) => {
       toast({ 
@@ -441,6 +477,37 @@ export default function BannerEditor() {
     }
   };
 
+  const handleSaveDraft = async () => {
+    if (!canvasRef.current) return;
+    if (!draftTitle.trim()) {
+      toast({ title: "Hata", description: "Başlık gerekli", variant: "destructive" });
+      return;
+    }
+
+    setIsSavingDraft(true);
+    try {
+      const html2canvas = (await import("html2canvas")).default;
+      const canvas = await html2canvas(canvasRef.current, {
+        backgroundColor: null,
+        scale: 2,
+        useCORS: true,
+        allowTaint: true,
+      });
+
+      const imageData = canvas.toDataURL("image/png");
+      
+      saveDraftMutation.mutate({
+        imageUrl: imageData,
+        title: draftTitle,
+      });
+    } catch (error) {
+      console.error("Save draft error:", error);
+      toast({ title: "Hata", description: "Taslak kaydedilemedi", variant: "destructive" });
+    } finally {
+      setIsSavingDraft(false);
+    }
+  };
+
   const handlePublish = async () => {
     if (!canvasRef.current) return;
     if (!publishTitle.trim()) {
@@ -506,6 +573,10 @@ export default function BannerEditor() {
           <Button onClick={exportAsPNG} variant="outline" className="gap-2" data-testid="button-export-png">
             <Download className="h-4 w-4" />
             PNG İndir
+          </Button>
+          <Button onClick={() => setSaveDraftDialogOpen(true)} variant="secondary" className="gap-2" data-testid="button-save-draft">
+            <Cookie className="h-4 w-4" />
+            Taslak Kaydet
           </Button>
           <Button onClick={() => setPublishDialogOpen(true)} className="gap-2" data-testid="button-publish-banner">
             <Send className="h-4 w-4" />
@@ -1061,6 +1132,53 @@ export default function BannerEditor() {
                 <>
                   <Send className="h-4 w-4 mr-2" />
                   Yayınla
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Save Draft Dialog */}
+      <Dialog open={saveDraftDialogOpen} onOpenChange={setSaveDraftDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Taslak Olarak Kaydet</DialogTitle>
+            <DialogDescription>
+              Banner'ı taslak olarak kaydedin, daha sonra duyuru olarak yayınlayabilirsiniz.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Taslak Başlığı *</Label>
+              <Input 
+                placeholder="Banner için bir başlık girin..."
+                value={draftTitle}
+                onChange={(e) => setDraftTitle(e.target.value)}
+                data-testid="input-draft-title"
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSaveDraftDialogOpen(false)}>
+              İptal
+            </Button>
+            <Button 
+              onClick={handleSaveDraft} 
+              disabled={saveDraftMutation.isPending || isSavingDraft || !draftTitle.trim()}
+              data-testid="button-confirm-save-draft"
+            >
+              {saveDraftMutation.isPending || isSavingDraft ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Kaydediliyor...
+                </>
+              ) : (
+                <>
+                  <Cookie className="h-4 w-4 mr-2" />
+                  Taslak Kaydet
                 </>
               )}
             </Button>

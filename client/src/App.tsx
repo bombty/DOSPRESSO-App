@@ -149,6 +149,7 @@ import MisafirGeriBildirimPublic from "@/pages/misafir-geri-bildirim";
 import MisafirMemnuniyeti from "@/pages/misafir-memnuniyeti";
 import NotFound from "@/pages/not-found";
 import MegaModulePage from "@/pages/modul";
+import IcerikStudyosu from "@/pages/icerik-studyosu";
 
 const PUBLIC_PATH_PREFIXES = [
   "/login", 
@@ -286,7 +287,8 @@ function Router() {
           <Route path="/egitim-ata" component={TrainingAssign} />
           <Route path="/egitim">{() => { if (typeof window !== 'undefined') window.location.href = '/akademi-hq'; return null; }}</Route>
           <Route path="/bildirimler" component={Notifications} />
-          <Route path="/duyurular" component={Announcements} />
+          <Route path="/duyurular">{() => <HQOnly><IcerikStudyosu /></HQOnly>}</Route>
+          <Route path="/icerik-studyosu">{() => <HQOnly><IcerikStudyosu /></HQOnly>}</Route>
           <Route path="/mesajlar" component={Mesajlar} />
           <Route path="/proje-gorev/:id" component={ProjeGorevDetay} />
           <Route path="/projeler/:id" component={ProjeDetay} />
@@ -346,9 +348,9 @@ function Router() {
           <Route path="/admin/kullanicilar">{() => <AdminOnly><AdminKullanicilar /></AdminOnly>}</Route>
           <Route path="/admin/email-ayarlari">{() => <AdminOnly><AdminEmailAyarlari /></AdminOnly>}</Route>
           <Route path="/admin/servis-mail-ayarlari">{() => <AdminOnly><AdminServisMailAyarlari /></AdminOnly>}</Route>
-          <Route path="/admin/bannerlar">{() => <AdminOnly><AdminBannerlar /></AdminOnly>}</Route>
+          <Route path="/admin/bannerlar">{() => <HQOnly><IcerikStudyosu /></HQOnly>}</Route>
           <Route path="/admin/banner-editor">{() => <AdminOnly><BannerEditor /></AdminOnly>}</Route>
-          <Route path="/admin/duyurular">{() => <AdminOnly><AdminDuyurular /></AdminOnly>}</Route>
+          <Route path="/admin/duyurular">{() => <HQOnly><IcerikStudyosu /></HQOnly>}</Route>
           <Route path="/admin/yapay-zeka-ayarlari">{() => <AdminOnly><AdminYapayZekaAyarlari /></AdminOnly>}</Route>
           <Route path="/admin/kalite-denetim-sablonlari">{() => <AdminOnly><AdminKaliteDenetimSablonlari /></AdminOnly>}</Route>
           <Route path="/admin/kalite-denetim-sablonu/:id">{() => <AdminOnly><AdminKaliteDenetimSablonuDuzenle /></AdminOnly>}</Route>
