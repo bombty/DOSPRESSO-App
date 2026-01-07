@@ -4,7 +4,8 @@ import { queryClient } from "@/lib/queryClient";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Pencil, Trash2, ChevronDown, ChevronUp, AlertCircle, UserPlus, Camera, Upload, X, BrainCircuit } from "lucide-react";
+import { Plus, Pencil, Trash2, ChevronDown, ChevronUp, AlertCircle, UserPlus, Camera, Upload, X, BrainCircuit, ImagePlus } from "lucide-react";
+import { ObjectUploader } from "@/components/ObjectUploader";
 import { Slider } from "@/components/ui/slider";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
@@ -658,7 +659,7 @@ function ChecklistFormDialog({
                             </div>
                             
                             <div className="flex flex-col gap-2">
-                              <Label className="text-xs">Referans Fotoğraf URL</Label>
+                              <Label className="text-xs">Referans Fotoğraf</Label>
                               <div className="flex gap-2">
                                 <Input
                                   value={task.referencePhotoUrl || ""}
@@ -667,6 +668,23 @@ function ChecklistFormDialog({
                                   className="flex-1"
                                   data-testid={`input-reference-photo-${index}`}
                                 />
+                                <ObjectUploader
+                                  onGetUploadParameters={async () => {
+                                    const res = await fetch('/api/objects/upload', {
+                                      method: 'POST',
+                                      credentials: 'include',
+                                    });
+                                    return res.json();
+                                  }}
+                                  onComplete={(result) => {
+                                    if (result.successful?.[0]?.uploadURL) {
+                                      updateTask(index, 'referencePhotoUrl', result.successful[0].uploadURL);
+                                    }
+                                  }}
+                                  maxWidthOrHeight={800}
+                                >
+                                  <ImagePlus className="h-4 w-4" />
+                                </ObjectUploader>
                               </div>
                               {task.referencePhotoUrl && (
                                 <div className="relative w-24 h-24 rounded-md overflow-hidden border">
@@ -687,7 +705,7 @@ function ChecklistFormDialog({
                                 </div>
                               )}
                               <p className="text-xs text-muted-foreground">
-                                Object Storage'a yüklenen referans fotoğraf URL'si
+                                Fotoğraf yükle veya URL gir
                               </p>
                             </div>
                           </>
