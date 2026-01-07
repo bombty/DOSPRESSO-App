@@ -15,7 +15,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Megaphone, Plus, AlertCircle, Calendar, User, Image, Eye, Users, X, Pencil, Trash2 } from "lucide-react";
+import { Megaphone, Plus, AlertCircle, Calendar, User, Image, Eye, Users, X, Pencil, Trash2, Layout } from "lucide-react";
+import BannerEditor from "./banner-editor";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -262,13 +263,28 @@ export default function Announcements() {
   return (
     <div className="container mx-auto p-4 space-y-6">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight" data-testid="text-page-title">
-            Duyurular
-          </h1>
-          <p className="text-muted-foreground mt-1" data-testid="text-page-description">
-            Şirket geneli duyuru ve bildirimler
-          </p>
+        <div className="flex items-center gap-4">
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight" data-testid="text-page-title">
+              Duyurular
+            </h1>
+            <p className="text-muted-foreground mt-1" data-testid="text-page-description">
+              Şirket geneli duyuru ve bildirimler
+            </p>
+          </div>
+          {isHQ && (
+            <Dialog>
+              <DialogTrigger asChild>
+                <Button variant="outline" size="sm" className="h-8">
+                  <Layout className="w-4 h-4 mr-2" />
+                  Banner Düzenleyici
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-5xl h-[90vh] p-0 overflow-hidden">
+                <BannerEditor />
+              </DialogContent>
+            </Dialog>
+          )}
         </div>
 
         {isHQ && (
