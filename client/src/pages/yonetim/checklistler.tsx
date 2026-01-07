@@ -344,28 +344,31 @@ export default function AdminChecklistManagement() {
                               <h4 className="font-medium text-sm">Görevler:</h4>
                               <span className="text-xs text-muted-foreground">Sıralamak için sürükleyin</span>
                             </div>
-                            <DndContext
-                              sensors={sensors}
-                              collisionDetection={closestCenter}
-                              onDragEnd={handleTaskDragEnd(checklist.id)}
-                            >
-                              <SortableContext
-                                items={tasks.map((t) => t.id)}
-                                strategy={verticalListSortingStrategy}
-                              >
-                                <div className="space-y-1">
-                                  {tasks
-                                    .sort((a, b) => a.order - b.order)
-                                    .map((task, index) => (
-                                      <SortableTaskItem 
-                                        key={task.id} 
-                                        task={task} 
-                                        index={index} 
-                                      />
-                                    ))}
-                                </div>
-                              </SortableContext>
-                            </DndContext>
+                            {(() => {
+                              const sortedTasks = [...tasks].sort((a, b) => a.order - b.order);
+                              return (
+                                <DndContext
+                                  sensors={sensors}
+                                  collisionDetection={closestCenter}
+                                  onDragEnd={handleTaskDragEnd(checklist.id)}
+                                >
+                                  <SortableContext
+                                    items={sortedTasks.map((t) => t.id)}
+                                    strategy={verticalListSortingStrategy}
+                                  >
+                                    <div className={`space-y-1 ${reorderTasksMutation.isPending ? 'opacity-50 pointer-events-none' : ''}`}>
+                                      {sortedTasks.map((task, index) => (
+                                        <SortableTaskItem 
+                                          key={task.id} 
+                                          task={task} 
+                                          index={index} 
+                                        />
+                                      ))}
+                                    </div>
+                                  </SortableContext>
+                                </DndContext>
+                              );
+                            })()}
                           </div>
                         </>
                       )}
