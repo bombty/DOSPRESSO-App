@@ -29610,6 +29610,141 @@ DOSPRESSO İnsan Kaynakları Ekibi`
     } catch (error: any) {
       console.error("Error fetching awards:", error);
       res.status(500).json({ message: "Oduller alinamadi" });
+
+  // ========================================
+  // KISISEL PERFORMANS API
+  // ========================================
+
+  // GET /api/my-performance - Kullanicinin kendi performansi
+  app.get("/api/my-performance", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.id;
+      const currentMonth = new Date().getMonth() + 1;
+      const currentYear = new Date().getFullYear();
+      
+      if (!userId) {
+        return res.status(401).json({ message: "Yetkisiz" });
+      }
+      
+      // Get current month performance
+      const [performance] = await db.select().from(monthlyEmployeePerformance)
+        .where(and(
+          eq(monthlyEmployeePerformance.employeeId, userId),
+          eq(monthlyEmployeePerformance.month, currentMonth),
+          eq(monthlyEmployeePerformance.year, currentYear)
+        )).limit(1);
+      
+      if (!performance) {
+        return res.json({
+          attendanceScore: 0,
+          checklistScore: 0,
+          taskScore: 0,
+          customerRatingScore: 0,
+          managerRatingScore: 0,
+          leaveDeduction: 0,
+          totalScore: 0,
+          rank: null
+        });
+      }
+      
+      // Get ranking
+      const allPerformances = await db.select().from(monthlyEmployeePerformance)
+        .where(and(
+          eq(monthlyEmployeePerformance.month, currentMonth),
+          eq(monthlyEmployeePerformance.year, currentYear)
+        ))
+        .orderBy(desc(monthlyEmployeePerformance.totalScore));
+      
+      const rank = allPerformances.findIndex(p => p.employeeId === userId) + 1;
+      
+      // Get customer rating average
+      const customerRatings = await db.select().from(staffQrRatings)
+        .where(eq(staffQrRatings.staffId, userId));
+      const customerRatingAvg = customerRatings.length > 0
+        ? customerRatings.reduce((sum, r) => sum + r.overallRating, 0) / customerRatings.length
+        : 0;
+      
+      res.json({
+        ...performance,
+        rank,
+        totalEmployees: allPerformances.length,
+        customerRatingAvg,
+        checklistCompletion: (performance.checklistScore / 20) * 100
+      });
+    } catch (error: any) {
+      console.error("Error fetching my performance:", error);
+      res.status(500).json({ message: "Performans alinamadi" });
+    }
+  });
+
+  // GET /api/my-performance/history - Gecmis performans
+  app.get("/api/my-performance/history", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.id;
+      
+      if (!userId) {
+        return res.status(401).json({ message: "Yetkisiz" });
+      }
+      
+      const history = await db.select().from(monthlyEmployeePerformance)
+        .where(eq(monthlyEmployeePerformance.employeeId, userId))
+        .orderBy(desc(monthlyEmployeePerformance.year), desc(monthlyEmployeePerformance.month))
+        .limit(12);
+      
+      res.json(history.reverse());
+    } catch (error: any) {
+      console.error("Error fetching performance history:", error);
+      res.status(500).json({ message: "Gecmis alinamadi" });
+    }
+  });
+
+  // POST /api/my-performance/ai-tips - AI motivasyon onerileri
+  app.post("/api/my-performance/ai-tips", isAuthenticated, async (req: any, res) => {
+    try {
+      const { performance } = req.body;
+      
+      // Use OpenAI to generate personalized tips
+      const prompt = `Sen bir performans kocusun. Asagidaki puanlara gore Turkce olarak 5 kisa motivasyon onerisi yaz (her biri 1-2 cumle).
+
+Puanlar (100 uzerinden):
+- Devam: ${performance?.attendanceScore || 0}/20
+- Checklist: ${performance?.checklistScore || 0}/20
+- Gorevler: ${performance?.taskScore || 0}/15
+- Musteri: ${performance?.customerRatingScore || 0}/15
+- Yonetici: ${performance?.managerRatingScore || 0}/20
+
+Dusuk puanli alanlara odaklan ve pozitif, motive edici ol. JSON dizisi olarak yanit ver: ["oneri1", "oneri2", ...]`;
+      
+      try {
+        const OpenAI = require("openai");
+        const openai = new OpenAI();
+        const completion = await openai.chat.completions.create({
+          model: "gpt-4o-mini",
+          messages: [{ role: "user", content: prompt }],
+          max_tokens: 500
+        });
+        
+        const content = completion.choices[0]?.message?.content || "[]";
+        const tips = JSON.parse(content.replace(/```json\n?|```/g, "").trim());
+        res.json({ tips });
+      } catch (aiError) {
+        console.error("OpenAI error:", aiError);
+        res.json({
+          tips: [
+            "Devam puaninizi artirmak icin mesai saatlerine dikkat edin.",
+            "Gunluk checklistleri zamaninda tamamlayin.",
+            "Musterilere guler yuzlu ve hizli hizmet verin.",
+            "Ekip arkadaslarinizla iyi iletisim kurun.",
+            "Egitim programlarini takip edin ve tamamlayin."
+          ]
+        });
+      }
+    } catch (error: any) {
+      console.error("Error generating AI tips:", error);
+      res.status(500).json({ message: "Oneriler olusturulamadi" });
+    }
+  });
+
     }
   });
 
