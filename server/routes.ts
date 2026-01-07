@@ -16343,15 +16343,28 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
       
       const { title, description, imageUrl, linkUrl, targetRoles, startDate, endDate, isActive, orderIndex } = req.body;
       
-      if (!title || !startDate || !endDate) {
-        return res.status(400).json({ message: "Başlık, başlangıç ve bitiş tarihi zorunludur" });
+      // For active banners, dates are required. For drafts (isActive=false), dates are optional
+      if (!title) {
+        return res.status(400).json({ message: "Başlık zorunludur" });
       }
       
-      const start = new Date(startDate);
-      const end = new Date(endDate);
+      // Only require dates if banner is active
+      const willBeActive = isActive !== false;
+      if (willBeActive && (!startDate || !endDate)) {
+        return res.status(400).json({ message: "Aktif bannerlar için başlangıç ve bitiş tarihi zorunludur" });
+      }
       
-      if (isNaN(start.getTime()) || isNaN(end.getTime())) {
-        return res.status(400).json({ message: "Geçersiz tarih formatı" });
+      // Parse dates only if provided
+      let start: Date | null = null;
+      let end: Date | null = null;
+      
+      if (startDate && endDate) {
+        start = new Date(startDate);
+        end = new Date(endDate);
+        
+        if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+          return res.status(400).json({ message: "Geçersiz tarih formatı" });
+        }
       }
       
       const [banner] = await db.insert(banners).values({
@@ -16362,7 +16375,7 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
         targetRoles: targetRoles || null,
         startDate: start,
         endDate: end,
-        isActive: isActive !== false,
+        isActive: willBeActive,
         orderIndex: orderIndex || 0,
         createdById: user.id,
       }).returning();
@@ -22932,36 +22945,39 @@ DOSPRESSO İnsan Kaynakları Ekibi`
         return res.status(400).json({ message: "Başlık ve banner görseli gerekli" });
       }
 
-      // Save banner image to object storage
+      // Save banner image to object storage or use base64 as fallback
       let bannerImageUrl = null;
-      try {
-        const { Client } = await import('@replit/object-storage');
-        const client = new Client();
-        
-        // Convert base64 to buffer
-        const base64Data = imageData.replace(/^data:image\/\w+;base64,/, '');
-        const buffer = Buffer.from(base64Data, 'base64');
-        
-        // Generate unique filename
-        const timestamp = Date.now();
-        const filename = `public/banners/banner_${timestamp}.png`;
-        
-        // Upload to object storage
-        const uploadResult = await client.uploadFromBytes(filename, buffer);
-        if (!uploadResult.ok) {
-          console.error("Banner upload failed:", uploadResult.error);
-        } else {
-          console.log("Banner uploaded successfully to:", filename);
+      const bucketId = process.env.DEFAULT_OBJECT_STORAGE_BUCKET_ID;
+      
+      if (bucketId) {
+        try {
+          const { Client } = await import('@replit/object-storage');
+          const client = new Client();
+          
+          // Convert base64 to buffer
+          const base64Data = imageData.replace(/^data:image\/\w+;base64,/, '');
+          const buffer = Buffer.from(base64Data, 'base64');
+          
+          // Generate unique filename
+          const timestamp = Date.now();
+          const filename = `public/banners/banner_${timestamp}.png`;
+          
+          // Upload to object storage
+          const uploadResult = await client.uploadFromBytes(filename, buffer);
+          if (!uploadResult.ok) {
+            console.error("Banner upload failed:", uploadResult.error);
+            bannerImageUrl = imageData;
+          } else {
+            console.log("Banner uploaded successfully to:", filename);
+            bannerImageUrl = `https://objectstorage.us-west-2.replit.dev/${bucketId}/${filename}`;
+          }
+        } catch (uploadError: any) {
+          console.error("Banner upload error:", uploadError);
+          bannerImageUrl = imageData;
         }
-        
-        // Get public URL only if upload succeeded
-        if (uploadResult.ok) {
-          const bucketId = process.env.DEFAULT_OBJECT_STORAGE_BUCKET_ID;
-          bannerImageUrl = `https://objectstorage.us-west-2.replit.dev/${bucketId}/${filename}`;
-        }
-      } catch (uploadError: any) {
-        console.error("Banner upload error:", uploadError);
-        // Continue without image if upload fails
+      } else {
+        console.log("Object Storage not configured, using base64 for banner image");
+        bannerImageUrl = imageData;
       }
       
       const [newAnnouncement] = await db.insert(announcements)

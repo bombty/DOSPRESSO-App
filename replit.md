@@ -65,6 +65,11 @@ The frontend utilizes React 18+ with TypeScript and Vite, employing Shadcn/ui (N
 - **Performance Score Data Flows**: Task ratings and checklist completions automatically update employeeSatisfactionScores/employeePerformanceScores tables. Task rating → performanceScore chain handles both new ratings and re-ratings correctly (adjusts sum without double-counting). Quiz approval → career progress chain updates averageQuizScore from all approved quizzes with idempotent handling (prevents double-counting on re-approvals).
 - **Reminder System**: 5-minute interval checks for task reminders, overdue notifications, maintenance alerts, and checklist completion reminders.
 - **Branch Dashboard**: Comprehensive dashboard at `/sube/dashboard` with real-time stats (active staff, breaks, total work time), alert management, kiosk mode access, tabs for shifts/tasks/checklists/daily summary, and quick access buttons. Supports both regular user authentication and branch-specific login sessions via sessionStorage.
+- **PDF Generation**: Uses jsPDF with Helvetica font and Turkish character sanitization (ğ→g, ü→u, ş→s, ı→i, ö→o, ç→c) for reliable PDF export across all reports.
+
+## Recent Changes (January 2026)
+- **Banner Draft Save Fix**: Made startDate and endDate nullable in banners table to allow saving drafts without date requirements
+- **PDF Generation Fix**: Resolved "No unicode cmap for font" error by switching to Helvetica font and implementing comprehensive Turkish character sanitization in pdfHelper.ts
 
 ## External Dependencies
 ### Third-Party Services

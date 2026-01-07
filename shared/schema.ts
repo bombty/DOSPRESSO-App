@@ -6042,8 +6042,8 @@ export const banners = pgTable("banners", {
   imageUrl: text("image_url"),
   linkUrl: text("link_url"),
   targetRoles: text("target_roles").array(), // null = all roles
-  startDate: timestamp("start_date").notNull(),
-  endDate: timestamp("end_date").notNull(),
+  startDate: timestamp("start_date"), // Nullable for drafts
+  endDate: timestamp("end_date"), // Nullable for drafts
   isActive: boolean("is_active").default(true),
   orderIndex: integer("order_index").default(0),
   createdById: varchar("created_by_id").notNull().references(() => users.id),

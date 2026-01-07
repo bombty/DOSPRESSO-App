@@ -49,66 +49,9 @@ function isBrowser(): boolean {
 }
 
 async function loadFonts(doc: jsPDF): Promise<void> {
-  if (!isBrowser()) {
-    return;
-  }
-
-  if (fontsLoaded && robotoRegularBase64 && robotoBoldBase64) {
-    doc.addFileToVFS("Roboto-Regular.ttf", robotoRegularBase64);
-    doc.addFont("Roboto-Regular.ttf", "Roboto", "normal");
-    doc.addFileToVFS("Roboto-Bold.ttf", robotoBoldBase64);
-    doc.addFont("Roboto-Bold.ttf", "Roboto", "bold");
-    doc.setFont("Roboto");
-    return;
-  }
-
-  if (fontLoadPromise) {
-    await fontLoadPromise;
-    if (fontsLoaded && robotoRegularBase64 && robotoBoldBase64) {
-      doc.addFileToVFS("Roboto-Regular.ttf", robotoRegularBase64);
-      doc.addFont("Roboto-Regular.ttf", "Roboto", "normal");
-      doc.addFileToVFS("Roboto-Bold.ttf", robotoBoldBase64);
-      doc.addFont("Roboto-Bold.ttf", "Roboto", "bold");
-      doc.setFont("Roboto");
-    }
-    return;
-  }
-
-  fontLoadPromise = (async () => {
-    try {
-      const [regularResponse, boldResponse] = await Promise.all([
-        fetch(ROBOTO_REGULAR_PATH),
-        fetch(ROBOTO_BOLD_PATH),
-      ]);
-
-      if (!regularResponse.ok || !boldResponse.ok) {
-        console.warn("Font dosyaları yüklenemedi, varsayılan font kullanılacak");
-        return;
-      }
-
-      const [regularBuffer, boldBuffer] = await Promise.all([
-        regularResponse.arrayBuffer(),
-        boldResponse.arrayBuffer(),
-      ]);
-
-      robotoRegularBase64 = await arrayBufferToBase64(regularBuffer);
-      robotoBoldBase64 = await arrayBufferToBase64(boldBuffer);
-
-      fontsLoaded = true;
-    } catch (error) {
-      console.warn("Font yükleme hatası:", error);
-    }
-  })();
-
-  await fontLoadPromise;
-
-  if (fontsLoaded && robotoRegularBase64 && robotoBoldBase64) {
-    doc.addFileToVFS("Roboto-Regular.ttf", robotoRegularBase64);
-    doc.addFont("Roboto-Regular.ttf", "Roboto", "normal");
-    doc.addFileToVFS("Roboto-Bold.ttf", robotoBoldBase64);
-    doc.addFont("Roboto-Bold.ttf", "Roboto", "bold");
-    doc.setFont("Roboto");
-  }
+  // Use default Helvetica font - custom fonts have unicode cmap issues
+  doc.setFont("helvetica");
+  fontsLoaded = false;
 }
 
 export async function loadLogo(): Promise<HTMLImageElement | null> {
@@ -162,20 +105,20 @@ export async function createPDFWithHeader(options: PDFOptions): Promise<{ doc: j
 
   doc.setFontSize(16);
   doc.setTextColor(COLORS.darkGray.r, COLORS.darkGray.g, COLORS.darkGray.b);
-  doc.text(title, pageWidth / 2, yPos, { align: "center" });
+  doc.text(sanitizeText(title), pageWidth / 2, yPos, { align: "center" });
   yPos += 8;
 
   if (subtitle) {
     doc.setFontSize(12);
     doc.setTextColor(COLORS.gray.r, COLORS.gray.g, COLORS.gray.b);
-    doc.text(subtitle, pageWidth / 2, yPos, { align: "center" });
+    doc.text(sanitizeText(subtitle), pageWidth / 2, yPos, { align: "center" });
     yPos += 6;
   }
 
   if (branchName) {
     doc.setFontSize(11);
     doc.setTextColor(COLORS.gray.r, COLORS.gray.g, COLORS.gray.b);
-    doc.text(`Şube: ${branchName}`, pageWidth / 2, yPos, { align: "center" });
+    doc.text(`Sube: ${sanitizeText(branchName)}`, pageWidth / 2, yPos, { align: "center" });
     yPos += 6;
   }
 
@@ -190,7 +133,7 @@ export async function createPDFWithHeader(options: PDFOptions): Promise<{ doc: j
     hour: "2-digit",
     minute: "2-digit",
   });
-  doc.text(`Rapor Tarihi: ${dateStr}`, pageWidth / 2, yPos, { align: "center" });
+  doc.text(`Rapor Tarihi: ${sanitizeText(dateStr)}`, pageWidth / 2, yPos, { align: "center" });
   yPos += 10;
 
   doc.setDrawColor(COLORS.lightGray.r, COLORS.lightGray.g, COLORS.lightGray.b);
@@ -204,9 +147,18 @@ export async function createPDFWithHeader(options: PDFOptions): Promise<{ doc: j
 export function addTable(doc: jsPDF, options: TableOptions, startY: number): number {
   const { head, body, theme = "striped" } = options;
 
+  // Sanitize all text content in head and body
+  const sanitizedHead = head.map(row => row.map(cell => sanitizeText(String(cell))));
+  const sanitizedBody = body.map(row => {
+    if (Array.isArray(row)) {
+      return row.map(cell => sanitizeText(String(cell)));
+    }
+    return row;
+  });
+
   autoTable(doc, {
-    head,
-    body,
+    head: sanitizedHead,
+    body: sanitizedBody,
     startY,
     theme,
     headStyles: {
@@ -214,12 +166,10 @@ export function addTable(doc: jsPDF, options: TableOptions, startY: number): num
       textColor: [255, 255, 255],
       fontSize: 10,
       fontStyle: "bold",
-      font: "Roboto",
     },
     bodyStyles: {
       fontSize: 9,
       textColor: [50, 50, 50],
-      font: "Roboto",
     },
     alternateRowStyles: {
       fillColor: [245, 245, 245],
@@ -228,7 +178,6 @@ export function addTable(doc: jsPDF, options: TableOptions, startY: number): num
       cellPadding: 4,
       lineColor: [200, 200, 200],
       lineWidth: 0.1,
-      font: "Roboto",
     },
     margin: { left: 20, right: 20 },
   });
@@ -241,13 +190,9 @@ export function addSection(doc: jsPDF, title: string, yPos: number): number {
   
   doc.setFontSize(13);
   doc.setTextColor(COLORS.brown.r, COLORS.brown.g, COLORS.brown.b);
-  if (fontsLoaded) {
-    doc.setFont("Roboto", "bold");
-  }
-  doc.text(title, 20, yPos);
-  if (fontsLoaded) {
-    doc.setFont("Roboto", "normal");
-  }
+  doc.setFont("helvetica", "bold");
+  doc.text(sanitizeText(title), 20, yPos);
+  doc.setFont("helvetica", "normal");
   yPos += 3;
   
   doc.setDrawColor(COLORS.brown.r, COLORS.brown.g, COLORS.brown.b);
@@ -261,10 +206,10 @@ export function addSection(doc: jsPDF, title: string, yPos: number): number {
 export function addKeyValue(doc: jsPDF, key: string, value: string, yPos: number, xOffset = 20): number {
   doc.setFontSize(10);
   doc.setTextColor(COLORS.gray.r, COLORS.gray.g, COLORS.gray.b);
-  doc.text(`${key}:`, xOffset, yPos);
+  doc.text(`${sanitizeText(key)}:`, xOffset, yPos);
   
   doc.setTextColor(COLORS.darkGray.r, COLORS.darkGray.g, COLORS.darkGray.b);
-  doc.text(value, xOffset + 50, yPos);
+  doc.text(sanitizeText(value), xOffset + 50, yPos);
   
   return yPos + 6;
 }
@@ -276,7 +221,7 @@ export function addParagraph(doc: jsPDF, text: string, yPos: number, maxWidth?: 
   doc.setFontSize(10);
   doc.setTextColor(COLORS.darkGray.r, COLORS.darkGray.g, COLORS.darkGray.b);
   
-  const lines = doc.splitTextToSize(text, width);
+  const lines = doc.splitTextToSize(sanitizeText(text), width);
   doc.text(lines, 20, yPos);
   
   return yPos + lines.length * 5 + 5;
@@ -319,7 +264,16 @@ export function savePDF(doc: jsPDF, filename: string): void {
 
 export function sanitizeText(text: string): string {
   if (!text) return "";
-  return text;
+  // Convert Turkish characters to ASCII equivalents for PDF compatibility
+  const turkishMap: Record<string, string> = {
+    'ğ': 'g', 'Ğ': 'G',
+    'ü': 'u', 'Ü': 'U',
+    'ş': 's', 'Ş': 'S',
+    'ı': 'i', 'İ': 'I',
+    'ö': 'o', 'Ö': 'O',
+    'ç': 'c', 'Ç': 'C',
+  };
+  return text.replace(/[ğĞüÜşŞıİöÖçÇ]/g, char => turkishMap[char] || char);
 }
 
 /**

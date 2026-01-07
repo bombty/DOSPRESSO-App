@@ -12,7 +12,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
-import { createPDFWithHeader, addTable, addSection, addParagraph, savePDF } from "@/lib/pdfHelper";
+import { createPDFWithHeader, addTable, addSection, addParagraph, savePDF, sanitizeText } from "@/lib/pdfHelper";
 
 interface PerformerData {
   id: number;
@@ -298,7 +298,7 @@ export function EnhancedAnalyticsCard() {
       
       if (summaryText) {
         yPos = addSection(doc, 'AI Ozet', yPos);
-        yPos = addParagraph(doc, summaryText, yPos);
+        yPos = addParagraph(doc, sanitizeText(summaryText), yPos);
       }
       
       yPos = addSection(doc, 'Temel Metrikler', yPos);
@@ -336,7 +336,7 @@ export function EnhancedAnalyticsCard() {
         yPos = addSection(doc, 'En Iyi Performans Gosterenler', yPos);
         
         const perfData = topPerformers.map(p => [
-          p.name,
+          sanitizeText(p.name),
           `%${p.completionRate}`,
           String(p.score),
           `${p.absences} gun`
