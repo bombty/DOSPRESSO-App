@@ -22702,6 +22702,53 @@ DOSPRESSO İnsan Kaynakları Ekibi`
     }
   });
 
+  // GET /api/announcements/:id/read-status - Duyuru okuma durumu
+  app.get('/api/announcements/:id/read-status', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const userRole = req.user?.role;
+      const allowedRoles = ['admin', 'coach', 'destek'];
+      if (!allowedRoles.includes(userRole)) {
+        return res.status(403).json({ message: "Yetkiniz yok" });
+      }
+
+      const announcement = await db.select()
+        .from(announcements)
+        .where(eq(announcements.id, parseInt(id)))
+        .limit(1);
+
+      if (announcement.length === 0) {
+        return res.status(404).json({ message: "Duyuru bulunamadı" });
+      }
+
+      const readers = await db.select({
+        userId: announcementReadStatus.userId,
+        username: users.username,
+        readAt: announcementReadStatus.readAt
+      })
+        .from(announcementReadStatus)
+        .innerJoin(users, eq(announcementReadStatus.userId, users.id))
+        .where(eq(announcementReadStatus.announcementId, parseInt(id)));
+
+      const totalUsers = await db.select({ count: sql<number>`count(*)` })
+        .from(users)
+        .where(eq(users.isActive, true));
+
+      res.json({
+        readCount: readers.length,
+        totalTargetUsers: totalUsers[0]?.count || 0,
+        readers: readers.map(r => ({
+          userId: r.userId,
+          username: r.username,
+          readAt: r.readAt
+        }))
+      });
+    } catch (error: any) {
+      console.error("Get read status error:", error);
+      res.status(500).json({ message: "Okuma durumu alınamadı" });
+    }
+  });
+
   // ========================================
   // ADMIN DUYURU API
   // ========================================
