@@ -8564,3 +8564,230 @@ export const DEFAULT_MEGA_MODULES = [
   { id: "newshop", name: "New Shop Opening", nameTr: "Yeni Şube Açılış", icon: "Building2", color: "bg-violet-600" },
   { id: "admin", name: "Management & Settings", nameTr: "Yönetim & Ayarlar", icon: "Settings", color: "bg-slate-600" },
 ] as const;
+
+// ========================================
+// AYIN ELEMANI (Employee of the Month) SİSTEMİ
+// ========================================
+
+// QR Kod ile Personel Değerlendirme (Müşteri geri bildirimi)
+export const staffQrRatings = pgTable("staff_qr_ratings", {
+  id: serial("id").primaryKey(),
+  
+  // Personel ve şube bilgisi
+  staffId: varchar("staff_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  branchId: integer("branch_id").notNull().references(() => branches.id, { onDelete: "cascade" }),
+  
+  // Değerlendirme puanları (1-5)
+  serviceRating: integer("service_rating").notNull(), // Hizmet kalitesi
+  friendlinessRating: integer("friendliness_rating").notNull(), // Güler yüzlülük
+  speedRating: integer("speed_rating").notNull(), // Hız
+  overallRating: integer("overall_rating").notNull(), // Genel puan
+  
+  // Opsiyonel yorum
+  comment: text("comment"),
+  
+  // Müşteri bilgisi (anonim veya kayıtlı)
+  customerName: varchar("customer_name", { length: 100 }),
+  customerPhone: varchar("customer_phone", { length: 20 }),
+  isAnonymous: boolean("is_anonymous").default(true).notNull(),
+  
+  // QR kod bilgisi
+  qrToken: varchar("qr_token", { length: 64 }).notNull(), // Benzersiz QR token
+  
+  // Durum
+  status: varchar("status", { length: 20 }).default("active").notNull(), // active, flagged, removed
+  
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("staff_qr_ratings_staff_idx").on(table.staffId),
+  index("staff_qr_ratings_branch_idx").on(table.branchId),
+  index("staff_qr_ratings_date_idx").on(table.createdAt),
+  index("staff_qr_ratings_token_idx").on(table.qrToken),
+]);
+
+export const insertStaffQrRatingSchema = createInsertSchema(staffQrRatings).omit({
+  id: true,
+  createdAt: true,
+}).extend({
+  serviceRating: z.number().int().min(1).max(5),
+  friendlinessRating: z.number().int().min(1).max(5),
+  speedRating: z.number().int().min(1).max(5),
+  overallRating: z.number().int().min(1).max(5),
+});
+
+export type InsertStaffQrRating = z.infer<typeof insertStaffQrRatingSchema>;
+export type StaffQrRating = typeof staffQrRatings.$inferSelect;
+
+// Personel QR Token Yönetimi
+export const staffQrTokens = pgTable("staff_qr_tokens", {
+  id: serial("id").primaryKey(),
+  staffId: varchar("staff_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  branchId: integer("branch_id").notNull().references(() => branches.id, { onDelete: "cascade" }),
+  
+  // QR token (benzersiz, kısa URL için)
+  token: varchar("token", { length: 32 }).notNull().unique(),
+  
+  // Aktiflik ve son kullanım
+  isActive: boolean("is_active").default(true).notNull(),
+  lastUsedAt: timestamp("last_used_at"),
+  usageCount: integer("usage_count").default(0),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  unique("staff_qr_tokens_staff_branch_unique").on(table.staffId, table.branchId),
+  index("staff_qr_tokens_token_idx").on(table.token),
+]);
+
+export const insertStaffQrTokenSchema = createInsertSchema(staffQrTokens).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertStaffQrToken = z.infer<typeof insertStaffQrTokenSchema>;
+export type StaffQrToken = typeof staffQrTokens.$inferSelect;
+
+// Ayın Elemanı Puanlama Ağırlıkları (Admin yapılandırması)
+export const employeeOfMonthWeights = pgTable("employee_of_month_weights", {
+  id: serial("id").primaryKey(),
+  branchId: integer("branch_id").references(() => branches.id, { onDelete: "cascade" }), // null = global default
+  
+  // Puanlama ağırlıkları (toplam 100 olmalı)
+  attendanceWeight: integer("attendance_weight").default(25).notNull(), // Vardiya uyumu, zamanında gelme
+  checklistWeight: integer("checklist_weight").default(25).notNull(), // Checklist tamamlama oranı
+  taskWeight: integer("task_weight").default(20).notNull(), // Görev performansı
+  customerRatingWeight: integer("customer_rating_weight").default(20).notNull(), // QR müşteri değerlendirmesi
+  leaveDeductionWeight: integer("leave_deduction_weight").default(10).notNull(), // İzin kesintisi (rapor, ücretsiz izin)
+  
+  // Bonus puanlar (opsiyonel)
+  bonusMaxPoints: integer("bonus_max_points").default(10), // Maksimum bonus puan
+  
+  isActive: boolean("is_active").default(true).notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertEmployeeOfMonthWeightsSchema = createInsertSchema(employeeOfMonthWeights).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertEmployeeOfMonthWeights = z.infer<typeof insertEmployeeOfMonthWeightsSchema>;
+export type EmployeeOfMonthWeights = typeof employeeOfMonthWeights.$inferSelect;
+
+// Aylık Personel Performans Özeti (Ayın Elemanı hesaplama için)
+export const monthlyEmployeePerformance = pgTable("monthly_employee_performance", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  branchId: integer("branch_id").notNull().references(() => branches.id, { onDelete: "cascade" }),
+  
+  // Dönem
+  month: integer("month").notNull(), // 1-12
+  year: integer("year").notNull(),
+  
+  // Alt skorlar (0-100 arası)
+  attendanceScore: integer("attendance_score").default(0), // Vardiya uyumu skoru
+  checklistScore: integer("checklist_score").default(0), // Checklist tamamlama skoru
+  taskScore: integer("task_score").default(0), // Görev performans skoru
+  customerRatingScore: integer("customer_rating_score").default(0), // QR değerlendirme skoru
+  
+  // Detaylı metrikler
+  totalShifts: integer("total_shifts").default(0),
+  onTimeShifts: integer("on_time_shifts").default(0),
+  lateShifts: integer("late_shifts").default(0),
+  absentShifts: integer("absent_shifts").default(0),
+  
+  totalChecklists: integer("total_checklists").default(0),
+  completedChecklists: integer("completed_checklists").default(0),
+  onTimeChecklists: integer("on_time_checklists").default(0),
+  
+  totalTasks: integer("total_tasks").default(0),
+  completedTasks: integer("completed_tasks").default(0),
+  avgTaskRating: numeric("avg_task_rating", { precision: 3, scale: 2 }).default("0"),
+  
+  totalCustomerRatings: integer("total_customer_ratings").default(0),
+  avgCustomerRating: numeric("avg_customer_rating", { precision: 3, scale: 2 }).default("0"),
+  
+  // İzin bilgileri
+  paidLeaveDays: integer("paid_leave_days").default(0),
+  unpaidLeaveDays: integer("unpaid_leave_days").default(0),
+  sickLeaveDays: integer("sick_leave_days").default(0),
+  
+  // Hesaplanan toplam skor
+  leaveDeduction: integer("leave_deduction").default(0), // İzin kesintisi puanı
+  bonusPoints: integer("bonus_points").default(0), // Bonus puanlar
+  finalScore: integer("final_score").default(0), // Ağırlıklı toplam (0-100)
+  
+  // Sıralama
+  branchRank: integer("branch_rank"), // Şube içi sıralama
+  
+  // Durum
+  status: varchar("status", { length: 20 }).default("calculating").notNull(), // calculating, finalized, awarded
+  calculatedAt: timestamp("calculated_at"),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  unique("monthly_perf_user_month_unique").on(table.userId, table.month, table.year),
+  index("monthly_perf_branch_idx").on(table.branchId),
+  index("monthly_perf_period_idx").on(table.month, table.year),
+  index("monthly_perf_score_idx").on(table.finalScore),
+]);
+
+export const insertMonthlyEmployeePerformanceSchema = createInsertSchema(monthlyEmployeePerformance).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertMonthlyEmployeePerformance = z.infer<typeof insertMonthlyEmployeePerformanceSchema>;
+export type MonthlyEmployeePerformance = typeof monthlyEmployeePerformance.$inferSelect;
+
+// Ayın Elemanı Kayıtları (Kazananlar)
+export const employeeOfMonthAwards = pgTable("employee_of_month_awards", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  branchId: integer("branch_id").notNull().references(() => branches.id, { onDelete: "cascade" }),
+  
+  // Dönem
+  month: integer("month").notNull(),
+  year: integer("year").notNull(),
+  
+  // Skor bilgileri
+  finalScore: integer("final_score").notNull(),
+  performanceId: integer("performance_id").references(() => monthlyEmployeePerformance.id, { onDelete: "set null" }),
+  
+  // Ödül detayları
+  awardType: varchar("award_type", { length: 30 }).default("employee_of_month").notNull(), // employee_of_month, runner_up, rising_star
+  awardTitle: varchar("award_title", { length: 100 }),
+  awardDescription: text("award_description"),
+  
+  // Ödül badge/sertifika
+  certificateUrl: text("certificate_url"),
+  badgeId: varchar("badge_id", { length: 50 }),
+  
+  // Onay durumu
+  status: varchar("status", { length: 20 }).default("pending").notNull(), // pending, approved, announced, celebrated
+  approvedById: varchar("approved_by_id").references(() => users.id, { onDelete: "set null" }),
+  approvedAt: timestamp("approved_at"),
+  announcedAt: timestamp("announced_at"),
+  
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  unique("eom_award_branch_month_unique").on(table.branchId, table.month, table.year, table.awardType),
+  index("eom_award_user_idx").on(table.userId),
+  index("eom_award_period_idx").on(table.month, table.year),
+]);
+
+export const insertEmployeeOfMonthAwardSchema = createInsertSchema(employeeOfMonthAwards).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertEmployeeOfMonthAward = z.infer<typeof insertEmployeeOfMonthAwardSchema>;
+export type EmployeeOfMonthAward = typeof employeeOfMonthAwards.$inferSelect;

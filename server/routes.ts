@@ -245,6 +245,11 @@ import {
   checklistCompletions,
   megaModuleConfig,
   megaModuleItems,
+  staffQrRatings,
+  staffQrTokens,
+  employeeOfMonthWeights,
+  monthlyEmployeePerformance,
+  employeeOfMonthAwards,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, sql, and, or, isNull, isNotNull, inArray, lte, gte } from "drizzle-orm";
@@ -28629,6 +28634,574 @@ DOSPRESSO İnsan Kaynakları Ekibi`
     } catch (error: any) {
       console.error("Error updating mega module item:", error);
       res.status(500).json({ message: "Modül ataması güncellenemedi" });
+    }
+  });
+
+
+  // ========================================
+  // AYIN ELEMANI (Employee of the Month) VE QR DEĞERLENDİRME API
+  // ========================================
+
+  // GET /api/staff-qr/:token - Personel bilgisini QR token ile getir (public endpoint)
+  app.get('/api/staff-qr/:token', async (req, res) => {
+    try {
+      const { token } = req.params;
+      const qrToken = await db.select()
+        .from(staffQrTokens)
+        .where(and(eq(staffQrTokens.token, token), eq(staffQrTokens.isActive, true)))
+        .limit(1);
+      
+      if (qrToken.length === 0) {
+        return res.status(404).json({ message: "Geçersiz veya süresi dolmuş QR kod" });
+      }
+
+      const staff = await db.select({
+        id: users.id,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        profileImageUrl: users.profileImageUrl,
+        branchId: users.branchId,
+      }).from(users).where(eq(users.id, qrToken[0].staffId)).limit(1);
+
+      if (staff.length === 0) {
+        return res.status(404).json({ message: "Personel bulunamadı" });
+      }
+
+      const branch = await db.select({ name: branches.name }).from(branches).where(eq(branches.id, qrToken[0].branchId)).limit(1);
+
+      res.json({
+        staff: staff[0],
+        branchName: branch[0]?.name || 'Bilinmiyor',
+        token: token,
+      });
+    } catch (error: any) {
+      console.error("Error fetching staff by QR:", error);
+      res.status(500).json({ message: "Personel bilgisi alınamadı" });
+    }
+  });
+
+  // POST /api/staff-qr/:token/rate - QR ile personel değerlendir (public endpoint)
+  app.post('/api/staff-qr/:token/rate', async (req, res) => {
+    try {
+      const { token } = req.params;
+      const { serviceRating, friendlinessRating, speedRating, overallRating, comment, customerName, customerPhone, isAnonymous } = req.body;
+
+      const ratings = [serviceRating, friendlinessRating, speedRating, overallRating];
+      if (ratings.some(r => !r || r < 1 || r > 5)) {
+        return res.status(400).json({ message: "Tüm puanlar 1-5 arası olmalı" });
+      }
+
+      const qrToken = await db.select()
+        .from(staffQrTokens)
+        .where(and(eq(staffQrTokens.token, token), eq(staffQrTokens.isActive, true)))
+        .limit(1);
+      
+      if (qrToken.length === 0) {
+        return res.status(404).json({ message: "Geçersiz veya süresi dolmuş QR kod" });
+      }
+
+      const [rating] = await db.insert(staffQrRatings).values({
+        staffId: qrToken[0].staffId,
+        branchId: qrToken[0].branchId,
+        serviceRating,
+        friendlinessRating,
+        speedRating,
+        overallRating,
+        comment: comment || null,
+        customerName: isAnonymous ? null : customerName,
+        customerPhone: isAnonymous ? null : customerPhone,
+        isAnonymous: isAnonymous ?? true,
+        qrToken: token,
+        status: 'active',
+      }).returning();
+
+      await db.update(staffQrTokens)
+        .set({ 
+          usageCount: (qrToken[0].usageCount || 0) + 1,
+          lastUsedAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .where(eq(staffQrTokens.id, qrToken[0].id));
+
+      res.json({ success: true, message: "Değerlendirmeniz için teşekkürler!" });
+    } catch (error: any) {
+      console.error("Error saving staff rating:", error);
+      res.status(500).json({ message: "Değerlendirme kaydedilemedi" });
+    }
+  });
+
+  // GET /api/staff-qr-tokens - Personel QR tokenlerini listele
+  app.get('/api/staff-qr-tokens', isAuthenticated, async (req: any, res) => {
+    try {
+      const userRole = req.user?.role;
+      const userBranchId = req.user?.branchId;
+
+      let tokens;
+      if (userRole === 'admin') {
+        tokens = await db.select().from(staffQrTokens);
+      } else if (userBranchId) {
+        tokens = await db.select().from(staffQrTokens).where(eq(staffQrTokens.branchId, userBranchId));
+      } else {
+        tokens = [];
+      }
+
+      res.json(tokens);
+    } catch (error: any) {
+      console.error("Error fetching staff QR tokens:", error);
+      res.status(500).json({ message: "Token listesi alınamadı" });
+    }
+  });
+
+  // POST /api/staff-qr-tokens - Yeni QR token oluştur
+  app.post('/api/staff-qr-tokens', isAuthenticated, async (req: any, res) => {
+    try {
+      const { staffId, branchId } = req.body;
+      const userRole = req.user?.role;
+
+      if (!['admin', 'supervisor'].includes(userRole)) {
+        return res.status(403).json({ message: "Yetkiniz yok" });
+      }
+
+      const crypto = await import('crypto');
+      const token = crypto.randomBytes(16).toString('hex');
+
+      const [qrToken] = await db.insert(staffQrTokens).values({
+        staffId,
+        branchId,
+        token,
+        isActive: true,
+        usageCount: 0,
+      }).returning();
+
+      res.json(qrToken);
+    } catch (error: any) {
+      console.error("Error creating staff QR token:", error);
+      if (error.code === '23505') {
+        return res.status(400).json({ message: "Bu personel için zaten QR token mevcut" });
+      }
+      res.status(500).json({ message: "QR token oluşturulamadı" });
+    }
+  });
+
+  // GET /api/staff-qr-ratings - Personel değerlendirmelerini listele
+  app.get('/api/staff-qr-ratings', isAuthenticated, async (req: any, res) => {
+    try {
+      const userRole = req.user?.role;
+      const userBranchId = req.user?.branchId;
+      const { staffId, branchId } = req.query;
+
+      let query = db.select().from(staffQrRatings);
+      const conditions = [];
+
+      if (staffId) conditions.push(eq(staffQrRatings.staffId, staffId as string));
+      if (branchId) conditions.push(eq(staffQrRatings.branchId, parseInt(branchId as string)));
+      
+      if (userRole !== 'admin' && userBranchId) {
+        conditions.push(eq(staffQrRatings.branchId, userBranchId));
+      }
+
+      if (conditions.length > 0) {
+        query = query.where(and(...conditions)) as any;
+      }
+
+      const ratings = await query.orderBy(desc(staffQrRatings.createdAt)).limit(100);
+      res.json(ratings);
+    } catch (error: any) {
+      console.error("Error fetching staff ratings:", error);
+      res.status(500).json({ message: "Değerlendirmeler alınamadı" });
+    }
+  });
+
+  // GET /api/employee-of-month/weights - Ayın Elemanı ağırlıklarını getir
+  app.get('/api/employee-of-month/weights', isAuthenticated, async (req: any, res) => {
+    try {
+      const { branchId } = req.query;
+      
+      let weights;
+      if (branchId) {
+        weights = await db.select().from(employeeOfMonthWeights)
+          .where(eq(employeeOfMonthWeights.branchId, parseInt(branchId as string)))
+          .limit(1);
+      }
+      
+      if (!weights || weights.length === 0) {
+        weights = await db.select().from(employeeOfMonthWeights)
+          .where(sql\`\${employeeOfMonthWeights.branchId} IS NULL\`)
+          .limit(1);
+      }
+
+      if (weights.length === 0) {
+        return res.json({
+          attendanceWeight: 25,
+          checklistWeight: 25,
+          taskWeight: 20,
+          customerRatingWeight: 20,
+          leaveDeductionWeight: 10,
+          bonusMaxPoints: 10,
+        });
+      }
+
+      res.json(weights[0]);
+    } catch (error: any) {
+      console.error("Error fetching EoM weights:", error);
+      res.status(500).json({ message: "Ağırlıklar alınamadı" });
+    }
+  });
+
+  // PUT /api/employee-of-month/weights - Ayın Elemanı ağırlıklarını güncelle
+  app.put('/api/employee-of-month/weights', isAuthenticated, async (req: any, res) => {
+    try {
+      const userRole = req.user?.role;
+      if (!['admin', 'coach'].includes(userRole)) {
+        return res.status(403).json({ message: "Yetkiniz yok" });
+      }
+
+      const { branchId, attendanceWeight, checklistWeight, taskWeight, customerRatingWeight, leaveDeductionWeight, bonusMaxPoints } = req.body;
+
+      const total = (attendanceWeight || 25) + (checklistWeight || 25) + (taskWeight || 20) + (customerRatingWeight || 20) + (leaveDeductionWeight || 10);
+      if (total !== 100) {
+        return res.status(400).json({ message: \`Ağırlıklar toplamı 100 olmalı (şu an: \${total})\` });
+      }
+
+      const existingCondition = branchId 
+        ? eq(employeeOfMonthWeights.branchId, branchId)
+        : sql\`\${employeeOfMonthWeights.branchId} IS NULL\`;
+
+      const existing = await db.select().from(employeeOfMonthWeights).where(existingCondition).limit(1);
+
+      if (existing.length > 0) {
+        await db.update(employeeOfMonthWeights).set({
+          attendanceWeight,
+          checklistWeight,
+          taskWeight,
+          customerRatingWeight,
+          leaveDeductionWeight,
+          bonusMaxPoints,
+          updatedAt: new Date(),
+        }).where(existingCondition);
+      } else {
+        await db.insert(employeeOfMonthWeights).values({
+          branchId: branchId || null,
+          attendanceWeight,
+          checklistWeight,
+          taskWeight,
+          customerRatingWeight,
+          leaveDeductionWeight,
+          bonusMaxPoints,
+          isActive: true,
+        });
+      }
+
+      res.json({ success: true, message: "Ağırlıklar güncellendi" });
+    } catch (error: any) {
+      console.error("Error updating EoM weights:", error);
+      res.status(500).json({ message: "Ağırlıklar güncellenemedi" });
+    }
+  });
+
+  // POST /api/employee-of-month/calculate - Ayın Elemanı hesaplama
+  app.post('/api/employee-of-month/calculate', isAuthenticated, async (req: any, res) => {
+    try {
+      const userRole = req.user?.role;
+      if (!['admin', 'coach', 'supervisor'].includes(userRole)) {
+        return res.status(403).json({ message: "Yetkiniz yok" });
+      }
+
+      const { branchId, month, year } = req.body;
+      if (!branchId || !month || !year) {
+        return res.status(400).json({ message: "Şube, ay ve yıl bilgisi gerekli" });
+      }
+
+      let weights = await db.select().from(employeeOfMonthWeights)
+        .where(eq(employeeOfMonthWeights.branchId, branchId)).limit(1);
+      if (weights.length === 0) {
+        weights = await db.select().from(employeeOfMonthWeights)
+          .where(sql\`\${employeeOfMonthWeights.branchId} IS NULL\`).limit(1);
+      }
+      const w = weights[0] || { attendanceWeight: 25, checklistWeight: 25, taskWeight: 20, customerRatingWeight: 20, leaveDeductionWeight: 10 };
+
+      const employees = await db.select().from(users)
+        .where(and(eq(users.branchId, branchId), eq(users.isActive, true)));
+
+      const startDate = new Date(year, month - 1, 1);
+      const endDate = new Date(year, month, 0);
+
+      const performances: any[] = [];
+
+      for (const emp of employees) {
+        const shifts = await db.select().from(branchShiftDailySummary)
+          .where(and(
+            eq(branchShiftDailySummary.userId, emp.id),
+            sql\`\${branchShiftDailySummary.workDate} >= \${startDate.toISOString().split('T')[0]}\`,
+            sql\`\${branchShiftDailySummary.workDate} <= \${endDate.toISOString().split('T')[0]}\`
+          ));
+
+        const totalShifts = shifts.length;
+        const onTimeShifts = shifts.filter(s => !s.isLate).length;
+        const lateShifts = shifts.filter(s => s.isLate).length;
+        const attendanceScore = totalShifts > 0 ? Math.round((onTimeShifts / totalShifts) * 100) : 0;
+
+        const checklists = await db.select().from(checklistLogs)
+          .where(and(
+            eq(checklistLogs.completedBy, emp.id),
+            sql\`\${checklistLogs.completedAt} >= \${startDate.toISOString()}\`,
+            sql\`\${checklistLogs.completedAt} <= \${endDate.toISOString()}\`
+          ));
+        
+        const totalChecklists = checklists.length;
+        const completedChecklists = checklists.filter(c => c.status === 'completed').length;
+        const onTimeChecklists = checklists.filter(c => c.status === 'completed' && c.completedAt && c.endTime && new Date(c.completedAt) <= new Date(c.endTime)).length;
+        const checklistScore = totalChecklists > 0 ? Math.round((completedChecklists / totalChecklists) * 100) : 0;
+
+        const taskRatings = await db.select().from(taskRatingsTable)
+          .where(and(
+            eq(taskRatingsTable.userId, emp.id),
+            sql\`\${taskRatingsTable.createdAt} >= \${startDate.toISOString()}\`,
+            sql\`\${taskRatingsTable.createdAt} <= \${endDate.toISOString()}\`
+          ));
+        
+        const avgTaskRating = taskRatings.length > 0 
+          ? taskRatings.reduce((sum, r) => sum + r.rating, 0) / taskRatings.length 
+          : 0;
+        const taskScore = Math.round((avgTaskRating / 5) * 100);
+
+        const qrRatings = await db.select().from(staffQrRatings)
+          .where(and(
+            eq(staffQrRatings.staffId, emp.id),
+            sql\`\${staffQrRatings.createdAt} >= \${startDate.toISOString()}\`,
+            sql\`\${staffQrRatings.createdAt} <= \${endDate.toISOString()}\`,
+            eq(staffQrRatings.status, 'active')
+          ));
+
+        const avgCustomerRating = qrRatings.length > 0
+          ? qrRatings.reduce((sum, r) => sum + r.overallRating, 0) / qrRatings.length
+          : 0;
+        const customerRatingScore = Math.round((avgCustomerRating / 5) * 100);
+
+        const leaves = await db.select().from(leaveRequests)
+          .where(and(
+            eq(leaveRequests.userId, emp.id),
+            eq(leaveRequests.status, 'approved'),
+            sql\`\${leaveRequests.startDate} <= \${endDate.toISOString().split('T')[0]}\`,
+            sql\`\${leaveRequests.endDate} >= \${startDate.toISOString().split('T')[0]}\`
+          ));
+
+        const unpaidLeaveDays = leaves.filter(l => l.leaveType === 'unpaid').reduce((sum, l) => sum + (l.totalDays || 0), 0);
+        const sickLeaveDays = leaves.filter(l => l.leaveType === 'sick').reduce((sum, l) => sum + (l.totalDays || 0), 0);
+        const leaveDeduction = Math.min(unpaidLeaveDays * 5 + sickLeaveDays * 2, 100);
+
+        const finalScore = Math.round(
+          (attendanceScore * w.attendanceWeight / 100) +
+          (checklistScore * w.checklistWeight / 100) +
+          (taskScore * w.taskWeight / 100) +
+          (customerRatingScore * w.customerRatingWeight / 100) -
+          (leaveDeduction * w.leaveDeductionWeight / 100)
+        );
+
+        const existing = await db.select().from(monthlyEmployeePerformance)
+          .where(and(
+            eq(monthlyEmployeePerformance.userId, emp.id),
+            eq(monthlyEmployeePerformance.month, month),
+            eq(monthlyEmployeePerformance.year, year)
+          )).limit(1);
+
+        const perfData = {
+          userId: emp.id,
+          branchId,
+          month,
+          year,
+          attendanceScore,
+          checklistScore,
+          taskScore,
+          customerRatingScore,
+          totalShifts,
+          onTimeShifts,
+          lateShifts,
+          absentShifts: 0,
+          totalChecklists,
+          completedChecklists,
+          onTimeChecklists,
+          totalTasks: taskRatings.length,
+          completedTasks: taskRatings.length,
+          avgTaskRating: avgTaskRating.toFixed(2),
+          totalCustomerRatings: qrRatings.length,
+          avgCustomerRating: avgCustomerRating.toFixed(2),
+          unpaidLeaveDays,
+          sickLeaveDays,
+          leaveDeduction,
+          finalScore: Math.max(0, finalScore),
+          status: 'finalized',
+          calculatedAt: new Date(),
+          updatedAt: new Date(),
+        };
+
+        if (existing.length > 0) {
+          await db.update(monthlyEmployeePerformance)
+            .set(perfData)
+            .where(eq(monthlyEmployeePerformance.id, existing[0].id));
+          performances.push({ ...perfData, id: existing[0].id });
+        } else {
+          const [newPerf] = await db.insert(monthlyEmployeePerformance).values(perfData).returning();
+          performances.push(newPerf);
+        }
+      }
+
+      performances.sort((a, b) => (b.finalScore || 0) - (a.finalScore || 0));
+      for (let i = 0; i < performances.length; i++) {
+        await db.update(monthlyEmployeePerformance)
+          .set({ branchRank: i + 1 })
+          .where(eq(monthlyEmployeePerformance.id, performances[i].id));
+        performances[i].branchRank = i + 1;
+      }
+
+      res.json({
+        success: true,
+        message: \`\${performances.length} personel için performans hesaplandı\`,
+        performances,
+      });
+    } catch (error: any) {
+      console.error("Error calculating EoM:", error);
+      res.status(500).json({ message: "Performans hesaplanamadı: " + error.message });
+    }
+  });
+
+  // GET /api/employee-of-month/performance - Aylık performans listesi
+  app.get('/api/employee-of-month/performance', isAuthenticated, async (req: any, res) => {
+    try {
+      const { branchId, month, year } = req.query;
+      const userRole = req.user?.role;
+      const userBranchId = req.user?.branchId;
+
+      const conditions = [];
+      if (month) conditions.push(eq(monthlyEmployeePerformance.month, parseInt(month as string)));
+      if (year) conditions.push(eq(monthlyEmployeePerformance.year, parseInt(year as string)));
+      
+      if (branchId) {
+        conditions.push(eq(monthlyEmployeePerformance.branchId, parseInt(branchId as string)));
+      } else if (userRole !== 'admin' && userBranchId) {
+        conditions.push(eq(monthlyEmployeePerformance.branchId, userBranchId));
+      }
+
+      const performances = await db.select().from(monthlyEmployeePerformance)
+        .where(conditions.length > 0 ? and(...conditions) : undefined)
+        .orderBy(desc(monthlyEmployeePerformance.finalScore));
+
+      const enriched = await Promise.all(performances.map(async (p) => {
+        const user = await db.select({ firstName: users.firstName, lastName: users.lastName, profileImageUrl: users.profileImageUrl })
+          .from(users).where(eq(users.id, p.userId)).limit(1);
+        return { ...p, user: user[0] || null };
+      }));
+
+      res.json(enriched);
+    } catch (error: any) {
+      console.error("Error fetching performances:", error);
+      res.status(500).json({ message: "Performans listesi alınamadı" });
+    }
+  });
+
+  // POST /api/employee-of-month/award - Ayın Elemanı ödülü ver
+  app.post('/api/employee-of-month/award', isAuthenticated, async (req: any, res) => {
+    try {
+      const userRole = req.user?.role;
+      if (!['admin', 'coach'].includes(userRole)) {
+        return res.status(403).json({ message: "Yetkiniz yok" });
+      }
+
+      const { userId, branchId, month, year, awardType, awardTitle, awardDescription } = req.body;
+
+      const perf = await db.select().from(monthlyEmployeePerformance)
+        .where(and(
+          eq(monthlyEmployeePerformance.userId, userId),
+          eq(monthlyEmployeePerformance.month, month),
+          eq(monthlyEmployeePerformance.year, year)
+        )).limit(1);
+
+      if (perf.length === 0) {
+        return res.status(400).json({ message: "Performans kaydı bulunamadı" });
+      }
+
+      const [award] = await db.insert(employeeOfMonthAwards).values({
+        userId,
+        branchId,
+        month,
+        year,
+        finalScore: perf[0].finalScore || 0,
+        performanceId: perf[0].id,
+        awardType: awardType || 'employee_of_month',
+        awardTitle: awardTitle || 'Ayın Elemanı',
+        awardDescription,
+        status: 'pending',
+      }).returning();
+
+      await db.update(monthlyEmployeePerformance)
+        .set({ status: 'awarded', updatedAt: new Date() })
+        .where(eq(monthlyEmployeePerformance.id, perf[0].id));
+
+      res.json({ success: true, award });
+    } catch (error: any) {
+      console.error("Error creating award:", error);
+      if (error.code === '23505') {
+        return res.status(400).json({ message: "Bu dönem için zaten ödül mevcut" });
+      }
+      res.status(500).json({ message: "Ödül oluşturulamadı" });
+    }
+  });
+
+  // GET /api/employee-of-month/awards - Ayın Elemanı ödüllerini listele
+  app.get('/api/employee-of-month/awards', isAuthenticated, async (req: any, res) => {
+    try {
+      const { branchId, year } = req.query;
+      const userRole = req.user?.role;
+      const userBranchId = req.user?.branchId;
+
+      const conditions = [];
+      if (year) conditions.push(eq(employeeOfMonthAwards.year, parseInt(year as string)));
+      
+      if (branchId) {
+        conditions.push(eq(employeeOfMonthAwards.branchId, parseInt(branchId as string)));
+      } else if (userRole !== 'admin' && userBranchId) {
+        conditions.push(eq(employeeOfMonthAwards.branchId, userBranchId));
+      }
+
+      const awards = await db.select().from(employeeOfMonthAwards)
+        .where(conditions.length > 0 ? and(...conditions) : undefined)
+        .orderBy(desc(employeeOfMonthAwards.year), desc(employeeOfMonthAwards.month));
+
+      const enriched = await Promise.all(awards.map(async (a) => {
+        const user = await db.select({ firstName: users.firstName, lastName: users.lastName, profileImageUrl: users.profileImageUrl })
+          .from(users).where(eq(users.id, a.userId)).limit(1);
+        const branch = await db.select({ name: branches.name })
+          .from(branches).where(eq(branches.id, a.branchId)).limit(1);
+        return { ...a, user: user[0] || null, branchName: branch[0]?.name || 'Bilinmiyor' };
+      }));
+
+      res.json(enriched);
+    } catch (error: any) {
+      console.error("Error fetching awards:", error);
+      res.status(500).json({ message: "Ödül listesi alınamadı" });
+    }
+  });
+
+  // PUT /api/employee-of-month/awards/:id/approve - Ödülü onayla
+  app.put('/api/employee-of-month/awards/:id/approve', isAuthenticated, async (req: any, res) => {
+    try {
+      const userRole = req.user?.role;
+      if (!['admin', 'coach'].includes(userRole)) {
+        return res.status(403).json({ message: "Yetkiniz yok" });
+      }
+
+      const { id } = req.params;
+      await db.update(employeeOfMonthAwards).set({
+        status: 'approved',
+        approvedById: req.user?.id,
+        approvedAt: new Date(),
+        updatedAt: new Date(),
+      }).where(eq(employeeOfMonthAwards.id, parseInt(id)));
+
+      res.json({ success: true, message: "Ödül onaylandı" });
+    } catch (error: any) {
+      console.error("Error approving award:", error);
+      res.status(500).json({ message: "Ödül onaylanamadı" });
     }
   });
 
