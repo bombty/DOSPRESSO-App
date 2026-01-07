@@ -346,9 +346,21 @@ export default function Announcements() {
                     />
 
                     <div className="space-y-3 p-4 border rounded-lg bg-muted/30">
-                      <div className="flex items-center gap-2">
-                        <Image className="w-4 h-4" />
-                        <FormLabel className="text-base font-medium">Banner Görseli</FormLabel>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Image className="w-4 h-4" />
+                          <FormLabel className="text-base font-medium">Banner Görseli</FormLabel>
+                        </div>
+                        <Dialog>
+                          <DialogTrigger asChild>
+                            <Button variant="outline" size="sm" type="button" className="h-7 text-xs">
+                              Banner Editörü
+                            </Button>
+                          </DialogTrigger>
+                          <DialogContent className="max-w-4xl h-[80vh] p-0 overflow-hidden">
+                            <BannerEditor />
+                          </DialogContent>
+                        </Dialog>
                       </div>
                       
                       {bannerImageUrl ? (
@@ -888,9 +900,21 @@ export default function Announcements() {
                   />
 
                   <div className="space-y-3 p-4 border rounded-lg bg-muted/30">
-                    <div className="flex items-center gap-2">
-                      <Image className="w-4 h-4" />
-                      <FormLabel className="text-base font-medium">Banner Görseli</FormLabel>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Image className="w-4 h-4" />
+                        <FormLabel className="text-base font-medium">Banner Görseli</FormLabel>
+                      </div>
+                      <Dialog>
+                        <DialogTrigger asChild>
+                          <Button variant="outline" size="sm" type="button" className="h-7 text-xs">
+                            Banner Editörü
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent className="max-w-4xl h-[80vh] p-0 overflow-hidden">
+                          <BannerEditor />
+                        </DialogContent>
+                      </Dialog>
                     </div>
                     
                     {bannerImageUrl ? (
