@@ -10,6 +10,7 @@ import { ShiftChecklistCard } from "@/components/shift-checklist-card";
 import { EnhancedAnalyticsCard } from "@/components/enhanced-analytics-card";
 import { PersonalSummaryCard } from "@/components/personal-summary-card";
 import { AnnouncementBannerCarousel } from "@/components/AnnouncementBannerCarousel";
+import { EmployeeOfMonthWidget } from "@/components/employee-of-month-widget";
 import { 
   getMenuSectionMapping, 
   getMegaModuleTitles, 
@@ -918,6 +919,9 @@ export function CardGridHub() {
       {/* Analytics Card - Branch supervisors + HQ roles */}
       {(isBranch && (user?.role === 'supervisor' || user?.role === 'supervisor_buddy')) && <EnhancedAnalyticsCard />}
       {isHQ && <EnhancedAnalyticsCard />}
+
+      {/* Employee of Month Widget */}
+      <EmployeeOfMonthWidget />
 
       {/* Today's Shift Card - Show assigned shifts for today */}
       {todayShifts.length > 0 && (

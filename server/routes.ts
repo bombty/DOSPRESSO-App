@@ -29162,6 +29162,54 @@ DOSPRESSO İnsan Kaynakları Ekibi`
       res.status(500).json({ message: "Ödül oluşturulamadı" });
     }
   });
+  // GET /api/employee-of-month/current-winner - Dashboard widget icin guncel kazanan
+  app.get("/api/employee-of-month/current-winner", isAuthenticated, async (req: any, res) => {
+    try {
+      const userBranchId = req.user?.branchId;
+      const userRole = req.user?.role;
+      const isHQRole = ["admin", "coach", "support", "finance", "trainer"].includes(userRole);
+      
+      // Simple query without nested select
+      let query = db.select().from(employeeOfMonthAwards)
+        .where(eq(employeeOfMonthAwards.status, "approved"))
+        .orderBy(desc(employeeOfMonthAwards.year), desc(employeeOfMonthAwards.month))
+        .limit(5);
+      
+      const allAwards = await query;
+      
+      // Filter by branch if not HQ
+      const filteredAwards = isHQRole ? allAwards : allAwards.filter(a => a.branchId === userBranchId);
+      
+      if (filteredAwards.length === 0) {
+        return res.json(null);
+      }
+      
+      const award = filteredAwards[0];
+      
+      // Get winner details separately
+      const winnerUser = award.winnerId ? await db.select().from(users).where(eq(users.id, award.winnerId)).limit(1) : [];
+      const winnerBranch = award.branchId ? await db.select().from(branches).where(eq(branches.id, award.branchId)).limit(1) : [];
+      
+      const user = winnerUser[0];
+      const branch = winnerBranch[0];
+      
+      res.json({
+        id: award.id,
+        month: award.month,
+        year: award.year,
+        score: award.winnerScore || 0,
+        winnerId: award.winnerId,
+        winnerName: user ? ((user.firstName || "") + " " + (user.lastName || "")).trim() : "Bilinmiyor",
+        winnerPhoto: user?.profilePhotoUrl || null,
+        branchId: award.branchId,
+        branchName: branch?.name || "Bilinmiyor",
+      });
+    } catch (error: any) {
+      console.error("Error fetching current winner:", error);
+      res.status(500).json({ message: "Kazanan alinamadi" });
+    }
+  });
+
 
   // GET /api/employee-of-month/awards - Ayın Elemanı ödüllerini listele
   app.get('/api/employee-of-month/awards', isAuthenticated, async (req: any, res) => {
