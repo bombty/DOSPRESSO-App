@@ -139,7 +139,7 @@ export default function LeaveRequestsPage() {
         </CardHeader>
         <CardContent>
           {isLoading ? (
-            <ListSkeleton count={5} variant="table" />
+            <ListSkeleton count={5} variant="row" />
           ) : (
             <Table>
               <TableHeader>
