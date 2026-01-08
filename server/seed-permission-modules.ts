@@ -76,6 +76,25 @@ export async function seedPermissionModules() {
     { moduleKey: 'academy.ai', moduleName: 'AI Asistan', category: 'academy', description: 'Yapay zeka destekli eğitim' },
     { moduleKey: 'academy.social', moduleName: 'Sosyal', category: 'academy', description: 'Takım yarışmaları ve gruplar' },
     { moduleKey: 'academy.supervisor', moduleName: 'Supervisor Görünümü', category: 'academy', description: 'Supervisor eğitim takibi' },
+    // Yeni Eklenen Modüller - Ocak 2026
+    { moduleKey: 'employee_of_month', moduleName: 'Ayın Elemanı', category: 'hq', description: 'Ayın elemanı seçimi ve ödüllendirme' },
+    { moduleKey: 'advanced_reports', moduleName: 'Gelişmiş Raporlar', category: 'hq', description: 'PDF ve detaylı analiz raporları' },
+    { moduleKey: 'my_performance', moduleName: 'Performansım', category: 'shared', description: 'Kişisel performans takibi' },
+    { moduleKey: 'live_tracking', moduleName: 'Canlı Takip', category: 'hq', description: 'Personel konum takibi' },
+    { moduleKey: 'customer_satisfaction', moduleName: 'Misafir Memnuniyeti', category: 'shared', description: 'Müşteri geri bildirimleri ve memnuniyet' },
+    { moduleKey: 'campaigns', moduleName: 'Kampanya Yönetimi', category: 'hq', description: 'Kampanya oluşturma ve takibi' },
+    { moduleKey: 'franchise_opening', moduleName: 'Franchise Açılış', category: 'hq', description: 'Franchise açılış süreç yönetimi' },
+    { moduleKey: 'content_studio', moduleName: 'İçerik Stüdyosu', category: 'hq', description: 'Banner ve duyuru oluşturma' },
+    { moduleKey: 'banner_management', moduleName: 'Banner Yönetimi', category: 'hq', description: 'Banner tasarımı ve yayınlama' },
+    { moduleKey: 'staff_qr_tokens', moduleName: 'Personel QR Token', category: 'hq', description: 'Personel değerlendirme QR kodları' },
+    // Fabrika Modülleri
+    { moduleKey: 'factory', moduleName: 'Fabrika Genel', category: 'factory', description: 'Fabrika ana modülü' },
+    { moduleKey: 'factory.dashboard', moduleName: 'Fabrika Dashboard', category: 'factory', description: 'Fabrika kontrol paneli' },
+    { moduleKey: 'factory.production', moduleName: 'Üretim Planlama', category: 'factory', description: 'Üretim planlama ve takibi' },
+    { moduleKey: 'factory.quality', moduleName: 'Fabrika Kalite', category: 'factory', description: 'Fabrika kalite kontrol' },
+    { moduleKey: 'factory.performance', moduleName: 'Fabrika Performans', category: 'factory', description: 'Fabrika performans analizi' },
+    { moduleKey: 'factory.kiosk', moduleName: 'Fabrika Kiosk', category: 'factory', description: 'Fabrika kiosk modu' },
+    { moduleKey: 'factory.analytics', moduleName: 'Fabrika Analitik', category: 'factory', description: 'Fabrika analiz raporları' },
   ];
   
   let insertedCount = 0;
