@@ -8011,9 +8011,6 @@ export class DatabaseStorage implements IStorage {
     const [request] = await db.select().from(overtimeRequests).where(eq(overtimeRequests.id, id));
     return request;
   }
-}
-
-export const storage = new DatabaseStorage();
 
   // Search entities with permission-based filtering
   async searchEntitiesWithPermissions(
@@ -8036,13 +8033,13 @@ export const storage = new DatabaseStorage();
     equipment: Array<{ id: number; name: string; type: string; branchId: number | null }>;
   }> {
     console.log("[Search] Starting permission-filtered search for:", query, "permissions:", permissions);
-    const searchPattern = \`%\${query.toLowerCase()}%\`;
+    const searchPattern = `%${query.toLowerCase()}%`;
     
     const safeRawQuery = async <T>(queryFn: () => Promise<T[]>, name: string): Promise<T[]> => {
       try {
         return await queryFn();
       } catch (e: any) {
-        console.error(\`[Search] \${name} query failed:\`, e.message);
+        console.error(`[Search] ${name} query failed:`, e.message);
         return [] as T[];
       }
     };
@@ -8051,27 +8048,27 @@ export const storage = new DatabaseStorage();
     const usersPromise = safeRawQuery(async () => {
       if (!permissions.canSeeUsers) return [];
       if (!isHQ && !userBranchId) return [];
-      const result = await db.execute(sql\`
+      const result = await db.execute(sql`
         SELECT id, first_name as "firstName", last_name as "lastName", role, branch_id as "branchId"
         FROM users 
-        WHERE (LOWER(first_name) LIKE \${searchPattern} 
-          OR LOWER(last_name) LIKE \${searchPattern}
-          OR LOWER(username) LIKE \${searchPattern})
-        \${isHQ ? sql\`\` : sql\`AND branch_id = \${userBranchId}\`}
-        LIMIT \${maxPerCategory}
-      \`);
+        WHERE (LOWER(first_name) LIKE ${searchPattern} 
+          OR LOWER(last_name) LIKE ${searchPattern}
+          OR LOWER(username) LIKE ${searchPattern})
+        ${isHQ ? sql`` : sql`AND branch_id = ${userBranchId}`}
+        LIMIT ${maxPerCategory}
+      `);
       return result.rows as any[];
     }, "users");
 
     // Search recipes - only if permitted
     const recipesPromise = safeRawQuery(async () => {
       if (!permissions.canSeeRecipes) return [];
-      const result = await db.execute(sql\`
+      const result = await db.execute(sql`
         SELECT id, name_tr as "nameTr", code, category_id as "categoryId"
         FROM recipes 
-        WHERE LOWER(name_tr) LIKE \${searchPattern} OR LOWER(code) LIKE \${searchPattern}
-        LIMIT \${maxPerCategory}
-      \`);
+        WHERE LOWER(name_tr) LIKE ${searchPattern} OR LOWER(code) LIKE ${searchPattern}
+        LIMIT ${maxPerCategory}
+      `);
       return result.rows as any[];
     }, "recipes");
 
@@ -8079,13 +8076,13 @@ export const storage = new DatabaseStorage();
     const tasksPromise = safeRawQuery(async () => {
       if (!permissions.canSeeTasks) return [];
       if (!isHQ && !userBranchId) return [];
-      const result = await db.execute(sql\`
+      const result = await db.execute(sql`
         SELECT id, title, status, branch_id as "branchId"
         FROM tasks 
-        WHERE LOWER(title) LIKE \${searchPattern}
-        \${isHQ ? sql\`\` : sql\`AND branch_id = \${userBranchId}\`}
-        LIMIT \${maxPerCategory}
-      \`);
+        WHERE LOWER(title) LIKE ${searchPattern}
+        ${isHQ ? sql`` : sql`AND branch_id = ${userBranchId}`}
+        LIMIT ${maxPerCategory}
+      `);
       return result.rows as any[];
     }, "tasks");
 
@@ -8093,12 +8090,12 @@ export const storage = new DatabaseStorage();
     const branchesPromise = safeRawQuery(async () => {
       if (!permissions.canSeeBranches) return [];
       if (!isHQ) return [];
-      const result = await db.execute(sql\`
+      const result = await db.execute(sql`
         SELECT id, name, address
         FROM branches 
-        WHERE LOWER(name) LIKE \${searchPattern} OR LOWER(COALESCE(address, '')) LIKE \${searchPattern}
-        LIMIT \${maxPerCategory}
-      \`);
+        WHERE LOWER(name) LIKE ${searchPattern} OR LOWER(COALESCE(address, '')) LIKE ${searchPattern}
+        LIMIT ${maxPerCategory}
+      `);
       return result.rows as any[];
     }, "branches");
 
@@ -8106,13 +8103,13 @@ export const storage = new DatabaseStorage();
     const equipmentPromise = safeRawQuery(async () => {
       if (!permissions.canSeeEquipment) return [];
       if (!isHQ && !userBranchId) return [];
-      const result = await db.execute(sql\`
+      const result = await db.execute(sql`
         SELECT id, name, equipment_type as "type", branch_id as "branchId"
         FROM equipment 
-        WHERE (LOWER(name) LIKE \${searchPattern} OR LOWER(equipment_type) LIKE \${searchPattern})
-        \${isHQ ? sql\`\` : sql\`AND branch_id = \${userBranchId}\`}
-        LIMIT \${maxPerCategory}
-      \`);
+        WHERE (LOWER(name) LIKE ${searchPattern} OR LOWER(equipment_type) LIKE ${searchPattern})
+        ${isHQ ? sql`` : sql`AND branch_id = ${userBranchId}`}
+        LIMIT ${maxPerCategory}
+      `);
       return result.rows as any[];
     }, "equipment");
 
@@ -8132,3 +8129,6 @@ export const storage = new DatabaseStorage();
       equipment: equipmentResult,
     };
   }
+}
+
+export const storage = new DatabaseStorage();

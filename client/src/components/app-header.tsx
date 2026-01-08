@@ -1,4 +1,4 @@
-import { Mail, LogOut, QrCode, Search, X, User as UserIcon, Coffee, ClipboardList, Building2, Wrench } from "lucide-react";
+import { Mail, LogOut, QrCode, Search, X, User as UserIcon, Coffee, ClipboardList, Building2, Wrench, LayoutGrid, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -24,6 +24,18 @@ function useDebounce<T>(value: T, delay: number): T {
   return debouncedValue;
 }
 
+// Module search result type
+interface ModuleSearchResult {
+  id: string;
+  type: 'mega' | 'sub';
+  name: string;
+  nameTr: string;
+  icon: string;
+  path: string;
+  megaModuleId?: string;
+  megaModuleName?: string;
+}
+
 // Search result types
 interface SearchResults {
   users: Array<{ id: string; firstName: string; lastName: string; role: string; branchId: number | null }>;
@@ -31,6 +43,7 @@ interface SearchResults {
   tasks: Array<{ id: number; title: string; status: string; branchId: number | null }>;
   branches: Array<{ id: number; name: string; address: string | null }>;
   equipment: Array<{ id: number; name: string; type: string; branchId: number | null }>;
+  modules?: ModuleSearchResult[];
 }
 
 interface AppHeaderProps {
@@ -119,7 +132,7 @@ export function AppHeader({ notificationCount = 0, user, branchName, onQRClick }
     return role ? roleMap[role] || role : "";
   };
 
-  const handleSearchResultClick = (type: string, id: string | number) => {
+  const handleSearchResultClick = (type: string, id: string | number, path?: string) => {
     setShowSearch(false);
     setSearchQuery("");
     
@@ -139,6 +152,9 @@ export function AppHeader({ notificationCount = 0, user, branchName, onQRClick }
       case 'equipment':
         setLocation(`/ekipman?equipmentId=${id}`);
         break;
+      case 'module':
+        if (path) setLocation(path);
+        break;
     }
   };
 
@@ -147,7 +163,8 @@ export function AppHeader({ notificationCount = 0, user, branchName, onQRClick }
     searchResults.recipes.length > 0 ||
     searchResults.tasks.length > 0 ||
     searchResults.branches.length > 0 ||
-    searchResults.equipment.length > 0
+    searchResults.equipment.length > 0 ||
+    (searchResults.modules && searchResults.modules.length > 0)
   );
 
   return (
@@ -334,6 +351,34 @@ export function AppHeader({ notificationCount = 0, user, branchName, onQRClick }
                             <Wrench className="w-4 h-4 text-muted-foreground" />
                             <span>{e.name}</span>
                             <Badge variant="outline" className="ml-auto text-[10px]">{e.type}</Badge>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                    
+                    {/* Modules */}
+                    {searchResults?.modules && searchResults.modules.length > 0 && (
+                      <div>
+                        <div className="px-3 py-1 text-xs font-semibold text-muted-foreground bg-muted/50">Modüller</div>
+                        {searchResults.modules.map((m) => (
+                          <button
+                            key={m.id}
+                            onClick={() => handleSearchResultClick('module', m.id, m.path)}
+                            className="w-full px-3 py-2 text-left text-sm hover:bg-accent flex items-center gap-2"
+                            data-testid={`search-result-module-${m.id}`}
+                          >
+                            {m.type === 'mega' ? (
+                              <LayoutGrid className="w-4 h-4 text-muted-foreground" />
+                            ) : (
+                              <FileText className="w-4 h-4 text-muted-foreground" />
+                            )}
+                            <span className="truncate flex-1">{m.nameTr}</span>
+                            {m.type === 'sub' && m.megaModuleName && (
+                              <Badge variant="secondary" className="text-[10px]">{m.megaModuleName}</Badge>
+                            )}
+                            {m.type === 'mega' && (
+                              <Badge variant="default" className="text-[10px]">Ana Modül</Badge>
+                            )}
                           </button>
                         ))}
                       </div>
