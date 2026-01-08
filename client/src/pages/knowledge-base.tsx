@@ -8,7 +8,8 @@ import { isUnauthorizedError } from "@/lib/authUtils";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
+import { ListSkeleton } from "@/components/list-skeleton";
+import { EmptyState } from "@/components/empty-state";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
@@ -328,11 +329,7 @@ export default function KnowledgeBase() {
 
         <TabsContent value={selectedCategory} className="mt-4">
           {isLoading ? (
-            <div className="grid gap-2 sm:gap-3 md:grid-cols-2">
-              {[1, 2, 3, 4].map((i) => (
-                <Skeleton key={i} className="h-48 w-full" />
-              ))}
-            </div>
+            <ListSkeleton count={4} variant="card" showHeader={false} />
           ) : (
             <div className="grid gap-2 sm:gap-3 md:grid-cols-2">
               {filteredArticles?.map((article) => (
@@ -409,13 +406,13 @@ export default function KnowledgeBase() {
                 </Card>
               ))}
               {(!filteredArticles || filteredArticles.length === 0) && (
-                <Card className="col-span-2">
-                  <CardContent className="py-8">
-                    <p className="text-center text-muted-foreground">
-                      Bu kategoride henüz makale yok.
-                    </p>
-                  </CardContent>
-                </Card>
+                <div className="col-span-2">
+                  <EmptyState 
+                    icon={BookOpen}
+                    title="Makale bulunamadı"
+                    description="Bu kategoride henüz makale yok."
+                  />
+                </div>
               )}
             </div>
           )}

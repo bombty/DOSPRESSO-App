@@ -7,7 +7,8 @@ import { isHQRole } from "@shared/schema";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
+import { ListSkeleton } from "@/components/list-skeleton";
+import { EmptyState } from "@/components/empty-state";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
@@ -132,9 +133,8 @@ export default function FranchiseAcilis() {
 
   if (isLoading) {
     return (
-      <div className="p-6 grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
-        <Skeleton className="h-8 w-64" />
-        <Skeleton className="h-32 w-full" />
+      <div className="p-6">
+        <ListSkeleton count={3} variant="card" showHeader />
       </div>
     );
   }
@@ -288,18 +288,13 @@ export default function FranchiseAcilis() {
       </div>
 
       {!onboardingProcesses || onboardingProcesses.length === 0 ? (
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-12">
-            <Store className="w-12 h-12 text-muted-foreground mb-4" />
-            <p className="text-muted-foreground" data-testid="text-no-onboarding">Henüz açılış süreci bulunmuyor</p>
-            {canManageOnboarding && (
-              <Button onClick={() => setIsCreateDialogOpen(true)} className="mt-4" data-testid="button-create-first-onboarding">
-                <Plus className="w-4 h-4 mr-2" />
-                İlk Açılış Sürecini Başlat
-              </Button>
-            )}
-          </CardContent>
-        </Card>
+        <EmptyState
+          icon={Store}
+          title="Açılış süreci yok"
+          description="Henüz bir franchise açılış süreci başlatılmamış."
+          actionLabel={canManageOnboarding ? "İlk Açılış Sürecini Başlat" : undefined}
+          onAction={canManageOnboarding ? () => setIsCreateDialogOpen(true) : undefined}
+        />
       ) : (
         <div className="grid gap-2 sm:gap-3">
           {onboardingProcesses.map((process) => {

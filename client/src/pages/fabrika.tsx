@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { EmptyState } from "@/components/empty-state";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
@@ -361,7 +362,7 @@ export default function Fabrika() {
                     ))}
                   </div>
                 ) : (
-                  <p className="text-muted-foreground text-center py-4">Henüz üretim kaydı yok</p>
+                  <EmptyState icon={Box} title="Üretim kaydı yok" description="Henüz üretim partisi oluşturulmamış." />
                 )}
               </CardContent>
             </Card>
@@ -391,7 +392,7 @@ export default function Fabrika() {
                     ))}
                   </div>
                 ) : (
-                  <p className="text-muted-foreground text-center py-4">Henüz sipariş yok</p>
+                  <EmptyState icon={Truck} title="Sipariş yok" description="Henüz sipariş oluşturulmamış." />
                 )}
               </CardContent>
             </Card>
