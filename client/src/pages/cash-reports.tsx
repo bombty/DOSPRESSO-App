@@ -15,7 +15,8 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
+import { ListSkeleton } from "@/components/list-skeleton";
+import { EmptyState } from "@/components/empty-state";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
@@ -562,13 +563,7 @@ export default function CashReports() {
 
       <div className="w-full space-y-2 sm:space-y-3">
         {isLoading ? (
-          Array.from({ length: 3 }).map((_, i) => (
-            <Card key={i}>
-              <CardContent className="p-6">
-                <Skeleton className="h-20 w-full" />
-              </CardContent>
-            </Card>
-          ))
+          <ListSkeleton count={3} variant="card" />
         ) : filteredReports && filteredReports.length > 0 ? (
           filteredReports.map((report) => {
             const diff = calculateDifference(Number(report.closingCash), Number(report.openingCash));
@@ -684,16 +679,12 @@ export default function CashReports() {
             );
           })
         ) : (
-          <Card>
-            <CardContent className="p-12 text-center">
-              <DollarSign className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-              <p className="text-lg font-medium mb-2">Henüz kasa raporu yok</p>
-              <p className="text-muted-foreground">
-                {isSupervisor && "Yeni bir rapor oluşturmak için yukarıdaki butonu kullanın"}
-                {isMuhasebe && "Henüz hiçbir şubede kasa raporu oluşturulmamış"}
-              </p>
-            </CardContent>
-          </Card>
+          <EmptyState 
+            icon={DollarSign}
+            title="Kasa raporu yok"
+            description={isSupervisor ? "Yeni bir rapor oluşturmak için yukarıdaki butonu kullanın" : "Henüz hiçbir şubede kasa raporu oluşturulmamış"}
+            data-testid="empty-state-cash-reports"
+          />
         )}
       </div>
     </div>

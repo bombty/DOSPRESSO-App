@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { EmptyState } from "@/components/empty-state";
 
 export default function SubelerPage() {
   const { user } = useAuth();
@@ -330,10 +331,12 @@ export default function SubelerPage() {
       </div>
 
       {filteredBranches.length === 0 && (
-        <div className="text-center py-12">
-          <Building2 className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-          <p className="text-muted-foreground">Henüz şube bulunamadı</p>
-        </div>
+        <EmptyState
+          icon={Building2}
+          title="Şube bulunamadı"
+          description="Henüz kayıtlı şube bulunmuyor."
+          data-testid="empty-state-branches"
+        />
       )}
     </div>
   );

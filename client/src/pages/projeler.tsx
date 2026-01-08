@@ -13,7 +13,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Skeleton } from "@/components/ui/skeleton";
+import { ListSkeleton } from "@/components/list-skeleton";
+import { EmptyState } from "@/components/empty-state";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Progress } from "@/components/ui/progress";
@@ -294,15 +295,7 @@ export default function Projeler() {
   if (isLoading) {
     return (
       <div className="p-4 space-y-4">
-        <div className="flex items-center justify-between">
-          <Skeleton className="h-8 w-48" />
-          <Skeleton className="h-10 w-32" />
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {[1, 2, 3].map((i) => (
-            <Skeleton key={i} className="h-48" />
-          ))}
-        </div>
+        <ListSkeleton count={6} variant="card" showHeader />
       </div>
     );
   }
@@ -598,15 +591,14 @@ export default function Projeler() {
 
         <TabsContent value="all">
           {projects?.length === 0 ? (
-            <Card className="p-8 text-center">
-              <FolderKanban className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-              <h3 className="font-medium mb-2">Henüz proje yok</h3>
-              <p className="text-sm text-muted-foreground mb-4">Yeni bir proje oluşturarak başlayın</p>
-              <Button onClick={() => setIsCreateOpen(true)}>
-                <Plus className="h-4 w-4 mr-2" />
-                Proje Oluştur
-              </Button>
-            </Card>
+            <EmptyState
+              icon={FolderKanban}
+              title="Proje bulunamadı"
+              description="Yeni bir proje oluşturarak başlayın."
+              actionLabel="Proje Oluştur"
+              onAction={() => setIsCreateOpen(true)}
+              data-testid="empty-state-projects"
+            />
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {projects?.map((project) => {
@@ -680,21 +672,16 @@ export default function Projeler() {
 
         <TabsContent value="new-shop">
           {isLoadingNewShop ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {[1, 2, 3].map((i) => <Skeleton key={i} className="h-64" />)}
-            </div>
+            <ListSkeleton count={3} variant="card" />
           ) : newShopProjects?.length === 0 ? (
-            <Card className="py-12">
-              <CardContent className="text-center">
-                <Store className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                <h3 className="text-lg font-medium mb-2">Henüz Şube Projesi Yok</h3>
-                <p className="text-sm text-muted-foreground mb-4">Yeni bir franchise açılış projesi oluşturarak başlayın</p>
-                <Button onClick={() => setIsNewShopCreateOpen(true)}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  İlk Projeyi Oluştur
-                </Button>
-              </CardContent>
-            </Card>
+            <EmptyState
+              icon={Store}
+              title="Şube projesi yok"
+              description="Yeni bir franchise açılış projesi oluşturarak başlayın."
+              actionLabel="İlk Projeyi Oluştur"
+              onAction={() => setIsNewShopCreateOpen(true)}
+              data-testid="empty-state-new-shop-projects"
+            />
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {newShopProjects?.map((project) => {

@@ -26,6 +26,8 @@ interface EmptyStateProps {
   actionLabel?: string;
   onAction?: () => void;
   variant?: 'default' | 'search' | 'filter' | 'error';
+  className?: string;
+  "data-testid"?: string;
 }
 
 const VARIANT_CONFIG = {
@@ -53,12 +55,14 @@ export function EmptyState({
   description,
   actionLabel,
   onAction,
-  variant = 'default'
+  variant = 'default',
+  className,
+  "data-testid": testId = "empty-state"
 }: EmptyStateProps) {
   const config = VARIANT_CONFIG[variant];
   
   return (
-    <div className="flex flex-col items-center justify-center py-12 px-4 text-center" data-testid="empty-state">
+    <div className={`flex flex-col items-center justify-center py-12 px-4 text-center ${className || ''}`} data-testid={testId}>
       <div className={`w-16 h-16 rounded-full ${config.iconBg} flex items-center justify-center mb-4`}>
         <Icon className={`h-8 w-8 ${config.iconColor}`} />
       </div>

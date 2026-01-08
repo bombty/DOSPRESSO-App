@@ -10,7 +10,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Skeleton } from "@/components/ui/skeleton";
+import { ListSkeleton } from "@/components/list-skeleton";
+import { EmptyState } from "@/components/empty-state";
 import { 
   Bell, 
   CheckCheck, 
@@ -189,16 +190,7 @@ export default function Notifications() {
 
         <TabsContent value={activeTab} className="mt-4">
           {isLoading ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
-              {[...Array(6)].map((_, i) => (
-                <Card key={i} className="h-full">
-                  <CardContent className="p-3">
-                    <Skeleton className="h-6 w-3/4 mb-2" />
-                    <Skeleton className="h-4 w-1/2" />
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
+            <ListSkeleton count={6} variant="card" />
           ) : filteredNotifications.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
               {filteredNotifications.map((notification) => {
@@ -255,16 +247,12 @@ export default function Notifications() {
               })}
             </div>
           ) : (
-            <Card>
-              <CardContent className="p-12 text-center">
-                <Bell className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                <p className="text-muted-foreground">
-                  {activeTab === "unread" 
-                    ? "Okunmamış bildiriminiz yok" 
-                    : "Henüz bildiriminiz yok"}
-                </p>
-              </CardContent>
-            </Card>
+            <EmptyState 
+              icon={Bell}
+              title={activeTab === "unread" ? "Okunmamış bildirim yok" : "Bildirim yok"}
+              description={activeTab === "unread" ? "Tüm bildirimlerinizi okudunuz." : "Henüz bildiriminiz bulunmuyor."}
+              data-testid="empty-state-notifications"
+            />
           )}
         </TabsContent>
       </Tabs>

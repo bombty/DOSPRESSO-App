@@ -131,14 +131,6 @@ export default function FranchiseAcilis() {
     return labels[status] || status;
   };
 
-  if (isLoading) {
-    return (
-      <div className="p-6">
-        <ListSkeleton count={3} variant="card" showHeader />
-      </div>
-    );
-  }
-
   return (
     <div className="p-3 flex flex-col gap-3 sm:gap-4">
       <div className="flex items-center justify-between">
@@ -287,13 +279,16 @@ export default function FranchiseAcilis() {
         )}
       </div>
 
-      {!onboardingProcesses || onboardingProcesses.length === 0 ? (
+      {isLoading ? (
+        <ListSkeleton count={3} variant="card" />
+      ) : !onboardingProcesses || onboardingProcesses.length === 0 ? (
         <EmptyState
           icon={Store}
           title="Açılış süreci yok"
           description="Henüz bir franchise açılış süreci başlatılmamış."
           actionLabel={canManageOnboarding ? "İlk Açılış Sürecini Başlat" : undefined}
           onAction={canManageOnboarding ? () => setIsCreateDialogOpen(true) : undefined}
+          data-testid="empty-state-onboarding"
         />
       ) : (
         <div className="grid gap-2 sm:gap-3">

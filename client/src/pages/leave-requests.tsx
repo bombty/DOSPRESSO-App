@@ -49,7 +49,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
+import { ListSkeleton } from "@/components/list-skeleton";
 import { Plus, Check, X, Calendar, FileText } from "lucide-react";
 import { format } from "date-fns";
 
@@ -139,11 +139,7 @@ export default function LeaveRequestsPage() {
         </CardHeader>
         <CardContent>
           {isLoading ? (
-            <div className="flex flex-col gap-3 sm:gap-4">
-              {[...Array(5)].map((_, i) => (
-                <Skeleton key={i} className="h-16 w-full" />
-              ))}
-            </div>
+            <ListSkeleton count={5} variant="table" />
           ) : (
             <Table>
               <TableHeader>
