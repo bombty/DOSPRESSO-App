@@ -37,6 +37,7 @@ import { format } from "date-fns";
 import { tr } from "date-fns/locale";
 import BannerEditor from "./banner-editor";
 import { ObjectUploader } from "@/components/ObjectUploader";
+import ReactMarkdown from "react-markdown";
 
 type AnnouncementWithUser = Announcement & {
   createdBy: { fullName: string };
@@ -528,18 +529,36 @@ export default function IcerikStudyosu() {
                     name="detailedContent"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Detaylı İçerik (Opsiyonel)</FormLabel>
-                        <FormControl>
-                          <Textarea 
-                            {...field} 
-                            value={field.value || ""} 
-                            placeholder="Duyuru detayları, ek bilgiler, talimatlar vb..." 
-                            rows={4} 
-                            data-testid="input-publish-detailed-content" 
-                          />
-                        </FormControl>
+                        <FormLabel>Detayli Icerik (Opsiyonel)</FormLabel>
+                        <Tabs defaultValue="edit" className="w-full">
+                          <TabsList className="w-full grid grid-cols-2 mb-2">
+                            <TabsTrigger value="edit" data-testid="tab-content-edit">Duzenle</TabsTrigger>
+                            <TabsTrigger value="preview" data-testid="tab-content-preview">Onizleme</TabsTrigger>
+                          </TabsList>
+                          <TabsContent value="edit" className="mt-0">
+                            <FormControl>
+                              <Textarea 
+                                {...field} 
+                                value={field.value || ""} 
+                                placeholder="Markdown destekli icerik yazabilirsiniz...&#10;&#10;# Baslik&#10;## Alt Baslik&#10;- Madde 1&#10;- Madde 2&#10;&#10;**Kalin** ve *italik* metin" 
+                                rows={6} 
+                                className="font-mono text-sm"
+                                data-testid="input-publish-detailed-content" 
+                              />
+                            </FormControl>
+                          </TabsContent>
+                          <TabsContent value="preview" className="mt-0">
+                            <div className="border rounded-md p-3 min-h-[150px] prose prose-sm dark:prose-invert max-w-none bg-muted/30">
+                              {field.value ? (
+                                <ReactMarkdown>{field.value}</ReactMarkdown>
+                              ) : (
+                                <p className="text-muted-foreground text-sm">Onizleme icin icerik girin...</p>
+                              )}
+                            </div>
+                          </TabsContent>
+                        </Tabs>
                         <FormDescription className="text-xs">
-                          Duyuru detay sayfasında gösterilir
+                          Markdown destekler: **kalin**, *italik*, # baslik, - liste
                         </FormDescription>
                         <FormMessage />
                       </FormItem>
