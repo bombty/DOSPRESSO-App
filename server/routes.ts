@@ -6989,7 +6989,7 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
         // Get unread notifications count
         storage.getUnreadNotificationCount(userId),
         // Get performance score (if exists)
-        storage.getDailyPerformanceScore(userId, branchId, today).catch(() => null)
+        Promise.resolve(null) // TODO: implement getDailyPerformanceScore
       ]);
       
       // Calculate task stats
@@ -28827,7 +28827,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`
       
       if (!weights || weights.length === 0) {
         weights = await db.select().from(employeeOfMonthWeights)
-          .where(sql`\${employeeOfMonthWeights.branchId} IS NULL`)
+          .where(isNull(employeeOfMonthWeights.branchId))
           .limit(1);
       }
 
@@ -28917,7 +28917,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`
         .where(eq(employeeOfMonthWeights.branchId, branchId)).limit(1);
       if (weights.length === 0) {
         weights = await db.select().from(employeeOfMonthWeights)
-          .where(sql`\${employeeOfMonthWeights.branchId} IS NULL`).limit(1);
+          .where(isNull(employeeOfMonthWeights.branchId)).limit(1);
       }
       const w = weights[0] || { attendanceWeight: 20, checklistWeight: 20, taskWeight: 15, customerRatingWeight: 15, managerRatingWeight: 20, leaveDeductionWeight: 10 };
 
@@ -29493,28 +29493,6 @@ DOSPRESSO İnsan Kaynakları Ekibi`
   // ========================================
   // AYIN ELEMANI (EMPLOYEE OF MONTH) API
   // ========================================
-
-  // GET /api/employee-of-month/weights - Agirlik ayarlari
-  app.get("/api/employee-of-month/weights", isAuthenticated, async (req: any, res) => {
-    try {
-      const [weights] = await db.select().from(employeeOfMonthWeights).limit(1);
-      if (weights) {
-        res.json(weights);
-      } else {
-        res.json({
-          attendanceWeight: 20,
-          checklistWeight: 20,
-          taskWeight: 15,
-          customerRatingWeight: 15,
-          managerRatingWeight: 20,
-          leaveDeductionWeight: 10
-        });
-      }
-    } catch (error: any) {
-      console.error("Error fetching weights:", error);
-      res.status(500).json({ message: "Agirliklar alinamadi" });
-    }
-  });
 
   // GET /api/employee-of-month/rankings - Siralama listesi
   app.get("/api/employee-of-month/rankings", isAuthenticated, async (req: any, res) => {
