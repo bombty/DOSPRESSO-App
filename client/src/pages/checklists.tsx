@@ -9,8 +9,7 @@ import { isHQRole } from "@shared/schema";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { EmptyState, EMPTY_STATE_PRESETS } from "@/components/empty-state";
-import { ClipboardList } from "lucide-react";
+import { EmptyStatePreset } from "@/components/empty-state";
 import { ListSkeleton } from "@/components/list-skeleton";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
@@ -846,12 +845,9 @@ export default function Checklists() {
               : renderEmployeeChecklistCard(checklist)
           )}
           {(!checklists || checklists.length === 0) && (
-            <EmptyState
-              icon={ClipboardList}
-              title={canManageChecklists ? "Henüz checklist yok" : "Checklist bulunamadı"}
-              description={canManageChecklists 
-                ? "Yeni checklist oluşturmak için yukarıdaki butonu kullanın."
-                : "Size atanmış checklist bulunmuyor."}
+            <EmptyStatePreset 
+              preset="checklists"
+              variant={canManageChecklists ? "default" : "filter"}
             />
           )}
         </div>
