@@ -9,7 +9,8 @@ import { isHQRole } from "@shared/schema";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
+import { EmptyStatePreset } from "@/components/empty-state";
+import { ListSkeleton } from "@/components/list-skeleton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerFooter, DrawerClose } from "@/components/ui/drawer";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -805,11 +806,7 @@ export default function Tasks() {
         {["all"].map((tabValue) => (
           <TabsContent key={tabValue} value={tabValue} className="w-full space-y-2 sm:space-y-3">
             {isLoading ? (
-              <div className="flex flex-col gap-3 sm:gap-4">
-                {[1, 2, 3].map((i) => (
-                  <Skeleton key={i} className="h-24 w-full" />
-                ))}
-              </div>
+              <ListSkeleton count={3} variant="row" showHeader={false} />
             ) : (
               <div className="flex flex-col gap-3 sm:gap-4">
                 {/* Sortable Column Headers - Desktop only */}
@@ -1005,13 +1002,7 @@ export default function Tasks() {
                     );
                   })}
                 {(!filteredTasks || filteredTasks.length === 0) && !isLoading && (
-                  <Card>
-                    <CardContent className="py-8">
-                      <p className="text-center text-muted-foreground">
-                        Henüz görev yok. Yeni görev eklemek için yukarıdaki butonu kullanın.
-                      </p>
-                    </CardContent>
-                  </Card>
+                  <EmptyStatePreset preset="tasks" />
                 )}
                 </div>
               </div>

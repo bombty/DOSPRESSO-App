@@ -9,7 +9,9 @@ import { isHQRole } from "@shared/schema";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
+import { EmptyState, EMPTY_STATE_PRESETS } from "@/components/empty-state";
+import { ClipboardList } from "lucide-react";
+import { ListSkeleton } from "@/components/list-skeleton";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from "@/components/ui/form";
@@ -835,11 +837,7 @@ export default function Checklists() {
       </div>
 
       {isLoading ? (
-        <div className="flex flex-col gap-3 sm:gap-4">
-          {[1, 2, 3].map((i) => (
-            <Skeleton key={i} className="h-32 w-full" />
-          ))}
-        </div>
+        <ListSkeleton count={3} variant="row" showHeader={false} />
       ) : (
         <div className="grid gap-2 sm:gap-3">
           {checklists?.map((checklist) => 
@@ -848,15 +846,13 @@ export default function Checklists() {
               : renderEmployeeChecklistCard(checklist)
           )}
           {(!checklists || checklists.length === 0) && (
-            <Card>
-              <CardContent className="py-8">
-                <p className="text-center text-muted-foreground">
-                  {canManageChecklists 
-                    ? "Henüz checklist yok. Yeni checklist oluşturmak için yukarıdaki butonu kullanın."
-                    : "Size atanmış checklist bulunmuyor."}
-                </p>
-              </CardContent>
-            </Card>
+            <EmptyState
+              icon={ClipboardList}
+              title={canManageChecklists ? "Henüz checklist yok" : "Checklist bulunamadı"}
+              description={canManageChecklists 
+                ? "Yeni checklist oluşturmak için yukarıdaki butonu kullanın."
+                : "Size atanmış checklist bulunmuyor."}
+            />
           )}
         </div>
       )}

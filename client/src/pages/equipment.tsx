@@ -15,7 +15,8 @@ import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Skeleton } from "@/components/ui/skeleton";
+import { ListSkeleton } from "@/components/list-skeleton";
+import { EmptyState } from "@/components/empty-state";
 import { Settings, Plus, QrCode, Wrench, Calendar, MapPin, Pencil, AlertTriangle, Heart } from "lucide-react";
 import { DialogFooter } from "@/components/ui/dialog";
 import { FaultReportDialog } from "@/components/fault-report-dialog";
@@ -987,19 +988,7 @@ export default function Equipment() {
       </div>
 
       {isLoading ? (
-        <div className="grid gap-2 sm:gap-3 md:grid-cols-2 lg:grid-cols-3">
-          {[...Array(6)].map((_, i) => (
-            <Card key={i}>
-              <CardHeader>
-                <Skeleton className="h-6 w-3/4" />
-                <Skeleton className="h-4 w-1/2" />
-              </CardHeader>
-              <CardContent>
-                <Skeleton className="h-20 w-full" />
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+        <ListSkeleton count={6} variant="card" showHeader={false} />
       ) : filteredEquipment && filteredEquipment.length > 0 ? (
         <div className="grid gap-2 sm:gap-3 md:grid-cols-2 lg:grid-cols-3">
           {filteredEquipment.map((item) => {
@@ -1135,26 +1124,18 @@ export default function Equipment() {
           })}
         </div>
       ) : (
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-12">
-            <Settings className="h-12 w-12 text-muted-foreground mb-4" />
-            <p className="text-muted-foreground text-center">
-              {selectedType || selectedBranch || (maintenanceFilter && maintenanceFilter !== "all") || (healthFilter && healthFilter !== "all")
-                ? "Filtrelere uygun ekipman bulunamadı"
-                : "Henüz ekipman kaydı yok"}
-            </p>
-            {canCreate && !selectedType && !selectedBranch && (!maintenanceFilter || maintenanceFilter === "all") && (!healthFilter || healthFilter === "all") && (
-              <Button
-                className="mt-4"
-                onClick={() => setIsAddDialogOpen(true)}
-                data-testid="button-add-first-equipment"
-              >
-                <Plus className="mr-2 h-4 w-4" />
-                İlk Ekipmanı Ekle
-              </Button>
-            )}
-          </CardContent>
-        </Card>
+        <EmptyState
+          icon={Settings}
+          title={selectedType || selectedBranch || (maintenanceFilter && maintenanceFilter !== "all") || (healthFilter && healthFilter !== "all")
+            ? "Filtrelere uygun ekipman bulunamadı"
+            : "Henüz ekipman kaydı yok"}
+          description={selectedType || selectedBranch || (maintenanceFilter && maintenanceFilter !== "all") || (healthFilter && healthFilter !== "all")
+            ? "Arama kriterlerinizi değiştirip tekrar deneyin."
+            : "Yeni ekipman ekleyerek başlayabilirsiniz."}
+          variant={selectedType || selectedBranch || (maintenanceFilter && maintenanceFilter !== "all") || (healthFilter && healthFilter !== "all") ? "filter" : "default"}
+          actionLabel={canCreate && !selectedType && !selectedBranch && (!maintenanceFilter || maintenanceFilter === "all") && (!healthFilter || healthFilter === "all") ? "İlk Ekipmanı Ekle" : undefined}
+          onAction={canCreate && !selectedType && !selectedBranch && (!maintenanceFilter || maintenanceFilter === "all") && (!healthFilter || healthFilter === "all") ? () => setIsAddDialogOpen(true) : undefined}
+        />
       )}
 
       {faultReportEquipment && (
