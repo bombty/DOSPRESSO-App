@@ -167,11 +167,14 @@ export const EMPTY_STATE_PRESETS = {
 
 export function EmptyStatePreset({ 
   preset, 
-  onAction 
+  onAction,
+  variant
 }: { 
   preset: keyof typeof EMPTY_STATE_PRESETS;
   onAction?: () => void;
+  variant?: 'default' | 'search' | 'filter' | 'error';
 }) {
   const config = EMPTY_STATE_PRESETS[preset];
-  return <EmptyState {...config} onAction={onAction} />;
+  const presetVariant = 'variant' in config ? config.variant : undefined;
+  return <EmptyState {...config} variant={variant || presetVariant} onAction={onAction} />;
 }

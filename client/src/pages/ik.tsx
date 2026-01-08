@@ -68,6 +68,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { EmptyState, EmptyStatePreset } from "@/components/empty-state";
+import { ListSkeleton } from "@/components/list-skeleton";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -800,17 +802,9 @@ export default function IKPage() {
 
                 {/* Simplified Employee List */}
                 {isLoading ? (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                    {[...Array(6)].map((_, i) => (
-                      <Skeleton key={i} className="h-24 w-full rounded-lg" />
-                    ))}
-                  </div>
+                  <ListSkeleton count={6} variant="card" showHeader={false} />
                 ) : filteredEmployees.length === 0 ? (
-                  <Card className="p-8 text-center">
-                    <Users className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                    <p className="text-lg font-medium">Personel Bulunamadı</p>
-                    <p className="text-sm text-muted-foreground">Filtrelere uygun personel yok.</p>
-                  </Card>
+                  <EmptyStatePreset preset="employees" variant="filter" />
                 ) : (
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                     {filteredEmployees.map((employee) => {

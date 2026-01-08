@@ -16,6 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { AlertTriangle, Clock, CheckCircle2, Wrench, Search, Loader2, Plus, Building2, User, MapPin, X, Image } from "lucide-react";
+import { EmptyStatePreset } from "@/components/empty-state";
 import { format, differenceInHours } from "date-fns";
 import { tr } from "date-fns/locale";
 import { useLocation } from "wouter";
@@ -433,7 +434,7 @@ export default function FaultHub() {
                 {isFaultsLoading ? (
                   <FaultSkeletonList />
                 ) : paginatedManageFaults.length === 0 ? (
-                  <p className="text-sm text-muted-foreground text-center py-3">Arıza bulunamadı</p>
+                  <EmptyStatePreset preset="faults" variant={searchText ? "search" : "default"} />
                 ) : (
                   paginatedManageFaults.map((fault: EquipmentFault) => (
                     <div key={fault.id} className="flex items-center justify-between p-3 border rounded hover:bg-muted cursor-pointer hover-elevate" data-testid={`card-manage-fault-${fault.id}`} onClick={() => handleUpdateFault(fault)}>
@@ -623,7 +624,7 @@ export default function FaultHub() {
               <CardContent>
                 <div className="flex flex-col gap-3 sm:gap-4">
                   {metrics.myFaults.length === 0 ? (
-                    <p className="text-sm text-muted-foreground text-center py-3">Size atanmış arıza yok</p>
+                    <EmptyStatePreset preset="faults" />
                   ) : (
                     metrics.myFaults.map((fault: EquipmentFault) => (
                       <div key={fault.id} className="p-3 border rounded" data-testid={`card-my-fault-${fault.id}`}>
