@@ -1,5 +1,5 @@
 import { db } from './db';
-import { permissionActions, rolePermissionGrants, PermissionScope, type PermissionScopeType } from '@shared/schema';
+import { permissionActions, rolePermissionGrants, roleModulePermissions, PermissionScope, type PermissionScopeType } from '@shared/schema';
 import { eq, and } from 'drizzle-orm';
 
 export interface PermissionResult {
@@ -266,4 +266,42 @@ export async function getRoleGrants(role: string) {
     .from(rolePermissionGrants)
     .innerJoin(permissionActions, eq(rolePermissionGrants.actionId, permissionActions.id))
     .where(eq(rolePermissionGrants.role, role));
+}
+
+/**
+ * Gets all modules that a role has access to (with 'view' action)
+ * Returns a Set of module keys that the role can view
+ */
+export async function getRoleAccessibleModules(role: string): Promise<Set<string>> {
+  // Admin has access to all modules
+  if (role === 'admin') {
+    return new Set(['all']);
+  }
+  
+  // Get role module permissions from database
+  const permissions = await db
+    .select()
+    .from(roleModulePermissions)
+    .where(eq(roleModulePermissions.role, role));
+  
+  const accessibleModules = new Set<string>();
+  
+  for (const perm of permissions) {
+    // Check if role has 'view' permission for this module
+    if (perm.actions && perm.actions.includes('view')) {
+      accessibleModules.add(perm.module);
+    }
+  }
+  
+  return accessibleModules;
+}
+
+/**
+ * Check if a role has access to a specific module
+ */
+export async function hasModuleAccess(role: string, module: string): Promise<boolean> {
+  if (role === 'admin') return true;
+  
+  const modules = await getRoleAccessibleModules(role);
+  return modules.has('all') || modules.has(module);
 }

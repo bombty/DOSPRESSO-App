@@ -8014,3 +8014,121 @@ export class DatabaseStorage implements IStorage {
 }
 
 export const storage = new DatabaseStorage();
+
+  // Search entities with permission-based filtering
+  async searchEntitiesWithPermissions(
+    query: string, 
+    userBranchId: number | null, 
+    isHQ: boolean, 
+    permissions: {
+      canSeeUsers: boolean;
+      canSeeRecipes: boolean;
+      canSeeTasks: boolean;
+      canSeeBranches: boolean;
+      canSeeEquipment: boolean;
+    },
+    maxPerCategory = 5
+  ): Promise<{
+    users: Array<{ id: string; firstName: string; lastName: string; role: string; branchId: number | null }>;
+    recipes: any[];
+    tasks: Array<{ id: number; title: string; status: string; branchId: number | null }>;
+    branches: Array<{ id: number; name: string; address: string | null }>;
+    equipment: Array<{ id: number; name: string; type: string; branchId: number | null }>;
+  }> {
+    console.log("[Search] Starting permission-filtered search for:", query, "permissions:", permissions);
+    const searchPattern = \`%\${query.toLowerCase()}%\`;
+    
+    const safeRawQuery = async <T>(queryFn: () => Promise<T[]>, name: string): Promise<T[]> => {
+      try {
+        return await queryFn();
+      } catch (e: any) {
+        console.error(\`[Search] \${name} query failed:\`, e.message);
+        return [] as T[];
+      }
+    };
+
+    // Search users - only if permitted
+    const usersPromise = safeRawQuery(async () => {
+      if (!permissions.canSeeUsers) return [];
+      if (!isHQ && !userBranchId) return [];
+      const result = await db.execute(sql\`
+        SELECT id, first_name as "firstName", last_name as "lastName", role, branch_id as "branchId"
+        FROM users 
+        WHERE (LOWER(first_name) LIKE \${searchPattern} 
+          OR LOWER(last_name) LIKE \${searchPattern}
+          OR LOWER(username) LIKE \${searchPattern})
+        \${isHQ ? sql\`\` : sql\`AND branch_id = \${userBranchId}\`}
+        LIMIT \${maxPerCategory}
+      \`);
+      return result.rows as any[];
+    }, "users");
+
+    // Search recipes - only if permitted
+    const recipesPromise = safeRawQuery(async () => {
+      if (!permissions.canSeeRecipes) return [];
+      const result = await db.execute(sql\`
+        SELECT id, name_tr as "nameTr", code, category_id as "categoryId"
+        FROM recipes 
+        WHERE LOWER(name_tr) LIKE \${searchPattern} OR LOWER(code) LIKE \${searchPattern}
+        LIMIT \${maxPerCategory}
+      \`);
+      return result.rows as any[];
+    }, "recipes");
+
+    // Search tasks - only if permitted
+    const tasksPromise = safeRawQuery(async () => {
+      if (!permissions.canSeeTasks) return [];
+      if (!isHQ && !userBranchId) return [];
+      const result = await db.execute(sql\`
+        SELECT id, title, status, branch_id as "branchId"
+        FROM tasks 
+        WHERE LOWER(title) LIKE \${searchPattern}
+        \${isHQ ? sql\`\` : sql\`AND branch_id = \${userBranchId}\`}
+        LIMIT \${maxPerCategory}
+      \`);
+      return result.rows as any[];
+    }, "tasks");
+
+    // Search branches - only if permitted
+    const branchesPromise = safeRawQuery(async () => {
+      if (!permissions.canSeeBranches) return [];
+      if (!isHQ) return [];
+      const result = await db.execute(sql\`
+        SELECT id, name, address
+        FROM branches 
+        WHERE LOWER(name) LIKE \${searchPattern} OR LOWER(COALESCE(address, '')) LIKE \${searchPattern}
+        LIMIT \${maxPerCategory}
+      \`);
+      return result.rows as any[];
+    }, "branches");
+
+    // Search equipment - only if permitted
+    const equipmentPromise = safeRawQuery(async () => {
+      if (!permissions.canSeeEquipment) return [];
+      if (!isHQ && !userBranchId) return [];
+      const result = await db.execute(sql\`
+        SELECT id, name, equipment_type as "type", branch_id as "branchId"
+        FROM equipment 
+        WHERE (LOWER(name) LIKE \${searchPattern} OR LOWER(equipment_type) LIKE \${searchPattern})
+        \${isHQ ? sql\`\` : sql\`AND branch_id = \${userBranchId}\`}
+        LIMIT \${maxPerCategory}
+      \`);
+      return result.rows as any[];
+    }, "equipment");
+
+    const [usersResult, recipesResult, tasksResult, branchesResult, equipmentResult] = await Promise.all([
+      usersPromise,
+      recipesPromise,
+      tasksPromise,
+      branchesPromise,
+      equipmentPromise,
+    ]);
+
+    return {
+      users: usersResult,
+      recipes: recipesResult,
+      tasks: tasksResult,
+      branches: branchesResult,
+      equipment: equipmentResult,
+    };
+  }

@@ -263,7 +263,7 @@ import { sendNotificationEmail, sendEmployeeOfMonthEmail } from "./email";
 import { startReminderSystem } from "./reminders";
 import bcrypt from "bcrypt";
 import { z } from "zod";
-import { resolvePermissionScope, applyScopeFilter, getUserPermissions, getAllActionsGroupedByModule, getRoleGrants, upsertPermissionGrant, deletePermissionGrant } from "./permission-service";
+import { resolvePermissionScope, applyScopeFilter, getUserPermissions, getAllActionsGroupedByModule, getRoleGrants, upsertPermissionGrant, deletePermissionGrant, getRoleAccessibleModules } from "./permission-service";
 
 // Multer configuration for file uploads (memory storage)
 const uploadStorage = multer.memoryStorage();
@@ -15024,7 +15024,7 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
   // GLOBAL SEARCH API
   // ==========================================
   
-  // GET /api/search - Global search across users, recipes, tasks, branches, equipment
+  // GET /api/search - Global search across users, recipes, tasks, branches, equipment, modules
   app.get('/api/search', isAuthenticated, async (req: any, res) => {
     try {
       const user = req.user;
@@ -15037,20 +15037,108 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
       
       const isHQ = isHQRole(user.role);
       const userBranchId = user.branchId;
+      const userRole = user.role;
       
-      const results = await storage.searchEntities(
+      // Get user's accessible modules based on role permissions
+      const accessibleModules = await getRoleAccessibleModules(userRole);
+      const hasAllAccess = accessibleModules.has('all');
+      
+      // Search modules (mega-modules and sub-modules) with permission filtering
+      const searchPattern = query.trim().toLowerCase();
+      
+      // Get mega-module configs
+      const megaConfigs = await db.select().from(megaModuleConfig).where(eq(megaModuleConfig.isActive, true));
+      
+      // Get sub-module items
+      const subModules = await db.select().from(megaModuleItems).where(eq(megaModuleItems.isActive, true));
+      
+      // Filter and search modules
+      const moduleResults: Array<{
+        id: string;
+        type: 'mega' | 'sub';
+        name: string;
+        nameTr: string;
+        icon: string;
+        path: string;
+        megaModuleId?: string;
+        megaModuleName?: string;
+      }> = [];
+      
+      // Search mega-modules
+      for (const mega of megaConfigs) {
+        if (mega.megaModuleName.toLowerCase().includes(searchPattern) ||
+            mega.megaModuleNameTr.toLowerCase().includes(searchPattern)) {
+          // Check if user has access to at least one sub-module in this mega-module
+          const megaSubModules = subModules.filter(s => s.megaModuleId === mega.megaModuleId);
+          const hasAccessToMega = hasAllAccess || megaSubModules.some(sub => accessibleModules.has(sub.subModuleId));
+          
+          if (hasAccessToMega) {
+            moduleResults.push({
+              id: mega.megaModuleId,
+              type: 'mega',
+              name: mega.megaModuleName,
+              nameTr: mega.megaModuleNameTr,
+              icon: mega.icon,
+              path: `/modul/${mega.megaModuleId}`,
+            });
+          }
+        }
+      }
+      
+      // Search sub-modules with permission check
+      for (const sub of subModules) {
+        if (sub.subModuleName.toLowerCase().includes(searchPattern) ||
+            sub.subModuleNameTr.toLowerCase().includes(searchPattern)) {
+          // Check if user has access to this module
+          if (hasAllAccess || accessibleModules.has(sub.subModuleId)) {
+            const parentMega = megaConfigs.find(m => m.megaModuleId === sub.megaModuleId);
+            moduleResults.push({
+              id: sub.subModuleId,
+              type: 'sub',
+              name: sub.subModuleName,
+              nameTr: sub.subModuleNameTr,
+              icon: sub.icon || parentMega?.icon || 'FileText',
+              path: sub.subModulePath,
+              megaModuleId: sub.megaModuleId,
+              megaModuleName: parentMega?.megaModuleNameTr || sub.megaModuleId,
+            });
+          }
+        }
+      }
+      
+      // Check if user can see each entity type
+      const canSeeUsers = hasAllAccess || accessibleModules.has('ik') || accessibleModules.has('personel');
+      const canSeeRecipes = hasAllAccess || accessibleModules.has('tarifler') || accessibleModules.has('akademi');
+      const canSeeTasks = hasAllAccess || accessibleModules.has('gorevler');
+      const canSeeBranches = hasAllAccess || accessibleModules.has('subeler');
+      const canSeeEquipment = hasAllAccess || accessibleModules.has('ekipman');
+      
+      // Get permission-filtered search results
+      const results = await storage.searchEntitiesWithPermissions(
         query.trim(),
         userBranchId,
         isHQ,
+        {
+          canSeeUsers,
+          canSeeRecipes,
+          canSeeTasks,
+          canSeeBranches,
+          canSeeEquipment,
+        },
         5 // max per category
       );
       
-      res.json(results);
+      // Add modules to results
+      res.json({
+        ...results,
+        modules: moduleResults.slice(0, 10), // limit to 10 modules
+      });
     } catch (error: any) {
       console.error("Global search error:", error);
       res.status(500).json({ message: "Arama sırasında hata oluştu" });
     }
   });
+
 
   // ==========================================
   // HQ PROJECT MANAGEMENT API
