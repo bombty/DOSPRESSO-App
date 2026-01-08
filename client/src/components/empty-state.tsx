@@ -67,7 +67,7 @@ export function EmptyState({
         <p className="text-sm text-muted-foreground max-w-sm mb-4">{description}</p>
       )}
       {actionLabel && onAction && (
-        <Button onClick={onAction} variant="outline" size="sm">
+        <Button onClick={onAction} variant="outline" size="sm" data-testid="button-empty-state-action">
           <Plus className="h-4 w-4 mr-2" />
           {actionLabel}
         </Button>
@@ -151,6 +151,17 @@ export const EMPTY_STATE_PRESETS = {
     title: "Proje bulunamadı",
     description: "Henüz proje oluşturulmamış.",
     actionLabel: "Proje Oluştur",
+  },
+  documents: {
+    icon: FileX,
+    title: "Döküman bulunamadı",
+    description: "Henüz döküman yüklenmemiş.",
+    actionLabel: "Döküman Yükle",
+  },
+  aiInsights: {
+    icon: Inbox,
+    title: "AI önerisi yok",
+    description: "Henüz AI tarafından oluşturulmuş içgörü bulunmuyor.",
   },
 };
 
