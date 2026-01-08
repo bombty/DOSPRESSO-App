@@ -2503,7 +2503,8 @@ export const announcements = pgTable("announcements", {
   mediaUrls: text("media_urls").array().default(sql`ARRAY[]::text[]`), // Ek görseller/videolar
   
   publishedAt: timestamp("published_at").defaultNow(),
-  expiresAt: timestamp("expires_at"),
+  validFrom: timestamp("valid_from"), // Geçerlilik başlangıç tarihi
+  expiresAt: timestamp("expires_at"), // Geçerlilik bitiş tarihi
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => ({

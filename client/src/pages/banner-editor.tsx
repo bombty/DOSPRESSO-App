@@ -273,6 +273,8 @@ export default function BannerEditor() {
   const [showOnDashboard, setShowOnDashboard] = useState(true);
   const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
   const [selectedBranches, setSelectedBranches] = useState<number[]>([]);
+  const [validFrom, setValidFrom] = useState<string>("");
+  const [expiresAt, setExpiresAt] = useState<string>("");
 
   // Fetch branches for targeting
   const { data: branches } = useQuery<{ id: number; name: string }[]>({
@@ -320,6 +322,8 @@ export default function BannerEditor() {
       showOnDashboard: boolean;
       targetRoles: string[];
       targetBranches: number[];
+      validFrom?: string;
+      expiresAt?: string;
     }) => {
       return apiRequest("POST", "/api/announcements/from-banner", {
         imageData: data.imageData,
@@ -330,6 +334,8 @@ export default function BannerEditor() {
         showOnDashboard: data.showOnDashboard,
         targetRoles: data.targetRoles,
         targetBranches: data.targetBranches,
+        validFrom: data.validFrom || null,
+        expiresAt: data.expiresAt || null,
       });
     },
     onSuccess: () => {
@@ -655,6 +661,8 @@ export default function BannerEditor() {
         showOnDashboard,
         targetRoles: selectedRoles,
         targetBranches: selectedBranches,
+        validFrom: validFrom || undefined,
+        expiresAt: expiresAt || undefined,
       });
     } catch (error) {
       console.error("Publish error:", error);
@@ -1494,6 +1502,29 @@ export default function BannerEditor() {
                 onCheckedChange={setShowOnDashboard}
                 data-testid="switch-dashboard"
               />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Geçerlilik Başlangıcı</Label>
+                <Input 
+                  type="datetime-local"
+                  value={validFrom}
+                  onChange={(e) => setValidFrom(e.target.value)}
+                  data-testid="input-valid-from"
+                />
+                <p className="text-xs text-muted-foreground">Boş = hemen geçerli</p>
+              </div>
+              <div className="space-y-2">
+                <Label>Geçerlilik Bitişi</Label>
+                <Input 
+                  type="datetime-local"
+                  value={expiresAt}
+                  onChange={(e) => setExpiresAt(e.target.value)}
+                  data-testid="input-expires-at"
+                />
+                <p className="text-xs text-muted-foreground">Boş = süresiz</p>
+              </div>
             </div>
 
             <div className="space-y-2">

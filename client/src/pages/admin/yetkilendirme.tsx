@@ -547,6 +547,12 @@ export default function AdminYetkilendirme() {
   const [newRoleName, setNewRoleName] = useState("");
   const [newRoleScope, setNewRoleScope] = useState<"admin" | "hq" | "branch">("hq");
   const [newRoleDescription, setNewRoleDescription] = useState("");
+  
+  // Yeni modül ekleme state'leri
+  const [isNewModuleDialogOpen, setIsNewModuleDialogOpen] = useState(false);
+  const [newModuleKey, setNewModuleKey] = useState("");
+  const [newModuleLabel, setNewModuleLabel] = useState("");
+  const [newModuleMegaModule, setNewModuleMegaModule] = useState<string>("operations");
   const [expandedModules, setExpandedModules] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState<string>("permissions");
   const [activeModuleId, setActiveModuleId] = useState<string | null>(null);
@@ -1027,6 +1033,39 @@ export default function AdminYetkilendirme() {
     createRoleMutation.mutate({ roleName: newRoleName.trim().toLowerCase(), scope: newRoleScope, description: newRoleDescription });
   };
 
+  // Yeni modül ekleme mutation
+  const createModuleMutation = useMutation({
+    mutationFn: (data: { moduleKey: string; label: string; megaModuleId: string }) =>
+      apiRequest("POST", "/api/admin/mega-modules/add-module", data),
+    onSuccess: () => {
+      toast({ title: "Modül eklendi" });
+      setIsNewModuleDialogOpen(false);
+      setNewModuleKey("");
+      setNewModuleLabel("");
+      setNewModuleMegaModule("operations");
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/mega-modules"] });
+    },
+    onError: (err: Error) => {
+      toast({ title: "Hata", description: err.message, variant: "destructive" });
+    },
+  });
+
+  const handleCreateModule = () => {
+    if (!newModuleKey.trim()) {
+      toast({ title: "Hata", description: "Modül anahtarı gerekli", variant: "destructive" });
+      return;
+    }
+    if (!newModuleLabel.trim()) {
+      toast({ title: "Hata", description: "Modül adı gerekli", variant: "destructive" });
+      return;
+    }
+    createModuleMutation.mutate({ 
+      moduleKey: newModuleKey.trim().toLowerCase().replace(/\s+/g, '_'), 
+      label: newModuleLabel.trim(), 
+      megaModuleId: newModuleMegaModule 
+    });
+  };
+
   const handleRoleSelect = (role: string) => {
     setSelectedRole(role);
     setPermissions({});
@@ -1343,9 +1382,15 @@ export default function AdminYetkilendirme() {
                 Modülleri sürükleyerek farklı mega modüller arasında taşıyabilirsiniz
               </p>
             </div>
-            <Button variant="outline" onClick={handleResetMappings} data-testid="button-reset-mappings">
-              Varsayılana Sıfırla
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button onClick={() => setIsNewModuleDialogOpen(true)} data-testid="button-add-module">
+                <Plus className="h-4 w-4 mr-1" />
+                Yeni Modül Ekle
+              </Button>
+              <Button variant="outline" onClick={handleResetMappings} data-testid="button-reset-mappings">
+                Varsayılana Sıfırla
+              </Button>
+            </div>
           </div>
           
           <DndContext
@@ -1423,6 +1468,60 @@ export default function AdminYetkilendirme() {
             <Button variant="outline" onClick={() => setIsNewRoleDialogOpen(false)}>İptal</Button>
             <Button onClick={handleCreateRole} disabled={createRoleMutation.isPending} data-testid="button-create-role">
               {createRoleMutation.isPending ? "Oluşturuluyor..." : "Oluştur"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Yeni Modül Ekle Modal */}
+      <Dialog open={isNewModuleDialogOpen} onOpenChange={setIsNewModuleDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Yeni Modül Ekle</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label>Modül Anahtarı *</Label>
+              <Input
+                placeholder="örn: kampanya_analiz, stok_yonetimi"
+                value={newModuleKey}
+                onChange={(e) => setNewModuleKey(e.target.value)}
+                data-testid="input-module-key"
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                Sistem tarafından kullanılacak benzersiz anahtar (küçük harf, alt çizgi)
+              </p>
+            </div>
+            <div>
+              <Label>Modül Adı *</Label>
+              <Input
+                placeholder="örn: Kampanya Analiz, Stok Yönetimi"
+                value={newModuleLabel}
+                onChange={(e) => setNewModuleLabel(e.target.value)}
+                data-testid="input-module-label"
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                Kullanıcıya görünecek ad
+              </p>
+            </div>
+            <div>
+              <Label>Mega Modül</Label>
+              <Select value={newModuleMegaModule} onValueChange={setNewModuleMegaModule}>
+                <SelectTrigger data-testid="select-mega-module">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {MEGA_MODULE_CONFIG.map(m => (
+                    <SelectItem key={m.id} value={m.id}>{m.title}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsNewModuleDialogOpen(false)}>İptal</Button>
+            <Button onClick={handleCreateModule} disabled={createModuleMutation.isPending} data-testid="button-create-module">
+              {createModuleMutation.isPending ? "Ekleniyor..." : "Ekle"}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -22945,7 +22945,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`
         return res.status(403).json({ message: "Yetkiniz yok" });
       }
       
-      const { imageData, title, message, category, priority, showOnDashboard, targetRoles, targetBranches } = req.body;
+      const { imageData, title, message, category, priority, showOnDashboard, targetRoles, targetBranches, validFrom, expiresAt } = req.body;
       
       if (!title || !imageData) {
         return res.status(400).json({ message: "Başlık ve banner görseli gerekli" });
@@ -23000,6 +23000,8 @@ DOSPRESSO İnsan Kaynakları Ekibi`
           showOnDashboard: showOnDashboard || false,
           bannerPriority: priority === 'urgent' ? 10 : priority === 'high' ? 5 : 0,
           isPinned: priority === 'urgent',
+          validFrom: validFrom ? new Date(validFrom) : null,
+          expiresAt: expiresAt ? new Date(expiresAt) : null,
         })
         .returning();
       
@@ -28612,6 +28614,43 @@ DOSPRESSO İnsan Kaynakları Ekibi`
       res.status(500).json({ message: "Modül atamaları kaydedilemedi" });
     }
   });
+
+  // POST /api/admin/mega-modules/add-module - Yeni tek modül ekle
+  app.post("/api/admin/mega-modules/add-module", isAuthenticated, async (req: any, res) => {
+    try {
+      const userRole = req.user?.role;
+      if (userRole !== "admin") {
+        return res.status(403).json({ message: "Yetkiniz yok" });
+      }
+      const { moduleKey, label, megaModuleId } = req.body;
+      if (!moduleKey || !label || !megaModuleId) {
+        return res.status(400).json({ message: "Modül anahtarı, adı ve mega modül gerekli" });
+      }
+      // Aynı key var mı kontrol et
+      const existing = await db.select().from(megaModuleItems).where(eq(megaModuleItems.subModuleId, moduleKey)).limit(1);
+      if (existing.length > 0) {
+        return res.status(400).json({ message: "Bu modül anahtarı zaten mevcut" });
+      }
+      // Son sortOrder bul
+      const lastItem = await db.select().from(megaModuleItems).where(eq(megaModuleItems.megaModuleId, megaModuleId)).orderBy(desc(megaModuleItems.sortOrder)).limit(1);
+      const newSortOrder = (lastItem[0]?.sortOrder ?? 0) + 1;
+      // Yeni modül ekle
+      await db.insert(megaModuleItems).values({
+        megaModuleId,
+        subModuleId: moduleKey,
+        subModulePath: "/" + moduleKey.replace(/_/g, "-"),
+        subModuleName: moduleKey,
+        subModuleNameTr: label,
+        sortOrder: newSortOrder,
+        isActive: true,
+      });
+      res.json({ success: true, message: "Modül eklendi" });
+    } catch (error: any) {
+      console.error("Error adding module:", error);
+      res.status(500).json({ message: "Modül eklenemedi" });
+    }
+  });
+
 
   // PUT /api/admin/mega-modules/items/:subModuleId - Tek bir modül atamasını güncelle
   app.put('/api/admin/mega-modules/items/:subModuleId', isAuthenticated, async (req: any, res) => {
