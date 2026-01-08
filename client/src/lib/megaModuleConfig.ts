@@ -1,14 +1,15 @@
 import { 
-  LayoutGrid, 
+  LayoutDashboard,
+  ClipboardCheck,
   Wrench, 
   Users, 
   GraduationCap, 
-  ChefHat, 
   Factory, 
   BarChart3, 
   Building2, 
   Settings 
 } from "lucide-react";
+import { MEGA_MODULES, getMegaModuleMapping, type MegaModuleId } from "@shared/modules-registry";
 
 export interface MegaModuleConfig {
   id: string;
@@ -17,28 +18,53 @@ export interface MegaModuleConfig {
   color: string;
 }
 
-export const MEGA_MODULE_CONFIG: Record<string, MegaModuleConfig> = {
-  "operations": { id: "operations", title: "Operasyonlar", icon: LayoutGrid, color: "text-blue-500" },
-  "equipment": { id: "equipment", title: "Ekipman & Bakım", icon: Wrench, color: "text-orange-500" },
-  "hr": { id: "hr", title: "Personel & İK", icon: Users, color: "text-green-500" },
-  "training": { id: "training", title: "Eğitim & Akademi", icon: GraduationCap, color: "text-purple-500" },
-  "kitchen": { id: "kitchen", title: "Mutfak & Tarifler", icon: ChefHat, color: "text-amber-600" },
-  "factory": { id: "factory", title: "Fabrika & Üretim", icon: Factory, color: "text-slate-600" },
-  "reports": { id: "reports", title: "Raporlar & Analitik", icon: BarChart3, color: "text-cyan-500" },
-  "newshop": { id: "newshop", title: "Yeni Şube Açılış", icon: Building2, color: "text-rose-500" },
-  "admin": { id: "admin", title: "Yönetim & Ayarlar", icon: Settings, color: "text-gray-500" },
+const ICON_MAP: Record<string, any> = {
+  LayoutDashboard,
+  ClipboardCheck,
+  Wrench,
+  Users,
+  GraduationCap,
+  Factory,
+  BarChart3,
+  Building2,
+  Settings,
 };
 
-export const MEGA_MODULE_ORDER = [
-  "operations", "equipment", "hr", "training", "kitchen", "factory", "reports", "newshop", "admin"
-];
+const COLOR_MAP: Record<string, string> = {
+  'bg-slate-500': 'text-slate-500',
+  'bg-green-500': 'text-green-500',
+  'bg-orange-500': 'text-orange-500',
+  'bg-pink-500': 'text-pink-500',
+  'bg-blue-500': 'text-blue-500',
+  'bg-indigo-600': 'text-indigo-600',
+  'bg-cyan-500': 'text-cyan-500',
+  'bg-violet-600': 'text-violet-600',
+  'bg-slate-600': 'text-slate-600',
+};
+
+export const MEGA_MODULE_CONFIG: Record<string, MegaModuleConfig> = Object.fromEntries(
+  Object.entries(MEGA_MODULES).map(([key, mod]) => [
+    key,
+    {
+      id: mod.id,
+      title: mod.title,
+      icon: ICON_MAP[mod.icon] || LayoutDashboard,
+      color: COLOR_MAP[mod.color] || 'text-gray-500',
+    }
+  ])
+);
+
+export const MEGA_MODULE_ORDER = Object.values(MEGA_MODULES)
+  .sort((a, b) => a.sortOrder - b.sortOrder)
+  .map(m => m.id);
 
 export const DEFAULT_MENU_SECTION_MAPPING: Record<string, string[]> = {
+  "dashboard": ["dashboard", "dashboard-hq", "dashboard-branch"],
   "operations": [
-    "dashboard-hq", "dashboard-branch", "operations", "branch-management",
-    "tasks", "tasks-hq", "tasks-branch", "tasks-section", "operations-hq", "operations-branch",
+    "operations", "branch-management",
+    "tasks", "tasks-hq", "tasks-branch", "tasks-section", 
     "checklists", "checklists-hq", "checklists-branch", "checklists-section",
-    "dashboard", "lost-found", "lost-found-hq",
+    "lost-found", "lost-found-hq",
     "operasyon", "subeler"
   ],
   "equipment": [
@@ -60,16 +86,11 @@ export const DEFAULT_MENU_SECTION_MAPPING: Record<string, string[]> = {
     "training-academy",
     "academy", "academy-hq", "academy-section", "training", "training-section",
     "quizzes", "quizzes-section", "knowledge-base",
-    "egitim", "akademi"
-  ],
-  "kitchen": [
-    "kitchen",
-    "recipes", "recipes-section", "menu", "menu-section",
-    "tarifler", "mutfak"
+    "egitim", "akademi", "bilgi-bankasi"
   ],
   "factory": [
-    "factory",
-    "production", "production-section", "factory-section",
+    "factory", "factory-section",
+    "production", "production-section",
     "quality-control", "waste-management",
     "fabrika", "uretim"
   ],
@@ -77,32 +98,22 @@ export const DEFAULT_MENU_SECTION_MAPPING: Record<string, string[]> = {
     "analytics-reports", "quality-customer",
     "reports", "reports-section", "analytics", "analytics-section",
     "audits", "audit-section", "feedback", "customer-feedback",
-    "raporlar", "denetimler"
+    "raporlar", "denetimler", "kalite"
   ],
   "newshop": [
-    "projects",
+    "projects", "projeler",
     "new-shop", "new-shop-section", "projects-section",
-    "yeni-sube", "projeler"
+    "yeni-sube"
   ],
   "admin": [
     "management", "communication",
     "admin", "admin-section", "settings", "settings-section",
     "users", "users-section", "roles", "announcements", "support",
-    "yonetim", "ayarlar", "kullanicilar"
+    "yonetim", "ayarlar", "kullanicilar", "destek"
   ],
 };
 
-export const DEFAULT_PERMISSION_MODULE_MAPPING: Record<string, string[]> = {
-  "operations": ["dashboard", "tasks", "checklists", "branches", "lost_found", "lost_found_hq", "canli_takip", "qr_tara", "nfc_giris"],
-  "equipment": ["equipment", "faults", "equipment_analytics"],
-  "hr": ["shifts", "shift_planning", "hr", "attendance", "leave_requests", "accounting", "personel_onboarding", "mesai_talepleri"],
-  "training": ["academy.general", "academy.hq", "academy.analytics", "academy.badges", "academy.certificates", "academy.leaderboard", "academy.quizzes", "academy.learning_paths", "academy.ai", "academy.social", "academy.supervisor", "bilgi_bankasi"],
-  "kitchen": ["recipes", "menu", "tarifler"],
-  "factory": ["factory_kiosk", "factory_dashboard", "factory_quality", "factory_analytics", "factory_ai_reports", "factory_stations", "factory_waste_reasons", "factory_pins", "factory_compliance", "factory_uretim_planlama", "factory_vardiya_uyumluluk"],
-  "reports": ["reports", "e2e_reports", "cash_reports", "hr_reports", "quality_audit", "audit_templates", "capa", "denetimler", "misafir_memnuniyeti", "sikayetler"],
-  "newshop": ["projects", "new_branch_projects", "kampanya_yonetimi"],
-  "admin": ["settings", "bulk_data", "users", "menu_management", "content_management", "admin_panel", "authorization", "support", "hq_destek", "notifications", "announcements", "messages", "ai_asistan", "banner_editor", "aktivite_loglari", "email_ayarlari", "ai_ayarlari", "yedekleme"],
-};
+export const DEFAULT_PERMISSION_MODULE_MAPPING: Record<string, string[]> = getMegaModuleMapping();
 
 const MENU_MAPPING_KEY = "megaModuleMappings";
 const PERMISSION_MAPPING_KEY = "megaModulePermissionMappings";
@@ -122,8 +133,7 @@ export function getPermissionModuleMapping(): Record<string, string[]> {
   if (typeof window === "undefined") return DEFAULT_PERMISSION_MODULE_MAPPING;
   const saved = localStorage.getItem(PERMISSION_MAPPING_KEY);
   if (saved) return JSON.parse(saved);
-  const legacyMapping = localStorage.getItem(MENU_MAPPING_KEY);
-  return legacyMapping ? JSON.parse(legacyMapping) : DEFAULT_PERMISSION_MODULE_MAPPING;
+  return DEFAULT_PERMISSION_MODULE_MAPPING;
 }
 
 export function setPermissionModuleMapping(mapping: Record<string, string[]>): void {

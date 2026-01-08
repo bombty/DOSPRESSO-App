@@ -116,6 +116,7 @@ import ProjeGorevDetay from "@/pages/proje-gorev-detay";
 import YeniSubeProjeler from "@/pages/yeni-sube-projeler";
 import YeniSubeDetay from "@/pages/yeni-sube-detay";
 import Raporlar from "@/pages/raporlar";
+import RaporlarHub from "@/pages/raporlar-hub";
 import Destek from "@/pages/destek";
 import Muhasebe from "@/pages/muhasebe";
 import Fabrika from "@/pages/fabrika";
@@ -312,6 +313,7 @@ function Router() {
           <Route path="/kasa-raporlari" component={CashReports} />
           <Route path="/e2e-raporlar" component={E2EReports} />
           <Route path="/raporlar" component={Raporlar} />
+          <Route path="/raporlar-hub" component={RaporlarHub} />
           <Route path="/performans" component={Performance} />
           <Route path="/muhasebe" component={Muhasebe} />
           <Route path="/fabrika" component={Fabrika} />
