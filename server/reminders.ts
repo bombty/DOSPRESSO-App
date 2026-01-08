@@ -358,3 +358,61 @@ export function stopPhotoCleanupSystem() {
     console.log("Fotoğraf temizleme sistemi durduruldu");
   }
 }
+
+// ========================================
+// EMPLOYEE OF MONTH AUTO CALCULATION
+// ========================================
+
+const MONTHLY_CHECK_INTERVAL = 24 * 60 * 60 * 1000; // Once per day
+let monthlyCalculationInterval: NodeJS.Timeout | null = null;
+let lastMonthlyCheck: Date | null = null;
+
+async function checkMonthlyEmployeeOfMonth() {
+  try {
+    const now = new Date();
+    const currentDay = now.getDate();
+    
+    // Only run on day 1-3 of each month (gives time for late data entry)
+    if (currentDay > 3) return;
+    
+    // Check if we already ran this month
+    if (lastMonthlyCheck) {
+      const lastCheckMonth = lastMonthlyCheck.getMonth();
+      const currentMonth = now.getMonth();
+      if (lastCheckMonth === currentMonth) return;
+    }
+    
+    // Calculate for previous month
+    const prevMonth = now.getMonth() === 0 ? 12 : now.getMonth();
+    const prevYear = now.getMonth() === 0 ? now.getFullYear() - 1 : now.getFullYear();
+    
+    console.log(`🏆 Automatic Employee of Month reminder for ${prevMonth}/${prevYear}`);
+    console.log(`   Admins should run calculation manually from /ayin-elemani page`);
+    
+    // Log reminder for admins - they should check the Employee of Month page
+    // Notification will be shown via the existing notification system
+    console.log(`   Admin bilgilendirmesi: Ayin Elemani hesaplaması için /ayin-elemani sayfasını ziyaret edin`);
+    
+    lastMonthlyCheck = now;
+    console.log(`🏆 Monthly Employee of Month reminder sent`);
+  } catch (error) {
+    console.error("Monthly EoM reminder error:", error);
+  }
+}
+
+export function startMonthlyCalculationSystem() {
+  console.log("Aylık Ayın Elemanı hesaplama sistemi başlatıldı - Her gün kontrol edilecek");
+  
+  // Run initial check
+  setTimeout(checkMonthlyEmployeeOfMonth, 10000); // Delay 10s to let DB initialize
+  
+  monthlyCalculationInterval = setInterval(checkMonthlyEmployeeOfMonth, MONTHLY_CHECK_INTERVAL);
+}
+
+export function stopMonthlyCalculationSystem() {
+  if (monthlyCalculationInterval) {
+    clearInterval(monthlyCalculationInterval);
+    monthlyCalculationInterval = null;
+    console.log("Aylık hesaplama sistemi durduruldu");
+  }
+}

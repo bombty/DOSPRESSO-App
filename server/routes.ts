@@ -259,7 +259,7 @@ import multer from "multer";
 import { generateTrainingMaterialBundle } from "./ai-motor";
 import { updateEmployeeLocation, getActiveBranchEmployees, getEmployeeLocation, removeEmployeeLocation, startTrackingCleanup } from "./tracking";
 import { compressChecklistPhotoBase64 } from "./photo-utils";
-import { sendNotificationEmail } from "./email";
+import { sendNotificationEmail, sendEmployeeOfMonthEmail } from "./email";
 import { startReminderSystem } from "./reminders";
 import bcrypt from "bcrypt";
 import { z } from "zod";
@@ -29207,6 +29207,15 @@ DOSPRESSO İnsan Kaynakları Ekibi`
       }
 
       const { id } = req.params;
+      
+      // Get the award details first
+      const [awardData] = await db.select().from(employeeOfMonthAwards)
+        .where(eq(employeeOfMonthAwards.id, parseInt(id)));
+      
+      if (!awardData) {
+        return res.status(404).json({ message: "Ödül bulunamadı" });
+      }
+
       await db.update(employeeOfMonthAwards).set({
         status: 'approved',
         approvedById: req.user?.id,
@@ -29214,7 +29223,48 @@ DOSPRESSO İnsan Kaynakları Ekibi`
         updatedAt: new Date(),
       }).where(eq(employeeOfMonthAwards.id, parseInt(id)));
 
-      res.json({ success: true, message: "Ödül onaylandı" });
+      // Send congratulation email and award badge to the winner
+      try {
+        const [winner] = await db.select({
+          email: users.email,
+          firstName: users.firstName,
+          lastName: users.lastName,
+        }).from(users).where(eq(users.id, awardData.userId));
+
+        const [branchData] = await db.select({ name: branches.name })
+          .from(branches).where(eq(branches.id, awardData.branchId));
+
+        // Award the "Ayin Elemani" badge
+        const [eomBadge] = await db.select().from(badges)
+          .where(eq(badges.badgeKey, 'employee_of_month'));
+        
+        if (eomBadge) {
+          await db.insert(userBadges).values({
+            userId: awardData.userId,
+            badgeId: eomBadge.id,
+            earnedAt: new Date(),
+          }).onConflictDoNothing();
+          console.log(`🏆 Employee of Month badge awarded to user ${awardData.userId}`);
+        }
+
+        if (winner?.email) {
+          const monthNames = ['Ocak', 'Subat', 'Mart', 'Nisan', 'Mayis', 'Haziran', 
+                              'Temmuz', 'Agustos', 'Eylul', 'Ekim', 'Kasim', 'Aralik'];
+          const monthYear = `${monthNames[awardData.month - 1]} ${awardData.year}`;
+          
+          await sendEmployeeOfMonthEmail(
+            winner.email,
+            `${winner.firstName} ${winner.lastName}`,
+            branchData?.name || 'DOSPRESSO',
+            monthYear,
+            awardData.finalScore || 0
+          );
+        }
+      } catch (emailError) {
+        console.error("Email/badge error (non-critical):", emailError);
+      }
+
+      res.json({ success: true, message: "Ödül onaylandı ve tebrik emaili gönderildi" });
     } catch (error: any) {
       console.error("Error approving award:", error);
       res.status(500).json({ message: "Ödül onaylanamadı" });

@@ -235,3 +235,76 @@ export async function sendRejectionEmail(email: string, reason?: string): Promis
     html,
   });
 }
+
+export async function sendEmployeeOfMonthEmail(
+  email: string, 
+  employeeName: string, 
+  branchName: string, 
+  monthYear: string,
+  totalScore: number
+): Promise<void> {
+  const dashboardUrl = `${process.env.REPLIT_DEPLOYMENT_URL || 'http://localhost:5000'}/performansim`;
+  
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; background-color: #f9f9f9; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: linear-gradient(135deg, #ffd700, #ff8c00); padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+        .header h1 { color: white; margin: 0; font-size: 28px; text-shadow: 2px 2px 4px rgba(0,0,0,0.3); }
+        .star { font-size: 48px; margin-bottom: 10px; }
+        .content { background-color: white; padding: 30px; border-radius: 0 0 10px 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .score-box { background: linear-gradient(135deg, #4caf50, #2e7d32); color: white; padding: 20px; border-radius: 8px; text-align: center; margin: 20px 0; }
+        .score-box .score { font-size: 36px; font-weight: bold; }
+        .score-box .label { font-size: 14px; opacity: 0.9; }
+        .button { display: inline-block; padding: 12px 30px; background-color: #2c3e50; color: white; text-decoration: none; border-radius: 25px; margin: 20px 0; font-weight: bold; }
+        .footer { margin-top: 30px; font-size: 12px; color: #666; text-align: center; }
+        .highlight { background-color: #fff3e0; padding: 15px; border-radius: 8px; border-left: 4px solid #ff9800; margin: 15px 0; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <div class="star">⭐</div>
+          <h1>Tebrikler!</h1>
+        </div>
+        <div class="content">
+          <p style="font-size: 18px;">Sevgili <strong>${employeeName}</strong>,</p>
+          
+          <div class="highlight">
+            <p style="margin: 0;"><strong>${monthYear}</strong> donemi icin <strong>${branchName}</strong> subesinde <strong>AYIN ELEMANI</strong> secildiniz!</p>
+          </div>
+          
+          <p>Gostermis oldugunuz ustun performans, oz veri ve takim ruhu ile bu basariyi hak ettiniz. Calisma arkadaşlariniz ve yoneticileriniz sizinle gurur duyuyor.</p>
+          
+          <div class="score-box">
+            <div class="label">Genel Performans Puaniniz</div>
+            <div class="score">${totalScore.toFixed(1)}/100</div>
+          </div>
+          
+          <p>Bu basariniz profil sayfanizda ve sube panelinde sergilenecektir. Ayrintili performans raporunuzu asagidaki linkten goruntuleyebilirsiniz:</p>
+          
+          <center>
+            <a href="${dashboardUrl}" class="button">Performansimi Gor</a>
+          </center>
+          
+          <p>Basarilarinizin devamini diliyoruz!</p>
+          
+          <p style="margin-top: 20px;">Saygilarimizla,<br><strong>DOSPRESSO Aileniz</strong></p>
+        </div>
+        <div class="footer">
+          <p>DOSPRESSO Franchise Management System<br>Bu otomatik bir emaildir.</p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+
+  await sendEmail({
+    to: email,
+    subject: `🏆 Tebrikler! ${monthYear} Ayin Elemani Secildiniz`,
+    html,
+  });
+}

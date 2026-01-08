@@ -9,10 +9,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
 import { 
   Trophy, Medal, Star, Award, Users, TrendingUp, Calculator,
-  Calendar, Building, Crown, Sparkles, Target, Loader2
+  Calendar, Building, Crown, Sparkles, Target, Loader2, Download
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
+import { downloadEmployeeOfMonthCertificate } from "@/lib/pdfHelper";
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Legend } from "recharts";
 
 const MONTHS = [
@@ -381,6 +382,23 @@ export default function EmployeeOfMonthPage() {
                               <p className="text-xs text-muted-foreground">
                                 {award.totalScore?.toFixed(1)} puan
                               </p>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="mt-2 h-7 text-xs"
+                                onClick={() => downloadEmployeeOfMonthCertificate({
+                                  employeeName: `${award.employee?.firstName || ''} ${award.employee?.lastName || ''}`.trim(),
+                                  branchName: award.branch?.name || 'DOSPRESSO',
+                                  monthYear: `${monthName} ${selectedYear}`,
+                                  score: award.totalScore || 0,
+                                  awardDate: new Date(award.createdAt || Date.now()),
+                                  certificateNo: `EOM-${selectedYear}-${String(monthIndex + 1).padStart(2, '0')}-${award.id}`,
+                                })}
+                                data-testid={`button-certificate-${monthIndex}`}
+                              >
+                                <Download className="h-3 w-3 mr-1" />
+                                Sertifika
+                              </Button>
                             </>
                           ) : (
                             <div className="h-16 flex items-center justify-center">

@@ -417,3 +417,156 @@ export async function addMultipleChartsToPDF(
   
   return yPos;
 }
+
+export interface CertificateOptions {
+  employeeName: string;
+  branchName: string;
+  monthYear: string;
+  score: number;
+  awardDate: Date;
+  certificateNo?: string;
+}
+
+/**
+ * Generate Employee of Month certificate PDF
+ */
+export async function generateEmployeeOfMonthCertificate(options: CertificateOptions): Promise<jsPDF> {
+  const { employeeName, branchName, monthYear, score, awardDate, certificateNo } = options;
+  
+  const doc = new jsPDF({ orientation: 'landscape', format: 'a4' });
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  
+  // Gold gradient background effect (simulated with rectangles)
+  doc.setFillColor(255, 248, 220); // Light gold background
+  doc.rect(0, 0, pageWidth, pageHeight, 'F');
+  
+  // Border decoration
+  doc.setDrawColor(218, 165, 32); // Gold color
+  doc.setLineWidth(3);
+  doc.rect(10, 10, pageWidth - 20, pageHeight - 20, 'S');
+  
+  doc.setLineWidth(1);
+  doc.rect(15, 15, pageWidth - 30, pageHeight - 30, 'S');
+  
+  // Corner decorations
+  doc.setFillColor(218, 165, 32);
+  const cornerSize = 15;
+  // Top left
+  doc.triangle(10, 10, 10 + cornerSize, 10, 10, 10 + cornerSize, 'F');
+  // Top right
+  doc.triangle(pageWidth - 10, 10, pageWidth - 10 - cornerSize, 10, pageWidth - 10, 10 + cornerSize, 'F');
+  // Bottom left
+  doc.triangle(10, pageHeight - 10, 10 + cornerSize, pageHeight - 10, 10, pageHeight - 10 - cornerSize, 'F');
+  // Bottom right
+  doc.triangle(pageWidth - 10, pageHeight - 10, pageWidth - 10 - cornerSize, pageHeight - 10, pageWidth - 10, pageHeight - 10 - cornerSize, 'F');
+  
+  let yPos = 40;
+  
+  // Logo or brand name
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(28);
+  doc.setTextColor(139, 43, 35); // Brown
+  doc.text("DOSPRESSO", pageWidth / 2, yPos, { align: "center" });
+  yPos += 12;
+  
+  doc.setFontSize(14);
+  doc.setTextColor(100, 100, 100);
+  doc.text("Donut Coffee", pageWidth / 2, yPos, { align: "center" });
+  yPos += 25;
+  
+  // Certificate title
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(36);
+  doc.setTextColor(30, 58, 95); // Navy
+  doc.text("BASARI SERTIFIKASI", pageWidth / 2, yPos, { align: "center" });
+  yPos += 18;
+  
+  // Star decoration
+  doc.setFontSize(40);
+  doc.setTextColor(218, 165, 32);
+  doc.text("*", pageWidth / 2, yPos, { align: "center" });
+  yPos += 20;
+  
+  // Award type
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(20);
+  doc.setTextColor(139, 43, 35);
+  doc.text("AYIN ELEMANI", pageWidth / 2, yPos, { align: "center" });
+  yPos += 18;
+  
+  // Period
+  doc.setFontSize(16);
+  doc.setTextColor(100, 100, 100);
+  doc.text(sanitizeText(monthYear), pageWidth / 2, yPos, { align: "center" });
+  yPos += 22;
+  
+  // Recipient name
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(32);
+  doc.setTextColor(30, 58, 95);
+  doc.text(sanitizeText(employeeName.toUpperCase()), pageWidth / 2, yPos, { align: "center" });
+  yPos += 15;
+  
+  // Branch name
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(14);
+  doc.setTextColor(100, 100, 100);
+  doc.text(sanitizeText(branchName) + " Subesi", pageWidth / 2, yPos, { align: "center" });
+  yPos += 18;
+  
+  // Description
+  doc.setFontSize(12);
+  doc.setTextColor(80, 80, 80);
+  const description = "Gostermis oldugunuz ustun performans, ozverili calisma ve takim ruhu ile";
+  const description2 = "bu basariyi hak ettiniz. Tebrik eder, basarilarinizin devamini dileriz.";
+  doc.text(description, pageWidth / 2, yPos, { align: "center" });
+  yPos += 7;
+  doc.text(description2, pageWidth / 2, yPos, { align: "center" });
+  yPos += 15;
+  
+  // Score
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(16);
+  doc.setTextColor(46, 125, 50); // Green
+  doc.text(`Performans Puani: ${score.toFixed(1)}/100`, pageWidth / 2, yPos, { align: "center" });
+  yPos += 25;
+  
+  // Bottom section - Date and signature
+  const bottomY = pageHeight - 40;
+  
+  // Date
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(11);
+  doc.setTextColor(100, 100, 100);
+  const dateStr = awardDate.toLocaleDateString('tr-TR', { day: '2-digit', month: 'long', year: 'numeric' });
+  doc.text(sanitizeText(dateStr), 50, bottomY, { align: "center" });
+  doc.setFontSize(9);
+  doc.text("Tarih", 50, bottomY + 6, { align: "center" });
+  
+  // Signature line
+  doc.setDrawColor(100, 100, 100);
+  doc.line(pageWidth / 2 - 40, bottomY - 2, pageWidth / 2 + 40, bottomY - 2);
+  doc.setFontSize(11);
+  doc.text("DOSPRESSO Yonetimi", pageWidth / 2, bottomY + 5, { align: "center" });
+  doc.setFontSize(9);
+  doc.text("Imza", pageWidth / 2, bottomY + 11, { align: "center" });
+  
+  // Certificate number
+  if (certificateNo) {
+    doc.setFontSize(8);
+    doc.setTextColor(150, 150, 150);
+    doc.text(`Sertifika No: ${certificateNo}`, pageWidth - 50, bottomY + 6, { align: "center" });
+  }
+  
+  return doc;
+}
+
+/**
+ * Download Employee of Month certificate
+ */
+export async function downloadEmployeeOfMonthCertificate(options: CertificateOptions): Promise<void> {
+  const doc = await generateEmployeeOfMonthCertificate(options);
+  const fileName = `DOSPRESSO_Ayin_Elemani_${sanitizeText(options.employeeName.replace(/\s+/g, '_'))}_${sanitizeText(options.monthYear.replace(/\s+/g, '_'))}.pdf`;
+  doc.save(fileName);
+}
