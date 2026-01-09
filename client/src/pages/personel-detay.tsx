@@ -35,6 +35,8 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ListSkeleton } from "@/components/list-skeleton";
+import { EmptyState } from "@/components/empty-state";
 import {
   ArrowLeft,
   FileText,
@@ -462,9 +464,8 @@ export default function PersonelDetay() {
 
   if (isLoading) {
     return (
-      <div className="container mx-auto p-3 grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
-        <Skeleton className="h-12 w-64" />
-        <Skeleton className="h-96 w-full" />
+      <div className="container mx-auto p-3">
+        <ListSkeleton count={4} variant="card" showHeader />
       </div>
     );
   }

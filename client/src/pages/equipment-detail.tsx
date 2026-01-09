@@ -14,6 +14,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ListSkeleton } from "@/components/list-skeleton";
+import { EmptyState } from "@/components/empty-state";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
@@ -592,17 +594,7 @@ export default function EquipmentDetail() {
   if (isLoading) {
     return (
       <div className="max-w-6xl mx-auto px-3 sm:px-4 py-3 space-y-4">
-        <Skeleton className="h-10 w-32" />
-        <Card>
-          <CardHeader>
-            <Skeleton className="h-6 w-48 mb-2" />
-            <Skeleton className="h-4 w-32" />
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <Skeleton className="h-4 w-full" />
-            <Skeleton className="h-4 w-3/4" />
-          </CardContent>
-        </Card>
+        <ListSkeleton count={4} variant="card" showHeader />
       </div>
     );
   }
@@ -615,12 +607,12 @@ export default function EquipmentDetail() {
             <ArrowLeft className="h-4 w-4" />
           </Button>
         </Link>
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-12">
-            <Settings className="h-12 w-12 text-muted-foreground mb-4" />
-            <p className="text-muted-foreground text-center">Ekipman bulunamadı</p>
-          </CardContent>
-        </Card>
+        <EmptyState
+          icon={Settings}
+          title="Ekipman bulunamadı"
+          description="İstediğiniz ekipman bilgisi bulunamadı."
+          data-testid="empty-state-equipment"
+        />
       </div>
     );
   }

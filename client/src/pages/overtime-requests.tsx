@@ -49,7 +49,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
+import { ListSkeleton } from "@/components/list-skeleton";
+import { EmptyState } from "@/components/empty-state";
 import { Plus, Check, X, Clock, AlertCircle } from "lucide-react";
 import { format } from "date-fns";
 
@@ -214,16 +215,14 @@ export default function OvertimeRequestsPage() {
         </CardHeader>
         <CardContent>
           {isLoading ? (
-            <div className="flex flex-col gap-3 sm:gap-4">
-              {[1, 2, 3].map((i) => (
-                <Skeleton key={i} className="h-16" />
-              ))}
-            </div>
+            <ListSkeleton count={3} variant="row" />
           ) : filteredRequests.length === 0 ? (
-            <div className="text-center py-12 text-muted-foreground">
-              <Clock className="h-12 w-12 mx-auto mb-4 opacity-50" />
-              <p>Henüz mesai talebi bulunmuyor</p>
-            </div>
+            <EmptyState
+              icon={Clock}
+              title="Mesai talebi yok"
+              description="Henüz mesai talebi bulunmuyor."
+              data-testid="empty-state-overtime"
+            />
           ) : (
             <div className="overflow-x-auto">
               <Table>

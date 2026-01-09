@@ -4,7 +4,8 @@ import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
+import { ListSkeleton } from "@/components/list-skeleton";
+import { EmptyState } from "@/components/empty-state";
 import { 
   getMenuSectionMapping, 
   getMegaModuleTitles, 
@@ -367,15 +368,7 @@ export default function MegaModulePage() {
   if (isLoading) {
     return (
       <div className="p-4 space-y-4">
-        <div className="flex items-center gap-2">
-          <Skeleton className="h-10 w-10" />
-          <Skeleton className="h-6 w-48" />
-        </div>
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-          {[1,2,3,4,5,6].map(i => (
-            <Skeleton key={i} className="h-24 w-full rounded-xl" />
-          ))}
-        </div>
+        <ListSkeleton count={6} variant="card" showHeader />
       </div>
     );
   }

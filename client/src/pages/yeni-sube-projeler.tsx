@@ -10,7 +10,8 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Skeleton } from "@/components/ui/skeleton";
+import { ListSkeleton } from "@/components/list-skeleton";
+import { EmptyState } from "@/components/empty-state";
 import { Progress } from "@/components/ui/progress";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
@@ -238,15 +239,7 @@ export default function YeniSubeProjeler() {
   if (isLoading) {
     return (
       <div className="p-4 space-y-4">
-        <div className="flex items-center justify-between">
-          <Skeleton className="h-8 w-64" data-testid="skeleton-title" />
-          <Skeleton className="h-10 w-40" data-testid="skeleton-button" />
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {[1, 2, 3, 4, 5, 6].map((i) => (
-            <Skeleton key={i} className="h-64" data-testid={`skeleton-card-${i}`} />
-          ))}
-        </div>
+        <ListSkeleton count={6} variant="card" showHeader data-testid="loading-projects" />
       </div>
     );
   }

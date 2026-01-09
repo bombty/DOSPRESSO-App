@@ -10,7 +10,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Skeleton } from "@/components/ui/skeleton";
+import { ListSkeleton } from "@/components/list-skeleton";
+import { EmptyState } from "@/components/empty-state";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
@@ -215,11 +216,7 @@ export default function ProjeGorevDetay() {
   if (isLoading) {
     return (
       <div className="p-4 space-y-4">
-        <Skeleton className="h-10 w-64" />
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          <Skeleton className="lg:col-span-2 h-96" />
-          <Skeleton className="h-96" />
-        </div>
+        <ListSkeleton count={4} variant="card" showHeader />
       </div>
     );
   }
@@ -227,14 +224,14 @@ export default function ProjeGorevDetay() {
   if (!task) {
     return (
       <div className="p-4">
-        <Card className="p-8 text-center">
-          <AlertCircle className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-          <h3 className="font-medium mb-2">Görev bulunamadı</h3>
-          <Button onClick={() => navigate("/projeler")}>
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Geri Dön
-          </Button>
-        </Card>
+        <EmptyState
+          icon={AlertCircle}
+          title="Görev bulunamadı"
+          description="İstediğiniz görev bilgisi bulunamadı."
+          actionLabel="Geri Dön"
+          onAction={() => navigate("/projeler")}
+          data-testid="empty-state-task"
+        />
       </div>
     );
   }

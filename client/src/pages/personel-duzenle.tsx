@@ -11,6 +11,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ListSkeleton } from "@/components/list-skeleton";
+import { EmptyState } from "@/components/empty-state";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Select,
@@ -215,8 +217,7 @@ export default function PersonelDuzenle() {
   if (employeeLoading) {
     return (
       <div className="flex flex-col gap-4 p-4">
-        <Skeleton className="h-12 w-64" />
-        <Skeleton className="h-96 w-full" />
+        <ListSkeleton count={4} variant="card" showHeader />
       </div>
     );
   }
@@ -224,12 +225,14 @@ export default function PersonelDuzenle() {
   if (!employee) {
     return (
       <div className="flex flex-col gap-4 p-4">
-        <Card className="p-8 text-center">
-          <p className="text-lg font-medium">Personel Bulunamadı</p>
-          <Button className="mt-4" onClick={() => navigate("/ik")}>
-            Geri Dön
-          </Button>
-        </Card>
+        <EmptyState
+          icon={User}
+          title="Personel bulunamadı"
+          description="İstediğiniz personel bilgisi bulunamadı."
+          actionLabel="Geri Dön"
+          onAction={() => navigate("/ik")}
+          data-testid="empty-state-employee"
+        />
       </div>
     );
   }

@@ -10,6 +10,8 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ListSkeleton } from "@/components/list-skeleton";
+import { EmptyState } from "@/components/empty-state";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
@@ -330,8 +332,8 @@ export default function Muhasebe() {
   // EARLY RETURNS - After all hooks are declared
   if (isLoadingAccess) {
     return (
-      <div className="h-screen flex items-center justify-center">
-        <Skeleton className="w-full max-w-md h-24" />
+      <div className="h-screen flex items-center justify-center p-4">
+        <ListSkeleton count={1} variant="card" />
       </div>
     );
   }
@@ -409,12 +411,7 @@ export default function Muhasebe() {
   if (isLoading) {
     return (
       <div className="flex flex-col gap-4 p-4">
-        <Skeleton className="h-12 w-full" />
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          <Skeleton className="h-40" />
-          <Skeleton className="h-40" />
-          <Skeleton className="h-40" />
-        </div>
+        <ListSkeleton count={3} variant="card" showHeader />
       </div>
     );
   }

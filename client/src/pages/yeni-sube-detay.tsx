@@ -12,6 +12,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ListSkeleton } from "@/components/list-skeleton";
+import { EmptyState } from "@/components/empty-state";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -1106,11 +1108,7 @@ export default function YeniSubeDetay() {
   if (isLoading) {
     return (
       <div className="container max-w-6xl mx-auto p-4 space-y-4" data-testid="loading-state">
-        <Skeleton className="h-8 w-48" />
-        <Skeleton className="h-40 w-full" />
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {[1, 2, 3].map((i) => <Skeleton key={i} className="h-32" />)}
-        </div>
+        <ListSkeleton count={4} variant="card" showHeader />
       </div>
     );
   }
@@ -1118,17 +1116,14 @@ export default function YeniSubeDetay() {
   if (!project) {
     return (
       <div className="container max-w-6xl mx-auto p-4" data-testid="not-found-state">
-        <Card>
-          <CardContent className="p-8 text-center">
-            <Store className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-            <h2 className="text-xl font-semibold mb-2">Proje Bulunamadı</h2>
-            <p className="text-muted-foreground mb-4">Bu proje mevcut değil veya erişim yetkiniz yok.</p>
-            <Button onClick={() => navigate("/yeni-sube-projeler")} data-testid="button-back-to-projects">
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Projelere Dön
-            </Button>
-          </CardContent>
-        </Card>
+        <EmptyState
+          icon={Store}
+          title="Proje Bulunamadı"
+          description="Bu proje mevcut değil veya erişim yetkiniz yok."
+          actionLabel="Projelere Dön"
+          onAction={() => navigate("/yeni-sube-projeler")}
+          data-testid="empty-state-project"
+        />
       </div>
     );
   }

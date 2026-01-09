@@ -8,7 +8,8 @@ import { isHQRole, type Announcement, type Branch, insertAnnouncementSchema, typ
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
+import { ListSkeleton } from "@/components/list-skeleton";
+import { EmptyState } from "@/components/empty-state";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from "@/components/ui/form";
@@ -252,11 +253,7 @@ export default function IcerikStudyosu() {
 
         <TabsContent value="drafts" className="space-y-4">
           {bannersLoading ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {[...Array(3)].map((_, i) => (
-                <Card key={i}><Skeleton className="h-48 w-full" /></Card>
-              ))}
-            </div>
+            <ListSkeleton count={3} variant="card" />
           ) : draftBanners.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {draftBanners.map((banner) => (
@@ -300,29 +297,20 @@ export default function IcerikStudyosu() {
               ))}
             </div>
           ) : (
-            <Card className="p-8">
-              <div className="text-center">
-                <FileText className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-                <h3 className="font-medium mb-2">Henüz taslak yok</h3>
-                <p className="text-sm text-muted-foreground mb-4">
-                  Yeni içerik oluşturmak için butonu kullanın
-                </p>
-                <Button onClick={() => setIsEditorOpen(true)}>
-                  <Plus className="w-4 h-4 mr-2" />
-                  İçerik Oluştur
-                </Button>
-              </div>
-            </Card>
+            <EmptyState
+              icon={FileText}
+              title="Henüz taslak yok"
+              description="Yeni içerik oluşturmak için butonu kullanın."
+              actionLabel="İçerik Oluştur"
+              onAction={() => setIsEditorOpen(true)}
+              data-testid="empty-state-drafts"
+            />
           )}
         </TabsContent>
 
         <TabsContent value="published" className="space-y-4">
           {announcementsLoading ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {[...Array(3)].map((_, i) => (
-                <Card key={i}><Skeleton className="h-48 w-full" /></Card>
-              ))}
-            </div>
+            <ListSkeleton count={3} variant="card" />
           ) : publishedAnnouncements.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {publishedAnnouncements.map((announcement) => (
@@ -387,25 +375,18 @@ export default function IcerikStudyosu() {
               ))}
             </div>
           ) : (
-            <Card className="p-8">
-              <div className="text-center">
-                <Send className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-                <h3 className="font-medium mb-2">Henüz yayınlanmış duyuru yok</h3>
-                <p className="text-sm text-muted-foreground">
-                  Taslakları yayınlayarak başlayın
-                </p>
-              </div>
-            </Card>
+            <EmptyState
+              icon={Send}
+              title="Yayınlanmış duyuru yok"
+              description="Taslakları yayınlayarak başlayın."
+              data-testid="empty-state-published"
+            />
           )}
         </TabsContent>
 
         <TabsContent value="carousel" className="space-y-4">
           {bannersLoading ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {[...Array(3)].map((_, i) => (
-                <Card key={i}><Skeleton className="h-48 w-full" /></Card>
-              ))}
-            </div>
+            <ListSkeleton count={3} variant="card" />
           ) : carouselBanners.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {carouselBanners.map((banner) => (
@@ -450,15 +431,12 @@ export default function IcerikStudyosu() {
               ))}
             </div>
           ) : (
-            <Card className="p-8">
-              <div className="text-center">
-                <LayoutGrid className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-                <h3 className="font-medium mb-2">Carousel'da banner yok</h3>
-                <p className="text-sm text-muted-foreground">
-                  Banner Editör ile yeni carousel banner'ı oluşturun
-                </p>
-              </div>
-            </Card>
+            <EmptyState
+              icon={LayoutGrid}
+              title="Carousel'da banner yok"
+              description="Banner Editör ile yeni carousel banner'ı oluşturun."
+              data-testid="empty-state-carousel"
+            />
           )}
         </TabsContent>
       </Tabs>

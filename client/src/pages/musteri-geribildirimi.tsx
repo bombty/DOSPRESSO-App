@@ -6,7 +6,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
+import { ListSkeleton } from "@/components/list-skeleton";
+import { EmptyState } from "@/components/empty-state";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Star, MessageSquare, CheckCircle2, Clock, TrendingUp } from "lucide-react";
@@ -101,9 +102,8 @@ export default function MisafirGeriBildirim() {
 
   if (feedbackLoading) {
     return (
-      <div className="p-6 grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
-        <Skeleton className="h-8 w-64" />
-        <Skeleton className="h-32 w-full" />
+      <div className="p-6">
+        <ListSkeleton count={4} variant="card" showHeader />
       </div>
     );
   }

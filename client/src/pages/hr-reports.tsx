@@ -32,6 +32,8 @@ import {
 } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ListSkeleton } from "@/components/list-skeleton";
+import { EmptyState } from "@/components/empty-state";
 import { Badge } from "@/components/ui/badge";
 import { 
   BarChart3,
@@ -359,16 +361,14 @@ export default function HRReportsPage() {
         </CardHeader>
         <CardContent>
           {isLoading ? (
-            <div className="flex flex-col gap-3 sm:gap-4">
-              <Skeleton className="h-10 w-full" />
-              <Skeleton className="h-10 w-full" />
-              <Skeleton className="h-10 w-full" />
-            </div>
+            <ListSkeleton count={3} variant="row" />
           ) : employeeBreakdown.length === 0 ? (
-            <div className="text-center py-12 text-muted-foreground">
-              <BarChart3 className="h-12 w-12 mx-auto mb-4 opacity-50" />
-              <p>Seçili tarih aralığında devam kaydı bulunamadı</p>
-            </div>
+            <EmptyState
+              icon={BarChart3}
+              title="Devam kaydı yok"
+              description="Seçili tarih aralığında devam kaydı bulunamadı."
+              data-testid="empty-state-hr-reports"
+            />
           ) : (
             <div className="overflow-x-auto">
               <Table>

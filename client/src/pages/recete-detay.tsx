@@ -4,7 +4,8 @@ import { useRoute, Link } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
+import { ListSkeleton } from "@/components/list-skeleton";
+import { EmptyState } from "@/components/empty-state";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
@@ -68,11 +69,8 @@ export default function ReceteDetay() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen p-4 space-y-4">
-        <Skeleton className="h-8 w-24" />
-        <Skeleton className="h-48 w-full rounded-xl" />
-        <Skeleton className="h-6 w-48" />
-        <Skeleton className="h-24 w-full" />
+      <div className="min-h-screen p-4">
+        <ListSkeleton count={3} variant="card" showHeader />
       </div>
     );
   }
@@ -86,10 +84,12 @@ export default function ReceteDetay() {
             Geri
           </Button>
         </Link>
-        <div className="text-center py-12">
-          <Coffee className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-          <p className="text-muted-foreground">Reçete bulunamadı</p>
-        </div>
+        <EmptyState
+          icon={Coffee}
+          title="Reçete bulunamadı"
+          description="İstediğiniz reçete bulunamadı."
+          data-testid="empty-state-recipe"
+        />
       </div>
     );
   }

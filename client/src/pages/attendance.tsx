@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
+import { ListSkeleton } from "@/components/list-skeleton";
 import {
   Collapsible,
   CollapsibleContent,
@@ -228,7 +228,7 @@ export default function AttendancePage() {
           </CardHeader>
           <CardContent className="w-full space-y-2 sm:space-y-3">
             {activeLoading ? (
-              <Skeleton className="h-24 w-full" />
+              <ListSkeleton count={1} variant="row" />
             ) : activeShift ? (
               <>
                 <div className="flex flex-col gap-3 sm:gap-4">
@@ -419,7 +419,7 @@ export default function AttendancePage() {
           </CardHeader>
           <CardContent>
             {historyLoading ? (
-              <Skeleton className="h-20 w-full" />
+              <ListSkeleton count={1} variant="row" />
             ) : (
               <div className="flex flex-col gap-3 sm:gap-4">
                 <div className="flex items-center justify-between">
@@ -449,11 +449,7 @@ export default function AttendancePage() {
         </CardHeader>
         <CardContent>
           {historyLoading ? (
-            <div className="flex flex-col gap-3 sm:gap-4">
-              {[...Array(5)].map((_, i) => (
-                <Skeleton key={i} className="h-16 w-full" />
-              ))}
-            </div>
+            <ListSkeleton count={5} variant="row" />
           ) : (
             <Table>
               <TableHeader>

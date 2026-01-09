@@ -5,7 +5,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
+import { ListSkeleton } from "@/components/list-skeleton";
+import { EmptyState } from "@/components/empty-state";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { Shield, Building2, Factory, Save, Loader2, AlertCircle } from "lucide-react";
@@ -261,11 +262,7 @@ export default function RolYetkileri() {
             Sistem rollerinin modül ve işlem yetkilerini yönetin
           </p>
         </div>
-        <div className="w-full space-y-2 sm:space-y-3">
-          <Skeleton className="h-20 w-full" />
-          <Skeleton className="h-20 w-full" />
-          <Skeleton className="h-20 w-full" />
-        </div>
+        <ListSkeleton count={3} variant="row" />
       </div>
     );
   }

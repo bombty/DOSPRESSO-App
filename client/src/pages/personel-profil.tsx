@@ -8,7 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { Skeleton } from "@/components/ui/skeleton";
+import { ListSkeleton } from "@/components/list-skeleton";
+import { EmptyState } from "@/components/empty-state";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { ObjectUploader } from "@/components/ObjectUploader";
 import { 
@@ -209,13 +210,7 @@ export default function PersonelProfilPage() {
   if (isLoading) {
     return (
       <div className="flex flex-col gap-3 sm:gap-4 p-3">
-        <Skeleton className="h-12 w-full" />
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3">
-          <Skeleton className="h-32" />
-          <Skeleton className="h-32" />
-          <Skeleton className="h-32" />
-          <Skeleton className="h-32" />
-        </div>
+        <ListSkeleton count={4} variant="card" showHeader />
       </div>
     );
   }
@@ -223,10 +218,14 @@ export default function PersonelProfilPage() {
   if (!profile) {
     return (
       <div className="flex flex-col items-center justify-center h-full gap-3 p-3">
-        <p className="text-lg text-muted-foreground">Personel bulunamadı</p>
-        <Link href="/ik">
-          <Button variant="default" data-testid="button-back-ik">İK Yönetimine Dön</Button>
-        </Link>
+        <EmptyState
+          icon={User}
+          title="Personel bulunamadı"
+          description="İstediğiniz personel bilgisi bulunamadı."
+          actionLabel="İK Yönetimine Dön"
+          onAction={() => setLocation("/ik")}
+          data-testid="empty-state-profile"
+        />
       </div>
     );
   }

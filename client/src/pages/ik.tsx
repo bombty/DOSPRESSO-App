@@ -70,7 +70,6 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState, EmptyStatePreset } from "@/components/empty-state";
 import { ListSkeleton } from "@/components/list-skeleton";
-import { Skeleton } from "@/components/ui/skeleton";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   UserPlus,
@@ -870,17 +869,14 @@ export default function IKPage() {
                   {/* Terminated Employees Tab */}
                   <TabsContent value="terminated" className="space-y-4 mt-4">
                     {isTerminatedLoading ? (
-                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                        {[...Array(6)].map((_, i) => (
-                          <Skeleton key={i} className="h-24 w-full rounded-lg" />
-                        ))}
-                      </div>
+                      <ListSkeleton count={6} variant="card" />
                     ) : terminatedEmployees.length === 0 ? (
-                      <Card className="p-8 text-center">
-                        <UserMinus className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                        <p className="text-lg font-medium">Ayrılan Personel Yok</p>
-                        <p className="text-sm text-muted-foreground">İşten ayrılan personel kaydı bulunmuyor.</p>
-                      </Card>
+                      <EmptyState
+                        icon={UserMinus}
+                        title="Ayrılan Personel Yok"
+                        description="İşten ayrılan personel kaydı bulunmuyor."
+                        data-testid="empty-state-terminated"
+                      />
                     ) : (
                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                         {terminatedEmployees.map((employee) => {
@@ -981,11 +977,7 @@ export default function IKPage() {
 
                 {/* Disciplinary Table */}
                 {isDisciplinaryLoading ? (
-                  <div className="flex flex-col gap-3 sm:gap-4">
-                    {[...Array(5)].map((_, i) => (
-                      <Skeleton key={i} className="h-12 w-full" />
-                    ))}
-                  </div>
+                  <ListSkeleton count={5} variant="row" />
                 ) : (
                   <Table>
                     <TableHeader>
@@ -1080,11 +1072,7 @@ export default function IKPage() {
 
                 {/* Onboarding Table */}
                 {isOnboardingLoading ? (
-                  <div className="flex flex-col gap-3 sm:gap-4">
-                    {[...Array(5)].map((_, i) => (
-                      <Skeleton key={i} className="h-12 w-full" />
-                    ))}
-                  </div>
+                  <ListSkeleton count={5} variant="row" />
                 ) : (
                   <Table>
                     <TableHeader>
@@ -1179,11 +1167,7 @@ export default function IKPage() {
 
                 {/* Documents Table */}
                 {isDocumentsLoading ? (
-                  <div className="flex flex-col gap-3 sm:gap-4">
-                    {[...Array(5)].map((_, i) => (
-                      <Skeleton key={i} className="h-12 w-full" />
-                    ))}
-                  </div>
+                  <ListSkeleton count={5} variant="row" />
                 ) : (
                   <Table>
                     <TableHeader>
@@ -1388,18 +1372,14 @@ export default function IKPage() {
 
                   {/* Attendance Table */}
                   {isAttendanceLoading ? (
-                    <div className="flex flex-col gap-2 sm:gap-3">
-                      {[...Array(5)].map((_, i) => (
-                        <Skeleton key={i} className="h-12 w-full" />
-                      ))}
-                    </div>
+                    <ListSkeleton count={5} variant="row" />
                   ) : attendanceSummaries.length === 0 ? (
-                    <Card>
-                      <CardContent className="py-10 text-center text-muted-foreground">
-                        <Clock className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                        <p>Bu dönem için mesai kaydı bulunamadı</p>
-                      </CardContent>
-                    </Card>
+                    <EmptyState
+                      icon={Clock}
+                      title="Mesai kaydı yok"
+                      description="Bu dönem için mesai kaydı bulunamadı."
+                      data-testid="empty-state-attendance"
+                    />
                   ) : (
                     <div className="overflow-x-auto">
                       <Table>
@@ -1476,13 +1456,14 @@ export default function IKPage() {
               </CardHeader>
               <CardContent>
                 {isOvertimeLoading ? (
-                  <div className="flex justify-center py-4">
-                    <Skeleton className="h-20 w-full" />
-                  </div>
+                  <ListSkeleton count={3} variant="row" />
                 ) : pendingOvertimeRequests.length === 0 ? (
-                  <p className="text-muted-foreground text-center py-4">
-                    Bekleyen mesai talebi bulunmuyor.
-                  </p>
+                  <EmptyState
+                    icon={Clock}
+                    title="Mesai talebi yok"
+                    description="Bekleyen mesai talebi bulunmuyor."
+                    data-testid="empty-state-overtime"
+                  />
                 ) : (
                   <div className="space-y-3">
                     {pendingOvertimeRequests.map((req) => (
@@ -2876,17 +2857,14 @@ function RecruitmentSection() {
           </div>
 
           {isPositionsLoading ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-              {[...Array(3)].map((_, i) => (
-                <Skeleton key={i} className="h-32 w-full rounded-lg" />
-              ))}
-            </div>
+            <ListSkeleton count={3} variant="card" />
           ) : positions.length === 0 ? (
-            <Card className="p-8 text-center">
-              <UserPlus className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-              <p className="text-lg font-medium">Açık Pozisyon Yok</p>
-              <p className="text-sm text-muted-foreground">Yeni bir pozisyon ekleyerek başlayın.</p>
-            </Card>
+            <EmptyState
+              icon={UserPlus}
+              title="Açık Pozisyon Yok"
+              description="Yeni bir pozisyon ekleyerek başlayın."
+              data-testid="empty-state-positions"
+            />
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
               {positions.map((position: any) => (
@@ -4609,16 +4587,14 @@ function LeaveManagementSection({ employees }: { employees: User[] }) {
         </CardHeader>
         <CardContent className="space-y-2">
           {isLoadingLeaves ? (
-            <div className="space-y-2">
-              {[1, 2, 3].map((i) => (
-                <Skeleton key={i} className="h-16 w-full" />
-              ))}
-            </div>
+            <ListSkeleton count={3} variant="row" />
           ) : leaveBalances.length === 0 ? (
-            <div className="text-center p-8">
-              <Calendar className="h-10 w-10 mx-auto text-muted-foreground mb-2" />
-              <p className="text-sm text-muted-foreground">İzin bakiyesi bulunamadı</p>
-            </div>
+            <EmptyState
+              icon={Calendar}
+              title="İzin bakiyesi yok"
+              description="İzin bakiyesi bulunamadı."
+              data-testid="empty-state-leaves"
+            />
           ) : (
             <div className="max-h-[400px] overflow-y-auto space-y-2">
               {leaveBalances.map((item: any) => {
@@ -4670,16 +4646,14 @@ function LeaveManagementSection({ employees }: { employees: User[] }) {
         </CardHeader>
         <CardContent className="space-y-2">
           {isLoadingHolidays ? (
-            <div className="space-y-2">
-              {[1, 2, 3].map((i) => (
-                <Skeleton key={i} className="h-12 w-full" />
-              ))}
-            </div>
+            <ListSkeleton count={3} variant="row" />
           ) : holidays.length === 0 ? (
-            <div className="text-center p-8">
-              <Star className="h-10 w-10 mx-auto text-muted-foreground mb-2" />
-              <p className="text-sm text-muted-foreground">{selectedYear} için tatil tanımlı değil</p>
-            </div>
+            <EmptyState
+              icon={Star}
+              title="Tatil tanımlı değil"
+              description={`${selectedYear} için resmi tatil tanımlı değil.`}
+              data-testid="empty-state-holidays"
+            />
           ) : (
             <div className="max-h-[400px] overflow-y-auto space-y-2">
               {holidays.map((holiday: any) => {
@@ -4879,14 +4853,14 @@ function SalaryManagementSection({ employees, branches }: { employees: User[]; b
         </CardHeader>
         <CardContent>
           {isLoading ? (
-            <div className="space-y-2">
-              {[1, 2, 3].map((i) => <Skeleton key={i} className="h-16 w-full" />)}
-            </div>
+            <ListSkeleton count={3} variant="row" />
           ) : filteredEmployees.length === 0 ? (
-            <div className="text-center py-8">
-              <Users className="h-10 w-10 mx-auto text-muted-foreground mb-2" />
-              <p className="text-sm text-muted-foreground">Personel bulunamadı</p>
-            </div>
+            <EmptyState
+              icon={Users}
+              title="Personel bulunamadı"
+              description="Bu kriterlere uyan personel bulunamadı."
+              data-testid="empty-state-salary-employees"
+            />
           ) : (
             <div className="overflow-x-auto">
               <Table>

@@ -40,7 +40,8 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Skeleton } from "@/components/ui/skeleton";
+import { ListSkeleton } from "@/components/list-skeleton";
+import { EmptyState } from "@/components/empty-state";
 import {
   ArrowLeft,
   Plus,
@@ -191,8 +192,7 @@ export default function PersonelOnboardingPage() {
   if (isLoading) {
     return (
       <div className="flex flex-col gap-3">
-        <Skeleton className="h-12 w-full" />
-        <Skeleton className="h-96 w-full" />
+        <ListSkeleton count={5} variant="row" showHeader />
       </div>
     );
   }
