@@ -222,6 +222,7 @@ async function checkMaintenanceReminders() {
     const allEquipment = await storage.getEquipment();
     const now = new Date();
     const warningDate = new Date(now.getTime() + MAINTENANCE_WARNING_DAYS * 24 * 60 * 60 * 1000);
+    const oneDayAgo = now.getTime() - 24 * 60 * 60 * 1000; // Only send once per day per equipment
 
     for (const eq of allEquipment) {
       if (!eq.nextMaintenanceDate || !eq.isActive) continue;
@@ -250,6 +251,24 @@ async function checkMaintenanceReminders() {
         }
 
         if (!notifyUserId) continue; // Skip if no responsible user found
+
+        // Database-backed deduplication: check if notification was already sent recently
+        // This handles server restarts where in-memory cache is cleared
+        try {
+          const recentNotifications = await storage.getNotifications(notifyUserId);
+          const recentMaintenance = recentNotifications.find((n: any) => 
+            n.type === 'maintenance_reminder' && 
+            n.link === `/ekipman/${eq.id}` &&
+            n.createdAt && (now.getTime() - new Date(n.createdAt).getTime()) < oneDayAgo
+          );
+          if (recentMaintenance) {
+            // Update in-memory cache from DB to prevent future DB queries
+            sentMaintenanceNotifications.set(eq.id, maintenanceDateStr);
+            continue;
+          }
+        } catch (dbError) {
+          // If DB check fails, rely on in-memory cache only
+        }
 
         // Calculate days until maintenance
         const isOverdue = maintenanceDate < now;
