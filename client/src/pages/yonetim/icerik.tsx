@@ -66,7 +66,7 @@ export default function ContentManagement() {
   // Update mutation
   const updateMutation = useMutation({
     mutationFn: async ({ slug, data }: { slug: string; data: Partial<InsertPageContent> }) =>
-      apiRequest(`/api/admin/page-content/${slug}`, "PATCH", data),
+      apiRequest("PATCH", `/api/admin/page-content/${slug}`, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/page-content"] });
       toast({ title: "Başarılı", description: "İçerik güncellendi" });
@@ -81,7 +81,7 @@ export default function ContentManagement() {
   // Delete mutation
   const deleteMutation = useMutation({
     mutationFn: async (slug: string) =>
-      apiRequest(`/api/admin/page-content/${slug}`, "DELETE"),
+      apiRequest("DELETE", `/api/admin/page-content/${slug}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/page-content"] });
       toast({ title: "Başarılı", description: "İçerik silindi" });
@@ -94,7 +94,7 @@ export default function ContentManagement() {
   // Publish/Unpublish toggle
   const togglePublishMutation = useMutation({
     mutationFn: async ({ slug, publish }: { slug: string; publish: boolean }) =>
-      apiRequest(`/api/admin/page-content/${slug}`, "PATCH", {
+      apiRequest("PATCH", `/api/admin/page-content/${slug}`, {
         publishedAt: publish ? new Date().toISOString() : null,
       }),
     onSuccess: () => {

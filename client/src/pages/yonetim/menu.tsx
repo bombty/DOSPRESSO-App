@@ -384,7 +384,7 @@ export default function AdminMenuManagement() {
 
   const updateSectionMutation = useMutation({
     mutationFn: ({ id, data }: { id: number; data: Partial<InsertMenuSection> }) => 
-      apiRequest(`/api/admin/menu/sections/${id}`, "PATCH", data),
+      apiRequest("PATCH", `/api/admin/menu/sections/${id}`, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/menu"] });
       invalidateMenuCache();
@@ -398,7 +398,7 @@ export default function AdminMenuManagement() {
   });
 
   const deleteSectionMutation = useMutation({
-    mutationFn: (id: number) => apiRequest(`/api/admin/menu/sections/${id}`, "DELETE", undefined),
+    mutationFn: (id: number) => apiRequest("DELETE", `/api/admin/menu/sections/${id}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/menu"] });
       invalidateMenuCache();
@@ -438,7 +438,7 @@ export default function AdminMenuManagement() {
 
   const updateItemMutation = useMutation({
     mutationFn: ({ id, data }: { id: number; data: Partial<InsertMenuItem> }) => 
-      apiRequest(`/api/admin/menu/items/${id}`, "PATCH", data),
+      apiRequest("PATCH", `/api/admin/menu/items/${id}`, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/menu"] });
       invalidateMenuCache();
@@ -452,7 +452,7 @@ export default function AdminMenuManagement() {
   });
 
   const deleteItemMutation = useMutation({
-    mutationFn: (id: number) => apiRequest(`/api/admin/menu/items/${id}`, "DELETE", undefined),
+    mutationFn: (id: number) => apiRequest("DELETE", `/api/admin/menu/items/${id}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/menu"] });
       invalidateMenuCache();
@@ -491,7 +491,7 @@ export default function AdminMenuManagement() {
   });
 
   const deleteRuleMutation = useMutation({
-    mutationFn: (id: number) => apiRequest(`/api/admin/menu/visibility-rules/${id}`, "DELETE", undefined),
+    mutationFn: (id: number) => apiRequest("DELETE", `/api/admin/menu/visibility-rules/${id}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/menu"] });
       invalidateMenuCache();

@@ -55,7 +55,7 @@ export default function SubelerPage() {
 
   const updateMutation = useMutation({
     mutationFn: async ({ id, data }: { id: number; data: InsertBranch }) => {
-      await apiRequest(`/api/branches/${id}`, "PATCH", data);
+      await apiRequest("PATCH", `/api/branches/${id}`, data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/branches"] });
@@ -70,7 +70,7 @@ export default function SubelerPage() {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => {
-      await apiRequest(`/api/branches/${id}`, "DELETE");
+      await apiRequest("DELETE", `/api/branches/${id}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/branches"] });

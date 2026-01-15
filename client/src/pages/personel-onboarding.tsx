@@ -130,7 +130,7 @@ export default function PersonelOnboardingPage() {
   // Create mutation
   const createMutation = useMutation({
     mutationFn: async (data: OnboardingFormData) => {
-      return apiRequest("/api/employee-onboarding", "POST", data);
+      return apiRequest("POST", "/api/employee-onboarding", data);
     },
     onSuccess: () => {
       toast({ title: "Başarılı", description: "Onboarding kaydı oluşturuldu" });
@@ -146,7 +146,7 @@ export default function PersonelOnboardingPage() {
   // Update mutation
   const updateMutation = useMutation({
     mutationFn: async ({ recordId, data }: { recordId: number; data: OnboardingFormData }) => {
-      return apiRequest(`/api/employee-onboarding/${recordId}`, "PATCH", data);
+      return apiRequest("PATCH", `/api/employee-onboarding/${recordId}`, data);
     },
     onSuccess: () => {
       toast({ title: "Başarılı", description: "Onboarding kaydı güncellendi" });
@@ -162,7 +162,7 @@ export default function PersonelOnboardingPage() {
   // Delete mutation
   const deleteMutation = useMutation({
     mutationFn: async (recordId: number) => {
-      return apiRequest(`/api/employee-onboarding/${recordId}`, "DELETE");
+      return apiRequest("DELETE", `/api/employee-onboarding/${recordId}`);
     },
     onSuccess: () => {
       toast({ title: "Başarılı", description: "Onboarding kaydı silindi" });

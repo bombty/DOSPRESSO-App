@@ -99,7 +99,7 @@ export default function Destek() {
 
   const createMutation = useMutation({
     mutationFn: (data: CreateTicketFormData) =>
-      apiRequest("/api/hq-support/tickets", "POST", data),
+      apiRequest("POST", "/api/hq-support/tickets", data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/hq-support/tickets"] });
       setCreateDialogOpen(false);
@@ -113,7 +113,7 @@ export default function Destek() {
 
   const sendMessageMutation = useMutation({
     mutationFn: (data: { message: string }) =>
-      apiRequest(`/api/hq-support/tickets/${selectedTicketId}/messages`, "POST", data),
+      apiRequest("POST", `/api/hq-support/tickets/${selectedTicketId}/messages`, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/hq-support/tickets", selectedTicketId] });
       messageForm.reset();

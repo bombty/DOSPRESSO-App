@@ -129,7 +129,7 @@ export default function CashReports() {
 
   const updateMutation = useMutation({
     mutationFn: async ({ id, data }: { id: number; data: Partial<InsertDailyCashReport> }) => {
-      await apiRequest(`/api/cash-reports/${id}`, 'PATCH', data);
+      await apiRequest('PATCH', `/api/cash-reports/${id}`, data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/cash-reports'] });
@@ -150,7 +150,7 @@ export default function CashReports() {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => {
-      await apiRequest(`/api/cash-reports/${id}`, 'DELETE');
+      await apiRequest('DELETE', `/api/cash-reports/${id}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/cash-reports'] });

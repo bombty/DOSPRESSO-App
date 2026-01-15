@@ -132,7 +132,7 @@ export default function Equipment() {
 
   const updateMutation = useMutation({
     mutationFn: async ({ id, data }: { id: number; data: InsertEquipment }) => {
-      await apiRequest(`/api/equipment/${id}`, "PUT", data);
+      await apiRequest("PUT", `/api/equipment/${id}`, data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/equipment"] });
@@ -163,7 +163,7 @@ export default function Equipment() {
 
   const logMaintenanceMutation = useMutation({
     mutationFn: async (equipmentId: number) => {
-      await apiRequest(`/api/equipment/${equipmentId}/maintenance`, "POST", {});
+      await apiRequest("POST", `/api/equipment/${equipmentId}/maintenance`, {});
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/equipment"] });

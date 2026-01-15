@@ -236,7 +236,7 @@ export default function Tasks() {
 
   const verifyTaskMutation = useMutation({
     mutationFn: async (taskId: number) => {
-      await apiRequest(`/api/tasks/${taskId}/verify`, "POST", {});
+      await apiRequest("POST", `/api/tasks/${taskId}/verify`, {});
     },
     onSuccess: async (_data, taskId) => {
       await queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
@@ -259,7 +259,7 @@ export default function Tasks() {
 
   const rejectTaskMutation = useMutation({
     mutationFn: async ({ taskId, reason }: { taskId: number; reason?: string }) => {
-      await apiRequest(`/api/tasks/${taskId}/reject`, "POST", { reason });
+      await apiRequest("POST", `/api/tasks/${taskId}/reject`, { reason });
     },
     onSuccess: async (_data, { taskId }) => {
       await queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });

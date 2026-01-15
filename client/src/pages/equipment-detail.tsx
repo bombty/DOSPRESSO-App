@@ -302,7 +302,7 @@ export default function EquipmentDetail() {
         equipmentId,
         estimatedCost: data.estimatedCost ? parseFloat(data.estimatedCost) : undefined,
       };
-      await apiRequest(`/api/equipment/${equipmentId}/service-requests`, "POST", payload);
+      await apiRequest("POST", `/api/equipment/${equipmentId}/service-requests`, payload);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/equipment', equipmentId] });
@@ -338,7 +338,7 @@ export default function EquipmentDetail() {
         actualCost: data.actualCost ? parseFloat(data.actualCost) : undefined,
         notes: data.notes,
       };
-      await apiRequest(`/api/equipment/service-requests/${data.requestId}/status`, "PATCH", payload);
+      await apiRequest("PATCH", `/api/equipment/service-requests/${data.requestId}/status`, payload);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/equipment', equipmentId] });
@@ -370,7 +370,7 @@ export default function EquipmentDetail() {
 
   const createCommentMutation = useMutation({
     mutationFn: async (data: CommentFormData) => {
-      await apiRequest(`/api/equipment/${equipmentId}/comments`, "POST", data);
+      await apiRequest("POST", `/api/equipment/${equipmentId}/comments`, data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/equipment', equipmentId] });

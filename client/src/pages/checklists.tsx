@@ -396,7 +396,7 @@ export default function Checklists() {
         ],
       };
       
-      await apiRequest(`/api/checklists/${editingChecklist.id}`, "PATCH", payload);
+      await apiRequest("PATCH", `/api/checklists/${editingChecklist.id}`, payload);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/checklists"] });

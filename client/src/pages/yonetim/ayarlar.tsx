@@ -143,7 +143,7 @@ export default function Settings() {
   // Generic mutation for updating settings
   const updateSettingMutation = useMutation({
     mutationFn: async ({ key, value }: { key: string; value: string }) => {
-      return apiRequest(`/api/admin/settings/${key}`, "PATCH", { value });
+      return apiRequest("PATCH", `/api/admin/settings/${key}`, { value });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/settings"] });

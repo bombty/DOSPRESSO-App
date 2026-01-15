@@ -143,7 +143,7 @@ export default function FaultHub() {
   const updateMutation = useMutation({
     mutationFn: async (data: z.infer<typeof updateFaultSchema>) => {
       if (!selectedFault) return;
-      await apiRequest(`/api/faults/${selectedFault.id}`, "PATCH", {
+      await apiRequest("PATCH", `/api/faults/${selectedFault.id}`, {
         currentStage: data.currentStage,
         assignedTo: data.assignedTo || null,
         actualCost: data.actualCost ? parseFloat(data.actualCost) : undefined,

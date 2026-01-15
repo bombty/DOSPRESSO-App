@@ -134,7 +134,7 @@ export default function AttendancePage() {
   const checkOutMutation = useMutation({
     mutationFn: async () => {
       if (!activeShift) throw new Error("Aktif vardiya bulunamadı");
-      return apiRequest(`/api/shift-attendance/${activeShift.id}`, "PATCH", {
+      return apiRequest("PATCH", `/api/shift-attendance/${activeShift.id}`, {
         checkOutTime: new Date().toISOString(),
       });
     },
@@ -157,7 +157,7 @@ export default function AttendancePage() {
   const startBreakMutation = useMutation({
     mutationFn: async () => {
       if (!activeShift) throw new Error("Aktif vardiya bulunamadı");
-      return apiRequest(`/api/shift-attendance/${activeShift.id}`, "PATCH", {
+      return apiRequest("PATCH", `/api/shift-attendance/${activeShift.id}`, {
         breakStartTime: new Date().toISOString(),
       });
     },
@@ -180,7 +180,7 @@ export default function AttendancePage() {
   const endBreakMutation = useMutation({
     mutationFn: async () => {
       if (!activeShift) throw new Error("Aktif vardiya bulunamadı");
-      return apiRequest(`/api/shift-attendance/${activeShift.id}`, "PATCH", {
+      return apiRequest("PATCH", `/api/shift-attendance/${activeShift.id}`, {
         breakEndTime: new Date().toISOString(),
       });
     },

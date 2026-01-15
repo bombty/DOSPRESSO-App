@@ -180,7 +180,7 @@ export default function FaultDetail() {
 
   const updateMutation = useMutation({
     mutationFn: async (data: z.infer<typeof updateFaultSchema>) => {
-      await apiRequest(`/api/faults/${id}`, "PATCH", {
+      await apiRequest("PATCH", `/api/faults/${id}`, {
         currentStage: data.currentStage,
         assignedTo: data.assignedTo || null,
         actualCost: data.actualCost ? parseFloat(data.actualCost) : undefined,

@@ -75,7 +75,7 @@ export default function NewFaultReport() {
 
   const createMutation = useMutation({
     mutationFn: async (data: FaultReportForm) => {
-      const response = await apiRequest("/api/faults", "POST", {
+      const response = await apiRequest("POST", "/api/faults", {
         branchId: data.branchId,
         equipmentId: data.equipmentId || null,
         equipmentName: data.equipmentName,
