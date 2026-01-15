@@ -928,6 +928,22 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
     }
   });
 
+  // GET /api/public/settings - Get public settings (no auth required)
+  app.get('/api/public/settings', async (req, res) => {
+    try {
+      const allSettings = await storage.getSiteSettings();
+      // Only return public settings
+      const publicSettings = allSettings.filter((s: any) => 
+        s.isPublic || 
+        ['banner_carousel_enabled', 'site_title', 'logo_url', 'favicon_url'].includes(s.key)
+      );
+      res.json(publicSettings);
+    } catch (error: any) {
+      console.error("Error fetching public settings:", error);
+      res.status(500).json({ message: "Ayarlar yuklenirken hata olustu" });
+    }
+  });
+
   app.get('/api/branches', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;

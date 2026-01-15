@@ -91,6 +91,15 @@ export function CardGridHub() {
     queryKey: ["/api/me/menu"],
     enabled: !!user,
   });
+
+  // Fetch banner carousel enabled setting from public endpoint
+  const { data: publicSettings = [] } = useQuery<any[]>({
+    queryKey: ["/api/public/settings"],
+  });
+  
+  const bannerCarouselEnabled = publicSettings.find(
+    (s: any) => s.key === "banner_carousel_enabled"
+  )?.value !== "false";
   
   // Keep sections grouped (13 categories from menu blueprint)
   // Don't filter out empty sections - keep metadata for mega-module grouping
@@ -904,8 +913,8 @@ export function CardGridHub() {
 
   return (
     <div className="p-3 pb-24 space-y-4">
-      {/* Announcement Banners */}
-      <AnnouncementBannerCarousel />
+      {/* Announcement Banners - Only show if enabled */}
+      {bannerCarouselEnabled && <AnnouncementBannerCarousel />}
 
       {/* Shift Status - Branch users only */}
       {isBranch && <ShiftStatusCard />}

@@ -10,6 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { Loader2, Save, Mail } from "lucide-react";
 
 type SiteSetting = {
@@ -78,6 +79,7 @@ export default function Settings() {
     logo_url: "",
     favicon_url: "",
     banner_url: "",
+    banner_carousel_enabled: "true",
   });
 
   // Content settings state
@@ -126,6 +128,7 @@ export default function Settings() {
         logo_url: branding["logo_url"] || "",
         favicon_url: branding["favicon_url"] || "",
         banner_url: branding["banner_url"] || "",
+        banner_carousel_enabled: branding["banner_carousel_enabled"] || "true",
       });
 
       const content = settingsByCategory["content"] || {};
@@ -580,6 +583,30 @@ export default function Settings() {
                       data-testid="img-banner-preview"
                     />
                   )}
+                </div>
+
+                <div className="flex flex-col gap-3 sm:gap-4 p-4 border rounded-lg bg-muted/30">
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <Label htmlFor="banner_carousel_enabled" className="text-base font-medium">
+                        Banner Carousel
+                      </Label>
+                      <p className="text-sm text-muted-foreground">
+                        Ana sayfadaki banner carousel'i açık veya kapalı tutun
+                      </p>
+                    </div>
+                    <Switch
+                      id="banner_carousel_enabled"
+                      checked={brandingSettings.banner_carousel_enabled === "true"}
+                      onCheckedChange={(checked) => 
+                        setBrandingSettings({ ...brandingSettings, banner_carousel_enabled: checked ? "true" : "false" })
+                      }
+                      data-testid="switch-banner-carousel"
+                    />
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Kapalı olduğunda banner alanı tamamen kaldırılır
+                  </p>
                 </div>
 
                 <Button type="submit" disabled={updateSettingMutation.isPending} data-testid="button-save-branding">

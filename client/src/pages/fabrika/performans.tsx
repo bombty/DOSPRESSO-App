@@ -65,14 +65,29 @@ export default function FabrikaPerformans() {
 
   const { data: workerStats = [], isLoading: loadingWorkers, refetch } = useQuery<WorkerPerformance[]>({
     queryKey: ['/api/factory/analytics/workers', period],
+    queryFn: async () => {
+      const res = await fetch(`/api/factory/analytics/workers?period=${period}`, { credentials: 'include' });
+      if (!res.ok) throw new Error('Failed to fetch worker stats');
+      return res.json();
+    },
   });
 
   const { data: stationStats = [], isLoading: loadingStations } = useQuery<StationPerformance[]>({
     queryKey: ['/api/factory/analytics/stations', period],
+    queryFn: async () => {
+      const res = await fetch(`/api/factory/analytics/stations?period=${period}`, { credentials: 'include' });
+      if (!res.ok) throw new Error('Failed to fetch station stats');
+      return res.json();
+    },
   });
 
   const { data: wasteAnalysis = [], isLoading: loadingWaste } = useQuery<WasteAnalysis[]>({
     queryKey: ['/api/factory/analytics/waste', period],
+    queryFn: async () => {
+      const res = await fetch(`/api/factory/analytics/waste?period=${period}`, { credentials: 'include' });
+      if (!res.ok) throw new Error('Failed to fetch waste analysis');
+      return res.json();
+    },
   });
 
   const totalProduction = workerStats.reduce((sum, w) => sum + w.totalProduced, 0);
