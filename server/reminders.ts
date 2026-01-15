@@ -155,7 +155,7 @@ async function checkOverdueTaskNotifications() {
           );
           if (recentOverdue) {
             // Update in-memory cache from DB to prevent future DB queries
-            sentOverdueNotifications.set(taskKey, new Date(recentOverdue.createdAt).getTime());
+            sentOverdueNotifications.set(taskKey, new Date(recentOverdue.createdAt!).getTime());
             continue;
           }
         } catch (dbError) {
@@ -207,11 +207,13 @@ async function checkOverdueTaskNotifications() {
 
     // Cleanup old tracking (tasks older than 30 days)
     const thirtyDaysAgo = now.getTime() - 30 * 24 * 60 * 60 * 1000;
-    for (const [taskId, timestamp] of sentOverdueNotifications.entries()) {
+    const entriesToDelete: number[] = [];
+    sentOverdueNotifications.forEach((timestamp, taskId) => {
       if (timestamp < thirtyDaysAgo) {
-        sentOverdueNotifications.delete(taskId);
+        entriesToDelete.push(taskId);
       }
-    }
+    });
+    entriesToDelete.forEach(taskId => sentOverdueNotifications.delete(taskId));
   } catch (error) {
     console.error("Gecikmiş görev bildirimi hatası:", error);
   }
