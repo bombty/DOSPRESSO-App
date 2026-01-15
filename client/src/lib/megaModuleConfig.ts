@@ -59,56 +59,66 @@ export const MEGA_MODULE_ORDER = Object.values(MEGA_MODULES)
   .map(m => m.id);
 
 export const DEFAULT_MENU_SECTION_MAPPING: Record<string, string[]> = {
-  "dashboard": ["dashboard", "dashboard-hq", "dashboard-branch"],
+  "dashboard": ["dashboard", "dashboard-hq", "dashboard-branch", "branch-dashboard"],
   "operations": [
-    "operations", "branch-management",
-    "tasks", "tasks-hq", "tasks-branch", "tasks-section", 
-    "checklists", "checklists-hq", "checklists-branch", "checklists-section",
+    "operations", "branch-management", "branches-list",
+    "tasks", "tasks-hq", "tasks-branch", "tasks-section", "tasks-list",
+    "checklists", "checklists-hq", "checklists-branch", "checklists-section", "checklist-management",
     "lost-found", "lost-found-hq",
     "operasyon", "subeler"
   ],
   "equipment": [
-    "equipment-maintenance",
+    "equipment-maintenance", "equipment-management", "equipment-service",
     "equipment", "equipment-hq", "equipment-branch", "equipment-section",
     "faults", "faults-hq", "faults-branch", "faults-section",
     "maintenance", "maintenance-hq", "maintenance-section",
-    "qr-scan"
+    "qr-scan", "service-requests"
   ],
   "hr": [
-    "hr-shifts", "finance",
-    "hr", "hr-hq", "hr-branch", "hr-section", "personel", "personel-section",
+    "hr-shifts", "finance", "hr",
+    "hr-hq", "hr-branch", "hr-section", "personel", "personel-section",
     "shifts", "shifts-hq", "shifts-branch", "shifts-section",
     "attendance", "attendance-section", "payroll", "payroll-section",
-    "branch-shift-tracking",
+    "branch-shift-tracking", "accounting-main", "performance-dashboard",
     "vardiya", "vardiyalar", "ik", "finans"
   ],
   "training": [
-    "training-academy",
+    "training-academy", "academy-management",
     "academy", "academy-hq", "academy-section", "training", "training-section",
     "quizzes", "quizzes-section", "knowledge-base",
     "egitim", "akademi", "bilgi-bankasi"
   ],
+  "kitchen": [
+    "kitchen", "kitchen-section", "recipes", "recipes-section",
+    "mutfak", "receteler"
+  ],
   "factory": [
-    "factory", "factory-section",
-    "production", "production-section",
-    "quality-control", "waste-management",
-    "fabrika", "uretim"
+    "factory", "factory-section", "fabrika",
+    "factory-dashboard", "factory-kiosk", "factory-quality", "factory-stations",
+    "factory-analytics", "factory-compliance", "factory-quality-criteria",
+    "factory-stations-admin", "factory-waste-reasons", "factory-pin-management",
+    "production", "production-section", "quality-control", "waste-management",
+    "uretim"
   ],
   "reports": [
-    "analytics-reports", "quality-customer",
+    "analytics-reports", "quality-customer", "customer-satisfaction",
     "reports", "reports-section", "analytics", "analytics-section",
     "audits", "audit-section", "feedback", "customer-feedback",
     "raporlar", "denetimler", "kalite"
   ],
   "newshop": [
-    "projects", "projeler",
+    "projects", "projeler", "project-list",
     "new-shop", "new-shop-section", "projects-section",
     "yeni-sube"
   ],
   "admin": [
-    "management", "communication",
+    "management", "communication", "content-management",
     "admin", "admin-section", "settings", "settings-section",
-    "users", "users-section", "roles", "announcements", "support",
+    "users", "users-section", "roles", "role-permissions", "authorization",
+    "announcements", "banners", "support", "hq-support",
+    "email-settings", "ai-settings", "ai-chat", "ai-costs",
+    "backup", "activity-logs", "bulk-data", "quality-templates",
+    "menu-management", "messages", "notifications", "service-mail-settings",
     "yonetim", "ayarlar", "kullanicilar", "destek"
   ],
 };
