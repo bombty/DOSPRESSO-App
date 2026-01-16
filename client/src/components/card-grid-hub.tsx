@@ -97,6 +97,13 @@ export function CardGridHub() {
     queryKey: ["/api/public/settings"],
   });
   
+  // Fetch mega-module mapping from database (dynamic sync with yetkilendirme module)
+  const { data: megaModuleMappingData } = useQuery<any>({
+    queryKey: ["/api/mega-module-mapping"],
+    enabled: !!user,
+    staleTime: 30000, // Cache for 30 seconds
+  });
+  
   const bannerCarouselEnabled = publicSettings.find(
     (s: any) => s.key === "banner_carousel_enabled"
   )?.value !== "false";
@@ -121,8 +128,9 @@ export function CardGridHub() {
     }));
     // Don't filter by items.length - preserve section metadata
 
-  // Get mega-module mapping from shared config (localStorage with fallback)
-  const MEGA_MODULE_MAPPING = getMenuSectionMapping();
+  // Use database mapping if available, fallback to localStorage/default
+  const dbMapping = megaModuleMappingData?.mapping || {};
+  const MEGA_MODULE_MAPPING = Object.keys(dbMapping).length > 0 ? dbMapping : getMenuSectionMapping();
   const megaModuleTitles = getMegaModuleTitles();
 
   const MEGA_MODULE_CONFIG = [

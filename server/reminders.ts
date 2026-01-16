@@ -45,19 +45,36 @@ export async function checkAndSendReminders() {
         continue;
       }
 
+      // Maximum 10 reminders per task to prevent spam
+      const MAX_REMINDERS = 10;
+      
       if (
         existingReminder.isActive &&
         existingReminder.nextReminderAt &&
         now >= existingReminder.nextReminderAt
       ) {
-        const newCount = (existingReminder.reminderCount || 0) + 1;
+        const currentCount = existingReminder.reminderCount || 0;
+        
+        // Stop sending if max reached
+        if (currentCount >= MAX_REMINDERS) {
+          // Deactivate reminder after max reached
+          if (existingReminder.isActive) {
+            await storage.updateReminder(existingReminder.id, {
+              isActive: false,
+            });
+            console.log(`Hatırlatma limiti aşıldı, devre dışı bırakıldı: Görev ${task.id} (${currentCount} hatırlatma)`);
+          }
+          continue;
+        }
+        
+        const newCount = currentCount + 1;
         await storage.updateReminder(existingReminder.id, {
           reminderCount: newCount,
           lastReminderAt: now,
           nextReminderAt: new Date(Date.now() + REMINDER_INTERVAL),
         });
 
-        console.log(`Hatırlatma gönderildi: Görev ${task.id}, Kullanıcı ${task.assignedToId}, Sayı: ${newCount}`);
+        console.log(`Hatırlatma gönderildi: Görev ${task.id}, Kullanıcı ${task.assignedToId}, Sayı: ${newCount}/${MAX_REMINDERS}`);
       }
     }
 

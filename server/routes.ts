@@ -944,6 +944,48 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
     }
   });
 
+  // GET /api/mega-module-mapping - Dashboard için mega-modül mapping (DB'den dinamik)
+  app.get('/api/mega-module-mapping', isAuthenticated, async (req: any, res) => {
+    try {
+      // Get mega-module items from database
+      const items = await db.select().from(megaModuleItems).orderBy(megaModuleItems.megaModuleId, megaModuleItems.sortOrder);
+      const configs = await db.select().from(megaModuleConfig).orderBy(megaModuleConfig.sortOrder);
+      
+      // Transform to mapping format: { megaModuleId: [subModuleId, ...] }
+      const pathMapping: Record<string, string[]> = {};
+      for (const item of items) {
+        if (!pathMapping[item.megaModuleId]) {
+          pathMapping[item.megaModuleId] = [];
+        }
+        pathMapping[item.megaModuleId].push(item.subModuleId);
+        const pathId = item.subModulePath.replace(/^\//, '').replace(/\//g, '-');
+        if (pathId && !pathMapping[item.megaModuleId].includes(pathId)) {
+          pathMapping[item.megaModuleId].push(pathId);
+        }
+      }
+      
+      res.json({ 
+        mapping: pathMapping, 
+        configs: configs.map(c => ({
+          id: c.megaModuleId,
+          title: c.megaModuleNameTr || c.megaModuleName,
+          icon: c.icon,
+          color: c.color,
+          sortOrder: c.sortOrder
+        })),
+        items: items.map(i => ({
+          megaModuleId: i.megaModuleId,
+          subModuleId: i.subModuleId,
+          path: i.subModulePath,
+          name: i.subModuleName
+        }))
+      });
+    } catch (error: any) {
+      console.error("Error fetching mega-module mapping:", error);
+      res.status(500).json({ message: "Mega modül mapping alınamadı" });
+    }
+  });
+
   app.get('/api/branches', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
@@ -1283,6 +1325,36 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
     } catch (error: any) {
       console.error('Error getting my tasks:', error);
       res.status(500).json({ message: 'Görevler alınamadı' });
+    }
+  });
+
+  // ONBOARDING CHECKER ENDPOINTS
+  // =============================================
+
+  // GET /api/tasks/pending-checks - Get tasks pending checker verification
+  app.get('/api/tasks/pending-checks', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      
+      // Use optimized query to get only tasks where current user is checker with pending status
+      const pendingChecks = await storage.getTasksByChecker(user.id, 'kontrol_bekliyor');
+      
+      // Enrich with assignee info
+      const enrichedTasks = await Promise.all(pendingChecks.map(async (task: any) => {
+        let assigneeName = 'Bilinmiyor';
+        if (task.assignedToId) {
+          const assignee = await storage.getUser(task.assignedToId);
+          assigneeName = assignee?.firstName && assignee?.lastName 
+            ? `${assignee.firstName} ${assignee.lastName}` 
+            : assignee?.email || 'Bilinmiyor';
+        }
+        return { ...task, assigneeName };
+      }));
+      
+      res.json(enrichedTasks);
+    } catch (error: any) {
+      console.error("Error getting pending checks:", error);
+      res.status(500).json({ message: "Kontrol bekleyen görevler alınamadı" });
     }
   });
 
@@ -1636,36 +1708,6 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
   });
 
   // =============================================
-  // ONBOARDING CHECKER ENDPOINTS
-  // =============================================
-
-  // GET /api/tasks/pending-checks - Get tasks pending checker verification
-  app.get('/api/tasks/pending-checks', isAuthenticated, async (req: any, res) => {
-    try {
-      const user = req.user!;
-      
-      // Use optimized query to get only tasks where current user is checker with pending status
-      const pendingChecks = await storage.getTasksByChecker(user.id, 'kontrol_bekliyor');
-      
-      // Enrich with assignee info
-      const enrichedTasks = await Promise.all(pendingChecks.map(async (task: any) => {
-        let assigneeName = 'Bilinmiyor';
-        if (task.assignedToId) {
-          const assignee = await storage.getUser(task.assignedToId);
-          assigneeName = assignee?.firstName && assignee?.lastName 
-            ? `${assignee.firstName} ${assignee.lastName}` 
-            : assignee?.email || 'Bilinmiyor';
-        }
-        return { ...task, assigneeName };
-      }));
-      
-      res.json(enrichedTasks);
-    } catch (error: any) {
-      console.error("Error getting pending checks:", error);
-      res.status(500).json({ message: "Kontrol bekleyen görevler alınamadı" });
-    }
-  });
-
   // POST /api/tasks/:id/request-check - Request checker verification (assignee submits for check)
   app.post('/api/tasks/:id/request-check', isAuthenticated, async (req: any, res) => {
     try {
