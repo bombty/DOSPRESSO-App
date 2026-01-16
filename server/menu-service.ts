@@ -662,15 +662,15 @@ function canAccessModule(
   dynamicPermissions?: DynamicPermissions
 ): boolean {
   // Normalize for case-insensitive comparison
-  const normalizedRole = role.trim().toLowerCase();
-  const normalizedModuleKey = moduleKey.trim().toLowerCase();
+  const normalizedRole = (role || "").trim().toLowerCase();
+  const normalizedModuleKey = (moduleKey || "").trim().toLowerCase();
   
   // If dynamic permissions exist for this role, use ONLY dynamic permissions (no static fallback)
   // This ensures that when permissions are revoked in the database, modules are hidden
   if (dynamicPermissions && dynamicPermissions.length > 0) {
     const dynamicPerm = dynamicPermissions.find(
-      p => p.role.trim().toLowerCase() === normalizedRole && 
-           p.module.trim().toLowerCase() === normalizedModuleKey
+      p => p.role && p.role.trim().toLowerCase() === normalizedRole && 
+           p.module && p.module.trim().toLowerCase() === normalizedModuleKey
     );
     
     // If no dynamic permission record for this module, deny access

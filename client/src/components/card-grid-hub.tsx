@@ -11,12 +11,7 @@ import { EnhancedAnalyticsCard } from "@/components/enhanced-analytics-card";
 import { PersonalSummaryCard } from "@/components/personal-summary-card";
 import { AnnouncementBannerCarousel } from "@/components/AnnouncementBannerCarousel";
 import { EmployeeOfMonthWidget } from "@/components/employee-of-month-widget";
-import { 
-  getMenuSectionMapping, 
-  getMegaModuleTitles, 
-  MEGA_MODULE_ORDER,
-  matchesMegaModule 
-} from "@/lib/megaModuleConfig";
+import { MEGA_MODULE_ORDER } from "@/lib/megaModuleConfig";
 import {
   Accordion,
   AccordionContent,
@@ -86,10 +81,12 @@ export function CardGridHub() {
   const isHQ = user && isHQRole(user.role as any);
   const isBranch = user && isBranchRole(user.role as any);
 
-  // Fetch menu items from API (dynamic permissions)
-  const { data: menuResponse } = useQuery<any>({
-    queryKey: ["/api/me/menu"],
+  // Fetch dashboard modules from authoritative server endpoint (synced with yetkilendirme)
+  const { data: dashboardModulesData, isLoading: dashboardLoading } = useQuery<any>({
+    queryKey: ["/api/dashboard-modules"],
     enabled: !!user,
+    staleTime: 10000, // Shorter cache for faster sync with permission changes
+    refetchOnWindowFocus: true, // Refetch when user returns to tab
   });
 
   // Fetch banner carousel enabled setting from public endpoint
@@ -97,135 +94,39 @@ export function CardGridHub() {
     queryKey: ["/api/public/settings"],
   });
   
-  // Fetch mega-module mapping from database (dynamic sync with yetkilendirme module)
-  const { data: megaModuleMappingData } = useQuery<any>({
-    queryKey: ["/api/mega-module-mapping"],
-    enabled: !!user,
-    staleTime: 30000, // Cache for 30 seconds
-  });
-  
   const bannerCarouselEnabled = publicSettings.find(
     (s: any) => s.key === "banner_carousel_enabled"
   )?.value !== "false";
   
-  // Keep sections grouped (13 categories from menu blueprint)
-  // Don't filter out empty sections - keep metadata for mega-module grouping
-  const menuSections = (menuResponse?.sections || [])
-    .filter((section: any) => section.titleTr || section.id)
-    .map((section: any) => ({
-      id: section.id,
-      title: section.titleTr,
-      icon: section.icon,
-      items: (section.items || [])
-        .filter((item: any) => item.path !== '/' && item.path !== '/sube/dashboard')
-        .map((item: any) => ({
-          id: item.id,
-          label: item.titleTr,
-          path: item.path,
-          description: item.description,
-          moduleKey: item.moduleKey,
-        })),
-    }));
-    // Don't filter by items.length - preserve section metadata
-
-  // Use database mapping if available, fallback to localStorage/default
-  const dbMapping = megaModuleMappingData?.mapping || {};
-  const dbItems = megaModuleMappingData?.items || [];
-  const MEGA_MODULE_MAPPING = Object.keys(dbMapping).length > 0 ? dbMapping : getMenuSectionMapping();
-  const megaModuleTitles = getMegaModuleTitles();
+  // Use server-authoritative mega-modules data (synced with yetkilendirme)
+  // This replaces client-side computation for accurate permission sync
+  const serverMegaModules = dashboardModulesData?.megaModules || [];
   
-  // Build path-based mapping from DB items for accurate matching
-  const pathToMegaModule: Record<string, string> = {};
-  dbItems.forEach((item: any) => {
-    if (item.path) {
-      pathToMegaModule[item.path] = item.megaModuleId;
-    }
-  });
-
-  const MEGA_MODULE_CONFIG = [
-    { id: "operations", title: megaModuleTitles["operations"] || "Operasyonlar", icon: "ClipboardList", color: "bg-green-500" },
-    { id: "equipment", title: megaModuleTitles["equipment"] || "Ekipman & Bakım", icon: "Wrench", color: "bg-orange-500" },
-    { id: "hr", title: megaModuleTitles["hr"] || "Personel & İK", icon: "Users", color: "bg-pink-500" },
-    { id: "training", title: megaModuleTitles["training"] || "Eğitim & Akademi", icon: "GraduationCap", color: "bg-blue-500" },
-    { id: "kitchen", title: megaModuleTitles["kitchen"] || "Mutfak & Reçeteler", icon: "Coffee", color: "bg-amber-600" },
-    { id: "factory", title: megaModuleTitles["factory"] || "Fabrika & Üretim", icon: "Factory", color: "bg-indigo-600" },
-    { id: "reports", title: megaModuleTitles["reports"] || "Raporlar & Analitik", icon: "BarChart3", color: "bg-cyan-500" },
-    { id: "newshop", title: megaModuleTitles["newshop"] || "Yeni Mağaza Açılışı", icon: "FolderKanban", color: "bg-violet-600" },
-    { id: "admin", title: megaModuleTitles["admin"] || "Yönetim & Ayarlar", icon: "Shield", color: "bg-slate-600" },
-  ];
-
-  // Fallback admin items for admin users if API doesn't return management section
-  const ADMIN_FALLBACK_ITEMS = [
-    { id: "admin-panel", label: "Admin Panel", path: "/admin", moduleKey: "admin_settings" },
-    { id: "users", label: "Kullanıcı Yönetimi", path: "/yonetim/kullanicilar", moduleKey: "users" },
-    { id: "authorization", label: "Yetkilendirme", path: "/admin/yetkilendirme", moduleKey: "admin_settings" },
-    { id: "settings", label: "Sistem Ayarları", path: "/yonetim/ayarlar", moduleKey: "settings" },
-    { id: "announcements", label: "Duyurular", path: "/admin/duyurular", moduleKey: "announcements" },
-    { id: "banners", label: "Banner Yönetimi", path: "/admin/bannerlar", moduleKey: "admin_settings" },
-    { id: "banner-editor", label: "Banner Editörü", path: "/banner-editor", moduleKey: "admin_settings" },
-    { id: "email-settings", label: "Email Ayarları", path: "/admin/email-ayarlari", moduleKey: "admin_settings" },
-    { id: "ai-settings", label: "Yapay Zeka Ayarları", path: "/admin/yapay-zeka-ayarlari", moduleKey: "ai_assistant" },
-    { id: "backup", label: "Yedekleme", path: "/admin/yedekleme", moduleKey: "admin_settings" },
-    { id: "activity-logs", label: "Aktivite Logları", path: "/admin/aktivite-loglari", moduleKey: "admin_settings" },
-    { id: "bulk-data", label: "Toplu Veri Yönetimi", path: "/admin/toplu-veri-yonetimi", moduleKey: "admin_settings" },
-    { id: "quality-templates", label: "Kalite Denetim Şablonları", path: "/admin/kalite-denetim-sablonlari", moduleKey: "quality_audit" },
-  ];
-
-  // Group menu sections into 9 mega-modules (always show all 9)
-  // Use path-based matching when DB mapping is available (more accurate)
-  const hasDbMapping = Object.keys(pathToMegaModule).length > 0;
-  
-  const megaModules = MEGA_MODULE_CONFIG.map((megaConfig) => {
-    let allItems: any[] = [];
-    
-    if (hasDbMapping) {
-      // Path-based matching: collect all items whose path maps to this mega-module
-      menuSections.forEach((section: any) => {
-        (section.items || []).forEach((item: any) => {
-          const megaModuleId = pathToMegaModule[item.path];
-          if (megaModuleId === megaConfig.id) {
-            allItems.push(item);
-          }
-        });
-      });
-    } else {
-      // Fallback to section ID matching
-      const mappedSectionIds = MEGA_MODULE_MAPPING[megaConfig.id] || [];
-      const matchedSections = menuSections.filter((s: any) => 
-        matchesMegaModule(s.id, mappedSectionIds)
-      );
-      allItems = matchedSections.flatMap((s: any) => s.items || []);
-    }
-    
-    // For admin mega-module: if no items from API and user is admin, use fallback items
-    if (megaConfig.id === "admin" && allItems.length === 0 && user?.role === "admin") {
-      allItems = ADMIN_FALLBACK_ITEMS;
-    }
-    
-    // Deduplicate items by path
-    const uniqueItems = allItems.filter((item: any, index: number, self: any[]) =>
-      index === self.findIndex((t) => t.path === item.path)
-    );
-    
-    return {
-      id: megaConfig.id,
-      title: megaConfig.title,
-      icon: megaConfig.icon,
-      color: megaConfig.color,
-      items: uniqueItems,
-      isEmpty: uniqueItems.length === 0,
-    };
-  }); // Don't filter - always show all 9 mega-modules
-
-  // Also keep flattened for backward compatibility
-  const menuModules = menuResponse?.sections?.flatMap((section: any) => 
-    section.items?.map((item: any) => ({
-      id: item.id,
-      label: item.titleTr,
+  // Transform server data to match component's expected format
+  const megaModules = serverMegaModules.map((mm: any) => ({
+    id: mm.id,
+    title: mm.title,
+    icon: mm.icon,
+    color: mm.color,
+    items: (mm.items || []).map((item: any) => ({
+      id: item.path,
+      label: item.title,
       path: item.path,
-      description: item.description || section.titleTr,
-    })) || []
-  ) || [];
+      description: item.title,
+      moduleKey: item.path,
+    })),
+    isEmpty: (mm.itemCount || 0) === 0,
+  }));
+
+  // Flatten items for backward compatibility
+  const menuModules = serverMegaModules.flatMap((mm: any) => 
+    (mm.items || []).map((item: any) => ({
+      id: item.path,
+      label: item.title,
+      path: item.path,
+      description: item.title,
+    }))
+  );
 
   // Fetch counts for badges
   const { data: faults = [] } = useQuery<any[]>({

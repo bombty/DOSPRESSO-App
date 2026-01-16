@@ -21,32 +21,26 @@ The frontend utilizes React 18+ with TypeScript and Vite, employing Shadcn/ui (N
 - **Notifications**: In-app + email async notifications with manager alerts on critical events.
 
 ### Feature Specifications
-- **Authentication & RBAC**: A 14-role system with dual-layer granular permissions (module-level view/edit toggles + action-level scope control) and branch-level data filtering. The module authorization system at `/admin/yetkilendirme` supports 54 permission modules and 53 granular actions with scope-based access (self/branch/global) for sensitive data like payroll and salary information. Now includes a "Modül Düzenleme" tab with drag-drop functionality using @dnd-kit to reassign modules between 8 mega-modules (Operations, Equipment, HR, Training, Kitchen, Reports, NewShop, Admin) with backend persistence via `/api/admin/mega-modules` API endpoints (GET, POST config, POST items with transaction wrapper, PUT item).
-- **Equipment Management**: Comprehensive lifecycle management, health monitoring, maintenance scheduling, and service contact management.
-- **Unified Fault System**: Creation, assignment, workflow, escalation, photo documentation, cost tracking, and QR-integrated reporting with intelligent routing and professional PDF export.
+- **Authentication & RBAC**: A 14-role system with dual-layer granular permissions (module-level view/edit toggles + action-level scope control) and branch-level data filtering. The module authorization system at `/admin/yetkilendirme` supports 54 permission modules and 53 granular actions with scope-based access (self/branch/global). Includes "Modül Düzenleme" tab for drag-drop module reassignments between 8 mega-modules.
+- **Equipment Management**: Comprehensive lifecycle management, health monitoring, maintenance scheduling.
+- **Unified Fault System**: Creation, assignment, workflow, escalation, photo documentation, cost tracking, QR-integrated reporting, and professional PDF export.
 - **SLA Monitoring**: Real-time tracking with automated breach alerts.
 - **Troubleshooting System**: Editable guides integrated into fault reporting.
-- **QR-Based Attendance**: Secure check-in/out with geofence validation and location confidence scoring.
-- **Lost & Found System**: Found item tracking, photo capture, handover documentation, and owner details with cross-branch visibility.
+- **QR-Based Attendance**: Secure check-in/out with geofence validation.
+- **Lost & Found System**: Tracking, photo capture, handover documentation, and cross-branch visibility.
 - **AI Integration**: AI photo verification for tasks, RAG-enabled knowledge base search, AI Academy Chat Assistant, Adaptive Learning Engine, and AI-powered smart recommendations.
-- **HR & Shift Management**: Personnel management, leave requests, overtime, attendance, AI-powered fair shift planning with coverage guarantees, and comprehensive leave/public holiday management.
+- **HR & Shift Management**: Personnel management, leave requests, overtime, attendance, AI-powered fair shift planning, and comprehensive leave/public holiday management.
 - **Enhanced Analytics Dashboard**: Tabbed interface showing daily/weekly/monthly metrics with AI-generated summaries.
-- **DOSPRESSO Academy (LMS)**: A comprehensive training system including career progression, quiz system, gamification, certification, AI learning paths, and advanced analytics.
-- **Checklist Management System**: Time-windowed tasks with HQ/Supervisor editable time slots, photo validation, manager notifications, performance weighting, and daily reminders. Includes scope-based assignment system (user/branch/role) via `checklist_assignments` table with date range support. Admin UI at `/yonetim/checklistler` allows assigning checklists to specific users, entire branches, or role-based groups. Kiosk users see personalized checklists via `/api/checklists/my-assignments` endpoint.
-- **AI Checklist Verification**: Comprehensive AI-powered photo verification system for checklist tasks. Features include: reference photo upload with tolerance slider (30-100%), AI verification types (none/cleanliness/arrangement/machine_settings/general), automatic image compression (max 800px, 70% quality), AI similarity scoring with pass/fail status, 2-week photo retention with auto-deletion while preserving AI verification statistics. Database columns: `ai_verification_result`, `ai_similarity_score`, `photo_expires_at`, `photo_deleted`, `ai_verification_note`. Photo cleanup runs every 6 hours via background scheduler.
+- **DOSPRESSO Academy (LMS)**: Comprehensive training system including career progression, quiz system, gamification, certification, AI learning paths, and advanced analytics.
+- **Checklist Management System**: Time-windowed tasks with HQ/Supervisor editable time slots, photo validation, manager notifications, performance weighting, and daily reminders. Supports scope-based assignment (user/branch/role).
+- **AI Checklist Verification**: AI-powered photo verification system for checklist tasks with reference photo upload, tolerance slider, multiple AI verification types, similarity scoring, and temporary photo retention.
 - **Recipe Management System**: Supports 14 categories and 55+ recipes with two cup sizes, separate measurements/steps, and automatic version tracking.
 - **Quiz System**: MCQ and True/False questions, dynamic options, points, explanations, cooldowns, and attempt tracking.
 - **New Shop Opening Management System**: A 7-phase workflow tracking for franchise openings with hierarchical tasks, RACI assignments, and procurement/bidding.
 - **Admin Features**: Email settings (SMTP), banner management with photo upload, AI settings, project task detail pages, and milestone management.
-- **Content Studio (İçerik Stüdyosu)**: Unified content management at `/icerik-studyosu` consolidating banner creation and announcement publishing. Features three tabs: Taslaklar (drafts with isActive=false), Yayınlanmış (published announcements), and Carousel (active banners). Supports draft-to-publish workflow with targeting options (roles/branches) and scheduling. Old routes (/duyurular, /admin/bannerlar, /admin/duyurular) redirect to this unified studio. Banner Editor opens inline as a dialog for creating visual content. Publish dialog includes markdown-enabled detailed content editor with live preview tabs (Düzenle/Önizleme), CTA button configuration (text + link), and validity date controls.
-- **Banner Detail Dialog**: Clicking banners opens a detail dialog instead of navigation. Dialog displays: hero image with category badge overlay, full announcement title/message, markdown-rendered detailed content via ReactMarkdown, CTA button (if configured), publish/expiry dates. Uses `/api/announcements/:id` endpoint for fetching full announcement data. Automatically marks announcement as read on open.
-- **Advanced Banner Editor**: Visual banner creation at `/banner-editor` with:
-  - **4 Background Types**: Solid color, linear gradient (6 directions), radial gradient (9 spotlight positions: center, corners, edges), and pattern overlays (stripes, dots, grid, wave)
-  - **7 Font Families**: Inter, Poppins, Playfair Display, Bebas Neue, Rubik, Lora, Montserrat via Google Fonts
-  - **Text Effects**: Shadow (color + blur control), Outline (color + stroke width), Glow (color + intensity) with toggle switches
-  - **Legacy Data Compatibility**: `getTextWithDefaults()` helper safely initializes missing properties for backward compatibility
+- **Content Studio (İçerik Stüdyosu)**: Unified content management consolidating banner creation and announcement publishing, featuring drafts, published items, and carousel management. Supports draft-to-publish workflow with targeting options and scheduling. Includes an advanced banner editor for visual content creation.
 - **Global Search & Calendar View**: Functionality for finding information across the platform and visualizing tasks/milestones.
-- **Unified Dashboard Alert System**: Real-time alerts for both branch and factory dashboards via `dashboard_alerts` table. Supports 12 trigger types (late clock-in, quality issues, production delays, missing staff, etc.) with severity levels (critical/warning/info) and visual feedback (color-coded cards, pulsing banners for critical). API endpoints at `/api/alerts/:context/:contextId` for CRUD operations with acknowledge/resolve/dismiss workflows.
+- **Unified Dashboard Alert System**: Real-time alerts for both branch and factory dashboards supporting 12 trigger types with severity levels and visual feedback.
 
 ### System Design Choices
 - **Health Score Calculation**: Real-time scores based on recent faults and compliance.
@@ -55,34 +49,19 @@ The frontend utilizes React 18+ with TypeScript and Vite, employing Shadcn/ui (N
 - **State Management**: TanStack Query for server state and localStorage for theme persistence.
 - **Photo Upload**: Persistent storage on AWS S3 via an ObjectUploader component.
 - **Backup System**: Daily automatic backups to object storage.
-- **Live Tracking**: Real-time employee location tracking with in-memory cache for supervisors. Dashboard at `/canli-takip` with 30-second auto-refresh, role-based branch access (HQ sees all, branch roles see own branch only), and coordinate masking for privacy.
+- **Live Tracking**: Real-time employee location tracking with in-memory cache for supervisors. Dashboard at `/canli-takip` with auto-refresh and role-based branch access.
 - **RAG Knowledge Base**: Vector-based semantic search using OpenAI embeddings.
 - **Gamification**: Integrated badges, career progression, leaderboards, team competitions, adaptive difficulty, certificates, and daily learning streak tracker.
 - **Layout System**: Responsive flex-based layouts with standardized gaps.
-- **Dashboard Hub**: `CardGridHub` displays 9 mega-module cards organized into: Operations, Equipment & Maintenance, Personnel & HR, Training & Academy, Kitchen & Recipes, Factory & Production, Reports & Analytics, New Shop Opening, and Management & Settings. Each mega-module groups related menu sections and navigates to `/modul/:moduleId` for sub-module access. Empty mega-modules display with muted styling. Admin mega-module includes fallback items for admin users if API doesn't return management section.
+- **Dashboard Hub**: `CardGridHub` displays 9 mega-module cards (Operations, Equipment & Maintenance, Personnel & HR, Training & Academy, Kitchen & Recipes, Factory & Production, Reports & Analytics, New Shop Opening, and Management & Settings), grouping related menu sections.
 - **Shift Scheduling**: Fair algorithm ensuring full-time employees work minimum 6 days/week at 45 hours, part-time 3 days/25 hours.
-- **Analytics Architecture**: Three-period tabbed interface with real-time metric aggregation, AI-powered summaries (OpenAI gpt-4o-mini), and conditional alerts.
+- **Analytics Architecture**: Three-period tabbed interface with real-time metric aggregation, AI-powered summaries, and conditional alerts.
 - **Checklist Scoring**: 40% weight in compositeScore, max score 4/5 if not on-time, scored by supervisor, daily reminders active.
-- **Performance Score Data Flows**: Task ratings and checklist completions automatically update employeeSatisfactionScores/employeePerformanceScores tables. Task rating → performanceScore chain handles both new ratings and re-ratings correctly (adjusts sum without double-counting). Quiz approval → career progress chain updates averageQuizScore from all approved quizzes with idempotent handling (prevents double-counting on re-approvals).
+- **Performance Score Data Flows**: Task ratings and checklist completions automatically update employee performance scores. Quiz approvals update career progress.
 - **Reminder System**: 5-minute interval checks for task reminders, overdue notifications, maintenance alerts, and checklist completion reminders.
-- **Branch Dashboard**: Comprehensive dashboard at `/sube/dashboard` with real-time stats (active staff, breaks, total work time), alert management, kiosk mode access, tabs for shifts/tasks/checklists/daily summary, and quick access buttons. Supports both regular user authentication and branch-specific login sessions via sessionStorage.
-- **PDF Generation**: Uses jsPDF with Helvetica font and Turkish character sanitization (ğ→g, ü→u, ş→s, ı→i, ö→o, ç→c) for reliable PDF export across all reports.
-
-## Recent Changes (January 2026)
-- **Banner Draft Save Fix**: Made startDate and endDate nullable in banners table to allow saving drafts without date requirements
-- **PDF Generation Fix**: Resolved "No unicode cmap for font" error by switching to Helvetica font and implementing comprehensive Turkish character sanitization in pdfHelper.ts
-- **Employee of Month System**: Complete implementation with multi-criteria scoring:
-  - 6 new database tables: `staff_qr_ratings`, `staff_qr_tokens`, `employee_of_month_weights`, `monthly_employee_performance`, `employee_of_month_awards`, `manager_monthly_ratings`
-  - Weighted scoring: Attendance 20%, Checklist 20%, Tasks 15%, Customer Rating 15%, Manager Rating 20%, Leave Deduction 10%
-  - Manager evaluation system with 5 criteria: work performance, teamwork, initiative, customer relations, punctuality
-  - Branch-specific visibility: each branch sees only their winner, HQ/Admin sees all
-  - API endpoints: GET/POST /api/manager-ratings, employee-of-month calculations, performance tracking
-  - Frontend Pages:
-    - `/ayin-elemani` - Employee of Month dashboard with rankings, weights chart, and awards history
-    - `/personel-qr-tokenlar` - QR token management for staff ratings
-    - `/personel-degerlendirme/:token` - Public customer rating page (no auth required)
-    - `/gelismis-raporlar` - Advanced PDF reports with charts (performance, employee, branch reports)
-    - `/performansim` - Personal performance dashboard with radar chart, history, and AI motivation tips
+- **Branch Dashboard**: Comprehensive dashboard at `/sube/dashboard` with real-time stats, alert management, kiosk mode access, and quick access buttons.
+- **PDF Generation**: Uses jsPDF with Helvetica font and Turkish character sanitization for reliable PDF export.
+- **Employee of Month System**: Complete implementation with multi-criteria scoring, manager evaluation, branch-specific visibility, and dedicated dashboards/reports.
 
 ## External Dependencies
 ### Third-Party Services

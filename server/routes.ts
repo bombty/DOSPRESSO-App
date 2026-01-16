@@ -986,6 +986,80 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
     }
   });
 
+  // GET /api/dashboard-modules - Dashboard için kullanıcının erişebildiği modüller (mega-modüle göre gruplu)
+  // Bu endpoint yetkilendirme ile tam senkronize - permission grants + mega_module_items birleştirilir
+  app.get('/api/dashboard-modules', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      
+      // 1. Get all mega-module items from DB (path to mega-module mapping)
+      const allMegaModuleItems = await db.select().from(megaModuleItems).where(eq(megaModuleItems.isActive, true)).orderBy(megaModuleItems.megaModuleId, megaModuleItems.sortOrder);
+      
+      // 2. Build path-to-megaModule mapping
+      const pathToMegaModule: Record<string, string> = {};
+      allMegaModuleItems.forEach(item => {
+        if (item.subModulePath) {
+          pathToMegaModule[item.subModulePath] = item.megaModuleId;
+        }
+      });
+      
+      // 3. Get user's accessible menu (permission filtered)
+      const { buildMenuForUser } = await import('./menu-service');
+      const menuResponse = buildMenuForUser({ id: user.id, role: user.role as any }, {});
+      
+      // 4. Collect all accessible paths from menu
+      const accessiblePaths: Set<string> = new Set();
+      const accessibleItems: Array<{path: string, title: string, moduleKey: string, megaModuleId: string}> = [];
+      
+      for (const section of menuResponse.sections) {
+        for (const item of section.items || []) {
+          if (item.path) {
+            accessiblePaths.add(item.path);
+            const megaModuleId = pathToMegaModule[item.path] || 'other';
+            accessibleItems.push({
+              path: item.path,
+              title: item.titleTr || item.id,
+              moduleKey: item.moduleKey || item.id,
+              megaModuleId
+            });
+          }
+        }
+      }
+      
+      // 5. Group by mega-module with counts
+      const megaModuleCounts: Record<string, number> = {};
+      const megaModuleItemsList: Record<string, Array<{path: string, title: string}>> = {};
+      
+      for (const item of accessibleItems) {
+        const megaId = item.megaModuleId;
+        megaModuleCounts[megaId] = (megaModuleCounts[megaId] || 0) + 1;
+        if (!megaModuleItemsList[megaId]) {
+          megaModuleItemsList[megaId] = [];
+        }
+        megaModuleItemsList[megaId].push({ path: item.path, title: item.title });
+      }
+      
+      // 6. Get mega-module configs for display
+      const configs = await db.select().from(megaModuleConfig).orderBy(megaModuleConfig.sortOrder);
+      
+      res.json({
+        megaModules: configs.map(c => ({
+          id: c.megaModuleId,
+          title: c.megaModuleNameTr || c.megaModuleName,
+          icon: c.icon,
+          color: c.color,
+          itemCount: megaModuleCounts[c.megaModuleId] || 0,
+          items: megaModuleItemsList[c.megaModuleId] || []
+        })),
+        totalAccessibleModules: accessibleItems.length,
+        pathMapping: pathToMegaModule
+      });
+    } catch (error: any) {
+      console.error("Error fetching dashboard modules:", error);
+      res.status(500).json({ message: "Dashboard modülleri alınamadı" });
+    }
+  });
+
   app.get('/api/branches', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
