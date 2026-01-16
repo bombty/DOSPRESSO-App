@@ -130,8 +130,17 @@ export function CardGridHub() {
 
   // Use database mapping if available, fallback to localStorage/default
   const dbMapping = megaModuleMappingData?.mapping || {};
+  const dbItems = megaModuleMappingData?.items || [];
   const MEGA_MODULE_MAPPING = Object.keys(dbMapping).length > 0 ? dbMapping : getMenuSectionMapping();
   const megaModuleTitles = getMegaModuleTitles();
+  
+  // Build path-based mapping from DB items for accurate matching
+  const pathToMegaModule: Record<string, string> = {};
+  dbItems.forEach((item: any) => {
+    if (item.path) {
+      pathToMegaModule[item.path] = item.megaModuleId;
+    }
+  });
 
   const MEGA_MODULE_CONFIG = [
     { id: "operations", title: megaModuleTitles["operations"] || "Operasyonlar", icon: "ClipboardList", color: "bg-green-500" },
@@ -163,16 +172,30 @@ export function CardGridHub() {
   ];
 
   // Group menu sections into 9 mega-modules (always show all 9)
+  // Use path-based matching when DB mapping is available (more accurate)
+  const hasDbMapping = Object.keys(pathToMegaModule).length > 0;
+  
   const megaModules = MEGA_MODULE_CONFIG.map((megaConfig) => {
-    const mappedSectionIds = MEGA_MODULE_MAPPING[megaConfig.id] || [];
+    let allItems: any[] = [];
     
-    // Find matching sections from menu API
-    const matchedSections = menuSections.filter((s: any) => 
-      matchesMegaModule(s.id, mappedSectionIds)
-    );
-    
-    // Collect all items from matched sections
-    let allItems = matchedSections.flatMap((s: any) => s.items || []);
+    if (hasDbMapping) {
+      // Path-based matching: collect all items whose path maps to this mega-module
+      menuSections.forEach((section: any) => {
+        (section.items || []).forEach((item: any) => {
+          const megaModuleId = pathToMegaModule[item.path];
+          if (megaModuleId === megaConfig.id) {
+            allItems.push(item);
+          }
+        });
+      });
+    } else {
+      // Fallback to section ID matching
+      const mappedSectionIds = MEGA_MODULE_MAPPING[megaConfig.id] || [];
+      const matchedSections = menuSections.filter((s: any) => 
+        matchesMegaModule(s.id, mappedSectionIds)
+      );
+      allItems = matchedSections.flatMap((s: any) => s.items || []);
+    }
     
     // For admin mega-module: if no items from API and user is admin, use fallback items
     if (megaConfig.id === "admin" && allItems.length === 0 && user?.role === "admin") {
