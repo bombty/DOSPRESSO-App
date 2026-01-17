@@ -8541,6 +8541,7 @@ export const megaModuleItems = pgTable("mega_module_items", {
   subModuleName: varchar("sub_module_name", { length: 100 }).notNull(), // Display name
   subModuleNameTr: varchar("sub_module_name_tr", { length: 100 }).notNull(), // Turkish name
   icon: varchar("icon", { length: 50 }), // Optional override icon
+  tabGroup: varchar("tab_group", { length: 50 }), // Group tabs for large modules (e.g., "users", "settings", "content")
   sortOrder: integer("sort_order").default(0),
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at").defaultNow(),
