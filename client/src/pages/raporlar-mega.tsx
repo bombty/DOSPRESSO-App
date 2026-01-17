@@ -1,4 +1,4 @@
-import { useState, Suspense, lazy } from "react";
+import { useState, useEffect, Suspense, lazy } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { hasPermission } from "@shared/schema";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -156,7 +156,6 @@ function TabSkeleton() {
 
 export default function RaporlarMegaModule() {
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState("genel");
 
   const visibleTabs = RAPORLAR_TABS.filter(tab => {
     if (!tab.permissionModule) return true;
@@ -165,6 +164,13 @@ export default function RaporlarMegaModule() {
   });
 
   const firstVisibleTab = visibleTabs[0]?.id || "genel";
+  const [activeTab, setActiveTab] = useState(firstVisibleTab);
+  
+  useEffect(() => {
+    if (!visibleTabs.find(t => t.id === activeTab)) {
+      setActiveTab(firstVisibleTab);
+    }
+  }, [visibleTabs, activeTab, firstVisibleTab]);
 
   if (visibleTabs.length === 0) {
     return (
@@ -202,7 +208,6 @@ export default function RaporlarMegaModule() {
         value={activeTab} 
         onValueChange={setActiveTab} 
         className="flex-1 flex flex-col"
-        defaultValue={firstVisibleTab}
       >
         <div className="border-b px-4">
           <ScrollArea className="w-full whitespace-nowrap">

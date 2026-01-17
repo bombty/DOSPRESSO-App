@@ -380,7 +380,7 @@ function Router() {
           <Route path="/admin/fabrika-pin-yonetimi">{() => <AdminOnly><AdminFabrikaPinYonetimi /></AdminOnly>}</Route>
           <Route path="/admin/fabrika-kalite-kriterleri">{() => <AdminOnly><AdminFabrikaKaliteKriterleri /></AdminOnly>}</Route>
           <Route path="/admin/seed">{() => <AdminOnly><AdminSeed /></AdminOnly>}</Route>
-          <Route path="/admin">{() => <AdminOnly><AdminMegaModule /></AdminOnly>}</Route>
+          <Route path="/admin" component={AdminMegaModule} />
         </>
       )}
       

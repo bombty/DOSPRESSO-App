@@ -54,6 +54,15 @@ The frontend utilizes React 18+ with TypeScript and Vite, employing Shadcn/ui (N
 - **Gamification**: Integrated badges, career progression, leaderboards, team competitions, adaptive difficulty, certificates, and daily learning streak tracker.
 - **Layout System**: Responsive flex-based layouts with standardized gaps.
 - **Dashboard Hub**: `CardGridHub` displays 9 mega-module cards (Operations, Equipment & Maintenance, Personnel & HR, Training & Academy, Kitchen & Recipes, Factory & Production, Reports & Analytics, New Shop Opening, and Management & Settings), grouping related menu sections.
+- **Mega-Module Architecture**: Each major section uses a tabbed mega-module wrapper that lazy-loads page components, with URL synchronization for deep linking. Key mega-modules:
+  - `/fabrika`: 7 tabs (Dashboard, Kiosk, Kalite Kontrol, Performans, Vardiya Uyumluluk, AI Raporlar, Üretim Planlama)
+  - `/ekipman`: 3 tabs (Ekipman, Arıza Yönetimi, Ekipman Analitik)
+  - `/raporlar`: 12 tabs (Raporlar, Performans, AI Asistan, Kalite Denetimi, etc.)
+  - `/akademi`: 18 tabs in 4 groups (Eğitim, Oyunlaştırma, Analitik, Gelişmiş)
+  - `/admin`: 28 tabs in 5 groups (Kullanıcılar, Sistem, İçerik, Operasyon, Fabrika)
+  - `/operasyon`: 14 tabs (Şubeler, Dashboard, Görevler, Checklistler, etc.)
+  - `/yeni-sube`: 4 tabs (Projeler, Proje Görevleri, Franchise Açılış, Kampanya)
+- **Mega-Module Tab Groups**: Admin and Akademi modules use two-level navigation with group buttons and tabs within each group.
 - **Shift Scheduling**: Fair algorithm ensuring full-time employees work minimum 6 days/week at 45 hours, part-time 3 days/25 hours.
 - **Analytics Architecture**: Three-period tabbed interface with real-time metric aggregation, AI-powered summaries, and conditional alerts.
 - **Checklist Scoring**: 40% weight in compositeScore, max score 4/5 if not on-time, scored by supervisor, daily reminders active.

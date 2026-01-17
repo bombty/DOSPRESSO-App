@@ -1,5 +1,5 @@
-import { useState, Suspense, lazy } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useState, useEffect, Suspense, lazy } from "react";
+import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { hasPermission } from "@shared/schema";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -110,8 +110,8 @@ function TabSkeleton() {
 
 export default function FabrikaMegaModule() {
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState("dashboard");
-
+  const [location, setLocation] = useLocation();
+  
   const visibleTabs = FABRIKA_TABS.filter(tab => {
     if (!tab.permissionModule) return true;
     if (!user?.role) return false;
@@ -119,6 +119,40 @@ export default function FabrikaMegaModule() {
   });
 
   const firstVisibleTab = visibleTabs[0]?.id || "dashboard";
+  
+  const getTabFromPath = (path: string) => {
+    const pathParts = path.split('/');
+    if (pathParts.length > 2) {
+      const tabId = pathParts[2];
+      const matchingTab = visibleTabs.find(t => t.id === tabId);
+      if (matchingTab) return matchingTab.id;
+    }
+    return firstVisibleTab;
+  };
+  
+  const [activeTab, setActiveTab] = useState(() => getTabFromPath(location));
+  
+  useEffect(() => {
+    const tabFromPath = getTabFromPath(location);
+    if (tabFromPath !== activeTab && visibleTabs.find(t => t.id === tabFromPath)) {
+      setActiveTab(tabFromPath);
+    }
+  }, [location]);
+  
+  useEffect(() => {
+    if (!visibleTabs.find(t => t.id === activeTab)) {
+      setActiveTab(firstVisibleTab);
+    }
+  }, [visibleTabs, activeTab, firstVisibleTab]);
+  
+  const handleTabChange = (tabId: string) => {
+    setActiveTab(tabId);
+    if (tabId !== firstVisibleTab) {
+      setLocation(`/fabrika/${tabId}`);
+    } else {
+      setLocation('/fabrika');
+    }
+  };
 
   if (visibleTabs.length === 0) {
     return (
@@ -154,9 +188,8 @@ export default function FabrikaMegaModule() {
 
       <Tabs 
         value={activeTab} 
-        onValueChange={setActiveTab} 
+        onValueChange={handleTabChange} 
         className="flex-1 flex flex-col"
-        defaultValue={firstVisibleTab}
       >
         <div className="border-b px-4">
           <ScrollArea className="w-full whitespace-nowrap">

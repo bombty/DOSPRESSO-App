@@ -1,4 +1,4 @@
-import { useState, Suspense, lazy } from "react";
+import { useState, useEffect, Suspense, lazy } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { hasPermission } from "@shared/schema";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -248,8 +248,6 @@ function TabSkeleton() {
 
 export default function AkademiMegaModule() {
   const { user } = useAuth();
-  const [activeGroup, setActiveGroup] = useState("egitim");
-  const [activeTab, setActiveTab] = useState("");
 
   const visibleTabs = AKADEMI_TABS.filter(tab => {
     if (!tab.permissionModule) return true;
@@ -261,9 +259,24 @@ export default function AkademiMegaModule() {
     visibleTabs.some(tab => tab.group === group.id)
   );
 
+  const firstVisibleGroup = visibleGroups[0]?.id || "egitim";
+  const [activeGroup, setActiveGroup] = useState(firstVisibleGroup);
+
   const tabsInActiveGroup = visibleTabs.filter(tab => tab.group === activeGroup);
-  
   const firstTabInGroup = tabsInActiveGroup[0]?.id || "";
+  const [activeTab, setActiveTab] = useState(firstTabInGroup);
+  
+  useEffect(() => {
+    if (!visibleGroups.find(g => g.id === activeGroup)) {
+      setActiveGroup(firstVisibleGroup);
+    }
+  }, [visibleGroups, activeGroup, firstVisibleGroup]);
+  
+  useEffect(() => {
+    if (!tabsInActiveGroup.find(t => t.id === activeTab)) {
+      setActiveTab(firstTabInGroup);
+    }
+  }, [tabsInActiveGroup, activeTab, firstTabInGroup]);
 
   if (visibleTabs.length === 0) {
     return (
