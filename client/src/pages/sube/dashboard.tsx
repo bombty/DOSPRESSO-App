@@ -733,7 +733,7 @@ export default function SubeDashboard() {
                 <span>Görevler</span>
               </Button>
             </Link>
-            <Link href="/checklist">
+            <Link href="/checklistler">
               <Button variant="outline" className="w-full h-auto p-4 flex flex-col items-center gap-2" data-testid="link-checklists">
                 <ClipboardList className="h-8 w-8 text-green-500" />
                 <span>Checklistler</span>
