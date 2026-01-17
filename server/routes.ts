@@ -987,81 +987,50 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
   });
 
   // GET /api/dashboard-modules - Dashboard için kullanıcının erişebildiği modüller (mega-modüle göre gruplu)
-  // Bu endpoint yetkilendirme ile tam senkronize - permission grants + mega_module_items birleştirilir
+  // Bu endpoint yetkilendirme ile tam senkronize - DOĞRUDAN mega_module_items tablosundan sayılar alınır
   app.get('/api/dashboard-modules', isAuthenticated, async (req: any, res) => {
     try {
       const user = req.user!;
       
-      // 1. Get all mega-module items from DB (path to mega-module mapping)
+      // 1. Get all mega-module items from DB - BU TEK KAYNAK OLACAK
       const allMegaModuleItems = await db.select().from(megaModuleItems).where(eq(megaModuleItems.isActive, true)).orderBy(megaModuleItems.megaModuleId, megaModuleItems.sortOrder);
       
-      // 2. Build path-to-megaModule mapping
+      // 2. Modül sayılarını DOĞRUDAN mega_module_items tablosundan hesapla (Modül Düzenleme ile senkron)
+      const dbModuleCounts: Record<string, number> = {};
+      const dbModuleItemsList: Record<string, Array<{path: string, title: string}>> = {};
       const pathToMegaModule: Record<string, string> = {};
-      allMegaModuleItems.forEach(item => {
+      
+      for (const item of allMegaModuleItems) {
+        const megaId = item.megaModuleId;
+        dbModuleCounts[megaId] = (dbModuleCounts[megaId] || 0) + 1;
+        
+        if (!dbModuleItemsList[megaId]) {
+          dbModuleItemsList[megaId] = [];
+        }
+        dbModuleItemsList[megaId].push({ 
+          path: item.subModulePath || '', 
+          title: item.subModuleName || item.subModulePath || ''
+        });
+        
         if (item.subModulePath) {
           pathToMegaModule[item.subModulePath] = item.megaModuleId;
         }
-      });
-      
-      // 3. Get user's accessible menu (permission filtered)
-      const { buildMenuForUser } = await import('./menu-service');
-      // Fetch dynamic permissions from database for this role (CRITICAL for sync!)
-      const userRole = user.role as UserRoleType;
-      let dynamicPermissions: Array<{ role: string; module: string; actions: string[] }> = [];
-      try {
-        const allPermissions = await storage.getRolePermissions();
-        dynamicPermissions = allPermissions.filter(p => p.role === userRole);
-      } catch (e) {
-        console.error("Error fetching dynamic permissions for dashboard:", e);
       }
       
-      const menuResponse = buildMenuForUser({ id: user.id, role: userRole }, {}, dynamicPermissions);
-      
-      // 4. Collect all accessible paths from menu
-      const accessiblePaths: Set<string> = new Set();
-      const accessibleItems: Array<{path: string, title: string, moduleKey: string, megaModuleId: string}> = [];
-      
-      for (const section of menuResponse.sections) {
-        for (const item of section.items || []) {
-          if (item.path) {
-            accessiblePaths.add(item.path);
-            const megaModuleId = pathToMegaModule[item.path] || 'other';
-            accessibleItems.push({
-              path: item.path,
-              title: item.titleTr || item.id,
-              moduleKey: item.moduleKey || item.id,
-              megaModuleId
-            });
-          }
-        }
-      }
-      
-      // 5. Group by mega-module with counts
-      const megaModuleCounts: Record<string, number> = {};
-      const megaModuleItemsList: Record<string, Array<{path: string, title: string}>> = {};
-      
-      for (const item of accessibleItems) {
-        const megaId = item.megaModuleId;
-        megaModuleCounts[megaId] = (megaModuleCounts[megaId] || 0) + 1;
-        if (!megaModuleItemsList[megaId]) {
-          megaModuleItemsList[megaId] = [];
-        }
-        megaModuleItemsList[megaId].push({ path: item.path, title: item.title });
-      }
-      
-      // 6. Get mega-module configs for display
+      // 3. Get mega-module configs for display
       const configs = await db.select().from(megaModuleConfig).orderBy(megaModuleConfig.sortOrder);
       
+      // 4. Return data using counts DIRECTLY from mega_module_items table
       res.json({
         megaModules: configs.map(c => ({
           id: c.megaModuleId,
           title: c.megaModuleNameTr || c.megaModuleName,
           icon: c.icon,
           color: c.color,
-          itemCount: megaModuleCounts[c.megaModuleId] || 0,
-          items: megaModuleItemsList[c.megaModuleId] || []
+          itemCount: dbModuleCounts[c.megaModuleId] || 0,
+          items: dbModuleItemsList[c.megaModuleId] || []
         })),
-        totalAccessibleModules: accessibleItems.length,
+        totalAccessibleModules: allMegaModuleItems.length,
         pathMapping: pathToMegaModule
       });
     } catch (error: any) {
