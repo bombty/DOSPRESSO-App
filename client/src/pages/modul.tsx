@@ -364,14 +364,16 @@ export default function MegaModulePage() {
 
   // DASHBOARD-SYNC: Veritabanı modüllerini kullan (mega_module_items tablosu ile senkron)
   // Bu, Modül Düzenleme sekmesiyle tam uyum sağlar
-  if (dashboardModules?.modules?.[moduleId]) {
-    const dbItems = dashboardModules.modules[moduleId].items || [];
+  // API megaModules dizisi döndürür, id'ye göre bul
+  const dbMegaModule = dashboardModules?.megaModules?.find((m: any) => m.id === moduleId);
+  if (dbMegaModule) {
+    const dbItems = dbMegaModule.items || [];
     sectionItems = dbItems.map((item: any) => ({
       id: item.id || item.path.replace(/\//g, '-').replace(/^-/, ''),
-      label: item.titleTr || item.title,
-      titleTr: item.titleTr || item.title,
+      label: item.title || item.path,
+      titleTr: item.title || item.path,
       path: item.path,
-      moduleKey: item.id,
+      moduleKey: item.path.replace(/\//g, '-').replace(/^-/, ''),
     }));
   }
 
