@@ -621,17 +621,23 @@ export default function AdminYetkilendirme() {
     useSensor(KeyboardSensor)
   );
   
-  // Build all module labels from MODULE_GROUPS, merged with custom overrides
+  // Build all module labels from API data (customModuleLabels) - dynamically from DB
   const allModuleLabels = useMemo(() => {
     const labels: Record<string, string> = {};
+    // First, add all modules from moduleMappings (from API)
+    Object.values(moduleMappings).flat().forEach(modId => {
+      labels[modId] = customModuleLabels[modId] || modId;
+    });
+    // Also include any from MODULE_GROUPS as fallback for legacy
     MODULE_GROUPS.forEach(group => {
       group.modules.forEach(mod => {
-        // Use custom label if exists, otherwise use default
-        labels[mod.key] = customModuleLabels[mod.key] || mod.label;
+        if (!labels[mod.key]) {
+          labels[mod.key] = customModuleLabels[mod.key] || mod.label;
+        }
       });
     });
     return labels;
-  }, [customModuleLabels]);
+  }, [customModuleLabels, moduleMappings]);
   
   // Save mega module configs to backend API
   const saveMegaModuleConfigs = async (titles: Record<string, string>) => {
@@ -938,11 +944,20 @@ export default function AdminYetkilendirme() {
   useEffect(() => {
     if (selectedRole) {
       // Initialize all modules with default view=false, edit=false
+      // Use moduleMappings (from API/DB) as primary source
       const defaultPermissions: PermissionState = {};
       
+      // Add all modules from moduleMappings (dynamically from DB)
+      Object.values(moduleMappings).flat().forEach((modId) => {
+        defaultPermissions[modId] = { view: false, edit: false };
+      });
+      
+      // Fallback: also add from MODULE_GROUPS for any legacy modules
       MODULE_GROUPS.forEach((group) => {
         group.modules.forEach((mod) => {
-          defaultPermissions[mod.key] = { view: false, edit: false };
+          if (!defaultPermissions[mod.key]) {
+            defaultPermissions[mod.key] = { view: false, edit: false };
+          }
         });
       });
       
@@ -1208,32 +1223,38 @@ export default function AdminYetkilendirme() {
               </div>
 
               <div className="space-y-3">
-                {MODULE_GROUPS.map((group) => {
+                {MEGA_MODULE_CONFIG.map((megaModule) => {
+                  // Get modules for this mega-module from DB-synced moduleMappings
+                  const moduleIds = moduleMappings[megaModule.id] || [];
+                  
                   // Check if all modules in group have view permission
-                  const allModulesEnabled = group.modules.every(m => getPermission(m.key, "view"));
-                  const someModulesEnabled = group.modules.some(m => getPermission(m.key, "view"));
+                  const allModulesEnabled = moduleIds.length > 0 && moduleIds.every(modId => getPermission(modId, "view"));
+                  const someModulesEnabled = moduleIds.some(modId => getPermission(modId, "view"));
                   
                   // Toggle all modules in group
                   const handleGroupToggle = () => {
                     const newValue = !allModulesEnabled;
-                    group.modules.forEach(module => {
+                    moduleIds.forEach(modId => {
                       setPermissions(prev => ({
                         ...prev,
-                        [module.key]: { view: newValue, edit: newValue ? (prev[module.key]?.edit || false) : false }
+                        [modId]: { view: newValue, edit: newValue ? (prev[modId]?.edit || false) : false }
                       }));
                     });
                     setHasChanges(true);
                   };
                   
+                  const MegaIcon = megaModule.icon;
+                  const displayTitle = megaModuleTitles[megaModule.id] || megaModule.title;
+                  
                   return (
-                  <Card key={group.name}>
+                  <Card key={megaModule.id}>
                     <CardHeader className="py-2 md:py-3">
                       <CardTitle className="text-sm flex items-center justify-between gap-2">
                         <div className="flex items-center gap-2">
-                          <group.icon className="h-4 w-4" />
-                          {group.name}
+                          <MegaIcon className="h-4 w-4" />
+                          {displayTitle}
                           <Badge variant="secondary" className="text-[10px] px-1.5">
-                            {group.modules.filter(m => getPermission(m.key, "view")).length}/{group.modules.length}
+                            {moduleIds.filter(modId => getPermission(modId, "view")).length}/{moduleIds.length}
                           </Badge>
                         </div>
                         <div className="flex items-center gap-1.5">
@@ -1242,54 +1263,54 @@ export default function AdminYetkilendirme() {
                             checked={allModulesEnabled}
                             onCheckedChange={handleGroupToggle}
                             className="scale-75"
-                            data-testid={`switch-group-${group.name}`}
+                            data-testid={`switch-group-${megaModule.id}`}
                           />
                         </div>
                       </CardTitle>
                     </CardHeader>
                     <CardContent className="pt-0 pb-2 md:pb-4">
                       <div className="space-y-1 md:space-y-2">
-                        {group.modules.map((module, idx) => (
-                          <div key={module.key}>
+                        {moduleIds.map((modId, idx) => (
+                          <div key={modId}>
                             {idx > 0 && <Separator className="my-1 md:my-2" />}
                             <div className="flex items-center justify-between py-1">
-                              <span className="text-xs md:text-sm">{module.label}</span>
+                              <span className="text-xs md:text-sm">{allModuleLabels[modId] || modId}</span>
                               <div className="flex items-center gap-2 md:gap-4">
                                 <div className="flex items-center gap-1 md:gap-2">
                                   <span className="text-[10px] md:text-xs text-muted-foreground">Gör</span>
                                   <Switch
-                                    checked={getPermission(module.key, "view")}
-                                    onCheckedChange={() => handleToggle(module.key, "view")}
+                                    checked={getPermission(modId, "view")}
+                                    onCheckedChange={() => handleToggle(modId, "view")}
                                     className="scale-75 md:scale-100"
-                                    data-testid={`switch-${module.key}-view`}
+                                    data-testid={`switch-${modId}-view`}
                                   />
                                 </div>
                                 <div className="flex items-center gap-1 md:gap-2">
                                   <span className="text-[10px] md:text-xs text-muted-foreground">Düz</span>
                                   <Switch
-                                    checked={getPermission(module.key, "edit")}
-                                    onCheckedChange={() => handleToggle(module.key, "edit")}
-                                    disabled={!getPermission(module.key, "view")}
+                                    checked={getPermission(modId, "edit")}
+                                    onCheckedChange={() => handleToggle(modId, "edit")}
+                                    disabled={!getPermission(modId, "view")}
                                     className="scale-75 md:scale-100"
-                                    data-testid={`switch-${module.key}-edit`}
+                                    data-testid={`switch-${modId}-edit`}
                                   />
                                 </div>
                               </div>
                             </div>
                           
                             {/* Detaylı İzinler Accordion */}
-                            {hasGranularActions(module.key) && (
+                            {hasGranularActions(modId) && (
                               <Accordion type="single" collapsible className="mt-1">
-                                <AccordionItem value={module.key} className="border-none">
-                                  <AccordionTrigger className="py-1 text-xs text-muted-foreground hover:no-underline" data-testid={`accordion-${module.key}`}>
+                                <AccordionItem value={modId} className="border-none">
+                                  <AccordionTrigger className="py-1 text-xs text-muted-foreground hover:no-underline" data-testid={`accordion-${modId}`}>
                                     <div className="flex items-center gap-1">
                                       <Eye className="h-3 w-3" />
-                                      Detaylı İzinler ({permissionActions[module.key]?.length || 0})
+                                      Detaylı İzinler ({permissionActions[modId]?.length || 0})
                                     </div>
                                   </AccordionTrigger>
                                   <AccordionContent className="pb-1 pt-2">
                                     <div className="space-y-2 pl-2 border-l-2 border-muted">
-                                      {permissionActions[module.key]?.map((action) => {
+                                      {permissionActions[modId]?.map((action) => {
                                         const grant = getActionGrant(action.id);
                                         return (
                                           <div key={action.id} className="flex items-center justify-between gap-2 py-1.5 px-2 rounded bg-muted/30">
