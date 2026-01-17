@@ -60,6 +60,12 @@ export default function MegaModulePage() {
     enabled: !!user,
   });
 
+  // Dashboard modüllerini veritabanından çek (mega_module_items tablosu)
+  const { data: dashboardModules, isLoading: isDashboardLoading } = useQuery<any>({
+    queryKey: ["/api/dashboard-modules"],
+    enabled: !!user,
+  });
+
   const { data: faults = [] } = useQuery<any[]>({
     queryKey: ["/api/faults"],
     queryFn: async () => {
@@ -352,9 +358,22 @@ export default function MegaModulePage() {
   const allItems = matchedSections.flatMap((s: any) => s.items || []);
   
   // Deduplicate items by path
-  const sectionItems = allItems.filter((item: any, index: number, self: any[]) =>
+  let sectionItems = allItems.filter((item: any, index: number, self: any[]) =>
     index === self.findIndex((t) => t.path === item.path)
   );
+
+  // DASHBOARD-SYNC: Veritabanı modüllerini kullan (mega_module_items tablosu ile senkron)
+  // Bu, Modül Düzenleme sekmesiyle tam uyum sağlar
+  if (dashboardModules?.modules?.[moduleId]) {
+    const dbItems = dashboardModules.modules[moduleId].items || [];
+    sectionItems = dbItems.map((item: any) => ({
+      id: item.id || item.path.replace(/\//g, '-').replace(/^-/, ''),
+      label: item.titleTr || item.title,
+      titleTr: item.titleTr || item.title,
+      path: item.path,
+      moduleKey: item.id,
+    }));
+  }
 
   // Create a virtual "currentSection" for rendering
   // If it's a valid mega-module ID, always create the section (even if empty)
@@ -365,7 +384,7 @@ export default function MegaModulePage() {
     items: sectionItems,
   } : allMenuSections.find((s: any) => s.id === moduleId);
 
-  if (isLoading) {
+  if (isLoading || isDashboardLoading) {
     return (
       <div className="p-4 space-y-4">
         <ListSkeleton count={6} variant="card" showHeader />
