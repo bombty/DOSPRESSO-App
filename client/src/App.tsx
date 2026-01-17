@@ -119,7 +119,7 @@ import Raporlar from "@/pages/raporlar";
 import RaporlarHub from "@/pages/raporlar-hub";
 import Destek from "@/pages/destek";
 import Muhasebe from "@/pages/muhasebe";
-import Fabrika from "@/pages/fabrika";
+import FabrikaMegaModule from "@/pages/fabrika/index";
 import FabrikaKiosk from "@/pages/fabrika/kiosk";
 import FabrikaDashboard from "@/pages/fabrika/dashboard";
 import FabrikaKaliteKontrol from "@/pages/fabrika/kalite-kontrol";
@@ -316,7 +316,7 @@ function Router() {
           <Route path="/raporlar-hub" component={RaporlarHub} />
           <Route path="/performans" component={Performance} />
           <Route path="/muhasebe" component={Muhasebe} />
-          <Route path="/fabrika" component={Fabrika} />
+          <Route path="/fabrika" component={FabrikaMegaModule} />
           <Route path="/fabrika/dashboard" component={FabrikaDashboard} />
           <Route path="/fabrika/kalite-kontrol" component={FabrikaKaliteKontrol} />
           <Route path="/fabrika/performans" component={FabrikaPerformans} />
