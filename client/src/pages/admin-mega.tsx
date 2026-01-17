@@ -1,4 +1,5 @@
 import { useState, useEffect, Suspense, lazy } from "react";
+import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { hasPermission } from "@shared/schema";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -351,8 +352,53 @@ function TabSkeleton() {
   );
 }
 
+const TAB_URL_MAP: Record<string, string> = {
+  "admin-panel": "/admin",
+  "kullanicilar": "/admin/kullanicilar",
+  "rol-yetkileri": "/admin/rol-yetkileri",
+  "yetkilendirme": "/admin/yetkilendirme",
+  "ayarlar": "/admin/ayarlar",
+  "email-ayarlari": "/admin/email-ayarlari",
+  "servis-mail": "/admin/servis-mail",
+  "yapay-zeka": "/admin/yapay-zeka",
+  "ai-maliyetler": "/admin/ai-maliyetler",
+  "yedekleme": "/admin/yedekleme",
+  "aktivite-loglari": "/admin/aktivite-loglari",
+  "seed": "/admin/seed",
+  "menu-yonetimi": "/admin/menu-yonetimi",
+  "icerik-yonetimi": "/admin/icerik-yonetimi",
+  "icerik-studyosu": "/admin/icerik-studyosu",
+  "duyurular": "/admin/duyurular",
+  "bannerlar": "/admin/bannerlar",
+  "checklistler": "/admin/checklistler",
+  "akademi-yonetimi": "/admin/akademi-yonetimi",
+  "ekipman-yonetimi": "/admin/ekipman-yonetimi",
+  "ekipman-servis": "/admin/ekipman-servis",
+  "servis-talepleri": "/admin/servis-talepleri",
+  "toplu-veri": "/admin/toplu-veri",
+  "kalite-sablonlari": "/admin/kalite-sablonlari",
+  "fabrika-istasyonlar": "/admin/fabrika-istasyonlar",
+  "fire-sebepleri": "/admin/fire-sebepleri",
+  "pin-yonetimi": "/admin/pin-yonetimi",
+  "kalite-kriterleri": "/admin/kalite-kriterleri"
+};
+
+function getTabFromUrl(pathname: string): string | null {
+  if (pathname === "/admin" || pathname === "/admin/") return "admin-panel";
+  const sortedEntries = Object.entries(TAB_URL_MAP)
+    .filter(([tabId]) => tabId !== "admin-panel")
+    .sort((a, b) => b[1].length - a[1].length);
+  for (const [tabId, url] of sortedEntries) {
+    if (pathname === url || pathname.startsWith(url + "/")) {
+      return tabId;
+    }
+  }
+  return null;
+}
+
 export default function AdminMegaModule() {
   const { user } = useAuth();
+  const [location, setLocation] = useLocation();
 
   const visibleTabs = ADMIN_TABS.filter(tab => {
     if (!tab.permissionModule) return true;
@@ -365,11 +411,22 @@ export default function AdminMegaModule() {
   );
 
   const firstVisibleGroup = visibleGroups[0]?.id || "kullanicilar";
-  const [activeGroup, setActiveGroup] = useState(firstVisibleGroup);
+  
+  const initialTab = getTabFromUrl(location);
+  const initialTabConfig = initialTab ? visibleTabs.find(t => t.id === initialTab) : null;
+  const initialGroup = initialTabConfig?.group || firstVisibleGroup;
+  
+  const [activeGroup, setActiveGroup] = useState(
+    visibleGroups.find(g => g.id === initialGroup) ? initialGroup : firstVisibleGroup
+  );
 
   const tabsInActiveGroup = visibleTabs.filter(tab => tab.group === activeGroup);
   const firstTabInGroup = tabsInActiveGroup[0]?.id || "";
-  const [activeTab, setActiveTab] = useState(firstTabInGroup);
+  const [activeTab, setActiveTab] = useState(
+    initialTabConfig 
+      ? initialTab! 
+      : firstTabInGroup
+  );
   
   useEffect(() => {
     if (!visibleGroups.find(g => g.id === activeGroup)) {
@@ -380,8 +437,45 @@ export default function AdminMegaModule() {
   useEffect(() => {
     if (!tabsInActiveGroup.find(t => t.id === activeTab)) {
       setActiveTab(firstTabInGroup);
+      const url = TAB_URL_MAP[firstTabInGroup];
+      if (url && location !== url) {
+        setLocation(url);
+      }
     }
   }, [tabsInActiveGroup, activeTab, firstTabInGroup]);
+  
+  useEffect(() => {
+    const tabFromUrl = getTabFromUrl(location);
+    if (tabFromUrl && tabFromUrl !== activeTab) {
+      const tabConfig = visibleTabs.find(t => t.id === tabFromUrl);
+      if (tabConfig) {
+        if (tabConfig.group !== activeGroup) {
+          setActiveGroup(tabConfig.group);
+        }
+        setActiveTab(tabFromUrl);
+      }
+    }
+  }, [location, visibleTabs]);
+
+  const handleTabChange = (tabId: string) => {
+    setActiveTab(tabId);
+    const url = TAB_URL_MAP[tabId];
+    if (url && location !== url) {
+      setLocation(url);
+    }
+  };
+
+  const handleGroupChange = (groupId: string) => {
+    setActiveGroup(groupId);
+    const firstTab = visibleTabs.find(t => t.group === groupId);
+    if (firstTab) {
+      setActiveTab(firstTab.id);
+      const url = TAB_URL_MAP[firstTab.id];
+      if (url && location !== url) {
+        setLocation(url);
+      }
+    }
+  };
 
   if (visibleTabs.length === 0) {
     return (
@@ -422,11 +516,7 @@ export default function AdminMegaModule() {
                 return (
                   <button
                     key={group.id}
-                    onClick={() => {
-                      setActiveGroup(group.id);
-                      const firstTab = visibleTabs.find(t => t.group === group.id);
-                      if (firstTab) setActiveTab(firstTab.id);
-                    }}
+                    onClick={() => handleGroupChange(group.id)}
                     className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
                       activeGroup === group.id 
                         ? "bg-primary text-primary-foreground" 
@@ -450,7 +540,7 @@ export default function AdminMegaModule() {
 
       <Tabs 
         value={activeTab || firstTabInGroup}
-        onValueChange={setActiveTab} 
+        onValueChange={handleTabChange} 
         className="flex-1 flex flex-col"
       >
         <div className="border-b px-4">

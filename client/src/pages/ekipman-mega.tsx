@@ -1,4 +1,5 @@
 import { useState, useEffect, Suspense, lazy } from "react";
+import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { hasPermission } from "@shared/schema";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -65,8 +66,22 @@ function TabSkeleton() {
   );
 }
 
+const TAB_URL_MAP: Record<string, string> = {
+  "ekipman": "/ekipman",
+  "ariza": "/ekipman/ariza",
+  "analitik": "/ekipman/analitik"
+};
+
+function getTabFromUrl(pathname: string): string | null {
+  if (pathname === "/ekipman" || pathname === "/ekipman/") return "ekipman";
+  if (pathname.startsWith("/ekipman/ariza")) return "ariza";
+  if (pathname.startsWith("/ekipman/analitik")) return "analitik";
+  return null;
+}
+
 export default function EkipmanMegaModule() {
   const { user } = useAuth();
+  const [location, setLocation] = useLocation();
 
   const visibleTabs = EKIPMAN_TABS.filter(tab => {
     if (!tab.permissionModule) return true;
@@ -75,13 +90,36 @@ export default function EkipmanMegaModule() {
   });
 
   const firstVisibleTab = visibleTabs[0]?.id || "ekipman";
-  const [activeTab, setActiveTab] = useState(firstVisibleTab);
+  
+  const initialTab = getTabFromUrl(location);
+  const [activeTab, setActiveTab] = useState(
+    initialTab && visibleTabs.find(t => t.id === initialTab) ? initialTab : firstVisibleTab
+  );
   
   useEffect(() => {
     if (!visibleTabs.find(t => t.id === activeTab)) {
       setActiveTab(firstVisibleTab);
+      const url = TAB_URL_MAP[firstVisibleTab];
+      if (url && location !== url) {
+        setLocation(url);
+      }
     }
   }, [visibleTabs, activeTab, firstVisibleTab]);
+  
+  useEffect(() => {
+    const tabFromUrl = getTabFromUrl(location);
+    if (tabFromUrl && tabFromUrl !== activeTab && visibleTabs.find(t => t.id === tabFromUrl)) {
+      setActiveTab(tabFromUrl);
+    }
+  }, [location, visibleTabs]);
+
+  const handleTabChange = (tabId: string) => {
+    setActiveTab(tabId);
+    const url = TAB_URL_MAP[tabId];
+    if (url && location !== url) {
+      setLocation(url);
+    }
+  };
 
   if (visibleTabs.length === 0) {
     return (
@@ -117,7 +155,7 @@ export default function EkipmanMegaModule() {
 
       <Tabs 
         value={activeTab} 
-        onValueChange={setActiveTab} 
+        onValueChange={handleTabChange} 
         className="flex-1 flex flex-col"
       >
         <div className="border-b px-4">

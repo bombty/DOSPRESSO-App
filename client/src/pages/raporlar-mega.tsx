@@ -1,4 +1,5 @@
 import { useState, useEffect, Suspense, lazy } from "react";
+import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { hasPermission } from "@shared/schema";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -154,8 +155,40 @@ function TabSkeleton() {
   );
 }
 
+const TAB_URL_MAP: Record<string, string> = {
+  "genel": "/raporlar",
+  "performans": "/raporlar/performans",
+  "ai-asistan": "/raporlar/ai-asistan",
+  "kalite-denetimi": "/raporlar/kalite-denetimi",
+  "misafir-memnuniyeti": "/raporlar/misafir-memnuniyeti",
+  "e2e-raporlar": "/raporlar/e2e",
+  "ik-raporlari": "/raporlar/ik",
+  "kasa-raporlari": "/raporlar/kasa",
+  "denetimler": "/raporlar/denetimler",
+  "denetim-sablonlari": "/raporlar/denetim-sablonlari",
+  "sikayetler": "/raporlar/sikayetler",
+  "gelismis-raporlar": "/raporlar/gelismis"
+};
+
+function getTabFromUrl(pathname: string): string | null {
+  if (pathname === "/raporlar" || pathname === "/raporlar/") return "genel";
+  if (pathname.startsWith("/raporlar/performans")) return "performans";
+  if (pathname.startsWith("/raporlar/ai-asistan")) return "ai-asistan";
+  if (pathname.startsWith("/raporlar/kalite-denetimi")) return "kalite-denetimi";
+  if (pathname.startsWith("/raporlar/misafir-memnuniyeti")) return "misafir-memnuniyeti";
+  if (pathname.startsWith("/raporlar/e2e")) return "e2e-raporlar";
+  if (pathname.startsWith("/raporlar/ik")) return "ik-raporlari";
+  if (pathname.startsWith("/raporlar/kasa")) return "kasa-raporlari";
+  if (pathname.startsWith("/raporlar/denetimler")) return "denetimler";
+  if (pathname.startsWith("/raporlar/denetim-sablonlari")) return "denetim-sablonlari";
+  if (pathname.startsWith("/raporlar/sikayetler")) return "sikayetler";
+  if (pathname.startsWith("/raporlar/gelismis")) return "gelismis-raporlar";
+  return null;
+}
+
 export default function RaporlarMegaModule() {
   const { user } = useAuth();
+  const [location, setLocation] = useLocation();
 
   const visibleTabs = RAPORLAR_TABS.filter(tab => {
     if (!tab.permissionModule) return true;
@@ -164,13 +197,36 @@ export default function RaporlarMegaModule() {
   });
 
   const firstVisibleTab = visibleTabs[0]?.id || "genel";
-  const [activeTab, setActiveTab] = useState(firstVisibleTab);
+  
+  const initialTab = getTabFromUrl(location);
+  const [activeTab, setActiveTab] = useState(
+    initialTab && visibleTabs.find(t => t.id === initialTab) ? initialTab : firstVisibleTab
+  );
   
   useEffect(() => {
     if (!visibleTabs.find(t => t.id === activeTab)) {
       setActiveTab(firstVisibleTab);
+      const url = TAB_URL_MAP[firstVisibleTab];
+      if (url && location !== url) {
+        setLocation(url);
+      }
     }
   }, [visibleTabs, activeTab, firstVisibleTab]);
+  
+  useEffect(() => {
+    const tabFromUrl = getTabFromUrl(location);
+    if (tabFromUrl && tabFromUrl !== activeTab && visibleTabs.find(t => t.id === tabFromUrl)) {
+      setActiveTab(tabFromUrl);
+    }
+  }, [location, visibleTabs]);
+
+  const handleTabChange = (tabId: string) => {
+    setActiveTab(tabId);
+    const url = TAB_URL_MAP[tabId];
+    if (url && location !== url) {
+      setLocation(url);
+    }
+  };
 
   if (visibleTabs.length === 0) {
     return (
@@ -206,7 +262,7 @@ export default function RaporlarMegaModule() {
 
       <Tabs 
         value={activeTab} 
-        onValueChange={setActiveTab} 
+        onValueChange={handleTabChange} 
         className="flex-1 flex flex-col"
       >
         <div className="border-b px-4">
