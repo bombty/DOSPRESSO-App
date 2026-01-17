@@ -1086,8 +1086,20 @@ export function CardGridHub() {
             const MegaIcon = getSectionIcon(megaModule.icon);
             const moduleBadge = getSectionBadge(megaModule.items);
             
-            // Navigate to mega-module page
-            const megaModulePath = `/modul/${megaModule.id}`;
+            // Map mega-module IDs to their tabbed mega-module page paths
+            const MEGA_MODULE_PATHS: Record<string, string> = {
+              "operations": "/operasyon",
+              "equipment": "/ekipman",
+              "hr": "/ik",
+              "training": "/akademi",
+              "factory": "/fabrika",
+              "reports": "/raporlar",
+              "newshop": "/yeni-sube",
+              "admin": "/admin"
+            };
+            
+            // Navigate to tabbed mega-module page if available, otherwise fallback to module detail
+            const megaModulePath = MEGA_MODULE_PATHS[megaModule.id] || `/modul/${megaModule.id}`;
             
             return (
               <button
