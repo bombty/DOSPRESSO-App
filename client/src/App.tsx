@@ -156,6 +156,12 @@ import MisafirMemnuniyeti from "@/pages/misafir-memnuniyeti";
 import NotFound from "@/pages/not-found";
 import MegaModulePage from "@/pages/modul";
 import IcerikStudyosu from "@/pages/icerik-studyosu";
+import RaporlarMegaModule from "@/pages/raporlar-mega";
+import EkipmanMegaModule from "@/pages/ekipman-mega";
+import YeniSubeMegaModule from "@/pages/yeni-sube-mega";
+import OperasyonMegaModule from "@/pages/operasyon-mega";
+import AdminMegaModule from "@/pages/admin-mega";
+import AkademiMegaModule from "@/pages/akademi-mega";
 
 const PUBLIC_PATH_PREFIXES = [
   "/login", 
@@ -264,14 +270,14 @@ function Router() {
           <Route path="/sube-gorevler/:id" component={SubeGorevler} />
           <Route path="/checklistler" component={Checklists} />
           <Route path="/ekipman/:id" component={EquipmentDetail} />
-          <Route path="/ekipman" component={Equipment} />
+          <Route path="/ekipman" component={EkipmanMegaModule} />
           <Route path="/ariza" component={FaultHub} />
           <Route path="/ariza-detay/:id" component={FaultDetail} />
           <Route path="/ariza-yeni" component={NewFaultReport} />
           <Route path="/ekipman-analitics" component={EquipmentAnalytics} />
           <Route path="/qr-tara" component={QRScanner} />
           <Route path="/bilgi-bankasi" component={KnowledgeBase} />
-          <Route path="/akademi" component={AcademySuite} />
+          <Route path="/akademi" component={AkademiMegaModule} />
           <Route path="/akademi-modul/:id" component={ModuleDetail} />
           <Route path="/akademi-quiz/:quizId" component={AcademyQuiz} />
           <Route path="/akademi-rozet-koleksiyonum" component={BadgeCollection} />
@@ -312,7 +318,7 @@ function Router() {
           <Route path="/ik-raporlari" component={HRReports} />
           <Route path="/kasa-raporlari" component={CashReports} />
           <Route path="/e2e-raporlar" component={E2EReports} />
-          <Route path="/raporlar" component={Raporlar} />
+          <Route path="/raporlar" component={RaporlarMegaModule} />
           <Route path="/raporlar-hub" component={RaporlarHub} />
           <Route path="/performans" component={Performance} />
           <Route path="/muhasebe" component={Muhasebe} />
@@ -353,6 +359,8 @@ function Router() {
           <Route path="/kayip-esya" component={KayipEsya} />
           <Route path="/kayip-esya-hq" component={KayipEsyaHQ} />
           <Route path="/destek" component={Destek} />
+          <Route path="/operasyon" component={OperasyonMegaModule} />
+          <Route path="/yeni-sube" component={YeniSubeMegaModule} />
           <Route path="/banner-editor">{() => <AdminOnly><BannerEditor /></AdminOnly>}</Route>
           <Route path="/admin/yetkilendirme">{() => <AdminOnly><AdminYetkilendirme /></AdminOnly>}</Route>
           <Route path="/admin/aktivite-loglari">{() => <AdminOnly><AdminAktiviteLoglar /></AdminOnly>}</Route>
@@ -372,7 +380,7 @@ function Router() {
           <Route path="/admin/fabrika-pin-yonetimi">{() => <AdminOnly><AdminFabrikaPinYonetimi /></AdminOnly>}</Route>
           <Route path="/admin/fabrika-kalite-kriterleri">{() => <AdminOnly><AdminFabrikaKaliteKriterleri /></AdminOnly>}</Route>
           <Route path="/admin/seed">{() => <AdminOnly><AdminSeed /></AdminOnly>}</Route>
-          <Route path="/admin">{() => <AdminOnly><AdminDashboard /></AdminOnly>}</Route>
+          <Route path="/admin">{() => <AdminOnly><AdminMegaModule /></AdminOnly>}</Route>
         </>
       )}
       
