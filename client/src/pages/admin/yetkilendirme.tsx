@@ -875,6 +875,10 @@ export default function AdminYetkilendirme() {
       apiRequest("POST", "/api/admin/role-grants", data),
     onSuccess: () => {
       refetchGrants();
+      // Invalidate all menu/dashboard caches for immediate sync
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard-modules"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/me/menu"] });
+      queryClient.invalidateQueries({ queryKey: ["sidebar-menu"] });
       toast({ title: "İzin güncellendi" });
     },
     onError: () => {
@@ -888,6 +892,10 @@ export default function AdminYetkilendirme() {
       apiRequest("DELETE", `/api/admin/role-grants/${data.role}/${data.actionId}`),
     onSuccess: () => {
       refetchGrants();
+      // Invalidate all menu/dashboard caches for immediate sync
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard-modules"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/me/menu"] });
+      queryClient.invalidateQueries({ queryKey: ["sidebar-menu"] });
       toast({ title: "İzin kaldırıldı" });
     },
     onError: () => {
@@ -976,8 +984,14 @@ export default function AdminYetkilendirme() {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/role-permissions"] });
       // Invalidate all sidebar-menu caches so users see updated menus
       queryClient.invalidateQueries({ queryKey: ["sidebar-menu"] });
+      // CRITICAL: Invalidate dashboard modules so mega-module cards update immediately
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard-modules"] });
+      // Invalidate user menu for sidebar sync
+      queryClient.invalidateQueries({ queryKey: ["/api/me/menu"] });
+      // Invalidate mega-module mapping for complete sync
+      queryClient.invalidateQueries({ queryKey: ["/api/mega-module-mapping"] });
       setHasChanges(false);
-      toast({ title: "Yetkiler kaydedildi", description: "Menü değişiklikleri etkilenen kullanıcılar için yenilenecek." });
+      toast({ title: "Yetkiler kaydedildi", description: "Menü ve dashboard değişiklikleri hemen yansıtıldı." });
     },
     onError: () => {
       toast({ title: "Hata", description: "Yetkiler kaydedilemedi", variant: "destructive" });

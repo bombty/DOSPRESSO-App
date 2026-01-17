@@ -1005,7 +1005,17 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
       
       // 3. Get user's accessible menu (permission filtered)
       const { buildMenuForUser } = await import('./menu-service');
-      const menuResponse = buildMenuForUser({ id: user.id, role: user.role as any }, {});
+      // Fetch dynamic permissions from database for this role (CRITICAL for sync!)
+      const userRole = user.role as UserRoleType;
+      let dynamicPermissions: Array<{ role: string; module: string; actions: string[] }> = [];
+      try {
+        const allPermissions = await storage.getRolePermissions();
+        dynamicPermissions = allPermissions.filter(p => p.role === userRole);
+      } catch (e) {
+        console.error("Error fetching dynamic permissions for dashboard:", e);
+      }
+      
+      const menuResponse = buildMenuForUser({ id: user.id, role: userRole }, {}, dynamicPermissions);
       
       // 4. Collect all accessible paths from menu
       const accessiblePaths: Set<string> = new Set();
