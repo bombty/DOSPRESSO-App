@@ -1002,7 +1002,7 @@ export default function Equipment() {
                     <div className="flex-1">
                       <CardTitle className="flex items-center gap-2">
                         <Settings className="h-4 w-4" />
-                        <Link href={`/ekipman/${item.id}`} data-testid={`link-equipment-${item.id}`}>
+                        <Link href={`/ekipman-detay/${item.id}`} data-testid={`link-equipment-${item.id}`}>
                           <span className="hover-elevate rounded-sm px-1 -mx-1 cursor-pointer">
                             {metadata.nameTr}
                           </span>

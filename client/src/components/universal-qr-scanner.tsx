@@ -134,7 +134,7 @@ export function UniversalQRScanner({ isOpen, onClose }: UniversalQRScannerProps)
         
         setTimeout(() => {
           onClose();
-          setLocation(`/ekipman/${id}`);
+          setLocation(`/ekipman-detay/${id}`);
         }, 1500);
       } else if (type === 'fault' || type === 'ariza') {
         // Fault reporting - redirect to fault creation form with equipment info

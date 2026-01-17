@@ -269,15 +269,15 @@ function Router() {
           <Route path="/gorev-detay/:id" component={GorevDetay} />
           <Route path="/sube-gorevler/:id" component={SubeGorevler} />
           <Route path="/checklistler" component={Checklists} />
-          <Route path="/ekipman/:id" component={EquipmentDetail} />
-          <Route path="/ekipman" component={EkipmanMegaModule} />
+          <Route path="/ekipman-detay/:id" component={EquipmentDetail} />
+          <Route path="/ekipman/:tab?" component={EkipmanMegaModule} />
           <Route path="/ariza" component={FaultHub} />
           <Route path="/ariza-detay/:id" component={FaultDetail} />
           <Route path="/ariza-yeni" component={NewFaultReport} />
           <Route path="/ekipman-analitics" component={EquipmentAnalytics} />
           <Route path="/qr-tara" component={QRScanner} />
           <Route path="/bilgi-bankasi" component={KnowledgeBase} />
-          <Route path="/akademi" component={AkademiMegaModule} />
+          <Route path="/akademi/:rest*" component={AkademiMegaModule} />
           <Route path="/akademi-modul/:id" component={ModuleDetail} />
           <Route path="/akademi-quiz/:quizId" component={AcademyQuiz} />
           <Route path="/akademi-rozet-koleksiyonum" component={BadgeCollection} />
@@ -318,17 +318,11 @@ function Router() {
           <Route path="/ik-raporlari" component={HRReports} />
           <Route path="/kasa-raporlari" component={CashReports} />
           <Route path="/e2e-raporlar" component={E2EReports} />
-          <Route path="/raporlar" component={RaporlarMegaModule} />
+          <Route path="/raporlar/:tab?" component={RaporlarMegaModule} />
           <Route path="/raporlar-hub" component={RaporlarHub} />
           <Route path="/performans" component={Performance} />
           <Route path="/muhasebe" component={Muhasebe} />
-          <Route path="/fabrika" component={FabrikaMegaModule} />
-          <Route path="/fabrika/dashboard" component={FabrikaDashboard} />
-          <Route path="/fabrika/kalite-kontrol" component={FabrikaKaliteKontrol} />
-          <Route path="/fabrika/performans" component={FabrikaPerformans} />
-          <Route path="/fabrika/ai-raporlar" component={FabrikaAIRaporlar} />
-          <Route path="/fabrika/uretim-planlama" component={FabrikaUretimPlanlama} />
-          <Route path="/fabrika/vardiya-uyumluluk" component={FabrikaVardiyaUyumluluk} />
+          <Route path="/fabrika/:tab?" component={FabrikaMegaModule} />
           <Route path="/hq-fabrika-analitik" component={HQFabrikaAnalitik} />
           <Route path="/canli-takip" component={CanliTakip} />
           <Route path="/kalite-denetimi" component={KaliteDenetimi} />
@@ -359,28 +353,10 @@ function Router() {
           <Route path="/kayip-esya" component={KayipEsya} />
           <Route path="/kayip-esya-hq" component={KayipEsyaHQ} />
           <Route path="/destek" component={Destek} />
-          <Route path="/operasyon" component={OperasyonMegaModule} />
-          <Route path="/yeni-sube" component={YeniSubeMegaModule} />
+          <Route path="/operasyon/:tab?" component={OperasyonMegaModule} />
+          <Route path="/yeni-sube/:tab?" component={YeniSubeMegaModule} />
           <Route path="/banner-editor">{() => <AdminOnly><BannerEditor /></AdminOnly>}</Route>
-          <Route path="/admin/yetkilendirme">{() => <AdminOnly><AdminYetkilendirme /></AdminOnly>}</Route>
-          <Route path="/admin/aktivite-loglari">{() => <AdminOnly><AdminAktiviteLoglar /></AdminOnly>}</Route>
-          <Route path="/admin/yedekleme">{() => <AdminOnly><AdminYedekleme /></AdminOnly>}</Route>
-          <Route path="/admin/kullanicilar">{() => <AdminOnly><AdminKullanicilar /></AdminOnly>}</Route>
-          <Route path="/admin/email-ayarlari">{() => <AdminOnly><AdminEmailAyarlari /></AdminOnly>}</Route>
-          <Route path="/admin/servis-mail-ayarlari">{() => <AdminOnly><AdminServisMailAyarlari /></AdminOnly>}</Route>
-          <Route path="/admin/bannerlar">{() => <HQOnly><IcerikStudyosu /></HQOnly>}</Route>
-          <Route path="/admin/banner-editor">{() => <AdminOnly><BannerEditor /></AdminOnly>}</Route>
-          <Route path="/admin/duyurular">{() => <HQOnly><IcerikStudyosu /></HQOnly>}</Route>
-          <Route path="/admin/yapay-zeka-ayarlari">{() => <AdminOnly><AdminYapayZekaAyarlari /></AdminOnly>}</Route>
-          <Route path="/admin/kalite-denetim-sablonlari">{() => <AdminOnly><AdminKaliteDenetimSablonlari /></AdminOnly>}</Route>
-          <Route path="/admin/kalite-denetim-sablonu/:id">{() => <AdminOnly><AdminKaliteDenetimSablonuDuzenle /></AdminOnly>}</Route>
-          <Route path="/admin/toplu-veri-yonetimi">{() => <AdminOnly><AdminTopluVeriYonetimi /></AdminOnly>}</Route>
-          <Route path="/admin/fabrika-istasyonlar">{() => <AdminOnly><AdminFabrikaIstasyonlar /></AdminOnly>}</Route>
-          <Route path="/admin/fabrika-fire-sebepleri">{() => <AdminOnly><AdminFabrikaFireSebepleri /></AdminOnly>}</Route>
-          <Route path="/admin/fabrika-pin-yonetimi">{() => <AdminOnly><AdminFabrikaPinYonetimi /></AdminOnly>}</Route>
-          <Route path="/admin/fabrika-kalite-kriterleri">{() => <AdminOnly><AdminFabrikaKaliteKriterleri /></AdminOnly>}</Route>
-          <Route path="/admin/seed">{() => <AdminOnly><AdminSeed /></AdminOnly>}</Route>
-          <Route path="/admin" component={AdminMegaModule} />
+          <Route path="/admin/:rest*" component={AdminMegaModule} />
         </>
       )}
       

@@ -545,7 +545,7 @@ export default function SubeDetayPage() {
               ) : (
                 <div className="flex flex-col gap-3 sm:gap-4">
                   {equipment.map((equip) => (
-                    <Link key={equip.id} href={`/ekipman/${equip.id}`}>
+                    <Link key={equip.id} href={`/ekipman-detay/${equip.id}`}>
                       <div className="flex items-center justify-between p-3 rounded-lg border hover-elevate active-elevate-2" data-testid={`equipment-${equip.id}`}>
                         <div>
                           <p className="font-medium">{equip.equipmentType}</p>

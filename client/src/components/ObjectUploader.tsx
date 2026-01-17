@@ -15,6 +15,7 @@ interface ObjectUploaderProps {
   onComplete?: (result: { successful: Array<{ uploadURL: string }> }) => void;
   buttonClassName?: string;
   children: ReactNode;
+  testId?: string;
 }
 
 export function ObjectUploader({
@@ -24,6 +25,7 @@ export function ObjectUploader({
   onComplete,
   buttonClassName,
   children,
+  testId = "upload",
 }: ObjectUploaderProps) {
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -114,7 +116,7 @@ export function ObjectUploader({
         accept="image/*"
         onChange={handleFileSelect}
         className="hidden"
-        data-testid="input-file-upload"
+        data-testid={`input-file-${testId}`}
         onClick={(e) => e.stopPropagation()}
       />
       <Button
@@ -122,7 +124,7 @@ export function ObjectUploader({
         onClick={() => fileInputRef.current?.click()}
         className={buttonClassName}
         disabled={isUploading}
-        data-testid="button-upload-file"
+        data-testid={`button-upload-${testId}`}
       >
         {isUploading ? "Yükleniyor..." : children}
       </Button>

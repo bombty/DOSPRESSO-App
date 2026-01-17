@@ -11,7 +11,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { Loader2, Save, Mail } from "lucide-react";
+import { Loader2, Save, Mail, Upload, Image } from "lucide-react";
+import { ObjectUploader } from "@/components/ObjectUploader";
 
 type SiteSetting = {
   id: number;
@@ -526,15 +527,41 @@ export default function Settings() {
             <CardContent>
               <form onSubmit={handleSaveBranding} className="w-full space-y-2 sm:space-y-3">
                 <div className="flex flex-col gap-3 sm:gap-4">
-                  <Label htmlFor="logo_url">Logo URL</Label>
-                  <Input
-                    id="logo_url"
-                    type="url"
-                    value={brandingSettings.logo_url}
-                    onChange={(e) => setBrandingSettings({ ...brandingSettings, logo_url: e.target.value })}
-                    placeholder="https://example.com/logo.png"
-                    data-testid="input-logo-url"
-                  />
+                  <Label htmlFor="logo_url">Logo</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      id="logo_url"
+                      type="url"
+                      value={brandingSettings.logo_url}
+                      onChange={(e) => setBrandingSettings({ ...brandingSettings, logo_url: e.target.value })}
+                      placeholder="URL girin veya dosya yükleyin"
+                      data-testid="input-logo-url"
+                      className="flex-1"
+                    />
+                    <ObjectUploader
+                      testId="logo"
+                      onGetUploadParameters={async () => {
+                        const res = await fetch("/api/objects/upload", {
+                          method: "POST",
+                          credentials: "include",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ folder: "public/branding", filename: `logo-${Date.now()}.jpg` }),
+                        });
+                        if (!res.ok) throw new Error("Upload URL alınamadı");
+                        const data = await res.json();
+                        return { method: "PUT" as const, url: data.url };
+                      }}
+                      onComplete={(result) => {
+                        if (result.successful?.[0]?.uploadURL) {
+                          setBrandingSettings({ ...brandingSettings, logo_url: result.successful[0].uploadURL });
+                        }
+                      }}
+                      maxWidthOrHeight={400}
+                    >
+                      <Upload className="h-4 w-4 mr-1" />
+                      Yükle
+                    </ObjectUploader>
+                  </div>
                   {brandingSettings.logo_url && (
                     <img
                       src={brandingSettings.logo_url}
@@ -546,15 +573,41 @@ export default function Settings() {
                 </div>
 
                 <div className="flex flex-col gap-3 sm:gap-4">
-                  <Label htmlFor="favicon_url">Favicon URL</Label>
-                  <Input
-                    id="favicon_url"
-                    type="url"
-                    value={brandingSettings.favicon_url}
-                    onChange={(e) => setBrandingSettings({ ...brandingSettings, favicon_url: e.target.value })}
-                    placeholder="https://example.com/favicon.ico"
-                    data-testid="input-favicon-url"
-                  />
+                  <Label htmlFor="favicon_url">Favicon</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      id="favicon_url"
+                      type="url"
+                      value={brandingSettings.favicon_url}
+                      onChange={(e) => setBrandingSettings({ ...brandingSettings, favicon_url: e.target.value })}
+                      placeholder="URL girin veya dosya yükleyin"
+                      data-testid="input-favicon-url"
+                      className="flex-1"
+                    />
+                    <ObjectUploader
+                      testId="favicon"
+                      onGetUploadParameters={async () => {
+                        const res = await fetch("/api/objects/upload", {
+                          method: "POST",
+                          credentials: "include",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ folder: "public/branding", filename: `favicon-${Date.now()}.jpg` }),
+                        });
+                        if (!res.ok) throw new Error("Upload URL alınamadı");
+                        const data = await res.json();
+                        return { method: "PUT" as const, url: data.url };
+                      }}
+                      onComplete={(result) => {
+                        if (result.successful?.[0]?.uploadURL) {
+                          setBrandingSettings({ ...brandingSettings, favicon_url: result.successful[0].uploadURL });
+                        }
+                      }}
+                      maxWidthOrHeight={64}
+                    >
+                      <Upload className="h-4 w-4 mr-1" />
+                      Yükle
+                    </ObjectUploader>
+                  </div>
                   {brandingSettings.favicon_url && (
                     <img
                       src={brandingSettings.favicon_url}
@@ -566,15 +619,41 @@ export default function Settings() {
                 </div>
 
                 <div className="flex flex-col gap-3 sm:gap-4">
-                  <Label htmlFor="banner_url">Ana Sayfa Banner URL</Label>
-                  <Input
-                    id="banner_url"
-                    type="url"
-                    value={brandingSettings.banner_url}
-                    onChange={(e) => setBrandingSettings({ ...brandingSettings, banner_url: e.target.value })}
-                    placeholder="https://example.com/banner.jpg"
-                    data-testid="input-banner-url"
-                  />
+                  <Label htmlFor="banner_url">Ana Sayfa Banner</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      id="banner_url"
+                      type="url"
+                      value={brandingSettings.banner_url}
+                      onChange={(e) => setBrandingSettings({ ...brandingSettings, banner_url: e.target.value })}
+                      placeholder="URL girin veya dosya yükleyin"
+                      data-testid="input-banner-url"
+                      className="flex-1"
+                    />
+                    <ObjectUploader
+                      testId="banner"
+                      onGetUploadParameters={async () => {
+                        const res = await fetch("/api/objects/upload", {
+                          method: "POST",
+                          credentials: "include",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ folder: "public/branding", filename: `banner-${Date.now()}.jpg` }),
+                        });
+                        if (!res.ok) throw new Error("Upload URL alınamadı");
+                        const data = await res.json();
+                        return { method: "PUT" as const, url: data.url };
+                      }}
+                      onComplete={(result) => {
+                        if (result.successful?.[0]?.uploadURL) {
+                          setBrandingSettings({ ...brandingSettings, banner_url: result.successful[0].uploadURL });
+                        }
+                      }}
+                      maxWidthOrHeight={1920}
+                    >
+                      <Upload className="h-4 w-4 mr-1" />
+                      Yükle
+                    </ObjectUploader>
+                  </div>
                   {brandingSettings.banner_url && (
                     <img
                       src={brandingSettings.banner_url}
