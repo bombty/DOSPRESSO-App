@@ -142,6 +142,8 @@ export default function CRMMegaModule() {
   const userIsHQ = user ? isHQRole(user.role) : false;
 
   const allowedTabs = CRM_TABS.filter(tab => {
+    // Admin ve HQ roller için CRM'e tam erişim ver (izin modülleri henüz eklenmemiş)
+    if (user && isHQRole(user.role)) return true;
     if (!tab.permissionModule) return true;
     if (!user) return false;
     return hasPermission(user.role as any, tab.permissionModule as any, 'view');

@@ -522,11 +522,11 @@ export function registerCRMRoutes(app: Express, isAuthenticated: any) {
         .where(eq(shiftAttendance.userId, userId));
       
       const recentAttendance = allAttendance.filter(a => 
-        a.date && new Date(a.date) >= oneMonthAgo
+        a.checkInTime && new Date(a.checkInTime) >= oneMonthAgo
       );
       
-      const lateArrivals = recentAttendance.filter(a => a.isLate).length;
-      const earlyDepartures = recentAttendance.filter(a => a.leftEarly).length;
+      const lateArrivals = recentAttendance.filter(a => (a.latenessMinutes || 0) > 0).length;
+      const earlyDepartures = recentAttendance.filter(a => (a.earlyLeaveMinutes || 0) > 0).length;
       const totalShifts = recentAttendance.length;
       const onTimeRate = totalShifts > 0 
         ? Math.round(((totalShifts - lateArrivals) / totalShifts) * 100) 
@@ -559,7 +559,7 @@ export function registerCRMRoutes(app: Express, isAuthenticated: any) {
         .where(eq(userTrainingProgress.userId, userId));
       
       const completedModules = trainingProgress.filter(p => p.completedAt).length;
-      const inProgressModules = trainingProgress.filter(p => !p.completedAt && (p.videoProgress || 0) > 0).length;
+      const inProgressModules = trainingProgress.filter(p => !p.completedAt && (p.progressPercentage || 0) > 0).length;
       const totalModules = trainingProgress.length;
       
       // Quiz attempts
@@ -573,7 +573,7 @@ export function registerCRMRoutes(app: Express, isAuthenticated: any) {
       // 4. Görev İstatistikleri
       const userTasks = await db.select()
         .from(tasks)
-        .where(eq(tasks.assignedTo, userId));
+        .where(eq(tasks.assignedToId, userId));
       
       const recentTasks = userTasks.filter(t => 
         t.createdAt && new Date(t.createdAt) >= threeMonthsAgo
