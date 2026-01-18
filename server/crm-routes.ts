@@ -1,6 +1,17 @@
 import { Express } from "express";
 import { db } from "./db";
-import { equipmentFaults, users, branches, employeeSatisfactionScores, customerFeedback } from "@shared/schema";
+import { 
+  equipmentFaults, 
+  users, 
+  branches, 
+  employeeSatisfactionScores, 
+  customerFeedback,
+  shiftAttendance,
+  leaveRequests,
+  userTrainingProgress,
+  userQuizAttempts,
+  tasks
+} from "@shared/schema";
 import { eq, and, gte, desc } from "drizzle-orm";
 
 export function registerCRMRoutes(app: Express, isAuthenticated: any) {
@@ -493,6 +504,146 @@ export function registerCRMRoutes(app: Express, isAuthenticated: any) {
     } catch (error: any) {
       console.error("Error fetching CRM feedback:", error);
       res.status(500).json({ message: "Geri bildirim verileri yüklenemedi" });
+    }
+  });
+
+  // GET /api/crm/my-stats - Çalışanın kişisel istatistikleri (şube/fabrika personeli için)
+  app.get('/api/crm/my-stats', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const userId = user.id;
+      const now = new Date();
+      const oneMonthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+      const threeMonthsAgo = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+
+      // 1. Vardiya/Devam İstatistikleri
+      const allAttendance = await db.select()
+        .from(shiftAttendance)
+        .where(eq(shiftAttendance.userId, userId));
+      
+      const recentAttendance = allAttendance.filter(a => 
+        a.date && new Date(a.date) >= oneMonthAgo
+      );
+      
+      const lateArrivals = recentAttendance.filter(a => a.isLate).length;
+      const earlyDepartures = recentAttendance.filter(a => a.leftEarly).length;
+      const totalShifts = recentAttendance.length;
+      const onTimeRate = totalShifts > 0 
+        ? Math.round(((totalShifts - lateArrivals) / totalShifts) * 100) 
+        : 100;
+
+      // 2. İzin Durumu
+      const userLeaves = await db.select()
+        .from(leaveRequests)
+        .where(eq(leaveRequests.userId, userId));
+      
+      const currentYear = now.getFullYear();
+      const thisYearLeaves = userLeaves.filter(l => {
+        const start = l.startDate ? new Date(l.startDate) : null;
+        return start && start.getFullYear() === currentYear;
+      });
+      
+      const approvedLeaves = thisYearLeaves.filter(l => l.status === 'onaylandı' || l.status === 'approved');
+      const pendingLeaves = thisYearLeaves.filter(l => l.status === 'beklemede' || l.status === 'pending');
+      const totalLeaveDays = approvedLeaves.reduce((sum, l) => {
+        const start = l.startDate ? new Date(l.startDate) : new Date();
+        const end = l.endDate ? new Date(l.endDate) : new Date();
+        const days = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+        return sum + days;
+      }, 0);
+      const remainingLeave = Math.max(0, 14 - totalLeaveDays); // Varsayılan yıllık izin: 14 gün
+
+      // 3. Eğitim İlerlemesi
+      const trainingProgress = await db.select()
+        .from(userTrainingProgress)
+        .where(eq(userTrainingProgress.userId, userId));
+      
+      const completedModules = trainingProgress.filter(p => p.completedAt).length;
+      const inProgressModules = trainingProgress.filter(p => !p.completedAt && (p.videoProgress || 0) > 0).length;
+      const totalModules = trainingProgress.length;
+      
+      // Quiz attempts
+      const quizAttempts = await db.select()
+        .from(userQuizAttempts)
+        .where(eq(userQuizAttempts.userId, userId));
+      
+      const passedQuizzes = quizAttempts.filter(a => a.passed).length;
+      const totalQuizAttempts = quizAttempts.length;
+
+      // 4. Görev İstatistikleri
+      const userTasks = await db.select()
+        .from(tasks)
+        .where(eq(tasks.assignedTo, userId));
+      
+      const recentTasks = userTasks.filter(t => 
+        t.createdAt && new Date(t.createdAt) >= threeMonthsAgo
+      );
+      
+      const completedTasks = recentTasks.filter(t => t.status === 'tamamlandı' || t.status === 'completed').length;
+      const pendingTasks = recentTasks.filter(t => t.status === 'beklemede' || t.status === 'pending').length;
+      const inProgressTasks = recentTasks.filter(t => t.status === 'devam_ediyor' || t.status === 'in_progress').length;
+      const taskCompletionRate = recentTasks.length > 0 
+        ? Math.round((completedTasks / recentTasks.length) * 100) 
+        : 100;
+
+      // 5. Performans Skoru
+      const satisfactionScore = await db.select()
+        .from(employeeSatisfactionScores)
+        .where(eq(employeeSatisfactionScores.userId, userId))
+        .limit(1);
+      
+      const performanceScore = satisfactionScore[0]?.compositeScore || 0;
+      const taskRating = satisfactionScore[0]?.taskSatisfactionAvg || 0;
+
+      // 6. Şube bilgisi
+      let branchName = 'Bilinmiyor';
+      if (user.branchId) {
+        const branch = await db.select()
+          .from(branches)
+          .where(eq(branches.id, user.branchId))
+          .limit(1);
+        branchName = branch[0]?.name || 'Bilinmiyor';
+      }
+
+      res.json({
+        user: {
+          name: user.name || user.username,
+          role: user.role,
+          branchName
+        },
+        attendance: {
+          totalShifts,
+          lateArrivals,
+          earlyDepartures,
+          onTimeRate
+        },
+        leave: {
+          usedDays: totalLeaveDays,
+          remainingDays: remainingLeave,
+          pendingRequests: pendingLeaves.length,
+          approvedThisYear: approvedLeaves.length
+        },
+        training: {
+          completedModules,
+          inProgressModules,
+          totalModules,
+          passedQuizzes,
+          totalQuizAttempts
+        },
+        tasks: {
+          completed: completedTasks,
+          pending: pendingTasks,
+          inProgress: inProgressTasks,
+          completionRate: taskCompletionRate
+        },
+        performance: {
+          compositeScore: performanceScore,
+          taskRating: taskRating
+        }
+      });
+    } catch (error: any) {
+      console.error("Error fetching personal CRM stats:", error);
+      res.status(500).json({ message: "Kişisel istatistikler yüklenemedi" });
     }
   });
 }
