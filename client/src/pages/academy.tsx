@@ -295,8 +295,8 @@ export default function Academy() {
                     <div className="flex-1 min-w-0">
                       <h2 className="font-bold text-sm">DOSPRESSO Akademi</h2>
                       <div className="flex items-center gap-3 mt-1">
-                        <div className="flex items-center gap-1 text-xs">
-                          <Trophy className="w-3 h-3 text-warning" />
+                        <div className="flex items-center gap-1 text-xs" data-testid="text-badge-count">
+                          <Trophy className="w-3 h-3 text-orange-500" />
                           <span>{userBadges.length} Rozet</span>
                         </div>
                         <div className="flex items-center gap-1 text-xs">
@@ -313,6 +313,100 @@ export default function Academy() {
                 </CardContent>
               </Card>
             )}
+
+            {/* Nereden Başlamalıyım? - Akıllı Rehber */}
+            <Card className="border-2 border-dashed border-primary/30 bg-gradient-to-br from-primary/5 via-transparent to-blue-500/5">
+              <CardContent className="p-4">
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
+                    <Lightbulb className="w-5 h-5 text-primary" />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="font-bold text-sm mb-1" data-testid="text-getting-started-title">Nereden Başlamalıyım?</h3>
+                    <p className="text-xs text-muted-foreground mb-3">
+                      {!currentLevel || currentLevel.levelNumber === 1 
+                        ? "Kariyer yolculuğuna başlamak için önerilen adımlar:"
+                        : `${currentLevel.titleTr} seviyesi için önerilen sonraki adımlar:`
+                      }
+                    </p>
+                    <div className="space-y-2">
+                      {/* Adım 1 */}
+                      <div className="flex items-center gap-2 p-2 bg-background/80 rounded-lg border" data-testid="step-1-container">
+                        <div className="w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-bold flex-shrink-0">
+                          1
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <span className="text-xs font-medium" data-testid="text-step-1-description">
+                            {!currentLevel || currentLevel.levelNumber <= 2 
+                              ? "Temel Barista Eğitimlerini Tamamla"
+                              : currentLevel.levelNumber === 3 
+                              ? "İleri Seviye Reçeteleri Öğren"
+                              : "Ekip Yönetimi Modüllerini Bitir"
+                            }
+                          </span>
+                        </div>
+                        <Button 
+                          size="sm" 
+                          variant="ghost" 
+                          onClick={() => setActiveView("modules")}
+                          data-testid="button-start-step-1"
+                        >
+                          Başla
+                        </Button>
+                      </div>
+                      {/* Adım 2 */}
+                      <div className="flex items-center gap-2 p-2 bg-background/80 rounded-lg border" data-testid="step-2-container">
+                        <div className="w-6 h-6 rounded-full bg-muted text-muted-foreground flex items-center justify-center text-xs font-bold flex-shrink-0">
+                          2
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <span className="text-xs font-medium" data-testid="text-step-2-description">
+                            {!currentLevel || currentLevel.levelNumber <= 2 
+                              ? "Reçete Akademisinden 10 Reçete Öğren"
+                              : currentLevel.levelNumber === 3 
+                              ? "Signature İçecekleri Ustalaş"
+                              : "Kalite Denetim Sertifikası Al"
+                            }
+                          </span>
+                        </div>
+                        <Button 
+                          size="sm" 
+                          variant="ghost" 
+                          onClick={() => setActiveView("recipes")}
+                          data-testid="button-start-step-2"
+                        >
+                          Başla
+                        </Button>
+                      </div>
+                      {/* Adım 3 */}
+                      <div className="flex items-center gap-2 p-2 bg-background/80 rounded-lg border" data-testid="step-3-container">
+                        <div className="w-6 h-6 rounded-full bg-muted text-muted-foreground flex items-center justify-center text-xs font-bold flex-shrink-0">
+                          3
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <span className="text-xs font-medium" data-testid="text-step-3-description">
+                            {!currentLevel || currentLevel.levelNumber <= 2 
+                              ? "Günlük Pratik Quizlerini Çöz"
+                              : currentLevel.levelNumber === 3 
+                              ? "Seviye Atlama Sınavına Gir"
+                              : "Supervisor Sertifikasyonunu Tamamla"
+                            }
+                          </span>
+                        </div>
+                        <Button 
+                          size="sm" 
+                          variant="ghost" 
+                          onClick={() => setActiveView("practice")}
+                          data-testid="button-start-step-3"
+                        >
+                          Başla
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
 
             {/* Hub Categories Grid */}
             <div className="grid grid-cols-1 gap-2">
@@ -352,8 +446,8 @@ export default function Academy() {
             {dailyMissions.length > 0 && (
               <Card>
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-sm flex items-center gap-2">
-                    <Zap className="w-4 h-4 text-warning" />
+                  <CardTitle className="text-sm flex items-center gap-2" data-testid="text-daily-missions-title">
+                    <Zap className="w-4 h-4 text-yellow-500" />
                     Günlük Görevler
                   </CardTitle>
                 </CardHeader>
@@ -448,7 +542,7 @@ export default function Academy() {
           </>
         )}
 
-        {/* Career Journey View */}
+        {/* Career Journey View - Enhanced Visual Timeline */}
         {activeView === "career" && (
           <>
             <BackButton />
@@ -476,36 +570,101 @@ export default function Academy() {
                 )}
               </CardContent>
             </Card>
-            
-            {/* Career Levels */}
-            <div className="space-y-2">
-              {CAREER_LEVELS.map((level, idx) => {
-                const isCompleted = currentLevel && level.levelNumber < currentLevel.levelNumber;
-                const isCurrent = currentLevel?.levelNumber === level.levelNumber;
-                return (
-                  <Card 
-                    key={level.id} 
-                    className={`${isCurrent ? 'border-primary' : ''} ${isCompleted ? 'bg-muted/50' : ''}`}
-                  >
-                    <CardContent className="p-3 flex items-center gap-3">
-                      <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
-                        isCompleted ? 'bg-green-500 text-white' : 
-                        isCurrent ? 'bg-primary text-primary-foreground' : 
-                        'bg-muted text-muted-foreground'
-                      }`}>
-                        {isCompleted ? <CheckCircle className="w-4 h-4" /> : level.levelNumber}
-                      </div>
-                      <div className="flex-1">
-                        <h3 className={`font-medium text-sm ${isCompleted ? 'text-muted-foreground' : ''}`}>
-                          {level.titleTr}
-                        </h3>
-                      </div>
-                      {isCurrent && <Badge>Şu An</Badge>}
-                      {isCompleted && <Badge variant="secondary">Tamamlandı</Badge>}
-                    </CardContent>
-                  </Card>
-                );
-              })}
+
+            {/* Visual Career Timeline */}
+            <div className="space-y-3" data-testid="career-timeline-container">
+              <div className="flex items-center gap-2">
+                <TrendingUp className="w-4 h-4 text-primary" />
+                <div>
+                  <h3 className="text-sm font-semibold" data-testid="text-career-path-title">Kariyer Yolu Haritası</h3>
+                  <p className="text-xs text-muted-foreground" data-testid="text-career-path-description">Her seviyede yeni yetenekler ve sorumluluklar kazanırsın</p>
+                </div>
+              </div>
+              <div className="relative">
+                  {/* Timeline Line */}
+                  <div className="absolute left-4 top-4 bottom-4 w-0.5 bg-gradient-to-b from-green-500 via-primary to-muted"></div>
+                  
+                  {/* Career Levels with Details */}
+                  <div className="space-y-4">
+                    {CAREER_LEVELS.map((level, idx) => {
+                      const isCompleted = currentLevel && level.levelNumber < currentLevel.levelNumber;
+                      const isCurrent = currentLevel?.levelNumber === level.levelNumber;
+                      const isLocked = !isCompleted && !isCurrent;
+                      
+                      const levelRequirements: Record<number, string[]> = {
+                        1: ["Oryantasyon eğitimi", "Temel hijyen kuralları"],
+                        2: ["5 temel reçete", "Müşteri hizmetleri eğitimi"],
+                        3: ["20+ reçete ustası", "Makine bakımı sertifikası", "Kalite standartları"],
+                        4: ["Tüm reçeteler", "Vardiya planlama eğitimi", "Ekip yönetimi temelleri"],
+                        5: ["Yönetim sertifikası", "Finansal okur-yazarlık", "Eğitmen yetkisi"]
+                      };
+                      
+                      const levelRewards: Record<number, string> = {
+                        1: "Temel Bar Buddy Rozeti",
+                        2: "Barista Sertifikası",
+                        3: "Uzman Barista Rozeti",
+                        4: "Supervisor Adayı Rozeti",
+                        5: "Altın Supervisor Rozeti"
+                      };
+                      
+                      return (
+                        <div key={level.id} className="relative pl-10" data-testid={`career-level-${level.levelNumber}`}>
+                          {/* Timeline Node */}
+                          <div 
+                            className={`absolute left-0 w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold border-2 ${
+                              isCompleted ? 'bg-green-500 border-green-500 text-white' : 
+                              isCurrent ? 'bg-primary border-primary text-primary-foreground animate-pulse' : 
+                              'bg-background border-muted text-muted-foreground'
+                            }`}
+                            data-testid={`timeline-node-${level.levelNumber}`}
+                          >
+                            {isCompleted ? <CheckCircle className="w-4 h-4" /> : level.levelNumber}
+                          </div>
+                          
+                          {/* Level Card */}
+                          <Card className={`${isCurrent ? 'border-primary border-2 shadow-md' : isLocked ? 'opacity-60' : ''}`} data-testid={`card-level-${level.levelNumber}`}>
+                            <CardContent className="p-3">
+                              <div className="flex items-center justify-between mb-2">
+                                <div className="flex items-center gap-2">
+                                  <h3 className={`font-semibold text-sm ${isCompleted ? 'text-muted-foreground' : ''}`} data-testid={`text-level-title-${level.levelNumber}`}>
+                                    {level.titleTr}
+                                  </h3>
+                                  {isCurrent && <Badge className="text-xs" data-testid={`badge-current-${level.levelNumber}`}>Şu An</Badge>}
+                                  {isCompleted && <Badge variant="secondary" className="text-xs" data-testid={`badge-completed-${level.levelNumber}`}>Tamamlandı</Badge>}
+                                  {isLocked && <Badge variant="outline" className="text-xs" data-testid={`badge-locked-${level.levelNumber}`}>Kilitli</Badge>}
+                                </div>
+                              </div>
+                              
+                              {/* Requirements */}
+                              <div className="mb-2" data-testid={`requirements-level-${level.levelNumber}`}>
+                                <span className="text-xs font-medium text-muted-foreground">Gereksinimler:</span>
+                                <div className="flex flex-wrap gap-1 mt-1">
+                                  {levelRequirements[level.levelNumber]?.map((req, i) => (
+                                    <Badge 
+                                      key={i} 
+                                      variant="outline" 
+                                      className={`text-xs ${isCompleted ? 'line-through opacity-50' : ''}`}
+                                      data-testid={`badge-requirement-${level.levelNumber}-${i}`}
+                                    >
+                                      {isCompleted && <CheckCircle className="w-2 h-2 mr-1" />}
+                                      {req}
+                                    </Badge>
+                                  ))}
+                                </div>
+                              </div>
+                              
+                              {/* Reward */}
+                              <div className="flex items-center gap-2 p-2 bg-orange-100 dark:bg-orange-900/20 rounded-lg" data-testid={`reward-level-${level.levelNumber}`}>
+                                <Award className="w-4 h-4 text-orange-600 dark:text-orange-400" />
+                                <span className="text-xs font-medium" data-testid={`text-reward-${level.levelNumber}`}>{levelRewards[level.levelNumber]}</span>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
             </div>
           </>
         )}
@@ -617,16 +776,16 @@ export default function Academy() {
             </Card>
 
             {/* Daily Missions */}
-            <Card>
+            <Card data-testid="card-daily-missions-full">
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm flex items-center gap-2">
-                  <Zap className="w-4 h-4 text-warning" />
+                <CardTitle className="text-sm flex items-center gap-2" data-testid="text-daily-missions-full-title">
+                  <Zap className="w-4 h-4 text-yellow-500" />
                   Günlük Görevler
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-2">
                 {dailyMissions.map((mission: any) => (
-                  <div key={mission.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                  <div key={mission.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg" data-testid={`mission-${mission.id}`}>
                     <div className="flex items-center gap-2">
                       <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
                         <CheckCircle className="w-4 h-4 text-primary" />
@@ -636,7 +795,7 @@ export default function Academy() {
                         <p className="text-xs text-muted-foreground">{mission.description_tr}</p>
                       </div>
                     </div>
-                    <Badge className="bg-warning/20 text-warning">+{mission.xp_reward} XP</Badge>
+                    <Badge className="bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400" data-testid={`text-xp-${mission.id}`}>+{mission.xp_reward} XP</Badge>
                   </div>
                 ))}
                 {dailyMissions.length === 0 && (

@@ -31,7 +31,7 @@ The frontend utilizes React 18+ with TypeScript and Vite, employing Shadcn/ui (N
 - **AI Integration**: AI photo verification for tasks, RAG-enabled knowledge base search, AI Academy Chat Assistant, Adaptive Learning Engine, and AI-powered smart recommendations.
 - **HR & Shift Management**: Personnel management, leave requests, overtime, attendance, AI-powered fair shift planning, and comprehensive leave/public holiday management.
 - **Enhanced Analytics Dashboard**: Tabbed interface showing daily/weekly/monthly metrics with AI-generated summaries.
-- **DOSPRESSO Academy (LMS)**: Comprehensive training system including career progression, quiz system, gamification, certification, AI learning paths, and advanced analytics.
+- **DOSPRESSO Academy (LMS)**: Comprehensive training system including career progression, quiz system, gamification, certification, AI learning paths, and advanced analytics. Features "Nereden Başlamalıyım?" smart onboarding guide, visual career timeline with requirements/rewards, and personalized next-step recommendations.
 - **Checklist Management System**: Time-windowed tasks with HQ/Supervisor editable time slots, photo validation, manager notifications, performance weighting, and daily reminders. Supports scope-based assignment (user/branch/role).
 - **AI Checklist Verification**: AI-powered photo verification system for checklist tasks with reference photo upload, tolerance slider, multiple AI verification types, similarity scoring, and temporary photo retention.
 - **Recipe Management System**: Supports 14 categories and 55+ recipes with two cup sizes, separate measurements/steps, and automatic version tracking.

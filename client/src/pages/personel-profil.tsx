@@ -701,10 +701,74 @@ export default function PersonelProfilPage() {
         )}
 
         <TabsContent value="akademi" className="flex flex-col gap-3">
+          {/* İlerleme Özeti */}
+          <Card className="bg-gradient-to-r from-primary/10 to-blue-500/5 border-primary/20" data-testid="card-academy-progress-summary">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-4">
+                <div className="w-16 h-16 rounded-full bg-primary/20 flex items-center justify-center">
+                  <Award className="w-8 h-8 text-primary" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="font-bold text-lg">Akademi İlerleme Özeti</h3>
+                  <div className="grid grid-cols-2 gap-3 mt-2">
+                    <div className="text-center p-2 bg-background/60 rounded-lg">
+                      <div className="text-xl font-bold text-primary" data-testid="text-performance-score">
+                        {profile?.performanceScore !== null && profile?.performanceScore !== undefined 
+                          ? `${profile.performanceScore}%` 
+                          : <span className="text-muted-foreground text-sm">Hesaplanıyor...</span>
+                        }
+                      </div>
+                      <div className="text-xs text-muted-foreground">Performans</div>
+                    </div>
+                    <div className="text-center p-2 bg-background/60 rounded-lg">
+                      <div className="text-xl font-bold text-green-600" data-testid="text-attendance-rate">
+                        {profile?.attendanceRate !== null && profile?.attendanceRate !== undefined 
+                          ? `${profile.attendanceRate}%` 
+                          : <span className="text-muted-foreground text-sm">Hesaplanıyor...</span>
+                        }
+                      </div>
+                      <div className="text-xs text-muted-foreground">Devam</div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 mt-3 flex-wrap">
+                    <Link href="/akademi-badges">
+                      <Badge variant="secondary" className="cursor-pointer hover-elevate" data-testid="link-badges-quick">Rozetler</Badge>
+                    </Link>
+                    <Link href="/akademi-streak-tracker">
+                      <Badge variant="secondary" className="cursor-pointer hover-elevate" data-testid="link-streak-quick">Seri Takip</Badge>
+                    </Link>
+                    <Link href="/akademi-achievements">
+                      <Badge variant="secondary" className="cursor-pointer hover-elevate" data-testid="link-achievements-quick">Başarılar</Badge>
+                    </Link>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Önerilen Sonraki Adım */}
+          <Card className="border-dashed border-2 border-orange-300/30 bg-orange-50/5 dark:bg-orange-900/5" data-testid="card-recommended-next-step">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center">
+                  <TrendingUp className="w-5 h-5 text-orange-600 dark:text-orange-400" />
+                </div>
+                <div className="flex-1">
+                  <h4 className="font-semibold text-sm" data-testid="text-recommended-title">Önerilen Sonraki Adım</h4>
+                  <p className="text-xs text-muted-foreground mt-0.5" data-testid="text-recommended-description">Kariyer yolculuğuna devam etmek için Akademi sayfasını ziyaret edin</p>
+                </div>
+                <Link href="/akademi">
+                  <Button size="sm" data-testid="button-go-akademi">Başla</Button>
+                </Link>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Akademi Modülleri */}
           <Card>
             <CardHeader>
-              <CardTitle>Akademi Modülleri</CardTitle>
-              <CardDescription>Akademi eğitim ve gelişim programlarına erişim</CardDescription>
+              <CardTitle>Hızlı Erişim</CardTitle>
+              <CardDescription>Akademi bölümlerine hızlı erişim</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3">
