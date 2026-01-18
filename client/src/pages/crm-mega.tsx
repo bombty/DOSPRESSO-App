@@ -8,12 +8,9 @@ import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import {
   LayoutDashboard,
   Ticket,
-  Users,
   Clock,
   Star,
-  TrendingUp,
-  AlertCircle,
-  CheckCircle
+  TrendingUp
 } from "lucide-react";
 
 const CRMDashboard = lazy(() => import("./crm/dashboard"));
@@ -21,6 +18,31 @@ const CRMTickets = lazy(() => import("./crm/tickets"));
 const CRMPerformance = lazy(() => import("./crm/performance"));
 const CRMSLA = lazy(() => import("./crm/sla"));
 const CRMFeedback = lazy(() => import("./crm/feedback"));
+const EmployeeDashboard = lazy(() => import("./crm/employee-dashboard"));
+
+const HQ_ROLES = [
+  'admin', 
+  'muhasebe', 
+  'satinalma', 
+  'coach', 
+  'teknik', 
+  'destek', 
+  'fabrika', 
+  'yatirimci_hq',
+  'yonetici', 
+  'genel_mudur', 
+  'bolge_muduru', 
+  'operasyon_muduru',
+  'teknik_mudur',
+  'egitim_muduru',
+  'ik_muduru',
+  'pazarlama_muduru',
+  'muhasebe_muduru'
+];
+
+function isHQRole(role: string): boolean {
+  return HQ_ROLES.includes(role);
+}
 
 interface TabConfig {
   id: string;
@@ -117,6 +139,8 @@ export default function CRMMegaModule() {
   const [location, setLocation] = useLocation();
   const [activeTab, setActiveTab] = useState<string>("dashboard");
 
+  const userIsHQ = user ? isHQRole(user.role) : false;
+
   const allowedTabs = CRM_TABS.filter(tab => {
     if (!tab.permissionModule) return true;
     if (!user) return false;
@@ -124,9 +148,10 @@ export default function CRMMegaModule() {
   });
 
   useEffect(() => {
+    if (!userIsHQ) return;
+    
     const tabFromUrl = getTabFromUrl(location);
     
-    // If URL points to an unauthorized tab, redirect to first allowed tab
     if (tabFromUrl && !allowedTabs.some(t => t.id === tabFromUrl)) {
       if (allowedTabs.length > 0) {
         const firstAllowed = allowedTabs[0];
@@ -137,11 +162,9 @@ export default function CRMMegaModule() {
       return;
     }
     
-    // URL matches an allowed tab, sync state
     if (tabFromUrl && allowedTabs.some(t => t.id === tabFromUrl)) {
       setActiveTab(tabFromUrl);
     } else if (allowedTabs.length > 0 && !allowedTabs.some(t => t.id === activeTab)) {
-      // No tab in URL, set to first allowed
       const firstAllowed = allowedTabs[0];
       setActiveTab(firstAllowed.id);
       const newUrl = TAB_URL_MAP[firstAllowed.id] || `/crm/${firstAllowed.id}`;
@@ -149,7 +172,7 @@ export default function CRMMegaModule() {
         setLocation(newUrl);
       }
     }
-  }, [location, allowedTabs]);
+  }, [location, allowedTabs, userIsHQ]);
 
   const handleTabChange = (tabId: string) => {
     setActiveTab(tabId);
@@ -159,15 +182,34 @@ export default function CRMMegaModule() {
     }
   };
 
-  // Redirect unauthorized users to dashboard hub
   useEffect(() => {
-    if (allowedTabs.length === 0 && user) {
+    if (userIsHQ && allowedTabs.length === 0 && user) {
       setLocation("/");
     }
-  }, [allowedTabs.length, user]);
+  }, [allowedTabs.length, user, userIsHQ]);
+
+  if (!user) {
+    return null;
+  }
+
+  if (!userIsHQ) {
+    return (
+      <div className="flex flex-col h-full">
+        <div className="px-4 pt-3 pb-2 border-b">
+          <h1 className="text-xl font-semibold" data-testid="text-crm-title">Kişisel Dashboard</h1>
+          <p className="text-sm text-muted-foreground">İstatistikleriniz ve performansınız</p>
+        </div>
+        <div className="flex-1 overflow-auto">
+          <Suspense fallback={<TabSkeleton />}>
+            <EmployeeDashboard />
+          </Suspense>
+        </div>
+      </div>
+    );
+  }
 
   if (allowedTabs.length === 0) {
-    return null; // Will redirect
+    return null;
   }
 
   return (
