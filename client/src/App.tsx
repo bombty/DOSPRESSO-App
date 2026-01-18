@@ -277,7 +277,7 @@ function Router() {
           <Route path="/ekipman-analitics" component={EquipmentAnalytics} />
           <Route path="/qr-tara" component={QRScanner} />
           <Route path="/bilgi-bankasi" component={KnowledgeBase} />
-          <Route path="/akademi/:rest*" component={AkademiMegaModule} />
+          <Route path="/akademi/*?" component={AkademiMegaModule} />
           <Route path="/akademi-modul/:id" component={ModuleDetail} />
           <Route path="/akademi-quiz/:quizId" component={AcademyQuiz} />
           <Route path="/akademi-rozet-koleksiyonum" component={BadgeCollection} />
@@ -356,7 +356,7 @@ function Router() {
           <Route path="/operasyon/:tab?" component={OperasyonMegaModule} />
           <Route path="/yeni-sube/:tab?" component={YeniSubeMegaModule} />
           <Route path="/banner-editor">{() => <AdminOnly><BannerEditor /></AdminOnly>}</Route>
-          <Route path="/admin/:rest*" component={AdminMegaModule} />
+          <Route path="/admin/*?" component={AdminMegaModule} />
         </>
       )}
       
