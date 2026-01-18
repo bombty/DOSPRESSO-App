@@ -38,7 +38,6 @@ const Settings2 = lazy(() => import("./yonetim/ayarlar"));
 const AdminEmailAyarlari = lazy(() => import("./admin/email-ayarlari"));
 const AdminYedekleme = lazy(() => import("./admin/yedekleme"));
 const AdminAktiviteLoglar = lazy(() => import("./admin/aktivite-loglari"));
-const AdminMenuManagement = lazy(() => import("./yonetim/menu"));
 const AdminContentManagement = lazy(() => import("./yonetim/icerik"));
 const AdminDuyurular = lazy(() => import("./admin/duyurular"));
 const AdminBannerlar = lazy(() => import("./admin/bannerlar"));
@@ -192,15 +191,6 @@ const ADMIN_TABS: TabConfig[] = [
     permissionModule: "seed_data",
     group: "sistem",
     component: AdminSeed
-  },
-  {
-    id: "menu-yonetimi",
-    label: "Menu Management",
-    labelTr: "Menü Yönetimi",
-    icon: <FileText className="h-4 w-4" />,
-    permissionModule: "menu_management",
-    group: "icerik",
-    component: AdminMenuManagement
   },
   {
     id: "icerik-yonetimi",
