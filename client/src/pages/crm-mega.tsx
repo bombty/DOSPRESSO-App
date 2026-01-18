@@ -125,10 +125,29 @@ export default function CRMMegaModule() {
 
   useEffect(() => {
     const tabFromUrl = getTabFromUrl(location);
+    
+    // If URL points to an unauthorized tab, redirect to first allowed tab
+    if (tabFromUrl && !allowedTabs.some(t => t.id === tabFromUrl)) {
+      if (allowedTabs.length > 0) {
+        const firstAllowed = allowedTabs[0];
+        const newUrl = TAB_URL_MAP[firstAllowed.id] || `/crm/${firstAllowed.id}`;
+        setLocation(newUrl);
+        setActiveTab(firstAllowed.id);
+      }
+      return;
+    }
+    
+    // URL matches an allowed tab, sync state
     if (tabFromUrl && allowedTabs.some(t => t.id === tabFromUrl)) {
       setActiveTab(tabFromUrl);
     } else if (allowedTabs.length > 0 && !allowedTabs.some(t => t.id === activeTab)) {
-      setActiveTab(allowedTabs[0].id);
+      // No tab in URL, set to first allowed
+      const firstAllowed = allowedTabs[0];
+      setActiveTab(firstAllowed.id);
+      const newUrl = TAB_URL_MAP[firstAllowed.id] || `/crm/${firstAllowed.id}`;
+      if (location !== newUrl) {
+        setLocation(newUrl);
+      }
     }
   }, [location, allowedTabs]);
 
@@ -140,12 +159,15 @@ export default function CRMMegaModule() {
     }
   };
 
+  // Redirect unauthorized users to dashboard hub
+  useEffect(() => {
+    if (allowedTabs.length === 0 && user) {
+      setLocation("/");
+    }
+  }, [allowedTabs.length, user]);
+
   if (allowedTabs.length === 0) {
-    return (
-      <div className="p-4 text-center text-muted-foreground">
-        Bu modüle erişim yetkiniz bulunmamaktadır.
-      </div>
-    );
+    return null; // Will redirect
   }
 
   return (
