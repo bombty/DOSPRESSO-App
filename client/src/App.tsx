@@ -162,6 +162,7 @@ import YeniSubeMegaModule from "@/pages/yeni-sube-mega";
 import OperasyonMegaModule from "@/pages/operasyon-mega";
 import AdminMegaModule from "@/pages/admin-mega";
 import AkademiMegaModule from "@/pages/akademi-mega";
+import CRMMegaModule from "@/pages/crm-mega";
 
 const PUBLIC_PATH_PREFIXES = [
   "/login", 
@@ -356,6 +357,7 @@ function Router() {
           <Route path="/operasyon/:tab?" component={OperasyonMegaModule} />
           <Route path="/yeni-sube/:tab?" component={YeniSubeMegaModule} />
           <Route path="/banner-editor">{() => <AdminOnly><BannerEditor /></AdminOnly>}</Route>
+          <Route path="/crm/*?" component={CRMMegaModule} />
           <Route path="/admin/*?" component={AdminMegaModule} />
         </>
       )}

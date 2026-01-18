@@ -1,3 +1,4 @@
+import { registerCRMRoutes } from "./crm-routes";
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
@@ -30114,6 +30115,7 @@ Dusuk puanli alanlara odaklan ve pozitif, motive edici ol. JSON dizisi olarak ya
       res.status(500).json({ message: "Degerlendirme kaydedilemedi" });
     }
   });
+  registerCRMRoutes(app, isAuthenticated);
   const httpServer = createServer(app);
   return httpServer;
 }
