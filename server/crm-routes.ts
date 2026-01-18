@@ -567,7 +567,7 @@ export function registerCRMRoutes(app: Express, isAuthenticated: any) {
         .from(userQuizAttempts)
         .where(eq(userQuizAttempts.userId, userId));
       
-      const passedQuizzes = quizAttempts.filter(a => a.passed).length;
+      const passedQuizzes = quizAttempts.filter(a => a.isPassed).length;
       const totalQuizAttempts = quizAttempts.length;
 
       // 4. Görev İstatistikleri
