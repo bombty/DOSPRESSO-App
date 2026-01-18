@@ -193,6 +193,8 @@ export default function RaporlarMegaModule() {
   const visibleTabs = RAPORLAR_TABS.filter(tab => {
     if (!tab.permissionModule) return true;
     if (!user?.role) return false;
+    // Admin ve HQ rolleri tüm rapor tab'larına erişebilir
+    if (['admin', 'muhasebe', 'satinalma', 'operasyon'].includes(user.role)) return true;
     return hasPermission(user.role as any, tab.permissionModule as any, 'view');
   });
 

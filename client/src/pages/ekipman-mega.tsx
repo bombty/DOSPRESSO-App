@@ -86,6 +86,8 @@ export default function EkipmanMegaModule() {
   const visibleTabs = EKIPMAN_TABS.filter(tab => {
     if (!tab.permissionModule) return true;
     if (!user?.role) return false;
+    // Admin ve teknik roller tüm ekipman tab'larına erişebilir
+    if (['admin', 'satinalma', 'operasyon'].includes(user.role)) return true;
     return hasPermission(user.role as any, tab.permissionModule as any, 'view');
   });
 

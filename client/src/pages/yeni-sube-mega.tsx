@@ -98,6 +98,8 @@ export default function YeniSubeMegaModule() {
   const visibleTabs = YENISUBE_TABS.filter(tab => {
     if (!tab.permissionModule) return true;
     if (!user?.role) return false;
+    // Admin ve HQ rolleri tüm yeni şube tab'larına erişebilir
+    if (['admin', 'satinalma', 'operasyon'].includes(user.role)) return true;
     return hasPermission(user.role as any, tab.permissionModule as any, 'view');
   });
 

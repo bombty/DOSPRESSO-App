@@ -115,6 +115,8 @@ export default function FabrikaMegaModule() {
   const visibleTabs = FABRIKA_TABS.filter(tab => {
     if (!tab.permissionModule) return true;
     if (!user?.role) return false;
+    // Admin ve fabrika rolleri tüm fabrika tab'larına erişebilir
+    if (['admin', 'fabrika_mudur', 'fabrika_operator'].includes(user.role)) return true;
     return hasPermission(user.role as any, tab.permissionModule as any, 'view');
   });
 

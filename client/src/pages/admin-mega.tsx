@@ -403,6 +403,8 @@ export default function AdminMegaModule() {
   const visibleTabs = ADMIN_TABS.filter(tab => {
     if (!tab.permissionModule) return true;
     if (!user?.role) return false;
+    // Admin rolü tüm admin tab'larına erişebilir
+    if (user.role === 'admin') return true;
     return hasPermission(user.role as any, tab.permissionModule as any, 'view');
   });
 
