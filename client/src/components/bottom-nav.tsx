@@ -1,4 +1,4 @@
-import { useLocation } from "wouter";
+import { useLocation, Link } from "wouter";
 import { Home, GraduationCap, Wrench, User, Headphones } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { isHQRole } from "@shared/schema";
@@ -36,24 +36,24 @@ export function BottomNav() {
   };
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-white dark:bg-slate-900 border-t border-border shadow-lg" data-testid="bottom-nav">
+    <nav className="fixed bottom-0 left-0 right-0 z-[60] bg-white dark:bg-slate-900 border-t border-border shadow-lg" data-testid="bottom-nav">
       <div className="flex items-center justify-around h-16 max-w-lg mx-auto px-2">
         {navItems.map((item) => {
           const Icon = item.icon;
           const active = isActive(item.path);
           
           return (
-            <button
+            <Link
               key={item.path}
-              onClick={() => setLocation(item.path)}
-              className={`flex flex-col items-center justify-center flex-1 h-full gap-0.5 transition-colors relative ${
+              href={item.path}
+              className={`flex flex-col items-center justify-center flex-1 h-full gap-0.5 transition-colors relative no-underline ${
                 active 
                   ? "text-primary" 
                   : "text-muted-foreground hover:text-foreground"
               }`}
               data-testid={`nav-${item.label.toLowerCase().replace(/\s/g, '-')}`}
             >
-              <div className="relative">
+              <div className="relative pointer-events-none">
                 <Icon className={`w-5 h-5 ${active ? "stroke-[2.5px]" : ""}`} />
                 {item.badge && item.badge > 0 && (
                   <span className="absolute -top-1 -right-1 w-4 h-4 bg-destructive text-destructive-foreground text-[10px] font-bold rounded-full flex items-center justify-center">
@@ -61,13 +61,13 @@ export function BottomNav() {
                   </span>
                 )}
               </div>
-              <span className={`text-[10px] font-medium ${active ? "font-semibold" : ""}`}>
+              <span className={`text-[10px] font-medium pointer-events-none ${active ? "font-semibold" : ""}`}>
                 {item.label}
               </span>
               {active && (
-                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 bg-primary rounded-full" />
+                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 bg-primary rounded-full pointer-events-none" />
               )}
-            </button>
+            </Link>
           );
         })}
       </div>
