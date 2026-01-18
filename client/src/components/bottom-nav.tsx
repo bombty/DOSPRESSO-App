@@ -1,7 +1,7 @@
 import { useLocation } from "wouter";
-import { Home, GraduationCap, Wrench, User, Users } from "lucide-react";
+import { Home, GraduationCap, Wrench, User, Headphones } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
-import { isHQRole, PERMISSIONS } from "@shared/schema";
+import { isHQRole } from "@shared/schema";
 
 interface NavItem {
   icon: any;
@@ -16,17 +16,13 @@ export function BottomNav() {
   const { user } = useAuth();
   
   const isHQ = user && isHQRole(user.role as any);
-  const userRole = user?.role as string | undefined;
-  
-  // Check if user has HR access
-  const hasHRAccess = userRole && PERMISSIONS[userRole as keyof typeof PERMISSIONS]?.hr?.length > 0;
   
   // Build nav items based on user role - all roles use "/" for dashboard
   const allNavItems: NavItem[] = [
     { icon: Home, label: "Ana Sayfa", path: "/" },
     { icon: GraduationCap, label: "Akademi", path: isHQ ? "/akademi-hq" : "/akademi" },
-    // İK - show only for roles with HR access (supervisor, supervisor_buddy, admin, etc.)
-    ...(hasHRAccess ? [{ icon: Users, label: "İK", path: "/ik" }] : []),
+    // CRM - tüm kullanıcılar için erişilebilir (HQ için yönetim, şube/fabrika için kişisel)
+    { icon: Headphones, label: "CRM", path: "/crm" },
     { icon: Wrench, label: "Arıza", path: "/ariza" },
     { icon: User, label: "Profil", path: user ? `/personel/${user.id}` : "/login" },
   ];
