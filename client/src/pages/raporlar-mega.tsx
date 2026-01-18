@@ -69,8 +69,8 @@ const RAPORLAR_TABS: TabConfig[] = [
   },
   {
     id: "kalite-denetimi",
-    label: "Quality Audit",
-    labelTr: "Kalite Denetimi",
+    label: "Audit Reports",
+    labelTr: "Denetim Raporları",
     icon: <ClipboardCheck className="h-4 w-4" />,
     permissionModule: "quality_audit",
     component: KaliteDenetimi

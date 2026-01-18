@@ -47,7 +47,6 @@ const EquipmentManagement = lazy(() => import("./yonetim/ekipman-yonetimi"));
 const EkipmanServis = lazy(() => import("./yonetim/ekipman-servis"));
 const ServiceRequestsManagement = lazy(() => import("./yonetim/servis-talepleri"));
 const AdminTopluVeriYonetimi = lazy(() => import("./admin/toplu-veri-yonetimi"));
-const AdminKaliteDenetimSablonlari = lazy(() => import("./admin/kalite-denetim-şablonları"));
 const AdminYapayZekaAyarlari = lazy(() => import("./admin/yapay-zeka-ayarlari"));
 const AICostDashboard = lazy(() => import("./yonetim/ai-maliyetler"));
 const AdminServisMailAyarlari = lazy(() => import("./admin/servis-mail-ayarlari"));
@@ -283,15 +282,6 @@ const ADMIN_TABS: TabConfig[] = [
     component: AdminTopluVeriYonetimi
   },
   {
-    id: "kalite-sablonlari",
-    label: "Quality Templates",
-    labelTr: "Kalite Şablonları",
-    icon: <ClipboardList className="h-4 w-4" />,
-    permissionModule: "quality_templates",
-    group: "operasyon",
-    component: AdminKaliteDenetimSablonlari
-  },
-  {
     id: "fabrika-istasyonlar",
     label: "Factory Stations",
     labelTr: "Fabrika İstasyonları",
@@ -355,7 +345,6 @@ const TAB_URL_MAP: Record<string, string> = {
   "yedekleme": "/admin/yedekleme",
   "aktivite-loglari": "/admin/aktivite-loglari",
   "seed": "/admin/seed",
-  "menu-yonetimi": "/admin/menu-yonetimi",
   "icerik-yonetimi": "/admin/icerik-yonetimi",
   "icerik-studyosu": "/admin/icerik-studyosu",
   "duyurular": "/admin/duyurular",
@@ -366,7 +355,6 @@ const TAB_URL_MAP: Record<string, string> = {
   "ekipman-servis": "/admin/ekipman-servis",
   "servis-talepleri": "/admin/servis-talepleri",
   "toplu-veri": "/admin/toplu-veri",
-  "kalite-sablonlari": "/admin/kalite-sablonlari",
   "fabrika-istasyonlar": "/admin/fabrika-istasyonlar",
   "fire-sebepleri": "/admin/fire-sebepleri",
   "pin-yonetimi": "/admin/pin-yonetimi",

@@ -79,7 +79,6 @@ import PersonelMusaitlik from "@/pages/personel-musaitlik";
 import AIAssistant from "@/pages/ai-assistant";
 import Performance from "@/pages/performance";
 import AdminSeed from "@/pages/admin-seed";
-import AdminMenuManagement from "@/pages/yonetim/menu";
 import AdminContentManagement from "@/pages/yonetim/icerik";
 import Settings from "@/pages/yonetim/ayarlar";
 import UserCRM from "@/pages/yonetim/kullanicilar";
@@ -143,7 +142,6 @@ import AdminBannerlar from "@/pages/admin/bannerlar";
 import BannerEditor from "@/pages/banner-editor";
 import AdminDuyurular from "@/pages/admin/duyurular";
 import AdminYapayZekaAyarlari from "@/pages/admin/yapay-zeka-ayarlari";
-import AdminKaliteDenetimSablonlari from "@/pages/admin/kalite-denetim-şablonları";
 import AdminKaliteDenetimSablonuDuzenle from "@/pages/admin/kalite-denetim-sablonu-duzenle";
 import AdminTopluVeriYonetimi from "@/pages/admin/toplu-veri-yonetimi";
 import AdminFabrikaIstasyonlar from "@/pages/admin/fabrika-istasyonlar";
@@ -338,7 +336,6 @@ function Router() {
           <Route path="/ai-asistan" component={AIAssistant} />
           <Route path="/kampanya-yonetimi" component={KampanyaYonetimi} />
           <Route path="/franchise-acilis" component={FranchiseAcilis} />
-          <Route path="/yonetim/menu" component={AdminMenuManagement} />
           <Route path="/yonetim/icerik" component={AdminContentManagement} />
           <Route path="/yonetim/ayarlar" component={Settings} />
           <Route path="/yonetim/kullanicilar" component={UserCRM} />
