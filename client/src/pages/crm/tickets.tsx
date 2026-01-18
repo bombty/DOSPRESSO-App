@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useLocation, useSearch } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -53,13 +54,45 @@ const STATUS_STYLES: Record<string, { bg: string; label: string }> = {
 };
 
 export default function CRMTickets() {
+  const [, setLocation] = useLocation();
+  const searchParams = useSearch();
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [priorityFilter, setPriorityFilter] = useState<string>("all");
+  const [showUnassignedOnly, setShowUnassignedOnly] = useState<boolean>(false);
+
+  // Handle filter from URL params (from dashboard clicks)
+  useEffect(() => {
+    const params = new URLSearchParams(searchParams);
+    const filter = params.get('filter');
+    // Reset filters first
+    setStatusFilter('all');
+    setPriorityFilter('all');
+    setShowUnassignedOnly(false);
+    
+    if (filter) {
+      if (filter === 'open') {
+        setStatusFilter('open');
+      } else if (filter === 'closed') {
+        setStatusFilter('resolved');
+      } else if (filter === 'unassigned') {
+        setShowUnassignedOnly(true);
+      } else if (['kritik', 'yüksek', 'orta', 'düşük'].includes(filter)) {
+        setPriorityFilter(filter);
+      }
+    }
+  }, [searchParams]);
 
   const { data: tickets, isLoading } = useQuery<CRMTicket[]>({
     queryKey: ["/api/crm/tickets", statusFilter, priorityFilter],
   });
+
+  const handleTicketClick = (ticket: CRMTicket) => {
+    // Navigate to fault detail page
+    if (ticket.type === 'fault') {
+      setLocation(`/ekipman?tab=ariza&faultId=${ticket.id}`);
+    }
+  };
 
   const filteredTickets = tickets?.filter(ticket => {
     const matchesSearch = !searchQuery || 
@@ -67,7 +100,8 @@ export default function CRMTickets() {
       ticket.branchName.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesStatus = statusFilter === "all" || ticket.status === statusFilter;
     const matchesPriority = priorityFilter === "all" || ticket.priority === priorityFilter;
-    return matchesSearch && matchesStatus && matchesPriority;
+    const matchesUnassigned = !showUnassignedOnly || (!ticket.assignedTo && ticket.status !== 'resolved' && ticket.status !== 'closed');
+    return matchesSearch && matchesStatus && matchesPriority && matchesUnassigned;
   }) || [];
 
   const openCount = tickets?.filter(t => t.status !== "resolved" && t.status !== "closed").length || 0;
@@ -90,7 +124,7 @@ export default function CRMTickets() {
     <div className="flex flex-col h-full">
       <div className="p-4 border-b space-y-3">
         <div className="flex flex-wrap gap-2 items-center justify-between">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <Badge variant="outline" className="gap-1" data-testid="badge-open-count">
               <Ticket className="h-3 w-3" />
               {openCount} Açık
@@ -99,6 +133,12 @@ export default function CRMTickets() {
               <Badge variant="destructive" className="gap-1" data-testid="badge-sla-breach">
                 <AlertCircle className="h-3 w-3" />
                 {slaBreachCount} SLA Aşımı
+              </Badge>
+            )}
+            {showUnassignedOnly && (
+              <Badge variant="secondary" className="gap-1" data-testid="badge-unassigned-filter">
+                <User className="h-3 w-3" />
+                Sadece Atanmamış
               </Badge>
             )}
           </div>
@@ -155,6 +195,7 @@ export default function CRMTickets() {
                 key={`${ticket.type}-${ticket.id}`} 
                 className={`hover-elevate cursor-pointer ${ticket.isSlaBreach ? 'border-red-300 dark:border-red-800' : ''}`}
                 data-testid={`ticket-card-${ticket.id}`}
+                onClick={() => handleTicketClick(ticket)}
               >
                 <CardContent className="p-3">
                   <div className="flex items-start justify-between gap-3">

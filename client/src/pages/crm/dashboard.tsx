@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -13,7 +14,8 @@ import {
   TrendingDown,
   AlertCircle,
   Timer,
-  Star
+  Star,
+  ChevronRight
 } from "lucide-react";
 import {
   AreaChart,
@@ -50,7 +52,8 @@ function StatCard({
   icon: Icon, 
   trend,
   variant = "default",
-  testId
+  testId,
+  onClick
 }: { 
   title: string; 
   value: string | number; 
@@ -59,6 +62,7 @@ function StatCard({
   trend?: { value: number; positive: boolean };
   variant?: "default" | "warning" | "success" | "danger";
   testId: string;
+  onClick?: () => void;
 }) {
   const variantStyles = {
     default: "bg-card",
@@ -75,7 +79,11 @@ function StatCard({
   };
 
   return (
-    <Card className={`${variantStyles[variant]} transition-all`} data-testid={testId}>
+    <Card 
+      className={`${variantStyles[variant]} transition-all ${onClick ? 'cursor-pointer hover-elevate' : ''}`} 
+      data-testid={testId}
+      onClick={onClick}
+    >
       <CardContent className="p-4">
         <div className="flex items-start justify-between">
           <div className="space-y-1">
@@ -89,8 +97,11 @@ function StatCard({
               </div>
             )}
           </div>
-          <div className={`p-2 rounded-lg bg-background/50 ${iconStyles[variant]}`}>
-            <Icon className="h-5 w-5" />
+          <div className="flex items-center gap-2">
+            <div className={`p-2 rounded-lg bg-background/50 ${iconStyles[variant]}`}>
+              <Icon className="h-5 w-5" />
+            </div>
+            {onClick && <ChevronRight className="h-4 w-4 text-muted-foreground" />}
           </div>
         </div>
       </CardContent>
@@ -106,9 +117,26 @@ const PRIORITY_COLORS: Record<string, string> = {
 };
 
 export default function CRMDashboard() {
+  const [, setLocation] = useLocation();
   const { data: overview, isLoading } = useQuery<CRMOverview>({
     queryKey: ["/api/crm/overview"],
   });
+
+  const navigateToTickets = (filter?: string) => {
+    if (filter) {
+      setLocation(`/crm?tab=talepler&filter=${filter}`);
+    } else {
+      setLocation('/crm?tab=talepler');
+    }
+  };
+
+  const navigateToSLA = () => {
+    setLocation('/crm?tab=sla');
+  };
+
+  const navigateToPerformance = () => {
+    setLocation('/crm?tab=performans');
+  };
 
   if (isLoading) {
     return (
@@ -148,6 +176,7 @@ export default function CRMDashboard() {
             icon={Ticket}
             variant={overview.openTickets > 10 ? "warning" : "default"}
             testId="stat-open-tickets"
+            onClick={() => navigateToTickets('open')}
           />
           <StatCard
             title="Atanmamış"
@@ -155,6 +184,7 @@ export default function CRMDashboard() {
             icon={AlertTriangle}
             variant={overview.unassignedTickets > 5 ? "danger" : "default"}
             testId="stat-unassigned"
+            onClick={() => navigateToTickets('unassigned')}
           />
           <StatCard
             title="Bu Hafta Çözülen"
@@ -163,6 +193,7 @@ export default function CRMDashboard() {
             trend={{ value: weeklyChange, positive: weeklyChange >= 0 }}
             variant="success"
             testId="stat-closed"
+            onClick={() => navigateToTickets('closed')}
           />
           <StatCard
             title="Ort. Çözüm Süresi"
@@ -170,6 +201,7 @@ export default function CRMDashboard() {
             subtitle="saat"
             icon={Timer}
             testId="stat-avg-time"
+            onClick={navigateToPerformance}
           />
           <StatCard
             title="SLA Uyumu"
@@ -177,6 +209,7 @@ export default function CRMDashboard() {
             icon={Clock}
             variant={overview.slaCompliance >= 90 ? "success" : overview.slaCompliance >= 70 ? "warning" : "danger"}
             testId="stat-sla"
+            onClick={navigateToSLA}
           />
         </div>
 
@@ -244,7 +277,12 @@ export default function CRMDashboard() {
                 </ResponsiveContainer>
                 <div className="flex-1 space-y-2">
                   {overview.priorityBreakdown.map((item) => (
-                    <div key={item.priority} className="flex items-center justify-between text-sm">
+                    <div 
+                      key={item.priority} 
+                      className="flex items-center justify-between text-sm p-1.5 rounded-md cursor-pointer hover-elevate"
+                      onClick={() => navigateToTickets(item.priority)}
+                      data-testid={`priority-${item.priority}`}
+                    >
                       <div className="flex items-center gap-2">
                         <div 
                           className="w-3 h-3 rounded-full" 
@@ -252,7 +290,10 @@ export default function CRMDashboard() {
                         />
                         <span className="capitalize">{item.priority}</span>
                       </div>
-                      <Badge variant="secondary">{item.count}</Badge>
+                      <div className="flex items-center gap-1">
+                        <Badge variant="secondary">{item.count}</Badge>
+                        <ChevronRight className="h-3 w-3 text-muted-foreground" />
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -276,8 +317,9 @@ export default function CRMDashboard() {
                 overview.topAgents.map((agent, index) => (
                   <div 
                     key={agent.id} 
-                    className="flex items-center justify-between p-2 rounded-lg bg-muted/30"
+                    className="flex items-center justify-between p-2 rounded-lg bg-muted/30 cursor-pointer hover-elevate"
                     data-testid={`agent-row-${index}`}
+                    onClick={() => navigateToPerformance()}
                   >
                     <div className="flex items-center gap-3">
                       <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
@@ -293,9 +335,12 @@ export default function CRMDashboard() {
                         <p className="text-xs text-muted-foreground">Ort. {agent.avgTime}s çözüm</p>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <p className="font-semibold text-lg">{agent.resolved}</p>
-                      <p className="text-xs text-muted-foreground">çözülen</p>
+                    <div className="flex items-center gap-2">
+                      <div className="text-right">
+                        <p className="font-semibold text-lg">{agent.resolved}</p>
+                        <p className="text-xs text-muted-foreground">çözülen</p>
+                      </div>
+                      <ChevronRight className="h-4 w-4 text-muted-foreground" />
                     </div>
                   </div>
                 ))
