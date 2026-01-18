@@ -514,6 +514,14 @@ export function CardGridHub() {
       color: "bg-indigo-600",
       description: "Excel ile veri aktarımı"
     },
+    { 
+      id: "crm", 
+      icon: Headphones, 
+      label: "CRM", 
+      path: "/crm",
+      color: "bg-rose-500",
+      description: "Franchise Destek Merkezi"
+    },
   ];
 
   // Eğer API'den modüller gelmişse onları kullan, yoksa statik fallback
@@ -611,6 +619,8 @@ export function CardGridHub() {
       "bulk-data": Database,
       "toplu-veri": Database,
       "toplu-veri-yonetimi": Database,
+      "crm": Headphones,
+      "crm-dashboard": Headphones,
     };
     return iconMap[moduleId.toLowerCase()] || Coffee;
   };
@@ -701,6 +711,8 @@ export function CardGridHub() {
       "bulk-data": "bg-indigo-600",
       "toplu-veri": "bg-indigo-600",
       "toplu-veri-yonetimi": "bg-indigo-600",
+      "crm": "bg-rose-500",
+      "crm-dashboard": "bg-rose-500",
     };
     return colorMap[moduleId.toLowerCase()] || "bg-slate-400";
   };
