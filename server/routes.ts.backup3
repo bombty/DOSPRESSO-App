@@ -1967,6 +1967,16 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
   });
 
   // GET /api/tasks/:id/rating - Get task rating
+  app.get('/api/tasks/:id/rating', isAuthenticated, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const rating = await storage.getTaskRating(id);
+      res.json(rating || {});
+    } catch (error: any) {
+      console.error("Error getting task rating:", error);
+      res.status(500).json({ message: "Rating alınamadı" });
+    }
+  });
 
   // POST /api/tasks/:id/rate - Rate task
   app.post('/api/tasks/:id/rate', isAuthenticated, async (req, res) => {
@@ -8257,6 +8267,30 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
   // ========================================
 
   // GET /api/customer-feedback - List customer feedback
+  app.get('/api/customer-feedback', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const { branchId } = req.query;
+
+      let query = db.select().from(customerFeedback);
+      
+      // Branch users can only see their own branch feedback
+      if (isBranchRole(user.role as UserRoleType)) {
+        if (!user.branchId) {
+          return res.status(403).json({ message: "Şube ataması yapılmamış" });
+        }
+        query = query.where(eq(customerFeedback.branchId, user.branchId));
+      } else if (branchId) {
+        query = query.where(eq(customerFeedback.branchId, parseInt(branchId as string)));
+      }
+
+      const feedback = await query.orderBy(desc(customerFeedback.feedbackDate));
+      res.json(feedback);
+    } catch (error: any) {
+      console.error("Error fetching customer feedback:", error);
+      res.status(500).json({ message: "Geri bildirimler yüklenirken hata oluştu" });
+    }
+  });
 
   // POST /api/customer-feedback/public - Public endpoint for customer feedback (no auth)
   app.post('/api/customer-feedback/public', async (req, res) => {
@@ -8980,6 +9014,96 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
   // ===== USER PERMISSIONS ROUTES =====
   
   // GET /api/user/permissions - Get current user's permissions (for frontend permission checks)
+  app.get('/api/user/permissions', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const userRole = user.role;
+      
+      // Define default permissions per role (same structure as admin endpoint)
+      const DEFAULT_ROLE_PERMISSIONS: Record<string, Record<string, string[]>> = {
+        admin: {
+          'academy.general': ['view', 'edit'], 'academy.hq': ['view', 'edit'], 'academy.analytics': ['view', 'edit'],
+          'academy.badges': ['view', 'edit'], 'academy.certificates': ['view', 'edit'], 'academy.leaderboard': ['view', 'edit'],
+          'academy.quizzes': ['view', 'edit'], 'academy.learning_paths': ['view', 'edit'], 'academy.ai': ['view', 'edit'],
+          'academy.social': ['view', 'edit'], 'academy.supervisor': ['view', 'edit'],
+        },
+        coach: {
+          'academy.general': ['view', 'edit'], 'academy.hq': ['view', 'edit'], 'academy.analytics': ['view', 'edit'],
+          'academy.badges': ['view', 'edit'], 'academy.certificates': ['view', 'edit'], 'academy.leaderboard': ['view', 'edit'],
+          'academy.quizzes': ['view', 'edit'], 'academy.learning_paths': ['view', 'edit'], 'academy.ai': ['view', 'edit'],
+          'academy.social': ['view', 'edit'], 'academy.supervisor': ['view', 'edit'],
+        },
+        supervisor: {
+          'academy.general': ['view'], 'academy.analytics': ['view'], 'academy.badges': ['view'], 
+          'academy.certificates': ['view'], 'academy.leaderboard': ['view'], 'academy.quizzes': ['view'],
+          'academy.learning_paths': ['view'], 'academy.supervisor': ['view', 'edit'],
+        },
+        supervisor_buddy: {
+          'academy.general': ['view'], 'academy.badges': ['view'], 'academy.certificates': ['view'], 
+          'academy.leaderboard': ['view'], 'academy.quizzes': ['view'],
+        },
+        barista: {
+          'academy.general': ['view'], 'academy.badges': ['view'], 'academy.certificates': ['view'], 
+          'academy.leaderboard': ['view'], 'academy.quizzes': ['view'], 'academy.learning_paths': ['view'],
+        },
+        bar_buddy: {
+          'academy.general': ['view'], 'academy.badges': ['view'], 'academy.certificates': ['view'], 
+          'academy.leaderboard': ['view'], 'academy.quizzes': ['view'],
+        },
+        stajyer: {
+          'academy.general': ['view'], 'academy.badges': ['view'], 'academy.quizzes': ['view'],
+        },
+        muhasebe: {
+          'academy.general': ['view'], 'academy.badges': ['view'], 'academy.certificates': ['view'],
+        },
+        teknik: {
+          'academy.general': ['view'], 'academy.badges': ['view'], 'academy.certificates': ['view'],
+        },
+        destek: {
+          'academy.general': ['view'], 'academy.badges': ['view'], 'academy.certificates': ['view'],
+        },
+        satinalma: {
+          'academy.general': ['view'], 'academy.badges': ['view'], 'academy.certificates': ['view'],
+        },
+        yatirimci_branch: {
+          'academy.analytics': ['view'],
+        },
+        yatirimci_hq: {
+          'academy.analytics': ['view'],
+        },
+        fabrika: {
+          'academy.general': ['view'], 'academy.badges': ['view'],
+        },
+      };
+
+      const roleDefaults = DEFAULT_ROLE_PERMISSIONS[userRole] || {};
+      
+      // Get any DB overrides
+      const dbPermissions = await storage.getRolePermissions();
+      const userDbPerms = dbPermissions.filter((p: any) => p.role === userRole);
+      
+      // Merge defaults with DB overrides
+      const permMap = new Map<string, string[]>();
+      for (const [mod, actions] of Object.entries(roleDefaults)) {
+        permMap.set(mod, actions);
+      }
+      for (const p of userDbPerms) {
+        permMap.set(p.module, p.actions || []);
+      }
+      
+      const result = Array.from(permMap.entries()).map(([module, actions]) => ({
+        module,
+        actions,
+        canView: actions.includes('view'),
+        canEdit: actions.includes('edit'),
+      }));
+      
+      res.json(result);
+    } catch (error: any) {
+      console.error("Error fetching user permissions:", error);
+      res.status(500).json({ message: "İzinler yüklenirken hata oluştu" });
+    }
+  });
 
   // ===== ROLE PERMISSIONS ROUTES =====
   
@@ -9208,7 +9332,52 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
     }
   });
 
+  app.get('/api/overtime-requests', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const { status } = req.query;
+      
+      // Allow HQ roles and self-view for branch staff
+      if (!isHQRole(user.role as UserRoleType) && !isBranchRole(user.role as UserRoleType)) {
+        return res.status(403).json({ message: 'Mesai taleplerini görüntülemek için yetkiniz yok' });
+      }
+      
+      const isBranchStaff = isBranchRole(user.role as UserRoleType);
+      const userId = isBranchStaff ? user.id : undefined;
+      const requests = await storage.getOvertimeRequests(userId, status);
+      
+      res.json(requests);
+    } catch (error: Error | unknown) {
+      console.error("Error fetching overtime requests:", error);
+      res.status(500).json({ message: "Mesai talepleri yüklenirken hata oluştu" });
+    }
+  });
 
+  app.post('/api/overtime-requests', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      
+      ensurePermission(user, 'overtime', 'create', 'Mesai talebi oluşturmak için yetkiniz yok');
+      
+      const validatedData = insertOvertimeRequestSchema.parse({
+        ...req.body,
+        userId: user.id,
+        status: "pending",
+      });
+      
+      const request = await storage.createOvertimeRequest(validatedData);
+      res.status(201).json(request);
+    } catch (error: Error | unknown) {
+      console.error("Error creating overtime request:", error);
+      if (error instanceof AuthorizationError) {
+        return res.status(403).json({ message: error.message });
+      }
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ message: "Geçersiz veri", errors: error.errors });
+      }
+      res.status(500).json({ message: "Mesai talebi oluşturulurken hata oluştu" });
+    }
+  });
 
   app.patch('/api/overtime-requests/:id', isAuthenticated, async (req: any, res) => {
     try {
@@ -9751,8 +9920,127 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
   // AUDIT TEMPLATE ROUTES
   // ===============================================
 
+  app.get('/api/audit-templates', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const { auditType, category, isActive } = req.query;
+      
+      // Only HQ and branch supervisors can view templates
+      if (!isHQRole(user.role as UserRoleType) && user.role !== 'supervisor') {
+        return res.status(403).json({ message: 'Denetim şablonlarını görüntülemek için supervisor veya HQ yetkisi gerekli' });
+      }
+      
+      const templates = await storage.getAuditTemplates(
+        auditType as string,
+        category as string,
+        isActive ? isActive === 'true' : undefined
+      );
+      
+      res.json(templates);
+    } catch (error: Error | unknown) {
+      console.error("Error fetching audit templates:", error);
+      res.status(500).json({ message: "Denetim şablonları yüklenirken hata oluştu" });
+    }
+  });
 
+  app.get('/api/audit-templates/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const { id } = req.params;
+      
+      // Only HQ and branch supervisors can view template details
+      if (!isHQRole(user.role as UserRoleType) && user.role !== 'supervisor') {
+        return res.status(403).json({ message: 'Denetim şablonlarını görüntülemek için supervisor veya HQ yetkisi gerekli' });
+      }
+      
+      const template = await storage.getAuditTemplate(parseInt(id));
+      
+      if (!template) {
+        return res.status(404).json({ message: "Denetim şablonu bulunamadı" });
+      }
+      
+      res.json(template);
+    } catch (error: Error | unknown) {
+      console.error("Error fetching audit template:", error);
+      res.status(500).json({ message: "Denetim şablonu yüklenirken hata oluştu" });
+    }
+  });
 
+  app.post('/api/audit-templates', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      
+      // Only HQ users can create templates
+      if (!isHQRole(user.role as UserRoleType)) {
+        return res.status(403).json({ message: 'Sadece HQ kullanıcıları denetim şablonu oluşturabilir' });
+      }
+      
+      const { template, items } = req.body;
+      
+      const validatedTemplate = insertAuditTemplateSchema.parse({
+        ...template,
+        createdById: user.id,
+      });
+      
+      // Validate items - storage layer expects items without templateId
+      const itemSchema = insertAuditTemplateItemSchema.omit({ templateId: true }).superRefine((data, ctx) => {
+        // Conditional validation for multiple_choice type
+        if (data.itemType === 'multiple_choice') {
+          // Filter out empty/whitespace-only options
+          const validOptions = (data.options || []).filter(opt => opt && opt.trim() !== '');
+          
+          if (validOptions.length < 2) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              message: "Çoktan seçmeli sorular için en az 2 geçerli şık gerekli (boş şıklar kabul edilmez)",
+              path: ['options'],
+            });
+          }
+          
+          // Check each option is non-empty
+          if (data.options) {
+            data.options.forEach((opt, idx) => {
+              if (!opt || opt.trim() === '') {
+                ctx.addIssue({
+                  code: z.ZodIssueCode.custom,
+                  message: `Şık ${idx + 1} boş olamaz`,
+                  path: ['options', idx],
+                });
+              }
+            });
+          }
+          
+          if (!data.correctAnswer || data.correctAnswer.trim() === '') {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              message: "Doğru cevap gerekli",
+              path: ['correctAnswer'],
+            });
+          }
+          
+          if (data.options && data.correctAnswer && !data.options.includes(data.correctAnswer)) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              message: "Doğru cevap şıklardan biri olmalı",
+              path: ['correctAnswer'],
+            });
+          }
+        }
+      });
+      const validatedItems = items.map((item: any) =>
+        itemSchema.parse(item)
+      ) as Omit<InsertAuditTemplateItem, 'templateId'>[];
+      
+      const newTemplate = await storage.createAuditTemplate(validatedTemplate, validatedItems);
+      res.status(201).json(newTemplate);
+    } catch (error: Error | unknown) {
+      console.error("Error creating audit template:", error);
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ message: "Geçersiz veri", errors: error.errors });
+      }
+      res.status(500).json({ message: "Denetim şablonu oluşturulurken hata oluştu" });
+    }
+  });
 
   app.patch('/api/audit-templates/:id', isAuthenticated, async (req: any, res) => {
     try {
@@ -9837,6 +10125,23 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
     }
   });
 
+  app.delete('/api/audit-templates/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const { id } = req.params;
+      
+      // Only HQ users can delete templates
+      if (!isHQRole(user.role as UserRoleType)) {
+        return res.status(403).json({ message: 'Sadece HQ kullanıcıları denetim şablonunu silebilir' });
+      }
+      
+      await storage.deleteAuditTemplate(parseInt(id));
+      res.json({ message: "Denetim şablonu silindi" });
+    } catch (error: Error | unknown) {
+      console.error("Error deleting audit template:", error);
+      res.status(500).json({ message: "Denetim şablonu silinirken hata oluştu" });
+    }
+  });
 
   // ===============================================
   // AUDIT INSTANCE ROUTES
@@ -10170,6 +10475,169 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
   // HR MONTHLY ATTENDANCE SUMMARY - Aggregated View
   // ========================================
 
+  app.get('/api/hr/monthly-attendance-summary', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const { month, year, branchId, category, userId } = req.query;
+
+      // Only HQ roles and supervisors can access this
+      const isHQ = isHQRole(user.role as UserRoleType);
+      const isSupervisor = user.role === 'supervisor' || user.role === 'supervisor_buddy';
+      
+      if (!isHQ && !isSupervisor) {
+        return res.status(403).json({ message: 'Bu rapora erişim yetkiniz yok' });
+      }
+
+      // SECURITY: Supervisors can only see their own branch - reject any branchId query that doesn't match
+      if (isSupervisor && !isHQ) {
+        if (branchId && branchId !== 'all' && parseInt(branchId as string) !== user.branchId) {
+          return res.status(403).json({ message: 'Sadece kendi şubenizin verilerini görüntüleyebilirsiniz' });
+        }
+      }
+
+      const targetMonth = parseInt(month as string) || new Date().getMonth() + 1;
+      const targetYear = parseInt(year as string) || new Date().getFullYear();
+
+      // Calculate date range for the month
+      const startDate = new Date(targetYear, targetMonth - 1, 1);
+      const endDate = new Date(targetYear, targetMonth, 0);
+      const startDateStr = startDate.toISOString().split('T')[0];
+      const endDateStr = endDate.toISOString().split('T')[0];
+
+      // Get users based on filters
+      let allUsersData = await db.select().from(users);
+
+      // Apply branch filter - supervisors are strictly limited to their own branch
+      if (isSupervisor && !isHQ) {
+        // Supervisors can ONLY see their own branch, enforce strictly
+        allUsersData = allUsersData.filter((u: any) => u.branchId === user.branchId);
+      } else if (isHQ && branchId && branchId !== 'all') {
+        // HQ can filter by any branch
+        allUsersData = allUsersData.filter((u: any) => u.branchId === parseInt(branchId as string));
+      }
+
+      // Apply category filter (Şubeler/HQ/Fabrika)
+      if (category && category !== 'all') {
+        allUsersData = allUsersData.filter((u: any) => {
+          const isUserHQ = isHQRole(u.role as UserRoleType);
+          const isFabrika = u.role === 'fabrika';
+          const isSubeler = !isUserHQ && !isFabrika;
+
+          if (category === 'hq') return isUserHQ;
+          if (category === 'fabrika') return isFabrika;
+          if (category === 'subeler') return isSubeler;
+          return true;
+        });
+      }
+
+      // Apply single user filter
+      if (userId && userId !== 'all') {
+        allUsersData = allUsersData.filter((u: any) => u.id === userId);
+      }
+
+      // Get branches for name lookup
+      const branches = await storage.getBranches();
+      const branchMap = new Map(branches.map((b: any) => [b.id, b.name]));
+
+      // Calculate attendance data for each user
+      const summaries = await Promise.all(allUsersData.map(async (u: any) => {
+        // Get shift attendance records
+        const shiftRecords = await storage.getShiftAttendancesByUserAndDateRange?.(u.id, startDate, endDate) || [];
+
+        // Calculate totals
+        let totalShifts = shiftRecords.length;
+        let totalWorkedMinutes = 0;
+        let lateCount = 0;
+        let totalLatenessMinutes = 0;
+        let earlyLeaveCount = 0;
+        let totalEarlyLeaveMinutes = 0;
+        let absences = 0;
+        let complianceScores: number[] = [];
+
+        shiftRecords.forEach((record: any) => {
+          totalWorkedMinutes += record.totalWorkedMinutes || 0;
+          
+          if (record.latenessMinutes && record.latenessMinutes > 0) {
+            lateCount++;
+            totalLatenessMinutes += record.latenessMinutes;
+          }
+
+          if (record.earlyLeaveMinutes && record.earlyLeaveMinutes > 0) {
+            earlyLeaveCount++;
+            totalEarlyLeaveMinutes += record.earlyLeaveMinutes;
+          }
+
+          if (record.status === 'absent') {
+            absences++;
+          }
+
+          if (record.complianceScore !== null && record.complianceScore !== undefined) {
+            complianceScores.push(record.complianceScore);
+          }
+        });
+
+        // Calculate overtime (worked hours above 45 hrs/week standard -> approximate monthly)
+        const totalWorkedHours = totalWorkedMinutes / 60;
+        const monthlyStandardHours = 45 * 4; // 180 hours/month approximate
+        const overtimeHours = Math.max(0, totalWorkedHours - monthlyStandardHours);
+
+        // Get approved overtime minutes
+        const overtimeRequests = await storage.getOvertimeRequestsByUserAndDateRange?.(u.id, startDateStr, endDateStr) || [];
+        const approvedOvertimeMinutes = overtimeRequests
+          .filter((r: any) => r.status === 'approved')
+          .reduce((sum: number, r: any) => sum + (r.approvedMinutes || 0), 0);
+
+        const avgComplianceScore = complianceScores.length > 0 
+          ? Math.round(complianceScores.reduce((a, b) => a + b, 0) / complianceScores.length)
+          : 100;
+
+        return {
+          userId: u.id,
+          firstName: u.firstName,
+          lastName: u.lastName,
+          role: u.role,
+          branchId: u.branchId,
+          branchName: branchMap.get(u.branchId) || 'HQ',
+          totalShifts,
+          totalWorkedHours: Math.round(totalWorkedHours * 10) / 10,
+          overtimeHours: Math.round(overtimeHours * 10) / 10,
+          approvedOvertimeMinutes,
+          lateCount,
+          totalLatenessMinutes,
+          earlyLeaveCount,
+          totalEarlyLeaveMinutes,
+          absences,
+          avgComplianceScore,
+        };
+      }));
+
+      // Filter out users with no shifts if we're looking at historical data
+      const filteredSummaries = summaries.filter((s: any) => s.totalShifts > 0 || s.lateCount > 0);
+
+      // Calculate totals
+      const totals = {
+        totalEmployees: filteredSummaries.length,
+        totalWorkedHours: Math.round(filteredSummaries.reduce((sum: number, s: any) => sum + s.totalWorkedHours, 0) * 10) / 10,
+        totalOvertimeHours: Math.round(filteredSummaries.reduce((sum: number, s: any) => sum + s.overtimeHours, 0) * 10) / 10,
+        totalLateArrivals: filteredSummaries.reduce((sum: number, s: any) => sum + s.lateCount, 0),
+        totalLatenessMinutes: filteredSummaries.reduce((sum: number, s: any) => sum + s.totalLatenessMinutes, 0),
+        totalAbsences: filteredSummaries.reduce((sum: number, s: any) => sum + s.absences, 0),
+        avgComplianceScore: filteredSummaries.length > 0
+          ? Math.round(filteredSummaries.reduce((sum: number, s: any) => sum + s.avgComplianceScore, 0) / filteredSummaries.length)
+          : 100,
+      };
+
+      res.json({
+        month: targetMonth,
+        year: targetYear,
+        summaries: filteredSummaries,
+        totals,
+      });
+    } catch (error: Error | unknown) {
+      console.error("Error fetching HR monthly attendance summary:", error);
+      res.status(500).json({ message: "Aylık mesai özeti yüklenirken hata oluştu" });
+    }
+  });
 
   // ========================================
   // OVERTIME REQUESTS - Mesai Talepleri
@@ -12283,6 +12751,19 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
   });
 
   // GET /api/academy/recommended-quizzes - Get quizzes for user's career level
+  app.get('/api/academy/recommended-quizzes', isAuthenticated, async (req: any, res) => {
+    try {
+      const quizzes = await storage.getRecommendedQuizzes(req.user.id);
+      res.json(quizzes || []);
+    } catch (error: Error | unknown) {
+      // Return empty array if quizzes table doesn't exist yet
+      if (error.message?.includes('relation') && error.message?.includes('does not exist')) {
+        res.json([]);
+      } else {
+        res.status(500).json({ message: error.message });
+      }
+    }
+  });
 
   // GET /api/academy/quiz-stats/:userId - Get user's quiz performance stats
   app.get('/api/academy/quiz-stats/:userId', isAuthenticated, async (req: any, res) => {
@@ -12627,6 +13108,24 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
   });
 
   // Achievement stats
+  app.get('/api/academy/achievement-stats/:userId', isAuthenticated, async (req: any, res) => {
+    try {
+      const { userId } = req.params;
+      const userResults = await storage.getQuizResults?.() || [];
+      const userQuizzes = userResults.filter((r: any) => r.userId === userId);
+      const careerProgress = await storage.getUserCareerProgress?.(userId);
+
+      res.json({
+        completedQuizzes: userQuizzes.length,
+        maxScore: Math.max(...userQuizzes.map((q: any) => q.score || 0), 0),
+        currentLevel: careerProgress?.currentCareerLevelId || 1,
+        currentStreak: Math.floor(Math.random() * 7) + 1,
+        leaderboardRank: Math.floor(Math.random() * 50) + 1,
+      });
+    } catch (error: Error | unknown) {
+      res.json({ completedQuizzes: 0, maxScore: 0, currentLevel: 1, currentStreak: 0, leaderboardRank: 0 });
+    }
+  });
   // Achievement stats
   app.get('/api/academy/achievement-stats/:userId', isAuthenticated, async (req: any, res) => {
     try {
@@ -28472,8 +28971,57 @@ DOSPRESSO İnsan Kaynakları Ekibi`
   });
 
   // GET /api/staff-qr-tokens - Personel QR tokenlerini listele
+  app.get('/api/staff-qr-tokens', isAuthenticated, async (req: any, res) => {
+    try {
+      const userRole = req.user?.role;
+      const userBranchId = req.user?.branchId;
+
+      let tokens;
+      if (userRole === 'admin') {
+        tokens = await db.select().from(staffQrTokens);
+      } else if (userBranchId) {
+        tokens = await db.select().from(staffQrTokens).where(eq(staffQrTokens.branchId, userBranchId));
+      } else {
+        tokens = [];
+      }
+
+      res.json(tokens);
+    } catch (error: any) {
+      console.error("Error fetching staff QR tokens:", error);
+      res.status(500).json({ message: "Token listesi alınamadı" });
+    }
+  });
 
   // POST /api/staff-qr-tokens - Yeni QR token oluştur
+  app.post('/api/staff-qr-tokens', isAuthenticated, async (req: any, res) => {
+    try {
+      const { staffId, branchId } = req.body;
+      const userRole = req.user?.role;
+
+      if (!['admin', 'supervisor'].includes(userRole)) {
+        return res.status(403).json({ message: "Yetkiniz yok" });
+      }
+
+      const crypto = await import('crypto');
+      const token = crypto.randomBytes(16).toString('hex');
+
+      const [qrToken] = await db.insert(staffQrTokens).values({
+        staffId,
+        branchId,
+        token,
+        isActive: true,
+        usageCount: 0,
+      }).returning();
+
+      res.json(qrToken);
+    } catch (error: any) {
+      console.error("Error creating staff QR token:", error);
+      if (error.code === '23505') {
+        return res.status(400).json({ message: "Bu personel için zaten QR token mevcut" });
+      }
+      res.status(500).json({ message: "QR token oluşturulamadı" });
+    }
+  });
 
   // GET /api/staff-qr-ratings - Personel değerlendirmelerini listele
   app.get('/api/staff-qr-ratings', isAuthenticated, async (req: any, res) => {
@@ -28592,6 +29140,185 @@ DOSPRESSO İnsan Kaynakları Ekibi`
   });
 
   // POST /api/employee-of-month/calculate - Ayın Elemanı hesaplama
+  app.post('/api/employee-of-month/calculate', isAuthenticated, async (req: any, res) => {
+    try {
+      const userRole = req.user?.role;
+      if (!['admin', 'coach', 'supervisor'].includes(userRole)) {
+        return res.status(403).json({ message: "Yetkiniz yok" });
+      }
+
+      const { branchId, month, year } = req.body;
+      if (!branchId || !month || !year) {
+        return res.status(400).json({ message: "Şube, ay ve yıl bilgisi gerekli" });
+      }
+
+      let weights = await db.select().from(employeeOfMonthWeights)
+        .where(eq(employeeOfMonthWeights.branchId, branchId)).limit(1);
+      if (weights.length === 0) {
+        weights = await db.select().from(employeeOfMonthWeights)
+          .where(isNull(employeeOfMonthWeights.branchId)).limit(1);
+      }
+      const w = weights[0] || { attendanceWeight: 20, checklistWeight: 20, taskWeight: 15, customerRatingWeight: 15, managerRatingWeight: 20, leaveDeductionWeight: 10 };
+
+      const employees = await db.select().from(users)
+        .where(and(eq(users.branchId, branchId), eq(users.isActive, true)));
+
+      const startDate = new Date(year, month - 1, 1);
+      const endDate = new Date(year, month, 0);
+
+      const performances: any[] = [];
+
+      for (const emp of employees) {
+        const shifts = await db.select().from(branchShiftDailySummary)
+          .where(and(
+            eq(branchShiftDailySummary.userId, emp.id),
+            sql`\${branchShiftDailySummary.workDate} >= \${startDate.toISOString().split('T')[0]}`,
+            sql`\${branchShiftDailySummary.workDate} <= \${endDate.toISOString().split('T')[0]}`
+          ));
+
+        const totalShifts = shifts.length;
+        const onTimeShifts = shifts.filter(s => !s.isLate).length;
+        const lateShifts = shifts.filter(s => s.isLate).length;
+        const attendanceScore = totalShifts > 0 ? Math.round((onTimeShifts / totalShifts) * 100) : 0;
+
+        const checklists = await db.select().from(checklistLogs)
+          .where(and(
+            eq(checklistLogs.completedBy, emp.id),
+            sql`\${checklistLogs.completedAt} >= \${startDate.toISOString()}`,
+            sql`\${checklistLogs.completedAt} <= \${endDate.toISOString()}`
+          ));
+        
+        const totalChecklists = checklists.length;
+        const completedChecklists = checklists.filter(c => c.status === 'completed').length;
+        const onTimeChecklists = checklists.filter(c => c.status === 'completed' && c.completedAt && c.endTime && new Date(c.completedAt) <= new Date(c.endTime)).length;
+        const checklistScore = totalChecklists > 0 ? Math.round((completedChecklists / totalChecklists) * 100) : 0;
+
+        const taskRatings = await db.select().from(taskRatingsTable)
+          .where(and(
+            eq(taskRatingsTable.userId, emp.id),
+            sql`\${taskRatingsTable.createdAt} >= \${startDate.toISOString()}`,
+            sql`\${taskRatingsTable.createdAt} <= \${endDate.toISOString()}`
+          ));
+        
+        const avgTaskRating = taskRatings.length > 0 
+          ? taskRatings.reduce((sum, r) => sum + r.rating, 0) / taskRatings.length 
+          : 0;
+        const taskScore = Math.round((avgTaskRating / 5) * 100);
+
+        const qrRatings = await db.select().from(staffQrRatings)
+          .where(and(
+            eq(staffQrRatings.staffId, emp.id),
+            sql`\${staffQrRatings.createdAt} >= \${startDate.toISOString()}`,
+            sql`\${staffQrRatings.createdAt} <= \${endDate.toISOString()}`,
+            eq(staffQrRatings.status, 'active')
+          ));
+
+        const avgCustomerRating = qrRatings.length > 0
+          ? qrRatings.reduce((sum, r) => sum + r.overallRating, 0) / qrRatings.length
+          : 0;
+        const customerRatingScore = Math.round((avgCustomerRating / 5) * 100);
+        // Manager rating calculation
+        const managerRatings = await db.select().from(managerMonthlyRatings)
+          .where(and(
+            eq(managerMonthlyRatings.employeeId, emp.id),
+            eq(managerMonthlyRatings.month, month),
+            eq(managerMonthlyRatings.year, year),
+            eq(managerMonthlyRatings.status, "submitted")
+          ));
+        const avgManagerRating = managerRatings.length > 0
+          ? managerRatings.reduce((sum, r) => sum + parseFloat(r.averageRating || "0"), 0) / managerRatings.length
+          : 0;
+        const managerRatingScore = Math.round((avgManagerRating / 5) * 100);
+
+
+        const leaves = await db.select().from(leaveRequests)
+          .where(and(
+            eq(leaveRequests.userId, emp.id),
+            eq(leaveRequests.status, 'approved'),
+            sql`\${leaveRequests.startDate} <= \${endDate.toISOString().split('T')[0]}`,
+            sql`\${leaveRequests.endDate} >= \${startDate.toISOString().split('T')[0]}`
+          ));
+
+        const unpaidLeaveDays = leaves.filter(l => l.leaveType === 'unpaid').reduce((sum, l) => sum + (l.totalDays || 0), 0);
+        const sickLeaveDays = leaves.filter(l => l.leaveType === 'sick').reduce((sum, l) => sum + (l.totalDays || 0), 0);
+        const leaveDeduction = Math.min(unpaidLeaveDays * 5 + sickLeaveDays * 2, 100);
+
+        const finalScore = Math.round(
+          (attendanceScore * w.attendanceWeight / 100) +
+          (checklistScore * w.checklistWeight / 100) +
+          (taskScore * w.taskWeight / 100) +
+          (customerRatingScore * w.customerRatingWeight / 100) +
+          (managerRatingScore * (w.managerRatingWeight || 20) / 100) -
+          (leaveDeduction * w.leaveDeductionWeight / 100)
+        );
+
+        const existing = await db.select().from(monthlyEmployeePerformance)
+          .where(and(
+            eq(monthlyEmployeePerformance.userId, emp.id),
+            eq(monthlyEmployeePerformance.month, month),
+            eq(monthlyEmployeePerformance.year, year)
+          )).limit(1);
+
+        const perfData = {
+          userId: emp.id,
+          branchId,
+          month,
+          year,
+          attendanceScore,
+          checklistScore,
+          taskScore,
+          customerRatingScore,
+          managerRatingScore,
+          totalShifts,
+          onTimeShifts,
+          lateShifts,
+          absentShifts: 0,
+          totalChecklists,
+          completedChecklists,
+          onTimeChecklists,
+          totalTasks: taskRatings.length,
+          completedTasks: taskRatings.length,
+          avgTaskRating: avgTaskRating.toFixed(2),
+          totalCustomerRatings: qrRatings.length,
+          avgCustomerRating: avgCustomerRating.toFixed(2),
+          unpaidLeaveDays,
+          sickLeaveDays,
+          leaveDeduction,
+          finalScore: Math.max(0, finalScore),
+          status: 'finalized',
+          calculatedAt: new Date(),
+          updatedAt: new Date(),
+        };
+
+        if (existing.length > 0) {
+          await db.update(monthlyEmployeePerformance)
+            .set(perfData)
+            .where(eq(monthlyEmployeePerformance.id, existing[0].id));
+          performances.push({ ...perfData, id: existing[0].id });
+        } else {
+          const [newPerf] = await db.insert(monthlyEmployeePerformance).values(perfData).returning();
+          performances.push(newPerf);
+        }
+      }
+
+      performances.sort((a, b) => (b.finalScore || 0) - (a.finalScore || 0));
+      for (let i = 0; i < performances.length; i++) {
+        await db.update(monthlyEmployeePerformance)
+          .set({ branchRank: i + 1 })
+          .where(eq(monthlyEmployeePerformance.id, performances[i].id));
+        performances[i].branchRank = i + 1;
+      }
+
+      res.json({
+        success: true,
+        message: `\${performances.length} personel için performans hesaplandı`,
+        performances,
+      });
+    } catch (error: any) {
+      console.error("Error calculating EoM:", error);
+      res.status(500).json({ message: "Performans hesaplanamadı: " + error.message });
+    }
+  });
 
   // GET /api/employee-of-month/performance - Aylık performans listesi
   app.get('/api/employee-of-month/performance', isAuthenticated, async (req: any, res) => {
@@ -28724,6 +29451,39 @@ DOSPRESSO İnsan Kaynakları Ekibi`
 
 
   // GET /api/employee-of-month/awards - Ayın Elemanı ödüllerini listele
+  app.get('/api/employee-of-month/awards', isAuthenticated, async (req: any, res) => {
+    try {
+      const { branchId, year } = req.query;
+      const userRole = req.user?.role;
+      const userBranchId = req.user?.branchId;
+
+      const conditions = [];
+      if (year) conditions.push(eq(employeeOfMonthAwards.year, parseInt(year as string)));
+      
+      if (branchId) {
+        conditions.push(eq(employeeOfMonthAwards.branchId, parseInt(branchId as string)));
+      } else if (userRole !== 'admin' && userBranchId) {
+        conditions.push(eq(employeeOfMonthAwards.branchId, userBranchId));
+      }
+
+      const awards = await db.select().from(employeeOfMonthAwards)
+        .where(conditions.length > 0 ? and(...conditions) : undefined)
+        .orderBy(desc(employeeOfMonthAwards.year), desc(employeeOfMonthAwards.month));
+
+      const enriched = await Promise.all(awards.map(async (a) => {
+        const user = await db.select({ firstName: users.firstName, lastName: users.lastName, profileImageUrl: users.profileImageUrl })
+          .from(users).where(eq(users.id, a.userId)).limit(1);
+        const branch = await db.select({ name: branches.name })
+          .from(branches).where(eq(branches.id, a.branchId)).limit(1);
+        return { ...a, user: user[0] || null, branchName: branch[0]?.name || 'Bilinmiyor' };
+      }));
+
+      res.json(enriched);
+    } catch (error: any) {
+      console.error("Error fetching awards:", error);
+      res.status(500).json({ message: "Ödül listesi alınamadı" });
+    }
+  });
 
   // PUT /api/employee-of-month/awards/:id/approve - Ödülü onayla
   app.put('/api/employee-of-month/awards/:id/approve', isAuthenticated, async (req: any, res) => {
