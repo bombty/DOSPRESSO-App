@@ -13,12 +13,12 @@ import {
   TrendingUp
 } from "lucide-react";
 
-const CRMDashboard = lazy(() => import("./crm/dashboard"));
-const CRMTickets = lazy(() => import("./crm/tickets"));
-const CRMPerformance = lazy(() => import("./crm/performance"));
-const CRMSLA = lazy(() => import("./crm/sla"));
-const CRMFeedback = lazy(() => import("./crm/feedback"));
-const EmployeeDashboard = lazy(() => import("./crm/employee-dashboard"));
+const CRMDashboard = lazy(() => import("@/pages/crm/dashboard"));
+const CRMTickets = lazy(() => import("@/pages/crm/tickets"));
+const CRMPerformance = lazy(() => import("@/pages/crm/performance"));
+const CRMSLA = lazy(() => import("@/pages/crm/sla"));
+const CRMFeedback = lazy(() => import("@/pages/crm/feedback"));
+const EmployeeDashboard = lazy(() => import("@/pages/crm/employee-dashboard"));
 
 const HQ_ROLES = [
   'admin', 
