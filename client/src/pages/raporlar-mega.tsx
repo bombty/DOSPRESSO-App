@@ -35,6 +35,7 @@ const Denetimler = lazy(() => import("./denetimler"));
 const DenetimSablonlari = lazy(() => import("./denetim-sablonlari"));
 const Sikayetler = lazy(() => import("./sikayetler"));
 const AdvancedReports = lazy(() => import("./advanced-reports"));
+const SubeKarsilastirma = lazy(() => import("./sube-karsilastirma"));
 
 interface TabConfig {
   id: string;
@@ -157,6 +158,14 @@ const RAPORLAR_TABS: TabConfig[] = [
     icon: <BarChart3 className="h-4 w-4" />,
     permissionModule: "advanced_reports",
     component: AdvancedReports
+  },
+  {
+    id: "sube-karsilastirma",
+    label: "Branch Comparison",
+    labelTr: "Şube Karşılaştırma",
+    icon: <Target className="h-4 w-4" />,
+    permissionModule: "quality_audit",
+    component: SubeKarsilastirma
   }
 ];
 

@@ -29575,6 +29575,64 @@ Dusuk puanli alanlara odaklan ve pozitif, motive edici ol. JSON dizisi olarak ya
       res.status(500).json({ message: "Degerlendirme kaydedilemedi" });
     }
   });
+  // Branch audit comparison endpoint
+  app.get("/api/branch-audit-comparison", isAuthenticated, async (req: any, res) => {
+    try {
+      // Get all completed audits with branch info
+      const allAudits = await db.select({
+        id: auditInstances.id,
+        branchId: auditInstances.branchId,
+        totalScore: auditInstances.totalScore,
+        maxScore: auditInstances.maxScore,
+        auditDate: auditInstances.auditDate,
+        status: auditInstances.status,
+      })
+      .from(auditInstances)
+      .where(eq(auditInstances.status, "completed"));
+
+      // Get all branches
+      const allBranches = await db.select().from(branches);
+      const branchMap = new Map(allBranches.map(b => [b.id, b.name]));
+
+      // Calculate average scores per branch
+      const branchStats = new Map<number, { scores: number[], audits: number }>();
+      
+      for (const audit of allAudits) {
+        if (audit.branchId && audit.totalScore && audit.maxScore) {
+          const percentage = Math.round((Number(audit.totalScore) / Number(audit.maxScore)) * 100);
+          const current = branchStats.get(audit.branchId) || { scores: [], audits: 0 };
+          current.scores.push(percentage);
+          current.audits++;
+          branchStats.set(audit.branchId, current);
+        }
+      }
+
+      // Build comparison data
+      const comparisonData = [];
+      for (const [branchId, stats] of branchStats) {
+        const avgScore = Math.round(stats.scores.reduce((a, b) => a + b, 0) / stats.scores.length);
+        const maxScore = Math.max(...stats.scores);
+        const minScore = Math.min(...stats.scores);
+        comparisonData.push({
+          branchId,
+          branchName: branchMap.get(branchId) || `Şube ${branchId}`,
+          averageScore: avgScore,
+          maxScore,
+          minScore,
+          auditCount: stats.audits
+        });
+      }
+
+      // Sort by average score descending
+      comparisonData.sort((a, b) => b.averageScore - a.averageScore);
+
+      res.json(comparisonData);
+    } catch (error: any) {
+      console.error("Error fetching branch comparison:", error);
+      res.status(500).json({ message: "Veri alinamadi" });
+    }
+  });
+
   registerCRMRoutes(app, isAuthenticated);
   const httpServer = createServer(app);
   return httpServer;
