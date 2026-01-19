@@ -2333,6 +2333,7 @@ export async function generateImageWithAI(
 }
 
 // Generate AI-powered branch summary report (for daily/weekly/monthly analytics)
+// Now supports role-based summaries for HQ vs Branch perspectives
 export async function generateBranchSummaryReport(
   period: 'daily' | 'weekly' | 'monthly',
   data: {
@@ -2345,29 +2346,69 @@ export async function generateBranchSummaryReport(
     slaBreaches: number;
     averageEquipmentHealth: number;
     branchName: string;
+    // New role-based fields
+    isHQ?: boolean;
+    role?: string;
+    totalBranches?: number;
+    factoryStats?: { pendingOrders: number; qualityIssues: number };
   },
   userId?: string
 ): Promise<string> {
   const effectiveUserId = userId || 'system';
+  const periodLabel = period === 'daily' ? 'Günlük' : period === 'weekly' ? 'Haftalık' : 'Aylık';
   
   if (!aiRateLimiter.canMakeRequest(effectiveUserId, 'summary_generation', 10)) {
-    return `${data.branchName} ${period === 'daily' ? 'Günlük' : period === 'weekly' ? 'Haftalık' : 'Aylık'} Özet: ${data.activeFaults} aktif arıza, ${data.pendingTasks} bekleyen görev, ${data.overdueChecklists} geciken checklist.`;
+    return `${data.branchName} ${periodLabel} Özet: ${data.activeFaults} aktif arıza, ${data.pendingTasks} bekleyen görev, ${data.overdueChecklists} geciken checklist.`;
   }
 
   try {
+    // Build role-specific system prompt
+    let systemPrompt: string;
+    let userPrompt: string;
+    
+    if (data.isHQ) {
+      // HQ/Admin perspective - organization-wide summary
+      systemPrompt = `Sen DOSPRESSO kahve franchise zincirinin Genel Merkez (HQ) yönetim AI asistanısın. 
+Tüm şubelerin genel durumunu özetlersin. Stratejik bakış açısıyla, üst düzey yöneticilere hitap eden profesyonel raporlar hazırlarsın.
+Şube bazlı değil, organizasyon geneli metrikler ve trendlere odaklan. Türkçe kullan.`;
+
+      userPrompt = `DOSPRESSO Genel Merkez için ${periodLabel.toLowerCase()} organizasyon özeti hazırla.
+
+**Tüm Şubeler Geneli Veriler:**
+- Toplam aktif arıza: ${data.activeFaults} (tüm şubelerde)
+- Bekleyen görevler: ${data.pendingTasks} (organizasyon geneli)
+- Geciken checklistler: ${data.overdueChecklists}
+- Kritik ekipman sayısı: ${data.criticalEquipment}
+- Bakım hatırlatmaları: ${data.maintenanceReminders}
+- Ortalama ekipman sağlığı: %${data.averageEquipmentHealth}
+- SLA ihlalleri: ${data.slaBreaches}
+${data.totalBranches ? `- Toplam şube sayısı: ${data.totalBranches}` : ''}
+${data.factoryStats ? `- Fabrika: ${data.factoryStats.pendingOrders} bekleyen sipariş, ${data.factoryStats.qualityIssues} kalite sorunu` : ''}
+
+**İstenen Format:**
+1. Organizasyon genel durumu (1 satır)
+2. Dikkat gerektiren alanlar (şube kategorileri veya bölgeler bazında)
+3. HQ için stratejik öneriler (2-3 madde)
+
+Maksimum 5 satır, profesyonel ve stratejik ton.`;
+    } else {
+      // Branch perspective - single branch summary
+      systemPrompt = `Sen DOSPRESSO kahve franchise yönetim sisteminin AI raporlama asistanısın. Kısa, önemli, ve şube yöneticisi için kullanışlı raporlar hazırlarsın. Somut öneriler ve aksiyonlar sun. Türkçe kullan.`;
+
+      userPrompt = `${data.branchName} için ${periodLabel.toLowerCase()} özet ve öneri raporu hazırla. 
+
+Veriler: ${data.activeFaults} aktif arıza, ${data.pendingTasks} bekleyen görev, ${data.overdueChecklists} geciken checklist, ${data.maintenanceReminders} bakım hatırlatması, ${data.criticalEquipment} kritik ekipman, ${data.totalAbsences} devamsızlık, ${data.slaBreaches} SLA ihlali, ortalama ekipman sağlığı %${data.averageEquipmentHealth}. 
+
+Önce kısa durum özeti ver, sonra 1-2 somut aksiyon önerisi ekle (örn: "Öneri: Geciken checklistleri tamamlayın" veya "Öneri: Kritik ekipmanları öncelikli olarak kontrol edin"). Maksimum 4 satır, düz metin.`;
+    }
+
     const response = await openai.chat.completions.create({
       model: SUMMARY_MODEL,
       messages: [
-        {
-          role: "system",
-          content: `Sen DOSPRESSO kahve franchise yönetim sisteminin AI raporlama asistanısın. Kısa, önemli, ve işletmeci için kullanışlı raporlar hazırlarsın. Somut öneriler ve aksiyonlar sun. Türkçe kullan.`
-        },
-        {
-          role: "user",
-          content: `${data.branchName} şubesi için ${period === 'daily' ? 'günlük' : period === 'weekly' ? 'haftalık' : 'aylık'} özet ve öneri raporu hazırla. Veriler: ${data.activeFaults} aktif arıza, ${data.pendingTasks} bekleyen görev, ${data.overdueChecklists} geciken checklist, ${data.maintenanceReminders} bakım hatırlatması, ${data.criticalEquipment} kritik ekipman, ${data.totalAbsences} devamsızlık, ${data.slaBreaches} SLA ihlali, ortalama ekipman sağlığı %${data.averageEquipmentHealth}. Önce kısa durum özeti ver, sonra 1-2 somut aksiyon önerisi ekle (örn: "Öneri: Geciken checklistleri tamamlayın" veya "Öneri: Kritik ekipmanları öncelikli olarak kontrol edin"). Maksimum 4 satır, düz metin.`
-        }
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt }
       ],
-      max_tokens: 250,
+      max_tokens: 300,
       temperature: 0.7
     });
 
@@ -2376,7 +2417,7 @@ export async function generateBranchSummaryReport(
     return summary;
   } catch (error: Error | unknown) {
     console.error("Summary generation error:", error);
-    return `${data.branchName} ${period === 'daily' ? 'Günlük' : period === 'weekly' ? 'Haftalık' : 'Aylık'} Özet: ${data.activeFaults} aktif arıza, ${data.pendingTasks} bekleyen görev.`;
+    return `${data.branchName} ${periodLabel} Özet: ${data.activeFaults} aktif arıza, ${data.pendingTasks} bekleyen görev.`;
   }
 }
 

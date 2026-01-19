@@ -295,22 +295,53 @@ const generalFileUpload = multer({
   }
 });
 
-// Helper to generate branch summary report
-async function generateBranchSummary(pendingTasks: number, activeFaults: number, overdueChecklists: number, maintenanceReminders: number, criticalEquipment: number, avgHealth: number, period: 'daily' | 'weekly' | 'monthly', userId: string): Promise<string> {
+// Helper to generate branch summary report with role-based context
+interface SummaryContext {
+  pendingTasks: number;
+  activeFaults: number;
+  overdueChecklists: number;
+  maintenanceReminders: number;
+  criticalEquipment: number;
+  avgHealth: number;
+  period: 'daily' | 'weekly' | 'monthly';
+  userId: string;
+  role: string;
+  branchId?: number;
+  branchName?: string;
+  totalBranches?: number;
+  factoryStats?: { pendingOrders: number; qualityIssues: number };
+}
+
+async function generateBranchSummary(ctx: SummaryContext): Promise<string> {
   try {
-    return await generateBranchSummaryReport(period, {
-      activeFaults,
-      pendingTasks,
-      overdueChecklists,
-      maintenanceReminders,
-      criticalEquipment,
+    const isHQ = !ctx.branchId || ['admin', 'owner', 'hq_manager', 'finance', 'coach'].includes(ctx.role);
+    
+    // Determine scope name based on role
+    let scopeName: string;
+    if (isHQ) {
+      scopeName = "DOSPRESSO Genel Merkez (Tüm Şubeler)";
+    } else {
+      scopeName = ctx.branchName || `Şube #${ctx.branchId}`;
+    }
+    
+    return await generateBranchSummaryReport(ctx.period, {
+      activeFaults: ctx.activeFaults,
+      pendingTasks: ctx.pendingTasks,
+      overdueChecklists: ctx.overdueChecklists,
+      maintenanceReminders: ctx.maintenanceReminders,
+      criticalEquipment: ctx.criticalEquipment,
       totalAbsences: 0,
       slaBreaches: 0,
-      averageEquipmentHealth: avgHealth,
-      branchName: "Şubemiz"
-    }, userId);
+      averageEquipmentHealth: ctx.avgHealth,
+      branchName: scopeName,
+      isHQ,
+      role: ctx.role,
+      totalBranches: ctx.totalBranches,
+      factoryStats: ctx.factoryStats
+    }, ctx.userId);
   } catch (e) {
-    return `${period === 'daily' ? 'Günlük' : period === 'weekly' ? 'Haftalık' : 'Aylık'}: ${activeFaults} arıza, ${pendingTasks} görev`;
+    const periodLabel = ctx.period === 'daily' ? 'Günlük' : ctx.period === 'weekly' ? 'Haftalık' : 'Aylık';
+    return `${periodLabel}: ${ctx.activeFaults} arıza, ${ctx.pendingTasks} görev`;
   }
 }
 
@@ -13978,7 +14009,7 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
       const faultPenalty = activeFaults * 5;
       const avgHealth = Math.max(0, Math.min(100, baseHealth - faultPenalty));
 
-      const summary = await generateBranchSummary(pendingTasks, activeFaults, overdueChecklists, 0, criticalEquipment, avgHealth, 'daily', user.id);
+      const summary = await generateBranchSummary({ pendingTasks, activeFaults, overdueChecklists, maintenanceReminders: 0, criticalEquipment, avgHealth, period: 'daily', userId: user.id, role: role, branchId });
 
       res.json({ period: 'daily', pendingTasks, completedTasks, activeFaults, overdueChecklists, criticalEquipment, avgHealth, summary });
     } catch (error: Error | unknown) {
@@ -14051,7 +14082,7 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
       const topPerformers = sortedPerf.slice(0, 2);
       const bottomPerformers = sortedPerf.slice(-2).reverse();
 
-      const summary = await generateBranchSummary(pendingTasks, activeFaults, overdueChecklists, 0, criticalEquipment, avgHealth, 'weekly', user.id);
+      const summary = await generateBranchSummary({ pendingTasks, activeFaults, overdueChecklists, maintenanceReminders: 0, criticalEquipment, avgHealth, period: 'weekly', userId: user.id, role: role, branchId });
 
       res.json({ 
         period: 'weekly', 
@@ -14150,7 +14181,7 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
       const topPerformers = sortedPerf.slice(0, 2);
       const bottomPerformers = sortedPerf.slice(-2).reverse();
 
-      const summary = await generateBranchSummary(pendingTasks, activeFaults, overdueChecklists, 0, criticalEquipment, avgHealth, 'monthly', user.id);
+      const summary = await generateBranchSummary({ pendingTasks, activeFaults, overdueChecklists, maintenanceReminders: 0, criticalEquipment, avgHealth, period: 'monthly', userId: user.id, role: role, branchId });
 
       res.json({ 
         period: 'monthly', 
