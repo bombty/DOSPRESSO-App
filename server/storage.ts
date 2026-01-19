@@ -4880,15 +4880,40 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateSiteSetting(key: string, value: string, updatedBy: string): Promise<SiteSetting> {
-    const [updated] = await db.update(siteSettings)
-      .set({
+    // Determine category and public status based on key
+    const PUBLIC_KEYS = ['banner_carousel_enabled', 'site_title', 'logo_url', 'favicon_url'];
+    const isPublic = PUBLIC_KEYS.includes(key);
+    
+    const getCategory = (k: string): string => {
+      if (k.includes('smtp') || k.includes('email')) return 'email';
+      if (k.includes('primary_color') || k.includes('secondary_color') || k.includes('accent_color') || k.includes('font_') || k.includes('border_radius')) return 'theme';
+      if (k.includes('logo') || k.includes('banner') || k.includes('favicon')) return 'branding';
+      if (k.includes('about_us') || k.includes('privacy') || k.includes('terms')) return 'content';
+      return 'general';
+    };
+    const category = getCategory(key);
+    
+    // Upsert - insert if not exists, update if exists
+    const [result] = await db.insert(siteSettings)
+      .values({
+        key,
         value,
         updatedBy,
-        updatedAt: new Date(),
+        isPublic,
+        category,
       })
-      .where(eq(siteSettings.key, key))
+      .onConflictDoUpdate({
+        target: siteSettings.key,
+        set: {
+          value,
+          updatedBy,
+          updatedAt: new Date(),
+          isPublic,
+          category,
+        },
+      })
       .returning();
-    return updated;
+    return result;
   }
 
   async createSiteSetting(setting: InsertSiteSetting): Promise<SiteSetting> {
