@@ -7728,7 +7728,47 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
     }
   });
 
-  // POST /api/admin/users/bulk-import - Bulk import users from CSV
+
+  // PATCH /api/admin/users/:id/status - Toggle user active status
+  app.patch('/api/admin/users/:id/status', isAuthenticated, async (req: any, res) => {
+    try {
+      const currentUser = req.user!;
+      if (!currentUser.role || !isHQRole(currentUser.role as UserRoleType)) {
+        return res.status(403).json({ message: "HQ yetkisi gerekli" });
+      }
+
+      const { id } = req.params;
+      
+      const statusSchema = z.object({
+        isActive: z.boolean(),
+      });
+      
+      const validatedData = statusSchema.parse(req.body);
+
+      // Kendi hesabını deaktif edemez
+      if (id === currentUser.id && !validatedData.isActive) {
+        return res.status(400).json({ message: "Kendi hesabınızı deaktif edemezsiniz" });
+      }
+
+      const updated = await storage.updateUser(id, { isActive: validatedData.isActive });
+
+      if (!updated) {
+        return res.status(404).json({ message: "Kullanıcı bulunamadı" });
+      }
+
+      res.json({ 
+        message: validatedData.isActive ? "Kullanıcı aktif edildi" : "Kullanıcı deaktif edildi",
+        user: updated 
+      });
+    } catch (error: any) {
+      console.error("Error updating user status:", error);
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ message: "Geçersiz veri", errors: error.errors });
+      }
+      res.status(500).json({ message: "Kullanıcı durumu güncellenemedi" });
+    }
+  });
+
   app.post('/api/admin/users/bulk-import', isAuthenticated, async (req: any, res) => {
     try {
       const user = req.user!;
@@ -28772,12 +28812,12 @@ DOSPRESSO İnsan Kaynakları Ekibi`
 
       const total = (attendanceWeight || 20) + (checklistWeight || 20) + (taskWeight || 15) + (customerRatingWeight || 15) + (managerRatingWeight || 20) + (leaveDeductionWeight || 10);
       if (total !== 100) {
-        return res.status(400).json({ message: `Ağırlıklar toplamı 100 olmalı (şu an: \${total})` });
+        return res.status(400).json({ message: `Ağırlıklar toplamı 100 olmalı (şu an: ${total})` });
       }
 
       const existingCondition = branchId 
         ? eq(employeeOfMonthWeights.branchId, branchId)
-        : sql`\${employeeOfMonthWeights.branchId} IS NULL`;
+        : sql`${employeeOfMonthWeights.branchId} IS NULL`;
 
       const existing = await db.select().from(employeeOfMonthWeights).where(existingCondition).limit(1);
 
