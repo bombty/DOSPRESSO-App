@@ -20,10 +20,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { ObjectUploader } from "@/components/ObjectUploader";
 import { 
   AlertTriangle, CheckCircle2, Clock, AlertCircle, XCircle,
   Calendar, User, Building2, FileText, TrendingUp,
-  Filter, Search, ArrowUpRight, ChevronRight, Loader2
+  Filter, Search, ArrowUpRight, ChevronRight, Loader2, Camera, Image
 } from "lucide-react";
 import { format, formatDistanceToNow, isPast } from "date-fns";
 import { tr } from "date-fns/locale";
@@ -108,6 +109,7 @@ export default function AksiyonTakipPage() {
   const [selectedCapa, setSelectedCapa] = useState<CorrectiveAction | null>(null);
   const [updateNotes, setUpdateNotes] = useState("");
   const [newStatus, setNewStatus] = useState("");
+  const [evidenceUrl, setEvidenceUrl] = useState<string | null>(null);
 
   const queryParams = new URLSearchParams();
   if (activeTab !== "all" && activeTab !== "overdue") {
@@ -153,8 +155,8 @@ export default function AksiyonTakipPage() {
   };
 
   const updateCapaMutation = useMutation({
-    mutationFn: async ({ id, status, notes }: { id: number; status: string; notes: string }) => {
-      return await apiRequest('PUT', `/api/corrective-actions/${id}`, { status, notes });
+    mutationFn: async ({ id, status, notes, evidence }: { id: number; status: string; notes: string; evidence?: string }) => {
+      return await apiRequest('PUT', `/api/corrective-actions/${id}`, { status, notes, evidence });
     },
     onSuccess: () => {
       toast({ title: "Aksiyon güncellendi", description: "Durum başarıyla değiştirildi." });
@@ -162,6 +164,7 @@ export default function AksiyonTakipPage() {
       setSelectedCapa(null);
       setUpdateNotes("");
       setNewStatus("");
+      setEvidenceUrl(null);
     },
     onError: (error) => {
       toast({ 
@@ -174,11 +177,29 @@ export default function AksiyonTakipPage() {
 
   const handleStatusUpdate = () => {
     if (!selectedCapa || !newStatus) return;
+    
+    if (newStatus === "CLOSED" && !evidenceUrl) {
+      toast({ 
+        title: "Fotoğraf Gerekli", 
+        description: "Aksiyonu kapatmak için kanıt fotoğrafı yüklemeniz gerekiyor.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
     updateCapaMutation.mutate({
       id: selectedCapa.id,
       status: newStatus,
       notes: updateNotes,
+      evidence: evidenceUrl || undefined,
     });
+  };
+
+  const handlePhotoUpload = (result: { successful: { uploadURL: string }[] }) => {
+    if (result.successful?.[0]?.uploadURL) {
+      setEvidenceUrl(result.successful[0].uploadURL);
+      toast({ title: "Fotoğraf yüklendi", description: "Kanıt fotoğrafı başarıyla yüklendi." });
+    }
   };
 
   const StatCard = ({ title, value, icon: Icon, color }: { title: string; value: number; icon: any; color: string }) => (
@@ -428,6 +449,58 @@ export default function AksiyonTakipPage() {
                     className="min-h-[80px]"
                     data-testid="textarea-update-notes"
                   />
+
+                  {newStatus === "CLOSED" && (
+                    <div className="space-y-2 pt-2 border-t">
+                      <Label className="flex items-center gap-2">
+                        <Camera className="h-4 w-4" />
+                        Kanit Fotografı (Zorunlu)
+                      </Label>
+                      {evidenceUrl ? (
+                        <div className="relative">
+                          <img 
+                            src={evidenceUrl} 
+                            alt="Kanıt fotoğrafı" 
+                            className="w-full h-32 object-cover rounded-lg border"
+                          />
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            className="absolute top-2 right-2"
+                            onClick={() => setEvidenceUrl(null)}
+                            data-testid="button-remove-photo"
+                          >
+                            Kaldir
+                          </Button>
+                        </div>
+                      ) : (
+                        <ObjectUploader
+                          onGetUploadParameters={async () => {
+                            try {
+                              const response = await apiRequest('/api/upload-url', 'POST', {
+                                fileName: `capa-evidence-${selectedCapa?.id}-${Date.now()}.jpg`,
+                                fileType: 'image/jpeg',
+                              });
+                              return response as unknown as { method: "PUT"; url: string };
+                            } catch (err) {
+                              toast({ title: 'Hata', description: 'Yuklemek icin URL alınamadı', variant: 'destructive' });
+                              throw err;
+                            }
+                          }}
+                          onComplete={handlePhotoUpload}
+                          buttonClassName="w-full"
+                        >
+                          <div className="flex items-center gap-2 justify-center">
+                            <Image className="h-4 w-4" />
+                            Fotograf Yukle
+                          </div>
+                        </ObjectUploader>
+                      )}
+                      <p className="text-xs text-muted-foreground">
+                        Aksiyonu kapatmak için tamamlandığını gösteren bir fotoğraf yükleyin.
+                      </p>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

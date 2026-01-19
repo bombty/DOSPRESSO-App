@@ -1,11 +1,15 @@
 import { storage } from "./storage";
 import type { Task, Equipment, User } from "@shared/schema";
 import { sendNotificationEmail } from "./email";
+import { db } from "./db";
+import { correctiveActions, users, auditInstances, branches } from "@shared/schema";
+import { eq, lt, and, ne } from "drizzle-orm";
 
 const REMINDER_INTERVAL = 5 * 60 * 1000; // 5 minutes in milliseconds
 const MAINTENANCE_WARNING_DAYS = 7; // Notify 7 days before maintenance due
 const SLA_CHECK_INTERVAL = 15 * 60 * 1000; // 15 minutes in milliseconds
 const OVERDUE_REMINDER_INTERVAL = 60 * 60 * 1000; // 1 hour for overdue reminders
+const CAPA_REMINDER_INTERVAL = 4 * 60 * 60 * 1000; // 4 hours for CAPA reminders
 
 let reminderInterval: NodeJS.Timeout | null = null;
 let slaInterval: NodeJS.Timeout | null = null;
@@ -18,6 +22,9 @@ const sentMaintenanceNotifications = new Map<number, string>();
 const sentOverdueNotifications = new Map<number, number>();
 
 const sentChecklistReminders = new Map<number, number>();
+
+// Track CAPA overdue notifications (capaId -> lastNotifiedAt timestamp)
+const sentCapaNotifications = new Map<number, number>();
 
 export async function checkAndSendReminders() {
   try {
@@ -86,6 +93,9 @@ export async function checkAndSendReminders() {
 
     // Check equipment maintenance reminders
     await checkMaintenanceReminders();
+
+    // Check overdue CAPA (Corrective Actions) and send notifications
+    await checkCapaNotifications();
   } catch (error) {
     console.error("Hatırlatma kontrolü hatası:", error);
   }
@@ -135,6 +145,138 @@ async function checkChecklistReminders() {
     }
   } catch (error) {
     console.error("Checklist hatırlatma hatası:", error);
+  }
+}
+
+// Check for overdue CAPA (Corrective Actions) and notify assignees
+async function checkCapaNotifications() {
+  try {
+    const now = new Date();
+    
+    // Find overdue CAPAs (dueDate < now AND status not CLOSED)
+    const overdueCapas = await db.select({
+      id: correctiveActions.id,
+      priority: correctiveActions.priority,
+      description: correctiveActions.description,
+      dueDate: correctiveActions.dueDate,
+      assignedToId: correctiveActions.assignedToId,
+      auditInstanceId: correctiveActions.auditInstanceId,
+      status: correctiveActions.status,
+    })
+      .from(correctiveActions)
+      .where(
+        and(
+          lt(correctiveActions.dueDate, now),
+          ne(correctiveActions.status, 'CLOSED')
+        )
+      );
+
+    for (const capa of overdueCapas) {
+      // Skip if no assignee
+      if (!capa.assignedToId) continue;
+
+      const capaKey = capa.id;
+      const lastNotified = sentCapaNotifications.get(capaKey);
+      
+      // Only send every CAPA_REMINDER_INTERVAL (4 hours)
+      if (lastNotified && (now.getTime() - lastNotified) < CAPA_REMINDER_INTERVAL) {
+        continue;
+      }
+
+      // Calculate days overdue
+      const daysOverdue = Math.ceil((now.getTime() - new Date(capa.dueDate!).getTime()) / (24 * 60 * 60 * 1000));
+      const priorityEmoji = capa.priority === 'critical' ? '🔴' : capa.priority === 'high' ? '🟠' : '🟡';
+      const priorityText = capa.priority === 'critical' ? 'Kritik' : capa.priority === 'high' ? 'Yüksek' : 'Orta';
+
+      // Get assignee details for email
+      const [assignee] = await db.select().from(users).where(eq(users.id, capa.assignedToId));
+      
+      // Get audit/branch info for context
+      let branchName = '';
+      if (capa.auditInstanceId) {
+        const [audit] = await db.select({
+          branchId: auditInstances.branchId,
+        }).from(auditInstances).where(eq(auditInstances.id, capa.auditInstanceId));
+        if (audit?.branchId) {
+          const [branch] = await db.select({ name: branches.name }).from(branches).where(eq(branches.id, audit.branchId));
+          branchName = branch?.name || '';
+        }
+      }
+
+      // Create in-app notification
+      try {
+        await storage.createNotification({
+          userId: capa.assignedToId,
+          type: 'capa_overdue',
+          title: `${priorityEmoji} Gecikmiş Düzeltici Aksiyon`,
+          message: `${priorityText} öncelikli aksiyon ${daysOverdue} gün gecikti${branchName ? ` - ${branchName}` : ''}`,
+          link: `/raporlar/aksiyon-takip?capaId=${capa.id}`,
+          isRead: false,
+        });
+      } catch (err) {
+        console.error(`CAPA notification error for CAPA ${capa.id}:`, err);
+      }
+
+      // Send email notification
+      if (assignee?.email) {
+        try {
+          await sendNotificationEmail(
+            assignee.email,
+            `[DOSPRESSO] Gecikmiş Düzeltici Aksiyon - ${priorityText} Öncelik`,
+            `Merhaba ${assignee.firstName || assignee.username || 'Kullanıcı'},
+
+${priorityText} öncelikli bir düzeltici aksiyon (CAPA) ${daysOverdue} gün gecikmiştir.
+
+Aksiyon Detayları:
+- Öncelik: ${priorityText}
+- Açıklama: ${capa.description?.substring(0, 100)}${(capa.description?.length || 0) > 100 ? '...' : ''}
+${branchName ? `- Şube: ${branchName}` : ''}
+- Son Tarih: ${new Date(capa.dueDate!).toLocaleDateString('tr-TR')}
+- Gecikme: ${daysOverdue} gün
+
+Lütfen aksiyonu en kısa sürede tamamlayın.
+
+DOSPRESSO Franchise Yönetim Sistemi`,
+            `<h2 style="color: ${capa.priority === 'critical' ? '#dc2626' : capa.priority === 'high' ? '#ea580c' : '#ca8a04'};">
+              ${priorityEmoji} Gecikmiş Düzeltici Aksiyon
+            </h2>
+            <p>Merhaba <strong>${assignee.firstName || assignee.username || 'Kullanıcı'}</strong>,</p>
+            <p>${priorityText} öncelikli bir düzeltici aksiyon (CAPA) <strong>${daysOverdue} gün</strong> gecikmiştir.</p>
+            <table style="border-collapse: collapse; margin: 16px 0;">
+              <tr><td style="padding: 8px; border: 1px solid #ddd;"><strong>Öncelik</strong></td><td style="padding: 8px; border: 1px solid #ddd;">${priorityText}</td></tr>
+              <tr><td style="padding: 8px; border: 1px solid #ddd;"><strong>Açıklama</strong></td><td style="padding: 8px; border: 1px solid #ddd;">${capa.description?.substring(0, 100)}${(capa.description?.length || 0) > 100 ? '...' : ''}</td></tr>
+              ${branchName ? `<tr><td style="padding: 8px; border: 1px solid #ddd;"><strong>Şube</strong></td><td style="padding: 8px; border: 1px solid #ddd;">${branchName}</td></tr>` : ''}
+              <tr><td style="padding: 8px; border: 1px solid #ddd;"><strong>Son Tarih</strong></td><td style="padding: 8px; border: 1px solid #ddd;">${new Date(capa.dueDate!).toLocaleDateString('tr-TR')}</td></tr>
+              <tr><td style="padding: 8px; border: 1px solid #ddd;"><strong>Gecikme</strong></td><td style="padding: 8px; border: 1px solid #ddd; color: #dc2626;">${daysOverdue} gün</td></tr>
+            </table>
+            <p>Lütfen aksiyonu en kısa sürede tamamlayın.</p>
+            <hr style="margin: 24px 0;" />
+            <p style="color: #666; font-size: 12px;">DOSPRESSO Franchise Yönetim Sistemi</p>`
+          );
+        } catch (emailErr) {
+          console.error(`CAPA email error for CAPA ${capa.id}:`, emailErr);
+        }
+      }
+
+      // Update tracking map
+      sentCapaNotifications.set(capaKey, now.getTime());
+      console.log(`CAPA gecikme bildirimi gönderildi: CAPA #${capa.id}, Kullanıcı: ${capa.assignedToId}, Gecikme: ${daysOverdue} gün`);
+    }
+
+    // Update CAPA status to OVERDUE if not already
+    for (const capa of overdueCapas) {
+      if (capa.status === 'OPEN' || capa.status === 'IN_PROGRESS') {
+        try {
+          await db.update(correctiveActions)
+            .set({ status: 'OVERDUE', updatedAt: now })
+            .where(eq(correctiveActions.id, capa.id));
+        } catch (updateErr) {
+          console.error(`CAPA status update error for CAPA ${capa.id}:`, updateErr);
+        }
+      }
+    }
+  } catch (error) {
+    console.error("CAPA bildirim hatası:", error);
   }
 }
 

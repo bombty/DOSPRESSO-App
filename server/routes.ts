@@ -20113,6 +20113,142 @@ DOSPRESSO İnsan Kaynakları Ekibi`
     }
   });
 
+
+  // GET /api/corrective-actions/reports/branch-performance - Branch CAPA performance report
+  app.get('/api/corrective-actions/reports/branch-performance', isAuthenticated, async (req: any, res) => {
+    try {
+      // Get all CAPAs with audit/branch info
+      const capas = await db.select({
+        id: correctiveActions.id,
+        priority: correctiveActions.priority,
+        status: correctiveActions.status,
+        dueDate: correctiveActions.dueDate,
+        closedDate: correctiveActions.closedDate,
+        createdAt: correctiveActions.createdAt,
+        auditInstanceId: correctiveActions.auditInstanceId,
+      }).from(correctiveActions);
+
+      // Get audit instances with branch info
+      const audits = await db.select({
+        id: auditInstances.id,
+        branchId: auditInstances.branchId,
+      }).from(auditInstances);
+
+      const auditBranchMap = new Map(audits.map(a => [a.id, a.branchId]));
+
+      // Get all branches
+      const allBranches = await db.select({
+        id: branches.id,
+        name: branches.name,
+      }).from(branches);
+
+      // Build branch performance map
+      const branchStats: Record<number, {
+        branchId: number;
+        branchName: string;
+        total: number;
+        open: number;
+        inProgress: number;
+        overdue: number;
+        closed: number;
+        avgResolutionDays: number;
+        onTimeRate: number;
+        critical: number;
+        high: number;
+        medium: number;
+      }> = {};
+
+      // Initialize all branches
+      for (const branch of allBranches) {
+        branchStats[branch.id] = {
+          branchId: branch.id,
+          branchName: branch.name,
+          total: 0,
+          open: 0,
+          inProgress: 0,
+          overdue: 0,
+          closed: 0,
+          avgResolutionDays: 0,
+          onTimeRate: 0,
+          critical: 0,
+          high: 0,
+          medium: 0,
+        };
+      }
+
+      // Process CAPAs
+      const resolutionDays: Record<number, number[]> = {};
+      const onTimeCount: Record<number, { onTime: number; total: number }> = {};
+
+      for (const capa of capas) {
+        const branchId = auditBranchMap.get(capa.auditInstanceId);
+        if (!branchId || !branchStats[branchId]) continue;
+
+        branchStats[branchId].total++;
+
+        // Count by status
+        if (capa.status === 'OPEN') branchStats[branchId].open++;
+        else if (capa.status === 'IN_PROGRESS') branchStats[branchId].inProgress++;
+        else if (capa.status === 'OVERDUE') branchStats[branchId].overdue++;
+        else if (capa.status === 'CLOSED') branchStats[branchId].closed++;
+
+        // Count by priority
+        if (capa.priority === 'critical') branchStats[branchId].critical++;
+        else if (capa.priority === 'high') branchStats[branchId].high++;
+        else branchStats[branchId].medium++;
+
+        // Calculate resolution days for closed CAPAs
+        if (capa.status === 'CLOSED' && capa.closedDate && capa.createdAt) {
+          const days = Math.ceil((new Date(capa.closedDate).getTime() - new Date(capa.createdAt).getTime()) / (24 * 60 * 60 * 1000));
+          if (!resolutionDays[branchId]) resolutionDays[branchId] = [];
+          resolutionDays[branchId].push(days);
+
+          // Check if on time
+          if (!onTimeCount[branchId]) onTimeCount[branchId] = { onTime: 0, total: 0 };
+          onTimeCount[branchId].total++;
+          if (capa.closedDate <= capa.dueDate) {
+            onTimeCount[branchId].onTime++;
+          }
+        }
+      }
+
+      // Calculate averages
+      for (const branchId of Object.keys(branchStats).map(Number)) {
+        if (resolutionDays[branchId]?.length) {
+          branchStats[branchId].avgResolutionDays = Math.round(
+            resolutionDays[branchId].reduce((a, b) => a + b, 0) / resolutionDays[branchId].length
+          );
+        }
+        if (onTimeCount[branchId]?.total) {
+          branchStats[branchId].onTimeRate = Math.round(
+            (onTimeCount[branchId].onTime / onTimeCount[branchId].total) * 100
+          );
+        }
+      }
+
+      // Filter out branches with no CAPAs and sort by total desc
+      const report = Object.values(branchStats)
+        .filter(b => b.total > 0)
+        .sort((a, b) => b.total - a.total);
+
+      // Calculate totals
+      const totals = {
+        total: capas.length,
+        open: capas.filter(c => c.status === 'OPEN').length,
+        inProgress: capas.filter(c => c.status === 'IN_PROGRESS').length,
+        overdue: capas.filter(c => c.status === 'OVERDUE').length,
+        closed: capas.filter(c => c.status === 'CLOSED').length,
+        critical: capas.filter(c => c.priority === 'critical').length,
+        high: capas.filter(c => c.priority === 'high').length,
+        medium: capas.filter(c => c.priority === 'medium').length,
+      };
+
+      res.json({ branches: report, totals });
+    } catch (error: any) {
+      console.error("CAPA branch report error:", error);
+      res.status(500).json({ message: "Rapor oluşturulamadı" });
+    }
+  });
   // ============================================================
   // AUDIT ANALYTICS - Denetim Analitikleri
   // ============================================================

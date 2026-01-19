@@ -30,6 +30,7 @@ const E2ERaporlar = lazy(() => import("./e2e-raporlar"));
 const HRReports = lazy(() => import("./hr-reports"));
 const CashReports = lazy(() => import("./cash-reports"));
 const AksiyonTakip = lazy(() => import("./aksiyon-takip"));
+const CapaRaporlari = lazy(() => import("./capa-raporlari"));
 const Denetimler = lazy(() => import("./denetimler"));
 const DenetimSablonlari = lazy(() => import("./denetim-sablonlari"));
 const Sikayetler = lazy(() => import("./sikayetler"));
@@ -134,6 +135,14 @@ const RAPORLAR_TABS: TabConfig[] = [
     component: AksiyonTakip
   },
   {
+    id: "capa-raporlari",
+    label: "CAPA Reports",
+    labelTr: "CAPA Raporlari",
+    icon: <TrendingUp className="h-4 w-4" />,
+    permissionModule: "quality_audit",
+    component: CapaRaporlari
+  },
+  {
     id: "sikayetler",
     label: "Complaints",
     labelTr: "Şikayetler",
@@ -177,6 +186,7 @@ const TAB_URL_MAP: Record<string, string> = {
   "denetimler": "/raporlar/denetimler",
   "denetim-sablonlari": "/raporlar/denetim-sablonlari",
   "aksiyon-takip": "/raporlar/aksiyon-takip",
+  "capa-raporlari": "/raporlar/capa-raporlari",
   "sikayetler": "/raporlar/sikayetler",
   "gelismis-raporlar": "/raporlar/gelismis"
 };
@@ -193,6 +203,7 @@ function getTabFromUrl(pathname: string): string | null {
   if (pathname.startsWith("/raporlar/denetimler")) return "denetimler";
   if (pathname.startsWith("/raporlar/denetim-sablonlari")) return "denetim-sablonlari";
   if (pathname.startsWith("/raporlar/aksiyon-takip")) return "aksiyon-takip";
+  if (pathname.startsWith("/raporlar/capa-raporlari")) return "capa-raporlari";
   if (pathname.startsWith("/raporlar/sikayetler")) return "sikayetler";
   if (pathname.startsWith("/raporlar/gelismis")) return "gelismis-raporlar";
   return null;
