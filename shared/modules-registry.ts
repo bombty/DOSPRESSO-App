@@ -235,8 +235,7 @@ export const MODULES: ModuleDefinition[] = [
   // ═══════════════════════════════════════════════════════════════
   { moduleKey: 'users', moduleName: 'Kullanıcılar', category: 'hq', megaModule: 'admin', description: 'Kullanıcı yönetimi', icon: 'Users', route: '/yonetim/kullanicilar', sortOrder: 110 },
   { moduleKey: 'admin_users', moduleName: 'Admin Kullanıcılar', category: 'admin', megaModule: 'admin', description: 'Admin kullanıcı yönetimi', icon: 'UserCog', route: '/admin/kullanicilar', sortOrder: 111 },
-  { moduleKey: 'authorization', moduleName: 'Yetkilendirme', category: 'admin', megaModule: 'admin', description: 'Rol ve yetki yönetimi', icon: 'Shield', route: '/admin/yetkilendirme', sortOrder: 112 },
-  { moduleKey: 'role_permissions', moduleName: 'Rol Yetkileri', category: 'admin', megaModule: 'admin', description: 'Rol bazlı yetki yönetimi', icon: 'Key', route: '/yonetim/rol-yetkileri', sortOrder: 113 },
+  { moduleKey: 'authorization', moduleName: 'Rol ve Yetki Yönetimi', category: 'admin', megaModule: 'admin', description: 'Rol ve yetki yönetimi', icon: 'Shield', route: '/admin/yetkilendirme', sortOrder: 112 },
   { moduleKey: 'settings', moduleName: 'Ayarlar', category: 'admin', megaModule: 'admin', description: 'Sistem ayarları', icon: 'Settings', route: '/yonetim/ayarlar', sortOrder: 114 },
   { moduleKey: 'menu_management', moduleName: 'Menü Yönetimi', category: 'admin', megaModule: 'admin', description: 'Menü yönetimi', icon: 'Menu', route: '/yonetim/menu', sortOrder: 115 },
   { moduleKey: 'content_management', moduleName: 'İçerik Yönetimi', category: 'admin', megaModule: 'admin', description: 'İçerik yönetimi', icon: 'FileText', route: '/yonetim/icerik', sortOrder: 116 },

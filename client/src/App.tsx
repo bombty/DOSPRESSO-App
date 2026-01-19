@@ -89,7 +89,6 @@ import ServiceRequestsManagement from "@/pages/yonetim/servis-talepleri";
 import EquipmentManagement from "@/pages/yonetim/ekipman-yonetimi";
 import EkipmanServis from "@/pages/yonetim/ekipman-servis";
 import AdminAcademy from "@/pages/yonetim/akademi";
-import RolYetkileri from "@/pages/rol-yetkileri";
 import KaliteDenetimi from "@/pages/kalite-denetimi";
 import MisafirGeriBildirim from "@/pages/musteri-geribildirimi";
 import Sikayetler from "@/pages/sikayetler";
@@ -345,8 +344,7 @@ function Router() {
           <Route path="/yonetim/ekipman-servis" component={EkipmanServis} />
           <Route path="/yonetim/servis-talepleri" component={ServiceRequestsManagement} />
           <Route path="/yonetim/ekipman-yonetimi" component={EquipmentManagement} />
-          <Route path="/yonetim/rol-yetkileri" component={RolYetkileri} />
-          <Route path="/yonetim/akademi" component={AdminAcademy} />
+                    <Route path="/yonetim/akademi" component={AdminAcademy} />
           <Route path="/muhasebe-geribildirimi" component={BranchFeedback} />
           <Route path="/kayip-esya" component={KayipEsya} />
           <Route path="/kayip-esya-hq" component={KayipEsyaHQ} />

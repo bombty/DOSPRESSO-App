@@ -32,7 +32,6 @@ import {
 
 const AdminDashboard = lazy(() => import("./admin/index"));
 const AdminKullanicilar = lazy(() => import("./admin/kullanicilar"));
-const RolYetkileri = lazy(() => import("./rol-yetkileri"));
 const AdminYetkilendirme = lazy(() => import("./admin/yetkilendirme"));
 const Settings2 = lazy(() => import("./yonetim/ayarlar"));
 const AdminEmailAyarlari = lazy(() => import("./admin/email-ayarlari"));
@@ -102,19 +101,10 @@ const ADMIN_TABS: TabConfig[] = [
     component: AdminKullanicilar
   },
   {
-    id: "rol-yetkileri",
-    label: "Role Permissions",
-    labelTr: "Rol Yetkileri",
-    icon: <Shield className="h-4 w-4" />,
-    permissionModule: "role_permissions",
-    group: "kullanicilar",
-    component: RolYetkileri
-  },
-  {
     id: "yetkilendirme",
     label: "Authorization",
-    labelTr: "Yetkilendirme",
-    icon: <Key className="h-4 w-4" />,
+    labelTr: "Rol ve Yetki Yönetimi",
+    icon: <Shield className="h-4 w-4" />,
     permissionModule: "authorization",
     group: "kullanicilar",
     component: AdminYetkilendirme
@@ -335,7 +325,6 @@ function TabSkeleton() {
 const TAB_URL_MAP: Record<string, string> = {
   "admin-panel": "/admin",
   "kullanicilar": "/admin/kullanicilar",
-  "rol-yetkileri": "/admin/rol-yetkileri",
   "yetkilendirme": "/admin/yetkilendirme",
   "ayarlar": "/admin/ayarlar",
   "email-ayarlari": "/admin/email-ayarlari",
