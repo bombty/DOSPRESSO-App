@@ -1089,7 +1089,7 @@ export function CardGridHub() {
 
       {/* Mega Module Cards - Only show modules user has access to */}
       {megaModules && megaModules.filter((m: any) => !m.isEmpty).length > 0 ? (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 relative z-10">
           {megaModules
             .filter((megaModule: any) => !megaModule.isEmpty) // Hide modules with no access
             .map((megaModule: any) => {
@@ -1115,7 +1115,7 @@ export function CardGridHub() {
               <button
                 key={megaModule.id}
                 onClick={() => setLocation(megaModulePath)}
-                className="relative flex flex-col items-center justify-center p-4 rounded-xl border transition-all active:scale-[0.98] min-h-[100px] bg-card border-border hover:border-primary/50 hover:shadow-md"
+                className="relative z-10 pointer-events-auto flex flex-col items-center justify-center p-4 rounded-xl border transition-all active:scale-[0.98] min-h-[100px] bg-card border-border hover:border-primary/50 hover:shadow-md cursor-pointer"
                 data-testid={`mega-module-${megaModule.id}`}
               >
                 {moduleBadge > 0 && (
@@ -1136,14 +1136,14 @@ export function CardGridHub() {
         </div>
       ) : (
         /* Fallback flat grid for backward compatibility */
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-3 gap-2 relative z-10">
           {modules.map((module: any) => {
             const Icon = module.icon;
             return (
               <button
                 key={module.id}
                 onClick={() => setLocation(module.path)}
-                className="relative flex flex-col items-center justify-center p-3 rounded-lg bg-card border border-border hover:border-primary/50 hover:shadow-sm transition-all active:scale-[0.98] min-h-[80px]"
+                className="relative z-10 pointer-events-auto flex flex-col items-center justify-center p-3 rounded-lg bg-card border border-border hover:border-primary/50 hover:shadow-sm transition-all active:scale-[0.98] min-h-[80px] cursor-pointer"
                 data-testid={`module-card-${module.id}`}
               >
                 {module.badge && module.badge > 0 && (
