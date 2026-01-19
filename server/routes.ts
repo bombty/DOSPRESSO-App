@@ -10012,6 +10012,90 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
         return res.status(404).json({ message: "Denetim kaydı bulunamadı" });
       }
       
+      // Auto-generate CAPA for low-scoring items (<70%)
+      try {
+        // Check if CAPAs already exist for this audit to avoid duplicates
+        const existingCapas = await db.select({ auditItemId: correctiveActions.auditItemId })
+          .from(correctiveActions)
+          .where(eq(correctiveActions.auditInstanceId, parseInt(id)));
+        const existingItemIds = new Set(existingCapas.map(c => c.auditItemId));
+        // Fetch audit instance items with template details
+        const instanceItems = await db
+          .select({
+            instanceId: auditInstanceItems.instanceId,
+            templateItemId: auditInstanceItems.templateItemId,
+            response: auditInstanceItems.response,
+            score: auditInstanceItems.score,
+            notes: auditInstanceItems.notes,
+            itemText: auditTemplateItems.itemText,
+            section: auditTemplateItems.section,
+            weight: auditTemplateItems.weight,
+          })
+          .from(auditInstanceItems)
+          .leftJoin(auditTemplateItems, eq(auditInstanceItems.templateItemId, auditTemplateItems.id))
+          .where(eq(auditInstanceItems.instanceId, parseInt(id)));
+        
+        // Filter items with score < 70% (low performers)
+        const lowScoreItems = instanceItems.filter(item => 
+          item.score !== null && item.score < 70
+        );
+        
+        // Create CAPA for each low-scoring item
+        const createdCapas: any[] = [];
+        for (const item of lowScoreItems) {
+          // Skip if CAPA already exists for this item (idempotent)
+          if (existingItemIds.has(item.templateItemId)) {
+            continue;
+          }
+          // Determine priority based on score and weight
+          let priority: string = 'medium';
+          const itemWeight = item.weight ? parseFloat(item.weight.toString()) : 1;
+          
+          if (item.score !== null && item.score < 30) {
+            priority = itemWeight >= 5 ? 'critical' : 'high';
+          } else if (item.score !== null && item.score < 50) {
+            priority = itemWeight >= 5 ? 'high' : 'medium';
+          } else {
+            priority = 'low';
+          }
+          
+          // Calculate SLA hours based on priority
+          const slaHours = priority === 'critical' ? 24 : priority === 'high' ? 48 : priority === 'medium' ? 72 : 168;
+          
+          // Calculate due date
+          const dueDate = new Date();
+          dueDate.setHours(dueDate.getHours() + slaHours);
+          
+          // Determine action type based on section
+          let actionType = 'CORRECTIVE';
+          if (item.section === 'gida_guvenligi' || item.section === 'operasyon') {
+            actionType = 'IMMEDIATE';
+          } else if (item.section === 'ekipman') {
+            actionType = 'MAINTENANCE';
+          }
+          
+          // Create CAPA record
+          const [capa] = await db.insert(correctiveActions).values({
+            auditInstanceId: parseInt(id),
+            auditItemId: item.templateItemId,
+            priority,
+            status: 'OPEN',
+            actionType,
+            description: `Denetim maddesi düşük puan: "${item.itemText}" - Puan: ${item.score}%. ${item.notes ? `Not: ${item.notes}` : ''}`,
+            actionSlaHours: slaHours,
+            dueDate,
+            createdById: user.id,
+          }).returning();
+          
+          createdCapas.push(capa);
+        }
+        
+        console.log(`Created ${createdCapas.length} CAPA records for audit ${id}`);
+      } catch (capaError) {
+        // Log but don't fail the audit completion
+        console.error("Error creating CAPA records:", capaError);
+      }
+      
       res.json(completed);
     } catch (error: Error | unknown) {
       console.error("Error completing audit instance:", error);

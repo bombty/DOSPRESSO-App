@@ -18,7 +18,7 @@ import {
   ArrowLeft, CheckCircle2, Camera, FileText, Star,
   Save, Send, AlertCircle, Loader2, XCircle, 
   Award, TrendingUp, TrendingDown, Target, ClipboardList,
-  AlertTriangle, Eye, Download
+  AlertTriangle, Eye, Download, ChevronLeft, ChevronRight, List
 } from "lucide-react";
 import { format } from "date-fns";
 import { tr } from "date-fns/locale";
@@ -98,6 +98,8 @@ export default function DenetimYurutmePage() {
   const [overallNotes, setOverallNotes] = useState("");
   const [overallActionItems, setOverallActionItems] = useState("");
   const [activeTab, setActiveTab] = useState("summary");
+  const [wizardStep, setWizardStep] = useState(0);
+  const [viewMode, setViewMode] = useState<"wizard" | "list">("wizard");
 
   // Fetch audit instance
   const { data: audit, isLoading } = useQuery<AuditInstance>({
@@ -605,6 +607,223 @@ export default function DenetimYurutmePage() {
     </div>
   );
 
+  // Section labels for grouping items
+  const sectionLabels: Record<string, string> = {
+    gida_guvenligi: 'Gıda Güvenliği',
+    urun_standardi: 'Ürün Standardı',
+    servis: 'Servis Kalitesi',
+    operasyon: 'Operasyon',
+    marka: 'Marka Standartları',
+    ekipman: 'Ekipman',
+    general: 'Genel'
+  };
+
+  // Group items by section for wizard view (only if audit is loaded)
+  const groupedItems = (audit?.items || []).reduce((acc, item) => {
+    const section = (item.templateItem as any).section || 'general';
+    if (!acc[section]) {
+      acc[section] = [];
+    }
+    acc[section].push(item);
+    return acc;
+  }, {} as Record<string, typeof audit.items>);
+
+  const sections = Object.keys(groupedItems);
+  const currentSection = sections[wizardStep] || sections[0];
+  const currentSectionItems = groupedItems[currentSection] || [];
+  const totalSections = sections.length;
+
+  // Calculate section completion status
+  const getSectionProgress = (sectionKey: string) => {
+    const items = groupedItems[sectionKey] || [];
+    const answered = items.filter(item => item.response !== null && item.response !== '').length;
+    return { answered, total: items.length, complete: answered === items.length };
+  };
+
+  // Wizard mode: render single section at a time with step navigation
+  const renderWizardView = () => {
+    const sectionProgress = getSectionProgress(currentSection);
+    
+    return (
+      <div className="w-full space-y-4">
+        {/* Section Navigation Steps */}
+        <div className="flex items-center gap-1 overflow-x-auto pb-2">
+          {sections.map((section, idx) => {
+            const progress = getSectionProgress(section);
+            const isActive = idx === wizardStep;
+            const isComplete = progress.complete;
+            return (
+              <Button
+                key={section}
+                variant={isActive ? "default" : isComplete ? "secondary" : "outline"}
+                size="sm"
+                onClick={() => setWizardStep(idx)}
+                className={`shrink-0 ${isActive ? "" : ""}`}
+                data-testid={`wizard-step-${idx}`}
+              >
+                {isComplete && <CheckCircle2 className="h-3 w-3 mr-1" />}
+                <span className="text-xs">{idx + 1}. {sectionLabels[section] || section}</span>
+              </Button>
+            );
+          })}
+        </div>
+
+        {/* Current Section Header */}
+        <Card className="bg-primary/5 border-primary/20">
+          <CardContent className="py-3 px-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="font-semibold text-lg">{sectionLabels[currentSection] || currentSection}</h3>
+                <p className="text-sm text-muted-foreground">
+                  {sectionProgress.answered}/{sectionProgress.total} madde tamamlandı
+                </p>
+              </div>
+              <Badge variant={sectionProgress.complete ? "default" : "secondary"}>
+                {Math.round((sectionProgress.answered / sectionProgress.total) * 100)}%
+              </Badge>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Section Items */}
+        {currentSectionItems.map((item, index) => {
+          const globalIndex = audit.items.indexOf(item);
+          const itemType = item.templateItem.itemType || 'checkbox';
+          const requiresPhoto = item.templateItem.requiresPhoto || false;
+
+          return (
+            <Card key={item.id} data-testid={`card-wizard-item-${globalIndex}`}>
+              <CardHeader className="py-3">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <span className="text-muted-foreground">#{globalIndex + 1}</span>
+                  {item.templateItem.itemText}
+                  {requiresPhoto && (
+                    <Badge variant="outline" className="ml-auto">
+                      <Camera className="h-3 w-3 mr-1" />
+                      Fotoğraf
+                    </Badge>
+                  )}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="w-full space-y-3 pt-0">
+                {itemType === 'checkbox' && (
+                  <RadioGroup
+                    value={item.response || ''}
+                    onValueChange={(value) => handleResponseChange(item.templateItemId, value, itemType, item.templateItem.weight)}
+                  >
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="yes" id={`wiz-yes-${item.id}`} disabled={isCompleted} />
+                      <Label htmlFor={`wiz-yes-${item.id}`}>Evet / Uygun</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="no" id={`wiz-no-${item.id}`} disabled={isCompleted} />
+                      <Label htmlFor={`wiz-no-${item.id}`}>Hayır / Uygun Değil</Label>
+                    </div>
+                  </RadioGroup>
+                )}
+
+                {itemType === 'rating' && (
+                  <RadioGroup
+                    value={item.response || ''}
+                    onValueChange={(value) => handleResponseChange(item.templateItemId, value, itemType, item.templateItem.weight)}
+                    className="flex gap-2 justify-between"
+                  >
+                    {[1, 2, 3, 4, 5].map((rating) => (
+                      <div key={rating} className="flex flex-col items-center">
+                        <RadioGroupItem value={String(rating)} id={`wiz-rating-${item.id}-${rating}`} disabled={isCompleted} className="h-8 w-8" />
+                        <Label htmlFor={`wiz-rating-${item.id}-${rating}`} className="text-xs mt-1">{rating}</Label>
+                      </div>
+                    ))}
+                  </RadioGroup>
+                )}
+
+                {itemType === 'text' && (
+                  <Textarea
+                    value={item.response || ''}
+                    onChange={(e) => handleResponseChange(item.templateItemId, e.target.value, itemType, item.templateItem.weight)}
+                    disabled={isCompleted}
+                    placeholder="Cevabınızı girin..."
+                  />
+                )}
+
+                {itemType === 'multiple_choice' && (
+                  <RadioGroup
+                    value={item.response || ''}
+                    onValueChange={(value) => handleResponseChange(item.templateItemId, value, itemType, item.templateItem.weight, item.templateItem.correctAnswer)}
+                  >
+                    {(item.templateItem.options || []).map((option: string, optionIndex: number) => (
+                      <div key={optionIndex} className="flex items-center space-x-2">
+                        <RadioGroupItem value={option} id={`wiz-opt-${item.id}-${optionIndex}`} disabled={isCompleted} />
+                        <Label htmlFor={`wiz-opt-${item.id}-${optionIndex}`}>{option}</Label>
+                      </div>
+                    ))}
+                  </RadioGroup>
+                )}
+
+                {/* Notes */}
+                <div>
+                  <Label>Notlar (Opsiyonel)</Label>
+                  <Textarea
+                    value={item.notes || ''}
+                    onChange={(e) => handleNotesChange(item.templateItemId, e.target.value)}
+                    disabled={isCompleted}
+                    placeholder="Ekstra not..."
+                    className="h-16"
+                  />
+                </div>
+
+                {/* Score Display */}
+                {item.score !== null && (
+                  <Badge variant={item.score >= 70 ? 'default' : 'destructive'}>
+                    Skor: {item.score}/100
+                  </Badge>
+                )}
+              </CardContent>
+            </Card>
+          );
+        })}
+
+        {/* Navigation Buttons */}
+        <div className="flex items-center justify-between gap-3 sticky bottom-4 bg-background p-3 rounded-lg border">
+          <Button
+            variant="outline"
+            onClick={() => setWizardStep(Math.max(0, wizardStep - 1))}
+            disabled={wizardStep === 0}
+            data-testid="button-prev-section"
+          >
+            <ChevronLeft className="h-4 w-4 mr-1" />
+            Önceki
+          </Button>
+          <span className="text-sm text-muted-foreground">
+            {wizardStep + 1} / {totalSections}
+          </span>
+          {wizardStep < totalSections - 1 ? (
+            <Button
+              onClick={() => setWizardStep(Math.min(totalSections - 1, wizardStep + 1))}
+              data-testid="button-next-section"
+            >
+              Sonraki
+              <ChevronRight className="h-4 w-4 ml-1" />
+            </Button>
+          ) : (
+            <Button
+              onClick={() => completeMutation.mutate()}
+              disabled={completeMutation.isPending || answeredItems < totalItems}
+              data-testid="button-complete-wizard"
+            >
+              {completeMutation.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-1" />
+              ) : (
+                <Send className="h-4 w-4 mr-1" />
+              )}
+              Tamamla
+            </Button>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   // Render audit items form (for in-progress or detail view)
   const renderAuditItemsForm = () => (
     <div className="w-full space-y-2 sm:space-y-3">
@@ -925,7 +1144,7 @@ export default function DenetimYurutmePage() {
             {renderSummaryView()}
           </TabsContent>
           <TabsContent value="details" className="mt-4">
-            {renderAuditItemsForm()}
+            {viewMode === "wizard" ? renderWizardView() : renderAuditItemsForm()}
           </TabsContent>
         </Tabs>
       ) : (
@@ -946,10 +1165,24 @@ export default function DenetimYurutmePage() {
                   <p className="text-lg font-bold text-primary">{currentScore}%</p>
                 </div>
               </div>
-              <Progress value={progress} className="h-2 mt-2" data-testid="progress-audit" />
+              <div className="flex items-center justify-between mt-2 gap-3">
+                <Progress value={progress} className="h-2 flex-1" data-testid="progress-audit" />
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setViewMode(viewMode === "wizard" ? "list" : "wizard")}
+                  data-testid="button-toggle-view"
+                >
+                  {viewMode === "wizard" ? (
+                    <><List className="h-4 w-4 mr-1" />Liste</>
+                  ) : (
+                    <><Target className="h-4 w-4 mr-1" />Adım</>
+                  )}
+                </Button>
+              </div>
             </CardContent>
           </Card>
-          {renderAuditItemsForm()}
+          {viewMode === "wizard" ? renderWizardView() : renderAuditItemsForm()}
         </>
       )}
     </div>

@@ -17,7 +17,8 @@ import {
   Wallet,
   AlertTriangle,
   FileSearch,
-  CheckCircle2
+  CheckCircle2,
+  Target
 } from "lucide-react";
 
 const Raporlar = lazy(() => import("./raporlar"));
@@ -28,6 +29,7 @@ const MisafirMemnuniyeti = lazy(() => import("./misafir-memnuniyeti"));
 const E2ERaporlar = lazy(() => import("./e2e-raporlar"));
 const HRReports = lazy(() => import("./hr-reports"));
 const CashReports = lazy(() => import("./cash-reports"));
+const AksiyonTakip = lazy(() => import("./aksiyon-takip"));
 const Denetimler = lazy(() => import("./denetimler"));
 const DenetimSablonlari = lazy(() => import("./denetim-sablonlari"));
 const Sikayetler = lazy(() => import("./sikayetler"));
@@ -124,6 +126,14 @@ const RAPORLAR_TABS: TabConfig[] = [
     component: DenetimSablonlari
   },
   {
+    id: "aksiyon-takip",
+    label: "Action Tracking",
+    labelTr: "Aksiyon Takip",
+    icon: <Target className="h-4 w-4" />,
+    permissionModule: "quality_audit",
+    component: AksiyonTakip
+  },
+  {
     id: "sikayetler",
     label: "Complaints",
     labelTr: "Şikayetler",
@@ -166,6 +176,7 @@ const TAB_URL_MAP: Record<string, string> = {
   "kasa-raporlari": "/raporlar/kasa",
   "denetimler": "/raporlar/denetimler",
   "denetim-sablonlari": "/raporlar/denetim-sablonlari",
+  "aksiyon-takip": "/raporlar/aksiyon-takip",
   "sikayetler": "/raporlar/sikayetler",
   "gelismis-raporlar": "/raporlar/gelismis"
 };
@@ -181,6 +192,7 @@ function getTabFromUrl(pathname: string): string | null {
   if (pathname.startsWith("/raporlar/kasa")) return "kasa-raporlari";
   if (pathname.startsWith("/raporlar/denetimler")) return "denetimler";
   if (pathname.startsWith("/raporlar/denetim-sablonlari")) return "denetim-sablonlari";
+  if (pathname.startsWith("/raporlar/aksiyon-takip")) return "aksiyon-takip";
   if (pathname.startsWith("/raporlar/sikayetler")) return "sikayetler";
   if (pathname.startsWith("/raporlar/gelismis")) return "gelismis-raporlar";
   return null;
