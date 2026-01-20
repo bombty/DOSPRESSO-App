@@ -914,7 +914,7 @@ export function CardGridHub() {
       {/* My Tasks & Checklists Card */}
       {(myAssignedTasks.length > 0 || myChecklists.length > 0) && (
         <Card className="border-green-500/30 bg-green-50/50 dark:bg-green-950/20">
-          <CardHeader className="pb-2">
+          <CardHeader className="pt-[12px] pb-[12px]">
             <CardTitle className="text-sm flex items-center gap-2">
               <ClipboardList className="h-4 w-4 text-green-600" />
               Bugünkü Görevlerim
