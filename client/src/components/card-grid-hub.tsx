@@ -913,19 +913,22 @@ export function CardGridHub() {
 
       {/* My Tasks & Checklists Card */}
       {(myAssignedTasks.length > 0 || myChecklists.length > 0) && (
-        <Card className="border-green-500/30 bg-green-50/50 dark:bg-green-950/20">
-          <CardHeader className="pt-[12px] pb-[12px]">
-            <CardTitle className="text-sm flex items-center gap-2">
-              <ClipboardList className="h-4 w-4 text-green-600" />
-              Bugünkü Görevlerim
-              {(myAssignedTasks.filter((t: any) => t.status !== 'tamamlandi').length + myChecklists.filter((c: any) => !c.completedAt).length) > 0 && (
-                <Badge variant="secondary" className="ml-auto bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300">
-                  {myAssignedTasks.filter((t: any) => t.status !== 'tamamlandi').length + myChecklists.filter((c: any) => !c.completedAt).length} bekliyor
-                </Badge>
-              )}
-            </CardTitle>
+        <Card className="border-green-500/30 bg-green-50/50 dark:bg-green-950/20 overflow-hidden">
+          <CardHeader className="p-0 border-b border-green-500/20">
+            <div className="flex bg-green-100/30 dark:bg-green-900/20">
+              <div className="px-4 py-2 flex items-center gap-2 bg-background border-r border-green-500/20">
+                <ClipboardList className="h-4 w-4 text-green-600" />
+                <span className="text-sm font-semibold whitespace-nowrap">Bugünkü Görevlerim</span>
+                {(myAssignedTasks.filter((t: any) => t.status !== 'tamamlandi').length + myChecklists.filter((c: any) => !c.completedAt).length) > 0 && (
+                  <Badge variant="secondary" className="ml-1 bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300 text-[10px] h-5 px-1.5">
+                    {myAssignedTasks.filter((t: any) => t.status !== 'tamamlandi').length + myChecklists.filter((c: any) => !c.completedAt).length} bekliyor
+                  </Badge>
+                )}
+              </div>
+              <div className="flex-1" />
+            </div>
           </CardHeader>
-          <CardContent className="space-y-2">
+          <CardContent className="p-4 space-y-2">
             {/* Tasks */}
             {myAssignedTasks.slice(0, 3).map((task: any) => (
               <div 
