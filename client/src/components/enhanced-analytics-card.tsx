@@ -638,28 +638,19 @@ export function EnhancedAnalyticsCard() {
   return (
     <>
       <Card 
-        className="border-primary/20 bg-primary/5 dark:bg-blue-950/20 overflow-hidden"
+        className="border-primary/20 bg-primary/5 dark:bg-blue-950/20 cursor-pointer hover-elevate"
+        onClick={() => setIsExpanded(true)}
         data-testid="analytics-card"
       >
-        <CardHeader className="p-0 border-b border-primary/20">
-          <div className="flex bg-primary/10 dark:bg-primary/5">
-            <div className="px-4 py-2 flex items-center gap-2 bg-background border-r border-primary/20">
-              <Zap className="h-4 w-4 text-primary" />
-              <span className="text-sm font-semibold whitespace-nowrap">Özet Rapor</span>
-            </div>
-            <div className="flex-1 flex justify-end items-center px-2">
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                className="h-7 text-[10px] text-primary hover:bg-primary/10"
-                onClick={() => setIsExpanded(true)}
-                data-testid="button-expand-analytics"
-              >
-                Tıkla
-              </Button>
-            </div>
+        <div className="flex items-center justify-between gap-2 px-3 py-1.5">
+          <div className="flex items-center gap-1.5 text-xs text-primary font-medium">
+            <Zap className="h-3.5 w-3.5" />
+            Özet Rapor
           </div>
-        </CardHeader>
+          <Badge variant="outline" className="text-[9px] px-1 py-0 h-4">
+            Aç
+          </Badge>
+        </div>
       </Card>
 
       <Dialog open={isExpanded} onOpenChange={setIsExpanded}>
