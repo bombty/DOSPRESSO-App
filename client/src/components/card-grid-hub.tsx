@@ -868,42 +868,6 @@ export function CardGridHub() {
       {/* Personal Summary Card - Non-supervisor branch roles (barista, etc.) */}
       {isBranch && user?.role !== "supervisor" && user?.role !== "supervisor_buddy" && <PersonalSummaryCard />}
 
-      {/* Top Grid - 4 columns all devices, compact design */}
-      <div className="grid grid-cols-4 gap-1.5">
-        {/* Analytics Card - Branch supervisors + HQ roles */}
-        {((isBranch && (user?.role === 'supervisor' || user?.role === 'supervisor_buddy')) || isHQ) && (
-          <EnhancedAnalyticsCard />
-        )}
-
-        {/* AI Rapor Butonu */}
-        <Button 
-          variant="outline" 
-          size="sm"
-          className="h-11 bg-card text-[10px] font-medium border-primary/20 px-1"
-          onClick={() => setLocation("/raporlar?tab=ai-asistan")}
-          data-testid="button-ai-report"
-        >
-          AI Rapor
-        </Button>
-
-        {/* Quick Action - Görevler */}
-        <Button 
-          variant="outline" 
-          size="sm"
-          className="h-11 bg-card text-[10px] font-medium px-1"
-          onClick={() => setLocation("/gorevler")}
-          data-testid="button-view-all-tasks"
-        >
-          Görevler
-        </Button>
-
-        {/* Quick Action - Hızlı Görev */}
-        <QuickTaskModal trigger={
-          <Button variant="outline" size="sm" className="h-11 bg-card w-full text-[10px] font-medium px-1" data-testid="button-quick-task-dashboard">
-            Hızlı Görev
-          </Button>
-        } />
-      </div>
 
       {/* Employee of Month Widget */}
       <EmployeeOfMonthWidget />
@@ -1046,81 +1010,128 @@ export function CardGridHub() {
       )}
 
 
-      {/* Mega Module Cards - Compact grid: 3 cols mobile, 4 tablet, 5 PC */}
-      {megaModules && megaModules.filter((m: any) => !m.isEmpty).length > 0 ? (
-        <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 gap-1.5 relative z-10">
-          {megaModules
-            .filter((megaModule: any) => !megaModule.isEmpty)
-            .map((megaModule: any) => {
-            const MegaIcon = getSectionIcon(megaModule.icon);
-            const moduleBadge = getSectionBadge(megaModule.items);
-            
-            const MEGA_MODULE_PATHS: Record<string, string> = {
-              "operations": "/operasyon",
-              "equipment": "/ekipman",
-              "hr": "/ik",
-              "training": "/akademi",
-              "factory": "/fabrika",
-              "reports": "/raporlar",
-              "newshop": "/yeni-sube",
-              "admin": "/admin"
-            };
-            
-            const megaModulePath = MEGA_MODULE_PATHS[megaModule.id] || `/modul/${megaModule.id}`;
-            
-            return (
-              <button
-                key={megaModule.id}
-                onClick={() => setLocation(megaModulePath)}
-                className="relative z-10 pointer-events-auto flex flex-col items-center justify-center p-2 rounded-lg border transition-all active:scale-[0.97] min-h-[72px] bg-card border-border hover:border-primary/40 hover:shadow-sm cursor-pointer group"
-                data-testid={`mega-module-${megaModule.id}`}
-              >
-                {moduleBadge > 0 && (
-                  <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 bg-destructive text-destructive-foreground text-[9px] font-bold rounded-full flex items-center justify-center shadow-sm">
-                    {moduleBadge > 99 ? "99+" : moduleBadge}
+      {/* Unified Grid - All cards in same grid: 3 cols mobile, 4 tablet */}
+      <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 relative z-10">
+        {/* Quick Action Buttons */}
+        {((isBranch && (user?.role === 'supervisor' || user?.role === 'supervisor_buddy')) || isHQ) && (
+          <EnhancedAnalyticsCard />
+        )}
+        
+        <Button
+          variant="outline"
+          onClick={() => setLocation("/raporlar?tab=ai-asistan")}
+          className="h-auto flex flex-col items-center justify-center p-3 gap-1.5"
+          data-testid="button-ai-report"
+        >
+          <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center">
+            <Sparkles className="w-4 h-4 text-white" />
+          </div>
+          <span className="text-xs font-medium">AI Rapor</span>
+        </Button>
+
+        <Button
+          variant="outline"
+          onClick={() => setLocation("/gorevler")}
+          className="h-auto flex flex-col items-center justify-center p-3 gap-1.5"
+          data-testid="button-view-all-tasks"
+        >
+          <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-600 flex items-center justify-center">
+            <ClipboardList className="w-4 h-4 text-white" />
+          </div>
+          <span className="text-xs font-medium">Görevler</span>
+        </Button>
+
+        <QuickTaskModal trigger={
+          <Button
+            variant="outline"
+            className="h-auto flex flex-col items-center justify-center p-3 gap-1.5 w-full"
+            data-testid="button-quick-task-dashboard"
+          >
+            <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-emerald-500 to-green-600 flex items-center justify-center">
+              <Plus className="w-4 h-4 text-white" />
+            </div>
+            <span className="text-xs font-medium">Hızlı Görev</span>
+          </Button>
+        } />
+
+        {/* Mega Module Cards */}
+        {megaModules && megaModules.filter((m: any) => !m.isEmpty).length > 0 ? (
+          <>
+            {megaModules
+              .filter((megaModule: any) => !megaModule.isEmpty)
+              .map((megaModule: any) => {
+              const MegaIcon = getSectionIcon(megaModule.icon);
+              const moduleBadge = getSectionBadge(megaModule.items);
+              
+              const MEGA_MODULE_PATHS: Record<string, string> = {
+                "operations": "/operasyon",
+                "equipment": "/ekipman",
+                "hr": "/ik",
+                "training": "/akademi",
+                "factory": "/fabrika",
+                "reports": "/raporlar",
+                "newshop": "/yeni-sube",
+                "admin": "/admin"
+              };
+              
+              const megaModulePath = MEGA_MODULE_PATHS[megaModule.id] || `/modul/${megaModule.id}`;
+              
+              return (
+                <Button
+                  key={megaModule.id}
+                  variant="outline"
+                  onClick={() => setLocation(megaModulePath)}
+                  className="relative h-auto flex flex-col items-center justify-center p-3 gap-1.5"
+                  data-testid={`mega-module-${megaModule.id}`}
+                >
+                  {moduleBadge > 0 && (
+                    <Badge variant="destructive" className="absolute -top-1.5 -right-1.5 h-[18px] min-w-[18px] px-1 text-[10px] font-bold">
+                      {moduleBadge > 99 ? "99+" : moduleBadge}
+                    </Badge>
+                  )}
+                  <div className={`w-9 h-9 rounded-lg ${megaModule.color} flex items-center justify-center`}>
+                    <MegaIcon className="w-4 h-4 text-white" />
+                  </div>
+                  <span className="text-xs font-medium text-center leading-tight line-clamp-2">{megaModule.title}</span>
+                  <span className="text-[10px] text-muted-foreground">
+                    {megaModule.items.length}
                   </span>
-                )}
-                <div className={`w-8 h-8 rounded-lg ${megaModule.color} flex items-center justify-center mb-1 group-hover:scale-105 transition-transform`}>
-                  <MegaIcon className="w-4 h-4 text-white" />
-                </div>
-                <span className="text-[10px] font-medium text-center leading-tight line-clamp-2">{megaModule.title}</span>
-                <span className="text-[8px] text-muted-foreground">
-                  {megaModule.items.length}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-      ) : (
-        /* Fallback flat grid */
-        <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 gap-1.5 relative z-10">
-          {modules.map((module: any) => {
-            const Icon = module.icon;
-            return (
-              <button
-                key={module.id}
-                onClick={() => setLocation(module.path)}
-                className="relative z-10 pointer-events-auto flex flex-col items-center justify-center p-2 rounded-lg bg-card border border-border hover:border-primary/40 hover:shadow-sm transition-all active:scale-[0.97] min-h-[72px] cursor-pointer group"
-                data-testid={`module-card-${module.id}`}
-              >
-                {module.badge && module.badge > 0 && (
-                  <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 bg-destructive text-destructive-foreground text-[9px] font-bold rounded-full flex items-center justify-center shadow-sm">
-                    {module.badge > 99 ? "99+" : module.badge}
-                  </span>
-                )}
-                <div className={`w-8 h-8 rounded-lg ${module.color} flex items-center justify-center mb-1 group-hover:scale-105 transition-transform`}>
-                  <Icon className="w-4 h-4 text-white" />
-                </div>
-                <span className="text-[10px] font-medium text-center leading-tight line-clamp-2">{module.label}</span>
-              </button>
-            );
-          })}
-        </div>
-      )}
+                </Button>
+              );
+            })}
+          </>
+        ) : (
+          /* Fallback flat grid items */
+          <>
+            {modules.map((module: any) => {
+              const Icon = module.icon;
+              return (
+                <Button
+                  key={module.id}
+                  variant="outline"
+                  onClick={() => setLocation(module.path)}
+                  className="relative h-auto flex flex-col items-center justify-center p-3 gap-1.5"
+                  data-testid={`module-card-${module.id}`}
+                >
+                  {module.badge && module.badge > 0 && (
+                    <Badge variant="destructive" className="absolute -top-1.5 -right-1.5 h-[18px] min-w-[18px] px-1 text-[10px] font-bold">
+                      {module.badge > 99 ? "99+" : module.badge}
+                    </Badge>
+                  )}
+                  <div className={`w-9 h-9 rounded-lg ${module.color} flex items-center justify-center`}>
+                    <Icon className="w-4 h-4 text-white" />
+                  </div>
+                  <span className="text-xs font-medium text-center leading-tight line-clamp-2">{module.label}</span>
+                </Button>
+              );
+            })}
+          </>
+        )}
+      </div>
 
       {/* Quick Stats - Compact horizontal inline */}
       {(pendingTasks > 0 || openFaults > 0) && (
-        <div className="flex flex-wrap gap-2 text-[10px]">
+        <div className="flex flex-wrap gap-2 text-xs">
           {pendingTasks > 0 && (
             <div 
               className="flex items-center gap-1 hover-elevate cursor-pointer px-2 py-1 rounded-full bg-yellow-500/10 border border-yellow-500/20"

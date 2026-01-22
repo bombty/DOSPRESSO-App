@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertCircle, TrendingUp, TrendingDown, Minus, Wrench, Award, AlertTriangle, User, CheckCircle2, Clock, Download, Loader2 } from "lucide-react";
+import { AlertCircle, TrendingUp, TrendingDown, Minus, Wrench, Award, AlertTriangle, User, CheckCircle2, Clock, Download, Loader2, FileText } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
@@ -468,14 +468,16 @@ export function EnhancedAnalyticsCard() {
 
   return (
     <>
-      <Button 
-        variant="outline" 
-        size="sm" 
-        className="h-11 bg-card text-[10px] font-medium px-1"
+      <Button
+        variant="outline"
         onClick={() => setIsExpanded(true)}
+        className="h-auto flex flex-col items-center justify-center p-3 gap-1.5"
         data-testid="button-special-report"
       >
-        Özet Rapor
+        <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center">
+          <FileText className="w-4 h-4 text-white" />
+        </div>
+        <span className="text-xs font-medium">Özet Rapor</span>
       </Button>
 
       <Dialog open={isExpanded} onOpenChange={setIsExpanded}>
