@@ -880,7 +880,7 @@ export function CardGridHub() {
           variant="outline" 
           size="sm"
           className="h-full min-h-[60px] bg-card text-xs font-medium border-primary/30"
-          onClick={() => setLocation("/raporlar/ai-asistan")}
+          onClick={() => setLocation("/raporlar?tab=ai-asistan")}
           data-testid="button-ai-report"
         >
           AI Rapor
