@@ -3,7 +3,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Users, CheckCircle2, Clock, UserX, Loader2 } from "lucide-react";
+import { Users, CheckCircle2, Clock, UserX, Loader2, RefreshCw, AlertTriangle } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { useLocation } from "wouter";
 
@@ -59,7 +60,7 @@ export function PersonnelStatusPanel() {
   const { user } = useAuth();
   const [, navigate] = useLocation();
   
-  const { data: personnel, isLoading } = useQuery<PersonnelStatus[]>({
+  const { data: personnel, isLoading, isError, refetch } = useQuery<PersonnelStatus[]>({
     queryKey: ["/api/branch/personnel-status"],
     enabled: !!user?.branchId,
     refetchInterval: 30000,
@@ -77,6 +78,29 @@ export function PersonnelStatusPanel() {
         <CardContent>
           <div className="flex items-center justify-center py-6">
             <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (isError) {
+    return (
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm flex items-center gap-2">
+            <Users className="h-4 w-4 text-primary" />
+            Personel Durumu
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-col items-center justify-center py-4 gap-2">
+            <AlertTriangle className="h-5 w-5 text-destructive" />
+            <p className="text-xs text-muted-foreground">Veri yüklenemedi</p>
+            <Button variant="ghost" size="sm" onClick={() => refetch()}>
+              <RefreshCw className="h-3 w-3 mr-1" />
+              Tekrar Dene
+            </Button>
           </div>
         </CardContent>
       </Card>

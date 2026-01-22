@@ -16,7 +16,6 @@ export function TrendIndicator({
   size = 'sm'
 }: TrendIndicatorProps) {
   const diff = current - previous;
-  const percentage = previous > 0 ? Math.round((diff / previous) * 100) : 0;
   
   const iconSizes = {
     sm: 'h-3 w-3',
@@ -30,7 +29,30 @@ export function TrendIndicator({
     lg: 'text-sm'
   };
 
-  if (diff === 0 || percentage === 0) {
+  // Handle special case: previous is 0
+  if (previous === 0) {
+    if (current === 0) {
+      // Both zero - no change
+      return (
+        <div className="flex items-center gap-0.5 text-muted-foreground">
+          <Minus className={iconSizes[size]} />
+          {showPercentage && <span className={textSizes[size]}>-</span>}
+        </div>
+      );
+    }
+    // New value from zero - show "Yeni" indicator
+    const isPositive = inverted ? current < 0 : current > 0;
+    return (
+      <div className={`flex items-center gap-0.5 ${isPositive ? 'text-green-500' : 'text-red-500'}`}>
+        <TrendingUp className={iconSizes[size]} />
+        {showPercentage && <span className={textSizes[size]}>Yeni</span>}
+      </div>
+    );
+  }
+
+  const percentage = Math.round((diff / previous) * 100);
+
+  if (diff === 0) {
     return (
       <div className="flex items-center gap-0.5 text-muted-foreground">
         <Minus className={iconSizes[size]} />
@@ -67,8 +89,17 @@ export function ComparisonBadge({
   inverted?: boolean;
 }) {
   const diff = current - previous;
-  const percentage = previous > 0 ? Math.round((diff / previous) * 100) : 0;
   const isPositive = inverted ? diff < 0 : diff > 0;
+  
+  // Handle previous=0 case
+  let displayText: string;
+  if (previous === 0) {
+    displayText = current === 0 ? '-' : 'Yeni';
+  } else {
+    const percentage = Math.round((diff / previous) * 100);
+    displayText = `${diff > 0 ? '+' : ''}${percentage}%`;
+  }
+  
   const bgColor = isPositive ? 'bg-green-500/10 border-green-500/30' : diff < 0 ? 'bg-red-500/10 border-red-500/30' : 'bg-muted';
   const textColor = isPositive ? 'text-green-600' : diff < 0 ? 'text-red-600' : 'text-muted-foreground';
 
@@ -76,7 +107,7 @@ export function ComparisonBadge({
     <div className={`flex items-center gap-1.5 px-2 py-1 rounded-full border ${bgColor}`}>
       <span className="text-xs text-muted-foreground">{label}:</span>
       <span className={`text-xs font-medium ${textColor}`}>
-        {diff > 0 ? '+' : ''}{percentage}%
+        {displayText}
       </span>
       <TrendIndicator 
         current={current} 

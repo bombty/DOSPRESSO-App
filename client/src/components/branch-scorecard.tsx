@@ -2,7 +2,8 @@ import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { TrendingUp, TrendingDown, CheckCircle2, Clock, AlertTriangle, Users, Loader2 } from "lucide-react";
+import { TrendingUp, TrendingDown, CheckCircle2, Clock, AlertTriangle, Users, Loader2, RefreshCw } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 
 interface BranchScore {
@@ -34,7 +35,7 @@ function getScoreLabel(score: number): string {
 export function BranchScorecard() {
   const { user } = useAuth();
   
-  const { data: scoreData, isLoading } = useQuery<BranchScore>({
+  const { data: scoreData, isLoading, isError, refetch } = useQuery<BranchScore>({
     queryKey: ["/api/branch/score"],
     enabled: !!user?.branchId,
     refetchInterval: 60000,
@@ -45,6 +46,21 @@ export function BranchScorecard() {
       <Card className="bg-gradient-to-br from-primary/10 to-primary/5 border-primary/20">
         <CardContent className="p-4 flex items-center justify-center min-h-[100px]">
           <Loader2 className="h-6 w-6 animate-spin text-primary" />
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (isError) {
+    return (
+      <Card className="bg-gradient-to-br from-destructive/10 to-destructive/5 border-destructive/20">
+        <CardContent className="p-4 flex flex-col items-center justify-center min-h-[100px] gap-2">
+          <AlertTriangle className="h-6 w-6 text-destructive" />
+          <p className="text-xs text-muted-foreground">Skor yüklenemedi</p>
+          <Button variant="ghost" size="sm" onClick={() => refetch()}>
+            <RefreshCw className="h-3 w-3 mr-1" />
+            Tekrar Dene
+          </Button>
         </CardContent>
       </Card>
     );

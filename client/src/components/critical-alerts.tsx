@@ -48,10 +48,16 @@ export function CriticalAlerts() {
   const [, navigate] = useLocation();
   const [dismissedIds, setDismissedIds] = useState<number[]>([]);
 
-  const { data: alerts } = useQuery<CriticalAlert[]>({
+  const { data: alerts, isError } = useQuery<CriticalAlert[]>({
     queryKey: ["/api/alerts/critical"],
     refetchInterval: 30000,
   });
+
+  // Don't show error state for alerts - just hide if error
+  if (isError) {
+    console.error("CriticalAlerts: Failed to fetch alerts");
+    return null;
+  }
 
   const visibleAlerts = alerts?.filter(a => !dismissedIds.includes(a.id)) || [];
 
