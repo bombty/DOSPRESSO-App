@@ -868,12 +868,23 @@ export function CardGridHub() {
       {/* Personal Summary Card - Non-supervisor branch roles (barista, etc.) */}
       {isBranch && user?.role !== "supervisor" && user?.role !== "supervisor_buddy" && <PersonalSummaryCard />}
 
-      {/* Top Grid - Analytics, Actions (Responsive 2 cols mobile, 3-4 cols tablet/PC) */}
+      {/* Top Grid - Analytics, Actions (Responsive 2 cols mobile, 4 cols tablet/PC) */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
         {/* Analytics Card - Branch supervisors + HQ roles */}
         {((isBranch && (user?.role === 'supervisor' || user?.role === 'supervisor_buddy')) || isHQ) && (
           <EnhancedAnalyticsCard />
         )}
+
+        {/* AI Rapor Butonu */}
+        <Button 
+          variant="outline" 
+          size="sm"
+          className="h-full min-h-[60px] bg-card text-xs font-medium border-primary/30"
+          onClick={() => setLocation("/raporlar/ai-asistan")}
+          data-testid="button-ai-report"
+        >
+          AI Rapor
+        </Button>
 
         {/* Quick Action - Görevler */}
         <Button 
