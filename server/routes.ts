@@ -4706,8 +4706,8 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
       
       // If no stored metrics, calculate real-time from database
       if (storedMetrics.length === 0) {
-        const taskList = await db.select().from(tasks).where(branchId ? eq(tasks.branchId, branchId) : undefined).limit(200);
-        const faultList = await db.select().from(equipmentFaults).where(branchId ? eq(equipmentFaults.branchId, branchId) : undefined).limit(100);
+        const taskList = (branchId ? await db.select().from(tasks).where(eq(tasks.branchId, branchId)).limit(200) : await db.select().from(tasks).limit(200));
+        const faultList = (branchId ? await db.select().from(equipmentFaults).where(eq(equipmentFaults.branchId, branchId)).limit(100) : await db.select().from(equipmentFaults).limit(100));
         
         const tasksTotal = taskList.length;
         const tasksCompleted = taskList.filter((t: any) => t.status === 'completed').length;
@@ -13993,15 +13993,15 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
       }
 
       const today = new Date().toISOString().split('T')[0];
-      const taskList = await db.select().from(tasks).where(branchId ? and(eq(tasks.branchId, branchId)) : undefined).limit(100);
+      const taskList = (branchId ? await db.select().from(tasks).where(eq(tasks.branchId, branchId)).limit(100) : await db.select().from(tasks).limit(100));
       const completedTasks = taskList.filter((t: any) => t.status === 'completed').length;
       const pendingTasks = taskList.filter((t: any) => t.status !== 'completed').length;
       const overdueChecklists = taskList.filter((t: any) => t.dueDate && new Date(t.dueDate) < new Date(today) && t.status !== 'completed').length;
 
-      const faults = await db.select().from(equipmentFaults).where(branchId ? and(eq(equipmentFaults.branchId, branchId)) : undefined).limit(50);
+      const faults = (branchId ? await db.select().from(equipmentFaults).where(eq(equipmentFaults.branchId, branchId)).limit(50) : await db.select().from(equipmentFaults).limit(50));
       const activeFaults = faults.filter((f: any) => !['resolved', 'cancelled'].includes(f.stage)).length;
 
-      const equips = await db.select().from(equipment).where(branchId ? eq(equipment.branchId, branchId) : undefined).limit(100);
+      const equips = (branchId ? await db.select().from(equipment).where(eq(equipment.branchId, branchId)).limit(100) : await db.select().from(equipment).limit(100));
       const criticalEquipment = equips.filter((e: any) => e.healthScore && e.healthScore < 50).length;
       
       // Calculate avgHealth with fault penalty: each active fault reduces health by 5%, min 0
@@ -14036,9 +14036,9 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
       const weekStart = new Date(today);
       weekStart.setDate(weekStart.getDate() - weekStart.getDay());
 
-      const taskList = await db.select().from(tasks).where(branchId ? and(eq(tasks.branchId, branchId)) : undefined).limit(100);
-      const faults = await db.select().from(equipmentFaults).where(branchId ? and(eq(equipmentFaults.branchId, branchId)) : undefined).limit(50);
-      const equips = await db.select().from(equipment).where(branchId ? eq(equipment.branchId, branchId) : undefined).limit(100);
+      const taskList = (branchId ? await db.select().from(tasks).where(eq(tasks.branchId, branchId)).limit(100) : await db.select().from(tasks).limit(100));
+      const faults = (branchId ? await db.select().from(equipmentFaults).where(eq(equipmentFaults.branchId, branchId)).limit(50) : await db.select().from(equipmentFaults).limit(50));
+      const equips = (branchId ? await db.select().from(equipment).where(eq(equipment.branchId, branchId)).limit(100) : await db.select().from(equipment).limit(100));
 
       const completedTasks = taskList.filter((t: any) => t.status === 'completed').length;
       const pendingTasks = taskList.filter((t: any) => t.status !== 'completed').length;
@@ -14118,9 +14118,9 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
       }
 
       const today = new Date();
-      const taskList = await db.select().from(tasks).where(branchId ? and(eq(tasks.branchId, branchId)) : undefined).limit(100);
-      const faults = await db.select().from(equipmentFaults).where(branchId ? and(eq(equipmentFaults.branchId, branchId)) : undefined).limit(100);
-      const equips = await db.select().from(equipment).where(branchId ? eq(equipment.branchId, branchId) : undefined).limit(100);
+      const taskList = (branchId ? await db.select().from(tasks).where(eq(tasks.branchId, branchId)).limit(100) : await db.select().from(tasks).limit(100));
+      const faults = (branchId ? await db.select().from(equipmentFaults).where(eq(equipmentFaults.branchId, branchId)).limit(100) : await db.select().from(equipmentFaults).limit(100));
+      const equips = (branchId ? await db.select().from(equipment).where(eq(equipment.branchId, branchId)).limit(100) : await db.select().from(equipment).limit(100));
 
       const completedTasks = taskList.filter((t: any) => t.status === 'completed').length;
       const pendingTasks = taskList.filter((t: any) => t.status !== 'completed').length;
@@ -14230,20 +14230,20 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
       // Get all branches for HQ
       const allBranches = isHQ ? await db.select().from(branches).limit(50) : [];
       
-      // Get all tasks
-      const taskList = await db.select().from(tasks)
-        .where(userBranchId ? eq(tasks.branchId, userBranchId) : undefined)
-        .limit(500);
+      // Get all tasks - conditional query based on user role
+      const taskList = userBranchId 
+        ? await db.select().from(tasks).where(eq(tasks.branchId, userBranchId)).limit(500)
+        : await db.select().from(tasks).limit(500);
       
-      // Get all faults
-      const faults = await db.select().from(equipmentFaults)
-        .where(userBranchId ? eq(equipmentFaults.branchId, userBranchId) : undefined)
-        .limit(200);
+      // Get all faults - conditional query based on user role
+      const faults = userBranchId
+        ? await db.select().from(equipmentFaults).where(eq(equipmentFaults.branchId, userBranchId)).limit(200)
+        : await db.select().from(equipmentFaults).limit(200);
       
-      // Get all checklists
-      const checklistList = await db.select().from(checklists)
-        .where(userBranchId ? eq(checklists.branchId, userBranchId) : undefined)
-        .limit(500);
+      // Get all checklists - conditional query based on user role
+      const checklistList = userBranchId
+        ? await db.select().from(checklists).where(eq(checklists.branchId, userBranchId)).limit(500)
+        : await db.select().from(checklists).limit(500);
 
       // Daily metrics
       const dailyCompleted = taskList.filter((t: any) => 
@@ -14385,20 +14385,31 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
       const activities: any[] = [];
       const now = new Date();
       const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-
-      // Get recent completed tasks
-      const recentTasks = await db.select({
-        id: tasks.id,
-        title: tasks.title,
-        status: tasks.status,
-        completedAt: tasks.completedAt,
-        updatedAt: tasks.updatedAt,
-        assignedToId: tasks.assignedToId,
-        branchId: tasks.branchId
-      }).from(tasks)
-        .where(userBranchId && !isHQ ? eq(tasks.branchId, userBranchId) : undefined)
-        .orderBy(desc(tasks.updatedAt))
-        .limit(20);
+      // Get recent completed tasks - conditional based on role
+      const recentTasks = (userBranchId && !isHQ)
+        ? await db.select({
+            id: tasks.id,
+            title: tasks.title,
+            status: tasks.status,
+            completedAt: tasks.completedAt,
+            updatedAt: tasks.updatedAt,
+            assignedToId: tasks.assignedToId,
+            branchId: tasks.branchId
+          }).from(tasks)
+            .where(eq(tasks.branchId, userBranchId))
+            .orderBy(desc(tasks.updatedAt))
+            .limit(20)
+        : await db.select({
+            id: tasks.id,
+            title: tasks.title,
+            status: tasks.status,
+            completedAt: tasks.completedAt,
+            updatedAt: tasks.updatedAt,
+            assignedToId: tasks.assignedToId,
+            branchId: tasks.branchId
+          }).from(tasks)
+            .orderBy(desc(tasks.updatedAt))
+            .limit(20);
 
       for (const task of recentTasks) {
         if (task.status === 'completed' && task.completedAt) {
@@ -14413,19 +14424,29 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
         }
       }
 
-      // Get recent faults
-      const recentFaults = await db.select({
-        id: equipmentFaults.id,
-        description: equipmentFaults.description,
-        stage: equipmentFaults.stage,
-        createdAt: equipmentFaults.createdAt,
-        updatedAt: equipmentFaults.updatedAt,
-        branchId: equipmentFaults.branchId
-      }).from(equipmentFaults)
-        .where(userBranchId && !isHQ ? eq(equipmentFaults.branchId, userBranchId) : undefined)
-        .orderBy(desc(equipmentFaults.updatedAt))
-        .limit(15);
-
+      // Get recent faults - conditional based on role
+      const recentFaults = (userBranchId && !isHQ)
+        ? await db.select({
+            id: equipmentFaults.id,
+            description: equipmentFaults.description,
+            stage: equipmentFaults.stage,
+            createdAt: equipmentFaults.createdAt,
+            updatedAt: equipmentFaults.updatedAt,
+            branchId: equipmentFaults.branchId
+          }).from(equipmentFaults)
+            .where(eq(equipmentFaults.branchId, userBranchId))
+            .orderBy(desc(equipmentFaults.updatedAt))
+            .limit(15)
+        : await db.select({
+            id: equipmentFaults.id,
+            description: equipmentFaults.description,
+            stage: equipmentFaults.stage,
+            createdAt: equipmentFaults.createdAt,
+            updatedAt: equipmentFaults.updatedAt,
+            branchId: equipmentFaults.branchId
+          }).from(equipmentFaults)
+            .orderBy(desc(equipmentFaults.updatedAt))
+            .limit(15);
       for (const fault of recentFaults) {
         if (fault.stage === 'resolved') {
           activities.push({
