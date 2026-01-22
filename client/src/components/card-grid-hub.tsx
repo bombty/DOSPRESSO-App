@@ -868,63 +868,28 @@ export function CardGridHub() {
       {/* Personal Summary Card - Non-supervisor branch roles (barista, etc.) */}
       {isBranch && user?.role !== "supervisor" && user?.role !== "supervisor_buddy" && <PersonalSummaryCard />}
 
-      {/* Top Grid - Analytics, Tasks, Quick Actions (Responsive 2 cols mobile, 4 cols tablet/PC) */}
+      {/* Top Grid - Analytics, Actions (Responsive 2 cols mobile, 3-4 cols tablet/PC) */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
         {/* Analytics Card - Branch supervisors + HQ roles */}
         {((isBranch && (user?.role === 'supervisor' || user?.role === 'supervisor_buddy')) || isHQ) && (
           <EnhancedAnalyticsCard />
         )}
 
-        {/* My Tasks & Checklists Card - Compact */}
-        {(myAssignedTasks.length > 0 || myChecklists.length > 0) && (
-          <Card className="border-green-500/30 bg-green-50/50 dark:bg-green-950/20 flex flex-col overflow-hidden">
-            <div className="flex items-center justify-between gap-2 px-2 py-1 border-b border-green-500/20">
-              <div className="flex items-center gap-1 text-[10px] text-green-700 dark:text-green-400 font-semibold">
-                <ClipboardList className="h-3 w-3" />
-                Görevlerim
-              </div>
-              {(myAssignedTasks.filter((t: any) => t.status !== 'tamamlandi').length + myChecklists.filter((c: any) => !c.completedAt).length) > 0 && (
-                <Badge variant="secondary" className="bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300 text-[8px] h-3.5 px-1">
-                  {myAssignedTasks.filter((t: any) => t.status !== 'tamamlandi').length + myChecklists.filter((c: any) => !c.completedAt).length}
-                </Badge>
-              )}
-            </div>
-            <CardContent className="p-1.5 space-y-0.5 flex-1">
-              {myAssignedTasks.slice(0, 2).map((task: any) => (
-                <div 
-                  key={task.id} 
-                  className="flex items-center justify-between text-[9px] p-1 bg-background/50 rounded border hover-elevate cursor-pointer"
-                  onClick={() => setLocation(`/gorevler?id=${task.id}`)}
-                >
-                  <span className="truncate flex-1">{task.title}</span>
-                  <div className={`w-1.5 h-1.5 rounded-full ${task.status === 'tamamlandi' ? 'bg-green-500' : 'bg-amber-500'}`} />
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Quick Actions - Tasks */}
+        {/* Quick Action - Görevler */}
         <Button 
           variant="outline" 
           size="sm"
-          className="flex-col gap-1 bg-card"
+          className="h-full min-h-[60px] bg-card text-xs font-medium"
           onClick={() => setLocation("/gorevler")}
           data-testid="button-view-all-tasks"
         >
-          <div className="w-7 h-7 rounded-lg bg-green-500 flex items-center justify-center">
-            <ListTodo className="h-3.5 w-3.5 text-white" />
-          </div>
-          <span className="text-[10px]">Görevler</span>
+          Görevler
         </Button>
 
-        {/* Quick Actions - New Task */}
+        {/* Quick Action - Hızlı Görev */}
         <QuickTaskModal trigger={
-          <Button variant="outline" size="sm" className="flex-col gap-1 bg-card w-full" data-testid="button-quick-task-dashboard">
-            <div className="w-7 h-7 rounded-lg bg-primary flex items-center justify-center">
-              <Plus className="h-3.5 w-3.5 text-white" />
-            </div>
-            <span className="text-[10px]">Hızlı Görev</span>
+          <Button variant="outline" size="sm" className="h-full min-h-[60px] bg-card w-full text-xs font-medium" data-testid="button-quick-task-dashboard">
+            Hızlı Görev
           </Button>
         } />
       </div>
