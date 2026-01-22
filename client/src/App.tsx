@@ -5,6 +5,7 @@ import { QueryClientProvider, useQuery } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { BottomNav } from "@/components/bottom-nav";
+import { BreadcrumbNavigation } from "@/components/breadcrumb-navigation";
 import { InboxDialog } from "@/components/inbox-dialog";
 import { AppHeader } from "@/components/app-header";
 import { QRScannerModal } from "@/components/qr-scanner-modal";
@@ -427,6 +428,11 @@ function AppContent() {
       
       {/* QR Scanner Modal */}
       <QRScannerModal open={qrModalOpen} onOpenChange={setQrModalOpen} />
+      
+      {/* Breadcrumb Navigation */}
+      <div className="px-2 pt-1">
+        <BreadcrumbNavigation />
+      </div>
       
       {/* Main Content */}
       <main className="flex-1 overflow-auto pb-20">

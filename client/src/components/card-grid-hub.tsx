@@ -11,6 +11,10 @@ import { EnhancedAnalyticsCard } from "@/components/enhanced-analytics-card";
 import { PersonalSummaryCard } from "@/components/personal-summary-card";
 import { AnnouncementBannerCarousel } from "@/components/AnnouncementBannerCarousel";
 import { EmployeeOfMonthWidget } from "@/components/employee-of-month-widget";
+import { RecentActivities } from "@/components/recent-activities";
+import { BranchScorecard } from "@/components/branch-scorecard";
+import { PersonnelStatusPanel } from "@/components/personnel-status-panel";
+import { CriticalAlerts } from "@/components/critical-alerts";
 import { MEGA_MODULE_ORDER } from "@/lib/megaModuleConfig";
 import {
   Accordion,
@@ -856,8 +860,19 @@ export function CardGridHub() {
 
   return (
     <div className="p-2 pb-20 space-y-3">
+      {/* Critical Alerts - Top priority notifications */}
+      <CriticalAlerts />
+
       {/* Announcement Banners - Only show if enabled */}
       {bannerCarouselEnabled && <AnnouncementBannerCarousel />}
+
+      {/* Branch Scorecard and Personnel Status - For supervisors */}
+      {isBranch && (user?.role === 'supervisor' || user?.role === 'supervisor_buddy') && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+          <BranchScorecard />
+          <PersonnelStatusPanel />
+        </div>
+      )}
 
       {/* Shift Status - Branch users only */}
       {isBranch && <ShiftStatusCard />}
@@ -1026,7 +1041,7 @@ export function CardGridHub() {
           <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center">
             <Sparkles className="w-4 h-4 text-white" />
           </div>
-          <span className="text-xs font-medium">AI Rapor</span>
+          <span className="text-sm font-medium">AI Rapor</span>
         </Button>
 
         <Button
@@ -1038,7 +1053,7 @@ export function CardGridHub() {
           <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-600 flex items-center justify-center">
             <ClipboardList className="w-4 h-4 text-white" />
           </div>
-          <span className="text-xs font-medium">Görevler</span>
+          <span className="text-sm font-medium">Görevler</span>
         </Button>
 
         <QuickTaskModal trigger={
@@ -1050,7 +1065,7 @@ export function CardGridHub() {
             <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-emerald-500 to-green-600 flex items-center justify-center">
               <Plus className="w-4 h-4 text-white" />
             </div>
-            <span className="text-xs font-medium">Hızlı Görev</span>
+            <span className="text-sm font-medium">Hızlı Görev</span>
           </Button>
         } />
 
@@ -1092,8 +1107,8 @@ export function CardGridHub() {
                   <div className={`w-9 h-9 rounded-lg ${megaModule.color} flex items-center justify-center`}>
                     <MegaIcon className="w-4 h-4 text-white" />
                   </div>
-                  <span className="text-xs font-medium text-center leading-tight line-clamp-2">{megaModule.title}</span>
-                  <span className="text-[10px] text-muted-foreground">
+                  <span className="text-sm font-medium text-center leading-tight line-clamp-2">{megaModule.title}</span>
+                  <span className="text-xs text-muted-foreground">
                     {megaModule.items.length}
                   </span>
                 </Button>
@@ -1121,7 +1136,7 @@ export function CardGridHub() {
                   <div className={`w-9 h-9 rounded-lg ${module.color} flex items-center justify-center`}>
                     <Icon className="w-4 h-4 text-white" />
                   </div>
-                  <span className="text-xs font-medium text-center leading-tight line-clamp-2">{module.label}</span>
+                  <span className="text-sm font-medium text-center leading-tight line-clamp-2">{module.label}</span>
                 </Button>
               );
             })}
@@ -1153,6 +1168,11 @@ export function CardGridHub() {
             </div>
           )}
         </div>
+      )}
+
+      {/* Recent Activities Panel - For supervisors and HQ */}
+      {(isHQ || (isBranch && (user?.role === 'supervisor' || user?.role === 'supervisor_buddy'))) && (
+        <RecentActivities compact />
       )}
     </div>
   );

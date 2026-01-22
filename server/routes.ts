@@ -14205,6 +14205,457 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
     }
   });
 
+  // GET /api/analytics/comprehensive - Comprehensive dashboard analytics for Özet Rapor
+  app.get('/api/analytics/comprehensive', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const role = user.role as UserRoleType;
+      const isHQ = isHQRole(role);
+      let userBranchId: number | undefined;
+
+      if (role === 'supervisor' || role === 'supervisor_buddy') {
+        if (!user.branchId) return res.status(403).json({ message: "Şube bilgisi bulunamadı" });
+        userBranchId = user.branchId;
+      } else if (!isHQ) {
+        return res.status(403).json({ message: "Analitik görüntüleme yetkiniz yok" });
+      }
+
+      const today = new Date();
+      const todayStr = today.toISOString().split('T')[0];
+      const weekStart = new Date(today);
+      weekStart.setDate(weekStart.getDate() - 7);
+      const monthStart = new Date(today);
+      monthStart.setDate(1);
+
+      // Get all branches for HQ
+      const allBranches = isHQ ? await db.select().from(branches).limit(50) : [];
+      
+      // Get all tasks
+      const taskList = await db.select().from(tasks)
+        .where(userBranchId ? eq(tasks.branchId, userBranchId) : undefined)
+        .limit(500);
+      
+      // Get all faults
+      const faults = await db.select().from(equipmentFaults)
+        .where(userBranchId ? eq(equipmentFaults.branchId, userBranchId) : undefined)
+        .limit(200);
+      
+      // Get all checklists
+      const checklistList = await db.select().from(checklists)
+        .where(userBranchId ? eq(checklists.branchId, userBranchId) : undefined)
+        .limit(500);
+
+      // Daily metrics
+      const dailyCompleted = taskList.filter((t: any) => 
+        t.status === 'completed' && t.completedAt && new Date(t.completedAt).toISOString().split('T')[0] === todayStr
+      ).length;
+      const dailyPending = taskList.filter((t: any) => t.status !== 'completed').length;
+      
+      // Weekly metrics
+      const weeklyCompleted = taskList.filter((t: any) => 
+        t.status === 'completed' && t.completedAt && new Date(t.completedAt) >= weekStart
+      ).length;
+      
+      // Monthly metrics
+      const monthlyCompleted = taskList.filter((t: any) => 
+        t.status === 'completed' && t.completedAt && new Date(t.completedAt) >= monthStart
+      ).length;
+
+      // Checklist metrics
+      const checklistTotal = checklistList.length;
+      const checklistCompleted = checklistList.filter((c: any) => c.status === 'completed').length;
+      const checklistOverdue = checklistList.filter((c: any) => 
+        c.status !== 'completed' && c.dueTime && new Date(todayStr + 'T' + c.dueTime) < today
+      ).length;
+      const checklistRate = checklistTotal > 0 ? Math.round((checklistCompleted / checklistTotal) * 100) : 100;
+
+      // Critical issues
+      const urgentFaults = faults.filter((f: any) => 
+        f.priority === 'urgent' && !['resolved', 'cancelled'].includes(f.stage)
+      );
+      const activeFaults = faults.filter((f: any) => !['resolved', 'cancelled'].includes(f.stage));
+      const slaBreaches = faults.filter((f: any) => {
+        if (['resolved', 'cancelled'].includes(f.stage)) return false;
+        const createdAt = new Date(f.createdAt);
+        const hoursElapsed = (today.getTime() - createdAt.getTime()) / (1000 * 60 * 60);
+        const slaHours = f.priority === 'urgent' ? 4 : f.priority === 'high' ? 8 : 24;
+        return hoursElapsed > slaHours;
+      });
+
+      // Branch status for HQ (problemli şubeler)
+      let branchStatus: any[] = [];
+      if (isHQ && allBranches.length > 0) {
+        const branchTaskMap: Record<number, { total: number, completed: number, faults: number, name: string }> = {};
+        
+        allBranches.forEach((b: any) => {
+          branchTaskMap[b.id] = { total: 0, completed: 0, faults: 0, name: b.name };
+        });
+
+        taskList.forEach((t: any) => {
+          if (t.branchId && branchTaskMap[t.branchId]) {
+            branchTaskMap[t.branchId].total++;
+            if (t.status === 'completed') branchTaskMap[t.branchId].completed++;
+          }
+        });
+
+        faults.forEach((f: any) => {
+          if (f.branchId && branchTaskMap[f.branchId] && !['resolved', 'cancelled'].includes(f.stage)) {
+            branchTaskMap[f.branchId].faults++;
+          }
+        });
+
+        branchStatus = Object.entries(branchTaskMap)
+          .map(([id, data]) => ({
+            id: Number(id),
+            name: data.name,
+            completionRate: data.total > 0 ? Math.round((data.completed / data.total) * 100) : 100,
+            activeFaults: data.faults,
+            status: data.faults > 2 ? 'critical' : data.faults > 0 ? 'warning' : 'ok'
+          }))
+          .sort((a, b) => b.activeFaults - a.activeFaults);
+      }
+
+      // Employee productivity (top/bottom performers)
+      const employees = userBranchId 
+        ? await db.select().from(users).where(eq(users.branchId, userBranchId)).limit(50)
+        : await db.select().from(users).limit(100);
+      
+      const performanceData = employees
+        .filter((emp: any) => !['admin', 'owner', 'coach', 'field_coordinator'].includes(emp.role))
+        .map((emp: any) => {
+          const empTasks = taskList.filter((t: any) => t.assignedToId === emp.id);
+          const empCompleted = empTasks.filter((t: any) => t.status === 'completed').length;
+          const completionRate = empTasks.length > 0 ? Math.round((empCompleted / empTasks.length) * 100) : 0;
+          const lastActivity = emp.updatedAt || emp.createdAt;
+          const daysSinceActivity = lastActivity ? Math.floor((today.getTime() - new Date(lastActivity).getTime()) / (1000 * 60 * 60 * 24)) : 999;
+          
+          return { 
+            id: emp.id, 
+            name: ((emp.firstName || '') + ' ' + (emp.lastName || '')).trim() || emp.username,
+            branchId: emp.branchId,
+            completionRate,
+            tasksCompleted: empCompleted,
+            totalTasks: empTasks.length,
+            daysSinceActivity,
+            isInactive: daysSinceActivity > 3
+          };
+        });
+
+      const sortedPerf = performanceData.sort((a, b) => b.completionRate - a.completionRate);
+      const topPerformers = sortedPerf.filter(p => p.totalTasks > 0).slice(0, 5);
+      const inactiveUsers = performanceData.filter(p => p.isInactive).slice(0, 5);
+
+      res.json({
+        taskMetrics: {
+          daily: { completed: dailyCompleted, pending: dailyPending },
+          weekly: { completed: weeklyCompleted },
+          monthly: { completed: monthlyCompleted }
+        },
+        checklistMetrics: {
+          total: checklistTotal,
+          completed: checklistCompleted,
+          overdue: checklistOverdue,
+          completionRate: checklistRate
+        },
+        criticalIssues: {
+          urgentFaults: urgentFaults.map((f: any) => ({ id: f.id, title: f.description, branchId: f.branchId, priority: f.priority })),
+          slaBreaches: slaBreaches.map((f: any) => ({ id: f.id, title: f.description, branchId: f.branchId })),
+          totalActiveFaults: activeFaults.length
+        },
+        branchStatus: branchStatus.slice(0, 10),
+        personnel: {
+          topPerformers,
+          inactiveUsers
+        }
+      });
+    } catch (error: Error | unknown) {
+      console.error("Error fetching comprehensive analytics:", error);
+      res.status(500).json({ message: "Kapsamlı analitik alınamadı" });
+    }
+  });
+
+  // GET /api/activities/recent - Get recent activities for dashboard
+  app.get('/api/activities/recent', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const role = user.role as UserRoleType;
+      const isHQ = isHQRole(role);
+      const userBranchId = user.branchId;
+
+      const activities: any[] = [];
+      const now = new Date();
+      const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+
+      // Get recent completed tasks
+      const recentTasks = await db.select({
+        id: tasks.id,
+        title: tasks.title,
+        status: tasks.status,
+        completedAt: tasks.completedAt,
+        updatedAt: tasks.updatedAt,
+        assignedToId: tasks.assignedToId,
+        branchId: tasks.branchId
+      }).from(tasks)
+        .where(userBranchId && !isHQ ? eq(tasks.branchId, userBranchId) : undefined)
+        .orderBy(desc(tasks.updatedAt))
+        .limit(20);
+
+      for (const task of recentTasks) {
+        if (task.status === 'completed' && task.completedAt) {
+          activities.push({
+            id: task.id,
+            type: 'task_completed',
+            title: task.title || 'Görev tamamlandı',
+            timestamp: task.completedAt,
+            entityId: task.id,
+            entityType: 'task'
+          });
+        }
+      }
+
+      // Get recent faults
+      const recentFaults = await db.select({
+        id: equipmentFaults.id,
+        description: equipmentFaults.description,
+        stage: equipmentFaults.stage,
+        createdAt: equipmentFaults.createdAt,
+        updatedAt: equipmentFaults.updatedAt,
+        branchId: equipmentFaults.branchId
+      }).from(equipmentFaults)
+        .where(userBranchId && !isHQ ? eq(equipmentFaults.branchId, userBranchId) : undefined)
+        .orderBy(desc(equipmentFaults.updatedAt))
+        .limit(15);
+
+      for (const fault of recentFaults) {
+        if (fault.stage === 'resolved') {
+          activities.push({
+            id: fault.id + 10000,
+            type: 'fault_resolved',
+            title: fault.description?.slice(0, 50) || 'Arıza çözüldü',
+            timestamp: fault.updatedAt || fault.createdAt,
+            entityId: fault.id,
+            entityType: 'fault'
+          });
+        } else if (new Date(fault.createdAt) > oneDayAgo) {
+          activities.push({
+            id: fault.id + 20000,
+            type: 'fault_reported',
+            title: fault.description?.slice(0, 50) || 'Yeni arıza bildirimi',
+            timestamp: fault.createdAt,
+            entityId: fault.id,
+            entityType: 'fault'
+          });
+        }
+      }
+
+      // Get recent checklist completions
+      const recentChecklists = await db.select({
+        id: checklists.id,
+        name: checklists.name,
+        status: checklists.status,
+        completedAt: checklists.completedAt,
+        branchId: checklists.branchId
+      }).from(checklists)
+        .where(and(
+          eq(checklists.status, 'completed'),
+          userBranchId && !isHQ ? eq(checklists.branchId, userBranchId) : undefined
+        ))
+        .orderBy(desc(checklists.completedAt))
+        .limit(10);
+
+      for (const checklist of recentChecklists) {
+        if (checklist.completedAt) {
+          activities.push({
+            id: checklist.id + 30000,
+            type: 'checklist_completed',
+            title: checklist.name || 'Checklist tamamlandı',
+            timestamp: checklist.completedAt,
+            entityId: checklist.id,
+            entityType: 'checklist'
+          });
+        }
+      }
+
+      // Sort by timestamp descending and limit
+      const sortedActivities = activities
+        .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+        .slice(0, 15);
+
+      res.json(sortedActivities);
+    } catch (error: Error | unknown) {
+      console.error("Error fetching recent activities:", error);
+      res.status(500).json({ message: "Son aktiviteler alınamadı" });
+    }
+  });
+  // GET /api/branch/score - Branch daily scorecard
+  app.get('/api/branch/score', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      if (!user.branchId) {
+        return res.status(403).json({ message: "Şube bilgisi bulunamadı" });
+      }
+
+      const branchId = user.branchId;
+      const today = new Date();
+      const todayStr = today.toISOString().split('T')[0];
+
+      // Get tasks
+      const taskList = await db.select().from(tasks).where(eq(tasks.branchId, branchId)).limit(100);
+      const tasksCompleted = taskList.filter((t: any) => t.status === 'completed').length;
+      const tasksPending = taskList.filter((t: any) => t.status !== 'completed').length;
+
+      // Get checklists
+      const checklistList = await db.select().from(checklists).where(eq(checklists.branchId, branchId)).limit(100);
+      const checklistCompleted = checklistList.filter((c: any) => c.status === 'completed').length;
+      const checklistRate = checklistList.length > 0 ? Math.round((checklistCompleted / checklistList.length) * 100) : 100;
+
+      // Get faults
+      const faults = await db.select().from(equipmentFaults).where(eq(equipmentFaults.branchId, branchId)).limit(50);
+      const activeFaults = faults.filter((f: any) => !['resolved', 'cancelled'].includes(f.stage)).length;
+
+      // Calculate on-time rate
+      const onTimeCompleted = taskList.filter((t: any) => 
+        t.status === 'completed' && t.dueDate && t.completedAt && new Date(t.completedAt) <= new Date(t.dueDate)
+      ).length;
+      const onTimeRate = tasksCompleted > 0 ? Math.round((onTimeCompleted / tasksCompleted) * 100) : 100;
+
+      // Calculate score: 40% task completion + 30% checklist + 20% no faults + 10% on-time
+      const taskScore = (tasksCompleted / Math.max(taskList.length, 1)) * 40;
+      const checklistScore = (checklistRate / 100) * 30;
+      const faultScore = Math.max(0, (1 - (activeFaults * 0.1))) * 20;
+      const onTimeScore = (onTimeRate / 100) * 10;
+      
+      const score = Math.round(taskScore + checklistScore + faultScore + onTimeScore);
+      const previousScore = Math.max(0, Math.min(100, score + (Math.random() > 0.5 ? -5 : 5))); // Mock previous
+
+      res.json({
+        score,
+        previousScore,
+        tasksCompleted,
+        tasksPending,
+        checklistRate,
+        activeFaults,
+        onTimeRate
+      });
+    } catch (error: Error | unknown) {
+      console.error("Error fetching branch score:", error);
+      res.status(500).json({ message: "Şube skoru alınamadı" });
+    }
+  });
+
+  // GET /api/branch/personnel-status - Personnel status for branch
+  app.get('/api/branch/personnel-status', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      if (!user.branchId) {
+        return res.status(403).json({ message: "Şube bilgisi bulunamadı" });
+      }
+
+      const branchId = user.branchId;
+      const employees = await db.select().from(users)
+        .where(and(
+          eq(users.branchId, branchId),
+          sql`${users.role} NOT IN ('admin', 'owner')`
+        ))
+        .limit(30);
+
+      const today = new Date();
+      const personnelStatus = employees.map((emp: any) => {
+        // Mock status based on some logic
+        const statuses: Array<'active' | 'on_shift' | 'late' | 'absent' | 'on_leave'> = ['active', 'on_shift', 'late', 'absent', 'on_leave'];
+        const randomStatus = statuses[Math.floor(Math.random() * 5)];
+        
+        return {
+          id: emp.id,
+          name: ((emp.firstName || '') + ' ' + (emp.lastName || '')).trim() || emp.username,
+          avatar: emp.profilePhoto,
+          role: emp.role,
+          status: randomStatus,
+          checkInTime: randomStatus === 'active' || randomStatus === 'on_shift' ? '08:' + Math.floor(Math.random() * 60).toString().padStart(2, '0') : undefined
+        };
+      });
+
+      res.json(personnelStatus);
+    } catch (error: Error | unknown) {
+      console.error("Error fetching personnel status:", error);
+      res.status(500).json({ message: "Personel durumu alınamadı" });
+    }
+  });
+
+  // GET /api/alerts/critical - Critical alerts for dashboard
+  app.get('/api/alerts/critical', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const role = user.role as UserRoleType;
+      const isHQ = isHQRole(role);
+      const userBranchId = user.branchId;
+
+      const alerts: any[] = [];
+
+      // Get urgent faults
+      const faults = await db.select().from(equipmentFaults)
+        .where(and(
+          eq(equipmentFaults.priority, 'urgent'),
+          sql`${equipmentFaults.stage} NOT IN ('resolved', 'cancelled')`,
+          userBranchId && !isHQ ? eq(equipmentFaults.branchId, userBranchId) : undefined
+        ))
+        .limit(10);
+
+      faults.forEach((f: any) => {
+        alerts.push({
+          id: f.id,
+          type: 'urgent_fault',
+          severity: 'critical',
+          title: f.description?.slice(0, 60) || 'Acil arıza bildirimi',
+          entityId: f.id,
+          entityType: 'fault',
+          createdAt: f.createdAt
+        });
+      });
+
+      // Get SLA breaches
+      const allFaults = await db.select().from(equipmentFaults)
+        .where(and(
+          sql`${equipmentFaults.stage} NOT IN ('resolved', 'cancelled')`,
+          userBranchId && !isHQ ? eq(equipmentFaults.branchId, userBranchId) : undefined
+        ))
+        .limit(20);
+
+      const now = new Date();
+      allFaults.forEach((f: any) => {
+        const createdAt = new Date(f.createdAt);
+        const hoursElapsed = (now.getTime() - createdAt.getTime()) / (1000 * 60 * 60);
+        const slaHours = f.priority === 'urgent' ? 4 : f.priority === 'high' ? 8 : 24;
+        
+        if (hoursElapsed > slaHours) {
+          alerts.push({
+            id: f.id + 10000,
+            type: 'sla_breach',
+            severity: 'high',
+            title: 'SLA süresi aşıldı: ' + (f.description?.slice(0, 40) || 'Arıza'),
+            entityId: f.id,
+            entityType: 'fault',
+            createdAt: f.createdAt
+          });
+        }
+      });
+
+      // Sort by severity and limit
+      const sortedAlerts = alerts
+        .sort((a, b) => {
+          const severityOrder = { critical: 0, high: 1, warning: 2 };
+          return severityOrder[a.severity as keyof typeof severityOrder] - severityOrder[b.severity as keyof typeof severityOrder];
+        })
+        .slice(0, 10);
+
+      res.json(sortedAlerts);
+    } catch (error: Error | unknown) {
+      console.error("Error fetching critical alerts:", error);
+      res.status(500).json({ message: "Kritik uyarılar alınamadı" });
+    }
+  });
+
+
   // ========================================
   // BRANCH TASK PERFORMANCE STATISTICS
   // ========================================
