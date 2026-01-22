@@ -59,7 +59,8 @@ import {
   Tablet,
   ChevronRight,
   CheckCircle,
-  ListChecks
+  ListChecks,
+  ListTodo
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
@@ -961,19 +962,10 @@ export function CardGridHub() {
               </div>
             ))}
             {(myAssignedTasks.length > 3 || myChecklists.length > 2) && (
-              <p className="text-xs text-muted-foreground text-center">
+              <p className="text-[10px] text-muted-foreground text-center">
                 +{Math.max(0, myAssignedTasks.length - 3) + Math.max(0, myChecklists.length - 2)} daha...
               </p>
             )}
-            <Button 
-              size="sm" 
-              variant="outline" 
-              className="w-full mt-2 h-8"
-              onClick={() => setLocation("/gorevler")}
-              data-testid="button-view-all-tasks"
-            >
-              Tüm Görevleri Gör
-            </Button>
           </CardContent>
         </Card>
       )}
@@ -1077,11 +1069,21 @@ export function CardGridHub() {
         </Card>
       )}
 
-      {/* Quick Actions */}
-      <div className="flex gap-2">
+      {/* Quick Actions - Compact 2-column grid */}
+      <div className="grid grid-cols-2 gap-2">
+        <Button 
+          size="sm" 
+          variant="outline" 
+          className="text-xs"
+          onClick={() => setLocation("/gorevler")}
+          data-testid="button-view-all-tasks"
+        >
+          <ListTodo className="h-3.5 w-3.5 mr-1" />
+          Görevler
+        </Button>
         <QuickTaskModal trigger={
-          <Button size="sm" variant="outline" className="flex-1" data-testid="button-quick-task-dashboard">
-            <Plus className="h-4 w-4 mr-1" />
+          <Button size="sm" variant="outline" className="text-xs w-full" data-testid="button-quick-task-dashboard">
+            <Plus className="h-3.5 w-3.5 mr-1" />
             Hızlı Görev
           </Button>
         } />
