@@ -855,7 +855,7 @@ export function CardGridHub() {
     : baseModules;
 
   return (
-    <div className="p-3 pb-24 space-y-4">
+    <div className="p-2 pb-20 space-y-3">
       {/* Announcement Banners - Only show if enabled */}
       {bannerCarouselEnabled && <AnnouncementBannerCarousel />}
 
@@ -868,8 +868,8 @@ export function CardGridHub() {
       {/* Personal Summary Card - Non-supervisor branch roles (barista, etc.) */}
       {isBranch && user?.role !== "supervisor" && user?.role !== "supervisor_buddy" && <PersonalSummaryCard />}
 
-      {/* Top Grid - Analytics, Actions (Responsive 2 cols mobile, 4 cols tablet/PC) */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+      {/* Top Grid - 4 columns all devices, compact design */}
+      <div className="grid grid-cols-4 gap-1.5">
         {/* Analytics Card - Branch supervisors + HQ roles */}
         {((isBranch && (user?.role === 'supervisor' || user?.role === 'supervisor_buddy')) || isHQ) && (
           <EnhancedAnalyticsCard />
@@ -879,7 +879,7 @@ export function CardGridHub() {
         <Button 
           variant="outline" 
           size="sm"
-          className="h-full min-h-[60px] bg-card text-xs font-medium border-primary/30"
+          className="h-11 bg-card text-[10px] font-medium border-primary/20 px-1"
           onClick={() => setLocation("/raporlar?tab=ai-asistan")}
           data-testid="button-ai-report"
         >
@@ -890,7 +890,7 @@ export function CardGridHub() {
         <Button 
           variant="outline" 
           size="sm"
-          className="h-full min-h-[60px] bg-card text-xs font-medium"
+          className="h-11 bg-card text-[10px] font-medium px-1"
           onClick={() => setLocation("/gorevler")}
           data-testid="button-view-all-tasks"
         >
@@ -899,7 +899,7 @@ export function CardGridHub() {
 
         {/* Quick Action - Hızlı Görev */}
         <QuickTaskModal trigger={
-          <Button variant="outline" size="sm" className="h-full min-h-[60px] bg-card w-full text-xs font-medium" data-testid="button-quick-task-dashboard">
+          <Button variant="outline" size="sm" className="h-11 bg-card w-full text-[10px] font-medium px-1" data-testid="button-quick-task-dashboard">
             Hızlı Görev
           </Button>
         } />
@@ -1046,16 +1046,15 @@ export function CardGridHub() {
       )}
 
 
-      {/* Mega Module Cards - Only show modules user has access to */}
+      {/* Mega Module Cards - Compact grid: 3 cols mobile, 4 tablet, 5 PC */}
       {megaModules && megaModules.filter((m: any) => !m.isEmpty).length > 0 ? (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 relative z-10">
+        <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 gap-1.5 relative z-10">
           {megaModules
-            .filter((megaModule: any) => !megaModule.isEmpty) // Hide modules with no access
+            .filter((megaModule: any) => !megaModule.isEmpty)
             .map((megaModule: any) => {
             const MegaIcon = getSectionIcon(megaModule.icon);
             const moduleBadge = getSectionBadge(megaModule.items);
             
-            // Map mega-module IDs to their tabbed mega-module page paths
             const MEGA_MODULE_PATHS: Record<string, string> = {
               "operations": "/operasyon",
               "equipment": "/ekipman",
@@ -1067,85 +1066,81 @@ export function CardGridHub() {
               "admin": "/admin"
             };
             
-            // Navigate to tabbed mega-module page if available, otherwise fallback to module detail
             const megaModulePath = MEGA_MODULE_PATHS[megaModule.id] || `/modul/${megaModule.id}`;
             
             return (
               <button
                 key={megaModule.id}
                 onClick={() => setLocation(megaModulePath)}
-                className="relative z-10 pointer-events-auto flex flex-col items-center justify-center p-4 rounded-xl border transition-all active:scale-[0.98] min-h-[100px] bg-card border-border hover:border-primary/50 hover:shadow-md cursor-pointer"
+                className="relative z-10 pointer-events-auto flex flex-col items-center justify-center p-2 rounded-lg border transition-all active:scale-[0.97] min-h-[72px] bg-card border-border hover:border-primary/40 hover:shadow-sm cursor-pointer group"
                 data-testid={`mega-module-${megaModule.id}`}
               >
                 {moduleBadge > 0 && (
-                  <span className="absolute top-2 right-2 min-w-[20px] h-5 px-1.5 bg-destructive text-destructive-foreground text-xs font-bold rounded-full flex items-center justify-center">
+                  <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 bg-destructive text-destructive-foreground text-[9px] font-bold rounded-full flex items-center justify-center shadow-sm">
                     {moduleBadge > 99 ? "99+" : moduleBadge}
                   </span>
                 )}
-                <div className={`w-12 h-12 rounded-xl ${megaModule.color} flex items-center justify-center mb-2`}>
-                  <MegaIcon className="w-6 h-6 text-white" />
+                <div className={`w-8 h-8 rounded-lg ${megaModule.color} flex items-center justify-center mb-1 group-hover:scale-105 transition-transform`}>
+                  <MegaIcon className="w-4 h-4 text-white" />
                 </div>
-                <span className="text-sm font-medium text-center leading-tight">{megaModule.title}</span>
-                <span className="text-xs text-muted-foreground mt-0.5">
-                  {megaModule.items.length} modül
+                <span className="text-[10px] font-medium text-center leading-tight line-clamp-2">{megaModule.title}</span>
+                <span className="text-[8px] text-muted-foreground">
+                  {megaModule.items.length}
                 </span>
               </button>
             );
           })}
         </div>
       ) : (
-        /* Fallback flat grid for backward compatibility */
-        <div className="grid grid-cols-3 gap-2 relative z-10">
+        /* Fallback flat grid */
+        <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 gap-1.5 relative z-10">
           {modules.map((module: any) => {
             const Icon = module.icon;
             return (
               <button
                 key={module.id}
                 onClick={() => setLocation(module.path)}
-                className="relative z-10 pointer-events-auto flex flex-col items-center justify-center p-3 rounded-lg bg-card border border-border hover:border-primary/50 hover:shadow-sm transition-all active:scale-[0.98] min-h-[80px] cursor-pointer"
+                className="relative z-10 pointer-events-auto flex flex-col items-center justify-center p-2 rounded-lg bg-card border border-border hover:border-primary/40 hover:shadow-sm transition-all active:scale-[0.97] min-h-[72px] cursor-pointer group"
                 data-testid={`module-card-${module.id}`}
               >
                 {module.badge && module.badge > 0 && (
-                  <span className="absolute top-2 right-2 min-w-[20px] h-5 px-1.5 bg-destructive text-destructive-foreground text-xs font-bold rounded-full flex items-center justify-center">
+                  <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 bg-destructive text-destructive-foreground text-[9px] font-bold rounded-full flex items-center justify-center shadow-sm">
                     {module.badge > 99 ? "99+" : module.badge}
                   </span>
                 )}
-                <div className={`w-10 h-10 rounded-lg ${module.color} flex items-center justify-center mb-1`}>
-                  <Icon className="w-5 h-5 text-white" />
+                <div className={`w-8 h-8 rounded-lg ${module.color} flex items-center justify-center mb-1 group-hover:scale-105 transition-transform`}>
+                  <Icon className="w-4 h-4 text-white" />
                 </div>
-                <span className="text-xs font-semibold text-center leading-tight">{module.label}</span>
+                <span className="text-[10px] font-medium text-center leading-tight line-clamp-2">{module.label}</span>
               </button>
             );
           })}
         </div>
       )}
 
-      {/* Quick Stats - Optional */}
+      {/* Quick Stats - Compact horizontal inline */}
       {(pendingTasks > 0 || openFaults > 0) && (
-        <div className="mt-4 p-3 rounded-lg bg-muted/50 border">
-          <p className="text-xs font-medium text-muted-foreground mb-2">Hızlı Bakış</p>
-          <div className="flex gap-4 text-sm">
-            {pendingTasks > 0 && (
-              <div 
-                className="flex items-center gap-1.5 hover-elevate cursor-pointer px-2 py-1 rounded"
-                onClick={() => setLocation("/gorevler")}
-                data-testid="link-pending-tasks"
-              >
-                <div className="w-2 h-2 rounded-full bg-yellow-500" />
-                <span>{pendingTasks} bekleyen görev</span>
-              </div>
-            )}
-            {openFaults > 0 && (
-              <div 
-                className="flex items-center gap-1.5 hover-elevate cursor-pointer px-2 py-1 rounded"
-                onClick={() => setLocation("/ariza")}
-                data-testid="link-open-faults"
-              >
-                <div className="w-2 h-2 rounded-full bg-orange-500" />
-                <span>{openFaults} açık arıza</span>
-              </div>
-            )}
-          </div>
+        <div className="flex flex-wrap gap-2 text-[10px]">
+          {pendingTasks > 0 && (
+            <div 
+              className="flex items-center gap-1 hover-elevate cursor-pointer px-2 py-1 rounded-full bg-yellow-500/10 border border-yellow-500/20"
+              onClick={() => setLocation("/gorevler")}
+              data-testid="link-pending-tasks"
+            >
+              <div className="w-1.5 h-1.5 rounded-full bg-yellow-500" />
+              <span className="font-medium">{pendingTasks} bekleyen</span>
+            </div>
+          )}
+          {openFaults > 0 && (
+            <div 
+              className="flex items-center gap-1 hover-elevate cursor-pointer px-2 py-1 rounded-full bg-orange-500/10 border border-orange-500/20"
+              onClick={() => setLocation("/ariza")}
+              data-testid="link-open-faults"
+            >
+              <div className="w-1.5 h-1.5 rounded-full bg-orange-500" />
+              <span className="font-medium">{openFaults} arıza</span>
+            </div>
+          )}
         </div>
       )}
     </div>

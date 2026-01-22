@@ -471,7 +471,7 @@ export function EnhancedAnalyticsCard() {
       <Button 
         variant="outline" 
         size="sm" 
-        className="h-full min-h-[60px] bg-card text-xs font-medium"
+        className="h-11 bg-card text-[10px] font-medium px-1"
         onClick={() => setIsExpanded(true)}
         data-testid="button-special-report"
       >

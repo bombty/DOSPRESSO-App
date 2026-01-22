@@ -36,8 +36,8 @@ export function BottomNav() {
   };
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-[60] bg-white dark:bg-slate-900 border-t border-border shadow-lg" data-testid="bottom-nav">
-      <div className="flex items-center justify-around h-16 max-w-lg mx-auto px-2">
+    <nav className="fixed bottom-0 left-0 right-0 z-[60] bg-white dark:bg-slate-900 border-t border-border/50 shadow-lg" data-testid="bottom-nav">
+      <div className="flex items-center justify-around h-14 max-w-lg mx-auto px-1">
         {navItems.map((item) => {
           const Icon = item.icon;
           const active = isActive(item.path);
@@ -46,27 +46,27 @@ export function BottomNav() {
             <Link
               key={item.path}
               href={item.path}
-              className={`flex flex-col items-center justify-center flex-1 h-full gap-0.5 transition-colors relative no-underline ${
+              className={`flex flex-col items-center justify-center flex-1 h-full gap-0 transition-all relative no-underline ${
                 active 
                   ? "text-primary" 
                   : "text-muted-foreground hover:text-foreground"
               }`}
               data-testid={`nav-${item.label.toLowerCase().replace(/\s/g, '-')}`}
             >
-              <div className="relative pointer-events-none">
-                <Icon className={`w-5 h-5 ${active ? "stroke-[2.5px]" : ""}`} />
+              {active && (
+                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-10 h-0.5 bg-primary rounded-full pointer-events-none" />
+              )}
+              <div className={`relative pointer-events-none transition-transform ${active ? "scale-110" : ""}`}>
+                <Icon className={`w-4 h-4 ${active ? "stroke-[2.5px]" : ""}`} />
                 {item.badge && item.badge > 0 && (
-                  <span className="absolute -top-1 -right-1 w-4 h-4 bg-destructive text-destructive-foreground text-[10px] font-bold rounded-full flex items-center justify-center">
+                  <span className="absolute -top-1.5 -right-1.5 w-3.5 h-3.5 bg-destructive text-destructive-foreground text-[8px] font-bold rounded-full flex items-center justify-center">
                     {item.badge > 9 ? "9+" : item.badge}
                   </span>
                 )}
               </div>
-              <span className={`text-[10px] font-medium pointer-events-none ${active ? "font-semibold" : ""}`}>
+              <span className={`text-[9px] pointer-events-none mt-0.5 ${active ? "font-semibold" : "font-medium"}`}>
                 {item.label}
               </span>
-              {active && (
-                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 bg-primary rounded-full pointer-events-none" />
-              )}
             </Link>
           );
         })}
