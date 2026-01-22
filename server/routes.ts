@@ -111,6 +111,7 @@ import {
   equipmentFaults,
   equipment,
   users,
+  checklists,
   recipeCategories,
   recipes,
   recipeVersions,
@@ -14614,13 +14615,33 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
       const alerts: any[] = [];
 
       // Get urgent faults
-      const faults = await db.select().from(equipmentFaults)
-        .where(and(
-          eq(equipmentFaults.priority, 'urgent'),
-          sql`${equipmentFaults.stage} NOT IN ('resolved', 'cancelled')`,
-          userBranchId && !isHQ ? eq(equipmentFaults.branchId, userBranchId) : undefined
-        ))
-        .limit(10);
+      // Get urgent faults - conditional query based on role
+      const faults = userBranchId && !isHQ
+        ? await db.select().from(equipmentFaults)
+            .where(and(
+              eq(equipmentFaults.priority, 'urgent'),
+              or(
+                eq(equipmentFaults.stage, 'open'),
+                eq(equipmentFaults.stage, 'assigned'),
+                eq(equipmentFaults.stage, 'in_progress'),
+                eq(equipmentFaults.stage, 'pending_parts'),
+                eq(equipmentFaults.stage, 'escalated')
+              ),
+              eq(equipmentFaults.branchId, userBranchId)
+            ))
+            .limit(10)
+        : await db.select().from(equipmentFaults)
+            .where(and(
+              eq(equipmentFaults.priority, 'urgent'),
+              or(
+                eq(equipmentFaults.stage, 'open'),
+                eq(equipmentFaults.stage, 'assigned'),
+                eq(equipmentFaults.stage, 'in_progress'),
+                eq(equipmentFaults.stage, 'pending_parts'),
+                eq(equipmentFaults.stage, 'escalated')
+              )
+            ))
+            .limit(10);
 
       faults.forEach((f: any) => {
         alerts.push({
@@ -14635,12 +14656,31 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
       });
 
       // Get SLA breaches
-      const allFaults = await db.select().from(equipmentFaults)
-        .where(and(
-          sql`${equipmentFaults.stage} NOT IN ('resolved', 'cancelled')`,
-          userBranchId && !isHQ ? eq(equipmentFaults.branchId, userBranchId) : undefined
-        ))
-        .limit(20);
+      // Get SLA breaches - conditional based on role
+      const allFaults = userBranchId && !isHQ
+        ? await db.select().from(equipmentFaults)
+            .where(and(
+              or(
+                eq(equipmentFaults.stage, 'open'),
+                eq(equipmentFaults.stage, 'assigned'),
+                eq(equipmentFaults.stage, 'in_progress'),
+                eq(equipmentFaults.stage, 'pending_parts'),
+                eq(equipmentFaults.stage, 'escalated')
+              ),
+              eq(equipmentFaults.branchId, userBranchId)
+            ))
+            .limit(20)
+        : await db.select().from(equipmentFaults)
+            .where(
+              or(
+                eq(equipmentFaults.stage, 'open'),
+                eq(equipmentFaults.stage, 'assigned'),
+                eq(equipmentFaults.stage, 'in_progress'),
+                eq(equipmentFaults.stage, 'pending_parts'),
+                eq(equipmentFaults.stage, 'escalated')
+              )
+            )
+            .limit(20);
 
       const now = new Date();
       allFaults.forEach((f: any) => {
