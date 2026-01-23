@@ -53,7 +53,7 @@ The frontend utilizes React 18+ with TypeScript and Vite, employing Shadcn/ui (N
 - **RAG Knowledge Base**: Vector-based semantic search using OpenAI embeddings.
 - **Gamification**: Integrated badges, career progression, leaderboards, team competitions, adaptive difficulty, certificates, and daily learning streak tracker.
 - **Layout System**: Responsive flex-based layouts with standardized gaps.
-- **Dashboard Hub**: `CardGridHub` displays 9 mega-module cards (Operations, Equipment & Maintenance, Personnel & HR, Training & Academy, Kitchen & Recipes, Factory & Production, Reports & Analytics, New Shop Opening, and Management & Settings), grouping related menu sections.
+- **Dashboard Hub**: `CardGridHub` displays 9 mega-module cards with **role-based visibility** - HQ sees all modules, Supervisor sees branch operations (no Factory/NewShop/Admin), Fabrika sees factory-specific modules, Barista/Stajyer see basic operational modules.
 - **Mega-Module Architecture**: Each major section uses a tabbed mega-module wrapper that lazy-loads page components, with URL synchronization for deep linking. Key mega-modules:
   - `/fabrika`: 7 tabs (Dashboard, Kiosk, Kalite Kontrol, Performans, Vardiya Uyumluluk, AI Raporlar, Üretim Planlama)
   - `/ekipman`: 3 tabs (Ekipman, Arıza Yönetimi, Ekipman Analitik)
