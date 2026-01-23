@@ -1024,17 +1024,56 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
   app.get('/api/dashboard-modules', isAuthenticated, async (req: any, res) => {
     try {
       const user = req.user!;
+      const userRole = user.role as UserRoleType;
+      const isHQ = isHQRole(userRole);
+      
+      // ROL BAZLI MEGA MODÜL ERİŞİM KURALLARI
+      // Her rol sadece kendini ilgilendiren modülleri görmeli
+      const getRoleAllowedMegaModules = (role: UserRoleType): Set<string> => {
+        // HQ rolleri: TÜM modüllere erişim
+        if (isHQRole(role)) {
+          return new Set(['dashboard', 'operations', 'equipment', 'hr', 'training', 'kitchen', 'factory', 'reports', 'newshop', 'admin']);
+        }
+        
+        // Fabrika rolü: factory + temel modüller
+        if (role === 'fabrika') {
+          return new Set(['dashboard', 'factory', 'reports', 'training']);
+        }
+        
+        // Şube rolleri (supervisor, barista, stajyer vs): şube odaklı modüller
+        // Factory, newshop, admin modüllerini GÖRMEMELİ
+        if (isBranchRole(role)) {
+          // Supervisor ve supervisor_buddy ek modüller görebilir
+          if (role === 'supervisor' || role === 'supervisor_buddy') {
+            return new Set(['dashboard', 'operations', 'equipment', 'hr', 'training', 'kitchen', 'reports']);
+          }
+          // Barista, stajyer, bar_buddy: temel şube modülleri
+          return new Set(['dashboard', 'operations', 'equipment', 'training', 'kitchen']);
+        }
+        
+        // Varsayılan: temel modüller
+        return new Set(['dashboard', 'operations', 'training']);
+      };
+      
+      const allowedMegaModules = getRoleAllowedMegaModules(userRole);
       
       // 1. Get all mega-module items from DB - BU TEK KAYNAK OLACAK
       const allMegaModuleItems = await db.select().from(megaModuleItems).where(eq(megaModuleItems.isActive, true)).orderBy(megaModuleItems.megaModuleId, megaModuleItems.sortOrder);
       
       // 2. Modül sayılarını DOĞRUDAN mega_module_items tablosundan hesapla (Modül Düzenleme ile senkron)
+      // Sadece izin verilen mega modülleri say
       const dbModuleCounts: Record<string, number> = {};
       const dbModuleItemsList: Record<string, Array<{path: string, title: string}>> = {};
       const pathToMegaModule: Record<string, string> = {};
       
       for (const item of allMegaModuleItems) {
         const megaId = item.megaModuleId;
+        
+        // ROL FİLTRESİ: Bu mega modül bu role izin veriyor mu?
+        if (!allowedMegaModules.has(megaId)) {
+          continue; // Bu mega modülü atla
+        }
+        
         dbModuleCounts[megaId] = (dbModuleCounts[megaId] || 0) + 1;
         
         if (!dbModuleItemsList[megaId]) {
@@ -1053,9 +1092,11 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
       // 3. Get mega-module configs for display
       const configs = await db.select().from(megaModuleConfig).orderBy(megaModuleConfig.sortOrder);
       
-      // 4. Return data using counts DIRECTLY from mega_module_items table
+      // 4. Sadece izin verilen mega modülleri filtrele ve döndür
+      const filteredConfigs = configs.filter(c => allowedMegaModules.has(c.megaModuleId));
+      
       res.json({
-        megaModules: configs.map(c => ({
+        megaModules: filteredConfigs.map(c => ({
           id: c.megaModuleId,
           title: c.megaModuleNameTr || c.megaModuleName,
           icon: c.icon,
@@ -1063,8 +1104,10 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
           itemCount: dbModuleCounts[c.megaModuleId] || 0,
           items: dbModuleItemsList[c.megaModuleId] || []
         })),
-        totalAccessibleModules: allMegaModuleItems.length,
-        pathMapping: pathToMegaModule
+        totalAccessibleModules: Object.values(dbModuleCounts).reduce((sum, count) => sum + count, 0),
+        pathMapping: pathToMegaModule,
+        userRole: userRole,
+        allowedModules: Array.from(allowedMegaModules)
       });
     } catch (error: any) {
       console.error("Error fetching dashboard modules:", error);
