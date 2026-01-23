@@ -11930,7 +11930,12 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
     setInterval(async () => {
       try {
         const assignments = await storage.getTrainingAssignments();
-        const today = new Date();
+        // Parse date range from query params
+      const fromDate = req.query.from ? new Date(req.query.from as string) : new Date();
+      const toDate = req.query.to ? new Date(req.query.to as string) : new Date();
+      toDate.setHours(23, 59, 59, 999); // Include full end day
+
+      const today = new Date();
 
         for (const assignment of assignments) {
           if (assignment.status === 'assigned' || assignment.status === 'in_progress') {
@@ -13946,6 +13951,11 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
         return res.status(403).json({ message: "Analitik görüntüleme yetkiniz yok" });
       }
 
+      // Parse date range from query params
+      const fromDate = req.query.from ? new Date(req.query.from as string) : new Date();
+      const toDate = req.query.to ? new Date(req.query.to as string) : new Date();
+      toDate.setHours(23, 59, 59, 999); // Include full end day
+
       const today = new Date();
       const weekStart = new Date(today);
       weekStart.setDate(weekStart.getDate() - weekStart.getDay());
@@ -14033,6 +14043,11 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
         return res.status(403).json({ message: "Analitik görüntüleme yetkiniz yok" });
       }
 
+      // Parse date range from query params
+      const fromDate = req.query.from ? new Date(req.query.from as string) : new Date();
+      const toDate = req.query.to ? new Date(req.query.to as string) : new Date();
+      toDate.setHours(23, 59, 59, 999); // Include full end day
+
       const today = new Date();
       const weekStart = new Date(today);
       weekStart.setDate(weekStart.getDate() - weekStart.getDay());
@@ -14117,6 +14132,11 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
       } else if (!isHQRole(role)) {
         return res.status(403).json({ message: "Analitik görüntüleme yetkiniz yok" });
       }
+
+      // Parse date range from query params
+      const fromDate = req.query.from ? new Date(req.query.from as string) : new Date();
+      const toDate = req.query.to ? new Date(req.query.to as string) : new Date();
+      toDate.setHours(23, 59, 59, 999); // Include full end day
 
       const today = new Date();
       const taskList = (branchId ? await db.select().from(tasks).where(eq(tasks.branchId, branchId)).limit(100) : await db.select().from(tasks).limit(100));
@@ -14221,6 +14241,11 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
         return res.status(403).json({ message: "Analitik görüntüleme yetkiniz yok" });
       }
 
+      // Parse date range from query params
+      const fromDate = req.query.from ? new Date(req.query.from as string) : new Date();
+      const toDate = req.query.to ? new Date(req.query.to as string) : new Date();
+      toDate.setHours(23, 59, 59, 999); // Include full end day
+
       const today = new Date();
       const todayStr = today.toISOString().split('T')[0];
       const weekStart = new Date(today);
@@ -14270,6 +14295,15 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
       ).length;
       const checklistRate = checklistTotal > 0 ? Math.round((checklistCompleted / checklistTotal) * 100) : 100;
 
+
+      // Create lookups for branch and equipment names
+      const branchLookup: Record<number, string> = {};
+      allBranches.forEach((b: any) => { branchLookup[b.id] = b.name; });
+      
+      // Get equipment list for device names
+      const equipmentList = await db.select({ id: equipment.id, name: equipment.name }).from(equipment).limit(200);
+      const equipmentLookup: Record<number, string> = {};
+      equipmentList.forEach((e: any) => { equipmentLookup[e.id] = e.name; });
       // Critical issues
       const urgentFaults = faults.filter((f: any) => 
         f.priority === 'urgent' && !['resolved', 'cancelled'].includes(f.stage)
@@ -14289,13 +14323,14 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
         const branchTaskMap: Record<number, { total: number, completed: number, faults: number, name: string }> = {};
         
         allBranches.forEach((b: any) => {
-          branchTaskMap[b.id] = { total: 0, completed: 0, faults: 0, name: b.name };
+          branchTaskMap[b.id] = { total: 0, completed: 0, pending: 0, faults: 0, name: b.name };
         });
 
         taskList.forEach((t: any) => {
           if (t.branchId && branchTaskMap[t.branchId]) {
             branchTaskMap[t.branchId].total++;
             if (t.status === 'completed') branchTaskMap[t.branchId].completed++;
+            else branchTaskMap[t.branchId].pending++;
           }
         });
 
@@ -14311,6 +14346,7 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
             name: data.name,
             completionRate: data.total > 0 ? Math.round((data.completed / data.total) * 100) : 100,
             activeFaults: data.faults,
+            pendingTasks: data.pending,
             status: data.faults > 2 ? 'critical' : data.faults > 0 ? 'warning' : 'ok'
           }))
           .sort((a, b) => b.activeFaults - a.activeFaults);
@@ -14359,15 +14395,64 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
           completionRate: checklistRate
         },
         criticalIssues: {
-          urgentFaults: urgentFaults.map((f: any) => ({ id: f.id, title: f.description, branchId: f.branchId, priority: f.priority })),
-          slaBreaches: slaBreaches.map((f: any) => ({ id: f.id, title: f.description, branchId: f.branchId })),
+          urgentFaults: urgentFaults.map((f: any) => ({ id: f.id, title: f.description, branchId: f.branchId, branchName: branchLookup[f.branchId] || "Bilinmiyor", equipmentName: equipmentLookup[f.equipmentId] || "", priority: f.priority })),
+          slaBreaches: slaBreaches.map((f: any) => {
+            const createdAt = new Date(f.createdAt);
+            const hoursElapsed = (today.getTime() - createdAt.getTime()) / (1000 * 60 * 60);
+            const slaHours = f.priority === 'urgent' ? 4 : f.priority === 'high' ? 8 : 24;
+            return { 
+              id: f.id, 
+              title: f.description, 
+              branchId: f.branchId, 
+              branchName: branchLookup[f.branchId] || "Bilinmiyor", 
+              equipmentName: equipmentLookup[f.equipmentId] || "", 
+              hoursOverdue: Math.round(hoursElapsed - slaHours)
+            };
+          }),
           totalActiveFaults: activeFaults.length
         },
         branchStatus: branchStatus.slice(0, 10),
         personnel: {
           topPerformers,
           inactiveUsers
-        }
+        },
+        aiSummary: await (async () => {
+          try {
+            // Generate role-based AI summary
+            const summaryParts: string[] = [];
+            if (isHQ) {
+              const criticalBranches = branchStatus.filter(b => b.status === 'critical').length;
+              const warningBranches = branchStatus.filter(b => b.status === 'warning').length;
+              if (criticalBranches > 0) {
+                summaryParts.push(`${criticalBranches} şube kritik durumda.`);
+              }
+              if (urgentFaults.length > 0) {
+                summaryParts.push(`${urgentFaults.length} acil arıza müdahale bekliyor.`);
+              }
+              if (slaBreaches.length > 0) {
+                summaryParts.push(`${slaBreaches.length} SLA ihlali mevcut.`);
+              }
+              if (dailyPending > 10) {
+                summaryParts.push(`Bugün ${dailyPending} bekleyen görev var.`);
+              }
+              if (checklistOverdue > 0) {
+                summaryParts.push(`${checklistOverdue} checklist gecikmiş.`);
+              }
+              if (summaryParts.length === 0) {
+                summaryParts.push("Genel durum iyi görünüyor. Kritik sorun bulunmuyor.");
+              }
+            } else {
+              summaryParts.push(`Bugün ${dailyCompleted} görev tamamlandı, ${dailyPending} bekliyor.`);
+              if (checklistOverdue > 0) {
+                summaryParts.push(`${checklistOverdue} checklist gecikmiş.`);
+              }
+            }
+            return summaryParts.join(" ");
+          } catch {
+            return null;
+          }
+        })(),
+        dateRange: { from: fromDate.toISOString().split('T')[0], to: toDate.toISOString().split('T')[0] }
       });
     } catch (error: Error | unknown) {
       console.error("Error fetching comprehensive analytics:", error);
@@ -14518,6 +14603,11 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
       }
 
       const branchId = user.branchId;
+      // Parse date range from query params
+      const fromDate = req.query.from ? new Date(req.query.from as string) : new Date();
+      const toDate = req.query.to ? new Date(req.query.to as string) : new Date();
+      toDate.setHours(23, 59, 59, 999); // Include full end day
+
       const today = new Date();
       const todayStr = today.toISOString().split('T')[0];
 
@@ -14580,6 +14670,11 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
           sql`${users.role} NOT IN ('admin', 'owner')`
         ))
         .limit(30);
+
+      // Parse date range from query params
+      const fromDate = req.query.from ? new Date(req.query.from as string) : new Date();
+      const toDate = req.query.to ? new Date(req.query.to as string) : new Date();
+      toDate.setHours(23, 59, 59, 999); // Include full end day
 
       const today = new Date();
       const personnelStatus = employees.map((emp: any) => {
@@ -24697,6 +24792,11 @@ DOSPRESSO İnsan Kaynakları Ekibi`
       let isSuspicious = false;
 
       // Check 1: Same IP submitted multiple feedbacks today
+      // Parse date range from query params
+      const fromDate = req.query.from ? new Date(req.query.from as string) : new Date();
+      const toDate = req.query.to ? new Date(req.query.to as string) : new Date();
+      toDate.setHours(23, 59, 59, 999); // Include full end day
+
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       const sameIpCount = await db.select({ count: sql<number>`count(*)` })
@@ -25986,6 +26086,11 @@ DOSPRESSO İnsan Kaynakları Ekibi`
       }
 
       const now = new Date();
+      // Parse date range from query params
+      const fromDate = req.query.from ? new Date(req.query.from as string) : new Date();
+      const toDate = req.query.to ? new Date(req.query.to as string) : new Date();
+      toDate.setHours(23, 59, 59, 999); // Include full end day
+
       const today = new Date();
       today.setHours(0, 0, 0, 0);
 
@@ -26262,6 +26367,11 @@ DOSPRESSO İnsan Kaynakları Ekibi`
   // Fabrika dashboard istatistikleri
   app.get('/api/factory/dashboard/stats', isAuthenticated, async (req, res) => {
     try {
+      // Parse date range from query params
+      const fromDate = req.query.from ? new Date(req.query.from as string) : new Date();
+      const toDate = req.query.to ? new Date(req.query.to as string) : new Date();
+      toDate.setHours(23, 59, 59, 999); // Include full end day
+
       const today = new Date();
       today.setHours(0, 0, 0, 0);
 
@@ -26894,6 +27004,11 @@ DOSPRESSO İnsan Kaynakları Ekibi`
   app.get('/api/factory/shift-compliance/my-warnings', isAuthenticated, async (req, res) => {
     try {
       const user = req.user as any;
+      // Parse date range from query params
+      const fromDate = req.query.from ? new Date(req.query.from as string) : new Date();
+      const toDate = req.query.to ? new Date(req.query.to as string) : new Date();
+      toDate.setHours(23, 59, 59, 999); // Include full end day
+
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       
@@ -27289,6 +27404,11 @@ DOSPRESSO İnsan Kaynakları Ekibi`
   // Kalite Kontrol - Onaylanan üretim çıktıları
   app.get('/api/factory/quality/approved', async (req, res) => {
     try {
+      // Parse date range from query params
+      const fromDate = req.query.from ? new Date(req.query.from as string) : new Date();
+      const toDate = req.query.to ? new Date(req.query.to as string) : new Date();
+      toDate.setHours(23, 59, 59, 999); // Include full end day
+
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       
@@ -27328,6 +27448,11 @@ DOSPRESSO İnsan Kaynakları Ekibi`
   // Kalite Kontrol - Reddedilen üretim çıktıları
   app.get('/api/factory/quality/rejected', async (req, res) => {
     try {
+      // Parse date range from query params
+      const fromDate = req.query.from ? new Date(req.query.from as string) : new Date();
+      const toDate = req.query.to ? new Date(req.query.to as string) : new Date();
+      toDate.setHours(23, 59, 59, 999); // Include full end day
+
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       
