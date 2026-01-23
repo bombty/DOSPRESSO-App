@@ -14268,7 +14268,7 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
       
       // Get all checklists - conditional query based on user role
       const checklistList = userBranchId
-        ? await db.select().from(checklists).where(eq(checklists.branchId, userBranchId)).limit(500)
+        ? await db.select().from(checklists).limit(500)
         : await db.select().from(checklists).limit(500);
 
       // Daily metrics
@@ -14469,40 +14469,22 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
       const userBranchId = user.branchId;
 
       const activities: any[] = [];
-      const now = new Date();
-      const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-      // Get recent completed tasks - conditional based on role
-      const recentTasks = (userBranchId && !isHQ)
-        ? await db.select({
-            id: tasks.id,
-            title: tasks.title,
-            status: tasks.status,
-            completedAt: tasks.completedAt,
-            updatedAt: tasks.updatedAt,
-            assignedToId: tasks.assignedToId,
-            branchId: tasks.branchId
-          }).from(tasks)
-            .where(eq(tasks.branchId, userBranchId))
-            .orderBy(desc(tasks.updatedAt))
-            .limit(20)
-        : await db.select({
-            id: tasks.id,
-            title: tasks.title,
-            status: tasks.status,
-            completedAt: tasks.completedAt,
-            updatedAt: tasks.updatedAt,
-            assignedToId: tasks.assignedToId,
-            branchId: tasks.branchId
-          }).from(tasks)
-            .orderBy(desc(tasks.updatedAt))
-            .limit(20);
 
-      for (const task of recentTasks) {
+      // Get recent tasks - simple query
+      const recentTasks = await db.select().from(tasks)
+        .orderBy(desc(tasks.updatedAt))
+        .limit(30);
+
+      const filteredTasks = (userBranchId && !isHQ)
+        ? recentTasks.filter((t: any) => t.branchId === userBranchId)
+        : recentTasks;
+
+      for (const task of filteredTasks.slice(0, 15)) {
         if (task.status === 'completed' && task.completedAt) {
           activities.push({
             id: task.id,
             type: 'task_completed',
-            title: task.title || 'Görev tamamlandı',
+            title: task.description?.slice(0, 50) || 'Görev tamamlandı',
             timestamp: task.completedAt,
             entityId: task.id,
             entityType: 'task'
@@ -14510,30 +14492,18 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
         }
       }
 
-      // Get recent faults - conditional based on role
-      const recentFaults = (userBranchId && !isHQ)
-        ? await db.select({
-            id: equipmentFaults.id,
-            description: equipmentFaults.description,
-            stage: equipmentFaults.stage,
-            createdAt: equipmentFaults.createdAt,
-            updatedAt: equipmentFaults.updatedAt,
-            branchId: equipmentFaults.branchId
-          }).from(equipmentFaults)
-            .where(eq(equipmentFaults.branchId, userBranchId))
-            .orderBy(desc(equipmentFaults.updatedAt))
-            .limit(15)
-        : await db.select({
-            id: equipmentFaults.id,
-            description: equipmentFaults.description,
-            stage: equipmentFaults.stage,
-            createdAt: equipmentFaults.createdAt,
-            updatedAt: equipmentFaults.updatedAt,
-            branchId: equipmentFaults.branchId
-          }).from(equipmentFaults)
-            .orderBy(desc(equipmentFaults.updatedAt))
-            .limit(15);
-      for (const fault of recentFaults) {
+      // Get recent faults - simple query
+      const recentFaults = await db.select().from(equipmentFaults)
+        .orderBy(desc(equipmentFaults.updatedAt))
+        .limit(30);
+
+      const filteredFaults = (userBranchId && !isHQ)
+        ? recentFaults.filter((f: any) => f.branchId === userBranchId)
+        : recentFaults;
+
+      const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+
+      for (const fault of filteredFaults.slice(0, 15)) {
         if (fault.stage === 'resolved') {
           activities.push({
             id: fault.id + 10000,
@@ -14555,35 +14525,7 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
         }
       }
 
-      // Get recent checklist completions
-      const recentChecklists = await db.select({
-        id: checklists.id,
-        name: checklists.name,
-        status: checklists.status,
-        completedAt: checklists.completedAt,
-        branchId: checklists.branchId
-      }).from(checklists)
-        .where(and(
-          eq(checklists.status, 'completed'),
-          userBranchId && !isHQ ? eq(checklists.branchId, userBranchId) : undefined
-        ))
-        .orderBy(desc(checklists.completedAt))
-        .limit(10);
-
-      for (const checklist of recentChecklists) {
-        if (checklist.completedAt) {
-          activities.push({
-            id: checklist.id + 30000,
-            type: 'checklist_completed',
-            title: checklist.name || 'Checklist tamamlandı',
-            timestamp: checklist.completedAt,
-            entityId: checklist.id,
-            entityType: 'checklist'
-          });
-        }
-      }
-
-      // Sort by timestamp descending and limit
+      // Sort by timestamp and return
       const sortedActivities = activities
         .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
         .slice(0, 15);
@@ -14617,7 +14559,7 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
       const tasksPending = taskList.filter((t: any) => t.status !== 'completed').length;
 
       // Get checklists
-      const checklistList = await db.select().from(checklists).where(eq(checklists.branchId, branchId)).limit(100);
+      const checklistList = await db.select().from(checklists).limit(100);
       const checklistCompleted = checklistList.filter((c: any) => c.status === 'completed').length;
       const checklistRate = checklistList.length > 0 ? Math.round((checklistCompleted / checklistList.length) * 100) : 100;
 
@@ -14699,7 +14641,7 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
     }
   });
 
-  // GET /api/alerts/critical - Critical alerts for dashboard
+  // GET /api/alerts/critical - Critical alerts for dashboard (simplified)
   app.get('/api/alerts/critical', isAuthenticated, async (req: any, res) => {
     try {
       const user = req.user!;
@@ -14709,36 +14651,22 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
 
       const alerts: any[] = [];
 
-      // Get urgent faults
-      // Get urgent faults - conditional query based on role
-      const faults = userBranchId && !isHQ
-        ? await db.select().from(equipmentFaults)
-            .where(and(
-              eq(equipmentFaults.priority, 'urgent'),
-              or(
-                eq(equipmentFaults.stage, 'open'),
-                eq(equipmentFaults.stage, 'assigned'),
-                eq(equipmentFaults.stage, 'in_progress'),
-                eq(equipmentFaults.stage, 'pending_parts'),
-                eq(equipmentFaults.stage, 'escalated')
-              ),
-              eq(equipmentFaults.branchId, userBranchId)
-            ))
-            .limit(10)
-        : await db.select().from(equipmentFaults)
-            .where(and(
-              eq(equipmentFaults.priority, 'urgent'),
-              or(
-                eq(equipmentFaults.stage, 'open'),
-                eq(equipmentFaults.stage, 'assigned'),
-                eq(equipmentFaults.stage, 'in_progress'),
-                eq(equipmentFaults.stage, 'pending_parts'),
-                eq(equipmentFaults.stage, 'escalated')
-              )
-            ))
-            .limit(10);
+      // Get all active faults - simple query without complex conditions
+      const allFaults = await db.select().from(equipmentFaults).limit(100);
 
-      faults.forEach((f: any) => {
+      // Filter in JS
+      const activeFaults = allFaults.filter((f: any) => 
+        ['open', 'assigned', 'in_progress', 'pending_parts', 'escalated'].includes(f.stage)
+      );
+
+      const branchFiltered = (userBranchId && !isHQ)
+        ? activeFaults.filter((f: any) => f.branchId === userBranchId)
+        : activeFaults;
+
+      // Get urgent faults
+      const urgentFaults = branchFiltered.filter((f: any) => f.priority === 'urgent');
+      
+      urgentFaults.slice(0, 10).forEach((f: any) => {
         alerts.push({
           id: f.id,
           type: 'urgent_fault',
@@ -14750,35 +14678,9 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
         });
       });
 
-      // Get SLA breaches
-      // Get SLA breaches - conditional based on role
-      const allFaults = userBranchId && !isHQ
-        ? await db.select().from(equipmentFaults)
-            .where(and(
-              or(
-                eq(equipmentFaults.stage, 'open'),
-                eq(equipmentFaults.stage, 'assigned'),
-                eq(equipmentFaults.stage, 'in_progress'),
-                eq(equipmentFaults.stage, 'pending_parts'),
-                eq(equipmentFaults.stage, 'escalated')
-              ),
-              eq(equipmentFaults.branchId, userBranchId)
-            ))
-            .limit(20)
-        : await db.select().from(equipmentFaults)
-            .where(
-              or(
-                eq(equipmentFaults.stage, 'open'),
-                eq(equipmentFaults.stage, 'assigned'),
-                eq(equipmentFaults.stage, 'in_progress'),
-                eq(equipmentFaults.stage, 'pending_parts'),
-                eq(equipmentFaults.stage, 'escalated')
-              )
-            )
-            .limit(20);
-
+      // Check SLA breaches
       const now = new Date();
-      allFaults.forEach((f: any) => {
+      branchFiltered.slice(0, 20).forEach((f: any) => {
         const createdAt = new Date(f.createdAt);
         const hoursElapsed = (now.getTime() - createdAt.getTime()) / (1000 * 60 * 60);
         const slaHours = f.priority === 'urgent' ? 4 : f.priority === 'high' ? 8 : 24;
@@ -14796,11 +14698,12 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
         }
       });
 
-      // Sort by severity and limit
+      // Sort and return
       const sortedAlerts = alerts
         .sort((a, b) => {
           const severityOrder = { critical: 0, high: 1, warning: 2 };
-          return severityOrder[a.severity as keyof typeof severityOrder] - severityOrder[b.severity as keyof typeof severityOrder];
+          return (severityOrder[a.severity as keyof typeof severityOrder] || 2) - 
+                 (severityOrder[b.severity as keyof typeof severityOrder] || 2);
         })
         .slice(0, 10);
 
@@ -29057,7 +28960,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`
       const activeAlerts = alertsResult.length;
       const criticalAlerts = alertsResult.filter(a => a.severity === 'critical').length;
       const todayShifts = await db.select({ id: shifts.id, userId: shifts.userId, startTime: shifts.startTime, endTime: shifts.endTime, status: shifts.status }).from(shifts).where(and(eq(shifts.branchId, branchId), sql`DATE(${shifts.startTime}) = ${today}`)).limit(50);
-      const todayTasks = await db.select({ id: tasks.id, title: tasks.title, status: tasks.status, priority: tasks.priority, dueDate: tasks.dueDate, assignedToId: tasks.assignedToId }).from(tasks).where(and(eq(tasks.branchId, branchId), sql`DATE(${tasks.dueDate}) = ${today}`)).orderBy(desc(tasks.priority)).limit(50);
+      const todayTasks = await db.select({ id: tasks.id, title: tasks.description, status: tasks.status, priority: tasks.priority, dueDate: tasks.dueDate, assignedToId: tasks.assignedToId }).from(tasks).where(and(eq(tasks.branchId, branchId), sql`DATE(${tasks.dueDate}) = ${today}`)).orderBy(desc(tasks.priority)).limit(50);
       const todayChecklists = await db.select({ id: checklistCompletions.id, checklistId: checklistCompletions.checklistId, userId: checklistCompletions.userId, status: checklistCompletions.status, scheduledDate: checklistCompletions.scheduledDate, score: checklistCompletions.score }).from(checklistCompletions).where(and(eq(checklistCompletions.branchId, branchId), eq(checklistCompletions.scheduledDate, today))).limit(50);
       res.json({ branch, stats: { activeStaff, totalShifts, completedTasks, pendingTasks, completedChecklists, pendingChecklists, activeAlerts, criticalAlerts }, alerts: alertsResult, todayShifts, todayTasks, todayChecklists });
     } catch (error: any) {
