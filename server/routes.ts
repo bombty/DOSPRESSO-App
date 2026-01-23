@@ -1025,19 +1025,19 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
     try {
       const user = req.user!;
       const userRole = user.role as UserRoleType;
-      const isHQ = isHQRole(userRole);
       
       // ROL BAZLI MEGA MODÜL ERİŞİM KURALLARI
       // Her rol sadece kendini ilgilendiren modülleri görmeli
       const getRoleAllowedMegaModules = (role: UserRoleType): Set<string> => {
-        // HQ rolleri: TÜM modüllere erişim
-        if (isHQRole(role)) {
-          return new Set(['dashboard', 'operations', 'equipment', 'hr', 'training', 'kitchen', 'factory', 'reports', 'newshop', 'admin']);
-        }
-        
-        // Fabrika rolü: factory + temel modüller
+        // ÖNEMLİ: Fabrika rolü HQ_ROLES içinde ama özel erişim kuralları var
+        // Bu yüzden fabrika kontrolü isHQRole'den ÖNCE yapılmalı!
         if (role === 'fabrika') {
           return new Set(['dashboard', 'factory', 'reports', 'training']);
+        }
+        
+        // HQ rolleri (fabrika hariç): TÜM modüllere erişim
+        if (isHQRole(role)) {
+          return new Set(['dashboard', 'operations', 'equipment', 'hr', 'training', 'kitchen', 'factory', 'reports', 'newshop', 'admin']);
         }
         
         // Şube rolleri (supervisor, barista, stajyer vs): şube odaklı modüller
