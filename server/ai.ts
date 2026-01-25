@@ -3022,3 +3022,109 @@ ${manualText.substring(0, 8000)}`;
     throw new Error(error.message || "Bilgi oluşturulamadı");
   }
 }
+
+// Auto-research equipment troubleshooting from AI knowledge base
+export async function researchEquipmentTroubleshooting(
+  equipmentType: string,
+  brand: string,
+  model: string,
+  userId?: string
+): Promise<{
+  items: Array<{
+    category: string;
+    title: string;
+    content: string;
+    keywords: string[];
+  }>;
+  summary: string;
+}> {
+  const effectiveUserId = userId || 'system';
+  
+  // Rate limiting
+  if (!aiRateLimiter.canMakeRequest(effectiveUserId, 'knowledge_generation')) {
+    throw new Error("Çok fazla istek gönderdiniz. Lütfen biraz bekleyin.");
+  }
+
+  const equipmentLabels: Record<string, string> = {
+    'espresso_machine': 'Espresso Makinesi',
+    'grinder': 'Kahve Değirmeni',
+    'refrigerator': 'Buzdolabı',
+    'blender': 'Blender',
+    'ice_machine': 'Buz Makinesi',
+    'dishwasher': 'Bulaşık Makinesi',
+    'oven': 'Fırın',
+    'pos': 'POS Cihazı',
+    'water_filter': 'Su Filtresi',
+    'general': 'Genel Ekipman'
+  };
+
+  const typeLabel = equipmentLabels[equipmentType] || equipmentType;
+
+  const systemPrompt = `Sen bir profesyonel ekipman teknisyenisin. Senden ${brand} ${model} ${typeLabel} için kapsamlı teknik bilgi ve troubleshooting rehberi oluşturmanı istiyorum.
+
+BİLGİ TABANINI KULLANARAK şu konularda detaylı içerik oluştur:
+
+1. **BAKIM (maintenance)**: Günlük, haftalık, aylık bakım prosedürleri
+2. **ARIZA GİDERME (troubleshooting)**: En sık karşılaşılan arızalar ve çözümleri
+3. **KULLANIM (usage)**: Doğru kullanım talimatları, kalibrasyon, ayarlar
+4. **GÜVENLİK (safety)**: Güvenlik uyarıları, tehlikeler, koruyucu önlemler
+
+HER KATEGORİ İÇİN:
+- Spesifik, uygulanabilir adımlar yaz
+- Yaygın hata kodlarını ve çözümlerini dahil et
+- Parça isimleri ve teknik terimleri Türkçe açıkla
+- Café/kahve dükkanı ortamına uygun pratik bilgiler ver
+
+JSON formatında yanıt ver:
+{
+  "items": [
+    {
+      "category": "maintenance|troubleshooting|usage|safety",
+      "title": "Başlık (Türkçe)",
+      "content": "Detaylı içerik - Markdown formatında, adım adım, en az 300 kelime",
+      "keywords": ["anahtar", "kelimeler", "hata kodları"]
+    }
+  ],
+  "summary": "Oluşturulan içeriğin özeti"
+}
+
+ÖNEMLİ: Bu marka ve model için spesifik bilgiler ver. Genel bilgilerden kaçın. Eğer bu spesifik model hakkında bilgin yoksa, aynı markanın benzer modelleri veya aynı kategorideki endüstri standartları hakkında bilgi ver.`;
+
+  const userPrompt = `${brand} ${model} ${typeLabel} için kapsamlı teknik dokümantasyon oluştur.
+
+Bu ekipman bir DOSPRESSO kahve franchise şubesinde kullanılmaktadır. Barista ve teknisyenler için pratik, uygulanabilir bilgiler gerekiyor.
+
+En az 4 farklı kategori için içerik oluştur (bakım, arıza giderme, kullanım, güvenlik).`;
+
+  try {
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt }
+      ],
+      response_format: { type: "json_object" },
+      max_tokens: 6000,
+      temperature: 0.4
+    });
+
+    const content = response.choices[0]?.message?.content;
+    if (!content) throw new Error("AI yanıt içeriği boş");
+
+    const result = JSON.parse(content);
+    aiRateLimiter.incrementRequest(effectiveUserId, 'knowledge_generation');
+
+    // Ensure we have at least some items
+    if (!result.items || result.items.length === 0) {
+      throw new Error("AI içerik oluşturamadı. Lütfen farklı bir marka/model deneyin.");
+    }
+
+    return {
+      items: result.items,
+      summary: result.summary || `${brand} ${model} için ${result.items.length} bilgi kaydı oluşturuldu`
+    };
+  } catch (error: any) {
+    console.error("Equipment research error:", error);
+    throw new Error(error.message || "Ekipman araştırması yapılamadı");
+  }
+}

@@ -27,7 +27,7 @@ import {
   HelpCircle,
   Sparkles,
   FileText,
-  Check
+  Check,
 } from "lucide-react";
 
 interface EquipmentKnowledge {
@@ -184,6 +184,20 @@ export default function AdminAIBilgiYonetimi() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/equipment-knowledge"] });
       toast({ title: "Bilgi silindi" });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Hata", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const autoResearchMutation = useMutation({
+    mutationFn: async (data: { equipmentType: string; brand: string; model: string }) => {
+      const res = await apiRequest("/api/equipment-knowledge/auto-research", "POST", data);
+      return res.json() as Promise<{ items: Array<{ category: string; title: string; content: string; keywords: string[] }>; summary: string }>;
+    },
+    onSuccess: (result) => {
+      setGeneratedItems(result.items.map(item => ({ ...item, selected: true })));
+      toast({ title: "Bilgiler araştırıldı", description: result.summary });
     },
     onError: (error: Error) => {
       toast({ title: "Hata", description: error.message, variant: "destructive" });
@@ -443,12 +457,34 @@ export default function AdminAIBilgiYonetimi() {
               <DialogFooter>
                 {generatedItems.length === 0 ? (
                   <>
-                    <Button variant="outline" onClick={() => setIsAIDialogOpen(false)}>
+                    <Button variant="outline" onClick={() => setIsAIDialogOpen(false)} data-testid="button-cancel-ai">
                       İptal
                     </Button>
                     <Button 
+                      variant="secondary"
+                      onClick={() => autoResearchMutation.mutate({
+                        equipmentType: aiFormData.equipmentType,
+                        brand: aiFormData.brand,
+                        model: aiFormData.model
+                      })}
+                      disabled={autoResearchMutation.isPending || generateMutation.isPending || !aiFormData.equipmentType || !aiFormData.brand || !aiFormData.model}
+                      data-testid="button-auto-research"
+                    >
+                      {autoResearchMutation.isPending ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          Araştırılıyor...
+                        </>
+                      ) : (
+                        <>
+                          <Search className="h-4 w-4 mr-2" />
+                          Otomatik Araştır
+                        </>
+                      )}
+                    </Button>
+                    <Button 
                       onClick={() => generateMutation.mutate(aiFormData)}
-                      disabled={generateMutation.isPending || !aiFormData.equipmentType || aiFormData.manualText.length < 50}
+                      disabled={generateMutation.isPending || autoResearchMutation.isPending || !aiFormData.equipmentType || aiFormData.manualText.length < 50}
                       data-testid="button-generate"
                     >
                       {generateMutation.isPending ? (
@@ -459,11 +495,11 @@ export default function AdminAIBilgiYonetimi() {
                       ) : (
                         <>
                           <Sparkles className="h-4 w-4 mr-2" />
-                          İçerik Oluştur
+                          Metin İşle
                         </>
                       )}
                     </Button>
-                  </>
+                  <>
                 ) : (
                   <>
                     <Button variant="outline" onClick={() => setGeneratedItems([])}>

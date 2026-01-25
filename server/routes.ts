@@ -256,7 +256,7 @@ import {
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, sql, and, or, isNull, isNotNull, inArray, lte, gte } from "drizzle-orm";
-import { analyzeTaskPhoto, analyzeFaultPhoto, analyzeDressCodePhoto, generateArticleEmbeddings, generateEmbedding, answerQuestionWithRAG, answerTechnicalQuestion, generateAISummary, generateQuizQuestionsFromLesson, generateFlashcardsFromLesson, evaluateBranchPerformance, diagnoseFault, generateTrainingModule, processUploadedFile, generateBranchSummaryReport, generateArticleDraft, generatePersonalSummaryReport, verifyChecklistPhoto, generateEquipmentKnowledgeFromManual } from "./ai";
+import { analyzeTaskPhoto, analyzeFaultPhoto, analyzeDressCodePhoto, generateArticleEmbeddings, generateEmbedding, answerQuestionWithRAG, answerTechnicalQuestion, generateAISummary, generateQuizQuestionsFromLesson, generateFlashcardsFromLesson, evaluateBranchPerformance, diagnoseFault, generateTrainingModule, processUploadedFile, generateBranchSummaryReport, generateArticleDraft, generatePersonalSummaryReport, verifyChecklistPhoto, generateEquipmentKnowledgeFromManual, researchEquipmentTroubleshooting } from "./ai";
 import multer from "multer";
 import { generateTrainingMaterialBundle } from "./ai-motor";
 import { updateEmployeeLocation, getActiveBranchEmployees, getEmployeeLocation, removeEmployeeLocation, startTrackingCleanup } from "./tracking";
@@ -4780,6 +4780,42 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
     } catch (error: any) {
       console.error("Error generating equipment knowledge:", error);
       res.status(500).json({ message: error.message || "Bilgi oluşturulamadı" });
+    }
+  });
+
+  // Auto-research equipment troubleshooting from AI knowledge
+  app.post('/api/equipment-knowledge/auto-research', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      if (user.role !== 'admin') {
+        return res.status(403).json({ message: "Bu işlem sadece admin kullanıcıları içindir" });
+      }
+      
+      const { equipmentType, brand, model } = req.body;
+      
+      if (!brand || typeof brand !== 'string' || brand.trim().length < 2) {
+        return res.status(400).json({ message: "Marka adı en az 2 karakter olmalıdır" });
+      }
+      
+      if (!model || typeof model !== 'string' || model.trim().length < 1) {
+        return res.status(400).json({ message: "Model adı zorunludur" });
+      }
+      
+      if (!equipmentType) {
+        return res.status(400).json({ message: "Ekipman tipi zorunludur" });
+      }
+      
+      const result = await researchEquipmentTroubleshooting(
+        equipmentType,
+        brand.trim(),
+        model.trim(),
+        user.id
+      );
+      
+      res.json(result);
+    } catch (error: any) {
+      console.error("Error researching equipment:", error);
+      res.status(500).json({ message: error.message || "Ekipman araştırması yapılamadı" });
     }
   });
 
