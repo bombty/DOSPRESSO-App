@@ -878,6 +878,7 @@ export interface IStorage {
   
   // Danger zone and demotion
   checkAndProcessDangerZone(userId: string): Promise<{ warning: boolean; demoted: boolean; message: string }>;
+  runAllDangerZoneChecks(): Promise<{ processed: number; warnings: number; demotions: number }>;
   demoteUserCareerLevel(userId: string): Promise<UserCareerProgress | undefined>;
 
   // Shift Swap Request operations (dual approval system)
@@ -7057,15 +7058,25 @@ export class DatabaseStorage implements IStorage {
     const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
     const endOfMonth = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0);
     
-    // Checklist tamamlama oranı
+    // Checklist tamamlama oranı - Gerçek oran hesaplama
+    const userAssignments = await db.select()
+      .from(checklistAssignments)
+      .where(and(
+        eq(checklistAssignments.userId, userId),
+        gte(checklistAssignments.createdAt, startOfMonth)
+      ));
+    
     const userChecklistData = await db.select()
       .from(checklistCompletions)
       .where(and(
         eq(checklistCompletions.userId, userId),
         gte(checklistCompletions.completedAt, startOfMonth)
       ));
-    // Toplam atanmış checklist sayısı için farklı sorgu
-    const checklistRate = userChecklistData.length > 0 ? 80 : 100; // Basitleştirilmiş hesaplama
+    
+    // Gerçek tamamlama oranı: (tamamlanan / atanan) * 100
+    const checklistRate = userAssignments.length > 0 
+      ? Math.min(100, (userChecklistData.length / userAssignments.length) * 100)
+      : 100; // Atama yoksa tam puan
     
     // Task tamamlama oranı (zamanında)
     const userTasks = await db.select()
@@ -7247,7 +7258,32 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
-  async demoteUserCareerLevel(userId: string): Promise<UserCareerProgress | undefined> {
+  async runAllDangerZoneChecks(): Promise<{ processed: number; warnings: number; demotions: number }> {
+    // Tüm aktif kullanıcıların kariyer verilerini kontrol et
+    const allProgress = await db.select()
+      .from(userCareerProgress)
+      .innerJoin(users, eq(users.id, userCareerProgress.userId))
+      .where(eq(users.isActive, true));
+    
+    let processed = 0;
+    let warnings = 0;
+    let demotions = 0;
+    
+    for (const row of allProgress) {
+      try {
+        const result = await this.checkAndProcessDangerZone(row.user_career_progress.userId);
+        processed++;
+        if (result.warning) warnings++;
+        if (result.demoted) demotions++;
+      } catch (error) {
+        console.error(`Danger zone check failed for user ${row.user_career_progress.userId}:`, error);
+      }
+    }
+    
+    return { processed, warnings, demotions };
+  }
+
+    async demoteUserCareerLevel(userId: string): Promise<UserCareerProgress | undefined> {
     const progress = await this.getUserCareerProgress(userId);
     if (!progress) return undefined;
     

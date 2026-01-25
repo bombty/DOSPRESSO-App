@@ -29,6 +29,7 @@ import {
   insertShiftAttendanceSchema,
   insertMenuSectionSchema,
   insertMenuItemSchema,
+  insertManagerEvaluationSchema,
   insertMenuVisibilityRuleSchema,
   insertPageContentSchema,
   insertAuditTemplateSchema,
@@ -12518,8 +12519,12 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
   // POST /api/manager-evaluations - Yeni değerlendirme oluştur
   app.post("/api/manager-evaluations", isAuthenticated, async (req: any, res) => {
     try {
+      const parsed = insertManagerEvaluationSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ message: "Geçersiz veri", errors: parsed.error.errors });
+      }
       const data = {
-        ...req.body,
+        ...parsed.data,
         evaluatorId: req.user.id,
         branchId: req.body.branchId || req.user.branchId
       };

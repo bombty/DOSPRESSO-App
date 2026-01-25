@@ -134,6 +134,7 @@ app.use((req, res, next) => {
     
     // Start shift reminder job (runs every 10 minutes)
     startShiftReminderJob();
+    startDangerZoneCheckJob();
     
     // Start SLA check system (runs every 15 minutes)
     startSLACheckSystem();
@@ -193,4 +194,27 @@ function startShiftReminderJob() {
   }, 10 * 60 * 1000); // 10 minutes
   
   log("Shift reminder job started (runs every 10 minutes)");
+}
+
+// Background job for danger zone checks (monthly on 1st)
+function startDangerZoneCheckJob() {
+  // Check on the 1st of each month at midnight
+  const checkIfFirstOfMonth = () => {
+    const now = new Date();
+    return now.getDate() === 1 && now.getHours() === 0;
+  };
+  
+  // Run every hour to check if it's the 1st of month
+  setInterval(async () => {
+    if (checkIfFirstOfMonth()) {
+      try {
+        const result = await storage.runAllDangerZoneChecks();
+        log(`Danger zone check completed: ${result.processed} processed, ${result.warnings} warnings, ${result.demotions} demotions`);
+      } catch (error) {
+        console.error("Error in danger zone check job:", error);
+      }
+    }
+  }, 60 * 60 * 1000); // Check every hour
+  
+  log("Danger zone check job initialized (runs monthly on 1st)");
 }

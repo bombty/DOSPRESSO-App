@@ -134,6 +134,7 @@ import HQFabrikaAnalitik from "@/pages/hq-fabrika-analitik";
 import CanliTakip from "@/pages/canli-takip";
 import AdminDashboard from "@/pages/admin/index";
 import AdminYetkilendirme from "@/pages/admin/yetkilendirme";
+import YoneticiDegerlendirme from "@/pages/admin/yonetici-degerlendirme";
 import AdminAktiviteLoglar from "@/pages/admin/aktivite-loglari";
 import AdminYedekleme from "@/pages/admin/yedekleme";
 import AdminKullanicilar from "@/pages/admin/kullanicilar";
@@ -341,6 +342,7 @@ function Router() {
           <Route path="/yonetim/icerik" component={AdminContentManagement} />
           <Route path="/yonetim/ayarlar" component={Settings} />
           <Route path="/yonetim/kullanicilar" component={UserCRM} />
+          <Route path="/yonetim/degerlendirme" component={YoneticiDegerlendirme} />
           <Route path="/yonetim/ai-maliyetler" component={AICostDashboard} />
           <Route path="/yonetim/checklistler" component={AdminChecklistManagement} />
           <Route path="/yonetim/checklist-takip" component={ChecklistTrackingPage} />
