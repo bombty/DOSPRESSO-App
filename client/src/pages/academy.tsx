@@ -18,7 +18,7 @@ import {
   BookOpen, Plus, Lightbulb, Trophy, BarChart3, Award, TrendingUp, Zap, Target, 
   CheckCircle, Flame, Sparkles, Coffee, GraduationCap, Brain, ChevronRight,
   Snowflake, IceCream, Citrus, Droplets, Leaf, Package, CircleDot, Flower2,
-  Clock, Star, Users, ArrowLeft, Eye
+  Clock, Star, Users, ArrowLeft, Eye, AlertTriangle
 } from "lucide-react";
 import { Link } from "wouter";
 
@@ -125,6 +125,17 @@ export default function Academy() {
     queryFn: async () => {
       if (!user?.id) return null;
       const res = await fetch(`/api/academy/career-progress/${user.id}`, { credentials: "include" });
+      if (!res.ok) return null;
+      return res.json();
+    },
+    enabled: !!user?.id,
+  });
+  // Get composite career score
+  const { data: compositeScore } = useQuery({
+    queryKey: ["/api/career/composite-score", user?.id],
+    queryFn: async () => {
+      if (!user?.id) return null;
+      const res = await fetch(`/api/career/composite-score/${user.id}`, { credentials: "include" });
       if (!res.ok) return null;
       return res.json();
     },
@@ -548,13 +559,73 @@ export default function Academy() {
             <BackButton />
             <Card className="bg-gradient-to-r from-primary/10 to-blue-900/10 border-primary/20">
               <CardContent className="p-4">
+                {/* Tehlike Bandı */}
+                {compositeScore?.dangerZone && (
+                  <div className="mb-3 p-2 bg-red-500/10 border border-red-500/30 rounded-md" data-testid="danger-zone-banner">
+                    <div className="flex items-center gap-2 text-red-500 text-sm font-medium">
+                      <AlertTriangle className="w-4 h-4" />
+                      <span>Tehlike Bölgesi: Skorunuz %60 altında!</span>
+                    </div>
+                    <p className="text-xs text-red-400 mt-1">
+                      {userProgress?.dangerZoneMonths ? `${3 - (userProgress.dangerZoneMonths || 0)} ay içinde iyileştirme gerekli` : 'Performansınızı artırın'}
+                    </p>
+                  </div>
+                )}
+                
+                {/* Uyarı Bandı */}
+                {compositeScore?.warningZone && !compositeScore?.dangerZone && (
+                  <div className="mb-3 p-2 bg-yellow-500/10 border border-yellow-500/30 rounded-md" data-testid="warning-zone-banner">
+                    <div className="flex items-center gap-2 text-yellow-500 text-sm font-medium">
+                      <AlertTriangle className="w-4 h-4" />
+                      <span>Uyarı: Skorunuz %60-70 arasında!</span>
+                    </div>
+                    <p className="text-xs text-yellow-400 mt-1">
+                      Performansınızı artırmak için eğitimlere devam edin ve görevleri zamanında tamamlayın.
+                    </p>
+                  </div>
+                )}
+                
                 <div className="flex items-center gap-3 mb-3">
                   <Target className="w-8 h-8 text-primary" />
-                  <div>
+                  <div className="flex-1">
                     <h2 className="font-bold">Kariyer Yolculuğum</h2>
                     <p className="text-xs text-muted-foreground">Rol bazlı gelişim takibi</p>
                   </div>
+                  {/* Kompozit Skor Göstergesi */}
+                  {compositeScore && (
+                    <div className={`text-center px-3 py-1 rounded-full ${
+                      compositeScore.compositeScore >= 80 ? 'bg-green-500/10 text-green-500' :
+                      compositeScore.compositeScore >= 60 ? 'bg-yellow-500/10 text-yellow-500' :
+                      'bg-red-500/10 text-red-500'
+                    }`} data-testid="composite-score-badge">
+                      <div className="text-lg font-bold">{Math.round(compositeScore.compositeScore)}%</div>
+                      <div className="text-[10px]">Genel Skor</div>
+                    </div>
+                  )}
                 </div>
+                
+                {/* 4 Kriterli Skor Detayları */}
+                {compositeScore && (
+                  <div className="grid grid-cols-4 gap-1 mb-3 text-center text-xs" data-testid="score-breakdown">
+                    <div className="p-1.5 rounded bg-blue-500/10">
+                      <div className="font-medium text-blue-500">{Math.round(compositeScore.trainingScore)}%</div>
+                      <div className="text-muted-foreground text-[9px]">Eğitim</div>
+                    </div>
+                    <div className="p-1.5 rounded bg-purple-500/10">
+                      <div className="font-medium text-purple-500">{Math.round(compositeScore.practicalScore)}%</div>
+                      <div className="text-muted-foreground text-[9px]">Pratik</div>
+                    </div>
+                    <div className="p-1.5 rounded bg-green-500/10">
+                      <div className="font-medium text-green-500">{Math.round(compositeScore.attendanceScore)}%</div>
+                      <div className="text-muted-foreground text-[9px]">Devam</div>
+                    </div>
+                    <div className="p-1.5 rounded bg-orange-500/10">
+                      <div className="font-medium text-orange-500">{Math.round(compositeScore.managerScore)}%</div>
+                      <div className="text-muted-foreground text-[9px]">Yönetici</div>
+                    </div>
+                  </div>
+                )}
+                
                 {currentLevel && (
                   <div className="space-y-2">
                     <div className="flex items-center justify-between text-sm">

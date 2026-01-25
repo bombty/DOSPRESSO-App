@@ -12454,6 +12454,98 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
     }
   });
 
+  // ========== COMPOSITE CAREER SCORE ENDPOINTS ==========
+  
+  // GET /api/career/composite-score/:userId - Kompozit kariyer skoru hesapla
+  app.get("/api/career/composite-score/:userId", isAuthenticated, async (req: any, res) => {
+    try {
+      const { userId } = req.params;
+      const scores = await storage.calculateCompositeCareerScore(userId);
+      res.json(scores);
+    } catch (error: any) {
+      console.error("Composite score error:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // POST /api/career/update-scores/:userId - Kariyer skorlarını güncelle
+  app.post("/api/career/update-scores/:userId", isAuthenticated, async (req: any, res) => {
+    try {
+      const { userId } = req.params;
+      const scores = await storage.calculateCompositeCareerScore(userId);
+      const updated = await storage.updateUserCareerScores(userId, scores);
+      res.json(updated);
+    } catch (error: any) {
+      console.error("Update scores error:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // POST /api/career/check-danger-zone/:userId - Tehlike bölgesi kontrolü
+  app.post("/api/career/check-danger-zone/:userId", isAuthenticated, async (req: any, res) => {
+    try {
+      const { userId } = req.params;
+      const result = await storage.checkAndProcessDangerZone(userId);
+      res.json(result);
+    } catch (error: any) {
+      console.error("Danger zone check error:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // ========== MANAGER EVALUATION ENDPOINTS ==========
+
+  // GET /api/manager-evaluations - Yönetici değerlendirmelerini listele
+  app.get("/api/manager-evaluations", isAuthenticated, async (req: any, res) => {
+    try {
+      const { employeeId, branchId, month } = req.query;
+      const filters: any = {};
+      if (employeeId) filters.employeeId = employeeId;
+      if (branchId) filters.branchId = Number(branchId);
+      if (month) filters.month = month;
+      const user = req.user;
+      if (user.role === "supervisor" && user.branchId) {
+        filters.branchId = user.branchId;
+      }
+      const evaluations = await storage.getManagerEvaluations(filters);
+      res.json(evaluations);
+    } catch (error: any) {
+      console.error("Manager evaluations error:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // POST /api/manager-evaluations - Yeni değerlendirme oluştur
+  app.post("/api/manager-evaluations", isAuthenticated, async (req: any, res) => {
+    try {
+      const data = {
+        ...req.body,
+        evaluatorId: req.user.id,
+        branchId: req.body.branchId || req.user.branchId
+      };
+      const evaluation = await storage.createManagerEvaluation(data);
+      const scores = await storage.calculateCompositeCareerScore(data.employeeId);
+      await storage.updateUserCareerScores(data.employeeId, scores);
+      res.json(evaluation);
+    } catch (error: any) {
+      console.error("Create evaluation error:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // GET /api/career/score-history/:userId - Skor geçmişi
+  app.get("/api/career/score-history/:userId", isAuthenticated, async (req: any, res) => {
+    try {
+      const { userId } = req.params;
+      const limit = Number(req.query.limit) || 12;
+      const history = await storage.getCareerScoreHistory(userId, limit);
+      res.json(history);
+    } catch (error: any) {
+      console.error("Score history error:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
   // GET /api/academy/user-dashboard - Dashboard için kullanıcı Academy özeti
   app.get('/api/academy/user-dashboard', isAuthenticated, async (req: any, res) => {
     try {

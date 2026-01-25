@@ -5181,12 +5181,24 @@ export const userCareerProgress = pgTable("user_career_progress", {
   averageQuizScore: real("average_quiz_score").default(0),
   totalQuizzesAttempted: integer("total_quizzes_attempted").default(0),
   lastExamRequestId: integer("last_exam_request_id").references(() => examRequests.id),
-  promotionEligibleAt: timestamp("promotion_eligible_at"), // Ne zaman terfi için hazır olacak
+  promotionEligibleAt: timestamp("promotion_eligible_at"),
+  // Kompozit Kariyer Skoru Alanları
+  trainingScore: real("training_score").default(0), // Eğitim skoru %25
+  practicalScore: real("practical_score").default(0), // Pratik skor (checklist, task) %25
+  attendanceScore: real("attendance_score").default(0), // Devam/dakiklik skoru %25
+  managerScore: real("manager_score").default(0), // Yönetici değerlendirmesi %25
+  compositeScore: real("composite_score").default(0), // Toplam kompozit skor
+  // Tehlike bölgesi takibi
+  dangerZoneMonths: integer("danger_zone_months").default(0), // Üst üste kaç ay %60 altında
+  lastWarningDate: timestamp("last_warning_date"), // Son uyarı tarihi
+  statusDemotedAt: timestamp("status_demoted_at"), // Düşürme tarihi
+  statusDemotedFrom: integer("status_demoted_from"), // Hangi seviyeden düşürüldü
   lastUpdatedAt: timestamp("last_updated_at").defaultNow(),
   createdAt: timestamp("created_at").defaultNow(),
 }, (table) => [
   index("user_career_progress_user_idx").on(table.userId),
   index("user_career_progress_level_idx").on(table.currentCareerLevelId),
+  index("user_career_progress_composite_score_idx").on(table.compositeScore),
 ]);
 
 export const insertUserCareerProgressSchema = createInsertSchema(userCareerProgress).omit({
@@ -5197,6 +5209,70 @@ export const insertUserCareerProgressSchema = createInsertSchema(userCareerProgr
 
 export type InsertUserCareerProgress = z.infer<typeof insertUserCareerProgressSchema>;
 export type UserCareerProgress = typeof userCareerProgress.$inferSelect;
+
+// Manager Monthly Evaluations - Yönetici aylık personel değerlendirmesi
+export const managerEvaluations = pgTable("manager_evaluations", {
+  id: serial("id").primaryKey(),
+  employeeId: varchar("employee_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  evaluatorId: varchar("evaluator_id").notNull().references(() => users.id),
+  branchId: integer("branch_id").references(() => branches.id),
+  evaluationMonth: varchar("evaluation_month", { length: 7 }).notNull(), // YYYY-MM format
+  // Soft skill değerlendirmeleri (1-5 puan)
+  customerServiceScore: integer("customer_service_score").default(3), // Müşteri hizmetleri
+  teamworkScore: integer("teamwork_score").default(3), // Takım çalışması
+  punctualityScore: integer("punctuality_score").default(3), // Dakiklik
+  communicationScore: integer("communication_score").default(3), // İletişim
+  initiativeScore: integer("initiative_score").default(3), // İnisiyatif alma
+  cleanlinessScore: integer("cleanliness_score").default(3), // Temizlik/Düzen
+  technicalSkillScore: integer("technical_skill_score").default(3), // Teknik beceri
+  attitudeScore: integer("attitude_score").default(3), // Güler yüz/Tutum
+  overallScore: real("overall_score").default(0), // Ortalama puan
+  notes: text("notes"), // Ek notlar
+  promotionRecommendation: varchar("promotion_recommendation", { length: 20 }).default("hold"), // promote, hold, demote
+  warningIssued: boolean("warning_issued").default(false), // Uyarı verildi mi
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("manager_evaluations_employee_idx").on(table.employeeId),
+  index("manager_evaluations_month_idx").on(table.evaluationMonth),
+  index("manager_evaluations_branch_idx").on(table.branchId),
+]);
+
+export const insertManagerEvaluationSchema = createInsertSchema(managerEvaluations).omit({
+  id: true,
+  overallScore: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertManagerEvaluation = z.infer<typeof insertManagerEvaluationSchema>;
+export type ManagerEvaluation = typeof managerEvaluations.$inferSelect;
+
+// Career Score History - Kariyer skoru geçmişi (aylık)
+export const careerScoreHistory = pgTable("career_score_history", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  scoreMonth: varchar("score_month", { length: 7 }).notNull(), // YYYY-MM format
+  trainingScore: real("training_score").default(0),
+  practicalScore: real("practical_score").default(0),
+  attendanceScore: real("attendance_score").default(0),
+  managerScore: real("manager_score").default(0),
+  compositeScore: real("composite_score").default(0),
+  careerLevelId: integer("career_level_id").references(() => careerLevels.id),
+  dangerZone: boolean("danger_zone").default(false), // O ay tehlike bölgesinde miydi
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("career_score_history_user_idx").on(table.userId),
+  index("career_score_history_month_idx").on(table.scoreMonth),
+]);
+
+export const insertCareerScoreHistorySchema = createInsertSchema(careerScoreHistory).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertCareerScoreHistory = z.infer<typeof insertCareerScoreHistorySchema>;
+export type CareerScoreHistory = typeof careerScoreHistory.$inferSelect;
 
 // Quiz Results - Sınav sonuçları ve leaderboard verileri
 export const quizResults = pgTable("quiz_results", {
