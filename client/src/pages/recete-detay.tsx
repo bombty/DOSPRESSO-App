@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { useRoute, Link } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -8,9 +8,17 @@ import { ListSkeleton } from "@/components/list-skeleton";
 import { EmptyState } from "@/components/empty-state";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { isHQRole } from "@shared/schema";
 import { 
   ArrowLeft, Clock, Coffee, ListCheck, Beaker, AlertTriangle, 
-  Image, ChevronDown, ChevronUp, History, User, Star
+  Image, ChevronDown, ChevronUp, History, User, Star, Edit2, Plus, Trash2, Save, Loader2
 } from "lucide-react";
 
 type RecipeVersion = {
@@ -44,6 +52,24 @@ export default function ReceteDetay() {
   const recipeId = params?.id;
   const [showAllSteps, setShowAllSteps] = useState(false);
   const [activeTab, setActiveTab] = useState("ingredients");
+  const { toast } = useToast();
+  const { user } = useAuth();
+  
+  // Check if user can edit (admin or HQ roles)
+  const canEdit = user?.role === 'admin' || isHQRole(user?.role as any);
+  
+  // Dialog states
+  const [ingredientsOpen, setIngredientsOpen] = useState(false);
+  const [stepsOpen, setStepsOpen] = useState(false);
+  const [infoOpen, setInfoOpen] = useState(false);
+  const [equipmentOpen, setEquipmentOpen] = useState(false);
+  
+  // Edit form states
+  const [editIngredients, setEditIngredients] = useState<string[]>([]);
+  const [editSteps, setEditSteps] = useState<string[]>([]);
+  const [editEquipment, setEditEquipment] = useState<string[]>([]);
+  const [editTips, setEditTips] = useState("");
+  const [editAllergen, setEditAllergen] = useState("");
 
   const { data: recipe, isLoading } = useQuery({
     queryKey: ["/api/academy/recipe", recipeId],
@@ -66,6 +92,72 @@ export default function ReceteDetay() {
     },
     enabled: !!recipeId,
   });
+
+  // Update recipe mutation
+  const updateRecipeMutation = useMutation({
+    mutationFn: async (data: { ingredients?: string[]; steps?: string[]; equipmentNeeded?: string[]; tipsTr?: string; allergenInfo?: string }) => {
+      return apiRequest("PATCH", `/api/academy/recipes/${recipeId}`, data);
+    },
+    onSuccess: () => {
+      toast({ title: "Reçete güncellendi" });
+      queryClient.invalidateQueries({ queryKey: ["/api/academy/recipe", recipeId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/academy/recipe-versions", recipeId] });
+      setIngredientsOpen(false);
+      setStepsOpen(false);
+      setInfoOpen(false);
+      setEquipmentOpen(false);
+    },
+    onError: (error: any) => {
+      toast({ title: "Hata", description: error.message, variant: "destructive" });
+    },
+  });
+
+  // Helper functions for editing arrays
+  const handleAddIngredient = () => {
+    setEditIngredients([...editIngredients, ""]);
+  };
+  
+  const handleRemoveIngredient = (idx: number) => {
+    setEditIngredients(editIngredients.filter((_, i) => i !== idx));
+  };
+  
+  const handleAddStep = () => {
+    setEditSteps([...editSteps, ""]);
+  };
+  
+  const handleRemoveStep = (idx: number) => {
+    setEditSteps(editSteps.filter((_, i) => i !== idx));
+  };
+  
+  const handleAddEquipment = () => {
+    setEditEquipment([...editEquipment, ""]);
+  };
+  
+  const handleRemoveEquipment = (idx: number) => {
+    setEditEquipment(editEquipment.filter((_, i) => i !== idx));
+  };
+
+  // Open dialogs with current data
+  const openIngredientsDialog = () => {
+    setEditIngredients([...(recipe?.currentVersion?.ingredients || [])]);
+    setIngredientsOpen(true);
+  };
+  
+  const openStepsDialog = () => {
+    setEditSteps([...(recipe?.currentVersion?.steps || [])]);
+    setStepsOpen(true);
+  };
+  
+  const openEquipmentDialog = () => {
+    setEditEquipment([...(recipe?.currentVersion?.equipmentNeeded || [])]);
+    setEquipmentOpen(true);
+  };
+  
+  const openInfoDialog = () => {
+    setEditTips(recipe?.currentVersion?.tipsTr || "");
+    setEditAllergen(recipe?.currentVersion?.allergenInfo || "");
+    setInfoOpen(true);
+  };
 
   if (isLoading) {
     return (
@@ -196,6 +288,18 @@ export default function ReceteDetay() {
           </TabsList>
 
           <TabsContent value="ingredients" className="mt-4 space-y-3">
+            {canEdit && (
+              <div className="flex justify-end gap-2">
+                <Button size="sm" variant="outline" onClick={openEquipmentDialog} data-testid="button-edit-equipment">
+                  <Edit2 className="w-3 h-3 mr-1" />
+                  Ekipman Düzenle
+                </Button>
+                <Button size="sm" variant="outline" onClick={openIngredientsDialog} data-testid="button-edit-ingredients">
+                  <Edit2 className="w-3 h-3 mr-1" />
+                  Malzeme Düzenle
+                </Button>
+              </div>
+            )}
             {ingredients.length > 0 ? (
               <Card>
                 <CardContent className="p-3 space-y-2">
@@ -232,6 +336,14 @@ export default function ReceteDetay() {
           </TabsContent>
 
           <TabsContent value="steps" className="mt-4 space-y-3">
+            {canEdit && (
+              <div className="flex justify-end">
+                <Button size="sm" variant="outline" onClick={openStepsDialog} data-testid="button-edit-steps">
+                  <Edit2 className="w-3 h-3 mr-1" />
+                  Adımları Düzenle
+                </Button>
+              </div>
+            )}
             {steps.length > 0 ? (
               <Card>
                 <CardContent className="p-3 space-y-3">
@@ -276,6 +388,14 @@ export default function ReceteDetay() {
           </TabsContent>
 
           <TabsContent value="info" className="mt-4 space-y-3">
+            {canEdit && (
+              <div className="flex justify-end">
+                <Button size="sm" variant="outline" onClick={openInfoDialog} data-testid="button-edit-info">
+                  <Edit2 className="w-3 h-3 mr-1" />
+                  Bilgileri Düzenle
+                </Button>
+              </div>
+            )}
             {version?.tipsTr && (
               <Card>
                 <CardHeader className="pb-2">
@@ -333,6 +453,189 @@ export default function ReceteDetay() {
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* Malzeme Düzenleme Dialog */}
+      <Dialog open={ingredientsOpen} onOpenChange={setIngredientsOpen}>
+        <DialogContent className="max-w-md max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Malzemeleri Düzenle</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            {editIngredients.map((item, idx) => (
+              <div key={idx} className="flex gap-2 items-center">
+                <span className="text-xs text-muted-foreground w-5">{idx + 1}.</span>
+                <Input 
+                  value={item}
+                  onChange={(e) => {
+                    const newList = [...editIngredients];
+                    newList[idx] = e.target.value;
+                    setEditIngredients(newList);
+                  }}
+                  placeholder="Malzeme adı"
+                  data-testid={`input-ingredient-${idx}`}
+                />
+                <Button size="icon" variant="ghost" onClick={() => handleRemoveIngredient(idx)} data-testid={`button-remove-ingredient-${idx}`}>
+                  <Trash2 className="w-4 h-4 text-destructive" />
+                </Button>
+              </div>
+            ))}
+            <Button variant="outline" size="sm" onClick={handleAddIngredient} className="w-full" data-testid="button-add-ingredient">
+              <Plus className="w-4 h-4 mr-1" />
+              Malzeme Ekle
+            </Button>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setIngredientsOpen(false)} data-testid="button-cancel-ingredients">
+              İptal
+            </Button>
+            <Button 
+              onClick={() => updateRecipeMutation.mutate({ ingredients: editIngredients.filter(i => i.trim()) })}
+              disabled={updateRecipeMutation.isPending}
+              data-testid="button-save-ingredients"
+            >
+              {updateRecipeMutation.isPending ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Save className="w-4 h-4 mr-1" />}
+              Kaydet
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Adımlar Düzenleme Dialog */}
+      <Dialog open={stepsOpen} onOpenChange={setStepsOpen}>
+        <DialogContent className="max-w-md max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Hazırlama Adımlarını Düzenle</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            {editSteps.map((step, idx) => (
+              <div key={idx} className="flex gap-2 items-start">
+                <span className="text-xs text-muted-foreground w-5 pt-2">{idx + 1}.</span>
+                <Textarea 
+                  value={step}
+                  onChange={(e) => {
+                    const newList = [...editSteps];
+                    newList[idx] = e.target.value;
+                    setEditSteps(newList);
+                  }}
+                  placeholder="Adım açıklaması"
+                  className="min-h-[60px]"
+                  data-testid={`input-step-${idx}`}
+                />
+                <Button size="icon" variant="ghost" onClick={() => handleRemoveStep(idx)} className="mt-1" data-testid={`button-remove-step-${idx}`}>
+                  <Trash2 className="w-4 h-4 text-destructive" />
+                </Button>
+              </div>
+            ))}
+            <Button variant="outline" size="sm" onClick={handleAddStep} className="w-full" data-testid="button-add-step">
+              <Plus className="w-4 h-4 mr-1" />
+              Adım Ekle
+            </Button>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setStepsOpen(false)} data-testid="button-cancel-steps">
+              İptal
+            </Button>
+            <Button 
+              onClick={() => updateRecipeMutation.mutate({ steps: editSteps.filter(s => s.trim()) })}
+              disabled={updateRecipeMutation.isPending}
+              data-testid="button-save-steps"
+            >
+              {updateRecipeMutation.isPending ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Save className="w-4 h-4 mr-1" />}
+              Kaydet
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Ekipman Düzenleme Dialog */}
+      <Dialog open={equipmentOpen} onOpenChange={setEquipmentOpen}>
+        <DialogContent className="max-w-md max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Ekipmanları Düzenle</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            {editEquipment.map((item, idx) => (
+              <div key={idx} className="flex gap-2 items-center">
+                <Input 
+                  value={item}
+                  onChange={(e) => {
+                    const newList = [...editEquipment];
+                    newList[idx] = e.target.value;
+                    setEditEquipment(newList);
+                  }}
+                  placeholder="Ekipman adı"
+                  data-testid={`input-equipment-${idx}`}
+                />
+                <Button size="icon" variant="ghost" onClick={() => handleRemoveEquipment(idx)} data-testid={`button-remove-equipment-${idx}`}>
+                  <Trash2 className="w-4 h-4 text-destructive" />
+                </Button>
+              </div>
+            ))}
+            <Button variant="outline" size="sm" onClick={handleAddEquipment} className="w-full" data-testid="button-add-equipment">
+              <Plus className="w-4 h-4 mr-1" />
+              Ekipman Ekle
+            </Button>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setEquipmentOpen(false)} data-testid="button-cancel-equipment">
+              İptal
+            </Button>
+            <Button 
+              onClick={() => updateRecipeMutation.mutate({ equipmentNeeded: editEquipment.filter(e => e.trim()) })}
+              disabled={updateRecipeMutation.isPending}
+              data-testid="button-save-equipment"
+            >
+              {updateRecipeMutation.isPending ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Save className="w-4 h-4 mr-1" />}
+              Kaydet
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Bilgi Düzenleme Dialog */}
+      <Dialog open={infoOpen} onOpenChange={setInfoOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Bilgileri Düzenle</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="tips">İpuçları</Label>
+              <Textarea 
+                id="tips"
+                value={editTips}
+                onChange={(e) => setEditTips(e.target.value)}
+                placeholder="Hazırlarken dikkat edilmesi gereken ipuçları..."
+                className="min-h-[80px]"
+                data-testid="input-tips"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="allergen">Alerjen Bilgisi</Label>
+              <Textarea 
+                id="allergen"
+                value={editAllergen}
+                onChange={(e) => setEditAllergen(e.target.value)}
+                placeholder="Alerjen bilgileri (süt, gluten vb.)..."
+                data-testid="input-allergen"
+              />
+            </div>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setInfoOpen(false)} data-testid="button-cancel-info">
+              İptal
+            </Button>
+            <Button 
+              onClick={() => updateRecipeMutation.mutate({ tipsTr: editTips, allergenInfo: editAllergen })}
+              disabled={updateRecipeMutation.isPending}
+              data-testid="button-save-info"
+            >
+              {updateRecipeMutation.isPending ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Save className="w-4 h-4 mr-1" />}
+              Kaydet
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
