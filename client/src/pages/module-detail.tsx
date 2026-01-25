@@ -105,13 +105,12 @@ export default function ModuleDetail() {
   const [roleplayInput, setRoleplayInput] = useState("");
 
   const { data: module, isLoading } = useQuery({
-    queryKey: [`/api/training/modules/${moduleId}`],
+    queryKey: ['/api/training/modules', moduleId],
     queryFn: async () => {
       if (!moduleId) return null;
-      const res = await fetch(`/api/training/modules`, { credentials: "include" });
+      const res = await fetch(`/api/training/modules/${moduleId}`, { credentials: "include" });
       if (!res.ok) return null;
-      const modules = await res.json();
-      return modules.find((m: TrainingModule) => m.id === moduleId) || null;
+      return res.json();
     },
     enabled: !!moduleId,
   });
@@ -155,7 +154,7 @@ export default function ModuleDetail() {
     onSuccess: () => {
       toast({ title: "Öğrenme hedefleri güncellendi" });
       setObjectivesOpen(false);
-      queryClient.invalidateQueries({ queryKey: [`/api/training/modules/${moduleId}`] });
+      queryClient.invalidateQueries({ queryKey: ['/api/training/modules', moduleId] });
     },
     onError: (error) => {
       toast({ title: "Hata", description: error.message, variant: "destructive" });
@@ -195,7 +194,7 @@ export default function ModuleDetail() {
     onSuccess: () => {
       toast({ title: "Adımlar güncellendi" });
       setStepsOpen(false);
-      queryClient.invalidateQueries({ queryKey: [`/api/training/modules/${moduleId}`] });
+      queryClient.invalidateQueries({ queryKey: ['/api/training/modules', moduleId] });
     },
     onError: (error) => {
       toast({ title: "Hata", description: error.message, variant: "destructive" });
@@ -216,7 +215,7 @@ export default function ModuleDetail() {
     onSuccess: () => {
       toast({ title: "Quiz güncellendi" });
       setQuizOpen(false);
-      queryClient.invalidateQueries({ queryKey: [`/api/training/modules/${moduleId}`] });
+      queryClient.invalidateQueries({ queryKey: ['/api/training/modules', moduleId] });
     },
     onError: (error) => {
       toast({ title: "Hata", description: error.message, variant: "destructive" });
@@ -237,7 +236,7 @@ export default function ModuleDetail() {
     onSuccess: () => {
       toast({ title: "Senaryolar güncellendi" });
       setScenariosOpen(false);
-      queryClient.invalidateQueries({ queryKey: [`/api/training/modules/${moduleId}`] });
+      queryClient.invalidateQueries({ queryKey: ['/api/training/modules', moduleId] });
     },
     onError: (error) => {
       toast({ title: "Hata", description: error.message, variant: "destructive" });
@@ -258,7 +257,7 @@ export default function ModuleDetail() {
     onSuccess: () => {
       toast({ title: "Kontrol Listesi güncellendi" });
       setChecklistOpen(false);
-      queryClient.invalidateQueries({ queryKey: [`/api/training/modules/${moduleId}`] });
+      queryClient.invalidateQueries({ queryKey: ['/api/training/modules', moduleId] });
     },
     onError: (error) => {
       toast({ title: "Hata", description: error.message, variant: "destructive" });
@@ -986,7 +985,7 @@ export default function ModuleDetail() {
                       requiredForRole: selectedRoles,
                     });
                     toast({ title: "Atamalar kaydedildi" });
-                    queryClient.invalidateQueries({ queryKey: [`/api/training/modules/${moduleId}`] });
+                    queryClient.invalidateQueries({ queryKey: ['/api/training/modules', moduleId] });
                   } catch (err) {
                     toast({ title: "Hata", description: (err instanceof Error ? err.message : "Bilinmeyen hata"), variant: "destructive" });
                   }
@@ -1705,7 +1704,7 @@ export default function ModuleDetail() {
                         credentials: 'include'
                       });
                       if (res.ok) {
-                        queryClient.invalidateQueries({ queryKey: [`/api/training/modules/${moduleId}`] });
+                        queryClient.invalidateQueries({ queryKey: ['/api/training/modules', moduleId] });
                         toast({ title: "Başarılı", description: "Satış ipuçları oluşturuldu" });
                       }
                     } catch (error) {
@@ -1806,7 +1805,7 @@ export default function ModuleDetail() {
                         credentials: 'include'
                       });
                       if (res.ok) {
-                        queryClient.invalidateQueries({ queryKey: [`/api/training/modules/${moduleId}`] });
+                        queryClient.invalidateQueries({ queryKey: ['/api/training/modules', moduleId] });
                         toast({ title: "Başarılı", description: "Sunum rehberi oluşturuldu" });
                       }
                     } catch (error) {
@@ -1936,7 +1935,7 @@ export default function ModuleDetail() {
                         credentials: 'include'
                       });
                       if (res.ok) {
-                        queryClient.invalidateQueries({ queryKey: [`/api/training/modules/${moduleId}`] });
+                        queryClient.invalidateQueries({ queryKey: ['/api/training/modules', moduleId] });
                         toast({ title: "Başarılı", description: "Pazarlama içerikleri oluşturuldu" });
                       }
                     } catch (error) {
@@ -2043,7 +2042,7 @@ export default function ModuleDetail() {
                         credentials: 'include'
                       });
                       if (res.ok) {
-                        queryClient.invalidateQueries({ queryKey: [`/api/training/modules/${moduleId}`] });
+                        queryClient.invalidateQueries({ queryKey: ['/api/training/modules', moduleId] });
                         toast({ title: "Başarılı", description: "Rol yapma senaryoları oluşturuldu" });
                       }
                     } catch (error) {
