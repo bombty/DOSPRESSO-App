@@ -109,6 +109,7 @@ import BranchFeedback from "@/pages/branch-feedback";
 import KayipEsya from "@/pages/kayip-esya";
 import KayipEsyaHQ from "@/pages/kayip-esya-hq";
 import ReceteDetay from "@/pages/recete-detay";
+import Receteler from "@/pages/receteler";
 import Projeler from "@/pages/projeler";
 import ProjeDetay from "@/pages/proje-detay";
 import ProjeGorevDetay from "@/pages/proje-gorev-detay";
@@ -298,6 +299,7 @@ function Router() {
           <Route path="/akademi-advanced-analytics" component={AcademyAdvancedAnalytics} />
           <Route path="/akademi-branch-analytics" component={AcademyBranchAnalytics} />
           <Route path="/akademi-cohort-analytics" component={AcademyCohortAnalytics} />
+          <Route path="/receteler" component={Receteler} />
           <Route path="/recete/:id" component={ReceteDetay} />
           <Route path="/egitim/:id" component={ModuleDetail} />
           <Route path="/egitim-ata" component={TrainingAssign} />
