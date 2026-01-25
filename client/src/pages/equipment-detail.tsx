@@ -13,6 +13,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ListSkeleton } from "@/components/list-skeleton";
 import { EmptyState } from "@/components/empty-state";
@@ -23,7 +24,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Checkbox } from "@/components/ui/checkbox";
-import { ArrowLeft, Settings, Calendar, Wrench, AlertTriangle, MessageSquare, DollarSign, User, QrCode, ClipboardList, Edit, FileText, Sparkles, Send } from "lucide-react";
+import { ArrowLeft, Settings, Calendar, Wrench, AlertTriangle, MessageSquare, DollarSign, User, QrCode, ClipboardList, Edit, FileText, Sparkles, Send, ChevronDown } from "lucide-react";
 import { QRCodeSVG } from 'qrcode.react';
 import { format } from "date-fns";
 import { tr } from "date-fns/locale";
@@ -203,6 +204,24 @@ export default function EquipmentDetail() {
   });
 
   // Knowledge base articles for this equipment type
+  // AI Equipment Knowledge query
+  const { data: equipmentKnowledge = [], isLoading: isLoadingKnowledge } = useQuery<any[]>({
+    queryKey: ["/api/equipment-knowledge/by-equipment", equipment?.equipmentType, equipment?.brand, equipment?.model],
+    queryFn: async () => {
+      if (!equipment?.equipmentType) return [];
+      const params = new URLSearchParams();
+      params.append("type", equipment.equipmentType);
+      if (equipment.brand) params.append("brand", equipment.brand);
+      if (equipment.model) params.append("model", equipment.model);
+      const response = await fetch(`/api/equipment-knowledge/by-equipment?${params.toString()}`, {
+        credentials: 'include',
+      });
+      if (!response.ok) return [];
+      return response.json();
+    },
+    enabled: !!equipment?.equipmentType,
+  });
+
   const { data: relatedArticles = [], isLoading: isLoadingArticles } = useQuery<any[]>({
     queryKey: ["/api/knowledge-base", "equipment", equipment?.equipmentType],
     queryFn: async () => {
@@ -1351,6 +1370,65 @@ export default function EquipmentDetail() {
         </TabsContent>
 
         <TabsContent value="guide" className="space-y-4">
+          {/* AI Equipment Knowledge Section */}
+          <Card data-testid="card-ai-knowledge">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Sparkles className="h-4 w-4 text-primary" />
+                AI Teknik Bilgi Bankası
+              </CardTitle>
+              <CardDescription>
+                {equipment?.brand} {equipment?.model} için AI tarafından oluşturulmuş teknik bilgiler
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {isLoadingKnowledge ? (
+                <div className="space-y-2">
+                  <Skeleton className="h-12 w-full" />
+                  <Skeleton className="h-12 w-full" />
+                </div>
+              ) : equipmentKnowledge.length > 0 ? (
+                equipmentKnowledge.map((knowledge: any) => (
+                  <Collapsible key={knowledge.id} data-testid={`knowledge-item-${knowledge.id}`}>
+                    <CollapsibleTrigger className="flex items-center justify-between w-full p-3 border rounded-lg hover-elevate" data-testid={`knowledge-trigger-${knowledge.id}`}>
+                      <div className="flex items-center gap-2">
+                        <Badge variant={
+                          knowledge.category === 'maintenance' ? 'default' :
+                          knowledge.category === 'troubleshooting' ? 'destructive' :
+                          knowledge.category === 'safety' ? 'secondary' : 'outline'
+                        } className="text-xs">
+                          {knowledge.category === 'maintenance' ? 'Bakım' :
+                           knowledge.category === 'troubleshooting' ? 'Arıza Giderme' :
+                           knowledge.category === 'usage' ? 'Kullanım' :
+                           knowledge.category === 'safety' ? 'Güvenlik' : knowledge.category}
+                        </Badge>
+                        <span className="font-medium text-sm">{knowledge.title}</span>
+                      </div>
+                      <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                    </CollapsibleTrigger>
+                    <CollapsibleContent className="p-3 border-x border-b rounded-b-lg bg-muted/30">
+                      <div className="prose prose-sm dark:prose-invert max-w-none text-sm whitespace-pre-wrap">
+                        {knowledge.content}
+                      </div>
+                      {knowledge.keywords?.length > 0 && (
+                        <div className="flex flex-wrap gap-1 mt-2 pt-2 border-t">
+                          {knowledge.keywords.map((kw: string, idx: number) => (
+                            <Badge key={idx} variant="outline" className="text-xs">{kw}</Badge>
+                          ))}
+                        </div>
+                      )}
+                    </CollapsibleContent>
+                  </Collapsible>
+                ))
+              ) : (
+                <div className="text-center py-4 text-muted-foreground text-sm">
+                  <Sparkles className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                  <p>Bu ekipman için henüz AI bilgisi oluşturulmamış</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-base flex items-center gap-2">

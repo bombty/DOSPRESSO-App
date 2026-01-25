@@ -4670,6 +4670,77 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
   });
 
 
+  // Equipment Knowledge by equipment type (for all authenticated users)
+  app.get('/api/equipment-knowledge/by-equipment', isAuthenticated, async (req: any, res) => {
+    try {
+      const { type, brand, model } = req.query;
+      
+      if (!type) {
+        return res.status(400).json({ message: "Ekipman tipi zorunludur" });
+      }
+      
+      const allKnowledge = await storage.getEquipmentKnowledge();
+      
+      // Map equipment type to knowledge type
+      const EQUIPMENT_TYPE_MAP: Record<string, string> = {
+        'espresso': 'espresso_machine',
+        'grinder': 'grinder',
+        'cappuccino': 'espresso_machine',
+        'water_filter': 'water_filter',
+        'kiosk': 'pos',
+        'pos': 'pos',
+        'tea': 'general',
+        'ice': 'ice_machine',
+        'refrigerator': 'refrigerator',
+        'dishwasher': 'dishwasher',
+        'oven': 'oven',
+        'blender': 'blender',
+      };
+      
+      const knowledgeType = EQUIPMENT_TYPE_MAP[type as string] || type;
+      
+      // Filter by type, brand, and model with fallback
+      let filtered = allKnowledge.filter(k => k.isActive && k.equipmentType === knowledgeType);
+      
+      // If we have brand/model specific knowledge, prioritize that
+      if (brand && model) {
+        // Try exact match first (both brand AND model)
+        const exactMatch = filtered.filter(k => 
+          k.brand && k.brand.toLowerCase() === (brand as string).toLowerCase() &&
+          k.model && k.model.toLowerCase() === (model as string).toLowerCase()
+        );
+        if (exactMatch.length > 0) {
+          filtered = exactMatch;
+        } else {
+          // Fallback to brand-only match
+          const brandMatch = filtered.filter(k => 
+            k.brand && k.brand.toLowerCase() === (brand as string).toLowerCase()
+          );
+          if (brandMatch.length > 0) {
+            filtered = brandMatch;
+          }
+          // If still no matches, keep type-level knowledge
+        }
+      } else if (brand) {
+        const brandMatch = filtered.filter(k => 
+          k.brand && k.brand.toLowerCase() === (brand as string).toLowerCase()
+        );
+        if (brandMatch.length > 0) {
+          filtered = brandMatch;
+        }
+      }
+      
+      // Sort by priority and category
+      filtered.sort((a, b) => b.priority - a.priority);
+      
+      res.json(filtered);
+    } catch (error: any) {
+      console.error("Error fetching equipment knowledge by type:", error);
+      res.status(500).json({ message: error.message || "Bilgiler alınamadı" });
+    }
+  });
+
+
   // Equipment Knowledge CRUD (Admin only)
   app.get('/api/equipment-knowledge', isAuthenticated, async (req: any, res) => {
     try {
