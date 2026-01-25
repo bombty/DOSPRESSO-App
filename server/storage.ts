@@ -295,6 +295,8 @@ import {
   checklistRatings,
   employeeSatisfactionScores,
   recipes,
+  recipeVersions,
+  recipeCategories,
   shiftSwapRequests,
   equipmentKnowledge,
   EquipmentKnowledge,
@@ -873,6 +875,9 @@ export interface IStorage {
   
   // Branch Equipment with knowledge (for AI context)
   getBranchEquipmentWithKnowledge(branchId: number): Promise<Array<Equipment & { knowledge: EquipmentKnowledge[] }>>;
+  
+  // Recipe search for AI (reçete arama)
+  searchRecipesForAI(query: string): Promise<Array<{ id: number; name: string; category: string; simplifiedRecipe: string; steps: string[]; size: { massivo: any; longDiva: any } }>>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -8278,6 +8283,58 @@ export class DatabaseStorage implements IStorage {
     );
     
     return result;
+  }
+  
+  // Search recipes for AI context (reçete arama)
+  async searchRecipesForAI(query: string): Promise<Array<{ id: number; name: string; category: string; simplifiedRecipe: string; steps: string[]; size: { massivo: any; longDiva: any } }>> {
+    const queryLower = query.toLowerCase();
+    
+    // Get all active recipes with their versions
+    const allRecipes = await db.select({
+      id: recipes.id,
+      nameTr: recipes.nameTr,
+      code: recipes.code,
+      categoryId: recipes.categoryId,
+    }).from(recipes).where(eq(recipes.isActive, true));
+    
+    // Get categories
+    const categories = await db.select().from(recipeCategories);
+    const categoryMap = new Map(categories.map(c => [c.id, c.titleTr]));
+    
+    // Filter recipes matching the query
+    const matchingRecipes = allRecipes.filter(r => 
+      r.nameTr.toLowerCase().includes(queryLower) ||
+      r.code.toLowerCase().includes(queryLower)
+    ).slice(0, 5);
+    
+    // Get versions for matching recipes
+    const results = await Promise.all(matchingRecipes.map(async (recipe) => {
+      const [version] = await db.select().from(recipeVersions)
+        .where(eq(recipeVersions.recipeId, recipe.id))
+        .orderBy(desc(recipeVersions.versionNumber))
+        .limit(1);
+      
+      const sizes = version?.sizes as { massivo?: { steps?: string[] }; longDiva?: { steps?: string[] } } | null;
+      const massivoSteps = sizes?.massivo?.steps || [];
+      const longDivaSteps = sizes?.longDiva?.steps || [];
+      
+      // Create simplified recipe string
+      const simplifiedRecipe = `${recipe.nameTr} (${recipe.code}): Massivo - ${massivoSteps.join(' → ')}`;
+      
+      return {
+        id: recipe.id,
+        name: recipe.nameTr,
+        category: categoryMap.get(recipe.categoryId) || 'Bilinmiyor',
+        simplifiedRecipe,
+        steps: massivoSteps,
+        size: {
+          massivo: sizes?.massivo || null,
+          longDiva: sizes?.longDiva || null
+        }
+      };
+    }));
+    
+    return results;
   }
 }
 

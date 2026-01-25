@@ -4656,6 +4656,30 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
           (equipmentContext as any).knowledgeContext = knowledgeContext;
         }
 
+        // Search for matching recipes if question is about menu/drinks
+        const recipeKeywords = ['reçete', 'tarif', 'nasıl yapılır', 'hazırla', 'latte', 'americano', 'cappuccino', 'flat white', 'espresso', 'frappe', 'iced', 'içecek', 'kahve', 'menü'];
+        const isRecipeQuestion = recipeKeywords.some(kw => question.toLowerCase().includes(kw));
+        
+        if (isRecipeQuestion) {
+          const recipeResults = await storage.searchRecipesForAI(question);
+          if (recipeResults.length > 0) {
+            console.log(`🍵 Found ${recipeResults.length} recipes for context`);
+            const recipeContext = recipeResults.map(r => {
+              const massivoInfo = r.size?.massivo ? 
+                `Massivo (${r.size.massivo.cupMl}ml): ${r.size.massivo.espresso || ''} ${r.size.massivo.milk?.ml ? r.size.massivo.milk.ml + 'ml ' + r.size.massivo.milk.type : ''}` : '';
+              const longDivaInfo = r.size?.longDiva ? 
+                `Long Diva (${r.size.longDiva.cupMl}ml): ${r.size.longDiva.espresso || ''} ${r.size.longDiva.milk?.ml ? r.size.longDiva.milk.ml + 'ml ' + r.size.longDiva.milk.type : ''}` : '';
+              const steps = r.steps?.length > 0 ? '\nAdımlar: ' + r.steps.join(' → ') : '';
+              return `[[${r.name} - ${r.category}]]\n${massivoInfo}\n${longDivaInfo}${steps}`;
+            }).join('\n\n');
+            
+            if (!equipmentContext) {
+              equipmentContext = { type: 'genel' };
+            }
+            (equipmentContext as any).recipeContext = recipeContext;
+          }
+        }
+
       } catch (error: any) {
         console.warn("Failed to fetch equipment context:", error);
       }

@@ -997,6 +997,7 @@ export async function answerTechnicalQuestion(
     recentFaults?: Array<{ description: string; date: string }>;
     branchEquipment?: Array<{ name: string; type: string; brand?: string; model?: string }>;
     knowledgeContext?: string;
+    recipeContext?: string;
   },
   userId?: string,
   skipCache: boolean = false
@@ -1039,6 +1040,11 @@ export async function answerTechnicalQuestion(
     // Add equipment knowledge context
     if (equipmentContext.knowledgeContext) {
       contextParts.push(`İlgili Bilgi Bankası:\n${equipmentContext.knowledgeContext}`);
+    }
+    
+    // Add recipe context for menu/drink questions
+    if (equipmentContext.recipeContext) {
+      contextParts.push(`İlgili Reçeteler:\n${equipmentContext.recipeContext}`);
     }
     
     if (contextParts.length > 0) {
