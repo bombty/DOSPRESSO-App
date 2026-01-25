@@ -2937,3 +2937,88 @@ export async function verifyPhotoQuality(
     return { passed: true, score: 70, note: 'Kontrol yapılamadı - varsayılan kabul' };
   }
 }
+
+// Generate equipment knowledge from manual/troubleshooting text
+export async function generateEquipmentKnowledgeFromManual(
+  manualText: string,
+  equipmentType: string,
+  brand?: string,
+  model?: string,
+  userId?: string
+): Promise<{
+  items: Array<{
+    category: string;
+    title: string;
+    content: string;
+    keywords: string[];
+  }>;
+  summary: string;
+}> {
+  const effectiveUserId = userId || 'system';
+  
+  // Rate limiting
+  if (!aiRateLimiter.canMakeRequest(effectiveUserId, 'knowledge_generation')) {
+    throw new Error("Çok fazla istek gönderdiniz. Lütfen biraz bekleyin.");
+  }
+
+  const systemPrompt = `Sen bir DOSPRESSO teknik dokümantasyon uzmanısın. Sana verilen cihaz kılavuzu veya troubleshooting metnini analiz edip, yapılandırılmış bilgi kayıtları oluşturacaksın.
+
+GÖREV:
+1. Metni analiz et (İngilizce ise Türkçeye çevir)
+2. İçeriği kategorilere ayır: maintenance (bakım), troubleshooting (arıza giderme), usage (kullanım), safety (güvenlik)
+3. Her kategori için ayrı bir bilgi kaydı oluştur
+4. İçeriği adım adım, anlaşılır şekilde düzenle
+5. Anahtar kelimeler ekle
+
+ÖNEMLİ KURALLAR:
+- Türkçe olarak yaz
+- Teknik terimleri koru ama açıkla
+- Adım adım talimatlar ver
+- Pratik ve uygulanabilir bilgiler sun
+- Her kayıt 500 kelimeyi geçmesin
+
+JSON formatında yanıt ver:
+{
+  "items": [
+    {
+      "category": "maintenance|troubleshooting|usage|safety",
+      "title": "Başlık (Türkçe)",
+      "content": "İçerik - Markdown formatında, adım adım",
+      "keywords": ["anahtar", "kelimeler"]
+    }
+  ],
+  "summary": "Kısa özet - ne tür bilgiler oluşturuldu"
+}`;
+
+  const userPrompt = `Ekipman: ${equipmentType}${brand ? ` - Marka: ${brand}` : ''}${model ? ` - Model: ${model}` : ''}
+
+Kılavuz/Troubleshooting Metni:
+${manualText.substring(0, 8000)}`;
+
+  try {
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt }
+      ],
+      response_format: { type: "json_object" },
+      max_tokens: 4000,
+      temperature: 0.3
+    });
+
+    const content = response.choices[0]?.message?.content;
+    if (!content) throw new Error("AI yanıt içeriği boş");
+
+    const result = JSON.parse(content);
+    aiRateLimiter.incrementRequest(effectiveUserId, 'knowledge_generation');
+
+    return {
+      items: result.items || [],
+      summary: result.summary || "Bilgiler oluşturuldu"
+    };
+  } catch (error: any) {
+    console.error("Knowledge generation error:", error);
+    throw new Error(error.message || "Bilgi oluşturulamadı");
+  }
+}

@@ -24,7 +24,10 @@ import {
   Wrench,
   AlertTriangle,
   Shield,
-  HelpCircle
+  HelpCircle,
+  Sparkles,
+  FileText,
+  Check
 } from "lucide-react";
 
 interface EquipmentKnowledge {
@@ -55,6 +58,24 @@ const EQUIPMENT_TYPES = [
   { value: "general", label: "Genel" },
 ];
 
+const EQUIPMENT_TYPE_MAP: Record<string, string> = {
+  'espresso': 'espresso_machine',
+  'espresso_machine': 'espresso_machine',
+  'grinder': 'grinder',
+  'cappuccino': 'espresso_machine',
+  'water_filter': 'water_filter',
+  'kiosk': 'pos',
+  'pos': 'pos',
+  'tea': 'general',
+  'ice': 'ice_machine',
+  'ice_machine': 'ice_machine',
+  'refrigerator': 'refrigerator',
+  'dishwasher': 'dishwasher',
+  'oven': 'oven',
+  'blender': 'blender',
+  'general': 'general',
+};
+
 const CATEGORIES = [
   { value: "maintenance", label: "Bakım", icon: Wrench, color: "bg-blue-500" },
   { value: "troubleshooting", label: "Arıza Giderme", icon: AlertTriangle, color: "bg-orange-500" },
@@ -71,6 +92,20 @@ export default function AdminAIBilgiYonetimi() {
   const [filterCategory, setFilterCategory] = useState<string>("all");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<EquipmentKnowledge | null>(null);
+  const [isAIDialogOpen, setIsAIDialogOpen] = useState(false);
+  const [aiFormData, setAIFormData] = useState({
+    equipmentType: "",
+    brand: "",
+    model: "",
+    manualText: "",
+  });
+  const [generatedItems, setGeneratedItems] = useState<Array<{
+    category: string;
+    title: string;
+    content: string;
+    keywords: string[];
+    selected: boolean;
+  }>>([]);
   
   const [formData, setFormData] = useState({
     equipmentType: "",
@@ -90,6 +125,14 @@ export default function AdminAIBilgiYonetimi() {
 
   const { data: knowledgeItems = [], isLoading } = useQuery<EquipmentKnowledge[]>({
     queryKey: ["/api/equipment-knowledge"],
+  });
+
+  const { data: missingKnowledge } = useQuery<{
+    totalEquipment: number;
+    missingKnowledgeCount: number;
+    groups: Array<{ type: string; brand: string | null; model: string | null; count: number; equipmentIds: number[] }>;
+  }>({
+    queryKey: ["/api/equipment-knowledge/missing"],
   });
 
   const createMutation = useMutation({
@@ -141,6 +184,50 @@ export default function AdminAIBilgiYonetimi() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/equipment-knowledge"] });
       toast({ title: "Bilgi silindi" });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Hata", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const generateMutation = useMutation({
+    mutationFn: async (data: typeof aiFormData) => {
+      const res = await apiRequest("/api/equipment-knowledge/generate-from-manual", "POST", data);
+      return res.json() as Promise<{ items: Array<{ category: string; title: string; content: string; keywords: string[] }>; summary: string }>;
+    },
+    onSuccess: (result) => {
+      setGeneratedItems(result.items.map(item => ({ ...item, selected: true })));
+      toast({ title: "İçerikler oluşturuldu", description: result.summary });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Hata", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const saveGeneratedMutation = useMutation({
+    mutationFn: async (items: typeof generatedItems) => {
+      const selectedItems = items.filter(item => item.selected);
+      const promises = selectedItems.map(item => 
+        apiRequest("/api/equipment-knowledge", "POST", {
+          equipmentType: aiFormData.equipmentType,
+          brand: aiFormData.brand || null,
+          model: aiFormData.model || null,
+          category: item.category,
+          title: item.title,
+          content: item.content,
+          keywords: item.keywords,
+          priority: 2,
+          isActive: true,
+        })
+      );
+      return Promise.all(promises);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/equipment-knowledge"] });
+      toast({ title: "Seçili bilgiler kaydedildi" });
+      setIsAIDialogOpen(false);
+      setGeneratedItems([]);
+      setAIFormData({ equipmentType: "", brand: "", model: "", manualText: "" });
     },
     onError: (error: Error) => {
       toast({ title: "Hata", description: error.message, variant: "destructive" });
@@ -213,13 +300,198 @@ export default function AdminAIBilgiYonetimi() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-bold">AI Bilgi Yönetimi</h1>
           <p className="text-muted-foreground">
             AI asistanının kullanacağı ekipman bilgilerini yönetin
           </p>
         </div>
+        <div className="flex gap-2">
+          <Dialog open={isAIDialogOpen} onOpenChange={(open) => {
+            setIsAIDialogOpen(open);
+            if (!open) {
+              setGeneratedItems([]);
+              setAIFormData({ equipmentType: "", brand: "", model: "", manualText: "" });
+            }
+          }}>
+            <DialogTrigger asChild>
+              <Button variant="outline" data-testid="button-smart-generate">
+                <Sparkles className="h-4 w-4 mr-2" />
+                Akıllı İçerik Oluştur
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  <Sparkles className="h-5 w-5 text-primary" />
+                  Akıllı İçerik Oluşturucu
+                </DialogTitle>
+              </DialogHeader>
+              
+              {generatedItems.length === 0 ? (
+                <div className="space-y-4 py-4">
+                  <p className="text-sm text-muted-foreground">
+                    Cihaz kılavuzu veya troubleshooting metnini yapıştırın. AI otomatik olarak:
+                  </p>
+                  <ul className="text-sm text-muted-foreground list-disc list-inside space-y-1">
+                    <li>İngilizce metni Türkçeye çevirir</li>
+                    <li>İçeriği kategorize eder (bakım, arıza, kullanım, güvenlik)</li>
+                    <li>Adım adım çözümler oluşturur</li>
+                  </ul>
+
+                  <div className="grid grid-cols-3 gap-3">
+                    <div className="space-y-2">
+                      <Label>Ekipman Tipi *</Label>
+                      <Select 
+                        value={aiFormData.equipmentType} 
+                        onValueChange={(v) => setAIFormData(f => ({ ...f, equipmentType: v }))}
+                      >
+                        <SelectTrigger data-testid="ai-select-equipment">
+                          <SelectValue placeholder="Seçin" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {EQUIPMENT_TYPES.map(t => (
+                            <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Marka</Label>
+                      <Input 
+                        value={aiFormData.brand}
+                        onChange={(e) => setAIFormData(f => ({ ...f, brand: e.target.value }))}
+                        placeholder="Örn: La Marzocco"
+                        data-testid="ai-input-brand"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Model</Label>
+                      <Input 
+                        value={aiFormData.model}
+                        onChange={(e) => setAIFormData(f => ({ ...f, model: e.target.value }))}
+                        placeholder="Örn: Linea PB"
+                        data-testid="ai-input-model"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Kılavuz / Troubleshooting Metni *</Label>
+                    <Textarea 
+                      value={aiFormData.manualText}
+                      onChange={(e) => setAIFormData(f => ({ ...f, manualText: e.target.value }))}
+                      placeholder="Cihaz kılavuzundan veya troubleshooting dökümanından metni buraya yapıştırın... (İngilizce de olabilir)"
+                      className="min-h-[250px]"
+                      data-testid="ai-textarea-manual"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Minimum 50 karakter. İngilizce metin otomatik Türkçeye çevrilecektir.
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-4 py-4">
+                  <p className="text-sm text-muted-foreground">
+                    AI tarafından oluşturulan içerikler. Kaydetmek istediklerinizi seçin:
+                  </p>
+                  <div className="space-y-3">
+                    {generatedItems.map((item, index) => {
+                      const categoryInfo = getCategoryInfo(item.category);
+                      const CategoryIcon = categoryInfo.icon;
+                      return (
+                        <Card 
+                          key={index} 
+                          className={`cursor-pointer transition-colors ${item.selected ? 'ring-2 ring-primary' : 'opacity-60'}`}
+                          onClick={() => {
+                            setGeneratedItems(items => 
+                              items.map((it, i) => i === index ? { ...it, selected: !it.selected } : it)
+                            );
+                          }}
+                          data-testid={`generated-item-${index}`}
+                        >
+                          <CardHeader className="py-3">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                <Badge variant="outline" className="gap-1">
+                                  <CategoryIcon className="h-3 w-3" />
+                                  {categoryInfo.label}
+                                </Badge>
+                                <span className="font-medium">{item.title}</span>
+                              </div>
+                              {item.selected && <Check className="h-5 w-5 text-primary" />}
+                            </div>
+                          </CardHeader>
+                          <CardContent className="py-2">
+                            <p className="text-sm text-muted-foreground line-clamp-3">
+                              {item.content.substring(0, 200)}...
+                            </p>
+                            <div className="flex flex-wrap gap-1 mt-2">
+                              {item.keywords.slice(0, 5).map((kw, i) => (
+                                <Badge key={i} variant="secondary" className="text-xs">{kw}</Badge>
+                              ))}
+                            </div>
+                          </CardContent>
+                        </Card>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              <DialogFooter>
+                {generatedItems.length === 0 ? (
+                  <>
+                    <Button variant="outline" onClick={() => setIsAIDialogOpen(false)}>
+                      İptal
+                    </Button>
+                    <Button 
+                      onClick={() => generateMutation.mutate(aiFormData)}
+                      disabled={generateMutation.isPending || !aiFormData.equipmentType || aiFormData.manualText.length < 50}
+                      data-testid="button-generate"
+                    >
+                      {generateMutation.isPending ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          AI İşliyor...
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles className="h-4 w-4 mr-2" />
+                          İçerik Oluştur
+                        </>
+                      )}
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <Button variant="outline" onClick={() => setGeneratedItems([])}>
+                      Geri
+                    </Button>
+                    <Button 
+                      onClick={() => saveGeneratedMutation.mutate(generatedItems)}
+                      disabled={saveGeneratedMutation.isPending || !generatedItems.some(i => i.selected)}
+                      data-testid="button-save-generated"
+                    >
+                      {saveGeneratedMutation.isPending ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          Kaydediliyor...
+                        </>
+                      ) : (
+                        <>
+                          <Check className="h-4 w-4 mr-2" />
+                          Seçilenleri Kaydet ({generatedItems.filter(i => i.selected).length})
+                        </>
+                      )}
+                    </Button>
+                  </>
+                )}
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
         <Dialog open={isDialogOpen} onOpenChange={(open) => {
           setIsDialogOpen(open);
           if (!open) resetForm();
@@ -368,7 +640,54 @@ export default function AdminAIBilgiYonetimi() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
+
+      {missingKnowledge && missingKnowledge.missingKnowledgeCount > 0 && (
+        <Card className="border-orange-200 dark:border-orange-900 bg-orange-50 dark:bg-orange-950/20">
+          <CardHeader className="pb-2">
+            <CardTitle className="flex items-center gap-2 text-orange-700 dark:text-orange-400">
+              <AlertTriangle className="h-5 w-5" />
+              Eksik Bilgi Uyarısı
+            </CardTitle>
+            <CardDescription>
+              {missingKnowledge.missingKnowledgeCount} ekipman için AI bilgi bankasında kayıt bulunamadı
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-wrap gap-2">
+              {missingKnowledge.groups.slice(0, 10).map((group, index) => (
+                <Badge 
+                  key={index} 
+                  variant="outline" 
+                  className="cursor-pointer hover-elevate"
+                  onClick={() => {
+                    setAIFormData(f => ({
+                      ...f,
+                      equipmentType: EQUIPMENT_TYPE_MAP[group.type] || 'general',
+                      brand: group.brand || '',
+                      model: group.model || ''
+                    }));
+                    setIsAIDialogOpen(true);
+                  }}
+                  data-testid={`missing-knowledge-${index}`}
+                >
+                  {getEquipmentLabel(EQUIPMENT_TYPE_MAP[group.type] || group.type)} 
+                  {group.brand && ` - ${group.brand}`}
+                  {group.model && ` ${group.model}`}
+                  <span className="ml-1 text-muted-foreground">({group.count})</span>
+                </Badge>
+              ))}
+              {missingKnowledge.groups.length > 10 && (
+                <Badge variant="secondary">+{missingKnowledge.groups.length - 10} daha</Badge>
+              )}
+            </div>
+            <p className="text-xs text-muted-foreground mt-2">
+              Bir badge'e tıklayarak o ekipman için akıllı içerik oluşturabilirsiniz.
+            </p>
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardHeader>
