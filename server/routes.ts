@@ -4669,6 +4669,87 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
     }
   });
 
+
+  // Equipment Knowledge CRUD (Admin only)
+  app.get('/api/equipment-knowledge', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      if (user.role !== 'admin') {
+        return res.status(403).json({ message: "Bu sayfa sadece admin kullanıcıları içindir" });
+      }
+      const items = await storage.getEquipmentKnowledge();
+      res.json(items);
+    } catch (error: any) {
+      console.error("Error fetching equipment knowledge:", error);
+      res.status(500).json({ message: error.message || "Bilgiler alınamadı" });
+    }
+  });
+
+  app.post('/api/equipment-knowledge', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      if (user.role !== 'admin') {
+        return res.status(403).json({ message: "Bu işlem sadece admin kullanıcıları içindir" });
+      }
+      const { equipmentType, brand, model, category, title, content, keywords, priority, isActive } = req.body;
+      
+      if (!equipmentType || !title || !content) {
+        return res.status(400).json({ message: "Ekipman tipi, başlık ve içerik zorunludur" });
+      }
+
+      const item = await storage.createEquipmentKnowledge({
+        equipmentType,
+        brand: brand || null,
+        model: model || null,
+        category: category || 'maintenance',
+        title,
+        content,
+        keywords: keywords || [],
+        priority: priority || 1,
+        isActive: isActive !== false,
+      });
+      res.json(item);
+    } catch (error: any) {
+      console.error("Error creating equipment knowledge:", error);
+      res.status(500).json({ message: error.message || "Bilgi eklenemedi" });
+    }
+  });
+
+  app.patch('/api/equipment-knowledge/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      if (user.role !== 'admin') {
+        return res.status(403).json({ message: "Bu işlem sadece admin kullanıcıları içindir" });
+      }
+      const id = parseInt(req.params.id);
+      const updates = req.body;
+      
+      const item = await storage.updateEquipmentKnowledge(id, updates);
+      if (!item) {
+        return res.status(404).json({ message: "Bilgi bulunamadı" });
+      }
+      res.json(item);
+    } catch (error: any) {
+      console.error("Error updating equipment knowledge:", error);
+      res.status(500).json({ message: error.message || "Bilgi güncellenemedi" });
+    }
+  });
+
+  app.delete('/api/equipment-knowledge/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      if (user.role !== 'admin') {
+        return res.status(403).json({ message: "Bu işlem sadece admin kullanıcıları içindir" });
+      }
+      const id = parseInt(req.params.id);
+      await storage.deleteEquipmentKnowledge(id);
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("Error deleting equipment knowledge:", error);
+      res.status(500).json({ message: error.message || "Bilgi silinemedi" });
+    }
+  });
+
   // AI Article Draft Generator (HQ only)
   app.post('/api/knowledge-base/generate-draft', isAuthenticated, async (req: any, res) => {
     try {
