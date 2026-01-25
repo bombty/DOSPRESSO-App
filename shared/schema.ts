@@ -8856,3 +8856,85 @@ export const insertManagerMonthlyRatingSchema = createInsertSchema(managerMonthl
 
 export type InsertManagerMonthlyRating = z.infer<typeof insertManagerMonthlyRatingSchema>;
 export type ManagerMonthlyRating = typeof managerMonthlyRatings.$inferSelect;
+
+// ========================================
+// AI EKİPMAN BİLGİ BANKASI - Equipment Knowledge Base
+// ========================================
+
+export const equipmentKnowledge = pgTable("equipment_knowledge", {
+  id: serial("id").primaryKey(),
+  
+  // Ekipman tipi (espresso_machine, grinder, refrigerator, blender, etc.)
+  equipmentType: varchar("equipment_type", { length: 100 }).notNull(),
+  
+  // Marka ve model (opsiyonel - genel bilgi için null)
+  brand: varchar("brand", { length: 100 }),
+  model: varchar("model", { length: 100 }),
+  
+  // Bilgi kategorisi
+  category: varchar("category", { length: 50 }).notNull(), // maintenance, troubleshooting, usage, safety, cleaning
+  
+  // Başlık ve içerik
+  title: varchar("title", { length: 255 }).notNull(),
+  content: text("content").notNull(), // Detaylı bilgi (markdown destekli)
+  
+  // Anahtar kelimeler (arama için)
+  keywords: text("keywords").array(),
+  
+  // Önem seviyesi
+  priority: integer("priority").default(0), // 0=normal, 1=önemli, 2=kritik
+  
+  // Aktiflik durumu
+  isActive: boolean("is_active").default(true).notNull(),
+  
+  createdById: varchar("created_by_id").references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("eq_knowledge_type_idx").on(table.equipmentType),
+  index("eq_knowledge_brand_idx").on(table.brand),
+  index("eq_knowledge_category_idx").on(table.category),
+  index("eq_knowledge_active_idx").on(table.isActive),
+]);
+
+export const insertEquipmentKnowledgeSchema = createInsertSchema(equipmentKnowledge).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertEquipmentKnowledge = z.infer<typeof insertEquipmentKnowledgeSchema>;
+export type EquipmentKnowledge = typeof equipmentKnowledge.$inferSelect;
+
+// ========================================
+// AI SİSTEM YAPILANDIRMASI - AI System Configuration
+// ========================================
+
+export const aiSystemConfig = pgTable("ai_system_config", {
+  id: serial("id").primaryKey(),
+  
+  // Yapılandırma anahtarı
+  configKey: varchar("config_key", { length: 100 }).notNull().unique(),
+  
+  // Yapılandırma değeri (JSON formatında)
+  configValue: text("config_value").notNull(),
+  
+  // Açıklama
+  description: text("description"),
+  
+  // Aktiflik
+  isActive: boolean("is_active").default(true).notNull(),
+  
+  updatedById: varchar("updated_by_id").references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertAiSystemConfigSchema = createInsertSchema(aiSystemConfig).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertAiSystemConfig = z.infer<typeof insertAiSystemConfigSchema>;
+export type AiSystemConfig = typeof aiSystemConfig.$inferSelect;

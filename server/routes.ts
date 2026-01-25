@@ -4577,38 +4577,87 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
     try {
       const { question, equipmentId } = req.body;
       const userId = req.user.id;
+      const userBranchId = req.user.branchId;
       
       if (!question || typeof question !== 'string') {
         return res.status(400).json({ message: "Soru gereklidir" });
       }
 
-      // Fetch equipment context if equipmentId provided (optional)
-      let equipmentContext;
-      if (equipmentId) {
-        try {
-          const equipment = await storage.getEquipment(equipmentId);
+      // Build equipment context with branch equipment list
+      let equipmentContext: {
+        type: string;
+        serialNumber?: string;
+        branch?: string;
+        recentFaults?: Array<{ description: string; date: string }>;
+        branchEquipment?: Array<{ name: string; type: string; brand?: string; model?: string }>;
+      } | undefined;
+
+      try {
+        // Always fetch branch equipment list for context if user has a branch
+        if (userBranchId) {
+          const branchEquipment = await storage.getEquipment(userBranchId);
+          const branch = await storage.getBranch(userBranchId);
+          
+          const branchEquipmentList = branchEquipment.map((e: any) => ({
+            name: e.name,
+            type: e.equipmentType,
+            brand: e.brand || undefined,
+            model: e.model || undefined
+          }));
+
+          equipmentContext = {
+            type: 'genel',
+            branch: branch?.name,
+            branchEquipment: branchEquipmentList.length > 0 ? branchEquipmentList : undefined
+          };
+        }
+
+        // If specific equipment selected, add detailed context
+        if (equipmentId) {
+          const equipment = await storage.getEquipmentById(equipmentId);
           if (equipment) {
             const branch = equipment.branchId ? await storage.getBranch(equipment.branchId) : null;
             const recentFaults = await storage.getFaults();
             const equipmentFaults = recentFaults
-              .filter(f => f.equipmentId === equipmentId)
+              .filter((f: any) => f.equipmentId === equipmentId)
               .slice(0, 3)
-              .map(f => ({
+              .map((f: any) => ({
                 description: f.description,
                 date: new Date(f.createdAt).toLocaleDateString('tr-TR')
               }));
 
             equipmentContext = {
+              ...equipmentContext,
               type: equipment.equipmentType,
               serialNumber: equipment.serialNumber || undefined,
-              branch: branch?.name,
+              branch: branch?.name || equipmentContext?.branch,
               recentFaults: equipmentFaults.length > 0 ? equipmentFaults : undefined
             };
           }
-        } catch (error: any) {
-          console.warn("Failed to fetch equipment context:", error);
-          // Continue without equipment context
         }
+
+        // Search equipment knowledge base for relevant info
+        const knowledgeResults = await storage.searchEquipmentKnowledge(
+          question, 
+          equipmentContext?.type !== 'genel' ? equipmentContext?.type : undefined
+        );
+        
+        if (knowledgeResults.length > 0) {
+          console.log(`📚 Found ${knowledgeResults.length} equipment knowledge entries for context`);
+          // Add knowledge to context
+          const knowledgeContext = knowledgeResults
+            .slice(0, 3)
+            .map(k => `[${k.title}]: ${k.content.substring(0, 800)}`)
+            .join('\n\n');
+          
+          if (!equipmentContext) {
+            equipmentContext = { type: 'genel' };
+          }
+          (equipmentContext as any).knowledgeContext = knowledgeContext;
+        }
+
+      } catch (error: any) {
+        console.warn("Failed to fetch equipment context:", error);
       }
 
       // Use enhanced technical assistant with fallback LLM
@@ -4616,7 +4665,7 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
       res.json(response);
     } catch (error: Error | unknown) {
       console.error("Error answering question:", error);
-      res.status(500).json({ message: error.message || "Soru cevaplanamadı" });
+      res.status(500).json({ message: (error as Error).message || "Soru cevaplanamadı" });
     }
   });
 

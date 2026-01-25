@@ -296,6 +296,12 @@ import {
   employeeSatisfactionScores,
   recipes,
   shiftSwapRequests,
+  equipmentKnowledge,
+  EquipmentKnowledge,
+  InsertEquipmentKnowledge,
+  aiSystemConfig,
+  AiSystemConfig,
+  InsertAiSystemConfig,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -850,6 +856,23 @@ export interface IStorage {
   getOvertimeRequestsByBranch(branchId: number, status?: string): Promise<OvertimeRequest[]>;
   updateOvertimeRequest(id: number, updates: Partial<InsertOvertimeRequest>): Promise<OvertimeRequest | undefined>;
   getOvertimeRequestById(id: number): Promise<OvertimeRequest | undefined>;
+
+  // Equipment Knowledge operations (AI Ekipman Bilgisi)
+  getEquipmentKnowledge(filters?: { equipmentType?: string; brand?: string; category?: string }): Promise<EquipmentKnowledge[]>;
+  getEquipmentKnowledgeById(id: number): Promise<EquipmentKnowledge | undefined>;
+  createEquipmentKnowledge(data: InsertEquipmentKnowledge): Promise<EquipmentKnowledge>;
+  updateEquipmentKnowledge(id: number, updates: Partial<InsertEquipmentKnowledge>): Promise<EquipmentKnowledge | undefined>;
+  deleteEquipmentKnowledge(id: number): Promise<void>;
+  searchEquipmentKnowledge(query: string, equipmentType?: string): Promise<EquipmentKnowledge[]>;
+  
+  // AI System Config operations
+  getAiSystemConfig(configKey: string): Promise<AiSystemConfig | undefined>;
+  getAllAiSystemConfigs(): Promise<AiSystemConfig[]>;
+  upsertAiSystemConfig(configKey: string, configValue: string, description?: string, updatedById?: string): Promise<AiSystemConfig>;
+  deleteAiSystemConfig(configKey: string): Promise<void>;
+  
+  // Branch Equipment with knowledge (for AI context)
+  getBranchEquipmentWithKnowledge(branchId: number): Promise<Array<Equipment & { knowledge: EquipmentKnowledge[] }>>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -8153,6 +8176,108 @@ export class DatabaseStorage implements IStorage {
       branches: branchesResult,
       equipment: equipmentResult,
     };
+  }
+
+  // Equipment Knowledge operations
+  async getEquipmentKnowledge(filters?: { equipmentType?: string; brand?: string; category?: string }): Promise<EquipmentKnowledge[]> {
+    const conditions = [eq(equipmentKnowledge.isActive, true)];
+    if (filters?.equipmentType) {
+      conditions.push(eq(equipmentKnowledge.equipmentType, filters.equipmentType));
+    }
+    if (filters?.brand) {
+      conditions.push(eq(equipmentKnowledge.brand, filters.brand));
+    }
+    if (filters?.category) {
+      conditions.push(eq(equipmentKnowledge.category, filters.category));
+    }
+    return db.select().from(equipmentKnowledge).where(and(...conditions)).orderBy(desc(equipmentKnowledge.priority));
+  }
+
+  async getEquipmentKnowledgeById(id: number): Promise<EquipmentKnowledge | undefined> {
+    const [result] = await db.select().from(equipmentKnowledge).where(eq(equipmentKnowledge.id, id));
+    return result;
+  }
+
+  async createEquipmentKnowledge(data: InsertEquipmentKnowledge): Promise<EquipmentKnowledge> {
+    const [result] = await db.insert(equipmentKnowledge).values(data).returning();
+    return result;
+  }
+
+  async updateEquipmentKnowledge(id: number, updates: Partial<InsertEquipmentKnowledge>): Promise<EquipmentKnowledge | undefined> {
+    const [result] = await db.update(equipmentKnowledge)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(equipmentKnowledge.id, id))
+      .returning();
+    return result;
+  }
+
+  async deleteEquipmentKnowledge(id: number): Promise<void> {
+    await db.delete(equipmentKnowledge).where(eq(equipmentKnowledge.id, id));
+  }
+
+  async searchEquipmentKnowledge(query: string, equipmentType?: string): Promise<EquipmentKnowledge[]> {
+    const searchPattern = `%${query.toLowerCase()}%`;
+    const conditions = [
+      eq(equipmentKnowledge.isActive, true),
+      or(
+        sql`LOWER(${equipmentKnowledge.title}) LIKE ${searchPattern}`,
+        sql`LOWER(${equipmentKnowledge.content}) LIKE ${searchPattern}`,
+        sql`${searchPattern} = ANY(${equipmentKnowledge.keywords})`
+      )
+    ];
+    if (equipmentType) {
+      conditions.push(eq(equipmentKnowledge.equipmentType, equipmentType));
+    }
+    return db.select().from(equipmentKnowledge)
+      .where(and(...conditions))
+      .orderBy(desc(equipmentKnowledge.priority))
+      .limit(10);
+  }
+
+  // AI System Config operations
+  async getAiSystemConfig(configKey: string): Promise<AiSystemConfig | undefined> {
+    const [result] = await db.select().from(aiSystemConfig)
+      .where(and(eq(aiSystemConfig.configKey, configKey), eq(aiSystemConfig.isActive, true)));
+    return result;
+  }
+
+  async getAllAiSystemConfigs(): Promise<AiSystemConfig[]> {
+    return db.select().from(aiSystemConfig).where(eq(aiSystemConfig.isActive, true));
+  }
+
+  async upsertAiSystemConfig(configKey: string, configValue: string, description?: string, updatedById?: string): Promise<AiSystemConfig> {
+    const existing = await this.getAiSystemConfig(configKey);
+    if (existing) {
+      const [result] = await db.update(aiSystemConfig)
+        .set({ configValue, description, updatedById, updatedAt: new Date() })
+        .where(eq(aiSystemConfig.configKey, configKey))
+        .returning();
+      return result;
+    }
+    const [result] = await db.insert(aiSystemConfig)
+      .values({ configKey, configValue, description, updatedById, isActive: true })
+      .returning();
+    return result;
+  }
+
+  async deleteAiSystemConfig(configKey: string): Promise<void> {
+    await db.update(aiSystemConfig)
+      .set({ isActive: false, updatedAt: new Date() })
+      .where(eq(aiSystemConfig.configKey, configKey));
+  }
+
+  // Branch Equipment with Knowledge (for AI context)
+  async getBranchEquipmentWithKnowledge(branchId: number): Promise<Array<Equipment & { knowledge: EquipmentKnowledge[] }>> {
+    const branchEquipment = await db.select().from(equipment).where(eq(equipment.branchId, branchId));
+    
+    const result = await Promise.all(
+      branchEquipment.map(async (eq) => {
+        const knowledge = await this.getEquipmentKnowledge({ equipmentType: eq.equipmentType });
+        return { ...eq, knowledge };
+      })
+    );
+    
+    return result;
   }
 }
 

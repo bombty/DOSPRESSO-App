@@ -52,6 +52,164 @@ function calculateCost(model: string, promptTokens: number, completionTokens: nu
   return inputCost + outputCost;
 }
 
+// ========================================
+// DOSPRESSO AI SYSTEM PROMPT BUILDER
+// Kapsamlı DOSPRESSO bilgisi, ekipman, webapp kılavuzu
+// ========================================
+
+function buildDospressoSystemPrompt(equipmentContext?: { 
+  type: string; 
+  serialNumber?: string; 
+  branch?: string; 
+  recentFaults?: Array<{ description: string; date: string }>;
+  branchEquipment?: Array<{ name: string; type: string; brand?: string; model?: string }>;
+}): string {
+  
+  // Temel DOSPRESSO bilgisi
+  const dospressoInfo = `
+## DOSPRESSO HAKKINDA
+DOSPRESSO, Türkiye genelinde faaliyet gösteren premium kahve franchise zinciridir.
+- **Misyon**: Kaliteli kahve deneyimini herkes için erişilebilir kılmak
+- **Standartlar**: Tüm şubelerde tutarlı ürün kalitesi ve müşteri deneyimi
+- **Değerler**: Kalite, tutarlılık, müşteri memnuniyeti, ekip çalışması
+
+## ŞUBE STANDARTLARI
+- Açılış prosedürü: Ekipman kontrolü → Temizlik → Malzeme kontrolü → Kasa açılış
+- Kapanış prosedürü: Ekipman temizliği → Stok sayımı → Kasa kapanış → Güvenlik kontrolü
+- Hijyen standartları: Saatlik el yıkama, 2 saatte bir yüzey temizliği
+- Müşteri hizmetleri: 3 dakika içinde sipariş alma, 5 dakika içinde servis`;
+
+  // Ekipman tipleri bilgisi
+  const equipmentInfo = `
+## ŞUBE EKİPMANLARI
+
+### Espresso Makinesi
+- **Günlük bakım**: Grup başlığı temizliği, buhar çubuğu purge, damlatma tepsisi boşaltma
+- **Haftalık bakım**: Backflush (ilaçlı temizlik), su filtresi kontrolü
+- **Sık arızalar**: Basınç düşüklüğü, su sıcaklığı sorunu, buhar çubuğu tıkanması
+- **Kalibrasyon**: 9 bar basınç, 92-96°C su sıcaklığı, 25-30 saniye ekstraksiyon
+
+### Kahve Değirmeni
+- **Günlük bakım**: Hazne temizliği, çıkış ağzı silme
+- **Haftalık bakım**: Bıçak temizliği, kalibrasyon kontrolü
+- **Ayar**: Espresso için ince öğütme (200-250 mikron), filtre için orta (400-500 mikron)
+- **Sık sorunlar**: Öğütme tutarsızlığı, motor aşırı ısınması, bıçak aşınması
+
+### Buzdolabı / Soğutucu
+- **Sıcaklık**: Süt ve süt ürünleri 2-4°C, diğer ürünler 4-7°C
+- **Günlük kontrol**: Sıcaklık ölçümü, kapak contası kontrolü
+- **Haftalık bakım**: İç temizlik, kondenser temizliği
+
+### Blender / Frappe Makinesi
+- **Her kullanım sonrası**: Su ile durulama
+- **Günlük bakım**: Deterjanla temizlik, bıçak kontrolü
+- **Sorunlar**: Motor yorgunluğu, sızdırmazlık sorunu
+
+### Buz Makinesi
+- **Hijyen**: Haftalık iç temizlik, su filtresi aylık değişim
+- **Bakım**: Kondenser temizliği, su tahliye kontrolü`;
+
+  // WebApp kullanım kılavuzu
+  const webappGuide = `
+## DOSPRESSO WEBAPP KULLANIM KILAVUZU
+
+### ANA SAYFA (Dashboard)
+- **Erişim**: / veya Ana Sayfa butonu
+- **İçerik**: Günlük görevler, kritik uyarılar, özet istatistikler
+- **Kiosk modu**: Hızlı erişim butonu ile tam ekran görünüm
+
+### OPERASYONLAR (/operasyon)
+- **Şubeler**: Tüm şubelerin listesi ve detayları
+- **Görevler**: Atanan görevler, tamamlama durumu
+- **Checklistler**: Günlük checklist tamamlama
+- **Kayıp Eşya**: Kayıp/bulunan eşya takibi
+
+### EKİPMAN YÖNETİMİ (/ekipman)
+- **Ekipman Listesi**: Şubedeki tüm ekipmanlar
+- **Arıza Bildirimi**: QR tarayarak veya manuel arıza kaydı
+- **Bakım Takvimi**: Planlı bakım tarihleri
+- **Nasıl Kullanılır**: 
+  1. Ekipman listesinden cihaz seç
+  2. "Arıza Bildir" butonuna tıkla
+  3. Fotoğraf çek ve açıklama yaz
+  4. Gönder
+
+### PERSONEL & İK (/ik)
+- **Personel Listesi**: Çalışan bilgileri
+- **Vardiya Planlama**: Haftalık vardiya planı
+- **İzin Talepleri**: İzin başvurusu ve onay
+- **Mesai Takibi**: Giriş-çıkış kayıtları
+
+### EĞİTİM & AKADEMİ (/akademi)
+- **Eğitimler**: Mevcut eğitim modülleri
+- **Quizler**: Bilgi testleri
+- **Sertifikalar**: Kazanılan sertifikalar
+- **Kariyer Yolu**: Terfi gereksinimleri
+
+### RAPORLAR (/raporlar)
+- **AI Özet Rapor**: Yapay zeka destekli analiz
+- **Performans**: Şube ve personel performansı
+- **Kalite Denetimi**: Denetim sonuçları
+
+### MUTFAK & TARİFLER (/mutfak)
+- **Tarifler**: Standart içecek/yiyecek tarifleri
+- **Malzeme Ölçüleri**: Doğru porsiyonlar
+
+### YARDIM & NAVIGASYON
+- Bir sayfaya gitmek için: Sol menüden ilgili bölümü seç
+- QR taramak için: Sağ üst köşedeki QR butonu
+- Bildirimler: Sağ üst köşedeki zil ikonu
+- Profil: Sağ üst köşedeki profil resmi`;
+
+  // Rol bazlı erişim bilgisi
+  const roleInfo = `
+## ROL BAZLI ERİŞİM
+- **Barista/Stajyer**: Dashboard, Operasyonlar, Ekipman, Eğitim, Mutfak
+- **Supervisor**: + Personel yönetimi, Vardiya planlama, Raporlar
+- **HQ (Genel Merkez)**: Tüm modüllere erişim + Admin paneli
+- **Fabrika**: Dashboard, Fabrika modülü, Raporlar, Eğitim`;
+
+  // Ekipman bağlamı varsa ekle
+  let equipmentContextInfo = '';
+  if (equipmentContext) {
+    equipmentContextInfo = `
+## MEVCUT EKİPMAN BAĞLAMI
+- **Cihaz Tipi**: ${equipmentContext.type}
+${equipmentContext.serialNumber ? `- **Seri No**: ${equipmentContext.serialNumber}` : ''}
+${equipmentContext.branch ? `- **Şube**: ${equipmentContext.branch}` : ''}`;
+
+    if (equipmentContext.recentFaults && equipmentContext.recentFaults.length > 0) {
+      equipmentContextInfo += `\n- **Son Arızalar**:\n${equipmentContext.recentFaults.map(f => `  - ${f.description} (${f.date})`).join('\n')}`;
+    }
+    
+    if (equipmentContext.branchEquipment && equipmentContext.branchEquipment.length > 0) {
+      equipmentContextInfo += `\n\n## ŞUBE EKİPMAN LİSTESİ\n${equipmentContext.branchEquipment.map(e => `- ${e.name} (${e.type}${e.brand ? `, ${e.brand}` : ''}${e.model ? ` ${e.model}` : ''})`).join('\n')}`;
+    }
+  }
+
+  return `Sen DOSPRESSO kahve franchise yönetim sisteminin AI asistanısın.
+
+## GÖREVLER
+1. Ekipman bakımı, kalibrasyonu ve arıza giderme konularında yardım et
+2. DOSPRESSO sistemi ve standartları hakkında bilgi ver
+3. WebApp kullanımı ve navigasyon konusunda rehberlik et
+4. Şube prosedürleri ve çalışma standartları hakkında bilgilendir
+
+## KURALLAR
+- Her zaman Türkçe cevap ver
+- Kısa, net ve uygulanabilir cevaplar ver
+- Teknik terimleri basit açıkla
+- Güvenlik konularında dikkatli ol ve her zaman uzman yönlendirmesi öner
+- WebApp navigasyonu için sayfa yollarını (/) kullanarak yönlendir
+- Samimi ama profesyonel ol
+
+${dospressoInfo}
+${equipmentInfo}
+${webappGuide}
+${roleInfo}
+${equipmentContextInfo}`.trim();
+}
+
 // QR Code Generation for Equipment
 export async function generateEquipmentQR(equipmentId: number): Promise<string> {
   // QR data: equipment path for frontend routing
@@ -832,7 +990,14 @@ export async function answerQuestionWithRAG(
 // Enhanced Technical Assistant with fallback LLM (for $100/month budget)
 export async function answerTechnicalQuestion(
   question: string,
-  equipmentContext?: { type: string; serialNumber?: string; branch?: string; recentFaults?: Array<{ description: string; date: string }> },
+  equipmentContext?: { 
+    type: string; 
+    serialNumber?: string; 
+    branch?: string; 
+    recentFaults?: Array<{ description: string; date: string }>;
+    branchEquipment?: Array<{ name: string; type: string; brand?: string; model?: string }>;
+    knowledgeContext?: string;
+  },
   userId?: string,
   skipCache: boolean = false
 ): Promise<RAGResponse & { usedKnowledgeBase: boolean; systemMessage?: string }> {
@@ -863,8 +1028,21 @@ export async function answerTechnicalQuestion(
       contextParts.push(`Son Arızalar:\n${faultsText}`);
     }
     
+    // Add branch equipment list for context
+    if (equipmentContext.branchEquipment && equipmentContext.branchEquipment.length > 0) {
+      const equipmentList = equipmentContext.branchEquipment
+        .map(e => `- ${e.name} (${e.type})${e.brand ? `, ${e.brand}` : ''}${e.model ? ` ${e.model}` : ''}`)
+        .join('\n');
+      contextParts.push(`Şubedeki Ekipmanlar:\n${equipmentList}`);
+    }
+    
+    // Add equipment knowledge context
+    if (equipmentContext.knowledgeContext) {
+      contextParts.push(`İlgili Bilgi Bankası:\n${equipmentContext.knowledgeContext}`);
+    }
+    
     if (contextParts.length > 0) {
-      enrichedQuestion = `${contextParts.join('\n')}\n\nSoru: ${question}`;
+      enrichedQuestion = `${contextParts.join('\n\n')}\n\nSoru: ${question}`;
     }
   }
 
@@ -902,13 +1080,7 @@ export async function answerTechnicalQuestion(
   }
 
   try {
-    const systemPrompt = `Sen DOSPRESSO kahve dükkanları için bir AI teknik asistanısın. 
-Görevin ekipman ayarları, kalibrasyonlar, arıza giderme ve teknik detaylar hakkında yardımcı olmak.
-${equipmentContext ? `Şu anda ${equipmentContext.type} cihazı hakkında sorular cevaplanıyor.` : ''}
-
-Türkçe, net ve teknik olarak doğru cevaplar ver. 
-Eğer kesin bilgi yoksa, genel kahve ekipmanları bilgisinden yararlanarak yardımcı ol.
-Samimi ve profesyonel ol.`;
+    const systemPrompt = buildDospressoSystemPrompt(equipmentContext);
 
     const response = await openai.chat.completions.create({
       model: CHAT_MODEL,
