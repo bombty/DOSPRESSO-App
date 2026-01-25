@@ -27,7 +27,8 @@ import {
   Sparkles,
   AlertTriangle,
   Lock,
-  Cog
+  Cog,
+  BookOpen
 } from "lucide-react";
 
 const AdminDashboard = lazy(() => import("./admin/index"));
@@ -55,6 +56,7 @@ const AdminFabrikaPinYonetimi = lazy(() => import("./admin/fabrika-pin-yonetimi"
 const AdminFabrikaKaliteKriterleri = lazy(() => import("./admin/fabrika-kalite-kriterleri"));
 const IcerikStudyosu = lazy(() => import("./icerik-studyosu"));
 const AdminSeed = lazy(() => import("./admin-seed"));
+const AdminAIBilgiYonetimi = lazy(() => import("./admin/ai-bilgi-yonetimi"));
 
 interface TabConfig {
   id: string;
@@ -144,6 +146,15 @@ const ADMIN_TABS: TabConfig[] = [
     permissionModule: "ai_settings",
     group: "sistem",
     component: AdminYapayZekaAyarlari
+  },
+  {
+    id: "ai-bilgi-yonetimi",
+    label: "AI Knowledge",
+    labelTr: "AI Bilgi Yönetimi",
+    icon: <BookOpen className="h-4 w-4" />,
+    permissionModule: "ai_settings",
+    group: "sistem",
+    component: AdminAIBilgiYonetimi
   },
   {
     id: "ai-maliyetler",
@@ -330,6 +341,7 @@ const TAB_URL_MAP: Record<string, string> = {
   "email-ayarlari": "/admin/email-ayarlari",
   "servis-mail": "/admin/servis-mail",
   "yapay-zeka": "/admin/yapay-zeka",
+  "ai-bilgi-yonetimi": "/admin/ai-bilgi-yonetimi",
   "ai-maliyetler": "/admin/ai-maliyetler",
   "yedekleme": "/admin/yedekleme",
   "aktivite-loglari": "/admin/aktivite-loglari",
