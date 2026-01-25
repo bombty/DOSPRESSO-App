@@ -1658,22 +1658,33 @@ function RecipeDialog({ open, onOpenChange, recipeId, categories, duplicatingRec
         },
       };
       
+      // categoryId zorunlu alan - yeni reçete için kontrol et
+      if (!recipeId && !data.categoryId) {
+        throw new Error("Kategori seçimi zorunludur");
+      }
+      
+      const payload: Record<string, any> = {
+        nameTr: data.nameTr,
+        nameEn: data.nameEn,
+        code,
+        description: data.description,
+        photoUrl: data.photoUrl || null,
+        difficulty: data.difficulty,
+        estimatedMinutes: Number(data.estimatedMinutes),
+        coffeeType: data.coffeeType,
+        sizes,
+      };
+      
+      // categoryId sadece değer varsa ekle (update durumunda değişmeyebilir)
+      if (data.categoryId) {
+        payload.categoryId = Number(data.categoryId);
+      }
+      
       const res = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ 
-          nameTr: data.nameTr,
-          nameEn: data.nameEn,
-          code,
-          description: data.description,
-          photoUrl: data.photoUrl || null,
-          difficulty: data.difficulty,
-          estimatedMinutes: Number(data.estimatedMinutes),
-          categoryId: data.categoryId ? Number(data.categoryId) : null,
-          coffeeType: data.coffeeType,
-          sizes,
-        }),
+        body: JSON.stringify(payload),
       });
       if (!res.ok) throw new Error(await res.text());
       return res.json();
