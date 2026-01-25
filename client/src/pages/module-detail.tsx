@@ -13,11 +13,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Form, FormControl, FormField, FormItem, FormLabel } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { BookOpen, CheckCircle, Clock, Lightbulb, ArrowLeft, Edit2, Save, Sparkles, Plus, Trash2, Image, X, Eye, ChevronRight, ChevronLeft, Award, RotateCcw } from "lucide-react";
+import { BookOpen, CheckCircle, Clock, Lightbulb, ArrowLeft, Edit2, Save, Sparkles, Plus, Trash2, Image, X, Eye, ChevronRight, ChevronLeft, Award, RotateCcw, MessageCircle, Presentation, TrendingUp, ShoppingBag, Users, Thermometer, Package, AlertCircle, Loader2 } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { TrainingModule } from "@shared/schema";
+import { TrainingModule, isHQRole } from "@shared/schema";
 
 const objectivesEditSchema = z.object({
   objectives: z.array(z.string()).default([]),
@@ -70,8 +70,8 @@ export default function ModuleDetail() {
   // Store referrer page for back navigation
   const referrerPage = typeof window !== 'undefined' ? sessionStorage.getItem('academyReferrer') : null;
   
-  // Determine if user is HQ/admin who can edit (only admin, hq, hq_support can edit)
-  const isEditor = user?.role === 'admin' || user?.role === 'hq' || user?.role === 'hq_support';
+  // Determine if user is HQ/admin who can edit
+  const isEditor = user?.role === 'admin' || isHQRole(user?.role as any);
   
   // Auto-mark module as started when opened by student
   useEffect(() => {
@@ -94,6 +94,15 @@ export default function ModuleDetail() {
   const [previewQuizAnswers, setPreviewQuizAnswers] = useState<Record<number, number>>({});
   const [isMarkingComplete, setIsMarkingComplete] = useState(false);
   const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
+  
+  // AI Sales & Marketing states
+  const [isGeneratingSales, setIsGeneratingSales] = useState(false);
+  const [isGeneratingPresentation, setIsGeneratingPresentation] = useState(false);
+  const [isGeneratingMarketing, setIsGeneratingMarketing] = useState(false);
+  const [isGeneratingRoleplay, setIsGeneratingRoleplay] = useState(false);
+  const [activeRoleplayScenario, setActiveRoleplayScenario] = useState<number | null>(null);
+  const [roleplayMessages, setRoleplayMessages] = useState<Array<{role: 'user' | 'customer'; message: string}>>([]);
+  const [roleplayInput, setRoleplayInput] = useState("");
 
   const { data: module, isLoading } = useQuery({
     queryKey: [`/api/training/modules/${moduleId}`],
@@ -691,8 +700,8 @@ export default function ModuleDetail() {
                     <>
                       <div className="w-full space-y-2 sm:space-y-3">
                         {module.quiz.map((q: typeof module.quiz[0], idx: number) => (
-                          <Card key={idx} className="border-l-4 border-l-success">
-                            <CardContent className="pt-4">
+                          <div key={idx} className="bg-card rounded-md border-l-4 border-l-success shadow-sm">
+                            <div className="p-4">
                               <p className="font-medium mb-3">{idx + 1}. {q.question_text || `Soru ${idx + 1}`}</p>
                               <div className="flex flex-col gap-3 sm:gap-4">
                                 {q.options?.map((opt: string, optIdx: number) => (
@@ -717,8 +726,8 @@ export default function ModuleDetail() {
                                   </button>
                                 ))}
                               </div>
-                            </CardContent>
-                          </Card>
+                            </div>
+                          </div>
                         ))}
                       </div>
                       <div className="flex gap-2 justify-between pt-4">
@@ -847,32 +856,46 @@ export default function ModuleDetail() {
 
       {/* Content Tabs */}
       <Tabs defaultValue="overview" className="w-full">
-        <TabsList className="grid w-full grid-cols-6">
-          <TabsTrigger value="overview">
-            <BookOpen className="w-4 h-4 mr-2" />
-            Genel
-          </TabsTrigger>
-          <TabsTrigger value="objectives">
-            <Lightbulb className="w-4 h-4 mr-2" />
-            Hedefler ({learningObjectives.length})
-          </TabsTrigger>
-          <TabsTrigger value="steps">
-            <CheckCircle className="w-4 h-4 mr-2" />
-            Adımlar ({steps.length})
-          </TabsTrigger>
-          <TabsTrigger value="quiz">
-            <BookOpen className="w-4 h-4 mr-2" />
-            Quiz ({module?.quiz?.length || 0})
-          </TabsTrigger>
-          <TabsTrigger value="scenarios">
-            <Clock className="w-4 h-4 mr-2" />
-            Senaryolar ({scenarioTasks.length})
-          </TabsTrigger>
-          <TabsTrigger value="checklist">
-            <CheckCircle className="w-4 h-4 mr-2" />
-            Kontrol
-          </TabsTrigger>
-        </TabsList>
+        <div className="overflow-x-auto">
+          <TabsList className="inline-flex w-max min-w-full">
+            <TabsTrigger value="overview">
+              <BookOpen className="w-4 h-4 mr-2" />
+              Genel
+            </TabsTrigger>
+            <TabsTrigger value="objectives">
+              <Lightbulb className="w-4 h-4 mr-2" />
+              Hedefler ({learningObjectives.length})
+            </TabsTrigger>
+            <TabsTrigger value="steps">
+              <CheckCircle className="w-4 h-4 mr-2" />
+              Adımlar ({steps.length})
+            </TabsTrigger>
+            <TabsTrigger value="quiz">
+              <BookOpen className="w-4 h-4 mr-2" />
+              Quiz ({module?.quiz?.length || 0})
+            </TabsTrigger>
+            <TabsTrigger value="scenarios">
+              <Clock className="w-4 h-4 mr-2" />
+              Senaryolar ({scenarioTasks.length})
+            </TabsTrigger>
+            <TabsTrigger value="checklist">
+              <CheckCircle className="w-4 h-4 mr-2" />
+              Kontrol
+            </TabsTrigger>
+            <TabsTrigger value="sales-coach">
+              <MessageCircle className="w-4 h-4 mr-2" />
+              Satış Koçu
+            </TabsTrigger>
+            <TabsTrigger value="presentation">
+              <Presentation className="w-4 h-4 mr-2" />
+              Sunum
+            </TabsTrigger>
+            <TabsTrigger value="marketing">
+              <TrendingUp className="w-4 h-4 mr-2" />
+              Pazarlama
+            </TabsTrigger>
+          </TabsList>
+        </div>
 
         {/* Overview */}
         <TabsContent value="overview" className="grid grid-cols-1 gap-2 sm:gap-3">
@@ -1650,6 +1673,474 @@ export default function ModuleDetail() {
                           <p className="font-medium text-sm">{item.title}</p>
                           <p className="text-sm text-muted-foreground">{item.description}</p>
                         </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Sales Coach Tab - AI Satış Koçu */}
+        <TabsContent value="sales-coach" className="w-full space-y-3">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <MessageCircle className="w-5 h-5 text-primary" />
+                  AI Satış Koçu
+                </CardTitle>
+                <CardDescription>
+                  Ürün tanıtım cümleleri ve müşteri sorularına yanıtlar
+                </CardDescription>
+              </div>
+              {isEditor && (
+                <Button 
+                  onClick={async () => {
+                    setIsGeneratingSales(true);
+                    try {
+                      const res = await fetch(`/api/training/modules/${moduleId}/generate-sales-tips`, {
+                        method: 'POST',
+                        credentials: 'include'
+                      });
+                      if (res.ok) {
+                        queryClient.invalidateQueries({ queryKey: [`/api/training/modules/${moduleId}`] });
+                        toast({ title: "Başarılı", description: "Satış ipuçları oluşturuldu" });
+                      }
+                    } catch (error) {
+                      toast({ title: "Hata", description: "Oluşturulamadı", variant: "destructive" });
+                    } finally {
+                      setIsGeneratingSales(false);
+                    }
+                  }}
+                  disabled={isGeneratingSales}
+                  size="sm"
+                >
+                  {isGeneratingSales ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Sparkles className="w-4 h-4 mr-2" />}
+                  AI ile Oluştur
+                </Button>
+              )}
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* Sales Tips */}
+              <div className="space-y-3">
+                <h4 className="font-semibold flex items-center gap-2">
+                  <ShoppingBag className="w-4 h-4" />
+                  Satış Cümleleri
+                </h4>
+                {(module?.salesTips as Array<{phrase: string; context: string; emotion?: string}> || []).length === 0 ? (
+                  <p className="text-muted-foreground text-sm italic">
+                    Henüz satış ipucu eklenmemiş. AI ile oluşturabilirsiniz.
+                  </p>
+                ) : (
+                  <div className="grid gap-3">
+                    {(module?.salesTips as Array<{phrase: string; context: string; emotion?: string}> || []).map((tip, idx) => (
+                      <Card key={idx} className="border-l-4 border-l-green-500">
+                        <CardContent className="pt-4">
+                          <p className="font-medium text-sm mb-1">"{tip.phrase}"</p>
+                          <p className="text-xs text-muted-foreground">{tip.context}</p>
+                          {tip.emotion && (
+                            <Badge variant="outline" className="mt-2">{tip.emotion}</Badge>
+                          )}
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Customer Q&A */}
+              <div className="space-y-3">
+                <h4 className="font-semibold flex items-center gap-2">
+                  <Users className="w-4 h-4" />
+                  Müşteri Soru-Cevap
+                </h4>
+                {(module?.marketingContent as any)?.customerQA?.length > 0 ? (
+                  <div className="space-y-2">
+                    {(module?.marketingContent as any)?.customerQA?.map((qa: {question: string; answer: string}, idx: number) => (
+                      <Card key={idx}>
+                        <CardContent className="pt-4 space-y-2">
+                          <p className="text-sm font-medium flex items-center gap-2">
+                            <span className="bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded text-xs">S</span>
+                            {qa.question}
+                          </p>
+                          <p className="text-sm text-muted-foreground flex items-start gap-2">
+                            <span className="bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 px-2 py-0.5 rounded text-xs shrink-0">C</span>
+                            {qa.answer}
+                          </p>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-muted-foreground text-sm italic">
+                    Müşteri soruları ve cevapları AI ile oluşturulacak.
+                  </p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Presentation Guide Tab - Sunum Rehberi */}
+        <TabsContent value="presentation" className="w-full space-y-3">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <Presentation className="w-5 h-5 text-primary" />
+                  Profesyonel Sunum Rehberi
+                </CardTitle>
+                <CardDescription>
+                  Ürün servisi, saklama ve sunum talimatları
+                </CardDescription>
+              </div>
+              {isEditor && (
+                <Button 
+                  onClick={async () => {
+                    setIsGeneratingPresentation(true);
+                    try {
+                      const res = await fetch(`/api/training/modules/${moduleId}/generate-presentation`, {
+                        method: 'POST',
+                        credentials: 'include'
+                      });
+                      if (res.ok) {
+                        queryClient.invalidateQueries({ queryKey: [`/api/training/modules/${moduleId}`] });
+                        toast({ title: "Başarılı", description: "Sunum rehberi oluşturuldu" });
+                      }
+                    } catch (error) {
+                      toast({ title: "Hata", description: "Oluşturulamadı", variant: "destructive" });
+                    } finally {
+                      setIsGeneratingPresentation(false);
+                    }
+                  }}
+                  disabled={isGeneratingPresentation}
+                  size="sm"
+                >
+                  {isGeneratingPresentation ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Sparkles className="w-4 h-4 mr-2" />}
+                  AI ile Oluştur
+                </Button>
+              )}
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {!(module?.presentationGuide as any) ? (
+                <p className="text-muted-foreground text-sm italic">
+                  Sunum rehberi henüz oluşturulmamış. AI ile oluşturabilirsiniz.
+                </p>
+              ) : (
+                <div className="grid gap-4">
+                  {/* Serving Instructions */}
+                  {(module?.presentationGuide as any)?.servingInstructions && (
+                    <Card className="border-l-4 border-l-blue-500">
+                      <CardContent className="pt-4">
+                        <div className="flex items-center gap-2 mb-2">
+                          <CheckCircle className="w-4 h-4 text-blue-500" />
+                          <h5 className="font-semibold text-sm">Sunum Talimatları</h5>
+                        </div>
+                        <p className="text-sm">{(module?.presentationGuide as any)?.servingInstructions}</p>
+                      </CardContent>
+                    </Card>
+                  )}
+
+                  {/* Thawing Instructions */}
+                  {(module?.presentationGuide as any)?.thawingInstructions && (
+                    <Card className="border-l-4 border-l-cyan-500">
+                      <CardContent className="pt-4">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Package className="w-4 h-4 text-cyan-500" />
+                          <h5 className="font-semibold text-sm">Çözündürme Talimatları</h5>
+                        </div>
+                        <p className="text-sm">{(module?.presentationGuide as any)?.thawingInstructions}</p>
+                      </CardContent>
+                    </Card>
+                  )}
+
+                  {/* Heating Instructions */}
+                  {(module?.presentationGuide as any)?.heatingInstructions && (
+                    <Card className="border-l-4 border-l-orange-500">
+                      <CardContent className="pt-4">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Thermometer className="w-4 h-4 text-orange-500" />
+                          <h5 className="font-semibold text-sm">Isıtma Talimatları</h5>
+                        </div>
+                        <p className="text-sm">{(module?.presentationGuide as any)?.heatingInstructions}</p>
+                      </CardContent>
+                    </Card>
+                  )}
+
+                  {/* Plating Tips */}
+                  {(module?.presentationGuide as any)?.platingTips && (
+                    <Card className="border-l-4 border-l-purple-500">
+                      <CardContent className="pt-4">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Presentation className="w-4 h-4 text-purple-500" />
+                          <h5 className="font-semibold text-sm">Tabak Düzenleme</h5>
+                        </div>
+                        <p className="text-sm">{(module?.presentationGuide as any)?.platingTips}</p>
+                      </CardContent>
+                    </Card>
+                  )}
+
+                  {/* Storage Notes */}
+                  {(module?.presentationGuide as any)?.storageNotes && (
+                    <Card className="border-l-4 border-l-gray-500">
+                      <CardContent className="pt-4">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Package className="w-4 h-4 text-gray-500" />
+                          <h5 className="font-semibold text-sm">Saklama Notları</h5>
+                        </div>
+                        <p className="text-sm">{(module?.presentationGuide as any)?.storageNotes}</p>
+                      </CardContent>
+                    </Card>
+                  )}
+
+                  {/* Allergen Info */}
+                  {(module?.presentationGuide as any)?.allergenInfo && (
+                    <Card className="border-l-4 border-l-red-500">
+                      <CardContent className="pt-4">
+                        <div className="flex items-center gap-2 mb-2">
+                          <AlertCircle className="w-4 h-4 text-red-500" />
+                          <h5 className="font-semibold text-sm">Alerjen Bilgisi</h5>
+                        </div>
+                        <p className="text-sm">{(module?.presentationGuide as any)?.allergenInfo}</p>
+                      </CardContent>
+                    </Card>
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Marketing Tab - Pazarlama */}
+        <TabsContent value="marketing" className="w-full space-y-3">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <TrendingUp className="w-5 h-5 text-primary" />
+                  Pazarlama & Satış Geliştirme
+                </CardTitle>
+                <CardDescription>
+                  Sosyal medya, upselling ve ürün hikayesi
+                </CardDescription>
+              </div>
+              {isEditor && (
+                <Button 
+                  onClick={async () => {
+                    setIsGeneratingMarketing(true);
+                    try {
+                      const res = await fetch(`/api/training/modules/${moduleId}/generate-marketing`, {
+                        method: 'POST',
+                        credentials: 'include'
+                      });
+                      if (res.ok) {
+                        queryClient.invalidateQueries({ queryKey: [`/api/training/modules/${moduleId}`] });
+                        toast({ title: "Başarılı", description: "Pazarlama içerikleri oluşturuldu" });
+                      }
+                    } catch (error) {
+                      toast({ title: "Hata", description: "Oluşturulamadı", variant: "destructive" });
+                    } finally {
+                      setIsGeneratingMarketing(false);
+                    }
+                  }}
+                  disabled={isGeneratingMarketing}
+                  size="sm"
+                >
+                  {isGeneratingMarketing ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Sparkles className="w-4 h-4 mr-2" />}
+                  AI ile Oluştur
+                </Button>
+              )}
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {!(module?.marketingContent as any) ? (
+                <p className="text-muted-foreground text-sm italic">
+                  Pazarlama içerikleri henüz oluşturulmamış. AI ile oluşturabilirsiniz.
+                </p>
+              ) : (
+                <div className="space-y-4">
+                  {/* Product Story */}
+                  {(module?.marketingContent as any)?.productStory && (
+                    <div>
+                      <h4 className="font-semibold text-sm mb-2">Ürün Hikayesi</h4>
+                      <Card className="bg-muted/50">
+                        <CardContent className="pt-4">
+                          <p className="text-sm italic">"{(module?.marketingContent as any)?.productStory}"</p>
+                        </CardContent>
+                      </Card>
+                    </div>
+                  )}
+
+                  {/* Social Media Captions */}
+                  {(module?.marketingContent as any)?.socialMediaCaptions?.length > 0 && (
+                    <div>
+                      <h4 className="font-semibold text-sm mb-2">Sosyal Medya Açıklamaları</h4>
+                      <div className="grid gap-2">
+                        {(module?.marketingContent as any)?.socialMediaCaptions?.map((caption: string, idx: number) => (
+                          <Card key={idx} className="border-l-4 border-l-pink-500">
+                            <CardContent className="pt-3 pb-3">
+                              <p className="text-sm">{caption}</p>
+                            </CardContent>
+                          </Card>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Upselling Phrases */}
+                  {(module?.marketingContent as any)?.upsellingPhrases?.length > 0 && (
+                    <div>
+                      <h4 className="font-semibold text-sm mb-2 flex items-center gap-2">
+                        <TrendingUp className="w-4 h-4" />
+                        Upselling Önerileri
+                      </h4>
+                      <div className="grid gap-2">
+                        {(module?.marketingContent as any)?.upsellingPhrases?.map((phrase: string, idx: number) => (
+                          <Card key={idx} className="border-l-4 border-l-green-500">
+                            <CardContent className="pt-3 pb-3">
+                              <p className="text-sm">"{phrase}"</p>
+                            </CardContent>
+                          </Card>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Target Audience */}
+                  {(module?.marketingContent as any)?.targetAudience && (
+                    <div>
+                      <h4 className="font-semibold text-sm mb-2">Hedef Kitle</h4>
+                      <Badge variant="outline" className="text-sm">
+                        {(module?.marketingContent as any)?.targetAudience}
+                      </Badge>
+                    </div>
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* AI Roleplay Scenarios */}
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <Users className="w-5 h-5 text-primary" />
+                  AI Rol Yapma Senaryoları
+                </CardTitle>
+                <CardDescription>
+                  Müşteri ile satış diyaloğu simülasyonu
+                </CardDescription>
+              </div>
+              {isEditor && (
+                <Button 
+                  onClick={async () => {
+                    setIsGeneratingRoleplay(true);
+                    try {
+                      const res = await fetch(`/api/training/modules/${moduleId}/generate-roleplay`, {
+                        method: 'POST',
+                        credentials: 'include'
+                      });
+                      if (res.ok) {
+                        queryClient.invalidateQueries({ queryKey: [`/api/training/modules/${moduleId}`] });
+                        toast({ title: "Başarılı", description: "Rol yapma senaryoları oluşturuldu" });
+                      }
+                    } catch (error) {
+                      toast({ title: "Hata", description: "Oluşturulamadı", variant: "destructive" });
+                    } finally {
+                      setIsGeneratingRoleplay(false);
+                    }
+                  }}
+                  disabled={isGeneratingRoleplay}
+                  size="sm"
+                >
+                  {isGeneratingRoleplay ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Sparkles className="w-4 h-4 mr-2" />}
+                  Senaryolar Oluştur
+                </Button>
+              )}
+            </CardHeader>
+            <CardContent>
+              {(module?.aiRoleplayScenarios as Array<{scenarioId: string; title: string; customerType: string; initialMessage: string; expectedResponses: string[]; tips: string[]}> || []).length === 0 ? (
+                <p className="text-muted-foreground text-sm italic">
+                  Henüz senaryo oluşturulmamış. AI ile oluşturabilirsiniz.
+                </p>
+              ) : (
+                <div className="grid gap-3">
+                  {(module?.aiRoleplayScenarios as Array<{scenarioId: string; title: string; customerType: string; initialMessage: string; expectedResponses: string[]; tips: string[]}> || []).map((scenario, idx) => (
+                    <Card key={idx} className="border-l-4 border-l-indigo-500 hover-elevate cursor-pointer"
+                      onClick={() => {
+                        setActiveRoleplayScenario(activeRoleplayScenario === idx ? null : idx);
+                        setRoleplayMessages([{ role: 'customer', message: scenario.initialMessage }]);
+                        setRoleplayInput("");
+                      }}
+                    >
+                      <CardContent className="pt-4">
+                        <div className="flex items-center justify-between mb-2">
+                          <h5 className="font-semibold text-sm">{scenario.title}</h5>
+                          <Badge variant="secondary">{scenario.customerType}</Badge>
+                        </div>
+                        <p className="text-sm text-muted-foreground mb-2">
+                          Müşteri: "{scenario.initialMessage}"
+                        </p>
+                        
+                        {activeRoleplayScenario === idx && (
+                          <div className="mt-4 space-y-3 border-t pt-4">
+                            {/* Chat messages */}
+                            <div className="space-y-2 max-h-60 overflow-y-auto">
+                              {roleplayMessages.map((msg, msgIdx) => (
+                                <div key={msgIdx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                                  <div className={`max-w-[80%] p-2 rounded-lg text-sm ${
+                                    msg.role === 'user' 
+                                      ? 'bg-primary text-primary-foreground' 
+                                      : 'bg-muted'
+                                  }`}>
+                                    {msg.message}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                            
+                            {/* Input */}
+                            <div className="flex gap-2">
+                              <Input 
+                                value={roleplayInput}
+                                onChange={(e) => setRoleplayInput(e.target.value)}
+                                placeholder="Cevabınızı yazın..."
+                                className="flex-1"
+                                onKeyPress={(e) => {
+                                  if (e.key === 'Enter' && roleplayInput.trim()) {
+                                    setRoleplayMessages([...roleplayMessages, { role: 'user', message: roleplayInput }]);
+                                    setRoleplayInput("");
+                                  }
+                                }}
+                              />
+                              <Button 
+                                size="sm"
+                                onClick={() => {
+                                  if (roleplayInput.trim()) {
+                                    setRoleplayMessages([...roleplayMessages, { role: 'user', message: roleplayInput }]);
+                                    setRoleplayInput("");
+                                  }
+                                }}
+                              >
+                                Gönder
+                              </Button>
+                            </div>
+                            
+                            {/* Tips */}
+                            {scenario.tips?.length > 0 && (
+                              <div className="bg-yellow-50 dark:bg-yellow-900/20 p-3 rounded-lg">
+                                <p className="text-xs font-semibold mb-1">İpuçları:</p>
+                                <ul className="text-xs text-muted-foreground space-y-1">
+                                  {scenario.tips.map((tip, tipIdx) => (
+                                    <li key={tipIdx}>• {tip}</li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </CardContent>
                     </Card>
                   ))}

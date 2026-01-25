@@ -6156,6 +6156,241 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
     }
   });
 
+
+  // Generate sales tips with AI
+  app.post('/api/training/modules/:id/generate-sales-tips', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      if (!isHQRole(user.role) && user.role !== 'admin') {
+        return res.status(403).json({ message: "Bu işlem için yetkiniz yok" });
+      }
+
+      const moduleId = parseInt(req.params.id);
+      const [module] = await db.select().from(trainingModules).where(eq(trainingModules.id, moduleId));
+      
+      if (!module) {
+        return res.status(404).json({ message: "Modül bulunamadı" });
+      }
+
+      const prompt = `Sen bir kahve dükkanı satış eğitmenisin. "${module.title}" konulu eğitim modülü için satış cümleleri ve müşteri soruları/cevapları oluştur.
+
+Modül açıklaması: ${module.description || 'Belirtilmemiş'}
+
+JSON formatında yanıt ver:
+{
+  "salesTips": [
+    {"phrase": "satış cümlesi", "context": "ne zaman kullanılmalı", "emotion": "samimi/heyecanlı/profesyonel"}
+  ],
+  "customerQA": [
+    {"question": "müşteri sorusu", "answer": "ideal cevap"}
+  ]
+}
+
+En az 5 satış cümlesi ve 5 soru-cevap oluştur. Türkçe olmalı.`;
+
+      const response = await openai.chat.completions.create({
+        model: "gpt-4o",
+        messages: [{ role: "user", content: prompt }],
+        response_format: { type: "json_object" },
+        temperature: 0.7,
+      });
+
+      const content = response.choices[0].message.content;
+      const parsed = JSON.parse(content || '{}');
+
+      await db.update(trainingModules)
+        .set({ 
+          salesTips: parsed.salesTips || [],
+          marketingContent: {
+            ...(module.marketingContent as object || {}),
+            customerQA: parsed.customerQA || [],
+          },
+          updatedAt: new Date()
+        })
+        .where(eq(trainingModules.id, moduleId));
+
+      res.json({ success: true, salesTips: parsed.salesTips, customerQA: parsed.customerQA });
+    } catch (error: any) {
+      console.error("Generate sales tips error:", error);
+      res.status(500).json({ message: "Satış ipuçları oluşturulamadı" });
+    }
+  });
+
+  // Generate presentation guide with AI
+  app.post('/api/training/modules/:id/generate-presentation', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      if (!isHQRole(user.role) && user.role !== 'admin') {
+        return res.status(403).json({ message: "Bu işlem için yetkiniz yok" });
+      }
+
+      const moduleId = parseInt(req.params.id);
+      const [module] = await db.select().from(trainingModules).where(eq(trainingModules.id, moduleId));
+      
+      if (!module) {
+        return res.status(404).json({ message: "Modül bulunamadı" });
+      }
+
+      const prompt = `Sen bir kahve dükkanı ürün sunumu uzmanısın. "${module.title}" ürünü için profesyonel sunum rehberi oluştur.
+
+Modül açıklaması: ${module.description || 'Belirtilmemiş'}
+
+DİKKAT: Ürünler genelde donuk veya kuru olarak şubeye gelir. Şubede sıfırdan hazırlanmaz.
+
+JSON formatında yanıt ver:
+{
+  "servingInstructions": "sunum talimatları (nasıl servis edilmeli)",
+  "thawingInstructions": "çözündürme talimatları (varsa, donuk ürün için)",
+  "heatingInstructions": "ısıtma talimatları (varsa)",
+  "platingTips": "tabak düzenleme ve prezentasyon ipuçları",
+  "storageNotes": "saklama koşulları ve raf ömrü",
+  "allergenInfo": "olası alerjenler (süt, gluten, yumurta vb.)"
+}
+
+Türkçe ve profesyonel olmalı.`;
+
+      const response = await openai.chat.completions.create({
+        model: "gpt-4o",
+        messages: [{ role: "user", content: prompt }],
+        response_format: { type: "json_object" },
+        temperature: 0.7,
+      });
+
+      const content = response.choices[0].message.content;
+      const parsed = JSON.parse(content || '{}');
+
+      await db.update(trainingModules)
+        .set({ 
+          presentationGuide: parsed,
+          updatedAt: new Date()
+        })
+        .where(eq(trainingModules.id, moduleId));
+
+      res.json({ success: true, presentationGuide: parsed });
+    } catch (error: any) {
+      console.error("Generate presentation error:", error);
+      res.status(500).json({ message: "Sunum rehberi oluşturulamadı" });
+    }
+  });
+
+  // Generate marketing content with AI
+  app.post('/api/training/modules/:id/generate-marketing', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      if (!isHQRole(user.role) && user.role !== 'admin') {
+        return res.status(403).json({ message: "Bu işlem için yetkiniz yok" });
+      }
+
+      const moduleId = parseInt(req.params.id);
+      const [module] = await db.select().from(trainingModules).where(eq(trainingModules.id, moduleId));
+      
+      if (!module) {
+        return res.status(404).json({ message: "Modül bulunamadı" });
+      }
+
+      const prompt = `Sen bir kahve dükkanı pazarlama ve satış uzmanısın. "${module.title}" için pazarlama içerikleri oluştur.
+
+Modül açıklaması: ${module.description || 'Belirtilmemiş'}
+
+JSON formatında yanıt ver:
+{
+  "productStory": "ürünün ilgi çekici hikayesi (2-3 cümle)",
+  "socialMediaCaptions": ["instagram/sosyal medya açıklaması 1", "açıklama 2", "açıklama 3"],
+  "upsellingPhrases": ["upselling cümlesi 1", "cümle 2", "cümle 3"],
+  "targetAudience": "hedef kitle tanımı"
+}
+
+Türkçe, samimi ve çağdaş bir dil kullan.`;
+
+      const response = await openai.chat.completions.create({
+        model: "gpt-4o",
+        messages: [{ role: "user", content: prompt }],
+        response_format: { type: "json_object" },
+        temperature: 0.8,
+      });
+
+      const content = response.choices[0].message.content;
+      const parsed = JSON.parse(content || '{}');
+
+      const existingMarketing = module.marketingContent as object || {};
+      await db.update(trainingModules)
+        .set({ 
+          marketingContent: {
+            ...existingMarketing,
+            productStory: parsed.productStory,
+            socialMediaCaptions: parsed.socialMediaCaptions,
+            upsellingPhrases: parsed.upsellingPhrases,
+            targetAudience: parsed.targetAudience,
+          },
+          updatedAt: new Date()
+        })
+        .where(eq(trainingModules.id, moduleId));
+
+      res.json({ success: true, marketingContent: parsed });
+    } catch (error: any) {
+      console.error("Generate marketing error:", error);
+      res.status(500).json({ message: "Pazarlama içerikleri oluşturulamadı" });
+    }
+  });
+
+  // Generate roleplay scenarios with AI
+  app.post('/api/training/modules/:id/generate-roleplay', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      if (!isHQRole(user.role) && user.role !== 'admin') {
+        return res.status(403).json({ message: "Bu işlem için yetkiniz yok" });
+      }
+
+      const moduleId = parseInt(req.params.id);
+      const [module] = await db.select().from(trainingModules).where(eq(trainingModules.id, moduleId));
+      
+      if (!module) {
+        return res.status(404).json({ message: "Modül bulunamadı" });
+      }
+
+      const prompt = `Sen bir kahve dükkanı satış eğitmenisin. "${module.title}" için interaktif rol yapma senaryoları oluştur.
+
+Her senaryo farklı bir müşteri tipi olsun: meraklı, kararsız, aceleci, şikayetçi
+
+JSON formatında yanıt ver:
+{
+  "scenarios": [
+    {
+      "scenarioId": "benzersiz_id",
+      "title": "senaryo başlığı",
+      "customerType": "meraklı/kararsız/aceleci/şikayetçi",
+      "initialMessage": "müşterinin ilk sorusu veya yorumu",
+      "expectedResponses": ["ideal yanıt 1", "alternatif yanıt 2"],
+      "tips": ["ipucu 1", "ipucu 2"]
+    }
+  ]
+}
+
+4 farklı senaryo oluştur. Türkçe ve gerçekçi olmalı.`;
+
+      const response = await openai.chat.completions.create({
+        model: "gpt-4o",
+        messages: [{ role: "user", content: prompt }],
+        response_format: { type: "json_object" },
+        temperature: 0.8,
+      });
+
+      const content = response.choices[0].message.content;
+      const parsed = JSON.parse(content || '{}');
+
+      await db.update(trainingModules)
+        .set({ 
+          aiRoleplayScenarios: parsed.scenarios || [],
+          updatedAt: new Date()
+        })
+        .where(eq(trainingModules.id, moduleId));
+
+      res.json({ success: true, scenarios: parsed.scenarios });
+    } catch (error: any) {
+      console.error("Generate roleplay error:", error);
+      res.status(500).json({ message: "Senaryolar oluşturulamadı" });
+    }
+  });
   // Add video to module (admin/coach only)
   app.post('/api/training/modules/:id/videos', isAuthenticated, async (req, res) => {
     try {

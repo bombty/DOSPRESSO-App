@@ -2148,6 +2148,33 @@ export const trainingModules = pgTable("training_modules", {
   examPassingScore: integer("exam_passing_score").default(70), // Passing score for final exam
   maxRetries: integer("max_retries").default(3), // Max exam retry attempts
   isActive: boolean("is_active").default(true), // Active/inactive status
+  
+  // AI Satış Koçu & Pazarlama Desteği
+  salesTips: jsonb("sales_tips").$type<Array<{phrase: string; context: string; emotion?: string}>>().default([]), // AI-generated sales phrases
+  presentationGuide: jsonb("presentation_guide").$type<{
+    servingInstructions: string; // Sunum talimatları
+    thawingInstructions?: string; // Çözündürme talimatları (donuk ürünler için)
+    heatingInstructions?: string; // Isıtma talimatları
+    platingTips?: string; // Tabak düzenleme ipuçları
+    storageNotes?: string; // Saklama notları
+    allergenInfo?: string; // Alerjen bilgisi
+  }>(), // Profesyonel sunum rehberi
+  marketingContent: jsonb("marketing_content").$type<{
+    socialMediaCaptions?: string[]; // Sosyal medya açıklamaları
+    upsellingPhrases?: string[]; // Upselling önerileri
+    customerQA?: Array<{question: string; answer: string}>; // Müşteri S&C
+    productStory?: string; // Ürün hikayesi
+    targetAudience?: string; // Hedef kitle
+  }>(), // Pazarlama içerikleri
+  aiRoleplayScenarios: jsonb("ai_roleplay_scenarios").$type<Array<{
+    scenarioId: string;
+    title: string;
+    customerType: string; // "meraklı", "kararsız", "aceleci", "şikayetçi"
+    initialMessage: string;
+    expectedResponses: string[];
+    tips: string[];
+  }>>().default([]), // AI Rol Yapma Senaryoları
+  
   createdBy: varchar("created_by").references(() => users.id), // VARCHAR - users.id is UUID
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
