@@ -93,6 +93,7 @@ import {
   announcements,
   announcementReadStatus,
   hasPermission,
+  PATH_TO_PERMISSION_MAP,
   isHQRole,
   isBranchRole,
   type UpdateUser,
@@ -1074,18 +1075,42 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
           continue; // Bu mega modülü atla
         }
         
+        // ALT MODÜL YETKİ KONTROLÜ: Her alt modül için hasPermission kontrolü
+        const subModulePath = item.subModulePath || '';
+        
+        // Path'in karşılık gelen permission modülünü bul
+        // Önce tam path eşleşmesi, sonra prefix ile eşleşme dene
+        let permissionModule = PATH_TO_PERMISSION_MAP[subModulePath];
+        
+        if (!permissionModule) {
+          // Prefix ile eşleşme dene (örn: /akademi/badges için /akademi kontrol et)
+          const pathParts = subModulePath.split('/').filter(Boolean);
+          if (pathParts.length > 0) {
+            permissionModule = PATH_TO_PERMISSION_MAP['/' + pathParts[0]];
+          }
+        }
+        
+        // Eğer permission modülü bulunduysa ve kullanıcının yetkisi yoksa atla
+        if (permissionModule) {
+          const canView = hasPermission(userRole, permissionModule, 'view');
+          if (!canView) {
+            console.log(`[Dashboard] Skipping ${subModulePath} - no permission for ${permissionModule}`);
+            continue; // Yetkisi olmayan modülü atla
+          }
+        }
+        
         dbModuleCounts[megaId] = (dbModuleCounts[megaId] || 0) + 1;
         
         if (!dbModuleItemsList[megaId]) {
           dbModuleItemsList[megaId] = [];
         }
         dbModuleItemsList[megaId].push({ 
-          path: item.subModulePath || '', 
-          title: item.subModuleName || item.subModulePath || ''
+          path: subModulePath, 
+          title: item.subModuleName || subModulePath || ''
         });
         
-        if (item.subModulePath) {
-          pathToMegaModule[item.subModulePath] = item.megaModuleId;
+        if (subModulePath) {
+          pathToMegaModule[subModulePath] = item.megaModuleId;
         }
       }
       

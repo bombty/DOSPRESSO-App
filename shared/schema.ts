@@ -184,7 +184,99 @@ export type PermissionModule =
   | 'factory_stations'
   | 'factory_compliance'
   // Branch shift tracking
-  | 'branch_shift_tracking';
+  | 'branch_shift_tracking'
+  // Academy modules (maps to training permission)
+  | 'academy'
+  | 'academy_admin'
+  | 'badges'
+  | 'certificates'
+  | 'leaderboard'
+  | 'achievements'
+  | 'team_competitions'
+  | 'streak_tracker'
+  | 'academy_analytics'
+  | 'progress_overview'
+  | 'cohort_analytics'
+  | 'branch_analytics'
+  | 'learning_paths'
+  | 'adaptive_engine'
+  | 'social_groups'
+  | 'academy_supervisor'
+  | 'academy_ai';
+
+// Path to Permission Module mapping - Merkezi tanım
+// Dashboard modülleri için URL path'lerini permission modüllerine eşleştirir
+export const PATH_TO_PERMISSION_MAP: Record<string, PermissionModule> = {
+  // Operations
+  '/operasyon': 'dashboard',
+  '/subeler': 'branches',
+  '/sube/dashboard': 'dashboard',
+  '/gorevler': 'tasks',
+  '/checklistler': 'checklists',
+  '/kayip-esya': 'lost_found',
+  '/kayip-esya-hq': 'lost_found_hq',
+  '/vardiyalar': 'shifts',
+  '/canli-takip': 'branch_shift_tracking',
+  
+  // Equipment
+  '/ekipman': 'equipment',
+  '/ekipmanlar': 'equipment',
+  '/arizalar': 'faults',
+  '/ariza-yonetimi': 'equipment_faults',
+  '/ekipman-analitik': 'equipment',
+  
+  // HR
+  '/personel': 'employees',
+  '/izinler': 'leave_requests',
+  '/mesai': 'overtime_requests',
+  '/puantaj': 'attendance',
+  '/performans': 'performance',
+  
+  // Training / Academy
+  '/akademi': 'academy',
+  '/akademi/eğitim': 'academy',
+  '/akademi/oyunlaştırma': 'badges',
+  '/akademi/analitik': 'academy_analytics',
+  '/akademi/gelişmiş': 'adaptive_engine',
+  '/akademi-leaderboard': 'leaderboard',
+  '/akademi-badges': 'badges',
+  '/akademi-certificates': 'certificates',
+  '/akademi-achievements': 'achievements',
+  '/akademi-learning-paths': 'learning_paths',
+  '/akademi-quiz': 'academy',
+  '/akademi-supervisor': 'academy_supervisor',
+  '/akademi-analytics': 'academy_analytics',
+  '/akademi-ai-assistant': 'academy_ai',
+  '/egitim': 'training',
+  '/receteler': 'training',
+  '/recete': 'training',
+  
+  // Reports
+  '/raporlar': 'reports',
+  '/kalite-denetim': 'quality_audit',
+  
+  // Factory
+  '/fabrika': 'factory_dashboard',
+  '/fabrika-kiosk': 'factory_kiosk',
+  
+  // Admin
+  '/admin': 'admin_settings',
+  '/yetkilendirme': 'admin_settings',
+  '/kullanicilar': 'users',
+  '/ayarlar': 'settings',
+  
+  // NewShop / Projects
+  '/yeni-sube': 'projects',
+  '/projeler': 'projects',
+  
+  // Kitchen
+  '/mutfak': 'training',
+  
+  // Support
+  '/destek': 'support',
+  '/bildirimler': 'notifications',
+  '/duyurular': 'announcements',
+};
 
 // Permission Matrix: Define what each role can do
 export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, PermissionAction[]>> = {
@@ -277,6 +369,24 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     factory_stations: [],
     factory_compliance: [],
     branch_shift_tracking: ['view'],
+    // Academy modules - HQ full access
+    academy: ['view', 'create', 'edit', 'delete'],
+    academy_admin: ['view', 'create', 'edit', 'delete'],
+    badges: ['view', 'create', 'edit', 'delete'],
+    certificates: ['view', 'create', 'edit', 'delete'],
+    leaderboard: ['view'],
+    achievements: ['view', 'create', 'edit'],
+    team_competitions: ['view', 'create', 'edit'],
+    streak_tracker: ['view'],
+    academy_analytics: ['view'],
+    progress_overview: ['view'],
+    cohort_analytics: ['view'],
+    branch_analytics: ['view'],
+    learning_paths: ['view', 'create', 'edit'],
+    adaptive_engine: ['view', 'edit'],
+    social_groups: ['view', 'create', 'edit'],
+    academy_supervisor: ['view'],
+    academy_ai: ['view'],
   },
   satinalma: {
     dashboard: ['view'],
@@ -321,6 +431,25 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     factory_stations: [],
     factory_compliance: [],
     branch_shift_tracking: [],
+
+    // Academy modules - HQ access
+    academy: ['view', 'create', 'edit'],
+    academy_admin: ['view', 'edit'],
+    badges: ['view', 'create', 'edit'],
+    certificates: ['view', 'create', 'edit'],
+    leaderboard: ['view'],
+    achievements: ['view', 'create', 'edit'],
+    team_competitions: ['view', 'create', 'edit'],
+    streak_tracker: ['view'],
+    academy_analytics: ['view'],
+    progress_overview: ['view'],
+    cohort_analytics: ['view'],
+    branch_analytics: ['view'],
+    learning_paths: ['view', 'create', 'edit'],
+    adaptive_engine: ['view', 'edit'],
+    social_groups: ['view', 'create', 'edit'],
+    academy_supervisor: ['view'],
+    academy_ai: ['view'],
   },
   coach: {
     dashboard: ['view'],
@@ -365,6 +494,25 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     factory_stations: [],
     factory_compliance: ['view'],
     branch_shift_tracking: ['view', 'edit'],
+
+    // Academy modules - HQ access
+    academy: ['view', 'create', 'edit'],
+    academy_admin: ['view', 'edit'],
+    badges: ['view', 'create', 'edit'],
+    certificates: ['view', 'create', 'edit'],
+    leaderboard: ['view'],
+    achievements: ['view', 'create', 'edit'],
+    team_competitions: ['view', 'create', 'edit'],
+    streak_tracker: ['view'],
+    academy_analytics: ['view'],
+    progress_overview: ['view'],
+    cohort_analytics: ['view'],
+    branch_analytics: ['view'],
+    learning_paths: ['view', 'create', 'edit'],
+    adaptive_engine: ['view', 'edit'],
+    social_groups: ['view', 'create', 'edit'],
+    academy_supervisor: ['view'],
+    academy_ai: ['view'],
   },
   teknik: {
     dashboard: ['view'],
@@ -409,6 +557,24 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     factory_stations: [],
     factory_compliance: [],
     branch_shift_tracking: [],
+    // Academy modules - HQ access
+    academy: ['view'],
+    academy_admin: ['view'],
+    badges: ['view'],
+    certificates: ['view'],
+    leaderboard: ['view'],
+    achievements: ['view'],
+    team_competitions: ['view'],
+    streak_tracker: ['view'],
+    academy_analytics: ['view'],
+    progress_overview: ['view'],
+    cohort_analytics: ['view'],
+    branch_analytics: ['view'],
+    learning_paths: ['view'],
+    adaptive_engine: ['view'],
+    social_groups: ['view'],
+    academy_supervisor: ['view'],
+    academy_ai: ['view'],
   },
   destek: {
     dashboard: ['view'],
@@ -452,7 +618,25 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     factory_analytics: [],
     factory_stations: [],
     factory_compliance: [],
-    branch_shift_tracking: [],
+    branch_shift_tracking: ['view'],
+    // Academy modules - destek access
+    academy: ['view'],
+    academy_admin: ['view'],
+    badges: ['view'],
+    certificates: ['view'],
+    leaderboard: ['view'],
+    achievements: ['view'],
+    team_competitions: ['view'],
+    streak_tracker: ['view'],
+    academy_analytics: ['view'],
+    progress_overview: ['view'],
+    cohort_analytics: ['view'],
+    branch_analytics: ['view'],
+    learning_paths: ['view'],
+    adaptive_engine: ['view'],
+    social_groups: ['view'],
+    academy_supervisor: ['view'],
+    academy_ai: ['view'],
   },
   fabrika: {
     dashboard: ['view'],
@@ -497,6 +681,25 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     factory_stations: ['view'],
     factory_compliance: ['view'],
     branch_shift_tracking: [],
+
+    // Academy modules - HQ access
+    academy: ['view', 'create', 'edit'],
+    academy_admin: ['view', 'edit'],
+    badges: ['view', 'create', 'edit'],
+    certificates: ['view', 'create', 'edit'],
+    leaderboard: ['view'],
+    achievements: ['view', 'create', 'edit'],
+    team_competitions: ['view', 'create', 'edit'],
+    streak_tracker: ['view'],
+    academy_analytics: ['view'],
+    progress_overview: ['view'],
+    cohort_analytics: ['view'],
+    branch_analytics: ['view'],
+    learning_paths: ['view', 'create', 'edit'],
+    adaptive_engine: ['view', 'edit'],
+    social_groups: ['view', 'create', 'edit'],
+    academy_supervisor: ['view'],
+    academy_ai: ['view'],
   },
   yatirimci_hq: {
     dashboard: ['view'],
@@ -586,6 +789,25 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     factory_stations: [],
     factory_compliance: [],
     branch_shift_tracking: ['view', 'edit'],
+
+    // Academy modules - Branch view
+    academy: ['view'],
+    academy_admin: [],
+    badges: ['view'],
+    certificates: ['view'],
+    leaderboard: ['view'],
+    achievements: ['view'],
+    team_competitions: ['view'],
+    streak_tracker: ['view'],
+    academy_analytics: [],
+    progress_overview: ['view'],
+    cohort_analytics: [],
+    branch_analytics: [],
+    learning_paths: ['view'],
+    adaptive_engine: ['view'],
+    social_groups: ['view'],
+    academy_supervisor: [],
+    academy_ai: ['view'],
   },
   supervisor_buddy: {
     dashboard: ['view'],
@@ -630,6 +852,24 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     factory_stations: [],
     factory_compliance: [],
     branch_shift_tracking: ['view'],
+    // Academy modules
+    academy: ['view'],
+    academy_admin: [],
+    badges: ['view'],
+    certificates: ['view'],
+    leaderboard: ['view'],
+    achievements: ['view'],
+    team_competitions: ['view'],
+    streak_tracker: ['view'],
+    academy_analytics: [],
+    progress_overview: ['view'],
+    cohort_analytics: [],
+    branch_analytics: [],
+    learning_paths: ['view'],
+    adaptive_engine: ['view'],
+    social_groups: ['view'],
+    academy_supervisor: [],
+    academy_ai: ['view'],
   },
   barista: {
     dashboard: ['view'],
@@ -674,6 +914,24 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     factory_stations: [],
     factory_compliance: [],
     branch_shift_tracking: ['view'],
+    // Academy modules - Şube personeli eğitime erişebilir
+    academy: ['view'],
+    academy_admin: [],
+    badges: ['view'],
+    certificates: ['view'],
+    leaderboard: ['view'],
+    achievements: ['view'],
+    team_competitions: ['view'],
+    streak_tracker: ['view'],
+    academy_analytics: [],
+    progress_overview: ['view'],
+    cohort_analytics: [],
+    branch_analytics: [],
+    learning_paths: ['view'],
+    adaptive_engine: ['view'],
+    social_groups: ['view'],
+    academy_supervisor: [],
+    academy_ai: ['view'],
   },
   bar_buddy: {
     dashboard: ['view'],
@@ -718,6 +976,24 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     factory_stations: [],
     factory_compliance: [],
     branch_shift_tracking: ['view'],
+    // Academy modules - Şube personeli eğitime erişebilir
+    academy: ['view'],
+    academy_admin: [],
+    badges: ['view'],
+    certificates: ['view'],
+    leaderboard: ['view'],
+    achievements: ['view'],
+    team_competitions: ['view'],
+    streak_tracker: ['view'],
+    academy_analytics: [],
+    progress_overview: ['view'],
+    cohort_analytics: [],
+    branch_analytics: [],
+    learning_paths: ['view'],
+    adaptive_engine: ['view'],
+    social_groups: ['view'],
+    academy_supervisor: [],
+    academy_ai: ['view'],
   },
   stajyer: {
     dashboard: ['view'],
@@ -762,6 +1038,24 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     factory_stations: [],
     factory_compliance: [],
     branch_shift_tracking: ['view'],
+    // Academy modules - Stajyer eğitime erişebilir
+    academy: ['view'],
+    academy_admin: [],
+    badges: ['view'],
+    certificates: ['view'],
+    leaderboard: ['view'],
+    achievements: ['view'],
+    team_competitions: ['view'],
+    streak_tracker: ['view'],
+    academy_analytics: [],
+    progress_overview: ['view'],
+    cohort_analytics: [],
+    branch_analytics: [],
+    learning_paths: ['view'],
+    adaptive_engine: ['view'],
+    social_groups: ['view'],
+    academy_supervisor: [],
+    academy_ai: ['view'],
   },
   yatirimci_branch: {
     dashboard: ['view'],
@@ -806,6 +1100,25 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     factory_stations: [],
     factory_compliance: [],
     branch_shift_tracking: ['view'],
+
+    // Academy modules - Branch view
+    academy: ['view'],
+    academy_admin: [],
+    badges: ['view'],
+    certificates: ['view'],
+    leaderboard: ['view'],
+    achievements: ['view'],
+    team_competitions: ['view'],
+    streak_tracker: ['view'],
+    academy_analytics: [],
+    progress_overview: ['view'],
+    cohort_analytics: [],
+    branch_analytics: [],
+    learning_paths: ['view'],
+    adaptive_engine: ['view'],
+    social_groups: ['view'],
+    academy_supervisor: [],
+    academy_ai: ['view'],
   },
 };
 
