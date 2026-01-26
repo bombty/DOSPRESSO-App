@@ -156,6 +156,11 @@ export const MODULES: ModuleDefinition[] = [
   { moduleKey: 'branch_dashboard', moduleName: 'Şube Dashboard', category: 'branch', megaModule: 'operations', description: 'Şube kontrol paneli', icon: 'LayoutDashboard', route: '/sube/dashboard', sortOrder: 17 },
   { moduleKey: 'branch_kiosk', moduleName: 'Şube Kiosk', category: 'branch', megaModule: 'operations', description: 'Şube kiosk modu', icon: 'Tablet', route: '/sube/kiosk', sortOrder: 18 },
 
+  // CRM Role-Specific Modules
+  { moduleKey: 'crm_coach_branches', moduleName: 'Coach Şube Takibi', category: 'hq', megaModule: 'operations', description: 'Coach rol şube takibi ve performans izleme', icon: 'Building2', roles: ['coach'], route: '/crm', sortOrder: 19 },
+  { moduleKey: 'crm_mentor_notes', moduleName: 'Mentor Notları', category: 'hq', megaModule: 'operations', description: 'Coach mentor not yönetimi', icon: 'ClipboardEdit', roles: ['coach'], route: '/crm', sortOrder: 19.1 },
+  { moduleKey: 'crm_teknik_faults', moduleName: 'Teknik Arıza Takibi', category: 'hq', megaModule: 'operations', description: 'Teknik personel arıza CRM görünümü', icon: 'Wrench', roles: ['teknik', 'ekipman_teknik'], route: '/crm', sortOrder: 19.2 },
+
   // ═══════════════════════════════════════════════════════════════
   // EQUIPMENT - Ekipman ve arıza yönetimi
   // ═══════════════════════════════════════════════════════════════
@@ -207,6 +212,13 @@ export const MODULES: ModuleDefinition[] = [
   { moduleKey: 'academy_adaptive', moduleName: 'Adaptif Öğrenme', category: 'academy', megaModule: 'training', description: 'Kişiselleştirilmiş öğrenme', icon: 'Brain', route: '/akademi-adaptive-engine', sortOrder: 67 },
   { moduleKey: 'academy_social', moduleName: 'Sosyal Gruplar', category: 'academy', megaModule: 'training', description: 'Sosyal öğrenme grupları', icon: 'MessageCircle', route: '/akademi-social-groups', sortOrder: 68 },
   { moduleKey: 'knowledge_base', moduleName: 'Bilgi Bankası', category: 'shared', megaModule: 'training', description: 'Bilgi ve dokümantasyon', icon: 'BookOpen', route: '/bilgi-bankasi', sortOrder: 69 },
+  
+  // HQ Role-Specific Academy Modules
+  { moduleKey: 'hq_academy_coach', moduleName: 'Coach Eğitim', category: 'academy', megaModule: 'training', description: 'Coach rol özel eğitimler', icon: 'UserCheck', roles: ['coach'], route: '/akademi-hq?tab=egitim', sortOrder: 70 },
+  { moduleKey: 'hq_academy_teknik', moduleName: 'Teknik Eğitim', category: 'academy', megaModule: 'training', description: 'Teknik personel eğitimi', icon: 'Wrench', roles: ['teknik', 'ekipman_teknik'], route: '/akademi-hq?tab=egitim', sortOrder: 71 },
+  { moduleKey: 'hq_academy_satinalma', moduleName: 'Satınalma Eğitim', category: 'academy', megaModule: 'training', description: 'Satınalma departmanı eğitimi', icon: 'ShoppingCart', roles: ['satinalma'], route: '/akademi-hq?tab=egitim', sortOrder: 72 },
+  { moduleKey: 'hq_academy_muhasebe', moduleName: 'Muhasebe Eğitim', category: 'academy', megaModule: 'training', description: 'Muhasebe departmanı eğitimi', icon: 'Calculator', roles: ['muhasebe'], route: '/akademi-hq?tab=egitim', sortOrder: 73 },
+  { moduleKey: 'hq_academy_trainer', moduleName: 'Trainer Eğitim', category: 'academy', megaModule: 'training', description: 'Eğitmen gelişim programı', icon: 'GraduationCap', roles: ['trainer', 'egitim_koordinatoru'], route: '/akademi-hq?tab=egitim', sortOrder: 74 },
 
   // ═══════════════════════════════════════════════════════════════
   // FACTORY - Fabrika modülleri (Hub sayfa)
@@ -353,8 +365,13 @@ export function getMegaModuleMapping(): Record<string, string[]> {
 // Role-based module filtering
 export const ROLE_MODULE_DEFAULTS: Record<string, string[]> = {
   admin: ['*'],
-  muhasebe: ['dashboard', 'accounting', 'hr_reports', 'cash_reports', 'employees', 'urun_maliyetleri', 'cari_takip'],
-  satinalma: ['dashboard', 'satinalma_dashboard', 'inventory', 'suppliers', 'purchase_orders', 'goods_receipt', 'cari_takip', 'urun_maliyetleri'],
+  muhasebe: ['dashboard', 'accounting', 'hr_reports', 'cash_reports', 'employees', 'urun_maliyetleri', 'cari_takip', 'hq_academy_muhasebe'],
+  satinalma: ['dashboard', 'satinalma_dashboard', 'inventory', 'suppliers', 'purchase_orders', 'goods_receipt', 'cari_takip', 'urun_maliyetleri', 'hq_academy_satinalma'],
+  coach: ['dashboard', 'tasks', 'checklists', 'branches', 'employees', 'training', 'knowledge_base', 'crm_coach_branches', 'crm_mentor_notes', 'hq_academy_coach'],
+  teknik: ['dashboard', 'equipment', 'faults', 'equipment_faults', 'new_fault', 'crm_teknik_faults', 'hq_academy_teknik'],
+  ekipman_teknik: ['dashboard', 'equipment', 'faults', 'equipment_faults', 'new_fault', 'crm_teknik_faults', 'hq_academy_teknik'],
+  trainer: ['dashboard', 'training', 'academy_general', 'knowledge_base', 'hq_academy_trainer'],
+  egitim_koordinatoru: ['dashboard', 'training', 'academy_general', 'academy_hq', 'knowledge_base', 'hq_academy_trainer'],
   supervisor: ['dashboard', 'tasks', 'checklists', 'equipment', 'faults', 'shifts', 'employees', 'attendance', 'leave_requests', 'training', 'knowledge_base'],
   supervisor_buddy: ['dashboard', 'tasks', 'checklists', 'equipment', 'faults', 'shifts', 'employees', 'attendance'],
   barista: ['dashboard', 'tasks', 'checklists', 'training', 'my_performance', 'knowledge_base'],
