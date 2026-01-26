@@ -1047,6 +1047,11 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
           return new Set(['dashboard', 'hr', 'reports', 'satinalma']);
         }
         
+        // MUHASEBE_IK ROLÜ: Finans, IK ve personel modülleri
+        if (role === 'muhasebe_ik') {
+          return new Set(['dashboard', 'hr', 'reports', 'satinalma']);
+        }
+        
         // TEKNİK ROLÜ: Ekipman ve arıza modülleri
         if (role === 'teknik') {
           return new Set(['dashboard', 'equipment', 'reports']);

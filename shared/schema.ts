@@ -10075,3 +10075,90 @@ export const insertProductionIngredientSchema = createInsertSchema(productionIng
 
 export type InsertProductionIngredient = z.infer<typeof insertProductionIngredientSchema>;
 export type ProductionIngredient = typeof productionIngredients.$inferSelect;
+
+// ========================================
+// CARİ TAKİP - Receivables/Payables Tracking
+// ========================================
+
+export const cariAccounts = pgTable("cari_accounts", {
+  id: serial("id").primaryKey(),
+  
+  // Hesap bilgileri
+  accountCode: varchar("account_code", { length: 50 }).notNull().unique(),
+  accountName: varchar("account_name", { length: 200 }).notNull(),
+  accountType: varchar("account_type", { length: 20 }).notNull(), // branch, supplier, customer, other
+  
+  // İlişkili kayıtlar (opsiyonel)
+  branchId: integer("branch_id").references(() => branches.id, { onDelete: "set null" }),
+  supplierId: integer("supplier_id").references(() => suppliers.id, { onDelete: "set null" }),
+  
+  // İletişim bilgileri
+  contactPerson: varchar("contact_person", { length: 100 }),
+  phone: varchar("phone", { length: 20 }),
+  email: varchar("email", { length: 100 }),
+  
+  // Bakiye bilgileri (cache olarak tutulur)
+  currentBalance: numeric("current_balance", { precision: 15, scale: 2 }).default("0"),
+  lastTransactionDate: timestamp("last_transaction_date"),
+  
+  // Durum
+  isActive: boolean("is_active").default(true),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("cari_account_type_idx").on(table.accountType),
+  index("cari_branch_idx").on(table.branchId),
+]);
+
+export const cariTransactions = pgTable("cari_transactions", {
+  id: serial("id").primaryKey(),
+  
+  accountId: integer("account_id").references(() => cariAccounts.id, { onDelete: "cascade" }).notNull(),
+  
+  // İşlem bilgileri
+  transactionDate: timestamp("transaction_date").defaultNow().notNull(),
+  transactionType: varchar("transaction_type", { length: 20 }).notNull(), // borc (debit), alacak (credit)
+  
+  // Tutar
+  amount: numeric("amount", { precision: 15, scale: 2 }).notNull(),
+  
+  // Açıklama
+  description: text("description"),
+  documentNumber: varchar("document_number", { length: 100 }),
+  documentType: varchar("document_type", { length: 50 }), // fatura, tahsilat, tediye, virman
+  
+  // Vade bilgisi
+  dueDate: timestamp("due_date"),
+  isPaid: boolean("is_paid").default(false),
+  paidDate: timestamp("paid_date"),
+  
+  // İlişkili kayıtlar
+  purchaseOrderId: integer("purchase_order_id").references(() => purchaseOrders.id, { onDelete: "set null" }),
+  goodsReceiptId: integer("goods_receipt_id").references(() => goodsReceipts.id, { onDelete: "set null" }),
+  
+  createdById: varchar("created_by_id", { length: 50 }),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("cari_tx_account_idx").on(table.accountId),
+  index("cari_tx_date_idx").on(table.transactionDate),
+  index("cari_tx_due_idx").on(table.dueDate),
+]);
+
+export const insertCariAccountSchema = createInsertSchema(cariAccounts).omit({
+  id: true,
+  currentBalance: true,
+  lastTransactionDate: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertCariTransactionSchema = createInsertSchema(cariTransactions).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertCariAccount = z.infer<typeof insertCariAccountSchema>;
+export type CariAccount = typeof cariAccounts.$inferSelect;
+export type InsertCariTransaction = z.infer<typeof insertCariTransactionSchema>;
+export type CariTransaction = typeof cariTransactions.$inferSelect;

@@ -19,7 +19,11 @@ import {
   insertPurchaseOrderItemSchema,
   insertGoodsReceiptSchema,
   insertGoodsReceiptItemSchema,
-  insertInventoryMovementSchema
+  insertInventoryMovementSchema,
+  cariAccounts,
+  cariTransactions,
+  insertCariAccountSchema,
+  insertCariTransactionSchema
 } from "@shared/schema";
 import { eq, desc, and, gte, lte, sql, or, like, asc } from "drizzle-orm";
 
@@ -782,7 +786,7 @@ export function registerSatinalmaRoutes(app: Express, isAuthenticated: AuthMiddl
       // Tedarikçiyi güncelle
       await db.update(suppliers)
         .set({ 
-          performanceScore,
+          performanceScore: performanceScore.toString(),
           updatedAt: new Date()
         })
         .where(eq(suppliers.id, supplierId));
@@ -833,6 +837,226 @@ export function registerSatinalmaRoutes(app: Express, isAuthenticated: AuthMiddl
     } catch (error) {
       console.error("Error fetching dashboard data:", error);
       res.status(500).json({ error: "Dashboard verileri alınamadı" });
+    }
+  });
+
+  // ========================================
+  // CARİ TAKİP - Receivables/Payables
+  // ========================================
+  
+  // Cari istatistikler
+  app.get("/api/cari/stats", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const allAccounts = await db.select().from(cariAccounts).where(eq(cariAccounts.isActive, true));
+      
+      let totalReceivables = 0;
+      let totalPayables = 0;
+      
+      for (const account of allAccounts) {
+        const balance = parseFloat(account.currentBalance || "0");
+        if (balance > 0) {
+          totalReceivables += balance;
+        } else {
+          totalPayables += Math.abs(balance);
+        }
+      }
+      
+      // Vadesi geçmiş işlemler
+      const now = new Date();
+      const overdueTransactions = await db.select()
+        .from(cariTransactions)
+        .where(and(
+          eq(cariTransactions.isPaid, false),
+          lte(cariTransactions.dueDate, now)
+        ));
+      
+      // Yaklaşan vadeler (7 gün içinde)
+      const sevenDaysLater = new Date();
+      sevenDaysLater.setDate(sevenDaysLater.getDate() + 7);
+      
+      const upcomingTransactions = await db.select()
+        .from(cariTransactions)
+        .where(and(
+          eq(cariTransactions.isPaid, false),
+          gte(cariTransactions.dueDate, now),
+          lte(cariTransactions.dueDate, sevenDaysLater)
+        ));
+      
+      res.json({
+        totalReceivables,
+        totalPayables,
+        overdueCount: overdueTransactions.length,
+        upcomingDueCount: upcomingTransactions.length
+      });
+    } catch (error) {
+      console.error("Error fetching cari stats:", error);
+      res.status(500).json({ error: "Cari istatistikleri alınamadı" });
+    }
+  });
+  
+  // Cari hesaplar listesi
+  app.get("/api/cari/accounts", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const { type, search } = req.query;
+      
+      let conditions: any[] = [eq(cariAccounts.isActive, true)];
+      
+      if (type && type !== "all") {
+        conditions.push(eq(cariAccounts.accountType, type as string));
+      }
+      
+      if (search) {
+        conditions.push(or(
+          like(cariAccounts.accountName, `%${search}%`),
+          like(cariAccounts.accountCode, `%${search}%`)
+        ));
+      }
+      
+      const accounts = await db.select()
+        .from(cariAccounts)
+        .where(and(...conditions))
+        .orderBy(desc(cariAccounts.lastTransactionDate));
+      
+      res.json(accounts);
+    } catch (error) {
+      console.error("Error fetching cari accounts:", error);
+      res.status(500).json({ error: "Cari hesaplar alınamadı" });
+    }
+  });
+  
+  // Yeni cari hesap oluştur
+  app.post("/api/cari/accounts", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const parseResult = insertCariAccountSchema.safeParse(req.body);
+      if (!parseResult.success) {
+        return res.status(400).json({ error: "Geçersiz veri", details: parseResult.error.errors });
+      }
+      const data = parseResult.data;
+      
+      const [newAccount] = await db.insert(cariAccounts)
+        .values(data)
+        .returning();
+      
+      res.status(201).json(newAccount);
+    } catch (error) {
+      console.error("Error creating cari account:", error);
+      res.status(500).json({ error: "Cari hesap oluşturulamadı" });
+    }
+  });
+  
+  // Vadesi geçmiş işlemler
+  app.get("/api/cari/transactions/overdue", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const now = new Date();
+      
+      const transactions = await db.select({
+        id: cariTransactions.id,
+        accountId: cariTransactions.accountId,
+        transactionDate: cariTransactions.transactionDate,
+        transactionType: cariTransactions.transactionType,
+        amount: cariTransactions.amount,
+        description: cariTransactions.description,
+        dueDate: cariTransactions.dueDate,
+        isPaid: cariTransactions.isPaid,
+        account: {
+          accountName: cariAccounts.accountName,
+          accountCode: cariAccounts.accountCode,
+        }
+      })
+        .from(cariTransactions)
+        .leftJoin(cariAccounts, eq(cariTransactions.accountId, cariAccounts.id))
+        .where(and(
+          eq(cariTransactions.isPaid, false),
+          lte(cariTransactions.dueDate, now)
+        ))
+        .orderBy(asc(cariTransactions.dueDate))
+        .limit(20);
+      
+      res.json(transactions);
+    } catch (error) {
+      console.error("Error fetching overdue transactions:", error);
+      res.status(500).json({ error: "Vadesi geçmiş işlemler alınamadı" });
+    }
+  });
+  
+  // Yaklaşan vadeler
+  app.get("/api/cari/transactions/upcoming", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const now = new Date();
+      const sevenDaysLater = new Date();
+      sevenDaysLater.setDate(sevenDaysLater.getDate() + 7);
+      
+      const transactions = await db.select({
+        id: cariTransactions.id,
+        accountId: cariTransactions.accountId,
+        transactionDate: cariTransactions.transactionDate,
+        transactionType: cariTransactions.transactionType,
+        amount: cariTransactions.amount,
+        description: cariTransactions.description,
+        dueDate: cariTransactions.dueDate,
+        isPaid: cariTransactions.isPaid,
+        account: {
+          accountName: cariAccounts.accountName,
+          accountCode: cariAccounts.accountCode,
+        }
+      })
+        .from(cariTransactions)
+        .leftJoin(cariAccounts, eq(cariTransactions.accountId, cariAccounts.id))
+        .where(and(
+          eq(cariTransactions.isPaid, false),
+          gte(cariTransactions.dueDate, now),
+          lte(cariTransactions.dueDate, sevenDaysLater)
+        ))
+        .orderBy(asc(cariTransactions.dueDate))
+        .limit(20);
+      
+      res.json(transactions);
+    } catch (error) {
+      console.error("Error fetching upcoming transactions:", error);
+      res.status(500).json({ error: "Yaklaşan vadeler alınamadı" });
+    }
+  });
+  
+  // Yeni işlem oluştur
+  app.post("/api/cari/transactions", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const user = (req as any).user;
+      const parseResult = insertCariTransactionSchema.safeParse(req.body);
+      if (!parseResult.success) {
+        return res.status(400).json({ error: "Geçersiz veri", details: parseResult.error.errors });
+      }
+      const data = parseResult.data;
+      
+      const [newTransaction] = await db.insert(cariTransactions)
+        .values({
+          ...data,
+          dueDate: data.dueDate ? new Date(data.dueDate) : null,
+          createdById: user?.id,
+        })
+        .returning();
+      
+      // Hesap bakiyesini güncelle
+      const account = await db.select().from(cariAccounts).where(eq(cariAccounts.id, data.accountId));
+      if (account.length > 0) {
+        const currentBalance = parseFloat(account[0].currentBalance || "0");
+        const amount = parseFloat(data.amount);
+        const newBalance = data.transactionType === "alacak" 
+          ? currentBalance + amount 
+          : currentBalance - amount;
+        
+        await db.update(cariAccounts)
+          .set({ 
+            currentBalance: newBalance.toString(),
+            lastTransactionDate: new Date(),
+            updatedAt: new Date()
+          })
+          .where(eq(cariAccounts.id, data.accountId));
+      }
+      
+      res.status(201).json(newTransaction);
+    } catch (error) {
+      console.error("Error creating cari transaction:", error);
+      res.status(500).json({ error: "İşlem kaydedilemedi" });
     }
   });
 }

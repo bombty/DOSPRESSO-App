@@ -114,8 +114,13 @@ function getTrendIcon(trend: Trend) {
 }
 
 function MetricCardComponent({ metric, testId }: { metric: MetricCard; testId?: string }) {
+  const isClickable = !!metric.onClick;
   return (
-    <Card className="hover-elevate cursor-pointer" onClick={metric.onClick} data-testid={testId || `card-metric-${metric.title.toLowerCase().replace(/\s+/g, '-')}`}>
+    <Card 
+      className={isClickable ? "hover-elevate cursor-pointer" : ""} 
+      onClick={metric.onClick} 
+      data-testid={testId || `card-metric-${metric.title.toLowerCase().replace(/\s+/g, '-')}`}
+    >
       <CardContent className="p-4">
         <div className="flex items-start justify-between gap-2 flex-wrap">
           <div className="flex items-center gap-2">
@@ -516,15 +521,41 @@ const coachIconMap: Record<string, React.ReactNode> = {
 };
 
 function CoachDashboard() {
+  const [, setLocation] = useLocation();
   const { data, isLoading } = useQuery<any>({
     queryKey: ['/api/hq-dashboard/coach'],
   });
 
   const fallbackMetrics: MetricCard[] = [
-    { title: "Ortalama Şube Puanı", value: "4.2/5", icon: <Star className="w-5 h-5 text-yellow-500" />, status: 'healthy', trend: 'up' },
-    { title: "Ziyaret Bekleyen", value: 8, icon: <Eye className="w-5 h-5 text-purple-500" />, status: 'warning' },
-    { title: "Uyumluluk Oranı", value: "91%", icon: <ClipboardCheck className="w-5 h-5 text-green-500" />, status: 'healthy' },
-    { title: "İyileştirme Önerisi", value: 15, icon: <Lightbulb className="w-5 h-5 text-orange-500" />, status: 'healthy' },
+    { 
+      title: "Ortalama Şube Puanı", 
+      value: "4.2/5", 
+      icon: <Star className="w-5 h-5 text-yellow-500" />, 
+      status: 'healthy', 
+      trend: 'up',
+      onClick: () => setLocation('/modul/raporlar?tab=performans')
+    },
+    { 
+      title: "Ziyaret Bekleyen", 
+      value: 8, 
+      icon: <Eye className="w-5 h-5 text-purple-500" />, 
+      status: 'warning',
+      onClick: () => setLocation('/modul/operasyon?tab=subeler')
+    },
+    { 
+      title: "Uyumluluk Oranı", 
+      value: "91%", 
+      icon: <ClipboardCheck className="w-5 h-5 text-green-500" />, 
+      status: 'healthy',
+      onClick: () => setLocation('/modul/operasyon?tab=checklistler')
+    },
+    { 
+      title: "İyileştirme Önerisi", 
+      value: 15, 
+      icon: <Lightbulb className="w-5 h-5 text-orange-500" />, 
+      status: 'healthy',
+      onClick: () => setLocation('/modul/raporlar?tab=ai-asistan')
+    },
   ];
 
   const fallbackAlerts = [
@@ -558,14 +589,18 @@ function CoachDashboard() {
         <Badge>Yavuz</Badge>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
         {metrics.map((metric: MetricCard, index: number) => (
           <MetricCardComponent key={index} metric={metric} />
         ))}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <Card>
+        <Card 
+          className="hover-elevate cursor-pointer" 
+          onClick={() => setLocation('/modul/operasyon?tab=subeler')}
+          data-testid="card-branch-scores"
+        >
           <CardHeader className="pb-2">
             <CardTitle className="text-sm flex items-center gap-2">
               <Building2 className="w-4 h-4" />
@@ -590,7 +625,11 @@ function CoachDashboard() {
         <AlertPanel alerts={alerts} />
       </div>
 
-      <Card>
+      <Card 
+        className="hover-elevate cursor-pointer"
+        onClick={() => setLocation('/modul/raporlar?tab=ai-asistan')}
+        data-testid="card-recommendations"
+      >
         <CardHeader className="pb-2">
           <CardTitle className="text-sm flex items-center gap-2">
             <Target className="w-4 h-4" />
@@ -1034,7 +1073,7 @@ function CGODashboard() {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-            {departmentSummary.map((dept, index) => (
+            {departmentSummary.map((dept: any, index: number) => (
               <Card 
                 key={index} 
                 className="hover-elevate cursor-pointer"
