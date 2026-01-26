@@ -15,6 +15,7 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -36,7 +37,8 @@ import {
   Check,
   X,
   Eye,
-  Package
+  Package,
+  Star
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
@@ -81,6 +83,12 @@ export default function MalKabul() {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [selectedSupplierId, setSelectedSupplierId] = useState("");
   const [qualityCheckRequired, setQualityCheckRequired] = useState("false");
+  
+  const [isEvaluationDialogOpen, setIsEvaluationDialogOpen] = useState(false);
+  const [evaluatingReceipt, setEvaluatingReceipt] = useState<GoodsReceipt | null>(null);
+  const [deliveryStatus, setDeliveryStatus] = useState("on_time");
+  const [supplierQualityScore, setSupplierQualityScore] = useState("4");
+  const [qualityNotes, setQualityNotes] = useState("");
 
   const queryParams = new URLSearchParams();
   if (status && status !== "all") queryParams.set("status", status);
@@ -117,19 +125,54 @@ export default function MalKabul() {
   });
 
   const statusMutation = useMutation({
-    mutationFn: async ({ id, status, qualityCheckPassed, qualityCheckNotes }: any) => {
-      return apiRequest("PATCH", `/api/goods-receipts/${id}/status`, { status, qualityCheckPassed, qualityCheckNotes });
+    mutationFn: async ({ id, status, qualityCheckPassed, qualityCheckNotes, deliveryStatus, supplierQualityScore, qualityNotes }: any) => {
+      return apiRequest("PATCH", `/api/goods-receipts/${id}/status`, { 
+        status, 
+        qualityCheckPassed, 
+        qualityCheckNotes,
+        deliveryStatus,
+        supplierQualityScore,
+        qualityNotes
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ predicate: (query) => 
         (query.queryKey[0] as string).startsWith("/api/goods-receipts")
       });
-      toast({ title: "Durum güncellendi" });
+      queryClient.invalidateQueries({ predicate: (query) => 
+        (query.queryKey[0] as string).startsWith("/api/suppliers")
+      });
+      setIsEvaluationDialogOpen(false);
+      setEvaluatingReceipt(null);
+      setDeliveryStatus("on_time");
+      setSupplierQualityScore("4");
+      setQualityNotes("");
+      toast({ title: "Mal kabul onaylandı ve tedarikçi değerlendirildi" });
     },
     onError: () => {
       toast({ title: "Hata", description: "Durum güncellenemedi", variant: "destructive" });
     }
   });
+  
+  const handleAcceptWithEvaluation = () => {
+    if (!evaluatingReceipt) return;
+    statusMutation.mutate({
+      id: evaluatingReceipt.id,
+      status: "kabul_edildi",
+      qualityCheckPassed: true,
+      deliveryStatus,
+      supplierQualityScore: parseInt(supplierQualityScore),
+      qualityNotes
+    });
+  };
+  
+  const openEvaluationDialog = (receipt: GoodsReceipt) => {
+    setEvaluatingReceipt(receipt);
+    setDeliveryStatus("on_time");
+    setSupplierQualityScore("4");
+    setQualityNotes("");
+    setIsEvaluationDialogOpen(true);
+  };
 
   const handleCreateSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -322,11 +365,7 @@ export default function MalKabul() {
                             <Button
                               variant="ghost"
                               size="icon"
-                              onClick={() => statusMutation.mutate({ 
-                                id: receipt.id, 
-                                status: "kabul_edildi",
-                                qualityCheckPassed: true
-                              })}
+                              onClick={() => openEvaluationDialog(receipt)}
                               data-testid={`button-accept-receipt-${receipt.id}`}
                             >
                               <Check className="h-4 w-4 text-green-500" />
@@ -360,6 +399,82 @@ export default function MalKabul() {
           </Table>
         </CardContent>
       </Card>
+      
+      <Dialog open={isEvaluationDialogOpen} onOpenChange={setIsEvaluationDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Tedarikçi Değerlendirmesi</DialogTitle>
+            <DialogDescription>
+              {evaluatingReceipt?.supplier?.name} - {evaluatingReceipt?.receiptNumber}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Teslimat Durumu</Label>
+              <Select value={deliveryStatus} onValueChange={setDeliveryStatus}>
+                <SelectTrigger data-testid="select-delivery-status">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="early">Erken Teslimat</SelectItem>
+                  <SelectItem value="on_time">Zamanında</SelectItem>
+                  <SelectItem value="late">Geç Teslimat</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div className="space-y-2">
+              <Label>Kalite Puanı (1-5)</Label>
+              <div className="flex items-center gap-1">
+                {[1, 2, 3, 4, 5].map((score) => (
+                  <Button
+                    key={score}
+                    type="button"
+                    variant={parseInt(supplierQualityScore) >= score ? "default" : "outline"}
+                    size="icon"
+                    onClick={() => setSupplierQualityScore(score.toString())}
+                    data-testid={`button-quality-score-${score}`}
+                  >
+                    <Star className={`h-4 w-4 ${parseInt(supplierQualityScore) >= score ? "fill-current" : ""}`} />
+                  </Button>
+                ))}
+                <span className="ml-2 text-sm text-muted-foreground">
+                  {supplierQualityScore}/5
+                </span>
+              </div>
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="qualityNotes">Değerlendirme Notları</Label>
+              <Textarea
+                id="qualityNotes"
+                value={qualityNotes}
+                onChange={(e) => setQualityNotes(e.target.value)}
+                placeholder="Ürün kalitesi, paketleme vb. hakkında notlar"
+                data-testid="input-quality-notes"
+              />
+            </div>
+            
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                className="flex-1"
+                onClick={() => setIsEvaluationDialogOpen(false)}
+              >
+                İptal
+              </Button>
+              <Button
+                className="flex-1"
+                onClick={handleAcceptWithEvaluation}
+                disabled={statusMutation.isPending}
+                data-testid="button-confirm-acceptance"
+              >
+                {statusMutation.isPending ? "Kaydediliyor..." : "Onayla"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

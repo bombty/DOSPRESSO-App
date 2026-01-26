@@ -686,7 +686,7 @@ export function registerSatinalmaRoutes(app: Express, isAuthenticated: AuthMiddl
     try {
       const user = (req as any).user;
       const id = parseInt(req.params.id);
-      const { status, qualityCheckPassed, qualityCheckNotes } = req.body;
+      const { status, qualityCheckPassed, qualityCheckNotes, deliveryStatus, supplierQualityScore, qualityNotes } = req.body;
       
       const updateData: any = { 
         status,
@@ -701,6 +701,17 @@ export function registerSatinalmaRoutes(app: Express, isAuthenticated: AuthMiddl
         updateData.qualityCheckedAt = new Date();
       }
       
+      // Tedarikçi değerlendirme bilgileri
+      if (deliveryStatus) {
+        updateData.deliveryStatus = deliveryStatus;
+      }
+      if (supplierQualityScore) {
+        updateData.supplierQualityScore = supplierQualityScore;
+      }
+      if (qualityNotes) {
+        updateData.qualityNotes = qualityNotes;
+      }
+      
       const [updated] = await db.update(goodsReceipts)
         .set(updateData)
         .where(eq(goodsReceipts.id, id))
@@ -710,12 +721,77 @@ export function registerSatinalmaRoutes(app: Express, isAuthenticated: AuthMiddl
         return res.status(404).json({ error: "Mal kabul kaydı bulunamadı" });
       }
       
+      // Kabul edildi durumunda tedarikçi skorunu güncelle
+      if (status === "kabul_edildi" && updated.supplierId) {
+        await updateSupplierScore(updated.supplierId);
+      }
+      
       res.json(updated);
     } catch (error) {
       console.error("Error updating goods receipt status:", error);
       res.status(500).json({ error: "Mal kabul durumu güncellenemedi" });
     }
   });
+  
+  // Tedarikçi performans skoru hesaplama fonksiyonu
+  async function updateSupplierScore(supplierId: number) {
+    try {
+      // Son 12 ayın mal kabullerini al
+      const oneYearAgo = new Date();
+      oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+      
+      const receipts = await db.select()
+        .from(goodsReceipts)
+        .where(and(
+          eq(goodsReceipts.supplierId, supplierId),
+          eq(goodsReceipts.status, "kabul_edildi"),
+          gte(goodsReceipts.receiptDate, oneYearAgo)
+        ));
+      
+      if (receipts.length === 0) return;
+      
+      // Teslimat performansı hesapla (early: +1, on_time: +1, late: -1)
+      let deliveryScore = 0;
+      let qualityScoreSum = 0;
+      let qualityScoreCount = 0;
+      
+      for (const receipt of receipts) {
+        if (receipt.deliveryStatus === "early" || receipt.deliveryStatus === "on_time") {
+          deliveryScore += 1;
+        } else if (receipt.deliveryStatus === "late") {
+          deliveryScore -= 1;
+        }
+        
+        if (receipt.supplierQualityScore) {
+          qualityScoreSum += receipt.supplierQualityScore;
+          qualityScoreCount++;
+        }
+      }
+      
+      // Teslimat oranı (0-100)
+      const deliveryPerformance = Math.round(((deliveryScore + receipts.length) / (2 * receipts.length)) * 100);
+      
+      // Ortalama kalite puanı (1-5 -> 0-100)
+      const avgQualityScore = qualityScoreCount > 0 
+        ? Math.round((qualityScoreSum / qualityScoreCount) * 20)
+        : 80; // Varsayılan
+      
+      // Genel performans skoru (%60 kalite, %40 teslimat)
+      const performanceScore = Math.round((avgQualityScore * 0.6) + (deliveryPerformance * 0.4));
+      
+      // Tedarikçiyi güncelle
+      await db.update(suppliers)
+        .set({ 
+          performanceScore,
+          updatedAt: new Date()
+        })
+        .where(eq(suppliers.id, supplierId));
+      
+      console.log(`Supplier ${supplierId} score updated: ${performanceScore}`);
+    } catch (error) {
+      console.error("Error updating supplier score:", error);
+    }
+  }
   
   // ========================================
   // DASHBOARD VE İSTATİSTİKLER
