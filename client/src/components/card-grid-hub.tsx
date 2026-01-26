@@ -2,6 +2,7 @@ import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery } from "@tanstack/react-query";
 import { isHQRole, isBranchRole } from "@shared/schema";
+import { motion } from "framer-motion";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { QuickTaskModal } from "@/components/quick-task-modal";
@@ -16,6 +17,7 @@ import { BranchScorecard } from "@/components/branch-scorecard";
 import { PersonnelStatusPanel } from "@/components/personnel-status-panel";
 import { CriticalAlerts } from "@/components/critical-alerts";
 import { MEGA_MODULE_ORDER } from "@/lib/megaModuleConfig";
+import { HeroSection } from "@/components/ui/hero-section";
 import {
   Accordion,
   AccordionContent,
@@ -1043,44 +1045,52 @@ export function CardGridHub() {
       )}
 
 
-      {/* Unified Grid - All cards in same grid: 3 cols mobile, 4 tablet */}
-      <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 relative z-10">
+      {/* Modern Grid - Animated Module Cards */}
+      <div className="grid grid-cols-3 sm:grid-cols-4 gap-3 relative z-10">
         {/* Quick Action Buttons */}
         {((isBranch && (user?.role === 'supervisor' || user?.role === 'supervisor_buddy')) || isHQ) && (
           <EnhancedAnalyticsCard />
         )}
         
-        <Button
-          variant="outline"
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.3, delay: 0.05 }}
+          whileHover={{ scale: 1.02, y: -2 }}
+          whileTap={{ scale: 0.98 }}
           onClick={() => setLocation("/gorevler")}
-          className="h-auto flex flex-col items-center justify-center p-3 gap-1.5"
+          className="flex flex-col items-center justify-center p-3 rounded-2xl bg-card border border-card-border shadow-card hover:shadow-card-hover transition-all duration-300 cursor-pointer group overflow-hidden"
           data-testid="button-view-all-tasks"
         >
-          <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-600 flex items-center justify-center">
-            <ClipboardList className="w-4 h-4 text-white" />
+          <div className="p-3 rounded-xl mb-2 transition-transform duration-300 group-hover:scale-110 bg-gradient-to-br from-blue-500 to-cyan-600">
+            <ClipboardList className="w-5 h-5 text-white" />
           </div>
-          <span className="text-sm font-medium">Görevler</span>
-        </Button>
+          <span className="text-xs font-semibold text-center text-foreground">Görevler</span>
+        </motion.div>
 
         <QuickTaskModal trigger={
-          <Button
-            variant="outline"
-            className="h-auto flex flex-col items-center justify-center p-3 gap-1.5 w-full"
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.3, delay: 0.1 }}
+            whileHover={{ scale: 1.02, y: -2 }}
+            whileTap={{ scale: 0.98 }}
+            className="flex flex-col items-center justify-center p-3 rounded-2xl bg-card border border-card-border shadow-card hover:shadow-card-hover transition-all duration-300 cursor-pointer group overflow-hidden"
             data-testid="button-quick-task-dashboard"
           >
-            <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-emerald-500 to-green-600 flex items-center justify-center">
-              <Plus className="w-4 h-4 text-white" />
+            <div className="p-3 rounded-xl mb-2 transition-transform duration-300 group-hover:scale-110 bg-gradient-to-br from-emerald-500 to-green-600">
+              <Plus className="w-5 h-5 text-white" />
             </div>
-            <span className="text-sm font-medium">Hızlı Görev</span>
-          </Button>
+            <span className="text-xs font-semibold text-center text-foreground">Hızlı Görev</span>
+          </motion.div>
         } />
 
-        {/* Mega Module Cards */}
+        {/* Mega Module Cards with Animation */}
         {megaModules && megaModules.filter((m: any) => !m.isEmpty).length > 0 ? (
           <>
             {megaModules
               .filter((megaModule: any) => !megaModule.isEmpty)
-              .map((megaModule: any) => {
+              .map((megaModule: any, index: number) => {
               const MegaIcon = getSectionIcon(megaModule.icon);
               const moduleBadge = getSectionBadge(megaModule.items);
               
@@ -1099,82 +1109,104 @@ export function CardGridHub() {
               const megaModulePath = MEGA_MODULE_PATHS[megaModule.id] || `/modul/${megaModule.id}`;
               
               return (
-                <Button
+                <motion.div
                   key={megaModule.id}
-                  variant="outline"
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ duration: 0.3, delay: 0.15 + index * 0.05 }}
+                  whileHover={{ scale: 1.02, y: -2 }}
+                  whileTap={{ scale: 0.98 }}
                   onClick={() => setLocation(megaModulePath)}
-                  className="relative h-auto flex flex-col items-center justify-center p-3 gap-1.5"
+                  className="relative flex flex-col items-center justify-center p-3 rounded-2xl bg-card border border-card-border shadow-card hover:shadow-card-hover transition-all duration-300 cursor-pointer group overflow-hidden"
                   data-testid={`mega-module-${megaModule.id}`}
                 >
+                  {/* Gradient accent on hover */}
+                  <div className={`absolute inset-0 opacity-0 group-hover:opacity-5 transition-opacity duration-300 ${megaModule.color}`} />
+                  
                   {moduleBadge > 0 && (
-                    <Badge variant="destructive" className="absolute -top-1.5 -right-1.5 h-[18px] min-w-[18px] px-1 text-[10px] font-bold">
+                    <Badge variant="destructive" className="absolute top-1.5 right-1.5 h-5 min-w-5 flex items-center justify-center text-[10px] p-0">
                       {moduleBadge > 99 ? "99+" : moduleBadge}
                     </Badge>
                   )}
-                  <div className={`w-9 h-9 rounded-lg ${megaModule.color} flex items-center justify-center`}>
-                    <MegaIcon className="w-4 h-4 text-white" />
+                  <div className={`p-3 rounded-xl mb-2 transition-all duration-300 group-hover:scale-110 ${megaModule.color}`}>
+                    <MegaIcon className="w-5 h-5 text-white" />
                   </div>
-                  <span className="text-sm font-medium text-center leading-tight line-clamp-2">{megaModule.title}</span>
-                  <span className="text-xs text-muted-foreground">
-                    {megaModule.items.length}
+                  <span className="text-xs font-semibold text-center text-foreground line-clamp-2 leading-tight">{megaModule.title}</span>
+                  <span className="text-[10px] text-muted-foreground mt-0.5">
+                    {megaModule.items.length} modül
                   </span>
-                </Button>
+                </motion.div>
               );
             })}
           </>
         ) : (
           /* Fallback flat grid items */
           <>
-            {modules.map((module: any) => {
+            {modules.map((module: any, index: number) => {
               const Icon = module.icon;
               return (
-                <Button
+                <motion.div
                   key={module.id}
-                  variant="outline"
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ duration: 0.3, delay: 0.1 + index * 0.05 }}
+                  whileHover={{ scale: 1.02, y: -2 }}
+                  whileTap={{ scale: 0.98 }}
                   onClick={() => setLocation(module.path)}
-                  className="relative h-auto flex flex-col items-center justify-center p-3 gap-1.5"
+                  className="relative flex flex-col items-center justify-center p-3 rounded-2xl bg-card border border-card-border shadow-card hover:shadow-card-hover transition-all duration-300 cursor-pointer group overflow-hidden"
                   data-testid={`module-card-${module.id}`}
                 >
+                  <div className={`absolute inset-0 opacity-0 group-hover:opacity-5 transition-opacity duration-300 ${module.color}`} />
+                  
                   {module.badge && module.badge > 0 && (
-                    <Badge variant="destructive" className="absolute -top-1.5 -right-1.5 h-[18px] min-w-[18px] px-1 text-[10px] font-bold">
+                    <Badge variant="destructive" className="absolute top-1.5 right-1.5 h-5 min-w-5 flex items-center justify-center text-[10px] p-0">
                       {module.badge > 99 ? "99+" : module.badge}
                     </Badge>
                   )}
-                  <div className={`w-9 h-9 rounded-lg ${module.color} flex items-center justify-center`}>
-                    <Icon className="w-4 h-4 text-white" />
+                  <div className={`p-3 rounded-xl mb-2 transition-all duration-300 group-hover:scale-110 ${module.color}`}>
+                    <Icon className="w-5 h-5 text-white" />
                   </div>
-                  <span className="text-sm font-medium text-center leading-tight line-clamp-2">{module.label}</span>
-                </Button>
+                  <span className="text-xs font-semibold text-center text-foreground line-clamp-2 leading-tight">{module.label}</span>
+                </motion.div>
               );
             })}
           </>
         )}
       </div>
 
-      {/* Quick Stats - Compact horizontal inline */}
+      {/* Quick Stats - Modern Animated Chips */}
       {(pendingTasks > 0 || openFaults > 0) && (
-        <div className="flex flex-wrap gap-2 text-xs">
+        <motion.div 
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.3 }}
+          className="flex flex-wrap gap-2 text-xs"
+        >
           {pendingTasks > 0 && (
-            <div 
-              className="flex items-center gap-1 hover-elevate cursor-pointer px-2 py-1 rounded-full bg-yellow-500/10 border border-yellow-500/20"
+            <motion.div 
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              className="flex items-center gap-2 cursor-pointer px-3 py-2 rounded-xl bg-gradient-to-r from-amber-500/10 to-yellow-500/10 border border-yellow-500/30 shadow-sm hover:shadow-md transition-all duration-300"
               onClick={() => setLocation("/gorevler")}
               data-testid="link-pending-tasks"
             >
-              <div className="w-1.5 h-1.5 rounded-full bg-yellow-500" />
-              <span className="font-medium">{pendingTasks} bekleyen</span>
-            </div>
+              <div className="w-2 h-2 rounded-full bg-gradient-to-r from-amber-500 to-yellow-500 animate-pulse" />
+              <span className="font-semibold text-amber-700 dark:text-amber-400">{pendingTasks} bekleyen görev</span>
+            </motion.div>
           )}
           {openFaults > 0 && (
-            <div 
-              className="flex items-center gap-1 hover-elevate cursor-pointer px-2 py-1 rounded-full bg-orange-500/10 border border-orange-500/20"
+            <motion.div 
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              className="flex items-center gap-2 cursor-pointer px-3 py-2 rounded-xl bg-gradient-to-r from-orange-500/10 to-red-500/10 border border-orange-500/30 shadow-sm hover:shadow-md transition-all duration-300"
               onClick={() => setLocation("/ariza")}
               data-testid="link-open-faults"
             >
-              <div className="w-1.5 h-1.5 rounded-full bg-orange-500" />
-              <span className="font-medium">{openFaults} arıza</span>
-            </div>
+              <div className="w-2 h-2 rounded-full bg-gradient-to-r from-orange-500 to-red-500 animate-pulse" />
+              <span className="font-semibold text-orange-700 dark:text-orange-400">{openFaults} açık arıza</span>
+            </motion.div>
           )}
-        </div>
+        </motion.div>
       )}
 
       {/* Recent Activities Panel - For supervisors and HQ */}
