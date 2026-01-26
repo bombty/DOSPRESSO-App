@@ -13,6 +13,7 @@ import {
   productionRecords,
   productionIngredients,
   recipeIngredients,
+  rawMaterials,
   insertInventorySchema,
   insertSupplierSchema,
   insertPurchaseOrderSchema,
@@ -827,12 +828,63 @@ export function registerSatinalmaRoutes(app: Express, isAuthenticated: AuthMiddl
       const recentReceipts = await db.select().from(goodsReceipts)
         .where(gte(goodsReceipts.receiptDate, thirtyDaysAgo));
       
+      // Hammaddeler listesi (son 10 kalem)
+      const allRawMaterials = await db.select().from(rawMaterials)
+        .where(eq(rawMaterials.isActive, true));
+      
+      const rawMaterialsList = await db.select({
+        id: rawMaterials.id,
+        name: rawMaterials.name,
+        category: rawMaterials.category,
+        unit: rawMaterials.unit,
+        currentPrice: rawMaterials.currentUnitPrice,
+        isKeyblend: rawMaterials.isKeyblend,
+      }).from(rawMaterials)
+        .where(eq(rawMaterials.isActive, true))
+        .orderBy(desc(rawMaterials.updatedAt))
+        .limit(10);
+      
+      // Stok listesi
+      const inventoryList = await db.select({
+        id: inventory.id,
+        name: inventory.name,
+        currentStock: inventory.currentStock,
+        minimumStock: inventory.minimumStock,
+        unit: inventory.unit,
+        category: inventory.category,
+      }).from(inventory)
+        .where(eq(inventory.isActive, true))
+        .orderBy(inventory.name)
+        .limit(10);
+
+      // Muhasebe (Cari) entegrasyonu - Alacak/Borç özeti
+      const allCariAccounts = await db.select().from(cariAccounts).where(eq(cariAccounts.isActive, true));
+      let totalReceivables = 0;
+      let totalPayables = 0;
+      
+      for (const account of allCariAccounts) {
+        const balance = parseFloat(account.currentBalance || "0");
+        if (balance > 0) {
+          totalReceivables += balance;
+        } else {
+          totalPayables += Math.abs(balance);
+        }
+      }
+
       res.json({
         totalSuppliers: allSuppliers.length,
         pendingOrders: pendingOrders.length,
         lowStockAlerts: lowStockCount,
         recentReceipts: recentReceipts.length,
-        totalInventoryItems: allInventory.length
+        totalInventoryItems: allInventory.length,
+        rawMaterials: rawMaterialsList,
+        inventory: inventoryList,
+        totalRawMaterials: allRawMaterials.length,
+        accounting: {
+          totalReceivables,
+          totalPayables,
+          accountCount: allCariAccounts.length
+        }
       });
     } catch (error) {
       console.error("Error fetching dashboard data:", error);

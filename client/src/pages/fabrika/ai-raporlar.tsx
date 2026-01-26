@@ -34,7 +34,7 @@ export default function FabrikaAIRaporlar() {
   const { data: rotationReport, isLoading: loadingRotation, refetch: refetchRotation } = useQuery<AIReport>({
     queryKey: ['/api/factory/ai-reports/rotation', period],
     queryFn: async () => {
-      const res = await fetch(`/api/factory/ai-reports/rotation?period=${period}`);
+      const res = await fetch(`/api/factory/ai-reports/rotation?period=${period}`, { credentials: 'include' });
       if (!res.ok) throw new Error("Rapor alınamadı");
       return res.json();
     },
@@ -43,7 +43,7 @@ export default function FabrikaAIRaporlar() {
   const { data: errorReport, isLoading: loadingError, refetch: refetchError } = useQuery<AIReport>({
     queryKey: ['/api/factory/ai-reports/errors', period],
     queryFn: async () => {
-      const res = await fetch(`/api/factory/ai-reports/errors?period=${period}`);
+      const res = await fetch(`/api/factory/ai-reports/errors?period=${period}`, { credentials: 'include' });
       if (!res.ok) throw new Error("Rapor alınamadı");
       return res.json();
     },
@@ -52,7 +52,7 @@ export default function FabrikaAIRaporlar() {
   const { data: efficiencyReport, isLoading: loadingEfficiency, refetch: refetchEfficiency } = useQuery<AIReport>({
     queryKey: ['/api/factory/ai-reports/efficiency', period],
     queryFn: async () => {
-      const res = await fetch(`/api/factory/ai-reports/efficiency?period=${period}`);
+      const res = await fetch(`/api/factory/ai-reports/efficiency?period=${period}`, { credentials: 'include' });
       if (!res.ok) throw new Error("Rapor alınamadı");
       return res.json();
     },
