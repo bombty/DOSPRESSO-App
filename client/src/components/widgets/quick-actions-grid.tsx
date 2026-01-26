@@ -1,0 +1,140 @@
+import { motion } from "framer-motion";
+import { useLocation } from "wouter";
+import { useAuth } from "@/hooks/useAuth";
+import { isHQRole } from "@shared/schema";
+import {
+  Plus,
+  QrCode,
+  ClipboardList,
+  Wrench,
+  GraduationCap,
+  Users,
+  Calendar,
+  MessageSquare,
+  Bell,
+  Settings,
+  BarChart3,
+  Briefcase
+} from "lucide-react";
+
+interface QuickAction {
+  id: string;
+  label: string;
+  icon: any;
+  path: string;
+  color: string;
+  bgColor: string;
+  roles?: string[];
+}
+
+const allActions: QuickAction[] = [
+  { 
+    id: "new-task", 
+    label: "Yeni Görev", 
+    icon: Plus, 
+    path: "/gorevler?new=true",
+    color: "text-blue-600 dark:text-blue-400",
+    bgColor: "bg-blue-100 dark:bg-blue-900/40"
+  },
+  { 
+    id: "qr-scan", 
+    label: "QR Tara", 
+    icon: QrCode, 
+    path: "/qr-scan",
+    color: "text-purple-600 dark:text-purple-400",
+    bgColor: "bg-purple-100 dark:bg-purple-900/40"
+  },
+  { 
+    id: "checklist", 
+    label: "Checklist", 
+    icon: ClipboardList, 
+    path: "/checklistler",
+    color: "text-emerald-600 dark:text-emerald-400",
+    bgColor: "bg-emerald-100 dark:bg-emerald-900/40"
+  },
+  { 
+    id: "fault", 
+    label: "Arıza Bildir", 
+    icon: Wrench, 
+    path: "/ariza?new=true",
+    color: "text-orange-600 dark:text-orange-400",
+    bgColor: "bg-orange-100 dark:bg-orange-900/40"
+  },
+  { 
+    id: "academy", 
+    label: "Eğitimler", 
+    icon: GraduationCap, 
+    path: "/akademi",
+    color: "text-indigo-600 dark:text-indigo-400",
+    bgColor: "bg-indigo-100 dark:bg-indigo-900/40"
+  },
+  { 
+    id: "personnel", 
+    label: "Personel", 
+    icon: Users, 
+    path: "/kullanicilar",
+    color: "text-pink-600 dark:text-pink-400",
+    bgColor: "bg-pink-100 dark:bg-pink-900/40",
+    roles: ["admin", "supervisor", "supervisor_buddy"]
+  },
+  { 
+    id: "shifts", 
+    label: "Vardiyalar", 
+    icon: Calendar, 
+    path: "/vardiyalar",
+    color: "text-cyan-600 dark:text-cyan-400",
+    bgColor: "bg-cyan-100 dark:bg-cyan-900/40"
+  },
+  { 
+    id: "reports", 
+    label: "Raporlar", 
+    icon: BarChart3, 
+    path: "/raporlar",
+    color: "text-rose-600 dark:text-rose-400",
+    bgColor: "bg-rose-100 dark:bg-rose-900/40",
+    roles: ["admin", "supervisor", "supervisor_buddy", "coach", "muhasebe"]
+  }
+];
+
+export function QuickActionsGrid() {
+  const [, setLocation] = useLocation();
+  const { user } = useAuth();
+
+  const filteredActions = allActions.filter(action => {
+    if (!action.roles) return true;
+    return user?.role && action.roles.includes(user.role);
+  }).slice(0, 8);
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <h3 className="text-sm font-semibold text-foreground">Hızlı İşlemler</h3>
+      </div>
+      
+      <div className="grid grid-cols-4 gap-3">
+        {filteredActions.map((action, index) => {
+          const Icon = action.icon;
+          return (
+            <motion.button
+              key={action.id}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: index * 0.05, duration: 0.3 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => setLocation(action.path)}
+              className="flex flex-col items-center gap-2 p-3"
+              data-testid={`quick-action-${action.id}`}
+            >
+              <div className={`w-12 h-12 rounded-2xl ${action.bgColor} flex items-center justify-center transition-all duration-200 hover:scale-105`}>
+                <Icon className={`w-5 h-5 ${action.color}`} />
+              </div>
+              <span className="text-[10px] font-medium text-muted-foreground text-center leading-tight">
+                {action.label}
+              </span>
+            </motion.button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}

@@ -18,6 +18,11 @@ import { PersonnelStatusPanel } from "@/components/personnel-status-panel";
 import { CriticalAlerts } from "@/components/critical-alerts";
 import { MEGA_MODULE_ORDER } from "@/lib/megaModuleConfig";
 import { HeroSection } from "@/components/ui/hero-section";
+import { WelcomeHero } from "@/components/widgets/welcome-hero";
+import { QuickStatsGrid } from "@/components/widgets/quick-stats-grid";
+import { QuickActionsGrid } from "@/components/widgets/quick-actions-grid";
+import { MiniCalendar } from "@/components/widgets/mini-calendar";
+import { ProgressOverview } from "@/components/widgets/progress-overview";
 import {
   Accordion,
   AccordionContent,
@@ -879,9 +884,24 @@ export function CardGridHub() {
     : baseModules;
 
   return (
-    <div className="p-2 pb-20 space-y-3">
+    <div className="p-3 pb-24 space-y-4">
+      {/* Welcome Hero Section */}
+      <WelcomeHero />
+
       {/* Critical Alerts - Top priority notifications */}
       <CriticalAlerts />
+
+      {/* Quick Stats Grid - Key metrics */}
+      <QuickStatsGrid />
+
+      {/* Quick Actions - Fast access buttons */}
+      <QuickActionsGrid />
+
+      {/* Progress and Calendar widgets */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <ProgressOverview />
+        <MiniCalendar />
+      </div>
 
       {/* Announcement Banners - Only show if enabled */}
       {bannerCarouselEnabled && <AnnouncementBannerCarousel />}
