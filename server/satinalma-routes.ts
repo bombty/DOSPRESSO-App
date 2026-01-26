@@ -5,6 +5,7 @@ import {
   inventory, 
   inventoryMovements, 
   suppliers, 
+  productSuppliers,
   purchaseOrders, 
   purchaseOrderItems,
   goodsReceipts,
@@ -212,6 +213,32 @@ export function registerSatinalmaRoutes(app: Express, isAuthenticated: AuthMiddl
     } catch (error) {
       console.error("Error fetching inventory movements:", error);
       res.status(500).json({ error: "Stok hareketleri alınamadı" });
+    }
+  });
+  
+  // Ürün tedarikçileri
+  app.get("/api/inventory/:id/suppliers", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const inventoryId = parseInt(req.params.id);
+      
+      const result = await db.select({
+        id: productSuppliers.id,
+        supplierName: suppliers.name,
+        supplierCode: suppliers.code,
+        unitPrice: productSuppliers.unitPrice,
+        leadTime: productSuppliers.leadTimeDays,
+        isPrimary: productSuppliers.isPrimary,
+        preferenceOrder: productSuppliers.preferenceOrder,
+      })
+        .from(productSuppliers)
+        .leftJoin(suppliers, eq(productSuppliers.supplierId, suppliers.id))
+        .where(eq(productSuppliers.inventoryId, inventoryId))
+        .orderBy(asc(productSuppliers.preferenceOrder));
+      
+      res.json(result);
+    } catch (error) {
+      console.error("Error fetching inventory suppliers:", error);
+      res.status(500).json({ error: "Ürün tedarikçileri alınamadı" });
     }
   });
   

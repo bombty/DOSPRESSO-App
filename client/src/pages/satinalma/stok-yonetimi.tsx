@@ -35,7 +35,14 @@ import {
   AlertTriangle,
   ArrowUpDown,
   Edit,
-  History
+  History,
+  Eye,
+  Truck,
+  TrendingUp,
+  TrendingDown,
+  FileSpreadsheet,
+  Download,
+  Upload
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
@@ -53,6 +60,22 @@ interface InventoryItem {
   unitCost: string;
   warehouseLocation: string | null;
   isActive: boolean;
+}
+
+interface StockMovement {
+  id: number;
+  movementType: string;
+  quantity: string;
+  notes: string | null;
+  createdAt: string;
+}
+
+interface ProductSupplier {
+  id: number;
+  supplierName: string;
+  supplierCode: string;
+  unitPrice: string;
+  leadTime: number;
 }
 
 const categories = [
@@ -75,11 +98,34 @@ export default function StokYonetimi() {
   const [showLowStock, setShowLowStock] = useState(false);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isMovementDialogOpen, setIsMovementDialogOpen] = useState(false);
+  const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null);
   
   const [newCategory, setNewCategory] = useState("");
   const [newUnit, setNewUnit] = useState("");
   const [movementType, setMovementType] = useState("");
+
+  // Fetch stock movements for selected item
+  const { data: stockMovements } = useQuery<StockMovement[]>({
+    queryKey: ['/api/inventory', selectedItem?.id, 'movements'],
+    queryFn: async () => {
+      if (!selectedItem) return [];
+      const res = await fetch(`/api/inventory/${selectedItem.id}/movements`);
+      return res.json();
+    },
+    enabled: !!selectedItem && isDetailDialogOpen,
+  });
+
+  // Fetch suppliers for selected item
+  const { data: productSuppliers } = useQuery<ProductSupplier[]>({
+    queryKey: ['/api/inventory', selectedItem?.id, 'suppliers'],
+    queryFn: async () => {
+      if (!selectedItem) return [];
+      const res = await fetch(`/api/inventory/${selectedItem.id}/suppliers`);
+      return res.json();
+    },
+    enabled: !!selectedItem && isDetailDialogOpen,
+  });
 
   const queryParams = new URLSearchParams();
   if (category && category !== "all") queryParams.set("category", category);
@@ -180,6 +226,83 @@ export default function StokYonetimi() {
     return { label: "Normal", variant: "outline" as const };
   };
 
+  const handleExportExcel = () => {
+    if (!items || items.length === 0) {
+      toast({ title: "Hata", description: "Dışa aktarılacak veri yok", variant: "destructive" });
+      return;
+    }
+    
+    const csvContent = [
+      ["Kod", "Ürün Adı", "Kategori", "Birim", "Mevcut Stok", "Min. Stok", "Birim Maliyet", "Depo Konumu"].join(","),
+      ...items.map(item => [
+        item.code,
+        `"${item.name}"`,
+        item.category,
+        item.unit,
+        item.currentStock,
+        item.minimumStock,
+        item.unitCost,
+        item.warehouseLocation || ""
+      ].join(","))
+    ].join("\n");
+
+    const blob = new Blob(["\ufeff" + csvContent], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `stok_listesi_${new Date().toISOString().split("T")[0]}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast({ title: "Başarılı", description: "Stok listesi indirildi" });
+  };
+
+  const handleImportExcel = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const text = await file.text();
+      const rows = text.split("\n").slice(1).filter(row => row.trim());
+      
+      for (const row of rows) {
+        const cols = row.split(",").map(c => c.replace(/^"|"$/g, "").trim());
+        if (cols.length >= 6) {
+          await apiRequest("POST", "/api/inventory", {
+            code: cols[0],
+            name: cols[1],
+            category: cols[2] || "diger",
+            unit: cols[3] || "adet",
+            currentStock: cols[4] || "0",
+            minimumStock: cols[5] || "0",
+            unitCost: cols[6] || "0",
+            warehouseLocation: cols[7] || null
+          });
+        }
+      }
+      
+      queryClient.invalidateQueries({ predicate: (query) => 
+        (query.queryKey[0] as string).startsWith("/api/inventory")
+      });
+      toast({ title: "Başarılı", description: `${rows.length} ürün içe aktarıldı` });
+    } catch (error) {
+      toast({ title: "Hata", description: "Dosya işlenirken hata oluştu", variant: "destructive" });
+    }
+    
+    e.target.value = "";
+  };
+
+  const getMovementTypeLabel = (type: string) => {
+    const labels: Record<string, string> = {
+      giris: "Giriş",
+      cikis: "Çıkış",
+      sayim_duzeltme: "Sayım Düzeltme",
+      fire: "Fire",
+      iade: "İade",
+      mal_kabul: "Mal Kabul"
+    };
+    return labels[type] || type;
+  };
+
   if (isLoading) {
     return (
       <div className="space-y-4">
@@ -223,6 +346,38 @@ export default function StokYonetimi() {
           <AlertTriangle className="h-4 w-4 mr-2" />
           Düşük Stok
         </Button>
+
+        <div className="flex items-center gap-1">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleExportExcel}
+            data-testid="button-export-excel"
+          >
+            <Download className="h-4 w-4 mr-2" />
+            Excel
+          </Button>
+          <label htmlFor="excel-import">
+            <Button
+              variant="outline"
+              size="sm"
+              asChild
+              data-testid="button-import-excel"
+            >
+              <span>
+                <Upload className="h-4 w-4 mr-2" />
+                İçe Aktar
+              </span>
+            </Button>
+          </label>
+          <input
+            type="file"
+            id="excel-import"
+            accept=".xlsx,.xls,.csv"
+            className="hidden"
+            onChange={handleImportExcel}
+          />
+        </div>
 
         <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
           <DialogTrigger asChild>
@@ -319,7 +474,15 @@ export default function StokYonetimi() {
                 items.map((item) => {
                   const status = getStockStatus(item);
                   return (
-                    <TableRow key={item.id} data-testid={`inventory-row-${item.id}`}>
+                    <TableRow 
+                      key={item.id} 
+                      data-testid={`inventory-row-${item.id}`}
+                      className="cursor-pointer hover:bg-muted/50"
+                      onClick={() => {
+                        setSelectedItem(item);
+                        setIsDetailDialogOpen(true);
+                      }}
+                    >
                       <TableCell className="font-mono text-sm">{item.code}</TableCell>
                       <TableCell className="font-medium">{item.name}</TableCell>
                       <TableCell>
@@ -341,7 +504,20 @@ export default function StokYonetimi() {
                           <Button
                             variant="ghost"
                             size="icon"
-                            onClick={() => {
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedItem(item);
+                              setIsDetailDialogOpen(true);
+                            }}
+                            data-testid={`button-detail-${item.id}`}
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={(e) => {
+                              e.stopPropagation();
                               setSelectedItem(item);
                               setIsMovementDialogOpen(true);
                             }}
@@ -406,6 +582,165 @@ export default function StokYonetimi() {
                 {movementMutation.isPending ? "Kaydediliyor..." : "Kaydet"}
               </Button>
             </form>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Ürün Detay Dialog */}
+      <Dialog open={isDetailDialogOpen} onOpenChange={setIsDetailDialogOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Package className="h-5 w-5" />
+              Ürün Detayı
+            </DialogTitle>
+          </DialogHeader>
+          {selectedItem && (
+            <div className="space-y-6">
+              {/* Ürün Bilgileri */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <p className="text-xs text-muted-foreground">Stok Kodu</p>
+                  <p className="font-mono font-medium">{selectedItem.code}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-xs text-muted-foreground">Ürün Adı</p>
+                  <p className="font-medium">{selectedItem.name}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-xs text-muted-foreground">Kategori</p>
+                  <Badge variant="outline">
+                    {categories.find(c => c.value === selectedItem.category)?.label || selectedItem.category}
+                  </Badge>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-xs text-muted-foreground">Birim</p>
+                  <p>{selectedItem.unit}</p>
+                </div>
+              </div>
+
+              {/* Stok Durumu */}
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm">Stok Durumu</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-3 gap-4">
+                    <div className="text-center p-3 rounded-lg bg-muted">
+                      <p className="text-2xl font-bold">{parseFloat(selectedItem.currentStock).toLocaleString("tr-TR")}</p>
+                      <p className="text-xs text-muted-foreground">Mevcut ({selectedItem.unit})</p>
+                    </div>
+                    <div className="text-center p-3 rounded-lg bg-muted">
+                      <p className="text-2xl font-bold">{parseFloat(selectedItem.minimumStock).toLocaleString("tr-TR")}</p>
+                      <p className="text-xs text-muted-foreground">Minimum ({selectedItem.unit})</p>
+                    </div>
+                    <div className="text-center p-3 rounded-lg bg-muted">
+                      <p className="text-2xl font-bold">₺{parseFloat(selectedItem.unitCost).toLocaleString("tr-TR")}</p>
+                      <p className="text-xs text-muted-foreground">Birim Maliyet</p>
+                    </div>
+                  </div>
+                  {selectedItem.warehouseLocation && (
+                    <div className="mt-3 text-sm text-muted-foreground">
+                      Depo Konumu: <span className="font-medium">{selectedItem.warehouseLocation}</span>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Tedarikçiler */}
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm flex items-center gap-2">
+                    <Truck className="h-4 w-4" />
+                    Tedarikçiler ({productSuppliers?.length || 0})
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {productSuppliers && productSuppliers.length > 0 ? (
+                    <div className="space-y-2">
+                      {productSuppliers.map((supplier) => (
+                        <div key={supplier.id} className="flex items-center justify-between p-2 rounded-lg bg-muted/50">
+                          <div>
+                            <p className="font-medium">{supplier.supplierName}</p>
+                            <p className="text-xs text-muted-foreground">{supplier.supplierCode}</p>
+                          </div>
+                          <div className="text-right">
+                            <p className="font-medium">₺{parseFloat(supplier.unitPrice).toLocaleString("tr-TR")}</p>
+                            <p className="text-xs text-muted-foreground">{supplier.leadTime} gün teslimat</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground text-center py-4">
+                      Bu ürün için henüz tedarikçi tanımlı değil
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Son Hareketler */}
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm flex items-center gap-2">
+                    <History className="h-4 w-4" />
+                    Son Stok Hareketleri
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {stockMovements && stockMovements.length > 0 ? (
+                    <div className="space-y-2 max-h-48 overflow-y-auto">
+                      {stockMovements.slice(0, 10).map((movement) => (
+                        <div key={movement.id} className="flex items-center justify-between p-2 rounded-lg bg-muted/50">
+                          <div className="flex items-center gap-2">
+                            {movement.movementType === "giris" || movement.movementType === "mal_kabul" || movement.movementType === "iade" ? (
+                              <TrendingUp className="h-4 w-4 text-green-500" />
+                            ) : (
+                              <TrendingDown className="h-4 w-4 text-red-500" />
+                            )}
+                            <div>
+                              <p className="text-sm font-medium">{getMovementTypeLabel(movement.movementType)}</p>
+                              {movement.notes && (
+                                <p className="text-xs text-muted-foreground">{movement.notes}</p>
+                              )}
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <p className={`font-medium ${movement.movementType === "giris" || movement.movementType === "mal_kabul" || movement.movementType === "iade" ? "text-green-600" : "text-red-600"}`}>
+                              {movement.movementType === "giris" || movement.movementType === "mal_kabul" || movement.movementType === "iade" ? "+" : "-"}
+                              {parseFloat(movement.quantity).toLocaleString("tr-TR")}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {new Date(movement.createdAt).toLocaleDateString("tr-TR")}
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground text-center py-4">
+                      Henüz stok hareketi yok
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Aksiyon Butonları */}
+              <div className="flex gap-2">
+                <Button 
+                  variant="outline" 
+                  className="flex-1"
+                  onClick={() => {
+                    setIsDetailDialogOpen(false);
+                    setIsMovementDialogOpen(true);
+                  }}
+                  data-testid="button-add-movement-from-detail"
+                >
+                  <ArrowUpDown className="h-4 w-4 mr-2" />
+                  Stok Hareketi Ekle
+                </Button>
+              </div>
+            </div>
           )}
         </DialogContent>
       </Dialog>

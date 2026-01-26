@@ -1042,12 +1042,6 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     social_groups: ['view'],
     academy_supervisor: [],
     academy_ai: ['view'],
-    // Satinalma modules - No access
-    satinalma: [],
-    inventory: [],
-    suppliers: [],
-    purchase_orders: [],
-    goods_receipt: [],
   },
   barista: {
     dashboard: ['view'],
@@ -9729,6 +9723,46 @@ export type InsertSupplier = z.infer<typeof insertSupplierSchema>;
 export type Supplier = typeof suppliers.$inferSelect;
 
 // ========================================
+// ÜRÜN-TEDARİKÇİ İLİŞKİSİ - Product Supplier Mapping
+// ========================================
+
+export const productSuppliers = pgTable("product_suppliers", {
+  id: serial("id").primaryKey(),
+  
+  inventoryId: integer("inventory_id").references(() => inventory.id, { onDelete: "cascade" }).notNull(),
+  supplierId: integer("supplier_id").references(() => suppliers.id, { onDelete: "cascade" }).notNull(),
+  
+  // Tedarikçiye özel bilgiler
+  supplierProductCode: varchar("supplier_product_code", { length: 100 }),
+  unitPrice: numeric("unit_price", { precision: 12, scale: 2 }).notNull(),
+  minimumOrderQuantity: numeric("minimum_order_quantity", { precision: 12, scale: 3 }).default("1"),
+  leadTimeDays: integer("lead_time_days").default(3),
+  
+  // Tercih sırası
+  preferenceOrder: integer("preference_order").default(1),
+  isPrimary: boolean("is_primary").default(false),
+  
+  // Durum
+  isActive: boolean("is_active").default(true),
+  notes: text("notes"),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("ps_inventory_idx").on(table.inventoryId),
+  index("ps_supplier_idx").on(table.supplierId),
+]);
+
+export const insertProductSupplierSchema = createInsertSchema(productSuppliers).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertProductSupplier = z.infer<typeof insertProductSupplierSchema>;
+export type ProductSupplier = typeof productSuppliers.$inferSelect;
+
+// ========================================
 // SİPARİŞ YÖNETİMİ - Purchase Order Management
 // ========================================
 
@@ -9852,6 +9886,13 @@ export const goodsReceipts = pgTable("goods_receipts", {
   qualityCheckNotes: text("quality_check_notes"),
   qualityCheckedById: varchar("quality_checked_by_id").references(() => users.id, { onDelete: "set null" }),
   qualityCheckedAt: timestamp("quality_checked_at"),
+  
+  // Teslimat durumu ve tedarikçi değerlendirmesi
+  deliveryStatus: varchar("delivery_status", { length: 20 }), // early, on_time, late
+  expectedDeliveryDate: timestamp("expected_delivery_date"),
+  deliveryDelayDays: integer("delivery_delay_days").default(0),
+  supplierQualityScore: integer("supplier_quality_score"), // 1-5 puan
+  supplierQualityNotes: text("supplier_quality_notes"),
   
   // Notlar
   notes: text("notes"),

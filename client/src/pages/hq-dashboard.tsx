@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { useRoute } from "wouter";
+import { useRoute, useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -949,15 +949,34 @@ const departmentOwnerMap: Record<string, string> = {
 };
 
 function CGODashboard() {
+  const [, setLocation] = useLocation();
   const { data, isLoading } = useQuery<any>({
     queryKey: ['/api/hq-dashboard/cgo'],
   });
 
+  const departmentRouteMap: Record<string, string> = {
+    'Satınalma': '/hq-dashboard/satinalma',
+    'Fabrika': '/hq-dashboard/fabrika',
+    'İK': '/hq-dashboard/ik',
+    'Coach': '/hq-dashboard/coach',
+    'Marketing': '/hq-dashboard/marketing',
+    'Trainer': '/hq-dashboard/trainer',
+    'Kalite': '/hq-dashboard/kalite',
+    'Muhasebe': '/hq-dashboard/muhasebe',
+  };
+
+  const statCardRouteMap: Record<string, string> = {
+    'Aktif Personel': '/operasyon?tab=personel',
+    'Açık Arızalar': '/ekipman?tab=ariza-yonetimi',
+    'Checklist Tamamlanma': '/operasyon?tab=checklistler',
+    'Toplam Şube': '/operasyon?tab=subeler',
+  };
+
   const fallbackMetrics = [
-    { title: "Toplam Şube", value: 8, icon: <Store className="w-5 h-5 text-blue-500" />, status: 'healthy' as RiskStatus },
-    { title: "Aktif Personel", value: 156, icon: <Users className="w-5 h-5 text-green-500" />, trend: 'up' as Trend },
-    { title: "Açık Arızalar", value: 5, icon: <AlertTriangle className="w-5 h-5 text-red-500" />, status: 'warning' as RiskStatus },
-    { title: "Checklist Tamamlanma", value: "92%", icon: <CheckCircle className="w-5 h-5 text-emerald-500" />, status: 'healthy' as RiskStatus },
+    { title: "Toplam Şube", value: 8, icon: <Store className="w-5 h-5 text-blue-500" />, status: 'healthy' as RiskStatus, onClick: () => setLocation('/operasyon?tab=subeler') },
+    { title: "Aktif Personel", value: 156, icon: <Users className="w-5 h-5 text-green-500" />, trend: 'up' as Trend, onClick: () => setLocation('/operasyon?tab=personel') },
+    { title: "Açık Arızalar", value: 5, icon: <AlertTriangle className="w-5 h-5 text-red-500" />, status: 'warning' as RiskStatus, onClick: () => setLocation('/ekipman?tab=ariza-yonetimi') },
+    { title: "Checklist Tamamlanma", value: "92%", icon: <CheckCircle className="w-5 h-5 text-emerald-500" />, status: 'healthy' as RiskStatus, onClick: () => setLocation('/operasyon?tab=checklistler') },
   ];
 
   const fallbackDepartmentHealth = [
@@ -1016,7 +1035,15 @@ function CGODashboard() {
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
             {departmentSummary.map((dept, index) => (
-              <Card key={index} className="hover-elevate cursor-pointer">
+              <Card 
+                key={index} 
+                className="hover-elevate cursor-pointer"
+                onClick={() => {
+                  const route = departmentRouteMap[dept.name];
+                  if (route) setLocation(route);
+                }}
+                data-testid={`card-department-${dept.name.toLowerCase().replace(/\s+/g, '-')}`}
+              >
                 <CardContent className="p-3">
                   <div className="flex items-center justify-between mb-2">
                     <span className="font-medium">{dept.name}</span>
