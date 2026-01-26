@@ -265,7 +265,13 @@ export type PermissionModule =
   | 'adaptive_engine'
   | 'social_groups'
   | 'academy_supervisor'
-  | 'academy_ai';
+  | 'academy_ai'
+  // Satinalma modules
+  | 'satinalma'
+  | 'inventory'
+  | 'suppliers'
+  | 'purchase_orders'
+  | 'goods_receipt';
 
 // Path to Permission Module mapping - Merkezi tanım
 // Dashboard modülleri için URL path'lerini permission modüllerine eşleştirir
@@ -339,6 +345,13 @@ export const PATH_TO_PERMISSION_MAP: Record<string, PermissionModule> = {
   '/destek': 'support',
   '/bildirimler': 'notifications',
   '/duyurular': 'announcements',
+  
+  // Satinalma / Procurement
+  '/satinalma': 'satinalma',
+  '/satinalma/stok-yonetimi': 'inventory',
+  '/satinalma/tedarikci-yonetimi': 'suppliers',
+  '/satinalma/siparis-yonetimi': 'purchase_orders',
+  '/satinalma/mal-kabul': 'goods_receipt',
 };
 
 // Permission Matrix: Define what each role can do
@@ -387,6 +400,30 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     factory_stations: ['view', 'create', 'edit', 'delete'],
     factory_compliance: ['view', 'edit', 'approve'],
     branch_shift_tracking: ['view', 'edit'],
+    // Satinalma modules
+    satinalma: ['view', 'create', 'edit', 'delete'],
+    inventory: ['view', 'create', 'edit', 'delete'],
+    suppliers: ['view', 'create', 'edit', 'delete'],
+    purchase_orders: ['view', 'create', 'edit', 'delete', 'approve'],
+    goods_receipt: ['view', 'create', 'edit', 'delete'],
+    // Academy modules - Admin full access
+    academy: ['view', 'create', 'edit', 'delete'],
+    academy_admin: ['view', 'create', 'edit', 'delete'],
+    badges: ['view', 'create', 'edit', 'delete'],
+    certificates: ['view', 'create', 'edit', 'delete'],
+    leaderboard: ['view'],
+    achievements: ['view', 'create', 'edit'],
+    team_competitions: ['view', 'create', 'edit'],
+    streak_tracker: ['view'],
+    academy_analytics: ['view'],
+    progress_overview: ['view'],
+    cohort_analytics: ['view'],
+    branch_analytics: ['view'],
+    learning_paths: ['view', 'create', 'edit'],
+    adaptive_engine: ['view', 'edit'],
+    social_groups: ['view', 'create', 'edit'],
+    academy_supervisor: ['view'],
+    academy_ai: ['view'],
   },
   // HQ ROLES
   muhasebe: {
@@ -450,6 +487,12 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     social_groups: ['view', 'create', 'edit'],
     academy_supervisor: ['view'],
     academy_ai: ['view'],
+    // Satinalma modules - Read access for muhasebe
+    satinalma: ['view'],
+    inventory: ['view'],
+    suppliers: ['view'],
+    purchase_orders: ['view'],
+    goods_receipt: ['view'],
   },
   satinalma: {
     dashboard: ['view'],
@@ -513,6 +556,12 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     social_groups: ['view', 'create', 'edit'],
     academy_supervisor: ['view'],
     academy_ai: ['view'],
+    // Satinalma modules - Full access for satinalma role
+    satinalma: ['view', 'create', 'edit', 'delete'],
+    inventory: ['view', 'create', 'edit', 'delete'],
+    suppliers: ['view', 'create', 'edit', 'delete'],
+    purchase_orders: ['view', 'create', 'edit', 'delete', 'approve'],
+    goods_receipt: ['view', 'create', 'edit', 'delete'],
   },
   coach: {
     dashboard: ['view'],
@@ -576,6 +625,12 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     social_groups: ['view', 'create', 'edit'],
     academy_supervisor: ['view'],
     academy_ai: ['view'],
+    // Satinalma modules - No access
+    satinalma: [],
+    inventory: [],
+    suppliers: [],
+    purchase_orders: [],
+    goods_receipt: [],
   },
   teknik: {
     dashboard: ['view'],
@@ -620,6 +675,12 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     factory_stations: [],
     factory_compliance: [],
     branch_shift_tracking: [],
+    // Satinalma modules - No access for teknik
+    satinalma: [],
+    inventory: [],
+    suppliers: [],
+    purchase_orders: [],
+    goods_receipt: [],
     // Academy modules - HQ access
     academy: ['view'],
     academy_admin: ['view'],
@@ -682,6 +743,12 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     factory_stations: [],
     factory_compliance: [],
     branch_shift_tracking: ['view'],
+    // Satinalma modules - No access for destek
+    satinalma: [],
+    inventory: [],
+    suppliers: [],
+    purchase_orders: [],
+    goods_receipt: [],
     // Academy modules - destek access
     academy: ['view'],
     academy_admin: ['view'],
@@ -744,6 +811,12 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     factory_stations: ['view'],
     factory_compliance: ['view'],
     branch_shift_tracking: [],
+    // Satinalma modules - No access for fabrika
+    satinalma: [],
+    inventory: [],
+    suppliers: [],
+    purchase_orders: [],
+    goods_receipt: [],
 
     // Academy modules - HQ access
     academy: ['view', 'create', 'edit'],
@@ -807,6 +880,30 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     factory_stations: [],
     factory_compliance: [],
     branch_shift_tracking: [],
+    // Satinalma modules - No access
+    satinalma: [],
+    inventory: [],
+    suppliers: [],
+    purchase_orders: [],
+    goods_receipt: [],
+    // Academy modules - HQ read access
+    academy: ['view'],
+    academy_admin: [],
+    badges: ['view'],
+    certificates: ['view'],
+    leaderboard: ['view'],
+    achievements: ['view'],
+    team_competitions: ['view'],
+    streak_tracker: ['view'],
+    academy_analytics: [],
+    progress_overview: ['view'],
+    cohort_analytics: [],
+    branch_analytics: [],
+    learning_paths: ['view'],
+    adaptive_engine: ['view'],
+    social_groups: ['view'],
+    academy_supervisor: [],
+    academy_ai: ['view'],
   },
   // BRANCH ROLES
   supervisor: {
@@ -852,6 +949,12 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     factory_stations: [],
     factory_compliance: [],
     branch_shift_tracking: ['view', 'edit'],
+    // Satinalma modules - No access
+    satinalma: [],
+    inventory: [],
+    suppliers: [],
+    purchase_orders: [],
+    goods_receipt: [],
 
     // Academy modules - Branch view
     academy: ['view'],
@@ -915,6 +1018,12 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     factory_stations: [],
     factory_compliance: [],
     branch_shift_tracking: ['view'],
+    // Satinalma modules - No access
+    satinalma: [],
+    inventory: [],
+    suppliers: [],
+    purchase_orders: [],
+    goods_receipt: [],
     // Academy modules
     academy: ['view'],
     academy_admin: [],
@@ -933,6 +1042,12 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     social_groups: ['view'],
     academy_supervisor: [],
     academy_ai: ['view'],
+    // Satinalma modules - No access
+    satinalma: [],
+    inventory: [],
+    suppliers: [],
+    purchase_orders: [],
+    goods_receipt: [],
   },
   barista: {
     dashboard: ['view'],
@@ -995,6 +1110,12 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     social_groups: ['view'],
     academy_supervisor: [],
     academy_ai: ['view'],
+    // Satinalma modules - No access
+    satinalma: [],
+    inventory: [],
+    suppliers: [],
+    purchase_orders: [],
+    goods_receipt: [],
   },
   bar_buddy: {
     dashboard: ['view'],
@@ -1057,6 +1178,12 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     social_groups: ['view'],
     academy_supervisor: [],
     academy_ai: ['view'],
+    // Satinalma modules - No access
+    satinalma: [],
+    inventory: [],
+    suppliers: [],
+    purchase_orders: [],
+    goods_receipt: [],
   },
   stajyer: {
     dashboard: ['view'],
@@ -1119,6 +1246,12 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     social_groups: ['view'],
     academy_supervisor: [],
     academy_ai: ['view'],
+    // Satinalma modules - No access
+    satinalma: [],
+    inventory: [],
+    suppliers: [],
+    purchase_orders: [],
+    goods_receipt: [],
   },
   yatirimci_branch: {
     dashboard: ['view'],
@@ -1182,6 +1315,12 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     social_groups: ['view'],
     academy_supervisor: [],
     academy_ai: ['view'],
+    // Satinalma modules - No access
+    satinalma: [],
+    inventory: [],
+    suppliers: [],
+    purchase_orders: [],
+    goods_receipt: [],
   },
 };
 

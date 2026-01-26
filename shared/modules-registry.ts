@@ -24,9 +24,11 @@ export type MegaModuleId =
   | 'equipment'
   | 'hr'
   | 'training'
+  | 'kitchen'
   | 'factory'
   | 'reports'
   | 'newshop'
+  | 'satinalma'
   | 'admin';
 
 export interface MegaModuleDefinition {
@@ -81,6 +83,14 @@ export const MEGA_MODULES: Record<MegaModuleId, MegaModuleDefinition> = {
     sortOrder: 5,
     hubRoute: '/akademi',
   },
+  kitchen: {
+    id: 'kitchen',
+    title: 'Mutfak & Tarifler',
+    icon: 'Coffee',
+    color: 'bg-amber-600',
+    navigationType: 'direct',
+    sortOrder: 5.5,
+  },
   factory: {
     id: 'factory',
     title: 'Fabrika & Üretim',
@@ -107,13 +117,22 @@ export const MEGA_MODULES: Record<MegaModuleId, MegaModuleDefinition> = {
     navigationType: 'direct',
     sortOrder: 8,
   },
+  satinalma: {
+    id: 'satinalma',
+    title: 'Satınalma',
+    icon: 'ShoppingCart',
+    color: 'bg-amber-500',
+    navigationType: 'hub',
+    sortOrder: 9,
+    hubRoute: '/satinalma',
+  },
   admin: {
     id: 'admin',
     title: 'Yönetim & Ayarlar',
     icon: 'Settings',
     color: 'bg-slate-600',
     navigationType: 'hub',
-    sortOrder: 9,
+    sortOrder: 10,
     hubRoute: '/admin',
   },
 };
@@ -272,6 +291,15 @@ export const MODULES: ModuleDefinition[] = [
   // AI - Yapay zeka modülleri
   // ═══════════════════════════════════════════════════════════════
   { moduleKey: 'ai_assistant', moduleName: 'AI Asistan', category: 'shared', megaModule: 'dashboard', description: 'Yapay zeka asistanı', icon: 'Bot', route: '/ai-asistan', sortOrder: 130 },
+
+  // ═══════════════════════════════════════════════════════════════
+  // SATINALMA - Tedarik zinciri ve stok yönetimi
+  // ═══════════════════════════════════════════════════════════════
+  { moduleKey: 'satinalma_dashboard', moduleName: 'Satınalma Dashboard', category: 'hq', megaModule: 'satinalma', description: 'Satınalma özet paneli', icon: 'LayoutDashboard', route: '/satinalma', sortOrder: 200 },
+  { moduleKey: 'inventory', moduleName: 'Stok Yönetimi', category: 'hq', megaModule: 'satinalma', description: 'Stok ve envanter yönetimi', icon: 'Package', route: '/satinalma/stok-yonetimi', sortOrder: 201 },
+  { moduleKey: 'suppliers', moduleName: 'Tedarikçi Yönetimi', category: 'hq', megaModule: 'satinalma', description: 'Tedarikçi takibi ve yönetimi', icon: 'Truck', route: '/satinalma/tedarikci-yonetimi', sortOrder: 202 },
+  { moduleKey: 'purchase_orders', moduleName: 'Sipariş Yönetimi', category: 'hq', megaModule: 'satinalma', description: 'Satınalma siparişleri', icon: 'ShoppingCart', route: '/satinalma/siparis-yonetimi', sortOrder: 203 },
+  { moduleKey: 'goods_receipt', moduleName: 'Mal Kabul', category: 'hq', megaModule: 'satinalma', description: 'Mal kabul ve kalite kontrol', icon: 'ClipboardCheck', route: '/satinalma/mal-kabul', sortOrder: 204 },
 ];
 
 // ═══════════════════════════════════════════════════════════════

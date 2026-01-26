@@ -46,7 +46,11 @@ import {
   Headphones,
   Tablet,
   Timer,
-  ChevronRight
+  ChevronRight,
+  ShoppingCart,
+  Package,
+  Truck,
+  ClipboardCheck
 } from "lucide-react";
 
 export default function MegaModulePage() {
@@ -163,6 +167,16 @@ export default function MegaModulePage() {
       "live-tracking": MapPin,
       "ai-asistan": Bot,
       "ai-assistant": Bot,
+      "satinalma": ShoppingCart,
+      "satinalma-dashboard": ShoppingCart,
+      "stok-yonetimi": Package,
+      "inventory": Package,
+      "tedarikci-yonetimi": Truck,
+      "suppliers": Truck,
+      "siparis-yonetimi": ShoppingCart,
+      "purchase-orders": ShoppingCart,
+      "mal-kabul": ClipboardCheck,
+      "goods-receipt": ClipboardCheck,
     };
     return iconMap[moduleId.toLowerCase()] || Coffee;
   };
@@ -213,6 +227,16 @@ export default function MegaModulePage() {
       "bulk-data": "bg-indigo-600",
       "canlı-takip": "bg-emerald-500",
       "ai-asistan": "bg-violet-500",
+      "satinalma": "bg-amber-500",
+      "satinalma-dashboard": "bg-amber-500",
+      "stok-yonetimi": "bg-amber-500",
+      "inventory": "bg-amber-500",
+      "tedarikci-yonetimi": "bg-amber-600",
+      "suppliers": "bg-amber-600",
+      "siparis-yonetimi": "bg-amber-500",
+      "purchase-orders": "bg-amber-500",
+      "mal-kabul": "bg-amber-600",
+      "goods-receipt": "bg-amber-600",
     };
     return colorMap[moduleId.toLowerCase()] || "bg-slate-400";
   };
@@ -299,6 +323,8 @@ export default function MegaModulePage() {
       "checklists-section": "bg-teal-500",
       "tasks": "bg-green-500",
       "tasks-section": "bg-green-500",
+      "satinalma": "bg-amber-500",
+      "satinalma-section": "bg-amber-500",
     };
     return colorMap[sectionId.toLowerCase()] || "bg-primary";
   };
@@ -323,6 +349,7 @@ export default function MegaModulePage() {
     "factory": { title: megaModuleTitles["factory"] || "Fabrika & Üretim", icon: "Factory", color: "bg-indigo-600" },
     "reports": { title: megaModuleTitles["reports"] || "Raporlar & Analitik", icon: "BarChart3", color: "bg-cyan-500" },
     "newshop": { title: megaModuleTitles["newshop"] || "Yeni Mağaza Açılışı", icon: "FolderKanban", color: "bg-violet-600" },
+    "satinalma": { title: megaModuleTitles["satinalma"] || "Satınalma", icon: "ShoppingCart", color: "bg-amber-500" },
     "admin": { title: megaModuleTitles["admin"] || "Yönetim & Ayarlar", icon: "Shield", color: "bg-slate-600" },
   };
 

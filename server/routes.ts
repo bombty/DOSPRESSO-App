@@ -1027,25 +1027,63 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
   // Bu endpoint yetkilendirme ile tam senkronize - DOĞRUDAN mega_module_items tablosundan sayılar alınır
   app.get('/api/dashboard-modules', isAuthenticated, async (req: any, res) => {
     try {
+      res.set('Cache-Control', 'no-store'); res.removeHeader('ETag'); res.removeHeader('Last-Modified');
       const user = req.user!;
       const userRole = user.role as UserRoleType;
       
       // ROL BAZLI MEGA MODÜL ERİŞİM KURALLARI
       // Her rol sadece kendini ilgilendiren modülleri görmeli
       const getRoleAllowedMegaModules = (role: UserRoleType): Set<string> => {
-        // ÖNEMLİ: Fabrika rolü HQ_ROLES içinde ama özel erişim kuralları var
-        // Bu yüzden fabrika kontrolü isHQRole'den ÖNCE yapılmalı!
-        if (role === 'fabrika') {
-          return new Set(['dashboard', 'factory', 'reports', 'training']);
+        // ÖNEMLİ: HQ departman rolleri için ÖNCE özel kontroller yapılmalı
+        // Bu roller sadece kendi departmanlarıyla ilgili modülleri görmeli
+        
+        // SATINALMA ROLÜ: Sadece satınalma ile ilgili modüller
+        if (role === 'satinalma') {
+          return new Set(['dashboard', 'satinalma', 'reports']);
         }
         
-        // HQ rolleri (fabrika hariç): TÜM modüllere erişim
+        // MUHASEBE ROLÜ: Finans ve personel modülleri
+        if (role === 'muhasebe') {
+          return new Set(['dashboard', 'hr', 'reports', 'satinalma']);
+        }
+        
+        // TEKNİK ROLÜ: Ekipman ve arıza modülleri
+        if (role === 'teknik') {
+          return new Set(['dashboard', 'equipment', 'reports']);
+        }
+        
+        // FABRİKA ROLÜ: Fabrika ve üretim modülleri
+        if (role === 'fabrika') {
+          return new Set(['dashboard', 'factory', 'reports', 'training', 'satinalma']);
+        }
+        
+        // COACH ROLÜ: Eğitim ve akademi modülleri
+        if (role === 'coach') {
+          return new Set(['dashboard', 'training', 'operations', 'reports']);
+        }
+        
+        // DESTEK ROLÜ: Operasyon ve destek modülleri
+        if (role === 'destek') {
+          return new Set(['dashboard', 'operations', 'equipment', 'reports', 'admin']);
+        }
+        
+        // YATIRIMCI HQ ROLÜ: Raporlar ve dashboard
+        if (role === 'yatirimci_hq') {
+          return new Set(['dashboard', 'reports', 'newshop']);
+        }
+        
+        // ADMIN ROLÜ: TÜM modüllere tam erişim
+        if (role === 'admin') {
+          return new Set(['dashboard', 'operations', 'equipment', 'hr', 'training', 'kitchen', 'factory', 'reports', 'newshop', 'satinalma', 'admin']);
+        }
+        
+        // DİĞER HQ rolleri: TÜM modüllere erişim (geriye dönük uyumluluk)
         if (isHQRole(role)) {
-          return new Set(['dashboard', 'operations', 'equipment', 'hr', 'training', 'kitchen', 'factory', 'reports', 'newshop', 'admin']);
+          return new Set(['dashboard', 'operations', 'equipment', 'hr', 'training', 'kitchen', 'factory', 'reports', 'newshop', 'satinalma', 'admin']);
         }
         
         // Şube rolleri (supervisor, barista, stajyer vs): şube odaklı modüller
-        // Factory, newshop, admin modüllerini GÖRMEMELİ
+        // Factory, newshop, admin, satinalma modüllerini GÖRMEMELİ
         if (isBranchRole(role)) {
           // Supervisor ve supervisor_buddy ek modüller görebilir
           if (role === 'supervisor' || role === 'supervisor_buddy') {

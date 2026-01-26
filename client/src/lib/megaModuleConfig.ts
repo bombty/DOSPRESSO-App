@@ -7,7 +7,9 @@ import {
   Factory, 
   BarChart3, 
   Building2, 
-  Settings 
+  Settings,
+  ShoppingCart,
+  Coffee
 } from "lucide-react";
 import { MEGA_MODULES, getMegaModuleMapping, type MegaModuleId } from "@shared/modules-registry";
 
@@ -28,6 +30,8 @@ const ICON_MAP: Record<string, any> = {
   BarChart3,
   Building2,
   Settings,
+  ShoppingCart,
+  Coffee,
 };
 
 const COLOR_MAP: Record<string, string> = {
@@ -40,6 +44,8 @@ const COLOR_MAP: Record<string, string> = {
   'bg-cyan-500': 'text-cyan-500',
   'bg-violet-600': 'text-violet-600',
   'bg-slate-600': 'text-slate-600',
+  'bg-amber-500': 'text-amber-500',
+  'bg-amber-600': 'text-amber-600',
 };
 
 export const MEGA_MODULE_CONFIG: Record<string, MegaModuleConfig> = Object.fromEntries(
@@ -110,6 +116,13 @@ export const DEFAULT_MENU_SECTION_MAPPING: Record<string, string[]> = {
     "projects", "projeler", "project-list",
     "new-shop", "new-shop-section", "projects-section",
     "yeni-sube"
+  ],
+  "satinalma": [
+    "satinalma", "satinalma-section", "procurement",
+    "inventory", "stok-yonetimi", "stock-management",
+    "suppliers", "tedarikci-yonetimi", "supplier-management",
+    "purchase-orders", "siparis-yonetimi", "orders",
+    "goods-receipt", "mal-kabul", "receiving"
   ],
   "admin": [
     "management", "communication", "content-management",

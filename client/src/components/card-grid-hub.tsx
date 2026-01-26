@@ -64,7 +64,11 @@ import {
   ChevronRight,
   CheckCircle,
   ListChecks,
-  ListTodo
+  ListTodo,
+  ShoppingCart,
+  Package,
+  Truck,
+  ClipboardCheck
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
@@ -562,6 +566,16 @@ export function CardGridHub() {
       "ekipman": Coffee,
       "equipment": Coffee,
       "equipment-main": Coffee,
+      "satinalma": ShoppingCart,
+      "satinalma-dashboard": ShoppingCart,
+      "stok-yonetimi": Package,
+      "inventory": Package,
+      "tedarikci-yonetimi": Truck,
+      "suppliers": Truck,
+      "siparis-yonetimi": ShoppingCart,
+      "purchase-orders": ShoppingCart,
+      "mal-kabul": ClipboardCheck,
+      "goods-receipt": ClipboardCheck,
       "destek": MessageSquare,
       "support": MessageSquare,
       "hq-destek": MessageSquare,
@@ -769,6 +783,10 @@ export function CardGridHub() {
       "Headphones": Headphones,
       "Megaphone": Megaphone,
       "Database": Database,
+      "ShoppingCart": ShoppingCart,
+      "Package": Package,
+      "Truck": Truck,
+      "ClipboardCheck": ClipboardCheck,
       "Briefcase": Briefcase,
       "ClipboardList": ClipboardList,
     };
@@ -1086,6 +1104,7 @@ export function CardGridHub() {
                 "factory": "/fabrika",
                 "reports": "/raporlar",
                 "newshop": "/yeni-sube",
+                "satinalma": "/satinalma",
                 "admin": "/admin"
               };
               
