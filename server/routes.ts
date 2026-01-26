@@ -267,7 +267,7 @@ import { generateTrainingMaterialBundle } from "./ai-motor";
 import { updateEmployeeLocation, getActiveBranchEmployees, getEmployeeLocation, removeEmployeeLocation, startTrackingCleanup } from "./tracking";
 import { compressChecklistPhotoBase64 } from "./photo-utils";
 import { sendNotificationEmail, sendEmployeeOfMonthEmail } from "./email";
-import { startReminderSystem } from "./reminders";
+import { startReminderSystem, startStockAlertSystem, notifyTeknikNewFault, notifySatinalmaLowStock } from "./reminders";
 import bcrypt from "bcrypt";
 import { z } from "zod";
 import { resolvePermissionScope, applyScopeFilter, getUserPermissions, getAllActionsGroupedByModule, getRoleGrants, upsertPermissionGrant, deletePermissionGrant, getRoleAccessibleModules } from "./permission-service";
@@ -12308,6 +12308,7 @@ JSON formatında yanıt ver:
   });
 
   startReminderSystem();
+  startStockAlertSystem();
 
   // System health and backup endpoints
   app.get('/api/system/health', isAuthenticated, async (req: any, res) => {

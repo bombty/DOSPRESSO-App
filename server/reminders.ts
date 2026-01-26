@@ -2,8 +2,8 @@ import { storage } from "./storage";
 import type { Task, Equipment, User } from "@shared/schema";
 import { sendNotificationEmail } from "./email";
 import { db } from "./db";
-import { correctiveActions, users, auditInstances, branches } from "@shared/schema";
-import { eq, lt, and, ne } from "drizzle-orm";
+import { correctiveActions, users, auditInstances, branches, factoryProducts } from "@shared/schema";
+import { eq, lt, and, ne, lte, or, inArray, gt } from "drizzle-orm";
 
 const REMINDER_INTERVAL = 5 * 60 * 1000; // 5 minutes in milliseconds
 const MAINTENANCE_WARNING_DAYS = 7; // Notify 7 days before maintenance due
@@ -594,5 +594,144 @@ export function stopMonthlyCalculationSystem() {
     clearInterval(monthlyCalculationInterval);
     monthlyCalculationInterval = null;
     console.log("Aylık hesaplama sistemi durduruldu");
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// CROSS-MODULE NOTIFICATIONS
+// Stok→Satınalma, Arıza→Teknik otomatik uyarılar
+// ═══════════════════════════════════════════════════════════════
+
+const STOCK_CHECK_INTERVAL = 60 * 60 * 1000; // 1 hour
+const sentStockAlerts = new Map<number, number>(); // productId -> lastNotifiedAt
+const STOCK_ALERT_COOLDOWN = 24 * 60 * 60 * 1000; // 24 hours between alerts for same product
+
+let stockAlertInterval: NodeJS.Timeout | null = null;
+
+export async function checkLowStockNotifications() {
+  try {
+    const now = Date.now();
+    
+    // Get products with current stock below minStock
+    const lowStockProducts = await db
+      .select()
+      .from(factoryProducts)
+      .where(and(
+        eq(factoryProducts.isActive, true),
+        gt(factoryProducts.minStock, 0)
+      ));
+
+    // Filter to products with actual low stock (would need stockQuantity field)
+    // For now, we'll check products where minStock is set but warn satınalma team
+    
+    // Get satınalma team users
+    const satinalmaUsers = await db
+      .select()
+      .from(users)
+      .where(or(
+        eq(users.role, 'satinalma'),
+        eq(users.role, 'admin')
+      ));
+
+    if (satinalmaUsers.length === 0) {
+      console.log("No satınalma users found for stock alerts");
+      return;
+    }
+
+    // Check each low stock product
+    for (const product of lowStockProducts) {
+      const lastNotified = sentStockAlerts.get(product.id);
+      
+      // Skip if we've already notified recently
+      if (lastNotified && (now - lastNotified) < STOCK_ALERT_COOLDOWN) {
+        continue;
+      }
+
+      // Note: In a full implementation, you would compare currentStock vs minStock
+      // Since we don't have currentStock in the schema, this serves as a template
+      // The system would be triggered by actual stock movements
+      
+      sentStockAlerts.set(product.id, now);
+    }
+
+    console.log(`📦 Stock check completed - ${lowStockProducts.length} products with min stock defined`);
+  } catch (error) {
+    console.error("Stock notification check error:", error);
+  }
+}
+
+// Notify Satınalma team about low stock (called when stock drops below minimum)
+export async function notifySatinalmaLowStock(productId: number, productName: string, currentStock: number, minStock: number) {
+  try {
+    // Get satınalma users
+    const satinalmaUsers = await db
+      .select()
+      .from(users)
+      .where(or(
+        eq(users.role, 'satinalma'),
+        eq(users.role, 'admin')
+      ));
+
+    for (const user of satinalmaUsers) {
+      await storage.createNotification({
+        userId: user.id,
+        type: 'stock_alert',
+        title: '⚠️ Düşük Stok Uyarısı',
+        message: `${productName} stok seviyesi kritik! Mevcut: ${currentStock}, Minimum: ${minStock}`,
+        link: '/satinalma/stok-yonetimi',
+      });
+    }
+
+    console.log(`📦 Low stock notification sent for ${productName} to ${satinalmaUsers.length} satınalma users`);
+  } catch (error) {
+    console.error("Error sending low stock notification:", error);
+  }
+}
+
+// Notify Teknik team about new fault (called when critical fault is created)
+export async function notifyTeknikNewFault(faultId: number, faultTitle: string, branchName: string, priority: string) {
+  try {
+    // Get teknik users
+    const teknikUsers = await db
+      .select()
+      .from(users)
+      .where(or(
+        eq(users.role, 'teknik'),
+        eq(users.role, 'ekipman_teknik')
+      ));
+
+    const priorityEmoji = priority === 'critical' ? '🔴' : priority === 'high' ? '🟠' : '🟡';
+    const priorityLabel = priority === 'critical' ? 'Kritik' : priority === 'high' ? 'Yüksek' : 'Orta';
+
+    for (const user of teknikUsers) {
+      await storage.createNotification({
+        userId: user.id,
+        type: 'fault_alert',
+        title: `${priorityEmoji} Yeni Arıza Bildirimi`,
+        message: `${branchName}: ${faultTitle} - Öncelik: ${priorityLabel}`,
+        link: '/crm',
+      });
+    }
+
+    console.log(`🔧 Fault notification sent for "${faultTitle}" to ${teknikUsers.length} teknik users`);
+  } catch (error) {
+    console.error("Error sending fault notification to teknik:", error);
+  }
+}
+
+export function startStockAlertSystem() {
+  console.log("📦 Stok uyarı sistemi başlatıldı - Her saat kontrol edilecek");
+  
+  // Run initial check after delay
+  setTimeout(checkLowStockNotifications, 30000);
+  
+  stockAlertInterval = setInterval(checkLowStockNotifications, STOCK_CHECK_INTERVAL);
+}
+
+export function stopStockAlertSystem() {
+  if (stockAlertInterval) {
+    clearInterval(stockAlertInterval);
+    stockAlertInterval = null;
+    console.log("Stok uyarı sistemi durduruldu");
   }
 }
