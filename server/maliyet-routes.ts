@@ -809,6 +809,314 @@ export function registerMaliyetRoutes(app: Express, isAuthenticated: AuthMiddlew
   });
   
   // ========================================
+  // ÜRÜN MALİYET DETAYI (Keyblend desteği ile)
+  // ========================================
+  
+  app.get("/api/product-costs/:productId", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const user = (req as any).user;
+      const productId = parseInt(req.params.productId);
+      const isAdmin = user?.role === 'admin' || user?.role === 'satinalma';
+      
+      const [product] = await db.select().from(factoryProducts).where(eq(factoryProducts.id, productId));
+      if (!product) {
+        return res.status(404).json({ error: "Ürün bulunamadı" });
+      }
+      
+      const [recipe] = await db.select()
+        .from(productRecipes)
+        .where(and(eq(productRecipes.productId, productId), eq(productRecipes.isActive, true)));
+      
+      if (!recipe) {
+        return res.json({
+          product,
+          recipe: null,
+          ingredients: [],
+          totalRawMaterialCost: 0,
+          message: "Bu ürün için aktif reçete bulunamadı"
+        });
+      }
+      
+      const ingredients = await db.select({
+        ingredient: productRecipeIngredients,
+        material: rawMaterials
+      })
+        .from(productRecipeIngredients)
+        .leftJoin(rawMaterials, eq(productRecipeIngredients.rawMaterialId, rawMaterials.id))
+        .where(eq(productRecipeIngredients.recipeId, recipe.id));
+      
+      let totalRawMaterialCost = 0;
+      const isKeyblendRecipe = recipe.recipeType === "KEYBLEND";
+      
+      const processedIngredients = ingredients.map(ing => {
+        const qty = parseFloat(ing.ingredient.quantity);
+        const isKeyblendMaterial = ing.material?.isKeyblend || false;
+        
+        // Keyblend için keyblendCost kullan, normal malzeme için currentUnitPrice
+        const unitPrice = isKeyblendMaterial 
+          ? parseFloat(ing.material?.keyblendCost || "0")
+          : parseFloat(ing.material?.currentUnitPrice || "0");
+        
+        const itemCost = qty * unitPrice;
+        totalRawMaterialCost += itemCost;
+        
+        // Admin dışı kullanıcılara:
+        // 1. Keyblend malzeme detaylarını her zaman gizle
+        // 2. KEYBLEND tipi reçetede TÜM malzemeleri gizle (formülasyonu korumak için)
+        const shouldHide = !isAdmin && (isKeyblendMaterial || isKeyblendRecipe);
+        
+        if (shouldHide) {
+          return {
+            id: ing.ingredient.id,
+            materialCode: isKeyblendMaterial ? "KB-***" : "GİZLİ",
+            materialName: isKeyblendMaterial ? "Gizli Formülasyon" : "Gizli İçerik",
+            quantity: "***",
+            unit: ing.ingredient.unit,
+            unitCost: "***",
+            totalCost: itemCost.toFixed(2), // Maliyeti göster, formülasyonu gizle
+            isKeyblend: isKeyblendMaterial,
+            isHidden: true
+          };
+        }
+        
+        return {
+          id: ing.ingredient.id,
+          materialCode: ing.material?.code,
+          materialName: ing.material?.name,
+          quantity: qty.toFixed(4),
+          unit: ing.ingredient.unit,
+          unitCost: unitPrice.toFixed(4),
+          totalCost: itemCost.toFixed(4),
+          isKeyblend: isKeyblendMaterial,
+          isHidden: false
+        };
+      });
+      
+      // Sabit gider payı hesapla
+      const fixedCosts = await db.select()
+        .from(factoryFixedCosts)
+        .where(eq(factoryFixedCosts.isActive, true));
+      
+      const totalFixedCosts = fixedCosts.reduce((sum, c) => sum + parseFloat(c.monthlyAmount), 0);
+      
+      const activeProducts = await db.select({ count: sql<number>`count(*)` })
+        .from(factoryProducts)
+        .where(eq(factoryProducts.isActive, true));
+      
+      const overheadPerProduct = activeProducts[0]?.count > 0 
+        ? totalFixedCosts / activeProducts[0].count 
+        : 0;
+      
+      // Kar marjı al
+      const [margin] = await db.select()
+        .from(profitMarginTemplates)
+        .where(eq(profitMarginTemplates.category, product.category));
+      
+      const appliedMargin = margin ? parseFloat(margin.defaultMargin) : 1.35;
+      const totalUnitCost = totalRawMaterialCost + overheadPerProduct;
+      const suggestedPrice = totalUnitCost * appliedMargin;
+      
+      res.json({
+        product,
+        recipe: {
+          id: recipe.id,
+          name: recipe.name,
+          recipeType: recipe.recipeType,
+          outputQuantity: recipe.outputQuantity,
+          outputUnit: recipe.outputUnit
+        },
+        ingredients: processedIngredients,
+        costs: {
+          rawMaterialCost: totalRawMaterialCost.toFixed(2),
+          overheadCost: overheadPerProduct.toFixed(2),
+          totalUnitCost: totalUnitCost.toFixed(2),
+          profitMargin: ((appliedMargin - 1) * 100).toFixed(1) + "%",
+          suggestedPrice: suggestedPrice.toFixed(2)
+        }
+      });
+    } catch (error) {
+      console.error("Error fetching product costs:", error);
+      res.status(500).json({ error: "Ürün maliyeti alınamadı" });
+    }
+  });
+  
+  // ========================================
+  // MAL KABUL → HAMMADDE FİYAT GÜNCELLEMESİ
+  // ========================================
+  
+  app.post("/api/sync-prices-from-receipts", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const user = (req as any).user;
+      
+      // Sadece admin ve satınalma rolü bu işlemi yapabilir
+      if (!['admin', 'satinalma', 'fabrika_mudur'].includes(user?.role)) {
+        return res.status(403).json({ error: "Bu işlem için yetkiniz yok" });
+      }
+      
+      // Kabul edilen son mal kabul kalemlerinden fiyat güncelle
+      // İlk önce inventory ile raw_materials eşleştirmesi yap
+      const rawMaterialsList = await db.select().from(rawMaterials).where(eq(rawMaterials.isActive, true));
+      
+      let updated = 0;
+      let errors = 0;
+      
+      for (const material of rawMaterialsList) {
+        if (material.inventoryId) {
+          try {
+            // Bu hammaddenin stok kalemini bul ve son satınalma fiyatını al
+            const [inv] = await db.select().from(inventory).where(eq(inventory.id, material.inventoryId));
+            
+            if (inv && inv.unitCost) {
+              const newPrice = parseFloat(inv.unitCost);
+              const oldPrice = parseFloat(material.currentUnitPrice || "0");
+              
+              if (newPrice !== oldPrice && newPrice > 0) {
+                await db.update(rawMaterials)
+                  .set({
+                    lastPurchasePrice: material.currentUnitPrice || "0",
+                    currentUnitPrice: newPrice.toFixed(4),
+                    priceLastUpdated: new Date(),
+                    updatedAt: new Date()
+                  })
+                  .where(eq(rawMaterials.id, material.id));
+                updated++;
+              }
+            }
+          } catch (e) {
+            errors++;
+          }
+        }
+      }
+      
+      // Reçete maliyetlerini güncelle
+      const recipes = await db.select().from(productRecipes).where(eq(productRecipes.isActive, true));
+      for (const recipe of recipes) {
+        await updateRecipeCosts(recipe.id);
+      }
+      
+      res.json({ 
+        message: `${updated} hammadde fiyatı güncellendi, ${errors} hata`,
+        updated,
+        errors,
+        recipesUpdated: recipes.length
+      });
+    } catch (error) {
+      console.error("Error syncing prices from receipts:", error);
+      res.status(500).json({ error: "Fiyat senkronizasyonu başarısız" });
+    }
+  });
+  
+  // Tek ürün maliyet hesapla
+  app.post("/api/calculate-product-cost/:productId", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const user = (req as any).user;
+      const productId = parseInt(req.params.productId);
+      
+      const [product] = await db.select().from(factoryProducts).where(eq(factoryProducts.id, productId));
+      if (!product) {
+        return res.status(404).json({ error: "Ürün bulunamadı" });
+      }
+      
+      const [recipe] = await db.select()
+        .from(productRecipes)
+        .where(and(eq(productRecipes.productId, productId), eq(productRecipes.isActive, true)));
+      
+      if (!recipe) {
+        return res.status(400).json({ error: "Bu ürün için aktif reçete bulunamadı" });
+      }
+      
+      // Reçete maliyetlerini güncelle
+      await updateRecipeCosts(recipe.id);
+      
+      // Güncel reçete verilerini al
+      const [updatedRecipe] = await db.select().from(productRecipes).where(eq(productRecipes.id, recipe.id));
+      
+      // Sabit gider payı
+      const fixedCosts = await db.select()
+        .from(factoryFixedCosts)
+        .where(eq(factoryFixedCosts.isActive, true));
+      
+      const totalFixedCosts = fixedCosts.reduce((sum, c) => sum + parseFloat(c.monthlyAmount), 0);
+      
+      const activeProducts = await db.select({ count: sql<number>`count(*)` })
+        .from(factoryProducts)
+        .where(eq(factoryProducts.isActive, true));
+      
+      const overheadPerProduct = activeProducts[0]?.count > 0 
+        ? totalFixedCosts / activeProducts[0].count 
+        : 0;
+      
+      const rawMaterialCost = parseFloat(updatedRecipe?.rawMaterialCost || "0");
+      const totalUnitCost = rawMaterialCost + overheadPerProduct;
+      
+      // Kar marjı
+      const [margin] = await db.select()
+        .from(profitMarginTemplates)
+        .where(eq(profitMarginTemplates.category, product.category));
+      
+      const appliedMargin = margin ? parseFloat(margin.defaultMargin) : 1.35;
+      const suggestedPrice = totalUnitCost * appliedMargin;
+      
+      // Ürünü güncelle
+      await db.update(factoryProducts)
+        .set({
+          basePrice: totalUnitCost.toFixed(2),
+          suggestedPrice: suggestedPrice.toFixed(2),
+          profitMargin: appliedMargin.toFixed(2),
+          updatedAt: new Date()
+        })
+        .where(eq(factoryProducts.id, productId));
+      
+      const month = new Date().getMonth() + 1;
+      const year = new Date().getFullYear();
+      
+      // Maliyet kaydı
+      await db.insert(productCostCalculations)
+        .values({
+          productId,
+          recipeId: recipe.id,
+          periodMonth: month,
+          periodYear: year,
+          rawMaterialCost: rawMaterialCost.toFixed(4),
+          overheadCost: overheadPerProduct.toFixed(4),
+          totalUnitCost: totalUnitCost.toFixed(4),
+          appliedMargin: appliedMargin.toFixed(2),
+          suggestedSellingPrice: suggestedPrice.toFixed(2),
+          profitPerUnit: (suggestedPrice - totalUnitCost).toFixed(4),
+          profitMarginPercentage: ((appliedMargin - 1) * 100).toFixed(2),
+          calculatedById: user?.id
+        })
+        .onConflictDoUpdate({
+          target: [productCostCalculations.productId, productCostCalculations.periodMonth, productCostCalculations.periodYear],
+          set: {
+            rawMaterialCost: rawMaterialCost.toFixed(4),
+            overheadCost: overheadPerProduct.toFixed(4),
+            totalUnitCost: totalUnitCost.toFixed(4),
+            appliedMargin: appliedMargin.toFixed(2),
+            suggestedSellingPrice: suggestedPrice.toFixed(2),
+            profitPerUnit: (suggestedPrice - totalUnitCost).toFixed(4),
+            profitMarginPercentage: ((appliedMargin - 1) * 100).toFixed(2),
+            calculationDate: new Date()
+          }
+        });
+      
+      res.json({
+        message: `${product.name} maliyeti hesaplandı`,
+        costs: {
+          rawMaterialCost: rawMaterialCost.toFixed(2),
+          overheadCost: overheadPerProduct.toFixed(2),
+          totalUnitCost: totalUnitCost.toFixed(2),
+          profitMargin: ((appliedMargin - 1) * 100).toFixed(1) + "%",
+          suggestedPrice: suggestedPrice.toFixed(2)
+        }
+      });
+    } catch (error) {
+      console.error("Error calculating product cost:", error);
+      res.status(500).json({ error: "Maliyet hesaplaması başarısız" });
+    }
+  });
+  
+  // ========================================
   // YARDIMCI FONKSİYONLAR
   // ========================================
   
@@ -825,7 +1133,13 @@ export function registerMaliyetRoutes(app: Express, isAuthenticated: AuthMiddlew
       let totalCost = 0;
       for (const ing of ingredients) {
         const qty = parseFloat(ing.ingredient.quantity);
-        const price = parseFloat(ing.material?.currentUnitPrice || "0");
+        
+        // Keyblend malzemeleri için keyblendCost kullan
+        const isKeyblend = ing.material?.isKeyblend || false;
+        const price = isKeyblend 
+          ? parseFloat(ing.material?.keyblendCost || "0")
+          : parseFloat(ing.material?.currentUnitPrice || "0");
+        
         const itemCost = qty * price;
         
         await db.update(productRecipeIngredients)

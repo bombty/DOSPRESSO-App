@@ -88,12 +88,101 @@ function formatPercent(value: string | number | null | undefined): string {
   return `%${((num - 1) * 100).toFixed(1)}`;
 }
 
+function ProductCostDetail({ productId }: { productId: number }) {
+  const { data, isLoading } = useQuery<any>({
+    queryKey: ['/api/product-costs', productId],
+  });
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-8">
+        <Loader2 className="w-6 h-6 animate-spin" />
+      </div>
+    );
+  }
+
+  if (!data || !data.recipe) {
+    return <p className="text-sm text-muted-foreground text-center py-4">Bu ürün için aktif reçete bulunamadı</p>;
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <p className="text-xs text-muted-foreground">Ürün</p>
+          <p className="font-medium">{data.product?.name}</p>
+        </div>
+        <div>
+          <p className="text-xs text-muted-foreground">Reçete Tipi</p>
+          <Badge className={data.recipe?.recipeType === "KEYBLEND" ? "bg-amber-500" : ""}>
+            {data.recipe?.recipeType}
+          </Badge>
+        </div>
+      </div>
+
+      <div>
+        <h4 className="text-sm font-medium mb-2">Malzeme Listesi</h4>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Kod</TableHead>
+              <TableHead>Malzeme</TableHead>
+              <TableHead className="text-right">Miktar</TableHead>
+              <TableHead className="text-right">Birim Fiyat</TableHead>
+              <TableHead className="text-right">Toplam</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {data.ingredients?.map((ing: any) => (
+              <TableRow key={ing.id} className={ing.isKeyblend ? "bg-amber-50 dark:bg-amber-900/20" : ""}>
+                <TableCell className="font-mono text-xs">{ing.materialCode}</TableCell>
+                <TableCell>
+                  {ing.materialName}
+                  {ing.isKeyblend && <Badge className="ml-2 text-xs bg-amber-500">KB</Badge>}
+                </TableCell>
+                <TableCell className="text-right">{ing.quantity} {ing.unit}</TableCell>
+                <TableCell className="text-right">{ing.isHidden ? "***" : formatCurrency(ing.unitCost)}</TableCell>
+                <TableCell className="text-right font-medium">{formatCurrency(ing.totalCost)}</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-3 pt-4 border-t">
+        <div className="p-3 rounded-lg bg-muted/50">
+          <p className="text-xs text-muted-foreground">Hammadde Maliyeti</p>
+          <p className="font-bold">{formatCurrency(data.costs?.rawMaterialCost)}</p>
+        </div>
+        <div className="p-3 rounded-lg bg-muted/50">
+          <p className="text-xs text-muted-foreground">Genel Gider Payı</p>
+          <p className="font-bold">{formatCurrency(data.costs?.overheadCost)}</p>
+        </div>
+        <div className="p-3 rounded-lg bg-blue-50 dark:bg-blue-900/20">
+          <p className="text-xs text-muted-foreground">Toplam Maliyet</p>
+          <p className="font-bold text-blue-700 dark:text-blue-400">{formatCurrency(data.costs?.totalUnitCost)}</p>
+        </div>
+        <div className="p-3 rounded-lg bg-muted/50">
+          <p className="text-xs text-muted-foreground">Kar Marjı</p>
+          <p className="font-bold">{data.costs?.profitMargin}</p>
+        </div>
+        <div className="p-3 rounded-lg bg-green-50 dark:bg-green-900/20">
+          <p className="text-xs text-muted-foreground">Önerilen Fiyat</p>
+          <p className="font-bold text-green-700 dark:text-green-400">{formatCurrency(data.costs?.suggestedPrice)}</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function MaliyetYonetimi() {
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("dashboard");
   const [isAddMaterialDialogOpen, setIsAddMaterialDialogOpen] = useState(false);
   const [isAddCostDialogOpen, setIsAddCostDialogOpen] = useState(false);
   const [isAddMarginDialogOpen, setIsAddMarginDialogOpen] = useState(false);
+  const [isProductCostDialogOpen, setIsProductCostDialogOpen] = useState(false);
+  const [selectedProductId, setSelectedProductId] = useState<number | null>(null);
 
   const { data: dashboardStats, isLoading: statsLoading } = useQuery<any>({
     queryKey: ['/api/cost-dashboard/stats'],
@@ -115,13 +204,13 @@ export default function MaliyetYonetimi() {
     queryKey: ['/api/cost-calculations'],
   });
 
-  const { data: products } = useQuery<any[]>({
+  const { data: dashboardProducts, isLoading: productsLoading } = useQuery<any[]>({
     queryKey: ['/api/cost-dashboard/products'],
   });
 
   const syncPricesMutation = useMutation({
     mutationFn: async () => {
-      return apiRequest("POST", "/api/raw-materials/sync-prices", {});
+      return apiRequest("POST", "/api/sync-prices-from-receipts", {});
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/raw-materials'] });
@@ -240,6 +329,7 @@ export default function MaliyetYonetimi() {
         <TabsList className="flex flex-wrap gap-1">
           <TabsTrigger value="dashboard" data-testid="tab-dashboard">Dashboard</TabsTrigger>
           <TabsTrigger value="hammadde" data-testid="tab-hammadde">Hammaddeler</TabsTrigger>
+          <TabsTrigger value="urun-maliyetleri" data-testid="tab-urun-maliyetleri">Ürün Maliyetleri</TabsTrigger>
           <TabsTrigger value="sabit-gider" data-testid="tab-sabit-gider">Sabit Giderler</TabsTrigger>
           <TabsTrigger value="kar-marji" data-testid="tab-kar-marji">Kar Marjları</TabsTrigger>
           <TabsTrigger value="hesaplamalar" data-testid="tab-hesaplamalar">Hesaplamalar</TabsTrigger>
@@ -320,7 +410,7 @@ export default function MaliyetYonetimi() {
               <CardTitle className="text-sm">Ürün Maliyet Özeti</CardTitle>
             </CardHeader>
             <CardContent>
-              {products && products.length > 0 ? (
+              {dashboardProducts && dashboardProducts.length > 0 ? (
                 <div className="overflow-x-auto">
                   <Table>
                     <TableHeader>
@@ -334,7 +424,7 @@ export default function MaliyetYonetimi() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {products.slice(0, 10).map((item: any) => (
+                      {dashboardProducts.slice(0, 10).map((item: any) => (
                         <TableRow key={item.product?.id} data-testid={`row-product-${item.product?.id}`}>
                           <TableCell className="font-medium">{item.product?.name}</TableCell>
                           <TableCell>
@@ -509,6 +599,136 @@ export default function MaliyetYonetimi() {
               )}
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="urun-maliyetleri" className="space-y-4 mt-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold">Ürün Maliyetleri ve Reçeteler</h2>
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => syncPricesMutation.mutate()}
+                disabled={syncPricesMutation.isPending}
+                data-testid="button-sync-prices"
+              >
+                {syncPricesMutation.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <RefreshCw className="w-4 h-4 mr-2" />}
+                Fiyatları Senkronize Et
+              </Button>
+              <Button
+                size="sm"
+                onClick={() => calculateAllMutation.mutate()}
+                disabled={calculateAllMutation.isPending}
+                data-testid="button-calculate-all"
+              >
+                {calculateAllMutation.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Calculator className="w-4 h-4 mr-2" />}
+                Tüm Maliyetleri Hesapla
+              </Button>
+            </div>
+          </div>
+          
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm">Reçeteli Ürünler</CardTitle>
+              </CardHeader>
+              <CardContent className="p-0">
+                {productsLoading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="w-6 h-6 animate-spin" />
+                  </div>
+                ) : dashboardProducts && dashboardProducts.length > 0 ? (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Ürün</TableHead>
+                        <TableHead>Kategori</TableHead>
+                        <TableHead>Reçete Tipi</TableHead>
+                        <TableHead className="text-right">Maliyet</TableHead>
+                        <TableHead className="text-right">Önerilen</TableHead>
+                        <TableHead></TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {dashboardProducts.filter((p: any) => p.recipe).map((item: any) => (
+                        <TableRow key={item.product?.id} data-testid={`row-product-${item.product?.id}`}>
+                          <TableCell className="font-medium">{item.product?.name}</TableCell>
+                          <TableCell>
+                            <Badge variant="outline" className="text-xs">{item.product?.category}</Badge>
+                          </TableCell>
+                          <TableCell>
+                            {item.recipe?.recipeType === "KEYBLEND" ? (
+                              <Badge className="bg-amber-500 text-xs">KEYBLEND</Badge>
+                            ) : (
+                              <Badge variant="secondary" className="text-xs">OPEN</Badge>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-right">{formatCurrency(item.product?.basePrice)}</TableCell>
+                          <TableCell className="text-right font-medium">{formatCurrency(item.product?.suggestedPrice)}</TableCell>
+                          <TableCell className="text-right">
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => {
+                                setSelectedProductId(item.product?.id);
+                                setIsProductCostDialogOpen(true);
+                              }}
+                              data-testid={`button-view-cost-${item.product?.id}`}
+                            >
+                              <FileText className="w-4 h-4" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                ) : (
+                  <p className="text-sm text-muted-foreground text-center py-8">Henüz reçeteli ürün bulunmuyor</p>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm">Maliyet Özeti</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="p-3 rounded-lg bg-muted/50">
+                    <p className="text-xs text-muted-foreground">Reçeteli Ürün</p>
+                    <p className="text-xl font-bold">
+                      {dashboardProducts?.filter((p: any) => p.recipe).length || 0}
+                    </p>
+                  </div>
+                  <div className="p-3 rounded-lg bg-muted/50">
+                    <p className="text-xs text-muted-foreground">Keyblend Ürün</p>
+                    <p className="text-xl font-bold">
+                      {dashboardProducts?.filter((p: any) => p.recipe?.recipeType === "KEYBLEND").length || 0}
+                    </p>
+                  </div>
+                </div>
+                <div className="p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
+                  <div className="flex items-center gap-2 mb-2">
+                    <AlertTriangle className="w-4 h-4 text-amber-600" />
+                    <p className="text-sm font-medium text-amber-700 dark:text-amber-400">Keyblend Güvenliği</p>
+                  </div>
+                  <p className="text-xs text-amber-600 dark:text-amber-400">
+                    Keyblend malzemelerin formülasyonu gizlidir. Sadece admin rolü detayları görebilir.
+                    Maliyet hesaplamaları tüm malzemeleri içerir.
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          <Dialog open={isProductCostDialogOpen} onOpenChange={setIsProductCostDialogOpen}>
+            <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>Ürün Maliyet Detayı</DialogTitle>
+              </DialogHeader>
+              {selectedProductId && <ProductCostDetail productId={selectedProductId} />}
+            </DialogContent>
+          </Dialog>
         </TabsContent>
 
         <TabsContent value="sabit-gider" className="space-y-4 mt-4">

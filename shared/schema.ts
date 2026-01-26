@@ -10766,6 +10766,10 @@ export const rawMaterials = pgTable("raw_materials", {
   isActive: boolean("is_active").default(true),
   notes: text("notes"),
   
+  // Keyblend - Gizli formülasyon hammaddesi
+  isKeyblend: boolean("is_keyblend").default(false),
+  keyblendCost: numeric("keyblend_cost", { precision: 12, scale: 4 }).default("0"), // Admin tarafından girilen maliyet
+  
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => [
@@ -10794,6 +10798,9 @@ export const productRecipes = pgTable("product_recipes", {
   name: varchar("name", { length: 255 }).notNull(),
   version: integer("version").default(1),
   isActive: boolean("is_active").default(true),
+  
+  // Reçete tipi - OPEN (görünür) veya KEYBLEND (bazı içerikler gizli)
+  recipeType: varchar("recipe_type", { length: 20 }).default("OPEN"), // OPEN, KEYBLEND
   
   // Üretim bilgileri
   outputQuantity: numeric("output_quantity", { precision: 12, scale: 3 }).default("1"), // Kaç adet üretilir
