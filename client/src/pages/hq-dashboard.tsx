@@ -51,6 +51,7 @@ import {
   MousePointer,
   Share2,
   TrendingUpIcon,
+  Lightbulb,
 } from "lucide-react";
 import {
   AreaChart,
@@ -173,27 +174,36 @@ function AlertPanel({ alerts }: { alerts: Array<{ message: string; severity: Ris
   );
 }
 
+const satinalmaIconMap: Record<string, React.ReactNode> = {
+  "Aktif Tedarikci": <Truck className="w-5 h-5 text-blue-500" />,
+  "Bekleyen Siparis": <Package className="w-5 h-5 text-orange-500" />,
+  "Ortalama Teslimat Suresi": <Clock className="w-5 h-5 text-green-500" />,
+  "Fiyat Uyarisi": <AlertTriangle className="w-5 h-5 text-red-500" />,
+};
+
 function SatinalmaDashboard() {
   const { data, isLoading } = useQuery<any>({
     queryKey: ['/api/hq-dashboard/satinalma'],
   });
 
-  const mockData: DepartmentData = {
-    metrics: [
-      { title: "Aktif Tedarikçi", value: 24, icon: <Truck className="w-5 h-5 text-blue-500" />, status: 'healthy', trend: 'stable' },
-      { title: "Bekleyen Sipariş", value: 12, icon: <Package className="w-5 h-5 text-orange-500" />, status: 'warning', subValue: "₺145,000" },
-      { title: "Stok Kritik Ürün", value: 3, icon: <AlertTriangle className="w-5 h-5 text-red-500" />, status: 'critical', trend: 'up', trendValue: "+2" },
-      { title: "Tedarikçi Skoru", value: "87%", icon: <Star className="w-5 h-5 text-yellow-500" />, status: 'healthy', trend: 'up', trendValue: "+3%" },
-      { title: "Ortalama Teslimat", value: "2.4 gün", icon: <Clock className="w-5 h-5 text-green-500" />, status: 'healthy', trend: 'down', trendValue: "-0.2 gün" },
-      { title: "Bu Ay Harcama", value: "₺892K", icon: <DollarSign className="w-5 h-5 text-emerald-500" />, trend: 'up', trendValue: "+12%" },
-    ],
-    alerts: [
-      { message: "Kahve çekirdeği stoğu kritik seviyede (3 gün)", severity: 'critical' },
-      { message: "Süt tedarikçisi fiyat artışı bildirdi (%8)", severity: 'warning' },
-    ]
-  };
+  const fallbackMetrics: MetricCard[] = [
+    { title: "Aktif Tedarikçi", value: 24, icon: <Truck className="w-5 h-5 text-blue-500" />, status: 'healthy', trend: 'stable' },
+    { title: "Bekleyen Sipariş", value: 12, icon: <Package className="w-5 h-5 text-orange-500" />, status: 'warning' },
+    { title: "Ortalama Teslimat", value: "2.4 gün", icon: <Clock className="w-5 h-5 text-green-500" />, status: 'healthy' },
+    { title: "Fiyat Uyarısı", value: 5, icon: <AlertTriangle className="w-5 h-5 text-red-500" />, status: 'critical' },
+  ];
 
-  const displayData = data || mockData;
+  const fallbackAlerts = [
+    { message: "Kahve çekirdeği stoğu kritik seviyede (3 gün)", severity: 'critical' as RiskStatus },
+    { message: "Süt tedarikçisi fiyat artışı bildirdi (%8)", severity: 'warning' as RiskStatus },
+  ];
+
+  const metrics = data?.metrics ? data.metrics.map((m: any) => ({
+    ...m,
+    icon: satinalmaIconMap[m.title] || <Package className="w-5 h-5 text-muted-foreground" />
+  })) : fallbackMetrics;
+  
+  const alerts = data?.alerts || fallbackAlerts;
 
   if (isLoading) {
     return <DashboardSkeleton />;
@@ -217,14 +227,14 @@ function SatinalmaDashboard() {
         <Badge>Samet</Badge>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-        {displayData.metrics.map((metric: MetricCard, index: number) => (
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+        {metrics.map((metric: MetricCard, index: number) => (
           <MetricCardComponent key={index} metric={metric} />
         ))}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <Card>
+        <Card data-testid="chart-demand-forecast">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm flex items-center gap-2">
               <BarChart3 className="w-4 h-4" />
@@ -245,10 +255,10 @@ function SatinalmaDashboard() {
           </CardContent>
         </Card>
 
-        <AlertPanel alerts={displayData.alerts} />
+        <AlertPanel alerts={alerts} />
       </div>
 
-      <Card>
+      <Card data-testid="card-moq-optimizer">
         <CardHeader className="pb-2">
           <CardTitle className="text-sm flex items-center gap-2">
             <Target className="w-4 h-4" />
@@ -278,26 +288,35 @@ function SatinalmaDashboard() {
   );
 }
 
+const fabrikaIconMap: Record<string, React.ReactNode> = {
+  "Gunluk Uretim": <Factory className="w-5 h-5 text-blue-500" />,
+  "Verimlilik": <Gauge className="w-5 h-5 text-green-500" />,
+  "Fire Orani": <Flame className="w-5 h-5 text-orange-500" />,
+  "Makine Uptime": <Zap className="w-5 h-5 text-yellow-500" />,
+};
+
 function FabrikaDashboard() {
   const { data, isLoading } = useQuery<any>({
     queryKey: ['/api/hq-dashboard/fabrika'],
   });
 
-  const mockData: DepartmentData = {
-    metrics: [
-      { title: "Günlük Üretim", value: "2,450", icon: <Factory className="w-5 h-5 text-blue-500" />, subValue: "ürün", status: 'healthy', trend: 'up', trendValue: "+8%" },
-      { title: "Verim Oranı", value: "94.2%", icon: <Gauge className="w-5 h-5 text-green-500" />, status: 'healthy', trend: 'up', trendValue: "+1.2%" },
-      { title: "Fire Oranı", value: "2.1%", icon: <Flame className="w-5 h-5 text-orange-500" />, status: 'healthy', trend: 'down', trendValue: "-0.3%" },
-      { title: "Ekipman Durumu", value: "96%", icon: <Zap className="w-5 h-5 text-yellow-500" />, status: 'healthy' },
-      { title: "Vardiya Performans", value: "A+", icon: <Award className="w-5 h-5 text-purple-500" />, status: 'healthy' },
-      { title: "Bekleyen İş Emri", value: 8, icon: <ClipboardCheck className="w-5 h-5 text-red-500" />, status: 'warning' },
-    ],
-    alerts: [
-      { message: "Kavurma makinesi bakım zamanı yaklaşıyor (3 gün)", severity: 'warning' },
-    ]
-  };
+  const fallbackMetrics: MetricCard[] = [
+    { title: "Günlük Üretim", value: "2,450 kg", icon: <Factory className="w-5 h-5 text-blue-500" />, status: 'healthy', trend: 'up' },
+    { title: "Verimlilik", value: "94.2%", icon: <Gauge className="w-5 h-5 text-green-500" />, status: 'healthy' },
+    { title: "Fire Oranı", value: "1.8%", icon: <Flame className="w-5 h-5 text-orange-500" />, status: 'healthy' },
+    { title: "Makine Uptime", value: "98.5%", icon: <Zap className="w-5 h-5 text-yellow-500" />, status: 'healthy' },
+  ];
 
-  const displayData = data || mockData;
+  const fallbackAlerts = [
+    { message: "Kavurma makinesi bakım zamanı yaklaşıyor", severity: 'warning' as RiskStatus },
+  ];
+
+  const metrics = data?.metrics ? data.metrics.map((m: any) => ({
+    ...m,
+    icon: fabrikaIconMap[m.title] || <Factory className="w-5 h-5 text-muted-foreground" />
+  })) : fallbackMetrics;
+  
+  const alerts = data?.alerts || fallbackAlerts;
 
   if (isLoading) {
     return <DashboardSkeleton />;
@@ -321,14 +340,14 @@ function FabrikaDashboard() {
         <Badge>Eren</Badge>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-        {displayData.metrics.map((metric: MetricCard, index: number) => (
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+        {metrics.map((metric: MetricCard, index: number) => (
           <MetricCardComponent key={index} metric={metric} />
         ))}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <Card>
+        <Card data-testid="chart-production-tracking">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm flex items-center gap-2">
               <LineChart className="w-4 h-4" />
@@ -349,7 +368,7 @@ function FabrikaDashboard() {
           </CardContent>
         </Card>
 
-        <AlertPanel alerts={displayData.alerts} />
+        <AlertPanel alerts={alerts} />
       </div>
 
       <Card>
@@ -376,27 +395,36 @@ function FabrikaDashboard() {
   );
 }
 
+const ikIconMap: Record<string, React.ReactNode> = {
+  "Toplam Personel": <Users className="w-5 h-5 text-blue-500" />,
+  "Yillik Turnover": <UserX className="w-5 h-5 text-red-500" />,
+  "Ortalama Deneyim": <Calendar className="w-5 h-5 text-orange-500" />,
+  "Egitim Tamamlama": <GraduationCap className="w-5 h-5 text-green-500" />,
+};
+
 function IKDashboard() {
   const { data, isLoading } = useQuery<any>({
     queryKey: ['/api/hq-dashboard/ik'],
   });
 
-  const mockData: DepartmentData = {
-    metrics: [
-      { title: "Toplam Personel", value: 156, icon: <Users className="w-5 h-5 text-blue-500" />, status: 'healthy', trend: 'up', trendValue: "+4" },
-      { title: "Aktif İzin", value: 8, icon: <Calendar className="w-5 h-5 text-orange-500" />, status: 'warning' },
-      { title: "Bekleyen Başvuru", value: 12, icon: <FileText className="w-5 h-5 text-purple-500" />, trend: 'up', trendValue: "+3" },
-      { title: "Devamsızlık", value: "2.4%", icon: <UserX className="w-5 h-5 text-red-500" />, status: 'healthy', trend: 'down', trendValue: "-0.5%" },
-      { title: "Eğitim Tamamlama", value: "87%", icon: <GraduationCap className="w-5 h-5 text-green-500" />, status: 'healthy' },
-      { title: "Moral Skoru", value: "4.2/5", icon: <Heart className="w-5 h-5 text-pink-500" />, status: 'healthy', trend: 'up' },
-    ],
-    alerts: [
-      { message: "3 personelin sözleşmesi bu ay sona eriyor", severity: 'warning' },
-      { message: "İbni Sina şubesinde devamsızlık artışı", severity: 'warning' },
-    ]
-  };
+  const fallbackMetrics: MetricCard[] = [
+    { title: "Toplam Personel", value: 156, icon: <Users className="w-5 h-5 text-blue-500" />, status: 'healthy', trend: 'up' },
+    { title: "Yıllık Turnover", value: "12%", icon: <UserX className="w-5 h-5 text-red-500" />, status: 'warning' },
+    { title: "Ortalama Deneyim", value: "2.3 yıl", icon: <Calendar className="w-5 h-5 text-orange-500" />, status: 'healthy' },
+    { title: "Eğitim Tamamlama", value: "85%", icon: <GraduationCap className="w-5 h-5 text-green-500" />, status: 'healthy' },
+  ];
 
-  const displayData = data || mockData;
+  const fallbackAlerts = [
+    { message: "3 personelin sözleşmesi bu ay sona eriyor", severity: 'warning' as RiskStatus },
+    { message: "İbni Sina şubesinde devamsızlık artışı", severity: 'warning' as RiskStatus },
+  ];
+
+  const metrics = data?.metrics ? data.metrics.map((m: any) => ({
+    ...m,
+    icon: ikIconMap[m.title] || <Users className="w-5 h-5 text-muted-foreground" />
+  })) : fallbackMetrics;
+  
+  const alerts = data?.alerts || fallbackAlerts;
 
   if (isLoading) {
     return <DashboardSkeleton />;
@@ -420,7 +448,7 @@ function IKDashboard() {
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-        {displayData.metrics.map((metric: MetricCard, index: number) => (
+        {metrics.map((metric: MetricCard, index: number) => (
           <MetricCardComponent key={index} metric={metric} />
         ))}
       </div>
@@ -447,7 +475,7 @@ function IKDashboard() {
           </CardContent>
         </Card>
 
-        <AlertPanel alerts={displayData.alerts} />
+        <AlertPanel alerts={alerts} />
       </div>
 
       <Card>
@@ -480,27 +508,36 @@ function IKDashboard() {
   );
 }
 
+const coachIconMap: Record<string, React.ReactNode> = {
+  "Ortalama Sube Puani": <Star className="w-5 h-5 text-yellow-500" />,
+  "Ziyaret Bekleyen": <Eye className="w-5 h-5 text-purple-500" />,
+  "Uyumluluk Orani": <ClipboardCheck className="w-5 h-5 text-green-500" />,
+  "Iyilestirme Onerisi": <Lightbulb className="w-5 h-5 text-orange-500" />,
+};
+
 function CoachDashboard() {
   const { data, isLoading } = useQuery<any>({
     queryKey: ['/api/hq-dashboard/coach'],
   });
 
-  const mockData: DepartmentData = {
-    metrics: [
-      { title: "Toplam Şube", value: 8, icon: <Store className="w-5 h-5 text-blue-500" />, status: 'healthy' },
-      { title: "Ortalama Skor", value: "4.3/5", icon: <Star className="w-5 h-5 text-yellow-500" />, status: 'healthy', trend: 'up', trendValue: "+0.2" },
-      { title: "Uyum Oranı", value: "92%", icon: <ClipboardCheck className="w-5 h-5 text-green-500" />, status: 'healthy' },
-      { title: "Kritik Şube", value: 1, icon: <AlertTriangle className="w-5 h-5 text-red-500" />, status: 'critical' },
-      { title: "Checklist Tamamlama", value: "88%", icon: <CheckCircle className="w-5 h-5 text-emerald-500" />, status: 'healthy' },
-      { title: "Haftalık Ziyaret", value: 12, icon: <Eye className="w-5 h-5 text-purple-500" />, trend: 'up', trendValue: "+2" },
-    ],
-    alerts: [
-      { message: "Gaziantep İbni Sina - 3 gündür checklist eksik", severity: 'critical' },
-      { message: "Merkez şube - Satış hedefinin %15 altında", severity: 'warning' },
-    ]
-  };
+  const fallbackMetrics: MetricCard[] = [
+    { title: "Ortalama Şube Puanı", value: "4.2/5", icon: <Star className="w-5 h-5 text-yellow-500" />, status: 'healthy', trend: 'up' },
+    { title: "Ziyaret Bekleyen", value: 8, icon: <Eye className="w-5 h-5 text-purple-500" />, status: 'warning' },
+    { title: "Uyumluluk Oranı", value: "91%", icon: <ClipboardCheck className="w-5 h-5 text-green-500" />, status: 'healthy' },
+    { title: "İyileştirme Önerisi", value: 15, icon: <Lightbulb className="w-5 h-5 text-orange-500" />, status: 'healthy' },
+  ];
 
-  const displayData = data || mockData;
+  const fallbackAlerts = [
+    { message: "Gaziantep İbni Sina - 3 gündür checklist eksik", severity: 'critical' as RiskStatus },
+    { message: "Merkez şube - Satış hedefinin %15 altında", severity: 'warning' as RiskStatus },
+  ];
+
+  const metrics = data?.metrics ? data.metrics.map((m: any) => ({
+    ...m,
+    icon: coachIconMap[m.title] || <Store className="w-5 h-5 text-muted-foreground" />
+  })) : fallbackMetrics;
+  
+  const alerts = data?.alerts || fallbackAlerts;
 
   if (isLoading) {
     return <DashboardSkeleton />;
@@ -522,7 +559,7 @@ function CoachDashboard() {
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-        {displayData.metrics.map((metric: MetricCard, index: number) => (
+        {metrics.map((metric: MetricCard, index: number) => (
           <MetricCardComponent key={index} metric={metric} />
         ))}
       </div>
@@ -550,7 +587,7 @@ function CoachDashboard() {
           </CardContent>
         </Card>
 
-        <AlertPanel alerts={displayData.alerts} />
+        <AlertPanel alerts={alerts} />
       </div>
 
       <Card>
@@ -577,26 +614,35 @@ function CoachDashboard() {
   );
 }
 
+const marketingIconMap: Record<string, React.ReactNode> = {
+  "Aktif Kampanya": <Megaphone className="w-5 h-5 text-purple-500" />,
+  "Sosyal Medya Erisimi": <Users className="w-5 h-5 text-blue-500" />,
+  "Kampanya ROI": <TrendingUp className="w-5 h-5 text-green-500" />,
+  "Musteri Memnuniyeti": <Heart className="w-5 h-5 text-pink-500" />,
+};
+
 function MarketingDashboard() {
   const { data, isLoading } = useQuery<any>({
     queryKey: ['/api/hq-dashboard/marketing'],
   });
 
-  const mockData: DepartmentData = {
-    metrics: [
-      { title: "Aktif Kampanya", value: 3, icon: <Megaphone className="w-5 h-5 text-purple-500" />, status: 'healthy' },
-      { title: "Sosyal Takipçi", value: "24.5K", icon: <Users className="w-5 h-5 text-blue-500" />, trend: 'up', trendValue: "+1.2K" },
-      { title: "Kampanya ROI", value: "340%", icon: <TrendingUp className="w-5 h-5 text-green-500" />, status: 'healthy' },
-      { title: "Marka Algısı", value: "4.6/5", icon: <Heart className="w-5 h-5 text-pink-500" />, status: 'healthy', trend: 'up' },
-      { title: "İçerik Üretim", value: 28, icon: <FileText className="w-5 h-5 text-orange-500" />, subValue: "bu ay" },
-      { title: "Web Trafik", value: "45K", icon: <MousePointer className="w-5 h-5 text-cyan-500" />, trend: 'up', trendValue: "+18%" },
-    ],
-    alerts: [
-      { message: "Instagram etkileşim oranı düşüşte (%12)", severity: 'warning' },
-    ]
-  };
+  const fallbackMetrics: MetricCard[] = [
+    { title: "Aktif Kampanya", value: 4, icon: <Megaphone className="w-5 h-5 text-purple-500" />, status: 'healthy' },
+    { title: "Sosyal Medya Erişimi", value: "125K", icon: <Users className="w-5 h-5 text-blue-500" />, trend: 'up' },
+    { title: "Kampanya ROI", value: "3.2x", icon: <TrendingUp className="w-5 h-5 text-green-500" />, status: 'healthy' },
+    { title: "Müşteri Memnuniyeti", value: "4.5/5", icon: <Heart className="w-5 h-5 text-pink-500" />, status: 'healthy' },
+  ];
 
-  const displayData = data || mockData;
+  const fallbackAlerts = [
+    { message: "Instagram etkileşim oranı düşüşte (%12)", severity: 'warning' as RiskStatus },
+  ];
+
+  const metrics = data?.metrics ? data.metrics.map((m: any) => ({
+    ...m,
+    icon: marketingIconMap[m.title] || <Megaphone className="w-5 h-5 text-muted-foreground" />
+  })) : fallbackMetrics;
+  
+  const alerts = data?.alerts || fallbackAlerts;
 
   if (isLoading) {
     return <DashboardSkeleton />;
@@ -617,7 +663,7 @@ function MarketingDashboard() {
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-        {displayData.metrics.map((metric: MetricCard, index: number) => (
+        {metrics.map((metric: MetricCard, index: number) => (
           <MetricCardComponent key={index} metric={metric} />
         ))}
       </div>
@@ -643,7 +689,7 @@ function MarketingDashboard() {
           </CardContent>
         </Card>
 
-        <AlertPanel alerts={displayData.alerts} />
+        <AlertPanel alerts={alerts} />
       </div>
 
       <Card>
@@ -672,26 +718,35 @@ function MarketingDashboard() {
   );
 }
 
+const trainerIconMap: Record<string, React.ReactNode> = {
+  "Egitim Tamamlama": <CheckCircle className="w-5 h-5 text-green-500" />,
+  "Ortalama Quiz Puani": <Award className="w-5 h-5 text-yellow-500" />,
+  "Sertifika Bekleyen": <GraduationCap className="w-5 h-5 text-purple-500" />,
+  "Aktif Ogrenci": <Users className="w-5 h-5 text-blue-500" />,
+};
+
 function TrainerDashboard() {
   const { data, isLoading } = useQuery<any>({
     queryKey: ['/api/hq-dashboard/trainer'],
   });
 
-  const mockData: DepartmentData = {
-    metrics: [
-      { title: "Aktif Eğitim", value: 5, icon: <BookOpen className="w-5 h-5 text-blue-500" />, status: 'healthy' },
-      { title: "Tamamlama Oranı", value: "78%", icon: <CheckCircle className="w-5 h-5 text-green-500" />, status: 'healthy', trend: 'up', trendValue: "+5%" },
-      { title: "Ortalama Quiz", value: "82/100", icon: <Award className="w-5 h-5 text-yellow-500" />, status: 'healthy' },
-      { title: "Eğitim İhtiyacı", value: 12, icon: <AlertCircle className="w-5 h-5 text-orange-500" />, subValue: "personel" },
-      { title: "Reçete Uyum", value: "95%", icon: <Coffee className="w-5 h-5 text-amber-500" />, status: 'healthy' },
-      { title: "Sertifika Bekleyen", value: 8, icon: <GraduationCap className="w-5 h-5 text-purple-500" />, trend: 'stable' },
-    ],
-    alerts: [
-      { message: "5 personelin temel eğitimi eksik", severity: 'warning' },
-    ]
-  };
+  const fallbackMetrics: MetricCard[] = [
+    { title: "Eğitim Tamamlama", value: "78%", icon: <CheckCircle className="w-5 h-5 text-green-500" />, status: 'warning', trend: 'up' },
+    { title: "Ortalama Quiz Puanı", value: "82%", icon: <Award className="w-5 h-5 text-yellow-500" />, status: 'healthy' },
+    { title: "Sertifika Bekleyen", value: 12, icon: <GraduationCap className="w-5 h-5 text-purple-500" />, status: 'warning' },
+    { title: "Aktif Öğrenci", value: 150, icon: <Users className="w-5 h-5 text-blue-500" />, status: 'healthy' },
+  ];
 
-  const displayData = data || mockData;
+  const fallbackAlerts = [
+    { message: "5 personelin temel eğitimi eksik", severity: 'warning' as RiskStatus },
+  ];
+
+  const metrics = data?.metrics ? data.metrics.map((m: any) => ({
+    ...m,
+    icon: trainerIconMap[m.title] || <BookOpen className="w-5 h-5 text-muted-foreground" />
+  })) : fallbackMetrics;
+  
+  const alerts = data?.alerts || fallbackAlerts;
 
   if (isLoading) {
     return <DashboardSkeleton />;
@@ -714,7 +769,7 @@ function TrainerDashboard() {
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-        {displayData.metrics.map((metric: MetricCard, index: number) => (
+        {metrics.map((metric: MetricCard, index: number) => (
           <MetricCardComponent key={index} metric={metric} />
         ))}
       </div>
@@ -740,7 +795,7 @@ function TrainerDashboard() {
           </CardContent>
         </Card>
 
-        <AlertPanel alerts={displayData.alerts} />
+        <AlertPanel alerts={alerts} />
       </div>
 
       <Card>
@@ -767,26 +822,35 @@ function TrainerDashboard() {
   );
 }
 
+const kaliteIconMap: Record<string, React.ReactNode> = {
+  "Kalite Skoru": <Star className="w-5 h-5 text-yellow-500" />,
+  "Musteri Puani": <ThumbsUp className="w-5 h-5 text-green-500" />,
+  "Acik Sikayet": <MessageSquare className="w-5 h-5 text-red-500" />,
+  "Denetim Puani": <ClipboardCheck className="w-5 h-5 text-emerald-500" />,
+};
+
 function KaliteDashboard() {
   const { data, isLoading } = useQuery<any>({
     queryKey: ['/api/hq-dashboard/kalite'],
   });
 
-  const mockData: DepartmentData = {
-    metrics: [
-      { title: "Kalite Skoru", value: "4.5/5", icon: <Star className="w-5 h-5 text-yellow-500" />, status: 'healthy', trend: 'up' },
-      { title: "Açık Şikayet", value: 3, icon: <MessageSquare className="w-5 h-5 text-red-500" />, status: 'warning' },
-      { title: "Fabrika Denetim", value: "98%", icon: <ClipboardCheck className="w-5 h-5 text-green-500" />, status: 'healthy' },
-      { title: "Ürün Ret", value: "0.8%", icon: <ThumbsDown className="w-5 h-5 text-orange-500" />, status: 'healthy', trend: 'down' },
-      { title: "Müşteri Memnun", value: "92%", icon: <ThumbsUp className="w-5 h-5 text-emerald-500" />, status: 'healthy' },
-      { title: "Bekleyen Feedback", value: 15, icon: <FileText className="w-5 h-5 text-blue-500" />, trend: 'down', trendValue: "-5" },
-    ],
-    alerts: [
-      { message: "İbni Sina şubesinden 2 olumsuz feedback", severity: 'warning' },
-    ]
-  };
+  const fallbackMetrics: MetricCard[] = [
+    { title: "Kalite Skoru", value: "94%", icon: <Star className="w-5 h-5 text-yellow-500" />, status: 'healthy', trend: 'up' },
+    { title: "Müşteri Puanı", value: "4.5/5", icon: <ThumbsUp className="w-5 h-5 text-green-500" />, status: 'healthy' },
+    { title: "Açık Şikayet", value: 3, icon: <MessageSquare className="w-5 h-5 text-red-500" />, status: 'warning' },
+    { title: "Denetim Puanı", value: "A+", icon: <ClipboardCheck className="w-5 h-5 text-emerald-500" />, status: 'healthy' },
+  ];
 
-  const displayData = data || mockData;
+  const fallbackAlerts = [
+    { message: "İbni Sina şubesinden 2 olumsuz feedback", severity: 'warning' as RiskStatus },
+  ];
+
+  const metrics = data?.metrics ? data.metrics.map((m: any) => ({
+    ...m,
+    icon: kaliteIconMap[m.title] || <ClipboardCheck className="w-5 h-5 text-muted-foreground" />
+  })) : fallbackMetrics;
+  
+  const alerts = data?.alerts || fallbackAlerts;
 
   if (isLoading) {
     return <DashboardSkeleton />;
@@ -808,7 +872,7 @@ function KaliteDashboard() {
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-        {displayData.metrics.map((metric: MetricCard, index: number) => (
+        {metrics.map((metric: MetricCard, index: number) => (
           <MetricCardComponent key={index} metric={metric} />
         ))}
       </div>
@@ -834,7 +898,7 @@ function KaliteDashboard() {
           </CardContent>
         </Card>
 
-        <AlertPanel alerts={displayData.alerts} />
+        <AlertPanel alerts={alerts} />
       </div>
 
       <Card>
@@ -867,24 +931,66 @@ function KaliteDashboard() {
   );
 }
 
+const cgoIconMap: Record<string, React.ReactNode> = {
+  "Toplam Sube": <Store className="w-5 h-5 text-blue-500" />,
+  "Aktif Personel": <Users className="w-5 h-5 text-green-500" />,
+  "Acik Arizalar": <AlertTriangle className="w-5 h-5 text-red-500" />,
+  "Checklist Tamamlanma": <CheckCircle className="w-5 h-5 text-emerald-500" />,
+};
+
+const departmentOwnerMap: Record<string, string> = {
+  "Satinalma": "Samet",
+  "Fabrika": "Eren",
+  "IK": "Mahmut",
+  "Coach": "Yavuz",
+  "Marketing": "Diana",
+  "Trainer": "Ece",
+  "Kalite": "Ümran",
+};
+
 function CGODashboard() {
   const { data, isLoading } = useQuery<any>({
     queryKey: ['/api/hq-dashboard/cgo'],
   });
 
+  const fallbackMetrics = [
+    { title: "Toplam Şube", value: 8, icon: <Store className="w-5 h-5 text-blue-500" />, status: 'healthy' as RiskStatus },
+    { title: "Aktif Personel", value: 156, icon: <Users className="w-5 h-5 text-green-500" />, trend: 'up' as Trend },
+    { title: "Açık Arızalar", value: 5, icon: <AlertTriangle className="w-5 h-5 text-red-500" />, status: 'warning' as RiskStatus },
+    { title: "Checklist Tamamlanma", value: "92%", icon: <CheckCircle className="w-5 h-5 text-emerald-500" />, status: 'healthy' as RiskStatus },
+  ];
+
+  const fallbackDepartmentHealth = [
+    { name: 'Satınalma', status: 'healthy', score: 88 },
+    { name: 'Fabrika', status: 'healthy', score: 82 },
+    { name: 'İK', status: 'healthy', score: 91 },
+    { name: 'Coach', status: 'warning', score: 79 },
+    { name: 'Marketing', status: 'healthy', score: 94 },
+    { name: 'Trainer', status: 'healthy', score: 85 },
+    { name: 'Kalite', status: 'healthy', score: 90 },
+  ];
+
+  const fallbackAlerts = [
+    { message: "3 şubede SLA ihlali riski", severity: 'warning' as RiskStatus },
+    { message: "Haftalık eğitim hedefi %15 altında", severity: 'critical' as RiskStatus },
+  ];
+
+  const metrics = data?.metrics ? data.metrics.map((m: any) => ({
+    ...m,
+    icon: cgoIconMap[m.title] || <Building2 className="w-5 h-5 text-muted-foreground" />
+  })) : fallbackMetrics;
+
+  const departmentHealth = data?.departmentHealth || fallbackDepartmentHealth;
+  const alerts = data?.alerts || fallbackAlerts;
+
   if (isLoading) {
     return <DashboardSkeleton />;
   }
 
-  const departmentSummary = [
-    { name: 'Satınalma', status: 'warning', score: 78, owner: 'Samet' },
-    { name: 'Fabrika', status: 'healthy', score: 94, owner: 'Eren' },
-    { name: 'İK', status: 'healthy', score: 87, owner: 'Mahmut' },
-    { name: 'Coach', status: 'warning', score: 82, owner: 'Yavuz' },
-    { name: 'Marketing', status: 'healthy', score: 91, owner: 'Diana' },
-    { name: 'Trainer', status: 'healthy', score: 88, owner: 'Ece' },
-    { name: 'Kalite', status: 'healthy', score: 92, owner: 'Ümran' },
-  ];
+  const departmentSummary = departmentHealth.map((dept: any) => ({
+    ...dept,
+    owner: departmentOwnerMap[dept.name] || 'HQ'
+  }));
 
   return (
     <div className="space-y-4">
@@ -895,10 +1001,9 @@ function CGODashboard() {
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <MetricCardComponent metric={{ title: "Toplam Şube", value: 8, icon: <Store className="w-5 h-5 text-blue-500" />, status: 'healthy' }} />
-        <MetricCardComponent metric={{ title: "Toplam Personel", value: 156, icon: <Users className="w-5 h-5 text-green-500" />, trend: 'up', trendValue: "+4" }} />
-        <MetricCardComponent metric={{ title: "Operasyonel Skor", value: "87%", icon: <Gauge className="w-5 h-5 text-yellow-500" />, status: 'healthy' }} />
-        <MetricCardComponent metric={{ title: "Kritik Uyarı", value: 2, icon: <AlertTriangle className="w-5 h-5 text-red-500" />, status: 'warning' }} />
+        {metrics.map((metric: MetricCard, index: number) => (
+          <MetricCardComponent key={index} metric={metric} />
+        ))}
       </div>
 
       <Card>
