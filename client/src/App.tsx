@@ -148,6 +148,7 @@ import AdminFabrikaIstasyonlar from "@/pages/admin/fabrika-istasyonlar";
 import AdminFabrikaFireSebepleri from "@/pages/admin/fabrika-fire-sebepleri";
 import AdminFabrikaPinYonetimi from "@/pages/admin/fabrika-pin-yonetimi";
 import AdminFabrikaKaliteKriterleri from "@/pages/admin/fabrika-kalite-kriterleri";
+import KaliteKontrolDashboard from "@/pages/kalite-kontrol-dashboard";
 import Setup from "@/pages/setup";
 import MisafirGeriBildirimPublic from "@/pages/misafir-geri-bildirim";
 import MisafirMemnuniyeti from "@/pages/misafir-memnuniyeti";
@@ -364,6 +365,7 @@ function Router() {
           <Route path="/admin/*?" component={AdminMegaModule} />
           <Route path="/ceo-command-center">{() => <ExecutiveOnly><CEOCommandCenter /></ExecutiveOnly>}</Route>
           <Route path="/hq-dashboard/:department?">{() => <HQOnly><HQDashboard /></HQOnly>}</Route>
+          <Route path="/kalite-kontrol-dashboard" component={KaliteKontrolDashboard} />
           <Route path="/satinalma/:tab?" component={SatinalmaMega} />
         </>
       )}

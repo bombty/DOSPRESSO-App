@@ -102,7 +102,7 @@ export default function Login() {
         'coach': '/hq-dashboard/coach',
         'marketing': '/hq-dashboard/marketing',
         'trainer': '/hq-dashboard/trainer',
-        'kalite_kontrol': '/hq-dashboard/kalite',
+        'kalite_kontrol': '/kalite-kontrol-dashboard',
         'fabrika_mudur': '/hq-dashboard/fabrika',
         'muhasebe': '/hq-dashboard/ik',
         'teknik': '/',
