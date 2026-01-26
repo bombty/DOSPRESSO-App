@@ -13,7 +13,7 @@ import { EmptyState } from "@/components/empty-state";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { ObjectUploader } from "@/components/ObjectUploader";
 import { 
-  User, Calendar, Award, ClipboardCheck, 
+  User, Calendar, Award, ClipboardCheck, Users,
   Clock, TrendingUp, AlertCircle, CheckCircle2, XCircle, LogOut, Camera, Trash2, Wallet, Banknote, 
   Timer, Plus, Loader2
 } from "lucide-react";
@@ -701,122 +701,412 @@ export default function PersonelProfilPage() {
         )}
 
         <TabsContent value="akademi" className="flex flex-col gap-3">
-          {/* İlerleme Özeti */}
-          <Card className="bg-gradient-to-r from-primary/10 to-blue-500/5 border-primary/20" data-testid="card-academy-progress-summary">
-            <CardContent className="p-4">
-              <div className="flex items-center gap-4">
-                <div className="w-16 h-16 rounded-full bg-primary/20 flex items-center justify-center">
-                  <Award className="w-8 h-8 text-primary" />
-                </div>
-                <div className="flex-1">
-                  <h3 className="font-bold text-lg">Akademi İlerleme Özeti</h3>
-                  <div className="grid grid-cols-2 gap-3 mt-2">
-                    <div className="text-center p-2 bg-background/60 rounded-lg">
-                      <div className="text-xl font-bold text-primary" data-testid="text-performance-score">
-                        {profile?.performanceScore !== null && profile?.performanceScore !== undefined 
-                          ? `${profile.performanceScore}%` 
-                          : <span className="text-muted-foreground text-sm">Hesaplanıyor...</span>
-                        }
-                      </div>
-                      <div className="text-xs text-muted-foreground">Performans</div>
+          {/* HQ Rolleri için Özel Akademi */}
+          {(['admin', 'muhasebe', 'satinalma', 'coach', 'teknik', 'destek', 'fabrika', 'yatirimci_hq'].includes(profile?.role || '')) ? (
+            <>
+              {/* HQ Gelişim Merkezi Başlık */}
+              <Card className="bg-gradient-to-r from-primary/10 to-purple-500/10 border-primary/20" data-testid="card-hq-academy-header">
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-4">
+                    <div className="w-16 h-16 rounded-full bg-primary/20 flex items-center justify-center">
+                      <Award className="w-8 h-8 text-primary" />
                     </div>
-                    <div className="text-center p-2 bg-background/60 rounded-lg">
-                      <div className="text-xl font-bold text-green-600" data-testid="text-attendance-rate">
-                        {profile?.attendanceRate !== null && profile?.attendanceRate !== undefined 
-                          ? `${profile.attendanceRate}%` 
-                          : <span className="text-muted-foreground text-sm">Hesaplanıyor...</span>
-                        }
+                    <div className="flex-1">
+                      <h3 className="font-bold text-lg">HQ Gelişim Merkezi</h3>
+                      <p className="text-sm text-muted-foreground">
+                        {profile?.role === 'coach' && 'Franchise koçluğu ve şube yönetimi eğitimleri'}
+                        {profile?.role === 'satinalma' && 'Tedarik zinciri ve maliyet yönetimi eğitimleri'}
+                        {profile?.role === 'muhasebe' && 'Finansal analiz ve raporlama eğitimleri'}
+                        {profile?.role === 'teknik' && 'Teknik ekipman ve bakım eğitimleri'}
+                        {profile?.role === 'fabrika' && 'Üretim ve kalite kontrol eğitimleri'}
+                        {profile?.role === 'destek' && 'Müşteri ilişkileri ve destek eğitimleri'}
+                        {(profile?.role === 'admin' || profile?.role === 'yatirimci_hq') && 'Tüm departman eğitimlerine erişim'}
+                      </p>
+                      <div className="flex items-center gap-2 mt-3 flex-wrap">
+                        <Badge variant="secondary" className="cursor-pointer" data-testid="badge-hq-role">
+                          {roleLabels[profile?.role || ''] || profile?.role}
+                        </Badge>
+                        <Badge variant="outline" data-testid="badge-hq-level">
+                          Merkez Personeli
+                        </Badge>
                       </div>
-                      <div className="text-xs text-muted-foreground">Devam</div>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2 mt-3 flex-wrap">
-                    <Link href="/akademi-badges">
-                      <Badge variant="secondary" className="cursor-pointer hover-elevate" data-testid="link-badges-quick">Rozetler</Badge>
+                </CardContent>
+              </Card>
+
+              {/* Role Özel Eğitim Kategorileri */}
+              <Card data-testid="card-hq-training-categories">
+                <CardHeader>
+                  <CardTitle>Mesleki Gelişim Eğitimleri</CardTitle>
+                  <CardDescription>Rolünüze özel eğitim modülleri</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                    {/* Coach Eğitimleri */}
+                    {(profile?.role === 'coach' || profile?.role === 'admin' || profile?.role === 'yatirimci_hq') && (
+                      <>
+                        <Card className="hover-elevate cursor-pointer border-blue-200 dark:border-blue-800" data-testid="card-training-franchise">
+                          <CardContent className="p-3">
+                            <div className="flex items-center gap-2">
+                              <div className="w-8 h-8 rounded bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
+                                <Users className="w-4 h-4 text-blue-600" />
+                              </div>
+                              <div>
+                                <h4 className="font-medium text-sm">Franchise Yönetimi</h4>
+                                <p className="text-xs text-muted-foreground">Şube koçluğu teknikleri</p>
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                        <Card className="hover-elevate cursor-pointer border-green-200 dark:border-green-800" data-testid="card-training-performance">
+                          <CardContent className="p-3">
+                            <div className="flex items-center gap-2">
+                              <div className="w-8 h-8 rounded bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
+                                <TrendingUp className="w-4 h-4 text-green-600" />
+                              </div>
+                              <div>
+                                <h4 className="font-medium text-sm">Performans Analizi</h4>
+                                <p className="text-xs text-muted-foreground">Veri odaklı karar verme</p>
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                        <Card className="hover-elevate cursor-pointer border-red-200 dark:border-red-800" data-testid="card-training-crisis">
+                          <CardContent className="p-3">
+                            <div className="flex items-center gap-2">
+                              <div className="w-8 h-8 rounded bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
+                                <AlertCircle className="w-4 h-4 text-red-600" />
+                              </div>
+                              <div>
+                                <h4 className="font-medium text-sm">Kriz Yönetimi</h4>
+                                <p className="text-xs text-muted-foreground">Çözüm stratejileri</p>
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      </>
+                    )}
+
+                    {/* Satınalma Eğitimleri */}
+                    {(profile?.role === 'satinalma' || profile?.role === 'admin' || profile?.role === 'yatirimci_hq') && (
+                      <>
+                        <Card className="hover-elevate cursor-pointer border-purple-200 dark:border-purple-800" data-testid="card-training-supply-chain">
+                          <CardContent className="p-3">
+                            <div className="flex items-center gap-2">
+                              <div className="w-8 h-8 rounded bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
+                                <Clock className="w-4 h-4 text-purple-600" />
+                              </div>
+                              <div>
+                                <h4 className="font-medium text-sm">Tedarik Zinciri</h4>
+                                <p className="text-xs text-muted-foreground">Optimizasyon teknikleri</p>
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                        <Card className="hover-elevate cursor-pointer border-orange-200 dark:border-orange-800" data-testid="card-training-cost-analysis">
+                          <CardContent className="p-3">
+                            <div className="flex items-center gap-2">
+                              <div className="w-8 h-8 rounded bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center">
+                                <Wallet className="w-4 h-4 text-orange-600" />
+                              </div>
+                              <div>
+                                <h4 className="font-medium text-sm">Maliyet Analizi</h4>
+                                <p className="text-xs text-muted-foreground">Bütçeleme yöntemleri</p>
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                        <Card className="hover-elevate cursor-pointer border-teal-200 dark:border-teal-800" data-testid="card-training-supplier">
+                          <CardContent className="p-3">
+                            <div className="flex items-center gap-2">
+                              <div className="w-8 h-8 rounded bg-teal-100 dark:bg-teal-900/30 flex items-center justify-center">
+                                <Users className="w-4 h-4 text-teal-600" />
+                              </div>
+                              <div>
+                                <h4 className="font-medium text-sm">Tedarikçi İlişkileri</h4>
+                                <p className="text-xs text-muted-foreground">Müzakere ve sözleşme</p>
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      </>
+                    )}
+
+                    {/* Muhasebe Eğitimleri */}
+                    {(profile?.role === 'muhasebe' || profile?.role === 'admin' || profile?.role === 'yatirimci_hq') && (
+                      <>
+                        <Card className="hover-elevate cursor-pointer border-emerald-200 dark:border-emerald-800" data-testid="card-training-financial">
+                          <CardContent className="p-3">
+                            <div className="flex items-center gap-2">
+                              <div className="w-8 h-8 rounded bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
+                                <Banknote className="w-4 h-4 text-emerald-600" />
+                              </div>
+                              <div>
+                                <h4 className="font-medium text-sm">Finansal Raporlama</h4>
+                                <p className="text-xs text-muted-foreground">Standartlar ve uygulamalar</p>
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                        <Card className="hover-elevate cursor-pointer border-amber-200 dark:border-amber-800" data-testid="card-training-tax">
+                          <CardContent className="p-3">
+                            <div className="flex items-center gap-2">
+                              <div className="w-8 h-8 rounded bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
+                                <ClipboardCheck className="w-4 h-4 text-amber-600" />
+                              </div>
+                              <div>
+                                <h4 className="font-medium text-sm">Vergi & Mevzuat</h4>
+                                <p className="text-xs text-muted-foreground">Güncel düzenlemeler</p>
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                        <Card className="hover-elevate cursor-pointer border-cyan-200 dark:border-cyan-800" data-testid="card-training-budget">
+                          <CardContent className="p-3">
+                            <div className="flex items-center gap-2">
+                              <div className="w-8 h-8 rounded bg-cyan-100 dark:bg-cyan-900/30 flex items-center justify-center">
+                                <Calendar className="w-4 h-4 text-cyan-600" />
+                              </div>
+                              <div>
+                                <h4 className="font-medium text-sm">Bütçe Planlama</h4>
+                                <p className="text-xs text-muted-foreground">Tahminleme teknikleri</p>
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      </>
+                    )}
+
+                    {/* Teknik Eğitimleri */}
+                    {(profile?.role === 'teknik' || profile?.role === 'admin' || profile?.role === 'yatirimci_hq') && (
+                      <>
+                        <Card className="hover-elevate cursor-pointer border-slate-200 dark:border-slate-700" data-testid="card-training-equipment">
+                          <CardContent className="p-3">
+                            <div className="flex items-center gap-2">
+                              <div className="w-8 h-8 rounded bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
+                                <Clock className="w-4 h-4 text-slate-600" />
+                              </div>
+                              <div>
+                                <h4 className="font-medium text-sm">Ekipman Bakım</h4>
+                                <p className="text-xs text-muted-foreground">Sertifikasyon programı</p>
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                        <Card className="hover-elevate cursor-pointer border-indigo-200 dark:border-indigo-800" data-testid="card-training-tech">
+                          <CardContent className="p-3">
+                            <div className="flex items-center gap-2">
+                              <div className="w-8 h-8 rounded bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center">
+                                <TrendingUp className="w-4 h-4 text-indigo-600" />
+                              </div>
+                              <div>
+                                <h4 className="font-medium text-sm">Yeni Teknolojiler</h4>
+                                <p className="text-xs text-muted-foreground">Güncel ekipman eğitimi</p>
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                        <Card className="hover-elevate cursor-pointer border-rose-200 dark:border-rose-800" data-testid="card-training-troubleshoot">
+                          <CardContent className="p-3">
+                            <div className="flex items-center gap-2">
+                              <div className="w-8 h-8 rounded bg-rose-100 dark:bg-rose-900/30 flex items-center justify-center">
+                                <AlertCircle className="w-4 h-4 text-rose-600" />
+                              </div>
+                              <div>
+                                <h4 className="font-medium text-sm">Problem Çözme</h4>
+                                <p className="text-xs text-muted-foreground">Arıza teşhis metodları</p>
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      </>
+                    )}
+
+                    {/* Fabrika Eğitimleri */}
+                    {(profile?.role === 'fabrika' || profile?.role === 'admin' || profile?.role === 'yatirimci_hq') && (
+                      <>
+                        <Card className="hover-elevate cursor-pointer border-yellow-200 dark:border-yellow-800" data-testid="card-training-production">
+                          <CardContent className="p-3">
+                            <div className="flex items-center gap-2">
+                              <div className="w-8 h-8 rounded bg-yellow-100 dark:bg-yellow-900/30 flex items-center justify-center">
+                                <Clock className="w-4 h-4 text-yellow-600" />
+                              </div>
+                              <div>
+                                <h4 className="font-medium text-sm">Üretim Planlama</h4>
+                                <p className="text-xs text-muted-foreground">Verimlilik optimizasyonu</p>
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                        <Card className="hover-elevate cursor-pointer border-lime-200 dark:border-lime-800" data-testid="card-training-quality">
+                          <CardContent className="p-3">
+                            <div className="flex items-center gap-2">
+                              <div className="w-8 h-8 rounded bg-lime-100 dark:bg-lime-900/30 flex items-center justify-center">
+                                <CheckCircle2 className="w-4 h-4 text-lime-600" />
+                              </div>
+                              <div>
+                                <h4 className="font-medium text-sm">Kalite Kontrol</h4>
+                                <p className="text-xs text-muted-foreground">ISO standartları</p>
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      </>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* AI Kariyer Danışmanı */}
+              <Card className="border-dashed border-2 border-primary/30 bg-primary/5" data-testid="card-ai-career-advisor">
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center">
+                      <Award className="w-6 h-6 text-primary" />
+                    </div>
+                    <div className="flex-1">
+                      <h4 className="font-semibold" data-testid="text-ai-advisor-title">AI Kariyer Danışmanı</h4>
+                      <p className="text-sm text-muted-foreground" data-testid="text-ai-advisor-description">
+                        Rolünüze özel gelişim önerileri ve kariyer yol haritası
+                      </p>
+                    </div>
+                    <Link href="/akademi-ai-assistant">
+                      <Button size="sm" data-testid="button-ai-advisor">Danışman</Button>
                     </Link>
-                    <Link href="/akademi-streak-tracker">
-                      <Badge variant="secondary" className="cursor-pointer hover-elevate" data-testid="link-streak-quick">Seri Takip</Badge>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* HQ Ortak Modüller */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Ortak Gelişim Modülleri</CardTitle>
+                  <CardDescription>Tüm HQ personeli için genel eğitimler</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                    <Link href="/akademi-badges">
+                      <Button variant="outline" className="w-full" data-testid="link-hq-badges">Rozetler</Button>
+                    </Link>
+                    <Link href="/akademi-certificates">
+                      <Button variant="outline" className="w-full" data-testid="link-hq-certificates">Sertifikalar</Button>
+                    </Link>
+                    <Link href="/akademi-leaderboard">
+                      <Button variant="outline" className="w-full" data-testid="link-hq-leaderboard">Sıralama</Button>
+                    </Link>
+                    <Link href="/akademi-ai-assistant">
+                      <Button variant="outline" className="w-full" data-testid="link-hq-ai">AI Asistan</Button>
+                    </Link>
+                  </div>
+                </CardContent>
+              </Card>
+            </>
+          ) : (
+            <>
+              {/* Şube Personeli için Mevcut Akademi */}
+              <Card className="bg-gradient-to-r from-primary/10 to-blue-500/5 border-primary/20" data-testid="card-academy-progress-summary">
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-4">
+                    <div className="w-16 h-16 rounded-full bg-primary/20 flex items-center justify-center">
+                      <Award className="w-8 h-8 text-primary" />
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="font-bold text-lg">Akademi İlerleme Özeti</h3>
+                      <div className="grid grid-cols-2 gap-3 mt-2">
+                        <div className="text-center p-2 bg-background/60 rounded-lg">
+                          <div className="text-xl font-bold text-primary" data-testid="text-performance-score">
+                            {profile?.performanceScore !== null && profile?.performanceScore !== undefined 
+                              ? `${profile.performanceScore}%` 
+                              : <span className="text-muted-foreground text-sm">Hesaplanıyor...</span>
+                            }
+                          </div>
+                          <div className="text-xs text-muted-foreground">Performans</div>
+                        </div>
+                        <div className="text-center p-2 bg-background/60 rounded-lg">
+                          <div className="text-xl font-bold text-green-600" data-testid="text-attendance-rate">
+                            {profile?.attendanceRate !== null && profile?.attendanceRate !== undefined 
+                              ? `${profile.attendanceRate}%` 
+                              : <span className="text-muted-foreground text-sm">Hesaplanıyor...</span>
+                            }
+                          </div>
+                          <div className="text-xs text-muted-foreground">Devam</div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 mt-3 flex-wrap">
+                        <Link href="/akademi-badges">
+                          <Badge variant="secondary" className="cursor-pointer hover-elevate" data-testid="link-badges-quick">Rozetler</Badge>
+                        </Link>
+                        <Link href="/akademi-streak-tracker">
+                          <Badge variant="secondary" className="cursor-pointer hover-elevate" data-testid="link-streak-quick">Seri Takip</Badge>
+                        </Link>
+                        <Link href="/akademi-achievements">
+                          <Badge variant="secondary" className="cursor-pointer hover-elevate" data-testid="link-achievements-quick">Başarılar</Badge>
+                        </Link>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="border-dashed border-2 border-orange-300/30 bg-orange-50/5 dark:bg-orange-900/5" data-testid="card-recommended-next-step">
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center">
+                      <TrendingUp className="w-5 h-5 text-orange-600 dark:text-orange-400" />
+                    </div>
+                    <div className="flex-1">
+                      <h4 className="font-semibold text-sm" data-testid="text-recommended-title">Önerilen Sonraki Adım</h4>
+                      <p className="text-xs text-muted-foreground mt-0.5" data-testid="text-recommended-description">Kariyer yolculuğuna devam etmek için Akademi sayfasını ziyaret edin</p>
+                    </div>
+                    <Link href="/akademi">
+                      <Button size="sm" data-testid="button-go-akademi">Başla</Button>
+                    </Link>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Hızlı Erişim</CardTitle>
+                  <CardDescription>Akademi bölümlerine hızlı erişim</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3">
+                    <Link href="/akademi">
+                      <Button variant="outline" className="w-full" data-testid="link-akademi">Akademi</Button>
+                    </Link>
+                    {(user?.role === 'supervisor' || user?.role === 'supervisor_buddy') && (
+                      <Link href="/akademi-supervisor">
+                        <Button variant="outline" className="w-full" data-testid="link-akademi-supervisor">Supervisor</Button>
+                      </Link>
+                    )}
+                    <Link href="/akademi-badges">
+                      <Button variant="outline" className="w-full" data-testid="link-akademi-badges">Rozetler</Button>
+                    </Link>
+                    <Link href="/akademi-leaderboard">
+                      <Button variant="outline" className="w-full" data-testid="link-akademi-leaderboard">Sıralama</Button>
+                    </Link>
+                    <Link href="/akademi-learning-paths">
+                      <Button variant="outline" className="w-full" data-testid="link-akademi-paths">Yollar</Button>
+                    </Link>
+                    <Link href="/akademi-certificates">
+                      <Button variant="outline" className="w-full" data-testid="link-akademi-certificates">Sertifikalar</Button>
                     </Link>
                     <Link href="/akademi-achievements">
-                      <Badge variant="secondary" className="cursor-pointer hover-elevate" data-testid="link-achievements-quick">Başarılar</Badge>
+                      <Button variant="outline" className="w-full" data-testid="link-akademi-achievements">Başarılar</Button>
+                    </Link>
+                    <Link href="/akademi-streak-tracker">
+                      <Button variant="outline" className="w-full" data-testid="link-akademi-streak">Seri</Button>
+                    </Link>
+                    <Link href="/akademi-ai-assistant">
+                      <Button variant="outline" className="w-full" data-testid="link-akademi-ai">AI Asistan</Button>
                     </Link>
                   </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Önerilen Sonraki Adım */}
-          <Card className="border-dashed border-2 border-orange-300/30 bg-orange-50/5 dark:bg-orange-900/5" data-testid="card-recommended-next-step">
-            <CardContent className="p-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center">
-                  <TrendingUp className="w-5 h-5 text-orange-600 dark:text-orange-400" />
-                </div>
-                <div className="flex-1">
-                  <h4 className="font-semibold text-sm" data-testid="text-recommended-title">Önerilen Sonraki Adım</h4>
-                  <p className="text-xs text-muted-foreground mt-0.5" data-testid="text-recommended-description">Kariyer yolculuğuna devam etmek için Akademi sayfasını ziyaret edin</p>
-                </div>
-                <Link href="/akademi">
-                  <Button size="sm" data-testid="button-go-akademi">Başla</Button>
-                </Link>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Akademi Modülleri */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Hızlı Erişim</CardTitle>
-              <CardDescription>Akademi bölümlerine hızlı erişim</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3">
-                <Link href="/akademi">
-                  <Button variant="outline" className="w-full" data-testid="link-akademi">Akademi</Button>
-                </Link>
-                {(user?.role === 'admin' || user?.role === 'yatirimci_hq') && (
-                  <Link href="/akademi-hq">
-                    <Button variant="outline" className="w-full" data-testid="link-akademi-hq">Yönetim</Button>
-                  </Link>
-                )}
-                {(user?.role === 'supervisor' || user?.role === 'supervisor_buddy' || user?.role === 'admin' || user?.role === 'yatirimci_hq') && (
-                  <Link href="/akademi-supervisor">
-                    <Button variant="outline" className="w-full" data-testid="link-akademi-supervisor">Supervisor</Button>
-                  </Link>
-                )}
-                <Link href="/akademi-analytics">
-                  <Button variant="outline" className="w-full" data-testid="link-akademi-analytics">Analitik</Button>
-                </Link>
-                <Link href="/akademi-badges">
-                  <Button variant="outline" className="w-full" data-testid="link-akademi-badges">Rozetler</Button>
-                </Link>
-                <Link href="/akademi-leaderboard">
-                  <Button variant="outline" className="w-full" data-testid="link-akademi-leaderboard">Sıralama</Button>
-                </Link>
-                <Link href="/akademi-learning-paths">
-                  <Button variant="outline" className="w-full" data-testid="link-akademi-paths">Yollar</Button>
-                </Link>
-                <Link href="/akademi-certificates">
-                  <Button variant="outline" className="w-full" data-testid="link-akademi-certificates">Sertifikalar</Button>
-                </Link>
-                <Link href="/akademi-achievements">
-                  <Button variant="outline" className="w-full" data-testid="link-akademi-achievements">Başarılar</Button>
-                </Link>
-                {(user?.role === 'admin' || user?.role === 'yatirimci_hq') && (
-                  <Link href="/akademi-progress-overview">
-                    <Button variant="outline" className="w-full" data-testid="link-akademi-progress">İlerleme</Button>
-                  </Link>
-                )}
-                <Link href="/akademi-streak-tracker">
-                  <Button variant="outline" className="w-full" data-testid="link-akademi-streak">Seri</Button>
-                </Link>
-                <Link href="/akademi-ai-assistant">
-                  <Button variant="outline" className="w-full" data-testid="link-akademi-ai">AI Asistan</Button>
-                </Link>
-              </div>
-            </CardContent>
-          </Card>
+                </CardContent>
+              </Card>
+            </>
+          )}
         </TabsContent>
       </Tabs>
       </div>

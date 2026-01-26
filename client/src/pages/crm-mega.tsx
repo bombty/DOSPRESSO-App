@@ -11,7 +11,13 @@ import {
   Clock,
   Star,
   TrendingUp,
-  Calculator
+  Calculator,
+  Users,
+  Package,
+  FileText,
+  Wrench,
+  Building2,
+  Wallet
 } from "lucide-react";
 
 const CRMDashboard = lazy(() => import("@/pages/crm/dashboard"));
@@ -21,6 +27,9 @@ const CRMSLA = lazy(() => import("@/pages/crm/sla"));
 const CRMFeedback = lazy(() => import("@/pages/crm/feedback"));
 const EmployeeDashboard = lazy(() => import("@/pages/crm/employee-dashboard"));
 const MaliyetYonetimi = lazy(() => import("@/pages/fabrika/maliyet-yonetimi"));
+const CariTakip = lazy(() => import("@/pages/satinalma/cari-takip"));
+const TedarikciYonetimi = lazy(() => import("@/pages/satinalma/tedarikci-yonetimi"));
+const SiparisYonetimi = lazy(() => import("@/pages/satinalma/siparis-yonetimi"));
 
 const HQ_ROLES = [
   'admin', 
@@ -53,6 +62,7 @@ interface TabConfig {
   icon: React.ReactNode;
   permissionModule?: string;
   component: React.LazyExoticComponent<React.ComponentType<any>>;
+  allowedRoles?: string[];
 }
 
 const CRM_TABS: TabConfig[] = [
@@ -102,7 +112,35 @@ const CRM_TABS: TabConfig[] = [
     labelTr: "Ürün Maliyetleri",
     icon: <Calculator className="h-4 w-4" />,
     permissionModule: "urun_maliyetleri",
-    component: MaliyetYonetimi
+    component: MaliyetYonetimi,
+    allowedRoles: ['admin', 'muhasebe', 'satinalma', 'yatirimci_hq']
+  },
+  {
+    id: "cari-takip",
+    label: "Accounts",
+    labelTr: "Cari Hesaplar",
+    icon: <Wallet className="h-4 w-4" />,
+    permissionModule: "cari_takip",
+    component: CariTakip,
+    allowedRoles: ['admin', 'muhasebe', 'yatirimci_hq']
+  },
+  {
+    id: "tedarikciler",
+    label: "Suppliers",
+    labelTr: "Tedarikçiler",
+    icon: <Users className="h-4 w-4" />,
+    permissionModule: "tedarikci_yonetimi",
+    component: TedarikciYonetimi,
+    allowedRoles: ['admin', 'satinalma', 'yatirimci_hq']
+  },
+  {
+    id: "siparisler",
+    label: "Orders",
+    labelTr: "Siparişler",
+    icon: <Package className="h-4 w-4" />,
+    permissionModule: "siparis_yonetimi",
+    component: SiparisYonetimi,
+    allowedRoles: ['admin', 'satinalma', 'yatirimci_hq']
   }
 ];
 
@@ -126,7 +164,10 @@ const TAB_URL_MAP: Record<string, string> = {
   "performance": "/crm/performans",
   "sla": "/crm/sla",
   "feedback": "/crm/geri-bildirimler",
-  "urun-maliyetleri": "/crm/urun-maliyetleri"
+  "urun-maliyetleri": "/crm/urun-maliyetleri",
+  "cari-takip": "/crm/cari-takip",
+  "tedarikciler": "/crm/tedarikciler",
+  "siparisler": "/crm/siparisler"
 };
 
 function getTabFromUrl(pathname: string): string | null {
@@ -136,6 +177,9 @@ function getTabFromUrl(pathname: string): string | null {
   if (pathname.startsWith("/crm/sla")) return "sla";
   if (pathname.startsWith("/crm/geri-bildirimler")) return "feedback";
   if (pathname.startsWith("/crm/urun-maliyetleri")) return "urun-maliyetleri";
+  if (pathname.startsWith("/crm/cari-takip")) return "cari-takip";
+  if (pathname.startsWith("/crm/tedarikciler")) return "tedarikciler";
+  if (pathname.startsWith("/crm/siparisler")) return "siparisler";
   
   const parts = pathname.split("/").filter(Boolean);
   if (parts[0] === "crm" && parts[1]) {
@@ -154,10 +198,22 @@ export default function CRMMegaModule() {
   const userIsHQ = user ? isHQRole(user.role) : false;
 
   const allowedTabs = CRM_TABS.filter(tab => {
-    // Admin ve HQ roller için CRM'e tam erişim ver (izin modülleri henüz eklenmemiş)
-    if (user && isHQRole(user.role)) return true;
-    if (!tab.permissionModule) return true;
     if (!user) return false;
+    
+    // Role-based tab kontrolü - eğer allowedRoles tanımlıysa
+    if (tab.allowedRoles && tab.allowedRoles.length > 0) {
+      // Eğer kullanıcının rolü izin verilen roller arasındaysa, tab'ı göster
+      return tab.allowedRoles.includes(user.role);
+    }
+    
+    // Admin tüm tab'lara erişebilir
+    if (user.role === 'admin') return true;
+    
+    // HQ roller için genel tab'lara (allowedRoles tanımlı olmayanlar) erişim
+    if (isHQRole(user.role)) return true;
+    
+    // İzin modülü kontrolü
+    if (!tab.permissionModule) return true;
     return hasPermission(user.role as any, tab.permissionModule as any, 'view');
   });
 
