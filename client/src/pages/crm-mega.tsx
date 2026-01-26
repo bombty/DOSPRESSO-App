@@ -10,7 +10,8 @@ import {
   Ticket,
   Clock,
   Star,
-  TrendingUp
+  TrendingUp,
+  Calculator
 } from "lucide-react";
 
 const CRMDashboard = lazy(() => import("@/pages/crm/dashboard"));
@@ -19,6 +20,7 @@ const CRMPerformance = lazy(() => import("@/pages/crm/performance"));
 const CRMSLA = lazy(() => import("@/pages/crm/sla"));
 const CRMFeedback = lazy(() => import("@/pages/crm/feedback"));
 const EmployeeDashboard = lazy(() => import("@/pages/crm/employee-dashboard"));
+const MaliyetYonetimi = lazy(() => import("@/pages/fabrika/maliyet-yonetimi"));
 
 const HQ_ROLES = [
   'admin', 
@@ -93,6 +95,14 @@ const CRM_TABS: TabConfig[] = [
     icon: <Star className="h-4 w-4" />,
     permissionModule: "crm_feedback",
     component: CRMFeedback
+  },
+  {
+    id: "urun-maliyetleri",
+    label: "Product Costs",
+    labelTr: "Ürün Maliyetleri",
+    icon: <Calculator className="h-4 w-4" />,
+    permissionModule: "urun_maliyetleri",
+    component: MaliyetYonetimi
   }
 ];
 
@@ -115,7 +125,8 @@ const TAB_URL_MAP: Record<string, string> = {
   "tickets": "/crm/talepler",
   "performance": "/crm/performans",
   "sla": "/crm/sla",
-  "feedback": "/crm/geri-bildirimler"
+  "feedback": "/crm/geri-bildirimler",
+  "urun-maliyetleri": "/crm/urun-maliyetleri"
 };
 
 function getTabFromUrl(pathname: string): string | null {
@@ -124,6 +135,7 @@ function getTabFromUrl(pathname: string): string | null {
   if (pathname.startsWith("/crm/performans")) return "performance";
   if (pathname.startsWith("/crm/sla")) return "sla";
   if (pathname.startsWith("/crm/geri-bildirimler")) return "feedback";
+  if (pathname.startsWith("/crm/urun-maliyetleri")) return "urun-maliyetleri";
   
   const parts = pathname.split("/").filter(Boolean);
   if (parts[0] === "crm" && parts[1]) {

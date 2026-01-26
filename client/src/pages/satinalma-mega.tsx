@@ -14,7 +14,9 @@ import {
   Plus,
   Search,
   Filter,
-  BarChart3
+  BarChart3,
+  Calculator,
+  CreditCard
 } from "lucide-react";
 
 import StokYonetimi from "./satinalma/stok-yonetimi";
@@ -22,6 +24,8 @@ import TedarikciYonetimi from "./satinalma/tedarikci-yonetimi";
 import SiparisYonetimi from "./satinalma/siparis-yonetimi";
 import MalKabul from "./satinalma/mal-kabul";
 import SatinalmaDashboard from "./satinalma/satinalma-dashboard";
+import CariTakip from "./satinalma/cari-takip";
+import MaliyetYonetimi from "./fabrika/maliyet-yonetimi";
 
 const tabs = [
   { id: "dashboard", label: "Dashboard", icon: BarChart3 },
@@ -29,6 +33,8 @@ const tabs = [
   { id: "tedarikci", label: "Tedarikçiler", icon: Users },
   { id: "siparis", label: "Siparişler", icon: ShoppingCart },
   { id: "mal-kabul", label: "Mal Kabul", icon: ClipboardCheck },
+  { id: "cari-takip", label: "Cari Takip", icon: CreditCard },
+  { id: "urun-maliyetleri", label: "Ürün Maliyetleri", icon: Calculator },
 ];
 
 export default function SatinalmaMega() {
@@ -47,6 +53,10 @@ export default function SatinalmaMega() {
         return <SiparisYonetimi />;
       case "mal-kabul":
         return <MalKabul />;
+      case "cari-takip":
+        return <CariTakip />;
+      case "urun-maliyetleri":
+        return <MaliyetYonetimi />;
       default:
         return <SatinalmaDashboard />;
     }

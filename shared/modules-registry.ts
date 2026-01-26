@@ -300,6 +300,8 @@ export const MODULES: ModuleDefinition[] = [
   { moduleKey: 'suppliers', moduleName: 'Tedarikçi Yönetimi', category: 'hq', megaModule: 'satinalma', description: 'Tedarikçi takibi ve yönetimi', icon: 'Truck', route: '/satinalma/tedarikci-yonetimi', sortOrder: 202 },
   { moduleKey: 'purchase_orders', moduleName: 'Sipariş Yönetimi', category: 'hq', megaModule: 'satinalma', description: 'Satınalma siparişleri', icon: 'ShoppingCart', route: '/satinalma/siparis-yonetimi', sortOrder: 203 },
   { moduleKey: 'goods_receipt', moduleName: 'Mal Kabul', category: 'hq', megaModule: 'satinalma', description: 'Mal kabul ve kalite kontrol', icon: 'ClipboardCheck', route: '/satinalma/mal-kabul', sortOrder: 204 },
+  { moduleKey: 'cari_takip', moduleName: 'Cari Takip', category: 'hq', megaModule: 'satinalma', description: 'Cari hesap ve muhasebe takibi', icon: 'CreditCard', route: '/satinalma/cari-takip', sortOrder: 205 },
+  { moduleKey: 'urun_maliyetleri', moduleName: 'Ürün Maliyetleri', category: 'hq', megaModule: 'satinalma', description: 'Ürün maliyet hesaplama, hammadde ve kar marjı yönetimi', icon: 'Calculator', route: '/satinalma/urun-maliyetleri', sortOrder: 206 },
 ];
 
 // ═══════════════════════════════════════════════════════════════
@@ -351,7 +353,8 @@ export function getMegaModuleMapping(): Record<string, string[]> {
 // Role-based module filtering
 export const ROLE_MODULE_DEFAULTS: Record<string, string[]> = {
   admin: ['*'],
-  muhasebe: ['dashboard', 'accounting', 'hr_reports', 'cash_reports', 'employees'],
+  muhasebe: ['dashboard', 'accounting', 'hr_reports', 'cash_reports', 'employees', 'urun_maliyetleri', 'cari_takip'],
+  satinalma: ['dashboard', 'satinalma_dashboard', 'inventory', 'suppliers', 'purchase_orders', 'goods_receipt', 'cari_takip', 'urun_maliyetleri'],
   supervisor: ['dashboard', 'tasks', 'checklists', 'equipment', 'faults', 'shifts', 'employees', 'attendance', 'leave_requests', 'training', 'knowledge_base'],
   supervisor_buddy: ['dashboard', 'tasks', 'checklists', 'equipment', 'faults', 'shifts', 'employees', 'attendance'],
   barista: ['dashboard', 'tasks', 'checklists', 'training', 'my_performance', 'knowledge_base'],
