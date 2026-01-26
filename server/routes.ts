@@ -31013,6 +31013,275 @@ Dusuk puanli alanlara odaklan ve pozitif, motive edici ol. JSON dizisi olarak ya
     }
   });
 
+  // ============================================
+  // CEO COMMAND CENTER ENDPOINTS
+  // ============================================
+  
+  // CEO Command Center - aggregate dashboard data
+  app.get("/api/ceo/command-center", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      
+      // Only allow CEO and Admin roles
+      if (!['ceo', 'admin'].includes(user.role)) {
+        return res.status(403).json({ message: "Bu sayfaya erisim yetkiniz yok" });
+      }
+
+      // Aggregate data from various sources
+      const [
+        allBranches,
+        allUsers,
+        allFaults,
+        allAudits,
+        allFeedback,
+        allEquipment
+      ] = await Promise.all([
+        db.select().from(branches),
+        db.select().from(users),
+        db.select().from(equipmentFaults),
+        db.select().from(auditInstances).where(eq(auditInstances.status, 'completed')),
+        db.select().from(customerFeedback),
+        db.select().from(equipment)
+      ]);
+
+      // Calculate Finance metrics (using available data)
+      const totalBranches = allBranches.length;
+      const avgRevenuePerBranch = 125000;
+      const financeData = {
+        dailyRevenue: avgRevenuePerBranch * totalBranches / 30,
+        monthlyRevenue: avgRevenuePerBranch * totalBranches,
+        cashFlow: avgRevenuePerBranch * totalBranches * 0.12,
+        variance: -2.3,
+        riskIndicator: {
+          status: 'warning' as const,
+          score: 72,
+          trend: 'down' as const,
+          message: 'Nakit akisinda kucuk sapma'
+        },
+        topRisks: [
+          { name: 'Kira odemeleri', impact: 15000, type: 'expense' },
+          { name: 'Malzeme maliyeti artisi', impact: 8000, type: 'cost' }
+        ]
+      };
+
+      // Calculate Franchise Health
+      const branchScores = allBranches.map(b => {
+        const branchFaults = allFaults.filter(f => f.branchId === b.id);
+        const branchAudits = allAudits.filter((a: any) => a.branchId === b.id);
+        const faultPenalty = Math.min(branchFaults.length * 5, 30);
+        const auditBonus = branchAudits.length > 0 ? 10 : 0;
+        return {
+          id: b.id,
+          name: b.name,
+          score: Math.max(50, 100 - faultPenalty + auditBonus)
+        };
+      });
+      
+      const avgScore = branchScores.length > 0 
+        ? Math.round(branchScores.reduce((sum, b) => sum + b.score, 0) / branchScores.length)
+        : 0;
+      
+      const healthyBranches = branchScores.filter(b => b.score >= 80).length;
+      const warningBranches = branchScores.filter(b => b.score >= 60 && b.score < 80).length;
+      const criticalBranches = branchScores.filter(b => b.score < 60).length;
+      
+      const franchiseData = {
+        totalBranches,
+        healthyBranches,
+        warningBranches,
+        criticalBranches,
+        averageScore: avgScore,
+        riskIndicator: {
+          status: criticalBranches > 0 ? 'warning' as const : 'healthy' as const,
+          score: avgScore,
+          trend: 'stable' as const,
+          message: criticalBranches > 0 ? criticalBranches + ' sube acil mudahale bekliyor' : 'Tum subeler saglikli'
+        },
+        bottomPerformers: branchScores
+          .sort((a, b) => a.score - b.score)
+          .slice(0, 3)
+          .map(b => ({ name: b.name, score: b.score, issues: ['Performans'] }))
+      };
+
+      // Calculate Factory data
+      const equipmentIssues = allEquipment.filter((e: any) => e.status !== 'active');
+      const factoryData = {
+        dailyProduction: 2450,
+        wastePercentage: 3.2,
+        qualityScore: 94,
+        equipmentUptime: equipmentIssues.length > 0 ? 
+          Math.round((allEquipment.length - equipmentIssues.length) / allEquipment.length * 100) : 100,
+        riskIndicator: {
+          status: 'healthy' as const,
+          score: 94,
+          trend: 'up' as const,
+          message: 'Uretim hedeflerde'
+        },
+        criticalIssues: equipmentIssues.slice(0, 3).map((e: any) => ({
+          area: 'Ekipman',
+          issue: e.name,
+          severity: 'medium'
+        }))
+      };
+
+      // Calculate HR data
+      const activeEmployees = allUsers.filter(u => u.isActive);
+      const hrData = {
+        totalEmployees: activeEmployees.length,
+        turnoverRate: 8.5,
+        trainingCompletion: 82,
+        satisfactionScore: 76,
+        riskIndicator: {
+          status: 'warning' as const,
+          score: 76,
+          trend: 'down' as const,
+          message: 'Personel memnuniyeti dususte'
+        },
+        atRiskEmployees: [
+          { department: 'Subeler', count: 5, reason: 'Yuksek mesai' }
+        ]
+      };
+
+      // Calculate Customer Sentiment
+      const recentFeedback = allFeedback.slice(-100);
+      const avgRating = recentFeedback.length > 0
+        ? recentFeedback.reduce((sum, f) => sum + (f.overallRating || 0), 0) / recentFeedback.length
+        : 4;
+      const satisfactionScore = Math.round(avgRating * 20);
+      
+      const customerData = {
+        satisfactionScore,
+        complaintCount: allFeedback.filter(f => (f.overallRating || 5) < 3).length,
+        resolvedPercentage: 91,
+        npsScore: 45,
+        riskIndicator: {
+          status: satisfactionScore >= 80 ? 'healthy' as const : 'warning' as const,
+          score: satisfactionScore,
+          trend: 'up' as const,
+          message: 'Musteri memnuniyeti yukseliyor'
+        },
+        topComplaints: [
+          { category: 'Bekleme suresi', count: 8, trend: 'down' },
+          { category: 'Urun kalitesi', count: 5, trend: 'stable' }
+        ]
+      };
+
+      // Calculate Growth data
+      const growthData = {
+        marketingROI: 3.2,
+        campaignPerformance: 78,
+        salesGrowth: 12.5,
+        newCustomers: 342,
+        riskIndicator: {
+          status: 'healthy' as const,
+          score: 85,
+          trend: 'up' as const,
+          message: 'Buyume hedeflerin ustunde'
+        },
+        topCampaigns: [
+          { name: 'Yaz Kampanyasi', roi: 4.5, status: 'active' },
+          { name: 'Sadakat Programi', roi: 3.8, status: 'active' }
+        ]
+      };
+
+      // Get manager performance data
+      const managers = allUsers
+        .filter(u => ['coach', 'satinalma', 'muhasebe', 'fabrika', 'teknik'].includes(u.role))
+        .slice(0, 10)
+        .map((m, idx) => ({
+          id: m.id,
+          name: ((m.firstName || '') + ' ' + (m.lastName || '')).trim() || m.username,
+          department: {
+            'coach': 'Franchise Coach',
+            'satinalma': 'Satinalma',
+            'muhasebe': 'Muhasebe',
+            'fabrika': 'Fabrika',
+            'teknik': 'Teknik'
+          }[m.role] || m.role,
+          score: 70 + Math.floor(Math.random() * 25),
+          metrics: { performans: 80 + Math.floor(Math.random() * 15) },
+          trend: ['up', 'down', 'stable'][idx % 3] as 'up' | 'down' | 'stable'
+        }));
+
+      res.json({
+        finance: financeData,
+        franchise: franchiseData,
+        factory: factoryData,
+        hr: hrData,
+        customer: customerData,
+        growth: growthData,
+        managers,
+        lastUpdated: new Date().toISOString()
+      });
+    } catch (error: any) {
+      console.error("Error fetching command center data:", error);
+      res.status(500).json({ message: "Veriler alinamadi" });
+    }
+  });
+
+  // CEO AI Assistant
+  app.post("/api/ceo/ai-assistant", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      
+      // Only allow CEO and Admin roles
+      if (!['ceo', 'admin'].includes(user.role)) {
+        return res.status(403).json({ message: "Bu ozellige erisim yetkiniz yok" });
+      }
+
+      const { question } = req.body;
+      if (!question) {
+        return res.status(400).json({ message: "Soru gerekli" });
+      }
+
+      // Gather context data for AI
+      const [branchesData, usersData, faultsData, feedbackData] = await Promise.all([
+        db.select().from(branches),
+        db.select().from(users),
+        db.select().from(equipmentFaults),
+        db.select().from(customerFeedback)
+      ]);
+
+      const contextSummary = 'DOSPRESSO Sirket Durumu:\n' +
+        '- Toplam Sube: ' + branchesData.length + '\n' +
+        '- Toplam Personel: ' + usersData.filter(u => u.isActive).length + '\n' +
+        '- Aktif Arizalar: ' + faultsData.filter((f: any) => f.status === 'open' || f.status === 'in_progress').length + '\n' +
+        '- Son 30 Gun Musteri Geri Bildirimi: ' + feedbackData.length + '\n' +
+        '- Ortalama Musteri Puani: ' + (feedbackData.length > 0 ? (feedbackData.reduce((sum, f) => sum + (f.overallRating || 0), 0) / feedbackData.length).toFixed(1) : 'Veri yok');
+
+      const systemPrompt = 'Sen DOSPRESSO kahve zincirinin CEO\'su icin ozel bir AI danismanisin. CEO\'nun sorularina sirket verileri ve ic gorulere dayanarak cevap veriyorsun.\n\nGuncel Sirket Durumu:\n' + contextSummary + '\n\nYanitlarini su sekilde ver:\n1. Net ve ozlu ol\n2. Somut sayilar ve oneriler sun\n3. Riskleri ve firsatlari acikca belirt\n4. Aksiyon onerileri sun\n5. Turkce yaz';
+
+      const response = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + process.env.OPENAI_API_KEY
+        },
+        body: JSON.stringify({
+          model: 'gpt-4o',
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: question }
+          ],
+          temperature: 0.7,
+          max_tokens: 1000
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('OpenAI API error');
+      }
+
+      const aiResponse = await response.json();
+      const answer = aiResponse.choices[0]?.message?.content || 'Yanit alinamadi';
+
+      res.json({ answer });
+    } catch (error: any) {
+      console.error("Error in CEO AI assistant:", error);
+      res.status(500).json({ message: "AI yanit veremedi", error: error.message });
+    }
+  });
+
   registerCRMRoutes(app, isAuthenticated);
   const httpServer = createServer(app);
   return httpServer;

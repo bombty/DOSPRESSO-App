@@ -51,6 +51,8 @@ export const sessions = pgTable(
 export const UserRole = {
   // System Role
   ADMIN: "admin",
+  // Executive Role
+  CEO: "ceo", // Full read access across all systems, AI Command Center
   // HQ Roles
   MUHASEBE: "muhasebe",
   SATINALMA: "satinalma", 
@@ -73,6 +75,7 @@ export type UserRoleType = typeof UserRole[keyof typeof UserRole];
 // HQ and Branch role sets
 export const HQ_ROLES: ReadonlySet<UserRoleType> = new Set([
   UserRole.ADMIN,
+  UserRole.CEO,
   UserRole.MUHASEBE,
   UserRole.SATINALMA,
   UserRole.COACH,
@@ -81,6 +84,17 @@ export const HQ_ROLES: ReadonlySet<UserRoleType> = new Set([
   UserRole.FABRIKA,
   UserRole.YATIRIMCI_HQ,
 ]);
+
+// Executive roles with full read access
+export const EXECUTIVE_ROLES: ReadonlySet<UserRoleType> = new Set([
+  UserRole.ADMIN,
+  UserRole.CEO,
+]);
+
+// Check if role is an executive role
+export function isExecutiveRole(role: UserRoleType): boolean {
+  return EXECUTIVE_ROLES.has(role);
+}
 
 export const BRANCH_ROLES: ReadonlySet<UserRoleType> = new Set([
   UserRole.STAJYER,

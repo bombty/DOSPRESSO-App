@@ -163,6 +163,7 @@ import OperasyonMegaModule from "@/pages/operasyon-mega";
 import AdminMegaModule from "@/pages/admin-mega";
 import AkademiMegaModule from "@/pages/akademi-mega";
 import CRMMegaModule from "@/pages/crm-mega";
+import CEOCommandCenter from "@/pages/ceo-command-center";
 
 const PUBLIC_PATH_PREFIXES = [
   "/login", 
@@ -191,6 +192,10 @@ function HQOnly({ children }: { children: ReactNode }) {
 
 function FabrikaOnly({ children }: { children: ReactNode }) {
   return <ProtectedRoute allowedGroups={["admin", "hq", "fabrika"]}>{children}</ProtectedRoute>;
+}
+
+function ExecutiveOnly({ children }: { children: ReactNode }) {
+  return <ProtectedRoute allowedRoles={["admin", "ceo"]}>{children}</ProtectedRoute>;
 }
 
 function AuthCatchAllToLogin() {
@@ -359,6 +364,7 @@ function Router() {
           <Route path="/banner-editor">{() => <AdminOnly><BannerEditor /></AdminOnly>}</Route>
           <Route path="/crm/*?" component={CRMMegaModule} />
           <Route path="/admin/*?" component={AdminMegaModule} />
+          <Route path="/ceo-command-center">{() => <ExecutiveOnly><CEOCommandCenter /></ExecutiveOnly>}</Route>
         </>
       )}
       
