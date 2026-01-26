@@ -183,6 +183,15 @@ export default function MaliyetYonetimi() {
   const [isAddMarginDialogOpen, setIsAddMarginDialogOpen] = useState(false);
   const [isProductCostDialogOpen, setIsProductCostDialogOpen] = useState(false);
   const [selectedProductId, setSelectedProductId] = useState<number | null>(null);
+  
+  const [isEditMaterialDialogOpen, setIsEditMaterialDialogOpen] = useState(false);
+  const [isEditCostDialogOpen, setIsEditCostDialogOpen] = useState(false);
+  const [isEditMarginDialogOpen, setIsEditMarginDialogOpen] = useState(false);
+  const [editingMaterial, setEditingMaterial] = useState<any>(null);
+  const [editingCost, setEditingCost] = useState<any>(null);
+  const [editingMargin, setEditingMargin] = useState<any>(null);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
+  const [deleteType, setDeleteType] = useState<'material' | 'cost' | 'margin' | null>(null);
 
   const { data: dashboardStats, isLoading: statsLoading } = useQuery<any>({
     queryKey: ['/api/cost-dashboard/stats'],
@@ -294,6 +303,160 @@ export default function MaliyetYonetimi() {
       toast({ title: "Hata", description: "Kar marjı eklenemedi", variant: "destructive" });
     }
   });
+
+  const updateMaterialMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: number; data: any }) => {
+      return apiRequest("PUT", `/api/raw-materials/${id}`, data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/raw-materials'] });
+      setIsEditMaterialDialogOpen(false);
+      setEditingMaterial(null);
+      toast({ title: "Hammadde güncellendi" });
+    },
+    onError: () => {
+      toast({ title: "Hata", description: "Hammadde güncellenemedi", variant: "destructive" });
+    }
+  });
+
+  const updateCostMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: number; data: any }) => {
+      return apiRequest("PUT", `/api/fixed-costs/${id}`, data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/fixed-costs'] });
+      setIsEditCostDialogOpen(false);
+      setEditingCost(null);
+      toast({ title: "Sabit gider güncellendi" });
+    },
+    onError: () => {
+      toast({ title: "Hata", description: "Sabit gider güncellenemedi", variant: "destructive" });
+    }
+  });
+
+  const updateMarginMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: number; data: any }) => {
+      return apiRequest("PUT", `/api/profit-margins/${id}`, data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/profit-margins'] });
+      setIsEditMarginDialogOpen(false);
+      setEditingMargin(null);
+      toast({ title: "Kar marjı güncellendi" });
+    },
+    onError: () => {
+      toast({ title: "Hata", description: "Kar marjı güncellenemedi", variant: "destructive" });
+    }
+  });
+
+  const deleteMaterialMutation = useMutation({
+    mutationFn: async (id: number) => {
+      return apiRequest("DELETE", `/api/raw-materials/${id}`, {});
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/raw-materials'] });
+      setDeleteConfirmId(null);
+      setDeleteType(null);
+      toast({ title: "Hammadde silindi" });
+    },
+    onError: () => {
+      toast({ title: "Hata", description: "Hammadde silinemedi", variant: "destructive" });
+    }
+  });
+
+  const deleteCostMutation = useMutation({
+    mutationFn: async (id: number) => {
+      return apiRequest("DELETE", `/api/fixed-costs/${id}`, {});
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/fixed-costs'] });
+      setDeleteConfirmId(null);
+      setDeleteType(null);
+      toast({ title: "Sabit gider silindi" });
+    },
+    onError: () => {
+      toast({ title: "Hata", description: "Sabit gider silinemedi", variant: "destructive" });
+    }
+  });
+
+  const deleteMarginMutation = useMutation({
+    mutationFn: async (id: number) => {
+      return apiRequest("DELETE", `/api/profit-margins/${id}`, {});
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/profit-margins'] });
+      setDeleteConfirmId(null);
+      setDeleteType(null);
+      toast({ title: "Kar marjı silindi" });
+    },
+    onError: () => {
+      toast({ title: "Hata", description: "Kar marjı silinemedi", variant: "destructive" });
+    }
+  });
+
+  const handleDelete = () => {
+    if (deleteConfirmId === null || !deleteType) return;
+    
+    if (deleteType === 'material') {
+      deleteMaterialMutation.mutate(deleteConfirmId);
+    } else if (deleteType === 'cost') {
+      deleteCostMutation.mutate(deleteConfirmId);
+    } else if (deleteType === 'margin') {
+      deleteMarginMutation.mutate(deleteConfirmId);
+    }
+  };
+
+  const editMaterialForm = useForm<z.infer<typeof rawMaterialSchema>>({
+    resolver: zodResolver(rawMaterialSchema),
+    defaultValues: { code: "", name: "", category: "", unit: "kg", currentUnitPrice: "0" }
+  });
+
+  const editCostForm = useForm<z.infer<typeof fixedCostSchema>>({
+    resolver: zodResolver(fixedCostSchema),
+    defaultValues: { category: "", name: "", description: "", monthlyAmount: "", isRecurring: true }
+  });
+
+  const editMarginForm = useForm<z.infer<typeof profitMarginSchema>>({
+    resolver: zodResolver(profitMarginSchema),
+    defaultValues: { name: "", category: "", defaultMargin: "1.20", minimumMargin: "1.01", maximumMargin: "2.00", description: "" }
+  });
+
+  const openEditMaterialDialog = (material: any) => {
+    setEditingMaterial(material);
+    editMaterialForm.reset({
+      code: material.code || "",
+      name: material.name || "",
+      category: material.category || "",
+      unit: material.unit || "kg",
+      currentUnitPrice: material.currentUnitPrice?.toString() || "0"
+    });
+    setIsEditMaterialDialogOpen(true);
+  };
+
+  const openEditCostDialog = (cost: any) => {
+    setEditingCost(cost);
+    editCostForm.reset({
+      category: cost.category || "",
+      name: cost.name || "",
+      description: cost.description || "",
+      monthlyAmount: cost.monthlyAmount?.toString() || "",
+      isRecurring: cost.isRecurring ?? true
+    });
+    setIsEditCostDialogOpen(true);
+  };
+
+  const openEditMarginDialog = (margin: any) => {
+    setEditingMargin(margin);
+    editMarginForm.reset({
+      name: margin.name || "",
+      category: margin.category || "",
+      defaultMargin: margin.defaultMargin?.toString() || "1.20",
+      minimumMargin: margin.minimumMargin?.toString() || "1.01",
+      maximumMargin: margin.maximumMargin?.toString() || "2.00",
+      description: margin.description || ""
+    });
+    setIsEditMarginDialogOpen(true);
+  };
 
   return (
     <div className="space-y-4 p-4">
@@ -572,6 +735,7 @@ export default function MaliyetYonetimi() {
                       <TableHead className="text-right">Birim Fiyat</TableHead>
                       <TableHead className="text-right">Son Alım Fiyatı</TableHead>
                       <TableHead>Durum</TableHead>
+                      <TableHead className="text-right">İşlemler</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -589,6 +753,27 @@ export default function MaliyetYonetimi() {
                           ) : (
                             <Badge variant="secondary">Pasif</Badge>
                           )}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex items-center justify-end gap-1">
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              onClick={() => openEditMaterialDialog(material)}
+                              data-testid={`button-edit-material-${material.id}`}
+                            >
+                              <Edit className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="text-destructive"
+                              onClick={() => { setDeleteConfirmId(material.id); setDeleteType('material'); }}
+                              data-testid={`button-delete-material-${material.id}`}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))}
@@ -834,6 +1019,7 @@ export default function MaliyetYonetimi() {
                       <TableHead className="text-right">Aylık Tutar</TableHead>
                       <TableHead className="text-right">Yıllık Tutar</TableHead>
                       <TableHead>Tekrar</TableHead>
+                      <TableHead className="text-right">İşlemler</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -854,6 +1040,27 @@ export default function MaliyetYonetimi() {
                           ) : (
                             <Badge variant="secondary">Tek Seferlik</Badge>
                           )}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex items-center justify-end gap-1">
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              onClick={() => openEditCostDialog(cost)}
+                              data-testid={`button-edit-cost-${cost.id}`}
+                            >
+                              <Edit className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="text-destructive"
+                              onClick={() => { setDeleteConfirmId(cost.id); setDeleteType('cost'); }}
+                              data-testid={`button-delete-cost-${cost.id}`}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))}
@@ -994,6 +1201,27 @@ export default function MaliyetYonetimi() {
                     {margin.description && (
                       <p className="text-sm text-muted-foreground mt-2">{margin.description}</p>
                     )}
+                    <div className="flex items-center gap-1 mt-3 pt-3 border-t">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => openEditMarginDialog(margin)}
+                        data-testid={`button-edit-margin-${margin.id}`}
+                      >
+                        <Edit className="w-4 h-4 mr-1" />
+                        Düzenle
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="text-destructive"
+                        onClick={() => { setDeleteConfirmId(margin.id); setDeleteType('margin'); }}
+                        data-testid={`button-delete-margin-${margin.id}`}
+                      >
+                        <Trash2 className="w-4 h-4 mr-1" />
+                        Sil
+                      </Button>
+                    </div>
                   </CardContent>
                 </Card>
               ))
@@ -1051,6 +1279,327 @@ export default function MaliyetYonetimi() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Edit Material Dialog */}
+      <Dialog open={isEditMaterialDialogOpen} onOpenChange={setIsEditMaterialDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Hammadde Düzenle</DialogTitle>
+          </DialogHeader>
+          <Form {...editMaterialForm}>
+            <form onSubmit={editMaterialForm.handleSubmit((data) => {
+              if (editingMaterial) {
+                updateMaterialMutation.mutate({ id: editingMaterial.id, data });
+              }
+            })} className="space-y-4">
+              <FormField
+                control={editMaterialForm.control}
+                name="code"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Kod</FormLabel>
+                    <FormControl>
+                      <Input {...field} data-testid="input-edit-material-code" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={editMaterialForm.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Ad</FormLabel>
+                    <FormControl>
+                      <Input {...field} data-testid="input-edit-material-name" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={editMaterialForm.control}
+                name="category"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Kategori</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger data-testid="select-edit-material-category">
+                          <SelectValue placeholder="Kategori seçin" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="coffee">Kahve</SelectItem>
+                        <SelectItem value="dairy">Süt & Süt Ürünleri</SelectItem>
+                        <SelectItem value="syrup">Şurup & Sos</SelectItem>
+                        <SelectItem value="packaging">Ambalaj</SelectItem>
+                        <SelectItem value="consumable">Sarf Malzeme</SelectItem>
+                        <SelectItem value="ingredient">Malzeme</SelectItem>
+                        <SelectItem value="other">Diğer</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={editMaterialForm.control}
+                name="unit"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Birim</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger data-testid="select-edit-material-unit">
+                          <SelectValue placeholder="Birim seçin" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="kg">Kilogram (kg)</SelectItem>
+                        <SelectItem value="lt">Litre (lt)</SelectItem>
+                        <SelectItem value="gr">Gram (gr)</SelectItem>
+                        <SelectItem value="ml">Mililitre (ml)</SelectItem>
+                        <SelectItem value="adet">Adet</SelectItem>
+                        <SelectItem value="paket">Paket</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={editMaterialForm.control}
+                name="currentUnitPrice"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Birim Fiyat (₺)</FormLabel>
+                    <FormControl>
+                      <Input type="number" step="0.01" {...field} data-testid="input-edit-material-price" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <Button type="submit" className="w-full" disabled={updateMaterialMutation.isPending} data-testid="button-submit-edit-material">
+                {updateMaterialMutation.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+                Güncelle
+              </Button>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Fixed Cost Dialog */}
+      <Dialog open={isEditCostDialogOpen} onOpenChange={setIsEditCostDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Sabit Gider Düzenle</DialogTitle>
+          </DialogHeader>
+          <Form {...editCostForm}>
+            <form onSubmit={editCostForm.handleSubmit((data) => {
+              if (editingCost) {
+                updateCostMutation.mutate({ id: editingCost.id, data });
+              }
+            })} className="space-y-4">
+              <FormField
+                control={editCostForm.control}
+                name="category"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Kategori</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger data-testid="select-edit-cost-category">
+                          <SelectValue placeholder="Kategori seçin" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {fixedCostCategories.map(cat => (
+                          <SelectItem key={cat.value} value={cat.value}>{cat.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={editCostForm.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Gider Adı</FormLabel>
+                    <FormControl>
+                      <Input {...field} data-testid="input-edit-cost-name" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={editCostForm.control}
+                name="description"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Açıklama</FormLabel>
+                    <FormControl>
+                      <Input {...field} data-testid="input-edit-cost-description" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={editCostForm.control}
+                name="monthlyAmount"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Aylık Tutar (₺)</FormLabel>
+                    <FormControl>
+                      <Input type="number" step="0.01" {...field} data-testid="input-edit-cost-amount" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <Button type="submit" className="w-full" disabled={updateCostMutation.isPending} data-testid="button-submit-edit-cost">
+                {updateCostMutation.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+                Güncelle
+              </Button>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Profit Margin Dialog */}
+      <Dialog open={isEditMarginDialogOpen} onOpenChange={setIsEditMarginDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Kar Marjı Düzenle</DialogTitle>
+          </DialogHeader>
+          <Form {...editMarginForm}>
+            <form onSubmit={editMarginForm.handleSubmit((data) => {
+              if (editingMargin) {
+                updateMarginMutation.mutate({ id: editingMargin.id, data });
+              }
+            })} className="space-y-4">
+              <FormField
+                control={editMarginForm.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Şablon Adı</FormLabel>
+                    <FormControl>
+                      <Input {...field} data-testid="input-edit-margin-name" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={editMarginForm.control}
+                name="category"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Ürün Kategorisi</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger data-testid="select-edit-margin-category">
+                          <SelectValue placeholder="Kategori seçin" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {productCategories.map(cat => (
+                          <SelectItem key={cat.value} value={cat.value}>{cat.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={editMarginForm.control}
+                name="defaultMargin"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Varsayılan Marj (örn: 1.20 = %20)</FormLabel>
+                    <FormControl>
+                      <Input type="number" step="0.01" {...field} data-testid="input-edit-margin-default" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={editMarginForm.control}
+                  name="minimumMargin"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Min Marj</FormLabel>
+                      <FormControl>
+                        <Input type="number" step="0.01" {...field} data-testid="input-edit-margin-min" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={editMarginForm.control}
+                  name="maximumMargin"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Max Marj</FormLabel>
+                      <FormControl>
+                        <Input type="number" step="0.01" {...field} data-testid="input-edit-margin-max" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+              <Button type="submit" className="w-full" disabled={updateMarginMutation.isPending} data-testid="button-submit-edit-margin">
+                {updateMarginMutation.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+                Güncelle
+              </Button>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={deleteConfirmId !== null} onOpenChange={(open) => { if (!open) { setDeleteConfirmId(null); setDeleteType(null); }}}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-destructive">
+              <AlertTriangle className="w-5 h-5" />
+              Silme Onayı
+            </DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Bu kaydı silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.
+          </p>
+          <div className="flex justify-end gap-2 mt-4">
+            <Button variant="outline" onClick={() => { setDeleteConfirmId(null); setDeleteType(null); }} data-testid="button-cancel-delete">
+              İptal
+            </Button>
+            <Button 
+              variant="destructive" 
+              onClick={handleDelete}
+              disabled={deleteMaterialMutation.isPending || deleteCostMutation.isPending || deleteMarginMutation.isPending}
+              data-testid="button-confirm-delete"
+            >
+              {(deleteMaterialMutation.isPending || deleteCostMutation.isPending || deleteMarginMutation.isPending) ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : null}
+              Sil
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

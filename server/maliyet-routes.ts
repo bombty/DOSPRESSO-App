@@ -35,7 +35,8 @@ export function registerMaliyetRoutes(app: Express, isAuthenticated: AuthMiddlew
       
       let conditions: any[] = [];
       
-      if (active === "true") {
+      // Default to active=true unless explicitly set to "false"
+      if (active !== "false") {
         conditions.push(eq(rawMaterials.isActive, true));
       }
       
@@ -97,6 +98,19 @@ export function registerMaliyetRoutes(app: Express, isAuthenticated: AuthMiddlew
     } catch (error) {
       console.error("Error updating raw material:", error);
       res.status(500).json({ error: "Hammadde güncellenemedi" });
+    }
+  });
+  
+  app.delete("/api/raw-materials/:id", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      await db.update(rawMaterials)
+        .set({ isActive: false, updatedAt: new Date() })
+        .where(eq(rawMaterials.id, parseInt(id)));
+      res.json({ message: "Hammadde silindi" });
+    } catch (error) {
+      console.error("Error deleting raw material:", error);
+      res.status(500).json({ error: "Hammadde silinemedi" });
     }
   });
   
@@ -316,7 +330,8 @@ export function registerMaliyetRoutes(app: Express, isAuthenticated: AuthMiddlew
       
       let conditions: any[] = [];
       
-      if (active === "true") {
+      // Default to active=true unless explicitly set to "false"
+      if (active !== "false") {
         conditions.push(eq(factoryFixedCosts.isActive, true));
       }
       
@@ -433,7 +448,10 @@ export function registerMaliyetRoutes(app: Express, isAuthenticated: AuthMiddlew
   app.delete("/api/fixed-costs/:id", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const { id } = req.params;
-      await db.delete(factoryFixedCosts).where(eq(factoryFixedCosts.id, parseInt(id)));
+      // Soft delete for audit trail
+      await db.update(factoryFixedCosts)
+        .set({ isActive: false })
+        .where(eq(factoryFixedCosts.id, parseInt(id)));
       res.json({ message: "Sabit gider silindi" });
     } catch (error) {
       console.error("Error deleting fixed cost:", error);
@@ -500,6 +518,19 @@ export function registerMaliyetRoutes(app: Express, isAuthenticated: AuthMiddlew
     } catch (error) {
       console.error("Error updating profit margin:", error);
       res.status(500).json({ error: "Kar marjı güncellenemedi" });
+    }
+  });
+  
+  app.delete("/api/profit-margins/:id", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      await db.update(profitMarginTemplates)
+        .set({ isActive: false, updatedAt: new Date() })
+        .where(eq(profitMarginTemplates.id, parseInt(id)));
+      res.json({ message: "Kar marjı silindi" });
+    } catch (error) {
+      console.error("Error deleting profit margin:", error);
+      res.status(500).json({ error: "Kar marjı silinemedi" });
     }
   });
   
