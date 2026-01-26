@@ -499,7 +499,7 @@ export default function AdminAIBilgiYonetimi() {
                         </>
                       )}
                     </Button>
-                  <>
+                  </>
                 ) : (
                   <>
                     <Button variant="outline" onClick={() => setGeneratedItems([])}>

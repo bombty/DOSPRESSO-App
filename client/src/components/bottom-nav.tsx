@@ -57,8 +57,8 @@ export function BottomNav() {
   };
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-[60] bg-white dark:bg-slate-900 border-t border-border/50 shadow-lg" data-testid="bottom-nav">
-      <div className="flex items-center justify-around h-14 max-w-lg mx-auto px-1">
+    <nav className="fixed bottom-3 left-3 right-3 z-[60]" data-testid="bottom-nav">
+      <div className="flex items-center justify-around h-16 max-w-md mx-auto px-2 rounded-2xl bg-card/95 backdrop-blur-xl border border-card-border shadow-xl">
         {navItems.map((item) => {
           const Icon = item.icon;
           const active = isActive(item.path);
@@ -67,7 +67,7 @@ export function BottomNav() {
             <Link
               key={item.path}
               href={item.path}
-              className={`flex flex-col items-center justify-center flex-1 h-full gap-0 transition-all relative no-underline ${
+              className={`flex flex-col items-center justify-center flex-1 h-full gap-0.5 transition-all duration-300 relative no-underline rounded-xl ${
                 active 
                   ? "text-primary" 
                   : "text-muted-foreground hover:text-foreground"
@@ -75,17 +75,19 @@ export function BottomNav() {
               data-testid={`nav-${item.label.toLowerCase().replace(/\s/g, '-')}`}
             >
               {active && (
-                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-10 h-0.5 bg-primary rounded-full pointer-events-none" />
+                <div className="absolute inset-1 rounded-xl bg-primary/10 pointer-events-none" />
               )}
-              <div className={`relative pointer-events-none transition-transform ${active ? "scale-110" : ""}`}>
-                <Icon className={`w-4 h-4 ${active ? "stroke-[2.5px]" : ""}`} />
+              <div className={`relative pointer-events-none transition-all duration-300 ${active ? "scale-110 -translate-y-0.5" : ""}`}>
+                <div className={`p-1.5 rounded-xl transition-all duration-300 ${active ? "bg-primary shadow-md" : ""}`}>
+                  <Icon className={`w-5 h-5 transition-colors duration-300 ${active ? "text-white stroke-[2px]" : ""}`} />
+                </div>
                 {item.badge && item.badge > 0 && (
-                  <span className="absolute -top-1.5 -right-1.5 w-3.5 h-3.5 bg-destructive text-destructive-foreground text-[8px] font-bold rounded-full flex items-center justify-center">
+                  <span className="absolute -top-1 -right-1 w-4 h-4 bg-destructive text-destructive-foreground text-[9px] font-bold rounded-full flex items-center justify-center shadow-sm">
                     {item.badge > 9 ? "9+" : item.badge}
                   </span>
                 )}
               </div>
-              <span className={`text-[9px] pointer-events-none mt-0.5 ${active ? "font-semibold" : "font-medium"}`}>
+              <span className={`text-[10px] pointer-events-none transition-all duration-300 ${active ? "font-bold text-primary" : "font-medium"}`}>
                 {item.label}
               </span>
             </Link>
