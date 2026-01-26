@@ -36,7 +36,7 @@ const Notifications = lazy(() => import("./notifications"));
 const Mesajlar = lazy(() => import("./mesajlar"));
 const NFCGiris = lazy(() => import("./nfc-giris"));
 const Destek = lazy(() => import("./destek"));
-const MisafirGeriBildirim = lazy(() => import("./musteri-geribildirimi"));
+const MisafirMemnuniyeti = lazy(() => import("./misafir-memnuniyeti"));
 
 interface TabConfig {
   id: string;
@@ -158,7 +158,7 @@ const OPERASYON_TABS: TabConfig[] = [
     labelTr: "Misafir Geri Bildirim",
     icon: <Users className="h-4 w-4" />,
     permissionModule: "guest_feedback",
-    component: MisafirGeriBildirim
+    component: MisafirMemnuniyeti
   }
 ];
 

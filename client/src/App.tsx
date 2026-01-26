@@ -91,9 +91,7 @@ import EquipmentManagement from "@/pages/yonetim/ekipman-yonetimi";
 import EkipmanServis from "@/pages/yonetim/ekipman-servis";
 import AdminAcademy from "@/pages/yonetim/akademi";
 import KaliteDenetimi from "@/pages/kalite-denetimi";
-import MisafirGeriBildirim from "@/pages/musteri-geribildirimi";
 import Sikayetler from "@/pages/sikayetler";
-import MusteriFeedbackPublic from "@/pages/musteri-feedback-public";
 import PublicStaffRating from "@/pages/public-staff-rating";
 import StaffQrTokensPage from "@/pages/staff-qr-tokens";
 import EmployeeOfMonthPage from "@/pages/employee-of-month";
@@ -172,7 +170,6 @@ const PUBLIC_PATH_PREFIXES = [
   "/register", 
   "/forgot-password", 
   "/reset-password", 
-  "/feedback", 
   "/misafir-geri-bildirim",
   "/setup",
   "/sube/dashboard",
@@ -237,7 +234,6 @@ function Router() {
       <Route path="/register" component={Register} />
       <Route path="/forgot-password" component={ForgotPassword} />
       <Route path="/reset-password/:token" component={ResetPassword} />
-      <Route path="/feedback" component={MusteriFeedbackPublic} />
       <Route path="/personel-degerlendirme/:token" component={PublicStaffRating} />
       <Route path="/misafir-geri-bildirim/:token" component={MisafirGeriBildirimPublic} />
       <Route path="/fabrika/kiosk" component={FabrikaKiosk} />
@@ -339,7 +335,7 @@ function Router() {
           <Route path="/denetimler" component={Denetimler} />
           <Route path="/denetim/:id" component={DenetimYurutme} />
           <Route path="/capa/:id" component={CapaDetay} />
-          <Route path="/misafir-geri-bildirim" component={MisafirGeriBildirim} />
+          <Route path="/misafir-geri-bildirim" component={MisafirMemnuniyeti} />
           <Route path="/misafir-memnuniyeti" component={MisafirMemnuniyeti} />
           <Route path="/sikayetler" component={Sikayetler} />
           <Route path="/hq-destek" component={HQSupport} />

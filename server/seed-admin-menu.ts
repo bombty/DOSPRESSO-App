@@ -432,8 +432,8 @@ export async function seedAdminMenu() {
     });
 
     await insertMenuItem(kaliteSection.id, {
-      titleTr: 'Müşteri Geri Bildirimi',
-      path: '/musteri-geribildirimi',
+      titleTr: 'Misafir Memnuniyeti',
+      path: '/misafir-memnuniyeti',
       icon: 'Star',
       moduleKey: 'dashboard',
       scope: 'hq',

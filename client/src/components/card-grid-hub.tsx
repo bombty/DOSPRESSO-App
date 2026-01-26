@@ -1052,18 +1052,6 @@ export function CardGridHub() {
         
         <Button
           variant="outline"
-          onClick={() => setLocation("/raporlar?tab=ai-asistan")}
-          className="h-auto flex flex-col items-center justify-center p-3 gap-1.5"
-          data-testid="button-ai-report"
-        >
-          <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center">
-            <Sparkles className="w-4 h-4 text-white" />
-          </div>
-          <span className="text-sm font-medium">AI Rapor</span>
-        </Button>
-
-        <Button
-          variant="outline"
           onClick={() => setLocation("/gorevler")}
           className="h-auto flex flex-col items-center justify-center p-3 gap-1.5"
           data-testid="button-view-all-tasks"
