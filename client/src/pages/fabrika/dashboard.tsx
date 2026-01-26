@@ -19,7 +19,9 @@ import {
   RefreshCw,
   Timer,
   ClipboardCheck,
-  BarChart3
+  BarChart3,
+  Calculator,
+  DollarSign
 } from "lucide-react";
 
 interface DashboardStats {
@@ -55,6 +57,15 @@ interface ActiveWorker {
   stationCode: string;
 }
 
+interface CostStats {
+  productCount: number;
+  recipeCount: number;
+  materialCount: number;
+  totalFixedCosts: number;
+  avgProfitMargin: number;
+  calculationsThisMonth: number;
+}
+
 export default function FabrikaDashboard() {
   const { data: stats, isLoading: loadingStats, refetch } = useQuery<DashboardStats>({
     queryKey: ['/api/factory/dashboard/stats'],
@@ -68,6 +79,11 @@ export default function FabrikaDashboard() {
   const { data: activeWorkers = [], isLoading: loadingWorkers } = useQuery<ActiveWorker[]>({
     queryKey: ['/api/factory/active-workers'],
     refetchInterval: 15000,
+  });
+
+  const { data: costStats } = useQuery<CostStats>({
+    queryKey: ['/api/cost-dashboard/stats'],
+    refetchInterval: 60000,
   });
 
   const getStationName = (stationId: number) => {
@@ -182,6 +198,47 @@ export default function FabrikaDashboard() {
               </CardContent>
             </Card>
           </div>
+
+          {costStats && (
+            <Card className="border-l-4 border-l-purple-500">
+              <CardHeader className="pb-2">
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <Calculator className="h-5 w-5 text-purple-500" />
+                  Maliyet Özeti
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="text-center">
+                    <p className="text-2xl font-bold text-purple-600" data-testid="text-cost-products">{costStats.productCount}</p>
+                    <p className="text-xs text-muted-foreground">Ürün</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-2xl font-bold text-blue-600" data-testid="text-cost-materials">{costStats.materialCount}</p>
+                    <p className="text-xs text-muted-foreground">Hammadde</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-2xl font-bold text-green-600" data-testid="text-cost-margin">%{costStats.avgProfitMargin.toFixed(1)}</p>
+                    <p className="text-xs text-muted-foreground">Ort. Kar Marjı</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-lg font-bold text-red-600" data-testid="text-cost-fixed">
+                      ₺{new Intl.NumberFormat('tr-TR').format(costStats.totalFixedCosts)}
+                    </p>
+                    <p className="text-xs text-muted-foreground">Aylık Sabit Gider</p>
+                  </div>
+                </div>
+                <div className="mt-4 flex justify-end">
+                  <Link href="/fabrika?tab=maliyet-yonetimi">
+                    <Button variant="outline" size="sm" data-testid="link-cost-management">
+                      <DollarSign className="h-4 w-4 mr-1" />
+                      Maliyet Yönetimi
+                    </Button>
+                  </Link>
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           <Card>
             <CardHeader>
