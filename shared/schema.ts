@@ -51,12 +51,19 @@ export const sessions = pgTable(
 export const UserRole = {
   // System Role
   ADMIN: "admin",
-  // Executive Role
+  // Executive Roles
   CEO: "ceo", // Full read access across all systems, AI Command Center
-  // HQ Roles
+  CGO: "cgo", // Chief Growth Officer - Operasyon sorumlusu, tüm departman özeti
+  // HQ Departman Rolleri
+  MUHASEBE_IK: "muhasebe_ik", // Muhasebe & İK - Mahmut
+  SATINALMA: "satinalma", // Satın alma - Samet
+  COACH: "coach", // Şube performans ve personel - Yavuz
+  MARKETING: "marketing", // Pazarlama & grafik tasarım - Diana
+  TRAINER: "trainer", // Eğitim ve reçete sorumlusu - Ece
+  KALITE_KONTROL: "kalite_kontrol", // Fabrika kalite ve feedback - Ümran
+  FABRIKA_MUDUR: "fabrika_mudur", // Fabrika üretim ve stok - Eren
+  // Eski HQ rolleri (geriye dönük uyumluluk)
   MUHASEBE: "muhasebe",
-  SATINALMA: "satinalma", 
-  COACH: "coach",
   TEKNIK: "teknik",
   DESTEK: "destek",
   FABRIKA: "fabrika",
@@ -76,9 +83,15 @@ export type UserRoleType = typeof UserRole[keyof typeof UserRole];
 export const HQ_ROLES: ReadonlySet<UserRoleType> = new Set([
   UserRole.ADMIN,
   UserRole.CEO,
+  UserRole.CGO,
+  UserRole.MUHASEBE_IK,
   UserRole.MUHASEBE,
   UserRole.SATINALMA,
   UserRole.COACH,
+  UserRole.MARKETING,
+  UserRole.TRAINER,
+  UserRole.KALITE_KONTROL,
+  UserRole.FABRIKA_MUDUR,
   UserRole.TEKNIK,
   UserRole.DESTEK,
   UserRole.FABRIKA,
@@ -89,7 +102,43 @@ export const HQ_ROLES: ReadonlySet<UserRoleType> = new Set([
 export const EXECUTIVE_ROLES: ReadonlySet<UserRoleType> = new Set([
   UserRole.ADMIN,
   UserRole.CEO,
+  UserRole.CGO,
 ]);
+
+// HQ departman rolleri - her biri kendi dashboard'una sahip
+export const HQ_DEPARTMENT_ROLES: ReadonlySet<UserRoleType> = new Set([
+  UserRole.CGO,
+  UserRole.MUHASEBE_IK,
+  UserRole.SATINALMA,
+  UserRole.COACH,
+  UserRole.MARKETING,
+  UserRole.TRAINER,
+  UserRole.KALITE_KONTROL,
+  UserRole.FABRIKA_MUDUR,
+]);
+
+// Her departman rolünün dashboard yolu
+export const DEPARTMENT_DASHBOARD_ROUTES: Record<string, string> = {
+  [UserRole.CEO]: '/ceo-command-center',
+  [UserRole.CGO]: '/hq-dashboard/cgo',
+  [UserRole.MUHASEBE_IK]: '/hq-dashboard/ik',
+  [UserRole.SATINALMA]: '/hq-dashboard/satinalma',
+  [UserRole.COACH]: '/hq-dashboard/coach',
+  [UserRole.MARKETING]: '/hq-dashboard/marketing',
+  [UserRole.TRAINER]: '/hq-dashboard/trainer',
+  [UserRole.KALITE_KONTROL]: '/hq-dashboard/kalite',
+  [UserRole.FABRIKA_MUDUR]: '/hq-dashboard/fabrika',
+};
+
+// Check if role has dedicated dashboard
+export function hasDedicatedDashboard(role: UserRoleType): boolean {
+  return role in DEPARTMENT_DASHBOARD_ROUTES;
+}
+
+// Get dashboard route for role
+export function getDashboardRoute(role: UserRoleType): string {
+  return DEPARTMENT_DASHBOARD_ROUTES[role] || '/';
+}
 
 // Check if role is an executive role
 export function isExecutiveRole(role: UserRoleType): boolean {
