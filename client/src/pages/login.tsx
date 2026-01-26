@@ -92,6 +92,14 @@ export default function Login() {
         description: "Hoş geldiniz!",
       });
       
+      // CEO rolü için özel yönlendirme
+      if (data.user?.role === 'ceo') {
+        setTimeout(() => {
+          navigate('/ceo-command-center');
+        }, 100);
+        return;
+      }
+      
       // Get redirect target and navigate
       const target = getRedirectTarget();
       
