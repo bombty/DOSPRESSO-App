@@ -365,7 +365,7 @@ function Router() {
           <Route path="/admin/*?" component={AdminMegaModule} />
           <Route path="/ceo-command-center">{() => <ExecutiveOnly><CEOCommandCenter /></ExecutiveOnly>}</Route>
           <Route path="/hq-dashboard/:department?">{() => <HQOnly><HQDashboard /></HQOnly>}</Route>
-          <Route path="/kalite-kontrol-dashboard" component={KaliteKontrolDashboard} />
+          <Route path="/kalite-kontrol-dashboard">{() => <HQOnly><KaliteKontrolDashboard /></HQOnly>}</Route>
           <Route path="/satinalma/:tab?" component={SatinalmaMega} />
         </>
       )}

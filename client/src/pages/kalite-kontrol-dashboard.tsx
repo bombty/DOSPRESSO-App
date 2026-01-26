@@ -303,7 +303,7 @@ export default function KaliteKontrolDashboard() {
                 <Timer className="h-5 w-5 text-blue-600" />
               </div>
               <div>
-                <p className="text-2xl font-bold">{performance.avgResponseTime}s</p>
+                <p className="text-2xl font-bold">{performance.avgResponseTime} saat</p>
                 <p className="text-xs text-muted-foreground">Ort. Yanıt Süresi</p>
               </div>
             </div>
