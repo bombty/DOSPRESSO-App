@@ -1,3 +1,4 @@
+import { registerHQDashboardRoutes } from "./hq-dashboard-routes";
 import { registerCRMRoutes } from "./crm-routes";
 import type { Express } from "express";
 import { createServer, type Server } from "http";
@@ -31282,6 +31283,7 @@ Dusuk puanli alanlara odaklan ve pozitif, motive edici ol. JSON dizisi olarak ya
     }
   });
 
+  registerHQDashboardRoutes(app, isAuthenticated);
   registerCRMRoutes(app, isAuthenticated);
   const httpServer = createServer(app);
   return httpServer;

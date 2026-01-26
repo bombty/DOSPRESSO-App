@@ -92,10 +92,27 @@ export default function Login() {
         description: "Hoş geldiniz!",
       });
       
-      // CEO rolü için özel yönlendirme
-      if (data.user?.role === 'ceo') {
+      // HQ departman rolleri için özel dashboard yönlendirmesi (shared/schema.ts ile senkronize)
+      const userRole = data.user?.role;
+      const departmentRoutes: Record<string, string> = {
+        'ceo': '/ceo-command-center',
+        'cgo': '/hq-dashboard/cgo',
+        'muhasebe_ik': '/hq-dashboard/ik',
+        'satinalma': '/hq-dashboard/satinalma',
+        'coach': '/hq-dashboard/coach',
+        'marketing': '/hq-dashboard/marketing',
+        'trainer': '/hq-dashboard/trainer',
+        'kalite_kontrol': '/hq-dashboard/kalite',
+        'fabrika_mudur': '/hq-dashboard/fabrika',
+        'muhasebe': '/hq-dashboard/ik',
+        'teknik': '/',
+        'destek': '/',
+        'fabrika': '/hq-dashboard/fabrika',
+      };
+      
+      if (userRole && departmentRoutes[userRole]) {
         setTimeout(() => {
-          navigate('/ceo-command-center');
+          navigate(departmentRoutes[userRole]);
         }, 100);
         return;
       }
