@@ -7746,6 +7746,16 @@ export const factoryProducts = pgTable("factory_products", {
   minStock: integer("min_stock").default(0),
   description: text("description"),
   isActive: boolean("is_active").default(true),
+  
+  // Maliyet hesaplama sütunları
+  packageQuantity: integer("package_quantity").default(1),
+  basePrice: numeric("base_price", { precision: 12, scale: 2 }).default("0"),
+  suggestedPrice: numeric("suggested_price", { precision: 12, scale: 2 }).default("0"),
+  currentSellingPrice: numeric("current_selling_price", { precision: 12, scale: 2 }).default("0"),
+  profitMargin: numeric("profit_margin", { precision: 5, scale: 2 }).default("1.01"),
+  isTemporarilyStopped: boolean("is_temporarily_stopped").default(false),
+  isNewProduct: boolean("is_new_product").default(false),
+  
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => [
@@ -10162,3 +10172,301 @@ export type InsertCariAccount = z.infer<typeof insertCariAccountSchema>;
 export type CariAccount = typeof cariAccounts.$inferSelect;
 export type InsertCariTransaction = z.infer<typeof insertCariTransactionSchema>;
 export type CariTransaction = typeof cariTransactions.$inferSelect;
+
+// ========================================
+// MALİYET HESAPLAMA SİSTEMİ - Cost Calculation System
+// ========================================
+
+// Ürün Kategorileri
+export const productCategoryEnum = [
+  "donut", "pastane", "konsantre", "topping", "kahve", "cay", 
+  "kullan_at", "sarf_malzeme", "wasp", "porselen", "mamabon", "diger"
+] as const;
+export type ProductCategory = typeof productCategoryEnum[number];
+
+// Hammadde Listesi - Raw Materials (Satınalma stoğundan çekilen)
+export const rawMaterials = pgTable("raw_materials", {
+  id: serial("id").primaryKey(),
+  
+  // Hammadde bilgileri
+  code: varchar("code", { length: 50 }).notNull().unique(),
+  name: varchar("name", { length: 255 }).notNull(),
+  category: varchar("category", { length: 100 }),
+  
+  // Birim bilgileri
+  unit: varchar("unit", { length: 20 }).notNull(), // kg, lt, adet vs.
+  
+  // Fiyat bilgileri (Satınalmadan güncel)
+  currentUnitPrice: numeric("current_unit_price", { precision: 12, scale: 4 }).default("0"),
+  lastPurchasePrice: numeric("last_purchase_price", { precision: 12, scale: 4 }).default("0"),
+  averagePrice: numeric("average_price", { precision: 12, scale: 4 }).default("0"),
+  priceLastUpdated: timestamp("price_last_updated"),
+  
+  // Stok bağlantısı
+  inventoryId: integer("inventory_id").references(() => inventory.id, { onDelete: "set null" }),
+  supplierId: integer("supplier_id").references(() => suppliers.id, { onDelete: "set null" }),
+  
+  // Durum
+  isActive: boolean("is_active").default(true),
+  notes: text("notes"),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("rm_code_idx").on(table.code),
+  index("rm_category_idx").on(table.category),
+  index("rm_inventory_idx").on(table.inventoryId),
+]);
+
+export const insertRawMaterialSchema = createInsertSchema(rawMaterials).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertRawMaterial = z.infer<typeof insertRawMaterialSchema>;
+export type RawMaterial = typeof rawMaterials.$inferSelect;
+
+// Ürün Reçetesi - Product Recipe
+export const productRecipes = pgTable("product_recipes", {
+  id: serial("id").primaryKey(),
+  
+  // Ürün bağlantısı
+  productId: integer("product_id").references(() => factoryProducts.id, { onDelete: "cascade" }).notNull(),
+  
+  // Reçete bilgileri
+  name: varchar("name", { length: 255 }).notNull(),
+  version: integer("version").default(1),
+  isActive: boolean("is_active").default(true),
+  
+  // Üretim bilgileri
+  outputQuantity: numeric("output_quantity", { precision: 12, scale: 3 }).default("1"), // Kaç adet üretilir
+  outputUnit: varchar("output_unit", { length: 20 }).default("adet"),
+  productionTimeMinutes: integer("production_time_minutes").default(0),
+  
+  // Hesaplanan maliyetler
+  rawMaterialCost: numeric("raw_material_cost", { precision: 12, scale: 4 }).default("0"),
+  laborCost: numeric("labor_cost", { precision: 12, scale: 4 }).default("0"),
+  overheadCost: numeric("overhead_cost", { precision: 12, scale: 4 }).default("0"),
+  totalUnitCost: numeric("total_unit_cost", { precision: 12, scale: 4 }).default("0"),
+  
+  // Maliyet son güncelleme
+  costLastCalculated: timestamp("cost_last_calculated"),
+  
+  notes: text("notes"),
+  createdById: varchar("created_by_id").references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("pr_product_idx").on(table.productId),
+  index("pr_active_idx").on(table.isActive),
+]);
+
+export const insertProductRecipeSchema = createInsertSchema(productRecipes).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertProductRecipe = z.infer<typeof insertProductRecipeSchema>;
+export type ProductRecipe = typeof productRecipes.$inferSelect;
+
+// Reçete Hammaddeleri - Recipe Ingredients
+export const productRecipeIngredients = pgTable("product_recipe_ingredients", {
+  id: serial("id").primaryKey(),
+  
+  recipeId: integer("recipe_id").references(() => productRecipes.id, { onDelete: "cascade" }).notNull(),
+  rawMaterialId: integer("raw_material_id").references(() => rawMaterials.id, { onDelete: "restrict" }).notNull(),
+  
+  // Miktar bilgileri
+  quantity: numeric("quantity", { precision: 12, scale: 4 }).notNull(),
+  unit: varchar("unit", { length: 20 }).notNull(),
+  
+  // Hesaplanan maliyet
+  unitCost: numeric("unit_cost", { precision: 12, scale: 4 }).default("0"),
+  totalCost: numeric("total_cost", { precision: 12, scale: 4 }).default("0"),
+  
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("pri_recipe_idx").on(table.recipeId),
+  index("pri_material_idx").on(table.rawMaterialId),
+]);
+
+export const insertProductRecipeIngredientSchema = createInsertSchema(productRecipeIngredients).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertProductRecipeIngredient = z.infer<typeof insertProductRecipeIngredientSchema>;
+export type ProductRecipeIngredient = typeof productRecipeIngredients.$inferSelect;
+
+// Fabrika Sabit Giderleri - Factory Fixed Costs
+export const fixedCostCategoryEnum = [
+  "personel", "elektrik", "dogalgaz", "su", "kira", "sigorta", 
+  "amortisman", "bakim_onarim", "temizlik", "guvenlik", "iletisim",
+  "vergi", "diger"
+] as const;
+export type FixedCostCategory = typeof fixedCostCategoryEnum[number];
+
+export const factoryFixedCosts = pgTable("factory_fixed_costs", {
+  id: serial("id").primaryKey(),
+  
+  // Gider bilgileri
+  category: varchar("category", { length: 50 }).notNull(),
+  name: varchar("name", { length: 255 }).notNull(),
+  description: text("description"),
+  
+  // Tutar bilgileri
+  monthlyAmount: numeric("monthly_amount", { precision: 14, scale: 2 }).notNull(),
+  annualAmount: numeric("annual_amount", { precision: 14, scale: 2 }),
+  
+  // Dağıtım yöntemi
+  allocationMethod: varchar("allocation_method", { length: 50 }).default("production_volume"), // production_volume, direct_labor, machine_hours
+  allocationPercentage: numeric("allocation_percentage", { precision: 5, scale: 2 }).default("100"),
+  
+  // Dönem bilgisi
+  effectiveMonth: integer("effective_month"), // 1-12
+  effectiveYear: integer("effective_year"),
+  
+  // Durum
+  isRecurring: boolean("is_recurring").default(true),
+  isActive: boolean("is_active").default(true),
+  
+  createdById: varchar("created_by_id").references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("ffc_category_idx").on(table.category),
+  index("ffc_period_idx").on(table.effectiveYear, table.effectiveMonth),
+]);
+
+export const insertFactoryFixedCostSchema = createInsertSchema(factoryFixedCosts).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertFactoryFixedCost = z.infer<typeof insertFactoryFixedCostSchema>;
+export type FactoryFixedCost = typeof factoryFixedCosts.$inferSelect;
+
+// Kar Marjı Şablonları - Profit Margin Templates
+export const profitMarginTemplates = pgTable("profit_margin_templates", {
+  id: serial("id").primaryKey(),
+  
+  // Şablon bilgileri
+  name: varchar("name", { length: 255 }).notNull(),
+  category: varchar("category", { length: 50 }).notNull(), // Ürün kategorisi
+  
+  // Marj bilgileri
+  defaultMargin: numeric("default_margin", { precision: 5, scale: 2 }).notNull(), // Örn: 1.20 = %20 kar
+  minimumMargin: numeric("minimum_margin", { precision: 5, scale: 2 }).default("1.01"),
+  maximumMargin: numeric("maximum_margin", { precision: 5, scale: 2 }).default("2.00"),
+  
+  // Ek bilgiler
+  description: text("description"),
+  isActive: boolean("is_active").default(true),
+  
+  createdById: varchar("created_by_id").references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("pmt_category_idx").on(table.category),
+]);
+
+export const insertProfitMarginTemplateSchema = createInsertSchema(profitMarginTemplates).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertProfitMarginTemplate = z.infer<typeof insertProfitMarginTemplateSchema>;
+export type ProfitMarginTemplate = typeof profitMarginTemplates.$inferSelect;
+
+// Ürün Maliyet Hesaplamaları - Product Cost Calculations (Geçmiş kayıtları)
+export const productCostCalculations = pgTable("product_cost_calculations", {
+  id: serial("id").primaryKey(),
+  
+  // Ürün ve reçete bağlantısı
+  productId: integer("product_id").references(() => factoryProducts.id, { onDelete: "cascade" }).notNull(),
+  recipeId: integer("recipe_id").references(() => productRecipes.id, { onDelete: "set null" }),
+  
+  // Hesaplama dönemi
+  calculationDate: timestamp("calculation_date").defaultNow().notNull(),
+  periodMonth: integer("period_month").notNull(),
+  periodYear: integer("period_year").notNull(),
+  
+  // Maliyet bileşenleri
+  rawMaterialCost: numeric("raw_material_cost", { precision: 12, scale: 4 }).default("0"),
+  directLaborCost: numeric("direct_labor_cost", { precision: 12, scale: 4 }).default("0"),
+  overheadCost: numeric("overhead_cost", { precision: 12, scale: 4 }).default("0"),
+  packagingCost: numeric("packaging_cost", { precision: 12, scale: 4 }).default("0"),
+  
+  // Toplam maliyet
+  totalUnitCost: numeric("total_unit_cost", { precision: 12, scale: 4 }).notNull(),
+  totalPackageCost: numeric("total_package_cost", { precision: 12, scale: 4 }).default("0"),
+  
+  // Fiyatlandırma
+  appliedMargin: numeric("applied_margin", { precision: 5, scale: 2 }).default("1.01"),
+  suggestedSellingPrice: numeric("suggested_selling_price", { precision: 12, scale: 2 }).default("0"),
+  actualSellingPrice: numeric("actual_selling_price", { precision: 12, scale: 2 }).default("0"),
+  
+  // Kar bilgileri
+  profitPerUnit: numeric("profit_per_unit", { precision: 12, scale: 4 }).default("0"),
+  profitMarginPercentage: numeric("profit_margin_percentage", { precision: 5, scale: 2 }).default("0"),
+  
+  // Üretim miktarı (bu dönemdeki)
+  productionQuantity: integer("production_quantity").default(0),
+  
+  notes: text("notes"),
+  calculatedById: varchar("calculated_by_id").references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("pcc_product_idx").on(table.productId),
+  index("pcc_period_idx").on(table.periodYear, table.periodMonth),
+  index("pcc_date_idx").on(table.calculationDate),
+]);
+
+export const insertProductCostCalculationSchema = createInsertSchema(productCostCalculations).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertProductCostCalculation = z.infer<typeof insertProductCostCalculationSchema>;
+export type ProductCostCalculation = typeof productCostCalculations.$inferSelect;
+
+// Üretim Kayıtları için Maliyet Takibi - Production Cost Tracking
+export const productionCostTracking = pgTable("production_cost_tracking", {
+  id: serial("id").primaryKey(),
+  
+  // Üretim bağlantısı
+  productionRecordId: integer("production_record_id").references(() => productionRecords.id, { onDelete: "cascade" }),
+  productId: integer("product_id").references(() => factoryProducts.id, { onDelete: "cascade" }).notNull(),
+  
+  // Üretim bilgileri
+  productionDate: timestamp("production_date").defaultNow().notNull(),
+  quantity: integer("quantity").notNull(),
+  
+  // Maliyet bilgileri
+  rawMaterialCostPerUnit: numeric("raw_material_cost_per_unit", { precision: 12, scale: 4 }).default("0"),
+  laborCostPerUnit: numeric("labor_cost_per_unit", { precision: 12, scale: 4 }).default("0"),
+  overheadCostPerUnit: numeric("overhead_cost_per_unit", { precision: 12, scale: 4 }).default("0"),
+  totalCostPerUnit: numeric("total_cost_per_unit", { precision: 12, scale: 4 }).notNull(),
+  
+  // Toplam maliyet
+  totalProductionCost: numeric("total_production_cost", { precision: 14, scale: 2 }).notNull(),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("pct_product_idx").on(table.productId),
+  index("pct_date_idx").on(table.productionDate),
+  index("pct_production_idx").on(table.productionRecordId),
+]);
+
+export const insertProductionCostTrackingSchema = createInsertSchema(productionCostTracking).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertProductionCostTracking = z.infer<typeof insertProductionCostTrackingSchema>;
+export type ProductionCostTracking = typeof productionCostTracking.$inferSelect;

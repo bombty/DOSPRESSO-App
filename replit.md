@@ -42,6 +42,7 @@ The frontend utilizes React 18+ with TypeScript and Vite, employing Shadcn/ui (N
 - **Global Search & Calendar View**: Functionality for finding information across the platform and visualizing tasks/milestones.
 - **Unified Dashboard Alert System**: Real-time alerts for both branch and factory dashboards supporting 12 trigger types with severity levels and visual feedback.
 - **Procurement Management System (Satınalma)**: Complete procurement module with 5 sub-systems - Dashboard (real-time stats), Stok Yönetimi (inventory with stock movements), Tedarikçi Yönetimi (supplier management with performance tracking), Sipariş Yönetimi (purchase orders), and Mal Kabul (goods receipt with quality checks). Features automatic stock updates on goods receipt and full audit trail.
+- **Cost Management System (Maliyet Yönetimi)**: Comprehensive product cost calculation module integrated with procurement. Features raw material management with price sync from purchase orders, factory fixed cost tracking (13 categories), profit margin templates by product category, and automatic cost calculations. Formula: Total Unit Cost = Raw Material Cost + Overhead Allocation; Suggested Price = Total Unit Cost × Category Profit Margin. Located in Fabrika mega-module at `/fabrika?tab=maliyet-yonetimi`.
 
 ### System Design Choices
 - **Health Score Calculation**: Real-time scores based on recent faults and compliance.
@@ -56,7 +57,7 @@ The frontend utilizes React 18+ with TypeScript and Vite, employing Shadcn/ui (N
 - **Layout System**: Responsive flex-based layouts with standardized gaps.
 - **Dashboard Hub**: `CardGridHub` displays 9 mega-module cards with **role-based visibility** - HQ sees all modules, Supervisor sees branch operations (no Factory/NewShop/Admin), Fabrika sees factory-specific modules, Barista/Stajyer see basic operational modules.
 - **Mega-Module Architecture**: Each major section uses a tabbed mega-module wrapper that lazy-loads page components, with URL synchronization for deep linking. Key mega-modules:
-  - `/fabrika`: 7 tabs (Dashboard, Kiosk, Kalite Kontrol, Performans, Vardiya Uyumluluk, AI Raporlar, Üretim Planlama)
+  - `/fabrika`: 8 tabs (Dashboard, Kiosk, Kalite Kontrol, Performans, Vardiya Uyumluluk, AI Raporlar, Üretim Planlama, Maliyet Yönetimi)
   - `/ekipman`: 3 tabs (Ekipman, Arıza Yönetimi, Ekipman Analitik)
   - `/raporlar`: 12 tabs (Raporlar, Performans, AI Asistan, Kalite Denetimi, etc.)
   - `/akademi`: 18 tabs in 4 groups (Eğitim, Oyunlaştırma, Analitik, Gelişmiş)

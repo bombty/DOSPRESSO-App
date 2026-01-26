@@ -15,7 +15,8 @@ import {
   Brain,
   ClipboardList,
   BarChart3,
-  Factory
+  Factory,
+  Calculator
 } from "lucide-react";
 
 const FabrikaDashboard = lazy(() => import("./dashboard"));
@@ -25,6 +26,7 @@ const FabrikaPerformans = lazy(() => import("./performans"));
 const FabrikaVardiyaUyumluluk = lazy(() => import("./vardiya-uyumluluk"));
 const FabrikaAIRaporlar = lazy(() => import("./ai-raporlar"));
 const FabrikaUretimPlanlama = lazy(() => import("./uretim-planlama"));
+const FabrikaMaliyetYonetimi = lazy(() => import("./maliyet-yonetimi"));
 
 interface TabConfig {
   id: string;
@@ -91,6 +93,14 @@ const FABRIKA_TABS: TabConfig[] = [
     icon: <ClipboardList className="h-4 w-4" />,
     permissionModule: "factory_stations",
     component: FabrikaUretimPlanlama
+  },
+  {
+    id: "maliyet-yonetimi",
+    label: "Cost Management",
+    labelTr: "Maliyet Yönetimi",
+    icon: <Calculator className="h-4 w-4" />,
+    permissionModule: "factory_analytics",
+    component: FabrikaMaliyetYonetimi
   }
 ];
 
