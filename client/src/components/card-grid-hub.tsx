@@ -23,6 +23,7 @@ import { QuickStatsGrid } from "@/components/widgets/quick-stats-grid";
 import { QuickActionsGrid } from "@/components/widgets/quick-actions-grid";
 import { MiniCalendar } from "@/components/widgets/mini-calendar";
 import { ProgressOverview } from "@/components/widgets/progress-overview";
+import { ActivityTimeline } from "@/components/widgets/activity-timeline";
 import {
   Accordion,
   AccordionContent,
@@ -902,6 +903,9 @@ export function CardGridHub() {
         <ProgressOverview />
         <MiniCalendar />
       </div>
+
+      {/* Activity Timeline */}
+      <ActivityTimeline />
 
       {/* Announcement Banners - Only show if enabled */}
       {bannerCarouselEnabled && <AnnouncementBannerCarousel />}

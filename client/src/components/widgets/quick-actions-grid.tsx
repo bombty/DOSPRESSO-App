@@ -125,7 +125,7 @@ export function QuickActionsGrid() {
               className="flex flex-col items-center gap-2 p-3"
               data-testid={`quick-action-${action.id}`}
             >
-              <div className={`w-12 h-12 rounded-2xl ${action.bgColor} flex items-center justify-center transition-all duration-200 hover:scale-105`}>
+              <div className={`w-12 h-12 rounded-2xl ${action.bgColor} flex items-center justify-center transition-colors duration-200`}>
                 <Icon className={`w-5 h-5 ${action.color}`} />
               </div>
               <span className="text-[10px] font-medium text-muted-foreground text-center leading-tight">

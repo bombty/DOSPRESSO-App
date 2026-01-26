@@ -33,6 +33,7 @@ export function WelcomeHero() {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5 }}
       className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[hsl(var(--dospresso-navy))] via-[hsl(var(--dospresso-blue))] to-[hsl(var(--dospresso-blue)/0.8)] p-6 text-white"
+      data-testid="welcome-hero"
     >
       {/* Background decoration */}
       <div className="absolute top-0 right-0 w-40 h-40 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2" />

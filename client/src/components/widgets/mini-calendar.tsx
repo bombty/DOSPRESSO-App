@@ -46,6 +46,7 @@ export function MiniCalendar() {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4 }}
       className="rounded-2xl border bg-card p-4"
+      data-testid="mini-calendar"
     >
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
@@ -54,18 +55,18 @@ export function MiniCalendar() {
         </h3>
         <div className="flex items-center gap-1">
           <Button 
-            size="icon" 
+            size="sm" 
             variant="ghost" 
-            className="h-7 w-7"
             onClick={goToPrevWeek}
+            data-testid="calendar-prev-week"
           >
             <ChevronLeft className="h-4 w-4" />
           </Button>
           <Button 
-            size="icon" 
+            size="sm" 
             variant="ghost" 
-            className="h-7 w-7"
             onClick={goToNextWeek}
+            data-testid="calendar-next-week"
           >
             <ChevronRight className="h-4 w-4" />
           </Button>

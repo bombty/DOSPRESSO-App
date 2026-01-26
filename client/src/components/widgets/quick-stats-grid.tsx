@@ -97,6 +97,7 @@ export function QuickStatsGrid() {
             animate={{ opacity: 1, scale: 1 }}
             transition={{ delay: index * 0.1, duration: 0.3 }}
             className={`relative overflow-hidden rounded-2xl bg-gradient-to-br ${stat.gradient} p-4 text-white`}
+            data-testid={`stat-card-${stat.id}`}
           >
             {/* Background decoration */}
             <div className="absolute -right-4 -bottom-4 w-20 h-20 rounded-full bg-white/10" />

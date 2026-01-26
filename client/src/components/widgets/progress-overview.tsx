@@ -33,6 +33,7 @@ export function ProgressOverview() {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, delay: 0.1 }}
       className="rounded-2xl border bg-card p-4"
+      data-testid="progress-overview"
     >
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-sm font-semibold">Günlük İlerleme</h3>
