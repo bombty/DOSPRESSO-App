@@ -9417,3 +9417,481 @@ export const insertAiSystemConfigSchema = createInsertSchema(aiSystemConfig).omi
 
 export type InsertAiSystemConfig = z.infer<typeof insertAiSystemConfigSchema>;
 export type AiSystemConfig = typeof aiSystemConfig.$inferSelect;
+
+// ========================================
+// STOK YÖNETİMİ - Inventory Management
+// ========================================
+
+export const inventoryUnitEnum = ["kg", "gr", "lt", "ml", "adet", "paket", "kutu", "koli"] as const;
+export type InventoryUnit = typeof inventoryUnitEnum[number];
+
+export const inventoryCategoryEnum = ["hammadde", "yarimamul", "mamul", "ambalaj", "sarf_malzeme", "temizlik", "diger"] as const;
+export type InventoryCategory = typeof inventoryCategoryEnum[number];
+
+export const inventory = pgTable("inventory", {
+  id: serial("id").primaryKey(),
+  
+  // Ürün bilgileri
+  code: varchar("code", { length: 50 }).notNull().unique(),
+  name: varchar("name", { length: 255 }).notNull(),
+  description: text("description"),
+  category: varchar("category", { length: 50 }).notNull(), // hammadde, yarimamul, mamul, ambalaj, sarf_malzeme
+  unit: varchar("unit", { length: 20 }).notNull(), // kg, gr, lt, ml, adet, paket
+  
+  // Stok miktarları
+  currentStock: numeric("current_stock", { precision: 12, scale: 3 }).default("0").notNull(),
+  minimumStock: numeric("minimum_stock", { precision: 12, scale: 3 }).default("0").notNull(),
+  maximumStock: numeric("maximum_stock", { precision: 12, scale: 3 }),
+  reorderPoint: numeric("reorder_point", { precision: 12, scale: 3 }),
+  
+  // Fiyat bilgileri
+  unitCost: numeric("unit_cost", { precision: 10, scale: 2 }).default("0"),
+  lastPurchasePrice: numeric("last_purchase_price", { precision: 10, scale: 2 }),
+  
+  // Konum ve depolama
+  warehouseLocation: varchar("warehouse_location", { length: 100 }),
+  storageConditions: text("storage_conditions"),
+  shelfLife: integer("shelf_life"), // gün cinsinden raf ömrü
+  
+  // Barkod ve takip
+  barcode: varchar("barcode", { length: 100 }),
+  batchTracking: boolean("batch_tracking").default(false),
+  
+  // Durum
+  isActive: boolean("is_active").default(true).notNull(),
+  
+  createdById: varchar("created_by_id").references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("inventory_code_idx").on(table.code),
+  index("inventory_category_idx").on(table.category),
+  index("inventory_barcode_idx").on(table.barcode),
+  index("inventory_active_idx").on(table.isActive),
+]);
+
+export const insertInventorySchema = createInsertSchema(inventory).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertInventory = z.infer<typeof insertInventorySchema>;
+export type Inventory = typeof inventory.$inferSelect;
+
+// Stok Hareketleri
+export const inventoryMovementTypeEnum = ["giris", "cikis", "transfer", "uretim_giris", "uretim_cikis", "sayim_duzeltme", "fire", "iade"] as const;
+export type InventoryMovementType = typeof inventoryMovementTypeEnum[number];
+
+export const inventoryMovements = pgTable("inventory_movements", {
+  id: serial("id").primaryKey(),
+  
+  inventoryId: integer("inventory_id").references(() => inventory.id, { onDelete: "cascade" }).notNull(),
+  movementType: varchar("movement_type", { length: 30 }).notNull(), // giris, cikis, transfer, uretim_giris, uretim_cikis, sayim_duzeltme
+  
+  quantity: numeric("quantity", { precision: 12, scale: 3 }).notNull(),
+  previousStock: numeric("previous_stock", { precision: 12, scale: 3 }).notNull(),
+  newStock: numeric("new_stock", { precision: 12, scale: 3 }).notNull(),
+  
+  // Referans bilgileri
+  referenceType: varchar("reference_type", { length: 50 }), // purchase_order, production, goods_receipt, sale, transfer
+  referenceId: integer("reference_id"),
+  
+  // Lokasyon (transfer için)
+  fromLocation: varchar("from_location", { length: 100 }),
+  toLocation: varchar("to_location", { length: 100 }),
+  
+  // Lot/Batch bilgisi
+  batchNumber: varchar("batch_number", { length: 100 }),
+  expiryDate: timestamp("expiry_date"),
+  
+  notes: text("notes"),
+  
+  createdById: varchar("created_by_id").references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("inv_movement_inventory_idx").on(table.inventoryId),
+  index("inv_movement_type_idx").on(table.movementType),
+  index("inv_movement_date_idx").on(table.createdAt),
+  index("inv_movement_ref_idx").on(table.referenceType, table.referenceId),
+]);
+
+export const insertInventoryMovementSchema = createInsertSchema(inventoryMovements).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertInventoryMovement = z.infer<typeof insertInventoryMovementSchema>;
+export type InventoryMovement = typeof inventoryMovements.$inferSelect;
+
+// ========================================
+// TEDARİKÇİ YÖNETİMİ - Supplier Management
+// ========================================
+
+export const supplierStatusEnum = ["aktif", "pasif", "askiya_alinmis", "kara_liste"] as const;
+export type SupplierStatus = typeof supplierStatusEnum[number];
+
+export const suppliers = pgTable("suppliers", {
+  id: serial("id").primaryKey(),
+  
+  // Temel bilgiler
+  code: varchar("code", { length: 50 }).notNull().unique(),
+  name: varchar("name", { length: 255 }).notNull(),
+  taxNumber: varchar("tax_number", { length: 20 }),
+  taxOffice: varchar("tax_office", { length: 100 }),
+  
+  // İletişim bilgileri
+  contactPerson: varchar("contact_person", { length: 255 }),
+  email: varchar("email", { length: 255 }),
+  phone: varchar("phone", { length: 50 }),
+  alternativePhone: varchar("alternative_phone", { length: 50 }),
+  address: text("address"),
+  city: varchar("city", { length: 100 }),
+  
+  // Banka bilgileri
+  bankName: varchar("bank_name", { length: 100 }),
+  iban: varchar("iban", { length: 50 }),
+  
+  // Ticari bilgiler
+  paymentTermDays: integer("payment_term_days").default(30),
+  currency: varchar("currency", { length: 10 }).default("TRY"),
+  creditLimit: numeric("credit_limit", { precision: 12, scale: 2 }),
+  
+  // Kategoriler ve ürünler
+  categories: text("categories").array(), // Tedarik ettiği kategoriler
+  
+  // Performans metrikleri
+  performanceScore: numeric("performance_score", { precision: 3, scale: 1 }).default("0"),
+  onTimeDeliveryRate: numeric("on_time_delivery_rate", { precision: 5, scale: 2 }).default("0"),
+  qualityScore: numeric("quality_score", { precision: 3, scale: 1 }).default("0"),
+  totalOrders: integer("total_orders").default(0),
+  totalOrderValue: numeric("total_order_value", { precision: 14, scale: 2 }).default("0"),
+  
+  // Durum
+  status: varchar("status", { length: 30 }).default("aktif").notNull(),
+  notes: text("notes"),
+  
+  createdById: varchar("created_by_id").references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("supplier_code_idx").on(table.code),
+  index("supplier_name_idx").on(table.name),
+  index("supplier_status_idx").on(table.status),
+]);
+
+export const insertSupplierSchema = createInsertSchema(suppliers).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertSupplier = z.infer<typeof insertSupplierSchema>;
+export type Supplier = typeof suppliers.$inferSelect;
+
+// ========================================
+// SİPARİŞ YÖNETİMİ - Purchase Order Management
+// ========================================
+
+export const purchaseOrderStatusEnum = ["taslak", "onay_bekliyor", "onaylandi", "siparis_verildi", "kismen_teslim", "tamamlandi", "iptal"] as const;
+export type PurchaseOrderStatus = typeof purchaseOrderStatusEnum[number];
+
+export const purchaseOrders = pgTable("purchase_orders", {
+  id: serial("id").primaryKey(),
+  
+  // Sipariş bilgileri
+  orderNumber: varchar("order_number", { length: 50 }).notNull().unique(),
+  supplierId: integer("supplier_id").references(() => suppliers.id, { onDelete: "restrict" }).notNull(),
+  
+  // Tarihler
+  orderDate: timestamp("order_date").defaultNow().notNull(),
+  expectedDeliveryDate: timestamp("expected_delivery_date"),
+  actualDeliveryDate: timestamp("actual_delivery_date"),
+  
+  // Tutar bilgileri
+  subtotal: numeric("subtotal", { precision: 12, scale: 2 }).default("0").notNull(),
+  taxAmount: numeric("tax_amount", { precision: 12, scale: 2 }).default("0"),
+  discountAmount: numeric("discount_amount", { precision: 12, scale: 2 }).default("0"),
+  totalAmount: numeric("total_amount", { precision: 12, scale: 2 }).default("0").notNull(),
+  currency: varchar("currency", { length: 10 }).default("TRY"),
+  
+  // Durum ve onay
+  status: varchar("status", { length: 30 }).default("taslak").notNull(),
+  approvedById: varchar("approved_by_id").references(() => users.id, { onDelete: "set null" }),
+  approvedAt: timestamp("approved_at"),
+  
+  // Teslimat bilgileri
+  deliveryAddress: text("delivery_address"),
+  deliveryNotes: text("delivery_notes"),
+  
+  // Notlar
+  notes: text("notes"),
+  internalNotes: text("internal_notes"),
+  
+  createdById: varchar("created_by_id").references(() => users.id, { onDelete: "set null" }).notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("po_order_number_idx").on(table.orderNumber),
+  index("po_supplier_idx").on(table.supplierId),
+  index("po_status_idx").on(table.status),
+  index("po_date_idx").on(table.orderDate),
+]);
+
+export const insertPurchaseOrderSchema = createInsertSchema(purchaseOrders).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertPurchaseOrder = z.infer<typeof insertPurchaseOrderSchema>;
+export type PurchaseOrder = typeof purchaseOrders.$inferSelect;
+
+// Sipariş Kalemleri
+export const purchaseOrderItems = pgTable("purchase_order_items", {
+  id: serial("id").primaryKey(),
+  
+  purchaseOrderId: integer("purchase_order_id").references(() => purchaseOrders.id, { onDelete: "cascade" }).notNull(),
+  inventoryId: integer("inventory_id").references(() => inventory.id, { onDelete: "restrict" }).notNull(),
+  
+  quantity: numeric("quantity", { precision: 12, scale: 3 }).notNull(),
+  unit: varchar("unit", { length: 20 }).notNull(),
+  unitPrice: numeric("unit_price", { precision: 10, scale: 2 }).notNull(),
+  taxRate: numeric("tax_rate", { precision: 5, scale: 2 }).default("18"),
+  discountRate: numeric("discount_rate", { precision: 5, scale: 2 }).default("0"),
+  
+  lineTotal: numeric("line_total", { precision: 12, scale: 2 }).notNull(),
+  
+  // Teslimat durumu
+  deliveredQuantity: numeric("delivered_quantity", { precision: 12, scale: 3 }).default("0"),
+  
+  notes: text("notes"),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("poi_order_idx").on(table.purchaseOrderId),
+  index("poi_inventory_idx").on(table.inventoryId),
+]);
+
+export const insertPurchaseOrderItemSchema = createInsertSchema(purchaseOrderItems).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertPurchaseOrderItem = z.infer<typeof insertPurchaseOrderItemSchema>;
+export type PurchaseOrderItem = typeof purchaseOrderItems.$inferSelect;
+
+// ========================================
+// MAL KABUL - Goods Receipt
+// ========================================
+
+export const goodsReceiptStatusEnum = ["beklemede", "kontrol_ediliyor", "kabul_edildi", "kismen_kabul", "reddedildi"] as const;
+export type GoodsReceiptStatus = typeof goodsReceiptStatusEnum[number];
+
+export const goodsReceipts = pgTable("goods_receipts", {
+  id: serial("id").primaryKey(),
+  
+  // Kabul bilgileri
+  receiptNumber: varchar("receipt_number", { length: 50 }).notNull().unique(),
+  purchaseOrderId: integer("purchase_order_id").references(() => purchaseOrders.id, { onDelete: "set null" }),
+  supplierId: integer("supplier_id").references(() => suppliers.id, { onDelete: "restrict" }).notNull(),
+  
+  // Tarih ve zaman
+  receiptDate: timestamp("receipt_date").defaultNow().notNull(),
+  
+  // Belge bilgileri
+  supplierInvoiceNumber: varchar("supplier_invoice_number", { length: 100 }),
+  supplierInvoiceDate: timestamp("supplier_invoice_date"),
+  deliveryNoteNumber: varchar("delivery_note_number", { length: 100 }),
+  
+  // Durum
+  status: varchar("status", { length: 30 }).default("beklemede").notNull(),
+  
+  // Kalite kontrol
+  qualityCheckRequired: boolean("quality_check_required").default(false),
+  qualityCheckPassed: boolean("quality_check_passed"),
+  qualityCheckNotes: text("quality_check_notes"),
+  qualityCheckedById: varchar("quality_checked_by_id").references(() => users.id, { onDelete: "set null" }),
+  qualityCheckedAt: timestamp("quality_checked_at"),
+  
+  // Notlar
+  notes: text("notes"),
+  
+  receivedById: varchar("received_by_id").references(() => users.id, { onDelete: "set null" }).notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("gr_receipt_number_idx").on(table.receiptNumber),
+  index("gr_po_idx").on(table.purchaseOrderId),
+  index("gr_supplier_idx").on(table.supplierId),
+  index("gr_status_idx").on(table.status),
+  index("gr_date_idx").on(table.receiptDate),
+]);
+
+export const insertGoodsReceiptSchema = createInsertSchema(goodsReceipts).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertGoodsReceipt = z.infer<typeof insertGoodsReceiptSchema>;
+export type GoodsReceipt = typeof goodsReceipts.$inferSelect;
+
+// Mal Kabul Kalemleri
+export const goodsReceiptItems = pgTable("goods_receipt_items", {
+  id: serial("id").primaryKey(),
+  
+  goodsReceiptId: integer("goods_receipt_id").references(() => goodsReceipts.id, { onDelete: "cascade" }).notNull(),
+  inventoryId: integer("inventory_id").references(() => inventory.id, { onDelete: "restrict" }).notNull(),
+  purchaseOrderItemId: integer("purchase_order_item_id").references(() => purchaseOrderItems.id, { onDelete: "set null" }),
+  
+  // Miktarlar
+  orderedQuantity: numeric("ordered_quantity", { precision: 12, scale: 3 }),
+  receivedQuantity: numeric("received_quantity", { precision: 12, scale: 3 }).notNull(),
+  acceptedQuantity: numeric("accepted_quantity", { precision: 12, scale: 3 }),
+  rejectedQuantity: numeric("rejected_quantity", { precision: 12, scale: 3 }).default("0"),
+  
+  unit: varchar("unit", { length: 20 }).notNull(),
+  unitPrice: numeric("unit_price", { precision: 10, scale: 2 }),
+  
+  // Lot/Batch bilgisi
+  batchNumber: varchar("batch_number", { length: 100 }),
+  expiryDate: timestamp("expiry_date"),
+  productionDate: timestamp("production_date"),
+  
+  // Kalite kontrol
+  qualityStatus: varchar("quality_status", { length: 30 }).default("beklemede"), // beklemede, gecti, kaldi
+  qualityNotes: text("quality_notes"),
+  
+  // Red nedeni
+  rejectionReason: text("rejection_reason"),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("gri_receipt_idx").on(table.goodsReceiptId),
+  index("gri_inventory_idx").on(table.inventoryId),
+  index("gri_batch_idx").on(table.batchNumber),
+]);
+
+export const insertGoodsReceiptItemSchema = createInsertSchema(goodsReceiptItems).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertGoodsReceiptItem = z.infer<typeof insertGoodsReceiptItemSchema>;
+export type GoodsReceiptItem = typeof goodsReceiptItems.$inferSelect;
+
+// ========================================
+// REÇETE-HAMMADDE İLİŞKİSİ - Recipe Ingredients
+// ========================================
+
+export const recipeIngredients = pgTable("recipe_ingredients", {
+  id: serial("id").primaryKey(),
+  
+  recipeId: integer("recipe_id").references(() => recipes.id, { onDelete: "cascade" }).notNull(),
+  inventoryId: integer("inventory_id").references(() => inventory.id, { onDelete: "restrict" }).notNull(),
+  
+  // Miktar bilgisi
+  quantity: numeric("quantity", { precision: 10, scale: 3 }).notNull(),
+  unit: varchar("unit", { length: 20 }).notNull(),
+  
+  // Boyut (küçük/büyük bardak için farklı miktarlar)
+  cupSize: varchar("cup_size", { length: 20 }).default("all"), // small, large, all
+  
+  notes: text("notes"),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("ri_recipe_idx").on(table.recipeId),
+  index("ri_inventory_idx").on(table.inventoryId),
+]);
+
+export const insertRecipeIngredientSchema = createInsertSchema(recipeIngredients).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertRecipeIngredient = z.infer<typeof insertRecipeIngredientSchema>;
+export type RecipeIngredient = typeof recipeIngredients.$inferSelect;
+
+// ========================================
+// ÜRETİM KAYITLARI - Production Records
+// ========================================
+
+export const productionRecords = pgTable("production_records", {
+  id: serial("id").primaryKey(),
+  
+  // Üretim bilgileri
+  productionNumber: varchar("production_number", { length: 50 }).notNull().unique(),
+  productionDate: timestamp("production_date").defaultNow().notNull(),
+  
+  // Üretilen ürün
+  inventoryId: integer("inventory_id").references(() => inventory.id, { onDelete: "restrict" }).notNull(),
+  recipeId: integer("recipe_id").references(() => recipes.id, { onDelete: "set null" }),
+  
+  // Miktarlar
+  plannedQuantity: numeric("planned_quantity", { precision: 12, scale: 3 }).notNull(),
+  producedQuantity: numeric("produced_quantity", { precision: 12, scale: 3 }).notNull(),
+  wasteQuantity: numeric("waste_quantity", { precision: 12, scale: 3 }).default("0"),
+  unit: varchar("unit", { length: 20 }).notNull(),
+  
+  // Lot/Batch
+  batchNumber: varchar("batch_number", { length: 100 }),
+  expiryDate: timestamp("expiry_date"),
+  
+  // Durum
+  status: varchar("status", { length: 30 }).default("tamamlandi"), // planlandi, devam_ediyor, tamamlandi, iptal
+  
+  // Hammadde tüketimi işlendi mi?
+  ingredientsDeducted: boolean("ingredients_deducted").default(false),
+  productAddedToStock: boolean("product_added_to_stock").default(false),
+  
+  notes: text("notes"),
+  
+  producedById: varchar("produced_by_id").references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("pr_number_idx").on(table.productionNumber),
+  index("pr_date_idx").on(table.productionDate),
+  index("pr_inventory_idx").on(table.inventoryId),
+  index("pr_recipe_idx").on(table.recipeId),
+  index("pr_status_idx").on(table.status),
+]);
+
+export const insertProductionRecordSchema = createInsertSchema(productionRecords).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertProductionRecord = z.infer<typeof insertProductionRecordSchema>;
+export type ProductionRecord = typeof productionRecords.$inferSelect;
+
+// Üretim Hammadde Kullanımı
+export const productionIngredients = pgTable("production_ingredients", {
+  id: serial("id").primaryKey(),
+  
+  productionRecordId: integer("production_record_id").references(() => productionRecords.id, { onDelete: "cascade" }).notNull(),
+  inventoryId: integer("inventory_id").references(() => inventory.id, { onDelete: "restrict" }).notNull(),
+  
+  plannedQuantity: numeric("planned_quantity", { precision: 12, scale: 3 }).notNull(),
+  usedQuantity: numeric("used_quantity", { precision: 12, scale: 3 }).notNull(),
+  unit: varchar("unit", { length: 20 }).notNull(),
+  
+  // Stoktan düşüldü mü?
+  deductedFromStock: boolean("deducted_from_stock").default(false),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("pi_production_idx").on(table.productionRecordId),
+  index("pi_inventory_idx").on(table.inventoryId),
+]);
+
+export const insertProductionIngredientSchema = createInsertSchema(productionIngredients).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertProductionIngredient = z.infer<typeof insertProductionIngredientSchema>;
+export type ProductionIngredient = typeof productionIngredients.$inferSelect;

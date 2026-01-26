@@ -41,6 +41,7 @@ The frontend utilizes React 18+ with TypeScript and Vite, employing Shadcn/ui (N
 - **Content Studio (İçerik Stüdyosu)**: Unified content management consolidating banner creation and announcement publishing, featuring drafts, published items, and carousel management. Supports draft-to-publish workflow with targeting options and scheduling. Includes an advanced banner editor for visual content creation.
 - **Global Search & Calendar View**: Functionality for finding information across the platform and visualizing tasks/milestones.
 - **Unified Dashboard Alert System**: Real-time alerts for both branch and factory dashboards supporting 12 trigger types with severity levels and visual feedback.
+- **Procurement Management System (Satınalma)**: Complete procurement module with 5 sub-systems - Dashboard (real-time stats), Stok Yönetimi (inventory with stock movements), Tedarikçi Yönetimi (supplier management with performance tracking), Sipariş Yönetimi (purchase orders), and Mal Kabul (goods receipt with quality checks). Features automatic stock updates on goods receipt and full audit trail.
 
 ### System Design Choices
 - **Health Score Calculation**: Real-time scores based on recent faults and compliance.
@@ -62,6 +63,7 @@ The frontend utilizes React 18+ with TypeScript and Vite, employing Shadcn/ui (N
   - `/admin`: 28 tabs in 5 groups (Kullanıcılar, Sistem, İçerik, Operasyon, Fabrika)
   - `/operasyon`: 14 tabs (Şubeler, Dashboard, Görevler, Checklistler, etc.)
   - `/yeni-sube`: 4 tabs (Projeler, Proje Görevleri, Franchise Açılış, Kampanya)
+  - `/satinalma`: 5 tabs (Dashboard, Stok Yönetimi, Tedarikçiler, Siparişler, Mal Kabul)
 - **Mega-Module Tab Groups**: Admin and Akademi modules use two-level navigation with group buttons and tabs within each group.
 - **Shift Scheduling**: Fair algorithm ensuring full-time employees work minimum 6 days/week at 45 hours, part-time 3 days/25 hours.
 - **Analytics Architecture**: Three-period tabbed interface with real-time metric aggregation, AI-powered summaries, and conditional alerts.

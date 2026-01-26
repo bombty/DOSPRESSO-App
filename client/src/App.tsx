@@ -165,6 +165,7 @@ import AkademiMegaModule from "@/pages/akademi-mega";
 import CRMMegaModule from "@/pages/crm-mega";
 import CEOCommandCenter from "@/pages/ceo-command-center";
 import HQDashboard from "@/pages/hq-dashboard";
+import SatinalmaMega from "@/pages/satinalma-mega";
 
 const PUBLIC_PATH_PREFIXES = [
   "/login", 
@@ -367,6 +368,7 @@ function Router() {
           <Route path="/admin/*?" component={AdminMegaModule} />
           <Route path="/ceo-command-center">{() => <ExecutiveOnly><CEOCommandCenter /></ExecutiveOnly>}</Route>
           <Route path="/hq-dashboard/:department?">{() => <HQOnly><HQDashboard /></HQOnly>}</Route>
+          <Route path="/satinalma/:tab?" component={SatinalmaMega} />
         </>
       )}
       

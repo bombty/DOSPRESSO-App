@@ -1,5 +1,6 @@
 import { registerHQDashboardRoutes } from "./hq-dashboard-routes";
 import { registerCRMRoutes } from "./crm-routes";
+import { registerSatinalmaRoutes } from "./satinalma-routes";
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
@@ -31285,6 +31286,7 @@ Dusuk puanli alanlara odaklan ve pozitif, motive edici ol. JSON dizisi olarak ya
 
   registerHQDashboardRoutes(app, isAuthenticated);
   registerCRMRoutes(app, isAuthenticated);
+  registerSatinalmaRoutes(app, isAuthenticated);
   const httpServer = createServer(app);
   return httpServer;
 }
