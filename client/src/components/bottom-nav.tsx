@@ -77,9 +77,9 @@ export function BottomNav() {
               {active && (
                 <div className="absolute inset-1 rounded-xl bg-primary/10 pointer-events-none" />
               )}
-              <div className={`relative pointer-events-none transition-all duration-300 ${active ? "scale-110 -translate-y-0.5" : ""}`}>
-                <div className={`p-1.5 rounded-xl transition-all duration-300 ${active ? "bg-primary shadow-md" : ""}`}>
-                  <Icon className={`w-5 h-5 transition-colors duration-300 ${active ? "text-white stroke-[2px]" : ""}`} />
+              <div className="relative pointer-events-none">
+                <div className={`p-1.5 rounded-xl transition-all duration-300 ${active ? "bg-primary shadow-sm" : ""}`}>
+                  <Icon className={`w-5 h-5 transition-colors duration-300 ${active ? "text-white stroke-[2.5px]" : ""}`} />
                 </div>
                 {item.badge && item.badge > 0 && (
                   <span className="absolute -top-1 -right-1 w-4 h-4 bg-destructive text-destructive-foreground text-[9px] font-bold rounded-full flex items-center justify-center shadow-sm">
