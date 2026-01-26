@@ -17,12 +17,33 @@ export function BottomNav() {
   
   const isHQ = user && isHQRole(user.role as any);
   
+  const getCrmPath = () => {
+    if (!user) return "/crm";
+    const role = user.role;
+    
+    switch (role) {
+      case 'coach':
+        return "/crm/coach-branches";
+      case 'satinalma':
+        return "/crm/tedarikciler";
+      case 'muhasebe':
+        return "/crm/cari-takip";
+      case 'teknik':
+      case 'ekipman_teknik':
+        return "/crm/teknik-ariza";
+      case 'trainer':
+        return "/crm/dashboard";
+      default:
+        return "/crm";
+    }
+  };
+  
   // Build nav items based on user role - all roles use "/" for dashboard
   const allNavItems: NavItem[] = [
     { icon: Home, label: "Ana Sayfa", path: "/" },
     { icon: GraduationCap, label: "Akademi", path: isHQ ? "/akademi-hq" : "/akademi" },
-    // CRM - tüm kullanıcılar için erişilebilir (HQ için yönetim, şube/fabrika için kişisel)
-    { icon: Headphones, label: "CRM", path: "/crm" },
+    // CRM - role göre dinamik yönlendirme (HQ için yönetim, şube/fabrika için kişisel)
+    { icon: Headphones, label: "CRM", path: getCrmPath() },
     { icon: Wrench, label: "Arıza", path: "/ariza" },
     { icon: User, label: "Profil", path: user ? `/personel/${user.id}` : "/login" },
   ];
