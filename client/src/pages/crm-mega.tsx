@@ -17,7 +17,9 @@ import {
   FileText,
   Wrench,
   Building2,
-  Wallet
+  Wallet,
+  MessageSquare,
+  GraduationCap
 } from "lucide-react";
 
 const CRMDashboard = lazy(() => import("@/pages/crm/dashboard"));
@@ -30,6 +32,9 @@ const MaliyetYonetimi = lazy(() => import("@/pages/fabrika/maliyet-yonetimi"));
 const CariTakip = lazy(() => import("@/pages/satinalma/cari-takip"));
 const TedarikciYonetimi = lazy(() => import("@/pages/satinalma/tedarikci-yonetimi"));
 const SiparisYonetimi = lazy(() => import("@/pages/satinalma/siparis-yonetimi"));
+const CoachBranches = lazy(() => import("@/pages/crm/coach-branches"));
+const MentorNotes = lazy(() => import("@/pages/crm/mentor-notes"));
+const TeknikAriza = lazy(() => import("@/pages/crm/teknik-ariza"));
 
 const HQ_ROLES = [
   'admin', 
@@ -141,6 +146,33 @@ const CRM_TABS: TabConfig[] = [
     permissionModule: "siparis_yonetimi",
     component: SiparisYonetimi,
     allowedRoles: ['admin', 'satinalma', 'yatirimci_hq']
+  },
+  {
+    id: "sube-takibi",
+    label: "Branch Tracking",
+    labelTr: "Şube Takibi",
+    icon: <Building2 className="h-4 w-4" />,
+    permissionModule: "sube_takibi",
+    component: CoachBranches,
+    allowedRoles: ['admin', 'coach', 'bolge_muduru', 'operasyon_muduru', 'genel_mudur']
+  },
+  {
+    id: "mentor-notlari",
+    label: "Mentor Notes",
+    labelTr: "Mentor Notları",
+    icon: <MessageSquare className="h-4 w-4" />,
+    permissionModule: "mentor_notlari",
+    component: MentorNotes,
+    allowedRoles: ['admin', 'coach', 'egitim_muduru', 'bolge_muduru']
+  },
+  {
+    id: "ariza-takibi",
+    label: "Fault Tracking",
+    labelTr: "Arıza Takibi",
+    icon: <Wrench className="h-4 w-4" />,
+    permissionModule: "ariza_takibi",
+    component: TeknikAriza,
+    allowedRoles: ['admin', 'teknik', 'teknik_mudur']
   }
 ];
 
@@ -167,7 +199,10 @@ const TAB_URL_MAP: Record<string, string> = {
   "urun-maliyetleri": "/crm/urun-maliyetleri",
   "cari-takip": "/crm/cari-takip",
   "tedarikciler": "/crm/tedarikciler",
-  "siparisler": "/crm/siparisler"
+  "siparisler": "/crm/siparisler",
+  "sube-takibi": "/crm/sube-takibi",
+  "mentor-notlari": "/crm/mentor-notlari",
+  "ariza-takibi": "/crm/ariza-takibi"
 };
 
 function getTabFromUrl(pathname: string): string | null {
@@ -180,6 +215,9 @@ function getTabFromUrl(pathname: string): string | null {
   if (pathname.startsWith("/crm/cari-takip")) return "cari-takip";
   if (pathname.startsWith("/crm/tedarikciler")) return "tedarikciler";
   if (pathname.startsWith("/crm/siparisler")) return "siparisler";
+  if (pathname.startsWith("/crm/sube-takibi")) return "sube-takibi";
+  if (pathname.startsWith("/crm/mentor-notlari")) return "mentor-notlari";
+  if (pathname.startsWith("/crm/ariza-takibi")) return "ariza-takibi";
   
   const parts = pathname.split("/").filter(Boolean);
   if (parts[0] === "crm" && parts[1]) {
