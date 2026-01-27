@@ -5624,6 +5624,123 @@ export type InsertEmployeeOnboardingTask = z.infer<typeof insertEmployeeOnboardi
 export type EmployeeOnboardingTask = typeof employeeOnboardingTasks.$inferSelect;
 
 // ========================================
+// ONBOARDING TEMPLATES - Coach Onboarding Şablonları
+// ========================================
+
+// Onboarding şablonları - Coach HQ'da oluşturur, tüm şubelerde kullanılır
+export const onboardingTemplates = pgTable("onboarding_templates", {
+  id: serial("id").primaryKey(),
+  name: varchar("name", { length: 200 }).notNull(), // "Yeni Barista Onboarding", "Stajyer Programı"
+  description: text("description"),
+  targetRole: varchar("target_role", { length: 50 }).notNull().default("barista"), // barista, stajyer, supervisor_buddy
+  durationDays: integer("duration_days").notNull().default(60), // Toplam süre (örn: 60 gün = 2 ay deneme süresi)
+  isActive: boolean("is_active").notNull().default(true),
+  createdById: varchar("created_by_id").notNull(), // Coach user ID
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("onboarding_templates_target_role_idx").on(table.targetRole),
+  index("onboarding_templates_active_idx").on(table.isActive),
+]);
+
+export const insertOnboardingTemplateSchema = createInsertSchema(onboardingTemplates).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertOnboardingTemplate = z.infer<typeof insertOnboardingTemplateSchema>;
+export type OnboardingTemplate = typeof onboardingTemplates.$inferSelect;
+
+// Onboarding şablon adımları - Her şablondaki eğitim aşamaları
+export const onboardingTemplateSteps = pgTable("onboarding_template_steps", {
+  id: serial("id").primaryKey(),
+  templateId: integer("template_id").notNull().references(() => onboardingTemplates.id, { onDelete: "cascade" }),
+  stepOrder: integer("step_order").notNull().default(1), // Sıra numarası
+  title: varchar("title", { length: 200 }).notNull(), // "Apron & Temel Eğitim", "Bar Eğitimi"
+  description: text("description"),
+  startDay: integer("start_day").notNull().default(1), // Kaçıncı gün başlar (1 = ilk gün)
+  endDay: integer("end_day").notNull().default(3), // Kaçıncı gün biter
+  mentorRoleType: varchar("mentor_role_type", { length: 50 }).notNull().default("barista"), // Sorumlu rolü: barista, supervisor, supervisor_buddy
+  trainingModuleId: integer("training_module_id"), // İlişkili eğitim modülü (opsiyonel)
+  requiredCompletion: boolean("required_completion").notNull().default(true), // Zorunlu mu?
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("onboarding_template_steps_template_idx").on(table.templateId),
+  index("onboarding_template_steps_order_idx").on(table.stepOrder),
+]);
+
+export const insertOnboardingTemplateStepSchema = createInsertSchema(onboardingTemplateSteps).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertOnboardingTemplateStep = z.infer<typeof insertOnboardingTemplateStepSchema>;
+export type OnboardingTemplateStep = typeof onboardingTemplateSteps.$inferSelect;
+
+// Personel onboarding atama - Yeni personele şablon uygulandığında
+export const employeeOnboardingAssignments = pgTable("employee_onboarding_assignments", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull(), // Yeni personel
+  branchId: integer("branch_id").notNull(),
+  templateId: integer("template_id").notNull().references(() => onboardingTemplates.id),
+  startDate: timestamp("start_date").notNull().defaultNow(),
+  expectedEndDate: timestamp("expected_end_date"), // Beklenen bitiş (startDate + durationDays)
+  actualEndDate: timestamp("actual_end_date"), // Gerçek bitiş
+  status: varchar("status", { length: 30 }).notNull().default("in_progress"), // in_progress, completed, cancelled
+  overallProgress: integer("overall_progress").notNull().default(0), // 0-100 yüzde
+  managerNotified: boolean("manager_notified").notNull().default(false), // Tamamlandığında bildirim gönderildi mi?
+  evaluationStatus: varchar("evaluation_status", { length: 30 }), // pending, passed, failed (deneme süreci değerlendirmesi)
+  evaluationNotes: text("evaluation_notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("employee_onboarding_assignments_user_idx").on(table.userId),
+  index("employee_onboarding_assignments_branch_idx").on(table.branchId),
+  index("employee_onboarding_assignments_status_idx").on(table.status),
+]);
+
+export const insertEmployeeOnboardingAssignmentSchema = createInsertSchema(employeeOnboardingAssignments).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertEmployeeOnboardingAssignment = z.infer<typeof insertEmployeeOnboardingAssignmentSchema>;
+export type EmployeeOnboardingAssignment = typeof employeeOnboardingAssignments.$inferSelect;
+
+// Personel onboarding adım ilerlemesi - Her adım için ilerleme
+export const employeeOnboardingProgress = pgTable("employee_onboarding_progress", {
+  id: serial("id").primaryKey(),
+  assignmentId: integer("assignment_id").notNull().references(() => employeeOnboardingAssignments.id, { onDelete: "cascade" }),
+  stepId: integer("step_id").notNull().references(() => onboardingTemplateSteps.id),
+  mentorId: varchar("mentor_id"), // Atanan mentor (şubedeki kişi)
+  status: varchar("status", { length: 30 }).notNull().default("pending"), // pending, in_progress, completed
+  startedAt: timestamp("started_at"),
+  completedAt: timestamp("completed_at"),
+  mentorNotes: text("mentor_notes"), // Mentor değerlendirmesi
+  rating: integer("rating"), // 1-5 puan
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("employee_onboarding_progress_assignment_idx").on(table.assignmentId),
+  index("employee_onboarding_progress_step_idx").on(table.stepId),
+  index("employee_onboarding_progress_mentor_idx").on(table.mentorId),
+  index("employee_onboarding_progress_status_idx").on(table.status),
+]);
+
+export const insertEmployeeOnboardingProgressSchema = createInsertSchema(employeeOnboardingProgress).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertEmployeeOnboardingProgress = z.infer<typeof insertEmployeeOnboardingProgressSchema>;
+export type EmployeeOnboardingProgress = typeof employeeOnboardingProgress.$inferSelect;
+
+// ========================================
 // PERMISSION MODULES - Yetki Modülleri Tanımları
 // ========================================
 

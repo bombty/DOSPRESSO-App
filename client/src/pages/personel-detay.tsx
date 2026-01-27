@@ -789,7 +789,13 @@ export default function PersonelDetay() {
               </div>
             </CardHeader>
             <CardContent>
-              {documents && documents.length > 0 ? (
+              {documentsLoading ? (
+                <div className="flex flex-col gap-3">
+                  <Skeleton className="h-12 w-full" />
+                  <Skeleton className="h-12 w-full" />
+                  <Skeleton className="h-12 w-full" />
+                </div>
+              ) : documents && documents.length > 0 ? (
                 <div className="rounded-md border">
                   <Table>
                     <TableHeader>

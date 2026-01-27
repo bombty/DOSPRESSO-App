@@ -1247,8 +1247,8 @@ Vardiya Tipleri:
 
 ⚠️ UYARILAR:
 - Aynı personeli aynı gün birden fazla vardiyaya ATAMA!
-- HER personeli haftada en az 5-6 kez planla (fulltime için).
-- Parttime personeli haftada 3 gün planla.
+- FULLTIME ÇALIŞMA KURALI: Fulltime (FT) personeli haftada KESİNLİKLE 6 GÜN planla (45 saat = 6 gün × 7.5 saat). 1 gün OFF ver.
+- PARTTIME ÇALIŞMA KURALI: Parttime (PT) personeli haftada 3 GÜN planla (25 saat civarı).
 - breakStartTime'ları 15dk arayla kademeli ver!
 - Personel: ${employees.length} kişi.
 

@@ -2,7 +2,7 @@ import { storage } from "./storage";
 import type { Task, Equipment, User } from "@shared/schema";
 import { sendNotificationEmail } from "./email";
 import { db } from "./db";
-import { correctiveActions, users, auditInstances, branches, factoryProducts } from "@shared/schema";
+import { correctiveActions, users, auditInstances, branches, factoryProducts, employeeOnboardingAssignments, onboardingTemplates } from "@shared/schema";
 import { eq, lt, and, ne, lte, or, inArray, gt } from "drizzle-orm";
 
 const REMINDER_INTERVAL = 5 * 60 * 1000; // 5 minutes in milliseconds
@@ -733,5 +733,106 @@ export function stopStockAlertSystem() {
     clearInterval(stockAlertInterval);
     stockAlertInterval = null;
     console.log("Stok uyarı sistemi durduruldu");
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// ONBOARDING COMPLETION NOTIFICATIONS
+// ═══════════════════════════════════════════════════════════════
+
+const ONBOARDING_CHECK_INTERVAL = 10 * 60 * 1000; // 10 minutes
+let onboardingCheckInterval: NodeJS.Timeout | null = null;
+
+export async function checkOnboardingCompletions() {
+  try {
+    // Get all completed assignments that haven't notified the manager yet
+    const completedAssignments = await db
+      .select({
+        id: employeeOnboardingAssignments.id,
+        userId: employeeOnboardingAssignments.userId,
+        branchId: employeeOnboardingAssignments.branchId,
+        templateId: employeeOnboardingAssignments.templateId,
+        overallProgress: employeeOnboardingAssignments.overallProgress,
+        managerNotified: employeeOnboardingAssignments.managerNotified,
+        employeeName: users.firstName,
+        employeeLastName: users.lastName,
+        employeeUsername: users.username,
+        templateName: onboardingTemplates.name,
+      })
+      .from(employeeOnboardingAssignments)
+      .leftJoin(users, eq(employeeOnboardingAssignments.userId, users.id))
+      .leftJoin(onboardingTemplates, eq(employeeOnboardingAssignments.templateId, onboardingTemplates.id))
+      .where(
+        and(
+          eq(employeeOnboardingAssignments.overallProgress, 100),
+          eq(employeeOnboardingAssignments.status, 'completed'),
+          eq(employeeOnboardingAssignments.managerNotified, false)
+        )
+      );
+
+    console.log(`📋 Onboarding check: found ${completedAssignments.length} completed assignments awaiting manager notification`);
+
+    for (const assignment of completedAssignments) {
+      try {
+        // Get branch supervisor(s)
+        const supervisors = await db
+          .select()
+          .from(users)
+          .where(
+            and(
+              eq(users.branchId, assignment.branchId!),
+              or(
+                eq(users.role, 'supervisor'),
+                eq(users.role, 'supervisor_buddy')
+              )
+            )
+          );
+
+        const employeeName = assignment.employeeName && assignment.employeeLastName
+          ? `${assignment.employeeName} ${assignment.employeeLastName}`
+          : assignment.employeeUsername || 'Personel';
+
+        // Notify each supervisor
+        for (const supervisor of supervisors) {
+          await storage.createNotification({
+            userId: supervisor.id,
+            type: 'onboarding_complete',
+            title: 'Onboarding Tamamlandı - Değerlendirme Zamanı',
+            message: `${employeeName} personelin deneme süreci tamamlandı. Değerlendirme yapın.`,
+            link: '/sube/onboarding',
+          });
+          console.log(`📧 Onboarding completion notification sent to supervisor ${supervisor.firstName} for employee ${employeeName}`);
+        }
+
+        // Mark assignment as manager notified
+        await db
+          .update(employeeOnboardingAssignments)
+          .set({ managerNotified: true })
+          .where(eq(employeeOnboardingAssignments.id, assignment.id));
+
+        console.log(`✅ Marked onboarding assignment ${assignment.id} as manager notified`);
+      } catch (assignmentError) {
+        console.error(`Error processing onboarding assignment ${assignment.id}:`, assignmentError);
+      }
+    }
+  } catch (error) {
+    console.error("Onboarding completion check error:", error);
+  }
+}
+
+export function startOnboardingCompletionSystem() {
+  console.log("📋 Onboarding tamamlama bildirim sistemi başlatıldı - Her 10 dakikada bir kontrol edilecek");
+  
+  // Run initial check after delay
+  setTimeout(checkOnboardingCompletions, 20000);
+  
+  onboardingCheckInterval = setInterval(checkOnboardingCompletions, ONBOARDING_CHECK_INTERVAL);
+}
+
+export function stopOnboardingCompletionSystem() {
+  if (onboardingCheckInterval) {
+    clearInterval(onboardingCheckInterval);
+    onboardingCheckInterval = null;
+    console.log("Onboarding bildirim sistemi durduruldu");
   }
 }

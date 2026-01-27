@@ -34,7 +34,9 @@ import {
   Eye,
   Check,
   Star,
-  QrCode
+  QrCode,
+  GraduationCap,
+  Users2
 } from "lucide-react";
 
 interface ActiveSession {
@@ -184,6 +186,34 @@ export default function SubeDashboard() {
     enabled: !!branchId && authChecked,
   });
 
+  // Onboarding assignments query
+  interface OnboardingAssignment {
+    id: number;
+    userId: string;
+    branchId: number;
+    templateId: number;
+    startDate: string;
+    expectedEndDate: string;
+    actualEndDate: string | null;
+    status: 'active' | 'completed' | 'cancelled' | 'on_hold';
+    overallProgress: number;
+    managerNotified: boolean;
+    evaluationStatus: string | null;
+    createdAt: string;
+    employeeName: string;
+    templateName: string;
+    templateDurationDays: number;
+  }
+
+  const { data: onboardingAssignments = [] } = useQuery<OnboardingAssignment[]>({
+    queryKey: ["/api/employee-onboarding-assignments/branch", branchId],
+    queryFn: async () => {
+      const res = await fetch(`/api/employee-onboarding-assignments/branch/${branchId}`);
+      return res.json();
+    },
+    enabled: !!branchId && authChecked,
+  });
+
   const { data: dailySummaries = [], isLoading: loadingDaily } = useQuery<DailySummary[]>({
     queryKey: ['/api/branches', branchId, 'attendance', 'daily', selectedDate],
     queryFn: async () => {
@@ -308,6 +338,12 @@ export default function SubeDashboard() {
               Kiosk Modu
             </Button>
           </Link>
+          <Link href="/qr-scanner">
+            <Button variant="outline" className="gap-2" data-testid="button-qr-view">
+              <QrCode className="h-4 w-4" />
+              QR Kod
+            </Button>
+          </Link>
           <Button
             variant="outline"
             size="sm"
@@ -328,7 +364,7 @@ export default function SubeDashboard() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         <Card className="hover-elevate">
           <CardContent className="p-6">
             <div className="flex items-center gap-3">
@@ -386,6 +422,27 @@ export default function SubeDashboard() {
             </div>
           </CardContent>
         </Card>
+
+        <Card className="hover-elevate col-span-2 md:col-span-1">
+          <CardContent className="p-6">
+            <div className="flex items-center gap-3">
+              <div className="p-3 bg-yellow-500/20 rounded-lg">
+                <Star className="h-6 w-6 text-yellow-500" />
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Müşteri Puanı</p>
+                <div className="flex items-center gap-2">
+                  <p className="text-2xl font-bold" data-testid="text-feedback-rating">
+                    {feedbackStats?.avgRating?.toFixed(1) || '—'}
+                  </p>
+                  <span className="text-sm text-muted-foreground">
+                    ({feedbackStats?.totalCount || 0} değerlendirme)
+                  </span>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       {(dashboardData?.alerts.length || 0) > 0 && (
@@ -433,6 +490,100 @@ export default function SubeDashboard() {
                 </div>
               </div>
             ))}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Onboarding Assignments Widget */}
+      {onboardingAssignments.length > 0 && (
+        <Card className="mb-4">
+          <CardHeader className="flex flex-row items-center justify-between gap-4">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <GraduationCap className="h-5 w-5" />
+                Aktif Onboarding Süreçleri
+              </CardTitle>
+              <CardDescription>
+                Şubede eğitim sürecinde olan personeller
+              </CardDescription>
+            </div>
+            <Link href="/sube/onboarding">
+              <Button variant="outline" size="sm" data-testid="button-view-all-onboarding">
+                Tümünü Gör
+                <ChevronRight className="h-4 w-4 ml-1" />
+              </Button>
+            </Link>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {onboardingAssignments
+                .filter(a => a.status === 'active')
+                .slice(0, 6)
+                .map((assignment) => {
+                  const daysRemaining = assignment.expectedEndDate
+                    ? Math.max(0, Math.ceil((new Date(assignment.expectedEndDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
+                    : null;
+                  
+                  const getStatusBadge = (status: string, progress: number) => {
+                    if (progress === 100) return <Badge variant="default" className="bg-green-500">Tamamlandı</Badge>;
+                    if (status === 'on_hold') return <Badge variant="secondary">Beklemede</Badge>;
+                    if (daysRemaining !== null && daysRemaining <= 3) return <Badge variant="destructive">Son {daysRemaining} Gün</Badge>;
+                    return <Badge variant="outline">Devam Ediyor</Badge>;
+                  };
+
+                  return (
+                    <Card key={assignment.id} className="hover-elevate" data-testid={`card-onboarding-${assignment.id}`}>
+                      <CardContent className="p-4">
+                        <div className="flex items-start justify-between gap-2 mb-3">
+                          <div className="flex items-center gap-2">
+                            <div className="p-2 bg-primary/10 rounded-lg">
+                              <Users2 className="h-4 w-4 text-primary" />
+                            </div>
+                            <div className="min-w-0">
+                              <p className="font-medium text-sm truncate" data-testid={`text-employee-name-${assignment.id}`}>
+                                {assignment.employeeName || 'İsimsiz'}
+                              </p>
+                              <p className="text-xs text-muted-foreground truncate">
+                                {assignment.templateName || 'Şablon Yok'}
+                              </p>
+                            </div>
+                          </div>
+                          {getStatusBadge(assignment.status, assignment.overallProgress)}
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="text-muted-foreground">İlerleme</span>
+                            <span className="font-medium" data-testid={`text-progress-${assignment.id}`}>
+                              %{assignment.overallProgress || 0}
+                            </span>
+                          </div>
+                          <Progress 
+                            value={assignment.overallProgress || 0} 
+                            className="h-2"
+                            data-testid={`progress-bar-${assignment.id}`}
+                          />
+                          
+                          {daysRemaining !== null && (
+                            <div className="flex items-center justify-between text-xs text-muted-foreground mt-2">
+                              <span>Kalan Süre</span>
+                              <span className={daysRemaining <= 3 ? 'text-red-500 font-medium' : ''}>
+                                {daysRemaining} gün
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+            </div>
+            {onboardingAssignments.filter(a => a.status === 'active').length === 0 && (
+              <div className="text-center py-8 text-muted-foreground">
+                <GraduationCap className="h-10 w-10 mx-auto mb-2 opacity-50" />
+                <p>Aktif onboarding süreci bulunmuyor</p>
+              </div>
+            )}
           </CardContent>
         </Card>
       )}

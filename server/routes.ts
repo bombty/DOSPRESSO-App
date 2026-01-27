@@ -258,6 +258,14 @@ import {
   monthlyEmployeePerformance,
   employeeOfMonthAwards,
   managerMonthlyRatings,
+  onboardingTemplates,
+  insertOnboardingTemplateSchema,
+  onboardingTemplateSteps,
+  insertOnboardingTemplateStepSchema,
+  employeeOnboardingAssignments,
+  insertEmployeeOnboardingAssignmentSchema,
+  employeeOnboardingProgress,
+  insertEmployeeOnboardingProgressSchema,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, sql, and, or, isNull, isNotNull, inArray, lte, gte } from "drizzle-orm";
@@ -267,7 +275,7 @@ import { generateTrainingMaterialBundle } from "./ai-motor";
 import { updateEmployeeLocation, getActiveBranchEmployees, getEmployeeLocation, removeEmployeeLocation, startTrackingCleanup } from "./tracking";
 import { compressChecklistPhotoBase64 } from "./photo-utils";
 import { sendNotificationEmail, sendEmployeeOfMonthEmail } from "./email";
-import { startReminderSystem, startStockAlertSystem, notifyTeknikNewFault, notifySatinalmaLowStock } from "./reminders";
+import { startReminderSystem, startStockAlertSystem, startOnboardingCompletionSystem, notifyTeknikNewFault, notifySatinalmaLowStock } from "./reminders";
 import bcrypt from "bcrypt";
 import { z } from "zod";
 import { resolvePermissionScope, applyScopeFilter, getUserPermissions, getAllActionsGroupedByModule, getRoleGrants, upsertPermissionGrant, deletePermissionGrant, getRoleAccessibleModules } from "./permission-service";
@@ -12337,8 +12345,597 @@ JSON formatında yanıt ver:
     }
   });
 
+
   startReminderSystem();
+
+  // ========================================
+  // ONBOARDING TEMPLATES API
+  // ========================================
+
+  // GET /api/onboarding-templates - Get all active templates (coach/HQ only)
+  app.get('/api/onboarding-templates', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      if (!isHQRole(user.role)) {
+        return res.status(403).json({ message: "Yetkiniz yok" });
+      }
+
+      const templates = await db.select()
+        .from(onboardingTemplates)
+        .where(eq(onboardingTemplates.isActive, true))
+        .orderBy(desc(onboardingTemplates.createdAt));
+      
+      res.json(templates);
+    } catch (error: any) {
+      console.error("Error fetching onboarding templates:", error);
+      res.status(500).json({ message: "Şablonlar yüklenirken hata oluştu" });
+    }
+  });
+
+  // POST /api/onboarding-templates - Create a new template (coach/HQ only)
+  app.post('/api/onboarding-templates', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      if (!isHQRole(user.role)) {
+        return res.status(403).json({ message: "Sadece HQ kullanıcıları şablon oluşturabilir" });
+      }
+
+      const parsed = insertOnboardingTemplateSchema.safeParse({
+        ...req.body,
+        createdById: user.id,
+      });
+      
+      if (!parsed.success) {
+        return res.status(400).json({ message: "Geçersiz veri", errors: parsed.error.errors });
+      }
+
+      const [template] = await db.insert(onboardingTemplates).values(parsed.data).returning();
+      res.status(201).json(template);
+    } catch (error: any) {
+      console.error("Error creating onboarding template:", error);
+      res.status(500).json({ message: "Şablon oluşturulurken hata oluştu" });
+    }
+  });
+
+  // GET /api/onboarding-templates/:id - Get template with steps
+  app.get('/api/onboarding-templates/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      if (!isHQRole(user.role)) {
+        return res.status(403).json({ message: "Yetkiniz yok" });
+      }
+      const templateId = parseInt(req.params.id);
+
+      if (isNaN(templateId)) {
+        return res.status(400).json({ message: "Geçersiz şablon ID" });
+      }
+
+      const [template] = await db.select()
+        .from(onboardingTemplates)
+        .where(eq(onboardingTemplates.id, templateId));
+
+      if (!template) {
+        return res.status(404).json({ message: "Şablon bulunamadı" });
+      }
+
+      const steps = await db.select()
+        .from(onboardingTemplateSteps)
+        .where(eq(onboardingTemplateSteps.templateId, templateId))
+        .orderBy(onboardingTemplateSteps.stepOrder);
+
+      res.json({ ...template, steps });
+    } catch (error: any) {
+      console.error("Error fetching onboarding template:", error);
+      res.status(500).json({ message: "Şablon yüklenirken hata oluştu" });
+    }
+  });
+
+  // PUT /api/onboarding-templates/:id - Update template
+  app.put('/api/onboarding-templates/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      if (!isHQRole(user.role)) {
+        return res.status(403).json({ message: "Yetkiniz yok" });
+      }
+
+      const templateId = parseInt(req.params.id);
+      if (isNaN(templateId)) {
+        return res.status(400).json({ message: "Geçersiz şablon ID" });
+      }
+
+      const { name, description, targetRole, durationDays, isActive } = req.body;
+      
+      const [updated] = await db.update(onboardingTemplates)
+        .set({
+          name,
+          description,
+          targetRole,
+          durationDays,
+          isActive,
+          updatedAt: new Date(),
+        })
+        .where(eq(onboardingTemplates.id, templateId))
+        .returning();
+
+      if (!updated) {
+        return res.status(404).json({ message: "Şablon bulunamadı" });
+      }
+
+      res.json(updated);
+    } catch (error: any) {
+      console.error("Error updating onboarding template:", error);
+      res.status(500).json({ message: "Şablon güncellenirken hata oluştu" });
+    }
+  });
+
+  // DELETE /api/onboarding-templates/:id - Soft delete (set isActive=false)
+  app.delete('/api/onboarding-templates/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      if (!isHQRole(user.role)) {
+        return res.status(403).json({ message: "Yetkiniz yok" });
+      }
+
+      const templateId = parseInt(req.params.id);
+      if (isNaN(templateId)) {
+        return res.status(400).json({ message: "Geçersiz şablon ID" });
+      }
+
+      const [updated] = await db.update(onboardingTemplates)
+        .set({ isActive: false, updatedAt: new Date() })
+        .where(eq(onboardingTemplates.id, templateId))
+        .returning();
+
+      if (!updated) {
+        return res.status(404).json({ message: "Şablon bulunamadı" });
+      }
+
+      res.json({ message: "Şablon silindi", template: updated });
+    } catch (error: any) {
+      console.error("Error deleting onboarding template:", error);
+      res.status(500).json({ message: "Şablon silinirken hata oluştu" });
+    }
+  });
+
+  // ========================================
+  // ONBOARDING TEMPLATE STEPS API
+  // ========================================
+
+  // GET /api/onboarding-templates/:id/steps - Get template steps
+  app.get('/api/onboarding-templates/:id/steps', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      if (!isHQRole(user.role)) {
+        return res.status(403).json({ message: "Yetkiniz yok" });
+      }
+      const templateId = parseInt(req.params.id);
+      if (isNaN(templateId)) {
+        return res.status(400).json({ message: "Geçersiz şablon ID" });
+      }
+
+      const steps = await db.select()
+        .from(onboardingTemplateSteps)
+        .where(eq(onboardingTemplateSteps.templateId, templateId))
+        .orderBy(onboardingTemplateSteps.stepOrder);
+
+      res.json(steps);
+    } catch (error: any) {
+      console.error("Error fetching template steps:", error);
+      res.status(500).json({ message: "Adımlar yüklenirken hata oluştu" });
+    }
+  });
+
+  // POST /api/onboarding-templates/:id/steps - Add step to template
+  app.post('/api/onboarding-templates/:id/steps', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      if (!isHQRole(user.role)) {
+        return res.status(403).json({ message: "Yetkiniz yok" });
+      }
+
+      const templateId = parseInt(req.params.id);
+      if (isNaN(templateId)) {
+        return res.status(400).json({ message: "Geçersiz şablon ID" });
+      }
+
+      const parsed = insertOnboardingTemplateStepSchema.safeParse({
+        ...req.body,
+        templateId,
+      });
+      
+      if (!parsed.success) {
+        return res.status(400).json({ message: "Geçersiz veri", errors: parsed.error.errors });
+      }
+
+      const [step] = await db.insert(onboardingTemplateSteps).values(parsed.data).returning();
+      res.status(201).json(step);
+    } catch (error: any) {
+      console.error("Error creating template step:", error);
+      res.status(500).json({ message: "Adım oluşturulurken hata oluştu" });
+    }
+  });
+
+  // PUT /api/onboarding-template-steps/:id - Update step
+  app.put('/api/onboarding-template-steps/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      if (!isHQRole(user.role)) {
+        return res.status(403).json({ message: "Yetkiniz yok" });
+      }
+
+      const stepId = parseInt(req.params.id);
+      if (isNaN(stepId)) {
+        return res.status(400).json({ message: "Geçersiz adım ID" });
+      }
+
+      const { stepOrder, title, description, startDay, endDay, mentorRoleType, trainingModuleId, requiredCompletion } = req.body;
+      
+      const [updated] = await db.update(onboardingTemplateSteps)
+        .set({
+          stepOrder,
+          title,
+          description,
+          startDay,
+          endDay,
+          mentorRoleType,
+          trainingModuleId,
+          requiredCompletion,
+          updatedAt: new Date(),
+        })
+        .where(eq(onboardingTemplateSteps.id, stepId))
+        .returning();
+
+      if (!updated) {
+        return res.status(404).json({ message: "Adım bulunamadı" });
+      }
+
+      res.json(updated);
+    } catch (error: any) {
+      console.error("Error updating template step:", error);
+      res.status(500).json({ message: "Adım güncellenirken hata oluştu" });
+    }
+  });
+
+  // DELETE /api/onboarding-template-steps/:id - Delete step
+  app.delete('/api/onboarding-template-steps/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      if (!isHQRole(user.role)) {
+        return res.status(403).json({ message: "Yetkiniz yok" });
+      }
+
+      const stepId = parseInt(req.params.id);
+      if (isNaN(stepId)) {
+        return res.status(400).json({ message: "Geçersiz adım ID" });
+      }
+
+      const [deleted] = await db.delete(onboardingTemplateSteps)
+        .where(eq(onboardingTemplateSteps.id, stepId))
+        .returning();
+
+      if (!deleted) {
+        return res.status(404).json({ message: "Adım bulunamadı" });
+      }
+
+      res.json({ message: "Adım silindi" });
+    } catch (error: any) {
+      console.error("Error deleting template step:", error);
+      res.status(500).json({ message: "Adım silinirken hata oluştu" });
+    }
+  });
+
+  // ========================================
+  // EMPLOYEE ONBOARDING ASSIGNMENTS API
+  // ========================================
+
+  // POST /api/employee-onboarding-assignments - Start onboarding for employee
+  app.post('/api/employee-onboarding-assignments', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      if (!isHQRole(user.role)) {
+        return res.status(403).json({ message: "Yetkiniz yok" });
+      }
+
+      const { userId, branchId, templateId } = req.body;
+
+      // Get template to calculate expected end date
+      const [template] = await db.select()
+        .from(onboardingTemplates)
+        .where(eq(onboardingTemplates.id, templateId));
+
+      if (!template) {
+        return res.status(404).json({ message: "Şablon bulunamadı" });
+      }
+
+      const startDate = new Date();
+      const expectedEndDate = new Date(startDate);
+      expectedEndDate.setDate(expectedEndDate.getDate() + template.durationDays);
+
+      const parsed = insertEmployeeOnboardingAssignmentSchema.safeParse({
+        userId,
+        branchId: branchId || user.branchId,
+        templateId,
+        startDate,
+        expectedEndDate,
+        status: 'in_progress',
+        overallProgress: 0,
+      });
+
+      if (!parsed.success) {
+        return res.status(400).json({ message: "Geçersiz veri", errors: parsed.error.errors });
+      }
+
+      // Create assignment
+      const [assignment] = await db.insert(employeeOnboardingAssignments).values(parsed.data).returning();
+
+      // Get template steps and create progress records
+      const steps = await db.select()
+        .from(onboardingTemplateSteps)
+        .where(eq(onboardingTemplateSteps.templateId, templateId));
+
+      if (steps.length > 0) {
+        const progressRecords = steps.map(step => ({
+          assignmentId: assignment.id,
+          stepId: step.id,
+          status: 'pending' as const,
+        }));
+
+        await db.insert(employeeOnboardingProgress).values(progressRecords);
+      }
+
+      res.status(201).json(assignment);
+    } catch (error: any) {
+      console.error("Error creating onboarding assignment:", error);
+      res.status(500).json({ message: "Atama oluşturulurken hata oluştu" });
+    }
+  });
+
+  // GET /api/employee-onboarding-assignments/user/:userId - Get employee's onboarding assignment
+  app.get('/api/employee-onboarding-assignments/user/:userId', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const targetUserId = req.params.userId;
+
+      // Users can view their own, HQ/supervisors can view any
+      if (user.id !== targetUserId && !isHQRole(user.role) && user.role !== 'supervisor') {
+        return res.status(403).json({ message: "Yetkiniz yok" });
+      }
+
+      const assignments = await db.select()
+        .from(employeeOnboardingAssignments)
+        .where(eq(employeeOnboardingAssignments.userId, targetUserId))
+        .orderBy(desc(employeeOnboardingAssignments.createdAt));
+
+      res.json(assignments);
+    } catch (error: any) {
+      console.error("Error fetching user onboarding assignments:", error);
+      res.status(500).json({ message: "Atamalar yüklenirken hata oluştu" });
+    }
+  });
+
+  // GET /api/employee-onboarding-assignments/branch/:branchId - Get all onboarding assignments for branch
+  app.get('/api/employee-onboarding-assignments/branch/:branchId', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const branchId = parseInt(req.params.branchId);
+
+      if (isNaN(branchId)) {
+        return res.status(400).json({ message: "Geçersiz şube ID" });
+      }
+
+      // Only HQ or branch supervisors can view
+      if (!isHQRole(user.role) && (user.branchId !== branchId || (user.role !== 'supervisor' && user.role !== 'supervisor_buddy'))) {
+        return res.status(403).json({ message: "Yetkiniz yok" });
+      }
+
+      // Get assignments with user and template data
+      const assignments = await db.select({
+        id: employeeOnboardingAssignments.id,
+        userId: employeeOnboardingAssignments.userId,
+        branchId: employeeOnboardingAssignments.branchId,
+        templateId: employeeOnboardingAssignments.templateId,
+        startDate: employeeOnboardingAssignments.startDate,
+        expectedEndDate: employeeOnboardingAssignments.expectedEndDate,
+        actualEndDate: employeeOnboardingAssignments.actualEndDate,
+        status: employeeOnboardingAssignments.status,
+        overallProgress: employeeOnboardingAssignments.overallProgress,
+        managerNotified: employeeOnboardingAssignments.managerNotified,
+        evaluationStatus: employeeOnboardingAssignments.evaluationStatus,
+        createdAt: employeeOnboardingAssignments.createdAt,
+        employeeName: sql`COALESCE(${users.firstName} || ' ' || ${users.lastName}, ${users.username})`.as('employeeName'),
+        templateName: onboardingTemplates.name,
+        templateDurationDays: onboardingTemplates.durationDays,
+      })
+        .from(employeeOnboardingAssignments)
+        .leftJoin(users, eq(employeeOnboardingAssignments.userId, users.id))
+        .leftJoin(onboardingTemplates, eq(employeeOnboardingAssignments.templateId, onboardingTemplates.id))
+        .where(eq(employeeOnboardingAssignments.branchId, branchId))
+        .orderBy(desc(employeeOnboardingAssignments.createdAt));
+
+      res.json(assignments);
+    } catch (error: any) {
+      console.error("Error fetching branch onboarding assignments:", error);
+      res.status(500).json({ message: "Atamalar yüklenirken hata oluştu" });
+    }
+  });
+
+  // PUT /api/employee-onboarding-assignments/:id - Update assignment status
+  app.put('/api/employee-onboarding-assignments/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      if (!isHQRole(user.role)) {
+        return res.status(403).json({ message: "Yetkiniz yok" });
+      }
+
+      const assignmentId = parseInt(req.params.id);
+      if (isNaN(assignmentId)) {
+        return res.status(400).json({ message: "Geçersiz atama ID" });
+      }
+
+      const { status, overallProgress, evaluationStatus, evaluationNotes, actualEndDate, managerNotified } = req.body;
+      
+      const [updated] = await db.update(employeeOnboardingAssignments)
+        .set({
+          status,
+          overallProgress,
+          evaluationStatus,
+          evaluationNotes,
+          actualEndDate: actualEndDate ? new Date(actualEndDate) : undefined,
+          managerNotified,
+          updatedAt: new Date(),
+        })
+        .where(eq(employeeOnboardingAssignments.id, assignmentId))
+        .returning();
+
+      if (!updated) {
+        return res.status(404).json({ message: "Atama bulunamadı" });
+      }
+
+      res.json(updated);
+    } catch (error: any) {
+      console.error("Error updating onboarding assignment:", error);
+      res.status(500).json({ message: "Atama güncellenirken hata oluştu" });
+    }
+  });
+
+  // ========================================
+  // EMPLOYEE ONBOARDING PROGRESS API
+  // ========================================
+
+  // GET /api/employee-onboarding-progress/:assignmentId - Get progress for assignment
+  app.get('/api/employee-onboarding-progress/:assignmentId', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const assignmentId = parseInt(req.params.assignmentId);
+
+      if (isNaN(assignmentId)) {
+        return res.status(400).json({ message: "Geçersiz atama ID" });
+      }
+
+      // Verify access to the assignment
+      const [assignment] = await db.select()
+        .from(employeeOnboardingAssignments)
+        .where(eq(employeeOnboardingAssignments.id, assignmentId));
+
+      if (!assignment) {
+        return res.status(404).json({ message: "Atama bulunamadı" });
+      }
+
+      // Users can view their own progress, HQ/supervisors can view any
+      if (user.id !== assignment.userId && !isHQRole(user.role) && user.role !== 'supervisor' && user.role !== 'supervisor_buddy') {
+        return res.status(403).json({ message: "Yetkiniz yok" });
+      }
+
+      const progress = await db.select()
+        .from(employeeOnboardingProgress)
+        .where(eq(employeeOnboardingProgress.assignmentId, assignmentId));
+
+      // Get step details for each progress record
+      const stepIds = progress.map(p => p.stepId);
+      let stepsMap: Record<number, any> = {};
+      
+      if (stepIds.length > 0) {
+        const steps = await db.select()
+          .from(onboardingTemplateSteps)
+          .where(inArray(onboardingTemplateSteps.id, stepIds));
+        
+        stepsMap = steps.reduce((acc, step) => {
+          acc[step.id] = step;
+          return acc;
+        }, {} as Record<number, any>);
+      }
+
+      const progressWithSteps = progress.map(p => ({
+        ...p,
+        step: stepsMap[p.stepId] || null,
+      }));
+
+      res.json(progressWithSteps);
+    } catch (error: any) {
+      console.error("Error fetching onboarding progress:", error);
+      res.status(500).json({ message: "İlerleme yüklenirken hata oluştu" });
+    }
+  });
+
+  // PUT /api/employee-onboarding-progress/:id - Update step progress (mentor marks complete)
+  app.put('/api/employee-onboarding-progress/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const progressId = parseInt(req.params.id);
+
+      if (isNaN(progressId)) {
+        return res.status(400).json({ message: "Geçersiz ilerleme ID" });
+      }
+
+      const { status, mentorNotes, rating } = req.body;
+
+      // Get progress record to verify access
+      const [progressRecord] = await db.select()
+        .from(employeeOnboardingProgress)
+        .where(eq(employeeOnboardingProgress.id, progressId));
+
+      if (!progressRecord) {
+        return res.status(404).json({ message: "İlerleme kaydı bulunamadı" });
+      }
+
+      // Only HQ, supervisors, or assigned mentor can update
+      const isMentor = progressRecord.mentorId === user.id;
+      if (!isHQRole(user.role) && user.role !== 'supervisor' && user.role !== 'supervisor_buddy' && !isMentor) {
+        return res.status(403).json({ message: "Yetkiniz yok" });
+      }
+
+      const updateData: any = {
+        status,
+        mentorNotes,
+        rating,
+        updatedAt: new Date(),
+      };
+
+      // Set timestamps based on status change
+      if (status === 'in_progress' && progressRecord.status === 'pending') {
+        updateData.startedAt = new Date();
+      }
+      if (status === 'completed' && progressRecord.status !== 'completed') {
+        updateData.completedAt = new Date();
+      }
+
+      // Set mentor if not already set
+      if (!progressRecord.mentorId && (status === 'in_progress' || status === 'completed')) {
+        updateData.mentorId = user.id;
+      }
+
+      const [updated] = await db.update(employeeOnboardingProgress)
+        .set(updateData)
+        .where(eq(employeeOnboardingProgress.id, progressId))
+        .returning();
+
+      // Update overall progress on the assignment
+      const allProgress = await db.select()
+        .from(employeeOnboardingProgress)
+        .where(eq(employeeOnboardingProgress.assignmentId, progressRecord.assignmentId));
+
+      const completedCount = allProgress.filter(p => p.status === 'completed').length;
+      const totalCount = allProgress.length;
+      const overallProgress = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
+
+      await db.update(employeeOnboardingAssignments)
+        .set({ 
+          overallProgress, 
+          updatedAt: new Date(),
+          status: overallProgress === 100 ? 'completed' : 'in_progress',
+          actualEndDate: overallProgress === 100 ? new Date() : undefined,
+        })
+        .where(eq(employeeOnboardingAssignments.id, progressRecord.assignmentId));
+
+      res.json(updated);
+    } catch (error: any) {
+      console.error("Error updating onboarding progress:", error);
+      res.status(500).json({ message: "İlerleme güncellenirken hata oluştu" });
+    }
+  });
+
   startStockAlertSystem();
+  startOnboardingCompletionSystem();
 
   // System health and backup endpoints
   app.get('/api/system/health', isAuthenticated, async (req: any, res) => {

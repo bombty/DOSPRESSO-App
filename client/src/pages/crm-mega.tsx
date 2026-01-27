@@ -33,6 +33,7 @@ const CariTakip = lazy(() => import("@/pages/satinalma/cari-takip"));
 const TedarikciYonetimi = lazy(() => import("@/pages/satinalma/tedarikci-yonetimi"));
 const SiparisYonetimi = lazy(() => import("@/pages/satinalma/siparis-yonetimi"));
 const CoachBranches = lazy(() => import("@/pages/crm/coach-branches"));
+const CoachOnboarding = lazy(() => import("@/pages/crm/coach-onboarding"));
 const MentorNotes = lazy(() => import("@/pages/crm/mentor-notes"));
 const TeknikAriza = lazy(() => import("@/pages/crm/teknik-ariza"));
 
@@ -155,6 +156,15 @@ const CRM_TABS: TabConfig[] = [
     permissionModule: "sube_takibi",
     component: CoachBranches,
     allowedRoles: ['admin', 'coach', 'bolge_muduru', 'operasyon_muduru', 'genel_mudur']
+  },
+  {
+    id: "onboarding-sablonlari",
+    label: "Onboarding Templates",
+    labelTr: "Onboarding Şablonları",
+    icon: <GraduationCap className="h-4 w-4" />,
+    permissionModule: "onboarding",
+    component: CoachOnboarding,
+    allowedRoles: ['admin', 'coach', 'egitim_muduru']
   },
   {
     id: "mentor-notlari",
