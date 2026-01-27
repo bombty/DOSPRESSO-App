@@ -125,10 +125,14 @@ export function ModuleCardsGrid() {
     }
   };
 
+  // Admin bypass: Admin TÜM modülleri görür, MODULES_BY_ROLE kontrolü atlanır
+  const isAdmin = userRole === 'admin';
   const allowedModuleIds = userRole ? (MODULES_BY_ROLE[userRole as UserRole] || []) : [];
   
   const visibleModules = MODULE_CONFIG.filter(module => {
     if (!userRole) return false;
+    // Admin bypass - admin tüm modülleri görür
+    if (isAdmin) return true;
     return allowedModuleIds.includes(module.id);
   });
 

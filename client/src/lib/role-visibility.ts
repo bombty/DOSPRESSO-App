@@ -29,16 +29,19 @@ export const QUICK_ACTIONS_BY_ROLE: Record<UserRole, string[]> = {
   fabrika_personel: ['production', 'shifts'],
 };
 
+// Admin TÜM modüllere erişebilir
+const ALL_MODULES = ['operations', 'equipment', 'training', 'hr', 'reports', 'factory', 'satinalma', 'newshop', 'admin'];
+
 export const MODULES_BY_ROLE: Record<UserRole, string[]> = {
   ceo: [],
-  admin: ['admin'],
-  muhasebe: ['reports', 'satinalma'],
-  satinalma: ['satinalma'],
-  pazarlama: ['admin'],
+  admin: ALL_MODULES, // Admin TÜM modülleri görür
+  muhasebe: ['reports', 'satinalma', 'hr'],
+  satinalma: ['satinalma', 'reports'],
+  pazarlama: ['admin', 'reports'],
   ik: ['hr', 'operations'],
-  teknik: ['equipment'],
-  trainer: ['training'],
-  coach: ['operations', 'training', 'reports'],
+  teknik: ['equipment', 'reports'],
+  trainer: ['training', 'operations', 'reports'],
+  coach: ['operations', 'training', 'reports', 'hr'],
   ekipman_teknik: ['equipment'],
   supervisor: ['operations', 'equipment', 'training', 'hr'],
   supervisor_buddy: ['operations', 'equipment', 'training'],
