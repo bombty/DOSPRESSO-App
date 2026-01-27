@@ -13,7 +13,15 @@ import {
   Users,
   Megaphone,
   Factory,
-  Settings
+  Settings,
+  Wrench,
+  Building2,
+  ShieldCheck,
+  Bot,
+  Briefcase,
+  ShoppingCart,
+  Store,
+  BarChart3
 } from "lucide-react";
 
 interface QuickAction {
@@ -113,6 +121,142 @@ const allActions: QuickAction[] = [
     path: "/admin",
     color: "text-gray-600 dark:text-gray-400",
     bgColor: "bg-gray-100 dark:bg-gray-900/40"
+  },
+  { 
+    id: "users", 
+    label: "Kullanıcılar", 
+    icon: Users, 
+    path: "/admin?tab=kullanicilar",
+    color: "text-violet-600 dark:text-violet-400",
+    bgColor: "bg-violet-100 dark:bg-violet-900/40"
+  },
+  { 
+    id: "system", 
+    label: "Sistem", 
+    icon: ShieldCheck, 
+    path: "/admin?tab=sistem",
+    color: "text-red-600 dark:text-red-400",
+    bgColor: "bg-red-100 dark:bg-red-900/40"
+  },
+  { 
+    id: "faults", 
+    label: "Arızalar", 
+    icon: Wrench, 
+    path: "/ekipman?tab=ariza",
+    color: "text-orange-600 dark:text-orange-400",
+    bgColor: "bg-orange-100 dark:bg-orange-900/40"
+  },
+  { 
+    id: "equipment", 
+    label: "Ekipman", 
+    icon: Wrench, 
+    path: "/ekipman",
+    color: "text-slate-600 dark:text-slate-400",
+    bgColor: "bg-slate-100 dark:bg-slate-900/40"
+  },
+  { 
+    id: "maintenance", 
+    label: "Bakım", 
+    icon: Wrench, 
+    path: "/ekipman?tab=bakim",
+    color: "text-yellow-600 dark:text-yellow-400",
+    bgColor: "bg-yellow-100 dark:bg-yellow-900/40"
+  },
+  { 
+    id: "orders", 
+    label: "Siparişler", 
+    icon: ShoppingCart, 
+    path: "/satinalma?tab=siparisler",
+    color: "text-green-600 dark:text-green-400",
+    bgColor: "bg-green-100 dark:bg-green-900/40"
+  },
+  { 
+    id: "suppliers", 
+    label: "Tedarikçiler", 
+    icon: Store, 
+    path: "/satinalma?tab=tedarikciler",
+    color: "text-teal-600 dark:text-teal-400",
+    bgColor: "bg-teal-100 dark:bg-teal-900/40"
+  },
+  { 
+    id: "campaigns", 
+    label: "Kampanyalar", 
+    icon: Megaphone, 
+    path: "/admin?tab=kampanya",
+    color: "text-fuchsia-600 dark:text-fuchsia-400",
+    bgColor: "bg-fuchsia-100 dark:bg-fuchsia-900/40"
+  },
+  { 
+    id: "courses", 
+    label: "Kurslar", 
+    icon: GraduationCap, 
+    path: "/akademi?tab=kurslar",
+    color: "text-indigo-600 dark:text-indigo-400",
+    bgColor: "bg-indigo-100 dark:bg-indigo-900/40"
+  },
+  { 
+    id: "branches", 
+    label: "Şubeler", 
+    icon: Building2, 
+    path: "/operasyon?tab=subeler",
+    color: "text-sky-600 dark:text-sky-400",
+    bgColor: "bg-sky-100 dark:bg-sky-900/40"
+  },
+  { 
+    id: "tasks", 
+    label: "Görevler", 
+    icon: ClipboardList, 
+    path: "/gorevler",
+    color: "text-blue-600 dark:text-blue-400",
+    bgColor: "bg-blue-100 dark:bg-blue-900/40"
+  },
+  { 
+    id: "ai-dashboard", 
+    label: "AI Panel", 
+    icon: Bot, 
+    path: "/raporlar?tab=ai",
+    color: "text-purple-600 dark:text-purple-400",
+    bgColor: "bg-purple-100 dark:bg-purple-900/40"
+  },
+  { 
+    id: "support", 
+    label: "Destek", 
+    icon: Briefcase, 
+    path: "/destek",
+    color: "text-lime-600 dark:text-lime-400",
+    bgColor: "bg-lime-100 dark:bg-lime-900/40"
+  },
+  { 
+    id: "quality", 
+    label: "Kalite", 
+    icon: ShieldCheck, 
+    path: "/fabrika?tab=kalite",
+    color: "text-emerald-600 dark:text-emerald-400",
+    bgColor: "bg-emerald-100 dark:bg-emerald-900/40"
+  },
+  { 
+    id: "audits", 
+    label: "Denetim", 
+    icon: ClipboardList, 
+    path: "/raporlar?tab=denetim",
+    color: "text-amber-600 dark:text-amber-400",
+    bgColor: "bg-amber-100 dark:bg-amber-900/40"
+  },
+  { 
+    id: "invoices", 
+    label: "Faturalar", 
+    icon: FileText, 
+    path: "/raporlar?tab=fatura",
+    color: "text-cyan-600 dark:text-cyan-400",
+    bgColor: "bg-cyan-100 dark:bg-cyan-900/40"
+  },
+  { 
+    id: "attendance", 
+    label: "Devam", 
+    icon: Users, 
+    path: "/ik?tab=devam",
+    color: "text-rose-600 dark:text-rose-400",
+    bgColor: "bg-rose-100 dark:bg-rose-900/40"
   }
 ];
 
@@ -126,7 +270,7 @@ export function QuickActionsGrid() {
   const filteredActions = allActions.filter(action => {
     if (!userRole) return false;
     return allowedActionIds.includes(action.id);
-  }).slice(0, 6);
+  });
 
   if (filteredActions.length === 0) {
     return null;

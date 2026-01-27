@@ -49,12 +49,42 @@ export function CompactStatsBar() {
     enabled: !!user,
   });
 
+  const { data: branches = [] } = useQuery<any[]>({
+    queryKey: ["/api/branches"],
+    enabled: !!user && isHQRole(userRole),
+  });
+
+  const { data: personnel = [] } = useQuery<any[]>({
+    queryKey: ["/api/employees"],
+    enabled: !!user && isHQRole(userRole),
+  });
+
   const pendingTasks = tasks.filter((t: any) => t.status === "beklemede" || t.status === "devam_ediyor").length;
   const completedTasks = tasks.filter((t: any) => t.status === "tamamlandi").length;
   const openFaults = faults.filter((f: any) => f.currentStage !== "kapatildi").length;
   const activeChecklists = checklists.filter((c: any) => !c.isCompleted).length;
+  const totalBranches = branches.length;
+  const activePersonnel = personnel.filter((p: any) => p.isActive).length;
 
   const allStats: StatItem[] = [
+    {
+      id: "branches",
+      label: "Şube",
+      value: totalBranches,
+      icon: Building2,
+      bgColor: "bg-sky-500 dark:bg-sky-600",
+      path: "/operasyon?tab=subeler",
+      roles: ["admin", "ceo", "cgo", "coach", "muhasebe", "muhasebe_ik", "yatirimci_hq"]
+    },
+    {
+      id: "personnel",
+      label: "Personel",
+      value: activePersonnel,
+      icon: Users,
+      bgColor: "bg-violet-500 dark:bg-violet-600",
+      path: "/ik",
+      roles: ["admin", "ceo", "cgo", "ik", "muhasebe_ik"]
+    },
     {
       id: "tasks",
       label: "Bekleyen",
@@ -62,7 +92,7 @@ export function CompactStatsBar() {
       icon: ClipboardCheck,
       bgColor: "bg-blue-500 dark:bg-blue-600",
       path: "/gorevler",
-      roles: ["supervisor", "supervisor_buddy", "barista", "stajyer", "coach", "trainer", "fabrika_mudur", "fabrika_sorumlu"]
+      roles: ["admin", "ceo", "cgo", "supervisor", "supervisor_buddy", "barista", "stajyer", "coach", "trainer", "fabrika_mudur", "fabrika_sorumlu"]
     },
     {
       id: "completed",
@@ -80,7 +110,7 @@ export function CompactStatsBar() {
       icon: AlertTriangle,
       bgColor: "bg-amber-500 dark:bg-amber-600",
       path: "/ariza",
-      roles: ["supervisor", "supervisor_buddy", "teknik", "ekipman_teknik", "fabrika_mudur"]
+      roles: ["admin", "ceo", "cgo", "supervisor", "supervisor_buddy", "teknik", "ekipman_teknik", "destek", "fabrika_mudur"]
     },
     {
       id: "checklists",
@@ -89,7 +119,7 @@ export function CompactStatsBar() {
       icon: Clock,
       bgColor: "bg-purple-500 dark:bg-purple-600",
       path: "/checklistler",
-      roles: ["supervisor", "supervisor_buddy", "barista", "stajyer", "fabrika_sorumlu", "fabrika_personel"]
+      roles: ["admin", "ceo", "cgo", "supervisor", "supervisor_buddy", "barista", "stajyer", "fabrika_sorumlu", "fabrika_personel"]
     }
   ];
 
@@ -103,7 +133,9 @@ export function CompactStatsBar() {
   }
 
   const gridCols = filteredStats.length <= 2 ? "grid-cols-2" : 
-                   filteredStats.length === 3 ? "grid-cols-3" : "grid-cols-4";
+                   filteredStats.length === 3 ? "grid-cols-3" : 
+                   filteredStats.length === 4 ? "grid-cols-4" :
+                   filteredStats.length === 5 ? "grid-cols-5" : "grid-cols-6";
 
   return (
     <div className={`grid ${gridCols} gap-2`} data-testid="compact-stats-bar">
