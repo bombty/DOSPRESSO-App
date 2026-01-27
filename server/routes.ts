@@ -1145,8 +1145,10 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
           }
         }
         
-        // Eğer permission modülü bulunduysa ve kullanıcının yetkisi yoksa atla
-        if (permissionModule) {
+        // ADMIN BYPASS: Admin her şeye erişebilir, kontrol atla
+        if (userRole === 'admin') {
+          // Admin için hiçbir izin kontrolü yapma, direkt ekle
+        } else if (permissionModule) {
           const canView = hasPermission(userRole, permissionModule, 'view');
           if (!canView) {
             console.log(`[Dashboard] Skipping ${subModulePath} - no permission for ${permissionModule}`);
