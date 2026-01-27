@@ -23,6 +23,7 @@ import { CompactStatsBar } from "@/components/widgets/compact-stats-bar";
 import { QuickActionsGrid } from "@/components/widgets/quick-actions-grid";
 import { MiniCalendar } from "@/components/widgets/mini-calendar";
 import { ActivityTimeline } from "@/components/widgets/activity-timeline";
+import { ModuleCardsGrid } from "@/components/widgets/module-cards-grid";
 import {
   Accordion,
   AccordionContent,
@@ -896,6 +897,9 @@ export function CardGridHub() {
 
       {/* Quick Actions - 6 compact buttons */}
       <QuickActionsGrid />
+
+      {/* Module Cards Grid - Clickable with previews */}
+      <ModuleCardsGrid />
 
       {/* Calendar + Activity side by side on larger screens */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
