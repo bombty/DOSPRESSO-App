@@ -72,7 +72,7 @@ export function CompactStatsBar() {
   ];
 
   return (
-    <div className="grid grid-cols-4 gap-2">
+    <div className="grid grid-cols-4 gap-2" data-testid="compact-stats-bar">
       {stats.map((stat, index) => {
         const Icon = stat.icon;
         return (
@@ -81,16 +81,16 @@ export function CompactStatsBar() {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: index * 0.05, duration: 0.3 }}
-            className={`relative overflow-hidden rounded-xl ${stat.bgColor} p-3 ${stat.textColor}`}
+            className={`relative overflow-hidden rounded-xl ${stat.bgColor} p-3 shadow-md`}
             data-testid={`compact-stat-${stat.id}`}
           >
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center shrink-0">
-                <Icon className="w-4 h-4" />
+              <div className="w-8 h-8 rounded-lg bg-white/30 flex items-center justify-center shrink-0">
+                <Icon className="w-4 h-4 text-white drop-shadow-sm" />
               </div>
               <div className="min-w-0">
-                <p className="text-lg font-bold leading-none">{stat.value}</p>
-                <p className="text-[10px] text-white/80 truncate mt-0.5">{stat.label}</p>
+                <p className="text-xl font-bold leading-none text-white drop-shadow-sm">{stat.value}</p>
+                <p className="text-[10px] text-white/90 font-medium truncate mt-0.5">{stat.label}</p>
               </div>
             </div>
           </motion.div>

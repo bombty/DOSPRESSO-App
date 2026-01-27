@@ -24,6 +24,7 @@ import { QuickActionsGrid } from "@/components/widgets/quick-actions-grid";
 import { MiniCalendar } from "@/components/widgets/mini-calendar";
 import { ActivityTimeline } from "@/components/widgets/activity-timeline";
 import { ModuleCardsGrid } from "@/components/widgets/module-cards-grid";
+import { AISummaryCard } from "@/components/widgets/ai-summary-card";
 import {
   Accordion,
   AccordionContent,
@@ -891,6 +892,9 @@ export function CardGridHub() {
 
       {/* Compact Stats Bar: 4 metrics in 1 row */}
       <CompactStatsBar />
+
+      {/* AI Summary Card - HQ için AI Control Tower özeti */}
+      <AISummaryCard />
 
       {/* Critical Alerts - Top priority notifications */}
       <CriticalAlerts />

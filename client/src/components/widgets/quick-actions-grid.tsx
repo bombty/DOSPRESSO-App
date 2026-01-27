@@ -50,7 +50,9 @@ const allActions: QuickAction[] = [
     icon: ClipboardList, 
     path: "/checklistler",
     color: "text-emerald-600 dark:text-emerald-400",
-    bgColor: "bg-emerald-100 dark:bg-emerald-900/40"
+    bgColor: "bg-emerald-100 dark:bg-emerald-900/40",
+    // Sadece şube çalışanları için görünür - HQ admin/ceo için gizle
+    roles: ["supervisor", "supervisor_buddy", "barista", "stajyer", "fabrika_mudur", "fabrika_sorumlu", "fabrika_personel"]
   },
   { 
     id: "fault", 

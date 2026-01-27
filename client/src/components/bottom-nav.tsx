@@ -1,5 +1,5 @@
 import { useLocation, Link } from "wouter";
-import { Home, GraduationCap, Wrench, User, Headphones } from "lucide-react";
+import { Home, GraduationCap, Wrench, User, Headphones, Brain } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { isHQRole } from "@shared/schema";
 
@@ -39,12 +39,16 @@ export function BottomNav() {
   };
   
   // Build nav items based on user role - all roles use "/" for dashboard
+  // HQ users get AI Control Tower instead of Arıza
   const allNavItems: NavItem[] = [
     { icon: Home, label: "Ana Sayfa", path: "/" },
     { icon: GraduationCap, label: "Akademi", path: isHQ ? "/akademi-hq" : "/akademi" },
     // CRM - role göre dinamik yönlendirme (HQ için yönetim, şube/fabrika için kişisel)
     { icon: Headphones, label: "CRM", path: getCrmPath() },
-    { icon: Wrench, label: "Arıza", path: "/ariza" },
+    // HQ için AI Control Tower, şube/fabrika için Arıza
+    isHQ 
+      ? { icon: Brain, label: "AI", path: "/ceo-command-center" }
+      : { icon: Wrench, label: "Arıza", path: "/ariza" },
     { icon: User, label: "Profil", path: user ? `/personel/${user.id}` : "/login" },
   ];
   
