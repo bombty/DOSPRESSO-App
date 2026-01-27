@@ -63,13 +63,13 @@ export function BottomNav() {
   return (
     <nav className="fixed bottom-3 left-3 right-3 z-[60]" data-testid="bottom-nav">
       <div className="flex items-center justify-around h-16 max-w-md mx-auto px-2 rounded-2xl bg-card/95 backdrop-blur-xl border border-card-border shadow-xl">
-        {navItems.map((item) => {
+        {navItems.map((item, index) => {
           const Icon = item.icon;
           const active = isActive(item.path);
           
           return (
             <Link
-              key={item.path}
+              key={`${item.label}-${index}`}
               href={item.path}
               className={`flex flex-col items-center justify-center flex-1 h-full gap-0.5 transition-all duration-300 relative no-underline rounded-xl ${
                 active 
