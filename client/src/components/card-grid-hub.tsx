@@ -2,6 +2,7 @@ import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery } from "@tanstack/react-query";
 import { isHQRole, isBranchRole } from "@shared/schema";
+import { canSeeWidget } from "@/lib/role-visibility";
 import { motion } from "framer-motion";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -885,40 +886,44 @@ export function CardGridHub() {
     ? [...baseModules, adminModule]
     : baseModules;
 
+  const userRole = user?.role;
+
   return (
     <div className="p-3 pb-24 space-y-3">
       {/* Unified Hero: Greeting + Progress Ring */}
       <UnifiedHero />
 
-      {/* Compact Stats Bar: 4 metrics in 1 row */}
+      {/* Compact Stats Bar - Role filtered internally */}
       <CompactStatsBar />
 
       {/* AI Summary Card - HQ için AI Control Tower özeti */}
-      <AISummaryCard />
+      {canSeeWidget(userRole, 'ai-summary') && <AISummaryCard />}
 
       {/* Critical Alerts - Top priority notifications */}
-      <CriticalAlerts />
+      {canSeeWidget(userRole, 'critical-alerts') && <CriticalAlerts />}
 
-      {/* Quick Actions - 6 compact buttons */}
-      <QuickActionsGrid />
+      {/* Quick Actions - Role filtered internally */}
+      {canSeeWidget(userRole, 'quick-actions') && <QuickActionsGrid />}
 
-      {/* Module Cards Grid - Clickable with previews */}
-      <ModuleCardsGrid />
+      {/* Module Cards Grid - Role filtered internally */}
+      {canSeeWidget(userRole, 'module-cards') && <ModuleCardsGrid />}
 
       {/* Calendar + Activity side by side on larger screens */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-        <MiniCalendar />
-        <ActivityTimeline />
-      </div>
+      {canSeeWidget(userRole, 'mini-calendar') && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <MiniCalendar />
+          {canSeeWidget(userRole, 'activity-timeline') && <ActivityTimeline />}
+        </div>
+      )}
 
       {/* Announcement Banners - Only show if enabled */}
       {bannerCarouselEnabled && <AnnouncementBannerCarousel />}
 
       {/* Branch Scorecard and Personnel Status - For supervisors */}
-      {isBranch && (user?.role === 'supervisor' || user?.role === 'supervisor_buddy') && (
+      {canSeeWidget(userRole, 'branch-scorecard') && isBranch && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
           <BranchScorecard />
-          <PersonnelStatusPanel />
+          {canSeeWidget(userRole, 'personnel-status') && <PersonnelStatusPanel />}
         </div>
       )}
 
