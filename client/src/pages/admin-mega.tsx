@@ -57,6 +57,7 @@ const AdminFabrikaKaliteKriterleri = lazy(() => import("./admin/fabrika-kalite-k
 const IcerikStudyosu = lazy(() => import("./icerik-studyosu"));
 const AdminSeed = lazy(() => import("./admin-seed"));
 const AdminAIBilgiYonetimi = lazy(() => import("./admin/ai-bilgi-yonetimi"));
+const AdminVeriDisaAktarma = lazy(() => import("./admin/veri-disa-aktarma"));
 
 interface TabConfig {
   id: string;
@@ -173,6 +174,15 @@ const ADMIN_TABS: TabConfig[] = [
     permissionModule: "backup",
     group: "sistem",
     component: AdminYedekleme
+  },
+  {
+    id: "veri-disa-aktarma",
+    label: "Data Export",
+    labelTr: "Veri Dışa Aktarma",
+    icon: <FileText className="h-4 w-4" />,
+    permissionModule: "data_export",
+    group: "sistem",
+    component: AdminVeriDisaAktarma
   },
   {
     id: "aktivite-loglari",
@@ -344,6 +354,7 @@ const TAB_URL_MAP: Record<string, string> = {
   "ai-bilgi-yonetimi": "/admin/ai-bilgi-yonetimi",
   "ai-maliyetler": "/admin/ai-maliyetler",
   "yedekleme": "/admin/yedekleme",
+  "veri-disa-aktarma": "/admin/veri-disa-aktarma",
   "aktivite-loglari": "/admin/aktivite-loglari",
   "seed": "/admin/seed",
   "icerik-yonetimi": "/admin/icerik-yonetimi",

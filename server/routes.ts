@@ -3,6 +3,7 @@ import { registerCRMRoutes } from "./crm-routes";
 import { registerSatinalmaRoutes } from "./satinalma-routes";
 import type { Express } from "express";
 import { registerMaliyetRoutes } from "./maliyet-routes";
+import { registerExportRoutes } from "./export-routes";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated, createKioskSession, isKioskAuthenticated, deleteKioskSession, updateKioskStation } from "./localAuth";
@@ -31962,6 +31963,7 @@ Dusuk puanli alanlara odaklan ve pozitif, motive edici ol. JSON dizisi olarak ya
   registerCRMRoutes(app, isAuthenticated);
   registerSatinalmaRoutes(app, isAuthenticated);
   registerMaliyetRoutes(app, isAuthenticated);
+  registerExportRoutes(app);
   const httpServer = createServer(app);
   return httpServer;
 }
