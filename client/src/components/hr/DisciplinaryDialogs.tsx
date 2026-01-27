@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useMutation } from "@tanstack/react-query";
+import { useState, useEffect } from "react";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -35,8 +35,20 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { insertDisciplinaryReportSchema } from "@shared/schema";
 import { Plus, MessageSquare, CheckCircle } from "lucide-react";
 
+interface User {
+  id: string;
+  firstName?: string;
+  lastName?: string;
+  role?: string;
+  branchId?: number;
+}
+
 interface CreateDisciplinaryDialogProps {
   userId: string;
+  branchId: number;
+}
+
+interface CreateDisciplinaryWithSelectorProps {
   branchId: number;
 }
 
@@ -237,6 +249,243 @@ export function CreateDisciplinaryDialog({ userId, branchId }: CreateDisciplinar
                 İptal
               </Button>
               <Button type="submit" disabled={createMutation.isPending} data-testid="button-submit">
+                Oluştur
+              </Button>
+            </DialogFooter>
+          </form>
+        </Form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// New component with personnel selector for supervisors
+const createDisciplinaryWithSelectorSchema = insertDisciplinaryReportSchema.extend({
+  userId: z.string().min(1, "Personel seçimi zorunludur"),
+  reportType: z.enum(["verbal_warning", "written_warning", "suspension", "termination", "other"]),
+  severity: z.enum(["low", "medium", "high", "critical"]),
+  subject: z.string().min(1, "Konu gereklidir"),
+  description: z.string().min(1, "Açıklama gereklidir"),
+  incidentDate: z.string().min(1, "Olay tarihi gereklidir"),
+});
+
+type CreateDisciplinaryWithSelectorFormData = z.infer<typeof createDisciplinaryWithSelectorSchema>;
+
+export function CreateDisciplinaryDialogWithSelector({ branchId }: CreateDisciplinaryWithSelectorProps) {
+  const [open, setOpen] = useState(false);
+  const { toast } = useToast();
+
+  // Fetch branch personnel
+  const { data: users = [] } = useQuery<User[]>({
+    queryKey: ["/api/admin/users", { branchId }],
+    enabled: open,
+  });
+
+  const form = useForm<CreateDisciplinaryWithSelectorFormData>({
+    resolver: zodResolver(createDisciplinaryWithSelectorSchema),
+    defaultValues: {
+      userId: "",
+      branchId,
+      reportType: "verbal_warning",
+      severity: "low",
+      subject: "",
+      description: "",
+      incidentDate: "",
+      incidentTime: "",
+      location: "",
+      status: "pending",
+    },
+  });
+
+  const createMutation = useMutation({
+    mutationFn: async (data: CreateDisciplinaryWithSelectorFormData) => {
+      return apiRequest("POST", "/api/disciplinary-reports", data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/disciplinary-reports"], exact: false });
+      setOpen(false);
+      form.reset();
+      toast({
+        title: "Disiplin kaydı oluşturuldu",
+        description: "Kayıt başarıyla eklendi",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Hata",
+        description: error.message || "Disiplin kaydı oluşturulamadı",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const onSubmit = (data: CreateDisciplinaryWithSelectorFormData) => {
+    createMutation.mutate(data);
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button variant="outline" size="sm" data-testid="button-create-disciplinary-with-selector">
+          <Plus className="h-4 w-4 mr-2" />
+          Kayıt Ekle
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto" data-testid="dialog-create-disciplinary-selector">
+        <DialogHeader>
+          <DialogTitle>Yeni Disiplin Kaydı</DialogTitle>
+          <DialogDescription>
+            Personel için disiplin kaydı oluşturun
+          </DialogDescription>
+        </DialogHeader>
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            {/* Personnel Selector */}
+            <FormField
+              control={form.control}
+              name="userId"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Personel *</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger data-testid="select-personnel">
+                        <SelectValue placeholder="Personel seçin" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {users.map((u) => (
+                        <SelectItem key={u.id} value={u.id}>
+                          {u.firstName} {u.lastName} ({u.role})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="reportType"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Kayıt Türü *</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger data-testid="select-report-type-selector">
+                          <SelectValue placeholder="Seçin" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="verbal_warning">Sözlü Uyarı</SelectItem>
+                        <SelectItem value="written_warning">Yazılı Uyarı</SelectItem>
+                        <SelectItem value="suspension">Uzaklaştırma</SelectItem>
+                        <SelectItem value="termination">İş Akdinin Feshi</SelectItem>
+                        <SelectItem value="other">Diğer</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="severity"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Önem Derecesi *</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger data-testid="select-severity-selector">
+                          <SelectValue placeholder="Seçin" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="low">Düşük</SelectItem>
+                        <SelectItem value="medium">Orta</SelectItem>
+                        <SelectItem value="high">Yüksek</SelectItem>
+                        <SelectItem value="critical">Kritik</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+            <FormField
+              control={form.control}
+              name="subject"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Konu *</FormLabel>
+                  <FormControl>
+                    <Input {...field} placeholder="Örn: Geç kalma" data-testid="input-subject-selector" />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="description"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Açıklama *</FormLabel>
+                  <FormControl>
+                    <Textarea {...field} placeholder="Detaylı açıklama yazın" rows={4} data-testid="textarea-description-selector" />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="incidentDate"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Olay Tarihi *</FormLabel>
+                    <FormControl>
+                      <Input {...field} type="date" data-testid="input-incident-date-selector" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="incidentTime"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Olay Saati</FormLabel>
+                    <FormControl>
+                      <Input {...field} value={field.value ?? ""} type="time" data-testid="input-incident-time-selector" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+            <FormField
+              control={form.control}
+              name="location"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Konum</FormLabel>
+                  <FormControl>
+                    <Input {...field} value={field.value ?? ""} placeholder="Örn: Şube ana kasa" data-testid="input-location-selector" />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setOpen(false)} data-testid="button-cancel-selector">
+                İptal
+              </Button>
+              <Button type="submit" disabled={createMutation.isPending} data-testid="button-submit-selector">
                 Oluştur
               </Button>
             </DialogFooter>

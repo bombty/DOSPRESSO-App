@@ -95,7 +95,7 @@ import {
 } from "lucide-react";
 import { format, differenceInDays } from "date-fns";
 import { useLocation } from "wouter";
-import { CreateDisciplinaryDialog } from "@/components/hr/DisciplinaryDialogs";
+import { CreateDisciplinaryDialog, CreateDisciplinaryDialogWithSelector } from "@/components/hr/DisciplinaryDialogs";
 import { EmployeeTermination, insertEmployeeTerminationSchema } from "@shared/schema";
 
 const roleLabels: Record<string, string> = {
@@ -949,8 +949,8 @@ export default function IKPage() {
                 <Badge variant="secondary">{filteredDisciplinaryReports.length}</Badge>
               </div>
               {canWarn && user?.id && user?.branchId && (
-                <CreateDisciplinaryDialog 
-                  userId={user.id} 
+                <CreateDisciplinaryDialogWithSelector 
+                  
                   branchId={user.branchId} 
                 />
               )}

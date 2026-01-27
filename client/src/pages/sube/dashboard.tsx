@@ -32,7 +32,9 @@ import {
   BellRing,
   XCircle,
   Eye,
-  Check
+  Check,
+  Star,
+  QrCode
 } from "lucide-react";
 
 interface ActiveSession {
@@ -172,6 +174,16 @@ export default function SubeDashboard() {
     enabled: authChecked,
   });
 
+  // Customer feedback stats query
+  const { data: feedbackStats } = useQuery<{ avgRating: number; totalCount: number }>({
+    queryKey: ["/api/customer-feedback/stats", branchId],
+    queryFn: async () => {
+      const res = await fetch(`/api/customer-feedback/stats/${branchId}`);
+      return res.json();
+    },
+    enabled: !!branchId && authChecked,
+  });
+
   const { data: dailySummaries = [], isLoading: loadingDaily } = useQuery<DailySummary[]>({
     queryKey: ['/api/branches', branchId, 'attendance', 'daily', selectedDate],
     queryFn: async () => {
@@ -181,7 +193,7 @@ export default function SubeDashboard() {
     enabled: authChecked,
   });
 
-  const acknowledgeAlertMutation = useMutation({
+  // Customer feedback stats query
     mutationFn: async (alertId: number) => {
       return apiRequest('PATCH', `/api/alerts/${alertId}/acknowledge`, { userId: currentUserId });
     },

@@ -8425,23 +8425,53 @@ JSON formatında yanıt ver:
   // ===== USER CRM ENDPOINTS (HQ Only) =====
 
   // GET /api/admin/users - Get all users with filters
+  // Supervisor can only see their own branch personnel
   app.get('/api/admin/users', isAuthenticated, async (req: any, res) => {
     try {
       const user = req.user!;
-      if (!user.role || !isHQRole(user.role as UserRoleType)) {
-        return res.status(403).json({ message: "HQ yetkisi gerekli" });
+      const userRole = user.role as UserRoleType;
+      
+      // Allow HQ roles full access, supervisor/supervisor_buddy only their branch
+      const isSupervisorRole = ['supervisor', 'supervisor_buddy'].includes(userRole);
+      if (!isHQRole(userRole) && !isSupervisorRole) {
+        return res.status(403).json({ message: "Yetkiniz yok" });
       }
 
       const { role, branchId, search, accountStatus } = req.query;
-      const filters = {
+      
+      // Build filters
+      let filters: any = {
         role: role as string | undefined,
         branchId: branchId ? parseInt(branchId as string) : undefined,
         search: search as string | undefined,
         accountStatus: accountStatus as string | undefined,
       };
 
+      // Supervisor can ONLY see their own branch - force filter
+      if (isSupervisorRole) {
+        if (!user.branchId) {
+          return res.status(403).json({ message: "Şube ataması yapılmamış" });
+        }
+        filters.branchId = user.branchId;
+        // Supervisor can only see branch-level roles
+        const allowedRoles = ['barista', 'stajyer', 'supervisor', 'supervisor_buddy'];
+        if (filters.role && !allowedRoles.includes(filters.role)) {
+          filters.role = undefined;
+        }
+      }
+
       const allUsers = await storage.getAllUsersWithFilters(filters);
-      res.json(allUsers);
+      
+      // For supervisors, filter out HQ roles from results
+      let filteredUsers = allUsers;
+      if (isSupervisorRole) {
+        filteredUsers = allUsers.filter(u => 
+          !isHQRole(u.role as UserRoleType) && 
+          ['barista', 'stajyer', 'supervisor', 'supervisor_buddy'].includes(u.role || '')
+        );
+      }
+      
+      res.json(filteredUsers);
     } catch (error: any) {
       console.error("Error fetching users:", error);
       res.status(500).json({ message: "Failed to fetch users" });
