@@ -69,30 +69,12 @@ const allActions: QuickAction[] = [
     bgColor: "bg-indigo-100 dark:bg-indigo-900/40"
   },
   { 
-    id: "personnel", 
-    label: "Personel", 
-    icon: Users, 
-    path: "/kullanicilar",
-    color: "text-pink-600 dark:text-pink-400",
-    bgColor: "bg-pink-100 dark:bg-pink-900/40",
-    roles: ["admin", "supervisor", "supervisor_buddy"]
-  },
-  { 
     id: "shifts", 
     label: "Vardiyalar", 
     icon: Calendar, 
     path: "/vardiyalar",
     color: "text-cyan-600 dark:text-cyan-400",
     bgColor: "bg-cyan-100 dark:bg-cyan-900/40"
-  },
-  { 
-    id: "reports", 
-    label: "Raporlar", 
-    icon: BarChart3, 
-    path: "/raporlar",
-    color: "text-rose-600 dark:text-rose-400",
-    bgColor: "bg-rose-100 dark:bg-rose-900/40",
-    roles: ["admin", "supervisor", "supervisor_buddy", "coach", "muhasebe"]
   }
 ];
 
@@ -103,32 +85,30 @@ export function QuickActionsGrid() {
   const filteredActions = allActions.filter(action => {
     if (!action.roles) return true;
     return user?.role && action.roles.includes(user.role);
-  }).slice(0, 8);
+  }).slice(0, 6);
 
   return (
-    <div className="space-y-3">
-      <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-foreground">Hızlı İşlemler</h3>
-      </div>
+    <div className="space-y-2">
+      <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Hızlı İşlemler</h3>
       
-      <div className="grid grid-cols-4 gap-3">
+      <div className="grid grid-cols-6 gap-2">
         {filteredActions.map((action, index) => {
           const Icon = action.icon;
           return (
             <motion.button
               key={action.id}
-              initial={{ opacity: 0, y: 10 }}
+              initial={{ opacity: 0, y: 5 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.05, duration: 0.3 }}
+              transition={{ delay: index * 0.03, duration: 0.2 }}
               whileTap={{ scale: 0.95 }}
               onClick={() => setLocation(action.path)}
-              className="flex flex-col items-center gap-2 p-3"
+              className="flex flex-col items-center gap-1.5 p-2 rounded-xl hover-elevate"
               data-testid={`quick-action-${action.id}`}
             >
-              <div className={`w-12 h-12 rounded-2xl ${action.bgColor} flex items-center justify-center transition-colors duration-200`}>
-                <Icon className={`w-5 h-5 ${action.color}`} />
+              <div className={`w-10 h-10 rounded-xl ${action.bgColor} flex items-center justify-center`}>
+                <Icon className={`w-4 h-4 ${action.color}`} />
               </div>
-              <span className="text-[10px] font-medium text-muted-foreground text-center leading-tight">
+              <span className="text-[9px] font-medium text-muted-foreground text-center leading-tight truncate w-full">
                 {action.label}
               </span>
             </motion.button>

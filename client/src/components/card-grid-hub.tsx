@@ -18,11 +18,10 @@ import { PersonnelStatusPanel } from "@/components/personnel-status-panel";
 import { CriticalAlerts } from "@/components/critical-alerts";
 import { MEGA_MODULE_ORDER } from "@/lib/megaModuleConfig";
 import { HeroSection } from "@/components/ui/hero-section";
-import { WelcomeHero } from "@/components/widgets/welcome-hero";
-import { QuickStatsGrid } from "@/components/widgets/quick-stats-grid";
+import { UnifiedHero } from "@/components/widgets/unified-hero";
+import { CompactStatsBar } from "@/components/widgets/compact-stats-bar";
 import { QuickActionsGrid } from "@/components/widgets/quick-actions-grid";
 import { MiniCalendar } from "@/components/widgets/mini-calendar";
-import { ProgressOverview } from "@/components/widgets/progress-overview";
 import { ActivityTimeline } from "@/components/widgets/activity-timeline";
 import {
   Accordion,
@@ -885,27 +884,24 @@ export function CardGridHub() {
     : baseModules;
 
   return (
-    <div className="p-3 pb-24 space-y-4">
-      {/* Welcome Hero Section */}
-      <WelcomeHero />
+    <div className="p-3 pb-24 space-y-3">
+      {/* Unified Hero: Greeting + Progress Ring */}
+      <UnifiedHero />
+
+      {/* Compact Stats Bar: 4 metrics in 1 row */}
+      <CompactStatsBar />
 
       {/* Critical Alerts - Top priority notifications */}
       <CriticalAlerts />
 
-      {/* Quick Stats Grid - Key metrics */}
-      <QuickStatsGrid />
-
-      {/* Quick Actions - Fast access buttons */}
+      {/* Quick Actions - 6 compact buttons */}
       <QuickActionsGrid />
 
-      {/* Progress and Calendar widgets */}
+      {/* Calendar + Activity side by side on larger screens */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-        <ProgressOverview />
         <MiniCalendar />
+        <ActivityTimeline />
       </div>
-
-      {/* Activity Timeline */}
-      <ActivityTimeline />
 
       {/* Announcement Banners - Only show if enabled */}
       {bannerCarouselEnabled && <AnnouncementBannerCarousel />}
