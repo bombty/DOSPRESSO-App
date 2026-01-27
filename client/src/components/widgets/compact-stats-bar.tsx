@@ -1,15 +1,33 @@
 import { motion } from "framer-motion";
+import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
+import { getStatsForRole, isHQRole, isBranchRole, isFactoryRole } from "@/lib/role-visibility";
 import { 
   ClipboardCheck, 
   AlertTriangle, 
   CheckCircle,
-  Clock
+  Clock,
+  Building2,
+  TrendingUp,
+  Users,
+  Factory
 } from "lucide-react";
+
+interface StatItem {
+  id: string;
+  label: string;
+  value: number;
+  icon: any;
+  bgColor: string;
+  path: string;
+  roles: string[];
+}
 
 export function CompactStatsBar() {
   const { user } = useAuth();
+  const [, setLocation] = useLocation();
+  const userRole = user?.role;
 
   const { data: tasks = [] } = useQuery<any[]>({
     queryKey: ["/api/tasks/my"],
@@ -36,14 +54,15 @@ export function CompactStatsBar() {
   const openFaults = faults.filter((f: any) => f.currentStage !== "kapatildi").length;
   const activeChecklists = checklists.filter((c: any) => !c.isCompleted).length;
 
-  const stats = [
+  const allStats: StatItem[] = [
     {
       id: "tasks",
       label: "Bekleyen",
       value: pendingTasks,
       icon: ClipboardCheck,
       bgColor: "bg-blue-500 dark:bg-blue-600",
-      textColor: "text-white"
+      path: "/gorevler",
+      roles: ["supervisor", "supervisor_buddy", "barista", "stajyer", "coach", "trainer", "fabrika_mudur", "fabrika_sorumlu"]
     },
     {
       id: "completed",
@@ -51,7 +70,8 @@ export function CompactStatsBar() {
       value: completedTasks,
       icon: CheckCircle,
       bgColor: "bg-emerald-500 dark:bg-emerald-600",
-      textColor: "text-white"
+      path: "/gorevler?filter=completed",
+      roles: ["supervisor", "supervisor_buddy", "barista", "stajyer", "coach", "trainer", "fabrika_mudur", "fabrika_sorumlu"]
     },
     {
       id: "faults",
@@ -59,7 +79,8 @@ export function CompactStatsBar() {
       value: openFaults,
       icon: AlertTriangle,
       bgColor: "bg-amber-500 dark:bg-amber-600",
-      textColor: "text-white"
+      path: "/ariza",
+      roles: ["supervisor", "supervisor_buddy", "teknik", "ekipman_teknik", "fabrika_mudur"]
     },
     {
       id: "checklists",
@@ -67,21 +88,36 @@ export function CompactStatsBar() {
       value: activeChecklists,
       icon: Clock,
       bgColor: "bg-purple-500 dark:bg-purple-600",
-      textColor: "text-white"
+      path: "/checklistler",
+      roles: ["supervisor", "supervisor_buddy", "barista", "stajyer", "fabrika_sorumlu", "fabrika_personel"]
     }
   ];
 
+  const filteredStats = allStats.filter(stat => {
+    if (!userRole) return false;
+    return stat.roles.includes(userRole);
+  });
+
+  if (filteredStats.length === 0) {
+    return null;
+  }
+
+  const gridCols = filteredStats.length <= 2 ? "grid-cols-2" : 
+                   filteredStats.length === 3 ? "grid-cols-3" : "grid-cols-4";
+
   return (
-    <div className="grid grid-cols-4 gap-2" data-testid="compact-stats-bar">
-      {stats.map((stat, index) => {
+    <div className={`grid ${gridCols} gap-2`} data-testid="compact-stats-bar">
+      {filteredStats.map((stat, index) => {
         const Icon = stat.icon;
         return (
-          <motion.div
+          <motion.button
             key={stat.id}
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: index * 0.05, duration: 0.3 }}
-            className={`relative overflow-hidden rounded-xl ${stat.bgColor} p-3 shadow-md`}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => setLocation(stat.path)}
+            className={`relative overflow-hidden rounded-xl ${stat.bgColor} p-3 shadow-md cursor-pointer text-left`}
             data-testid={`compact-stat-${stat.id}`}
           >
             <div className="flex items-center gap-2">
@@ -93,7 +129,7 @@ export function CompactStatsBar() {
                 <p className="text-[10px] text-white/90 font-medium truncate mt-0.5">{stat.label}</p>
               </div>
             </div>
-          </motion.div>
+          </motion.button>
         );
       })}
     </div>
