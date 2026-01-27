@@ -193,7 +193,7 @@ export default function SubeDashboard() {
     enabled: authChecked,
   });
 
-  // Customer feedback stats query
+  const acknowledgeAlertMutation = useMutation({
     mutationFn: async (alertId: number) => {
       return apiRequest('PATCH', `/api/alerts/${alertId}/acknowledge`, { userId: currentUserId });
     },
