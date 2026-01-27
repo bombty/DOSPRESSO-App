@@ -7,11 +7,13 @@ import { isHQRole } from "@shared/schema";
 const FACTORY_ROLES = ['fabrika', 'fabrika_mudur', 'fabrika_operator'];
 
 // HQ roles that should see HQDashboard instead of CardGridHub
-// This includes all HQ department roles that have dedicated dashboards
+// Bu liste SADECE departman rollerini içerir - admin buraya dahil DEĞİL
+// Admin CardGridHub'da mega modül kartlarını görür (tüm sistem yönetimi için)
 const HQ_SPECIAL_DASHBOARD_ROLES = [
   'trainer', 'coach', 'satinalma', 'muhasebe', 'muhasebe_ik', 
   'teknik', 'destek', 'ceo', 'cgo', 'marketing', 
   'kalite_kontrol', 'fabrika_mudur', 'yatirimci_hq'
+  // NOT: 'admin' buraya dahil DEĞİL - admin CardGridHub'ı görür
 ];
 
 // Lazy load HQDashboard for special roles

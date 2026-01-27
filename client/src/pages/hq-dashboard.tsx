@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useRoute, useLocation } from "wouter";
+import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -1182,21 +1183,32 @@ function DashboardSkeleton() {
 }
 
 export default function HQDashboard() {
-  const [, params] = useRoute("/hq-dashboard/:department");
-  const department = params?.department || 'cgo';
-
-  const departmentComponents: Record<string, React.ComponentType> = {
+  const { user } = useAuth();
+  const userRole = user?.role || '';
+  
+  // Kullanıcı rolüne göre doğru dashboard'u seç
+  // URL parametresi yerine kullanıcının rolü belirleyici
+  const roleToDashboard: Record<string, React.ComponentType> = {
+    // CGO rolleri
     'cgo': CGODashboard,
+    'ceo': CGODashboard,
+    
+    // Departman rolleri - Her rol kendi dashboard'unu görür
     'satinalma': SatinalmaDashboard,
     'fabrika': FabrikaDashboard,
-    'ik': IKDashboard,
+    'fabrika_mudur': FabrikaDashboard,
+    'muhasebe': IKDashboard,
+    'muhasebe_ik': IKDashboard,
     'coach': CoachDashboard,
     'marketing': MarketingDashboard,
     'trainer': TrainerDashboard,
-    'kalite': KaliteDashboard,
+    'kalite_kontrol': KaliteDashboard,
+    'teknik': SatinalmaDashboard, // Teknik ekipman odaklı
+    'destek': CoachDashboard, // Destek operasyon odaklı
+    'yatirimci_hq': CGODashboard, // Yatırımcı genel bakış
   };
 
-  const DepartmentComponent = departmentComponents[department] || CGODashboard;
+  const DepartmentComponent = roleToDashboard[userRole] || CGODashboard;
 
   return (
     <div className="container mx-auto p-4 max-w-7xl">
