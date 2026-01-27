@@ -5,31 +5,32 @@ export type UserRole =
   | 'fabrika_mudur' | 'fabrika_sorumlu' | 'fabrika_personel';
 
 const HQ_ROLES: UserRole[] = ['ceo', 'admin', 'muhasebe', 'satinalma', 'pazarlama', 'ik', 'teknik', 'trainer', 'coach', 'ekipman_teknik'];
+const HQ_NON_CEO_ROLES: UserRole[] = ['admin', 'muhasebe', 'satinalma', 'pazarlama', 'ik', 'teknik', 'trainer', 'coach', 'ekipman_teknik'];
 const BRANCH_ROLES: UserRole[] = ['supervisor', 'supervisor_buddy', 'barista', 'stajyer'];
-const FACTORY_ROLES: UserRole[] = ['fabrika_mudur', 'fabrika_sorumlo', 'fabrika_personel'] as UserRole[];
+const FACTORY_ROLES: UserRole[] = ['fabrika_mudur', 'fabrika_sorumlu', 'fabrika_personel'];
 
 export const QUICK_ACTIONS_BY_ROLE: Record<UserRole, string[]> = {
   ceo: [],
-  admin: [],
+  admin: ['announcements', 'settings'],
   muhasebe: ['reports'],
-  satinalma: ['suppliers', 'orders'],
-  pazarlama: ['announcements', 'banners'],
+  satinalma: ['stock'],
+  pazarlama: ['announcements'],
   ik: ['personnel', 'leaves', 'shifts'],
-  teknik: ['fault', 'equipment'],
-  trainer: ['academy', 'courses'],
-  coach: ['branches', 'performance'],
-  ekipman_teknik: ['fault', 'equipment'],
-  supervisor: ['new-task', 'checklist', 'fault', 'academy', 'shifts', 'qr-scan'],
-  supervisor_buddy: ['new-task', 'checklist', 'fault', 'academy', 'shifts'],
-  barista: ['checklist', 'fault', 'academy', 'shifts'],
-  stajyer: ['checklist', 'academy', 'shifts'],
-  fabrika_mudur: ['production', 'quality', 'shifts', 'fault'],
-  fabrika_sorumlu: ['production', 'quality', 'shifts'],
+  teknik: [],
+  trainer: ['new-task', 'academy'],
+  coach: ['new-task', 'reports'],
+  ekipman_teknik: [],
+  supervisor: ['new-task', 'checklist', 'academy', 'shifts', 'leaves', 'personnel'],
+  supervisor_buddy: ['new-task', 'checklist', 'academy', 'shifts'],
+  barista: ['checklist', 'academy', 'shifts', 'leaves'],
+  stajyer: ['checklist', 'academy'],
+  fabrika_mudur: ['production', 'shifts', 'reports', 'personnel', 'stock'],
+  fabrika_sorumlu: ['production', 'shifts'],
   fabrika_personel: ['production', 'shifts'],
 };
 
 export const MODULES_BY_ROLE: Record<UserRole, string[]> = {
-  ceo: ['reports'],
+  ceo: [],
   admin: ['admin'],
   muhasebe: ['reports', 'satinalma'],
   satinalma: ['satinalma'],
@@ -41,16 +42,16 @@ export const MODULES_BY_ROLE: Record<UserRole, string[]> = {
   ekipman_teknik: ['equipment'],
   supervisor: ['operations', 'equipment', 'training', 'hr'],
   supervisor_buddy: ['operations', 'equipment', 'training'],
-  barista: ['operations', 'training'],
-  stajyer: ['operations', 'training'],
+  barista: ['training'],
+  stajyer: [],
   fabrika_mudur: ['factory', 'satinalma', 'reports'],
   fabrika_sorumlu: ['factory'],
   fabrika_personel: ['factory'],
 };
 
 export const STATS_BY_ROLE: Record<UserRole, string[]> = {
-  ceo: ['revenue', 'branches', 'performance'],
-  admin: ['system', 'users', 'permissions'],
+  ceo: [],
+  admin: [],
   muhasebe: ['revenue', 'expenses', 'invoices'],
   satinalma: ['orders', 'suppliers', 'stock'],
   pazarlama: ['campaigns', 'announcements'],
@@ -62,14 +63,14 @@ export const STATS_BY_ROLE: Record<UserRole, string[]> = {
   supervisor: ['tasks', 'faults', 'checklist', 'personnel'],
   supervisor_buddy: ['tasks', 'faults', 'checklist'],
   barista: ['tasks', 'checklist'],
-  stajyer: ['tasks', 'checklist', 'academy'],
+  stajyer: ['checklist'],
   fabrika_mudur: ['production', 'quality', 'stock', 'personnel'],
   fabrika_sorumlu: ['production', 'quality', 'stock'],
   fabrika_personel: ['production', 'shifts'],
 };
 
 export const NAV_ITEMS_BY_ROLE: Record<UserRole, string[]> = {
-  ceo: ['home', 'reports', 'ai', 'profile'],
+  ceo: ['home', 'ai', 'profile'],
   admin: ['home', 'admin', 'profile'],
   muhasebe: ['home', 'reports', 'crm', 'profile'],
   satinalma: ['home', 'crm', 'profile'],
@@ -89,14 +90,16 @@ export const NAV_ITEMS_BY_ROLE: Record<UserRole, string[]> = {
 };
 
 export const WIDGET_VISIBILITY: Record<string, UserRole[]> = {
-  'ai-summary': HQ_ROLES,
+  'unified-hero': [...BRANCH_ROLES, ...FACTORY_ROLES],
+  'compact-stats': [...BRANCH_ROLES, ...FACTORY_ROLES, 'teknik', 'ekipman_teknik'],
+  'ai-summary': ['ceo', 'admin', 'coach'],
   'branch-scorecard': [...BRANCH_ROLES, 'coach'],
   'personnel-status': ['supervisor', 'supervisor_buddy', 'ik', 'fabrika_mudur'],
-  'critical-alerts': [...HQ_ROLES, 'supervisor', 'supervisor_buddy', 'fabrika_mudur'],
-  'quick-actions': [...BRANCH_ROLES, ...FACTORY_ROLES, 'teknik', 'ekipman_teknik', 'trainer'],
-  'module-cards': [...HQ_ROLES, 'supervisor', 'supervisor_buddy', 'fabrika_mudur'],
+  'critical-alerts': [...HQ_NON_CEO_ROLES, 'supervisor', 'supervisor_buddy', 'fabrika_mudur'],
+  'quick-actions': [...BRANCH_ROLES, ...FACTORY_ROLES, 'teknik', 'ekipman_teknik', 'trainer', 'ik', 'satinalma', 'pazarlama', 'muhasebe'],
+  'module-cards': [...HQ_NON_CEO_ROLES, 'supervisor', 'supervisor_buddy', 'fabrika_mudur'],
   'mini-calendar': [...BRANCH_ROLES, ...FACTORY_ROLES],
-  'activity-timeline': [...HQ_ROLES, 'supervisor', 'supervisor_buddy'],
+  'activity-timeline': [...HQ_NON_CEO_ROLES, 'supervisor', 'supervisor_buddy'],
 };
 
 export function isRoleAllowed(role: string | undefined, allowedRoles: UserRole[]): boolean {

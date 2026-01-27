@@ -887,14 +887,55 @@ export function CardGridHub() {
     : baseModules;
 
   const userRole = user?.role;
+  const isCEO = userRole === 'ceo';
+  const isAdmin = userRole === 'admin';
+
+  if (isCEO) {
+    return (
+      <div className="p-3 pb-24 space-y-4">
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4 }}
+          className="rounded-2xl bg-gradient-to-br from-[hsl(var(--dospresso-navy))] via-[hsl(var(--dospresso-blue))] to-[hsl(var(--dospresso-blue)/0.8)] p-6 text-white"
+        >
+          <div className="flex items-center gap-3 mb-3">
+            <div className="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center">
+              <Coffee className="w-6 h-6 text-white" />
+            </div>
+            <div>
+              <h1 className="text-xl font-bold">Hoş geldiniz, {user?.firstName || user?.username}</h1>
+              <p className="text-sm text-white/70">CEO Dashboard</p>
+            </div>
+          </div>
+          <p className="text-sm text-white/80 mb-4">
+            DOSPRESSO franchise ağınızı AI Control Tower üzerinden yönetebilirsiniz.
+          </p>
+          <Button
+            variant="secondary"
+            className="w-full bg-white/20 text-white border-0"
+            onClick={() => setLocation("/ceo-command-center")}
+            data-testid="ceo-ai-control-tower-btn"
+          >
+            <BarChart3 className="w-4 h-4 mr-2" />
+            AI Control Tower'a Git
+          </Button>
+        </motion.div>
+
+        <AISummaryCard />
+
+        {bannerCarouselEnabled && <AnnouncementBannerCarousel />}
+      </div>
+    );
+  }
 
   return (
     <div className="p-3 pb-24 space-y-3">
-      {/* Unified Hero: Greeting + Progress Ring */}
-      <UnifiedHero />
+      {/* Unified Hero: Greeting + Progress Ring - For operational roles */}
+      {canSeeWidget(userRole, 'unified-hero') && <UnifiedHero />}
 
       {/* Compact Stats Bar - Role filtered internally */}
-      <CompactStatsBar />
+      {canSeeWidget(userRole, 'compact-stats') && <CompactStatsBar />}
 
       {/* AI Summary Card - HQ için AI Control Tower özeti */}
       {canSeeWidget(userRole, 'ai-summary') && <AISummaryCard />}

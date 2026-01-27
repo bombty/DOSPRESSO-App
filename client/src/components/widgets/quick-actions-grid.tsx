@@ -1,6 +1,7 @@
 import { motion } from "framer-motion";
 import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
+import { getQuickActionsForRole } from "@/lib/role-visibility";
 import {
   Plus,
   ClipboardList,
@@ -11,7 +12,6 @@ import {
   Package,
   Users,
   Megaphone,
-  BarChart3,
   Factory,
   Settings
 } from "lucide-react";
@@ -23,7 +23,6 @@ interface QuickAction {
   path: string;
   color: string;
   bgColor: string;
-  roles: string[];
 }
 
 const allActions: QuickAction[] = [
@@ -33,8 +32,7 @@ const allActions: QuickAction[] = [
     icon: Plus, 
     path: "/gorevler?new=true",
     color: "text-blue-600 dark:text-blue-400",
-    bgColor: "bg-blue-100 dark:bg-blue-900/40",
-    roles: ["supervisor", "supervisor_buddy", "coach", "trainer"]
+    bgColor: "bg-blue-100 dark:bg-blue-900/40"
   },
   { 
     id: "checklist", 
@@ -42,8 +40,7 @@ const allActions: QuickAction[] = [
     icon: ClipboardList, 
     path: "/checklistler",
     color: "text-emerald-600 dark:text-emerald-400",
-    bgColor: "bg-emerald-100 dark:bg-emerald-900/40",
-    roles: ["supervisor", "supervisor_buddy", "barista", "stajyer", "fabrika_sorumlu", "fabrika_personel"]
+    bgColor: "bg-emerald-100 dark:bg-emerald-900/40"
   },
   { 
     id: "academy", 
@@ -51,8 +48,7 @@ const allActions: QuickAction[] = [
     icon: GraduationCap, 
     path: "/akademi",
     color: "text-indigo-600 dark:text-indigo-400",
-    bgColor: "bg-indigo-100 dark:bg-indigo-900/40",
-    roles: ["supervisor", "supervisor_buddy", "barista", "stajyer", "trainer"]
+    bgColor: "bg-indigo-100 dark:bg-indigo-900/40"
   },
   { 
     id: "shifts", 
@@ -60,8 +56,7 @@ const allActions: QuickAction[] = [
     icon: Calendar, 
     path: "/vardiyalar",
     color: "text-cyan-600 dark:text-cyan-400",
-    bgColor: "bg-cyan-100 dark:bg-cyan-900/40",
-    roles: ["supervisor", "supervisor_buddy", "barista", "stajyer", "ik", "fabrika_mudur", "fabrika_sorumlu", "fabrika_personel"]
+    bgColor: "bg-cyan-100 dark:bg-cyan-900/40"
   },
   { 
     id: "leaves", 
@@ -69,8 +64,7 @@ const allActions: QuickAction[] = [
     icon: CalendarDays, 
     path: "/izinler",
     color: "text-teal-600 dark:text-teal-400",
-    bgColor: "bg-teal-100 dark:bg-teal-900/40",
-    roles: ["supervisor", "supervisor_buddy", "barista", "stajyer", "ik", "fabrika_mudur", "fabrika_sorumlu", "fabrika_personel"]
+    bgColor: "bg-teal-100 dark:bg-teal-900/40"
   },
   { 
     id: "reports", 
@@ -78,8 +72,7 @@ const allActions: QuickAction[] = [
     icon: FileText, 
     path: "/raporlar",
     color: "text-slate-600 dark:text-slate-400",
-    bgColor: "bg-slate-100 dark:bg-slate-900/40",
-    roles: ["ceo", "muhasebe", "coach", "fabrika_mudur"]
+    bgColor: "bg-slate-100 dark:bg-slate-900/40"
   },
   { 
     id: "personnel", 
@@ -87,8 +80,7 @@ const allActions: QuickAction[] = [
     icon: Users, 
     path: "/ik",
     color: "text-pink-600 dark:text-pink-400",
-    bgColor: "bg-pink-100 dark:bg-pink-900/40",
-    roles: ["ik", "supervisor"]
+    bgColor: "bg-pink-100 dark:bg-pink-900/40"
   },
   { 
     id: "stock", 
@@ -96,8 +88,7 @@ const allActions: QuickAction[] = [
     icon: Package, 
     path: "/satinalma?tab=stok",
     color: "text-amber-600 dark:text-amber-400",
-    bgColor: "bg-amber-100 dark:bg-amber-900/40",
-    roles: ["satinalma", "fabrika_mudur"]
+    bgColor: "bg-amber-100 dark:bg-amber-900/40"
   },
   { 
     id: "production", 
@@ -105,8 +96,7 @@ const allActions: QuickAction[] = [
     icon: Factory, 
     path: "/fabrika",
     color: "text-orange-600 dark:text-orange-400",
-    bgColor: "bg-orange-100 dark:bg-orange-900/40",
-    roles: ["fabrika_mudur", "fabrika_sorumlu", "fabrika_personel"]
+    bgColor: "bg-orange-100 dark:bg-orange-900/40"
   },
   { 
     id: "announcements", 
@@ -114,17 +104,7 @@ const allActions: QuickAction[] = [
     icon: Megaphone, 
     path: "/admin?tab=icerik",
     color: "text-rose-600 dark:text-rose-400",
-    bgColor: "bg-rose-100 dark:bg-rose-900/40",
-    roles: ["pazarlama", "admin"]
-  },
-  { 
-    id: "analytics", 
-    label: "Analitik", 
-    icon: BarChart3, 
-    path: "/raporlar?tab=analitik",
-    color: "text-violet-600 dark:text-violet-400",
-    bgColor: "bg-violet-100 dark:bg-violet-900/40",
-    roles: ["ceo", "admin"]
+    bgColor: "bg-rose-100 dark:bg-rose-900/40"
   },
   { 
     id: "settings", 
@@ -132,8 +112,7 @@ const allActions: QuickAction[] = [
     icon: Settings, 
     path: "/admin",
     color: "text-gray-600 dark:text-gray-400",
-    bgColor: "bg-gray-100 dark:bg-gray-900/40",
-    roles: ["admin"]
+    bgColor: "bg-gray-100 dark:bg-gray-900/40"
   }
 ];
 
@@ -142,9 +121,11 @@ export function QuickActionsGrid() {
   const { user } = useAuth();
   const userRole = user?.role;
 
+  const allowedActionIds = getQuickActionsForRole(userRole);
+  
   const filteredActions = allActions.filter(action => {
     if (!userRole) return false;
-    return action.roles.includes(userRole);
+    return allowedActionIds.includes(action.id);
   }).slice(0, 6);
 
   if (filteredActions.length === 0) {

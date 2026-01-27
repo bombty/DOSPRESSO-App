@@ -3,7 +3,7 @@ import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery } from "@tanstack/react-query";
 import { Badge } from "@/components/ui/badge";
-import { getModulesForRole } from "@/lib/role-visibility";
+import { MODULES_BY_ROLE, UserRole } from "@/lib/role-visibility";
 import { 
   Building2, 
   Wrench, 
@@ -23,7 +23,6 @@ interface ModuleConfig {
   icon: any;
   path: string;
   color: string;
-  roles: string[];
 }
 
 const MODULE_CONFIG: ModuleConfig[] = [
@@ -32,72 +31,63 @@ const MODULE_CONFIG: ModuleConfig[] = [
     title: "Operasyonlar",
     icon: Building2,
     path: "/operasyon",
-    color: "bg-blue-500",
-    roles: ["supervisor", "supervisor_buddy", "coach", "ik"]
+    color: "bg-blue-500"
   },
   {
     id: "equipment",
     title: "Ekipman & Bakım",
     icon: Wrench,
     path: "/ekipman",
-    color: "bg-orange-500",
-    roles: ["supervisor", "supervisor_buddy", "teknik", "ekipman_teknik"]
+    color: "bg-orange-500"
   },
   {
     id: "training",
     title: "Eğitim & Akademi",
     icon: GraduationCap,
     path: "/akademi",
-    color: "bg-emerald-500",
-    roles: ["supervisor", "supervisor_buddy", "barista", "stajyer", "trainer", "coach"]
+    color: "bg-emerald-500"
   },
   {
     id: "hr",
     title: "Personel & İK",
     icon: Users,
     path: "/ik",
-    color: "bg-pink-500",
-    roles: ["supervisor", "ik", "fabrika_mudur"]
+    color: "bg-pink-500"
   },
   {
     id: "reports",
     title: "Raporlar",
     icon: BarChart3,
     path: "/raporlar",
-    color: "bg-indigo-500",
-    roles: ["ceo", "muhasebe", "coach", "fabrika_mudur"]
+    color: "bg-indigo-500"
   },
   {
     id: "factory",
     title: "Fabrika & Üretim",
     icon: Factory,
     path: "/fabrika",
-    color: "bg-amber-500",
-    roles: ["fabrika_mudur", "fabrika_sorumlu", "fabrika_personel"]
+    color: "bg-amber-500"
   },
   {
     id: "satinalma",
     title: "Satınalma",
     icon: ShoppingCart,
     path: "/satinalma",
-    color: "bg-cyan-500",
-    roles: ["satinalma", "muhasebe", "fabrika_mudur"]
+    color: "bg-cyan-500"
   },
   {
     id: "newshop",
     title: "Yeni Şube Açılış",
     icon: Briefcase,
     path: "/yeni-sube",
-    color: "bg-violet-500",
-    roles: ["ceo", "admin", "coach"]
+    color: "bg-violet-500"
   },
   {
     id: "admin",
     title: "Yönetim",
     icon: Settings,
     path: "/admin",
-    color: "bg-slate-500",
-    roles: ["admin", "pazarlama"]
+    color: "bg-slate-500"
   }
 ];
 
@@ -135,9 +125,11 @@ export function ModuleCardsGrid() {
     }
   };
 
+  const allowedModuleIds = userRole ? (MODULES_BY_ROLE[userRole as UserRole] || []) : [];
+  
   const visibleModules = MODULE_CONFIG.filter(module => {
     if (!userRole) return false;
-    return module.roles.includes(userRole);
+    return allowedModuleIds.includes(module.id);
   });
 
   if (visibleModules.length === 0) {
