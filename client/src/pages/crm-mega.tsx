@@ -11,13 +11,8 @@ import {
   Clock,
   Star,
   TrendingUp,
-  Calculator,
-  Users,
-  Package,
-  FileText,
   Wrench,
   Building2,
-  Wallet,
   MessageSquare,
   GraduationCap
 } from "lucide-react";
@@ -28,10 +23,6 @@ const CRMPerformance = lazy(() => import("@/pages/crm/performance"));
 const CRMSLA = lazy(() => import("@/pages/crm/sla"));
 const CRMFeedback = lazy(() => import("@/pages/crm/feedback"));
 const EmployeeDashboard = lazy(() => import("@/pages/crm/employee-dashboard"));
-const MaliyetYonetimi = lazy(() => import("@/pages/fabrika/maliyet-yonetimi"));
-const CariTakip = lazy(() => import("@/pages/satinalma/cari-takip"));
-const TedarikciYonetimi = lazy(() => import("@/pages/satinalma/tedarikci-yonetimi"));
-const SiparisYonetimi = lazy(() => import("@/pages/satinalma/siparis-yonetimi"));
 const CoachBranches = lazy(() => import("@/pages/crm/coach-branches"));
 const CoachOnboarding = lazy(() => import("@/pages/crm/coach-onboarding"));
 const MentorNotes = lazy(() => import("@/pages/crm/mentor-notes"));
@@ -113,42 +104,6 @@ const CRM_TABS: TabConfig[] = [
     component: CRMFeedback
   },
   {
-    id: "urun-maliyetleri",
-    label: "Product Costs",
-    labelTr: "Ürün Maliyetleri",
-    icon: <Calculator className="h-4 w-4" />,
-    permissionModule: "urun_maliyetleri",
-    component: MaliyetYonetimi,
-    allowedRoles: ['admin', 'muhasebe', 'satinalma', 'yatirimci_hq']
-  },
-  {
-    id: "cari-takip",
-    label: "Accounts",
-    labelTr: "Cari Hesaplar",
-    icon: <Wallet className="h-4 w-4" />,
-    permissionModule: "cari_takip",
-    component: CariTakip,
-    allowedRoles: ['admin', 'muhasebe', 'yatirimci_hq']
-  },
-  {
-    id: "tedarikciler",
-    label: "Suppliers",
-    labelTr: "Tedarikçiler",
-    icon: <Users className="h-4 w-4" />,
-    permissionModule: "tedarikci_yonetimi",
-    component: TedarikciYonetimi,
-    allowedRoles: ['admin', 'satinalma', 'yatirimci_hq']
-  },
-  {
-    id: "siparisler",
-    label: "Orders",
-    labelTr: "Siparişler",
-    icon: <Package className="h-4 w-4" />,
-    permissionModule: "siparis_yonetimi",
-    component: SiparisYonetimi,
-    allowedRoles: ['admin', 'satinalma', 'yatirimci_hq']
-  },
-  {
     id: "sube-takibi",
     label: "Branch Tracking",
     labelTr: "Şube Takibi",
@@ -206,11 +161,8 @@ const TAB_URL_MAP: Record<string, string> = {
   "performance": "/crm/performans",
   "sla": "/crm/sla",
   "feedback": "/crm/geri-bildirimler",
-  "urun-maliyetleri": "/crm/urun-maliyetleri",
-  "cari-takip": "/crm/cari-takip",
-  "tedarikciler": "/crm/tedarikciler",
-  "siparisler": "/crm/siparisler",
   "sube-takibi": "/crm/sube-takibi",
+  "onboarding-sablonlari": "/crm/onboarding",
   "mentor-notlari": "/crm/mentor-notlari",
   "ariza-takibi": "/crm/ariza-takibi"
 };
@@ -221,11 +173,8 @@ function getTabFromUrl(pathname: string): string | null {
   if (pathname.startsWith("/crm/performans")) return "performance";
   if (pathname.startsWith("/crm/sla")) return "sla";
   if (pathname.startsWith("/crm/geri-bildirimler")) return "feedback";
-  if (pathname.startsWith("/crm/urun-maliyetleri")) return "urun-maliyetleri";
-  if (pathname.startsWith("/crm/cari-takip")) return "cari-takip";
-  if (pathname.startsWith("/crm/tedarikciler")) return "tedarikciler";
-  if (pathname.startsWith("/crm/siparisler")) return "siparisler";
   if (pathname.startsWith("/crm/sube-takibi")) return "sube-takibi";
+  if (pathname.startsWith("/crm/onboarding")) return "onboarding-sablonlari";
   if (pathname.startsWith("/crm/mentor-notlari")) return "mentor-notlari";
   if (pathname.startsWith("/crm/ariza-takibi")) return "ariza-takibi";
   

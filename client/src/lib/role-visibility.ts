@@ -71,34 +71,34 @@ export const QUICK_ACTIONS_BY_ROLE: Record<UserRole, string[]> = {
 const ALL_MODULES = ['operations', 'equipment', 'training', 'hr', 'reports', 'factory', 'satinalma', 'newshop', 'admin'];
 
 export const MODULES_BY_ROLE: Record<UserRole, string[]> = {
-  // Executive
-  ceo: [],
-  cgo: ['operations', 'reports', 'hr'],
-  admin: ALL_MODULES, // Admin TÜM modülleri görür
-  // HQ Departments
+  // Executive - CEO ve CGO tüm modüllere erişebilir (raporlama odaklı)
+  ceo: ALL_MODULES,
+  cgo: ALL_MODULES,
+  admin: ALL_MODULES,
+  // HQ Departments - Departmanlara özel modüller
   muhasebe: ['reports', 'satinalma', 'hr'],
   muhasebe_ik: ['reports', 'satinalma', 'hr'],
-  satinalma: ['satinalma', 'reports'],
-  marketing: ['admin', 'reports'],
-  pazarlama: ['admin', 'reports'],
-  ik: ['hr', 'operations'],
+  satinalma: ['satinalma', 'reports', 'factory'],
+  marketing: ['reports'],
+  pazarlama: ['reports'],
+  ik: ['hr', 'operations', 'reports'],
   teknik: ['equipment', 'reports'],
   destek: ['equipment', 'operations', 'reports'],
-  trainer: ['training', 'operations', 'reports'],
+  trainer: ['training', 'reports'],
   coach: ['operations', 'training', 'reports', 'hr'],
   kalite_kontrol: ['factory', 'reports'],
   ekipman_teknik: ['equipment'],
   fabrika: ['factory', 'reports'],
   yatirimci_hq: ['reports'],
-  // Branch Roles
+  // Branch Roles - Şube çalışanları
   supervisor: ['operations', 'equipment', 'training', 'hr'],
   supervisor_buddy: ['operations', 'equipment', 'training'],
-  barista: ['training'],
-  bar_buddy: ['training'],
-  stajyer: [],
+  barista: ['operations', 'training'],
+  bar_buddy: ['operations', 'training'],
+  stajyer: ['training'],
   yatirimci_branch: ['reports'],
-  // Factory Roles
-  fabrika_mudur: ['factory', 'satinalma', 'reports'],
+  // Factory Roles - Fabrika çalışanları
+  fabrika_mudur: ['factory', 'satinalma', 'reports', 'hr'],
   fabrika_sorumlu: ['factory'],
   fabrika_personel: ['factory'],
 };
@@ -139,15 +139,15 @@ export const STATS_BY_ROLE: Record<UserRole, string[]> = {
 
 export const NAV_ITEMS_BY_ROLE: Record<UserRole, string[]> = {
   // Executive
-  ceo: ['home', 'ai', 'profile'],
+  ceo: ['home', 'reports', 'ai', 'profile'],
   cgo: ['home', 'reports', 'ai', 'profile'],
   admin: ['home', 'admin', 'profile'],
   // HQ Departments
   muhasebe: ['home', 'reports', 'crm', 'profile'],
   muhasebe_ik: ['home', 'reports', 'hr', 'crm', 'profile'],
   satinalma: ['home', 'crm', 'profile'],
-  marketing: ['home', 'admin', 'profile'],
-  pazarlama: ['home', 'admin', 'profile'],
+  marketing: ['home', 'reports', 'profile'],
+  pazarlama: ['home', 'reports', 'profile'],
   ik: ['home', 'hr', 'crm', 'profile'],
   teknik: ['home', 'equipment', 'crm', 'profile'],
   destek: ['home', 'equipment', 'crm', 'profile'],
