@@ -40,11 +40,14 @@ export function BottomNav() {
   
   // Build nav items based on user role - all roles use "/" for dashboard
   // HQ users get AI Control Tower instead of Arıza
+  // HQ için "CRM", şube/fabrika personeli için "Panelim" etiketi
+  const crmLabel = isHQ ? "CRM" : "Panelim";
+  
   const allNavItems: NavItem[] = [
     { icon: Home, label: "Ana Sayfa", path: "/" },
     { icon: GraduationCap, label: "Akademi", path: isHQ ? "/akademi-hq" : "/akademi" },
-    // CRM - role göre dinamik yönlendirme (HQ için yönetim, şube/fabrika için kişisel)
-    { icon: Headphones, label: "CRM", path: getCrmPath() },
+    // CRM - role göre dinamik yönlendirme ve etiket (HQ için CRM, şube/fabrika için Panelim)
+    { icon: Headphones, label: crmLabel, path: getCrmPath() },
     // HQ için AI Control Tower, şube/fabrika için Arıza
     isHQ 
       ? { icon: Brain, label: "AI", path: "/ceo-command-center" }

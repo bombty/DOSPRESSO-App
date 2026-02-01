@@ -206,142 +206,76 @@ export default function EmployeeDashboard() {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         <Card>
-          <CardHeader>
-            <CardTitle className="text-base flex items-center gap-2">
-              <Clock className="w-5 h-5" />
-              Devam Durumu
+          <CardHeader className="py-3">
+            <CardTitle className="text-sm flex items-center gap-2">
+              <Clock className="w-4 h-4" />
+              Devam
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex justify-between items-center">
-              <span className="text-sm">Toplam Vardiya</span>
-              <Badge variant="secondary">{attendance.totalShifts}</Badge>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-sm">Geç Kalma</span>
-              <Badge variant={attendance.lateArrivals > 3 ? "destructive" : "secondary"}>
+          <CardContent className="space-y-2 pt-0">
+            <div className="flex justify-between items-center text-sm">
+              <span>Geç</span>
+              <Badge variant={attendance.lateArrivals > 3 ? "destructive" : "secondary"} className="text-xs">
                 {attendance.lateArrivals}
               </Badge>
             </div>
-            <div className="flex justify-between items-center">
-              <span className="text-sm">Erken Ayrılma</span>
-              <Badge variant={attendance.earlyDepartures > 3 ? "destructive" : "secondary"}>
+            <div className="flex justify-between items-center text-sm">
+              <span>Erken Çıkış</span>
+              <Badge variant={attendance.earlyDepartures > 3 ? "destructive" : "secondary"} className="text-xs">
                 {attendance.earlyDepartures}
               </Badge>
             </div>
-            <div className="pt-2">
-              <div className="flex justify-between text-xs text-muted-foreground mb-1">
-                <span>Zamanında Gelme Oranı</span>
-                <span>%{attendance.onTimeRate}</span>
-              </div>
-              <Progress value={attendance.onTimeRate} className="h-2" />
-            </div>
+            <Progress value={attendance.onTimeRate} className="h-1.5 mt-2" />
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader>
-            <CardTitle className="text-base flex items-center gap-2">
-              <BookOpen className="w-5 h-5" />
-              Eğitim İlerlemesi
+          <CardHeader className="py-3">
+            <CardTitle className="text-sm flex items-center gap-2">
+              <BookOpen className="w-4 h-4" />
+              Eğitim
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex justify-between items-center">
-              <span className="text-sm">Tamamlanan Modüller</span>
-              <Badge variant="default">{training.completedModules}</Badge>
+          <CardContent className="space-y-2 pt-0">
+            <div className="flex justify-between items-center text-sm">
+              <span>Modül</span>
+              <Badge variant="default" className="text-xs">{training.completedModules}/{training.totalModules}</Badge>
             </div>
-            <div className="flex justify-between items-center">
-              <span className="text-sm">Devam Eden</span>
-              <Badge variant="secondary">{training.inProgressModules}</Badge>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-sm">Geçilen Quizler</span>
-              <Badge variant="secondary">{training.passedQuizzes}/{training.totalQuizAttempts}</Badge>
+            <div className="flex justify-between items-center text-sm">
+              <span>Quiz</span>
+              <Badge variant="secondary" className="text-xs">{training.passedQuizzes}/{training.totalQuizAttempts}</Badge>
             </div>
             {training.totalModules > 0 && (
-              <div className="pt-2">
-                <div className="flex justify-between text-xs text-muted-foreground mb-1">
-                  <span>Genel İlerleme</span>
-                  <span>%{Math.round((training.completedModules / training.totalModules) * 100)}</span>
-                </div>
-                <Progress 
-                  value={Math.round((training.completedModules / training.totalModules) * 100)} 
-                  className="h-2" 
-                />
-              </div>
+              <Progress 
+                value={Math.round((training.completedModules / training.totalModules) * 100)} 
+                className="h-1.5 mt-2" 
+              />
             )}
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader>
-            <CardTitle className="text-base flex items-center gap-2">
-              <ClipboardList className="w-5 h-5" />
-              Görevler
+          <CardHeader className="py-3">
+            <CardTitle className="text-sm flex items-center gap-2">
+              <Target className="w-4 h-4" />
+              İzin
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex justify-between items-center">
-              <span className="text-sm">Tamamlanan</span>
-              <Badge variant="default">{tasks.completed}</Badge>
+          <CardContent className="space-y-2 pt-0">
+            <div className="flex justify-between items-center text-sm">
+              <span>Kalan</span>
+              <Badge variant="default" className="text-xs">{leave.remainingDays} gün</Badge>
             </div>
-            <div className="flex justify-between items-center">
-              <span className="text-sm">Devam Eden</span>
-              <Badge variant="secondary">{tasks.inProgress}</Badge>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-sm">Bekleyen</span>
-              <Badge variant={tasks.pending > 5 ? "destructive" : "secondary"}>
-                {tasks.pending}
+            <div className="flex justify-between items-center text-sm">
+              <span>Bekleyen</span>
+              <Badge variant={leave.pendingRequests > 0 ? "secondary" : "outline"} className="text-xs">
+                {leave.pendingRequests}
               </Badge>
             </div>
-            <div className="pt-2">
-              <div className="flex justify-between text-xs text-muted-foreground mb-1">
-                <span>Tamamlanma Oranı</span>
-                <span>%{tasks.completionRate}</span>
-              </div>
-              <Progress value={tasks.completionRate} className="h-2" />
-            </div>
+            <Progress value={(leave.usedDays / 14) * 100} className="h-1.5 mt-2" />
           </CardContent>
         </Card>
       </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2">
-            <Target className="w-5 h-5" />
-            İzin Durumu
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="text-center p-4 bg-muted/50 rounded-lg">
-              <div className="text-2xl font-bold text-green-600">{leave.remainingDays}</div>
-              <div className="text-xs text-muted-foreground">Kalan Gün</div>
-            </div>
-            <div className="text-center p-4 bg-muted/50 rounded-lg">
-              <div className="text-2xl font-bold">{leave.usedDays}</div>
-              <div className="text-xs text-muted-foreground">Kullanılan</div>
-            </div>
-            <div className="text-center p-4 bg-muted/50 rounded-lg">
-              <div className="text-2xl font-bold text-blue-600">{leave.approvedThisYear}</div>
-              <div className="text-xs text-muted-foreground">Onaylanan Talep</div>
-            </div>
-            <div className="text-center p-4 bg-muted/50 rounded-lg">
-              <div className="text-2xl font-bold text-orange-600">{leave.pendingRequests}</div>
-              <div className="text-xs text-muted-foreground">Bekleyen Talep</div>
-            </div>
-          </div>
-          <div className="mt-4">
-            <div className="flex justify-between text-xs text-muted-foreground mb-1">
-              <span>Kullanılan İzin</span>
-              <span>{leave.usedDays}/14 gün</span>
-            </div>
-            <Progress value={(leave.usedDays / 14) * 100} className="h-2" />
-          </div>
-        </CardContent>
-      </Card>
     </div>
   );
 }

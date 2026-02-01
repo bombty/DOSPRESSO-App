@@ -61,6 +61,7 @@ export function CompactStatsBar() {
 
   const pendingTasks = tasks.filter((t: any) => t.status === "beklemede" || t.status === "devam_ediyor").length;
   const completedTasks = tasks.filter((t: any) => t.status === "tamamlandi").length;
+  const totalTasks = pendingTasks + completedTasks;
   const openFaults = faults.filter((f: any) => f.currentStage !== "kapatildi").length;
   const activeChecklists = checklists.filter((c: any) => !c.isCompleted).length;
   const totalBranches = branches.length;
@@ -87,21 +88,12 @@ export function CompactStatsBar() {
     },
     {
       id: "tasks",
-      label: "Bekleyen",
-      value: pendingTasks,
+      label: "Task",
+      value: totalTasks,
       icon: ClipboardCheck,
       bgColor: "bg-blue-500 dark:bg-blue-600",
       path: "/gorevler",
       roles: ["admin", "ceo", "cgo", "supervisor", "supervisor_buddy", "barista", "stajyer", "coach", "trainer", "fabrika_mudur", "fabrika_sorumlu"]
-    },
-    {
-      id: "completed",
-      label: "Tamamlanan",
-      value: completedTasks,
-      icon: CheckCircle,
-      bgColor: "bg-emerald-500 dark:bg-emerald-600",
-      path: "/gorevler?filter=completed",
-      roles: ["supervisor", "supervisor_buddy", "barista", "stajyer", "coach", "trainer", "fabrika_mudur", "fabrika_sorumlu"]
     },
     {
       id: "faults",
@@ -114,7 +106,7 @@ export function CompactStatsBar() {
     },
     {
       id: "checklists",
-      label: "Checklist",
+      label: "",
       value: activeChecklists,
       icon: Clock,
       bgColor: "bg-purple-500 dark:bg-purple-600",
@@ -149,7 +141,7 @@ export function CompactStatsBar() {
           >
             <Icon className="w-3.5 h-3.5 text-white/90" />
             <span className="text-sm font-bold text-white">{stat.value}</span>
-            <span className="text-[10px] text-white/80 font-medium">{stat.label}</span>
+            {stat.label && <span className="text-[10px] text-white/80 font-medium">{stat.label}</span>}
           </motion.button>
         );
       })}
