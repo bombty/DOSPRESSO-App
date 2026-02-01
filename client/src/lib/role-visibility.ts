@@ -196,9 +196,6 @@ export const WIDGET_VISIBILITY: Record<string, UserRole[]> = {
   // Modül kartları: HQ ve supervisor'lar
   'module-cards': [...HQ_NON_CEO_ROLES, 'supervisor', 'supervisor_buddy', 'fabrika_mudur'],
   
-  // Mini takvim: Şube ve fabrika rolleri
-  'mini-calendar': [...BRANCH_ROLES, ...FACTORY_ROLES, ...HQ_ROLES],
-  
   // Aktivite zaman çizelgesi: HQ ve supervisor'lar
   'activity-timeline': [...HQ_ROLES, 'supervisor', 'supervisor_buddy'],
 };

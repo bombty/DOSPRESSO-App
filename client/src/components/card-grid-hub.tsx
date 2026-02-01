@@ -22,7 +22,6 @@ import { HeroSection } from "@/components/ui/hero-section";
 import { UnifiedHero } from "@/components/widgets/unified-hero";
 import { CompactStatsBar } from "@/components/widgets/compact-stats-bar";
 import { QuickActionsGrid } from "@/components/widgets/quick-actions-grid";
-import { MiniCalendar } from "@/components/widgets/mini-calendar";
 import { ActivityTimeline } from "@/components/widgets/activity-timeline";
 import { ModuleCardsGrid } from "@/components/widgets/module-cards-grid";
 import { AISummaryCard } from "@/components/widgets/ai-summary-card";
@@ -949,13 +948,8 @@ export function CardGridHub() {
       {/* Module Cards Grid - Role filtered internally */}
       {canSeeWidget(userRole, 'module-cards') && <ModuleCardsGrid />}
 
-      {/* Calendar + Activity side by side on larger screens */}
-      {canSeeWidget(userRole, 'mini-calendar') && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <MiniCalendar />
-          {canSeeWidget(userRole, 'activity-timeline') && <ActivityTimeline />}
-        </div>
-      )}
+      {/* Activity Timeline - Compact display */}
+      {canSeeWidget(userRole, 'activity-timeline') && <ActivityTimeline />}
 
       {/* Announcement Banners - Only show if enabled */}
       {bannerCarouselEnabled && <AnnouncementBannerCarousel />}

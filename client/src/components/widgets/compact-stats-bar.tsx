@@ -132,35 +132,24 @@ export function CompactStatsBar() {
     return null;
   }
 
-  const gridCols = filteredStats.length <= 2 ? "grid-cols-2" : 
-                   filteredStats.length === 3 ? "grid-cols-3" : 
-                   filteredStats.length === 4 ? "grid-cols-4" :
-                   filteredStats.length === 5 ? "grid-cols-5" : "grid-cols-6";
-
   return (
-    <div className={`grid ${gridCols} gap-2`} data-testid="compact-stats-bar">
+    <div className="flex flex-wrap gap-2" data-testid="compact-stats-bar">
       {filteredStats.map((stat, index) => {
         const Icon = stat.icon;
         return (
           <motion.button
             key={stat.id}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: index * 0.05, duration: 0.3 }}
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: index * 0.03, duration: 0.2 }}
             whileTap={{ scale: 0.95 }}
             onClick={() => setLocation(stat.path)}
-            className={`relative overflow-hidden rounded-xl ${stat.bgColor} p-3 shadow-md cursor-pointer text-left`}
+            className={`flex items-center gap-1.5 ${stat.bgColor} px-2.5 py-1.5 rounded-lg shadow-sm cursor-pointer`}
             data-testid={`compact-stat-${stat.id}`}
           >
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-white/30 flex items-center justify-center shrink-0">
-                <Icon className="w-4 h-4 text-white drop-shadow-sm" />
-              </div>
-              <div className="min-w-0">
-                <p className="text-xl font-bold leading-none text-white drop-shadow-sm">{stat.value}</p>
-                <p className="text-[10px] text-white/90 font-medium truncate mt-0.5">{stat.label}</p>
-              </div>
-            </div>
+            <Icon className="w-3.5 h-3.5 text-white/90" />
+            <span className="text-sm font-bold text-white">{stat.value}</span>
+            <span className="text-[10px] text-white/80 font-medium">{stat.label}</span>
           </motion.button>
         );
       })}

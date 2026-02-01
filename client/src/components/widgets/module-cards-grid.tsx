@@ -140,13 +140,11 @@ export function ModuleCardsGrid() {
     return null;
   }
 
-  const gridCols = visibleModules.length <= 2 ? "grid-cols-2" : "grid-cols-3";
-
   return (
-    <div className="space-y-2">
-      <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Modüller</h3>
+    <div className="space-y-1.5">
+      <h3 className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Modüller</h3>
       
-      <div className={`grid ${gridCols} gap-2`}>
+      <div className="grid grid-cols-2 gap-1.5">
         {visibleModules.map((module, index) => {
           const Icon = module.icon;
           const metric = getModuleMetric(module.id);
@@ -154,31 +152,30 @@ export function ModuleCardsGrid() {
           return (
             <motion.button
               key={module.id}
-              initial={{ opacity: 0, y: 5 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.03, duration: 0.2 }}
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: index * 0.02, duration: 0.15 }}
               whileTap={{ scale: 0.95 }}
               onClick={() => setLocation(module.path)}
-              className="relative flex flex-col items-center p-3 rounded-xl border bg-card hover-elevate text-left"
+              className="flex items-center gap-2 p-2 rounded-lg border bg-card hover-elevate"
               data-testid={`module-card-${module.id}`}
             >
-              <div className={`w-10 h-10 rounded-xl ${module.color} flex items-center justify-center mb-2`}>
-                <Icon className="w-5 h-5 text-white" />
+              <div className={`w-8 h-8 rounded-lg ${module.color} flex items-center justify-center shrink-0`}>
+                <Icon className="w-4 h-4 text-white" />
               </div>
               
-              <span className="text-[10px] font-semibold text-center leading-tight line-clamp-2 mb-1">
-                {module.title}
-              </span>
-              
-              <div className="flex items-center gap-1">
-                {metric ? (
-                  <Badge variant="secondary" className="text-[8px] h-4 px-1.5">
+              <div className="flex-1 min-w-0 text-left">
+                <span className="text-[11px] font-semibold truncate block">
+                  {module.title}
+                </span>
+                {metric && (
+                  <Badge variant="secondary" className="text-[8px] h-3.5 px-1 mt-0.5">
                     {metric.value} {metric.label}
                   </Badge>
-                ) : (
-                  <ChevronRight className="w-3 h-3 text-muted-foreground" />
                 )}
               </div>
+              
+              <ChevronRight className="w-3 h-3 text-muted-foreground shrink-0" />
             </motion.button>
           );
         })}

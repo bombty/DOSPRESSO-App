@@ -276,32 +276,31 @@ export function QuickActionsGrid() {
     return null;
   }
 
-  const gridCols = filteredActions.length <= 3 ? "grid-cols-3" : 
-                   filteredActions.length <= 4 ? "grid-cols-4" : 
-                   filteredActions.length <= 5 ? "grid-cols-5" : "grid-cols-6";
+  // Maksimum 6 aksiyon göster, 3x2 grid
+  const displayActions = filteredActions.slice(0, 6);
 
   return (
-    <div className="space-y-2">
-      <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Hızlı İşlemler</h3>
+    <div className="space-y-1.5">
+      <h3 className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Hızlı İşlemler</h3>
       
-      <div className={`grid ${gridCols} gap-2`}>
-        {filteredActions.map((action, index) => {
+      <div className="grid grid-cols-3 gap-1.5">
+        {displayActions.map((action, index) => {
           const Icon = action.icon;
           return (
             <motion.button
               key={action.id}
-              initial={{ opacity: 0, y: 5 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.03, duration: 0.2 }}
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: index * 0.02, duration: 0.15 }}
               whileTap={{ scale: 0.95 }}
               onClick={() => setLocation(action.path)}
-              className="flex flex-col items-center gap-1.5 p-2 rounded-xl hover-elevate"
+              className="flex items-center gap-2 p-2 rounded-lg hover-elevate border bg-card/50"
               data-testid={`quick-action-${action.id}`}
             >
-              <div className={`w-10 h-10 rounded-xl ${action.bgColor} flex items-center justify-center`}>
-                <Icon className={`w-4 h-4 ${action.color}`} />
+              <div className={`w-7 h-7 rounded-lg ${action.bgColor} flex items-center justify-center shrink-0`}>
+                <Icon className={`w-3.5 h-3.5 ${action.color}`} />
               </div>
-              <span className="text-[9px] font-medium text-muted-foreground text-center leading-tight truncate w-full">
+              <span className="text-[10px] font-medium text-foreground truncate">
                 {action.label}
               </span>
             </motion.button>
