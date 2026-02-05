@@ -119,7 +119,10 @@ function getTrendIcon(trend: Trend) {
 }
 
 function normalizeTitle(title: string): string {
+  if (!title) return '';
   return title
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
     .toLowerCase()
     .replace(/ş/g, 's')
     .replace(/ğ/g, 'g')
@@ -150,6 +153,7 @@ function getIconFromMap(iconMap: Record<string, React.ReactNode>, title: string,
 
 function MetricCardComponent({ metric, testId }: { metric: MetricCard; testId?: string }) {
   const isClickable = !!metric.onClick;
+  
   return (
     <Card 
       className={isClickable ? "hover-elevate cursor-pointer" : ""} 
@@ -159,8 +163,8 @@ function MetricCardComponent({ metric, testId }: { metric: MetricCard; testId?: 
       <CardContent className="p-4">
         <div className="flex items-start justify-between gap-2 flex-wrap">
           <div className="flex items-center gap-2">
-            <div className="p-2 rounded-lg bg-primary/10">
-              {metric.icon || <Store className="w-5 h-5 text-muted-foreground" />}
+            <div className="p-2 rounded-lg bg-primary/10 [&>svg]:w-5 [&>svg]:h-5">
+              {metric.icon ? metric.icon : <Store className="w-5 h-5 text-muted-foreground" />}
             </div>
             <div>
               <p className="text-xs text-muted-foreground" data-testid="text-metric-title">{metric.title}</p>
@@ -240,10 +244,12 @@ function SatinalmaDashboard() {
 
   const metrics = data?.metrics ? data.metrics.map((m: any, index: number) => {
     const fallbackIcon = fallbackMetrics[index]?.icon || <Package className="w-5 h-5 text-muted-foreground" />;
-    const mappedIcon = getIconFromMap(satinalmaIconMap, m.title, fallbackIcon);
     return {
-      ...m,
-      icon: mappedIcon,
+      title: m.title,
+      value: m.value,
+      status: m.status,
+      trend: m.trend,
+      icon: fallbackIcon,
       onClick: fallbackMetrics[index]?.onClick
     };
   }) : fallbackMetrics;
@@ -358,10 +364,12 @@ function FabrikaDashboard() {
 
   const metrics = data?.metrics ? data.metrics.map((m: any, index: number) => {
     const fallbackIcon = fallbackMetrics[index]?.icon || <Factory className="w-5 h-5 text-muted-foreground" />;
-    const mappedIcon = getIconFromMap(fabrikaIconMap, m.title, fallbackIcon);
     return {
-      ...m,
-      icon: mappedIcon,
+      title: m.title,
+      value: m.value,
+      status: m.status,
+      trend: m.trend,
+      icon: fallbackIcon,
       onClick: fallbackMetrics[index]?.onClick
     };
   }) : fallbackMetrics;
@@ -471,10 +479,12 @@ function IKDashboard() {
 
   const metrics = data?.metrics ? data.metrics.map((m: any, index: number) => {
     const fallbackIcon = fallbackMetrics[index]?.icon || <Users className="w-5 h-5 text-muted-foreground" />;
-    const mappedIcon = getIconFromMap(ikIconMap, m.title, fallbackIcon);
     return {
-      ...m,
-      icon: mappedIcon,
+      title: m.title,
+      value: m.value,
+      status: m.status,
+      trend: m.trend,
+      icon: fallbackIcon,
       onClick: fallbackMetrics[index]?.onClick
     };
   }) : fallbackMetrics;
@@ -615,10 +625,12 @@ function CoachDashboard() {
 
   const metrics = data?.metrics ? data.metrics.map((m: any, index: number) => {
     const fallbackIcon = fallbackMetrics[index]?.icon || <Store className="w-5 h-5 text-muted-foreground" />;
-    const mappedIcon = getIconFromMap(coachIconMap, m.title, fallbackIcon);
     return {
-      ...m,
-      icon: mappedIcon,
+      title: m.title,
+      value: m.value,
+      status: m.status,
+      trend: m.trend,
+      icon: fallbackIcon,
       onClick: fallbackMetrics[index]?.onClick
     };
   }) : fallbackMetrics;
@@ -733,10 +745,12 @@ function MarketingDashboard() {
 
   const metrics = data?.metrics ? data.metrics.map((m: any, index: number) => {
     const fallbackIcon = fallbackMetrics[index]?.icon || <Megaphone className="w-5 h-5 text-muted-foreground" />;
-    const mappedIcon = getIconFromMap(marketingIconMap, m.title, fallbackIcon);
     return {
-      ...m,
-      icon: mappedIcon,
+      title: m.title,
+      value: m.value,
+      status: m.status,
+      trend: m.trend,
+      icon: fallbackIcon,
       onClick: fallbackMetrics[index]?.onClick
     };
   }) : fallbackMetrics;
@@ -842,10 +856,12 @@ function TrainerDashboard() {
 
   const metrics = data?.metrics ? data.metrics.map((m: any, index: number) => {
     const fallbackIcon = fallbackMetrics[index]?.icon || <BookOpen className="w-5 h-5 text-muted-foreground" />;
-    const mappedIcon = getIconFromMap(trainerIconMap, m.title, fallbackIcon);
     return {
-      ...m,
-      icon: mappedIcon,
+      title: m.title,
+      value: m.value,
+      status: m.status,
+      trend: m.trend,
+      icon: fallbackIcon,
       onClick: fallbackMetrics[index]?.onClick
     };
   }) : fallbackMetrics;
@@ -951,10 +967,12 @@ function KaliteDashboard() {
 
   const metrics = data?.metrics ? data.metrics.map((m: any, index: number) => {
     const fallbackIcon = fallbackMetrics[index]?.icon || <ClipboardCheck className="w-5 h-5 text-muted-foreground" />;
-    const mappedIcon = getIconFromMap(kaliteIconMap, m.title, fallbackIcon);
     return {
-      ...m,
-      icon: mappedIcon,
+      title: m.title,
+      value: m.value,
+      status: m.status,
+      trend: m.trend,
+      icon: fallbackIcon,
       onClick: fallbackMetrics[index]?.onClick
     };
   }) : fallbackMetrics;
