@@ -13,12 +13,6 @@ interface ThemeContextValue {
 
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 
-const FONT_SIZE_CLASSES = {
-  small: "text-sm",
-  medium: "text-base",
-  large: "text-lg"
-};
-
 const FONT_SIZE_SCALES = {
   small: "0.875",
   medium: "1",
@@ -72,6 +66,11 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     
     root.classList.remove("font-small", "font-medium", "font-large");
     root.classList.add(`font-${fontSize}`);
+    
+    // Apply actual font size scaling to html element
+    const baseFontSize = 16; // browser default
+    const scale = parseFloat(FONT_SIZE_SCALES[fontSize]);
+    root.style.fontSize = `${baseFontSize * scale}px`;
   }, [fontSize]);
 
   const setTheme = (newTheme: Theme) => {

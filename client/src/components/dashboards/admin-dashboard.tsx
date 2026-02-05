@@ -15,7 +15,7 @@ interface AdminDashboardProps {
   totalFaults: number;
   openFaults: number;
   branchScoresTimeRange?: string;
-  onTimeRangeChange?: (range) => void;
+  onTimeRangeChange?: (range: string) => void;
   hqSupportTickets?: any[];
   hqTicketsLoading?: boolean;
 }
