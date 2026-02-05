@@ -3,9 +3,12 @@ import { useRoute, useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
+import { UnifiedHero } from "@/components/widgets/unified-hero";
+import { motion } from "framer-motion";
 import {
   TrendingUp,
   TrendingDown,
@@ -53,6 +56,7 @@ import {
   Share2,
   TrendingUpIcon,
   Lightbulb,
+  ChevronRight,
 } from "lucide-react";
 import {
   AreaChart,
@@ -990,6 +994,7 @@ const departmentOwnerMap: Record<string, string> = {
 
 function CGODashboard() {
   const [, setLocation] = useLocation();
+  const { user } = useAuth();
   const { data, isLoading } = useQuery<any>({
     queryKey: ['/api/hq-dashboard/cgo'],
   });
@@ -1005,18 +1010,27 @@ function CGODashboard() {
     'Muhasebe': '/raporlar',
   };
 
-  const statCardRouteMap: Record<string, string> = {
-    'Aktif Personel': '/operasyon?tab=personel',
-    'Açık Arızalar': '/ekipman?tab=ariza-yonetimi',
-    'Checklist Tamamlanma': '/operasyon?tab=checklistler',
-    'Toplam Şube': '/operasyon?tab=subeler',
-  };
+  const hqQuickActions = [
+    { icon: Store, label: "Şubeler", color: "text-blue-500", bgColor: "bg-blue-500/10", route: "/operasyon?tab=subeler" },
+    { icon: Users, label: "Personel", color: "text-green-500", bgColor: "bg-green-500/10", route: "/operasyon?tab=personel" },
+    { icon: AlertTriangle, label: "Arızalar", color: "text-red-500", bgColor: "bg-red-500/10", route: "/ekipman?tab=ariza-yonetimi" },
+    { icon: ClipboardCheck, label: "Checklistler", color: "text-emerald-500", bgColor: "bg-emerald-500/10", route: "/operasyon?tab=checklistler" },
+    { icon: Factory, label: "Fabrika", color: "text-orange-500", bgColor: "bg-orange-500/10", route: "/fabrika" },
+    { icon: GraduationCap, label: "Akademi", color: "text-purple-500", bgColor: "bg-purple-500/10", route: "/akademi" },
+  ];
+
+  const hqModules = [
+    { icon: Store, label: "Operasyonlar", subLabel: "Şube yönetimi", color: "text-blue-500", bgColor: "bg-blue-500/10", route: "/operasyon" },
+    { icon: Factory, label: "Fabrika", subLabel: "Üretim takibi", color: "text-orange-500", bgColor: "bg-orange-500/10", route: "/fabrika" },
+    { icon: ShoppingCart, label: "Satınalma", subLabel: "Stok & sipariş", color: "text-cyan-500", bgColor: "bg-cyan-500/10", route: "/satinalma" },
+    { icon: GraduationCap, label: "Akademi", subLabel: "Eğitim sistemi", color: "text-purple-500", bgColor: "bg-purple-500/10", route: "/akademi" },
+  ];
 
   const fallbackMetrics = [
-    { title: "Toplam Şube", value: 8, icon: <Store className="w-5 h-5 text-blue-500" />, status: 'healthy' as RiskStatus, onClick: () => setLocation('/operasyon?tab=subeler') },
-    { title: "Aktif Personel", value: 156, icon: <Users className="w-5 h-5 text-green-500" />, trend: 'up' as Trend, onClick: () => setLocation('/operasyon?tab=personel') },
-    { title: "Açık Arızalar", value: 5, icon: <AlertTriangle className="w-5 h-5 text-red-500" />, status: 'warning' as RiskStatus, onClick: () => setLocation('/ekipman?tab=ariza-yonetimi') },
-    { title: "Checklist Tamamlanma", value: "92%", icon: <CheckCircle className="w-5 h-5 text-emerald-500" />, status: 'healthy' as RiskStatus, onClick: () => setLocation('/operasyon?tab=checklistler') },
+    { title: "Toplam Şube", value: 8, status: 'healthy' as RiskStatus },
+    { title: "Aktif Personel", value: 156, trend: 'up' as Trend },
+    { title: "Açık Arızalar", value: 5, status: 'warning' as RiskStatus },
+    { title: "Checklist Tamamlanma", value: "92%", status: 'healthy' as RiskStatus },
   ];
 
   const fallbackDepartmentHealth = [
@@ -1034,11 +1048,7 @@ function CGODashboard() {
     { message: "Haftalık eğitim hedefi %15 altında", severity: 'critical' as RiskStatus },
   ];
 
-  const metrics = data?.metrics ? data.metrics.map((m: any) => ({
-    ...m,
-    icon: cgoIconMap[m.title] || <Building2 className="w-5 h-5 text-muted-foreground" />
-  })) : fallbackMetrics;
-
+  const metrics = data?.metrics || fallbackMetrics;
   const departmentHealth = data?.departmentHealth || fallbackDepartmentHealth;
   const alerts = data?.alerts || fallbackAlerts;
 
@@ -1051,18 +1061,152 @@ function CGODashboard() {
     owner: departmentOwnerMap[dept.name] || 'HQ'
   }));
 
+  const overallScore = Math.round(departmentHealth.reduce((sum: number, d: any) => sum + d.score, 0) / departmentHealth.length);
+
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-2 mb-4">
-        <Building2 className="w-6 h-6 text-primary" />
-        <h1 className="text-2xl font-bold" data-testid="text-dashboard-title">CGO Command Center</h1>
-        <Badge>Utku</Badge>
+      {/* Hero Widget */}
+      <UnifiedHero />
+
+      {/* Hızlı İşlemler */}
+      <div className="space-y-2">
+        <h3 className="text-sm font-medium text-muted-foreground px-1">HIZLI İŞLEMLER</h3>
+        <div className="grid grid-cols-3 md:grid-cols-6 gap-2">
+          {hqQuickActions.map((action, index) => (
+            <motion.div
+              key={index}
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+            >
+              <Card 
+                className="hover-elevate cursor-pointer"
+                onClick={() => setLocation(action.route)}
+                data-testid={`quick-action-${action.label.toLowerCase()}`}
+              >
+                <CardContent className="p-3 flex items-center gap-2">
+                  <div className={`p-2 rounded-lg ${action.bgColor}`}>
+                    <action.icon className={`w-4 h-4 ${action.color}`} />
+                  </div>
+                  <span className="text-sm font-medium truncate">{action.label}</span>
+                </CardContent>
+              </Card>
+            </motion.div>
+          ))}
+        </div>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        {metrics.map((metric: MetricCard, index: number) => (
-          <MetricCardComponent key={index} metric={metric} />
-        ))}
+      {/* Modüller */}
+      <div className="space-y-2">
+        <h3 className="text-sm font-medium text-muted-foreground px-1">MODÜLLER</h3>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          {hqModules.map((module, index) => (
+            <motion.div
+              key={index}
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+            >
+              <Card 
+                className="hover-elevate cursor-pointer"
+                onClick={() => setLocation(module.route)}
+                data-testid={`module-${module.label.toLowerCase()}`}
+              >
+                <CardContent className="p-4 flex items-center gap-3">
+                  <div className={`p-3 rounded-lg ${module.bgColor}`}>
+                    <module.icon className={`w-5 h-5 ${module.color}`} />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="font-medium text-sm truncate">{module.label}</p>
+                    <p className="text-xs text-muted-foreground truncate">{module.subLabel}</p>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                </CardContent>
+              </Card>
+            </motion.div>
+          ))}
+        </div>
+      </div>
+
+      {/* Skor ve Departman Durumu */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {/* Bugünkü Skor */}
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm flex items-center gap-2">
+              <Gauge className="w-4 h-4" />
+              Genel Performans
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center gap-4">
+              <div className="relative w-24 h-24">
+                <svg className="w-full h-full transform -rotate-90">
+                  <circle
+                    cx="48"
+                    cy="48"
+                    r="40"
+                    stroke="currentColor"
+                    strokeWidth="8"
+                    fill="none"
+                    className="text-muted/30"
+                  />
+                  <circle
+                    cx="48"
+                    cy="48"
+                    r="40"
+                    stroke="currentColor"
+                    strokeWidth="8"
+                    fill="none"
+                    strokeDasharray={`${(overallScore / 100) * 251.2} 251.2`}
+                    className={overallScore >= 80 ? 'text-green-500' : overallScore >= 60 ? 'text-yellow-500' : 'text-red-500'}
+                    strokeLinecap="round"
+                  />
+                </svg>
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <span className="text-2xl font-bold">{overallScore}</span>
+                </div>
+              </div>
+              <div className="flex-1 space-y-2">
+                {fallbackMetrics.slice(0, 3).map((m, i) => (
+                  <div key={i} className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">{m.title}</span>
+                    <span className="font-medium">{m.value}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Departman Durumu */}
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm flex items-center gap-2">
+              <PieChart className="w-4 h-4" />
+              Departman Durumu
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 gap-2">
+              {departmentSummary.slice(0, 4).map((dept: any, index: number) => (
+                <div 
+                  key={index}
+                  className="flex items-center gap-2 p-2 rounded-lg bg-muted/50 cursor-pointer hover-elevate"
+                  onClick={() => {
+                    const route = departmentRouteMap[dept.name];
+                    if (route) setLocation(route);
+                  }}
+                  data-testid={`dept-quick-${dept.name.toLowerCase()}`}
+                >
+                  {getRiskIcon(dept.status as RiskStatus)}
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-medium truncate">{dept.name}</p>
+                    <p className="text-xs text-muted-foreground">{dept.score}%</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       <Card>

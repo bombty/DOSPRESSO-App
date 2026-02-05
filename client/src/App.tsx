@@ -10,6 +10,7 @@ import { BreadcrumbNavigation } from "@/components/breadcrumb-navigation";
 import { InboxDialog } from "@/components/inbox-dialog";
 import { AppHeader } from "@/components/app-header";
 import { QRScannerModal } from "@/components/qr-scanner-modal";
+import { GlobalAIAssistant } from "@/components/global-ai-assistant";
 import { useAuth } from "@/hooks/useAuth";
 import { ProtectedRoute } from "@/components/protected-route";
 import logoPath from "@assets/IMG_6637_1765138781125.png";
@@ -454,6 +455,9 @@ function AppContent() {
       
       {/* Bottom Navigation */}
       <BottomNav />
+      
+      {/* Global AI Assistant */}
+      {user && <GlobalAIAssistant />}
     </div>
   );
 }

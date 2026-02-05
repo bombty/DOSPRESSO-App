@@ -31959,6 +31959,75 @@ Dusuk puanli alanlara odaklan ve pozitif, motive edici ol. JSON dizisi olarak ya
     }
   });
 
+  // Global AI Chat endpoint for all roles
+  app.post("/api/ai/chat", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      const { question, systemContext } = req.body;
+      
+      if (!question) {
+        return res.status(400).json({ message: "Soru gerekli" });
+      }
+
+      let roleContext = "";
+      try {
+        if (["ceo", "cgo", "admin"].includes(user.role)) {
+          const [branchesData, usersData, faultsData] = await Promise.all([
+            db.select().from(branches),
+            db.select().from(users).where(eq(users.isActive, true)),
+            db.select().from(equipmentFaults)
+          ]);
+          roleContext = `Sirket Durumu: ${branchesData.length} sube, ${usersData.length} aktif personel, ${faultsData.filter((f: any) => f.status === "open").length} acik ariza`;
+        } else if (["supervisor", "manager"].includes(user.role) && user.branchId) {
+          const branchData = await db.select().from(branches).where(eq(branches.id, user.branchId));
+          roleContext = `Sube: ${branchData[0]?.name || "Bilinmiyor"}`;
+        } else {
+          roleContext = `Kullanici rolu: ${user.role}`;
+        }
+      } catch (e) {
+        console.log("Context gathering error:", e);
+      }
+
+      const systemPrompt = `${systemContext || "Sen DOSPRESSO kahve zinciri icin yardimci bir AI asistanisin."}
+
+${roleContext}
+
+Yanitlarini:
+1. Turkce ve samimi tonda ver
+2. Kisa ve oz tut
+3. Gerekirse somut oneriler sun`;
+
+      const response = await fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          model: "gpt-4o-mini",
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: question }
+          ],
+          temperature: 0.7,
+          max_tokens: 800
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error("OpenAI API error");
+      }
+
+      const aiResponse = await response.json();
+      const answer = aiResponse.choices[0]?.message?.content || "Yanit alinamadi";
+
+      res.json({ answer });
+    } catch (error: any) {
+      console.error("Error in AI chat:", error);
+      res.status(500).json({ message: "AI yanit veremedi", error: error.message });
+    }
+  });
+
   registerHQDashboardRoutes(app, isAuthenticated);
   registerCRMRoutes(app, isAuthenticated);
   registerSatinalmaRoutes(app, isAuthenticated);
@@ -31967,3 +32036,5 @@ Dusuk puanli alanlara odaklan ve pozitif, motive edici ol. JSON dizisi olarak ya
   const httpServer = createServer(app);
   return httpServer;
 }
+
+// Note: Global AI Chat endpoint added via append - will be inserted at end
