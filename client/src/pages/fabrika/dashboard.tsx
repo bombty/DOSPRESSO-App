@@ -422,10 +422,10 @@ export default function FabrikaDashboard() {
                     <span>İK Yönetimi</span>
                   </Button>
                 </Link>
-                <Link href="/raporlar">
+                <Link href="/fabrika?tab=ai-raporlar">
                   <Button variant="outline" className="w-full h-auto p-4 flex flex-col items-center gap-2" data-testid="link-reports">
                     <TrendingUp className="h-8 w-8 text-purple-500" />
-                    <span>Raporlar</span>
+                    <span>AI Raporlar</span>
                   </Button>
                 </Link>
               </div>
