@@ -1,4 +1,5 @@
-import { Mail, LogOut, QrCode, Search, X, User as UserIcon, Coffee, ClipboardList, Building2, Wrench, LayoutGrid, FileText } from "lucide-react";
+import { Mail, LogOut, QrCode, Search, X, User as UserIcon, Coffee, ClipboardList, Building2, Wrench, LayoutGrid, FileText, Sun, Moon } from "lucide-react";
+import { useTheme } from "@/contexts/theme-context";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -60,8 +61,13 @@ export function AppHeader({ notificationCount = 0, user, branchName, onQRClick }
   const [searchQuery, setSearchQuery] = useState("");
   const searchInputRef = useRef<HTMLInputElement>(null);
   const searchContainerRef = useRef<HTMLDivElement>(null);
+  const { effectiveTheme, setTheme } = useTheme();
   
   const debouncedQuery = useDebounce(searchQuery, 300);
+
+  const toggleTheme = () => {
+    setTheme(effectiveTheme === "dark" ? "light" : "dark");
+  };
   
   // Search query - use proper queryFn to pass q parameter
   const { data: searchResults, isLoading: isSearching } = useQuery<SearchResults>({
@@ -389,6 +395,20 @@ export function AppHeader({ notificationCount = 0, user, branchName, onQRClick }
             )}
           </div>
           
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8"
+            onClick={toggleTheme}
+            data-testid="button-theme-toggle"
+            title={effectiveTheme === "dark" ? "Açık Mod" : "Koyu Mod"}
+          >
+            {effectiveTheme === "dark" ? (
+              <Sun className="w-4 h-4 text-white" />
+            ) : (
+              <Moon className="w-4 h-4 text-white" />
+            )}
+          </Button>
           <Button
             variant="ghost"
             size="icon"
