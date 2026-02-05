@@ -118,38 +118,6 @@ function getTrendIcon(trend: Trend) {
   }
 }
 
-function normalizeTitle(title: string): string {
-  if (!title) return '';
-  return title
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase()
-    .replace(/ş/g, 's')
-    .replace(/ğ/g, 'g')
-    .replace(/ü/g, 'u')
-    .replace(/ö/g, 'o')
-    .replace(/ı/g, 'i')
-    .replace(/ç/g, 'c')
-    .replace(/İ/g, 'i')
-    .replace(/Ş/g, 's')
-    .replace(/Ğ/g, 'g')
-    .replace(/Ü/g, 'u')
-    .replace(/Ö/g, 'o')
-    .replace(/Ç/g, 'c')
-    .replace(/\s+/g, ' ')
-    .trim();
-}
-
-function getIconFromMap(iconMap: Record<string, React.ReactNode>, title: string, fallback: React.ReactNode): React.ReactNode {
-  if (!title) return fallback;
-  const normalizedTitle = normalizeTitle(title);
-  for (const [key, icon] of Object.entries(iconMap)) {
-    if (normalizeTitle(key) === normalizedTitle) {
-      return icon;
-    }
-  }
-  return fallback;
-}
 
 function MetricCardComponent({ metric, testId }: { metric: MetricCard; testId?: string }) {
   const isClickable = !!metric.onClick;
@@ -217,13 +185,6 @@ function AlertPanel({ alerts }: { alerts: Array<{ message: string; severity: Ris
     </Card>
   );
 }
-
-const satinalmaIconMap: Record<string, React.ReactNode> = {
-  "Aktif Tedarikçi": <Truck className="w-5 h-5 text-blue-500" />,
-  "Bekleyen Sipariş": <Package className="w-5 h-5 text-orange-500" />,
-  "Ortalama Teslimat": <Clock className="w-5 h-5 text-green-500" />,
-  "Fiyat Uyarısı": <AlertTriangle className="w-5 h-5 text-red-500" />,
-};
 
 function SatinalmaDashboard() {
   const { data, isLoading } = useQuery<any>({
@@ -339,13 +300,6 @@ function SatinalmaDashboard() {
   );
 }
 
-const fabrikaIconMap: Record<string, React.ReactNode> = {
-  "Günlük Üretim": <Factory className="w-5 h-5 text-blue-500" />,
-  "Verimlilik": <Gauge className="w-5 h-5 text-green-500" />,
-  "Fire Oranı": <Flame className="w-5 h-5 text-orange-500" />,
-  "Makine Uptime": <Zap className="w-5 h-5 text-yellow-500" />,
-};
-
 function FabrikaDashboard() {
   const { data, isLoading } = useQuery<any>({
     queryKey: ['/api/hq-dashboard/fabrika'],
@@ -452,13 +406,6 @@ function FabrikaDashboard() {
     </div>
   );
 }
-
-const ikIconMap: Record<string, React.ReactNode> = {
-  "Toplam Personel": <Users className="w-5 h-5 text-blue-500" />,
-  "Yıllık Turnover": <UserX className="w-5 h-5 text-red-500" />,
-  "Ortalama Deneyim": <Calendar className="w-5 h-5 text-orange-500" />,
-  "Eğitim Tamamlama": <GraduationCap className="w-5 h-5 text-green-500" />,
-};
 
 function IKDashboard() {
   const { data, isLoading } = useQuery<any>({
@@ -572,13 +519,6 @@ function IKDashboard() {
     </div>
   );
 }
-
-const coachIconMap: Record<string, React.ReactNode> = {
-  "Ortalama Şube Puanı": <Star className="w-5 h-5 text-yellow-500" />,
-  "Ziyaret Bekleyen": <Eye className="w-5 h-5 text-purple-500" />,
-  "Uyumluluk Oranı": <ClipboardCheck className="w-5 h-5 text-green-500" />,
-  "İyileştirme Önerisi": <Lightbulb className="w-5 h-5 text-orange-500" />,
-};
 
 function CoachDashboard() {
   const [, setLocation] = useLocation();
@@ -720,13 +660,6 @@ function CoachDashboard() {
   );
 }
 
-const marketingIconMap: Record<string, React.ReactNode> = {
-  "Aktif Kampanya": <Megaphone className="w-5 h-5 text-purple-500" />,
-  "Sosyal Medya Erişimi": <Users className="w-5 h-5 text-blue-500" />,
-  "Kampanya ROI": <TrendingUp className="w-5 h-5 text-green-500" />,
-  "Müşteri Memnuniyeti": <Heart className="w-5 h-5 text-pink-500" />,
-};
-
 function MarketingDashboard() {
   const { data, isLoading } = useQuery<any>({
     queryKey: ['/api/hq-dashboard/marketing'],
@@ -831,13 +764,6 @@ function MarketingDashboard() {
   );
 }
 
-const trainerIconMap: Record<string, React.ReactNode> = {
-  "Eğitim Tamamlama": <CheckCircle className="w-5 h-5 text-green-500" />,
-  "Ortalama Quiz Puanı": <Award className="w-5 h-5 text-yellow-500" />,
-  "Sertifika Bekleyen": <GraduationCap className="w-5 h-5 text-purple-500" />,
-  "Aktif Öğrenci": <Users className="w-5 h-5 text-blue-500" />,
-};
-
 function TrainerDashboard() {
   const { data, isLoading } = useQuery<any>({
     queryKey: ['/api/hq-dashboard/trainer'],
@@ -941,13 +867,6 @@ function TrainerDashboard() {
     </div>
   );
 }
-
-const kaliteIconMap: Record<string, React.ReactNode> = {
-  "Kalite Skoru": <Star className="w-5 h-5 text-yellow-500" />,
-  "Müşteri Puanı": <ThumbsUp className="w-5 h-5 text-green-500" />,
-  "Açık Şikayet": <MessageSquare className="w-5 h-5 text-red-500" />,
-  "Denetim Puanı": <ClipboardCheck className="w-5 h-5 text-emerald-500" />,
-};
 
 function KaliteDashboard() {
   const { data, isLoading } = useQuery<any>({
@@ -1058,13 +977,6 @@ function KaliteDashboard() {
   );
 }
 
-const cgoIconMap: Record<string, React.ReactNode> = {
-  "Toplam Şube": <Store className="w-5 h-5 text-blue-500" />,
-  "Aktif Personel": <Users className="w-5 h-5 text-green-500" />,
-  "Açık Arızalar": <AlertTriangle className="w-5 h-5 text-red-500" />,
-  "Checklist Tamamlanma": <CheckCircle className="w-5 h-5 text-emerald-500" />,
-};
-
 const departmentOwnerMap: Record<string, string> = {
   "Satinalma": "Samet",
   "Fabrika": "Eren",
@@ -1110,10 +1022,10 @@ function CGODashboard() {
   ];
 
   const fallbackMetrics = [
-    { title: "Toplam Şube", value: 8, status: 'healthy' as RiskStatus },
-    { title: "Aktif Personel", value: 156, trend: 'up' as Trend },
-    { title: "Açık Arızalar", value: 5, status: 'warning' as RiskStatus },
-    { title: "Checklist Tamamlanma", value: "92%", status: 'healthy' as RiskStatus },
+    { title: "Toplam Şube", value: 8, status: 'healthy' as RiskStatus, icon: <Store className="w-5 h-5 text-blue-500" /> },
+    { title: "Aktif Personel", value: 156, trend: 'up' as Trend, icon: <Users className="w-5 h-5 text-green-500" /> },
+    { title: "Açık Arızalar", value: 5, status: 'warning' as RiskStatus, icon: <AlertTriangle className="w-5 h-5 text-red-500" /> },
+    { title: "Checklist Tamamlanma", value: "92%", status: 'healthy' as RiskStatus, icon: <CheckCircle className="w-5 h-5 text-emerald-500" /> },
   ];
 
   const fallbackDepartmentHealth = [
