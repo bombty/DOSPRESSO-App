@@ -58,6 +58,7 @@ const IcerikStudyosu = lazy(() => import("./icerik-studyosu"));
 const AdminSeed = lazy(() => import("./admin-seed"));
 const AdminAIBilgiYonetimi = lazy(() => import("./admin/ai-bilgi-yonetimi"));
 const AdminVeriDisaAktarma = lazy(() => import("./admin/veri-disa-aktarma"));
+const AdminGorunumAyarlari = lazy(() => import("./admin/gorunum-ayarlari"));
 
 interface TabConfig {
   id: string;
@@ -174,6 +175,14 @@ const ADMIN_TABS: TabConfig[] = [
     permissionModule: "backup",
     group: "sistem",
     component: AdminYedekleme
+  },
+  {
+    id: "gorunum-ayarlari",
+    label: "Appearance",
+    labelTr: "Görünüm Ayarları",
+    icon: <Sparkles className="h-4 w-4" />,
+    group: "sistem",
+    component: AdminGorunumAyarlari
   },
   {
     id: "veri-disa-aktarma",
@@ -354,6 +363,7 @@ const TAB_URL_MAP: Record<string, string> = {
   "ai-bilgi-yonetimi": "/admin/ai-bilgi-yonetimi",
   "ai-maliyetler": "/admin/ai-maliyetler",
   "yedekleme": "/admin/yedekleme",
+  "gorunum-ayarlari": "/admin/gorunum-ayarlari",
   "veri-disa-aktarma": "/admin/veri-disa-aktarma",
   "aktivite-loglari": "/admin/aktivite-loglari",
   "seed": "/admin/seed",

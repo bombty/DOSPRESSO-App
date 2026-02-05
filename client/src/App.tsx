@@ -4,6 +4,7 @@ import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider, useQuery } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { ThemeProvider } from "@/contexts/theme-context";
 import { BottomNav } from "@/components/bottom-nav";
 import { BreadcrumbNavigation } from "@/components/breadcrumb-navigation";
 import { InboxDialog } from "@/components/inbox-dialog";
@@ -461,10 +462,12 @@ export default function App() {
   try {
     return (
       <QueryClientProvider client={queryClient}>
-        <TooltipProvider>
-          <AppContent />
-          <Toaster />
-        </TooltipProvider>
+        <ThemeProvider>
+          <TooltipProvider>
+            <AppContent />
+            <Toaster />
+          </TooltipProvider>
+        </ThemeProvider>
       </QueryClientProvider>
     );
   } catch (e) {

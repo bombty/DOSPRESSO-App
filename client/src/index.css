@@ -4,6 +4,26 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Font Size Scaling */
+:root {
+  --font-scale: 1;
+}
+
+.font-small {
+  --font-scale: 0.875;
+  font-size: 14px;
+}
+
+.font-medium {
+  --font-scale: 1;
+  font-size: 16px;
+}
+
+.font-large {
+  --font-scale: 1.125;
+  font-size: 18px;
+}
+
 /* LIGHT MODE - Modern DOSPRESSO UI */
 :root {
   --button-outline: rgba(0,0,0, .08);
