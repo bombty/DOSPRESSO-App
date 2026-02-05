@@ -1,9 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
@@ -12,9 +10,7 @@ import {
   RefreshCw,
   TrendingUp,
   AlertTriangle,
-  Users,
   RotateCcw,
-  Target,
   Loader2,
   Lightbulb
 } from "lucide-react";
@@ -77,30 +73,31 @@ export default function FabrikaAIRaporlar() {
   const renderReport = (report: AIReport | undefined, isLoading: boolean, type: string) => {
     if (isLoading) {
       return (
-        <div className="flex items-center justify-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        <div className="flex items-center justify-center py-8">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
         </div>
       );
     }
 
     if (!report || !report.content) {
       return (
-        <div className="text-center py-12">
-          <Brain className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
-          <p className="text-muted-foreground mb-4">Bu dönem için henüz AI raporu oluşturulmamış</p>
+        <div className="text-center py-8">
+          <Brain className="h-10 w-10 mx-auto text-muted-foreground mb-3" />
+          <p className="text-sm text-muted-foreground mb-3">Henüz AI raporu oluşturulmamış</p>
           <Button 
             onClick={() => generateMutation.mutate(type)}
             disabled={generateMutation.isPending}
+            size="sm"
             className="bg-amber-600 hover:bg-amber-700"
           >
             {generateMutation.isPending ? (
               <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
                 Oluşturuluyor...
               </>
             ) : (
               <>
-                <Brain className="h-4 w-4 mr-2" />
+                <Brain className="h-3.5 w-3.5 mr-1.5" />
                 AI Raporu Oluştur
               </>
             )}
@@ -110,23 +107,21 @@ export default function FabrikaAIRaporlar() {
     }
 
     return (
-      <div className="space-y-6">
+      <div className="space-y-4">
         <div className="prose dark:prose-invert max-w-none">
           <div className="whitespace-pre-wrap text-sm">{report.content}</div>
         </div>
         
         {report.recommendations && report.recommendations.length > 0 && (
           <Card className="border-amber-500/30 bg-amber-50/50 dark:bg-amber-950/20">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-lg flex items-center gap-2">
-                <Lightbulb className="h-5 w-5 text-amber-500" />
-                AI Önerileri
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ul className="space-y-2">
+            <CardContent className="p-3">
+              <div className="flex items-center gap-2 mb-2">
+                <Lightbulb className="h-4 w-4 text-amber-500" />
+                <span className="font-medium text-sm">AI Önerileri</span>
+              </div>
+              <ul className="space-y-1 text-sm">
                 {report.recommendations.map((rec, i) => (
-                  <li key={i} className="flex items-start gap-2">
+                  <li key={i} className="flex items-start gap-1.5">
                     <span className="text-amber-600 font-bold">{i + 1}.</span>
                     <span>{rec}</span>
                   </li>
@@ -136,34 +131,49 @@ export default function FabrikaAIRaporlar() {
           </Card>
         )}
 
-        <div className="flex items-center justify-between text-sm text-muted-foreground">
-          <span>Son güncelleme: {new Date(report.generatedAt).toLocaleString('tr-TR')}</span>
+        <div className="flex items-center justify-between text-xs text-muted-foreground pt-2 border-t">
+          <span>Güncelleme: {new Date(report.generatedAt).toLocaleString('tr-TR')}</span>
           <Button 
-            variant="outline" 
+            variant="ghost" 
             size="sm"
             onClick={() => generateMutation.mutate(type)}
             disabled={generateMutation.isPending}
+            className="h-7 px-2"
           >
-            <RefreshCw className="h-4 w-4 mr-2" />
-            Yeniden Oluştur
+            <RefreshCw className="h-3.5 w-3.5 mr-1" />
+            Yenile
           </Button>
         </div>
       </div>
     );
   };
 
+  const tabs = [
+    { id: "rotation", label: "Rotasyon", icon: RotateCcw, color: "text-blue-500" },
+    { id: "errors", label: "Hatalar", icon: AlertTriangle, color: "text-red-500" },
+    { id: "efficiency", label: "Verimlilik", icon: TrendingUp, color: "text-green-500" },
+  ];
+
+  const getActiveReport = () => {
+    switch (activeTab) {
+      case "rotation": return { report: rotationReport, loading: loadingRotation };
+      case "errors": return { report: errorReport, loading: loadingError };
+      case "efficiency": return { report: efficiencyReport, loading: loadingEfficiency };
+      default: return { report: undefined, loading: false };
+    }
+  };
+
+  const { report, loading } = getActiveReport();
+
   return (
-    <div className="container mx-auto p-6 space-y-6">
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <div className="flex items-center gap-3">
-          <Brain className="h-8 w-8 text-amber-500" />
-          <div>
-            <h1 className="text-2xl font-bold">AI Üretim Raporları</h1>
-            <p className="text-muted-foreground">Yapay zeka destekli analiz ve öneriler</p>
-          </div>
+    <div className="p-3 space-y-3">
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <Brain className="h-5 w-5 text-amber-500" />
+          <h1 className="text-lg font-semibold">AI Üretim Raporları</h1>
         </div>
         <Select value={period} onValueChange={setPeriod}>
-          <SelectTrigger className="w-40" data-testid="select-period">
+          <SelectTrigger className="w-24 h-8 text-xs" data-testid="select-period">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -174,117 +184,33 @@ export default function FabrikaAIRaporlar() {
         </Select>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card className="hover-elevate cursor-pointer" onClick={() => setActiveTab("rotation")}>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-4">
-              <div className="p-3 rounded-lg bg-blue-100 dark:bg-blue-900/30">
-                <RotateCcw className="h-6 w-6 text-blue-600" />
-              </div>
-              <div>
-                <h3 className="font-semibold">Rotasyon Analizi</h3>
-                <p className="text-sm text-muted-foreground">Personel dağılım optimizasyonu</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card className="hover-elevate cursor-pointer" onClick={() => setActiveTab("errors")}>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-4">
-              <div className="p-3 rounded-lg bg-red-100 dark:bg-red-900/30">
-                <AlertTriangle className="h-6 w-6 text-red-600" />
-              </div>
-              <div>
-                <h3 className="font-semibold">Hata Örüntüleri</h3>
-                <p className="text-sm text-muted-foreground">Fire ve hata analizi</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card className="hover-elevate cursor-pointer" onClick={() => setActiveTab("efficiency")}>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-4">
-              <div className="p-3 rounded-lg bg-green-100 dark:bg-green-900/30">
-                <TrendingUp className="h-6 w-6 text-green-600" />
-              </div>
-              <div>
-                <h3 className="font-semibold">Verimlilik Raporu</h3>
-                <p className="text-sm text-muted-foreground">Performans değerlendirmesi</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+      <div className="flex gap-1.5 p-1 bg-muted/50 rounded-lg">
+        {tabs.map((tab) => {
+          const Icon = tab.icon;
+          const isActive = activeTab === tab.id;
+          return (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              data-testid={`tab-${tab.id}`}
+              className={`flex-1 flex items-center justify-center gap-1.5 py-2 px-2 rounded-md text-xs font-medium transition-colors ${
+                isActive 
+                  ? "bg-background shadow-sm" 
+                  : "hover:bg-background/50"
+              }`}
+            >
+              <Icon className={`h-3.5 w-3.5 ${isActive ? tab.color : "text-muted-foreground"}`} />
+              <span className={isActive ? "" : "text-muted-foreground"}>{tab.label}</span>
+            </button>
+          );
+        })}
       </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="rotation" data-testid="tab-rotation">
-            <RotateCcw className="h-4 w-4 mr-2" />
-            Rotasyon
-          </TabsTrigger>
-          <TabsTrigger value="errors" data-testid="tab-errors">
-            <AlertTriangle className="h-4 w-4 mr-2" />
-            Hata Örüntüleri
-          </TabsTrigger>
-          <TabsTrigger value="efficiency" data-testid="tab-efficiency">
-            <TrendingUp className="h-4 w-4 mr-2" />
-            Verimlilik
-          </TabsTrigger>
-        </TabsList>
-        
-        <TabsContent value="rotation" className="mt-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <RotateCcw className="h-5 w-5 text-blue-500" />
-                Personel Rotasyon Analizi
-              </CardTitle>
-              <CardDescription>
-                İstasyonlar arası personel dağılımı ve optimizasyon önerileri
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {renderReport(rotationReport, loadingRotation, "rotation")}
-            </CardContent>
-          </Card>
-        </TabsContent>
-        
-        <TabsContent value="errors" className="mt-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <AlertTriangle className="h-5 w-5 text-red-500" />
-                Hata ve Fire Örüntüleri
-              </CardTitle>
-              <CardDescription>
-                Zaiyat nedenleri ve tekrarlayan hata analizleri
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {renderReport(errorReport, loadingError, "errors")}
-            </CardContent>
-          </Card>
-        </TabsContent>
-        
-        <TabsContent value="efficiency" className="mt-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <TrendingUp className="h-5 w-5 text-green-500" />
-                Verimlilik Değerlendirmesi
-              </CardTitle>
-              <CardDescription>
-                İstasyon ve personel bazlı performans analizi
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {renderReport(efficiencyReport, loadingEfficiency, "efficiency")}
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+      <Card>
+        <CardContent className="p-4">
+          {renderReport(report, loading, activeTab)}
+        </CardContent>
+      </Card>
     </div>
   );
 }
