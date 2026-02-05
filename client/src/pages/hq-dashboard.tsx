@@ -995,14 +995,14 @@ function CGODashboard() {
   });
 
   const departmentRouteMap: Record<string, string> = {
-    'Satınalma': '/hq-dashboard/satinalma',
-    'Fabrika': '/hq-dashboard/fabrika',
-    'İK': '/hq-dashboard/ik',
-    'Coach': '/hq-dashboard/coach',
-    'Marketing': '/hq-dashboard/marketing',
-    'Trainer': '/hq-dashboard/trainer',
-    'Kalite': '/hq-dashboard/kalite',
-    'Muhasebe': '/hq-dashboard/muhasebe',
+    'Satınalma': '/satinalma',
+    'Fabrika': '/fabrika',
+    'İK': '/ik',
+    'Coach': '/raporlar?tab=performans',
+    'Marketing': '/admin?tab=icerik-studyosu',
+    'Trainer': '/akademi',
+    'Kalite': '/fabrika?tab=kalite-kontrol',
+    'Muhasebe': '/raporlar',
   };
 
   const statCardRouteMap: Record<string, string> = {
@@ -1110,14 +1110,22 @@ function CGODashboard() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
-            <div className="flex items-center gap-2 p-2 rounded-lg bg-red-500/10">
+            <div 
+              className="flex items-center gap-2 p-2 rounded-lg bg-red-500/10 cursor-pointer hover-elevate"
+              onClick={() => setLocation('/satinalma?tab=stok-yonetimi')}
+              data-testid="alert-stok-uretim"
+            >
               {getRiskIcon('critical')}
               <div>
                 <p className="text-sm font-medium">Stok-Üretim Uyumsuzluğu</p>
                 <p className="text-xs text-muted-foreground">Kahve stoğu 3 günlük, üretim planı 7 gün</p>
               </div>
             </div>
-            <div className="flex items-center gap-2 p-2 rounded-lg bg-yellow-500/10">
+            <div 
+              className="flex items-center gap-2 p-2 rounded-lg bg-yellow-500/10 cursor-pointer hover-elevate"
+              onClick={() => setLocation('/operasyon?tab=personel')}
+              data-testid="alert-personel-sube"
+            >
               {getRiskIcon('warning')}
               <div>
                 <p className="text-sm font-medium">Personel-Şube Dengesizliği</p>
@@ -1135,11 +1143,19 @@ function CGODashboard() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
-            <div className="p-2 rounded-lg bg-primary/10 cursor-pointer hover-elevate">
+            <div 
+              className="p-2 rounded-lg bg-primary/10 cursor-pointer hover-elevate"
+              onClick={() => setLocation('/satinalma?tab=siparis-yonetimi')}
+              data-testid="action-acil-stok"
+            >
               <p className="text-sm font-medium">Acil Stok Siparişi</p>
               <p className="text-xs text-muted-foreground">Kahve çekirdeği için onay bekliyor</p>
             </div>
-            <div className="p-2 rounded-lg bg-secondary/10 cursor-pointer hover-elevate">
+            <div 
+              className="p-2 rounded-lg bg-secondary/10 cursor-pointer hover-elevate"
+              onClick={() => setLocation('/operasyon?tab=personel')}
+              data-testid="action-personel-takviye"
+            >
               <p className="text-sm font-medium">Personel Takviyesi</p>
               <p className="text-xs text-muted-foreground">İbni Sina için 2 transfer önerisi</p>
             </div>
