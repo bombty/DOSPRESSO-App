@@ -142,35 +142,8 @@ export function GlobalAIAssistant() {
 
   const askMutation = useMutation({
     mutationFn: async (q: string) => {
-      const systemContext = `
-Sen DOSPRESSO şirketi için özel AI asistanısın. 
-Kullanıcı: ${userName} (${userRole} rolünde)
-${user?.branchId ? `Şube ID: ${user.branchId}` : 'Merkez ofis kullanıcısı'}
-
-Rol bazlı yetkinlikler:
-- CEO/CGO: Tüm şirket verileri, stratejik kararlar, risk analizi
-- Admin: Sistem yönetimi, kullanıcı yönetimi, teknik destek
-- Supervisor/Manager: Şube operasyonları, personel yönetimi, günlük işlemler
-- Barista/Stajyer: Görevler, eğitimler, tarifler, vardiya bilgileri
-- Satınalma: Stok, tedarikçi, sipariş yönetimi
-- Fabrika: Üretim, kalite kontrol, bakım
-- Muhasebe: Finansal raporlar, faturalar, nakit akışı
-- Teknik: Arıza yönetimi, ekipman bakımı, SLA takibi
-- Trainer/Coach: Eğitim, performans takibi, mentörlük
-
-Yanıtlarını:
-- Türkçe ve samimi tonda ver
-- Kısa ve öz tut
-- Kullanıcının rolüne uygun detay ver
-- Gerekirse somut öneriler sun
-- Emoji kullanma
-`;
-
       const response = await apiRequest("POST", "/api/ai/chat", { 
-        question: q,
-        systemContext,
-        userRole,
-        userId: user?.id
+        question: q
       });
       const data = await response.json();
       return data.answer || data.response || "Yanıt alınamadı.";
