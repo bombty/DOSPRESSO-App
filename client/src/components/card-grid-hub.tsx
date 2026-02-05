@@ -936,8 +936,6 @@ export function CardGridHub() {
       {/* Compact Stats Bar - Role filtered internally */}
       {canSeeWidget(userRole, 'compact-stats') && <CompactStatsBar />}
 
-      {/* AI Summary Card - HQ için AI Control Tower özeti */}
-      {canSeeWidget(userRole, 'ai-summary') && <AISummaryCard />}
 
       {/* Critical Alerts - Top priority notifications */}
       {canSeeWidget(userRole, 'critical-alerts') && <CriticalAlerts />}
@@ -948,8 +946,6 @@ export function CardGridHub() {
       {/* Module Cards Grid - Role filtered internally */}
       {canSeeWidget(userRole, 'module-cards') && <ModuleCardsGrid />}
 
-      {/* Activity Timeline - Compact display */}
-      {canSeeWidget(userRole, 'activity-timeline') && <ActivityTimeline />}
 
       {/* Announcement Banners - Only show if enabled */}
       {bannerCarouselEnabled && <AnnouncementBannerCarousel />}

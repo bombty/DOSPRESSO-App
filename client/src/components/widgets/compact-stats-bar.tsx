@@ -11,13 +11,14 @@ import {
   Building2,
   TrendingUp,
   Users,
-  Factory
+  Factory,
+  Brain
 } from "lucide-react";
 
 interface StatItem {
   id: string;
   label: string;
-  value: number;
+  value: number | string;
   icon: any;
   bgColor: string;
   path: string;
@@ -67,7 +68,22 @@ export function CompactStatsBar() {
   const totalBranches = branches.length;
   const activePersonnel = personnel.filter((p: any) => p.isActive).length;
 
+  // AI özet için hesaplamalar
+  const healthyBranches = branches.filter((b: any) => (b.healthScore || 0) >= 80).length;
+  const avgHealth = totalBranches > 0 
+    ? Math.round(branches.reduce((sum: number, b: any) => sum + (b.healthScore || 0), 0) / totalBranches)
+    : 0;
+
   const allStats: StatItem[] = [
+    {
+      id: "ai-summary",
+      label: `${avgHealth}%`,
+      value: `${healthyBranches}/${totalBranches}`,
+      icon: Brain,
+      bgColor: "bg-gradient-to-r from-blue-600 to-indigo-600",
+      path: "/ceo-command-center",
+      roles: ["admin", "ceo", "coach"]
+    },
     {
       id: "branches",
       label: "Şube",
@@ -93,7 +109,7 @@ export function CompactStatsBar() {
       icon: ClipboardCheck,
       bgColor: "bg-blue-500 dark:bg-blue-600",
       path: "/gorevler",
-      roles: ["admin", "ceo", "cgo", "supervisor", "supervisor_buddy", "barista", "stajyer", "coach", "trainer", "fabrika_mudur", "fabrika_sorumlu"]
+      roles: ["admin", "ceo", "cgo", "supervisor", "supervisor_buddy", "barista", "stajyer", "coach", "trainer", "fabrika_mudur", "fabrika_sorumlo"]
     },
     {
       id: "faults",
@@ -128,6 +144,7 @@ export function CompactStatsBar() {
     <div className="flex flex-wrap gap-2" data-testid="compact-stats-bar">
       {filteredStats.map((stat, index) => {
         const Icon = stat.icon;
+        const isAISummary = stat.id === "ai-summary";
         return (
           <motion.button
             key={stat.id}
@@ -140,8 +157,19 @@ export function CompactStatsBar() {
             data-testid={`compact-stat-${stat.id}`}
           >
             <Icon className="w-3.5 h-3.5 text-white/90" />
-            <span className="text-sm font-bold text-white">{stat.value}</span>
-            {stat.label && <span className="text-[10px] text-white/80 font-medium">{stat.label}</span>}
+            {isAISummary ? (
+              <>
+                <span className="text-sm font-bold text-white">{stat.value}</span>
+                <span className="text-[10px] text-white/80">|</span>
+                <TrendingUp className="w-3 h-3 text-white/80" />
+                <span className="text-[10px] text-white/80 font-medium">{stat.label}</span>
+              </>
+            ) : (
+              <>
+                <span className="text-sm font-bold text-white">{stat.value}</span>
+                {stat.label && <span className="text-[10px] text-white/80 font-medium">{stat.label}</span>}
+              </>
+            )}
           </motion.button>
         );
       })}
