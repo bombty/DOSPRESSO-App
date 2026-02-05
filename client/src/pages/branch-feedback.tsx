@@ -24,7 +24,7 @@ export default function BranchFeedback() {
   const [message, setMessage] = useState("");
 
   // Get user's branch
-  const { data: user } = useQuery({ queryKey: ["/api/user"] });
+  const { data: user } = useQuery<{ branchId?: number }>({ queryKey: ["/api/user"] });
   const branchId = user?.branchId;
 
   // Fetch feedbacks

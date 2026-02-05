@@ -14,7 +14,7 @@ import { Label } from "@/components/ui/label";
 import { 
   ArrowLeft, Users, CheckCircle2, Clock, Wrench, TrendingUp, 
   Star, Award, ClipboardCheck, ThumbsUp, QrCode, MapPin, 
-  Wifi, Download, RefreshCw, Copy, CheckCircle, BarChart3
+  Wifi, Download, RefreshCw, Copy, CheckCircle, BarChart3, MessageSquare
 } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { isHQRole } from "@shared/schema";
@@ -78,6 +78,7 @@ export default function SubeDetayPage() {
   const [openingHours, setOpeningHours] = useState("07:00");
   const [closingHours, setClosingHours] = useState("01:00");
   const [showCards, setShowCards] = useState(true);
+  const [feedbackCopied, setFeedbackCopied] = useState(false);
   
   const isAdmin = user?.role && isHQRole(user.role as any);
 
@@ -138,7 +139,7 @@ export default function SubeDetayPage() {
     }
   });
 
-  // Generate QR token mutation
+  // Generate QR token mutation (for shift check-in)
   const generateQrMutation = useMutation({
     mutationFn: async () => {
       await apiRequest('POST', `/api/branches/${branchId}/generate-qr`);
@@ -150,6 +151,17 @@ export default function SubeDetayPage() {
     onError: () => {
       toast({ title: "Hata", description: "QR kod oluşturulamadı", variant: "destructive" });
     },
+  });
+
+  // Fetch customer feedback QR data
+  const { data: feedbackQrData, refetch: refetchFeedbackQr } = useQuery({
+    queryKey: ['/api/branches', branchId, 'feedback-qr'],
+    enabled: !!branchId && !!isAdmin,
+    queryFn: async (): Promise<{ token: string; url: string; qrCode: string } | null> => {
+      const response = await fetch(`/api/branches/${branchId}/feedback-qr`);
+      if (!response.ok) return null;
+      return response.json();
+    }
   });
 
   // Update location settings mutation
@@ -788,6 +800,87 @@ export default function SubeDetayPage() {
                   </CardContent>
                 </Card>
               )}
+
+              {/* Müşteri Geri Bildirim QR Kodu */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <MessageSquare className="h-4 w-4" />
+                    Müşteri Geri Bildirim QR Kodu
+                  </CardTitle>
+                  <CardDescription>
+                    Müşteriler bu QR kodu okutarak geri bildirim ve puanlama yapabilir
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="w-full space-y-2 sm:space-y-3">
+                  {feedbackQrData?.qrCode ? (
+                    <div className="w-full space-y-2 sm:space-y-3">
+                      <div className="flex flex-col items-center p-3 bg-white rounded-lg">
+                        <img 
+                          src={feedbackQrData.qrCode} 
+                          alt="Müşteri Geri Bildirim QR Kodu"
+                          className="w-48 h-48"
+                          data-testid="img-feedback-qr"
+                        />
+                        <p className="text-xs text-muted-foreground mt-2 font-mono text-center break-all max-w-[200px]">
+                          {feedbackQrData.url}
+                        </p>
+                      </div>
+                      <div className="flex flex-wrap gap-2 justify-center">
+                        <Button 
+                          onClick={() => {
+                            const link = document.createElement('a');
+                            link.download = `musteri-qr-${branch.name}.png`;
+                            link.href = feedbackQrData.qrCode;
+                            link.click();
+                          }} 
+                          variant="outline" 
+                          data-testid="button-download-feedback-qr"
+                        >
+                          <Download className="h-4 w-4 mr-2" />
+                          İndir
+                        </Button>
+                        <Button 
+                          onClick={() => {
+                            navigator.clipboard.writeText(feedbackQrData.url);
+                            setFeedbackCopied(true);
+                            setTimeout(() => setFeedbackCopied(false), 2000);
+                            toast({ title: "Kopyalandı", description: "Link panoya kopyalandı" });
+                          }} 
+                          variant="outline" 
+                          data-testid="button-copy-feedback-qr"
+                        >
+                          {feedbackCopied ? <CheckCircle className="h-4 w-4 mr-2" /> : <Copy className="h-4 w-4 mr-2" />}
+                          {feedbackCopied ? "Kopyalandı" : "Linki Kopyala"}
+                        </Button>
+                        <Button 
+                          onClick={() => refetchFeedbackQr()} 
+                          variant="outline"
+                          data-testid="button-refresh-feedback-qr"
+                        >
+                          <RefreshCw className="h-4 w-4 mr-2" />
+                          Yenile
+                        </Button>
+                      </div>
+                      <p className="text-xs text-center text-muted-foreground">
+                        Bu QR kodu müşterilerin görebileceği bir yere koyun. Müşteriler bu kodu okutarak size geri bildirim bırakabilir.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="text-center py-8">
+                      <MessageSquare className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
+                      <p className="text-muted-foreground mb-4">Henüz müşteri geri bildirim QR kodu oluşturulmamış</p>
+                      <Button 
+                        onClick={() => refetchFeedbackQr()}
+                        data-testid="button-generate-feedback-qr"
+                      >
+                        <QrCode className="h-4 w-4 mr-2" />
+                        Müşteri QR Kodu Oluştur
+                      </Button>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
 
               {/* Lokasyon Ayarları */}
               <Card>
