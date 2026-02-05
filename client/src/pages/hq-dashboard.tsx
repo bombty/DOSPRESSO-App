@@ -185,10 +185,10 @@ function AlertPanel({ alerts }: { alerts: Array<{ message: string; severity: Ris
 }
 
 const satinalmaIconMap: Record<string, React.ReactNode> = {
-  "Aktif Tedarikci": <Truck className="w-5 h-5 text-blue-500" />,
-  "Bekleyen Siparis": <Package className="w-5 h-5 text-orange-500" />,
-  "Ortalama Teslimat Suresi": <Clock className="w-5 h-5 text-green-500" />,
-  "Fiyat Uyarisi": <AlertTriangle className="w-5 h-5 text-red-500" />,
+  "Aktif Tedarikçi": <Truck className="w-5 h-5 text-blue-500" />,
+  "Bekleyen Sipariş": <Package className="w-5 h-5 text-orange-500" />,
+  "Ortalama Teslimat": <Clock className="w-5 h-5 text-green-500" />,
+  "Fiyat Uyarısı": <AlertTriangle className="w-5 h-5 text-red-500" />,
 };
 
 function SatinalmaDashboard() {
@@ -299,9 +299,9 @@ function SatinalmaDashboard() {
 }
 
 const fabrikaIconMap: Record<string, React.ReactNode> = {
-  "Gunluk Uretim": <Factory className="w-5 h-5 text-blue-500" />,
+  "Günlük Üretim": <Factory className="w-5 h-5 text-blue-500" />,
   "Verimlilik": <Gauge className="w-5 h-5 text-green-500" />,
-  "Fire Orani": <Flame className="w-5 h-5 text-orange-500" />,
+  "Fire Oranı": <Flame className="w-5 h-5 text-orange-500" />,
   "Makine Uptime": <Zap className="w-5 h-5 text-yellow-500" />,
 };
 
@@ -407,9 +407,9 @@ function FabrikaDashboard() {
 
 const ikIconMap: Record<string, React.ReactNode> = {
   "Toplam Personel": <Users className="w-5 h-5 text-blue-500" />,
-  "Yillik Turnover": <UserX className="w-5 h-5 text-red-500" />,
+  "Yıllık Turnover": <UserX className="w-5 h-5 text-red-500" />,
   "Ortalama Deneyim": <Calendar className="w-5 h-5 text-orange-500" />,
-  "Egitim Tamamlama": <GraduationCap className="w-5 h-5 text-green-500" />,
+  "Eğitim Tamamlama": <GraduationCap className="w-5 h-5 text-green-500" />,
 };
 
 function IKDashboard() {
@@ -519,10 +519,10 @@ function IKDashboard() {
 }
 
 const coachIconMap: Record<string, React.ReactNode> = {
-  "Ortalama Sube Puani": <Star className="w-5 h-5 text-yellow-500" />,
+  "Ortalama Şube Puanı": <Star className="w-5 h-5 text-yellow-500" />,
   "Ziyaret Bekleyen": <Eye className="w-5 h-5 text-purple-500" />,
-  "Uyumluluk Orani": <ClipboardCheck className="w-5 h-5 text-green-500" />,
-  "Iyilestirme Onerisi": <Lightbulb className="w-5 h-5 text-orange-500" />,
+  "Uyumluluk Oranı": <ClipboardCheck className="w-5 h-5 text-green-500" />,
+  "İyileştirme Önerisi": <Lightbulb className="w-5 h-5 text-orange-500" />,
 };
 
 function CoachDashboard() {
@@ -660,9 +660,9 @@ function CoachDashboard() {
 
 const marketingIconMap: Record<string, React.ReactNode> = {
   "Aktif Kampanya": <Megaphone className="w-5 h-5 text-purple-500" />,
-  "Sosyal Medya Erisimi": <Users className="w-5 h-5 text-blue-500" />,
+  "Sosyal Medya Erişimi": <Users className="w-5 h-5 text-blue-500" />,
   "Kampanya ROI": <TrendingUp className="w-5 h-5 text-green-500" />,
-  "Musteri Memnuniyeti": <Heart className="w-5 h-5 text-pink-500" />,
+  "Müşteri Memnuniyeti": <Heart className="w-5 h-5 text-pink-500" />,
 };
 
 function MarketingDashboard() {
@@ -763,10 +763,10 @@ function MarketingDashboard() {
 }
 
 const trainerIconMap: Record<string, React.ReactNode> = {
-  "Egitim Tamamlama": <CheckCircle className="w-5 h-5 text-green-500" />,
-  "Ortalama Quiz Puani": <Award className="w-5 h-5 text-yellow-500" />,
+  "Eğitim Tamamlama": <CheckCircle className="w-5 h-5 text-green-500" />,
+  "Ortalama Quiz Puanı": <Award className="w-5 h-5 text-yellow-500" />,
   "Sertifika Bekleyen": <GraduationCap className="w-5 h-5 text-purple-500" />,
-  "Aktif Ogrenci": <Users className="w-5 h-5 text-blue-500" />,
+  "Aktif Öğrenci": <Users className="w-5 h-5 text-blue-500" />,
 };
 
 function TrainerDashboard() {
@@ -868,9 +868,9 @@ function TrainerDashboard() {
 
 const kaliteIconMap: Record<string, React.ReactNode> = {
   "Kalite Skoru": <Star className="w-5 h-5 text-yellow-500" />,
-  "Musteri Puani": <ThumbsUp className="w-5 h-5 text-green-500" />,
-  "Acik Sikayet": <MessageSquare className="w-5 h-5 text-red-500" />,
-  "Denetim Puani": <ClipboardCheck className="w-5 h-5 text-emerald-500" />,
+  "Müşteri Puanı": <ThumbsUp className="w-5 h-5 text-green-500" />,
+  "Açık Şikayet": <MessageSquare className="w-5 h-5 text-red-500" />,
+  "Denetim Puanı": <ClipboardCheck className="w-5 h-5 text-emerald-500" />,
 };
 
 function KaliteDashboard() {
@@ -976,9 +976,9 @@ function KaliteDashboard() {
 }
 
 const cgoIconMap: Record<string, React.ReactNode> = {
-  "Toplam Sube": <Store className="w-5 h-5 text-blue-500" />,
+  "Toplam Şube": <Store className="w-5 h-5 text-blue-500" />,
   "Aktif Personel": <Users className="w-5 h-5 text-green-500" />,
-  "Acik Arizalar": <AlertTriangle className="w-5 h-5 text-red-500" />,
+  "Açık Arızalar": <AlertTriangle className="w-5 h-5 text-red-500" />,
   "Checklist Tamamlanma": <CheckCircle className="w-5 h-5 text-emerald-500" />,
 };
 
