@@ -29,9 +29,9 @@ export function registerHQDashboardRoutes(app: Express, isAuthenticated: any) {
       
       res.json({
         metrics: [
-          { title: "Toplam Sube", value: totalBranches, status: "healthy", trend: "stable" },
+          { title: "Toplam Şube", value: totalBranches, status: "healthy", trend: "stable" },
           { title: "Aktif Personel", value: totalEmployees, status: "healthy", trend: "up" },
-          { title: "Acik Arizalar", value: activeFaults, status: activeFaults > 10 ? "warning" : "healthy", trend: "stable" },
+          { title: "Açık Arızalar", value: activeFaults, status: activeFaults > 10 ? "warning" : "healthy", trend: "stable" },
           { title: "Checklist Tamamlanma", value: "92%", status: "healthy", trend: "up" }
         ],
         departmentHealth: [
@@ -65,10 +65,10 @@ export function registerHQDashboardRoutes(app: Express, isAuthenticated: any) {
       
       res.json({
         metrics: [
-          { title: "Aktif Tedarikci", value: 45, status: "healthy", trend: "stable" },
-          { title: "Bekleyen Siparis", value: 23, status: "warning", trend: "up" },
-          { title: "Ortalama Teslimat Suresi", value: "2.3 gun", status: "healthy", trend: "down" },
-          { title: "Fiyat Uyarisi", value: 5, status: "critical", trend: "up" }
+          { title: "Aktif Tedarikçi", value: 45, status: "healthy", trend: "stable" },
+          { title: "Bekleyen Sipariş", value: 23, status: "warning", trend: "up" },
+          { title: "Ortalama Teslimat", value: "2.3 gün", status: "healthy", trend: "down" },
+          { title: "Fiyat Uyarısı", value: 5, status: "critical", trend: "up" }
         ],
         supplierScores: [
           { name: "Sut Tedarikcisi A", score: 92, onTimeDelivery: 98, priceStability: 85 },
@@ -97,9 +97,9 @@ export function registerHQDashboardRoutes(app: Express, isAuthenticated: any) {
       
       res.json({
         metrics: [
-          { title: "Gunluk Uretim", value: "2,450 kg", status: "healthy", trend: "up" },
+          { title: "Günlük Üretim", value: "2,450 kg", status: "healthy", trend: "up" },
           { title: "Verimlilik", value: "94.2%", status: "healthy", trend: "stable" },
-          { title: "Fire Orani", value: "1.8%", status: "healthy", trend: "down" },
+          { title: "Fire Oranı", value: "1.8%", status: "healthy", trend: "down" },
           { title: "Makine Uptime", value: "98.5%", status: "healthy", trend: "stable" }
         ],
         productionTrend: [
@@ -134,9 +134,9 @@ export function registerHQDashboardRoutes(app: Express, isAuthenticated: any) {
       res.json({
         metrics: [
           { title: "Toplam Personel", value: activeUsers, status: "healthy", trend: "stable" },
-          { title: "Yillik Turnover", value: "12%", status: "warning", trend: "up" },
-          { title: "Ortalama Deneyim", value: "2.3 yil", status: "healthy", trend: "up" },
-          { title: "Egitim Tamamlama", value: "85%", status: "healthy", trend: "up" }
+          { title: "Yıllık Turnover", value: "12%", status: "warning", trend: "up" },
+          { title: "Ortalama Deneyim", value: "2.3 yıl", status: "healthy", trend: "up" },
+          { title: "Eğitim Tamamlama", value: "85%", status: "healthy", trend: "up" }
         ],
         departmentDistribution: [
           { department: "Sube", count: Math.floor(activeUsers * 0.7) },
@@ -170,10 +170,10 @@ export function registerHQDashboardRoutes(app: Express, isAuthenticated: any) {
       
       res.json({
         metrics: [
-          { title: "Ortalama Sube Puani", value: "4.2/5", status: "healthy", trend: "up" },
+          { title: "Ortalama Şube Puanı", value: "4.2/5", status: "healthy", trend: "up" },
           { title: "Ziyaret Bekleyen", value: 8, status: "warning", trend: "stable" },
-          { title: "Uyumluluk Orani", value: "91%", status: "healthy", trend: "up" },
-          { title: "Iyilestirme Onerisi", value: 15, status: "healthy", trend: "stable" }
+          { title: "Uyumluluk Oranı", value: "91%", status: "healthy", trend: "up" },
+          { title: "İyileştirme Önerisi", value: 15, status: "healthy", trend: "stable" }
         ],
         branchScores: branchesData.slice(0, 5).map((b: any, i: number) => ({
           name: b.name,
@@ -203,9 +203,9 @@ export function registerHQDashboardRoutes(app: Express, isAuthenticated: any) {
       res.json({
         metrics: [
           { title: "Aktif Kampanya", value: 4, status: "healthy", trend: "stable" },
-          { title: "Sosyal Medya Erisimi", value: "125K", status: "healthy", trend: "up" },
+          { title: "Sosyal Medya Erişimi", value: "125K", status: "healthy", trend: "up" },
           { title: "Kampanya ROI", value: "3.2x", status: "healthy", trend: "up" },
-          { title: "Musteri Memnuniyeti", value: "4.5/5", status: "healthy", trend: "stable" }
+          { title: "Müşteri Memnuniyeti", value: "4.5/5", status: "healthy", trend: "stable" }
         ],
         campaignPerformance: [
           { name: "Yaz Kampanyasi", reach: 45000, conversion: 12.5, roi: 3.8 },
@@ -235,10 +235,10 @@ export function registerHQDashboardRoutes(app: Express, isAuthenticated: any) {
       
       res.json({
         metrics: [
-          { title: "Egitim Tamamlama", value: "78%", status: "warning", trend: "up" },
-          { title: "Ortalama Quiz Puani", value: "82%", status: "healthy", trend: "stable" },
+          { title: "Eğitim Tamamlama", value: "78%", status: "warning", trend: "up" },
+          { title: "Ortalama Quiz Puanı", value: "82%", status: "healthy", trend: "stable" },
           { title: "Sertifika Bekleyen", value: 12, status: "warning", trend: "stable" },
-          { title: "Aktif Ogrenci", value: usersData.length, status: "healthy", trend: "up" }
+          { title: "Aktif Öğrenci", value: usersData.length, status: "healthy", trend: "up" }
         ],
         trainingProgress: [
           { category: "Barista Temelleri", completed: 85, inProgress: 10, notStarted: 5 },
@@ -273,9 +273,9 @@ export function registerHQDashboardRoutes(app: Express, isAuthenticated: any) {
       res.json({
         metrics: [
           { title: "Kalite Skoru", value: "94%", status: "healthy", trend: "up" },
-          { title: "Musteri Puani", value: avgRating + "/5", status: "healthy", trend: "stable" },
-          { title: "Acik Sikayet", value: 3, status: "warning", trend: "down" },
-          { title: "Denetim Puani", value: "A+", status: "healthy", trend: "stable" }
+          { title: "Müşteri Puanı", value: avgRating + "/5", status: "healthy", trend: "stable" },
+          { title: "Açık Şikayet", value: 3, status: "warning", trend: "down" },
+          { title: "Denetim Puanı", value: "A+", status: "healthy", trend: "stable" }
         ],
         qualityTrend: [
           { month: "Oca", score: 91 },
