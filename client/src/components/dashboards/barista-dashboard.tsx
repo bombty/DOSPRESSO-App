@@ -134,7 +134,7 @@ export function BaristaDashboard({
                 <div className="mt-2 pt-2 border-t">
                   <p className="text-xs text-muted-foreground mb-2">Son Rozetler</p>
                   <div className="flex gap-1 flex-wrap">
-                    {academyData.userBadges.slice(0, 3).map((ub, idx: number) => (
+                    {academyData.userBadges.slice(0, 3).map((ub: any, idx: number) => (
                       <Badge key={idx} variant="outline" className="text-xs" data-testid={`badge-barista-${ub.badge?.nameEn || idx}`}>
                         {ub.badge?.nameEn}
                       </Badge>

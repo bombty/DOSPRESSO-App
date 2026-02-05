@@ -2,7 +2,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { motion } from "framer-motion";
-import { Sun, Moon, Cloud, Coffee, Target, Zap, TrendingUp, ClipboardList } from "lucide-react";
+import { Sun, Moon, Cloud, Coffee, Brain, Target, Zap, TrendingUp, ClipboardList } from "lucide-react";
 import { ProgressRing } from "@/components/ui/progress-ring";
 
 function getGreeting(): { text: string; icon: any } {
@@ -79,9 +79,15 @@ export function UnifiedHero() {
           <h1 className="text-xl font-bold truncate">{firstName}</h1>
           <p className="text-xs text-white/70 mt-0.5">{formatDate()}</p>
           
-          <div className="mt-2 inline-flex items-center gap-1 px-2 py-1 rounded-full bg-white/20 backdrop-blur-sm text-[10px] font-medium">
-            <Coffee className="w-3 h-3" />
-            DOSPRESSO
+          <div 
+            className="mt-2 inline-flex items-center gap-1 px-2 py-1 rounded-full bg-white/20 backdrop-blur-sm text-[10px] font-medium cursor-pointer hover-elevate active-elevate-2"
+            onClick={() => setLocation("/raporlar?tab=ai-asistan")}
+            data-testid="hero-ai-report"
+          >
+            <Brain className="w-3 h-3" />
+            <span>AI Rapor</span>
+            <span className="text-white/70">|</span>
+            <span>{overallProgress}%</span>
           </div>
         </div>
 
