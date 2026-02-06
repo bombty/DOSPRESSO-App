@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { TrendingUp, TrendingDown, CheckCircle2, Clock, AlertTriangle, Users, Loader2, RefreshCw } from "lucide-react";
+import { TrendingUp, TrendingDown, CheckCircle2, Clock, AlertTriangle, ClipboardCheck, Loader2, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -114,7 +114,7 @@ export function BranchScorecard() {
             <p className="text-[10px] text-muted-foreground">Bekleyen</p>
           </div>
           <div className="p-2 rounded-lg bg-background/50">
-            <Users className="h-4 w-4 mx-auto text-blue-500 mb-1" />
+            <ClipboardCheck className="h-4 w-4 mx-auto text-blue-500 mb-1" />
             <p className="text-lg font-bold">%{scoreData.checklistRate}</p>
             <p className="text-[10px] text-muted-foreground">Checklist</p>
           </div>

@@ -85,6 +85,7 @@ interface MetricCard {
   trendValue?: string;
   status?: RiskStatus;
   icon: React.ReactNode;
+  iconBgClass?: string;
   onClick?: () => void;
 }
 
@@ -131,7 +132,7 @@ function MetricCardComponent({ metric, testId }: { metric: MetricCard; testId?: 
       <CardContent className="p-4">
         <div className="flex items-start justify-between gap-2 flex-wrap">
           <div className="flex items-center gap-2">
-            <div className="p-2 rounded-lg bg-primary/10 [&>svg]:w-5 [&>svg]:h-5">
+            <div className={`p-2 rounded-lg ${metric.iconBgClass || 'bg-primary/10'} [&>svg]:w-5 [&>svg]:h-5`}>
               {metric.icon ? metric.icon : <Store className="w-5 h-5 text-muted-foreground" />}
             </div>
             <div>
@@ -192,10 +193,10 @@ function SatinalmaDashboard() {
   });
 
   const fallbackMetrics: MetricCard[] = [
-    { title: "Aktif Tedarikçi", value: 24, icon: <Truck className="w-5 h-5 text-blue-500" />, status: 'healthy', trend: 'stable' },
-    { title: "Bekleyen Sipariş", value: 12, icon: <Package className="w-5 h-5 text-orange-500" />, status: 'warning' },
-    { title: "Ortalama Teslimat", value: "2.4 gün", icon: <Clock className="w-5 h-5 text-green-500" />, status: 'healthy' },
-    { title: "Fiyat Uyarısı", value: 5, icon: <AlertTriangle className="w-5 h-5 text-red-500" />, status: 'critical' },
+    { title: "Aktif Tedarikçi", value: 24, icon: <Truck className="w-5 h-5 text-blue-500" />, iconBgClass: "bg-blue-500/10", status: 'healthy', trend: 'stable' },
+    { title: "Bekleyen Sipariş", value: 12, icon: <Package className="w-5 h-5 text-orange-500" />, iconBgClass: "bg-orange-500/10", status: 'warning' },
+    { title: "Ortalama Teslimat", value: "2.4 gün", icon: <Clock className="w-5 h-5 text-green-500" />, iconBgClass: "bg-green-500/10", status: 'healthy' },
+    { title: "Fiyat Uyarısı", value: 5, icon: <AlertTriangle className="w-5 h-5 text-red-500" />, iconBgClass: "bg-red-500/10", status: 'critical' },
   ];
 
   const fallbackAlerts = [
@@ -211,6 +212,7 @@ function SatinalmaDashboard() {
       status: m.status,
       trend: m.trend,
       icon: fallbackIcon,
+      iconBgClass: fallbackMetrics[index]?.iconBgClass,
       onClick: fallbackMetrics[index]?.onClick
     };
   }) : fallbackMetrics;
@@ -306,10 +308,10 @@ function FabrikaDashboard() {
   });
 
   const fallbackMetrics: MetricCard[] = [
-    { title: "Günlük Üretim", value: "2,450 kg", icon: <Factory className="w-5 h-5 text-blue-500" />, status: 'healthy', trend: 'up' },
-    { title: "Verimlilik", value: "94.2%", icon: <Gauge className="w-5 h-5 text-green-500" />, status: 'healthy' },
-    { title: "Fire Oranı", value: "1.8%", icon: <Flame className="w-5 h-5 text-orange-500" />, status: 'healthy' },
-    { title: "Makine Uptime", value: "98.5%", icon: <Zap className="w-5 h-5 text-yellow-500" />, status: 'healthy' },
+    { title: "Günlük Üretim", value: "2,450 kg", icon: <Factory className="w-5 h-5 text-blue-500" />, iconBgClass: "bg-blue-500/10", status: 'healthy', trend: 'up' },
+    { title: "Verimlilik", value: "94.2%", icon: <Gauge className="w-5 h-5 text-green-500" />, iconBgClass: "bg-green-500/10", status: 'healthy' },
+    { title: "Fire Oranı", value: "1.8%", icon: <Flame className="w-5 h-5 text-orange-500" />, iconBgClass: "bg-orange-500/10", status: 'healthy' },
+    { title: "Makine Uptime", value: "98.5%", icon: <Zap className="w-5 h-5 text-yellow-500" />, iconBgClass: "bg-yellow-500/10", status: 'healthy' },
   ];
 
   const fallbackAlerts = [
@@ -324,6 +326,7 @@ function FabrikaDashboard() {
       status: m.status,
       trend: m.trend,
       icon: fallbackIcon,
+      iconBgClass: fallbackMetrics[index]?.iconBgClass,
       onClick: fallbackMetrics[index]?.onClick
     };
   }) : fallbackMetrics;
@@ -413,10 +416,10 @@ function IKDashboard() {
   });
 
   const fallbackMetrics: MetricCard[] = [
-    { title: "Toplam Personel", value: 156, icon: <Users className="w-5 h-5 text-blue-500" />, status: 'healthy', trend: 'up' },
-    { title: "Yıllık Turnover", value: "12%", icon: <UserX className="w-5 h-5 text-red-500" />, status: 'warning' },
-    { title: "Ortalama Deneyim", value: "2.3 yıl", icon: <Calendar className="w-5 h-5 text-orange-500" />, status: 'healthy' },
-    { title: "Eğitim Tamamlama", value: "85%", icon: <GraduationCap className="w-5 h-5 text-green-500" />, status: 'healthy' },
+    { title: "Toplam Personel", value: 156, icon: <Users className="w-5 h-5 text-blue-500" />, iconBgClass: "bg-blue-500/10", status: 'healthy', trend: 'up' },
+    { title: "Yıllık Turnover", value: "12%", icon: <UserX className="w-5 h-5 text-red-500" />, iconBgClass: "bg-red-500/10", status: 'warning' },
+    { title: "Ortalama Deneyim", value: "2.3 yıl", icon: <Calendar className="w-5 h-5 text-orange-500" />, iconBgClass: "bg-orange-500/10", status: 'healthy' },
+    { title: "Eğitim Tamamlama", value: "85%", icon: <GraduationCap className="w-5 h-5 text-green-500" />, iconBgClass: "bg-green-500/10", status: 'healthy' },
   ];
 
   const fallbackAlerts = [
@@ -432,6 +435,7 @@ function IKDashboard() {
       status: m.status,
       trend: m.trend,
       icon: fallbackIcon,
+      iconBgClass: fallbackMetrics[index]?.iconBgClass,
       onClick: fallbackMetrics[index]?.onClick
     };
   }) : fallbackMetrics;
@@ -531,6 +535,7 @@ function CoachDashboard() {
       title: "Ortalama Şube Puanı", 
       value: "4.2/5", 
       icon: <Star className="w-5 h-5 text-yellow-500" />, 
+      iconBgClass: "bg-yellow-500/10",
       status: 'healthy', 
       trend: 'up',
       onClick: () => setLocation('/modul/raporlar?tab=performans')
@@ -539,6 +544,7 @@ function CoachDashboard() {
       title: "Ziyaret Bekleyen", 
       value: 8, 
       icon: <Eye className="w-5 h-5 text-purple-500" />, 
+      iconBgClass: "bg-purple-500/10",
       status: 'warning',
       onClick: () => setLocation('/modul/operasyon?tab=subeler')
     },
@@ -546,6 +552,7 @@ function CoachDashboard() {
       title: "Uyumluluk Oranı", 
       value: "91%", 
       icon: <ClipboardCheck className="w-5 h-5 text-green-500" />, 
+      iconBgClass: "bg-green-500/10",
       status: 'healthy',
       onClick: () => setLocation('/modul/operasyon?tab=checklistler')
     },
@@ -553,6 +560,7 @@ function CoachDashboard() {
       title: "İyileştirme Önerisi", 
       value: 15, 
       icon: <Lightbulb className="w-5 h-5 text-orange-500" />, 
+      iconBgClass: "bg-orange-500/10",
       status: 'healthy',
       onClick: () => setLocation('/modul/raporlar?tab=ai-asistan')
     },
@@ -571,6 +579,7 @@ function CoachDashboard() {
       status: m.status,
       trend: m.trend,
       icon: fallbackIcon,
+      iconBgClass: fallbackMetrics[index]?.iconBgClass,
       onClick: fallbackMetrics[index]?.onClick
     };
   }) : fallbackMetrics;
@@ -666,10 +675,10 @@ function MarketingDashboard() {
   });
 
   const fallbackMetrics: MetricCard[] = [
-    { title: "Aktif Kampanya", value: 4, icon: <Megaphone className="w-5 h-5 text-purple-500" />, status: 'healthy' },
-    { title: "Sosyal Medya Erişimi", value: "125K", icon: <Users className="w-5 h-5 text-blue-500" />, trend: 'up' },
-    { title: "Kampanya ROI", value: "3.2x", icon: <TrendingUp className="w-5 h-5 text-green-500" />, status: 'healthy' },
-    { title: "Müşteri Memnuniyeti", value: "4.5/5", icon: <Heart className="w-5 h-5 text-pink-500" />, status: 'healthy' },
+    { title: "Aktif Kampanya", value: 4, icon: <Megaphone className="w-5 h-5 text-purple-500" />, iconBgClass: "bg-purple-500/10", status: 'healthy' },
+    { title: "Sosyal Medya Erişimi", value: "125K", icon: <Users className="w-5 h-5 text-blue-500" />, iconBgClass: "bg-blue-500/10", trend: 'up' },
+    { title: "Kampanya ROI", value: "3.2x", icon: <TrendingUp className="w-5 h-5 text-green-500" />, iconBgClass: "bg-green-500/10", status: 'healthy' },
+    { title: "Müşteri Memnuniyeti", value: "4.5/5", icon: <Heart className="w-5 h-5 text-pink-500" />, iconBgClass: "bg-pink-500/10", status: 'healthy' },
   ];
 
   const fallbackAlerts = [
@@ -684,6 +693,7 @@ function MarketingDashboard() {
       status: m.status,
       trend: m.trend,
       icon: fallbackIcon,
+      iconBgClass: fallbackMetrics[index]?.iconBgClass,
       onClick: fallbackMetrics[index]?.onClick
     };
   }) : fallbackMetrics;
@@ -770,10 +780,10 @@ function TrainerDashboard() {
   });
 
   const fallbackMetrics: MetricCard[] = [
-    { title: "Eğitim Tamamlama", value: "78%", icon: <CheckCircle className="w-5 h-5 text-green-500" />, status: 'warning', trend: 'up' },
-    { title: "Ortalama Quiz Puanı", value: "82%", icon: <Award className="w-5 h-5 text-yellow-500" />, status: 'healthy' },
-    { title: "Sertifika Bekleyen", value: 12, icon: <GraduationCap className="w-5 h-5 text-purple-500" />, status: 'warning' },
-    { title: "Aktif Öğrenci", value: 150, icon: <Users className="w-5 h-5 text-blue-500" />, status: 'healthy' },
+    { title: "Eğitim Tamamlama", value: "78%", icon: <CheckCircle className="w-5 h-5 text-green-500" />, iconBgClass: "bg-green-500/10", status: 'warning', trend: 'up' },
+    { title: "Ortalama Quiz Puanı", value: "82%", icon: <Award className="w-5 h-5 text-yellow-500" />, iconBgClass: "bg-yellow-500/10", status: 'healthy' },
+    { title: "Sertifika Bekleyen", value: 12, icon: <GraduationCap className="w-5 h-5 text-purple-500" />, iconBgClass: "bg-purple-500/10", status: 'warning' },
+    { title: "Aktif Öğrenci", value: 150, icon: <Users className="w-5 h-5 text-blue-500" />, iconBgClass: "bg-blue-500/10", status: 'healthy' },
   ];
 
   const fallbackAlerts = [
@@ -788,6 +798,7 @@ function TrainerDashboard() {
       status: m.status,
       trend: m.trend,
       icon: fallbackIcon,
+      iconBgClass: fallbackMetrics[index]?.iconBgClass,
       onClick: fallbackMetrics[index]?.onClick
     };
   }) : fallbackMetrics;
@@ -874,10 +885,10 @@ function KaliteDashboard() {
   });
 
   const fallbackMetrics: MetricCard[] = [
-    { title: "Kalite Skoru", value: "94%", icon: <Star className="w-5 h-5 text-yellow-500" />, status: 'healthy', trend: 'up' },
-    { title: "Müşteri Puanı", value: "4.5/5", icon: <ThumbsUp className="w-5 h-5 text-green-500" />, status: 'healthy' },
-    { title: "Açık Şikayet", value: 3, icon: <MessageSquare className="w-5 h-5 text-red-500" />, status: 'warning' },
-    { title: "Denetim Puanı", value: "A+", icon: <ClipboardCheck className="w-5 h-5 text-emerald-500" />, status: 'healthy' },
+    { title: "Kalite Skoru", value: "94%", icon: <Star className="w-5 h-5 text-yellow-500" />, iconBgClass: "bg-yellow-500/10", status: 'healthy', trend: 'up' },
+    { title: "Müşteri Puanı", value: "4.5/5", icon: <ThumbsUp className="w-5 h-5 text-green-500" />, iconBgClass: "bg-green-500/10", status: 'healthy' },
+    { title: "Açık Şikayet", value: 3, icon: <MessageSquare className="w-5 h-5 text-red-500" />, iconBgClass: "bg-red-500/10", status: 'warning' },
+    { title: "Denetim Puanı", value: "A+", icon: <ClipboardCheck className="w-5 h-5 text-emerald-500" />, iconBgClass: "bg-emerald-500/10", status: 'healthy' },
   ];
 
   const fallbackAlerts = [
@@ -892,6 +903,7 @@ function KaliteDashboard() {
       status: m.status,
       trend: m.trend,
       icon: fallbackIcon,
+      iconBgClass: fallbackMetrics[index]?.iconBgClass,
       onClick: fallbackMetrics[index]?.onClick
     };
   }) : fallbackMetrics;
