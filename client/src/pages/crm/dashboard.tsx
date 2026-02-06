@@ -124,18 +124,18 @@ export default function CRMDashboard() {
 
   const navigateToTickets = (filter?: string) => {
     if (filter) {
-      setLocation(`/crm?tab=talepler&filter=${filter}`);
+      setLocation(`/crm/talepler?filter=${filter}`);
     } else {
-      setLocation('/crm?tab=talepler');
+      setLocation('/crm/talepler');
     }
   };
 
   const navigateToSLA = () => {
-    setLocation('/crm?tab=sla');
+    setLocation('/crm/sla');
   };
 
   const navigateToPerformance = () => {
-    setLocation('/crm?tab=performans');
+    setLocation('/crm/performans');
   };
 
   if (isLoading) {

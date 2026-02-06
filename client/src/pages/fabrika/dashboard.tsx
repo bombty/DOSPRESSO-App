@@ -229,7 +229,7 @@ export default function FabrikaDashboard() {
                   </div>
                 </div>
                 <div className="mt-4 flex justify-end">
-                  <Link href="/fabrika?tab=maliyet-yonetimi">
+                  <Link href="/fabrika">
                     <Button variant="outline" size="sm" data-testid="link-cost-management">
                       <DollarSign className="h-4 w-4 mr-1" />
                       Maliyet Yönetimi
@@ -422,7 +422,7 @@ export default function FabrikaDashboard() {
                     <span>İK Yönetimi</span>
                   </Button>
                 </Link>
-                <Link href="/fabrika?tab=ai-raporlar">
+                <Link href="/fabrika">
                   <Button variant="outline" className="w-full h-auto p-4 flex flex-col items-center gap-2" data-testid="link-reports">
                     <TrendingUp className="h-8 w-8 text-purple-500" />
                     <span>AI Raporlar</span>

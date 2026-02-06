@@ -8,8 +8,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { UnifiedHero } from "@/components/widgets/unified-hero";
+import { CompactStatsBar } from "@/components/widgets/compact-stats-bar";
 import { QuickActionsGrid } from "@/components/widgets/quick-actions-grid";
 import { ModuleCardsGrid } from "@/components/widgets/module-cards-grid";
+import { CriticalAlerts } from "@/components/critical-alerts";
 import { motion } from "framer-motion";
 import {
   TrendingUp,
@@ -237,10 +239,10 @@ function SatinalmaDashboard() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-2 mb-4">
-        <ShoppingCart className="w-6 h-6 text-primary" />
-        <h1 className="text-2xl font-bold" data-testid="text-dashboard-title">Satınalma Dashboard</h1>
-        <Badge>Samet</Badge>
+      <div className="flex items-center gap-2 pb-2 border-b border-border/50">
+        <ShoppingCart className="w-5 h-5 text-primary" />
+        <h2 className="text-lg font-semibold" data-testid="text-dashboard-title">Satınalma Departmanı</h2>
+        <Badge variant="secondary">Samet</Badge>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
@@ -301,8 +303,6 @@ function SatinalmaDashboard() {
         </CardContent>
       </Card>
 
-      <QuickActionsGrid />
-      <ModuleCardsGrid />
     </div>
   );
 }
@@ -354,10 +354,10 @@ function FabrikaDashboard() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-2 mb-4">
-        <Factory className="w-6 h-6 text-primary" />
-        <h1 className="text-2xl font-bold" data-testid="text-dashboard-title">Fabrika Yönetim Dashboard</h1>
-        <Badge>Eren</Badge>
+      <div className="flex items-center gap-2 pb-2 border-b border-border/50">
+        <Factory className="w-5 h-5 text-primary" />
+        <h2 className="text-lg font-semibold" data-testid="text-dashboard-title">Fabrika Departmanı</h2>
+        <Badge variant="secondary">Eren</Badge>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
@@ -412,8 +412,6 @@ function FabrikaDashboard() {
         </CardContent>
       </Card>
 
-      <QuickActionsGrid />
-      <ModuleCardsGrid />
     </div>
   );
 }
@@ -465,10 +463,10 @@ function IKDashboard() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-2 mb-4">
-        <Briefcase className="w-6 h-6 text-primary" />
-        <h1 className="text-2xl font-bold" data-testid="text-dashboard-title">İK & Muhasebe Dashboard</h1>
-        <Badge>Mahmut</Badge>
+      <div className="flex items-center gap-2 pb-2 border-b border-border/50">
+        <Briefcase className="w-5 h-5 text-primary" />
+        <h2 className="text-lg font-semibold" data-testid="text-dashboard-title">İK & Muhasebe Departmanı</h2>
+        <Badge variant="secondary">Mahmut</Badge>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
@@ -529,8 +527,6 @@ function IKDashboard() {
         </CardContent>
       </Card>
 
-      <QuickActionsGrid />
-      <ModuleCardsGrid />
     </div>
   );
 }
@@ -549,7 +545,7 @@ function CoachDashboard() {
       iconBgClass: "bg-yellow-500/10",
       status: 'healthy', 
       trend: 'up',
-      onClick: () => setLocation('/modul/raporlar?tab=performans')
+      onClick: () => setLocation('/raporlar/performans')
     },
     { 
       title: "Ziyaret Bekleyen", 
@@ -557,7 +553,7 @@ function CoachDashboard() {
       icon: <Eye className="w-5 h-5 text-purple-500" />, 
       iconBgClass: "bg-purple-500/10",
       status: 'warning',
-      onClick: () => setLocation('/modul/operasyon?tab=subeler')
+      onClick: () => setLocation('/operasyon/subeler')
     },
     { 
       title: "Uyumluluk Oranı", 
@@ -565,7 +561,7 @@ function CoachDashboard() {
       icon: <ClipboardCheck className="w-5 h-5 text-green-500" />, 
       iconBgClass: "bg-green-500/10",
       status: 'healthy',
-      onClick: () => setLocation('/modul/operasyon?tab=checklistler')
+      onClick: () => setLocation('/operasyon/checklistler')
     },
     { 
       title: "İyileştirme Önerisi", 
@@ -573,7 +569,7 @@ function CoachDashboard() {
       icon: <Lightbulb className="w-5 h-5 text-orange-500" />, 
       iconBgClass: "bg-orange-500/10",
       status: 'healthy',
-      onClick: () => setLocation('/modul/raporlar?tab=ai-asistan')
+      onClick: () => setLocation('/raporlar/ai-asistan')
     },
   ];
 
@@ -610,10 +606,10 @@ function CoachDashboard() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-2 mb-4">
-        <Store className="w-6 h-6 text-primary" />
-        <h1 className="text-2xl font-bold" data-testid="text-dashboard-title">Coach Dashboard</h1>
-        <Badge>Yavuz</Badge>
+      <div className="flex items-center gap-2 pb-2 border-b border-border/50">
+        <Store className="w-5 h-5 text-primary" />
+        <h2 className="text-lg font-semibold" data-testid="text-dashboard-title">Coach Departmanı</h2>
+        <Badge variant="secondary">Yavuz</Badge>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
@@ -625,7 +621,7 @@ function CoachDashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <Card 
           className="hover-elevate cursor-pointer" 
-          onClick={() => setLocation('/modul/operasyon?tab=subeler')}
+          onClick={() => setLocation('/operasyon/subeler')}
           data-testid="card-branch-scores"
         >
           <CardHeader className="pb-2">
@@ -654,7 +650,7 @@ function CoachDashboard() {
 
       <Card 
         className="hover-elevate cursor-pointer"
-        onClick={() => setLocation('/modul/raporlar?tab=ai-asistan')}
+        onClick={() => setLocation('/raporlar/ai-asistan')}
         data-testid="card-recommendations"
       >
         <CardHeader className="pb-2">
@@ -677,8 +673,6 @@ function CoachDashboard() {
         </CardContent>
       </Card>
 
-      <QuickActionsGrid />
-      <ModuleCardsGrid />
     </div>
   );
 }
@@ -726,10 +720,10 @@ function MarketingDashboard() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-2 mb-4">
-        <Megaphone className="w-6 h-6 text-primary" />
-        <h1 className="text-2xl font-bold" data-testid="text-dashboard-title">Marketing Dashboard</h1>
-        <Badge>Diana</Badge>
+      <div className="flex items-center gap-2 pb-2 border-b border-border/50">
+        <Megaphone className="w-5 h-5 text-primary" />
+        <h2 className="text-lg font-semibold" data-testid="text-dashboard-title">Marketing Departmanı</h2>
+        <Badge variant="secondary">Diana</Badge>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
@@ -785,8 +779,6 @@ function MarketingDashboard() {
         </CardContent>
       </Card>
 
-      <QuickActionsGrid />
-      <ModuleCardsGrid />
     </div>
   );
 }
@@ -836,10 +828,10 @@ function TrainerDashboard() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-2 mb-4">
-        <GraduationCap className="w-6 h-6 text-primary" />
-        <h1 className="text-2xl font-bold" data-testid="text-dashboard-title">Trainer Dashboard</h1>
-        <Badge>Ece</Badge>
+      <div className="flex items-center gap-2 pb-2 border-b border-border/50">
+        <GraduationCap className="w-5 h-5 text-primary" />
+        <h2 className="text-lg font-semibold" data-testid="text-dashboard-title">Trainer Departmanı</h2>
+        <Badge variant="secondary">Ece</Badge>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
@@ -893,8 +885,6 @@ function TrainerDashboard() {
         </CardContent>
       </Card>
 
-      <QuickActionsGrid />
-      <ModuleCardsGrid />
     </div>
   );
 }
@@ -943,10 +933,10 @@ function KaliteDashboard() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-2 mb-4">
-        <ClipboardCheck className="w-6 h-6 text-primary" />
-        <h1 className="text-2xl font-bold" data-testid="text-dashboard-title">Kalite Kontrol Dashboard</h1>
-        <Badge>Ümran</Badge>
+      <div className="flex items-center gap-2 pb-2 border-b border-border/50">
+        <ClipboardCheck className="w-5 h-5 text-primary" />
+        <h2 className="text-lg font-semibold" data-testid="text-dashboard-title">Kalite Kontrol Departmanı</h2>
+        <Badge variant="secondary">Ümran</Badge>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
@@ -1006,8 +996,6 @@ function KaliteDashboard() {
         </CardContent>
       </Card>
 
-      <QuickActionsGrid />
-      <ModuleCardsGrid />
     </div>
   );
 }
@@ -1033,18 +1021,18 @@ function CGODashboard() {
     'Satınalma': '/satinalma',
     'Fabrika': '/fabrika',
     'İK': '/ik',
-    'Coach': '/raporlar?tab=performans',
-    'Marketing': '/admin?tab=icerik-studyosu',
+    'Coach': '/raporlar/performans',
+    'Marketing': '/admin/icerik-studyosu',
     'Trainer': '/akademi',
-    'Kalite': '/fabrika?tab=kalite-kontrol',
+    'Kalite': '/fabrika',
     'Muhasebe': '/raporlar',
   };
 
   const hqQuickActions = [
-    { icon: Store, label: "Şubeler", color: "text-blue-500", bgColor: "bg-blue-500/10", route: "/operasyon?tab=subeler" },
-    { icon: Users, label: "Personel", color: "text-green-500", bgColor: "bg-green-500/10", route: "/operasyon?tab=personel" },
-    { icon: AlertTriangle, label: "Arızalar", color: "text-red-500", bgColor: "bg-red-500/10", route: "/ekipman?tab=ariza-yonetimi" },
-    { icon: ClipboardCheck, label: "Checklistler", color: "text-emerald-500", bgColor: "bg-emerald-500/10", route: "/operasyon?tab=checklistler" },
+    { icon: Store, label: "Şubeler", color: "text-blue-500", bgColor: "bg-blue-500/10", route: "/operasyon" },
+    { icon: Users, label: "Personel", color: "text-green-500", bgColor: "bg-green-500/10", route: "/ik" },
+    { icon: AlertTriangle, label: "Arızalar", color: "text-red-500", bgColor: "bg-red-500/10", route: "/ekipman/ariza" },
+    { icon: ClipboardCheck, label: "Checklistler", color: "text-emerald-500", bgColor: "bg-emerald-500/10", route: "/operasyon/checklistler" },
     { icon: Factory, label: "Fabrika", color: "text-orange-500", bgColor: "bg-orange-500/10", route: "/fabrika" },
     { icon: GraduationCap, label: "Akademi", color: "text-purple-500", bgColor: "bg-purple-500/10", route: "/akademi" },
   ];
@@ -1286,7 +1274,7 @@ function CGODashboard() {
           <CardContent className="space-y-2">
             <div 
               className="flex items-center gap-2 p-2 rounded-lg bg-red-500/10 cursor-pointer hover-elevate"
-              onClick={() => setLocation('/satinalma?tab=stok-yonetimi')}
+              onClick={() => setLocation('/satinalma')}
               data-testid="alert-stok-uretim"
             >
               {getRiskIcon('critical')}
@@ -1297,7 +1285,7 @@ function CGODashboard() {
             </div>
             <div 
               className="flex items-center gap-2 p-2 rounded-lg bg-yellow-500/10 cursor-pointer hover-elevate"
-              onClick={() => setLocation('/operasyon?tab=personel')}
+              onClick={() => setLocation('/ik')}
               data-testid="alert-personel-sube"
             >
               {getRiskIcon('warning')}
@@ -1319,7 +1307,7 @@ function CGODashboard() {
           <CardContent className="space-y-2">
             <div 
               className="p-2 rounded-lg bg-primary/10 cursor-pointer hover-elevate"
-              onClick={() => setLocation('/satinalma?tab=siparis-yonetimi')}
+              onClick={() => setLocation('/satinalma')}
               data-testid="action-acil-stok"
             >
               <p className="text-sm font-medium">Acil Stok Siparişi</p>
@@ -1327,7 +1315,7 @@ function CGODashboard() {
             </div>
             <div 
               className="p-2 rounded-lg bg-secondary/10 cursor-pointer hover-elevate"
-              onClick={() => setLocation('/operasyon?tab=personel')}
+              onClick={() => setLocation('/ik')}
               data-testid="action-personel-takviye"
             >
               <p className="text-sm font-medium">Personel Takviyesi</p>
@@ -1376,14 +1364,12 @@ export default function HQDashboard() {
   const { user } = useAuth();
   const userRole = user?.role || '';
   
-  // Kullanıcı rolüne göre doğru dashboard'u seç
-  // URL parametresi yerine kullanıcının rolü belirleyici
+  const cgoRoles = ['cgo', 'ceo', 'yatirimci_hq'];
+  const isCGO = cgoRoles.includes(userRole);
+
   const roleToDashboard: Record<string, React.ComponentType> = {
-    // CGO rolleri
     'cgo': CGODashboard,
     'ceo': CGODashboard,
-    
-    // Departman rolleri - Her rol kendi dashboard'unu görür
     'satinalma': SatinalmaDashboard,
     'fabrika': FabrikaDashboard,
     'fabrika_mudur': FabrikaDashboard,
@@ -1393,15 +1379,28 @@ export default function HQDashboard() {
     'marketing': MarketingDashboard,
     'trainer': TrainerDashboard,
     'kalite_kontrol': KaliteDashboard,
-    'teknik': SatinalmaDashboard, // Teknik ekipman odaklı
-    'destek': CoachDashboard, // Destek operasyon odaklı
-    'yatirimci_hq': CGODashboard, // Yatırımcı genel bakış
+    'teknik': SatinalmaDashboard,
+    'destek': CoachDashboard,
+    'yatirimci_hq': CGODashboard,
   };
 
   const DepartmentComponent = roleToDashboard[userRole] || CGODashboard;
 
+  if (isCGO) {
+    return (
+      <div className="container mx-auto p-4 max-w-7xl">
+        <DepartmentComponent />
+      </div>
+    );
+  }
+
   return (
-    <div className="container mx-auto p-4 max-w-7xl">
+    <div className="container mx-auto p-4 max-w-7xl space-y-4">
+      <UnifiedHero />
+      <CompactStatsBar />
+      <CriticalAlerts />
+      <QuickActionsGrid />
+      <ModuleCardsGrid />
       <DepartmentComponent />
     </div>
   );

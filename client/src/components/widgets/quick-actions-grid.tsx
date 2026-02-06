@@ -70,7 +70,7 @@ const allActions: QuickAction[] = [
     id: "leaves", 
     label: "İzin Talebi", 
     icon: CalendarDays, 
-    path: "/izinler",
+    path: "/izin-talepleri",
     color: "text-teal-600 dark:text-teal-400",
     bgColor: "bg-teal-100 dark:bg-teal-900/40"
   },
@@ -94,7 +94,7 @@ const allActions: QuickAction[] = [
     id: "stock", 
     label: "Stok", 
     icon: Package, 
-    path: "/satinalma?tab=stok",
+    path: "/satinalma",
     color: "text-amber-600 dark:text-amber-400",
     bgColor: "bg-amber-100 dark:bg-amber-900/40"
   },
@@ -110,7 +110,7 @@ const allActions: QuickAction[] = [
     id: "announcements", 
     label: "Duyurular", 
     icon: Megaphone, 
-    path: "/admin?tab=icerik",
+    path: "/admin/icerik-yonetimi",
     color: "text-rose-600 dark:text-rose-400",
     bgColor: "bg-rose-100 dark:bg-rose-900/40"
   },
@@ -126,7 +126,7 @@ const allActions: QuickAction[] = [
     id: "users", 
     label: "Kullanıcılar", 
     icon: Users, 
-    path: "/admin?tab=kullanicilar",
+    path: "/admin/kullanicilar",
     color: "text-violet-600 dark:text-violet-400",
     bgColor: "bg-violet-100 dark:bg-violet-900/40"
   },
@@ -134,7 +134,7 @@ const allActions: QuickAction[] = [
     id: "system", 
     label: "Sistem", 
     icon: ShieldCheck, 
-    path: "/admin?tab=sistem",
+    path: "/admin/ayarlar",
     color: "text-red-600 dark:text-red-400",
     bgColor: "bg-red-100 dark:bg-red-900/40"
   },
@@ -142,7 +142,7 @@ const allActions: QuickAction[] = [
     id: "faults", 
     label: "Arızalar", 
     icon: Wrench, 
-    path: "/ekipman?tab=ariza",
+    path: "/ekipman/ariza",
     color: "text-orange-600 dark:text-orange-400",
     bgColor: "bg-orange-100 dark:bg-orange-900/40"
   },
@@ -158,7 +158,7 @@ const allActions: QuickAction[] = [
     id: "maintenance", 
     label: "Bakım", 
     icon: Wrench, 
-    path: "/ekipman?tab=bakim",
+    path: "/ekipman",
     color: "text-yellow-600 dark:text-yellow-400",
     bgColor: "bg-yellow-100 dark:bg-yellow-900/40"
   },
@@ -166,7 +166,7 @@ const allActions: QuickAction[] = [
     id: "orders", 
     label: "Siparişler", 
     icon: ShoppingCart, 
-    path: "/satinalma?tab=siparisler",
+    path: "/satinalma",
     color: "text-green-600 dark:text-green-400",
     bgColor: "bg-green-100 dark:bg-green-900/40"
   },
@@ -174,7 +174,7 @@ const allActions: QuickAction[] = [
     id: "suppliers", 
     label: "Tedarikçiler", 
     icon: Store, 
-    path: "/satinalma?tab=tedarikciler",
+    path: "/satinalma",
     color: "text-teal-600 dark:text-teal-400",
     bgColor: "bg-teal-100 dark:bg-teal-900/40"
   },
@@ -182,7 +182,7 @@ const allActions: QuickAction[] = [
     id: "campaigns", 
     label: "Kampanyalar", 
     icon: Megaphone, 
-    path: "/admin?tab=kampanya",
+    path: "/admin",
     color: "text-fuchsia-600 dark:text-fuchsia-400",
     bgColor: "bg-fuchsia-100 dark:bg-fuchsia-900/40"
   },
@@ -190,7 +190,7 @@ const allActions: QuickAction[] = [
     id: "courses", 
     label: "Kurslar", 
     icon: GraduationCap, 
-    path: "/akademi?tab=kurslar",
+    path: "/akademi",
     color: "text-indigo-600 dark:text-indigo-400",
     bgColor: "bg-indigo-100 dark:bg-indigo-900/40"
   },
@@ -198,7 +198,7 @@ const allActions: QuickAction[] = [
     id: "branches", 
     label: "Şubeler", 
     icon: Building2, 
-    path: "/operasyon?tab=subeler",
+    path: "/operasyon",
     color: "text-sky-600 dark:text-sky-400",
     bgColor: "bg-sky-100 dark:bg-sky-900/40"
   },
@@ -214,7 +214,7 @@ const allActions: QuickAction[] = [
     id: "ai-dashboard", 
     label: "AI Panel", 
     icon: Bot, 
-    path: "/raporlar?tab=ai",
+    path: "/raporlar/ai-asistan",
     color: "text-purple-600 dark:text-purple-400",
     bgColor: "bg-purple-100 dark:bg-purple-900/40"
   },
@@ -230,7 +230,7 @@ const allActions: QuickAction[] = [
     id: "quality", 
     label: "Kalite", 
     icon: ShieldCheck, 
-    path: "/fabrika?tab=kalite",
+    path: "/fabrika",
     color: "text-emerald-600 dark:text-emerald-400",
     bgColor: "bg-emerald-100 dark:bg-emerald-900/40"
   },
@@ -238,7 +238,7 @@ const allActions: QuickAction[] = [
     id: "audits", 
     label: "Denetim", 
     icon: ClipboardList, 
-    path: "/raporlar?tab=denetim",
+    path: "/raporlar/denetimler",
     color: "text-amber-600 dark:text-amber-400",
     bgColor: "bg-amber-100 dark:bg-amber-900/40"
   },
@@ -246,7 +246,7 @@ const allActions: QuickAction[] = [
     id: "invoices", 
     label: "Faturalar", 
     icon: FileText, 
-    path: "/raporlar?tab=fatura",
+    path: "/raporlar",
     color: "text-cyan-600 dark:text-cyan-400",
     bgColor: "bg-cyan-100 dark:bg-cyan-900/40"
   },
@@ -254,7 +254,7 @@ const allActions: QuickAction[] = [
     id: "attendance", 
     label: "Devam", 
     icon: Users, 
-    path: "/ik?tab=devam",
+    path: "/ik",
     color: "text-rose-600 dark:text-rose-400",
     bgColor: "bg-rose-100 dark:bg-rose-900/40"
   }

@@ -90,7 +90,7 @@ export function CompactStatsBar() {
       value: totalBranches,
       icon: Building2,
       bgColor: "bg-sky-500 dark:bg-sky-600",
-      path: "/operasyon?tab=subeler",
+      path: "/operasyon",
       roles: ["admin", "ceo", "cgo", "coach", "muhasebe", "muhasebe_ik", "yatirimci_hq"]
     },
     {

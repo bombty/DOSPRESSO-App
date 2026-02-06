@@ -153,7 +153,7 @@ export function UnifiedHero() {
               </motion.button>
               <motion.button
                 whileTap={{ scale: 0.95 }}
-                onClick={() => setLocation("/raporlar?tab=performans")}
+                onClick={() => setLocation("/raporlar/performans")}
                 className="flex items-center gap-1 text-emerald-300 cursor-pointer hover:bg-white/10 rounded-md px-1 py-0.5 transition-colors"
                 data-testid="hero-trend-metric"
                 title="Performans Trendi - Tıkla detay gör"
@@ -255,7 +255,7 @@ export function UnifiedHero() {
               <Button
                 variant="secondary"
                 className="flex-1"
-                onClick={() => { setShowAIReport(false); setLocation("/raporlar?tab=ai-asistan"); }}
+                onClick={() => { setShowAIReport(false); setLocation("/raporlar/ai-asistan"); }}
                 data-testid="btn-goto-ai-assistant"
               >
                 AI Asistan

@@ -71,10 +71,10 @@ export function MuhasebeDashboard({
   const pendingOvertimes = overtimeRequests.filter((r: any) => r.status === "beklemede").length;
 
   const quickActions = [
-    { label: "Personel Listesi", icon: Users, path: "/operasyon?tab=personel", color: "bg-blue-500" },
-    { label: "İzin Talepleri", icon: Calendar, path: "/operasyon?tab=izin-talepleri", color: "bg-green-500" },
-    { label: "Mesai Talepleri", icon: Clock, path: "/operasyon?tab=mesai-talepleri", color: "bg-orange-500" },
-    { label: "Maliyet Yönetimi", icon: DollarSign, path: "/fabrika?tab=maliyet-yonetimi", color: "bg-purple-500" },
+    { label: "Personel Listesi", icon: Users, path: "/ik", color: "bg-blue-500" },
+    { label: "İzin Talepleri", icon: Calendar, path: "/izin-talepleri", color: "bg-green-500" },
+    { label: "Mesai Talepleri", icon: Clock, path: "/ik", color: "bg-orange-500" },
+    { label: "Maliyet Yönetimi", icon: DollarSign, path: "/fabrika", color: "bg-purple-500" },
     { label: "Satınalma", icon: CreditCard, path: "/satinalma", color: "bg-indigo-500" },
     { label: "Raporlar", icon: FileText, path: "/raporlar", color: "bg-teal-500" },
   ];

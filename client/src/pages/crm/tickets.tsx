@@ -90,7 +90,7 @@ export default function CRMTickets() {
   const handleTicketClick = (ticket: CRMTicket) => {
     // Navigate to fault detail page
     if (ticket.type === 'fault') {
-      setLocation(`/ekipman?tab=ariza&faultId=${ticket.id}`);
+      setLocation(`/ekipman/ariza`);
     }
   };
 
