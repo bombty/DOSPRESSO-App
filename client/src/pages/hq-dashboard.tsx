@@ -8,6 +8,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { UnifiedHero } from "@/components/widgets/unified-hero";
+import { QuickActionsGrid } from "@/components/widgets/quick-actions-grid";
+import { ModuleCardsGrid } from "@/components/widgets/module-cards-grid";
 import { motion } from "framer-motion";
 import {
   TrendingUp,
@@ -298,6 +300,9 @@ function SatinalmaDashboard() {
           </div>
         </CardContent>
       </Card>
+
+      <QuickActionsGrid />
+      <ModuleCardsGrid />
     </div>
   );
 }
@@ -406,6 +411,9 @@ function FabrikaDashboard() {
           </div>
         </CardContent>
       </Card>
+
+      <QuickActionsGrid />
+      <ModuleCardsGrid />
     </div>
   );
 }
@@ -520,6 +528,9 @@ function IKDashboard() {
           </div>
         </CardContent>
       </Card>
+
+      <QuickActionsGrid />
+      <ModuleCardsGrid />
     </div>
   );
 }
@@ -665,6 +676,9 @@ function CoachDashboard() {
           </div>
         </CardContent>
       </Card>
+
+      <QuickActionsGrid />
+      <ModuleCardsGrid />
     </div>
   );
 }
@@ -770,6 +784,9 @@ function MarketingDashboard() {
           </div>
         </CardContent>
       </Card>
+
+      <QuickActionsGrid />
+      <ModuleCardsGrid />
     </div>
   );
 }
@@ -875,6 +892,9 @@ function TrainerDashboard() {
           </div>
         </CardContent>
       </Card>
+
+      <QuickActionsGrid />
+      <ModuleCardsGrid />
     </div>
   );
 }
@@ -985,6 +1005,9 @@ function KaliteDashboard() {
           </div>
         </CardContent>
       </Card>
+
+      <QuickActionsGrid />
+      <ModuleCardsGrid />
     </div>
   );
 }
