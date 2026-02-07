@@ -11206,3 +11206,28 @@ export const insertProductionCostTrackingSchema = createInsertSchema(productionC
 
 export type InsertProductionCostTracking = z.infer<typeof insertProductionCostTrackingSchema>;
 export type ProductionCostTracking = typeof productionCostTracking.$inferSelect;
+
+export const rawMaterialPriceHistory = pgTable("raw_material_price_history", {
+  id: serial("id").primaryKey(),
+  rawMaterialId: integer("raw_material_id").references(() => rawMaterials.id, { onDelete: "cascade" }).notNull(),
+  supplierId: integer("supplier_id").references(() => suppliers.id, { onDelete: "set null" }),
+  previousPrice: numeric("previous_price", { precision: 12, scale: 4 }),
+  newPrice: numeric("new_price", { precision: 12, scale: 4 }).notNull(),
+  changePercent: numeric("change_percent", { precision: 8, scale: 2 }),
+  source: varchar("source", { length: 50 }).default("manual"),
+  notes: text("notes"),
+  changedBy: varchar("changed_by", { length: 255 }),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("rmph_material_idx").on(table.rawMaterialId),
+  index("rmph_date_idx").on(table.createdAt),
+  index("rmph_supplier_idx").on(table.supplierId),
+]);
+
+export const insertRawMaterialPriceHistorySchema = createInsertSchema(rawMaterialPriceHistory).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertRawMaterialPriceHistory = z.infer<typeof insertRawMaterialPriceHistorySchema>;
+export type RawMaterialPriceHistory = typeof rawMaterialPriceHistory.$inferSelect;
