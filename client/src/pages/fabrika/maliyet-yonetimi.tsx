@@ -19,8 +19,11 @@ import {
   Calculator, Package, Warehouse, TrendingUp, Plus, RefreshCw, 
   DollarSign, Percent, Building2, FileText, Settings2, BarChart3,
   Loader2, AlertTriangle, CheckCircle, Edit, Trash2, Users, Clock, Hash,
-  Sparkles, Camera, Type, Upload, ArrowLeft, ArrowRight, Check, X, Search
+  Sparkles, Camera, Type, Upload, ArrowLeft, ArrowRight, Check, X, Search,
+  ChevronsUpDown
 } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 
 const rawMaterialSchema = z.object({
   code: z.string().min(1, "Kod gerekli"),
@@ -308,6 +311,7 @@ export default function MaliyetYonetimi() {
   const [aiRecipeName, setAiRecipeName] = useState("");
   const [aiRecipeType, setAiRecipeType] = useState("OPEN");
   const [aiIngredients, setAiIngredients] = useState<any[]>([]);
+  const [openMaterialPopoverIdx, setOpenMaterialPopoverIdx] = useState<number | null>(null);
 
   const { data: dashboardStats, isLoading: statsLoading } = useQuery<any>({
     queryKey: ['/api/cost-dashboard/stats'],
@@ -570,6 +574,7 @@ export default function MaliyetYonetimi() {
     setAiRecipeName("");
     setAiRecipeType("OPEN");
     setAiIngredients([]);
+    setOpenMaterialPopoverIdx(null);
   }
 
   const aiParseMutation = useMutation({
@@ -1689,26 +1694,50 @@ export default function MaliyetYonetimi() {
                           <div className="grid grid-cols-3 gap-2">
                             <div>
                               <label className="text-xs text-muted-foreground">Hammadde</label>
-                              <Select
-                                value={ing.rawMaterialId?.toString() || ""}
-                                onValueChange={(v) => {
-                                  const updated = [...aiIngredients];
-                                  const mat = aiParsedResult?.allMaterials?.find((m: any) => m.id === parseInt(v));
-                                  updated[idx] = { ...updated[idx], rawMaterialId: parseInt(v), isMatched: true, matchedMaterialName: mat?.name || "" };
-                                  setAiIngredients(updated);
-                                }}
-                              >
-                                <SelectTrigger className="h-8 text-xs" data-testid={`select-ai-material-${idx}`}>
-                                  <SelectValue placeholder="Seçin" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {(aiParsedResult?.allMaterials || []).map((m: any) => (
-                                    <SelectItem key={m.id} value={m.id.toString()}>
-                                      {m.code} - {m.name}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
+                              <Popover open={openMaterialPopoverIdx === idx} onOpenChange={(open) => setOpenMaterialPopoverIdx(open ? idx : null)} modal={true}>
+                                <PopoverTrigger asChild>
+                                  <Button
+                                    variant="outline"
+                                    role="combobox"
+                                    aria-expanded={openMaterialPopoverIdx === idx}
+                                    className="h-8 w-full justify-between text-xs font-normal"
+                                    data-testid={`select-ai-material-${idx}`}
+                                  >
+                                    <span className="truncate">
+                                      {ing.rawMaterialId
+                                        ? (() => { const m = (aiParsedResult?.allMaterials || []).find((m: any) => m.id === ing.rawMaterialId); return m ? `${m.code} - ${m.name}` : "Seçin"; })()
+                                        : "Seçin"}
+                                    </span>
+                                    <ChevronsUpDown className="ml-1 h-3 w-3 shrink-0 opacity-50" />
+                                  </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-[280px] p-0" align="start">
+                                  <Command>
+                                    <CommandInput placeholder="Hammadde ara..." className="text-xs" />
+                                    <CommandList>
+                                      <CommandEmpty>Sonuç bulunamadı</CommandEmpty>
+                                      <CommandGroup>
+                                        {(aiParsedResult?.allMaterials || []).map((m: any) => (
+                                          <CommandItem
+                                            key={m.id}
+                                            value={`${m.code} ${m.name}`}
+                                            onSelect={() => {
+                                              const updated = [...aiIngredients];
+                                              updated[idx] = { ...updated[idx], rawMaterialId: m.id, isMatched: true, matchedMaterialName: m.name };
+                                              setAiIngredients(updated);
+                                              setOpenMaterialPopoverIdx(null);
+                                            }}
+                                            className="text-xs"
+                                          >
+                                            <Check className={`mr-1 h-3 w-3 ${ing.rawMaterialId === m.id ? "opacity-100" : "opacity-0"}`} />
+                                            {m.code} - {m.name}
+                                          </CommandItem>
+                                        ))}
+                                      </CommandGroup>
+                                    </CommandList>
+                                  </Command>
+                                </PopoverContent>
+                              </Popover>
                             </div>
                             <div>
                               <label className="text-xs text-muted-foreground">Miktar</label>
