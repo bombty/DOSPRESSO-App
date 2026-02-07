@@ -1751,6 +1751,22 @@ Sadece JSON döndür, başka metin ekleme.`;
         }
       }
 
+      const activeRecipes = await db.select({
+        recipe: productRecipes,
+        productName: factoryProducts.name,
+      }).from(productRecipes)
+        .leftJoin(factoryProducts, eq(productRecipes.productId, factoryProducts.id))
+        .where(eq(productRecipes.isActive, true));
+
+      const allRecipes = activeRecipes.map(r => ({
+        id: r.recipe.id,
+        name: r.recipe.name,
+        version: r.recipe.version,
+        productId: r.recipe.productId,
+        recipeType: r.recipe.recipeType,
+        productName: r.productName || "",
+      }));
+
       res.json({
         parsed: {
           productName: parsed.productName,
@@ -1765,6 +1781,7 @@ Sadece JSON döndür, başka metin ekleme.`;
         matchedProduct: bestProductScore >= 0.5 ? matchedProduct : null,
         allProducts: products,
         allMaterials: allMaterials,
+        allRecipes: allRecipes,
       });
     } catch (error: any) {
       console.error("Error in AI recipe parse:", error);
@@ -1841,6 +1858,79 @@ Sadece JSON döndür, başka metin ekleme.`;
     } catch (error: any) {
       console.error("Error creating AI recipe:", error);
       res.status(500).json({ error: "Reçete oluşturulamadı: " + (error.message || "Bilinmeyen hata") });
+    }
+  });
+
+  // AI ile mevcut reçeteyi güncelle
+  app.put("/api/recipes/:id/ai-update", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const user = (req as any).user;
+      const recipeId = parseInt(req.params.id);
+      const { recipeName, recipeType, outputQuantity, outputUnit, productionTimeMinutes, notes, ingredients } = req.body;
+
+      if (!ingredients || ingredients.length === 0) {
+        return res.status(400).json({ error: "En az bir malzeme gereklidir" });
+      }
+
+      const [existingRecipe] = await db.select().from(productRecipes)
+        .where(eq(productRecipes.id, recipeId));
+      
+      if (!existingRecipe) {
+        return res.status(404).json({ error: "Reçete bulunamadı" });
+      }
+
+      await db.delete(productRecipeIngredients)
+        .where(eq(productRecipeIngredients.recipeId, recipeId));
+
+      const updateData: any = {
+        updatedAt: new Date(),
+        version: (existingRecipe.version || 0) + 1,
+      };
+      if (recipeName) updateData.name = recipeName;
+      if (recipeType) updateData.recipeType = recipeType;
+      if (outputQuantity) updateData.outputQuantity = outputQuantity.toString();
+      if (outputUnit) updateData.outputUnit = outputUnit;
+      if (productionTimeMinutes !== undefined) updateData.productionTimeMinutes = productionTimeMinutes;
+      if (notes) updateData.notes = notes;
+
+      const [updatedRecipe] = await db.update(productRecipes)
+        .set(updateData)
+        .where(eq(productRecipes.id, recipeId))
+        .returning();
+
+      let totalRawMaterialCost = 0;
+      for (const ing of ingredients) {
+        if (!ing.rawMaterialId || !ing.quantity) continue;
+        
+        const [material] = await db.select().from(rawMaterials)
+          .where(eq(rawMaterials.id, ing.rawMaterialId));
+        
+        const unitCost = material ? parseFloat(material.currentUnitPrice || "0") : 0;
+        const totalCost = unitCost * parseFloat(ing.quantity);
+        totalRawMaterialCost += totalCost;
+
+        await db.insert(productRecipeIngredients).values({
+          recipeId: recipeId,
+          rawMaterialId: ing.rawMaterialId,
+          quantity: ing.quantity.toString(),
+          unit: ing.unit || "gr",
+          unitCost: unitCost.toFixed(4),
+          totalCost: totalCost.toFixed(4),
+        });
+      }
+
+      await db.update(productRecipes)
+        .set({ rawMaterialCost: totalRawMaterialCost.toFixed(4), costLastCalculated: new Date(), updatedAt: new Date() })
+        .where(eq(productRecipes.id, recipeId));
+
+      res.json({ 
+        success: true, 
+        recipe: updatedRecipe, 
+        message: `Reçete "${updatedRecipe.name}" AI ile güncellendi (v${updateData.version})` 
+      });
+    } catch (error: any) {
+      console.error("Error updating recipe with AI:", error);
+      res.status(500).json({ error: "Reçete güncellenemedi: " + (error.message || "Bilinmeyen hata") });
     }
   });
 

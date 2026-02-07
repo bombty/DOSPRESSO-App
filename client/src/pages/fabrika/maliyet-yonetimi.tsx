@@ -312,6 +312,15 @@ export default function MaliyetYonetimi() {
   const [aiRecipeType, setAiRecipeType] = useState("OPEN");
   const [aiIngredients, setAiIngredients] = useState<any[]>([]);
   const [openMaterialPopoverIdx, setOpenMaterialPopoverIdx] = useState<number | null>(null);
+  const [aiActionMode, setAiActionMode] = useState<"create" | "update">("create");
+  const [aiSelectedRecipeId, setAiSelectedRecipeId] = useState<number | null>(null);
+  const [isNewMaterialDialogOpen, setIsNewMaterialDialogOpen] = useState(false);
+  const [newMaterialForIdx, setNewMaterialForIdx] = useState<number | null>(null);
+  const [newMaterialName, setNewMaterialName] = useState("");
+  const [newMaterialCode, setNewMaterialCode] = useState("");
+  const [newMaterialUnit, setNewMaterialUnit] = useState("gr");
+  const [newMaterialCategory, setNewMaterialCategory] = useState("");
+  const [newMaterialPrice, setNewMaterialPrice] = useState("0");
 
   const { data: dashboardStats, isLoading: statsLoading } = useQuery<any>({
     queryKey: ['/api/cost-dashboard/stats'],
@@ -575,6 +584,18 @@ export default function MaliyetYonetimi() {
     setAiRecipeType("OPEN");
     setAiIngredients([]);
     setOpenMaterialPopoverIdx(null);
+    setAiActionMode("create");
+    setAiSelectedRecipeId(null);
+  }
+
+  function resetNewMaterialDialog() {
+    setIsNewMaterialDialogOpen(false);
+    setNewMaterialForIdx(null);
+    setNewMaterialName("");
+    setNewMaterialCode("");
+    setNewMaterialUnit("gr");
+    setNewMaterialCategory("");
+    setNewMaterialPrice("0");
   }
 
   const aiParseMutation = useMutation({
@@ -628,6 +649,54 @@ export default function MaliyetYonetimi() {
     }
   });
 
+  const aiUpdateMutation = useMutation({
+    mutationFn: async ({ recipeId, data }: { recipeId: number; data: any }) => {
+      const res = await apiRequest("PUT", `/api/recipes/${recipeId}/ai-update`, data);
+      return res.json();
+    },
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/product-costs'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/cost-dashboard'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/recipes'] });
+      toast({ title: "Reçete Güncellendi", description: data.message });
+      resetAiDialog();
+    },
+    onError: (error: any) => {
+      toast({ title: "Hata", description: error.message || "Reçete güncellenemedi", variant: "destructive" });
+    }
+  });
+
+  const createNewMaterialMutation = useMutation({
+    mutationFn: async (data: any) => {
+      const res = await apiRequest("POST", "/api/raw-materials", data);
+      return res.json();
+    },
+    onSuccess: (newMaterial: any) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/raw-materials'] });
+      if (newMaterialForIdx !== null) {
+        const updated = [...aiIngredients];
+        updated[newMaterialForIdx] = {
+          ...updated[newMaterialForIdx],
+          rawMaterialId: newMaterial.id,
+          isMatched: true,
+          matchedMaterialName: newMaterial.name,
+        };
+        setAiIngredients(updated);
+        if (aiParsedResult) {
+          setAiParsedResult({
+            ...aiParsedResult,
+            allMaterials: [...(aiParsedResult.allMaterials || []), newMaterial],
+          });
+        }
+      }
+      toast({ title: "Hammadde Oluşturuldu", description: `${newMaterial.name} başarıyla eklendi` });
+      resetNewMaterialDialog();
+    },
+    onError: (error: any) => {
+      toast({ title: "Hata", description: error.message || "Hammadde oluşturulamadı", variant: "destructive" });
+    }
+  });
+
   const handleAiImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -650,23 +719,70 @@ export default function MaliyetYonetimi() {
 
   const handleAiCreate = () => {
     const validIngredients = aiIngredients.filter(ing => ing.rawMaterialId && parseFloat(ing.quantity) > 0);
-    if (!aiSelectedProductId || !aiRecipeName || validIngredients.length === 0) {
-      toast({ title: "Eksik Bilgi", description: "Ürün, reçete adı ve en az bir eşleşmiş malzeme gerekli", variant: "destructive" });
+    if (validIngredients.length === 0) {
+      toast({ title: "Eksik Bilgi", description: "En az bir eşleşmiş malzeme gerekli", variant: "destructive" });
       return;
     }
-    aiCreateMutation.mutate({
-      productId: aiSelectedProductId,
-      recipeName: aiRecipeName,
-      recipeType: aiRecipeType,
-      outputQuantity: aiParsedResult?.parsed?.batchSize?.toString() || "1",
-      outputUnit: aiParsedResult?.parsed?.outputUnit || "adet",
-      productionTimeMinutes: aiParsedResult?.parsed?.productionTimeMinutes || 0,
-      notes: aiParsedResult?.parsed?.notes || "AI tarafından oluşturuldu",
-      ingredients: validIngredients.map(ing => ({
-        rawMaterialId: ing.rawMaterialId,
-        quantity: ing.quantity,
-        unit: ing.unit,
-      })),
+
+    const ingredientData = validIngredients.map(ing => ({
+      rawMaterialId: ing.rawMaterialId,
+      quantity: ing.quantity,
+      unit: ing.unit,
+    }));
+
+    if (aiActionMode === "update" && aiSelectedRecipeId) {
+      aiUpdateMutation.mutate({
+        recipeId: aiSelectedRecipeId,
+        data: {
+          recipeName: aiRecipeName,
+          recipeType: aiRecipeType,
+          outputQuantity: aiParsedResult?.parsed?.batchSize?.toString() || "1",
+          outputUnit: aiParsedResult?.parsed?.outputUnit || "adet",
+          productionTimeMinutes: aiParsedResult?.parsed?.productionTimeMinutes || 0,
+          notes: "AI ile güncellendi",
+          ingredients: ingredientData,
+        },
+      });
+    } else {
+      if (!aiSelectedProductId || !aiRecipeName) {
+        toast({ title: "Eksik Bilgi", description: "Ürün ve reçete adı gerekli", variant: "destructive" });
+        return;
+      }
+      aiCreateMutation.mutate({
+        productId: aiSelectedProductId,
+        recipeName: aiRecipeName,
+        recipeType: aiRecipeType,
+        outputQuantity: aiParsedResult?.parsed?.batchSize?.toString() || "1",
+        outputUnit: aiParsedResult?.parsed?.outputUnit || "adet",
+        productionTimeMinutes: aiParsedResult?.parsed?.productionTimeMinutes || 0,
+        notes: aiParsedResult?.parsed?.notes || "AI tarafından oluşturuldu",
+        ingredients: ingredientData,
+      });
+    }
+  };
+
+  const handleOpenNewMaterialDialog = (idx: number) => {
+    const ing = aiIngredients[idx];
+    setNewMaterialForIdx(idx);
+    setNewMaterialName(ing?.originalName || "");
+    setNewMaterialCode("HM-" + (ing?.originalName || "").toUpperCase().replace(/\s+/g, "-").substring(0, 15));
+    setNewMaterialUnit(ing?.unit || "gr");
+    setNewMaterialCategory("Genel");
+    setNewMaterialPrice("0");
+    setIsNewMaterialDialogOpen(true);
+  };
+
+  const handleCreateNewMaterial = () => {
+    if (!newMaterialName || !newMaterialCode || !newMaterialUnit) {
+      toast({ title: "Eksik Bilgi", description: "Ad, kod ve birim zorunludur", variant: "destructive" });
+      return;
+    }
+    createNewMaterialMutation.mutate({
+      name: newMaterialName,
+      code: newMaterialCode,
+      unit: newMaterialUnit,
+      category: newMaterialCategory || null,
+      currentUnitPrice: newMaterialPrice || "0",
     });
   };
 
@@ -1620,6 +1736,59 @@ export default function MaliyetYonetimi() {
                     Geri
                   </Button>
 
+                  <div className="flex gap-2 p-1 rounded-md bg-muted/50">
+                    <Button
+                      variant={aiActionMode === "create" ? "default" : "ghost"}
+                      size="sm"
+                      className="flex-1"
+                      onClick={() => { setAiActionMode("create"); setAiSelectedRecipeId(null); }}
+                      data-testid="button-ai-mode-create"
+                    >
+                      <Plus className="w-4 h-4 mr-1" />
+                      Yeni Reçete Oluştur
+                    </Button>
+                    <Button
+                      variant={aiActionMode === "update" ? "default" : "ghost"}
+                      size="sm"
+                      className="flex-1"
+                      onClick={() => setAiActionMode("update")}
+                      data-testid="button-ai-mode-update"
+                    >
+                      <Edit className="w-4 h-4 mr-1" />
+                      Mevcut Reçeteyi Güncelle
+                    </Button>
+                  </div>
+
+                  {aiActionMode === "update" && (
+                    <div>
+                      <label className="text-sm font-medium">Güncellenecek Reçete</label>
+                      <Select
+                        value={aiSelectedRecipeId?.toString() || ""}
+                        onValueChange={(v) => {
+                          const rId = parseInt(v);
+                          setAiSelectedRecipeId(rId);
+                          const recipe = (aiParsedResult?.allRecipes || []).find((r: any) => r.id === rId);
+                          if (recipe) {
+                            setAiRecipeName(recipe.name);
+                            setAiRecipeType(recipe.recipeType || "OPEN");
+                            setAiSelectedProductId(recipe.productId);
+                          }
+                        }}
+                      >
+                        <SelectTrigger data-testid="select-ai-existing-recipe">
+                          <SelectValue placeholder="Reçete seçin" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {(aiParsedResult?.allRecipes || []).map((r: any) => (
+                            <SelectItem key={r.id} value={r.id.toString()}>
+                              {r.name} (v{r.version}) - {r.productName || ""}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+
                   <div className="grid grid-cols-2 gap-3">
                     <div>
                       <label className="text-sm font-medium">Reçete Adı</label>
@@ -1643,24 +1812,26 @@ export default function MaliyetYonetimi() {
                     </div>
                   </div>
 
-                  <div>
-                    <label className="text-sm font-medium">Ürün</label>
-                    <Select 
-                      value={aiSelectedProductId?.toString() || ""} 
-                      onValueChange={(v) => setAiSelectedProductId(parseInt(v))}
-                    >
-                      <SelectTrigger data-testid="select-ai-product">
-                        <SelectValue placeholder="Ürün seçin" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {(aiParsedResult?.allProducts || []).map((p: any) => (
-                          <SelectItem key={p.id} value={p.id.toString()}>
-                            {p.name} ({p.category})
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
+                  {aiActionMode === "create" && (
+                    <div>
+                      <label className="text-sm font-medium">Ürün</label>
+                      <Select 
+                        value={aiSelectedProductId?.toString() || ""} 
+                        onValueChange={(v) => setAiSelectedProductId(parseInt(v))}
+                      >
+                        <SelectTrigger data-testid="select-ai-product">
+                          <SelectValue placeholder="Ürün seçin" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {(aiParsedResult?.allProducts || []).map((p: any) => (
+                            <SelectItem key={p.id} value={p.id.toString()}>
+                              {p.name} ({p.category})
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
 
                   <div className="grid grid-cols-3 gap-3">
                     <div className="p-2 rounded-md bg-muted/50 text-center">
@@ -1687,9 +1858,23 @@ export default function MaliyetYonetimi() {
                               {ing.rawMaterialId ? <Check className="w-4 h-4 text-green-600" /> : <AlertTriangle className="w-4 h-4 text-amber-600" />}
                               <span className="text-sm font-medium">{ing.originalName}</span>
                             </div>
-                            <Badge variant={ing.rawMaterialId ? "default" : "secondary"} className={`text-xs ${ing.rawMaterialId ? "bg-green-500" : ""}`}>
-                              {ing.rawMaterialId ? `%${Math.round(ing.matchScore * 100)}` : "Eşleşmedi"}
-                            </Badge>
+                            <div className="flex items-center gap-1">
+                              {!ing.rawMaterialId && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-6 text-xs px-2"
+                                  onClick={() => handleOpenNewMaterialDialog(idx)}
+                                  data-testid={`button-create-material-${idx}`}
+                                >
+                                  <Plus className="w-3 h-3 mr-1" />
+                                  Yeni Hammadde
+                                </Button>
+                              )}
+                              <Badge variant={ing.rawMaterialId ? "default" : "secondary"} className={`text-xs ${ing.rawMaterialId ? "bg-green-500" : ""}`}>
+                                {ing.rawMaterialId ? `%${Math.round((ing.matchScore || 1) * 100)}` : "Eşleşmedi"}
+                              </Badge>
+                            </div>
                           </div>
                           <div className="grid grid-cols-3 gap-2">
                             <div>
@@ -1786,30 +1971,124 @@ export default function MaliyetYonetimi() {
                     <Sparkles className="w-4 h-4 text-blue-600 shrink-0" />
                     <p className="text-xs text-blue-700 dark:text-blue-400">
                       {aiIngredients.filter(i => i.rawMaterialId).length}/{aiIngredients.length} malzeme eşleştirildi. 
-                      Eşleşmeyen malzemeleri listeden seçebilirsiniz.
+                      Eşleşmeyen malzemeleri listeden seçebilir veya "Yeni Hammadde" ile oluşturabilirsiniz.
                     </p>
                   </div>
 
                   <Button
                     className="w-full"
-                    disabled={aiCreateMutation.isPending || !aiSelectedProductId || !aiRecipeName || aiIngredients.filter(i => i.rawMaterialId).length === 0}
+                    disabled={
+                      (aiActionMode === "create" ? aiCreateMutation.isPending : aiUpdateMutation.isPending) ||
+                      (aiActionMode === "create" && (!aiSelectedProductId || !aiRecipeName)) ||
+                      (aiActionMode === "update" && !aiSelectedRecipeId) ||
+                      aiIngredients.filter(i => i.rawMaterialId).length === 0
+                    }
                     onClick={handleAiCreate}
                     data-testid="button-ai-create-recipe"
                   >
-                    {aiCreateMutation.isPending ? (
+                    {(aiCreateMutation.isPending || aiUpdateMutation.isPending) ? (
                       <>
                         <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        Oluşturuluyor...
+                        {aiActionMode === "update" ? "Güncelleniyor..." : "Oluşturuluyor..."}
                       </>
                     ) : (
                       <>
-                        <Check className="w-4 h-4 mr-2" />
-                        Reçeteyi Kaydet
+                        {aiActionMode === "update" ? <RefreshCw className="w-4 h-4 mr-2" /> : <Check className="w-4 h-4 mr-2" />}
+                        {aiActionMode === "update" ? "Reçeteyi Güncelle" : "Reçeteyi Kaydet"}
                       </>
                     )}
                   </Button>
                 </div>
               )}
+            </DialogContent>
+          </Dialog>
+
+          <Dialog open={isNewMaterialDialogOpen} onOpenChange={(open) => { if (!open) resetNewMaterialDialog(); }}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Yeni Hammadde Oluştur</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-3">
+                <div className="p-3 rounded-md bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
+                  <p className="text-xs text-amber-700 dark:text-amber-400">
+                    Eşleşmeyen malzeme için yeni hammadde kaydı oluşturun. Kaydedildikten sonra otomatik olarak reçeteye atanacaktır.
+                  </p>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-sm font-medium">Hammadde Adı</label>
+                    <Input
+                      value={newMaterialName}
+                      onChange={(e) => setNewMaterialName(e.target.value)}
+                      placeholder="Örn: Creambase"
+                      data-testid="input-new-material-name"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium">Kod</label>
+                    <Input
+                      value={newMaterialCode}
+                      onChange={(e) => setNewMaterialCode(e.target.value)}
+                      placeholder="Örn: HM-CREAMBASE"
+                      data-testid="input-new-material-code"
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-3 gap-3">
+                  <div>
+                    <label className="text-sm font-medium">Birim</label>
+                    <Select value={newMaterialUnit} onValueChange={setNewMaterialUnit}>
+                      <SelectTrigger data-testid="select-new-material-unit">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="gr">Gram</SelectItem>
+                        <SelectItem value="kg">Kilogram</SelectItem>
+                        <SelectItem value="ml">Mililitre</SelectItem>
+                        <SelectItem value="lt">Litre</SelectItem>
+                        <SelectItem value="adet">Adet</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium">Kategori</label>
+                    <Input
+                      value={newMaterialCategory}
+                      onChange={(e) => setNewMaterialCategory(e.target.value)}
+                      placeholder="Örn: Süt Ürünleri"
+                      data-testid="input-new-material-category"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium">Birim Fiyat (TL)</label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      value={newMaterialPrice}
+                      onChange={(e) => setNewMaterialPrice(e.target.value)}
+                      data-testid="input-new-material-price"
+                    />
+                  </div>
+                </div>
+                <Button
+                  className="w-full"
+                  onClick={handleCreateNewMaterial}
+                  disabled={createNewMaterialMutation.isPending || !newMaterialName || !newMaterialCode}
+                  data-testid="button-save-new-material"
+                >
+                  {createNewMaterialMutation.isPending ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Oluşturuluyor...
+                    </>
+                  ) : (
+                    <>
+                      <Check className="w-4 h-4 mr-2" />
+                      Hammaddeyi Kaydet
+                    </>
+                  )}
+                </Button>
+              </div>
             </DialogContent>
           </Dialog>
         </TabsContent>
