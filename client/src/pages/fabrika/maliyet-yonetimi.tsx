@@ -15,6 +15,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import { 
   Calculator, Package, Warehouse, TrendingUp, Plus, RefreshCw, 
   DollarSign, Percent, Building2, FileText, Settings2, BarChart3,
@@ -131,6 +132,11 @@ function ProductCostDetail({ productId, onEditLabor, onEditRecipe, onDeleteIngre
   const [pkgName, setPkgName] = useState("");
   const [pkgUnitCost, setPkgUnitCost] = useState("");
   const [pkgQty, setPkgQty] = useState("1");
+  const [pkgMaterialId, setPkgMaterialId] = useState<number | null>(null);
+
+  const { data: pkgMaterialsList = [] } = useQuery<any[]>({
+    queryKey: ['/api/raw-materials'],
+  });
 
   if (isLoading) {
     return (
@@ -277,32 +283,56 @@ function ProductCostDetail({ productId, onEditLabor, onEditRecipe, onDeleteIngre
           <p className="text-xs text-muted-foreground">Ambalaj malzemesi tanımlanmamış</p>
         )}
         {showAddPackaging && (
-          <div className="mt-2 pt-2 border-t border-teal-200 dark:border-teal-700 flex items-end gap-2 flex-wrap">
-            <div className="flex-1 min-w-[120px]">
-              <label className="text-xs text-muted-foreground">Malzeme Adı</label>
-              <Input value={pkgName} onChange={(e) => setPkgName(e.target.value)} placeholder="Kutu, Etiket..." data-testid="input-packaging-name" />
+          <div className="mt-2 pt-2 border-t border-teal-200 dark:border-teal-700 space-y-2">
+            <div className="flex items-end gap-2 flex-wrap">
+              <div className="flex-1 min-w-[180px]">
+                <label className="text-xs text-muted-foreground">Hammadde / Ambalaj Seç</label>
+                <Select
+                  value={pkgMaterialId?.toString() || ""}
+                  onValueChange={(val) => {
+                    const mid = parseInt(val);
+                    setPkgMaterialId(mid);
+                    const mat = (pkgMaterialsList as any[])?.find((m: any) => m.id === mid);
+                    if (mat) {
+                      setPkgName(mat.name);
+                      setPkgUnitCost(mat.currentUnitPrice?.toString() || "0");
+                    }
+                  }}
+                >
+                  <SelectTrigger data-testid="select-packaging-material">
+                    <SelectValue placeholder="Malzeme seçin..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(pkgMaterialsList as any[])?.map((mat: any) => (
+                      <SelectItem key={mat.id} value={mat.id.toString()}>
+                        {mat.name} - {mat.unit} (₺{parseFloat(mat.currentUnitPrice || "0").toLocaleString("tr-TR")})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="w-20">
+                <label className="text-xs text-muted-foreground">Adet</label>
+                <Input value={pkgQty} onChange={(e) => setPkgQty(e.target.value)} type="number" data-testid="input-packaging-qty" />
+              </div>
+              <div className="w-24">
+                <label className="text-xs text-muted-foreground">Birim Fiyat</label>
+                <Input value={pkgUnitCost} onChange={(e) => setPkgUnitCost(e.target.value)} type="number" step="0.01" data-testid="input-packaging-cost" />
+              </div>
+              <Button
+                size="sm"
+                disabled={!pkgName || !pkgUnitCost}
+                onClick={() => {
+                  addPackagingMutation.mutate({ productId, name: pkgName, quantity: pkgQty, unitCost: pkgUnitCost, rawMaterialId: pkgMaterialId });
+                  setPkgName(""); setPkgUnitCost(""); setPkgQty("1"); setPkgMaterialId(null);
+                  setShowAddPackaging(false);
+                }}
+                data-testid="button-save-packaging"
+              >
+                <Check className="w-3 h-3 mr-1" />
+                Kaydet
+              </Button>
             </div>
-            <div className="w-20">
-              <label className="text-xs text-muted-foreground">Adet</label>
-              <Input value={pkgQty} onChange={(e) => setPkgQty(e.target.value)} type="number" data-testid="input-packaging-qty" />
-            </div>
-            <div className="w-24">
-              <label className="text-xs text-muted-foreground">Birim Fiyat</label>
-              <Input value={pkgUnitCost} onChange={(e) => setPkgUnitCost(e.target.value)} type="number" step="0.01" data-testid="input-packaging-cost" />
-            </div>
-            <Button
-              size="sm"
-              disabled={!pkgName || !pkgUnitCost}
-              onClick={() => {
-                addPackagingMutation.mutate({ productId, name: pkgName, quantity: pkgQty, unitCost: pkgUnitCost });
-                setPkgName(""); setPkgUnitCost(""); setPkgQty("1");
-                setShowAddPackaging(false);
-              }}
-              data-testid="button-save-packaging"
-            >
-              <Check className="w-3 h-3 mr-1" />
-              Kaydet
-            </Button>
           </div>
         )}
       </div>
@@ -654,7 +684,7 @@ export default function MaliyetYonetimi() {
   const [editingCost, setEditingCost] = useState<any>(null);
   const [editingMargin, setEditingMargin] = useState<any>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
-  const [deleteType, setDeleteType] = useState<'material' | 'cost' | 'margin' | null>(null);
+  const [deleteType, setDeleteType] = useState<'material' | 'cost' | 'margin' | 'machine' | null>(null);
   const [isEditLaborDialogOpen, setIsEditLaborDialogOpen] = useState(false);
   const [editingRecipeId, setEditingRecipeId] = useState<number | null>(null);
   const [laborWorkerCount, setLaborWorkerCount] = useState(1);
@@ -663,6 +693,7 @@ export default function MaliyetYonetimi() {
   const [laborHourlyRate, setLaborHourlyRate] = useState("0");
   const [energyKwhPerBatch, setEnergyKwhPerBatch] = useState("0");
   const [energyEquipment, setEnergyEquipment] = useState("");
+  const [energyMachineId, setEnergyMachineId] = useState<number | null>(null);
   const [isEditRecipeDialogOpen, setIsEditRecipeDialogOpen] = useState(false);
   const [editingRecipe, setEditingRecipe] = useState<any>(null);
   const [recipeName, setRecipeName] = useState("");
@@ -677,6 +708,14 @@ export default function MaliyetYonetimi() {
 
   const [isMaterialDetailOpen, setIsMaterialDetailOpen] = useState(false);
   const [selectedMaterialId, setSelectedMaterialId] = useState<number | null>(null);
+
+  const [isAddMachineDialogOpen, setIsAddMachineDialogOpen] = useState(false);
+  const [editingMachine, setEditingMachine] = useState<any>(null);
+  const [machineName, setMachineName] = useState("");
+  const [machineDescription, setMachineDescription] = useState("");
+  const [machineKwh, setMachineKwh] = useState("0");
+  const [machineIsActive, setMachineIsActive] = useState(true);
+  const [machineProductIds, setMachineProductIds] = useState<number[]>([]);
 
   const [isAiRecipeDialogOpen, setIsAiRecipeDialogOpen] = useState(false);
   const [aiMode, setAiMode] = useState<"photo" | "text">("photo");
@@ -722,6 +761,10 @@ export default function MaliyetYonetimi() {
 
   const { data: dashboardProducts, isLoading: productsLoading } = useQuery<any[]>({
     queryKey: ['/api/cost-dashboard/products'],
+  });
+
+  const { data: factoryMachinesList = [] } = useQuery<any[]>({
+    queryKey: ['/api/factory-machines'],
   });
 
   const syncPricesMutation = useMutation({
@@ -1180,6 +1223,85 @@ export default function MaliyetYonetimi() {
     }
   });
 
+  const createMachineMutation = useMutation({
+    mutationFn: async (data: any) => {
+      return apiRequest("POST", "/api/factory-machines", data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/factory-machines'] });
+      setIsAddMachineDialogOpen(false);
+      resetMachineForm();
+      toast({ title: "Cihaz eklendi" });
+    },
+    onError: () => {
+      toast({ title: "Hata", description: "Cihaz eklenemedi", variant: "destructive" });
+    }
+  });
+
+  const updateMachineMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: number; data: any }) => {
+      return apiRequest("PUT", `/api/factory-machines/${id}`, data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/factory-machines'] });
+      setIsAddMachineDialogOpen(false);
+      setEditingMachine(null);
+      resetMachineForm();
+      toast({ title: "Cihaz güncellendi" });
+    },
+    onError: () => {
+      toast({ title: "Hata", description: "Cihaz güncellenemedi", variant: "destructive" });
+    }
+  });
+
+  const deleteMachineMutation = useMutation({
+    mutationFn: async (id: number) => {
+      return apiRequest("DELETE", `/api/factory-machines/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/factory-machines'] });
+      setDeleteConfirmId(null);
+      setDeleteType(null);
+      toast({ title: "Cihaz silindi" });
+    },
+    onError: () => {
+      toast({ title: "Hata", description: "Cihaz silinemedi", variant: "destructive" });
+    }
+  });
+
+  const resetMachineForm = () => {
+    setMachineName("");
+    setMachineDescription("");
+    setMachineKwh("0");
+    setMachineIsActive(true);
+    setMachineProductIds([]);
+  };
+
+  const openEditMachineDialog = (machine: any) => {
+    setEditingMachine(machine);
+    setMachineName(machine.name || "");
+    setMachineDescription(machine.description || "");
+    setMachineKwh(machine.kwhConsumption?.toString() || "0");
+    setMachineIsActive(machine.isActive !== false);
+    setMachineProductIds(machine.products?.map((p: any) => p.productId || p.id) || []);
+    setIsAddMachineDialogOpen(true);
+  };
+
+  const handleSaveMachine = () => {
+    const data = {
+      name: machineName,
+      description: machineDescription,
+      kwhConsumption: parseFloat(machineKwh) || 0,
+      isActive: machineIsActive,
+      productIds: machineProductIds,
+    };
+    if (editingMachine) {
+      updateMachineMutation.mutate({ id: editingMachine.id, data });
+    } else {
+      createMachineMutation.mutate(data);
+    }
+  };
+
   const openEditLaborDialog = (recipeId: number) => {
     setEditingRecipeId(recipeId);
     if (selectedProductId) {
@@ -1191,6 +1313,7 @@ export default function MaliyetYonetimi() {
         setLaborHourlyRate(cachedData.recipe.laborHourlyRate?.toString() || "0");
         setEnergyKwhPerBatch(cachedData.recipe.energyKwhPerBatch?.toString() || "0");
         setEnergyEquipment(cachedData.recipe.equipmentDescription || "");
+        setEnergyMachineId(cachedData.recipe.machineId || null);
       }
     }
     setIsEditLaborDialogOpen(true);
@@ -1221,6 +1344,8 @@ export default function MaliyetYonetimi() {
       deleteCostMutation.mutate(deleteConfirmId);
     } else if (deleteType === 'margin') {
       deleteMarginMutation.mutate(deleteConfirmId);
+    } else if (deleteType === 'machine') {
+      deleteMachineMutation.mutate(deleteConfirmId);
     }
   };
 
@@ -1314,6 +1439,7 @@ export default function MaliyetYonetimi() {
           <TabsTrigger value="sabit-gider" data-testid="tab-sabit-gider">Sabit Giderler</TabsTrigger>
           <TabsTrigger value="kar-marji" data-testid="tab-kar-marji">Kar Marjları</TabsTrigger>
           <TabsTrigger value="hesaplamalar" data-testid="tab-hesaplamalar">Hesaplamalar</TabsTrigger>
+          <TabsTrigger value="cihazlar" data-testid="tab-cihazlar">Cihazlar</TabsTrigger>
         </TabsList>
 
         <TabsContent value="dashboard" className="space-y-4 mt-4">
@@ -1570,8 +1696,8 @@ export default function MaliyetYonetimi() {
                         <TableCell className="font-mono text-sm">{material.code}</TableCell>
                         <TableCell>
                           <Button
-                            variant="link"
-                            className="p-0 h-auto text-left font-medium"
+                            variant="ghost"
+                            className="p-0 h-auto text-left font-medium text-blue-600 dark:text-blue-400"
                             onClick={() => { setSelectedMaterialId(material.id); setIsMaterialDetailOpen(true); }}
                             data-testid={`button-material-detail-${material.id}`}
                           >
@@ -1862,12 +1988,35 @@ export default function MaliyetYonetimi() {
                   </div>
                   <div>
                     <label className="text-sm font-medium">Kullanılan Cihaz</label>
-                    <Input
-                      value={energyEquipment}
-                      onChange={(e) => setEnergyEquipment(e.target.value)}
-                      placeholder="Fırın, Mikser..."
-                      data-testid="input-energy-equipment"
-                    />
+                    <Select
+                      value={energyMachineId?.toString() || "none"}
+                      onValueChange={(val) => {
+                        if (val === "none") {
+                          setEnergyMachineId(null);
+                          setEnergyEquipment("");
+                          return;
+                        }
+                        const mid = parseInt(val);
+                        setEnergyMachineId(mid);
+                        const machine = (factoryMachinesList as any[])?.find((m: any) => m.id === mid);
+                        if (machine) {
+                          setEnergyEquipment(machine.name);
+                          setEnergyKwhPerBatch(machine.kwhConsumption?.toString() || "0");
+                        }
+                      }}
+                    >
+                      <SelectTrigger data-testid="select-energy-machine">
+                        <SelectValue placeholder="Cihaz seçin..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">Seçilmedi</SelectItem>
+                        {(factoryMachinesList as any[])?.filter((m: any) => m.isActive || m.id === energyMachineId).map((machine: any) => (
+                          <SelectItem key={machine.id} value={machine.id.toString()}>
+                            {machine.name} ({machine.kwhConsumption} kWh){!machine.isActive ? " (Pasif)" : ""}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
                 <Button
@@ -1884,6 +2033,7 @@ export default function MaliyetYonetimi() {
                           laborHourlyRate: laborHourlyRate,
                           energyKwhPerBatch: energyKwhPerBatch,
                           equipmentDescription: energyEquipment,
+                          machineId: energyMachineId,
                         }
                       });
                     }
@@ -2877,6 +3027,212 @@ export default function MaliyetYonetimi() {
             </CardContent>
           </Card>
         </TabsContent>
+
+        <TabsContent value="cihazlar" className="space-y-4 mt-4">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-4">
+              <CardTitle className="flex items-center gap-2">
+                <Cog className="w-5 h-5" />
+                Cihaz Listesi
+              </CardTitle>
+              <Button
+                size="sm"
+                onClick={() => {
+                  setEditingMachine(null);
+                  resetMachineForm();
+                  setIsAddMachineDialogOpen(true);
+                }}
+                data-testid="button-add-machine"
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Ekle
+              </Button>
+            </CardHeader>
+            <CardContent className="p-0">
+              {factoryMachinesList.length > 0 ? (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Cihaz Adı</TableHead>
+                      <TableHead className="text-right">kWh</TableHead>
+                      <TableHead>Durum</TableHead>
+                      <TableHead>Üretebileceği Ürünler</TableHead>
+                      <TableHead>İşlemler</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {factoryMachinesList.map((machine: any) => {
+                      const productNames = machine.products?.map((p: any) => {
+                        const found = dashboardProducts?.find((dp: any) => dp.product?.id === (p.productId || p.id));
+                        return found?.product?.name || p.name || `#${p.productId || p.id}`;
+                      }).join(", ") || "-";
+                      return (
+                        <TableRow key={machine.id} data-testid={`row-machine-${machine.id}`}>
+                          <TableCell className="font-medium" data-testid={`text-machine-name-${machine.id}`}>
+                            {machine.name}
+                            {machine.description && (
+                              <p className="text-xs text-muted-foreground">{machine.description}</p>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-right" data-testid={`text-machine-kwh-${machine.id}`}>
+                            {machine.kwhConsumption || 0} kWh
+                          </TableCell>
+                          <TableCell>
+                            {machine.isActive !== false ? (
+                              <Badge variant="outline" className="text-green-600 border-green-200 dark:text-green-400 dark:border-green-800" data-testid={`badge-machine-status-${machine.id}`}>
+                                Aktif
+                              </Badge>
+                            ) : (
+                              <Badge variant="outline" className="text-red-600 border-red-200 dark:text-red-400 dark:border-red-800" data-testid={`badge-machine-status-${machine.id}`}>
+                                Pasif
+                              </Badge>
+                            )}
+                          </TableCell>
+                          <TableCell className="max-w-[200px]">
+                            <p className="text-sm truncate" data-testid={`text-machine-products-${machine.id}`}>{productNames}</p>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-1">
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                onClick={() => openEditMachineDialog(machine)}
+                                data-testid={`button-edit-machine-${machine.id}`}
+                              >
+                                <Edit className="w-4 h-4" />
+                              </Button>
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                onClick={() => {
+                                  setDeleteConfirmId(machine.id);
+                                  setDeleteType('machine');
+                                }}
+                                data-testid={`button-delete-machine-${machine.id}`}
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              ) : (
+                <p className="text-sm text-muted-foreground text-center py-8">Henüz cihaz eklenmemiş</p>
+              )}
+            </CardContent>
+          </Card>
+
+          <Dialog open={isAddMachineDialogOpen} onOpenChange={(open) => {
+            setIsAddMachineDialogOpen(open);
+            if (!open) {
+              setEditingMachine(null);
+              resetMachineForm();
+            }
+          }}>
+            <DialogContent className="max-w-lg">
+              <DialogHeader>
+                <DialogTitle>{editingMachine ? "Cihaz Düzenle" : "Yeni Cihaz Ekle"}</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div>
+                  <label className="text-sm font-medium">Cihaz Adı</label>
+                  <Input
+                    value={machineName}
+                    onChange={(e) => setMachineName(e.target.value)}
+                    placeholder="Cihaz adı"
+                    data-testid="input-machine-name"
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium">Açıklama</label>
+                  <Textarea
+                    value={machineDescription}
+                    onChange={(e) => setMachineDescription(e.target.value)}
+                    placeholder="Cihaz açıklaması"
+                    data-testid="input-machine-description"
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium">kWh Tüketimi</label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    value={machineKwh}
+                    onChange={(e) => setMachineKwh(e.target.value)}
+                    placeholder="0"
+                    data-testid="input-machine-kwh"
+                  />
+                </div>
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="machine-active"
+                    checked={machineIsActive}
+                    onCheckedChange={(checked) => setMachineIsActive(checked === true)}
+                    data-testid="checkbox-machine-active"
+                  />
+                  <label htmlFor="machine-active" className="text-sm font-medium cursor-pointer">
+                    Aktif
+                  </label>
+                </div>
+                {dashboardProducts && dashboardProducts.length > 0 && (
+                  <div>
+                    <label className="text-sm font-medium mb-2 block">Üretebileceği Ürünler</label>
+                    <div className="max-h-48 overflow-y-auto space-y-2 border rounded-md p-3">
+                      {dashboardProducts.map((item: any) => (
+                        <div key={item.product?.id} className="flex items-center gap-2">
+                          <Checkbox
+                            id={`machine-product-${item.product?.id}`}
+                            checked={machineProductIds.includes(item.product?.id)}
+                            onCheckedChange={(checked) => {
+                              if (checked) {
+                                setMachineProductIds([...machineProductIds, item.product?.id]);
+                              } else {
+                                setMachineProductIds(machineProductIds.filter((id) => id !== item.product?.id));
+                              }
+                            }}
+                            data-testid={`checkbox-machine-product-${item.product?.id}`}
+                          />
+                          <label
+                            htmlFor={`machine-product-${item.product?.id}`}
+                            className="text-sm cursor-pointer"
+                          >
+                            {item.product?.name}
+                          </label>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                <div className="flex justify-end gap-2 pt-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setIsAddMachineDialogOpen(false);
+                      setEditingMachine(null);
+                      resetMachineForm();
+                    }}
+                    data-testid="button-cancel-machine"
+                  >
+                    İptal
+                  </Button>
+                  <Button
+                    onClick={handleSaveMachine}
+                    disabled={!machineName || createMachineMutation.isPending || updateMachineMutation.isPending}
+                    data-testid="button-save-machine"
+                  >
+                    {(createMachineMutation.isPending || updateMachineMutation.isPending) && (
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    )}
+                    {editingMachine ? "Güncelle" : "Kaydet"}
+                  </Button>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
+        </TabsContent>
       </Tabs>
 
       {/* Edit Material Dialog */}
@@ -3188,10 +3544,10 @@ export default function MaliyetYonetimi() {
             <Button 
               variant="destructive" 
               onClick={handleDelete}
-              disabled={deleteMaterialMutation.isPending || deleteCostMutation.isPending || deleteMarginMutation.isPending}
+              disabled={deleteMaterialMutation.isPending || deleteCostMutation.isPending || deleteMarginMutation.isPending || deleteMachineMutation.isPending}
               data-testid="button-confirm-delete"
             >
-              {(deleteMaterialMutation.isPending || deleteCostMutation.isPending || deleteMarginMutation.isPending) ? (
+              {(deleteMaterialMutation.isPending || deleteCostMutation.isPending || deleteMarginMutation.isPending || deleteMachineMutation.isPending) ? (
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
               ) : null}
               Sil

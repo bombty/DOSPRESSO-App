@@ -21,13 +21,16 @@ import {
   factoryCostSettings,
   rawMaterialPriceHistory,
   suppliers,
+  factoryMachines,
+  machineProducts,
   insertRawMaterialSchema,
   insertProductRecipeSchema,
   insertProductRecipeIngredientSchema,
   insertFactoryFixedCostSchema,
   insertProfitMarginTemplateSchema,
   insertProductCostCalculationSchema,
-  insertProductPackagingItemSchema
+  insertProductPackagingItemSchema,
+  insertFactoryMachineSchema
 } from "@shared/schema";
 import { eq, desc, and, gte, lte, sql, or, like, asc, isNotNull, inArray } from "drizzle-orm";
 
@@ -215,7 +218,11 @@ export function registerMaliyetRoutes(app: Express, isAuthenticated: AuthMiddlew
 
   app.post("/api/packaging-items", isAuthenticated, async (req: Request, res: Response) => {
     try {
-      const [item] = await db.insert(productPackagingItems).values(req.body).returning();
+      const parseResult = insertProductPackagingItemSchema.safeParse(req.body);
+      if (!parseResult.success) {
+        return res.status(400).json({ error: "Geçersiz veri", details: parseResult.error.errors });
+      }
+      const [item] = await db.insert(productPackagingItems).values(parseResult.data).returning();
       res.json(item);
     } catch (error) {
       res.status(500).json({ error: "Ambalaj malzemesi eklenemedi" });
@@ -1225,7 +1232,8 @@ export function registerMaliyetRoutes(app: Express, isAuthenticated: AuthMiddlew
           laborBatchSize: recipe.laborBatchSize,
           laborHourlyRate: recipe.laborHourlyRate,
           energyKwhPerBatch: recipe.energyKwhPerBatch,
-          equipmentDescription: recipe.equipmentDescription
+          equipmentDescription: recipe.equipmentDescription,
+          machineId: recipe.machineId
         },
         ingredients: processedIngredients,
         labor: {
@@ -2285,6 +2293,117 @@ Sadece JSON döndür, başka metin ekleme.`;
     } catch (error) {
       console.error("Error generating AI insights:", error);
       res.status(500).json({ error: "AI analiz oluşturulamadı" });
+    }
+  });
+
+  // ==================== FABRİKA CİHAZLAR / MAKİNELER ====================
+
+  // GET /api/factory-machines - Tüm cihazları listele
+  app.get("/api/factory-machines", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const machines = await db.select().from(factoryMachines).orderBy(asc(factoryMachines.name));
+      
+      const machinesWithProducts = await Promise.all(machines.map(async (machine) => {
+        const products = await db.select({
+          id: machineProducts.id,
+          productId: machineProducts.productId,
+          productName: factoryProducts.name,
+        })
+          .from(machineProducts)
+          .leftJoin(factoryProducts, eq(machineProducts.productId, factoryProducts.id))
+          .where(eq(machineProducts.machineId, machine.id));
+        
+        return { ...machine, products };
+      }));
+      
+      res.json(machinesWithProducts);
+    } catch (error) {
+      console.error("Error fetching machines:", error);
+      res.status(500).json({ error: "Cihaz listesi alınamadı" });
+    }
+  });
+
+  // POST /api/factory-machines - Yeni cihaz ekle
+  app.post("/api/factory-machines", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const { name, description, kwhConsumption, isActive, productIds } = req.body;
+      
+      if (!name) {
+        return res.status(400).json({ error: "Cihaz adı zorunludur" });
+      }
+      
+      const [machine] = await db.insert(factoryMachines).values({
+        name,
+        description: description || null,
+        kwhConsumption: kwhConsumption?.toString() || "0",
+        isActive: isActive !== false,
+      }).returning();
+      
+      if (productIds && Array.isArray(productIds) && productIds.length > 0) {
+        await db.insert(machineProducts).values(
+          productIds.map((pid: number) => ({
+            machineId: machine.id,
+            productId: pid,
+          }))
+        );
+      }
+      
+      res.json(machine);
+    } catch (error) {
+      console.error("Error creating machine:", error);
+      res.status(500).json({ error: "Cihaz oluşturulamadı" });
+    }
+  });
+
+  // PUT /api/factory-machines/:id - Cihaz güncelle
+  app.put("/api/factory-machines/:id", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      const { name, description, kwhConsumption, isActive, productIds } = req.body;
+      
+      const [machine] = await db.update(factoryMachines)
+        .set({
+          name,
+          description: description || null,
+          kwhConsumption: kwhConsumption?.toString() || "0",
+          isActive: isActive !== false,
+          updatedAt: new Date(),
+        })
+        .where(eq(factoryMachines.id, id))
+        .returning();
+      
+      if (!machine) {
+        return res.status(404).json({ error: "Cihaz bulunamadı" });
+      }
+      
+      if (productIds !== undefined && Array.isArray(productIds)) {
+        await db.delete(machineProducts).where(eq(machineProducts.machineId, id));
+        if (productIds.length > 0) {
+          await db.insert(machineProducts).values(
+            productIds.map((pid: number) => ({
+              machineId: id,
+              productId: pid,
+            }))
+          );
+        }
+      }
+      
+      res.json(machine);
+    } catch (error) {
+      console.error("Error updating machine:", error);
+      res.status(500).json({ error: "Cihaz güncellenemedi" });
+    }
+  });
+
+  // DELETE /api/factory-machines/:id - Cihaz sil
+  app.delete("/api/factory-machines/:id", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      await db.delete(factoryMachines).where(eq(factoryMachines.id, id));
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting machine:", error);
+      res.status(500).json({ error: "Cihaz silinemedi" });
     }
   });
 }

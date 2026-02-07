@@ -10932,6 +10932,7 @@ export const productRecipes = pgTable("product_recipes", {
   // Enerji bilgileri - Activity-Based Costing
   energyKwhPerBatch: numeric("energy_kwh_per_batch", { precision: 10, scale: 3 }).default("0"),
   equipmentDescription: text("equipment_description"),
+  machineId: integer("machine_id"),
   
   // Hesaplanan maliyetler
   rawMaterialCost: numeric("raw_material_cost", { precision: 12, scale: 4 }).default("0"),
@@ -10997,6 +10998,7 @@ export const productPackagingItems = pgTable("product_packaging_items", {
   id: serial("id").primaryKey(),
   
   productId: integer("product_id").references(() => factoryProducts.id, { onDelete: "cascade" }).notNull(),
+  rawMaterialId: integer("raw_material_id").references(() => rawMaterials.id, { onDelete: "set null" }),
   
   name: varchar("name", { length: 255 }).notNull(),
   unit: varchar("unit", { length: 20 }).default("adet"),
@@ -11231,3 +11233,34 @@ export const insertRawMaterialPriceHistorySchema = createInsertSchema(rawMateria
 
 export type InsertRawMaterialPriceHistory = z.infer<typeof insertRawMaterialPriceHistorySchema>;
 export type RawMaterialPriceHistory = typeof rawMaterialPriceHistory.$inferSelect;
+
+// Fabrika Cihazlar / Makineler - Factory Machines
+export const factoryMachines = pgTable("factory_machines", {
+  id: serial("id").primaryKey(),
+  name: varchar("name", { length: 255 }).notNull(),
+  description: text("description"),
+  kwhConsumption: numeric("kwh_consumption", { precision: 10, scale: 3 }).default("0"),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertFactoryMachineSchema = createInsertSchema(factoryMachines).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertFactoryMachine = z.infer<typeof insertFactoryMachineSchema>;
+export type FactoryMachine = typeof factoryMachines.$inferSelect;
+
+// Cihaz - Ürün İlişkisi - Machine-Product Mapping
+export const machineProducts = pgTable("machine_products", {
+  id: serial("id").primaryKey(),
+  machineId: integer("machine_id").references(() => factoryMachines.id, { onDelete: "cascade" }).notNull(),
+  productId: integer("product_id").references(() => factoryProducts.id, { onDelete: "cascade" }).notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("mp_machine_idx").on(table.machineId),
+  index("mp_product_idx").on(table.productId),
+]);
