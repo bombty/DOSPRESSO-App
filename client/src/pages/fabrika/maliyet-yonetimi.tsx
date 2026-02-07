@@ -20,10 +20,11 @@ import {
   DollarSign, Percent, Building2, FileText, Settings2, BarChart3,
   Loader2, AlertTriangle, CheckCircle, Edit, Trash2, Users, Clock, Hash,
   Sparkles, Camera, Type, Upload, ArrowLeft, ArrowRight, Check, X, Search,
-  ChevronsUpDown, Zap, PackageOpen, Cog
+  ChevronsUpDown, Zap, PackageOpen, Cog, History, TrendingDown, Phone, Mail, MapPin, Building
 } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Area, AreaChart } from "recharts";
 
 const rawMaterialSchema = z.object({
   code: z.string().min(1, "Kod gerekli"),
@@ -398,6 +399,245 @@ function ProductCostDetail({ productId, onEditLabor, onEditRecipe, onDeleteIngre
   );
 }
 
+function MaterialPriceHistoryDialog({ materialId, open, onOpenChange }: { materialId: number; open: boolean; onOpenChange: (open: boolean) => void }) {
+  const { data, isLoading } = useQuery<any>({
+    queryKey: ['/api/raw-materials', materialId, 'price-history'],
+    enabled: !!materialId && open,
+  });
+
+  const material = data?.material;
+  const supplier = data?.supplier;
+  const history = data?.history || [];
+
+  const chartData = [...history].reverse().map((h: any) => ({
+    date: new Date(h.createdAt).toLocaleDateString('tr-TR', { day: '2-digit', month: 'short', year: '2-digit' }),
+    price: parseFloat(h.newPrice || "0"),
+    fullDate: new Date(h.createdAt).toLocaleDateString('tr-TR'),
+  }));
+
+  const priceChange = history.length >= 2 
+    ? parseFloat(history[0].newPrice) - parseFloat(history[1].newPrice) 
+    : 0;
+  const priceChangePercent = history.length >= 2 && parseFloat(history[1].newPrice) > 0
+    ? ((priceChange / parseFloat(history[1].newPrice)) * 100).toFixed(1)
+    : "0";
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <History className="w-5 h-5" />
+            Hammadde Detayı
+          </DialogTitle>
+        </DialogHeader>
+        
+        {isLoading ? (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="w-6 h-6 animate-spin" />
+          </div>
+        ) : material ? (
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div className="p-3 rounded-lg bg-muted/50">
+                <p className="text-xs text-muted-foreground">Kod</p>
+                <p className="font-mono font-semibold text-sm" data-testid="text-material-code">{material.code}</p>
+              </div>
+              <div className="p-3 rounded-lg bg-muted/50">
+                <p className="text-xs text-muted-foreground">Birim</p>
+                <p className="font-semibold text-sm" data-testid="text-material-unit">{material.unit}</p>
+              </div>
+              <div className="p-3 rounded-lg bg-blue-50 dark:bg-blue-900/20">
+                <p className="text-xs text-muted-foreground">Güncel Fiyat</p>
+                <p className="font-bold text-sm text-blue-700 dark:text-blue-400" data-testid="text-material-price">
+                  {formatCurrency(material.currentUnitPrice)}/{material.unit}
+                </p>
+              </div>
+              <div className="p-3 rounded-lg bg-muted/50">
+                <p className="text-xs text-muted-foreground">Son Değişim</p>
+                <div className="flex items-center gap-1">
+                  {priceChange > 0 ? (
+                    <TrendingUp className="w-3 h-3 text-red-500" />
+                  ) : priceChange < 0 ? (
+                    <TrendingDown className="w-3 h-3 text-green-500" />
+                  ) : null}
+                  <p className={`font-semibold text-sm ${priceChange > 0 ? 'text-red-600 dark:text-red-400' : priceChange < 0 ? 'text-green-600 dark:text-green-400' : ''}`} data-testid="text-price-change">
+                    {priceChange > 0 ? '+' : ''}{priceChangePercent}%
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {supplier && (
+              <Card>
+                <CardHeader className="pb-2 pt-3 px-4">
+                  <CardTitle className="text-sm flex items-center gap-2">
+                    <Building className="w-4 h-4" />
+                    Tedarikçi Bilgileri
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="px-4 pb-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
+                    <div className="flex items-center gap-2">
+                      <Building2 className="w-3.5 h-3.5 text-muted-foreground" />
+                      <span className="font-medium" data-testid="text-supplier-name">{supplier.name}</span>
+                    </div>
+                    {supplier.contactPerson && (
+                      <div className="flex items-center gap-2 text-muted-foreground">
+                        <Users className="w-3.5 h-3.5" />
+                        <span data-testid="text-supplier-contact">{supplier.contactPerson}</span>
+                      </div>
+                    )}
+                    {supplier.phone && (
+                      <div className="flex items-center gap-2 text-muted-foreground">
+                        <Phone className="w-3.5 h-3.5" />
+                        <span data-testid="text-supplier-phone">{supplier.phone}</span>
+                      </div>
+                    )}
+                    {supplier.email && (
+                      <div className="flex items-center gap-2 text-muted-foreground">
+                        <Mail className="w-3.5 h-3.5" />
+                        <span data-testid="text-supplier-email">{supplier.email}</span>
+                      </div>
+                    )}
+                    {supplier.city && (
+                      <div className="flex items-center gap-2 text-muted-foreground">
+                        <MapPin className="w-3.5 h-3.5" />
+                        <span data-testid="text-supplier-city">{supplier.city}</span>
+                      </div>
+                    )}
+                    {supplier.paymentTermDays && (
+                      <div className="flex items-center gap-2 text-muted-foreground">
+                        <Clock className="w-3.5 h-3.5" />
+                        <span>Vade: {supplier.paymentTermDays} gün</span>
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {chartData.length > 1 && (
+              <Card>
+                <CardHeader className="pb-2 pt-3 px-4">
+                  <CardTitle className="text-sm flex items-center gap-2">
+                    <BarChart3 className="w-4 h-4" />
+                    Fiyat Geçmişi Grafiği
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="px-4 pb-3">
+                  <ResponsiveContainer width="100%" height={200}>
+                    <AreaChart data={chartData}>
+                      <defs>
+                        <linearGradient id="priceGradient" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="hsl(217, 91%, 60%)" stopOpacity={0.3} />
+                          <stop offset="95%" stopColor="hsl(217, 91%, 60%)" stopOpacity={0} />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+                      <XAxis 
+                        dataKey="date" 
+                        tick={{ fontSize: 11 }} 
+                        tickLine={false}
+                        axisLine={false}
+                      />
+                      <YAxis 
+                        tick={{ fontSize: 11 }} 
+                        tickLine={false}
+                        axisLine={false}
+                        tickFormatter={(v) => `₺${v.toLocaleString('tr-TR')}`}
+                      />
+                      <RechartsTooltip 
+                        formatter={(value: any) => [`₺${parseFloat(value).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}`, 'Fiyat']}
+                        labelFormatter={(label) => `Tarih: ${label}`}
+                        contentStyle={{ borderRadius: '8px', fontSize: '12px' }}
+                      />
+                      <Area 
+                        type="monotone" 
+                        dataKey="price" 
+                        stroke="hsl(217, 91%, 60%)" 
+                        strokeWidth={2}
+                        fill="url(#priceGradient)"
+                      />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
+            )}
+
+            <Card>
+              <CardHeader className="pb-2 pt-3 px-4">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <History className="w-4 h-4" />
+                  Fiyat Değişim Tablosu
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-0">
+                {history.length > 0 ? (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Tarih</TableHead>
+                        <TableHead className="text-right">Eski Fiyat</TableHead>
+                        <TableHead className="text-right">Yeni Fiyat</TableHead>
+                        <TableHead className="text-right">Değişim</TableHead>
+                        <TableHead>Kaynak</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {history.map((h: any) => {
+                        const change = parseFloat(h.changePercent || "0");
+                        const sourceLabels: Record<string, string> = {
+                          'manual': 'Manuel',
+                          'sync_purchase': 'Satınalma Senkron',
+                          'sync_receipts': 'Mal Kabul Senkron',
+                          'initial_seed': 'İlk Kayıt',
+                        };
+                        return (
+                          <TableRow key={h.id} data-testid={`row-price-history-${h.id}`}>
+                            <TableCell className="text-sm">
+                              {new Date(h.createdAt).toLocaleDateString('tr-TR')}
+                            </TableCell>
+                            <TableCell className="text-right text-sm">
+                              {h.previousPrice ? formatCurrency(h.previousPrice) : '-'}
+                            </TableCell>
+                            <TableCell className="text-right text-sm font-medium">
+                              {formatCurrency(h.newPrice)}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              {change !== 0 ? (
+                                <Badge 
+                                  variant="outline" 
+                                  className={change > 0 ? 'text-red-600 border-red-200 dark:text-red-400 dark:border-red-800' : 'text-green-600 border-green-200 dark:text-green-400 dark:border-green-800'}
+                                >
+                                  {change > 0 ? '+' : ''}{change.toFixed(1)}%
+                                </Badge>
+                              ) : (
+                                <Badge variant="outline">-</Badge>
+                              )}
+                            </TableCell>
+                            <TableCell className="text-sm text-muted-foreground">
+                              {sourceLabels[h.source] || h.source}
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                ) : (
+                  <p className="text-sm text-muted-foreground text-center py-6">Henüz fiyat geçmişi bulunmuyor</p>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        ) : (
+          <p className="text-sm text-muted-foreground text-center py-8">Hammadde bilgisi bulunamadı</p>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export default function MaliyetYonetimi() {
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("dashboard");
@@ -434,6 +674,9 @@ export default function MaliyetYonetimi() {
   const [newIngredientMaterialId, setNewIngredientMaterialId] = useState<number | null>(null);
   const [newIngredientQuantity, setNewIngredientQuantity] = useState("");
   const [newIngredientUnit, setNewIngredientUnit] = useState("gr");
+
+  const [isMaterialDetailOpen, setIsMaterialDetailOpen] = useState(false);
+  const [selectedMaterialId, setSelectedMaterialId] = useState<number | null>(null);
 
   const [isAiRecipeDialogOpen, setIsAiRecipeDialogOpen] = useState(false);
   const [aiMode, setAiMode] = useState<"photo" | "text">("photo");
@@ -1325,7 +1568,16 @@ export default function MaliyetYonetimi() {
                     {rawMaterials.map((material: any) => (
                       <TableRow key={material.id} data-testid={`row-material-${material.id}`}>
                         <TableCell className="font-mono text-sm">{material.code}</TableCell>
-                        <TableCell>{material.name}</TableCell>
+                        <TableCell>
+                          <Button
+                            variant="link"
+                            className="p-0 h-auto text-left font-medium"
+                            onClick={() => { setSelectedMaterialId(material.id); setIsMaterialDetailOpen(true); }}
+                            data-testid={`button-material-detail-${material.id}`}
+                          >
+                            {material.name}
+                          </Button>
+                        </TableCell>
                         <TableCell>{material.category || "-"}</TableCell>
                         <TableCell>{material.unit}</TableCell>
                         <TableCell className="text-right">{formatCurrency(material.currentUnitPrice)}</TableCell>
@@ -2947,6 +3199,14 @@ export default function MaliyetYonetimi() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {selectedMaterialId && (
+        <MaterialPriceHistoryDialog
+          materialId={selectedMaterialId}
+          open={isMaterialDetailOpen}
+          onOpenChange={setIsMaterialDetailOpen}
+        />
+      )}
     </div>
   );
 }

@@ -19,6 +19,8 @@ import {
   notifications,
   productPackagingItems,
   factoryCostSettings,
+  rawMaterialPriceHistory,
+  suppliers,
   insertRawMaterialSchema,
   insertProductRecipeSchema,
   insertProductRecipeIngredientSchema,
@@ -284,18 +286,39 @@ export function registerMaliyetRoutes(app: Express, isAuthenticated: AuthMiddlew
   app.put("/api/raw-materials/:id", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const { id } = req.params;
+      const user = (req as any).user;
+      const materialId = parseInt(id);
       const parseResult = insertRawMaterialSchema.partial().safeParse(req.body);
       if (!parseResult.success) {
         return res.status(400).json({ error: "Geçersiz veri", details: parseResult.error.errors });
       }
       
+      const [existing] = await db.select().from(rawMaterials).where(eq(rawMaterials.id, materialId));
+      
       const [updated] = await db.update(rawMaterials)
         .set({ ...parseResult.data, updatedAt: new Date() })
-        .where(eq(rawMaterials.id, parseInt(id)))
+        .where(eq(rawMaterials.id, materialId))
         .returning();
       
       if (!updated) {
         return res.status(404).json({ error: "Hammadde bulunamadı" });
+      }
+      
+      if (existing && parseResult.data.currentUnitPrice !== undefined) {
+        const oldPrice = parseFloat(existing.currentUnitPrice || "0");
+        const newPrice = parseFloat(parseResult.data.currentUnitPrice || "0");
+        if (oldPrice !== newPrice) {
+          const changePercent = oldPrice > 0 ? ((newPrice - oldPrice) / oldPrice * 100) : 0;
+          await db.insert(rawMaterialPriceHistory).values({
+            rawMaterialId: materialId,
+            supplierId: updated.supplierId,
+            previousPrice: existing.currentUnitPrice || "0",
+            newPrice: newPrice.toFixed(4),
+            changePercent: changePercent.toFixed(2),
+            source: "manual",
+            changedBy: user?.username || user?.id || "system",
+          });
+        }
       }
       
       res.json(updated);
@@ -320,6 +343,7 @@ export function registerMaliyetRoutes(app: Express, isAuthenticated: AuthMiddlew
   
   app.post("/api/raw-materials/sync-prices", isAuthenticated, async (req: Request, res: Response) => {
     try {
+      const user = (req as any).user;
       const materials = await db.select().from(rawMaterials).where(eq(rawMaterials.isActive, true));
       let updatedCount = 0;
       
@@ -336,6 +360,22 @@ export function registerMaliyetRoutes(app: Express, isAuthenticated: AuthMiddlew
             .limit(1);
           
           if (lastOrder.length > 0) {
+            const oldPrice = parseFloat(material.currentUnitPrice || "0");
+            const newPrice = parseFloat(lastOrder[0].unitPrice || "0");
+            
+            if (oldPrice !== newPrice && newPrice > 0) {
+              const changePercent = oldPrice > 0 ? ((newPrice - oldPrice) / oldPrice * 100) : 0;
+              await db.insert(rawMaterialPriceHistory).values({
+                rawMaterialId: material.id,
+                supplierId: material.supplierId,
+                previousPrice: material.currentUnitPrice || "0",
+                newPrice: newPrice.toFixed(4),
+                changePercent: changePercent.toFixed(2),
+                source: "sync_purchase",
+                changedBy: user?.username || user?.id || "system",
+              });
+            }
+            
             await db.update(rawMaterials)
               .set({
                 lastPurchasePrice: lastOrder[0].unitPrice,
@@ -353,6 +393,50 @@ export function registerMaliyetRoutes(app: Express, isAuthenticated: AuthMiddlew
     } catch (error) {
       console.error("Error syncing prices:", error);
       res.status(500).json({ error: "Fiyatlar senkronize edilemedi" });
+    }
+  });
+  
+  // ========================================
+  // HAMMADDE FİYAT GEÇMİŞİ - Raw Material Price History
+  // ========================================
+  
+  app.get("/api/raw-materials/:id/price-history", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const materialId = parseInt(req.params.id);
+      const limit = parseInt(req.query.limit as string) || 50;
+      
+      const [material] = await db.select().from(rawMaterials).where(eq(rawMaterials.id, materialId));
+      if (!material) {
+        return res.status(404).json({ error: "Hammadde bulunamadı" });
+      }
+      
+      let supplier = null;
+      if (material.supplierId) {
+        const [s] = await db.select().from(suppliers).where(eq(suppliers.id, material.supplierId));
+        supplier = s || null;
+      }
+      
+      const history = await db.select({
+        priceHistory: rawMaterialPriceHistory,
+        supplierName: suppliers.name,
+      })
+        .from(rawMaterialPriceHistory)
+        .leftJoin(suppliers, eq(rawMaterialPriceHistory.supplierId, suppliers.id))
+        .where(eq(rawMaterialPriceHistory.rawMaterialId, materialId))
+        .orderBy(desc(rawMaterialPriceHistory.createdAt))
+        .limit(limit);
+      
+      res.json({
+        material,
+        supplier,
+        history: history.map(h => ({
+          ...h.priceHistory,
+          supplierName: h.supplierName,
+        })),
+      });
+    } catch (error) {
+      console.error("Error fetching price history:", error);
+      res.status(500).json({ error: "Fiyat geçmişi alınamadı" });
     }
   });
   
@@ -1213,6 +1297,17 @@ export function registerMaliyetRoutes(app: Express, isAuthenticated: AuthMiddlew
               const oldPrice = parseFloat(material.currentUnitPrice || "0");
               
               if (newPrice !== oldPrice && newPrice > 0) {
+                const changePercent = oldPrice > 0 ? ((newPrice - oldPrice) / oldPrice * 100) : 0;
+                await db.insert(rawMaterialPriceHistory).values({
+                  rawMaterialId: material.id,
+                  supplierId: material.supplierId,
+                  previousPrice: material.currentUnitPrice || "0",
+                  newPrice: newPrice.toFixed(4),
+                  changePercent: changePercent.toFixed(2),
+                  source: "sync_receipts",
+                  changedBy: user?.username || user?.id || "system",
+                });
+                
                 await db.update(rawMaterials)
                   .set({
                     lastPurchasePrice: material.currentUnitPrice || "0",
