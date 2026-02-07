@@ -48,6 +48,7 @@ The frontend utilizes React 18+ with TypeScript and Vite, employing Shadcn/ui (N
   - **Recipe Types**: OPEN (visible ingredients) vs KEYBLEND (secret formulations)
   - **114 Raw Materials**: 72 standard, 5 Keyblend formulations (KB-DONUT-DRY, KB-DONUT-LIQ, KB-COOKIE, KB-CHEESECAKE, KB-CINNABOOM), 37 recipe ingredients
   - **Ürün Maliyetleri Tab**: Product cost list with KEYBLEND badges, cost details dialog, price sync, and calculate all buttons
+  - **Raw Material Price History**: Automatic tracking of price changes across all update paths (manual, sync_purchase, sync_receipts). Price history dialog with area chart visualization, supplier info card, and detailed change table. Table: raw_material_price_history.
   - **Production-Inventory Integration**: Automatic stock deduction on production completion (uretim_cikis), finished product stock addition (uretim_giris), stock check simulation before production, production history tracking, material-inventory linking, low stock notifications, and AI-powered consumption forecasting with order recommendations
   - **Production API Endpoints**: POST /api/production/complete, POST /api/production/check-stock, GET /api/production/history, GET /api/production/:id, GET /api/production/stock-movements, GET /api/production/material-stock-links, POST /api/production/link-material, GET /api/production/ai-insights
   - **Üretim Planlama Tabs**: Takvim (calendar), Üretim Geçmişi (history), Stok Bağlantıları (material-inventory links), AI Analiz (consumption forecasts, recommendations, low stock alerts)
