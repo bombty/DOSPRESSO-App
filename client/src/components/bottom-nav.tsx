@@ -1,5 +1,5 @@
 import { useLocation, Link } from "wouter";
-import { Home, GraduationCap, Wrench, User, Headphones, Brain } from "lucide-react";
+import { Home, GraduationCap, Wrench, User, Headphones, Brain, BarChart3 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { isHQRole } from "@shared/schema";
 
@@ -48,9 +48,10 @@ export function BottomNav() {
     { icon: GraduationCap, label: "Akademi", path: isHQ ? "/akademi-hq" : "/akademi" },
     // CRM - role göre dinamik yönlendirme ve etiket (HQ için CRM, şube/fabrika için Panelim)
     { icon: Headphones, label: crmLabel, path: getCrmPath() },
-    // HQ için AI Control Tower, şube/fabrika için Arıza
     isHQ 
-      ? { icon: Brain, label: "AI", path: "/ceo-command-center" }
+      ? (user?.role === 'ceo' || user?.role === 'admin')
+        ? { icon: Brain, label: "AI", path: "/ceo-command-center" }
+        : { icon: BarChart3, label: "Raporlar", path: "/raporlar" }
       : { icon: Wrench, label: "Arıza", path: "/ariza" },
     { icon: User, label: "Profil", path: user ? `/personel/${user.id}` : "/login" },
   ];
