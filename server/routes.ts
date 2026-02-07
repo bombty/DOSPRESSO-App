@@ -1,3 +1,4 @@
+import { registerFactoryShiftRoutes } from "./factory-shift-routes";
 import { registerHQDashboardRoutes } from "./hq-dashboard-routes";
 import { registerCRMRoutes } from "./crm-routes";
 import { registerSatinalmaRoutes } from "./satinalma-routes";
@@ -32429,6 +32430,7 @@ ${["yatirimci_hq", "yatirimci_branch"].includes(role) ? "- Yatirimci olarak sade
   });
   registerSatinalmaRoutes(app, isAuthenticated);
   registerMaliyetRoutes(app, isAuthenticated);
+  registerFactoryShiftRoutes(app);
   registerExportRoutes(app);
   const httpServer = createServer(app);
   return httpServer;

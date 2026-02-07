@@ -422,6 +422,12 @@ export default function FabrikaDashboard() {
                     <span>İK Yönetimi</span>
                   </Button>
                 </Link>
+                <Link href="/fabrika/vardiya-planlama">
+                  <Button variant="outline" className="w-full h-auto p-4 flex flex-col items-center gap-2" data-testid="link-shift-planning">
+                    <Clock className="h-8 w-8 text-indigo-500" />
+                    <span>Vardiya Planlama</span>
+                  </Button>
+                </Link>
                 <Link href="/fabrika">
                   <Button variant="outline" className="w-full h-auto p-4 flex flex-col items-center gap-2" data-testid="link-reports">
                     <TrendingUp className="h-8 w-8 text-purple-500" />

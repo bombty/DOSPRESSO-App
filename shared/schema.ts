@@ -11264,3 +11264,169 @@ export const machineProducts = pgTable("machine_products", {
   index("mp_machine_idx").on(table.machineId),
   index("mp_product_idx").on(table.productId),
 ]);
+
+// ========================================
+// FABRIKA VARDİYA & ÜRETİM PLANLAMA SİSTEMİ
+// ========================================
+
+// Fabrika Vardiyaları - Factory Shifts (sabah/akşam/gece)
+export const factoryShifts = pgTable("factory_shifts", {
+  id: serial("id").primaryKey(),
+  shiftDate: date("shift_date").notNull(),
+  shiftType: varchar("shift_type", { length: 20 }).notNull(), // sabah, aksam, gece
+  startTime: varchar("start_time", { length: 5 }).notNull(), // "06:00"
+  endTime: varchar("end_time", { length: 5 }).notNull(), // "14:00"
+  status: varchar("status", { length: 20 }).default("planned").notNull(), // planned, active, completed, cancelled
+  notes: text("notes"),
+  createdById: varchar("created_by_id").references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("fs_date_idx").on(table.shiftDate),
+  index("fs_type_idx").on(table.shiftType),
+  index("fs_status_idx").on(table.status),
+]);
+
+export const insertFactoryShiftSchema = createInsertSchema(factoryShifts).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertFactoryShift = z.infer<typeof insertFactoryShiftSchema>;
+export type FactoryShift = typeof factoryShifts.$inferSelect;
+
+// Vardiya Çalışan Atamaları - Shift Worker Assignments
+export const factoryShiftWorkers = pgTable("factory_shift_workers", {
+  id: serial("id").primaryKey(),
+  shiftId: integer("shift_id").notNull().references(() => factoryShifts.id, { onDelete: "cascade" }),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  machineId: integer("machine_id").references(() => factoryMachines.id, { onDelete: "set null" }),
+  role: varchar("role", { length: 30 }).default("operator"), // operator, supervisor, quality_controller
+  selfSelected: boolean("self_selected").default(false),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("fsw_shift_idx").on(table.shiftId),
+  index("fsw_user_idx").on(table.userId),
+  index("fsw_machine_idx").on(table.machineId),
+]);
+
+export const insertFactoryShiftWorkerSchema = createInsertSchema(factoryShiftWorkers).omit({
+  id: true,
+  createdAt: true,
+});
+export type InsertFactoryShiftWorker = z.infer<typeof insertFactoryShiftWorkerSchema>;
+export type FactoryShiftWorker = typeof factoryShiftWorkers.$inferSelect;
+
+// Batch Spesifikasyonları - Her ürün+makine için standart batch tanımı
+export const factoryBatchSpecs = pgTable("factory_batch_specs", {
+  id: serial("id").primaryKey(),
+  productId: integer("product_id").notNull().references(() => factoryProducts.id, { onDelete: "cascade" }),
+  machineId: integer("machine_id").references(() => factoryMachines.id, { onDelete: "set null" }),
+  batchWeightKg: numeric("batch_weight_kg", { precision: 10, scale: 2 }).notNull(), // örn: 41 kg
+  expectedPieces: integer("expected_pieces").notNull(), // örn: 650 adet
+  pieceWeightGrams: numeric("piece_weight_grams", { precision: 10, scale: 2 }), // örn: 55g
+  targetDurationMinutes: integer("target_duration_minutes").notNull(), // örn: 120 dk
+  description: text("description"),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("fbs_product_idx").on(table.productId),
+  index("fbs_machine_idx").on(table.machineId),
+]);
+
+export const insertFactoryBatchSpecSchema = createInsertSchema(factoryBatchSpecs).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertFactoryBatchSpec = z.infer<typeof insertFactoryBatchSpecSchema>;
+export type FactoryBatchSpec = typeof factoryBatchSpecs.$inferSelect;
+
+// Vardiya Üretim Planları - Her vardiyada hangi üründen kaç batch üretilecek
+export const factoryShiftProductions = pgTable("factory_shift_productions", {
+  id: serial("id").primaryKey(),
+  shiftId: integer("shift_id").notNull().references(() => factoryShifts.id, { onDelete: "cascade" }),
+  productId: integer("product_id").notNull().references(() => factoryProducts.id, { onDelete: "cascade" }),
+  machineId: integer("machine_id").references(() => factoryMachines.id, { onDelete: "set null" }),
+  batchSpecId: integer("batch_spec_id").references(() => factoryBatchSpecs.id, { onDelete: "set null" }),
+  plannedBatchCount: integer("planned_batch_count").notNull().default(1),
+  completedBatchCount: integer("completed_batch_count").default(0),
+  status: varchar("status", { length: 20 }).default("planned").notNull(), // planned, in_progress, completed
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("fsp_shift_idx").on(table.shiftId),
+  index("fsp_product_idx").on(table.productId),
+]);
+
+export const insertFactoryShiftProductionSchema = createInsertSchema(factoryShiftProductions).omit({
+  id: true,
+  createdAt: true,
+});
+export type InsertFactoryShiftProduction = z.infer<typeof insertFactoryShiftProductionSchema>;
+export type FactoryShiftProduction = typeof factoryShiftProductions.$inferSelect;
+
+// Üretim Batch'leri - Her batch'in başlangıç/bitiş süresi ve sonuçları
+export const factoryProductionBatches = pgTable("factory_production_batches", {
+  id: serial("id").primaryKey(),
+  shiftProductionId: integer("shift_production_id").references(() => factoryShiftProductions.id, { onDelete: "set null" }),
+  shiftId: integer("shift_id").references(() => factoryShifts.id, { onDelete: "set null" }),
+  productId: integer("product_id").notNull().references(() => factoryProducts.id, { onDelete: "cascade" }),
+  machineId: integer("machine_id").references(() => factoryMachines.id, { onDelete: "set null" }),
+  batchSpecId: integer("batch_spec_id").references(() => factoryBatchSpecs.id, { onDelete: "set null" }),
+  operatorUserId: varchar("operator_user_id").references(() => users.id, { onDelete: "set null" }),
+  batchNumber: integer("batch_number").default(1),
+  startTime: timestamp("start_time").notNull().defaultNow(),
+  endTime: timestamp("end_time"),
+  actualWeightKg: numeric("actual_weight_kg", { precision: 10, scale: 2 }),
+  actualPieces: integer("actual_pieces"),
+  targetWeightKg: numeric("target_weight_kg", { precision: 10, scale: 2 }),
+  targetPieces: integer("target_pieces"),
+  targetDurationMinutes: integer("target_duration_minutes"),
+  actualDurationMinutes: integer("actual_duration_minutes"),
+  wasteWeightKg: numeric("waste_weight_kg", { precision: 10, scale: 2 }).default("0"),
+  wastePieces: integer("waste_pieces").default(0),
+  wasteReasonId: integer("waste_reason_id").references(() => factoryWasteReasons.id, { onDelete: "set null" }),
+  wasteNotes: text("waste_notes"),
+  performanceScore: numeric("performance_score", { precision: 5, scale: 2 }), // yüzde olarak (hedef süreye göre)
+  yieldRate: numeric("yield_rate", { precision: 5, scale: 2 }), // verim oranı (üretilen/hedef)
+  photoUrl: text("photo_url"),
+  status: varchar("status", { length: 20 }).default("in_progress").notNull(), // in_progress, completed, verified, rejected
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("fpb_shift_prod_idx").on(table.shiftProductionId),
+  index("fpb_shift_idx").on(table.shiftId),
+  index("fpb_product_idx").on(table.productId),
+  index("fpb_operator_idx").on(table.operatorUserId),
+  index("fpb_machine_idx").on(table.machineId),
+  index("fpb_start_idx").on(table.startTime),
+]);
+
+export const insertFactoryProductionBatchSchema = createInsertSchema(factoryProductionBatches).omit({
+  id: true,
+  createdAt: true,
+});
+export type InsertFactoryProductionBatch = z.infer<typeof insertFactoryProductionBatchSchema>;
+export type FactoryProductionBatch = typeof factoryProductionBatches.$inferSelect;
+
+// Batch Doğrulama - Supervisor/kalite kontrol onayı
+export const factoryBatchVerifications = pgTable("factory_batch_verifications", {
+  id: serial("id").primaryKey(),
+  batchId: integer("batch_id").notNull().references(() => factoryProductionBatches.id, { onDelete: "cascade" }),
+  verifierUserId: varchar("verifier_user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  verifiedWeightKg: numeric("verified_weight_kg", { precision: 10, scale: 2 }),
+  verifiedPieces: integer("verified_pieces"),
+  verifiedWasteKg: numeric("verified_waste_kg", { precision: 10, scale: 2 }),
+  verifiedWastePieces: integer("verified_waste_pieces"),
+  isApproved: boolean("is_approved").notNull(),
+  rejectionReason: text("rejection_reason"),
+  notes: text("notes"),
+  verifiedAt: timestamp("verified_at").defaultNow(),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("fbv_batch_idx").on(table.batchId),
+  index("fbv_verifier_idx").on(table.verifierUserId),
+]);

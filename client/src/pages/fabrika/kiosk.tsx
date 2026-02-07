@@ -580,6 +580,8 @@ export default function FactoryKiosk() {
                 </div>
               </div>
 
+              {selectedUser && <KioskBatchSection userId={selectedUser.id} stationId={currentStationInfo.id} />}
+
               <div className="pt-4">
                 <Button
                   className="w-full bg-red-600 hover:bg-red-700 h-16 text-xl"
@@ -928,6 +930,255 @@ export default function FactoryKiosk() {
           )}
         </CardContent>
       </Card>
+    </div>
+  );
+}
+
+function KioskBatchSection({ userId, stationId }: { userId: string; stationId: number }) {
+  const { toast } = useToast();
+  const [batchTimer, setBatchTimer] = useState(0);
+  const [completePieces, setCompletePieces] = useState("");
+  const [completeWeight, setCompleteWeight] = useState("");
+  const [completeWastePieces, setCompleteWastePieces] = useState("");
+  const [completeWasteWeight, setCompleteWasteWeight] = useState("");
+  const [completeNotes, setCompleteNotes] = useState("");
+  const [showCompleteForm, setShowCompleteForm] = useState(false);
+
+  const { data: assignment } = useQuery<any>({
+    queryKey: ["/api/factory-shifts/my-assignment", userId],
+    queryFn: async () => {
+      const res = await apiRequest("GET", `/api/factory-shifts/my-assignment/${userId}`);
+      return res.json();
+    },
+    refetchInterval: 30000,
+  });
+
+  const { data: activeBatches = [] } = useQuery<any[]>({
+    queryKey: ["/api/factory-production-batches", "operator", userId, "in_progress"],
+    queryFn: async () => {
+      const res = await apiRequest("GET", `/api/factory-production-batches?operatorId=${userId}&status=in_progress`);
+      return res.json();
+    },
+    refetchInterval: 10000,
+  });
+
+  const activeBatch = activeBatches.length > 0 ? activeBatches[0] : null;
+
+  useEffect(() => {
+    if (!activeBatch) {
+      setBatchTimer(0);
+      return;
+    }
+    const start = new Date(activeBatch.startTime).getTime();
+    const interval = setInterval(() => {
+      setBatchTimer(Math.floor((Date.now() - start) / 1000));
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [activeBatch?.id]);
+
+  const startBatchMutation = useMutation({
+    mutationFn: async (data: any) => {
+      const res = await apiRequest("POST", "/api/factory-production-batches/start", data);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/factory-production-batches", "operator", userId, "in_progress"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/factory-shifts/my-assignment", userId] });
+      toast({ title: "Batch başlatıldı" });
+    },
+    onError: (e: any) => toast({ title: "Hata", description: e.message, variant: "destructive" }),
+  });
+
+  const completeBatchMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: number; data: any }) => {
+      const res = await apiRequest("PUT", `/api/factory-production-batches/${id}/complete`, data);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/factory-production-batches", "operator", userId, "in_progress"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/factory-batch-verifications/pending"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/factory-shifts/my-assignment", userId] });
+      setShowCompleteForm(false);
+      setCompletePieces("");
+      setCompleteWeight("");
+      setCompleteWastePieces("");
+      setCompleteWasteWeight("");
+      setCompleteNotes("");
+      toast({ title: "Batch tamamlandı", description: "Supervisor doğrulaması bekleniyor" });
+    },
+    onError: (e: any) => toast({ title: "Hata", description: e.message, variant: "destructive" }),
+  });
+
+  function handleStartBatch(production: any) {
+    startBatchMutation.mutate({
+      shiftProductionId: production.id,
+      operatorId: userId,
+      machineId: production.machineId || null,
+      batchSpecId: production.batchSpecId || null,
+    });
+  }
+
+  function handleCompleteBatch() {
+    if (!activeBatch) return;
+    completeBatchMutation.mutate({
+      id: activeBatch.id,
+      data: {
+        actualPieces: completePieces ? parseInt(completePieces) : null,
+        actualWeightKg: completeWeight || null,
+        wastePieces: completeWastePieces ? parseInt(completeWastePieces) : null,
+        wasteWeightKg: completeWasteWeight || null,
+        notes: completeNotes || null,
+      },
+    });
+  }
+
+  const formatBatchTime = (seconds: number) => {
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
+  };
+
+  return (
+    <div className="space-y-3">
+      <Separator className="bg-slate-700" />
+      <div className="flex items-center gap-2 text-slate-300">
+        <Package className="h-5 w-5 text-amber-500" />
+        <span className="font-semibold">Batch Üretim</span>
+      </div>
+
+      {activeBatch ? (
+        <div className="bg-slate-700/50 rounded-lg p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-slate-400">Aktif Batch #{activeBatch.batchNumber}</p>
+              <p className="text-lg font-semibold text-slate-200">{activeBatch.productName || "Üretim"}</p>
+            </div>
+            <div className="text-right">
+              <p className="text-2xl font-mono text-green-400" data-testid="text-batch-timer">
+                {formatBatchTime(batchTimer)}
+              </p>
+              {activeBatch.targetDurationMinutes && (
+                <p className="text-xs text-slate-400">Hedef: {activeBatch.targetDurationMinutes} dk</p>
+              )}
+            </div>
+          </div>
+
+          {activeBatch.targetPieces && (
+            <div className="text-sm text-slate-400">
+              Hedef: {activeBatch.targetPieces} adet / {activeBatch.targetWeightKg || "?"} kg
+            </div>
+          )}
+
+          {!showCompleteForm ? (
+            <Button
+              className="w-full bg-green-600"
+              onClick={() => setShowCompleteForm(true)}
+              data-testid="btn-complete-batch"
+            >
+              <CheckCircle2 className="h-5 w-5 mr-2" />
+              Batch Tamamla
+            </Button>
+          ) : (
+            <div className="space-y-3 bg-slate-800/50 rounded-lg p-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label className="text-slate-300 text-xs">Üretilen Adet</Label>
+                  <Input
+                    type="number"
+                    value={completePieces}
+                    onChange={e => setCompletePieces(e.target.value)}
+                    placeholder="650"
+                    className="bg-slate-700 border-slate-600 text-white"
+                    data-testid="input-batch-pieces"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-slate-300 text-xs">Ağırlık (kg)</Label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    value={completeWeight}
+                    onChange={e => setCompleteWeight(e.target.value)}
+                    placeholder="41"
+                    className="bg-slate-700 border-slate-600 text-white"
+                    data-testid="input-batch-weight"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-slate-300 text-xs">Fire Adet</Label>
+                  <Input
+                    type="number"
+                    value={completeWastePieces}
+                    onChange={e => setCompleteWastePieces(e.target.value)}
+                    placeholder="0"
+                    className="bg-slate-700 border-slate-600 text-white"
+                    data-testid="input-batch-waste-pieces"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-slate-300 text-xs">Fire (kg)</Label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    value={completeWasteWeight}
+                    onChange={e => setCompleteWasteWeight(e.target.value)}
+                    placeholder="0"
+                    className="bg-slate-700 border-slate-600 text-white"
+                    data-testid="input-batch-waste-weight"
+                  />
+                </div>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-slate-300 text-xs">Notlar</Label>
+                <Textarea
+                  value={completeNotes}
+                  onChange={e => setCompleteNotes(e.target.value)}
+                  placeholder="Opsiyonel..."
+                  className="bg-slate-700 border-slate-600 text-white"
+                  data-testid="input-batch-notes"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <Button variant="outline" className="border-slate-600" onClick={() => setShowCompleteForm(false)} data-testid="btn-cancel-complete">
+                  İptal
+                </Button>
+                <Button className="bg-green-600" onClick={handleCompleteBatch} disabled={completeBatchMutation.isPending} data-testid="btn-submit-batch-complete">
+                  {completeBatchMutation.isPending ? "Kaydediliyor..." : "Tamamla"}
+                </Button>
+              </div>
+            </div>
+          )}
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {assignment?.productions?.length > 0 ? (
+            assignment.productions
+              .filter((p: any) => p.status !== "completed")
+              .map((prod: any) => (
+                <div key={prod.id} className="bg-slate-700/50 rounded-lg p-3 flex items-center justify-between" data-testid={`kiosk-prod-${prod.id}`}>
+                  <div>
+                    <p className="text-sm font-medium text-slate-200">{prod.productName}</p>
+                    <p className="text-xs text-slate-400">
+                      {prod.completedBatchCount || 0} / {prod.plannedBatchCount} batch
+                    </p>
+                  </div>
+                  <Button
+                    size="sm"
+                    className="bg-blue-600"
+                    onClick={() => handleStartBatch(prod)}
+                    disabled={startBatchMutation.isPending || (prod.completedBatchCount >= prod.plannedBatchCount)}
+                    data-testid={`btn-start-batch-${prod.id}`}
+                  >
+                    <Play className="h-4 w-4 mr-1" />
+                    Başlat
+                  </Button>
+                </div>
+              ))
+          ) : (
+            <p className="text-sm text-slate-400 text-center py-2">Bugün için atanmış üretim planı yok</p>
+          )}
+        </div>
+      )}
     </div>
   );
 }

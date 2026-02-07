@@ -52,6 +52,7 @@ The frontend utilizes React 18+ with TypeScript and Vite, employing Shadcn/ui (N
   - **Production-Inventory Integration**: Automatic stock deduction on production completion (uretim_cikis), finished product stock addition (uretim_giris), stock check simulation before production, production history tracking, material-inventory linking, low stock notifications, and AI-powered consumption forecasting with order recommendations
   - **Production API Endpoints**: POST /api/production/complete, POST /api/production/check-stock, GET /api/production/history, GET /api/production/:id, GET /api/production/stock-movements, GET /api/production/material-stock-links, POST /api/production/link-material, GET /api/production/ai-insights
   - **Üretim Planlama Tabs**: Takvim (calendar), Üretim Geçmişi (history), Stok Bağlantıları (material-inventory links), AI Analiz (consumption forecasts, recommendations, low stock alerts)
+  - **Factory Shift & Production Planning**: Complete shift planning system with batch tracking, performance monitoring, worker assignments, and supervisor verification workflows. Tables: factory_shifts, factory_shift_workers, factory_batch_specs, factory_shift_productions, factory_production_batches, factory_batch_verifications. Features weekly calendar view, batch spec management (product+machine combos with target weight/pieces/duration), production planning per shift, real-time batch timer in kiosk, supervisor verification queue with approve/reject, and production statistics dashboard with product and worker breakdowns. Performance formula: performanceScore = (targetDuration / actualDuration) * 100; yieldRate = (actualPieces / targetPieces) * 100. Kiosk integration allows operators to start/complete batches with waste tracking. Role-based access control on write endpoints.
   - **AI Recipe Creation**: Photo-based (OpenAI Vision gpt-4o) and text-based recipe parsing with automatic ingredient matching to existing raw materials using fuzzy matching. Two-step flow: input (photo/text) → review (matched ingredients, manual override, product selection). Endpoints: POST /api/recipes/ai-parse, POST /api/recipes/ai-create
 
 ### System Design Choices
@@ -67,7 +68,7 @@ The frontend utilizes React 18+ with TypeScript and Vite, employing Shadcn/ui (N
 - **Layout System**: Responsive flex-based layouts with standardized gaps.
 - **Dashboard Hub**: `CardGridHub` displays 9 mega-module cards with **role-based visibility** - HQ sees all modules, Supervisor sees branch operations (no Factory/NewShop/Admin), Fabrika sees factory-specific modules, Barista/Stajyer see basic operational modules.
 - **Mega-Module Architecture**: Each major section uses a tabbed mega-module wrapper that lazy-loads page components, with URL synchronization for deep linking. Key mega-modules:
-  - `/fabrika`: 8 tabs (Dashboard, Kiosk, Kalite Kontrol, Performans, Vardiya Uyumluluk, AI Raporlar, Üretim Planlama, Maliyet Yönetimi)
+  - `/fabrika`: 9 tabs (Dashboard, Kiosk, Kalite Kontrol, Performans, Vardiya Uyumluluk, AI Raporlar, Üretim Planlama, Maliyet Yönetimi, Vardiya Planlama)
   - `/ekipman`: 3 tabs (Ekipman, Arıza Yönetimi, Ekipman Analitik)
   - `/raporlar`: 12 tabs (Raporlar, Performans, AI Asistan, Kalite Denetimi, etc.)
   - `/akademi`: 18 tabs in 4 groups (Eğitim, Oyunlaştırma, Analitik, Gelişmiş)

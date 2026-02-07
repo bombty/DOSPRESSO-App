@@ -16,7 +16,8 @@ import {
   ClipboardList,
   BarChart3,
   Factory,
-  Calculator
+  Calculator,
+  Clock
 } from "lucide-react";
 
 const FabrikaDashboard = lazy(() => import("./dashboard"));
@@ -27,6 +28,7 @@ const FabrikaVardiyaUyumluluk = lazy(() => import("./vardiya-uyumluluk"));
 const FabrikaAIRaporlar = lazy(() => import("./ai-raporlar"));
 const FabrikaUretimPlanlama = lazy(() => import("./uretim-planlama"));
 const FabrikaMaliyetYonetimi = lazy(() => import("./maliyet-yonetimi"));
+const FabrikaVardiyaPlanlama = lazy(() => import("./vardiya-planlama"));
 
 interface TabConfig {
   id: string;
@@ -101,6 +103,14 @@ const FABRIKA_TABS: TabConfig[] = [
     icon: <Calculator className="h-4 w-4" />,
     permissionModule: "factory_analytics",
     component: FabrikaMaliyetYonetimi
+  },
+  {
+    id: "vardiya-planlama",
+    label: "Shift Planning",
+    labelTr: "Vardiya Planlama",
+    icon: <Clock className="h-4 w-4" />,
+    permissionModule: "factory_stations",
+    component: FabrikaVardiyaPlanlama
   }
 ];
 
