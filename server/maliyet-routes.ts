@@ -911,10 +911,9 @@ export function registerMaliyetRoutes(app: Express, isAuthenticated: AuthMiddlew
         const itemCost = qty * unitPrice;
         totalRawMaterialCost += itemCost;
         
-        // Admin dışı kullanıcılara:
-        // 1. Keyblend malzeme detaylarını her zaman gizle
-        // 2. KEYBLEND tipi reçetede TÜM malzemeleri gizle (formülasyonu korumak için)
-        const shouldHide = !isAdmin && (isKeyblendMaterial || isKeyblendRecipe);
+        // Sadece KEYBLEND tipi reçetelerde TÜM malzemeler gizlenir (formülasyonu korumak için)
+        // Normal (OPEN) reçetelerde tüm içerik görünür - KB malzemeleri dahil
+        const shouldHide = !isAdmin && isKeyblendRecipe;
         
         if (shouldHide) {
           return {

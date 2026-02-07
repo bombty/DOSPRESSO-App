@@ -88,7 +88,7 @@ function formatPercent(value: string | number | null | undefined): string {
   return `%${((num - 1) * 100).toFixed(1)}`;
 }
 
-function ProductCostDetail({ productId, onEditLabor }: { productId: number; onEditLabor?: (recipeId: number) => void }) {
+function ProductCostDetail({ productId, onEditLabor, onEditRecipe, onDeleteIngredient, onAddIngredient }: { productId: number; onEditLabor?: (recipeId: number) => void; onEditRecipe?: (recipeId: number) => void; onDeleteIngredient?: (recipeId: number, ingredientId: number) => void; onAddIngredient?: (recipeId: number) => void }) {
   const { data, isLoading } = useQuery<any>({
     queryKey: ['/api/product-costs', productId],
   });
@@ -112,11 +112,24 @@ function ProductCostDetail({ productId, onEditLabor }: { productId: number; onEd
           <p className="text-xs text-muted-foreground">Ürün</p>
           <p className="font-medium">{data.product?.name}</p>
         </div>
-        <div>
-          <p className="text-xs text-muted-foreground">Reçete Tipi</p>
-          <Badge className={data.recipe?.recipeType === "KEYBLEND" ? "bg-amber-500" : ""}>
-            {data.recipe?.recipeType}
-          </Badge>
+        <div className="flex items-start justify-between gap-2">
+          <div>
+            <p className="text-xs text-muted-foreground">Reçete Tipi</p>
+            <Badge className={data.recipe?.recipeType === "KEYBLEND" ? "bg-amber-500" : ""}>
+              {data.recipe?.recipeType}
+            </Badge>
+          </div>
+          {onEditRecipe && data.recipe?.id && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => onEditRecipe(data.recipe.id)}
+              data-testid="button-edit-recipe"
+            >
+              <Edit className="w-3 h-3 mr-1" />
+              Reçete Düzenle
+            </Button>
+          )}
         </div>
       </div>
 
@@ -173,6 +186,7 @@ function ProductCostDetail({ productId, onEditLabor }: { productId: number; onEd
               <TableHead className="text-right">Miktar</TableHead>
               <TableHead className="text-right">Birim Fiyat</TableHead>
               <TableHead className="text-right">Toplam</TableHead>
+              <TableHead></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -186,10 +200,34 @@ function ProductCostDetail({ productId, onEditLabor }: { productId: number; onEd
                 <TableCell className="text-right">{ing.quantity} {ing.unit}</TableCell>
                 <TableCell className="text-right">{ing.isHidden ? "***" : formatCurrency(ing.unitCost)}</TableCell>
                 <TableCell className="text-right font-medium">{formatCurrency(ing.totalCost)}</TableCell>
+                <TableCell>
+                  {!ing.isHidden && onDeleteIngredient && data.recipe?.id && (
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      onClick={() => onDeleteIngredient(data.recipe.id, ing.id)}
+                      data-testid={`button-delete-ingredient-${ing.id}`}
+                    >
+                      <Trash2 className="w-3 h-3" />
+                    </Button>
+                  )}
+                </TableCell>
               </TableRow>
             ))}
           </TableBody>
         </Table>
+        {onAddIngredient && data.recipe?.id && (
+          <Button
+            size="sm"
+            variant="outline"
+            className="mt-2"
+            onClick={() => onAddIngredient(data.recipe.id)}
+            data-testid="button-add-ingredient-action"
+          >
+            <Plus className="w-3 h-3 mr-1" />
+            Malzeme Ekle
+          </Button>
+        )}
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-3 gap-3 pt-4 border-t">
@@ -245,6 +283,17 @@ export default function MaliyetYonetimi() {
   const [laborProductionMinutes, setLaborProductionMinutes] = useState(0);
   const [laborBatchSize, setLaborBatchSize] = useState(1);
   const [laborHourlyRate, setLaborHourlyRate] = useState("0");
+  const [isEditRecipeDialogOpen, setIsEditRecipeDialogOpen] = useState(false);
+  const [editingRecipe, setEditingRecipe] = useState<any>(null);
+  const [recipeName, setRecipeName] = useState("");
+  const [recipeType, setRecipeType] = useState("OPEN");
+  const [recipeOutputQty, setRecipeOutputQty] = useState("1");
+  const [recipeOutputUnit, setRecipeOutputUnit] = useState("adet");
+  const [recipeNotes, setRecipeNotes] = useState("");
+  const [isAddIngredientDialogOpen, setIsAddIngredientDialogOpen] = useState(false);
+  const [newIngredientMaterialId, setNewIngredientMaterialId] = useState<number | null>(null);
+  const [newIngredientQuantity, setNewIngredientQuantity] = useState("");
+  const [newIngredientUnit, setNewIngredientUnit] = useState("gr");
 
   const { data: dashboardStats, isLoading: statsLoading } = useQuery<any>({
     queryKey: ['/api/cost-dashboard/stats'],
@@ -463,6 +512,51 @@ export default function MaliyetYonetimi() {
     }
   });
 
+  const updateRecipeMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: number; data: any }) => {
+      return apiRequest("PUT", `/api/recipes/${id}`, data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/product-costs'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/cost-dashboard'] });
+      setIsEditRecipeDialogOpen(false);
+      toast({ title: "Reçete güncellendi" });
+    },
+    onError: () => {
+      toast({ title: "Hata", description: "Reçete güncellenemedi", variant: "destructive" });
+    }
+  });
+
+  const addIngredientMutation = useMutation({
+    mutationFn: async ({ recipeId, rawMaterialId, quantity, unit }: { recipeId: number; rawMaterialId: number; quantity: string; unit: string }) => {
+      return apiRequest("POST", `/api/recipes/${recipeId}/ingredients`, { rawMaterialId, quantity, unit });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/product-costs'] });
+      setIsAddIngredientDialogOpen(false);
+      setNewIngredientMaterialId(null);
+      setNewIngredientQuantity("");
+      setNewIngredientUnit("gr");
+      toast({ title: "Malzeme eklendi" });
+    },
+    onError: () => {
+      toast({ title: "Hata", description: "Malzeme eklenemedi", variant: "destructive" });
+    }
+  });
+
+  const deleteIngredientMutation = useMutation({
+    mutationFn: async ({ recipeId, ingredientId }: { recipeId: number; ingredientId: number }) => {
+      return apiRequest("DELETE", `/api/recipes/${recipeId}/ingredients/${ingredientId}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/product-costs'] });
+      toast({ title: "Malzeme silindi" });
+    },
+    onError: () => {
+      toast({ title: "Hata", description: "Malzeme silinemedi", variant: "destructive" });
+    }
+  });
+
   const openEditLaborDialog = (recipeId: number) => {
     setEditingRecipeId(recipeId);
     if (selectedProductId) {
@@ -475,6 +569,22 @@ export default function MaliyetYonetimi() {
       }
     }
     setIsEditLaborDialogOpen(true);
+  };
+
+  const openEditRecipeDialog = (recipeId: number) => {
+    setEditingRecipeId(recipeId);
+    if (selectedProductId) {
+      const cachedData = queryClient.getQueryData(['/api/product-costs', selectedProductId]) as any;
+      if (cachedData?.recipe) {
+        setRecipeName(cachedData.recipe.name || "");
+        setRecipeType(cachedData.recipe.recipeType || "OPEN");
+        setRecipeOutputQty(cachedData.recipe.outputQuantity?.toString() || "1");
+        setRecipeOutputUnit(cachedData.recipe.outputUnit || "adet");
+        setRecipeNotes(cachedData.recipe.notes || "");
+        setEditingRecipe(cachedData.recipe);
+      }
+    }
+    setIsEditRecipeDialogOpen(true);
   };
 
   const handleDelete = () => {
@@ -970,10 +1080,10 @@ export default function MaliyetYonetimi() {
                                   e.stopPropagation();
                                   setSelectedProductId(item.product?.id);
                                   if (item.recipe?.id) {
-                                    openEditLaborDialog(item.recipe.id);
+                                    openEditRecipeDialog(item.recipe.id);
                                   }
                                 }}
-                                data-testid={`button-edit-labor-${item.product?.id}`}
+                                data-testid={`button-edit-recipe-${item.product?.id}`}
                               >
                                 <Edit className="w-4 h-4" />
                               </Button>
@@ -1027,7 +1137,21 @@ export default function MaliyetYonetimi() {
               <DialogHeader>
                 <DialogTitle>Ürün Maliyet Detayı</DialogTitle>
               </DialogHeader>
-              {selectedProductId && <ProductCostDetail productId={selectedProductId} onEditLabor={openEditLaborDialog} />}
+              {selectedProductId && (
+                <ProductCostDetail 
+                  productId={selectedProductId} 
+                  onEditLabor={openEditLaborDialog}
+                  onEditRecipe={openEditRecipeDialog}
+                  onDeleteIngredient={(recipeId, ingredientId) => deleteIngredientMutation.mutate({ recipeId, ingredientId })}
+                  onAddIngredient={(recipeId) => {
+                    setEditingRecipeId(recipeId);
+                    setNewIngredientMaterialId(null);
+                    setNewIngredientQuantity("");
+                    setNewIngredientUnit("gr");
+                    setIsAddIngredientDialogOpen(true);
+                  }}
+                />
+              )}
             </DialogContent>
           </Dialog>
 
@@ -1097,6 +1221,165 @@ export default function MaliyetYonetimi() {
                 >
                   {updateRecipeLaborMutation.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
                   Kaydet
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+
+          <Dialog open={isEditRecipeDialogOpen} onOpenChange={setIsEditRecipeDialogOpen}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Reçete Düzenle</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div>
+                  <label className="text-sm font-medium">Reçete Adı</label>
+                  <Input
+                    value={recipeName}
+                    onChange={(e) => setRecipeName(e.target.value)}
+                    data-testid="input-recipe-name"
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium">Reçete Tipi</label>
+                  <Select value={recipeType} onValueChange={setRecipeType}>
+                    <SelectTrigger data-testid="select-recipe-type">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="OPEN">OPEN (Görünür)</SelectItem>
+                      <SelectItem value="KEYBLEND">KEYBLEND (Gizli)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-sm font-medium">Çıktı Miktarı</label>
+                    <Input
+                      type="number"
+                      step="0.001"
+                      value={recipeOutputQty}
+                      onChange={(e) => setRecipeOutputQty(e.target.value)}
+                      data-testid="input-recipe-output-qty"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium">Çıktı Birimi</label>
+                    <Select value={recipeOutputUnit} onValueChange={setRecipeOutputUnit}>
+                      <SelectTrigger data-testid="select-recipe-output-unit">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="adet">Adet</SelectItem>
+                        <SelectItem value="kg">Kilogram</SelectItem>
+                        <SelectItem value="lt">Litre</SelectItem>
+                        <SelectItem value="porsiyon">Porsiyon</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div>
+                  <label className="text-sm font-medium">Notlar</label>
+                  <Input
+                    value={recipeNotes}
+                    onChange={(e) => setRecipeNotes(e.target.value)}
+                    data-testid="input-recipe-notes"
+                  />
+                </div>
+                <Button
+                  className="w-full"
+                  disabled={updateRecipeMutation.isPending}
+                  onClick={() => {
+                    if (editingRecipeId) {
+                      updateRecipeMutation.mutate({
+                        id: editingRecipeId,
+                        data: {
+                          name: recipeName,
+                          recipeType,
+                          outputQuantity: recipeOutputQty,
+                          outputUnit: recipeOutputUnit,
+                          notes: recipeNotes,
+                        }
+                      });
+                    }
+                  }}
+                  data-testid="button-save-recipe"
+                >
+                  {updateRecipeMutation.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+                  Kaydet
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+
+          <Dialog open={isAddIngredientDialogOpen} onOpenChange={setIsAddIngredientDialogOpen}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Malzeme Ekle</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div>
+                  <label className="text-sm font-medium">Hammadde</label>
+                  <Select 
+                    value={newIngredientMaterialId?.toString() || ""} 
+                    onValueChange={(v) => setNewIngredientMaterialId(parseInt(v))}
+                  >
+                    <SelectTrigger data-testid="select-ingredient-material">
+                      <SelectValue placeholder="Hammadde seçin" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {rawMaterials?.map((m: any) => (
+                        <SelectItem key={m.id} value={m.id.toString()}>
+                          {m.code} - {m.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-sm font-medium">Miktar</label>
+                    <Input
+                      type="number"
+                      step="0.0001"
+                      value={newIngredientQuantity}
+                      onChange={(e) => setNewIngredientQuantity(e.target.value)}
+                      data-testid="input-ingredient-quantity"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium">Birim</label>
+                    <Select value={newIngredientUnit} onValueChange={setNewIngredientUnit}>
+                      <SelectTrigger data-testid="select-ingredient-unit">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="gr">Gram (gr)</SelectItem>
+                        <SelectItem value="kg">Kilogram (kg)</SelectItem>
+                        <SelectItem value="ml">Mililitre (ml)</SelectItem>
+                        <SelectItem value="lt">Litre (lt)</SelectItem>
+                        <SelectItem value="adet">Adet</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <Button
+                  className="w-full"
+                  disabled={addIngredientMutation.isPending || !newIngredientMaterialId || !newIngredientQuantity}
+                  onClick={() => {
+                    if (editingRecipeId && newIngredientMaterialId && newIngredientQuantity) {
+                      addIngredientMutation.mutate({
+                        recipeId: editingRecipeId,
+                        rawMaterialId: newIngredientMaterialId,
+                        quantity: newIngredientQuantity,
+                        unit: newIngredientUnit,
+                      });
+                    }
+                  }}
+                  data-testid="button-add-ingredient"
+                >
+                  {addIngredientMutation.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+                  Malzeme Ekle
                 </Button>
               </div>
             </DialogContent>
