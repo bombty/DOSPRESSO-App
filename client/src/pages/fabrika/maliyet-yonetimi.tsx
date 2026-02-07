@@ -14,10 +14,12 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { queryClient, apiRequest } from "@/lib/queryClient";
+import { Textarea } from "@/components/ui/textarea";
 import { 
   Calculator, Package, Warehouse, TrendingUp, Plus, RefreshCw, 
   DollarSign, Percent, Building2, FileText, Settings2, BarChart3,
-  Loader2, AlertTriangle, CheckCircle, Edit, Trash2, Users, Clock, Hash
+  Loader2, AlertTriangle, CheckCircle, Edit, Trash2, Users, Clock, Hash,
+  Sparkles, Camera, Type, Upload, ArrowLeft, ArrowRight, Check, X, Search
 } from "lucide-react";
 
 const rawMaterialSchema = z.object({
@@ -295,6 +297,18 @@ export default function MaliyetYonetimi() {
   const [newIngredientQuantity, setNewIngredientQuantity] = useState("");
   const [newIngredientUnit, setNewIngredientUnit] = useState("gr");
 
+  const [isAiRecipeDialogOpen, setIsAiRecipeDialogOpen] = useState(false);
+  const [aiMode, setAiMode] = useState<"photo" | "text">("photo");
+  const [aiTextInput, setAiTextInput] = useState("");
+  const [aiImageBase64, setAiImageBase64] = useState<string | null>(null);
+  const [aiImagePreview, setAiImagePreview] = useState<string | null>(null);
+  const [aiStep, setAiStep] = useState<"input" | "review">("input");
+  const [aiParsedResult, setAiParsedResult] = useState<any>(null);
+  const [aiSelectedProductId, setAiSelectedProductId] = useState<number | null>(null);
+  const [aiRecipeName, setAiRecipeName] = useState("");
+  const [aiRecipeType, setAiRecipeType] = useState("OPEN");
+  const [aiIngredients, setAiIngredients] = useState<any[]>([]);
+
   const { data: dashboardStats, isLoading: statsLoading } = useQuery<any>({
     queryKey: ['/api/cost-dashboard/stats'],
   });
@@ -543,6 +557,113 @@ export default function MaliyetYonetimi() {
       toast({ title: "Hata", description: "Malzeme eklenemedi", variant: "destructive" });
     }
   });
+
+  function resetAiDialog() {
+    setIsAiRecipeDialogOpen(false);
+    setAiStep("input");
+    setAiMode("photo");
+    setAiTextInput("");
+    setAiImageBase64(null);
+    setAiImagePreview(null);
+    setAiParsedResult(null);
+    setAiSelectedProductId(null);
+    setAiRecipeName("");
+    setAiRecipeType("OPEN");
+    setAiIngredients([]);
+  }
+
+  const aiParseMutation = useMutation({
+    mutationFn: async (data: { imageBase64?: string | null; textInput?: string; mode: string }) => {
+      const res = await apiRequest("POST", "/api/recipes/ai-parse", data);
+      return res.json();
+    },
+    onSuccess: (data: any) => {
+      setAiParsedResult(data);
+      setAiRecipeName(data.parsed?.productName || "");
+      setAiRecipeType(data.parsed?.recipeType || "OPEN");
+      if (data.matchedProduct) {
+        setAiSelectedProductId(data.matchedProduct.id);
+      }
+      const mappedIngredients = (data.ingredients || []).map((ing: any, idx: number) => ({
+        id: idx,
+        originalName: ing.originalName,
+        quantity: ing.quantity?.toString() || "0",
+        unit: ing.unit || "gr",
+        rawMaterialId: ing.matchedMaterial?.id || null,
+        isMatched: ing.isMatched,
+        matchScore: ing.matchScore,
+        matchedMaterialName: ing.matchedMaterial?.name || null,
+      }));
+      setAiIngredients(mappedIngredients);
+      if (mappedIngredients.length === 0) {
+        toast({ title: "Uyarı", description: "AI reçeteden malzeme çıkaramadı. Lütfen farklı bir fotoğraf veya metin deneyin.", variant: "destructive" });
+      } else {
+        setAiStep("review");
+      }
+    },
+    onError: (error: any) => {
+      toast({ title: "AI Analiz Hatası", description: error.message || "Reçete analiz edilemedi", variant: "destructive" });
+    }
+  });
+
+  const aiCreateMutation = useMutation({
+    mutationFn: async (data: any) => {
+      const res = await apiRequest("POST", "/api/recipes/ai-create", data);
+      return res.json();
+    },
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/product-costs'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/cost-dashboard'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/recipes'] });
+      toast({ title: "Reçete Oluşturuldu", description: data.message });
+      resetAiDialog();
+    },
+    onError: (error: any) => {
+      toast({ title: "Hata", description: error.message || "Reçete oluşturulamadı", variant: "destructive" });
+    }
+  });
+
+  const handleAiImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const base64 = reader.result as string;
+      setAiImageBase64(base64);
+      setAiImagePreview(base64);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleAiParse = () => {
+    if (aiMode === "photo" && aiImageBase64) {
+      aiParseMutation.mutate({ imageBase64: aiImageBase64, mode: "photo" });
+    } else if (aiMode === "text" && aiTextInput.trim()) {
+      aiParseMutation.mutate({ textInput: aiTextInput, mode: "text" });
+    }
+  };
+
+  const handleAiCreate = () => {
+    const validIngredients = aiIngredients.filter(ing => ing.rawMaterialId && parseFloat(ing.quantity) > 0);
+    if (!aiSelectedProductId || !aiRecipeName || validIngredients.length === 0) {
+      toast({ title: "Eksik Bilgi", description: "Ürün, reçete adı ve en az bir eşleşmiş malzeme gerekli", variant: "destructive" });
+      return;
+    }
+    aiCreateMutation.mutate({
+      productId: aiSelectedProductId,
+      recipeName: aiRecipeName,
+      recipeType: aiRecipeType,
+      outputQuantity: aiParsedResult?.parsed?.batchSize?.toString() || "1",
+      outputUnit: aiParsedResult?.parsed?.outputUnit || "adet",
+      productionTimeMinutes: aiParsedResult?.parsed?.productionTimeMinutes || 0,
+      notes: aiParsedResult?.parsed?.notes || "AI tarafından oluşturuldu",
+      ingredients: validIngredients.map(ing => ({
+        rawMaterialId: ing.rawMaterialId,
+        quantity: ing.quantity,
+        unit: ing.unit,
+      })),
+    });
+  };
 
   const deleteIngredientMutation = useMutation({
     mutationFn: async ({ recipeId, ingredientId }: { recipeId: number; ingredientId: number }) => {
@@ -1015,8 +1136,17 @@ export default function MaliyetYonetimi() {
           
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <Card>
-              <CardHeader className="pb-2">
+              <CardHeader className="flex flex-row items-center justify-between gap-2 pb-2">
                 <CardTitle className="text-sm">Reçeteli Ürünler</CardTitle>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setIsAiRecipeDialogOpen(true)}
+                  data-testid="button-ai-recipe"
+                >
+                  <Sparkles className="w-4 h-4 mr-2" />
+                  AI ile Oluştur
+                </Button>
               </CardHeader>
               <CardContent className="p-0">
                 {productsLoading ? (
@@ -1382,6 +1512,275 @@ export default function MaliyetYonetimi() {
                   Malzeme Ekle
                 </Button>
               </div>
+            </DialogContent>
+          </Dialog>
+
+          <Dialog open={isAiRecipeDialogOpen} onOpenChange={(open) => { if (!open) resetAiDialog(); else setIsAiRecipeDialogOpen(true); }}>
+            <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  <Sparkles className="w-5 h-5 text-amber-500" />
+                  AI ile Reçete Oluştur
+                </DialogTitle>
+              </DialogHeader>
+              
+              {aiStep === "input" && (
+                <div className="space-y-4">
+                  <div className="flex gap-2">
+                    <Button
+                      variant={aiMode === "photo" ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setAiMode("photo")}
+                      data-testid="button-ai-mode-photo"
+                    >
+                      <Camera className="w-4 h-4 mr-2" />
+                      Fotoğraf
+                    </Button>
+                    <Button
+                      variant={aiMode === "text" ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setAiMode("text")}
+                      data-testid="button-ai-mode-text"
+                    >
+                      <Type className="w-4 h-4 mr-2" />
+                      Metin
+                    </Button>
+                  </div>
+
+                  {aiMode === "photo" ? (
+                    <div className="space-y-3">
+                      <p className="text-sm text-muted-foreground">
+                        Reçete fotoğrafını yükleyin. AI fotoğraftaki malzemeleri ve miktarları otomatik olarak analiz edecektir.
+                      </p>
+                      <div className="border-2 border-dashed rounded-md p-6 text-center">
+                        {aiImagePreview ? (
+                          <div className="space-y-3">
+                            <img src={aiImagePreview} alt="Reçete" className="max-h-48 mx-auto rounded-md object-contain" />
+                            <Button variant="outline" size="sm" onClick={() => { setAiImageBase64(null); setAiImagePreview(null); }} data-testid="button-remove-image">
+                              <X className="w-4 h-4 mr-2" />
+                              Kaldır
+                            </Button>
+                          </div>
+                        ) : (
+                          <label className="cursor-pointer block">
+                            <input type="file" accept="image/*" capture="environment" className="hidden" onChange={handleAiImageUpload} data-testid="input-ai-image" />
+                            <div className="flex flex-col items-center gap-2 text-muted-foreground">
+                              <Upload className="w-8 h-8" />
+                              <span className="text-sm">Fotoğraf yükleyin veya çekin</span>
+                            </div>
+                          </label>
+                        )}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      <p className="text-sm text-muted-foreground">
+                        Reçete metnini yapıştırın veya yazın. AI malzemeleri ve miktarları otomatik olarak çıkaracaktır.
+                      </p>
+                      <Textarea
+                        value={aiTextInput}
+                        onChange={(e) => setAiTextInput(e.target.value)}
+                        placeholder={"Örnek:\nOreo Cheesecake\nBatch: 630 adet\n\nMalzemeler:\n- Creambase: 0.06 kg\n- Oreo Crumble: 0.08 kg\n- Cream Cheese: 0.15 kg"}
+                        className="min-h-[200px]"
+                        data-testid="input-ai-text"
+                      />
+                    </div>
+                  )}
+
+                  <Button 
+                    className="w-full"
+                    disabled={aiParseMutation.isPending || (aiMode === "photo" ? !aiImageBase64 : !aiTextInput.trim())}
+                    onClick={handleAiParse}
+                    data-testid="button-ai-analyze"
+                  >
+                    {aiParseMutation.isPending ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        AI Analiz Ediyor...
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="w-4 h-4 mr-2" />
+                        Analiz Et
+                      </>
+                    )}
+                  </Button>
+                </div>
+              )}
+
+              {aiStep === "review" && aiParsedResult && (
+                <div className="space-y-4">
+                  <Button variant="ghost" size="sm" onClick={() => setAiStep("input")} data-testid="button-ai-back">
+                    <ArrowLeft className="w-4 h-4 mr-2" />
+                    Geri
+                  </Button>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-sm font-medium">Reçete Adı</label>
+                      <Input
+                        value={aiRecipeName}
+                        onChange={(e) => setAiRecipeName(e.target.value)}
+                        data-testid="input-ai-recipe-name"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium">Reçete Tipi</label>
+                      <Select value={aiRecipeType} onValueChange={setAiRecipeType}>
+                        <SelectTrigger data-testid="select-ai-recipe-type">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="OPEN">OPEN (Açık)</SelectItem>
+                          <SelectItem value="KEYBLEND">KEYBLEND (Gizli)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-sm font-medium">Ürün</label>
+                    <Select 
+                      value={aiSelectedProductId?.toString() || ""} 
+                      onValueChange={(v) => setAiSelectedProductId(parseInt(v))}
+                    >
+                      <SelectTrigger data-testid="select-ai-product">
+                        <SelectValue placeholder="Ürün seçin" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {(aiParsedResult?.allProducts || []).map((p: any) => (
+                          <SelectItem key={p.id} value={p.id.toString()}>
+                            {p.name} ({p.category})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-3">
+                    <div className="p-2 rounded-md bg-muted/50 text-center">
+                      <p className="text-xs text-muted-foreground">Batch</p>
+                      <p className="font-medium text-sm">{aiParsedResult?.parsed?.batchSize || "-"} {aiParsedResult?.parsed?.outputUnit || ""}</p>
+                    </div>
+                    <div className="p-2 rounded-md bg-muted/50 text-center">
+                      <p className="text-xs text-muted-foreground">Süre</p>
+                      <p className="font-medium text-sm">{aiParsedResult?.parsed?.productionTimeMinutes || "-"} dk</p>
+                    </div>
+                    <div className="p-2 rounded-md bg-muted/50 text-center">
+                      <p className="text-xs text-muted-foreground">Kategori</p>
+                      <p className="font-medium text-sm">{aiParsedResult?.parsed?.category || "-"}</p>
+                    </div>
+                  </div>
+
+                  <div>
+                    <h4 className="text-sm font-medium mb-2">Malzeme Eşleştirme</h4>
+                    <div className="space-y-2 max-h-[300px] overflow-y-auto">
+                      {aiIngredients.map((ing, idx) => (
+                        <div key={idx} className={`p-3 rounded-md border ${ing.rawMaterialId ? "border-green-200 dark:border-green-800 bg-green-50/50 dark:bg-green-900/20" : "border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-900/20"}`}>
+                          <div className="flex items-center justify-between gap-2 mb-2">
+                            <div className="flex items-center gap-2">
+                              {ing.rawMaterialId ? <Check className="w-4 h-4 text-green-600" /> : <AlertTriangle className="w-4 h-4 text-amber-600" />}
+                              <span className="text-sm font-medium">{ing.originalName}</span>
+                            </div>
+                            <Badge variant={ing.rawMaterialId ? "default" : "secondary"} className={`text-xs ${ing.rawMaterialId ? "bg-green-500" : ""}`}>
+                              {ing.rawMaterialId ? `%${Math.round(ing.matchScore * 100)}` : "Eşleşmedi"}
+                            </Badge>
+                          </div>
+                          <div className="grid grid-cols-3 gap-2">
+                            <div>
+                              <label className="text-xs text-muted-foreground">Hammadde</label>
+                              <Select
+                                value={ing.rawMaterialId?.toString() || ""}
+                                onValueChange={(v) => {
+                                  const updated = [...aiIngredients];
+                                  const mat = aiParsedResult?.allMaterials?.find((m: any) => m.id === parseInt(v));
+                                  updated[idx] = { ...updated[idx], rawMaterialId: parseInt(v), isMatched: true, matchedMaterialName: mat?.name || "" };
+                                  setAiIngredients(updated);
+                                }}
+                              >
+                                <SelectTrigger className="h-8 text-xs" data-testid={`select-ai-material-${idx}`}>
+                                  <SelectValue placeholder="Seçin" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {(aiParsedResult?.allMaterials || []).map((m: any) => (
+                                    <SelectItem key={m.id} value={m.id.toString()}>
+                                      {m.code} - {m.name}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div>
+                              <label className="text-xs text-muted-foreground">Miktar</label>
+                              <Input
+                                type="number"
+                                step="0.0001"
+                                value={ing.quantity}
+                                onChange={(e) => {
+                                  const updated = [...aiIngredients];
+                                  updated[idx] = { ...updated[idx], quantity: e.target.value };
+                                  setAiIngredients(updated);
+                                }}
+                                className="h-8 text-xs"
+                                data-testid={`input-ai-quantity-${idx}`}
+                              />
+                            </div>
+                            <div>
+                              <label className="text-xs text-muted-foreground">Birim</label>
+                              <Select
+                                value={ing.unit}
+                                onValueChange={(v) => {
+                                  const updated = [...aiIngredients];
+                                  updated[idx] = { ...updated[idx], unit: v };
+                                  setAiIngredients(updated);
+                                }}
+                              >
+                                <SelectTrigger className="h-8 text-xs" data-testid={`select-ai-unit-${idx}`}>
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="gr">Gram</SelectItem>
+                                  <SelectItem value="kg">Kilogram</SelectItem>
+                                  <SelectItem value="ml">Mililitre</SelectItem>
+                                  <SelectItem value="lt">Litre</SelectItem>
+                                  <SelectItem value="adet">Adet</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 p-3 rounded-md bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
+                    <Sparkles className="w-4 h-4 text-blue-600 shrink-0" />
+                    <p className="text-xs text-blue-700 dark:text-blue-400">
+                      {aiIngredients.filter(i => i.rawMaterialId).length}/{aiIngredients.length} malzeme eşleştirildi. 
+                      Eşleşmeyen malzemeleri listeden seçebilirsiniz.
+                    </p>
+                  </div>
+
+                  <Button
+                    className="w-full"
+                    disabled={aiCreateMutation.isPending || !aiSelectedProductId || !aiRecipeName || aiIngredients.filter(i => i.rawMaterialId).length === 0}
+                    onClick={handleAiCreate}
+                    data-testid="button-ai-create-recipe"
+                  >
+                    {aiCreateMutation.isPending ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Oluşturuluyor...
+                      </>
+                    ) : (
+                      <>
+                        <Check className="w-4 h-4 mr-2" />
+                        Reçeteyi Kaydet
+                      </>
+                    )}
+                  </Button>
+                </div>
+              )}
             </DialogContent>
           </Dialog>
         </TabsContent>

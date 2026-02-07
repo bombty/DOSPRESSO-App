@@ -1,5 +1,6 @@
 import type { Express, Request, Response } from "express";
 import { db } from "./db";
+import OpenAI from "openai";
 import { 
   rawMaterials,
   productRecipes,
@@ -24,6 +25,11 @@ import {
   insertProductCostCalculationSchema
 } from "@shared/schema";
 import { eq, desc, and, gte, lte, sql, or, like, asc, isNotNull } from "drizzle-orm";
+
+const openai = new OpenAI({
+  baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
+  apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY
+});
 
 type AuthMiddleware = (req: Request, res: Response, next: () => void) => void;
 
@@ -1649,6 +1655,195 @@ export function registerMaliyetRoutes(app: Express, isAuthenticated: AuthMiddlew
     }
   });
 
+  // AI ile Reçete Oluşturma - Fotoğraf veya metin analizi
+  app.post("/api/recipes/ai-parse", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const { imageBase64, textInput, mode } = req.body;
+      
+      if (!imageBase64 && !textInput) {
+        return res.status(400).json({ error: "Fotoğraf veya metin girişi gereklidir" });
+      }
+
+      const allMaterials = await db.select().from(rawMaterials).where(eq(rawMaterials.isActive, true));
+      const materialNames = allMaterials.map(m => `${m.code}: ${m.name} (${m.unit})`).join("\n");
+
+      const systemPrompt = `Sen bir profesyonel gıda reçetesi analiz asistanısın. Verilen reçeteyi analiz et ve JSON formatında çıktı ver.
+
+Mevcut hammadde listemiz:
+${materialNames}
+
+KURALLAR:
+1. Reçetedeki her malzemeyi analiz et
+2. Miktar ve birimi doğru şekilde çıkar (gram=gr, kilogram=kg, litre=lt, mililitre=ml, adet=adet)
+3. Ürün adını belirle
+4. Batch miktarını (kaç adet/kg üretim) belirle
+5. Üretim süresini tahmin et (dakika)
+6. Reçete tipini belirle: "OPEN" (standart) veya "KEYBLEND" (gizli formülasyon)
+
+JSON formatı:
+{
+  "productName": "Ürün Adı",
+  "category": "donut|pastane|konsantre|topping|kahve|cay|diger",
+  "batchSize": 100,
+  "outputUnit": "adet",
+  "productionTimeMinutes": 60,
+  "recipeType": "OPEN",
+  "ingredients": [
+    {
+      "name": "Malzeme Adı",
+      "quantity": 0.5,
+      "unit": "kg"
+    }
+  ],
+  "notes": "Ek notlar"
+}
+
+Sadece JSON döndür, başka metin ekleme.`;
+
+      let messages: any[] = [{ role: "system", content: systemPrompt }];
+
+      if (mode === "photo" && imageBase64) {
+        messages.push({
+          role: "user",
+          content: [
+            { type: "text", text: "Bu fotoğraftaki reçeteyi analiz et ve JSON olarak döndür." },
+            { type: "image_url", image_url: { url: imageBase64.startsWith("data:") ? imageBase64 : `data:image/jpeg;base64,${imageBase64}` } }
+          ]
+        });
+      } else {
+        messages.push({
+          role: "user",
+          content: `Bu reçete metnini analiz et ve JSON olarak döndür:\n\n${textInput}`
+        });
+      }
+
+      const response = await openai.chat.completions.create({
+        model: "gpt-4o",
+        messages,
+        max_tokens: 2000,
+        temperature: 0.1,
+      });
+
+      const content = response.choices[0]?.message?.content || "";
+      
+      let parsed: any;
+      try {
+        const jsonMatch = content.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          parsed = JSON.parse(jsonMatch[0]);
+        } else {
+          throw new Error("JSON bulunamadı");
+        }
+      } catch (e) {
+        return res.status(422).json({ error: "AI yanıtı parse edilemedi", rawResponse: content });
+      }
+
+      const matchedIngredients = matchMaterials(parsed.ingredients || [], allMaterials);
+
+      const products = await db.select().from(factoryProducts).where(eq(factoryProducts.isActive, true));
+      let matchedProduct: any = null;
+      let bestProductScore = 0;
+      for (const p of products) {
+        const score = fuzzyMatch(parsed.productName || "", p.name);
+        if (score > bestProductScore) {
+          bestProductScore = score;
+          matchedProduct = p;
+        }
+      }
+
+      res.json({
+        parsed: {
+          productName: parsed.productName,
+          category: parsed.category,
+          batchSize: parsed.batchSize,
+          outputUnit: parsed.outputUnit,
+          productionTimeMinutes: parsed.productionTimeMinutes,
+          recipeType: parsed.recipeType || "OPEN",
+          notes: parsed.notes,
+        },
+        ingredients: matchedIngredients,
+        matchedProduct: bestProductScore >= 0.5 ? matchedProduct : null,
+        allProducts: products,
+        allMaterials: allMaterials,
+      });
+    } catch (error: any) {
+      console.error("Error in AI recipe parse:", error);
+      res.status(500).json({ error: "AI reçete analizi başarısız: " + (error.message || "Bilinmeyen hata") });
+    }
+  });
+
+  // AI ile Reçete Kaydetme (parsed sonuçlardan)
+  app.post("/api/recipes/ai-create", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const user = (req as any).user;
+      const { productId, recipeName, recipeType, outputQuantity, outputUnit, productionTimeMinutes, notes, ingredients } = req.body;
+
+      if (!productId || !recipeName || !ingredients || ingredients.length === 0) {
+        return res.status(400).json({ error: "Ürün, reçete adı ve en az bir malzeme gereklidir" });
+      }
+
+      const existingRecipes = await db.select().from(productRecipes)
+        .where(and(eq(productRecipes.productId, productId), eq(productRecipes.isActive, true)));
+      
+      if (existingRecipes.length > 0) {
+        await db.update(productRecipes)
+          .set({ isActive: false, updatedAt: new Date() })
+          .where(and(eq(productRecipes.productId, productId), eq(productRecipes.isActive, true)));
+      }
+
+      const maxVersion = existingRecipes.length > 0 
+        ? Math.max(...existingRecipes.map(r => r.version || 0)) + 1 
+        : 1;
+
+      const [newRecipe] = await db.insert(productRecipes).values({
+        productId,
+        name: recipeName,
+        version: maxVersion,
+        isActive: true,
+        recipeType: recipeType || "OPEN",
+        outputQuantity: outputQuantity?.toString() || "1",
+        outputUnit: outputUnit || "adet",
+        productionTimeMinutes: productionTimeMinutes || 0,
+        notes: notes || "AI tarafından oluşturuldu",
+        createdById: user?.id,
+      }).returning();
+
+      let totalRawMaterialCost = 0;
+      for (const ing of ingredients) {
+        if (!ing.rawMaterialId || !ing.quantity) continue;
+        
+        const [material] = await db.select().from(rawMaterials)
+          .where(eq(rawMaterials.id, ing.rawMaterialId));
+        
+        const unitCost = material ? parseFloat(material.currentUnitPrice || "0") : 0;
+        const totalCost = unitCost * parseFloat(ing.quantity);
+        totalRawMaterialCost += totalCost;
+
+        await db.insert(productRecipeIngredients).values({
+          recipeId: newRecipe.id,
+          rawMaterialId: ing.rawMaterialId,
+          quantity: ing.quantity.toString(),
+          unit: ing.unit || "gr",
+          unitCost: unitCost.toFixed(4),
+          totalCost: totalCost.toFixed(4),
+        });
+      }
+
+      await db.update(productRecipes)
+        .set({ rawMaterialCost: totalRawMaterialCost.toFixed(4), updatedAt: new Date() })
+        .where(eq(productRecipes.id, newRecipe.id));
+
+      res.json({ 
+        success: true, 
+        recipe: newRecipe, 
+        message: `Reçete "${recipeName}" başarıyla oluşturuldu (v${maxVersion})` 
+      });
+    } catch (error: any) {
+      console.error("Error creating AI recipe:", error);
+      res.status(500).json({ error: "Reçete oluşturulamadı: " + (error.message || "Bilinmeyen hata") });
+    }
+  });
+
   // AI Üretim Analiz & Tahmin
   app.get("/api/production/ai-insights", isAuthenticated, async (req: Request, res: Response) => {
     try {
@@ -1809,4 +2004,50 @@ function generateRecommendations(
   }
 
   return recommendations;
+}
+
+function fuzzyMatch(input: string, target: string): number {
+  const a = input.toLowerCase().replace(/[^a-zçğıöşü0-9]/gi, "");
+  const b = target.toLowerCase().replace(/[^a-zçğıöşü0-9]/gi, "");
+  if (a === b) return 1;
+  if (b.includes(a) || a.includes(b)) return 0.8;
+  
+  const aWords = input.toLowerCase().split(/\s+/);
+  const bWords = target.toLowerCase().split(/\s+/);
+  let matchCount = 0;
+  for (const aw of aWords) {
+    for (const bw of bWords) {
+      if (bw.includes(aw) || aw.includes(bw)) {
+        matchCount++;
+        break;
+      }
+    }
+  }
+  return matchCount / Math.max(aWords.length, 1);
+}
+
+function matchMaterials(parsedIngredients: any[], materialsList: any[]): any[] {
+  return parsedIngredients.map(ing => {
+    let bestMatch: any = null;
+    let bestScore = 0;
+    
+    for (const mat of materialsList) {
+      const nameScore = fuzzyMatch(ing.name, mat.name);
+      const codeScore = mat.code ? fuzzyMatch(ing.name, mat.code) : 0;
+      const score = Math.max(nameScore, codeScore);
+      if (score > bestScore) {
+        bestScore = score;
+        bestMatch = mat;
+      }
+    }
+    
+    return {
+      originalName: ing.name,
+      quantity: ing.quantity,
+      unit: ing.unit,
+      matchedMaterial: bestScore >= 0.5 ? bestMatch : null,
+      matchScore: bestScore,
+      isMatched: bestScore >= 0.5
+    };
+  });
 }
