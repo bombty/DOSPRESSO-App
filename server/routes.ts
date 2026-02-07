@@ -31861,24 +31861,70 @@ Dusuk puanli alanlara odaklan ve pozitif, motive edici ol. JSON dizisi olarak ya
         ]
       };
 
-      // Get manager performance data
-      const managers = allUsers
-        .filter(u => ['coach', 'satinalma', 'muhasebe', 'fabrika', 'teknik'].includes(u.role))
-        .slice(0, 10)
-        .map((m, idx) => ({
+      // Get manager performance data - ALL HQ personnel
+      const hqRoleSet = new Set([
+        'admin', 'cgo', 'muhasebe_ik', 'muhasebe', 'satinalma',
+        'coach', 'marketing', 'trainer', 'kalite_kontrol', 'fabrika_mudur',
+        'teknik', 'destek', 'fabrika', 'yatirimci_hq', 'ik'
+      ]);
+      const roleDepartmentMap: Record<string, string> = {
+        'admin': 'Yonetim',
+        'cgo': 'CGO',
+        'muhasebe_ik': 'Muhasebe & IK',
+        'muhasebe': 'Muhasebe',
+        'satinalma': 'Satinalma',
+        'coach': 'Franchise Coach',
+        'marketing': 'Pazarlama',
+        'trainer': 'Egitim',
+        'kalite_kontrol': 'Kalite Kontrol',
+        'fabrika_mudur': 'Fabrika Mudur',
+        'teknik': 'Teknik',
+        'destek': 'Destek',
+        'fabrika': 'Fabrika',
+        'yatirimci_hq': 'Yatirimci Iliskileri',
+        'ik': 'Insan Kaynaklari'
+      };
+
+      // Filter real HQ staff - exclude CEO (viewing role), deduplicate by full name
+      const seenUserIds = new Set<string>();
+      const seenNames = new Set<string>();
+      const hqUsers = allUsers.filter(u => {
+        if (!hqRoleSet.has(u.role)) return false;
+        if (seenUserIds.has(u.id)) return false;
+        seenUserIds.add(u.id);
+        const name = ((u.firstName || '') + ' ' + (u.lastName || '')).trim();
+        if (!name) return false;
+        // Deduplicate by full name - keep first occurrence only
+        const nameKey = name.toLowerCase();
+        if (seenNames.has(nameKey)) return false;
+        seenNames.add(nameKey);
+        // Exclude test/generic accounts by username pattern
+        if (u.username && /^(test|e2e|api[-_])/i.test(u.username)) return false;
+        if (u.username === 'fabrika') return false;
+        if (u.username && u.username.includes('sat-test')) return false;
+        // Exclude generic/placeholder names
+        if (/^(Test |E2E |API |Admin |Fabrika Y)/i.test(name)) return false;
+        return true;
+      });
+
+      // Get task data for performance calculation
+      const allTasks = await db.select().from(tasks);
+      const managers = hqUsers.map((m) => {
+        const userTasks = allTasks.filter((t: any) => t.assignedToId === m.id);
+        const completedTasks = userTasks.filter((t: any) => t.status === 'onaylandi');
+        const taskCompletionRate = userTasks.length > 0 ? Math.round((completedTasks.length / userTasks.length) * 100) : 85;
+        const performanceScore = (m as any).performanceScore || taskCompletionRate;
+        const score = Math.min(100, Math.max(0, performanceScore));
+        const trend: 'up' | 'down' | 'stable' = score >= 85 ? 'up' : score >= 70 ? 'stable' : 'down';
+        return {
           id: m.id,
           name: ((m.firstName || '') + ' ' + (m.lastName || '')).trim() || m.username,
-          department: {
-            'coach': 'Franchise Coach',
-            'satinalma': 'Satinalma',
-            'muhasebe': 'Muhasebe',
-            'fabrika': 'Fabrika',
-            'teknik': 'Teknik'
-          }[m.role] || m.role,
-          score: 70 + Math.floor(Math.random() * 25),
-          metrics: { performans: 80 + Math.floor(Math.random() * 15) },
-          trend: ['up', 'down', 'stable'][idx % 3] as 'up' | 'down' | 'stable'
-        }));
+          department: roleDepartmentMap[m.role] || m.role,
+          score,
+          metrics: { performans: score },
+          trend
+        };
+      });
 
       res.json({
         finance: financeData,
