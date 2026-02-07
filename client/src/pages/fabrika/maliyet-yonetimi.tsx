@@ -20,7 +20,7 @@ import {
   DollarSign, Percent, Building2, FileText, Settings2, BarChart3,
   Loader2, AlertTriangle, CheckCircle, Edit, Trash2, Users, Clock, Hash,
   Sparkles, Camera, Type, Upload, ArrowLeft, ArrowRight, Check, X, Search,
-  ChevronsUpDown
+  ChevronsUpDown, Zap, PackageOpen, Cog
 } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
@@ -94,9 +94,42 @@ function formatPercent(value: string | number | null | undefined): string {
 }
 
 function ProductCostDetail({ productId, onEditLabor, onEditRecipe, onDeleteIngredient, onAddIngredient }: { productId: number; onEditLabor?: (recipeId: number) => void; onEditRecipe?: (recipeId: number) => void; onDeleteIngredient?: (recipeId: number, ingredientId: number) => void; onAddIngredient?: (recipeId: number) => void }) {
+  const { toast } = useToast();
   const { data, isLoading } = useQuery<any>({
     queryKey: ['/api/product-costs', productId],
   });
+
+  const addPackagingMutation = useMutation({
+    mutationFn: async (values: any) => {
+      const res = await apiRequest("POST", "/api/packaging-items", values);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/product-costs', productId] });
+      queryClient.invalidateQueries({ queryKey: ['/api/cost-dashboard'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/cost-dashboard/products'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/cost-dashboard/stats'] });
+      toast({ title: "Ambalaj malzemesi eklendi" });
+    }
+  });
+
+  const deletePackagingMutation = useMutation({
+    mutationFn: async (id: number) => {
+      await apiRequest("DELETE", `/api/packaging-items/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/product-costs', productId] });
+      queryClient.invalidateQueries({ queryKey: ['/api/cost-dashboard'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/cost-dashboard/products'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/cost-dashboard/stats'] });
+      toast({ title: "Ambalaj malzemesi silindi" });
+    }
+  });
+
+  const [showAddPackaging, setShowAddPackaging] = useState(false);
+  const [pkgName, setPkgName] = useState("");
+  const [pkgUnitCost, setPkgUnitCost] = useState("");
+  const [pkgQty, setPkgQty] = useState("1");
 
   if (isLoading) {
     return (
@@ -170,7 +203,7 @@ function ProductCostDetail({ productId, onEditLabor, onEditRecipe, onDeleteIngre
             <p className="font-medium" data-testid="text-batch-size">{data.labor?.batchSize || 1} adet</p>
           </div>
           <div>
-            <p className="text-xs text-muted-foreground">Saat Ücreti</p>
+            <p className="text-xs text-muted-foreground">Saat Ücreti {data.labor?.isAutoRate && <Badge variant="outline" className="ml-1 text-[10px]">Otomatik</Badge>}</p>
             <p className="font-medium" data-testid="text-hourly-rate">{formatCurrency(data.labor?.hourlyRate)}</p>
           </div>
         </div>
@@ -178,6 +211,98 @@ function ProductCostDetail({ productId, onEditLabor, onEditRecipe, onDeleteIngre
           <p className="text-xs text-muted-foreground mt-2 pt-2 border-t border-blue-200 dark:border-blue-700">
             Formül: {data.labor.formula} = {formatCurrency(data.labor.totalLaborCost)}
           </p>
+        )}
+      </div>
+
+      <div className="p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
+        <div className="flex items-center gap-2 mb-2">
+          <Zap className="w-4 h-4 text-amber-600" />
+          <p className="text-sm font-medium text-amber-700 dark:text-amber-400">Enerji Maliyeti</p>
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+          <div>
+            <p className="text-xs text-muted-foreground">kWh / Batch</p>
+            <p className="font-medium" data-testid="text-kwh-per-batch">{data.energy?.kwhPerBatch || 0} kWh</p>
+          </div>
+          <div>
+            <p className="text-xs text-muted-foreground">Birim Elektrik Fiyatı</p>
+            <p className="font-medium" data-testid="text-kwh-price">{formatCurrency(data.energy?.kwhPrice)}/kWh</p>
+          </div>
+          <div>
+            <p className="text-xs text-muted-foreground">Cihaz</p>
+            <p className="font-medium text-xs" data-testid="text-equipment">{data.energy?.equipmentDescription || "Tanımlanmadı"}</p>
+          </div>
+        </div>
+        {data.energy?.formula && (
+          <p className="text-xs text-muted-foreground mt-2 pt-2 border-t border-amber-200 dark:border-amber-700">
+            Formül: {data.energy.formula} = {formatCurrency(data.energy.totalEnergyCost)}
+          </p>
+        )}
+      </div>
+
+      <div className="p-3 rounded-lg bg-teal-50 dark:bg-teal-900/20 border border-teal-200 dark:border-teal-800">
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-2">
+            <PackageOpen className="w-4 h-4 text-teal-600" />
+            <p className="text-sm font-medium text-teal-700 dark:text-teal-400">Ambalaj Maliyeti</p>
+          </div>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setShowAddPackaging(!showAddPackaging)}
+            data-testid="button-add-packaging"
+          >
+            <Plus className="w-3 h-3 mr-1" />
+            Ekle
+          </Button>
+        </div>
+        {data.packaging?.items?.length > 0 ? (
+          <div className="space-y-1">
+            {data.packaging.items.map((item: any) => (
+              <div key={item.id} className="flex items-center justify-between text-sm py-1 border-b border-teal-100 dark:border-teal-800 last:border-0">
+                <span>{item.name}</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-muted-foreground">{item.quantity} {item.unit} x {formatCurrency(item.unitCost)}</span>
+                  <span className="font-medium">{formatCurrency(parseFloat(item.quantity || "1") * parseFloat(item.unitCost))}</span>
+                  <Button size="icon" variant="ghost" onClick={() => deletePackagingMutation.mutate(item.id)} data-testid={`button-delete-packaging-${item.id}`}>
+                    <Trash2 className="w-3 h-3" />
+                  </Button>
+                </div>
+              </div>
+            ))}
+            <p className="text-xs text-muted-foreground pt-1">Toplam: {formatCurrency(data.packaging.totalPackagingCost)}</p>
+          </div>
+        ) : (
+          <p className="text-xs text-muted-foreground">Ambalaj malzemesi tanımlanmamış</p>
+        )}
+        {showAddPackaging && (
+          <div className="mt-2 pt-2 border-t border-teal-200 dark:border-teal-700 flex items-end gap-2 flex-wrap">
+            <div className="flex-1 min-w-[120px]">
+              <label className="text-xs text-muted-foreground">Malzeme Adı</label>
+              <Input value={pkgName} onChange={(e) => setPkgName(e.target.value)} placeholder="Kutu, Etiket..." data-testid="input-packaging-name" />
+            </div>
+            <div className="w-20">
+              <label className="text-xs text-muted-foreground">Adet</label>
+              <Input value={pkgQty} onChange={(e) => setPkgQty(e.target.value)} type="number" data-testid="input-packaging-qty" />
+            </div>
+            <div className="w-24">
+              <label className="text-xs text-muted-foreground">Birim Fiyat</label>
+              <Input value={pkgUnitCost} onChange={(e) => setPkgUnitCost(e.target.value)} type="number" step="0.01" data-testid="input-packaging-cost" />
+            </div>
+            <Button
+              size="sm"
+              disabled={!pkgName || !pkgUnitCost}
+              onClick={() => {
+                addPackagingMutation.mutate({ productId, name: pkgName, quantity: pkgQty, unitCost: pkgUnitCost });
+                setPkgName(""); setPkgUnitCost(""); setPkgQty("1");
+                setShowAddPackaging(false);
+              }}
+              data-testid="button-save-packaging"
+            >
+              <Check className="w-3 h-3 mr-1" />
+              Kaydet
+            </Button>
+          </div>
         )}
       </div>
 
@@ -238,27 +363,35 @@ function ProductCostDetail({ productId, onEditLabor, onEditRecipe, onDeleteIngre
       <div className="grid grid-cols-2 md:grid-cols-3 gap-3 pt-4 border-t">
         <div className="p-3 rounded-lg bg-muted/50">
           <p className="text-xs text-muted-foreground">Hammadde Maliyeti</p>
-          <p className="font-bold">{formatCurrency(data.costs?.rawMaterialCost)}</p>
+          <p className="font-bold" data-testid="text-raw-material-cost">{formatCurrency(data.costs?.rawMaterialCost)}</p>
         </div>
         <div className="p-3 rounded-lg bg-blue-50 dark:bg-blue-900/20">
           <p className="text-xs text-muted-foreground">İşçilik Maliyeti</p>
-          <p className="font-bold text-blue-700 dark:text-blue-400">{formatCurrency(data.costs?.laborCost)}</p>
+          <p className="font-bold text-blue-700 dark:text-blue-400" data-testid="text-labor-cost">{formatCurrency(data.costs?.laborCost)}</p>
+        </div>
+        <div className="p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20">
+          <p className="text-xs text-muted-foreground">Enerji Maliyeti</p>
+          <p className="font-bold text-amber-700 dark:text-amber-400" data-testid="text-energy-cost">{formatCurrency(data.costs?.energyCost)}</p>
+        </div>
+        <div className="p-3 rounded-lg bg-teal-50 dark:bg-teal-900/20">
+          <p className="text-xs text-muted-foreground">Ambalaj Maliyeti</p>
+          <p className="font-bold text-teal-700 dark:text-teal-400" data-testid="text-packaging-cost">{formatCurrency(data.costs?.packagingCost)}</p>
         </div>
         <div className="p-3 rounded-lg bg-muted/50">
           <p className="text-xs text-muted-foreground">Genel Gider Payı</p>
-          <p className="font-bold">{formatCurrency(data.costs?.overheadCost)}</p>
+          <p className="font-bold" data-testid="text-overhead-cost">{formatCurrency(data.costs?.overheadCost)}</p>
         </div>
         <div className="p-3 rounded-lg bg-purple-50 dark:bg-purple-900/20">
-          <p className="text-xs text-muted-foreground">Toplam Maliyet</p>
-          <p className="font-bold text-purple-700 dark:text-purple-400">{formatCurrency(data.costs?.totalUnitCost)}</p>
+          <p className="text-xs text-muted-foreground">Toplam Birim Maliyet</p>
+          <p className="font-bold text-purple-700 dark:text-purple-400" data-testid="text-total-unit-cost">{formatCurrency(data.costs?.totalUnitCost)}</p>
         </div>
         <div className="p-3 rounded-lg bg-muted/50">
           <p className="text-xs text-muted-foreground">Kar Marjı</p>
-          <p className="font-bold">{data.costs?.profitMargin}</p>
+          <p className="font-bold" data-testid="text-profit-margin">{data.costs?.profitMargin}</p>
         </div>
         <div className="p-3 rounded-lg bg-green-50 dark:bg-green-900/20">
           <p className="text-xs text-muted-foreground">Önerilen Fiyat</p>
-          <p className="font-bold text-green-700 dark:text-green-400">{formatCurrency(data.costs?.suggestedPrice)}</p>
+          <p className="font-bold text-green-700 dark:text-green-400" data-testid="text-suggested-price">{formatCurrency(data.costs?.suggestedPrice)}</p>
         </div>
       </div>
     </div>
@@ -288,6 +421,8 @@ export default function MaliyetYonetimi() {
   const [laborProductionMinutes, setLaborProductionMinutes] = useState(0);
   const [laborBatchSize, setLaborBatchSize] = useState(1);
   const [laborHourlyRate, setLaborHourlyRate] = useState("0");
+  const [energyKwhPerBatch, setEnergyKwhPerBatch] = useState("0");
+  const [energyEquipment, setEnergyEquipment] = useState("");
   const [isEditRecipeDialogOpen, setIsEditRecipeDialogOpen] = useState(false);
   const [editingRecipe, setEditingRecipe] = useState<any>(null);
   const [recipeName, setRecipeName] = useState("");
@@ -529,10 +664,13 @@ export default function MaliyetYonetimi() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/product-costs'] });
+      if (selectedProductId) {
+        queryClient.invalidateQueries({ queryKey: ['/api/product-costs', selectedProductId] });
+      }
       queryClient.invalidateQueries({ queryKey: ['/api/cost-dashboard'] });
       setIsEditLaborDialogOpen(false);
       setEditingRecipeId(null);
-      toast({ title: "İşçilik bilgileri güncellendi" });
+      toast({ title: "İşçilik & enerji bilgileri güncellendi" });
     },
     onError: () => {
       toast({ title: "Hata", description: "İşçilik bilgileri güncellenemedi", variant: "destructive" });
@@ -808,6 +946,8 @@ export default function MaliyetYonetimi() {
         setLaborProductionMinutes(cachedData.recipe.productionTimeMinutes || 0);
         setLaborBatchSize(cachedData.recipe.laborBatchSize || 1);
         setLaborHourlyRate(cachedData.recipe.laborHourlyRate?.toString() || "0");
+        setEnergyKwhPerBatch(cachedData.recipe.energyKwhPerBatch?.toString() || "0");
+        setEnergyEquipment(cachedData.recipe.equipmentDescription || "");
       }
     }
     setIsEditLaborDialogOpen(true);
@@ -1409,48 +1549,74 @@ export default function MaliyetYonetimi() {
           <Dialog open={isEditLaborDialogOpen} onOpenChange={setIsEditLaborDialogOpen}>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>İşçilik Bilgilerini Düzenle</DialogTitle>
+                <DialogTitle>İşçilik & Enerji Bilgilerini Düzenle</DialogTitle>
               </DialogHeader>
               <div className="space-y-4">
-                <div>
-                  <label className="text-sm font-medium">Personel Sayısı</label>
-                  <Input
-                    type="number"
-                    min={1}
-                    value={laborWorkerCount}
-                    onChange={(e) => setLaborWorkerCount(parseInt(e.target.value) || 1)}
-                    data-testid="input-labor-worker-count"
-                  />
+                <p className="text-xs font-medium text-blue-600 flex items-center gap-1"><Users className="w-3 h-3" /> İşçilik</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-sm font-medium">Personel Sayısı</label>
+                    <Input
+                      type="number"
+                      min={1}
+                      value={laborWorkerCount}
+                      onChange={(e) => setLaborWorkerCount(parseInt(e.target.value) || 1)}
+                      data-testid="input-labor-worker-count"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium">Üretim Süresi (dk)</label>
+                    <Input
+                      type="number"
+                      min={0}
+                      value={laborProductionMinutes}
+                      onChange={(e) => setLaborProductionMinutes(parseInt(e.target.value) || 0)}
+                      data-testid="input-labor-production-time"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium">Batch Miktarı (adet)</label>
+                    <Input
+                      type="number"
+                      min={1}
+                      value={laborBatchSize}
+                      onChange={(e) => setLaborBatchSize(parseInt(e.target.value) || 1)}
+                      data-testid="input-labor-batch-size"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium">Saat Ücreti (₺) <span className="text-xs text-muted-foreground">0=Otomatik</span></label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      value={laborHourlyRate}
+                      onChange={(e) => setLaborHourlyRate(e.target.value)}
+                      data-testid="input-labor-hourly-rate"
+                    />
+                  </div>
                 </div>
-                <div>
-                  <label className="text-sm font-medium">Üretim Süresi (dk)</label>
-                  <Input
-                    type="number"
-                    min={0}
-                    value={laborProductionMinutes}
-                    onChange={(e) => setLaborProductionMinutes(parseInt(e.target.value) || 0)}
-                    data-testid="input-labor-production-time"
-                  />
-                </div>
-                <div>
-                  <label className="text-sm font-medium">Batch Miktarı (adet)</label>
-                  <Input
-                    type="number"
-                    min={1}
-                    value={laborBatchSize}
-                    onChange={(e) => setLaborBatchSize(parseInt(e.target.value) || 1)}
-                    data-testid="input-labor-batch-size"
-                  />
-                </div>
-                <div>
-                  <label className="text-sm font-medium">Saat Başı İşçilik Ücreti (₺)</label>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    value={laborHourlyRate}
-                    onChange={(e) => setLaborHourlyRate(e.target.value)}
-                    data-testid="input-labor-hourly-rate"
-                  />
+                <p className="text-xs font-medium text-amber-600 flex items-center gap-1 pt-2 border-t"><Zap className="w-3 h-3" /> Enerji</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-sm font-medium">kWh / Batch</label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      min={0}
+                      value={energyKwhPerBatch}
+                      onChange={(e) => setEnergyKwhPerBatch(e.target.value)}
+                      data-testid="input-energy-kwh"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium">Kullanılan Cihaz</label>
+                    <Input
+                      value={energyEquipment}
+                      onChange={(e) => setEnergyEquipment(e.target.value)}
+                      placeholder="Fırın, Mikser..."
+                      data-testid="input-energy-equipment"
+                    />
+                  </div>
                 </div>
                 <Button
                   className="w-full"
@@ -1464,6 +1630,8 @@ export default function MaliyetYonetimi() {
                           productionTimeMinutes: laborProductionMinutes,
                           laborBatchSize,
                           laborHourlyRate: laborHourlyRate,
+                          energyKwhPerBatch: energyKwhPerBatch,
+                          equipmentDescription: energyEquipment,
                         }
                       });
                     }

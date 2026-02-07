@@ -10929,9 +10929,15 @@ export const productRecipes = pgTable("product_recipes", {
   laborBatchSize: integer("labor_batch_size").default(1),
   laborHourlyRate: numeric("labor_hourly_rate", { precision: 10, scale: 2 }).default("0"),
   
+  // Enerji bilgileri - Activity-Based Costing
+  energyKwhPerBatch: numeric("energy_kwh_per_batch", { precision: 10, scale: 3 }).default("0"),
+  equipmentDescription: text("equipment_description"),
+  
   // Hesaplanan maliyetler
   rawMaterialCost: numeric("raw_material_cost", { precision: 12, scale: 4 }).default("0"),
   laborCost: numeric("labor_cost", { precision: 12, scale: 4 }).default("0"),
+  energyCost: numeric("energy_cost", { precision: 12, scale: 4 }).default("0"),
+  packagingCost: numeric("packaging_cost", { precision: 12, scale: 4 }).default("0"),
   overheadCost: numeric("overhead_cost", { precision: 12, scale: 4 }).default("0"),
   totalUnitCost: numeric("total_unit_cost", { precision: 12, scale: 4 }).default("0"),
   
@@ -10985,6 +10991,50 @@ export const insertProductRecipeIngredientSchema = createInsertSchema(productRec
 
 export type InsertProductRecipeIngredient = z.infer<typeof insertProductRecipeIngredientSchema>;
 export type ProductRecipeIngredient = typeof productRecipeIngredients.$inferSelect;
+
+// Ürün Ambalaj Malzemeleri - Product Packaging Items
+export const productPackagingItems = pgTable("product_packaging_items", {
+  id: serial("id").primaryKey(),
+  
+  productId: integer("product_id").references(() => factoryProducts.id, { onDelete: "cascade" }).notNull(),
+  
+  name: varchar("name", { length: 255 }).notNull(),
+  unit: varchar("unit", { length: 20 }).default("adet"),
+  quantity: numeric("quantity", { precision: 10, scale: 3 }).default("1"),
+  unitCost: numeric("unit_cost", { precision: 10, scale: 4 }).notNull(),
+  
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("ppi_product_idx").on(table.productId),
+]);
+
+export const insertProductPackagingItemSchema = createInsertSchema(productPackagingItems).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertProductPackagingItem = z.infer<typeof insertProductPackagingItemSchema>;
+export type ProductPackagingItem = typeof productPackagingItems.$inferSelect;
+
+// Fabrika Maliyet Ayarları - Factory Cost Settings
+export const factoryCostSettings = pgTable("factory_cost_settings", {
+  id: serial("id").primaryKey(),
+  
+  settingKey: varchar("setting_key", { length: 100 }).notNull().unique(),
+  settingValue: numeric("setting_value", { precision: 14, scale: 4 }).notNull(),
+  description: text("description"),
+  
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertFactoryCostSettingSchema = createInsertSchema(factoryCostSettings).omit({
+  id: true,
+  updatedAt: true,
+});
+
+export type InsertFactoryCostSetting = z.infer<typeof insertFactoryCostSettingSchema>;
+export type FactoryCostSetting = typeof factoryCostSettings.$inferSelect;
 
 // Fabrika Sabit Giderleri - Factory Fixed Costs
 export const fixedCostCategoryEnum = [
@@ -11084,8 +11134,9 @@ export const productCostCalculations = pgTable("product_cost_calculations", {
   // Maliyet bileşenleri
   rawMaterialCost: numeric("raw_material_cost", { precision: 12, scale: 4 }).default("0"),
   directLaborCost: numeric("direct_labor_cost", { precision: 12, scale: 4 }).default("0"),
-  overheadCost: numeric("overhead_cost", { precision: 12, scale: 4 }).default("0"),
+  energyCost: numeric("energy_cost", { precision: 12, scale: 4 }).default("0"),
   packagingCost: numeric("packaging_cost", { precision: 12, scale: 4 }).default("0"),
+  overheadCost: numeric("overhead_cost", { precision: 12, scale: 4 }).default("0"),
   
   // Toplam maliyet
   totalUnitCost: numeric("total_unit_cost", { precision: 12, scale: 4 }).notNull(),

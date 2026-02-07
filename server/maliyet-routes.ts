@@ -17,12 +17,15 @@ import {
   productionRecords,
   productionIngredients,
   notifications,
+  productPackagingItems,
+  factoryCostSettings,
   insertRawMaterialSchema,
   insertProductRecipeSchema,
   insertProductRecipeIngredientSchema,
   insertFactoryFixedCostSchema,
   insertProfitMarginTemplateSchema,
-  insertProductCostCalculationSchema
+  insertProductCostCalculationSchema,
+  insertProductPackagingItemSchema
 } from "@shared/schema";
 import { eq, desc, and, gte, lte, sql, or, like, asc, isNotNull } from "drizzle-orm";
 
@@ -33,8 +36,199 @@ const openai = new OpenAI({
 
 type AuthMiddleware = (req: Request, res: Response, next: () => void) => void;
 
+// Faaliyet Tabanlı Maliyet Hesaplama Yardımcı Fonksiyonları
+async function getCostSettings(): Promise<Record<string, number>> {
+  const settings = await db.select().from(factoryCostSettings);
+  const result: Record<string, number> = {};
+  for (const s of settings) {
+    result[s.settingKey] = parseFloat(s.settingValue);
+  }
+  return result;
+}
+
+async function calculateAutoHourlyRate(): Promise<number> {
+  const settings = await getCostSettings();
+  const totalWorkers = settings['total_factory_workers'] || 10;
+  const monthlyHours = settings['monthly_work_hours'] || 180;
+  
+  const personnelCosts = await db.select()
+    .from(factoryFixedCosts)
+    .where(and(
+      eq(factoryFixedCosts.category, "personel"),
+      eq(factoryFixedCosts.isActive, true)
+    ));
+  
+  const totalPersonnelCost = personnelCosts.reduce((sum, c) => sum + parseFloat(c.monthlyAmount), 0);
+  if (totalWorkers <= 0 || monthlyHours <= 0) return 0;
+  return totalPersonnelCost / totalWorkers / monthlyHours;
+}
+
+async function calculateEnergyCost(kwhPerBatch: number, batchSize: number): Promise<number> {
+  const settings = await getCostSettings();
+  const kwhPrice = settings['kwh_unit_price'] || 4.5;
+  if (batchSize <= 0) return 0;
+  return (kwhPerBatch * kwhPrice) / batchSize;
+}
+
+async function calculatePackagingCost(productId: number): Promise<number> {
+  const items = await db.select().from(productPackagingItems)
+    .where(eq(productPackagingItems.productId, productId));
+  return items.reduce((sum, item) => {
+    return sum + (parseFloat(item.quantity || "1") * parseFloat(item.unitCost));
+  }, 0);
+}
+
+async function calculateOverheadPerUnit(productionMinutes: number, batchSize: number): Promise<number> {
+  const overheadCategories = ["kira", "su", "sigorta", "temizlik", "guvenlik", "iletisim", "vergi", "diger", "amortisman", "bakim_onarim", "dogalgaz"];
+  
+  const overheadCosts = await db.select()
+    .from(factoryFixedCosts)
+    .where(and(
+      eq(factoryFixedCosts.isActive, true),
+      sql`${factoryFixedCosts.category} = ANY(${overheadCategories})`
+    ));
+  
+  const totalMonthlyOverhead = overheadCosts.reduce((sum, c) => sum + parseFloat(c.monthlyAmount), 0);
+  
+  const settings = await getCostSettings();
+  const totalWorkers = settings['total_factory_workers'] || 10;
+  const monthlyHours = settings['monthly_work_hours'] || 180;
+  const totalMonthlyMinutes = totalWorkers * monthlyHours * 60;
+  
+  if (totalMonthlyMinutes <= 0 || batchSize <= 0) return 0;
+  const costPerMinute = totalMonthlyOverhead / totalMonthlyMinutes;
+  return (costPerMinute * productionMinutes) / batchSize;
+}
+
+async function calculateActivityBasedCost(recipe: any, product: any) {
+  const ingredients = await db.select({
+    ingredient: productRecipeIngredients,
+    material: rawMaterials
+  })
+    .from(productRecipeIngredients)
+    .leftJoin(rawMaterials, eq(productRecipeIngredients.rawMaterialId, rawMaterials.id))
+    .where(eq(productRecipeIngredients.recipeId, recipe.id));
+
+  let rawMaterialCost = 0;
+  for (const ing of ingredients) {
+    const qty = parseFloat(ing.ingredient.quantity);
+    const isKeyblend = ing.material?.isKeyblend || false;
+    const price = isKeyblend 
+      ? parseFloat(ing.material?.keyblendCost || "0")
+      : parseFloat(ing.material?.currentUnitPrice || "0");
+    rawMaterialCost += qty * price;
+  }
+
+  const workerCount = recipe.laborWorkerCount || 1;
+  const productionMinutes = recipe.productionTimeMinutes || 0;
+  const batchSize = recipe.laborBatchSize || 1;
+  
+  const avgHourlyRate = await calculateAutoHourlyRate();
+  const manualRate = parseFloat(recipe.laborHourlyRate || "0");
+  const hourlyRate = manualRate > 0 ? manualRate : avgHourlyRate;
+  
+  const laborCost = batchSize > 0 && hourlyRate > 0
+    ? (workerCount * (productionMinutes / 60) * hourlyRate) / batchSize
+    : 0;
+
+  const kwhPerBatch = parseFloat(recipe.energyKwhPerBatch || "0");
+  const energyCost = await calculateEnergyCost(kwhPerBatch, batchSize);
+
+  const packagingCost = await calculatePackagingCost(product.id);
+
+  const overheadCost = await calculateOverheadPerUnit(productionMinutes * workerCount, batchSize);
+
+  const totalUnitCost = rawMaterialCost + laborCost + energyCost + packagingCost + overheadCost;
+
+  const [marginTemplate] = await db.select()
+    .from(profitMarginTemplates)
+    .where(eq(profitMarginTemplates.category, product.category))
+    .limit(1);
+  
+  const appliedMargin = marginTemplate ? parseFloat(marginTemplate.defaultMargin) : 1.20;
+  const suggestedPrice = totalUnitCost * appliedMargin;
+
+  return {
+    rawMaterialCost,
+    laborCost,
+    energyCost,
+    packagingCost,
+    overheadCost,
+    totalUnitCost,
+    appliedMargin,
+    suggestedPrice,
+    hourlyRate,
+    workerCount,
+    productionMinutes,
+    batchSize,
+    kwhPerBatch
+  };
+}
+
 export function registerMaliyetRoutes(app: Express, isAuthenticated: AuthMiddleware) {
   
+  // ========================================
+  // MALİYET AYARLARI - Cost Settings
+  // ========================================
+  
+  app.get("/api/cost-settings", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const settings = await db.select().from(factoryCostSettings).orderBy(factoryCostSettings.settingKey);
+      const autoHourlyRate = await calculateAutoHourlyRate();
+      res.json({ settings, autoHourlyRate: autoHourlyRate.toFixed(2) });
+    } catch (error) {
+      console.error("Error fetching cost settings:", error);
+      res.status(500).json({ error: "Ayarlar alınamadı" });
+    }
+  });
+
+  app.put("/api/cost-settings", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const { settings } = req.body;
+      for (const s of settings) {
+        await db.update(factoryCostSettings)
+          .set({ settingValue: s.value.toString(), updatedAt: new Date() })
+          .where(eq(factoryCostSettings.settingKey, s.key));
+      }
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error updating cost settings:", error);
+      res.status(500).json({ error: "Ayarlar güncellenemedi" });
+    }
+  });
+
+  // ========================================
+  // AMBALAJ MALZEMELERİ - Packaging Items
+  // ========================================
+
+  app.get("/api/packaging-items/:productId", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const items = await db.select().from(productPackagingItems)
+        .where(eq(productPackagingItems.productId, parseInt(req.params.productId)));
+      res.json(items);
+    } catch (error) {
+      res.status(500).json({ error: "Ambalaj malzemeleri alınamadı" });
+    }
+  });
+
+  app.post("/api/packaging-items", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const [item] = await db.insert(productPackagingItems).values(req.body).returning();
+      res.json(item);
+    } catch (error) {
+      res.status(500).json({ error: "Ambalaj malzemesi eklenemedi" });
+    }
+  });
+
+  app.delete("/api/packaging-items/:id", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      await db.delete(productPackagingItems).where(eq(productPackagingItems.id, parseInt(req.params.id)));
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Ambalaj malzemesi silinemedi" });
+    }
+  });
+
   // ========================================
   // HAMMADDE YÖNETİMİ - Raw Materials
   // ========================================
@@ -596,6 +790,9 @@ export function registerMaliyetRoutes(app: Express, isAuthenticated: AuthMiddlew
       const user = (req as any).user;
       const { productId, month, year } = req.body;
       
+      const [product] = await db.select().from(factoryProducts).where(eq(factoryProducts.id, productId));
+      if (!product) return res.status(404).json({ error: "Ürün bulunamadı" });
+
       const [recipe] = await db.select()
         .from(productRecipes)
         .where(and(
@@ -609,45 +806,7 @@ export function registerMaliyetRoutes(app: Express, isAuthenticated: AuthMiddlew
         return res.status(404).json({ error: "Aktif reçete bulunamadı" });
       }
       
-      const ingredients = await db.select({
-        ingredient: productRecipeIngredients,
-        material: rawMaterials
-      })
-        .from(productRecipeIngredients)
-        .leftJoin(rawMaterials, eq(productRecipeIngredients.rawMaterialId, rawMaterials.id))
-        .where(eq(productRecipeIngredients.recipeId, recipe.id));
-      
-      let rawMaterialCost = 0;
-      for (const ing of ingredients) {
-        const qty = parseFloat(ing.ingredient.quantity);
-        const price = parseFloat(ing.material?.currentUnitPrice || "0");
-        rawMaterialCost += qty * price;
-      }
-      
-      const fixedCostSummary = await db.select()
-        .from(factoryFixedCosts)
-        .where(eq(factoryFixedCosts.isActive, true));
-      
-      const totalFixedCosts = fixedCostSummary.reduce((sum, c) => sum + parseFloat(c.monthlyAmount), 0);
-      
-      const productCount = await db.select({ count: sql<number>`count(*)` })
-        .from(factoryProducts)
-        .where(eq(factoryProducts.isActive, true));
-      
-      const overheadPerProduct = productCount[0]?.count > 0 
-        ? totalFixedCosts / productCount[0].count 
-        : 0;
-      
-      const totalUnitCost = rawMaterialCost + overheadPerProduct;
-      
-      const [marginTemplate] = await db.select()
-        .from(profitMarginTemplates)
-        .leftJoin(factoryProducts, eq(profitMarginTemplates.category, factoryProducts.category))
-        .where(eq(factoryProducts.id, productId))
-        .limit(1);
-      
-      const appliedMargin = marginTemplate ? parseFloat((marginTemplate as any).profit_margin_templates?.defaultMargin || "1.20") : 1.20;
-      const suggestedPrice = totalUnitCost * appliedMargin;
+      const costs = await calculateActivityBasedCost(recipe, product);
       
       const [calculation] = await db.insert(productCostCalculations)
         .values({
@@ -655,22 +814,38 @@ export function registerMaliyetRoutes(app: Express, isAuthenticated: AuthMiddlew
           recipeId: recipe.id,
           periodMonth: month || new Date().getMonth() + 1,
           periodYear: year || new Date().getFullYear(),
-          rawMaterialCost: rawMaterialCost.toFixed(4),
-          overheadCost: overheadPerProduct.toFixed(4),
-          totalUnitCost: totalUnitCost.toFixed(4),
-          appliedMargin: appliedMargin.toFixed(2),
-          suggestedSellingPrice: suggestedPrice.toFixed(2),
-          profitPerUnit: (suggestedPrice - totalUnitCost).toFixed(4),
-          profitMarginPercentage: ((appliedMargin - 1) * 100).toFixed(2),
+          rawMaterialCost: costs.rawMaterialCost.toFixed(4),
+          directLaborCost: costs.laborCost.toFixed(4),
+          energyCost: costs.energyCost.toFixed(4),
+          packagingCost: costs.packagingCost.toFixed(4),
+          overheadCost: costs.overheadCost.toFixed(4),
+          totalUnitCost: costs.totalUnitCost.toFixed(4),
+          appliedMargin: costs.appliedMargin.toFixed(2),
+          suggestedSellingPrice: costs.suggestedPrice.toFixed(2),
+          profitPerUnit: (costs.suggestedPrice - costs.totalUnitCost).toFixed(4),
+          profitMarginPercentage: ((costs.appliedMargin - 1) * 100).toFixed(2),
           calculatedById: user?.id
         })
         .returning();
       
+      await db.update(productRecipes)
+        .set({
+          rawMaterialCost: costs.rawMaterialCost.toFixed(4),
+          laborCost: costs.laborCost.toFixed(4),
+          energyCost: costs.energyCost.toFixed(4),
+          packagingCost: costs.packagingCost.toFixed(4),
+          overheadCost: costs.overheadCost.toFixed(4),
+          totalUnitCost: costs.totalUnitCost.toFixed(4),
+          costLastCalculated: new Date(),
+          updatedAt: new Date()
+        })
+        .where(eq(productRecipes.id, recipe.id));
+
       await db.update(factoryProducts)
         .set({
-          basePrice: totalUnitCost.toFixed(2),
-          suggestedPrice: suggestedPrice.toFixed(2),
-          profitMargin: appliedMargin.toFixed(2),
+          basePrice: costs.totalUnitCost.toFixed(2),
+          suggestedPrice: costs.suggestedPrice.toFixed(2),
+          profitMargin: costs.appliedMargin.toFixed(2),
           updatedAt: new Date()
         })
         .where(eq(factoryProducts.id, productId));
@@ -707,44 +882,7 @@ export function registerMaliyetRoutes(app: Express, isAuthenticated: AuthMiddlew
           
           if (!recipe) continue;
           
-          const ingredients = await db.select({
-            ingredient: productRecipeIngredients,
-            material: rawMaterials
-          })
-            .from(productRecipeIngredients)
-            .leftJoin(rawMaterials, eq(productRecipeIngredients.rawMaterialId, rawMaterials.id))
-            .where(eq(productRecipeIngredients.recipeId, recipe.id));
-          
-          let rawMaterialCost = 0;
-          for (const ing of ingredients) {
-            const qty = parseFloat(ing.ingredient.quantity);
-            const price = parseFloat(ing.material?.currentUnitPrice || "0");
-            rawMaterialCost += qty * price;
-          }
-          
-          const workerCount = recipe.laborWorkerCount || 1;
-          const productionMinutes = recipe.productionTimeMinutes || 0;
-          const batchSize = recipe.laborBatchSize || 1;
-          const hourlyRate = parseFloat(recipe.laborHourlyRate || "0");
-          const laborCost = batchSize > 0 && hourlyRate > 0
-            ? (workerCount * (productionMinutes / 60) * hourlyRate) / batchSize
-            : 0;
-          
-          const fixedCostSummary = await db.select()
-            .from(factoryFixedCosts)
-            .where(eq(factoryFixedCosts.isActive, true));
-          
-          const totalFixedCosts = fixedCostSummary.reduce((sum, c) => sum + parseFloat(c.monthlyAmount), 0);
-          const overheadPerProduct = products.length > 0 ? totalFixedCosts / products.length : 0;
-          const totalUnitCost = rawMaterialCost + laborCost + overheadPerProduct;
-          
-          const [marginTemplate] = await db.select()
-            .from(profitMarginTemplates)
-            .where(eq(profitMarginTemplates.category, product.category))
-            .limit(1);
-          
-          const appliedMargin = marginTemplate ? parseFloat(marginTemplate.defaultMargin) : 1.20;
-          const suggestedPrice = totalUnitCost * appliedMargin;
+          const costs = await calculateActivityBasedCost(recipe, product);
           
           await db.insert(productCostCalculations)
             .values({
@@ -752,23 +890,27 @@ export function registerMaliyetRoutes(app: Express, isAuthenticated: AuthMiddlew
               recipeId: recipe.id,
               periodMonth: month,
               periodYear: year,
-              rawMaterialCost: rawMaterialCost.toFixed(4),
-              directLaborCost: laborCost.toFixed(4),
-              overheadCost: overheadPerProduct.toFixed(4),
-              totalUnitCost: totalUnitCost.toFixed(4),
-              appliedMargin: appliedMargin.toFixed(2),
-              suggestedSellingPrice: suggestedPrice.toFixed(2),
-              profitPerUnit: (suggestedPrice - totalUnitCost).toFixed(4),
-              profitMarginPercentage: ((appliedMargin - 1) * 100).toFixed(2),
+              rawMaterialCost: costs.rawMaterialCost.toFixed(4),
+              directLaborCost: costs.laborCost.toFixed(4),
+              energyCost: costs.energyCost.toFixed(4),
+              packagingCost: costs.packagingCost.toFixed(4),
+              overheadCost: costs.overheadCost.toFixed(4),
+              totalUnitCost: costs.totalUnitCost.toFixed(4),
+              appliedMargin: costs.appliedMargin.toFixed(2),
+              suggestedSellingPrice: costs.suggestedPrice.toFixed(2),
+              profitPerUnit: (costs.suggestedPrice - costs.totalUnitCost).toFixed(4),
+              profitMarginPercentage: ((costs.appliedMargin - 1) * 100).toFixed(2),
               calculatedById: user?.id
             });
           
           await db.update(productRecipes)
             .set({
-              rawMaterialCost: rawMaterialCost.toFixed(4),
-              laborCost: laborCost.toFixed(4),
-              overheadCost: overheadPerProduct.toFixed(4),
-              totalUnitCost: totalUnitCost.toFixed(4),
+              rawMaterialCost: costs.rawMaterialCost.toFixed(4),
+              laborCost: costs.laborCost.toFixed(4),
+              energyCost: costs.energyCost.toFixed(4),
+              packagingCost: costs.packagingCost.toFixed(4),
+              overheadCost: costs.overheadCost.toFixed(4),
+              totalUnitCost: costs.totalUnitCost.toFixed(4),
               costLastCalculated: new Date(),
               updatedAt: new Date()
             })
@@ -776,9 +918,9 @@ export function registerMaliyetRoutes(app: Express, isAuthenticated: AuthMiddlew
           
           await db.update(factoryProducts)
             .set({
-              basePrice: totalUnitCost.toFixed(2),
-              suggestedPrice: suggestedPrice.toFixed(2),
-              profitMargin: appliedMargin.toFixed(2),
+              basePrice: costs.totalUnitCost.toFixed(2),
+              suggestedPrice: costs.suggestedPrice.toFixed(2),
+              profitMargin: costs.appliedMargin.toFixed(2),
               updatedAt: new Date()
             })
             .where(eq(factoryProducts.id, product.id));
@@ -952,38 +1094,39 @@ export function registerMaliyetRoutes(app: Express, isAuthenticated: AuthMiddlew
         };
       });
       
-      // Sabit gider payı hesapla
-      const fixedCosts = await db.select()
-        .from(factoryFixedCosts)
-        .where(eq(factoryFixedCosts.isActive, true));
+      // Faaliyet Tabanlı Maliyet Hesaplama
+      const workerCount = recipe.laborWorkerCount || 1;
+      const productionMinutes = recipe.productionTimeMinutes || 0;
+      const batchSize = recipe.laborBatchSize || 1;
+      const manualRate = parseFloat(recipe.laborHourlyRate || "0");
+      const autoHourlyRate = await calculateAutoHourlyRate();
+      const hourlyRate = manualRate > 0 ? manualRate : autoHourlyRate;
       
-      const totalFixedCosts = fixedCosts.reduce((sum, c) => sum + parseFloat(c.monthlyAmount), 0);
-      
-      const activeProducts = await db.select({ count: sql<number>`count(*)` })
-        .from(factoryProducts)
-        .where(eq(factoryProducts.isActive, true));
-      
-      const overheadPerProduct = activeProducts[0]?.count > 0 
-        ? totalFixedCosts / activeProducts[0].count 
+      const laborCost = batchSize > 0 && hourlyRate > 0
+        ? (workerCount * (productionMinutes / 60) * hourlyRate) / batchSize
         : 0;
+
+      const kwhPerBatch = parseFloat(recipe.energyKwhPerBatch || "0");
+      const energyCost = await calculateEnergyCost(kwhPerBatch, batchSize);
       
-      // Kar marjı al
+      const packagingCost = await calculatePackagingCost(product.id);
+      
+      const overheadCost = await calculateOverheadPerUnit(productionMinutes * workerCount, batchSize);
+      
+      const totalUnitCost = totalRawMaterialCost + laborCost + energyCost + packagingCost + overheadCost;
+
       const [margin] = await db.select()
         .from(profitMarginTemplates)
         .where(eq(profitMarginTemplates.category, product.category));
       
       const appliedMargin = margin ? parseFloat(margin.defaultMargin) : 1.35;
-      
-      const workerCount = recipe.laborWorkerCount || 1;
-      const productionMinutes = recipe.productionTimeMinutes || 0;
-      const batchSize = recipe.laborBatchSize || 1;
-      const hourlyRate = parseFloat(recipe.laborHourlyRate || "0");
-      const laborCost = batchSize > 0 && hourlyRate > 0
-        ? (workerCount * (productionMinutes / 60) * hourlyRate) / batchSize
-        : 0;
-      
-      const totalUnitCost = totalRawMaterialCost + laborCost + overheadPerProduct;
       const suggestedPrice = totalUnitCost * appliedMargin;
+
+      const settings = await getCostSettings();
+      const kwhPrice = settings['kwh_unit_price'] || 4.5;
+
+      const packagingItems = await db.select().from(productPackagingItems)
+        .where(eq(productPackagingItems.productId, product.id));
       
       res.json({
         product,
@@ -996,21 +1139,38 @@ export function registerMaliyetRoutes(app: Express, isAuthenticated: AuthMiddlew
           productionTimeMinutes: recipe.productionTimeMinutes,
           laborWorkerCount: recipe.laborWorkerCount,
           laborBatchSize: recipe.laborBatchSize,
-          laborHourlyRate: recipe.laborHourlyRate
+          laborHourlyRate: recipe.laborHourlyRate,
+          energyKwhPerBatch: recipe.energyKwhPerBatch,
+          equipmentDescription: recipe.equipmentDescription
         },
         ingredients: processedIngredients,
         labor: {
           workerCount,
           productionMinutes,
           batchSize,
-          hourlyRate,
+          hourlyRate: hourlyRate.toFixed(2),
+          autoHourlyRate: autoHourlyRate.toFixed(2),
+          isAutoRate: manualRate <= 0,
           totalLaborCost: laborCost.toFixed(2),
           formula: `${workerCount} kişi x ${productionMinutes} dk x ₺${hourlyRate.toFixed(2)}/saat / ${batchSize} adet`
+        },
+        energy: {
+          kwhPerBatch,
+          kwhPrice: kwhPrice.toFixed(2),
+          totalEnergyCost: energyCost.toFixed(2),
+          equipmentDescription: recipe.equipmentDescription || "",
+          formula: kwhPerBatch > 0 ? `${kwhPerBatch} kWh x ₺${kwhPrice.toFixed(2)}/kWh / ${batchSize} adet` : "Tanımlanmadı"
+        },
+        packaging: {
+          items: packagingItems,
+          totalPackagingCost: packagingCost.toFixed(2)
         },
         costs: {
           rawMaterialCost: totalRawMaterialCost.toFixed(2),
           laborCost: laborCost.toFixed(2),
-          overheadCost: overheadPerProduct.toFixed(2),
+          energyCost: energyCost.toFixed(2),
+          packagingCost: packagingCost.toFixed(2),
+          overheadCost: overheadCost.toFixed(2),
           totalUnitCost: totalUnitCost.toFixed(2),
           profitMargin: ((appliedMargin - 1) * 100).toFixed(1) + "%",
           suggestedPrice: suggestedPrice.toFixed(2)
@@ -1110,86 +1270,65 @@ export function registerMaliyetRoutes(app: Express, isAuthenticated: AuthMiddlew
       // Reçete maliyetlerini güncelle
       await updateRecipeCosts(recipe.id);
       
-      // Güncel reçete verilerini al
-      const [updatedRecipe] = await db.select().from(productRecipes).where(eq(productRecipes.id, recipe.id));
-      
-      // Sabit gider payı
-      const fixedCosts = await db.select()
-        .from(factoryFixedCosts)
-        .where(eq(factoryFixedCosts.isActive, true));
-      
-      const totalFixedCosts = fixedCosts.reduce((sum, c) => sum + parseFloat(c.monthlyAmount), 0);
-      
-      const activeProducts = await db.select({ count: sql<number>`count(*)` })
-        .from(factoryProducts)
-        .where(eq(factoryProducts.isActive, true));
-      
-      const overheadPerProduct = activeProducts[0]?.count > 0 
-        ? totalFixedCosts / activeProducts[0].count 
-        : 0;
-      
-      const rawMaterialCost = parseFloat(updatedRecipe?.rawMaterialCost || "0");
-      const totalUnitCost = rawMaterialCost + overheadPerProduct;
-      
-      // Kar marjı
-      const [margin] = await db.select()
-        .from(profitMarginTemplates)
-        .where(eq(profitMarginTemplates.category, product.category));
-      
-      const appliedMargin = margin ? parseFloat(margin.defaultMargin) : 1.35;
-      const suggestedPrice = totalUnitCost * appliedMargin;
+      // Faaliyet tabanlı maliyet hesapla
+      const costs = await calculateActivityBasedCost(recipe, product);
       
       // Ürünü güncelle
       await db.update(factoryProducts)
         .set({
-          basePrice: totalUnitCost.toFixed(2),
-          suggestedPrice: suggestedPrice.toFixed(2),
-          profitMargin: appliedMargin.toFixed(2),
+          basePrice: costs.totalUnitCost.toFixed(2),
+          suggestedPrice: costs.suggestedPrice.toFixed(2),
+          profitMargin: costs.appliedMargin.toFixed(2),
           updatedAt: new Date()
         })
         .where(eq(factoryProducts.id, productId));
+
+      await db.update(productRecipes)
+        .set({
+          rawMaterialCost: costs.rawMaterialCost.toFixed(4),
+          laborCost: costs.laborCost.toFixed(4),
+          energyCost: costs.energyCost.toFixed(4),
+          packagingCost: costs.packagingCost.toFixed(4),
+          overheadCost: costs.overheadCost.toFixed(4),
+          totalUnitCost: costs.totalUnitCost.toFixed(4),
+          costLastCalculated: new Date(),
+          updatedAt: new Date()
+        })
+        .where(eq(productRecipes.id, recipe.id));
       
       const month = new Date().getMonth() + 1;
       const year = new Date().getFullYear();
       
-      // Maliyet kaydı
       await db.insert(productCostCalculations)
         .values({
           productId,
           recipeId: recipe.id,
           periodMonth: month,
           periodYear: year,
-          rawMaterialCost: rawMaterialCost.toFixed(4),
-          overheadCost: overheadPerProduct.toFixed(4),
-          totalUnitCost: totalUnitCost.toFixed(4),
-          appliedMargin: appliedMargin.toFixed(2),
-          suggestedSellingPrice: suggestedPrice.toFixed(2),
-          profitPerUnit: (suggestedPrice - totalUnitCost).toFixed(4),
-          profitMarginPercentage: ((appliedMargin - 1) * 100).toFixed(2),
+          rawMaterialCost: costs.rawMaterialCost.toFixed(4),
+          directLaborCost: costs.laborCost.toFixed(4),
+          energyCost: costs.energyCost.toFixed(4),
+          packagingCost: costs.packagingCost.toFixed(4),
+          overheadCost: costs.overheadCost.toFixed(4),
+          totalUnitCost: costs.totalUnitCost.toFixed(4),
+          appliedMargin: costs.appliedMargin.toFixed(2),
+          suggestedSellingPrice: costs.suggestedPrice.toFixed(2),
+          profitPerUnit: (costs.suggestedPrice - costs.totalUnitCost).toFixed(4),
+          profitMarginPercentage: ((costs.appliedMargin - 1) * 100).toFixed(2),
           calculatedById: user?.id
-        })
-        .onConflictDoUpdate({
-          target: [productCostCalculations.productId, productCostCalculations.periodMonth, productCostCalculations.periodYear],
-          set: {
-            rawMaterialCost: rawMaterialCost.toFixed(4),
-            overheadCost: overheadPerProduct.toFixed(4),
-            totalUnitCost: totalUnitCost.toFixed(4),
-            appliedMargin: appliedMargin.toFixed(2),
-            suggestedSellingPrice: suggestedPrice.toFixed(2),
-            profitPerUnit: (suggestedPrice - totalUnitCost).toFixed(4),
-            profitMarginPercentage: ((appliedMargin - 1) * 100).toFixed(2),
-            calculationDate: new Date()
-          }
         });
       
       res.json({
         message: `${product.name} maliyeti hesaplandı`,
         costs: {
-          rawMaterialCost: rawMaterialCost.toFixed(2),
-          overheadCost: overheadPerProduct.toFixed(2),
-          totalUnitCost: totalUnitCost.toFixed(2),
-          profitMargin: ((appliedMargin - 1) * 100).toFixed(1) + "%",
-          suggestedPrice: suggestedPrice.toFixed(2)
+          rawMaterialCost: costs.rawMaterialCost.toFixed(2),
+          laborCost: costs.laborCost.toFixed(2),
+          energyCost: costs.energyCost.toFixed(2),
+          packagingCost: costs.packagingCost.toFixed(2),
+          overheadCost: costs.overheadCost.toFixed(2),
+          totalUnitCost: costs.totalUnitCost.toFixed(2),
+          profitMargin: ((costs.appliedMargin - 1) * 100).toFixed(1) + "%",
+          suggestedPrice: costs.suggestedPrice.toFixed(2)
         }
       });
     } catch (error) {
