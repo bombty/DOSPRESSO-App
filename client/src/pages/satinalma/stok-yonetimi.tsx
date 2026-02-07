@@ -298,7 +298,9 @@ export default function StokYonetimi() {
       sayim_duzeltme: "Sayım Düzeltme",
       fire: "Fire",
       iade: "İade",
-      mal_kabul: "Mal Kabul"
+      mal_kabul: "Mal Kabul",
+      uretim_giris: "Üretimden Giriş",
+      uretim_cikis: "Üretime Çıkış"
     };
     return labels[type] || type;
   };
@@ -693,7 +695,7 @@ export default function StokYonetimi() {
                       {stockMovements.slice(0, 10).map((movement) => (
                         <div key={movement.id} className="flex items-center justify-between p-2 rounded-lg bg-muted/50">
                           <div className="flex items-center gap-2">
-                            {movement.movementType === "giris" || movement.movementType === "mal_kabul" || movement.movementType === "iade" ? (
+                            {movement.movementType === "giris" || movement.movementType === "mal_kabul" || movement.movementType === "iade" || movement.movementType === "uretim_giris" ? (
                               <TrendingUp className="h-4 w-4 text-green-500" />
                             ) : (
                               <TrendingDown className="h-4 w-4 text-red-500" />
@@ -706,8 +708,8 @@ export default function StokYonetimi() {
                             </div>
                           </div>
                           <div className="text-right">
-                            <p className={`font-medium ${movement.movementType === "giris" || movement.movementType === "mal_kabul" || movement.movementType === "iade" ? "text-green-600" : "text-red-600"}`}>
-                              {movement.movementType === "giris" || movement.movementType === "mal_kabul" || movement.movementType === "iade" ? "+" : "-"}
+                            <p className={`font-medium ${movement.movementType === "giris" || movement.movementType === "mal_kabul" || movement.movementType === "iade" || movement.movementType === "uretim_giris" ? "text-green-600" : "text-red-600"}`}>
+                              {movement.movementType === "giris" || movement.movementType === "mal_kabul" || movement.movementType === "iade" || movement.movementType === "uretim_giris" ? "+" : "-"}
                               {parseFloat(movement.quantity).toLocaleString("tr-TR")}
                             </p>
                             <p className="text-xs text-muted-foreground">

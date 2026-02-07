@@ -10,8 +10,12 @@ import {
   productionCostTracking,
   factoryProducts,
   inventory,
+  inventoryMovements,
   purchaseOrderItems,
   purchaseOrders,
+  productionRecords,
+  productionIngredients,
+  notifications,
   insertRawMaterialSchema,
   insertProductRecipeSchema,
   insertProductRecipeIngredientSchema,
@@ -19,7 +23,7 @@ import {
   insertProfitMarginTemplateSchema,
   insertProductCostCalculationSchema
 } from "@shared/schema";
-import { eq, desc, and, gte, lte, sql, or, like, asc } from "drizzle-orm";
+import { eq, desc, and, gte, lte, sql, or, like, asc, isNotNull } from "drizzle-orm";
 
 type AuthMiddleware = (req: Request, res: Response, next: () => void) => void;
 
@@ -1236,4 +1240,573 @@ export function registerMaliyetRoutes(app: Express, isAuthenticated: AuthMiddlew
       console.error("Error updating recipe costs:", error);
     }
   }
+
+  // ========================================
+  // ÜRETİM-STOK ENTEGRASYONU - Production-Stock Integration
+  // ========================================
+
+  // Üretim kaydı oluştur ve stok hareketlerini tetikle
+  app.post("/api/production/complete", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const user = (req as any).user;
+      const { productId, recipeId, producedQuantity, notes } = req.body;
+
+      if (!productId || !recipeId || !producedQuantity || producedQuantity <= 0) {
+        return res.status(400).json({ error: "Ürün, reçete ve üretim miktarı gerekli" });
+      }
+
+      // Reçeteyi ve malzemelerini al
+      const [recipe] = await db.select().from(productRecipes).where(eq(productRecipes.id, recipeId));
+      if (!recipe) {
+        return res.status(404).json({ error: "Reçete bulunamadı" });
+      }
+
+      const [product] = await db.select().from(factoryProducts).where(eq(factoryProducts.id, productId));
+      if (!product) {
+        return res.status(404).json({ error: "Ürün bulunamadı" });
+      }
+
+      const ingredients = await db.select({
+        ingredient: productRecipeIngredients,
+        material: rawMaterials
+      })
+        .from(productRecipeIngredients)
+        .leftJoin(rawMaterials, eq(productRecipeIngredients.rawMaterialId, rawMaterials.id))
+        .where(eq(productRecipeIngredients.recipeId, recipeId));
+
+      // Üretim numarası oluştur
+      const now = new Date();
+      const productionNumber = `PR-${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}-${Date.now().toString(36).toUpperCase()}`;
+
+      // Reçetenin çıktı miktarını al (1 reçete = outputQuantity adet ürün)
+      const recipeOutputQty = parseFloat(recipe.outputQuantity || "1");
+      const multiplier = producedQuantity / recipeOutputQty;
+
+      // Stok yeterliliğini kontrol et
+      const stockIssues: string[] = [];
+      for (const ing of ingredients) {
+        if (!ing.material?.inventoryId) continue;
+        const requiredQty = parseFloat(ing.ingredient.quantity) * multiplier;
+        const [invItem] = await db.select().from(inventory).where(eq(inventory.id, ing.material.inventoryId));
+        if (invItem) {
+          const currentStock = parseFloat(invItem.currentStock);
+          if (currentStock < requiredQty) {
+            stockIssues.push(`${ing.material.name}: Gereken ${requiredQty.toFixed(2)} ${ing.ingredient.unit}, Mevcut ${currentStock.toFixed(2)} ${invItem.unit}`);
+          }
+        }
+      }
+
+      if (stockIssues.length > 0) {
+        return res.status(400).json({ 
+          error: "Yetersiz stok", 
+          details: stockIssues,
+          message: `${stockIssues.length} hammaddede stok yetersiz` 
+        });
+      }
+
+      // Üretim kaydını oluştur
+      const [record] = await db.insert(productionRecords).values({
+        productionNumber,
+        productionDate: now,
+        inventoryId: 0, // placeholder
+        recipeId,
+        plannedQuantity: producedQuantity.toString(),
+        producedQuantity: producedQuantity.toString(),
+        wasteQuantity: "0",
+        unit: product.unit || "adet",
+        status: "tamamlandi",
+        ingredientsDeducted: true,
+        productAddedToStock: true,
+        notes: notes || `${product.name} - ${producedQuantity} ${product.unit} üretildi`,
+        producedById: user?.id
+      }).returning();
+
+      // Hammaddeleri stoktan düş (uretim_cikis)
+      const deductionResults: any[] = [];
+      for (const ing of ingredients) {
+        if (!ing.material?.inventoryId) continue;
+        const requiredQty = parseFloat(ing.ingredient.quantity) * multiplier;
+
+        const [invItem] = await db.select().from(inventory).where(eq(inventory.id, ing.material.inventoryId));
+        if (!invItem) continue;
+
+        const previousStock = parseFloat(invItem.currentStock);
+        const newStock = previousStock - requiredQty;
+
+        // Stok hareketi kaydet
+        await db.insert(inventoryMovements).values({
+          inventoryId: ing.material.inventoryId,
+          movementType: "uretim_cikis",
+          quantity: requiredQty.toString(),
+          previousStock: previousStock.toString(),
+          newStock: newStock.toString(),
+          referenceType: "production",
+          referenceId: record.id,
+          notes: `${product.name} üretimi - ${productionNumber}`,
+          createdById: user?.id
+        });
+
+        // Stok güncelle
+        await db.update(inventory)
+          .set({ currentStock: newStock.toString(), updatedAt: new Date() })
+          .where(eq(inventory.id, ing.material.inventoryId));
+
+        // Üretim hammadde kullanımı kaydet
+        await db.insert(productionIngredients).values({
+          productionRecordId: record.id,
+          inventoryId: ing.material.inventoryId,
+          plannedQuantity: requiredQty.toString(),
+          usedQuantity: requiredQty.toString(),
+          unit: ing.ingredient.unit,
+          deductedFromStock: true
+        });
+
+        deductionResults.push({
+          materialName: ing.material.name,
+          materialCode: ing.material.code,
+          usedQuantity: requiredQty.toFixed(4),
+          unit: ing.ingredient.unit,
+          previousStock: previousStock.toFixed(2),
+          newStock: newStock.toFixed(2),
+          inventoryId: ing.material.inventoryId
+        });
+
+        // Minimum stok kontrolü - uyarı oluştur
+        const minStock = parseFloat(invItem.minimumStock || "0");
+        if (newStock <= minStock && minStock > 0 && user?.id) {
+          await db.insert(notifications).values({
+            userId: user.id,
+            title: "Düşük Stok Uyarısı",
+            message: `${ing.material.name} stoğu minimum seviyenin altına düştü! Mevcut: ${newStock.toFixed(2)} ${invItem.unit}, Minimum: ${minStock.toFixed(2)} ${invItem.unit}`,
+            type: "warning",
+            isRead: false,
+            link: "/satinalma?tab=stok-yonetimi"
+          });
+        }
+      }
+
+      // Bitmiş ürünü stoğa ekle - inventory'de bu ürün varsa
+      // factoryProducts -> inventory bağlantısını code/sku üzerinden yap
+      const [finishedProductInv] = await db.select()
+        .from(inventory)
+        .where(and(
+          or(
+            eq(inventory.code, product.sku),
+            eq(inventory.name, product.name)
+          ),
+          eq(inventory.isActive, true)
+        ));
+
+      let productStockResult = null;
+      if (finishedProductInv) {
+        const prevStock = parseFloat(finishedProductInv.currentStock);
+        const newProductStock = prevStock + producedQuantity;
+
+        await db.insert(inventoryMovements).values({
+          inventoryId: finishedProductInv.id,
+          movementType: "uretim_giris",
+          quantity: producedQuantity.toString(),
+          previousStock: prevStock.toString(),
+          newStock: newProductStock.toString(),
+          referenceType: "production",
+          referenceId: record.id,
+          notes: `${product.name} üretimden giriş - ${productionNumber}`,
+          createdById: user?.id
+        });
+
+        await db.update(inventory)
+          .set({ currentStock: newProductStock.toString(), updatedAt: new Date() })
+          .where(eq(inventory.id, finishedProductInv.id));
+
+        productStockResult = {
+          inventoryId: finishedProductInv.id,
+          productName: product.name,
+          addedQuantity: producedQuantity,
+          previousStock: prevStock.toFixed(2),
+          newStock: newProductStock.toFixed(2)
+        };
+      }
+
+      res.json({
+        success: true,
+        productionRecord: record,
+        productionNumber,
+        producedProduct: product.name,
+        producedQuantity,
+        ingredientsDeducted: deductionResults,
+        productAddedToStock: productStockResult,
+        message: `${product.name} - ${producedQuantity} ${product.unit} üretim tamamlandı. ${deductionResults.length} hammadde stoktan düşüldü.`
+      });
+    } catch (error) {
+      console.error("Error completing production:", error);
+      res.status(500).json({ error: "Üretim tamamlanamadı" });
+    }
+  });
+
+  // Üretim geçmişi listesi
+  app.get("/api/production/history", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const { limit: limitStr, status } = req.query;
+      const queryLimit = parseInt(limitStr as string) || 50;
+      
+      let conditions: any[] = [];
+      if (status) {
+        conditions.push(eq(productionRecords.status, status as string));
+      }
+      
+      const records = conditions.length > 0
+        ? await db.select().from(productionRecords)
+            .where(and(...conditions))
+            .orderBy(desc(productionRecords.productionDate))
+            .limit(queryLimit)
+        : await db.select().from(productionRecords)
+            .orderBy(desc(productionRecords.productionDate))
+            .limit(queryLimit);
+      
+      res.json(records);
+    } catch (error) {
+      console.error("Error fetching production history:", error);
+      res.status(500).json({ error: "Üretim geçmişi alınamadı" });
+    }
+  });
+
+  // Üretim detayı (hammadde kullanımlarıyla)
+  app.get("/api/production/:id", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      const [record] = await db.select().from(productionRecords).where(eq(productionRecords.id, id));
+      if (!record) {
+        return res.status(404).json({ error: "Üretim kaydı bulunamadı" });
+      }
+
+      const ingredientUsage = await db.select({
+        usage: productionIngredients,
+        inv: inventory
+      })
+        .from(productionIngredients)
+        .leftJoin(inventory, eq(productionIngredients.inventoryId, inventory.id))
+        .where(eq(productionIngredients.productionRecordId, id));
+
+      res.json({ record, ingredients: ingredientUsage });
+    } catch (error) {
+      console.error("Error fetching production detail:", error);
+      res.status(500).json({ error: "Üretim detayı alınamadı" });
+    }
+  });
+
+  // Üretim öncesi stok kontrol - simülasyon
+  app.post("/api/production/check-stock", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const { recipeId, quantity } = req.body;
+
+      const [recipe] = await db.select().from(productRecipes).where(eq(productRecipes.id, recipeId));
+      if (!recipe) {
+        return res.status(404).json({ error: "Reçete bulunamadı" });
+      }
+
+      const ingredients = await db.select({
+        ingredient: productRecipeIngredients,
+        material: rawMaterials
+      })
+        .from(productRecipeIngredients)
+        .leftJoin(rawMaterials, eq(productRecipeIngredients.rawMaterialId, rawMaterials.id))
+        .where(eq(productRecipeIngredients.recipeId, recipeId));
+
+      const recipeOutputQty = parseFloat(recipe.outputQuantity || "1");
+      const multiplier = quantity / recipeOutputQty;
+
+      const stockCheck = [];
+      let allSufficient = true;
+
+      for (const ing of ingredients) {
+        const requiredQty = parseFloat(ing.ingredient.quantity) * multiplier;
+        let currentStock = 0;
+        let unit = ing.ingredient.unit;
+        let linked = false;
+
+        if (ing.material?.inventoryId) {
+          const [invItem] = await db.select().from(inventory).where(eq(inventory.id, ing.material.inventoryId));
+          if (invItem) {
+            currentStock = parseFloat(invItem.currentStock);
+            unit = invItem.unit;
+            linked = true;
+          }
+        }
+
+        const sufficient = !linked || currentStock >= requiredQty;
+        if (!sufficient) allSufficient = false;
+
+        stockCheck.push({
+          materialName: ing.material?.name || "Bilinmeyen",
+          materialCode: ing.material?.code || "-",
+          requiredQuantity: requiredQty.toFixed(4),
+          currentStock: linked ? currentStock.toFixed(2) : "Bağlantısız",
+          unit,
+          sufficient,
+          linked,
+          deficit: !sufficient ? (requiredQty - currentStock).toFixed(4) : "0"
+        });
+      }
+
+      res.json({ 
+        allSufficient, 
+        items: stockCheck,
+        recipeName: recipe.name,
+        quantity
+      });
+    } catch (error) {
+      console.error("Error checking stock:", error);
+      res.status(500).json({ error: "Stok kontrol edilemedi" });
+    }
+  });
+
+  // Tüm stok hareketleri (üretim filtreli)
+  app.get("/api/production/stock-movements", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const { type, limit: limitStr } = req.query;
+      const queryLimit = parseInt(limitStr as string) || 100;
+
+      let conditions: any[] = [];
+      if (type === "production") {
+        conditions.push(or(
+          eq(inventoryMovements.movementType, "uretim_giris"),
+          eq(inventoryMovements.movementType, "uretim_cikis")
+        ));
+      } else if (type) {
+        conditions.push(eq(inventoryMovements.movementType, type as string));
+      }
+
+      const movements = await db.select({
+        movement: inventoryMovements,
+        inv: inventory
+      })
+        .from(inventoryMovements)
+        .leftJoin(inventory, eq(inventoryMovements.inventoryId, inventory.id))
+        .where(conditions.length > 0 ? and(...conditions) : undefined)
+        .orderBy(desc(inventoryMovements.createdAt))
+        .limit(queryLimit);
+
+      res.json(movements);
+    } catch (error) {
+      console.error("Error fetching stock movements:", error);
+      res.status(500).json({ error: "Stok hareketleri alınamadı" });
+    }
+  });
+
+  // Hammadde-Stok bağlantı durumu
+  app.get("/api/production/material-stock-links", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const materials = await db.select({
+        material: rawMaterials,
+        inv: inventory
+      })
+        .from(rawMaterials)
+        .leftJoin(inventory, eq(rawMaterials.inventoryId, inventory.id))
+        .where(eq(rawMaterials.isActive, true))
+        .orderBy(rawMaterials.name);
+
+      const result = materials.map(m => ({
+        materialId: m.material.id,
+        materialCode: m.material.code,
+        materialName: m.material.name,
+        materialUnit: m.material.unit,
+        linked: !!m.material.inventoryId,
+        inventoryId: m.material.inventoryId,
+        inventoryCode: m.inv?.code || null,
+        inventoryName: m.inv?.name || null,
+        currentStock: m.inv ? parseFloat(m.inv.currentStock) : null,
+        minimumStock: m.inv ? parseFloat(m.inv.minimumStock) : null,
+        stockUnit: m.inv?.unit || null
+      }));
+
+      const linked = result.filter(r => r.linked).length;
+      const unlinked = result.filter(r => !r.linked).length;
+
+      res.json({ materials: result, summary: { total: result.length, linked, unlinked } });
+    } catch (error) {
+      console.error("Error fetching material-stock links:", error);
+      res.status(500).json({ error: "Bağlantı durumu alınamadı" });
+    }
+  });
+
+  // Hammaddeyi stok kalemine bağla
+  app.post("/api/production/link-material", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const { rawMaterialId, inventoryId } = req.body;
+      
+      if (!rawMaterialId || !inventoryId) {
+        return res.status(400).json({ error: "Hammadde ve stok kalemi ID gerekli" });
+      }
+
+      await db.update(rawMaterials)
+        .set({ inventoryId, updatedAt: new Date() })
+        .where(eq(rawMaterials.id, rawMaterialId));
+
+      res.json({ success: true, message: "Hammadde stok kalemine bağlandı" });
+    } catch (error) {
+      console.error("Error linking material:", error);
+      res.status(500).json({ error: "Bağlantı kurulamadı" });
+    }
+  });
+
+  // AI Üretim Analiz & Tahmin
+  app.get("/api/production/ai-insights", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      // Son 30 günlük üretim verileri
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+      const recentProductions = await db.select()
+        .from(productionRecords)
+        .where(gte(productionRecords.productionDate, thirtyDaysAgo))
+        .orderBy(desc(productionRecords.productionDate));
+
+      // Stok seviyeleri
+      const allInventory = await db.select()
+        .from(inventory)
+        .where(eq(inventory.isActive, true));
+
+      // Hammadde bağlantılı stoklar
+      const linkedMaterials = await db.select({
+        material: rawMaterials,
+        inv: inventory
+      })
+        .from(rawMaterials)
+        .leftJoin(inventory, eq(rawMaterials.inventoryId, inventory.id))
+        .where(and(
+          eq(rawMaterials.isActive, true),
+          isNotNull(rawMaterials.inventoryId)
+        ));
+
+      // Son üretim hareketleri
+      const recentMovements = await db.select({
+        movement: inventoryMovements,
+        inv: inventory
+      })
+        .from(inventoryMovements)
+        .leftJoin(inventory, eq(inventoryMovements.inventoryId, inventory.id))
+        .where(and(
+          gte(inventoryMovements.createdAt, thirtyDaysAgo),
+          or(
+            eq(inventoryMovements.movementType, "uretim_cikis"),
+            eq(inventoryMovements.movementType, "uretim_giris")
+          )
+        ))
+        .orderBy(desc(inventoryMovements.createdAt));
+
+      // Analiz verileri hesapla
+      const lowStockItems = allInventory.filter(item => {
+        const current = parseFloat(item.currentStock);
+        const min = parseFloat(item.minimumStock || "0");
+        return min > 0 && current <= min * 1.2;
+      });
+
+      const totalProductions = recentProductions.length;
+      const totalWaste = recentProductions.reduce((sum, r) => sum + parseFloat(r.wasteQuantity || "0"), 0);
+      const totalProduced = recentProductions.reduce((sum, r) => sum + parseFloat(r.producedQuantity || "0"), 0);
+      const wasteRate = totalProduced > 0 ? (totalWaste / totalProduced * 100) : 0;
+
+      // Günlük tüketim ortalaması
+      const dailyConsumption: Record<string, { name: string; totalUsed: number; days: number }> = {};
+      for (const mv of recentMovements) {
+        if (mv.movement.movementType === "uretim_cikis" && mv.inv) {
+          const key = mv.inv.id.toString();
+          if (!dailyConsumption[key]) {
+            dailyConsumption[key] = { name: mv.inv.name, totalUsed: 0, days: 0 };
+          }
+          dailyConsumption[key].totalUsed += parseFloat(mv.movement.quantity);
+        }
+      }
+      
+      const daysInPeriod = Math.max(1, Math.ceil((Date.now() - thirtyDaysAgo.getTime()) / 86400000));
+      
+      const consumptionForecasts = linkedMaterials.map(lm => {
+        const key = lm.material.inventoryId?.toString() || "";
+        const consumption = dailyConsumption[key];
+        const dailyAvg = consumption ? consumption.totalUsed / daysInPeriod : 0;
+        const currentStock = lm.inv ? parseFloat(lm.inv.currentStock) : 0;
+        const daysRemaining = dailyAvg > 0 ? Math.floor(currentStock / dailyAvg) : 999;
+        const minimumStock = lm.inv ? parseFloat(lm.inv.minimumStock || "0") : 0;
+        
+        return {
+          materialName: lm.material.name,
+          materialCode: lm.material.code,
+          currentStock: currentStock.toFixed(2),
+          minimumStock: minimumStock.toFixed(2),
+          unit: lm.inv?.unit || lm.material.unit,
+          dailyConsumption: dailyAvg.toFixed(4),
+          daysRemaining,
+          suggestedOrderQuantity: dailyAvg > 0 ? (dailyAvg * 14).toFixed(2) : "0",
+          urgency: daysRemaining <= 3 ? "critical" : daysRemaining <= 7 ? "warning" : daysRemaining <= 14 ? "info" : "ok"
+        };
+      }).filter(f => parseFloat(f.dailyConsumption) > 0)
+        .sort((a, b) => a.daysRemaining - b.daysRemaining);
+
+      res.json({
+        summary: {
+          totalProductions,
+          totalProduced: totalProduced.toFixed(2),
+          totalWaste: totalWaste.toFixed(2),
+          wasteRate: wasteRate.toFixed(2),
+          lowStockCount: lowStockItems.length,
+          linkedMaterialCount: linkedMaterials.length,
+          periodDays: daysInPeriod
+        },
+        lowStockAlerts: lowStockItems.map(item => ({
+          id: item.id,
+          name: item.name,
+          code: item.code,
+          currentStock: parseFloat(item.currentStock).toFixed(2),
+          minimumStock: parseFloat(item.minimumStock || "0").toFixed(2),
+          unit: item.unit
+        })),
+        consumptionForecasts,
+        recommendations: generateRecommendations(consumptionForecasts, wasteRate, lowStockItems.length)
+      });
+    } catch (error) {
+      console.error("Error generating AI insights:", error);
+      res.status(500).json({ error: "AI analiz oluşturulamadı" });
+    }
+  });
+}
+
+function generateRecommendations(
+  forecasts: any[], 
+  wasteRate: number, 
+  lowStockCount: number
+): string[] {
+  const recommendations: string[] = [];
+
+  const criticalItems = forecasts.filter(f => f.urgency === "critical");
+  if (criticalItems.length > 0) {
+    recommendations.push(`ACİL: ${criticalItems.map(i => i.materialName).join(", ")} stoğu 3 gün içinde tükenecek. Hemen sipariş verin.`);
+  }
+
+  const warningItems = forecasts.filter(f => f.urgency === "warning");
+  if (warningItems.length > 0) {
+    recommendations.push(`UYARI: ${warningItems.map(i => i.materialName).join(", ")} stoğu 7 gün içinde tükenebilir. Sipariş planlamanızı yapın.`);
+  }
+
+  if (wasteRate > 5) {
+    recommendations.push(`Fire oranı %${wasteRate.toFixed(1)} ile yüksek. Üretim süreçlerini gözden geçirin ve kayıp nedenlerini analiz edin.`);
+  } else if (wasteRate > 0 && wasteRate <= 2) {
+    recommendations.push(`Fire oranı %${wasteRate.toFixed(1)} - mükemmel seviyede. Bu performansı korumaya devam edin.`);
+  }
+
+  if (lowStockCount > 5) {
+    recommendations.push(`${lowStockCount} üründe stok minimum seviyenin altında. Toplu sipariş vermeyi düşünün.`);
+  }
+
+  if (forecasts.length > 0) {
+    const topConsumer = forecasts[0];
+    if (topConsumer.daysRemaining < 14) {
+      recommendations.push(`${topConsumer.materialName} için 2 haftalık önerilen sipariş miktarı: ${topConsumer.suggestedOrderQuantity} ${topConsumer.unit}`);
+    }
+  }
+
+  if (recommendations.length === 0) {
+    recommendations.push("Tüm stok seviyeleri yeterli görünüyor. Üretim planınıza devam edebilirsiniz.");
+  }
+
+  return recommendations;
 }
