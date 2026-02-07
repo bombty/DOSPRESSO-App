@@ -29,7 +29,7 @@ import {
   insertProductCostCalculationSchema,
   insertProductPackagingItemSchema
 } from "@shared/schema";
-import { eq, desc, and, gte, lte, sql, or, like, asc, isNotNull } from "drizzle-orm";
+import { eq, desc, and, gte, lte, sql, or, like, asc, isNotNull, inArray } from "drizzle-orm";
 
 const openai = new OpenAI({
   baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
@@ -87,7 +87,7 @@ async function calculateOverheadPerUnit(productionMinutes: number, batchSize: nu
     .from(factoryFixedCosts)
     .where(and(
       eq(factoryFixedCosts.isActive, true),
-      sql`${factoryFixedCosts.category} = ANY(${overheadCategories})`
+      inArray(factoryFixedCosts.category, overheadCategories)
     ));
   
   const totalMonthlyOverhead = overheadCosts.reduce((sum, c) => sum + parseFloat(c.monthlyAmount), 0);
