@@ -17,7 +17,7 @@ import { queryClient, apiRequest } from "@/lib/queryClient";
 import { 
   Calculator, Package, Warehouse, TrendingUp, Plus, RefreshCw, 
   DollarSign, Percent, Building2, FileText, Settings2, BarChart3,
-  Loader2, AlertTriangle, CheckCircle, Edit, Trash2
+  Loader2, AlertTriangle, CheckCircle, Edit, Trash2, Users, Clock, Hash
 } from "lucide-react";
 
 const rawMaterialSchema = z.object({
@@ -88,7 +88,7 @@ function formatPercent(value: string | number | null | undefined): string {
   return `%${((num - 1) * 100).toFixed(1)}`;
 }
 
-function ProductCostDetail({ productId }: { productId: number }) {
+function ProductCostDetail({ productId, onEditLabor }: { productId: number; onEditLabor?: (recipeId: number) => void }) {
   const { data, isLoading } = useQuery<any>({
     queryKey: ['/api/product-costs', productId],
   });
@@ -120,6 +120,49 @@ function ProductCostDetail({ productId }: { productId: number }) {
         </div>
       </div>
 
+      <div className="p-3 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-2">
+            <Users className="w-4 h-4 text-blue-600" />
+            <p className="text-sm font-medium text-blue-700 dark:text-blue-400">İşçilik Bilgileri</p>
+          </div>
+          {onEditLabor && data.recipe?.id && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => onEditLabor(data.recipe.id)}
+              data-testid="button-edit-labor"
+            >
+              <Edit className="w-3 h-3 mr-1" />
+              Düzenle
+            </Button>
+          )}
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div>
+            <p className="text-xs text-muted-foreground">Personel Sayısı</p>
+            <p className="font-medium" data-testid="text-worker-count">{data.labor?.workerCount || 1} kişi</p>
+          </div>
+          <div>
+            <p className="text-xs text-muted-foreground">Üretim Süresi</p>
+            <p className="font-medium" data-testid="text-production-time">{data.labor?.productionMinutes || 0} dakika</p>
+          </div>
+          <div>
+            <p className="text-xs text-muted-foreground">Batch Miktarı</p>
+            <p className="font-medium" data-testid="text-batch-size">{data.labor?.batchSize || 1} adet</p>
+          </div>
+          <div>
+            <p className="text-xs text-muted-foreground">Saat Ücreti</p>
+            <p className="font-medium" data-testid="text-hourly-rate">{formatCurrency(data.labor?.hourlyRate)}</p>
+          </div>
+        </div>
+        {data.labor?.formula && (
+          <p className="text-xs text-muted-foreground mt-2 pt-2 border-t border-blue-200 dark:border-blue-700">
+            Formül: {data.labor.formula} = {formatCurrency(data.labor.totalLaborCost)}
+          </p>
+        )}
+      </div>
+
       <div>
         <h4 className="text-sm font-medium mb-2">Malzeme Listesi</h4>
         <Table>
@@ -149,18 +192,22 @@ function ProductCostDetail({ productId }: { productId: number }) {
         </Table>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-3 pt-4 border-t">
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-3 pt-4 border-t">
         <div className="p-3 rounded-lg bg-muted/50">
           <p className="text-xs text-muted-foreground">Hammadde Maliyeti</p>
           <p className="font-bold">{formatCurrency(data.costs?.rawMaterialCost)}</p>
+        </div>
+        <div className="p-3 rounded-lg bg-blue-50 dark:bg-blue-900/20">
+          <p className="text-xs text-muted-foreground">İşçilik Maliyeti</p>
+          <p className="font-bold text-blue-700 dark:text-blue-400">{formatCurrency(data.costs?.laborCost)}</p>
         </div>
         <div className="p-3 rounded-lg bg-muted/50">
           <p className="text-xs text-muted-foreground">Genel Gider Payı</p>
           <p className="font-bold">{formatCurrency(data.costs?.overheadCost)}</p>
         </div>
-        <div className="p-3 rounded-lg bg-blue-50 dark:bg-blue-900/20">
+        <div className="p-3 rounded-lg bg-purple-50 dark:bg-purple-900/20">
           <p className="text-xs text-muted-foreground">Toplam Maliyet</p>
-          <p className="font-bold text-blue-700 dark:text-blue-400">{formatCurrency(data.costs?.totalUnitCost)}</p>
+          <p className="font-bold text-purple-700 dark:text-purple-400">{formatCurrency(data.costs?.totalUnitCost)}</p>
         </div>
         <div className="p-3 rounded-lg bg-muted/50">
           <p className="text-xs text-muted-foreground">Kar Marjı</p>
@@ -192,6 +239,12 @@ export default function MaliyetYonetimi() {
   const [editingMargin, setEditingMargin] = useState<any>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
   const [deleteType, setDeleteType] = useState<'material' | 'cost' | 'margin' | null>(null);
+  const [isEditLaborDialogOpen, setIsEditLaborDialogOpen] = useState(false);
+  const [editingRecipeId, setEditingRecipeId] = useState<number | null>(null);
+  const [laborWorkerCount, setLaborWorkerCount] = useState(1);
+  const [laborProductionMinutes, setLaborProductionMinutes] = useState(0);
+  const [laborBatchSize, setLaborBatchSize] = useState(1);
+  const [laborHourlyRate, setLaborHourlyRate] = useState("0");
 
   const { data: dashboardStats, isLoading: statsLoading } = useQuery<any>({
     queryKey: ['/api/cost-dashboard/stats'],
@@ -394,6 +447,36 @@ export default function MaliyetYonetimi() {
     }
   });
 
+  const updateRecipeLaborMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: number; data: any }) => {
+      return apiRequest("PUT", `/api/recipes/${id}`, data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/product-costs'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/cost-dashboard'] });
+      setIsEditLaborDialogOpen(false);
+      setEditingRecipeId(null);
+      toast({ title: "İşçilik bilgileri güncellendi" });
+    },
+    onError: () => {
+      toast({ title: "Hata", description: "İşçilik bilgileri güncellenemedi", variant: "destructive" });
+    }
+  });
+
+  const openEditLaborDialog = (recipeId: number) => {
+    setEditingRecipeId(recipeId);
+    if (selectedProductId) {
+      const cachedData = queryClient.getQueryData(['/api/product-costs', selectedProductId]) as any;
+      if (cachedData?.recipe) {
+        setLaborWorkerCount(cachedData.recipe.laborWorkerCount || 1);
+        setLaborProductionMinutes(cachedData.recipe.productionTimeMinutes || 0);
+        setLaborBatchSize(cachedData.recipe.laborBatchSize || 1);
+        setLaborHourlyRate(cachedData.recipe.laborHourlyRate?.toString() || "0");
+      }
+    }
+    setIsEditLaborDialogOpen(true);
+  };
+
   const handleDelete = () => {
     if (deleteConfirmId === null || !deleteType) return;
     
@@ -588,7 +671,15 @@ export default function MaliyetYonetimi() {
                     </TableHeader>
                     <TableBody>
                       {dashboardProducts.slice(0, 10).map((item: any) => (
-                        <TableRow key={item.product?.id} data-testid={`row-product-${item.product?.id}`}>
+                        <TableRow
+                          key={item.product?.id}
+                          data-testid={`row-product-${item.product?.id}`}
+                          className="cursor-pointer hover-elevate"
+                          onClick={() => {
+                            setSelectedProductId(item.product?.id);
+                            setIsProductCostDialogOpen(true);
+                          }}
+                        >
                           <TableCell className="font-medium">{item.product?.name}</TableCell>
                           <TableCell>
                             <Badge variant="outline">{item.product?.category}</Badge>
@@ -836,7 +927,15 @@ export default function MaliyetYonetimi() {
                     </TableHeader>
                     <TableBody>
                       {dashboardProducts.filter((p: any) => p.recipe).map((item: any) => (
-                        <TableRow key={item.product?.id} data-testid={`row-product-${item.product?.id}`}>
+                        <TableRow
+                          key={item.product?.id}
+                          data-testid={`row-product-${item.product?.id}`}
+                          className="cursor-pointer hover-elevate"
+                          onClick={() => {
+                            setSelectedProductId(item.product?.id);
+                            setIsProductCostDialogOpen(true);
+                          }}
+                        >
                           <TableCell className="font-medium">{item.product?.name}</TableCell>
                           <TableCell>
                             <Badge variant="outline" className="text-xs">{item.product?.category}</Badge>
@@ -851,17 +950,34 @@ export default function MaliyetYonetimi() {
                           <TableCell className="text-right">{formatCurrency(item.product?.basePrice)}</TableCell>
                           <TableCell className="text-right font-medium">{formatCurrency(item.product?.suggestedPrice)}</TableCell>
                           <TableCell className="text-right">
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={() => {
-                                setSelectedProductId(item.product?.id);
-                                setIsProductCostDialogOpen(true);
-                              }}
-                              data-testid={`button-view-cost-${item.product?.id}`}
-                            >
-                              <FileText className="w-4 h-4" />
-                            </Button>
+                            <div className="flex items-center justify-end gap-1">
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSelectedProductId(item.product?.id);
+                                  setIsProductCostDialogOpen(true);
+                                }}
+                                data-testid={`button-view-cost-${item.product?.id}`}
+                              >
+                                <FileText className="w-4 h-4" />
+                              </Button>
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSelectedProductId(item.product?.id);
+                                  if (item.recipe?.id) {
+                                    openEditLaborDialog(item.recipe.id);
+                                  }
+                                }}
+                                data-testid={`button-edit-labor-${item.product?.id}`}
+                              >
+                                <Edit className="w-4 h-4" />
+                              </Button>
+                            </div>
                           </TableCell>
                         </TableRow>
                       ))}
@@ -911,7 +1027,78 @@ export default function MaliyetYonetimi() {
               <DialogHeader>
                 <DialogTitle>Ürün Maliyet Detayı</DialogTitle>
               </DialogHeader>
-              {selectedProductId && <ProductCostDetail productId={selectedProductId} />}
+              {selectedProductId && <ProductCostDetail productId={selectedProductId} onEditLabor={openEditLaborDialog} />}
+            </DialogContent>
+          </Dialog>
+
+          <Dialog open={isEditLaborDialogOpen} onOpenChange={setIsEditLaborDialogOpen}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>İşçilik Bilgilerini Düzenle</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div>
+                  <label className="text-sm font-medium">Personel Sayısı</label>
+                  <Input
+                    type="number"
+                    min={1}
+                    value={laborWorkerCount}
+                    onChange={(e) => setLaborWorkerCount(parseInt(e.target.value) || 1)}
+                    data-testid="input-labor-worker-count"
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium">Üretim Süresi (dk)</label>
+                  <Input
+                    type="number"
+                    min={0}
+                    value={laborProductionMinutes}
+                    onChange={(e) => setLaborProductionMinutes(parseInt(e.target.value) || 0)}
+                    data-testid="input-labor-production-time"
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium">Batch Miktarı (adet)</label>
+                  <Input
+                    type="number"
+                    min={1}
+                    value={laborBatchSize}
+                    onChange={(e) => setLaborBatchSize(parseInt(e.target.value) || 1)}
+                    data-testid="input-labor-batch-size"
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium">Saat Başı İşçilik Ücreti (₺)</label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    value={laborHourlyRate}
+                    onChange={(e) => setLaborHourlyRate(e.target.value)}
+                    data-testid="input-labor-hourly-rate"
+                  />
+                </div>
+                <Button
+                  className="w-full"
+                  disabled={updateRecipeLaborMutation.isPending}
+                  onClick={() => {
+                    if (editingRecipeId) {
+                      updateRecipeLaborMutation.mutate({
+                        id: editingRecipeId,
+                        data: {
+                          laborWorkerCount,
+                          productionTimeMinutes: laborProductionMinutes,
+                          laborBatchSize,
+                          laborHourlyRate: laborHourlyRate,
+                        }
+                      });
+                    }
+                  }}
+                  data-testid="button-submit-labor"
+                >
+                  {updateRecipeLaborMutation.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+                  Kaydet
+                </Button>
+              </div>
             </DialogContent>
           </Dialog>
         </TabsContent>
@@ -1248,6 +1435,7 @@ export default function MaliyetYonetimi() {
                       <TableHead>Ürün</TableHead>
                       <TableHead>Dönem</TableHead>
                       <TableHead className="text-right">Hammadde Maliyeti</TableHead>
+                      <TableHead className="text-right">İşçilik Maliyeti</TableHead>
                       <TableHead className="text-right">Genel Gider</TableHead>
                       <TableHead className="text-right">Toplam Maliyet</TableHead>
                       <TableHead className="text-right">Önerilen Fiyat</TableHead>
@@ -1260,6 +1448,7 @@ export default function MaliyetYonetimi() {
                         <TableCell className="font-medium">{calc.product?.name}</TableCell>
                         <TableCell>{calc.calculation?.periodMonth}/{calc.calculation?.periodYear}</TableCell>
                         <TableCell className="text-right">{formatCurrency(calc.calculation?.rawMaterialCost)}</TableCell>
+                        <TableCell className="text-right">{formatCurrency(calc.calculation?.directLaborCost)}</TableCell>
                         <TableCell className="text-right">{formatCurrency(calc.calculation?.overheadCost)}</TableCell>
                         <TableCell className="text-right font-medium">{formatCurrency(calc.calculation?.totalUnitCost)}</TableCell>
                         <TableCell className="text-right">{formatCurrency(calc.calculation?.suggestedSellingPrice)}</TableCell>

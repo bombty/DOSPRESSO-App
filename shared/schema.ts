@@ -10920,9 +10920,14 @@ export const productRecipes = pgTable("product_recipes", {
   recipeType: varchar("recipe_type", { length: 20 }).default("OPEN"), // OPEN, KEYBLEND
   
   // Üretim bilgileri
-  outputQuantity: numeric("output_quantity", { precision: 12, scale: 3 }).default("1"), // Kaç adet üretilir
+  outputQuantity: numeric("output_quantity", { precision: 12, scale: 3 }).default("1"),
   outputUnit: varchar("output_unit", { length: 20 }).default("adet"),
   productionTimeMinutes: integer("production_time_minutes").default(0),
+  
+  // İşçilik bilgileri
+  laborWorkerCount: integer("labor_worker_count").default(1),
+  laborBatchSize: integer("labor_batch_size").default(1),
+  laborHourlyRate: numeric("labor_hourly_rate", { precision: 10, scale: 2 }).default("0"),
   
   // Hesaplanan maliyetler
   rawMaterialCost: numeric("raw_material_cost", { precision: 12, scale: 4 }).default("0"),

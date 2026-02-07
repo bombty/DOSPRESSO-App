@@ -712,13 +712,21 @@ export function registerMaliyetRoutes(app: Express, isAuthenticated: AuthMiddlew
             rawMaterialCost += qty * price;
           }
           
+          const workerCount = recipe.laborWorkerCount || 1;
+          const productionMinutes = recipe.productionTimeMinutes || 0;
+          const batchSize = recipe.laborBatchSize || 1;
+          const hourlyRate = parseFloat(recipe.laborHourlyRate || "0");
+          const laborCost = batchSize > 0 && hourlyRate > 0
+            ? (workerCount * (productionMinutes / 60) * hourlyRate) / batchSize
+            : 0;
+          
           const fixedCostSummary = await db.select()
             .from(factoryFixedCosts)
             .where(eq(factoryFixedCosts.isActive, true));
           
           const totalFixedCosts = fixedCostSummary.reduce((sum, c) => sum + parseFloat(c.monthlyAmount), 0);
           const overheadPerProduct = products.length > 0 ? totalFixedCosts / products.length : 0;
-          const totalUnitCost = rawMaterialCost + overheadPerProduct;
+          const totalUnitCost = rawMaterialCost + laborCost + overheadPerProduct;
           
           const [marginTemplate] = await db.select()
             .from(profitMarginTemplates)
@@ -735,6 +743,7 @@ export function registerMaliyetRoutes(app: Express, isAuthenticated: AuthMiddlew
               periodMonth: month,
               periodYear: year,
               rawMaterialCost: rawMaterialCost.toFixed(4),
+              directLaborCost: laborCost.toFixed(4),
               overheadCost: overheadPerProduct.toFixed(4),
               totalUnitCost: totalUnitCost.toFixed(4),
               appliedMargin: appliedMargin.toFixed(2),
@@ -743,6 +752,17 @@ export function registerMaliyetRoutes(app: Express, isAuthenticated: AuthMiddlew
               profitMarginPercentage: ((appliedMargin - 1) * 100).toFixed(2),
               calculatedById: user?.id
             });
+          
+          await db.update(productRecipes)
+            .set({
+              rawMaterialCost: rawMaterialCost.toFixed(4),
+              laborCost: laborCost.toFixed(4),
+              overheadCost: overheadPerProduct.toFixed(4),
+              totalUnitCost: totalUnitCost.toFixed(4),
+              costLastCalculated: new Date(),
+              updatedAt: new Date()
+            })
+            .where(eq(productRecipes.id, recipe.id));
           
           await db.update(factoryProducts)
             .set({
@@ -944,7 +964,16 @@ export function registerMaliyetRoutes(app: Express, isAuthenticated: AuthMiddlew
         .where(eq(profitMarginTemplates.category, product.category));
       
       const appliedMargin = margin ? parseFloat(margin.defaultMargin) : 1.35;
-      const totalUnitCost = totalRawMaterialCost + overheadPerProduct;
+      
+      const workerCount = recipe.laborWorkerCount || 1;
+      const productionMinutes = recipe.productionTimeMinutes || 0;
+      const batchSize = recipe.laborBatchSize || 1;
+      const hourlyRate = parseFloat(recipe.laborHourlyRate || "0");
+      const laborCost = batchSize > 0 && hourlyRate > 0
+        ? (workerCount * (productionMinutes / 60) * hourlyRate) / batchSize
+        : 0;
+      
+      const totalUnitCost = totalRawMaterialCost + laborCost + overheadPerProduct;
       const suggestedPrice = totalUnitCost * appliedMargin;
       
       res.json({
@@ -954,11 +983,24 @@ export function registerMaliyetRoutes(app: Express, isAuthenticated: AuthMiddlew
           name: recipe.name,
           recipeType: recipe.recipeType,
           outputQuantity: recipe.outputQuantity,
-          outputUnit: recipe.outputUnit
+          outputUnit: recipe.outputUnit,
+          productionTimeMinutes: recipe.productionTimeMinutes,
+          laborWorkerCount: recipe.laborWorkerCount,
+          laborBatchSize: recipe.laborBatchSize,
+          laborHourlyRate: recipe.laborHourlyRate
         },
         ingredients: processedIngredients,
+        labor: {
+          workerCount,
+          productionMinutes,
+          batchSize,
+          hourlyRate,
+          totalLaborCost: laborCost.toFixed(2),
+          formula: `${workerCount} kişi x ${productionMinutes} dk x ₺${hourlyRate.toFixed(2)}/saat / ${batchSize} adet`
+        },
         costs: {
           rawMaterialCost: totalRawMaterialCost.toFixed(2),
+          laborCost: laborCost.toFixed(2),
           overheadCost: overheadPerProduct.toFixed(2),
           totalUnitCost: totalUnitCost.toFixed(2),
           profitMargin: ((appliedMargin - 1) * 100).toFixed(1) + "%",
