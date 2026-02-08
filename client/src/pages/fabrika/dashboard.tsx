@@ -486,47 +486,47 @@ export default function FabrikaDashboard() {
               <CardTitle className="text-sm">Hızlı Erişim</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-4 md:grid-cols-7 gap-1.5">
+              <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-7 gap-2">
                 <Link href="/fabrika/kiosk">
-                  <Button variant="outline" className="w-full h-auto p-2 flex flex-col items-center gap-1" data-testid="link-kiosk-quick">
-                    <Factory className="h-4 w-4 text-amber-500" />
-                    <span className="text-[10px]">Kiosk</span>
+                  <Button variant="outline" className="w-full h-auto p-3 flex flex-col items-center gap-2" data-testid="link-kiosk-quick">
+                    <Factory className="h-6 w-6 text-amber-500" />
+                    <span className="text-xs">Kiosk</span>
                   </Button>
                 </Link>
                 <Link href="/fabrika/kalite-kontrol">
-                  <Button variant="outline" className="w-full h-auto p-2 flex flex-col items-center gap-1" data-testid="link-quality-control">
-                    <ClipboardCheck className="h-4 w-4 text-emerald-500" />
-                    <span className="text-[10px]">Kalite</span>
+                  <Button variant="outline" className="w-full h-auto p-3 flex flex-col items-center gap-2" data-testid="link-quality-control">
+                    <ClipboardCheck className="h-6 w-6 text-emerald-500" />
+                    <span className="text-xs">Kalite</span>
                   </Button>
                 </Link>
                 <Link href="/fabrika/performans">
-                  <Button variant="outline" className="w-full h-auto p-2 flex flex-col items-center gap-1" data-testid="link-performance">
-                    <BarChart3 className="h-4 w-4 text-purple-500" />
-                    <span className="text-[10px]">Performans</span>
+                  <Button variant="outline" className="w-full h-auto p-3 flex flex-col items-center gap-2" data-testid="link-performance">
+                    <BarChart3 className="h-6 w-6 text-purple-500" />
+                    <span className="text-xs">Performans</span>
                   </Button>
                 </Link>
                 <Link href="/fabrika/vardiya-planlama">
-                  <Button variant="outline" className="w-full h-auto p-2 flex flex-col items-center gap-1" data-testid="link-shift-planning">
-                    <Clock className="h-4 w-4 text-indigo-500" />
-                    <span className="text-[10px]">Vardiya</span>
+                  <Button variant="outline" className="w-full h-auto p-3 flex flex-col items-center gap-2" data-testid="link-shift-planning">
+                    <Clock className="h-6 w-6 text-indigo-500" />
+                    <span className="text-xs">Vardiya</span>
                   </Button>
                 </Link>
                 <Link href="/fabrika/uretim-planlama">
-                  <Button variant="outline" className="w-full h-auto p-2 flex flex-col items-center gap-1" data-testid="link-factory">
-                    <Package className="h-4 w-4 text-blue-500" />
-                    <span className="text-[10px]">Üretim</span>
+                  <Button variant="outline" className="w-full h-auto p-3 flex flex-col items-center gap-2" data-testid="link-factory">
+                    <Package className="h-6 w-6 text-blue-500" />
+                    <span className="text-xs">Üretim</span>
                   </Button>
                 </Link>
                 <Link href="/fabrika/ai-raporlar">
-                  <Button variant="outline" className="w-full h-auto p-2 flex flex-col items-center gap-1" data-testid="link-reports">
-                    <TrendingUp className="h-4 w-4 text-purple-500" />
-                    <span className="text-[10px]">AI Rapor</span>
+                  <Button variant="outline" className="w-full h-auto p-3 flex flex-col items-center gap-2" data-testid="link-reports">
+                    <TrendingUp className="h-6 w-6 text-purple-500" />
+                    <span className="text-xs">AI Rapor</span>
                   </Button>
                 </Link>
                 <Link href="/ik">
-                  <Button variant="outline" className="w-full h-auto p-2 flex flex-col items-center gap-1" data-testid="link-hr">
-                    <Users className="h-4 w-4 text-green-500" />
-                    <span className="text-[10px]">İK</span>
+                  <Button variant="outline" className="w-full h-auto p-3 flex flex-col items-center gap-2" data-testid="link-hr">
+                    <Users className="h-6 w-6 text-green-500" />
+                    <span className="text-xs">İK</span>
                   </Button>
                 </Link>
               </div>

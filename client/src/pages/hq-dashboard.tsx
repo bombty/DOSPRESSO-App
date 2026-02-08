@@ -1083,7 +1083,7 @@ function CGODashboard() {
       {/* Hızlı Erişim - Unified */}
       <div className="space-y-2">
         <h3 className="text-sm font-medium text-muted-foreground px-1">HIZLI ERİŞİM</h3>
-        <div className="grid grid-cols-4 md:grid-cols-7 gap-1.5">
+        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-7 gap-2">
           {hqQuickActions.map((action, index) => (
             <Card 
               key={index}
@@ -1091,11 +1091,11 @@ function CGODashboard() {
               onClick={() => setLocation(action.route)}
               data-testid={`quick-action-${action.label.toLowerCase()}`}
             >
-              <CardContent className="p-2.5 flex flex-col items-center gap-1.5 text-center">
+              <CardContent className="p-3 flex flex-col items-center gap-2 text-center">
                 <div className={`p-2 rounded-lg ${action.bgColor}`}>
-                  <action.icon className={`w-4 h-4 ${action.color}`} />
+                  <action.icon className={`w-5 h-5 ${action.color}`} />
                 </div>
-                <span className="text-[11px] font-medium leading-tight truncate w-full">{action.label}</span>
+                <span className="text-xs font-medium leading-tight truncate w-full">{action.label}</span>
               </CardContent>
             </Card>
           ))}
