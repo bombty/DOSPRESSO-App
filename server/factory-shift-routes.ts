@@ -113,15 +113,47 @@ export function registerFactoryShiftRoutes(app: Express) {
 
   app.post("/api/factory-shifts", isFactoryUser, async (req: Request, res: Response) => {
     try {
-      const parseResult = insertFactoryShiftSchema.safeParse(req.body);
+      const { workers, productions, ...shiftData } = req.body;
+      const parseResult = insertFactoryShiftSchema.safeParse(shiftData);
       if (!parseResult.success) {
         return res.status(400).json({ error: "Geçersiz veri", details: parseResult.error.errors });
       }
-      const [shift] = await db.insert(factoryShifts).values({
-        ...parseResult.data,
-        createdById: (req as any).user?.id,
-      }).returning();
-      res.json(shift);
+
+      const result = await db.transaction(async (tx) => {
+        const [shift] = await tx.insert(factoryShifts).values({
+          ...parseResult.data,
+          createdById: (req as any).user?.id,
+        }).returning();
+
+        if (workers && Array.isArray(workers) && workers.length > 0) {
+          await tx.insert(factoryShiftWorkers).values(
+            workers.map((w: any) => ({
+              shiftId: shift.id,
+              userId: w.userId,
+              machineId: w.machineId || null,
+              role: w.role || "operator",
+              notes: w.notes || null,
+            }))
+          );
+        }
+
+        if (productions && Array.isArray(productions) && productions.length > 0) {
+          await tx.insert(factoryShiftProductions).values(
+            productions.map((p: any) => ({
+              shiftId: shift.id,
+              productId: p.productId,
+              machineId: p.machineId || null,
+              batchSpecId: p.batchSpecId || null,
+              plannedBatchCount: p.plannedBatchCount || 1,
+              notes: p.notes || null,
+            }))
+          );
+        }
+
+        return shift;
+      });
+
+      res.json(result);
     } catch (error: any) {
       console.error("Create factory shift error:", error);
       res.status(500).json({ error: "Vardiya oluşturulamadı" });

@@ -31,6 +31,11 @@ import {
   Timer,
   Weight,
   Hash,
+  ArrowLeft,
+  ArrowRight,
+  UserPlus,
+  Factory,
+  Search,
 } from "lucide-react";
 
 const SHIFT_TYPES = [
@@ -72,19 +77,32 @@ export default function FabrikaVardiyaPlanlama() {
   const [selectedShiftId, setSelectedShiftId] = useState<number | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
 
-  // Shift form state
+  // Wizard step state
+  const [wizardStep, setWizardStep] = useState(1);
+
+  // Shift form state (Step 1)
   const [shiftDate, setShiftDate] = useState("");
   const [shiftType, setShiftType] = useState("sabah");
   const [shiftStartTime, setShiftStartTime] = useState("06:00");
   const [shiftEndTime, setShiftEndTime] = useState("14:00");
   const [shiftNotes, setShiftNotes] = useState("");
 
-  // Worker assignment state
+  // Worker selection state (Step 2 - wizard)
+  const [wizardWorkers, setWizardWorkers] = useState<Array<{ userId: string; userName: string; role: string; machineId: string }>>([]);
+  const [staffSearch, setStaffSearch] = useState("");
+
+  // Production plan state (Step 3 - wizard)
+  const [wizardProductions, setWizardProductions] = useState<Array<{ productId: number; productName: string; machineId: number | null; machineName: string; batchSpecId: number | null; plannedBatchCount: number }>>([]);
+  const [wizProdProductId, setWizProdProductId] = useState("");
+  const [wizProdMachineId, setWizProdMachineId] = useState("");
+  const [wizProdBatchCount, setWizProdBatchCount] = useState("1");
+
+  // Worker assignment state (detail dialog)
   const [assignUserId, setAssignUserId] = useState("");
   const [assignMachineId, setAssignMachineId] = useState("");
   const [assignRole, setAssignRole] = useState("operator");
 
-  // Production plan state
+  // Production plan state (detail dialog)
   const [prodProductId, setProdProductId] = useState("");
   const [prodMachineId, setProdMachineId] = useState("");
   const [prodBatchCount, setProdBatchCount] = useState("1");
@@ -176,13 +194,20 @@ export default function FabrikaVardiyaPlanlama() {
       .finally(() => setLoadingRecipe(false));
   }, [specProductId]);
 
+  const invalidateShifts = () => {
+    queryClient.invalidateQueries({ predicate: (query) => {
+      const key = query.queryKey;
+      return Array.isArray(key) && key[0] === "/api/factory-shifts";
+    }});
+  };
+
   const createShiftMutation = useMutation({
     mutationFn: async (data: any) => {
       const res = await apiRequest("POST", "/api/factory-shifts", data);
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/factory-shifts"] });
+      invalidateShifts();
       setIsShiftDialogOpen(false);
       resetShiftForm();
       toast({ title: "Vardiya oluşturuldu" });
@@ -196,7 +221,7 @@ export default function FabrikaVardiyaPlanlama() {
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/factory-shifts"] });
+      invalidateShifts();
       setIsShiftDialogOpen(false);
       setEditingShift(null);
       resetShiftForm();
@@ -210,7 +235,7 @@ export default function FabrikaVardiyaPlanlama() {
       await apiRequest("DELETE", `/api/factory-shifts/${id}`);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/factory-shifts"] });
+      invalidateShifts();
       toast({ title: "Vardiya silindi" });
     },
   });
@@ -221,7 +246,7 @@ export default function FabrikaVardiyaPlanlama() {
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/factory-shifts"] });
+      invalidateShifts();
       setAssignUserId("");
       setAssignMachineId("");
       setAssignRole("operator");
@@ -235,7 +260,7 @@ export default function FabrikaVardiyaPlanlama() {
       await apiRequest("DELETE", `/api/factory-shift-workers/${id}`);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/factory-shifts"] });
+      invalidateShifts();
       toast({ title: "Çalışan kaldırıldı" });
     },
   });
@@ -246,7 +271,7 @@ export default function FabrikaVardiyaPlanlama() {
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/factory-shifts"] });
+      invalidateShifts();
       setProdProductId("");
       setProdMachineId("");
       setProdBatchCount("1");
@@ -260,7 +285,7 @@ export default function FabrikaVardiyaPlanlama() {
       await apiRequest("DELETE", `/api/factory-shift-productions/${id}`);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/factory-shifts"] });
+      invalidateShifts();
       toast({ title: "Üretim planı kaldırıldı" });
     },
   });
@@ -298,6 +323,13 @@ export default function FabrikaVardiyaPlanlama() {
     setShiftEndTime("14:00");
     setShiftNotes("");
     setEditingShift(null);
+    setWizardStep(1);
+    setWizardWorkers([]);
+    setWizardProductions([]);
+    setStaffSearch("");
+    setWizProdProductId("");
+    setWizProdMachineId("");
+    setWizProdBatchCount("1");
   }
 
   function resetSpecForm() {
@@ -322,7 +354,7 @@ export default function FabrikaVardiyaPlanlama() {
   }
 
   function handleCreateShift() {
-    const data = {
+    const data: any = {
       shiftDate,
       shiftType,
       startTime: shiftStartTime,
@@ -333,9 +365,92 @@ export default function FabrikaVardiyaPlanlama() {
     if (editingShift) {
       updateShiftMutation.mutate({ id: editingShift.id, data });
     } else {
+      if (wizardWorkers.length > 0) {
+        data.workers = wizardWorkers.map(w => ({
+          userId: w.userId,
+          machineId: w.machineId && w.machineId !== "none" ? parseInt(w.machineId) : null,
+          role: w.role,
+        }));
+      }
+      if (wizardProductions.length > 0) {
+        data.productions = wizardProductions.map(p => ({
+          productId: p.productId,
+          machineId: p.machineId,
+          batchSpecId: p.batchSpecId,
+          plannedBatchCount: p.plannedBatchCount,
+        }));
+      }
       createShiftMutation.mutate(data);
     }
   }
+
+  function addWizardWorker(staff: any) {
+    if (wizardWorkers.some(w => w.userId === staff.id)) return;
+    setWizardWorkers(prev => [...prev, {
+      userId: staff.id,
+      userName: `${staff.firstName} ${staff.lastName}`,
+      role: "operator",
+      machineId: "",
+    }]);
+  }
+
+  function removeWizardWorker(userId: string) {
+    setWizardWorkers(prev => prev.filter(w => w.userId !== userId));
+  }
+
+  function updateWizardWorkerRole(userId: string, role: string) {
+    setWizardWorkers(prev => prev.map(w => w.userId === userId ? { ...w, role } : w));
+  }
+
+  function updateWizardWorkerMachine(userId: string, machineId: string) {
+    setWizardWorkers(prev => prev.map(w => w.userId === userId ? { ...w, machineId } : w));
+  }
+
+  function addWizardProduction() {
+    if (!wizProdProductId) return;
+    const product = products.find((p: any) => p.id === parseInt(wizProdProductId));
+    const machineId = wizProdMachineId && wizProdMachineId !== "none" ? parseInt(wizProdMachineId) : null;
+    const machine = machineId ? machines.find((m: any) => m.id === machineId) : null;
+    const matchingSpec = batchSpecs.find((s: any) =>
+      s.productId === parseInt(wizProdProductId) &&
+      (!machineId || s.machineId === machineId)
+    );
+    setWizardProductions(prev => [...prev, {
+      productId: parseInt(wizProdProductId),
+      productName: product?.name || "",
+      machineId,
+      machineName: machine?.name || "",
+      batchSpecId: matchingSpec?.id || null,
+      plannedBatchCount: parseInt(wizProdBatchCount) || 1,
+    }]);
+    setWizProdProductId("");
+    setWizProdMachineId("");
+    setWizProdBatchCount("1");
+  }
+
+  function removeWizardProduction(idx: number) {
+    setWizardProductions(prev => prev.filter((_, i) => i !== idx));
+  }
+
+  const filteredStaff = useMemo(() => {
+    if (!staffSearch.trim()) return staffList;
+    const q = staffSearch.toLowerCase();
+    return staffList.filter((s: any) =>
+      `${s.firstName} ${s.lastName}`.toLowerCase().includes(q) ||
+      (s.role || "").toLowerCase().includes(q)
+    );
+  }, [staffList, staffSearch]);
+
+  const ROLE_LABELS: Record<string, string> = {
+    fabrika_mudur: "Fabrika Müdürü",
+    fabrika_supervisor: "Fabrika Supervisor",
+    fabrika_operator: "Fabrika Operatör",
+    kalite_kontrol: "Kalite Kontrol",
+    supervisor: "Supervisor",
+    admin: "Admin",
+    ceo: "CEO",
+    cgo: "CGO",
+  };
 
   function openEditShift(shift: any) {
     setEditingShift(shift);
@@ -606,48 +721,313 @@ export default function FabrikaVardiyaPlanlama() {
         </TabsContent>
       </Tabs>
 
-      {/* CREATE/EDIT SHIFT DIALOG */}
-      <Dialog open={isShiftDialogOpen} onOpenChange={(open) => { setIsShiftDialogOpen(open); if (!open) setEditingShift(null); }}>
-        <DialogContent className="max-w-md">
+      {/* CREATE/EDIT SHIFT DIALOG - WIZARD */}
+      <Dialog open={isShiftDialogOpen} onOpenChange={(open) => { setIsShiftDialogOpen(open); if (!open) { setEditingShift(null); resetShiftForm(); } }}>
+        <DialogContent className={editingShift ? "max-w-md" : "max-w-2xl max-h-[85vh] overflow-y-auto"}>
           <DialogHeader>
             <DialogTitle>{editingShift ? "Vardiya Düzenle" : "Vardiya Oluştur"}</DialogTitle>
+            {!editingShift && (
+              <div className="flex items-center gap-2 pt-2">
+                {[1, 2, 3].map(step => (
+                  <div key={step} className="flex items-center gap-1.5 flex-1">
+                    <div className={`flex items-center justify-center w-7 h-7 rounded-full text-xs font-bold border-2 transition-colors ${
+                      wizardStep === step ? "border-primary bg-primary text-primary-foreground" :
+                      wizardStep > step ? "border-primary bg-primary/20 text-primary" :
+                      "border-muted-foreground/30 text-muted-foreground"
+                    }`} data-testid={`wizard-step-${step}`}>
+                      {wizardStep > step ? <CheckCircle2 className="h-4 w-4" /> : step}
+                    </div>
+                    <span className={`text-xs hidden sm:inline ${wizardStep === step ? "font-semibold text-foreground" : "text-muted-foreground"}`}>
+                      {step === 1 ? "Vardiya" : step === 2 ? "Personel" : "Üretim"}
+                    </span>
+                    {step < 3 && <div className={`flex-1 h-px ${wizardStep > step ? "bg-primary" : "bg-muted-foreground/20"}`} />}
+                  </div>
+                ))}
+              </div>
+            )}
           </DialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label>Tarih</Label>
-              <Input type="date" value={shiftDate} onChange={e => setShiftDate(e.target.value)} data-testid="input-shift-date" />
-            </div>
-            <div className="space-y-2">
-              <Label>Vardiya Tipi</Label>
-              <Select value={shiftType} onValueChange={handleShiftTypeChange}>
-                <SelectTrigger data-testid="select-shift-type">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {SHIFT_TYPES.map(t => (
-                    <SelectItem key={t.value} value={t.value}>{t.label} ({t.time})</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
+
+          {/* STEP 1: Shift Info (same for edit mode) */}
+          {(editingShift || wizardStep === 1) && (
+            <div className="space-y-4">
               <div className="space-y-2">
-                <Label>Başlangıç</Label>
-                <Input type="time" value={shiftStartTime} onChange={e => setShiftStartTime(e.target.value)} data-testid="input-shift-start" />
+                <Label>Tarih</Label>
+                <Input type="date" value={shiftDate} onChange={e => setShiftDate(e.target.value)} data-testid="input-shift-date" />
               </div>
               <div className="space-y-2">
-                <Label>Bitiş</Label>
-                <Input type="time" value={shiftEndTime} onChange={e => setShiftEndTime(e.target.value)} data-testid="input-shift-end" />
+                <Label>Vardiya Tipi</Label>
+                <Select value={shiftType} onValueChange={handleShiftTypeChange}>
+                  <SelectTrigger data-testid="select-shift-type">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {SHIFT_TYPES.map(t => (
+                      <SelectItem key={t.value} value={t.value}>{t.label} ({t.time})</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Başlangıç</Label>
+                  <Input type="time" value={shiftStartTime} onChange={e => setShiftStartTime(e.target.value)} data-testid="input-shift-start" />
+                </div>
+                <div className="space-y-2">
+                  <Label>Bitiş</Label>
+                  <Input type="time" value={shiftEndTime} onChange={e => setShiftEndTime(e.target.value)} data-testid="input-shift-end" />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label>Notlar</Label>
+                <Textarea value={shiftNotes} onChange={e => setShiftNotes(e.target.value)} placeholder="Opsiyonel notlar..." data-testid="input-shift-notes" />
+              </div>
+              {editingShift ? (
+                <Button className="w-full" onClick={handleCreateShift} disabled={!shiftDate || updateShiftMutation.isPending} data-testid="btn-submit-shift">
+                  {updateShiftMutation.isPending ? "Kaydediliyor..." : "Güncelle"}
+                </Button>
+              ) : (
+                <div className="flex justify-between gap-2 pt-2">
+                  <Button variant="outline" onClick={() => { handleCreateShift(); }} disabled={!shiftDate || createShiftMutation.isPending} data-testid="btn-quick-create-shift">
+                    <CheckCircle2 className="h-4 w-4 mr-1" />
+                    Sadece Vardiya Kaydet
+                  </Button>
+                  <Button onClick={() => setWizardStep(2)} disabled={!shiftDate} data-testid="btn-next-step-2">
+                    Personel Ekle
+                    <ArrowRight className="h-4 w-4 ml-1" />
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* STEP 2: Worker Selection */}
+          {!editingShift && wizardStep === 2 && (
+            <div className="space-y-4">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted rounded-md p-2">
+                <Clock className="h-4 w-4 shrink-0" />
+                <span>{shiftDate} | {shiftTypeConfig(shiftType).label} ({shiftStartTime} - {shiftEndTime})</span>
+              </div>
+
+              <div className="space-y-2">
+                <Label className="flex items-center gap-1">
+                  <Search className="h-3 w-3" />
+                  Personel Ara
+                </Label>
+                <Input
+                  value={staffSearch}
+                  onChange={e => setStaffSearch(e.target.value)}
+                  placeholder="Ad, soyad veya rol ile ara..."
+                  data-testid="input-staff-search"
+                />
+              </div>
+
+              <div className="border rounded-md max-h-[200px] overflow-y-auto">
+                {filteredStaff.length === 0 ? (
+                  <p className="text-center text-muted-foreground text-sm py-4">Personel bulunamadı</p>
+                ) : (
+                  filteredStaff.map((staff: any) => {
+                    const isSelected = wizardWorkers.some(w => w.userId === staff.id);
+                    return (
+                      <div
+                        key={staff.id}
+                        className={`flex items-center gap-3 px-3 py-2 border-b last:border-b-0 cursor-pointer transition-colors ${
+                          isSelected ? "bg-primary/10" : "hover-elevate"
+                        }`}
+                        onClick={() => isSelected ? removeWizardWorker(staff.id) : addWizardWorker(staff)}
+                        data-testid={`staff-item-${staff.id}`}
+                      >
+                        <div className={`w-4 h-4 rounded-sm border-2 flex items-center justify-center shrink-0 ${isSelected ? "border-primary bg-primary" : "border-muted-foreground/40"}`}>
+                          {isSelected && <CheckCircle2 className="h-3 w-3 text-primary-foreground" />}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <span className="text-sm font-medium">{staff.firstName} {staff.lastName}</span>
+                          <Badge variant="secondary" className="ml-2 text-[10px]">
+                            {ROLE_LABELS[staff.role] || staff.role}
+                          </Badge>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+
+              {wizardWorkers.length > 0 && (
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-1">
+                    <Users className="h-3 w-3" />
+                    Seçili Personel ({wizardWorkers.length})
+                  </Label>
+                  <div className="space-y-2">
+                    {wizardWorkers.map(w => (
+                      <Card key={w.userId}>
+                        <CardContent className="p-3">
+                          <div className="flex items-center justify-between gap-2 mb-2">
+                            <span className="text-sm font-medium">{w.userName}</span>
+                            <Button size="icon" variant="ghost" onClick={() => removeWizardWorker(w.userId)} data-testid={`btn-remove-wizard-worker-${w.userId}`}>
+                              <Trash2 className="h-3 w-3" />
+                            </Button>
+                          </div>
+                          <div className="grid grid-cols-2 gap-2">
+                            <Select value={w.role} onValueChange={(val) => updateWizardWorkerRole(w.userId, val)}>
+                              <SelectTrigger data-testid={`select-wizard-role-${w.userId}`}>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="operator">Operatör</SelectItem>
+                                <SelectItem value="supervisor">Supervisor</SelectItem>
+                                <SelectItem value="quality_controller">Kalite Kontrol</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <Select value={w.machineId || "none"} onValueChange={(val) => updateWizardWorkerMachine(w.userId, val)}>
+                              <SelectTrigger data-testid={`select-wizard-machine-${w.userId}`}>
+                                <SelectValue placeholder="Makine" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="none">Makine Yok</SelectItem>
+                                {machines.filter((m: any) => m.isActive).map((m: any) => (
+                                  <SelectItem key={m.id} value={m.id.toString()}>{m.name}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div className="flex justify-between gap-2 pt-2">
+                <Button variant="outline" onClick={() => setWizardStep(1)} data-testid="btn-back-step-1">
+                  <ArrowLeft className="h-4 w-4 mr-1" />
+                  Geri
+                </Button>
+                <div className="flex gap-2">
+                  <Button variant="outline" onClick={() => { handleCreateShift(); }} disabled={createShiftMutation.isPending} data-testid="btn-save-with-workers">
+                    <CheckCircle2 className="h-4 w-4 mr-1" />
+                    Kaydet
+                  </Button>
+                  <Button onClick={() => setWizardStep(3)} data-testid="btn-next-step-3">
+                    Üretim Planı
+                    <ArrowRight className="h-4 w-4 ml-1" />
+                  </Button>
+                </div>
               </div>
             </div>
-            <div className="space-y-2">
-              <Label>Notlar</Label>
-              <Textarea value={shiftNotes} onChange={e => setShiftNotes(e.target.value)} placeholder="Opsiyonel notlar..." data-testid="input-shift-notes" />
+          )}
+
+          {/* STEP 3: Production Planning */}
+          {!editingShift && wizardStep === 3 && (
+            <div className="space-y-4">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted rounded-md p-2">
+                <Clock className="h-4 w-4 shrink-0" />
+                <span>{shiftDate} | {shiftTypeConfig(shiftType).label}</span>
+                <span className="mx-1">|</span>
+                <Users className="h-4 w-4 shrink-0" />
+                <span>{wizardWorkers.length} personel</span>
+              </div>
+
+              <Card>
+                <CardContent className="p-4 space-y-3">
+                  <Label className="flex items-center gap-1">
+                    <Package className="h-3 w-3" />
+                    Üretim Planı Ekle
+                  </Label>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                    <Select value={wizProdProductId} onValueChange={setWizProdProductId}>
+                      <SelectTrigger data-testid="select-wiz-prod-product">
+                        <SelectValue placeholder="Ürün seçin..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {products.filter((p: any) => p.isActive).map((p: any) => (
+                          <SelectItem key={p.id} value={p.id.toString()}>{p.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Select value={wizProdMachineId || "none"} onValueChange={setWizProdMachineId}>
+                      <SelectTrigger data-testid="select-wiz-prod-machine">
+                        <SelectValue placeholder="Makine (opsiyonel)" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">Belirtilmedi</SelectItem>
+                        {machines.filter((m: any) => m.isActive).map((m: any) => (
+                          <SelectItem key={m.id} value={m.id.toString()}>{m.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        type="number"
+                        min="1"
+                        value={wizProdBatchCount}
+                        onChange={e => setWizProdBatchCount(e.target.value)}
+                        placeholder="Batch"
+                        data-testid="input-wiz-prod-batch"
+                      />
+                      <Button size="sm" onClick={addWizardProduction} disabled={!wizProdProductId} data-testid="btn-add-wiz-production">
+                        <Plus className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {wizardProductions.length > 0 ? (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Ürün</TableHead>
+                      <TableHead>Makine</TableHead>
+                      <TableHead className="text-right">Batch</TableHead>
+                      <TableHead>Spec</TableHead>
+                      <TableHead className="text-right">Sil</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {wizardProductions.map((p, idx) => (
+                      <TableRow key={idx} data-testid={`row-wiz-production-${idx}`}>
+                        <TableCell className="font-medium">{p.productName}</TableCell>
+                        <TableCell>{p.machineName || "-"}</TableCell>
+                        <TableCell className="text-right font-mono">{p.plannedBatchCount}</TableCell>
+                        <TableCell>
+                          {p.batchSpecId ? (
+                            <Badge variant="secondary">Spec #{p.batchSpecId}</Badge>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">Yok</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Button size="icon" variant="ghost" onClick={() => removeWizardProduction(idx)} data-testid={`btn-remove-wiz-prod-${idx}`}>
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              ) : (
+                <div className="text-center text-muted-foreground text-sm py-4 border rounded-md">
+                  <Package className="h-8 w-8 mx-auto mb-2 opacity-40" />
+                  Henüz üretim planı eklenmedi (opsiyonel)
+                </div>
+              )}
+
+              <div className="flex justify-between gap-2 pt-2">
+                <Button variant="outline" onClick={() => setWizardStep(2)} data-testid="btn-back-step-2">
+                  <ArrowLeft className="h-4 w-4 mr-1" />
+                  Geri
+                </Button>
+                <Button onClick={handleCreateShift} disabled={createShiftMutation.isPending} data-testid="btn-submit-shift">
+                  {createShiftMutation.isPending ? "Kaydediliyor..." : (
+                    <>
+                      <CheckCircle2 className="h-4 w-4 mr-1" />
+                      Vardiyayı Oluştur
+                    </>
+                  )}
+                </Button>
+              </div>
             </div>
-            <Button className="w-full" onClick={handleCreateShift} disabled={!shiftDate || createShiftMutation.isPending || updateShiftMutation.isPending} data-testid="btn-submit-shift">
-              {(createShiftMutation.isPending || updateShiftMutation.isPending) ? "Kaydediliyor..." : (editingShift ? "Güncelle" : "Vardiya Oluştur")}
-            </Button>
-          </div>
+          )}
         </DialogContent>
       </Dialog>
 
