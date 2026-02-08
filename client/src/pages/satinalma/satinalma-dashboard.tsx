@@ -68,15 +68,15 @@ export default function SatinalmaDashboard() {
 
   if (isLoading) {
     return (
-      <div className="space-y-6">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+      <div className="space-y-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2">
           {[...Array(5)].map((_, i) => (
             <Card key={i}>
-              <CardHeader className="pb-2">
+              <CardHeader className="pb-1 pt-3 px-3">
                 <Skeleton className="h-4 w-24" />
               </CardHeader>
-              <CardContent>
-                <Skeleton className="h-8 w-16" />
+              <CardContent className="px-3 pb-3">
+                <Skeleton className="h-6 w-16" />
               </CardContent>
             </Card>
           ))}
@@ -128,36 +128,36 @@ export default function SatinalmaDashboard() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+    <div className="space-y-3">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2">
         {metrics.map((metric, index) => (
           <Card key={index} className="hover-elevate cursor-pointer" data-testid={`metric-card-${index}`}>
-            <CardHeader className="flex flex-row items-center justify-between pb-2 gap-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
+            <CardHeader className="flex flex-row items-center justify-between pb-1 pt-3 px-3 gap-2">
+              <CardTitle className="text-xs font-medium text-muted-foreground">
                 {metric.title}
               </CardTitle>
               <div className={`p-2 rounded-lg ${metric.bgColor}`}>
-                <metric.icon className={`h-4 w-4 ${metric.color}`} />
+                <metric.icon className={`h-3.5 w-3.5 ${metric.color}`} />
               </div>
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{metric.value}</div>
+            <CardContent className="px-3 pb-3">
+              <div className="text-lg font-bold">{metric.value}</div>
             </CardContent>
           </Card>
         ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
         {/* Hammaddeler Listesi */}
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between gap-2">
-            <CardTitle className="text-lg flex items-center gap-2">
-              <Beaker className="h-5 w-5 text-purple-500" />
+          <CardHeader className="flex flex-row items-center justify-between pb-1 pt-3 px-3 gap-2">
+            <CardTitle className="text-xs flex items-center gap-2">
+              <Beaker className="h-3.5 w-3.5 text-purple-500" />
               Hammaddeler
             </CardTitle>
-            <Badge variant="secondary">{data?.totalRawMaterials || 0} kalem</Badge>
+            <Badge variant="secondary" className="text-[10px]">{data?.totalRawMaterials || 0} kalem</Badge>
           </CardHeader>
-          <CardContent>
+          <CardContent className="px-3 pb-3">
             {data?.rawMaterials && data.rawMaterials.length > 0 ? (
               <Table>
                 <TableHeader>
@@ -203,14 +203,14 @@ export default function SatinalmaDashboard() {
 
         {/* Stok Listesi */}
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between gap-2">
-            <CardTitle className="text-lg flex items-center gap-2">
-              <Boxes className="h-5 w-5 text-blue-500" />
+          <CardHeader className="flex flex-row items-center justify-between pb-1 pt-3 px-3 gap-2">
+            <CardTitle className="text-xs flex items-center gap-2">
+              <Boxes className="h-3.5 w-3.5 text-blue-500" />
               Stok Durumu
             </CardTitle>
-            <Badge variant="secondary">{data?.totalInventoryItems || 0} kalem</Badge>
+            <Badge variant="secondary" className="text-[10px]">{data?.totalInventoryItems || 0} kalem</Badge>
           </CardHeader>
-          <CardContent>
+          <CardContent className="px-3 pb-3">
             {data?.inventory && data.inventory.length > 0 ? (
               <Table>
                 <TableHeader>
@@ -256,39 +256,39 @@ export default function SatinalmaDashboard() {
 
       {/* Muhasebe Entegrasyonu */}
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between gap-2">
-          <CardTitle className="text-lg flex items-center gap-2">
-            <Wallet className="h-5 w-5 text-indigo-500" />
+        <CardHeader className="flex flex-row items-center justify-between pb-1 pt-3 px-3 gap-2">
+          <CardTitle className="text-xs flex items-center gap-2">
+            <Wallet className="h-3.5 w-3.5 text-indigo-500" />
             Muhasebe Özeti (Cari Hesaplar)
           </CardTitle>
-          <Badge variant="secondary">{data?.accounting?.accountCount || 0} hesap</Badge>
+          <Badge variant="secondary" className="text-[10px]">{data?.accounting?.accountCount || 0} hesap</Badge>
         </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg">
-              <div className="flex items-center gap-3 mb-2">
-                <TrendingUp className="h-5 w-5 text-green-600" />
-                <span className="text-sm font-medium text-green-700 dark:text-green-400">Toplam Alacak</span>
+        <CardContent className="px-3 pb-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="p-2 bg-green-50 dark:bg-green-900/20 rounded-lg">
+              <div className="flex items-center gap-2 mb-1">
+                <TrendingUp className="h-3.5 w-3.5 text-green-600" />
+                <span className="text-xs font-medium text-green-700 dark:text-green-400">Toplam Alacak</span>
               </div>
-              <div className="text-2xl font-bold text-green-700 dark:text-green-400">
+              <div className="text-lg font-bold text-green-700 dark:text-green-400">
                 ₺{(data?.accounting?.totalReceivables || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
               </div>
             </div>
-            <div className="p-4 bg-red-50 dark:bg-red-900/20 rounded-lg">
-              <div className="flex items-center gap-3 mb-2">
-                <TrendingDown className="h-5 w-5 text-red-600" />
-                <span className="text-sm font-medium text-red-700 dark:text-red-400">Toplam Borç</span>
+            <div className="p-2 bg-red-50 dark:bg-red-900/20 rounded-lg">
+              <div className="flex items-center gap-2 mb-1">
+                <TrendingDown className="h-3.5 w-3.5 text-red-600" />
+                <span className="text-xs font-medium text-red-700 dark:text-red-400">Toplam Borç</span>
               </div>
-              <div className="text-2xl font-bold text-red-700 dark:text-red-400">
+              <div className="text-lg font-bold text-red-700 dark:text-red-400">
                 ₺{(data?.accounting?.totalPayables || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
               </div>
             </div>
-            <div className="p-4 bg-indigo-50 dark:bg-indigo-900/20 rounded-lg">
-              <div className="flex items-center gap-3 mb-2">
-                <CreditCard className="h-5 w-5 text-indigo-600" />
-                <span className="text-sm font-medium text-indigo-700 dark:text-indigo-400">Net Durum</span>
+            <div className="p-2 bg-indigo-50 dark:bg-indigo-900/20 rounded-lg">
+              <div className="flex items-center gap-2 mb-1">
+                <CreditCard className="h-3.5 w-3.5 text-indigo-600" />
+                <span className="text-xs font-medium text-indigo-700 dark:text-indigo-400">Net Durum</span>
               </div>
-              <div className={`text-2xl font-bold ${((data?.accounting?.totalReceivables || 0) - (data?.accounting?.totalPayables || 0)) >= 0 ? 'text-green-700 dark:text-green-400' : 'text-red-700 dark:text-red-400'}`}>
+              <div className={`text-lg font-bold ${((data?.accounting?.totalReceivables || 0) - (data?.accounting?.totalPayables || 0)) >= 0 ? 'text-green-700 dark:text-green-400' : 'text-red-700 dark:text-red-400'}`}>
                 ₺{((data?.accounting?.totalReceivables || 0) - (data?.accounting?.totalPayables || 0)).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
               </div>
             </div>
@@ -296,64 +296,64 @@ export default function SatinalmaDashboard() {
         </CardContent>
       </Card>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
         <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Son İşlemler</CardTitle>
+          <CardHeader className="pb-1 pt-3 px-3">
+            <CardTitle className="text-xs">Son İşlemler</CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-                <div className="flex items-center gap-3">
+          <CardContent className="px-3 pb-3">
+            <div className="space-y-2">
+              <div className="flex items-center justify-between p-2 bg-muted/50 rounded-lg">
+                <div className="flex items-center gap-2">
                   <CheckCircle className="h-4 w-4 text-green-500" />
-                  <span className="text-sm">Mal kabul - {data?.recentReceipts || 0} kayıt (son 30 gün)</span>
+                  <span className="text-xs">Mal kabul - {data?.recentReceipts || 0} kayıt (son 30 gün)</span>
                 </div>
-                <Badge variant="secondary">Tamamlandı</Badge>
+                <Badge variant="secondary" className="text-[10px]">Tamamlandı</Badge>
               </div>
-              <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-                <div className="flex items-center gap-3">
+              <div className="flex items-center justify-between p-2 bg-muted/50 rounded-lg">
+                <div className="flex items-center gap-2">
                   <Clock className="h-4 w-4 text-orange-500" />
-                  <span className="text-sm">{data?.pendingOrders || 0} sipariş onay bekliyor</span>
+                  <span className="text-xs">{data?.pendingOrders || 0} sipariş onay bekliyor</span>
                 </div>
-                <Badge variant="outline">Beklemede</Badge>
+                <Badge variant="outline" className="text-[10px]">Beklemede</Badge>
               </div>
             </div>
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Hızlı Erişim</CardTitle>
+          <CardHeader className="pb-1 pt-3 px-3">
+            <CardTitle className="text-xs">Hızlı Erişim</CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 gap-3">
+          <CardContent className="px-3 pb-3">
+            <div className="grid grid-cols-2 gap-2">
               <button 
-                className="p-4 bg-muted/50 rounded-lg hover-elevate text-left"
+                className="p-2 bg-muted/50 rounded-lg hover-elevate text-left"
                 data-testid="quick-access-new-order"
               >
-                <ShoppingCart className="h-5 w-5 mb-2 text-primary" />
-                <div className="font-medium text-sm">Yeni Sipariş</div>
+                <ShoppingCart className="h-4 w-4 mb-2 text-primary" />
+                <div className="font-medium text-xs">Yeni Sipariş</div>
               </button>
               <button 
-                className="p-4 bg-muted/50 rounded-lg hover-elevate text-left"
+                className="p-2 bg-muted/50 rounded-lg hover-elevate text-left"
                 data-testid="quick-access-goods-receipt"
               >
-                <Package className="h-5 w-5 mb-2 text-primary" />
-                <div className="font-medium text-sm">Mal Kabul</div>
+                <Package className="h-4 w-4 mb-2 text-primary" />
+                <div className="font-medium text-xs">Mal Kabul</div>
               </button>
               <button 
-                className="p-4 bg-muted/50 rounded-lg hover-elevate text-left"
+                className="p-2 bg-muted/50 rounded-lg hover-elevate text-left"
                 data-testid="quick-access-low-stock"
               >
-                <AlertTriangle className="h-5 w-5 mb-2 text-orange-500" />
-                <div className="font-medium text-sm">Düşük Stok</div>
+                <AlertTriangle className="h-4 w-4 mb-2 text-orange-500" />
+                <div className="font-medium text-xs">Düşük Stok</div>
               </button>
               <button 
-                className="p-4 bg-muted/50 rounded-lg hover-elevate text-left"
+                className="p-2 bg-muted/50 rounded-lg hover-elevate text-left"
                 data-testid="quick-access-suppliers"
               >
-                <Users className="h-5 w-5 mb-2 text-primary" />
-                <div className="font-medium text-sm">Tedarikçiler</div>
+                <Users className="h-4 w-4 mb-2 text-primary" />
+                <div className="font-medium text-xs">Tedarikçiler</div>
               </button>
             </div>
           </CardContent>

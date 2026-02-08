@@ -56,10 +56,10 @@ interface MyStatsData {
 function StatCardSkeleton() {
   return (
     <Card>
-      <CardHeader className="pb-2">
+      <CardHeader className="pb-1 pt-3 px-3">
         <Skeleton className="h-4 w-24" />
       </CardHeader>
-      <CardContent>
+      <CardContent className="px-3 pb-3">
         <Skeleton className="h-8 w-16 mb-2" />
         <Skeleton className="h-3 w-32" />
       </CardContent>
@@ -74,17 +74,17 @@ export default function EmployeeDashboard() {
 
   if (isLoading) {
     return (
-      <div className="p-4 space-y-6">
-        <Skeleton className="h-8 w-48 mb-6" />
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+      <div className="p-3 space-y-3">
+        <Skeleton className="h-8 w-48 mb-3" />
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2">
           {[...Array(5)].map((_, i) => (
             <StatCardSkeleton key={i} />
           ))}
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {[...Array(3)].map((_, i) => (
             <Card key={i}>
-              <CardContent className="p-6">
+              <CardContent className="p-3">
                 <Skeleton className="h-32 w-full" />
               </CardContent>
             </Card>
@@ -96,11 +96,11 @@ export default function EmployeeDashboard() {
 
   if (error || !data) {
     return (
-      <div className="p-6 flex items-center justify-center min-h-[400px]">
-        <Card className="p-6 text-center max-w-md">
-          <AlertCircle className="w-12 h-12 text-destructive mx-auto mb-4" />
-          <h3 className="text-lg font-semibold mb-2">Veriler Yüklenemedi</h3>
-          <p className="text-muted-foreground text-sm">
+      <div className="p-3 flex items-center justify-center min-h-[400px]">
+        <Card className="p-3 text-center max-w-md">
+          <AlertCircle className="w-4 h-4 text-destructive mx-auto mb-4" />
+          <h3 className="text-sm font-semibold mb-2">Veriler Yüklenemedi</h3>
+          <p className="text-muted-foreground text-xs">
             Kişisel istatistiklerinizi yüklerken bir hata oluştu. Lütfen daha sonra tekrar deneyin.
           </p>
         </Card>
@@ -111,117 +111,117 @@ export default function EmployeeDashboard() {
   const { user, attendance, leave, training, tasks, performance } = data;
 
   return (
-    <div className="p-4 space-y-6">
+    <div className="p-3 space-y-3">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
         <div>
-          <h1 className="text-2xl font-bold" data-testid="text-employee-name">
+          <h1 className="text-base font-semibold" data-testid="text-employee-name">
             Merhaba, {user.name}
           </h1>
-          <p className="text-muted-foreground text-sm">
+          <p className="text-muted-foreground text-xs">
             {user.branchName} - {user.role}
           </p>
         </div>
-        <Badge variant="outline" className="w-fit">
-          <TrendingUp className="w-3 h-3 mr-1" />
+        <Badge variant="outline" className="w-fit text-[10px]">
+          <TrendingUp className="w-3.5 h-3.5 mr-1" />
           Performans: %{performance.compositeScore || 0}
         </Badge>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2">
         <Card data-testid="card-on-time-rate">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <Clock className="w-4 h-4 text-primary" />
+          <CardHeader className="pb-1 pt-3 px-3">
+            <CardTitle className="text-xs font-medium flex items-center gap-2">
+              <Clock className="w-3.5 h-3.5 text-primary" />
               Zamanında Gelme
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-primary">%{attendance.onTimeRate}</div>
-            <p className="text-xs text-muted-foreground">
+          <CardContent className="px-3 pb-3">
+            <div className="text-lg font-bold text-primary">%{attendance.onTimeRate}</div>
+            <p className="text-[10px] text-muted-foreground">
               Son 30 günde {attendance.totalShifts} vardiya
             </p>
           </CardContent>
         </Card>
 
         <Card data-testid="card-remaining-leave">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <Calendar className="w-4 h-4 text-green-600" />
+          <CardHeader className="pb-1 pt-3 px-3">
+            <CardTitle className="text-xs font-medium flex items-center gap-2">
+              <Calendar className="w-3.5 h-3.5 text-green-600" />
               Kalan İzin
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-600">{leave.remainingDays} gün</div>
-            <p className="text-xs text-muted-foreground">
+          <CardContent className="px-3 pb-3">
+            <div className="text-lg font-bold text-green-600">{leave.remainingDays} gün</div>
+            <p className="text-[10px] text-muted-foreground">
               Kullanılan: {leave.usedDays} gün
             </p>
           </CardContent>
         </Card>
 
         <Card data-testid="card-training-progress">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <GraduationCap className="w-4 h-4 text-blue-600" />
+          <CardHeader className="pb-1 pt-3 px-3">
+            <CardTitle className="text-xs font-medium flex items-center gap-2">
+              <GraduationCap className="w-3.5 h-3.5 text-blue-600" />
               Eğitim
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-blue-600">{training.completedModules}</div>
-            <p className="text-xs text-muted-foreground">
+          <CardContent className="px-3 pb-3">
+            <div className="text-lg font-bold text-blue-600">{training.completedModules}</div>
+            <p className="text-[10px] text-muted-foreground">
               Tamamlanan modül
             </p>
           </CardContent>
         </Card>
 
         <Card data-testid="card-task-completion">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <CheckSquare className="w-4 h-4 text-orange-600" />
+          <CardHeader className="pb-1 pt-3 px-3">
+            <CardTitle className="text-xs font-medium flex items-center gap-2">
+              <CheckSquare className="w-3.5 h-3.5 text-orange-600" />
               Görev Tamamlama
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-orange-600">%{tasks.completionRate}</div>
-            <p className="text-xs text-muted-foreground">
+          <CardContent className="px-3 pb-3">
+            <div className="text-lg font-bold text-orange-600">%{tasks.completionRate}</div>
+            <p className="text-[10px] text-muted-foreground">
               {tasks.completed}/{tasks.completed + tasks.pending + tasks.inProgress} görev
             </p>
           </CardContent>
         </Card>
 
         <Card data-testid="card-performance-score">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <Award className="w-4 h-4 text-purple-600" />
+          <CardHeader className="pb-1 pt-3 px-3">
+            <CardTitle className="text-xs font-medium flex items-center gap-2">
+              <Award className="w-3.5 h-3.5 text-purple-600" />
               Puan
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-purple-600">{performance.taskRating.toFixed(1)}</div>
-            <p className="text-xs text-muted-foreground">
+          <CardContent className="px-3 pb-3">
+            <div className="text-lg font-bold text-purple-600">{performance.taskRating.toFixed(1)}</div>
+            <p className="text-[10px] text-muted-foreground">
               Görev değerlendirmesi
             </p>
           </CardContent>
         </Card>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
         <Card>
-          <CardHeader className="py-3">
-            <CardTitle className="text-sm flex items-center gap-2">
-              <Clock className="w-4 h-4" />
+          <CardHeader className="pb-1 pt-3 px-3">
+            <CardTitle className="text-xs flex items-center gap-2">
+              <Clock className="w-3.5 h-3.5" />
               Devam
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-2 pt-0">
-            <div className="flex justify-between items-center text-sm">
+          <CardContent className="space-y-2 px-3 pb-3">
+            <div className="flex justify-between items-center text-xs">
               <span>Geç</span>
-              <Badge variant={attendance.lateArrivals > 3 ? "destructive" : "secondary"} className="text-xs">
+              <Badge variant={attendance.lateArrivals > 3 ? "destructive" : "secondary"} className="text-[10px]">
                 {attendance.lateArrivals}
               </Badge>
             </div>
-            <div className="flex justify-between items-center text-sm">
+            <div className="flex justify-between items-center text-xs">
               <span>Erken Çıkış</span>
-              <Badge variant={attendance.earlyDepartures > 3 ? "destructive" : "secondary"} className="text-xs">
+              <Badge variant={attendance.earlyDepartures > 3 ? "destructive" : "secondary"} className="text-[10px]">
                 {attendance.earlyDepartures}
               </Badge>
             </div>
@@ -230,20 +230,20 @@ export default function EmployeeDashboard() {
         </Card>
 
         <Card>
-          <CardHeader className="py-3">
-            <CardTitle className="text-sm flex items-center gap-2">
-              <BookOpen className="w-4 h-4" />
+          <CardHeader className="pb-1 pt-3 px-3">
+            <CardTitle className="text-xs flex items-center gap-2">
+              <BookOpen className="w-3.5 h-3.5" />
               Eğitim
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-2 pt-0">
-            <div className="flex justify-between items-center text-sm">
+          <CardContent className="space-y-2 px-3 pb-3">
+            <div className="flex justify-between items-center text-xs">
               <span>Modül</span>
-              <Badge variant="default" className="text-xs">{training.completedModules}/{training.totalModules}</Badge>
+              <Badge variant="default" className="text-[10px]">{training.completedModules}/{training.totalModules}</Badge>
             </div>
-            <div className="flex justify-between items-center text-sm">
+            <div className="flex justify-between items-center text-xs">
               <span>Quiz</span>
-              <Badge variant="secondary" className="text-xs">{training.passedQuizzes}/{training.totalQuizAttempts}</Badge>
+              <Badge variant="secondary" className="text-[10px]">{training.passedQuizzes}/{training.totalQuizAttempts}</Badge>
             </div>
             {training.totalModules > 0 && (
               <Progress 
@@ -255,20 +255,20 @@ export default function EmployeeDashboard() {
         </Card>
 
         <Card>
-          <CardHeader className="py-3">
-            <CardTitle className="text-sm flex items-center gap-2">
-              <Target className="w-4 h-4" />
+          <CardHeader className="pb-1 pt-3 px-3">
+            <CardTitle className="text-xs flex items-center gap-2">
+              <Target className="w-3.5 h-3.5" />
               İzin
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-2 pt-0">
-            <div className="flex justify-between items-center text-sm">
+          <CardContent className="space-y-2 px-3 pb-3">
+            <div className="flex justify-between items-center text-xs">
               <span>Kalan</span>
-              <Badge variant="default" className="text-xs">{leave.remainingDays} gün</Badge>
+              <Badge variant="default" className="text-[10px]">{leave.remainingDays} gün</Badge>
             </div>
-            <div className="flex justify-between items-center text-sm">
+            <div className="flex justify-between items-center text-xs">
               <span>Bekleyen</span>
-              <Badge variant={leave.pendingRequests > 0 ? "secondary" : "outline"} className="text-xs">
+              <Badge variant={leave.pendingRequests > 0 ? "secondary" : "outline"} className="text-[10px]">
                 {leave.pendingRequests}
               </Badge>
             </div>

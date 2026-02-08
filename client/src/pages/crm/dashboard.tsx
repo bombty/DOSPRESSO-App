@@ -84,11 +84,11 @@ function StatCard({
       data-testid={testId}
       onClick={onClick}
     >
-      <CardContent className="p-4">
+      <CardContent className="p-3">
         <div className="flex items-start justify-between">
           <div className="space-y-1">
             <p className="text-xs text-muted-foreground font-medium">{title}</p>
-            <p className="text-2xl font-bold">{value}</p>
+            <p className="text-lg font-bold">{value}</p>
             {subtitle && <p className="text-xs text-muted-foreground">{subtitle}</p>}
             {trend && (
               <div className={`flex items-center gap-1 text-xs ${trend.positive ? 'text-green-600' : 'text-red-600'}`}>
@@ -99,7 +99,7 @@ function StatCard({
           </div>
           <div className="flex items-center gap-2">
             <div className={`p-2 rounded-lg bg-background/50 ${iconStyles[variant]}`}>
-              <Icon className="h-5 w-5" />
+              <Icon className="h-4 w-4" />
             </div>
             {onClick && <ChevronRight className="h-4 w-4 text-muted-foreground" />}
           </div>
@@ -140,13 +140,13 @@ export default function CRMDashboard() {
 
   if (isLoading) {
     return (
-      <div className="p-4 space-y-4">
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+      <div className="p-3 space-y-3">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2">
           {[...Array(5)].map((_, i) => (
             <Skeleton key={i} className="h-24" />
           ))}
         </div>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
           <Skeleton className="h-64" />
           <Skeleton className="h-64" />
         </div>
@@ -156,7 +156,7 @@ export default function CRMDashboard() {
 
   if (!overview) {
     return (
-      <div className="p-4 text-center text-muted-foreground">
+      <div className="p-3 text-center text-muted-foreground text-sm">
         Veri yüklenemedi
       </div>
     );
@@ -168,8 +168,8 @@ export default function CRMDashboard() {
 
   return (
     <ScrollArea className="h-full">
-      <div className="p-4 space-y-4">
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+      <div className="p-3 space-y-3">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2">
           <StatCard
             title="Açık Talepler"
             value={overview.openTickets}
@@ -213,12 +213,12 @@ export default function CRMDashboard() {
           />
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
           <Card data-testid="chart-trend">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium">Talep Trendi</CardTitle>
+            <CardHeader className="pb-1 pt-3 px-3">
+              <CardTitle className="text-xs font-medium">Talep Trendi</CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="px-3 pb-3">
               <div className="h-48">
                 <ResponsiveContainer width="100%" height="100%">
                   <AreaChart data={overview.trendData}>
@@ -251,10 +251,10 @@ export default function CRMDashboard() {
           </Card>
 
           <Card data-testid="chart-priority">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium">Öncelik Dağılımı</CardTitle>
+            <CardHeader className="pb-1 pt-3 px-3">
+              <CardTitle className="text-xs font-medium">Öncelik Dağılımı</CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="px-3 pb-3">
               <div className="h-48 flex items-center">
                 <ResponsiveContainer width="50%" height="100%">
                   <PieChart>
@@ -279,7 +279,7 @@ export default function CRMDashboard() {
                   {overview.priorityBreakdown.map((item) => (
                     <div 
                       key={item.priority} 
-                      className="flex items-center justify-between text-sm p-1.5 rounded-md cursor-pointer hover-elevate"
+                      className="flex items-center justify-between text-xs p-1.5 rounded-md cursor-pointer hover-elevate"
                       onClick={() => navigateToTickets(item.priority)}
                       data-testid={`priority-${item.priority}`}
                     >
@@ -291,7 +291,7 @@ export default function CRMDashboard() {
                         <span className="capitalize">{item.priority}</span>
                       </div>
                       <div className="flex items-center gap-1">
-                        <Badge variant="secondary">{item.count}</Badge>
+                        <Badge variant="secondary" className="text-[10px]">{item.count}</Badge>
                         <ChevronRight className="h-3 w-3 text-muted-foreground" />
                       </div>
                     </div>
@@ -303,26 +303,26 @@ export default function CRMDashboard() {
         </div>
 
         <Card data-testid="table-top-agents">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <Users className="h-4 w-4" />
+          <CardHeader className="pb-1 pt-3 px-3">
+            <CardTitle className="text-xs font-medium flex items-center gap-2">
+              <Users className="h-3.5 w-3.5" />
               En Aktif Personel
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
+          <CardContent className="px-3 pb-3">
+            <div className="space-y-2">
               {overview.topAgents.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-4">Henüz veri yok</p>
+                <p className="text-xs text-muted-foreground text-center py-3">Henüz veri yok</p>
               ) : (
                 overview.topAgents.map((agent, index) => (
                   <div 
                     key={agent.id} 
-                    className="flex items-center justify-between p-2 rounded-lg bg-muted/30 cursor-pointer hover-elevate"
+                    className="flex items-center justify-between p-2 rounded-lg bg-muted/30 cursor-pointer hover-elevate gap-2"
                     data-testid={`agent-row-${index}`}
                     onClick={() => navigateToPerformance()}
                   >
-                    <div className="flex items-center gap-3">
-                      <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
+                    <div className="flex items-center gap-2">
+                      <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-medium flex-shrink-0 ${
                         index === 0 ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300' :
                         index === 1 ? 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300' :
                         index === 2 ? 'bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300' :
@@ -330,14 +330,14 @@ export default function CRMDashboard() {
                       }`}>
                         {index + 1}
                       </div>
-                      <div>
-                        <p className="font-medium text-sm">{agent.name}</p>
+                      <div className="min-w-0">
+                        <p className="font-medium text-xs">{agent.name}</p>
                         <p className="text-xs text-muted-foreground">Ort. {agent.avgTime}s çözüm</p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-shrink-0">
                       <div className="text-right">
-                        <p className="font-semibold text-lg">{agent.resolved}</p>
+                        <p className="font-semibold text-sm">{agent.resolved}</p>
                         <p className="text-xs text-muted-foreground">çözülen</p>
                       </div>
                       <ChevronRight className="h-4 w-4 text-muted-foreground" />

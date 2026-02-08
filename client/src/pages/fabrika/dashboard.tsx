@@ -114,16 +114,16 @@ export default function FabrikaDashboard() {
   };
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <div className="flex items-center gap-3">
-          <Factory className="h-8 w-8 text-amber-500" />
+    <div className="container mx-auto p-3 space-y-3">
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <div className="flex items-center gap-2">
+          <Factory className="h-4 w-4 text-amber-500" />
           <div>
-            <h1 className="text-2xl font-bold">Fabrika Dashboard</h1>
-            <p className="text-muted-foreground">Üretim takip ve performans izleme</p>
+            <h1 className="text-base font-semibold">Fabrika Dashboard</h1>
+            <p className="text-xs text-muted-foreground">Üretim takip ve performans izleme</p>
           </div>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" onClick={() => refetch()} data-testid="button-refresh">
             <RefreshCw className="h-4 w-4 mr-2" />
             Yenile
@@ -138,10 +138,10 @@ export default function FabrikaDashboard() {
       </div>
 
       {loadingStats ? (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
           {[1, 2, 3, 4].map((i) => (
             <Card key={i} className="animate-pulse">
-              <CardContent className="p-6">
+              <CardContent className="px-3 pb-3">
                 <div className="h-10 bg-muted rounded"></div>
               </CardContent>
             </Card>
@@ -149,58 +149,58 @@ export default function FabrikaDashboard() {
         </div>
       ) : stats ? (
         <>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
             <Card className="hover-elevate">
-              <CardContent className="p-6">
-                <div className="flex items-center gap-3">
-                  <div className="p-3 bg-blue-500/20 rounded-lg">
-                    <Users className="h-6 w-6 text-blue-500" />
+              <CardContent className="px-3 pb-3 pt-3">
+                <div className="flex items-center gap-2">
+                  <div className="p-2 bg-blue-500/20 rounded-lg">
+                    <Users className="h-4 w-4 text-blue-500" />
                   </div>
                   <div>
-                    <p className="text-sm text-muted-foreground">Aktif Çalışan</p>
-                    <p className="text-2xl font-bold" data-testid="text-active-workers">{stats.activeWorkers}</p>
+                    <p className="text-xs text-muted-foreground">Aktif Çalışan</p>
+                    <p className="text-xl font-bold" data-testid="text-active-workers">{stats.activeWorkers}</p>
                   </div>
                 </div>
               </CardContent>
             </Card>
 
             <Card className="hover-elevate">
-              <CardContent className="p-6">
-                <div className="flex items-center gap-3">
-                  <div className="p-3 bg-green-500/20 rounded-lg">
-                    <Package className="h-6 w-6 text-green-500" />
+              <CardContent className="px-3 pb-3 pt-3">
+                <div className="flex items-center gap-2">
+                  <div className="p-2 bg-green-500/20 rounded-lg">
+                    <Package className="h-4 w-4 text-green-500" />
                   </div>
                   <div>
-                    <p className="text-sm text-muted-foreground">Bugünkü Üretim</p>
-                    <p className="text-2xl font-bold" data-testid="text-total-produced">{stats.totalProduced}</p>
+                    <p className="text-xs text-muted-foreground">Bugünkü Üretim</p>
+                    <p className="text-xl font-bold" data-testid="text-total-produced">{stats.totalProduced}</p>
                   </div>
                 </div>
               </CardContent>
             </Card>
 
             <Card className="hover-elevate">
-              <CardContent className="p-6">
-                <div className="flex items-center gap-3">
-                  <div className="p-3 bg-red-500/20 rounded-lg">
-                    <AlertTriangle className="h-6 w-6 text-red-500" />
+              <CardContent className="px-3 pb-3 pt-3">
+                <div className="flex items-center gap-2">
+                  <div className="p-2 bg-red-500/20 rounded-lg">
+                    <AlertTriangle className="h-4 w-4 text-red-500" />
                   </div>
                   <div>
-                    <p className="text-sm text-muted-foreground">Zaiyat</p>
-                    <p className="text-2xl font-bold" data-testid="text-total-waste">{stats.totalWaste}</p>
+                    <p className="text-xs text-muted-foreground">Zaiyat</p>
+                    <p className="text-xl font-bold" data-testid="text-total-waste">{stats.totalWaste}</p>
                   </div>
                 </div>
               </CardContent>
             </Card>
 
             <Card className="hover-elevate">
-              <CardContent className="p-6">
-                <div className="flex items-center gap-3">
-                  <div className="p-3 bg-amber-500/20 rounded-lg">
-                    <TrendingUp className="h-6 w-6 text-amber-500" />
+              <CardContent className="px-3 pb-3 pt-3">
+                <div className="flex items-center gap-2">
+                  <div className="p-2 bg-amber-500/20 rounded-lg">
+                    <TrendingUp className="h-4 w-4 text-amber-500" />
                   </div>
                   <div>
-                    <p className="text-sm text-muted-foreground">Verimlilik</p>
-                    <p className="text-2xl font-bold" data-testid="text-efficiency">%{stats.efficiency}</p>
+                    <p className="text-xs text-muted-foreground">Verimlilik</p>
+                    <p className="text-xl font-bold" data-testid="text-efficiency">%{stats.efficiency}</p>
                   </div>
                 </div>
               </CardContent>
@@ -209,34 +209,34 @@ export default function FabrikaDashboard() {
 
           {costStats && (
             <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="flex items-center gap-2 text-base">
-                  <Calculator className="h-5 w-5 text-purple-500" />
+              <CardHeader className="pb-1 pt-3 px-3">
+                <CardTitle className="flex items-center gap-2 text-xs">
+                  <Calculator className="h-3.5 w-3.5 text-purple-500" />
                   Maliyet Özeti
                 </CardTitle>
               </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <CardContent className="px-3 pb-3">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
                   <div className="text-center">
-                    <p className="text-2xl font-bold text-purple-600" data-testid="text-cost-products">{costStats.productCount}</p>
+                    <p className="text-sm font-bold text-purple-600" data-testid="text-cost-products">{costStats.productCount}</p>
                     <p className="text-xs text-muted-foreground">Ürün</p>
                   </div>
                   <div className="text-center">
-                    <p className="text-2xl font-bold text-blue-600" data-testid="text-cost-materials">{costStats.materialCount}</p>
+                    <p className="text-sm font-bold text-blue-600" data-testid="text-cost-materials">{costStats.materialCount}</p>
                     <p className="text-xs text-muted-foreground">Hammadde</p>
                   </div>
                   <div className="text-center">
-                    <p className="text-2xl font-bold text-green-600" data-testid="text-cost-margin">%{costStats.avgProfitMargin.toFixed(1)}</p>
+                    <p className="text-sm font-bold text-green-600" data-testid="text-cost-margin">%{costStats.avgProfitMargin.toFixed(1)}</p>
                     <p className="text-xs text-muted-foreground">Ort. Kar Marjı</p>
                   </div>
                   <div className="text-center">
-                    <p className="text-lg font-bold text-red-600" data-testid="text-cost-fixed">
+                    <p className="text-sm font-bold text-red-600" data-testid="text-cost-fixed">
                       ₺{new Intl.NumberFormat('tr-TR').format(costStats.totalFixedCosts)}
                     </p>
                     <p className="text-xs text-muted-foreground">Aylık Sabit Gider</p>
                   </div>
                 </div>
-                <div className="mt-4 flex justify-end">
+                <div className="mt-3 flex justify-end">
                   <Link href="/fabrika">
                     <Button variant="outline" size="sm" data-testid="link-cost-management">
                       <DollarSign className="h-4 w-4 mr-1" />
@@ -250,38 +250,38 @@ export default function FabrikaDashboard() {
 
           {wasteStats && (
             <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="flex items-center gap-2 text-base">
-                  <Flame className="h-5 w-5 text-red-500" />
+              <CardHeader className="pb-1 pt-3 px-3">
+                <CardTitle className="flex items-center gap-2 text-xs">
+                  <Flame className="h-3.5 w-3.5 text-red-500" />
                   Fire Takip Raporu
                 </CardTitle>
                 <CardDescription>Son 30 gün fire istatistikleri</CardDescription>
               </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
-                  <div className="text-center p-3 bg-red-500/10 rounded-lg">
-                    <p className="text-2xl font-bold text-red-600" data-testid="text-waste-total-batches">{wasteStats.totalBatches || 0}</p>
+              <CardContent className="px-3 pb-3">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-3">
+                  <div className="text-center p-2 bg-red-500/10 rounded-lg">
+                    <p className="text-sm font-bold text-red-600" data-testid="text-waste-total-batches">{wasteStats.totalBatches || 0}</p>
                     <p className="text-xs text-muted-foreground">Toplam Batch</p>
                   </div>
-                  <div className="text-center p-3 bg-amber-500/10 rounded-lg">
-                    <p className="text-2xl font-bold text-amber-600" data-testid="text-waste-avg-percent">%{Number(wasteStats.avgWastePercent || 0).toFixed(1)}</p>
+                  <div className="text-center p-2 bg-amber-500/10 rounded-lg">
+                    <p className="text-sm font-bold text-amber-600" data-testid="text-waste-avg-percent">%{Number(wasteStats.avgWastePercent || 0).toFixed(1)}</p>
                     <p className="text-xs text-muted-foreground">Ort. Fire Oranı</p>
                   </div>
-                  <div className="text-center p-3 bg-orange-500/10 rounded-lg">
-                    <p className="text-2xl font-bold text-orange-600" data-testid="text-waste-total-weight">{Number(wasteStats.totalWasteKg || 0).toFixed(1)} kg</p>
+                  <div className="text-center p-2 bg-orange-500/10 rounded-lg">
+                    <p className="text-sm font-bold text-orange-600" data-testid="text-waste-total-weight">{Number(wasteStats.totalWasteKg || 0).toFixed(1)} kg</p>
                     <p className="text-xs text-muted-foreground">Toplam Fire</p>
                   </div>
-                  <div className="text-center p-3 bg-red-500/10 rounded-lg">
-                    <p className="text-2xl font-bold text-red-600" data-testid="text-waste-total-cost">₺{new Intl.NumberFormat('tr-TR').format(Number(wasteStats.totalWasteCostTl || 0))}</p>
+                  <div className="text-center p-2 bg-red-500/10 rounded-lg">
+                    <p className="text-sm font-bold text-red-600" data-testid="text-waste-total-cost">₺{new Intl.NumberFormat('tr-TR').format(Number(wasteStats.totalWasteCostTl || 0))}</p>
                     <p className="text-xs text-muted-foreground">Toplam Fire Maliyeti</p>
                   </div>
                 </div>
 
                 {wasteStats.overToleranceCount > 0 && (
-                  <div className="flex items-center gap-2 p-3 bg-red-500/10 border border-red-200 dark:border-red-800 rounded-lg mb-4">
-                    <AlertTriangle className="h-5 w-5 text-red-500 flex-shrink-0" />
+                  <div className="flex items-center gap-2 p-2 bg-red-500/10 border border-red-200 dark:border-red-800 rounded-lg mb-3">
+                    <AlertTriangle className="h-4 w-4 text-red-500 flex-shrink-0" />
                     <div>
-                      <p className="text-sm font-medium text-red-700 dark:text-red-400" data-testid="text-tolerance-breaches">
+                      <p className="text-xs font-medium text-red-700 dark:text-red-400" data-testid="text-tolerance-breaches">
                         {wasteStats.overToleranceCount} batch tolerans aşımı tespit edildi
                       </p>
                       <p className="text-xs text-red-600/70 dark:text-red-400/70">Tolerans aşım oranı: %{wasteStats.overToleranceRate}</p>
@@ -314,14 +314,14 @@ export default function FabrikaDashboard() {
                 )}
 
                 {wasteStats.productRanking && wasteStats.productRanking.length > 0 && (
-                  <div className="mt-4">
-                    <p className="text-sm font-medium mb-2">En Yüksek Fireli Ürünler</p>
+                  <div className="mt-3">
+                    <p className="text-xs font-medium mb-2">En Yüksek Fireli Ürünler</p>
                     <div className="space-y-2">
                       {wasteStats.productRanking.slice(0, 5).map((p: any, i: number) => (
-                        <div key={i} className="flex items-center justify-between text-sm">
+                        <div key={i} className="flex items-center justify-between text-xs">
                           <span className="text-muted-foreground">{p.name || `Ürün #${p.productId}`}</span>
                           <div className="flex items-center gap-2">
-                            <Badge variant={Number(p.wastePercent) > 10 ? "destructive" : "secondary"}>
+                            <Badge variant={Number(p.wastePercent) > 10 ? "destructive" : "secondary"} className="text-[10px]">
                               %{Number(p.wastePercent).toFixed(1)}
                             </Badge>
                             <span className="text-xs text-muted-foreground">{p.batchCount} batch</span>
@@ -336,14 +336,14 @@ export default function FabrikaDashboard() {
           )}
 
           <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Users className="h-5 w-5 text-blue-500" />
+            <CardHeader className="pb-1 pt-3 px-3">
+              <CardTitle className="flex items-center gap-2 text-xs">
+                <Users className="h-3.5 w-3.5 text-blue-500" />
                 Aktif Çalışanlar
               </CardTitle>
               <CardDescription>Şu anda vardiyada olan personel</CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="px-3 pb-3">
               {loadingWorkers ? (
                 <div className="text-center py-8 text-muted-foreground">Yükleniyor...</div>
               ) : activeWorkers.length > 0 ? (
@@ -361,7 +361,7 @@ export default function FabrikaDashboard() {
                     {activeWorkers.map((worker) => (
                       <TableRow key={worker.sessionId} data-testid={`row-worker-${worker.sessionId}`}>
                         <TableCell>
-                          <div className="flex items-center gap-3">
+                          <div className="flex items-center gap-2">
                             <Avatar className="h-8 w-8">
                               <AvatarImage src={worker.profileImageUrl || undefined} />
                               <AvatarFallback className="bg-amber-600 text-white text-xs">
@@ -372,7 +372,7 @@ export default function FabrikaDashboard() {
                           </div>
                         </TableCell>
                         <TableCell>
-                          <Badge variant="secondary">{worker.stationName}</Badge>
+                          <Badge variant="secondary" className="text-[10px]">{worker.stationName}</Badge>
                         </TableCell>
                         <TableCell className="text-muted-foreground">
                           {new Date(worker.checkInTime).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}
@@ -384,7 +384,7 @@ export default function FabrikaDashboard() {
                           </div>
                         </TableCell>
                         <TableCell>
-                          <Badge className="bg-green-600">Çalışıyor</Badge>
+                          <Badge className="bg-green-600 text-[10px]">Çalışıyor</Badge>
                         </TableCell>
                       </TableRow>
                     ))}
@@ -394,22 +394,22 @@ export default function FabrikaDashboard() {
                 <div className="text-center py-8 text-muted-foreground">
                   <Users className="h-12 w-12 mx-auto mb-2 opacity-50" />
                   <p>Şu anda aktif çalışan yok</p>
-                  <p className="text-sm mt-1">Kiosk modundan giriş yapılabilir</p>
+                  <p className="text-xs mt-1">Kiosk modundan giriş yapılabilir</p>
                 </div>
               )}
             </CardContent>
           </Card>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
             <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Settings className="h-5 w-5" />
+              <CardHeader className="pb-1 pt-3 px-3">
+                <CardTitle className="flex items-center gap-2 text-xs">
+                  <Settings className="h-3.5 w-3.5" />
                   İstasyon Bazlı Üretim
                 </CardTitle>
                 <CardDescription>Bugünkü istasyon performansları</CardDescription>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="px-3 pb-3 space-y-2">
                 {stats.stationProduction && stats.stationProduction.length > 0 ? (
                   stats.stationProduction.map((sp) => {
                     const target = getStationTarget(sp.stationId) * 8;
@@ -417,13 +417,13 @@ export default function FabrikaDashboard() {
                     const wastePercent = sp.produced > 0 ? ((sp.waste / sp.produced) * 100).toFixed(1) : 0;
                     
                     return (
-                      <div key={sp.stationId} className="space-y-2">
+                      <div key={sp.stationId} className="space-y-1">
                         <div className="flex items-center justify-between flex-wrap gap-2">
-                          <span className="font-medium">{getStationName(sp.stationId)}</span>
+                          <span className="font-medium text-xs">{getStationName(sp.stationId)}</span>
                           <div className="flex items-center gap-2">
-                            <Badge variant="secondary">{sp.produced} adet</Badge>
+                            <Badge variant="secondary" className="text-[10px]">{sp.produced} adet</Badge>
                             {sp.waste > 0 && (
-                              <Badge variant="destructive" className="text-xs">
+                              <Badge variant="destructive" className="text-[10px]">
                                 {wastePercent}% zaiyat
                               </Badge>
                             )}
@@ -448,32 +448,32 @@ export default function FabrikaDashboard() {
             </Card>
 
             <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Clock className="h-5 w-5" />
+              <CardHeader className="pb-1 pt-3 px-3">
+                <CardTitle className="flex items-center gap-2 text-xs">
+                  <Clock className="h-3.5 w-3.5" />
                   Vardiya Özeti
                 </CardTitle>
                 <CardDescription>Bugünkü vardiya istatistikleri</CardDescription>
               </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
-                    <span className="text-muted-foreground">Toplam Vardiya</span>
-                    <span className="font-bold text-lg" data-testid="text-today-shifts">{stats.todayShifts}</span>
+              <CardContent className="px-3 pb-3">
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between p-2 bg-muted/50 rounded-lg">
+                    <span className="text-xs text-muted-foreground">Toplam Vardiya</span>
+                    <span className="font-bold text-sm" data-testid="text-today-shifts">{stats.todayShifts}</span>
                   </div>
-                  <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
-                    <span className="text-muted-foreground">Şu An Aktif</span>
-                    <Badge className="bg-green-600">{stats.activeWorkers} kişi</Badge>
+                  <div className="flex items-center justify-between p-2 bg-muted/50 rounded-lg">
+                    <span className="text-xs text-muted-foreground">Şu An Aktif</span>
+                    <Badge className="bg-green-600 text-[10px]">{stats.activeWorkers} kişi</Badge>
                   </div>
-                  <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
-                    <span className="text-muted-foreground">Ortalama Verimlilik</span>
-                    <span className="font-bold text-lg text-amber-500">%{stats.efficiency}</span>
+                  <div className="flex items-center justify-between p-2 bg-muted/50 rounded-lg">
+                    <span className="text-xs text-muted-foreground">Ortalama Verimlilik</span>
+                    <span className="font-bold text-sm text-amber-500">%{stats.efficiency}</span>
                   </div>
                 </div>
 
-                <Separator className="my-4" />
+                <Separator className="my-3" />
 
-                <div className="text-center text-sm text-muted-foreground">
+                <div className="text-center text-xs text-muted-foreground">
                   <p>Son güncelleme: {new Date().toLocaleTimeString('tr-TR')}</p>
                   <p className="text-xs mt-1">Her 30 saniyede otomatik yenilenir</p>
                 </div>
@@ -482,50 +482,50 @@ export default function FabrikaDashboard() {
           </div>
 
           <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm">Hızlı Erişim</CardTitle>
+            <CardHeader className="pb-1 pt-3 px-3">
+              <CardTitle className="text-xs">Hızlı Erişim</CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="px-3 pb-3">
               <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-7 gap-2">
                 <Link href="/fabrika/kiosk">
-                  <Button variant="outline" className="w-full h-auto p-3 flex flex-col items-center gap-2" data-testid="link-kiosk-quick">
-                    <Factory className="h-6 w-6 text-amber-500" />
+                  <Button variant="outline" className="w-full h-auto p-2 flex flex-col items-center gap-1" data-testid="link-kiosk-quick">
+                    <Factory className="h-4 w-4 text-amber-500" />
                     <span className="text-xs">Kiosk</span>
                   </Button>
                 </Link>
                 <Link href="/fabrika/kalite-kontrol">
-                  <Button variant="outline" className="w-full h-auto p-3 flex flex-col items-center gap-2" data-testid="link-quality-control">
-                    <ClipboardCheck className="h-6 w-6 text-emerald-500" />
+                  <Button variant="outline" className="w-full h-auto p-2 flex flex-col items-center gap-1" data-testid="link-quality-control">
+                    <ClipboardCheck className="h-4 w-4 text-emerald-500" />
                     <span className="text-xs">Kalite</span>
                   </Button>
                 </Link>
                 <Link href="/fabrika/performans">
-                  <Button variant="outline" className="w-full h-auto p-3 flex flex-col items-center gap-2" data-testid="link-performance">
-                    <BarChart3 className="h-6 w-6 text-purple-500" />
+                  <Button variant="outline" className="w-full h-auto p-2 flex flex-col items-center gap-1" data-testid="link-performance">
+                    <BarChart3 className="h-4 w-4 text-purple-500" />
                     <span className="text-xs">Performans</span>
                   </Button>
                 </Link>
                 <Link href="/fabrika/vardiya-planlama">
-                  <Button variant="outline" className="w-full h-auto p-3 flex flex-col items-center gap-2" data-testid="link-shift-planning">
-                    <Clock className="h-6 w-6 text-indigo-500" />
+                  <Button variant="outline" className="w-full h-auto p-2 flex flex-col items-center gap-1" data-testid="link-shift-planning">
+                    <Clock className="h-4 w-4 text-indigo-500" />
                     <span className="text-xs">Vardiya</span>
                   </Button>
                 </Link>
                 <Link href="/fabrika/uretim-planlama">
-                  <Button variant="outline" className="w-full h-auto p-3 flex flex-col items-center gap-2" data-testid="link-factory">
-                    <Package className="h-6 w-6 text-blue-500" />
+                  <Button variant="outline" className="w-full h-auto p-2 flex flex-col items-center gap-1" data-testid="link-factory">
+                    <Package className="h-4 w-4 text-blue-500" />
                     <span className="text-xs">Üretim</span>
                   </Button>
                 </Link>
                 <Link href="/fabrika/ai-raporlar">
-                  <Button variant="outline" className="w-full h-auto p-3 flex flex-col items-center gap-2" data-testid="link-reports">
-                    <TrendingUp className="h-6 w-6 text-purple-500" />
+                  <Button variant="outline" className="w-full h-auto p-2 flex flex-col items-center gap-1" data-testid="link-reports">
+                    <TrendingUp className="h-4 w-4 text-purple-500" />
                     <span className="text-xs">AI Rapor</span>
                   </Button>
                 </Link>
                 <Link href="/ik">
-                  <Button variant="outline" className="w-full h-auto p-3 flex flex-col items-center gap-2" data-testid="link-hr">
-                    <Users className="h-6 w-6 text-green-500" />
+                  <Button variant="outline" className="w-full h-auto p-2 flex flex-col items-center gap-1" data-testid="link-hr">
+                    <Users className="h-4 w-4 text-green-500" />
                     <span className="text-xs">İK</span>
                   </Button>
                 </Link>
@@ -535,7 +535,7 @@ export default function FabrikaDashboard() {
         </>
       ) : (
         <Card>
-          <CardContent className="p-8 text-center text-muted-foreground">
+          <CardContent className="p-3 text-center text-muted-foreground">
             <AlertTriangle className="h-12 w-12 mx-auto mb-4 opacity-50" />
             <p>Dashboard verileri yüklenemedi</p>
             <Button variant="outline" className="mt-4" onClick={() => refetch()}>

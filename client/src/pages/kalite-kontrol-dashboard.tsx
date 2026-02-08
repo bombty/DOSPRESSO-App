@@ -241,9 +241,9 @@ export default function KaliteKontrolDashboard() {
 
   if (isLoading) {
     return (
-      <div className="space-y-4 p-4">
+      <div className="space-y-3 p-3">
         <Skeleton className="h-32 w-full" />
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
           {[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-24" />)}
         </div>
         <Skeleton className="h-96 w-full" />
@@ -252,87 +252,87 @@ export default function KaliteKontrolDashboard() {
   }
 
   return (
-    <div className="space-y-4 p-4">
-      <div className="flex items-center justify-between gap-4 flex-wrap">
+    <div className="space-y-3 p-3">
+      <div className="flex items-center justify-between gap-3 flex-wrap">
         <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            <Sparkles className="h-6 w-6 text-primary" />
+          <h1 className="text-xl font-bold flex items-center gap-2">
+            <Sparkles className="h-5 w-5 text-primary" />
             Kalite Kontrol Paneli
           </h1>
-          <p className="text-muted-foreground">Müşteri geri bildirimlerini takip edin ve yanıtlayın</p>
+          <p className="text-xs text-muted-foreground">Müşteri geri bildirimlerini takip edin ve yanıtlayın</p>
         </div>
-        <Badge variant="outline" className="text-lg px-4 py-2">
-          <Calendar className="h-4 w-4 mr-2" />
-          {format(new Date(), 'd MMMM yyyy', { locale: tr })}
+        <Badge variant="outline" className="text-[10px] px-2 py-1">
+          <Calendar className="h-3 w-3 mr-1" />
+          {format(new Date(), 'd MMM yyyy', { locale: tr })}
         </Badge>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2">
         <Card>
-          <CardContent className="pt-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-full bg-red-100 dark:bg-red-900/30">
-                <AlertTriangle className="h-5 w-5 text-red-600" />
+          <CardContent className="pt-3 px-3 pb-3">
+            <div className="flex items-center gap-2">
+              <div className="p-1.5 rounded-full bg-red-100 dark:bg-red-900/30">
+                <AlertTriangle className="h-4 w-4 text-red-600" />
               </div>
-              <div>
-                <p className="text-2xl font-bold">{performance.todayPending}</p>
-                <p className="text-xs text-muted-foreground">Bugün Bekleyen</p>
+              <div className="min-w-0">
+                <p className="text-lg font-bold">{performance.todayPending}</p>
+                <p className="text-[10px] text-muted-foreground">Bugün Bekleyen</p>
               </div>
             </div>
           </CardContent>
         </Card>
         
         <Card>
-          <CardContent className="pt-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-full bg-green-100 dark:bg-green-900/30">
-                <CheckCircle2 className="h-5 w-5 text-green-600" />
+          <CardContent className="pt-3 px-3 pb-3">
+            <div className="flex items-center gap-2">
+              <div className="p-1.5 rounded-full bg-green-100 dark:bg-green-900/30">
+                <CheckCircle2 className="h-4 w-4 text-green-600" />
               </div>
-              <div>
-                <p className="text-2xl font-bold">{performance.todayResponded}</p>
-                <p className="text-xs text-muted-foreground">Bugün Yanıtlanan</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="pt-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-full bg-blue-100 dark:bg-blue-900/30">
-                <Timer className="h-5 w-5 text-blue-600" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">{performance.avgResponseTime} saat</p>
-                <p className="text-xs text-muted-foreground">Ort. Yanıt Süresi</p>
+              <div className="min-w-0">
+                <p className="text-lg font-bold">{performance.todayResponded}</p>
+                <p className="text-[10px] text-muted-foreground">Bugün Yanıtlanan</p>
               </div>
             </div>
           </CardContent>
         </Card>
 
         <Card>
-          <CardContent className="pt-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-full bg-purple-100 dark:bg-purple-900/30">
-                <Target className="h-5 w-5 text-purple-600" />
+          <CardContent className="pt-3 px-3 pb-3">
+            <div className="flex items-center gap-2">
+              <div className="p-1.5 rounded-full bg-blue-100 dark:bg-blue-900/30">
+                <Timer className="h-4 w-4 text-blue-600" />
               </div>
-              <div>
-                <p className="text-2xl font-bold">%{performance.onTimeRate}</p>
-                <p className="text-xs text-muted-foreground">Zamanında Yanıt</p>
+              <div className="min-w-0">
+                <p className="text-lg font-bold">{performance.avgResponseTime} saat</p>
+                <p className="text-[10px] text-muted-foreground">Ort. Yanıt Süresi</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="pt-3 px-3 pb-3">
+            <div className="flex items-center gap-2">
+              <div className="p-1.5 rounded-full bg-purple-100 dark:bg-purple-900/30">
+                <Target className="h-4 w-4 text-purple-600" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-lg font-bold">%{performance.onTimeRate}</p>
+                <p className="text-[10px] text-muted-foreground">Zamanında Yanıt</p>
               </div>
             </div>
           </CardContent>
         </Card>
 
         <Card className="bg-gradient-to-br from-primary/10 to-primary/5">
-          <CardContent className="pt-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-full bg-primary/20">
-                <Award className="h-5 w-5 text-primary" />
+          <CardContent className="pt-3 px-3 pb-3">
+            <div className="flex items-center gap-2">
+              <div className="p-1.5 rounded-full bg-primary/20">
+                <Award className="h-4 w-4 text-primary" />
               </div>
-              <div>
-                <p className="text-2xl font-bold">{performance.weeklyScore}</p>
-                <p className="text-xs text-muted-foreground">Haftalık Skor</p>
+              <div className="min-w-0">
+                <p className="text-lg font-bold">{performance.weeklyScore}</p>
+                <p className="text-[10px] text-muted-foreground">Haftalık Skor</p>
               </div>
             </div>
           </CardContent>
@@ -340,19 +340,19 @@ export default function KaliteKontrolDashboard() {
       </div>
 
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between gap-2 pb-2">
+        <CardHeader className="flex flex-row items-center justify-between gap-2 pb-1 pt-3 px-3">
           <div>
-            <CardTitle className="text-lg flex items-center gap-2">
-              <MessageSquare className="h-5 w-5" />
+            <CardTitle className="text-xs flex items-center gap-2">
+              <MessageSquare className="h-3.5 w-3.5" />
               Bekleyen Geri Bildirimler
             </CardTitle>
-            <CardDescription>Öncelik sırasına göre listeleniyor</CardDescription>
+            <CardDescription className="text-[10px]">Öncelik sırasına göre listeleniyor</CardDescription>
           </div>
-          <Badge variant="secondary" className="text-lg">
+          <Badge variant="secondary" className="text-[10px]">
             {performance.totalPending} bekleyen
           </Badge>
         </CardHeader>
-        <CardContent>
+        <CardContent className="px-3 pb-3">
           {sortedFeedbacks.length === 0 ? (
             <div className="text-center py-12">
               <CheckCircle2 className="h-16 w-16 mx-auto mb-4 text-green-500 opacity-50" />
@@ -361,7 +361,7 @@ export default function KaliteKontrolDashboard() {
             </div>
           ) : (
             <ScrollArea className="h-[500px]">
-              <div className="space-y-3">
+              <div className="space-y-2 pr-4">
                 {sortedFeedbacks.map((feedback) => {
                   const remaining = getRemainingTime(feedback.responseDeadline);
                   const sourceInfo = sourceLabels[feedback.source] || { label: feedback.source, icon: MessageSquare, color: 'bg-gray-500' };
@@ -375,75 +375,76 @@ export default function KaliteKontrolDashboard() {
                       className={`hover-elevate cursor-pointer ${feedback.slaBreached ? 'border-red-500 border-2' : ''}`}
                       data-testid={`feedback-card-${feedback.id}`}
                     >
-                      <CardContent className="p-4">
-                        <div className="flex items-start justify-between gap-3">
+                      <CardContent className="p-2">
+                        <div className="flex items-start justify-between gap-2">
                           <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 flex-wrap mb-2">
-                              <Badge className={priorityInfo.color}>
+                            <div className="flex items-center gap-1 flex-wrap mb-1">
+                              <Badge className={`${priorityInfo.color} text-[10px]`}>
                                 {priorityInfo.label}
                               </Badge>
-                              <Badge variant={statusInfo.variant}>
+                              <Badge variant={statusInfo.variant} className="text-[10px]">
                                 {statusInfo.label}
                               </Badge>
-                              <div className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-xs text-white ${sourceInfo.color}`}>
-                                <SourceIcon className="h-3 w-3" />
+                              <div className={`flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] text-white ${sourceInfo.color}`}>
+                                <SourceIcon className="h-2.5 w-2.5" />
                                 {sourceInfo.label}
                               </div>
                               {feedback.slaBreached && (
-                                <Badge variant="destructive" className="animate-pulse">
-                                  <AlertTriangle className="h-3 w-3 mr-1" />
+                                <Badge variant="destructive" className="animate-pulse text-[10px]">
+                                  <AlertTriangle className="h-2.5 w-2.5 mr-0.5" />
                                   SLA Aşıldı
                                 </Badge>
                               )}
                             </div>
                             
-                            <div className="flex items-center gap-2 text-sm mb-1">
-                              <Building2 className="h-4 w-4 text-muted-foreground" />
-                              <span className="font-medium">{feedback.branchName}</span>
-                              <span className="text-muted-foreground">•</span>
-                              <div className="flex items-center">
+                            <div className="flex items-center gap-1 text-xs mb-1">
+                              <Building2 className="h-3 w-3 text-muted-foreground flex-shrink-0" />
+                              <span className="font-medium truncate">{feedback.branchName}</span>
+                              <span className="text-muted-foreground flex-shrink-0">•</span>
+                              <div className="flex items-center flex-shrink-0">
                                 {[1, 2, 3, 4, 5].map((star) => (
                                   <Star
                                     key={star}
-                                    className={`h-4 w-4 ${star <= feedback.rating ? 'text-yellow-500 fill-yellow-500' : 'text-gray-300'}`}
+                                    className={`h-3 w-3 ${star <= feedback.rating ? 'text-yellow-500 fill-yellow-500' : 'text-gray-300'}`}
                                   />
                                 ))}
                               </div>
                             </div>
                             
                             {feedback.comment && (
-                              <p className="text-sm text-muted-foreground line-clamp-2 mt-1">
+                              <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5">
                                 "{feedback.comment}"
                               </p>
                             )}
                             
-                            <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
-                              <span className="flex items-center gap-1">
-                                <Clock className="h-3 w-3" />
+                            <div className="flex items-center gap-2 mt-1 text-[10px] text-muted-foreground flex-wrap">
+                              <span className="flex items-center gap-0.5 flex-shrink-0">
+                                <Clock className="h-2.5 w-2.5" />
                                 {format(parseISO(feedback.feedbackDate), 'd MMM HH:mm', { locale: tr })}
                               </span>
                               {remaining && (
-                                <span className={`flex items-center gap-1 ${remaining.urgent ? 'text-red-500 font-medium' : ''}`}>
-                                  <Timer className="h-3 w-3" />
+                                <span className={`flex items-center gap-0.5 ${remaining.urgent ? 'text-red-500 font-medium' : ''}`}>
+                                  <Timer className="h-2.5 w-2.5" />
                                   {remaining.text}
                                 </span>
                               )}
                               {!feedback.isAnonymous && feedback.customerName && (
-                                <span className="flex items-center gap-1">
-                                  <Users className="h-3 w-3" />
+                                <span className="flex items-center gap-0.5 truncate">
+                                  <Users className="h-2.5 w-2.5 flex-shrink-0" />
                                   {feedback.customerName}
                                 </span>
                               )}
                             </div>
                           </div>
                           
-                          <div className="flex flex-col gap-2">
+                          <div className="flex flex-col gap-1 flex-shrink-0">
                             <Button 
                               size="sm" 
                               onClick={(e) => { e.stopPropagation(); handleQuickResolve(feedback); }}
                               data-testid={`respond-button-${feedback.id}`}
+                              className="text-xs h-7 px-2"
                             >
-                              <Reply className="h-4 w-4 mr-1" />
+                              <Reply className="h-3 w-3 mr-0.5" />
                               Yanıtla
                             </Button>
                             <Button 
@@ -451,8 +452,9 @@ export default function KaliteKontrolDashboard() {
                               variant="outline"
                               onClick={(e) => { e.stopPropagation(); setSelectedFeedback(feedback); setShowDetailDialog(true); }}
                               data-testid={`view-button-${feedback.id}`}
+                              className="text-xs h-7 px-2"
                             >
-                              <Eye className="h-4 w-4 mr-1" />
+                              <Eye className="h-3 w-3 mr-0.5" />
                               Detay
                             </Button>
                           </div>
@@ -468,36 +470,36 @@ export default function KaliteKontrolDashboard() {
       </Card>
 
       <Card>
-        <CardHeader>
-          <CardTitle className="text-lg flex items-center gap-2">
-            <TrendingUp className="h-5 w-5" />
+        <CardHeader className="pb-1 pt-3 px-3">
+          <CardTitle className="text-xs flex items-center gap-2">
+            <TrendingUp className="h-3.5 w-3.5" />
             Performans Özeti
           </CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
+        <CardContent className="px-3 pb-3">
+          <div className="space-y-2">
             <div>
-              <div className="flex justify-between text-sm mb-1">
+              <div className="flex justify-between text-[10px] mb-1">
                 <span>Zamanında Yanıtlama Oranı</span>
                 <span className="font-medium">%{performance.onTimeRate}</span>
               </div>
-              <Progress value={performance.onTimeRate} className="h-2" />
+              <Progress value={performance.onTimeRate} className="h-1.5" />
             </div>
             <div>
-              <div className="flex justify-between text-sm mb-1">
+              <div className="flex justify-between text-[10px] mb-1">
                 <span>Haftalık Performans Skoru</span>
                 <span className="font-medium">{performance.weeklyScore}/100</span>
               </div>
-              <Progress value={performance.weeklyScore} className="h-2" />
+              <Progress value={performance.weeklyScore} className="h-1.5" />
             </div>
-            <div className="grid grid-cols-2 gap-4 pt-2">
-              <div className="text-center p-3 bg-muted/50 rounded-lg">
-                <p className="text-2xl font-bold text-green-600">{performance.totalResponded}</p>
-                <p className="text-xs text-muted-foreground">Toplam Yanıtlanan</p>
+            <div className="grid grid-cols-2 gap-2 pt-1">
+              <div className="text-center p-2 bg-muted/50 rounded-lg">
+                <p className="text-base font-bold text-green-600">{performance.totalResponded}</p>
+                <p className="text-[10px] text-muted-foreground">Toplam Yanıtlanan</p>
               </div>
-              <div className="text-center p-3 bg-muted/50 rounded-lg">
-                <p className="text-2xl font-bold text-orange-600">{stats?.slaBreachedCount || 0}</p>
-                <p className="text-xs text-muted-foreground">SLA İhlali</p>
+              <div className="text-center p-2 bg-muted/50 rounded-lg">
+                <p className="text-base font-bold text-orange-600">{stats?.slaBreachedCount || 0}</p>
+                <p className="text-[10px] text-muted-foreground">SLA İhlali</p>
               </div>
             </div>
           </div>
@@ -507,32 +509,32 @@ export default function KaliteKontrolDashboard() {
       <Dialog open={showResponseDialog} onOpenChange={setShowResponseDialog}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>Geri Bildirime Yanıt Ver</DialogTitle>
+            <DialogTitle className="text-sm">Geri Bildirime Yanıt Ver</DialogTitle>
           </DialogHeader>
           {selectedFeedback && (
-            <div className="space-y-4">
-              <div className="p-3 bg-muted rounded-lg">
-                <div className="flex items-center gap-2 mb-2">
-                  <Building2 className="h-4 w-4" />
-                  <span className="font-medium">{selectedFeedback.branchName}</span>
+            <div className="space-y-3">
+              <div className="p-2 bg-muted rounded-lg">
+                <div className="flex items-center gap-1 mb-1">
+                  <Building2 className="h-3 w-3" />
+                  <span className="font-medium text-xs">{selectedFeedback.branchName}</span>
                   <div className="flex items-center">
                     {[1, 2, 3, 4, 5].map((star) => (
                       <Star
                         key={star}
-                        className={`h-3 w-3 ${star <= selectedFeedback.rating ? 'text-yellow-500 fill-yellow-500' : 'text-gray-300'}`}
+                        className={`h-2.5 w-2.5 ${star <= selectedFeedback.rating ? 'text-yellow-500 fill-yellow-500' : 'text-gray-300'}`}
                       />
                     ))}
                   </div>
                 </div>
                 {selectedFeedback.comment && (
-                  <p className="text-sm text-muted-foreground">"{selectedFeedback.comment}"</p>
+                  <p className="text-xs text-muted-foreground">"{selectedFeedback.comment}"</p>
                 )}
               </div>
               
               <div>
-                <label className="text-sm font-medium mb-2 block">Yanıt Türü</label>
+                <label className="text-xs font-medium mb-1 block">Yanıt Türü</label>
                 <Select value={responseType} onValueChange={setResponseType}>
-                  <SelectTrigger data-testid="response-type-select">
+                  <SelectTrigger data-testid="response-type-select" className="text-xs h-8">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -546,27 +548,28 @@ export default function KaliteKontrolDashboard() {
               </div>
               
               <div>
-                <label className="text-sm font-medium mb-2 block">Yanıt İçeriği</label>
+                <label className="text-xs font-medium mb-1 block">Yanıt İçeriği</label>
                 <Textarea 
                   value={responseContent}
                   onChange={(e) => setResponseContent(e.target.value)}
                   placeholder="Yanıtınızı buraya yazın..."
-                  className="min-h-[120px]"
+                  className="min-h-[100px] text-xs"
                   data-testid="response-content-textarea"
                 />
               </div>
             </div>
           )}
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowResponseDialog(false)}>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setShowResponseDialog(false)} className="text-xs h-8">
               İptal
             </Button>
             <Button 
               onClick={handleSubmitResponse}
               disabled={!responseContent.trim() || addResponseMutation.isPending}
               data-testid="submit-response-button"
+              className="text-xs h-8"
             >
-              <Send className="h-4 w-4 mr-2" />
+              <Send className="h-3 w-3 mr-1" />
               {addResponseMutation.isPending ? 'Gönderiliyor...' : 'Yanıtı Gönder'}
             </Button>
           </DialogFooter>
@@ -576,78 +579,78 @@ export default function KaliteKontrolDashboard() {
       <Dialog open={showDetailDialog} onOpenChange={setShowDetailDialog}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>Geri Bildirim Detayı</DialogTitle>
+            <DialogTitle className="text-sm">Geri Bildirim Detayı</DialogTitle>
           </DialogHeader>
           {selectedFeedback && (
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="text-xs text-muted-foreground">Şube</label>
-                  <p className="font-medium">{selectedFeedback.branchName}</p>
+                  <label className="text-[10px] text-muted-foreground">Şube</label>
+                  <p className="font-medium text-xs">{selectedFeedback.branchName}</p>
                 </div>
                 <div>
-                  <label className="text-xs text-muted-foreground">Kaynak</label>
-                  <p className="font-medium">{sourceLabels[selectedFeedback.source]?.label || selectedFeedback.source}</p>
+                  <label className="text-[10px] text-muted-foreground">Kaynak</label>
+                  <p className="font-medium text-xs">{sourceLabels[selectedFeedback.source]?.label || selectedFeedback.source}</p>
                 </div>
                 <div>
-                  <label className="text-xs text-muted-foreground">Genel Puan</label>
+                  <label className="text-[10px] text-muted-foreground">Genel Puan</label>
                   <div className="flex items-center">
                     {[1, 2, 3, 4, 5].map((star) => (
                       <Star
                         key={star}
-                        className={`h-4 w-4 ${star <= selectedFeedback.rating ? 'text-yellow-500 fill-yellow-500' : 'text-gray-300'}`}
+                        className={`h-3 w-3 ${star <= selectedFeedback.rating ? 'text-yellow-500 fill-yellow-500' : 'text-gray-300'}`}
                       />
                     ))}
                   </div>
                 </div>
                 <div>
-                  <label className="text-xs text-muted-foreground">Tarih</label>
-                  <p className="font-medium">{format(parseISO(selectedFeedback.feedbackDate), 'd MMMM yyyy HH:mm', { locale: tr })}</p>
+                  <label className="text-[10px] text-muted-foreground">Tarih</label>
+                  <p className="font-medium text-xs">{format(parseISO(selectedFeedback.feedbackDate), 'd MMM HH:mm', { locale: tr })}</p>
                 </div>
               </div>
               
               {selectedFeedback.serviceRating && (
-                <div className="grid grid-cols-4 gap-2 text-center">
-                  <div className="p-2 bg-muted rounded">
-                    <p className="text-lg font-bold">{selectedFeedback.serviceRating}</p>
-                    <p className="text-xs text-muted-foreground">Hizmet</p>
+                <div className="grid grid-cols-4 gap-1 text-center">
+                  <div className="p-1.5 bg-muted rounded">
+                    <p className="text-sm font-bold">{selectedFeedback.serviceRating}</p>
+                    <p className="text-[10px] text-muted-foreground">Hizmet</p>
                   </div>
-                  <div className="p-2 bg-muted rounded">
-                    <p className="text-lg font-bold">{selectedFeedback.cleanlinessRating || '-'}</p>
-                    <p className="text-xs text-muted-foreground">Temizlik</p>
+                  <div className="p-1.5 bg-muted rounded">
+                    <p className="text-sm font-bold">{selectedFeedback.cleanlinessRating || '-'}</p>
+                    <p className="text-[10px] text-muted-foreground">Temizlik</p>
                   </div>
-                  <div className="p-2 bg-muted rounded">
-                    <p className="text-lg font-bold">{selectedFeedback.productRating || '-'}</p>
-                    <p className="text-xs text-muted-foreground">Ürün</p>
+                  <div className="p-1.5 bg-muted rounded">
+                    <p className="text-sm font-bold">{selectedFeedback.productRating || '-'}</p>
+                    <p className="text-[10px] text-muted-foreground">Ürün</p>
                   </div>
-                  <div className="p-2 bg-muted rounded">
-                    <p className="text-lg font-bold">{selectedFeedback.staffRating || '-'}</p>
-                    <p className="text-xs text-muted-foreground">Personel</p>
+                  <div className="p-1.5 bg-muted rounded">
+                    <p className="text-sm font-bold">{selectedFeedback.staffRating || '-'}</p>
+                    <p className="text-[10px] text-muted-foreground">Personel</p>
                   </div>
                 </div>
               )}
               
               {selectedFeedback.comment && (
                 <div>
-                  <label className="text-xs text-muted-foreground">Yorum</label>
-                  <p className="mt-1 p-3 bg-muted rounded-lg">{selectedFeedback.comment}</p>
+                  <label className="text-[10px] text-muted-foreground">Yorum</label>
+                  <p className="mt-1 p-2 bg-muted rounded-lg text-xs">{selectedFeedback.comment}</p>
                 </div>
               )}
               
               {!selectedFeedback.isAnonymous && selectedFeedback.customerName && (
                 <div>
-                  <label className="text-xs text-muted-foreground">Müşteri</label>
-                  <p className="font-medium">{selectedFeedback.customerName}</p>
+                  <label className="text-[10px] text-muted-foreground">Müşteri</label>
+                  <p className="font-medium text-xs">{selectedFeedback.customerName}</p>
                 </div>
               )}
             </div>
           )}
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowDetailDialog(false)}>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setShowDetailDialog(false)} className="text-xs h-8">
               Kapat
             </Button>
-            <Button onClick={() => { setShowDetailDialog(false); handleQuickResolve(selectedFeedback!); }}>
-              <Reply className="h-4 w-4 mr-2" />
+            <Button onClick={() => { setShowDetailDialog(false); handleQuickResolve(selectedFeedback!); }} className="text-xs h-8">
+              <Reply className="h-3 w-3 mr-1" />
               Yanıtla
             </Button>
           </DialogFooter>

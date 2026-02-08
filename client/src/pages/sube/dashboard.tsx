@@ -287,10 +287,10 @@ export default function SubeDashboard() {
 
   const getSeverityIcon = (severity: string) => {
     switch (severity) {
-      case 'critical': return <AlertCircle className="h-5 w-5 text-red-500" />;
-      case 'warning': return <AlertTriangle className="h-5 w-5 text-amber-500" />;
-      case 'info': return <Bell className="h-5 w-5 text-blue-500" />;
-      default: return <Bell className="h-5 w-5" />;
+      case 'critical': return <AlertCircle className="h-4 w-4 text-red-500" />;
+      case 'warning': return <AlertTriangle className="h-4 w-4 text-amber-500" />;
+      case 'info': return <Bell className="h-4 w-4 text-blue-500" />;
+      default: return <Bell className="h-4 w-4" />;
     }
   };
 
@@ -298,14 +298,14 @@ export default function SubeDashboard() {
   const hasCriticalAlerts = criticalAlerts.length > 0;
 
   return (
-    <div className="container mx-auto p-4 space-y-6">
+    <div className="container mx-auto p-3 space-y-3">
       {hasCriticalAlerts && (
-        <div className="bg-red-500/10 border-l-4 border-red-500 p-4 rounded-r-lg animate-pulse">
-          <div className="flex items-center gap-3">
-            <BellRing className="h-6 w-6 text-red-500 animate-bounce" />
+        <div className="bg-red-500/10 border-l-4 border-red-500 p-3 rounded-r-lg animate-pulse">
+          <div className="flex items-center gap-2">
+            <BellRing className="h-4 w-4 text-red-500 animate-bounce" />
             <div className="flex-1">
-              <p className="font-semibold text-red-600">Kritik Uyarı!</p>
-              <p className="text-sm text-red-500">{criticalAlerts[0]?.message}</p>
+              <p className="font-semibold text-red-600 text-xs">Kritik Uyarı!</p>
+              <p className="text-xs text-red-500">{criticalAlerts[0]?.message}</p>
             </div>
             <Button 
               size="sm" 
@@ -314,33 +314,33 @@ export default function SubeDashboard() {
               onClick={() => acknowledgeAlertMutation.mutate(criticalAlerts[0].id)}
               data-testid="button-ack-critical"
             >
-              <Eye className="h-4 w-4 mr-1" />
+              <Eye className="h-3.5 w-3.5 mr-1" />
               Görüldü
             </Button>
           </div>
         </div>
       )}
 
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className="p-3 rounded-full bg-amber-100 dark:bg-amber-900">
-            <Coffee className="h-8 w-8 text-amber-600" />
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <div className="p-2 rounded-full bg-amber-100 dark:bg-amber-900">
+            <Coffee className="h-4 w-4 text-amber-600" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold">Şube Dashboard</h1>
-            <p className="text-muted-foreground">{dashboardData?.branch?.name || 'Yükleniyor...'}</p>
+            <h1 className="text-base font-semibold">Şube Dashboard</h1>
+            <p className="text-xs text-muted-foreground">{dashboardData?.branch?.name || 'Yükleniyor...'}</p>
           </div>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           <Link href="/sube/kiosk">
             <Button variant="default" className="gap-2" data-testid="button-kiosk-mode">
-              <Monitor className="h-4 w-4" />
+              <Monitor className="h-3.5 w-3.5" />
               Kiosk Modu
             </Button>
           </Link>
           <Link href="/qr-scanner">
             <Button variant="outline" className="gap-2" data-testid="button-qr-view">
-              <QrCode className="h-4 w-4" />
+              <QrCode className="h-3.5 w-3.5" />
               QR Kod
             </Button>
           </Link>
@@ -350,12 +350,12 @@ export default function SubeDashboard() {
             onClick={() => { refetch(); refetchActive(); }}
             data-testid="button-refresh"
           >
-            <RefreshCw className="h-4 w-4 mr-2" />
+            <RefreshCw className="h-3.5 w-3.5 mr-2" />
             Yenile
           </Button>
           <Badge 
             variant={autoRefresh ? "default" : "secondary"} 
-            className="cursor-pointer"
+            className="cursor-pointer text-[10px]"
             onClick={() => setAutoRefresh(!autoRefresh)}
             data-testid="badge-auto-refresh"
           >
@@ -364,58 +364,58 @@ export default function SubeDashboard() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
         <Card className="hover-elevate">
-          <CardContent className="p-6">
-            <div className="flex items-center gap-3">
-              <div className="p-3 bg-green-500/20 rounded-lg">
-                <Play className="h-6 w-6 text-green-500" />
+          <CardContent className="p-3">
+            <div className="flex items-center gap-2">
+              <div className="p-2 bg-green-500/20 rounded-lg">
+                <Play className="h-4 w-4 text-green-500" />
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Aktif Çalışan</p>
-                <p className="text-2xl font-bold" data-testid="text-active-count">{activeCount}</p>
+                <p className="text-xs text-muted-foreground">Aktif Çalışan</p>
+                <p className="text-sm font-bold" data-testid="text-active-count">{activeCount}</p>
               </div>
             </div>
           </CardContent>
         </Card>
 
         <Card className="hover-elevate">
-          <CardContent className="p-6">
-            <div className="flex items-center gap-3">
-              <div className="p-3 bg-amber-500/20 rounded-lg">
-                <Coffee className="h-6 w-6 text-amber-500" />
+          <CardContent className="p-3">
+            <div className="flex items-center gap-2">
+              <div className="p-2 bg-amber-500/20 rounded-lg">
+                <Coffee className="h-4 w-4 text-amber-500" />
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Molada</p>
-                <p className="text-2xl font-bold" data-testid="text-break-count">{onBreakCount}</p>
+                <p className="text-xs text-muted-foreground">Molada</p>
+                <p className="text-sm font-bold" data-testid="text-break-count">{onBreakCount}</p>
               </div>
             </div>
           </CardContent>
         </Card>
 
         <Card className="hover-elevate">
-          <CardContent className="p-6">
-            <div className="flex items-center gap-3">
-              <div className="p-3 bg-blue-500/20 rounded-lg">
-                <Timer className="h-6 w-6 text-blue-500" />
+          <CardContent className="p-3">
+            <div className="flex items-center gap-2">
+              <div className="p-2 bg-blue-500/20 rounded-lg">
+                <Timer className="h-4 w-4 text-blue-500" />
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Bugün Toplam</p>
-                <p className="text-2xl font-bold" data-testid="text-total-time">{formatMinutes(totalActiveMinutes)}</p>
+                <p className="text-xs text-muted-foreground">Bugün Toplam</p>
+                <p className="text-sm font-bold" data-testid="text-total-time">{formatMinutes(totalActiveMinutes)}</p>
               </div>
             </div>
           </CardContent>
         </Card>
 
         <Card className={`hover-elevate ${(dashboardData?.stats.activeAlerts || 0) > 0 ? 'border-amber-500' : ''}`}>
-          <CardContent className="p-6">
-            <div className="flex items-center gap-3">
-              <div className={`p-3 rounded-lg ${(dashboardData?.stats.criticalAlerts || 0) > 0 ? 'bg-red-500/20' : 'bg-muted'}`}>
-                <Bell className={`h-6 w-6 ${(dashboardData?.stats.criticalAlerts || 0) > 0 ? 'text-red-500' : 'text-muted-foreground'}`} />
+          <CardContent className="p-3">
+            <div className="flex items-center gap-2">
+              <div className={`p-2 rounded-lg ${(dashboardData?.stats.criticalAlerts || 0) > 0 ? 'bg-red-500/20' : 'bg-muted'}`}>
+                <Bell className={`h-4 w-4 ${(dashboardData?.stats.criticalAlerts || 0) > 0 ? 'text-red-500' : 'text-muted-foreground'}`} />
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Uyarılar</p>
-                <p className="text-2xl font-bold" data-testid="text-alert-count">
+                <p className="text-xs text-muted-foreground">Uyarılar</p>
+                <p className="text-sm font-bold" data-testid="text-alert-count">
                   {dashboardData?.stats.activeAlerts || 0}
                 </p>
               </div>
@@ -424,18 +424,18 @@ export default function SubeDashboard() {
         </Card>
 
         <Card className="hover-elevate col-span-2 md:col-span-1">
-          <CardContent className="p-6">
-            <div className="flex items-center gap-3">
-              <div className="p-3 bg-yellow-500/20 rounded-lg">
-                <Star className="h-6 w-6 text-yellow-500" />
+          <CardContent className="p-3">
+            <div className="flex items-center gap-2">
+              <div className="p-2 bg-yellow-500/20 rounded-lg">
+                <Star className="h-4 w-4 text-yellow-500" />
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Müşteri Puanı</p>
+                <p className="text-xs text-muted-foreground">Müşteri Puanı</p>
                 <div className="flex items-center gap-2">
-                  <p className="text-2xl font-bold" data-testid="text-feedback-rating">
+                  <p className="text-sm font-bold" data-testid="text-feedback-rating">
                     {feedbackStats?.avgRating?.toFixed(1) || '—'}
                   </p>
-                  <span className="text-sm text-muted-foreground">
+                  <span className="text-xs text-muted-foreground">
                     ({feedbackStats?.totalCount || 0} değerlendirme)
                   </span>
                 </div>
@@ -447,22 +447,22 @@ export default function SubeDashboard() {
 
       {(dashboardData?.alerts.length || 0) > 0 && (
         <Card className="border-l-4 border-l-amber-500">
-          <CardHeader className="pb-2">
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <BellRing className="h-5 w-5 text-amber-500" />
+          <CardHeader className="pb-1 pt-3 px-3">
+            <CardTitle className="flex items-center gap-2 text-xs">
+              <BellRing className="h-3.5 w-3.5 text-amber-500" />
               Aktif Uyarılar
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-2">
+          <CardContent className="px-3 pb-3 space-y-2">
             {dashboardData?.alerts.map((alert) => (
               <div 
                 key={alert.id} 
-                className={`flex items-center gap-3 p-3 rounded-lg border ${getSeverityColor(alert.severity)}`}
+                className={`flex items-center gap-2 p-2 rounded-lg border ${getSeverityColor(alert.severity)}`}
                 data-testid={`alert-item-${alert.id}`}
               >
                 {getSeverityIcon(alert.severity)}
                 <div className="flex-1 min-w-0">
-                  <p className="font-medium text-sm">{alert.title}</p>
+                  <p className="font-medium text-xs">{alert.title}</p>
                   <p className="text-xs opacity-80 truncate">{alert.message}</p>
                   <p className="text-xs opacity-60">{formatTime(alert.occurredAt)}</p>
                 </div>
@@ -475,7 +475,7 @@ export default function SubeDashboard() {
                     disabled={acknowledgeAlertMutation.isPending}
                     data-testid={`button-ack-${alert.id}`}
                   >
-                    <Check className="h-4 w-4" />
+                    <Check className="h-3.5 w-3.5" />
                   </Button>
                   <Button 
                     size="icon" 
@@ -485,7 +485,7 @@ export default function SubeDashboard() {
                     disabled={dismissAlertMutation.isPending}
                     data-testid={`button-dismiss-${alert.id}`}
                   >
-                    <XCircle className="h-4 w-4" />
+                    <XCircle className="h-3.5 w-3.5" />
                   </Button>
                 </div>
               </div>
@@ -496,26 +496,26 @@ export default function SubeDashboard() {
 
       {/* Onboarding Assignments Widget */}
       {onboardingAssignments.length > 0 && (
-        <Card className="mb-4">
-          <CardHeader className="flex flex-row items-center justify-between gap-4">
+        <Card className="mb-3">
+          <CardHeader className="flex flex-row items-center justify-between gap-2 pb-1 pt-3 px-3">
             <div>
-              <CardTitle className="flex items-center gap-2">
-                <GraduationCap className="h-5 w-5" />
+              <CardTitle className="flex items-center gap-2 text-xs">
+                <GraduationCap className="h-3.5 w-3.5" />
                 Aktif Onboarding Süreçleri
               </CardTitle>
-              <CardDescription>
+              <CardDescription className="text-xs">
                 Şubede eğitim sürecinde olan personeller
               </CardDescription>
             </div>
             <Link href="/sube/onboarding">
               <Button variant="outline" size="sm" data-testid="button-view-all-onboarding">
                 Tümünü Gör
-                <ChevronRight className="h-4 w-4 ml-1" />
+                <ChevronRight className="h-3.5 w-3.5 ml-1" />
               </Button>
             </Link>
           </CardHeader>
-          <CardContent>
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <CardContent className="px-3 pb-3">
+            <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-3">
               {onboardingAssignments
                 .filter(a => a.status === 'active')
                 .slice(0, 6)
@@ -525,22 +525,22 @@ export default function SubeDashboard() {
                     : null;
                   
                   const getStatusBadge = (status: string, progress: number) => {
-                    if (progress === 100) return <Badge variant="default" className="bg-green-500">Tamamlandı</Badge>;
-                    if (status === 'on_hold') return <Badge variant="secondary">Beklemede</Badge>;
-                    if (daysRemaining !== null && daysRemaining <= 3) return <Badge variant="destructive">Son {daysRemaining} Gün</Badge>;
-                    return <Badge variant="outline">Devam Ediyor</Badge>;
+                    if (progress === 100) return <Badge variant="default" className="bg-green-500 text-[10px]">Tamamlandı</Badge>;
+                    if (status === 'on_hold') return <Badge variant="secondary" className="text-[10px]">Beklemede</Badge>;
+                    if (daysRemaining !== null && daysRemaining <= 3) return <Badge variant="destructive" className="text-[10px]">Son {daysRemaining} Gün</Badge>;
+                    return <Badge variant="outline" className="text-[10px]">Devam Ediyor</Badge>;
                   };
 
                   return (
                     <Card key={assignment.id} className="hover-elevate" data-testid={`card-onboarding-${assignment.id}`}>
-                      <CardContent className="p-4">
-                        <div className="flex items-start justify-between gap-2 mb-3">
+                      <CardContent className="p-3">
+                        <div className="flex items-start justify-between gap-2 mb-2">
                           <div className="flex items-center gap-2">
                             <div className="p-2 bg-primary/10 rounded-lg">
-                              <Users2 className="h-4 w-4 text-primary" />
+                              <Users2 className="h-3.5 w-3.5 text-primary" />
                             </div>
                             <div className="min-w-0">
-                              <p className="font-medium text-sm truncate" data-testid={`text-employee-name-${assignment.id}`}>
+                              <p className="font-medium text-xs truncate" data-testid={`text-employee-name-${assignment.id}`}>
                                 {assignment.employeeName || 'İsimsiz'}
                               </p>
                               <p className="text-xs text-muted-foreground truncate">
@@ -552,7 +552,7 @@ export default function SubeDashboard() {
                         </div>
                         
                         <div className="space-y-2">
-                          <div className="flex items-center justify-between text-sm">
+                          <div className="flex items-center justify-between text-xs">
                             <span className="text-muted-foreground">İlerleme</span>
                             <span className="font-medium" data-testid={`text-progress-${assignment.id}`}>
                               %{assignment.overallProgress || 0}
@@ -579,75 +579,75 @@ export default function SubeDashboard() {
                 })}
             </div>
             {onboardingAssignments.filter(a => a.status === 'active').length === 0 && (
-              <div className="text-center py-8 text-muted-foreground">
-                <GraduationCap className="h-10 w-10 mx-auto mb-2 opacity-50" />
-                <p>Aktif onboarding süreci bulunmuyor</p>
+              <div className="text-center py-6 text-muted-foreground">
+                <GraduationCap className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                <p className="text-xs">Aktif onboarding süreci bulunmuyor</p>
               </div>
             )}
           </CardContent>
         </Card>
       )}
 
-      <Tabs defaultValue="active" className="space-y-4">
+      <Tabs defaultValue="active" className="space-y-3">
         <TabsList>
           <TabsTrigger value="active" data-testid="tab-active">
-            <Play className="h-4 w-4 mr-2" />
+            <Play className="h-3.5 w-3.5 mr-2" />
             Aktif Vardiyalar
           </TabsTrigger>
           <TabsTrigger value="tasks" data-testid="tab-tasks">
-            <ListTodo className="h-4 w-4 mr-2" />
+            <ListTodo className="h-3.5 w-3.5 mr-2" />
             Görevler
           </TabsTrigger>
           <TabsTrigger value="checklists" data-testid="tab-checklists">
-            <ClipboardList className="h-4 w-4 mr-2" />
+            <ClipboardList className="h-3.5 w-3.5 mr-2" />
             Checklistler
           </TabsTrigger>
           <TabsTrigger value="daily" data-testid="tab-daily">
-            <Calendar className="h-4 w-4 mr-2" />
+            <Calendar className="h-3.5 w-3.5 mr-2" />
             Günlük Özet
           </TabsTrigger>
         </TabsList>
 
         <TabsContent value="active">
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between gap-4">
+            <CardHeader className="flex flex-row items-center justify-between gap-2 pb-1 pt-3 px-3">
               <div>
-                <CardTitle className="flex items-center gap-2">
-                  <Clock className="h-5 w-5" />
+                <CardTitle className="flex items-center gap-2 text-xs">
+                  <Clock className="h-3.5 w-3.5" />
                   Şu An Vardiyada Olanlar
                 </CardTitle>
-                <CardDescription>
+                <CardDescription className="text-xs">
                   Son güncelleme: {new Date().toLocaleTimeString('tr-TR')}
                 </CardDescription>
               </div>
             </CardHeader>
-            <CardContent>
+            <CardContent className="px-3 pb-3">
               {loadingActive ? (
-                <div className="flex items-center justify-center py-12">
+                <div className="flex items-center justify-center py-8">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
                 </div>
               ) : activeSessions.length === 0 ? (
-                <div className="text-center py-12 text-muted-foreground">
-                  <Users className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p>Şu anda vardiyada personel yok</p>
+                <div className="text-center py-8 text-muted-foreground">
+                  <Users className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                  <p className="text-xs">Şu anda vardiyada personel yok</p>
                 </div>
               ) : (
-                <div className="space-y-3">
+                <div className="space-y-2">
                   {activeSessions.map(({ session, user }) => (
                     <div
                       key={session.id}
-                      className="flex items-center gap-4 p-4 rounded-lg border bg-card hover-elevate"
+                      className="flex items-center gap-2 p-2 rounded-lg border bg-card hover-elevate"
                       data-testid={`active-session-${session.id}`}
                     >
-                      <Avatar className="h-12 w-12">
+                      <Avatar className="h-10 w-10">
                         <AvatarImage src={user.profileImageUrl || undefined} />
-                        <AvatarFallback className="bg-amber-100 text-amber-700">
+                        <AvatarFallback className="bg-amber-100 text-amber-700 text-xs">
                           {user.firstName?.[0]}{user.lastName?.[0]}
                         </AvatarFallback>
                       </Avatar>
                       <div className="flex-1 min-w-0">
-                        <p className="font-medium">{user.firstName} {user.lastName}</p>
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <p className="font-medium text-xs">{user.firstName} {user.lastName}</p>
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
                           <Clock className="h-3 w-3" />
                           <span>Giriş: {formatTime(session.checkInTime)}</span>
                           <span className="text-muted-foreground/50">•</span>
@@ -656,12 +656,12 @@ export default function SubeDashboard() {
                       </div>
                       <div className="flex items-center gap-2">
                         {session.breakMinutes > 0 && (
-                          <Badge variant="secondary" className="text-xs">
+                          <Badge variant="secondary" className="text-[10px]">
                             <Coffee className="h-3 w-3 mr-1" />
                             {formatMinutes(session.breakMinutes)} mola
                           </Badge>
                         )}
-                        <Badge variant={session.status === 'on_break' ? 'secondary' : 'default'}>
+                        <Badge variant={session.status === 'on_break' ? 'secondary' : 'default'} className="text-[10px]">
                           {session.status === 'on_break' ? (
                             <>
                               <Coffee className="h-3 w-3 mr-1" />
@@ -685,13 +685,13 @@ export default function SubeDashboard() {
 
         <TabsContent value="tasks">
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between gap-4">
+            <CardHeader className="flex flex-row items-center justify-between gap-2 pb-1 pt-3 px-3">
               <div>
-                <CardTitle className="flex items-center gap-2">
-                  <ListTodo className="h-5 w-5" />
+                <CardTitle className="flex items-center gap-2 text-xs">
+                  <ListTodo className="h-3.5 w-3.5" />
                   Bugünkü Görevler
                 </CardTitle>
-                <CardDescription>
+                <CardDescription className="text-xs">
                   {dashboardData?.stats.completedTasks || 0} / {(dashboardData?.stats.completedTasks || 0) + (dashboardData?.stats.pendingTasks || 0)} tamamlandı
                 </CardDescription>
               </div>
@@ -702,35 +702,35 @@ export default function SubeDashboard() {
                 className="w-32 h-2"
               />
             </CardHeader>
-            <CardContent>
+            <CardContent className="px-3 pb-3">
               {dashboardData?.todayTasks && dashboardData.todayTasks.length > 0 ? (
                 <div className="space-y-2">
                   {dashboardData.todayTasks.map((task: any) => (
                     <div 
                       key={task.id} 
-                      className="flex items-center gap-3 p-3 rounded-lg border"
+                      className="flex items-center gap-2 p-2 rounded-lg border"
                       data-testid={`task-item-${task.id}`}
                     >
                       {task.status === 'completed' ? (
-                        <CheckCircle2 className="h-5 w-5 text-green-500" />
+                        <CheckCircle2 className="h-4 w-4 text-green-500" />
                       ) : (
-                        <div className="h-5 w-5 rounded-full border-2 border-muted-foreground" />
+                        <div className="h-4 w-4 rounded-full border-2 border-muted-foreground" />
                       )}
                       <div className="flex-1 min-w-0">
-                        <p className={`font-medium ${task.status === 'completed' ? 'line-through text-muted-foreground' : ''}`}>
+                        <p className={`font-medium text-xs ${task.status === 'completed' ? 'line-through text-muted-foreground' : ''}`}>
                           {task.title}
                         </p>
                       </div>
-                      <Badge variant={task.status === 'completed' ? 'default' : 'secondary'}>
+                      <Badge variant={task.status === 'completed' ? 'default' : 'secondary'} className="text-[10px]">
                         {task.status === 'completed' ? 'Tamamlandı' : 'Bekliyor'}
                       </Badge>
                     </div>
                   ))}
                 </div>
               ) : (
-                <div className="text-center py-12 text-muted-foreground">
-                  <ListTodo className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p>Bugün henüz görev yok</p>
+                <div className="text-center py-8 text-muted-foreground">
+                  <ListTodo className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                  <p className="text-xs">Bugün henüz görev yok</p>
                 </div>
               )}
             </CardContent>
@@ -739,49 +739,49 @@ export default function SubeDashboard() {
 
         <TabsContent value="checklists">
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between gap-4">
+            <CardHeader className="flex flex-row items-center justify-between gap-2 pb-1 pt-3 px-3">
               <div>
-                <CardTitle className="flex items-center gap-2">
-                  <ClipboardList className="h-5 w-5" />
+                <CardTitle className="flex items-center gap-2 text-xs">
+                  <ClipboardList className="h-3.5 w-3.5" />
                   Bugünkü Checklistler
                 </CardTitle>
-                <CardDescription>
+                <CardDescription className="text-xs">
                   {dashboardData?.stats.completedChecklists || 0} / {(dashboardData?.stats.completedChecklists || 0) + (dashboardData?.stats.pendingChecklists || 0)} tamamlandı
                 </CardDescription>
               </div>
             </CardHeader>
-            <CardContent>
+            <CardContent className="px-3 pb-3">
               {dashboardData?.todayChecklists && dashboardData.todayChecklists.length > 0 ? (
                 <div className="space-y-2">
                   {dashboardData.todayChecklists.map((checklist: any) => (
                     <div 
                       key={checklist.id} 
-                      className="flex items-center gap-3 p-3 rounded-lg border"
+                      className="flex items-center gap-2 p-2 rounded-lg border"
                       data-testid={`checklist-item-${checklist.id}`}
                     >
                       {checklist.status === 'completed' ? (
-                        <CheckCircle2 className="h-5 w-5 text-green-500" />
+                        <CheckCircle2 className="h-4 w-4 text-green-500" />
                       ) : (
-                        <ClipboardList className="h-5 w-5 text-muted-foreground" />
+                        <ClipboardList className="h-4 w-4 text-muted-foreground" />
                       )}
                       <div className="flex-1 min-w-0">
-                        <p className="font-medium">{checklist.title}</p>
+                        <p className="font-medium text-xs">{checklist.title}</p>
                         {checklist.firstName && (
                           <p className="text-xs text-muted-foreground">
                             Atanan: {checklist.firstName} {checklist.lastName}
                           </p>
                         )}
                       </div>
-                      <Badge variant={checklist.status === 'completed' ? 'default' : 'secondary'}>
+                      <Badge variant={checklist.status === 'completed' ? 'default' : 'secondary'} className="text-[10px]">
                         {checklist.status === 'completed' ? 'Tamamlandı' : 'Bekliyor'}
                       </Badge>
                     </div>
                   ))}
                 </div>
               ) : (
-                <div className="text-center py-12 text-muted-foreground">
-                  <ClipboardList className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p>Bugün henüz checklist yok</p>
+                <div className="text-center py-8 text-muted-foreground">
+                  <ClipboardList className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                  <p className="text-xs">Bugün henüz checklist yok</p>
                 </div>
               )}
             </CardContent>
@@ -790,13 +790,13 @@ export default function SubeDashboard() {
 
         <TabsContent value="daily">
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between gap-4">
+            <CardHeader className="flex flex-row items-center justify-between gap-2 pb-1 pt-3 px-3">
               <div>
-                <CardTitle className="flex items-center gap-2">
-                  <Calendar className="h-5 w-5" />
+                <CardTitle className="flex items-center gap-2 text-xs">
+                  <Calendar className="h-3.5 w-3.5" />
                   Günlük Puantaj Özeti
                 </CardTitle>
-                <CardDescription>
+                <CardDescription className="text-xs">
                   Tarih seçerek geçmiş günleri görüntüleyebilirsiniz
                 </CardDescription>
               </div>
@@ -804,63 +804,63 @@ export default function SubeDashboard() {
                 type="date"
                 value={selectedDate}
                 onChange={(e) => setSelectedDate(e.target.value)}
-                className="px-3 py-2 border rounded-md text-sm"
+                className="px-2 py-1 border rounded-md text-xs"
                 data-testid="input-date"
               />
             </CardHeader>
-            <CardContent>
+            <CardContent className="px-3 pb-3">
               {loadingDaily ? (
-                <div className="flex items-center justify-center py-12">
+                <div className="flex items-center justify-center py-8">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
                 </div>
               ) : dailySummaries.length === 0 ? (
-                <div className="text-center py-12 text-muted-foreground">
-                  <Calendar className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p>Bu tarihte kayıtlı vardiya yok</p>
+                <div className="text-center py-8 text-muted-foreground">
+                  <Calendar className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                  <p className="text-xs">Bu tarihte kayıtlı vardiya yok</p>
                 </div>
               ) : (
                 <div className="overflow-x-auto">
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Personel</TableHead>
-                        <TableHead className="text-center">Giriş</TableHead>
-                        <TableHead className="text-center">Çıkış</TableHead>
-                        <TableHead className="text-center">Toplam</TableHead>
-                        <TableHead className="text-center">Mola</TableHead>
-                        <TableHead className="text-center">Net</TableHead>
+                        <TableHead className="text-xs">Personel</TableHead>
+                        <TableHead className="text-center text-xs">Giriş</TableHead>
+                        <TableHead className="text-center text-xs">Çıkış</TableHead>
+                        <TableHead className="text-center text-xs">Toplam</TableHead>
+                        <TableHead className="text-center text-xs">Mola</TableHead>
+                        <TableHead className="text-center text-xs">Net</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {dailySummaries.map(({ summary, user }) => (
                         <TableRow key={summary.id} data-testid={`summary-row-${summary.id}`}>
                           <TableCell>
-                            <div className="flex items-center gap-3">
-                              <Avatar className="h-8 w-8">
+                            <div className="flex items-center gap-2">
+                              <Avatar className="h-7 w-7">
                                 <AvatarFallback className="text-xs bg-amber-100 text-amber-700">
                                   {user?.firstName?.[0]}{user?.lastName?.[0]}
                                 </AvatarFallback>
                               </Avatar>
                               <div>
-                                <p className="font-medium">{user?.firstName} {user?.lastName}</p>
+                                <p className="font-medium text-xs">{user?.firstName} {user?.lastName}</p>
                                 <p className="text-xs text-muted-foreground">{user?.role}</p>
                               </div>
                             </div>
                           </TableCell>
-                          <TableCell className="text-center text-sm">
+                          <TableCell className="text-center text-xs">
                             {summary.firstCheckIn ? formatTime(summary.firstCheckIn) : '-'}
                           </TableCell>
-                          <TableCell className="text-center text-sm">
+                          <TableCell className="text-center text-xs">
                             {summary.lastCheckOut ? formatTime(summary.lastCheckOut) : '-'}
                           </TableCell>
-                          <TableCell className="text-center text-sm">
+                          <TableCell className="text-center text-xs">
                             {formatMinutes(summary.totalWorkMinutes || 0)}
                           </TableCell>
-                          <TableCell className="text-center text-sm">
+                          <TableCell className="text-center text-xs">
                             {formatMinutes(summary.totalBreakMinutes || 0)}
                           </TableCell>
                           <TableCell className="text-center">
-                            <Badge variant={
+                            <Badge className="text-[10px]" variant={
                               (summary.netWorkMinutes || 0) >= 450 ? 'default' : 
                               (summary.netWorkMinutes || 0) >= 360 ? 'secondary' : 'destructive'
                             }>
@@ -879,32 +879,32 @@ export default function SubeDashboard() {
       </Tabs>
 
       <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm">Hızlı Erişim</CardTitle>
+        <CardHeader className="pb-1 pt-3 px-3">
+          <CardTitle className="text-xs">Hızlı Erişim</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="px-3 pb-3">
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
             <Link href="/sube/kiosk">
               <Button variant="outline" className="w-full h-auto p-3 flex flex-col items-center gap-2" data-testid="link-kiosk-quick">
-                <Monitor className="h-6 w-6 text-amber-500" />
+                <Monitor className="h-4 w-4 text-amber-500" />
                 <span className="text-xs">Kiosk Modu</span>
               </Button>
             </Link>
             <Link href="/gorevler">
               <Button variant="outline" className="w-full h-auto p-3 flex flex-col items-center gap-2" data-testid="link-tasks">
-                <ListTodo className="h-6 w-6 text-blue-500" />
+                <ListTodo className="h-4 w-4 text-blue-500" />
                 <span className="text-xs">Görevler</span>
               </Button>
             </Link>
             <Link href="/checklistler">
               <Button variant="outline" className="w-full h-auto p-3 flex flex-col items-center gap-2" data-testid="link-checklists">
-                <ClipboardList className="h-6 w-6 text-green-500" />
+                <ClipboardList className="h-4 w-4 text-green-500" />
                 <span className="text-xs">Checklistler</span>
               </Button>
             </Link>
             <Link href="/vardiya-planlama">
               <Button variant="outline" className="w-full h-auto p-3 flex flex-col items-center gap-2" data-testid="link-shifts">
-                <Calendar className="h-6 w-6 text-purple-500" />
+                <Calendar className="h-4 w-4 text-purple-500" />
                 <span className="text-xs">Vardiya Planı</span>
               </Button>
             </Link>
