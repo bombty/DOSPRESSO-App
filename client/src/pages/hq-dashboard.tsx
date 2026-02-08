@@ -8,8 +8,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { UnifiedHero } from "@/components/widgets/unified-hero";
-import { CompactStatsBar } from "@/components/widgets/compact-stats-bar";
-import { QuickActionsGrid } from "@/components/widgets/quick-actions-grid";
 import { ModuleCardsGrid } from "@/components/widgets/module-cards-grid";
 import { CriticalAlerts } from "@/components/critical-alerts";
 import { motion } from "framer-motion";
@@ -232,7 +230,6 @@ function SatinalmaDashboard() {
       <div className="flex items-center gap-2 pb-2 border-b border-border/50">
         <ShoppingCart className="w-4 h-4 text-primary" />
         <h2 className="text-base font-semibold" data-testid="text-dashboard-title">Satınalma</h2>
-        <Badge variant="secondary" className="text-[10px]">Samet</Badge>
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
@@ -347,7 +344,6 @@ function FabrikaDashboard() {
       <div className="flex items-center gap-2 pb-2 border-b border-border/50">
         <Factory className="w-4 h-4 text-primary" />
         <h2 className="text-base font-semibold" data-testid="text-dashboard-title">Fabrika</h2>
-        <Badge variant="secondary" className="text-[10px]">Eren</Badge>
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
@@ -456,7 +452,6 @@ function IKDashboard() {
       <div className="flex items-center gap-2 pb-2 border-b border-border/50">
         <Briefcase className="w-4 h-4 text-primary" />
         <h2 className="text-base font-semibold" data-testid="text-dashboard-title">İK & Muhasebe</h2>
-        <Badge variant="secondary" className="text-[10px]">Mahmut</Badge>
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
@@ -601,7 +596,6 @@ function CoachDashboard() {
       <div className="flex items-center gap-2 pb-2 border-b border-border/50">
         <Store className="w-4 h-4 text-primary" />
         <h2 className="text-base font-semibold" data-testid="text-dashboard-title">Coach</h2>
-        <Badge variant="secondary" className="text-[10px]">Yavuz</Badge>
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
@@ -715,7 +709,6 @@ function MarketingDashboard() {
       <div className="flex items-center gap-2 pb-2 border-b border-border/50">
         <Megaphone className="w-4 h-4 text-primary" />
         <h2 className="text-base font-semibold" data-testid="text-dashboard-title">Marketing</h2>
-        <Badge variant="secondary" className="text-[10px]">Diana</Badge>
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
@@ -823,7 +816,6 @@ function TrainerDashboard() {
       <div className="flex items-center gap-2 pb-2 border-b border-border/50">
         <GraduationCap className="w-4 h-4 text-primary" />
         <h2 className="text-base font-semibold" data-testid="text-dashboard-title">Trainer</h2>
-        <Badge variant="secondary" className="text-[10px]">Ece</Badge>
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
@@ -928,7 +920,6 @@ function KaliteDashboard() {
       <div className="flex items-center gap-2 pb-2 border-b border-border/50">
         <ClipboardCheck className="w-4 h-4 text-primary" />
         <h2 className="text-base font-semibold" data-testid="text-dashboard-title">Kalite Kontrol</h2>
-        <Badge variant="secondary" className="text-[10px]">Ümran</Badge>
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
@@ -1072,31 +1063,8 @@ function CGODashboard() {
       {/* Hero Widget */}
       <UnifiedHero />
 
-      {/* Hızlı Erişim - Unified */}
-      <div className="space-y-1.5">
-        <h3 className="text-xs font-medium text-muted-foreground px-1">HIZLI ERİŞİM</h3>
-        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-7 gap-2">
-          {hqQuickActions.map((action, index) => (
-            <Card 
-              key={index}
-              className="hover-elevate cursor-pointer"
-              onClick={() => setLocation(action.route)}
-              data-testid={`quick-action-${action.label.toLowerCase()}`}
-            >
-              <CardContent className="p-2 flex flex-col items-center gap-1.5 text-center">
-                <div className={`p-1.5 rounded-md ${action.bgColor}`}>
-                  <action.icon className={`w-4 h-4 ${action.color}`} />
-                </div>
-                <span className="text-[11px] font-medium leading-tight truncate w-full">{action.label}</span>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      </div>
-
-      {/* Skor ve Departman Durumu */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-        {/* Bugünkü Skor */}
+      {/* Genel Performans + Departman Sağlık */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
         <Card>
           <CardHeader className="pb-1 pt-3 px-3">
             <CardTitle className="text-xs flex items-center gap-1.5">
@@ -1106,34 +1074,16 @@ function CGODashboard() {
           </CardHeader>
           <CardContent className="px-3 pb-3">
             <div className="flex items-center gap-3">
-              <div className="relative w-20 h-20 shrink-0">
-                <svg className="w-full h-full transform -rotate-90">
-                  <circle
-                    cx="48"
-                    cy="48"
-                    r="40"
-                    stroke="currentColor"
-                    strokeWidth="8"
-                    fill="none"
-                    className="text-muted/30"
-                  />
-                  <circle
-                    cx="48"
-                    cy="48"
-                    r="40"
-                    stroke="currentColor"
-                    strokeWidth="8"
-                    fill="none"
-                    strokeDasharray={`${(overallScore / 100) * 251.2} 251.2`}
-                    className={overallScore >= 80 ? 'text-green-500' : overallScore >= 60 ? 'text-yellow-500' : 'text-red-500'}
-                    strokeLinecap="round"
-                  />
+              <div className="relative w-16 h-16 shrink-0">
+                <svg className="w-full h-full transform -rotate-90" viewBox="0 0 96 96">
+                  <circle cx="48" cy="48" r="40" stroke="currentColor" strokeWidth="8" fill="none" className="text-muted/30" />
+                  <circle cx="48" cy="48" r="40" stroke="currentColor" strokeWidth="8" fill="none" strokeDasharray={`${(overallScore / 100) * 251.2} 251.2`} className={overallScore >= 80 ? 'text-green-500' : overallScore >= 60 ? 'text-yellow-500' : 'text-red-500'} strokeLinecap="round" />
                 </svg>
                 <div className="absolute inset-0 flex items-center justify-center">
-                  <span className="text-xl font-bold">{overallScore}</span>
+                  <span className="text-lg font-bold">{overallScore}</span>
                 </div>
               </div>
-              <div className="flex-1 space-y-1.5">
+              <div className="flex-1 space-y-1">
                 {fallbackMetrics.slice(0, 3).map((m, i) => (
                   <div key={i} className="flex items-center justify-between text-xs">
                     <span className="text-muted-foreground">{m.title}</span>
@@ -1145,30 +1095,32 @@ function CGODashboard() {
           </CardContent>
         </Card>
 
-        {/* Departman Durumu */}
-        <Card>
+        <Card className="lg:col-span-2">
           <CardHeader className="pb-1 pt-3 px-3">
             <CardTitle className="text-xs flex items-center gap-1.5">
               <PieChart className="w-3.5 h-3.5" />
-              Departman Durumu
+              Departman Sağlık Özeti
             </CardTitle>
           </CardHeader>
           <CardContent className="px-3 pb-3">
-            <div className="grid grid-cols-2 gap-1.5">
-              {departmentSummary.slice(0, 4).map((dept: any, index: number) => (
+            <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-2">
+              {departmentSummary.map((dept: any, index: number) => (
                 <div 
-                  key={index}
+                  key={index} 
                   className="flex items-center gap-1.5 p-1.5 rounded-md bg-muted/50 cursor-pointer hover-elevate"
                   onClick={() => {
                     const route = departmentRouteMap[dept.name];
                     if (route) setLocation(route);
                   }}
-                  data-testid={`dept-quick-${dept.name.toLowerCase()}`}
+                  data-testid={`card-department-${dept.name.toLowerCase().replace(/\s+/g, '-')}`}
                 >
                   {getRiskIcon(dept.status as RiskStatus)}
                   <div className="min-w-0 flex-1">
                     <p className="text-[11px] font-medium truncate">{dept.name}</p>
-                    <p className="text-[10px] text-muted-foreground">{dept.score}%</p>
+                    <div className="flex items-center gap-1">
+                      <Progress value={dept.score} className="h-1 flex-1" />
+                      <span className="text-[10px] text-muted-foreground">{dept.score}%</span>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -1176,42 +1128,6 @@ function CGODashboard() {
           </CardContent>
         </Card>
       </div>
-
-      <Card>
-        <CardHeader className="pb-1 pt-3 px-3">
-          <CardTitle className="text-xs flex items-center gap-1.5">
-            <PieChart className="w-3.5 h-3.5" />
-            Departman Sağlık Özeti
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="px-3 pb-3">
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-2">
-            {departmentSummary.map((dept: any, index: number) => (
-              <Card 
-                key={index} 
-                className="hover-elevate cursor-pointer"
-                onClick={() => {
-                  const route = departmentRouteMap[dept.name];
-                  if (route) setLocation(route);
-                }}
-                data-testid={`card-department-${dept.name.toLowerCase().replace(/\s+/g, '-')}`}
-              >
-                <CardContent className="p-2">
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-xs font-medium truncate">{dept.name}</span>
-                    {getRiskIcon(dept.status as RiskStatus)}
-                  </div>
-                  <Progress value={dept.score} className="h-1.5 mb-0.5" />
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] text-muted-foreground">{dept.owner}</span>
-                    <span className="text-[10px] font-medium">{dept.score}%</span>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
         <Card>
@@ -1347,9 +1263,7 @@ export default function HQDashboard() {
   return (
     <div className="container mx-auto p-4 max-w-7xl space-y-4">
       <UnifiedHero />
-      <CompactStatsBar />
       <CriticalAlerts />
-      <QuickActionsGrid />
       <ModuleCardsGrid />
       <DepartmentComponent />
     </div>

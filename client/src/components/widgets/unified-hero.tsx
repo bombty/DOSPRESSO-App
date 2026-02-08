@@ -84,7 +84,6 @@ export function UnifiedHero() {
               <span className="text-sm font-medium text-white/80">{greeting.text}</span>
             </div>
             
-            <h1 className="text-xl font-bold truncate">{firstName}</h1>
             <p className="text-xs text-white/70 mt-0.5">{formatDate()}</p>
             
             <div 

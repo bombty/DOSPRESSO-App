@@ -158,7 +158,7 @@ export default function FabrikaDashboard() {
                   </div>
                   <div>
                     <p className="text-xs text-muted-foreground">Aktif Çalışan</p>
-                    <p className="text-xl font-bold" data-testid="text-active-workers">{stats.activeWorkers}</p>
+                    <p className="text-lg font-bold" data-testid="text-active-workers">{stats.activeWorkers}</p>
                   </div>
                 </div>
               </CardContent>
@@ -172,7 +172,7 @@ export default function FabrikaDashboard() {
                   </div>
                   <div>
                     <p className="text-xs text-muted-foreground">Bugünkü Üretim</p>
-                    <p className="text-xl font-bold" data-testid="text-total-produced">{stats.totalProduced}</p>
+                    <p className="text-lg font-bold" data-testid="text-total-produced">{stats.totalProduced}</p>
                   </div>
                 </div>
               </CardContent>
@@ -186,7 +186,7 @@ export default function FabrikaDashboard() {
                   </div>
                   <div>
                     <p className="text-xs text-muted-foreground">Zaiyat</p>
-                    <p className="text-xl font-bold" data-testid="text-total-waste">{stats.totalWaste}</p>
+                    <p className="text-lg font-bold" data-testid="text-total-waste">{stats.totalWaste}</p>
                   </div>
                 </div>
               </CardContent>
@@ -200,7 +200,7 @@ export default function FabrikaDashboard() {
                   </div>
                   <div>
                     <p className="text-xs text-muted-foreground">Verimlilik</p>
-                    <p className="text-xl font-bold" data-testid="text-efficiency">%{stats.efficiency}</p>
+                    <p className="text-lg font-bold" data-testid="text-efficiency">%{stats.efficiency}</p>
                   </div>
                 </div>
               </CardContent>

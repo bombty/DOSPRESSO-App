@@ -878,39 +878,6 @@ export default function SubeDashboard() {
         </TabsContent>
       </Tabs>
 
-      <Card>
-        <CardHeader className="pb-1 pt-3 px-3">
-          <CardTitle className="text-xs">Hızlı Erişim</CardTitle>
-        </CardHeader>
-        <CardContent className="px-3 pb-3">
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-            <Link href="/sube/kiosk">
-              <Button variant="outline" className="w-full h-auto p-3 flex flex-col items-center gap-2" data-testid="link-kiosk-quick">
-                <Monitor className="h-4 w-4 text-amber-500" />
-                <span className="text-xs">Kiosk Modu</span>
-              </Button>
-            </Link>
-            <Link href="/gorevler">
-              <Button variant="outline" className="w-full h-auto p-3 flex flex-col items-center gap-2" data-testid="link-tasks">
-                <ListTodo className="h-4 w-4 text-blue-500" />
-                <span className="text-xs">Görevler</span>
-              </Button>
-            </Link>
-            <Link href="/checklistler">
-              <Button variant="outline" className="w-full h-auto p-3 flex flex-col items-center gap-2" data-testid="link-checklists">
-                <ClipboardList className="h-4 w-4 text-green-500" />
-                <span className="text-xs">Checklistler</span>
-              </Button>
-            </Link>
-            <Link href="/vardiya-planlama">
-              <Button variant="outline" className="w-full h-auto p-3 flex flex-col items-center gap-2" data-testid="link-shifts">
-                <Calendar className="h-4 w-4 text-purple-500" />
-                <span className="text-xs">Vardiya Planı</span>
-              </Button>
-            </Link>
-          </div>
-        </CardContent>
-      </Card>
     </div>
   );
 }
