@@ -133,34 +133,24 @@ function MetricCardComponent({ metric, testId }: { metric: MetricCard; testId?: 
       onClick={metric.onClick} 
       data-testid={testId || `card-metric-${metric.title.toLowerCase().replace(/\s+/g, '-')}`}
     >
-      <CardContent className="p-4">
-        <div className="flex items-start justify-between gap-2 flex-wrap">
-          <div className="flex items-center gap-2">
-            <div className={`p-2 rounded-lg ${metric.iconBgClass || 'bg-primary/10'} [&>svg]:w-5 [&>svg]:h-5`}>
-              {metric.icon ? metric.icon : <Store className="w-5 h-5 text-muted-foreground" />}
-            </div>
-            <div>
-              <p className="text-xs text-muted-foreground" data-testid="text-metric-title">{metric.title}</p>
-              <p className="text-xl font-bold" data-testid="text-metric-value">{metric.value}</p>
-              {metric.subValue && (
-                <p className="text-xs text-muted-foreground">{metric.subValue}</p>
+      <CardContent className="p-3">
+        <div className="flex items-center gap-2">
+          <div className={`p-1.5 rounded-md ${metric.iconBgClass || 'bg-primary/10'} [&>svg]:w-4 [&>svg]:h-4 shrink-0`}>
+            {metric.icon ? metric.icon : <Store className="w-4 h-4 text-muted-foreground" />}
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-[11px] text-muted-foreground truncate" data-testid="text-metric-title">{metric.title}</p>
+            <div className="flex items-center gap-1.5">
+              <p className="text-lg font-bold leading-tight" data-testid="text-metric-value">{metric.value}</p>
+              {metric.trend && (
+                <span className="shrink-0">{getTrendIcon(metric.trend)}</span>
+              )}
+              {metric.status && (
+                <Badge variant={getRiskBadgeVariant(metric.status)} className="text-[10px] px-1.5 py-0 h-4 shrink-0">
+                  {metric.status === 'healthy' ? 'İyi' : metric.status === 'warning' ? 'Dikkat' : 'Kritik'}
+                </Badge>
               )}
             </div>
-          </div>
-          <div className="flex flex-col items-end gap-1">
-            {metric.status && (
-              <Badge variant={getRiskBadgeVariant(metric.status)} className="text-xs">
-                {metric.status === 'healthy' ? 'İyi' : metric.status === 'warning' ? 'Dikkat' : 'Kritik'}
-              </Badge>
-            )}
-            {metric.trend && (
-              <div className="flex items-center gap-1">
-                {getTrendIcon(metric.trend)}
-                {metric.trendValue && (
-                  <span className="text-xs text-muted-foreground">{metric.trendValue}</span>
-                )}
-              </div>
-            )}
           </div>
         </div>
       </CardContent>
@@ -173,17 +163,17 @@ function AlertPanel({ alerts }: { alerts: Array<{ message: string; severity: Ris
   
   return (
     <Card data-testid="panel-alerts">
-      <CardHeader className="pb-2">
-        <CardTitle className="text-sm flex items-center gap-2">
-          <AlertOctagon className="w-4 h-4" />
+      <CardHeader className="pb-1 pt-3 px-3">
+        <CardTitle className="text-xs flex items-center gap-1.5">
+          <AlertOctagon className="w-3.5 h-3.5" />
           Aktif Uyarılar
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-2">
+      <CardContent className="px-3 pb-3 space-y-1.5">
         {alerts.map((alert, index) => (
-          <div key={index} className="flex items-center gap-2 p-2 rounded-md bg-muted/50" data-testid={`alert-item-${index}`}>
+          <div key={index} className="flex items-center gap-2 p-1.5 rounded-md bg-muted/50" data-testid={`alert-item-${index}`}>
             {getRiskIcon(alert.severity)}
-            <span className="text-sm" data-testid="text-alert-message">{alert.message}</span>
+            <span className="text-xs" data-testid="text-alert-message">{alert.message}</span>
           </div>
         ))}
       </CardContent>
@@ -238,36 +228,36 @@ function SatinalmaDashboard() {
   ];
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       <div className="flex items-center gap-2 pb-2 border-b border-border/50">
-        <ShoppingCart className="w-5 h-5 text-primary" />
-        <h2 className="text-lg font-semibold" data-testid="text-dashboard-title">Satınalma Departmanı</h2>
-        <Badge variant="secondary">Samet</Badge>
+        <ShoppingCart className="w-4 h-4 text-primary" />
+        <h2 className="text-base font-semibold" data-testid="text-dashboard-title">Satınalma</h2>
+        <Badge variant="secondary" className="text-[10px]">Samet</Badge>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
         {metrics.map((metric: MetricCard, index: number) => (
           <MetricCardComponent key={index} metric={metric} />
         ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <Card data-testid="chart-demand-forecast">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm flex items-center gap-2">
-              <BarChart3 className="w-4 h-4" />
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
+        <Card className="lg:col-span-2" data-testid="chart-demand-forecast">
+          <CardHeader className="pb-1 pt-3 px-3">
+            <CardTitle className="text-xs flex items-center gap-1.5">
+              <BarChart3 className="w-3.5 h-3.5" />
               Haftalık Talep Tahmini
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={200}>
+          <CardContent className="px-3 pb-3">
+            <ResponsiveContainer width="100%" height={140}>
               <BarChart data={demandData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="name" fontSize={12} />
-                <YAxis fontSize={12} />
-                <Tooltip />
-                <Bar dataKey="kahve" fill="hsl(var(--primary))" name="Kahve (kg)" />
-                <Bar dataKey="sut" fill="hsl(var(--secondary))" name="Süt (lt)" />
+                <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
+                <XAxis dataKey="name" fontSize={10} tickLine={false} axisLine={false} />
+                <YAxis fontSize={10} tickLine={false} axisLine={false} width={25} />
+                <Tooltip contentStyle={{ fontSize: '12px' }} />
+                <Bar dataKey="kahve" fill="hsl(var(--primary))" name="Kahve (kg)" radius={[2, 2, 0, 0]} />
+                <Bar dataKey="sut" fill="hsl(var(--secondary))" name="Süt (lt)" radius={[2, 2, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </CardContent>
@@ -353,34 +343,34 @@ function FabrikaDashboard() {
   ];
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       <div className="flex items-center gap-2 pb-2 border-b border-border/50">
-        <Factory className="w-5 h-5 text-primary" />
-        <h2 className="text-lg font-semibold" data-testid="text-dashboard-title">Fabrika Departmanı</h2>
-        <Badge variant="secondary">Eren</Badge>
+        <Factory className="w-4 h-4 text-primary" />
+        <h2 className="text-base font-semibold" data-testid="text-dashboard-title">Fabrika</h2>
+        <Badge variant="secondary" className="text-[10px]">Eren</Badge>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
         {metrics.map((metric: MetricCard, index: number) => (
           <MetricCardComponent key={index} metric={metric} />
         ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <Card data-testid="chart-production-tracking">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm flex items-center gap-2">
-              <LineChart className="w-4 h-4" />
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
+        <Card className="lg:col-span-2" data-testid="chart-production-tracking">
+          <CardHeader className="pb-1 pt-3 px-3">
+            <CardTitle className="text-xs flex items-center gap-1.5">
+              <LineChart className="w-3.5 h-3.5" />
               Saatlik Üretim Takibi
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={200}>
+          <CardContent className="px-3 pb-3">
+            <ResponsiveContainer width="100%" height={140}>
               <AreaChart data={productionData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="name" fontSize={12} />
-                <YAxis fontSize={12} />
-                <Tooltip />
+                <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
+                <XAxis dataKey="name" fontSize={10} tickLine={false} axisLine={false} />
+                <YAxis fontSize={10} tickLine={false} axisLine={false} width={25} />
+                <Tooltip contentStyle={{ fontSize: '12px' }} />
                 <Area type="monotone" dataKey="uretim" stroke="hsl(var(--primary))" fill="hsl(var(--primary)/0.3)" name="Üretim" />
                 <Area type="monotone" dataKey="hedef" stroke="hsl(var(--muted-foreground))" fill="transparent" strokeDasharray="5 5" name="Hedef" />
               </AreaChart>
@@ -462,70 +452,72 @@ function IKDashboard() {
   ];
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       <div className="flex items-center gap-2 pb-2 border-b border-border/50">
-        <Briefcase className="w-5 h-5 text-primary" />
-        <h2 className="text-lg font-semibold" data-testid="text-dashboard-title">İK & Muhasebe Departmanı</h2>
-        <Badge variant="secondary">Mahmut</Badge>
+        <Briefcase className="w-4 h-4 text-primary" />
+        <h2 className="text-base font-semibold" data-testid="text-dashboard-title">İK & Muhasebe</h2>
+        <Badge variant="secondary" className="text-[10px]">Mahmut</Badge>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
         {metrics.map((metric: MetricCard, index: number) => (
           <MetricCardComponent key={index} metric={metric} />
         ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm flex items-center gap-2">
-              <Activity className="w-4 h-4" />
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
+        <Card className="lg:col-span-2">
+          <CardHeader className="pb-1 pt-3 px-3">
+            <CardTitle className="text-xs flex items-center gap-1.5">
+              <Activity className="w-3.5 h-3.5" />
               Personel Giriş/Çıkış Trendi
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={200}>
+          <CardContent className="px-3 pb-3">
+            <ResponsiveContainer width="100%" height={140}>
               <BarChart data={turnoverData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="name" fontSize={12} />
-                <YAxis fontSize={12} />
-                <Tooltip />
-                <Bar dataKey="giren" fill="hsl(var(--primary))" name="Giren" />
-                <Bar dataKey="cikan" fill="hsl(var(--destructive))" name="Çıkan" />
+                <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
+                <XAxis dataKey="name" fontSize={10} tickLine={false} axisLine={false} />
+                <YAxis fontSize={10} tickLine={false} axisLine={false} width={25} />
+                <Tooltip contentStyle={{ fontSize: '12px' }} />
+                <Bar dataKey="giren" fill="hsl(var(--primary))" name="Giren" radius={[2, 2, 0, 0]} />
+                <Bar dataKey="cikan" fill="hsl(var(--destructive))" name="Çıkan" radius={[2, 2, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </CardContent>
         </Card>
 
-        <AlertPanel alerts={alerts} />
-      </div>
+        <div className="space-y-3">
+          <AlertPanel alerts={alerts} />
 
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm flex items-center gap-2">
-            <UserCheck className="w-4 h-4" />
-            Ayrılma Riski Yüksek Personel
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-2">
-            <div className="flex items-center justify-between p-2 rounded-lg bg-red-500/10">
-              <div className="flex items-center gap-2">
-                <UserX className="w-4 h-4 text-red-500" />
-                <span className="text-sm">Ahmet Y. - Barista (İbni Sina)</span>
+          <Card>
+            <CardHeader className="pb-1 pt-3 px-3">
+              <CardTitle className="text-xs flex items-center gap-1.5">
+                <UserCheck className="w-3.5 h-3.5" />
+                Ayrılma Riski
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="px-3 pb-3">
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between p-1.5 rounded-md bg-red-500/10">
+                  <div className="flex items-center gap-1.5">
+                    <UserX className="w-3.5 h-3.5 text-red-500 shrink-0" />
+                    <span className="text-xs truncate">Ahmet Y. - Barista</span>
+                  </div>
+                  <Badge variant="destructive" className="text-[10px] px-1.5 py-0 h-4 shrink-0">Yüksek</Badge>
+                </div>
+                <div className="flex items-center justify-between p-1.5 rounded-md bg-yellow-500/10">
+                  <div className="flex items-center gap-1.5">
+                    <AlertCircle className="w-3.5 h-3.5 text-yellow-500 shrink-0" />
+                    <span className="text-xs truncate">Zeynep K. - Barista</span>
+                  </div>
+                  <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 shrink-0">Orta</Badge>
+                </div>
               </div>
-              <Badge variant="destructive">Yüksek Risk</Badge>
-            </div>
-            <div className="flex items-center justify-between p-2 rounded-lg bg-yellow-500/10">
-              <div className="flex items-center gap-2">
-                <AlertCircle className="w-4 h-4 text-yellow-500" />
-                <span className="text-sm">Zeynep K. - Barista (Merkez)</span>
-              </div>
-              <Badge variant="secondary">Orta Risk</Badge>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
 
     </div>
   );
@@ -605,20 +597,20 @@ function CoachDashboard() {
   ];
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       <div className="flex items-center gap-2 pb-2 border-b border-border/50">
-        <Store className="w-5 h-5 text-primary" />
-        <h2 className="text-lg font-semibold" data-testid="text-dashboard-title">Coach Departmanı</h2>
-        <Badge variant="secondary">Yavuz</Badge>
+        <Store className="w-4 h-4 text-primary" />
+        <h2 className="text-base font-semibold" data-testid="text-dashboard-title">Coach</h2>
+        <Badge variant="secondary" className="text-[10px]">Yavuz</Badge>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
         {metrics.map((metric: MetricCard, index: number) => (
           <MetricCardComponent key={index} metric={metric} />
         ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
         <Card 
           className="hover-elevate cursor-pointer" 
           onClick={() => setLocation('/operasyon/subeler')}
@@ -719,20 +711,20 @@ function MarketingDashboard() {
   ];
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       <div className="flex items-center gap-2 pb-2 border-b border-border/50">
-        <Megaphone className="w-5 h-5 text-primary" />
-        <h2 className="text-lg font-semibold" data-testid="text-dashboard-title">Marketing Departmanı</h2>
-        <Badge variant="secondary">Diana</Badge>
+        <Megaphone className="w-4 h-4 text-primary" />
+        <h2 className="text-base font-semibold" data-testid="text-dashboard-title">Marketing</h2>
+        <Badge variant="secondary" className="text-[10px]">Diana</Badge>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
         {metrics.map((metric: MetricCard, index: number) => (
           <MetricCardComponent key={index} metric={metric} />
         ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm flex items-center gap-2">
@@ -827,20 +819,20 @@ function TrainerDashboard() {
   ];
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       <div className="flex items-center gap-2 pb-2 border-b border-border/50">
-        <GraduationCap className="w-5 h-5 text-primary" />
-        <h2 className="text-lg font-semibold" data-testid="text-dashboard-title">Trainer Departmanı</h2>
-        <Badge variant="secondary">Ece</Badge>
+        <GraduationCap className="w-4 h-4 text-primary" />
+        <h2 className="text-base font-semibold" data-testid="text-dashboard-title">Trainer</h2>
+        <Badge variant="secondary" className="text-[10px]">Ece</Badge>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
         {metrics.map((metric: MetricCard, index: number) => (
           <MetricCardComponent key={index} metric={metric} />
         ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm flex items-center gap-2">
@@ -932,20 +924,20 @@ function KaliteDashboard() {
   ];
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       <div className="flex items-center gap-2 pb-2 border-b border-border/50">
-        <ClipboardCheck className="w-5 h-5 text-primary" />
-        <h2 className="text-lg font-semibold" data-testid="text-dashboard-title">Kalite Kontrol Departmanı</h2>
-        <Badge variant="secondary">Ümran</Badge>
+        <ClipboardCheck className="w-4 h-4 text-primary" />
+        <h2 className="text-base font-semibold" data-testid="text-dashboard-title">Kalite Kontrol</h2>
+        <Badge variant="secondary" className="text-[10px]">Ümran</Badge>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
         {metrics.map((metric: MetricCard, index: number) => (
           <MetricCardComponent key={index} metric={metric} />
         ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm flex items-center gap-2">
@@ -1076,13 +1068,13 @@ function CGODashboard() {
   const overallScore = Math.round(departmentHealth.reduce((sum: number, d: any) => sum + d.score, 0) / departmentHealth.length);
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       {/* Hero Widget */}
       <UnifiedHero />
 
       {/* Hızlı Erişim - Unified */}
-      <div className="space-y-2">
-        <h3 className="text-sm font-medium text-muted-foreground px-1">HIZLI ERİŞİM</h3>
+      <div className="space-y-1.5">
+        <h3 className="text-xs font-medium text-muted-foreground px-1">HIZLI ERİŞİM</h3>
         <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-7 gap-2">
           {hqQuickActions.map((action, index) => (
             <Card 
@@ -1091,11 +1083,11 @@ function CGODashboard() {
               onClick={() => setLocation(action.route)}
               data-testid={`quick-action-${action.label.toLowerCase()}`}
             >
-              <CardContent className="p-3 flex flex-col items-center gap-2 text-center">
-                <div className={`p-2 rounded-lg ${action.bgColor}`}>
-                  <action.icon className={`w-5 h-5 ${action.color}`} />
+              <CardContent className="p-2 flex flex-col items-center gap-1.5 text-center">
+                <div className={`p-1.5 rounded-md ${action.bgColor}`}>
+                  <action.icon className={`w-4 h-4 ${action.color}`} />
                 </div>
-                <span className="text-xs font-medium leading-tight truncate w-full">{action.label}</span>
+                <span className="text-[11px] font-medium leading-tight truncate w-full">{action.label}</span>
               </CardContent>
             </Card>
           ))}
@@ -1103,18 +1095,18 @@ function CGODashboard() {
       </div>
 
       {/* Skor ve Departman Durumu */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
         {/* Bugünkü Skor */}
         <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm flex items-center gap-2">
-              <Gauge className="w-4 h-4" />
+          <CardHeader className="pb-1 pt-3 px-3">
+            <CardTitle className="text-xs flex items-center gap-1.5">
+              <Gauge className="w-3.5 h-3.5" />
               Genel Performans
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="flex items-center gap-4">
-              <div className="relative w-24 h-24">
+          <CardContent className="px-3 pb-3">
+            <div className="flex items-center gap-3">
+              <div className="relative w-20 h-20 shrink-0">
                 <svg className="w-full h-full transform -rotate-90">
                   <circle
                     cx="48"
@@ -1138,12 +1130,12 @@ function CGODashboard() {
                   />
                 </svg>
                 <div className="absolute inset-0 flex items-center justify-center">
-                  <span className="text-2xl font-bold">{overallScore}</span>
+                  <span className="text-xl font-bold">{overallScore}</span>
                 </div>
               </div>
-              <div className="flex-1 space-y-2">
+              <div className="flex-1 space-y-1.5">
                 {fallbackMetrics.slice(0, 3).map((m, i) => (
-                  <div key={i} className="flex items-center justify-between text-sm">
+                  <div key={i} className="flex items-center justify-between text-xs">
                     <span className="text-muted-foreground">{m.title}</span>
                     <span className="font-medium">{m.value}</span>
                   </div>
@@ -1155,18 +1147,18 @@ function CGODashboard() {
 
         {/* Departman Durumu */}
         <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm flex items-center gap-2">
-              <PieChart className="w-4 h-4" />
+          <CardHeader className="pb-1 pt-3 px-3">
+            <CardTitle className="text-xs flex items-center gap-1.5">
+              <PieChart className="w-3.5 h-3.5" />
               Departman Durumu
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 gap-2">
+          <CardContent className="px-3 pb-3">
+            <div className="grid grid-cols-2 gap-1.5">
               {departmentSummary.slice(0, 4).map((dept: any, index: number) => (
                 <div 
                   key={index}
-                  className="flex items-center gap-2 p-2 rounded-lg bg-muted/50 cursor-pointer hover-elevate"
+                  className="flex items-center gap-1.5 p-1.5 rounded-md bg-muted/50 cursor-pointer hover-elevate"
                   onClick={() => {
                     const route = departmentRouteMap[dept.name];
                     if (route) setLocation(route);
@@ -1175,8 +1167,8 @@ function CGODashboard() {
                 >
                   {getRiskIcon(dept.status as RiskStatus)}
                   <div className="min-w-0 flex-1">
-                    <p className="text-xs font-medium truncate">{dept.name}</p>
-                    <p className="text-xs text-muted-foreground">{dept.score}%</p>
+                    <p className="text-[11px] font-medium truncate">{dept.name}</p>
+                    <p className="text-[10px] text-muted-foreground">{dept.score}%</p>
                   </div>
                 </div>
               ))}
@@ -1186,14 +1178,14 @@ function CGODashboard() {
       </div>
 
       <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm flex items-center gap-2">
-            <PieChart className="w-4 h-4" />
+        <CardHeader className="pb-1 pt-3 px-3">
+          <CardTitle className="text-xs flex items-center gap-1.5">
+            <PieChart className="w-3.5 h-3.5" />
             Departman Sağlık Özeti
           </CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+        <CardContent className="px-3 pb-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-2">
             {departmentSummary.map((dept: any, index: number) => (
               <Card 
                 key={index} 
@@ -1204,15 +1196,15 @@ function CGODashboard() {
                 }}
                 data-testid={`card-department-${dept.name.toLowerCase().replace(/\s+/g, '-')}`}
               >
-                <CardContent className="p-3">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="font-medium">{dept.name}</span>
+                <CardContent className="p-2">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-xs font-medium truncate">{dept.name}</span>
                     {getRiskIcon(dept.status as RiskStatus)}
                   </div>
-                  <Progress value={dept.score} className="h-2 mb-1" />
+                  <Progress value={dept.score} className="h-1.5 mb-0.5" />
                   <div className="flex items-center justify-between">
-                    <span className="text-xs text-muted-foreground">{dept.owner}</span>
-                    <span className="text-xs font-medium">{dept.score}%</span>
+                    <span className="text-[10px] text-muted-foreground">{dept.owner}</span>
+                    <span className="text-[10px] font-medium">{dept.score}%</span>
                   </div>
                 </CardContent>
               </Card>
@@ -1221,63 +1213,63 @@ function CGODashboard() {
         </CardContent>
       </Card>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
         <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm flex items-center gap-2">
-              <AlertOctagon className="w-4 h-4" />
+          <CardHeader className="pb-1 pt-3 px-3">
+            <CardTitle className="text-xs flex items-center gap-1.5">
+              <AlertOctagon className="w-3.5 h-3.5" />
               Cross-Department Uyarılar
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-2">
+          <CardContent className="px-3 pb-3 space-y-1.5">
             <div 
-              className="flex items-center gap-2 p-2 rounded-lg bg-red-500/10 cursor-pointer hover-elevate"
+              className="flex items-center gap-2 p-1.5 rounded-md bg-red-500/10 cursor-pointer hover-elevate"
               onClick={() => setLocation('/satinalma')}
               data-testid="alert-stok-uretim"
             >
               {getRiskIcon('critical')}
-              <div>
-                <p className="text-sm font-medium">Stok-Üretim Uyumsuzluğu</p>
-                <p className="text-xs text-muted-foreground">Kahve stoğu 3 günlük, üretim planı 7 gün</p>
+              <div className="min-w-0">
+                <p className="text-xs font-medium">Stok-Üretim Uyumsuzluğu</p>
+                <p className="text-[10px] text-muted-foreground truncate">Kahve stoğu 3 günlük, üretim planı 7 gün</p>
               </div>
             </div>
             <div 
-              className="flex items-center gap-2 p-2 rounded-lg bg-yellow-500/10 cursor-pointer hover-elevate"
+              className="flex items-center gap-2 p-1.5 rounded-md bg-yellow-500/10 cursor-pointer hover-elevate"
               onClick={() => setLocation('/ik')}
               data-testid="alert-personel-sube"
             >
               {getRiskIcon('warning')}
-              <div>
-                <p className="text-sm font-medium">Personel-Şube Dengesizliği</p>
-                <p className="text-xs text-muted-foreground">İbni Sina %20 eksik personel</p>
+              <div className="min-w-0">
+                <p className="text-xs font-medium">Personel-Şube Dengesizliği</p>
+                <p className="text-[10px] text-muted-foreground truncate">İbni Sina %20 eksik personel</p>
               </div>
             </div>
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm flex items-center gap-2">
-              <Zap className="w-4 h-4" />
+          <CardHeader className="pb-1 pt-3 px-3">
+            <CardTitle className="text-xs flex items-center gap-1.5">
+              <Zap className="w-3.5 h-3.5" />
               Hızlı Aksiyonlar
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-2">
+          <CardContent className="px-3 pb-3 space-y-1.5">
             <div 
-              className="p-2 rounded-lg bg-primary/10 cursor-pointer hover-elevate"
+              className="p-1.5 rounded-md bg-primary/10 cursor-pointer hover-elevate"
               onClick={() => setLocation('/satinalma')}
               data-testid="action-acil-stok"
             >
-              <p className="text-sm font-medium">Acil Stok Siparişi</p>
-              <p className="text-xs text-muted-foreground">Kahve çekirdeği için onay bekliyor</p>
+              <p className="text-xs font-medium">Acil Stok Siparişi</p>
+              <p className="text-[10px] text-muted-foreground">Kahve çekirdeği için onay bekliyor</p>
             </div>
             <div 
-              className="p-2 rounded-lg bg-secondary/10 cursor-pointer hover-elevate"
+              className="p-1.5 rounded-md bg-secondary/10 cursor-pointer hover-elevate"
               onClick={() => setLocation('/ik')}
               data-testid="action-personel-takviye"
             >
-              <p className="text-sm font-medium">Personel Takviyesi</p>
-              <p className="text-xs text-muted-foreground">İbni Sina için 2 transfer önerisi</p>
+              <p className="text-xs font-medium">Personel Takviyesi</p>
+              <p className="text-[10px] text-muted-foreground">İbni Sina için 2 transfer önerisi</p>
             </div>
           </CardContent>
         </Card>

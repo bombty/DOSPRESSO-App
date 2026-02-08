@@ -66,7 +66,7 @@ export function BottomNav() {
 
   return (
     <nav className="fixed bottom-3 left-3 right-3 z-[60]" data-testid="bottom-nav">
-      <div className="flex items-center justify-around h-16 max-w-md mx-auto px-2 rounded-2xl bg-card/95 backdrop-blur-xl border border-card-border shadow-xl">
+      <div className="flex items-center justify-around h-14 max-w-md mx-auto px-2 rounded-2xl bg-card/95 backdrop-blur-xl border border-card-border shadow-xl">
         {navItems.map((item, index) => {
           const Icon = item.icon;
           const active = isActive(item.path);
