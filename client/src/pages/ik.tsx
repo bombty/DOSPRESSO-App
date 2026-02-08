@@ -87,6 +87,7 @@ import {
   FolderOpen,
   Clock,
   Download,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
   Star,
@@ -143,6 +144,12 @@ export default function IKPage() {
   const [roleFilter, setRoleFilter] = useState<string>("all");
   const [probationFilter, setProbationFilter] = useState<string>("all");
   const [trainingFilter, setTrainingFilter] = useState<string>("all");
+  const [filtersOpen, setFiltersOpen] = useState(false);
+
+  const activeFilterCount = [
+    ...(user?.role && isHQRole(user.role as any) ? [categoryFilter, branchFilter] : []),
+    roleFilter, probationFilter, trainingFilter
+  ].filter(f => f !== "all").length;
 
   // Filters - Section 2: Disciplinary
   const [disciplinaryStatusFilter, setDisciplinaryStatusFilter] = useState<string>("all");
@@ -592,55 +599,57 @@ export default function IKPage() {
 
       {/* Main Tabs Navigation */}
       <Tabs defaultValue="personel" className="w-full space-y-4">
-        <TabsList className="flex flex-wrap h-auto gap-1 p-1 bg-muted/50 rounded-lg" data-testid="ik-main-tabs">
-          <TabsTrigger value="personel" className="flex items-center gap-2 px-4 py-2" data-testid="tab-personel">
-            <Users className="h-4 w-4" />
-            <span className="hidden sm:inline">Personel</span>
-            <Badge variant="secondary" className="ml-1">{filteredEmployees.length}</Badge>
-          </TabsTrigger>
-          <TabsTrigger value="disiplin" className="flex items-center gap-2 px-4 py-2" data-testid="tab-disiplin">
-            <FileWarning className="h-4 w-4" />
-            <span className="hidden sm:inline">Disiplin</span>
-          </TabsTrigger>
-          <TabsTrigger value="onboarding" className="flex items-center gap-2 px-4 py-2" data-testid="tab-onboarding">
-            <UserCheck className="h-4 w-4" />
-            <span className="hidden sm:inline">Onboarding</span>
-          </TabsTrigger>
-          <TabsTrigger value="documents" className="flex items-center gap-2 px-4 py-2" data-testid="tab-documents">
-            <FolderOpen className="h-4 w-4" />
-            <span className="hidden sm:inline">Özlük</span>
-          </TabsTrigger>
-          {canViewAttendance && (
-            <TabsTrigger value="mesai" className="flex items-center gap-2 px-4 py-2" data-testid="tab-mesai">
-              <Clock className="h-4 w-4" />
-              <span className="hidden sm:inline">Mesai</span>
+        <div className="overflow-x-auto -mx-1 px-1">
+          <TabsList className="inline-flex h-auto gap-1 p-1 bg-muted/50 rounded-lg whitespace-nowrap" data-testid="ik-main-tabs">
+            <TabsTrigger value="personel" className="flex items-center gap-1.5 px-3 py-1.5 text-xs sm:text-sm" data-testid="tab-personel">
+              <Users className="h-3.5 w-3.5 flex-shrink-0" />
+              Personel
+              <Badge variant="secondary" className="ml-0.5 text-[10px] px-1.5 py-0">{filteredEmployees.length}</Badge>
             </TabsTrigger>
-          )}
-          {(isHQRole(user?.role as any) || user?.role === 'supervisor') && (
-            <TabsTrigger value="ise-alim" className="flex items-center gap-2 px-4 py-2" data-testid="tab-ise-alim">
-              <UserPlus className="h-4 w-4" />
-              <span className="hidden sm:inline">İşe Alım</span>
+            <TabsTrigger value="disiplin" className="flex items-center gap-1.5 px-3 py-1.5 text-xs sm:text-sm" data-testid="tab-disiplin">
+              <FileWarning className="h-3.5 w-3.5 flex-shrink-0" />
+              Disiplin
             </TabsTrigger>
-          )}
-          {isHQRole(user?.role as any) && (
-            <TabsTrigger value="istten-cikis" className="flex items-center gap-2 px-4 py-2" data-testid="tab-istten-cikis">
-              <UserMinus className="h-4 w-4" />
-              <span className="hidden sm:inline">İşten Çıkış</span>
+            <TabsTrigger value="onboarding" className="flex items-center gap-1.5 px-3 py-1.5 text-xs sm:text-sm" data-testid="tab-onboarding">
+              <UserCheck className="h-3.5 w-3.5 flex-shrink-0" />
+              Onboarding
             </TabsTrigger>
-          )}
-          {(isHQRole(user?.role as any) || user?.role === 'admin' || user?.role === 'supervisor') && (
-            <TabsTrigger value="izinler" className="flex items-center gap-2 px-4 py-2" data-testid="tab-izinler">
-              <Calendar className="h-4 w-4" />
-              <span className="hidden sm:inline">İzinler</span>
+            <TabsTrigger value="documents" className="flex items-center gap-1.5 px-3 py-1.5 text-xs sm:text-sm" data-testid="tab-documents">
+              <FolderOpen className="h-3.5 w-3.5 flex-shrink-0" />
+              Özlük
             </TabsTrigger>
-          )}
-          {(isHQRole(user?.role as any) || user?.role === 'admin' || user?.role === 'muhasebe') && (
-            <TabsTrigger value="maas" className="flex items-center gap-2 px-4 py-2" data-testid="tab-maas">
-              <Star className="h-4 w-4" />
-              <span className="hidden sm:inline">Maaş & Yan Haklar</span>
-            </TabsTrigger>
-          )}
-        </TabsList>
+            {canViewAttendance && (
+              <TabsTrigger value="mesai" className="flex items-center gap-1.5 px-3 py-1.5 text-xs sm:text-sm" data-testid="tab-mesai">
+                <Clock className="h-3.5 w-3.5 flex-shrink-0" />
+                Mesai
+              </TabsTrigger>
+            )}
+            {(isHQRole(user?.role as any) || user?.role === 'supervisor') && (
+              <TabsTrigger value="ise-alim" className="flex items-center gap-1.5 px-3 py-1.5 text-xs sm:text-sm" data-testid="tab-ise-alim">
+                <UserPlus className="h-3.5 w-3.5 flex-shrink-0" />
+                İşe Alım
+              </TabsTrigger>
+            )}
+            {isHQRole(user?.role as any) && (
+              <TabsTrigger value="istten-cikis" className="flex items-center gap-1.5 px-3 py-1.5 text-xs sm:text-sm" data-testid="tab-istten-cikis">
+                <UserMinus className="h-3.5 w-3.5 flex-shrink-0" />
+                Çıkış
+              </TabsTrigger>
+            )}
+            {(isHQRole(user?.role as any) || user?.role === 'admin' || user?.role === 'supervisor') && (
+              <TabsTrigger value="izinler" className="flex items-center gap-1.5 px-3 py-1.5 text-xs sm:text-sm" data-testid="tab-izinler">
+                <Calendar className="h-3.5 w-3.5 flex-shrink-0" />
+                İzinler
+              </TabsTrigger>
+            )}
+            {(isHQRole(user?.role as any) || user?.role === 'admin' || user?.role === 'muhasebe') && (
+              <TabsTrigger value="maas" className="flex items-center gap-1.5 px-3 py-1.5 text-xs sm:text-sm" data-testid="tab-maas">
+                <Star className="h-3.5 w-3.5 flex-shrink-0" />
+                Maaş
+              </TabsTrigger>
+            )}
+          </TabsList>
+        </div>
 
         {/* Tab 1: Personel Listesi */}
         <TabsContent value="personel" data-testid="content-personel">
@@ -665,15 +674,22 @@ export default function IKPage() {
 
                   {/* Active Employees Tab */}
                   <TabsContent value="active" className="space-y-4 mt-4">
-                    {/* Filters Card */}
+                    {/* Filters Card - Collapsible */}
                     <Card className="bg-muted/30 border-dashed">
-                      <CardHeader className="pb-3">
-                        <CardTitle className="text-base flex items-center gap-2">
-                          <Filter className="h-4 w-4" />
-                          Filtreler
+                      <CardHeader className="pb-0 cursor-pointer" onClick={() => setFiltersOpen(!filtersOpen)}>
+                        <CardTitle className="text-sm flex items-center justify-between gap-2">
+                          <span className="flex items-center gap-2">
+                            <Filter className="h-4 w-4" />
+                            Filtreler
+                            {activeFilterCount > 0 && (
+                              <Badge variant="secondary" className="text-[10px] px-1.5 py-0">{activeFilterCount} aktif</Badge>
+                            )}
+                          </span>
+                          <ChevronDown className={`h-4 w-4 transition-transform ${filtersOpen ? 'rotate-180' : ''}`} />
                         </CardTitle>
                       </CardHeader>
-                      <CardContent className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+                      {filtersOpen && (
+                      <CardContent className="grid grid-cols-2 lg:grid-cols-3 gap-3 pt-3">
                         {/* Category filter - Şubeler/HQ/Fabrika - only for HQ users */}
                         {user?.role && isHQRole(user.role as any) && (
                         <div>
@@ -760,6 +776,7 @@ export default function IKPage() {
                       </Select>
                     </div>
                   </CardContent>
+                      )}
                 </Card>
 
                 {/* Stats Cards */}
@@ -2760,39 +2777,33 @@ function RecruitmentSection() {
 
   return (
     <div className="space-y-4">
-      {/* Stats Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-        <Card className="hover-elevate">
-          <CardContent className="p-3 space-y-1 text-center">
-            <p className="text-xs text-muted-foreground">Açık Pozisyon</p>
-            <p className="text-xl sm:text-2xl font-bold text-blue-600">{stats?.openPositions || 0}</p>
-          </CardContent>
-        </Card>
-        <Card className="hover-elevate">
-          <CardContent className="p-3 space-y-1 text-center">
-            <p className="text-xs text-muted-foreground">Yeni Başvuru</p>
-            <p className="text-xl sm:text-2xl font-bold text-orange-600">{stats?.newApplications || 0}</p>
-          </CardContent>
-        </Card>
-        <Card className="hover-elevate">
-          <CardContent className="p-3 space-y-1 text-center">
-            <p className="text-xs text-muted-foreground">Planlı Mülakat</p>
-            <p className="text-xl sm:text-2xl font-bold text-purple-600">{stats?.scheduledInterviews || 0}</p>
-          </CardContent>
-        </Card>
-        <Card className="hover-elevate">
-          <CardContent className="p-3 space-y-1 text-center">
-            <p className="text-xs text-muted-foreground">Bu Ay İşe Alım</p>
-            <p className="text-xl sm:text-2xl font-bold text-green-600">{stats?.hiredThisMonth || 0}</p>
-          </CardContent>
-        </Card>
-        <Card className="hover-elevate" data-testid="card-hired-candidates">
-          <CardContent className="p-3 space-y-1 text-center">
-            <p className="text-xs text-muted-foreground">Kabul Edilenler</p>
-            <p className="text-xl sm:text-2xl font-bold text-emerald-600">{hiredCount}</p>
-          </CardContent>
-        </Card>
-      </div>
+      {/* Stats - Compact Inline */}
+      <Card>
+        <CardContent className="p-3">
+          <div className="flex flex-wrap gap-x-4 gap-y-1">
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs text-muted-foreground">Açık Pozisyon:</span>
+              <span className="text-sm font-bold text-blue-600">{stats?.openPositions || 0}</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs text-muted-foreground">Yeni Başvuru:</span>
+              <span className="text-sm font-bold text-orange-600">{stats?.newApplications || 0}</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs text-muted-foreground">Planlı Mülakat:</span>
+              <span className="text-sm font-bold text-purple-600">{stats?.scheduledInterviews || 0}</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs text-muted-foreground">Bu Ay:</span>
+              <span className="text-sm font-bold text-green-600">{stats?.hiredThisMonth || 0}</span>
+            </div>
+            <div className="flex items-center gap-1.5" data-testid="card-hired-candidates">
+              <span className="text-xs text-muted-foreground">Kabul:</span>
+              <span className="text-sm font-bold text-emerald-600">{hiredCount}</span>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* HQ Branch Filter */}
       {isHQRole(user?.role as any) && (

@@ -1029,19 +1029,13 @@ function CGODashboard() {
   };
 
   const hqQuickActions = [
-    { icon: Store, label: "Şubeler", color: "text-blue-500", bgColor: "bg-blue-500/10", route: "/operasyon" },
+    { icon: Store, label: "Operasyonlar", color: "text-blue-500", bgColor: "bg-blue-500/10", route: "/operasyon" },
     { icon: Users, label: "Personel", color: "text-green-500", bgColor: "bg-green-500/10", route: "/ik" },
     { icon: AlertTriangle, label: "Arızalar", color: "text-red-500", bgColor: "bg-red-500/10", route: "/ekipman/ariza" },
     { icon: ClipboardCheck, label: "Checklistler", color: "text-emerald-500", bgColor: "bg-emerald-500/10", route: "/operasyon/checklistler" },
     { icon: Factory, label: "Fabrika", color: "text-orange-500", bgColor: "bg-orange-500/10", route: "/fabrika" },
+    { icon: ShoppingCart, label: "Satınalma", color: "text-cyan-500", bgColor: "bg-cyan-500/10", route: "/satinalma" },
     { icon: GraduationCap, label: "Akademi", color: "text-purple-500", bgColor: "bg-purple-500/10", route: "/akademi" },
-  ];
-
-  const hqModules = [
-    { icon: Store, label: "Operasyonlar", subLabel: "Şube yönetimi", color: "text-blue-500", bgColor: "bg-blue-500/10", route: "/operasyon" },
-    { icon: Factory, label: "Fabrika", subLabel: "Üretim takibi", color: "text-orange-500", bgColor: "bg-orange-500/10", route: "/fabrika" },
-    { icon: ShoppingCart, label: "Satınalma", subLabel: "Stok & sipariş", color: "text-cyan-500", bgColor: "bg-cyan-500/10", route: "/satinalma" },
-    { icon: GraduationCap, label: "Akademi", subLabel: "Eğitim sistemi", color: "text-purple-500", bgColor: "bg-purple-500/10", route: "/akademi" },
   ];
 
   const fallbackMetrics = [
@@ -1086,60 +1080,24 @@ function CGODashboard() {
       {/* Hero Widget */}
       <UnifiedHero />
 
-      {/* Hızlı İşlemler */}
+      {/* Hızlı Erişim - Unified */}
       <div className="space-y-2">
-        <h3 className="text-sm font-medium text-muted-foreground px-1">HIZLI İŞLEMLER</h3>
-        <div className="grid grid-cols-3 md:grid-cols-6 gap-2">
+        <h3 className="text-sm font-medium text-muted-foreground px-1">HIZLI ERİŞİM</h3>
+        <div className="grid grid-cols-4 md:grid-cols-7 gap-1.5">
           {hqQuickActions.map((action, index) => (
-            <motion.div
+            <Card 
               key={index}
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
+              className="hover-elevate cursor-pointer"
+              onClick={() => setLocation(action.route)}
+              data-testid={`quick-action-${action.label.toLowerCase()}`}
             >
-              <Card 
-                className="hover-elevate cursor-pointer"
-                onClick={() => setLocation(action.route)}
-                data-testid={`quick-action-${action.label.toLowerCase()}`}
-              >
-                <CardContent className="p-3 flex items-center gap-2">
-                  <div className={`p-2 rounded-lg ${action.bgColor}`}>
-                    <action.icon className={`w-4 h-4 ${action.color}`} />
-                  </div>
-                  <span className="text-sm font-medium truncate">{action.label}</span>
-                </CardContent>
-              </Card>
-            </motion.div>
-          ))}
-        </div>
-      </div>
-
-      {/* Modüller */}
-      <div className="space-y-2">
-        <h3 className="text-sm font-medium text-muted-foreground px-1">MODÜLLER</h3>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          {hqModules.map((module, index) => (
-            <motion.div
-              key={index}
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-            >
-              <Card 
-                className="hover-elevate cursor-pointer"
-                onClick={() => setLocation(module.route)}
-                data-testid={`module-${module.label.toLowerCase()}`}
-              >
-                <CardContent className="p-4 flex items-center gap-3">
-                  <div className={`p-3 rounded-lg ${module.bgColor}`}>
-                    <module.icon className={`w-5 h-5 ${module.color}`} />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="font-medium text-sm truncate">{module.label}</p>
-                    <p className="text-xs text-muted-foreground truncate">{module.subLabel}</p>
-                  </div>
-                  <ChevronRight className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-                </CardContent>
-              </Card>
-            </motion.div>
+              <CardContent className="p-2.5 flex flex-col items-center gap-1.5 text-center">
+                <div className={`p-2 rounded-lg ${action.bgColor}`}>
+                  <action.icon className={`w-4 h-4 ${action.color}`} />
+                </div>
+                <span className="text-[11px] font-medium leading-tight truncate w-full">{action.label}</span>
+              </CardContent>
+            </Card>
           ))}
         </div>
       </div>

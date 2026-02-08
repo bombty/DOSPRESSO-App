@@ -1067,40 +1067,28 @@ export default function PersonelProfilPage() {
               </Card>
 
               <Card>
-                <CardHeader>
-                  <CardTitle>Hızlı Erişim</CardTitle>
-                  <CardDescription>Akademi bölümlerine hızlı erişim</CardDescription>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm">Hızlı Erişim</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3">
+                  <div className="grid grid-cols-3 gap-1.5">
                     <Link href="/akademi">
-                      <Button variant="outline" className="w-full" data-testid="link-akademi">Akademi</Button>
+                      <Button variant="outline" size="sm" className="w-full text-xs" data-testid="link-akademi">Akademi</Button>
                     </Link>
-                    {(user?.role === 'supervisor' || user?.role === 'supervisor_buddy') && (
-                      <Link href="/akademi-supervisor">
-                        <Button variant="outline" className="w-full" data-testid="link-akademi-supervisor">Supervisor</Button>
-                      </Link>
-                    )}
                     <Link href="/akademi-badges">
-                      <Button variant="outline" className="w-full" data-testid="link-akademi-badges">Rozetler</Button>
+                      <Button variant="outline" size="sm" className="w-full text-xs" data-testid="link-akademi-badges">Rozetler</Button>
                     </Link>
                     <Link href="/akademi-leaderboard">
-                      <Button variant="outline" className="w-full" data-testid="link-akademi-leaderboard">Sıralama</Button>
+                      <Button variant="outline" size="sm" className="w-full text-xs" data-testid="link-akademi-leaderboard">Sıralama</Button>
                     </Link>
                     <Link href="/akademi-learning-paths">
-                      <Button variant="outline" className="w-full" data-testid="link-akademi-paths">Yollar</Button>
+                      <Button variant="outline" size="sm" className="w-full text-xs" data-testid="link-akademi-paths">Yollar</Button>
                     </Link>
                     <Link href="/akademi-certificates">
-                      <Button variant="outline" className="w-full" data-testid="link-akademi-certificates">Sertifikalar</Button>
-                    </Link>
-                    <Link href="/akademi-achievements">
-                      <Button variant="outline" className="w-full" data-testid="link-akademi-achievements">Başarılar</Button>
+                      <Button variant="outline" size="sm" className="w-full text-xs" data-testid="link-akademi-certificates">Sertifikalar</Button>
                     </Link>
                     <Link href="/akademi-streak-tracker">
-                      <Button variant="outline" className="w-full" data-testid="link-akademi-streak">Seri</Button>
-                    </Link>
-                    <Link href="/akademi-ai-assistant">
-                      <Button variant="outline" className="w-full" data-testid="link-akademi-ai">AI Asistan</Button>
+                      <Button variant="outline" size="sm" className="w-full text-xs" data-testid="link-akademi-streak">Seri</Button>
                     </Link>
                   </div>
                 </CardContent>

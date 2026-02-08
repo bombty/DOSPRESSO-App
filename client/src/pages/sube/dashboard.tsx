@@ -879,33 +879,33 @@ export default function SubeDashboard() {
       </Tabs>
 
       <Card>
-        <CardHeader>
-          <CardTitle>Hızlı Erişim</CardTitle>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm">Hızlı Erişim</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-4 gap-1.5">
             <Link href="/sube/kiosk">
-              <Button variant="outline" className="w-full h-auto p-4 flex flex-col items-center gap-2" data-testid="link-kiosk-quick">
-                <Monitor className="h-8 w-8 text-amber-500" />
-                <span>Kiosk Modu</span>
+              <Button variant="outline" className="w-full h-auto p-2 flex flex-col items-center gap-1" data-testid="link-kiosk-quick">
+                <Monitor className="h-4 w-4 text-amber-500" />
+                <span className="text-[10px]">Kiosk</span>
               </Button>
             </Link>
             <Link href="/gorevler">
-              <Button variant="outline" className="w-full h-auto p-4 flex flex-col items-center gap-2" data-testid="link-tasks">
-                <ListTodo className="h-8 w-8 text-blue-500" />
-                <span>Görevler</span>
+              <Button variant="outline" className="w-full h-auto p-2 flex flex-col items-center gap-1" data-testid="link-tasks">
+                <ListTodo className="h-4 w-4 text-blue-500" />
+                <span className="text-[10px]">Görevler</span>
               </Button>
             </Link>
             <Link href="/checklistler">
-              <Button variant="outline" className="w-full h-auto p-4 flex flex-col items-center gap-2" data-testid="link-checklists">
-                <ClipboardList className="h-8 w-8 text-green-500" />
-                <span>Checklistler</span>
+              <Button variant="outline" className="w-full h-auto p-2 flex flex-col items-center gap-1" data-testid="link-checklists">
+                <ClipboardList className="h-4 w-4 text-green-500" />
+                <span className="text-[10px]">Checklist</span>
               </Button>
             </Link>
             <Link href="/vardiya-planlama">
-              <Button variant="outline" className="w-full h-auto p-4 flex flex-col items-center gap-2" data-testid="link-shifts">
-                <Calendar className="h-8 w-8 text-purple-500" />
-                <span>Vardiya Planı</span>
+              <Button variant="outline" className="w-full h-auto p-2 flex flex-col items-center gap-1" data-testid="link-shifts">
+                <Calendar className="h-4 w-4 text-purple-500" />
+                <span className="text-[10px]">Vardiya</span>
               </Button>
             </Link>
           </div>
