@@ -12,6 +12,10 @@ import {
   factoryProducts,
   factoryWasteReasons,
   users,
+  productRecipes,
+  productRecipeIngredients,
+  rawMaterials,
+  notifications,
   insertFactoryShiftSchema,
   insertFactoryShiftWorkerSchema,
   insertFactoryBatchSpecSchema,
@@ -443,6 +447,80 @@ export function registerFactoryShiftRoutes(app: Express) {
         yieldRate = Math.round((actualPieces / targetPcs) * 100 * 100) / 100;
       }
 
+      // Fetch recipe batch yield settings for waste calculation
+      let expectedWastePercent: number | null = null;
+      let actualWastePercent: number | null = null;
+      let wasteDeviationPercent: number | null = null;
+      let totalInputWeightKg: number | null = null;
+      let totalOutputWeightKg: number | null = null;
+      let wasteCostTl: number | null = null;
+
+      const [recipe] = await db.select()
+        .from(productRecipes)
+        .where(and(
+          eq(productRecipes.productId, batch.productId),
+          eq(productRecipes.isActive, true)
+        ));
+      
+      if (recipe && recipe.expectedUnitWeight && recipe.expectedOutputCount) {
+        // Calculate total ingredient weight from recipe
+        const ingredients = await db.select({
+          ingredient: productRecipeIngredients,
+          material: rawMaterials
+        })
+          .from(productRecipeIngredients)
+          .leftJoin(rawMaterials, eq(productRecipeIngredients.rawMaterialId, rawMaterials.id))
+          .where(eq(productRecipeIngredients.recipeId, recipe.id));
+        
+        let ingredientTotalKg = 0;
+        let ingredientTotalCost = 0;
+        for (const ing of ingredients) {
+          const qty = parseFloat(ing.ingredient.quantity);
+          const unit = (ing.ingredient.unit || "kg").toLowerCase();
+          if (unit === "kg") ingredientTotalKg += qty;
+          else if (unit === "g") ingredientTotalKg += qty / 1000;
+          else if (unit === "lt" || unit === "l") ingredientTotalKg += qty;
+          else if (unit === "ml") ingredientTotalKg += qty / 1000;
+          else ingredientTotalKg += qty;
+          
+          const isKB = ing.material?.isKeyblend || false;
+          const price = isKB ? parseFloat(ing.material?.keyblendCost || "0") : parseFloat(ing.material?.currentUnitPrice || "0");
+          ingredientTotalCost += qty * price;
+        }
+        
+        totalInputWeightKg = ingredientTotalKg;
+        
+        const expUnitW = parseFloat(recipe.expectedUnitWeight);
+        const expUnit = recipe.expectedUnitWeightUnit || "g";
+        const expCount = recipe.expectedOutputCount;
+        
+        let expectedOutputKg = 0;
+        if (expUnit === "g" || expUnit === "ml") expectedOutputKg = (expUnitW * expCount) / 1000;
+        else expectedOutputKg = expUnitW * expCount;
+        
+        expectedWastePercent = ingredientTotalKg > 0
+          ? ((ingredientTotalKg - expectedOutputKg) / ingredientTotalKg) * 100
+          : 0;
+        
+        // Calculate actual output from actualPieces
+        if (actualPieces && actualPieces > 0) {
+          let actualOutputKg = 0;
+          if (expUnit === "g" || expUnit === "ml") actualOutputKg = (expUnitW * actualPieces) / 1000;
+          else actualOutputKg = expUnitW * actualPieces;
+          
+          totalOutputWeightKg = actualOutputKg;
+          const actualWasteKg = ingredientTotalKg - actualOutputKg;
+          actualWastePercent = ingredientTotalKg > 0
+            ? (actualWasteKg / ingredientTotalKg) * 100
+            : 0;
+          
+          wasteDeviationPercent = actualWastePercent - expectedWastePercent;
+          
+          const costPerKg = ingredientTotalKg > 0 ? ingredientTotalCost / ingredientTotalKg : 0;
+          wasteCostTl = actualWasteKg > 0 ? actualWasteKg * costPerKg : 0;
+        }
+      }
+
       const [updated] = await db.update(factoryProductionBatches).set({
         endTime,
         actualWeightKg: actualWeightKg?.toString(),
@@ -452,6 +530,12 @@ export function registerFactoryShiftRoutes(app: Express) {
         wastePieces: wastePieces || 0,
         wasteReasonId: wasteReasonId || null,
         wasteNotes,
+        expectedWastePercent: expectedWastePercent?.toFixed(2),
+        actualWastePercent: actualWastePercent?.toFixed(2),
+        wasteDeviationPercent: wasteDeviationPercent?.toFixed(2),
+        totalInputWeightKg: totalInputWeightKg?.toFixed(2),
+        totalOutputWeightKg: totalOutputWeightKg?.toFixed(2),
+        wasteCostTl: wasteCostTl?.toFixed(2),
         performanceScore: performanceScore?.toString(),
         yieldRate: yieldRate?.toString(),
         photoUrl,
@@ -466,13 +550,44 @@ export function registerFactoryShiftRoutes(app: Express) {
         }).where(eq(factoryShiftProductions.id, batch.shiftProductionId));
       }
 
-      // Check if target duration exceeded - add warning flag
+      // Check warnings
       let warning = null;
+      const warnings: string[] = [];
+      
       if (targetDur && actualDurationMinutes > targetDur) {
-        warning = `Hedef süre aşıldı! Hedef: ${targetDur} dk, Gerçekleşen: ${actualDurationMinutes} dk`;
+        warnings.push(`Hedef süre aşıldı! Hedef: ${targetDur} dk, Gerçekleşen: ${actualDurationMinutes} dk`);
       }
 
-      res.json({ ...updated, warning });
+      const tolerancePercent = parseFloat(recipe?.wasteTolerancePercent || "5");
+      if (wasteDeviationPercent !== null && wasteDeviationPercent > tolerancePercent) {
+        warnings.push(`Fire toleransı aşıldı! Beklenen: %${expectedWastePercent?.toFixed(1)}, Gerçekleşen: %${actualWastePercent?.toFixed(1)}, Sapma: +%${wasteDeviationPercent.toFixed(1)}`);
+        
+        try {
+          await db.insert(notifications).values({
+            userId: (req as any).user?.id || "system",
+            title: "Fire Toleransı Aşıldı",
+            message: `Ürün #${batch.productId} üretiminde fire toleransı aşıldı. Beklenen: %${expectedWastePercent?.toFixed(1)}, Gerçekleşen: %${actualWastePercent?.toFixed(1)}`,
+            type: "warning",
+          });
+        } catch (e) {
+          console.error("Notification error:", e);
+        }
+      }
+      
+      if (warnings.length > 0) warning = warnings.join(" | ");
+
+      res.json({ 
+        ...updated, 
+        warning,
+        wasteAnalysis: wasteDeviationPercent !== null ? {
+          expectedWastePercent: expectedWastePercent?.toFixed(2),
+          actualWastePercent: actualWastePercent?.toFixed(2),
+          deviationPercent: wasteDeviationPercent?.toFixed(2),
+          wasteCostTl: wasteCostTl?.toFixed(2),
+          toleranceExceeded: wasteDeviationPercent > tolerancePercent,
+          status: wasteDeviationPercent > tolerancePercent ? "over" : wasteDeviationPercent < -5 ? "under" : "normal"
+        } : null
+      });
     } catch (error: any) {
       console.error("Complete batch error:", error);
       res.status(500).json({ error: "Batch tamamlanamadı" });

@@ -10934,6 +10934,13 @@ export const productRecipes = pgTable("product_recipes", {
   equipmentDescription: text("equipment_description"),
   machineId: integer("machine_id"),
   
+  // Batch verim & fire hesaplama
+  expectedUnitWeight: numeric("expected_unit_weight", { precision: 10, scale: 3 }),
+  expectedUnitWeightUnit: varchar("expected_unit_weight_unit", { length: 10 }).default("g"),
+  expectedOutputCount: integer("expected_output_count"),
+  expectedWastePercent: numeric("expected_waste_percent", { precision: 5, scale: 2 }),
+  wasteTolerancePercent: numeric("waste_tolerance_percent", { precision: 5, scale: 2 }).default("5"),
+
   // Hesaplanan maliyetler
   rawMaterialCost: numeric("raw_material_cost", { precision: 12, scale: 4 }).default("0"),
   laborCost: numeric("labor_cost", { precision: 12, scale: 4 }).default("0"),
@@ -11390,8 +11397,14 @@ export const factoryProductionBatches = pgTable("factory_production_batches", {
   wastePieces: integer("waste_pieces").default(0),
   wasteReasonId: integer("waste_reason_id").references(() => factoryWasteReasons.id, { onDelete: "set null" }),
   wasteNotes: text("waste_notes"),
-  performanceScore: numeric("performance_score", { precision: 5, scale: 2 }), // yüzde olarak (hedef süreye göre)
-  yieldRate: numeric("yield_rate", { precision: 5, scale: 2 }), // verim oranı (üretilen/hedef)
+  expectedWastePercent: numeric("expected_waste_percent", { precision: 5, scale: 2 }),
+  actualWastePercent: numeric("actual_waste_percent", { precision: 5, scale: 2 }),
+  wasteDeviationPercent: numeric("waste_deviation_percent", { precision: 5, scale: 2 }),
+  totalInputWeightKg: numeric("total_input_weight_kg", { precision: 10, scale: 2 }),
+  totalOutputWeightKg: numeric("total_output_weight_kg", { precision: 10, scale: 2 }),
+  wasteCostTl: numeric("waste_cost_tl", { precision: 12, scale: 2 }),
+  performanceScore: numeric("performance_score", { precision: 5, scale: 2 }),
+  yieldRate: numeric("yield_rate", { precision: 5, scale: 2 }),
   photoUrl: text("photo_url"),
   status: varchar("status", { length: 20 }).default("in_progress").notNull(), // in_progress, completed, verified, rejected
   notes: text("notes"),

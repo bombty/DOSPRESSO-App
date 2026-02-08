@@ -134,6 +134,24 @@ function ProductCostDetail({ productId, onEditLabor, onEditRecipe, onDeleteIngre
   const [pkgQty, setPkgQty] = useState("1");
   const [pkgMaterialId, setPkgMaterialId] = useState<number | null>(null);
 
+  const [showBatchYieldEdit, setShowBatchYieldEdit] = useState(false);
+  const [byUnitWeight, setByUnitWeight] = useState("");
+  const [byUnitWeightUnit, setByUnitWeightUnit] = useState("g");
+  const [byOutputCount, setByOutputCount] = useState("");
+  const [byTolerance, setByTolerance] = useState("5");
+
+  const saveBatchYieldMutation = useMutation({
+    mutationFn: async (values: any) => {
+      const res = await apiRequest("PATCH", `/api/product-recipes/${values.recipeId}/batch-yield`, values);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/product-costs', productId] });
+      toast({ title: "Batch verim ayarları kaydedildi" });
+      setShowBatchYieldEdit(false);
+    }
+  });
+
   const { data: pkgMaterialsList = [] } = useQuery<any[]>({
     queryKey: ['/api/raw-materials'],
   });
@@ -389,7 +407,193 @@ function ProductCostDetail({ productId, onEditLabor, onEditRecipe, onDeleteIngre
             Malzeme Ekle
           </Button>
         )}
+        {data.batchYield && (
+          <div className="mt-2 p-3 rounded-lg bg-muted/50 border">
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <span className="text-sm font-medium">Toplam Malzeme:</span>
+              <span className="text-sm font-bold" data-testid="text-total-ingredient-weight">
+                {parseFloat(data.batchYield.totalIngredientWeightKg).toFixed(3)} kg
+              </span>
+            </div>
+          </div>
+        )}
       </div>
+
+      {data.batchYield && (
+        <div className="p-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800">
+          <div className="flex items-center justify-between mb-2 gap-2 flex-wrap">
+            <div className="flex items-center gap-2">
+              <BarChart3 className="w-4 h-4 text-red-600" />
+              <p className="text-sm font-medium text-red-700 dark:text-red-400">Batch Verim & Fire Hesaplama</p>
+            </div>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                setShowBatchYieldEdit(!showBatchYieldEdit);
+                if (!showBatchYieldEdit && data.batchYield) {
+                  setByUnitWeight(data.batchYield.expectedUnitWeight?.toString() || "");
+                  setByUnitWeightUnit(data.batchYield.expectedUnitWeightUnit || "g");
+                  setByOutputCount(data.batchYield.expectedOutputCount?.toString() || "");
+                  setByTolerance(data.batchYield.wasteTolerancePercent || "5");
+                }
+              }}
+              data-testid="button-edit-batch-yield"
+            >
+              <Edit className="w-3 h-3 mr-1" />
+              {showBatchYieldEdit ? "Kapat" : "Ayarla"}
+            </Button>
+          </div>
+
+          {data.batchYield.isConfigured ? (
+            <div className="space-y-2">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <div>
+                  <p className="text-xs text-muted-foreground">Birim Gramaj</p>
+                  <p className="font-medium" data-testid="text-unit-weight">
+                    {data.batchYield.expectedUnitWeight} {data.batchYield.expectedUnitWeightUnit}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Beklenen Adet</p>
+                  <p className="font-medium" data-testid="text-expected-output">{data.batchYield.expectedOutputCount}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Beklenen Toplam</p>
+                  <p className="font-medium" data-testid="text-expected-total-output">
+                    {parseFloat(data.batchYield.calculatedTotalOutputKg).toFixed(3)} kg
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Fire Toleransı</p>
+                  <p className="font-medium" data-testid="text-waste-tolerance">%{data.batchYield.wasteTolerancePercent}</p>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-3 pt-2 border-t border-red-200 dark:border-red-700">
+                <div>
+                  <p className="text-xs text-muted-foreground">Beklenen Fire</p>
+                  <p className="font-medium text-red-600 dark:text-red-400" data-testid="text-expected-waste">
+                    {parseFloat(data.batchYield.expectedWasteKg).toFixed(3)} kg (%{data.batchYield.expectedWastePercent})
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Fire Maliyeti</p>
+                  <p className="font-medium text-red-600 dark:text-red-400" data-testid="text-expected-waste-cost">
+                    {formatCurrency(data.batchYield.expectedWasteCostTl)}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Formül</p>
+                  <p className="text-xs text-muted-foreground">
+                    {parseFloat(data.batchYield.totalIngredientWeightKg).toFixed(3)} kg - ({data.batchYield.expectedOutputCount} x {data.batchYield.expectedUnitWeight}{data.batchYield.expectedUnitWeightUnit}) = Fire
+                  </p>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <p className="text-xs text-muted-foreground">
+              Batch verim hesaplaması yapmak için birim gramaj ve beklenen adet bilgilerini girin.
+            </p>
+          )}
+
+          {showBatchYieldEdit && (
+            <div className="mt-3 pt-3 border-t border-red-200 dark:border-red-700 space-y-3">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                <div>
+                  <label className="text-xs text-muted-foreground">Birim Gramaj/ml</label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    value={byUnitWeight}
+                    onChange={(e) => setByUnitWeight(e.target.value)}
+                    placeholder="25"
+                    data-testid="input-unit-weight"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-muted-foreground">Birim</label>
+                  <Select value={byUnitWeightUnit} onValueChange={setByUnitWeightUnit}>
+                    <SelectTrigger data-testid="select-unit-weight-unit">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="g">gram (g)</SelectItem>
+                      <SelectItem value="ml">mililitre (ml)</SelectItem>
+                      <SelectItem value="kg">kilogram (kg)</SelectItem>
+                      <SelectItem value="lt">litre (lt)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <label className="text-xs text-muted-foreground">Beklenen Adet</label>
+                  <Input
+                    type="number"
+                    value={byOutputCount}
+                    onChange={(e) => setByOutputCount(e.target.value)}
+                    placeholder="50"
+                    data-testid="input-expected-output-count"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-muted-foreground">Fire Toleransı (%)</label>
+                  <Input
+                    type="number"
+                    step="0.1"
+                    value={byTolerance}
+                    onChange={(e) => setByTolerance(e.target.value)}
+                    placeholder="5"
+                    data-testid="input-waste-tolerance"
+                  />
+                </div>
+              </div>
+
+              {byUnitWeight && byOutputCount && (
+                <div className="p-2 rounded bg-red-100 dark:bg-red-900/30 text-xs space-y-1">
+                  {(() => {
+                    const totalKg = parseFloat(data.batchYield.totalIngredientWeightKg);
+                    const unitW = parseFloat(byUnitWeight);
+                    const count = parseInt(byOutputCount);
+                    const unit = byUnitWeightUnit;
+                    let outputKg = 0;
+                    if (unit === "g" || unit === "ml") outputKg = (unitW * count) / 1000;
+                    else outputKg = unitW * count;
+                    const wasteKg = totalKg - outputKg;
+                    const wastePct = totalKg > 0 ? (wasteKg / totalKg) * 100 : 0;
+                    const costPerKg = parseFloat(data.batchYield.wasteCostPerKg);
+                    const wasteCost = wasteKg * costPerKg;
+                    return (
+                      <>
+                        <p>Toplam Girdi: <strong>{totalKg.toFixed(3)} kg</strong></p>
+                        <p>Beklenen Toplam Ürün: <strong>{outputKg.toFixed(3)} kg</strong> ({count} adet x {unitW} {unit})</p>
+                        <p>Hesaplanan Fire: <strong className="text-red-600">{wasteKg.toFixed(3)} kg (%{wastePct.toFixed(2)})</strong></p>
+                        <p>Tahmini Fire Maliyeti: <strong className="text-red-600">{formatCurrency(wasteCost)}</strong></p>
+                      </>
+                    );
+                  })()}
+                </div>
+              )}
+
+              <Button
+                size="sm"
+                disabled={!byUnitWeight || !byOutputCount || saveBatchYieldMutation.isPending}
+                onClick={() => {
+                  saveBatchYieldMutation.mutate({
+                    recipeId: data.recipe.id,
+                    expectedUnitWeight: parseFloat(byUnitWeight),
+                    expectedUnitWeightUnit: byUnitWeightUnit,
+                    expectedOutputCount: parseInt(byOutputCount),
+                    wasteTolerancePercent: parseFloat(byTolerance || "5")
+                  });
+                }}
+                data-testid="button-save-batch-yield"
+              >
+                {saveBatchYieldMutation.isPending ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <Check className="w-3 h-3 mr-1" />}
+                Kaydet
+              </Button>
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="grid grid-cols-2 md:grid-cols-3 gap-3 pt-4 border-t">
         <div className="p-3 rounded-lg bg-muted/50">

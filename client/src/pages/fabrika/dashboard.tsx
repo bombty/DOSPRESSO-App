@@ -21,8 +21,11 @@ import {
   ClipboardCheck,
   BarChart3,
   Calculator,
-  DollarSign
+  DollarSign,
+  Flame,
+  Target
 } from "lucide-react";
+import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip as RechartsTooltip, CartesianGrid } from "recharts";
 
 interface DashboardStats {
   activeWorkers: number;
@@ -83,6 +86,11 @@ export default function FabrikaDashboard() {
 
   const { data: costStats } = useQuery<CostStats>({
     queryKey: ['/api/cost-dashboard/stats'],
+    refetchInterval: 60000,
+  });
+
+  const { data: wasteStats } = useQuery<any>({
+    queryKey: ['/api/waste-stats/dashboard'],
     refetchInterval: 60000,
   });
 
@@ -200,7 +208,7 @@ export default function FabrikaDashboard() {
           </div>
 
           {costStats && (
-            <Card className="border-l-4 border-l-purple-500">
+            <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="flex items-center gap-2 text-base">
                   <Calculator className="h-5 w-5 text-purple-500" />
@@ -236,6 +244,93 @@ export default function FabrikaDashboard() {
                     </Button>
                   </Link>
                 </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {wasteStats && (
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <Flame className="h-5 w-5 text-red-500" />
+                  Fire Takip Raporu
+                </CardTitle>
+                <CardDescription>Son 30 gün fire istatistikleri</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+                  <div className="text-center p-3 bg-red-500/10 rounded-lg">
+                    <p className="text-2xl font-bold text-red-600" data-testid="text-waste-total-batches">{wasteStats.totalBatches || 0}</p>
+                    <p className="text-xs text-muted-foreground">Toplam Batch</p>
+                  </div>
+                  <div className="text-center p-3 bg-amber-500/10 rounded-lg">
+                    <p className="text-2xl font-bold text-amber-600" data-testid="text-waste-avg-percent">%{Number(wasteStats.avgWastePercent || 0).toFixed(1)}</p>
+                    <p className="text-xs text-muted-foreground">Ort. Fire Oranı</p>
+                  </div>
+                  <div className="text-center p-3 bg-orange-500/10 rounded-lg">
+                    <p className="text-2xl font-bold text-orange-600" data-testid="text-waste-total-weight">{Number(wasteStats.totalWasteKg || 0).toFixed(1)} kg</p>
+                    <p className="text-xs text-muted-foreground">Toplam Fire</p>
+                  </div>
+                  <div className="text-center p-3 bg-red-500/10 rounded-lg">
+                    <p className="text-2xl font-bold text-red-600" data-testid="text-waste-total-cost">₺{new Intl.NumberFormat('tr-TR').format(Number(wasteStats.totalWasteCostTl || 0))}</p>
+                    <p className="text-xs text-muted-foreground">Toplam Fire Maliyeti</p>
+                  </div>
+                </div>
+
+                {wasteStats.overToleranceCount > 0 && (
+                  <div className="flex items-center gap-2 p-3 bg-red-500/10 border border-red-200 dark:border-red-800 rounded-lg mb-4">
+                    <AlertTriangle className="h-5 w-5 text-red-500 flex-shrink-0" />
+                    <div>
+                      <p className="text-sm font-medium text-red-700 dark:text-red-400" data-testid="text-tolerance-breaches">
+                        {wasteStats.overToleranceCount} batch tolerans aşımı tespit edildi
+                      </p>
+                      <p className="text-xs text-red-600/70 dark:text-red-400/70">Tolerans aşım oranı: %{wasteStats.overToleranceRate}</p>
+                    </div>
+                  </div>
+                )}
+
+                {wasteStats.trend && wasteStats.trend.length > 0 && (
+                  <div className="h-48">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={wasteStats.trend}>
+                        <defs>
+                          <linearGradient id="wasteGradient" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="hsl(var(--destructive))" stopOpacity={0.3} />
+                            <stop offset="95%" stopColor="hsl(var(--destructive))" stopOpacity={0} />
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                        <XAxis dataKey="date" tick={{ fontSize: 11 }} className="fill-muted-foreground" />
+                        <YAxis tick={{ fontSize: 11 }} className="fill-muted-foreground" />
+                        <RechartsTooltip
+                          contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '6px' }}
+                          labelStyle={{ color: 'hsl(var(--foreground))' }}
+                          formatter={(value: any) => [`%${Number(value).toFixed(1)}`, 'Fire Oranı']}
+                        />
+                        <Area type="monotone" dataKey="wastePercent" stroke="hsl(var(--destructive))" fill="url(#wasteGradient)" strokeWidth={2} />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </div>
+                )}
+
+                {wasteStats.productRanking && wasteStats.productRanking.length > 0 && (
+                  <div className="mt-4">
+                    <p className="text-sm font-medium mb-2">En Yüksek Fireli Ürünler</p>
+                    <div className="space-y-2">
+                      {wasteStats.productRanking.slice(0, 5).map((p: any, i: number) => (
+                        <div key={i} className="flex items-center justify-between text-sm">
+                          <span className="text-muted-foreground">{p.name || `Ürün #${p.productId}`}</span>
+                          <div className="flex items-center gap-2">
+                            <Badge variant={Number(p.wastePercent) > 10 ? "destructive" : "secondary"}>
+                              %{Number(p.wastePercent).toFixed(1)}
+                            </Badge>
+                            <span className="text-xs text-muted-foreground">{p.batchCount} batch</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
           )}

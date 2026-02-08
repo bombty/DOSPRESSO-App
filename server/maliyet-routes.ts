@@ -30,7 +30,9 @@ import {
   insertProfitMarginTemplateSchema,
   insertProductCostCalculationSchema,
   insertProductPackagingItemSchema,
-  insertFactoryMachineSchema
+  insertFactoryMachineSchema,
+  factoryProductionBatches,
+  factoryWasteReasons
 } from "@shared/schema";
 import { eq, desc, and, gte, lte, sql, or, like, asc, isNotNull, inArray } from "drizzle-orm";
 
@@ -1140,6 +1142,7 @@ export function registerMaliyetRoutes(app: Express, isAuthenticated: AuthMiddlew
         .where(eq(productRecipeIngredients.recipeId, recipe.id));
       
       let totalRawMaterialCost = 0;
+      let totalIngredientWeightKg = 0;
       const isKeyblendRecipe = recipe.recipeType === "KEYBLEND";
       
       const processedIngredients = ingredients.map(ing => {
@@ -1153,6 +1156,13 @@ export function registerMaliyetRoutes(app: Express, isAuthenticated: AuthMiddlew
         
         const itemCost = qty * unitPrice;
         totalRawMaterialCost += itemCost;
+        
+        const unit = (ing.ingredient.unit || "kg").toLowerCase();
+        if (unit === "kg") totalIngredientWeightKg += qty;
+        else if (unit === "g") totalIngredientWeightKg += qty / 1000;
+        else if (unit === "lt" || unit === "l") totalIngredientWeightKg += qty;
+        else if (unit === "ml") totalIngredientWeightKg += qty / 1000;
+        else totalIngredientWeightKg += qty;
         
         // Sadece KEYBLEND tipi reçetelerde TÜM malzemeler gizlenir (formülasyonu korumak için)
         // Normal (OPEN) reçetelerde tüm içerik görünür - KB malzemeleri dahil
@@ -1219,6 +1229,33 @@ export function registerMaliyetRoutes(app: Express, isAuthenticated: AuthMiddlew
       const packagingItems = await db.select().from(productPackagingItems)
         .where(eq(productPackagingItems.productId, product.id));
       
+      const expectedUnitWeight = parseFloat(recipe.expectedUnitWeight || "0");
+      const expectedUnitWeightUnit = recipe.expectedUnitWeightUnit || "g";
+      const expectedOutputCount = recipe.expectedOutputCount || 0;
+      const wasteTolerancePercent = parseFloat(recipe.wasteTolerancePercent || "5");
+      
+      let calculatedTotalOutputKg = 0;
+      if (expectedUnitWeight > 0 && expectedOutputCount > 0) {
+        if (expectedUnitWeightUnit === "g") {
+          calculatedTotalOutputKg = (expectedUnitWeight * expectedOutputCount) / 1000;
+        } else if (expectedUnitWeightUnit === "ml") {
+          calculatedTotalOutputKg = (expectedUnitWeight * expectedOutputCount) / 1000;
+        } else if (expectedUnitWeightUnit === "kg" || expectedUnitWeightUnit === "lt") {
+          calculatedTotalOutputKg = expectedUnitWeight * expectedOutputCount;
+        } else {
+          calculatedTotalOutputKg = (expectedUnitWeight * expectedOutputCount) / 1000;
+        }
+      }
+      
+      const expectedWasteKg = totalIngredientWeightKg - calculatedTotalOutputKg;
+      const expectedWastePercent = totalIngredientWeightKg > 0 
+        ? (expectedWasteKg / totalIngredientWeightKg) * 100
+        : 0;
+      const wasteCostPerKg = totalIngredientWeightKg > 0 
+        ? totalRawMaterialCost / totalIngredientWeightKg 
+        : 0;
+      const expectedWasteCostTl = expectedWasteKg * wasteCostPerKg;
+
       res.json({
         product,
         recipe: {
@@ -1257,6 +1294,19 @@ export function registerMaliyetRoutes(app: Express, isAuthenticated: AuthMiddlew
           items: packagingItems,
           totalPackagingCost: packagingCost.toFixed(2)
         },
+        batchYield: {
+          totalIngredientWeightKg: totalIngredientWeightKg.toFixed(4),
+          expectedUnitWeight: expectedUnitWeight || null,
+          expectedUnitWeightUnit,
+          expectedOutputCount: expectedOutputCount || null,
+          calculatedTotalOutputKg: calculatedTotalOutputKg.toFixed(4),
+          expectedWasteKg: expectedWasteKg > 0 ? expectedWasteKg.toFixed(4) : "0",
+          expectedWastePercent: expectedWastePercent > 0 ? expectedWastePercent.toFixed(2) : "0",
+          expectedWasteCostTl: expectedWasteCostTl > 0 ? expectedWasteCostTl.toFixed(2) : "0",
+          wasteTolerancePercent: wasteTolerancePercent.toFixed(2),
+          wasteCostPerKg: wasteCostPerKg.toFixed(2),
+          isConfigured: expectedUnitWeight > 0 && expectedOutputCount > 0
+        },
         costs: {
           rawMaterialCost: totalRawMaterialCost.toFixed(2),
           laborCost: laborCost.toFixed(2),
@@ -1274,6 +1324,209 @@ export function registerMaliyetRoutes(app: Express, isAuthenticated: AuthMiddlew
     }
   });
   
+  // ========================================
+  // BATCH VERİM & FİRE AYARLARI
+  // ========================================
+  
+  app.patch("/api/product-recipes/:recipeId/batch-yield", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const recipeId = parseInt(req.params.recipeId);
+      const { expectedUnitWeight, expectedUnitWeightUnit, expectedOutputCount, wasteTolerancePercent } = req.body;
+      
+      const [updated] = await db.update(productRecipes)
+        .set({
+          expectedUnitWeight: expectedUnitWeight?.toString() || null,
+          expectedUnitWeightUnit: expectedUnitWeightUnit || "g",
+          expectedOutputCount: expectedOutputCount || null,
+          wasteTolerancePercent: wasteTolerancePercent?.toString() || "5",
+          updatedAt: new Date()
+        })
+        .where(eq(productRecipes.id, recipeId))
+        .returning();
+      
+      if (!updated) {
+        return res.status(404).json({ error: "Reçete bulunamadı" });
+      }
+      
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating batch yield settings:", error);
+      res.status(500).json({ error: "Batch verim ayarları güncellenemedi" });
+    }
+  });
+
+  // Fire istatistikleri - ürün bazlı
+  app.get("/api/waste-stats/product/:productId", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const productId = parseInt(req.params.productId);
+      const days = parseInt(req.query.days as string) || 30;
+      const since = new Date();
+      since.setDate(since.getDate() - days);
+      
+      const batches = await db.select()
+        .from(factoryProductionBatches)
+        .where(and(
+          eq(factoryProductionBatches.productId, productId),
+          eq(factoryProductionBatches.status, "completed"),
+          gte(factoryProductionBatches.createdAt, since)
+        ))
+        .orderBy(desc(factoryProductionBatches.createdAt));
+      
+      const totalBatches = batches.length;
+      let totalWasteKg = 0;
+      let totalInputKg = 0;
+      let totalOutputKg = 0;
+      let totalWasteCost = 0;
+      let overToleranceCount = 0;
+      
+      const batchDetails = batches.map(b => {
+        const wasteKg = parseFloat(b.wasteWeightKg || "0");
+        const inputKg = parseFloat(b.totalInputWeightKg || "0");
+        const outputKg = parseFloat(b.totalOutputWeightKg || "0");
+        const wasteCost = parseFloat(b.wasteCostTl || "0");
+        const actualWP = parseFloat(b.actualWastePercent || "0");
+        const expectedWP = parseFloat(b.expectedWastePercent || "0");
+        const deviation = parseFloat(b.wasteDeviationPercent || "0");
+        
+        totalWasteKg += wasteKg;
+        totalInputKg += inputKg;
+        totalOutputKg += outputKg;
+        totalWasteCost += wasteCost;
+        if (deviation > 0) overToleranceCount++;
+        
+        return {
+          id: b.id,
+          date: b.createdAt,
+          actualPieces: b.actualPieces,
+          wasteKg,
+          actualWastePercent: actualWP,
+          expectedWastePercent: expectedWP,
+          deviation,
+          wasteCost,
+          status: deviation > 0 ? "over" : deviation < -5 ? "under" : "normal"
+        };
+      });
+      
+      const avgWastePercent = totalInputKg > 0 ? (totalWasteKg / totalInputKg) * 100 : 0;
+      
+      res.json({
+        productId,
+        period: `${days} gün`,
+        totalBatches,
+        totalWasteKg: totalWasteKg.toFixed(2),
+        totalInputKg: totalInputKg.toFixed(2),
+        totalOutputKg: totalOutputKg.toFixed(2),
+        avgWastePercent: avgWastePercent.toFixed(2),
+        totalWasteCostTl: totalWasteCost.toFixed(2),
+        overToleranceCount,
+        overToleranceRate: totalBatches > 0 ? ((overToleranceCount / totalBatches) * 100).toFixed(1) : "0",
+        batches: batchDetails
+      });
+    } catch (error) {
+      console.error("Error fetching waste stats:", error);
+      res.status(500).json({ error: "Fire istatistikleri alınamadı" });
+    }
+  });
+
+  // Genel fire dashboard istatistikleri
+  app.get("/api/waste-stats/dashboard", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const days = parseInt(req.query.days as string) || 30;
+      const since = new Date();
+      since.setDate(since.getDate() - days);
+      
+      const batches = await db.select({
+        batch: factoryProductionBatches,
+        product: factoryProducts
+      })
+        .from(factoryProductionBatches)
+        .leftJoin(factoryProducts, eq(factoryProductionBatches.productId, factoryProducts.id))
+        .where(and(
+          eq(factoryProductionBatches.status, "completed"),
+          gte(factoryProductionBatches.createdAt, since)
+        ))
+        .orderBy(desc(factoryProductionBatches.createdAt));
+      
+      let totalWasteKg = 0;
+      let totalInputKg = 0;
+      let totalWasteCost = 0;
+      let overToleranceCount = 0;
+      const productStats: Record<number, { name: string; wasteKg: number; inputKg: number; wasteCost: number; batchCount: number; overTolerance: number }> = {};
+      
+      const dailyWaste: Record<string, { date: string; wasteKg: number; inputKg: number; wastePercent: number; batchCount: number }> = {};
+      
+      for (const { batch: b, product: p } of batches) {
+        const wasteKg = parseFloat(b.wasteWeightKg || "0");
+        const inputKg = parseFloat(b.totalInputWeightKg || "0");
+        const wasteCost = parseFloat(b.wasteCostTl || "0");
+        const deviation = parseFloat(b.wasteDeviationPercent || "0");
+        
+        totalWasteKg += wasteKg;
+        totalInputKg += inputKg;
+        totalWasteCost += wasteCost;
+        if (deviation > 0) overToleranceCount++;
+        
+        const pid = b.productId;
+        if (!productStats[pid]) {
+          productStats[pid] = { name: p?.name || "Bilinmeyen", wasteKg: 0, inputKg: 0, wasteCost: 0, batchCount: 0, overTolerance: 0 };
+        }
+        productStats[pid].wasteKg += wasteKg;
+        productStats[pid].inputKg += inputKg;
+        productStats[pid].wasteCost += wasteCost;
+        productStats[pid].batchCount++;
+        if (deviation > 0) productStats[pid].overTolerance++;
+        
+        const dateKey = b.createdAt ? new Date(b.createdAt).toISOString().split('T')[0] : '';
+        if (dateKey) {
+          if (!dailyWaste[dateKey]) {
+            dailyWaste[dateKey] = { date: dateKey, wasteKg: 0, inputKg: 0, wastePercent: 0, batchCount: 0 };
+          }
+          dailyWaste[dateKey].wasteKg += wasteKg;
+          dailyWaste[dateKey].inputKg += inputKg;
+          dailyWaste[dateKey].batchCount++;
+        }
+      }
+      
+      const avgWastePercent = totalInputKg > 0 ? (totalWasteKg / totalInputKg) * 100 : 0;
+      
+      const productRanking = Object.entries(productStats)
+        .map(([id, stats]) => ({
+          productId: parseInt(id),
+          name: stats.name,
+          wasteKg: stats.wasteKg.toFixed(2),
+          wastePercent: stats.inputKg > 0 ? ((stats.wasteKg / stats.inputKg) * 100).toFixed(2) : "0",
+          wasteCostTl: stats.wasteCost.toFixed(2),
+          batchCount: stats.batchCount,
+          overToleranceRate: stats.batchCount > 0 ? ((stats.overTolerance / stats.batchCount) * 100).toFixed(1) : "0"
+        }))
+        .sort((a, b) => parseFloat(b.wastePercent) - parseFloat(a.wastePercent));
+      
+      const trend = Object.values(dailyWaste)
+        .sort((a, b) => a.date.localeCompare(b.date))
+        .map(d => ({
+          ...d,
+          wastePercent: d.inputKg > 0 ? Number(((d.wasteKg / d.inputKg) * 100).toFixed(2)) : 0,
+          wasteKg: d.wasteKg.toFixed(2)
+        }));
+      
+      res.json({
+        period: `${days} gün`,
+        totalBatches: batches.length,
+        totalWasteKg: totalWasteKg.toFixed(2),
+        totalInputKg: totalInputKg.toFixed(2),
+        avgWastePercent: avgWastePercent.toFixed(2),
+        totalWasteCostTl: totalWasteCost.toFixed(2),
+        overToleranceCount,
+        overToleranceRate: batches.length > 0 ? ((overToleranceCount / batches.length) * 100).toFixed(1) : "0",
+        productRanking,
+        trend
+      });
+    } catch (error) {
+      console.error("Error fetching waste dashboard:", error);
+      res.status(500).json({ error: "Fire dashboard istatistikleri alınamadı" });
+    }
+  });
+
   // ========================================
   // MAL KABUL → HAMMADDE FİYAT GÜNCELLEMESİ
   // ========================================
