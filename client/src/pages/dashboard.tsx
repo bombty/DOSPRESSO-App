@@ -4,16 +4,16 @@ import { useLocation } from "wouter";
 import { useEffect, lazy, Suspense } from "react";
 import { isHQRole } from "@shared/schema";
 
-const FACTORY_ROLES = ['fabrika', 'fabrika_mudur', 'fabrika_operator'];
+// Sadece fabrika ZEMİN rolleri (operatör vb.) - fabrika_mudur ve fabrika HQ rolleridir
+const FACTORY_FLOOR_ROLES = ['fabrika_operator', 'fabrika_sorumlu', 'fabrika_personel'];
 
-// HQ roles that should see HQDashboard instead of CardGridHub
-// Bu liste SADECE departman rollerini içerir - admin buraya dahil DEĞİL
-// Admin CardGridHub'da mega modül kartlarını görür (tüm sistem yönetimi için)
+// HQ rolleri - HQ Dashboard (departman bazlı görünüm)
+// Admin buraya dahil DEĞİL - admin CardGridHub'ı görür
 const HQ_SPECIAL_DASHBOARD_ROLES = [
+  'ceo', 'cgo', 'yatirimci_hq',
   'trainer', 'coach', 'satinalma', 'muhasebe', 'muhasebe_ik', 
-  'teknik', 'destek', 'ceo', 'cgo', 'marketing', 
-  'kalite_kontrol', 'fabrika_mudur', 'yatirimci_hq'
-  // NOT: 'admin' buraya dahil DEĞİL - admin CardGridHub'ı görür
+  'teknik', 'destek', 'marketing', 'kalite_kontrol',
+  'fabrika_mudur', 'fabrika',
 ];
 
 // Lazy load HQDashboard for special roles
@@ -24,12 +24,12 @@ export default function Dashboard() {
   const [, setLocation] = useLocation();
 
   useEffect(() => {
-    if (user && FACTORY_ROLES.includes(user.role)) {
+    if (user && FACTORY_FLOOR_ROLES.includes(user.role)) {
       setLocation('/fabrika/dashboard');
     }
   }, [user, setLocation]);
 
-  if (user && FACTORY_ROLES.includes(user.role)) {
+  if (user && FACTORY_FLOOR_ROLES.includes(user.role)) {
     return null;
   }
 

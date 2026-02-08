@@ -1060,9 +1060,6 @@ function CGODashboard() {
 
   return (
     <div className="space-y-3">
-      {/* Hero Widget */}
-      <UnifiedHero />
-
       {/* Genel Performans + Departman Sağlık */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
         <Card>
