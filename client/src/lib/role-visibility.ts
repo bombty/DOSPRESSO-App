@@ -19,9 +19,9 @@ const HQ_ROLES: UserRole[] = [
   'fabrika_mudur', 'fabrika', 'yatirimci_hq', 'ekipman_teknik', 'ik'
 ];
 
-// HQ Non-CEO Rolleri (Modül kartları görebilenler)
-const HQ_NON_CEO_ROLES: UserRole[] = [
-  'admin', 'cgo',
+// HQ Modül Kartları Görebilenler (CEO dahil - tüm HQ)
+const HQ_MODULE_CARD_ROLES: UserRole[] = [
+  'ceo', 'cgo', 'admin',
   'muhasebe', 'muhasebe_ik', 'satinalma', 'marketing', 'pazarlama',
   'teknik', 'destek', 'trainer', 'coach', 'kalite_kontrol',
   'fabrika_mudur', 'fabrika', 'yatirimci_hq', 'ekipman_teknik', 'ik'
@@ -138,25 +138,25 @@ export const STATS_BY_ROLE: Record<UserRole, string[]> = {
 };
 
 export const NAV_ITEMS_BY_ROLE: Record<UserRole, string[]> = {
-  // Executive
-  ceo: ['home', 'reports', 'ai', 'profile'],
-  cgo: ['home', 'reports', 'ai', 'profile'],
-  admin: ['home', 'admin', 'profile'],
+  // Executive - CEO/CGO: Raporlar, CRM, AI (Akademi YOK)
+  ceo: ['home', 'reports', 'crm', 'ai', 'profile'],
+  cgo: ['home', 'reports', 'crm', 'ai', 'profile'],
+  admin: ['home', 'admin', 'crm', 'reports', 'profile'],
   // HQ Departments
   muhasebe: ['home', 'reports', 'crm', 'profile'],
-  muhasebe_ik: ['home', 'reports', 'hr', 'crm', 'profile'],
-  satinalma: ['home', 'crm', 'profile'],
-  marketing: ['home', 'reports', 'profile'],
-  pazarlama: ['home', 'reports', 'profile'],
-  ik: ['home', 'hr', 'crm', 'profile'],
-  teknik: ['home', 'equipment', 'crm', 'profile'],
+  muhasebe_ik: ['home', 'reports', 'crm', 'hr', 'profile'],
+  satinalma: ['home', 'reports', 'crm', 'profile'],
+  marketing: ['home', 'reports', 'crm', 'profile'],
+  pazarlama: ['home', 'reports', 'crm', 'profile'],
+  ik: ['home', 'hr', 'crm', 'reports', 'profile'],
+  teknik: ['home', 'equipment', 'crm', 'reports', 'profile'],
   destek: ['home', 'equipment', 'crm', 'profile'],
-  trainer: ['home', 'academy', 'crm', 'profile'],
-  coach: ['home', 'operations', 'crm', 'profile'],
-  kalite_kontrol: ['home', 'factory', 'crm', 'profile'],
+  trainer: ['home', 'academy', 'crm', 'reports', 'profile'],
+  coach: ['home', 'operations', 'crm', 'reports', 'profile'],
+  kalite_kontrol: ['home', 'factory', 'crm', 'reports', 'profile'],
   ekipman_teknik: ['home', 'equipment', 'crm', 'profile'],
-  fabrika: ['home', 'factory', 'profile'],
-  yatirimci_hq: ['home', 'reports', 'profile'],
+  fabrika: ['home', 'factory', 'crm', 'profile'],
+  yatirimci_hq: ['home', 'reports', 'crm', 'profile'],
   // Branch Roles
   supervisor: ['home', 'academy', 'crm', 'fault', 'profile'],
   supervisor_buddy: ['home', 'academy', 'crm', 'fault', 'profile'],
@@ -165,7 +165,7 @@ export const NAV_ITEMS_BY_ROLE: Record<UserRole, string[]> = {
   stajyer: ['home', 'academy', 'profile'],
   yatirimci_branch: ['home', 'reports', 'profile'],
   // Factory Roles
-  fabrika_mudur: ['home', 'factory', 'crm', 'profile'],
+  fabrika_mudur: ['home', 'factory', 'crm', 'reports', 'profile'],
   fabrika_sorumlu: ['home', 'factory', 'profile'],
   fabrika_personel: ['home', 'factory', 'profile'],
 };
@@ -193,8 +193,8 @@ export const WIDGET_VISIBILITY: Record<string, UserRole[]> = {
   // Hızlı giriş: TÜM roller görmeli
   'quick-actions': [...HQ_ROLES, ...BRANCH_ROLES, ...FACTORY_ROLES],
   
-  // Modül kartları: HQ ve supervisor'lar
-  'module-cards': [...HQ_NON_CEO_ROLES, 'supervisor', 'supervisor_buddy', 'fabrika_mudur'],
+  // Modül kartları: Tüm HQ (CEO dahil) ve supervisor'lar
+  'module-cards': [...HQ_MODULE_CARD_ROLES, 'supervisor', 'supervisor_buddy', 'fabrika_mudur'],
   
   // Aktivite zaman çizelgesi: HQ ve supervisor'lar
   'activity-timeline': [...HQ_ROLES, 'supervisor', 'supervisor_buddy'],

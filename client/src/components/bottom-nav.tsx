@@ -1,63 +1,110 @@
 import { useLocation, Link } from "wouter";
-import { Home, GraduationCap, Wrench, User, Headphones, Brain, BarChart3 } from "lucide-react";
+import { Home, GraduationCap, Wrench, User, Headphones, Brain, BarChart3, Factory, Settings, Building2, Users } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
-import { isHQRole } from "@shared/schema";
+import { NAV_ITEMS_BY_ROLE, UserRole } from "@/lib/role-visibility";
 
 interface NavItem {
   icon: any;
   label: string;
   path: string;
   badge?: number;
-  roles?: string[]; // If specified, only show for these roles
 }
 
+const NAV_ITEM_CONFIG: Record<string, { icon: any; label: string; getPath: (user: any) => string }> = {
+  home: {
+    icon: Home,
+    label: "Ana Sayfa",
+    getPath: () => "/",
+  },
+  academy: {
+    icon: GraduationCap,
+    label: "Akademi",
+    getPath: (user) => {
+      const hqRoles = ['ceo', 'cgo', 'admin', 'muhasebe', 'muhasebe_ik', 'satinalma', 'marketing', 'pazarlama', 'teknik', 'destek', 'trainer', 'coach', 'kalite_kontrol', 'fabrika_mudur', 'fabrika', 'yatirimci_hq', 'ekipman_teknik', 'ik'];
+      return hqRoles.includes(user?.role) ? "/akademi-hq" : "/akademi";
+    },
+  },
+  reports: {
+    icon: BarChart3,
+    label: "Raporlar",
+    getPath: () => "/raporlar",
+  },
+  crm: {
+    icon: Headphones,
+    label: "CRM",
+    getPath: (user) => {
+      if (!user) return "/crm";
+      switch (user.role) {
+        case 'coach': return "/crm/coach-branches";
+        case 'satinalma': return "/crm/tedarikciler";
+        case 'muhasebe': return "/crm/cari-takip";
+        case 'teknik':
+        case 'ekipman_teknik': return "/crm/teknik-ariza";
+        case 'trainer': return "/crm/dashboard";
+        default: return "/crm";
+      }
+    },
+  },
+  ai: {
+    icon: Brain,
+    label: "AI",
+    getPath: () => "/ceo-command-center",
+  },
+  admin: {
+    icon: Settings,
+    label: "Yönetim",
+    getPath: () => "/admin",
+  },
+  equipment: {
+    icon: Wrench,
+    label: "Ekipman",
+    getPath: () => "/ekipman",
+  },
+  factory: {
+    icon: Factory,
+    label: "Fabrika",
+    getPath: () => "/fabrika",
+  },
+  operations: {
+    icon: Building2,
+    label: "Operasyon",
+    getPath: () => "/operasyon",
+  },
+  hr: {
+    icon: Users,
+    label: "İK",
+    getPath: () => "/ik",
+  },
+  fault: {
+    icon: Wrench,
+    label: "Arıza",
+    getPath: () => "/ariza",
+  },
+  profile: {
+    icon: User,
+    label: "Profil",
+    getPath: (user) => user ? `/personel/${user.id}` : "/login",
+  },
+};
+
 export function BottomNav() {
-  const [location, setLocation] = useLocation();
+  const [location] = useLocation();
   const { user } = useAuth();
-  
-  const isHQ = user && isHQRole(user.role as any);
-  
-  const getCrmPath = () => {
-    if (!user) return "/crm";
-    const role = user.role;
-    
-    switch (role) {
-      case 'coach':
-        return "/crm/coach-branches";
-      case 'satinalma':
-        return "/crm/tedarikciler";
-      case 'muhasebe':
-        return "/crm/cari-takip";
-      case 'teknik':
-      case 'ekipman_teknik':
-        return "/crm/teknik-ariza";
-      case 'trainer':
-        return "/crm/dashboard";
-      default:
-        return "/crm";
-    }
-  };
-  
-  // Build nav items based on user role - all roles use "/" for dashboard
-  // HQ users get AI Control Tower instead of Arıza
-  // HQ için "CRM", şube/fabrika personeli için "Panelim" etiketi
-  const crmLabel = isHQ ? "CRM" : "Panelim";
-  
-  const allNavItems: NavItem[] = [
-    { icon: Home, label: "Ana Sayfa", path: "/" },
-    { icon: GraduationCap, label: "Akademi", path: isHQ ? "/akademi-hq" : "/akademi" },
-    // CRM - role göre dinamik yönlendirme ve etiket (HQ için CRM, şube/fabrika için Panelim)
-    { icon: Headphones, label: crmLabel, path: getCrmPath() },
-    isHQ 
-      ? (user?.role === 'ceo' || user?.role === 'admin')
-        ? { icon: Brain, label: "AI", path: "/ceo-command-center" }
-        : { icon: BarChart3, label: "Raporlar", path: "/raporlar" }
-      : { icon: Wrench, label: "Arıza", path: "/ariza" },
-    { icon: User, label: "Profil", path: user ? `/personel/${user.id}` : "/login" },
-  ];
-  
-  // Limit to 5 items max for bottom nav
-  const navItems = allNavItems.slice(0, 5);
+
+  const userRole = user?.role as UserRole | undefined;
+  const navKeys = userRole ? (NAV_ITEMS_BY_ROLE[userRole] || ['home', 'profile']) : ['home', 'profile'];
+
+  const navItems: NavItem[] = navKeys
+    .filter(key => NAV_ITEM_CONFIG[key])
+    .slice(0, 5)
+    .map(key => {
+      const config = NAV_ITEM_CONFIG[key];
+      return {
+        icon: config.icon,
+        label: config.label,
+        path: config.getPath(user),
+      };
+    });
 
   const isActive = (path: string) => {
     if (path === "/") return location === "/";

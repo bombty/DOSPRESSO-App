@@ -7,6 +7,7 @@ import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Link } from "wouter";
+import { UnifiedHero } from "@/components/widgets/unified-hero";
 import { 
   Factory, 
   Users, 
@@ -115,26 +116,18 @@ export default function FabrikaDashboard() {
 
   return (
     <div className="container mx-auto p-3 space-y-3">
-      <div className="flex items-center justify-between flex-wrap gap-2">
-        <div className="flex items-center gap-2">
-          <Factory className="h-4 w-4 text-amber-500" />
-          <div>
-            <h1 className="text-base font-semibold">Fabrika Dashboard</h1>
-            <p className="text-xs text-muted-foreground">Üretim takip ve performans izleme</p>
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={() => refetch()} data-testid="button-refresh">
-            <RefreshCw className="h-4 w-4 mr-2" />
-            Yenile
+      <UnifiedHero />
+
+      <div className="flex items-center gap-2 flex-wrap">
+        <Link href="/fabrika/kiosk">
+          <Button size="sm" variant="default" className="gap-1.5" data-testid="link-kiosk">
+            <Factory className="h-3.5 w-3.5" />
+            Kiosk
           </Button>
-          <Link href="/fabrika/kiosk">
-            <Button className="bg-amber-600 hover:bg-amber-700" data-testid="link-kiosk">
-              <ExternalLink className="h-4 w-4 mr-2" />
-              Kiosk Modu
-            </Button>
-          </Link>
-        </div>
+        </Link>
+        <Button variant="outline" size="sm" onClick={() => refetch()} data-testid="button-refresh">
+          <RefreshCw className="h-3.5 w-3.5" />
+        </Button>
       </div>
 
       {loadingStats ? (
@@ -481,57 +474,6 @@ export default function FabrikaDashboard() {
             </Card>
           </div>
 
-          <Card>
-            <CardHeader className="pb-1 pt-3 px-3">
-              <CardTitle className="text-xs">Hızlı Erişim</CardTitle>
-            </CardHeader>
-            <CardContent className="px-3 pb-3">
-              <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-7 gap-2">
-                <Link href="/fabrika/kiosk">
-                  <Button variant="outline" className="w-full h-auto p-2 flex flex-col items-center gap-1" data-testid="link-kiosk-quick">
-                    <Factory className="h-4 w-4 text-amber-500" />
-                    <span className="text-xs">Kiosk</span>
-                  </Button>
-                </Link>
-                <Link href="/fabrika/kalite-kontrol">
-                  <Button variant="outline" className="w-full h-auto p-2 flex flex-col items-center gap-1" data-testid="link-quality-control">
-                    <ClipboardCheck className="h-4 w-4 text-emerald-500" />
-                    <span className="text-xs">Kalite</span>
-                  </Button>
-                </Link>
-                <Link href="/fabrika/performans">
-                  <Button variant="outline" className="w-full h-auto p-2 flex flex-col items-center gap-1" data-testid="link-performance">
-                    <BarChart3 className="h-4 w-4 text-purple-500" />
-                    <span className="text-xs">Performans</span>
-                  </Button>
-                </Link>
-                <Link href="/fabrika/vardiya-planlama">
-                  <Button variant="outline" className="w-full h-auto p-2 flex flex-col items-center gap-1" data-testid="link-shift-planning">
-                    <Clock className="h-4 w-4 text-indigo-500" />
-                    <span className="text-xs">Vardiya</span>
-                  </Button>
-                </Link>
-                <Link href="/fabrika/uretim-planlama">
-                  <Button variant="outline" className="w-full h-auto p-2 flex flex-col items-center gap-1" data-testid="link-factory">
-                    <Package className="h-4 w-4 text-blue-500" />
-                    <span className="text-xs">Üretim</span>
-                  </Button>
-                </Link>
-                <Link href="/fabrika/ai-raporlar">
-                  <Button variant="outline" className="w-full h-auto p-2 flex flex-col items-center gap-1" data-testid="link-reports">
-                    <TrendingUp className="h-4 w-4 text-purple-500" />
-                    <span className="text-xs">AI Rapor</span>
-                  </Button>
-                </Link>
-                <Link href="/ik">
-                  <Button variant="outline" className="w-full h-auto p-2 flex flex-col items-center gap-1" data-testid="link-hr">
-                    <Users className="h-4 w-4 text-green-500" />
-                    <span className="text-xs">İK</span>
-                  </Button>
-                </Link>
-              </div>
-            </CardContent>
-          </Card>
         </>
       ) : (
         <Card>

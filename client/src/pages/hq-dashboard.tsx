@@ -264,27 +264,27 @@ function SatinalmaDashboard() {
       </div>
 
       <Card data-testid="card-moq-optimizer">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm flex items-center gap-2">
-            <Target className="w-4 h-4" />
+        <CardHeader className="pb-1 pt-3 px-3">
+          <CardTitle className="text-xs flex items-center gap-1.5">
+            <Target className="w-3.5 h-3.5" />
             MOQ Optimizasyonu Önerileri
           </CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="space-y-3">
-            <div className="flex items-center justify-between p-3 rounded-lg bg-green-500/10">
+        <CardContent className="px-3 pb-3">
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between p-2 rounded-lg bg-green-500/10">
               <div>
-                <p className="font-medium">Kahve Çekirdeği Toplu Alım</p>
-                <p className="text-sm text-muted-foreground">500kg siparişle %12 indirim</p>
+                <p className="text-xs font-medium">Kahve Çekirdeği Toplu Alım</p>
+                <p className="text-[10px] text-muted-foreground">500kg siparişle %12 indirim</p>
               </div>
-              <Badge variant="default">₺18,000 tasarruf</Badge>
+              <Badge variant="default" className="text-[10px]">₺18,000 tasarruf</Badge>
             </div>
-            <div className="flex items-center justify-between p-3 rounded-lg bg-blue-500/10">
+            <div className="flex items-center justify-between p-2 rounded-lg bg-blue-500/10">
               <div>
-                <p className="font-medium">Süt Sözleşme Yenileme</p>
-                <p className="text-sm text-muted-foreground">6 aylık anlaşma önerisi</p>
+                <p className="text-xs font-medium">Süt Sözleşme Yenileme</p>
+                <p className="text-[10px] text-muted-foreground">6 aylık anlaşma önerisi</p>
               </div>
-              <Badge variant="secondary">%5 fiyat sabitleme</Badge>
+              <Badge variant="secondary" className="text-[10px]">%5 fiyat sabitleme</Badge>
             </div>
           </div>
         </CardContent>
@@ -378,21 +378,21 @@ function FabrikaDashboard() {
       </div>
 
       <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm flex items-center gap-2">
-            <AlertTriangle className="w-4 h-4" />
+        <CardHeader className="pb-1 pt-3 px-3">
+          <CardTitle className="text-xs flex items-center gap-1.5">
+            <AlertTriangle className="w-3.5 h-3.5" />
             Reçete Sapma Uyarıları
           </CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="px-3 pb-3">
           <div className="space-y-2">
             <div className="flex items-center justify-between p-2 rounded-lg bg-yellow-500/10">
-              <span className="text-sm">Espresso Blend - Su oranı +2%</span>
-              <Badge variant="secondary">Düşük Risk</Badge>
+              <span className="text-xs">Espresso Blend - Su oranı +2%</span>
+              <Badge variant="secondary" className="text-[10px]">Düşük Risk</Badge>
             </div>
             <div className="flex items-center justify-between p-2 rounded-lg bg-green-500/10">
-              <span className="text-sm">Cold Brew - Tüm parametreler normal</span>
-              <Badge variant="default">OK</Badge>
+              <span className="text-xs">Cold Brew - Tüm parametreler normal</span>
+              <Badge variant="default" className="text-[10px]">OK</Badge>
             </div>
           </div>
         </CardContent>
@@ -610,19 +610,19 @@ function CoachDashboard() {
           onClick={() => setLocation('/operasyon/subeler')}
           data-testid="card-branch-scores"
         >
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm flex items-center gap-2">
-              <Building2 className="w-4 h-4" />
+          <CardHeader className="pb-1 pt-3 px-3">
+            <CardTitle className="text-xs flex items-center gap-1.5">
+              <Building2 className="w-3.5 h-3.5" />
               Şube Sağlık Skorları
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
+          <CardContent className="px-3 pb-3">
+            <div className="space-y-2">
               {branchScores.map((branch, index) => (
                 <div key={index} className="flex items-center gap-3">
-                  <span className="text-sm w-24">{branch.name}</span>
+                  <span className="text-xs w-24">{branch.name}</span>
                   <Progress value={branch.score * 20} className="flex-1" />
-                  <Badge variant={getRiskBadgeVariant(branch.status as RiskStatus)}>
+                  <Badge variant={getRiskBadgeVariant(branch.status as RiskStatus)} className="text-[10px]">
                     {branch.score}
                   </Badge>
                 </div>
@@ -639,21 +639,21 @@ function CoachDashboard() {
         onClick={() => setLocation('/raporlar/ai-asistan')}
         data-testid="card-recommendations"
       >
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm flex items-center gap-2">
-            <Target className="w-4 h-4" />
+        <CardHeader className="pb-1 pt-3 px-3">
+          <CardTitle className="text-xs flex items-center gap-1.5">
+            <Target className="w-3.5 h-3.5" />
             En İyi Uygulama Önerileri
           </CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="px-3 pb-3">
           <div className="space-y-2">
             <div className="flex items-center justify-between p-2 rounded-lg bg-blue-500/10">
-              <span className="text-sm">Forum şubesinin açılış rutinini tüm şubelere uygula</span>
-              <Badge>Öneri</Badge>
+              <span className="text-xs">Forum şubesinin açılış rutinini tüm şubelere uygula</span>
+              <Badge className="text-[10px]">Öneri</Badge>
             </div>
             <div className="flex items-center justify-between p-2 rounded-lg bg-green-500/10">
-              <span className="text-sm">Merkez şubesinin müşteri karşılama sistemi referans alındı</span>
-              <Badge variant="default">Aktif</Badge>
+              <span className="text-xs">Merkez şubesinin müşteri karşılama sistemi referans alındı</span>
+              <Badge variant="default" className="text-[10px]">Aktif</Badge>
             </div>
           </div>
         </CardContent>
@@ -719,13 +719,13 @@ function MarketingDashboard() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
         <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm flex items-center gap-2">
-              <PieChart className="w-4 h-4" />
+          <CardHeader className="pb-1 pt-3 px-3">
+            <CardTitle className="text-xs flex items-center gap-1.5">
+              <PieChart className="w-3.5 h-3.5" />
               Kampanya ROI Karşılaştırma
             </CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="px-3 pb-3">
             <ResponsiveContainer width="100%" height={200}>
               <BarChart data={campaignData} layout="vertical">
                 <CartesianGrid strokeDasharray="3 3" />
@@ -742,22 +742,22 @@ function MarketingDashboard() {
       </div>
 
       <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm flex items-center gap-2">
-            <Share2 className="w-4 h-4" />
+        <CardHeader className="pb-1 pt-3 px-3">
+          <CardTitle className="text-xs flex items-center gap-1.5">
+            <Share2 className="w-3.5 h-3.5" />
             Trend Radar
           </CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="px-3 pb-3">
           <div className="grid grid-cols-2 gap-2">
             <div className="p-2 rounded-lg bg-green-500/10">
               <p className="text-xs text-muted-foreground">Yükselen</p>
-              <p className="font-medium">Cold Brew</p>
+              <p className="text-xs font-medium">Cold Brew</p>
               <p className="text-xs text-green-600">+45% arama</p>
             </div>
             <div className="p-2 rounded-lg bg-blue-500/10">
               <p className="text-xs text-muted-foreground">Popüler</p>
-              <p className="font-medium">Oat Milk</p>
+              <p className="text-xs font-medium">Oat Milk</p>
               <p className="text-xs text-blue-600">Sabit talep</p>
             </div>
           </div>
@@ -826,19 +826,19 @@ function TrainerDashboard() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
         <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm flex items-center gap-2">
-              <BarChart3 className="w-4 h-4" />
+          <CardHeader className="pb-1 pt-3 px-3">
+            <CardTitle className="text-xs flex items-center gap-1.5">
+              <BarChart3 className="w-3.5 h-3.5" />
               Ortalama Yetkinlik Haritası
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
+          <CardContent className="px-3 pb-3">
+            <div className="space-y-2">
               {skillData.map((skill, index) => (
                 <div key={index} className="flex items-center gap-3">
-                  <span className="text-sm w-32">{skill.name}</span>
+                  <span className="text-xs w-32">{skill.name}</span>
                   <Progress value={skill.level} className="flex-1" />
-                  <span className="text-sm text-muted-foreground w-12">{skill.level}%</span>
+                  <span className="text-[10px] text-muted-foreground w-12">{skill.level}%</span>
                 </div>
               ))}
             </div>
@@ -849,21 +849,21 @@ function TrainerDashboard() {
       </div>
 
       <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm flex items-center gap-2">
-            <Target className="w-4 h-4" />
+        <CardHeader className="pb-1 pt-3 px-3">
+          <CardTitle className="text-xs flex items-center gap-1.5">
+            <Target className="w-3.5 h-3.5" />
             Eğitim → Performans Bağlantısı
           </CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="px-3 pb-3">
           <div className="space-y-2">
             <div className="flex items-center justify-between p-2 rounded-lg bg-green-500/10">
-              <span className="text-sm">Latte Art eğitimi alan personelde satış +23%</span>
-              <Badge variant="default">Güçlü Korelasyon</Badge>
+              <span className="text-xs">Latte Art eğitimi alan personelde satış +23%</span>
+              <Badge variant="default" className="text-[10px]">Güçlü Korelasyon</Badge>
             </div>
             <div className="flex items-center justify-between p-2 rounded-lg bg-blue-500/10">
-              <span className="text-sm">Müşteri ilişkileri eğitimi → NPS +12 puan</span>
-              <Badge>Pozitif</Badge>
+              <span className="text-xs">Müşteri ilişkileri eğitimi → NPS +12 puan</span>
+              <Badge className="text-[10px]">Pozitif</Badge>
             </div>
           </div>
         </CardContent>
@@ -930,13 +930,13 @@ function KaliteDashboard() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
         <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm flex items-center gap-2">
-              <LineChart className="w-4 h-4" />
+          <CardHeader className="pb-1 pt-3 px-3">
+            <CardTitle className="text-xs flex items-center gap-1.5">
+              <LineChart className="w-3.5 h-3.5" />
               Kalite Skoru Trendi
             </CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="px-3 pb-3">
             <ResponsiveContainer width="100%" height={200}>
               <AreaChart data={qualityTrend}>
                 <CartesianGrid strokeDasharray="3 3" />
@@ -953,27 +953,27 @@ function KaliteDashboard() {
       </div>
 
       <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm flex items-center gap-2">
-            <MessageSquare className="w-4 h-4" />
+        <CardHeader className="pb-1 pt-3 px-3">
+          <CardTitle className="text-xs flex items-center gap-1.5">
+            <MessageSquare className="w-3.5 h-3.5" />
             Son Müşteri Geri Bildirimleri
           </CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="px-3 pb-3">
           <div className="space-y-2">
             <div className="flex items-center justify-between p-2 rounded-lg bg-green-500/10">
               <div className="flex items-center gap-2">
-                <ThumbsUp className="w-4 h-4 text-green-500" />
-                <span className="text-sm">"Harika kahve, çok lezzetli!"</span>
+                <ThumbsUp className="w-3.5 h-3.5 text-green-500" />
+                <span className="text-xs">"Harika kahve, çok lezzetli!"</span>
               </div>
-              <span className="text-xs text-muted-foreground">Forum Şubesi</span>
+              <span className="text-[10px] text-muted-foreground">Forum Şubesi</span>
             </div>
             <div className="flex items-center justify-between p-2 rounded-lg bg-red-500/10">
               <div className="flex items-center gap-2">
-                <ThumbsDown className="w-4 h-4 text-red-500" />
-                <span className="text-sm">"Servis yavaştı"</span>
+                <ThumbsDown className="w-3.5 h-3.5 text-red-500" />
+                <span className="text-xs">"Servis yavaştı"</span>
               </div>
-              <span className="text-xs text-muted-foreground">İbni Sina</span>
+              <span className="text-[10px] text-muted-foreground">İbni Sina</span>
             </div>
           </div>
         </CardContent>
@@ -1252,20 +1252,12 @@ export default function HQDashboard() {
 
   const DepartmentComponent = roleToDashboard[userRole] || CGODashboard;
 
-  if (isCGO) {
-    return (
-      <div className="container mx-auto p-4 max-w-7xl">
-        <DepartmentComponent />
-      </div>
-    );
-  }
-
   return (
-    <div className="container mx-auto p-4 max-w-7xl space-y-4">
+    <div className="container mx-auto p-3 max-w-7xl space-y-3">
       <UnifiedHero />
-      <CriticalAlerts />
-      <ModuleCardsGrid />
+      {!isCGO && <CriticalAlerts />}
       <DepartmentComponent />
+      <ModuleCardsGrid />
     </div>
   );
 }

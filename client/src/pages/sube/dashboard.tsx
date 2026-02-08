@@ -12,6 +12,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { Link, useLocation } from "wouter";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { UnifiedHero } from "@/components/widgets/unified-hero";
 import { 
   Users, 
   Clock, 
@@ -321,47 +322,29 @@ export default function SubeDashboard() {
         </div>
       )}
 
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
-          <div className="p-2 rounded-full bg-amber-100 dark:bg-amber-900">
-            <Coffee className="h-4 w-4 text-amber-600" />
-          </div>
-          <div>
-            <h1 className="text-base font-semibold">Şube Dashboard</h1>
-            <p className="text-xs text-muted-foreground">{dashboardData?.branch?.name || 'Yükleniyor...'}</p>
-          </div>
-        </div>
-        <div className="flex items-center gap-2 flex-wrap">
-          <Link href="/sube/kiosk">
-            <Button variant="default" className="gap-2" data-testid="button-kiosk-mode">
-              <Monitor className="h-3.5 w-3.5" />
-              Kiosk Modu
-            </Button>
-          </Link>
-          <Link href="/qr-scanner">
-            <Button variant="outline" className="gap-2" data-testid="button-qr-view">
-              <QrCode className="h-3.5 w-3.5" />
-              QR Kod
-            </Button>
-          </Link>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => { refetch(); refetchActive(); }}
-            data-testid="button-refresh"
-          >
-            <RefreshCw className="h-3.5 w-3.5 mr-2" />
-            Yenile
+      <UnifiedHero />
+
+      <div className="flex items-center gap-2 flex-wrap">
+        <Link href="/sube/kiosk">
+          <Button size="sm" variant="default" className="gap-1.5" data-testid="button-kiosk-mode">
+            <Monitor className="h-3.5 w-3.5" />
+            Kiosk
           </Button>
-          <Badge 
-            variant={autoRefresh ? "default" : "secondary"} 
-            className="cursor-pointer text-[10px]"
-            onClick={() => setAutoRefresh(!autoRefresh)}
-            data-testid="badge-auto-refresh"
-          >
-            {autoRefresh ? "Otomatik yenileme açık" : "Otomatik yenileme kapalı"}
-          </Badge>
-        </div>
+        </Link>
+        <Link href="/qr-scanner">
+          <Button size="sm" variant="outline" className="gap-1.5" data-testid="button-qr-view">
+            <QrCode className="h-3.5 w-3.5" />
+            QR
+          </Button>
+        </Link>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => { refetch(); refetchActive(); }}
+          data-testid="button-refresh"
+        >
+          <RefreshCw className="h-3.5 w-3.5" />
+        </Button>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
