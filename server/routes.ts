@@ -27184,7 +27184,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`
   });
 
   // Fabrika personeli listesi (PIN ile giriş için)
-  app.get('/api/factory/staff', async (req, res) => {
+  app.get('/api/factory/staff', isAuthenticated, async (req, res) => {
     try {
       // Get users with factory role or factory branch
       const factoryStaff = await db.select({
@@ -27200,6 +27200,9 @@ DOSPRESSO İnsan Kaynakları Ekibi`
             eq(users.role, 'fabrika'),
             eq(users.role, 'fabrika_mudur'),
             eq(users.role, 'fabrika_operator'),
+            eq(users.role, 'fabrika_supervisor'),
+            eq(users.role, 'admin'),
+            eq(users.role, 'supervisor'),
           )
         ))
         .orderBy(users.firstName);

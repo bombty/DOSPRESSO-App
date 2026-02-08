@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
@@ -35,6 +35,7 @@ import {
 
 const SHIFT_TYPES = [
   { value: "sabah", label: "Sabah", time: "06:00 - 14:00", color: "bg-amber-500" },
+  { value: "ogle", label: "Öğle", time: "10:00 - 18:00", color: "bg-orange-500" },
   { value: "aksam", label: "Akşam", time: "14:00 - 22:00", color: "bg-blue-500" },
   { value: "gece", label: "Gece", time: "22:00 - 06:00", color: "bg-indigo-700" },
 ];
@@ -68,7 +69,7 @@ export default function FabrikaVardiyaPlanlama() {
   const [isSpecDialogOpen, setIsSpecDialogOpen] = useState(false);
   const [editingShift, setEditingShift] = useState<any>(null);
   const [editingSpec, setEditingSpec] = useState<any>(null);
-  const [selectedShift, setSelectedShift] = useState<any>(null);
+  const [selectedShiftId, setSelectedShiftId] = useState<number | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
 
   // Shift form state
@@ -125,6 +126,11 @@ export default function FabrikaVardiyaPlanlama() {
     queryKey: ["/api/factory/staff"],
   });
 
+  const selectedShift = useMemo(() => {
+    if (!selectedShiftId) return null;
+    return shifts.find((s: any) => s.id === selectedShiftId) || null;
+  }, [selectedShiftId, shifts]);
+
   const createShiftMutation = useMutation({
     mutationFn: async (data: any) => {
       const res = await apiRequest("POST", "/api/factory-shifts", data);
@@ -135,6 +141,21 @@ export default function FabrikaVardiyaPlanlama() {
       setIsShiftDialogOpen(false);
       resetShiftForm();
       toast({ title: "Vardiya oluşturuldu" });
+    },
+    onError: (e: any) => toast({ title: "Hata", description: e.message, variant: "destructive" }),
+  });
+
+  const updateShiftMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: number; data: any }) => {
+      const res = await apiRequest("PUT", `/api/factory-shifts/${id}`, data);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/factory-shifts"] });
+      setIsShiftDialogOpen(false);
+      setEditingShift(null);
+      resetShiftForm();
+      toast({ title: "Vardiya güncellendi" });
     },
     onError: (e: any) => toast({ title: "Hata", description: e.message, variant: "destructive" }),
   });
@@ -256,14 +277,35 @@ export default function FabrikaVardiyaPlanlama() {
   }
 
   function handleCreateShift() {
-    createShiftMutation.mutate({
+    const data = {
       shiftDate,
       shiftType,
       startTime: shiftStartTime,
       endTime: shiftEndTime,
       notes: shiftNotes || null,
       status: "planned",
-    });
+    };
+    if (editingShift) {
+      updateShiftMutation.mutate({ id: editingShift.id, data });
+    } else {
+      createShiftMutation.mutate(data);
+    }
+  }
+
+  function openEditShift(shift: any) {
+    setEditingShift(shift);
+    setShiftDate(shift.shiftDate);
+    setShiftType(shift.shiftType);
+    setShiftStartTime(shift.startTime);
+    setShiftEndTime(shift.endTime);
+    setShiftNotes(shift.notes || "");
+    setIsShiftDialogOpen(true);
+  }
+
+  function parseMachineId(val: string): number | null {
+    if (!val || val === "none") return null;
+    const n = parseInt(val);
+    return isNaN(n) ? null : n;
   }
 
   function handleAddWorker() {
@@ -272,7 +314,7 @@ export default function FabrikaVardiyaPlanlama() {
       shiftId: selectedShift.id,
       data: {
         userId: assignUserId,
-        machineId: assignMachineId ? parseInt(assignMachineId) : null,
+        machineId: parseMachineId(assignMachineId),
         role: assignRole,
       },
     });
@@ -280,15 +322,16 @@ export default function FabrikaVardiyaPlanlama() {
 
   function handleAddProduction() {
     if (!selectedShift || !prodProductId) return;
+    const machineId = parseMachineId(prodMachineId);
     const matchingSpec = batchSpecs.find((s: any) =>
       s.productId === parseInt(prodProductId) &&
-      (!prodMachineId || s.machineId === parseInt(prodMachineId))
+      (!machineId || s.machineId === machineId)
     );
     addProductionMutation.mutate({
       shiftId: selectedShift.id,
       data: {
         productId: parseInt(prodProductId),
-        machineId: prodMachineId ? parseInt(prodMachineId) : null,
+        machineId,
         batchSpecId: matchingSpec?.id || null,
         plannedBatchCount: parseInt(prodBatchCount) || 1,
       },
@@ -298,7 +341,7 @@ export default function FabrikaVardiyaPlanlama() {
   function handleCreateSpec() {
     createSpecMutation.mutate({
       productId: parseInt(specProductId),
-      machineId: specMachineId ? parseInt(specMachineId) : null,
+      machineId: parseMachineId(specMachineId),
       batchWeightKg: specWeightKg,
       expectedPieces: parseInt(specPieces),
       pieceWeightGrams: specPieceWeight || null,
@@ -320,7 +363,7 @@ export default function FabrikaVardiyaPlanlama() {
   }
 
   function openShiftDetail(shift: any) {
-    setSelectedShift(shift);
+    setSelectedShiftId(shift.id);
     setIsDetailOpen(true);
   }
 
@@ -383,7 +426,8 @@ export default function FabrikaVardiyaPlanlama() {
             </Button>
           </div>
 
-          <div className="grid grid-cols-7 gap-2">
+          <div className="overflow-x-auto -mx-4 px-4 pb-2">
+          <div className="grid grid-cols-7 gap-2 min-w-[700px]">
             {weekDates.map((date, idx) => {
               const dateStr = formatDate(date);
               const dayShifts = getShiftsForDate(dateStr);
@@ -436,6 +480,7 @@ export default function FabrikaVardiyaPlanlama() {
                 </div>
               );
             })}
+          </div>
           </div>
         </TabsContent>
 
@@ -510,11 +555,11 @@ export default function FabrikaVardiyaPlanlama() {
         </TabsContent>
       </Tabs>
 
-      {/* CREATE SHIFT DIALOG */}
-      <Dialog open={isShiftDialogOpen} onOpenChange={setIsShiftDialogOpen}>
+      {/* CREATE/EDIT SHIFT DIALOG */}
+      <Dialog open={isShiftDialogOpen} onOpenChange={(open) => { setIsShiftDialogOpen(open); if (!open) setEditingShift(null); }}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Vardiya Oluştur</DialogTitle>
+            <DialogTitle>{editingShift ? "Vardiya Düzenle" : "Vardiya Oluştur"}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
@@ -548,15 +593,15 @@ export default function FabrikaVardiyaPlanlama() {
               <Label>Notlar</Label>
               <Textarea value={shiftNotes} onChange={e => setShiftNotes(e.target.value)} placeholder="Opsiyonel notlar..." data-testid="input-shift-notes" />
             </div>
-            <Button className="w-full" onClick={handleCreateShift} disabled={!shiftDate || createShiftMutation.isPending} data-testid="btn-submit-shift">
-              {createShiftMutation.isPending ? "Kaydediliyor..." : "Vardiya Oluştur"}
+            <Button className="w-full" onClick={handleCreateShift} disabled={!shiftDate || createShiftMutation.isPending || updateShiftMutation.isPending} data-testid="btn-submit-shift">
+              {(createShiftMutation.isPending || updateShiftMutation.isPending) ? "Kaydediliyor..." : (editingShift ? "Güncelle" : "Vardiya Oluştur")}
             </Button>
           </div>
         </DialogContent>
       </Dialog>
 
       {/* SHIFT DETAIL DIALOG */}
-      <Dialog open={isDetailOpen} onOpenChange={setIsDetailOpen}>
+      <Dialog open={isDetailOpen} onOpenChange={(open) => { setIsDetailOpen(open); if (!open) setSelectedShiftId(null); }}>
         <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
           {selectedShift && (
             <>
@@ -593,7 +638,9 @@ export default function FabrikaVardiyaPlanlama() {
                             <SelectValue placeholder="Personel seçin..." />
                           </SelectTrigger>
                           <SelectContent>
-                            {staffList.map((s: any) => (
+                            {staffList
+                              .filter((s: any) => !selectedShift?.workers?.some((w: any) => w.userId === s.id))
+                              .map((s: any) => (
                               <SelectItem key={s.id} value={s.id}>{s.firstName} {s.lastName}</SelectItem>
                             ))}
                           </SelectContent>
@@ -762,8 +809,17 @@ export default function FabrikaVardiyaPlanlama() {
               <Separator className="my-2" />
               <div className="flex justify-end gap-2">
                 <Button variant="outline" onClick={() => {
+                  setIsDetailOpen(false);
+                  setSelectedShiftId(null);
+                  openEditShift(selectedShift);
+                }} data-testid="btn-edit-shift">
+                  <Edit className="h-4 w-4 mr-1" />
+                  Düzenle
+                </Button>
+                <Button variant="outline" onClick={() => {
                   deleteShiftMutation.mutate(selectedShift.id);
                   setIsDetailOpen(false);
+                  setSelectedShiftId(null);
                 }} data-testid="btn-delete-shift">
                   <Trash2 className="h-4 w-4 mr-1" />
                   Vardiyayı Sil

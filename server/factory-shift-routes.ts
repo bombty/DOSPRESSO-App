@@ -158,6 +158,17 @@ export function registerFactoryShiftRoutes(app: Express) {
     try {
       const shiftId = parseInt(req.params.shiftId);
       const { userId, machineId, role, notes } = req.body;
+
+      const existing = await db.select({ id: factoryShiftWorkers.id })
+        .from(factoryShiftWorkers)
+        .where(and(
+          eq(factoryShiftWorkers.shiftId, shiftId),
+          eq(factoryShiftWorkers.userId, userId),
+        ));
+      if (existing.length > 0) {
+        return res.status(400).json({ error: "Bu çalışan zaten bu vardiyaya atanmış" });
+      }
+
       const [worker] = await db.insert(factoryShiftWorkers).values({
         shiftId,
         userId,
