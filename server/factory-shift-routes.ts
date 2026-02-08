@@ -30,7 +30,7 @@ const isAuthenticated = (req: any, res: Response, next: any) => {
   next();
 };
 
-const FACTORY_ROLES = ["admin", "fabrika_mudur", "fabrika_operator", "fabrika_supervisor", "supervisor"];
+const FACTORY_ROLES = ["admin", "ceo", "cgo", "fabrika_mudur", "fabrika_operator", "fabrika_supervisor", "supervisor", "kalite_kontrol"];
 
 const isFactoryUser = (req: any, res: Response, next: any) => {
   if (!req.isAuthenticated || !req.isAuthenticated()) {
