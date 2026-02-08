@@ -27201,8 +27201,6 @@ DOSPRESSO İnsan Kaynakları Ekibi`
             eq(users.role, 'fabrika_mudur'),
             eq(users.role, 'fabrika_operator'),
             eq(users.role, 'fabrika_supervisor'),
-            eq(users.role, 'admin'),
-            eq(users.role, 'supervisor'),
           )
         ))
         .orderBy(users.firstName);
