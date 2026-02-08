@@ -93,10 +93,15 @@ export default function FabrikaVardiyaPlanlama() {
   const [specProductId, setSpecProductId] = useState("");
   const [specMachineId, setSpecMachineId] = useState("");
   const [specWeightKg, setSpecWeightKg] = useState("");
+  const [specWeightUnit, setSpecWeightUnit] = useState("kg");
   const [specPieces, setSpecPieces] = useState("");
   const [specPieceWeight, setSpecPieceWeight] = useState("");
+  const [specPieceWeightUnit, setSpecPieceWeightUnit] = useState("g");
   const [specDuration, setSpecDuration] = useState("");
   const [specDescription, setSpecDescription] = useState("");
+  const [specRecipeId, setSpecRecipeId] = useState<number | null>(null);
+  const [recipeInfo, setRecipeInfo] = useState<any>(null);
+  const [loadingRecipe, setLoadingRecipe] = useState(false);
 
   const weekDates = useMemo(() => getWeekDates(weekOffset), [weekOffset]);
   const startDate = formatDate(weekDates[0]);
@@ -130,6 +135,46 @@ export default function FabrikaVardiyaPlanlama() {
     if (!selectedShiftId) return null;
     return shifts.find((s: any) => s.id === selectedShiftId) || null;
   }, [selectedShiftId, shifts]);
+
+  useEffect(() => {
+    if (!specProductId || editingSpec) {
+      if (!specProductId) {
+        setRecipeInfo(null);
+        setSpecRecipeId(null);
+        setSpecWeightUnit("kg");
+        setSpecPieceWeightUnit("g");
+      }
+      return;
+    }
+    setLoadingRecipe(true);
+    fetch(`/api/factory-products/${specProductId}/recipe-info`)
+      .then(r => r.json())
+      .then(info => {
+        setRecipeInfo(info);
+        if (info.hasRecipe) {
+          setSpecRecipeId(info.recipeId);
+          if (info.batchWeight) setSpecWeightKg(info.batchWeight.toString());
+          if (info.batchWeightUnit) setSpecWeightUnit(info.batchWeightUnit);
+          if (info.outputCount) setSpecPieces(info.outputCount.toString());
+          if (info.expectedUnitWeight) {
+            setSpecPieceWeight(info.expectedUnitWeight.toString());
+            setSpecPieceWeightUnit(info.expectedUnitWeightUnit || "g");
+          }
+          if (info.productionTimeMinutes) setSpecDuration(info.productionTimeMinutes.toString());
+        } else {
+          setSpecRecipeId(null);
+          setSpecWeightUnit("kg");
+          setSpecPieceWeightUnit("g");
+        }
+      })
+      .catch(() => {
+        setRecipeInfo(null);
+        setSpecRecipeId(null);
+        setSpecWeightUnit("kg");
+        setSpecPieceWeightUnit("g");
+      })
+      .finally(() => setLoadingRecipe(false));
+  }, [specProductId]);
 
   const createShiftMutation = useMutation({
     mutationFn: async (data: any) => {
@@ -343,9 +388,12 @@ export default function FabrikaVardiyaPlanlama() {
       productId: parseInt(specProductId),
       machineId: parseMachineId(specMachineId),
       batchWeightKg: specWeightKg,
+      batchWeightUnit: specWeightUnit,
       expectedPieces: parseInt(specPieces),
       pieceWeightGrams: specPieceWeight || null,
+      pieceWeightUnit: specPieceWeightUnit,
       targetDurationMinutes: parseInt(specDuration),
+      recipeId: specRecipeId,
       description: specDescription || null,
     });
   }
@@ -355,10 +403,13 @@ export default function FabrikaVardiyaPlanlama() {
     setSpecProductId(spec.productId.toString());
     setSpecMachineId(spec.machineId?.toString() || "");
     setSpecWeightKg(spec.batchWeightKg);
+    setSpecWeightUnit(spec.batchWeightUnit || "kg");
     setSpecPieces(spec.expectedPieces.toString());
     setSpecPieceWeight(spec.pieceWeightGrams || "");
+    setSpecPieceWeightUnit(spec.pieceWeightUnit || "g");
     setSpecDuration(spec.targetDurationMinutes.toString());
     setSpecDescription(spec.description || "");
+    setSpecRecipeId(spec.recipeId || null);
     setIsSpecDialogOpen(true);
   }
 
@@ -502,9 +553,9 @@ export default function FabrikaVardiyaPlanlama() {
               <TableRow>
                 <TableHead>Ürün</TableHead>
                 <TableHead>Makine</TableHead>
-                <TableHead className="text-right">Batch Ağırlık (kg)</TableHead>
+                <TableHead className="text-right">Batch Ağırlık</TableHead>
                 <TableHead className="text-right">Hedef Adet</TableHead>
-                <TableHead className="text-right">Parça Ağırlık (g)</TableHead>
+                <TableHead className="text-right">Parça Ağırlık</TableHead>
                 <TableHead className="text-right">Hedef Süre (dk)</TableHead>
                 <TableHead>Açıklama</TableHead>
                 <TableHead className="text-right">İşlemler</TableHead>
@@ -522,9 +573,9 @@ export default function FabrikaVardiyaPlanlama() {
                   <TableRow key={spec.id} data-testid={`row-spec-${spec.id}`}>
                     <TableCell className="font-medium">{spec.productName || "-"}</TableCell>
                     <TableCell>{spec.machineName || "Tümü"}</TableCell>
-                    <TableCell className="text-right font-mono">{spec.batchWeightKg} kg</TableCell>
+                    <TableCell className="text-right font-mono">{spec.batchWeightKg} {spec.batchWeightUnit || "kg"}</TableCell>
                     <TableCell className="text-right font-mono">{spec.expectedPieces}</TableCell>
-                    <TableCell className="text-right font-mono">{spec.pieceWeightGrams ? `${spec.pieceWeightGrams} g` : "-"}</TableCell>
+                    <TableCell className="text-right font-mono">{spec.pieceWeightGrams ? `${spec.pieceWeightGrams} ${spec.pieceWeightUnit || "g"}` : "-"}</TableCell>
                     <TableCell className="text-right font-mono">{spec.targetDurationMinutes} dk</TableCell>
                     <TableCell className="text-sm text-muted-foreground max-w-[200px] truncate">{spec.description || "-"}</TableCell>
                     <TableCell className="text-right">
@@ -839,7 +890,17 @@ export default function FabrikaVardiyaPlanlama() {
           <div className="space-y-4">
             <div className="space-y-2">
               <Label>Ürün</Label>
-              <Select value={specProductId} onValueChange={setSpecProductId}>
+              <Select value={specProductId} onValueChange={(val) => {
+                setSpecProductId(val);
+                if (!editingSpec) {
+                  setSpecWeightKg("");
+                  setSpecPieces("");
+                  setSpecPieceWeight("");
+                  setSpecDuration("");
+                  setSpecRecipeId(null);
+                  setRecipeInfo(null);
+                }
+              }}>
                 <SelectTrigger data-testid="select-spec-product">
                   <SelectValue placeholder="Ürün seçin..." />
                 </SelectTrigger>
@@ -849,6 +910,18 @@ export default function FabrikaVardiyaPlanlama() {
                   ))}
                 </SelectContent>
               </Select>
+              {loadingRecipe && (
+                <p className="text-xs text-muted-foreground">Reçete bilgisi yükleniyor...</p>
+              )}
+              {recipeInfo?.hasRecipe && !loadingRecipe && (
+                <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800">
+                  <CheckCircle2 className="h-3 w-3 text-emerald-600" />
+                  <span className="text-xs text-emerald-700 dark:text-emerald-400">Reçeteden otomatik dolduruldu: {recipeInfo.recipeName}</span>
+                </div>
+              )}
+              {recipeInfo && !recipeInfo.hasRecipe && !loadingRecipe && (
+                <p className="text-xs text-muted-foreground">Bu ürün için reçete bulunamadı, manuel girin.</p>
+              )}
             </div>
             <div className="space-y-2">
               <Label>Makine (opsiyonel)</Label>
@@ -866,8 +939,21 @@ export default function FabrikaVardiyaPlanlama() {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label className="flex items-center gap-1"><Weight className="h-3 w-3" /> Batch Ağırlık (kg)</Label>
-                <Input type="number" step="0.01" value={specWeightKg} onChange={e => setSpecWeightKg(e.target.value)} placeholder="41" data-testid="input-spec-weight" />
+                <Label className="flex items-center gap-1"><Weight className="h-3 w-3" /> Batch Ağırlık</Label>
+                <div className="flex gap-2">
+                  <Input type="number" step="0.01" value={specWeightKg} onChange={e => setSpecWeightKg(e.target.value)} placeholder="41" className="flex-1" data-testid="input-spec-weight" />
+                  <Select value={specWeightUnit} onValueChange={setSpecWeightUnit}>
+                    <SelectTrigger className="w-[80px]" data-testid="select-spec-weight-unit">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="kg">kg</SelectItem>
+                      <SelectItem value="g">g</SelectItem>
+                      <SelectItem value="litre">litre</SelectItem>
+                      <SelectItem value="ml">ml</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
               <div className="space-y-2">
                 <Label className="flex items-center gap-1"><Hash className="h-3 w-3" /> Hedef Adet</Label>
@@ -876,8 +962,21 @@ export default function FabrikaVardiyaPlanlama() {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Parça Ağırlık (g)</Label>
-                <Input type="number" step="0.01" value={specPieceWeight} onChange={e => setSpecPieceWeight(e.target.value)} placeholder="55" data-testid="input-spec-piece-weight" />
+                <Label>Parça Ağırlık</Label>
+                <div className="flex gap-2">
+                  <Input type="number" step="0.01" value={specPieceWeight} onChange={e => setSpecPieceWeight(e.target.value)} placeholder="55" className="flex-1" data-testid="input-spec-piece-weight" />
+                  <Select value={specPieceWeightUnit} onValueChange={setSpecPieceWeightUnit}>
+                    <SelectTrigger className="w-[80px]" data-testid="select-spec-piece-unit">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="g">g</SelectItem>
+                      <SelectItem value="kg">kg</SelectItem>
+                      <SelectItem value="ml">ml</SelectItem>
+                      <SelectItem value="litre">litre</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
               <div className="space-y-2">
                 <Label className="flex items-center gap-1"><Timer className="h-3 w-3" /> Hedef Süre (dk)</Label>

@@ -257,9 +257,12 @@ export function registerFactoryShiftRoutes(app: Express) {
         productId: factoryBatchSpecs.productId,
         machineId: factoryBatchSpecs.machineId,
         batchWeightKg: factoryBatchSpecs.batchWeightKg,
+        batchWeightUnit: factoryBatchSpecs.batchWeightUnit,
         expectedPieces: factoryBatchSpecs.expectedPieces,
         pieceWeightGrams: factoryBatchSpecs.pieceWeightGrams,
+        pieceWeightUnit: factoryBatchSpecs.pieceWeightUnit,
         targetDurationMinutes: factoryBatchSpecs.targetDurationMinutes,
+        recipeId: factoryBatchSpecs.recipeId,
         description: factoryBatchSpecs.description,
         isActive: factoryBatchSpecs.isActive,
         createdAt: factoryBatchSpecs.createdAt,
@@ -273,6 +276,78 @@ export function registerFactoryShiftRoutes(app: Express) {
     } catch (error: any) {
       console.error("Get batch specs error:", error);
       res.status(500).json({ error: "Batch spesifikasyonları alınamadı" });
+    }
+  });
+
+  app.get("/api/factory-products/:productId/recipe-info", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const productId = parseInt(req.params.productId);
+      const [recipe] = await db.select().from(productRecipes)
+        .where(and(eq(productRecipes.productId, productId), eq(productRecipes.isActive, true)))
+        .limit(1);
+
+      if (!recipe) {
+        return res.json({ hasRecipe: false });
+      }
+
+      const ingredients = await db.select({
+        quantity: productRecipeIngredients.quantity,
+        unit: productRecipeIngredients.unit,
+      }).from(productRecipeIngredients)
+        .where(eq(productRecipeIngredients.recipeId, recipe.id));
+
+      const isVolumeUnit = (u: string) => ["ml", "litre", "lt", "l"].includes(u.toLowerCase());
+      const isMassUnit = (u: string) => ["kg", "g"].includes(u.toLowerCase());
+
+      let totalMassKg = 0;
+      let totalVolumeLitre = 0;
+      let massCount = 0;
+      let volumeCount = 0;
+
+      for (const ing of ingredients) {
+        const qty = parseFloat(ing.quantity?.toString() || "0");
+        const unit = (ing.unit || "kg").toLowerCase();
+
+        if (unit === "kg") { totalMassKg += qty; massCount++; }
+        else if (unit === "g") { totalMassKg += qty / 1000; massCount++; }
+        else if (unit === "ml") { totalVolumeLitre += qty / 1000; volumeCount++; }
+        else if (unit === "litre" || unit === "lt" || unit === "l") { totalVolumeLitre += qty; volumeCount++; }
+        else { totalMassKg += qty; massCount++; }
+      }
+
+      let primaryUnit = "kg";
+      let batchWeight = totalMassKg;
+
+      const outUnit = (recipe.outputUnit || "").toLowerCase();
+      if (isVolumeUnit(outUnit)) {
+        primaryUnit = "litre";
+        batchWeight = totalVolumeLitre > 0 ? totalVolumeLitre : totalMassKg;
+      } else if (isMassUnit(outUnit) || outUnit === "adet") {
+        primaryUnit = "kg";
+        batchWeight = totalMassKg + totalVolumeLitre;
+      } else if (volumeCount > massCount && totalVolumeLitre > 0) {
+        primaryUnit = "litre";
+        batchWeight = totalVolumeLitre;
+      }
+
+      const outputCount = parseInt(recipe.outputQuantity?.toString() || "1");
+      const expectedUnitWeight = recipe.expectedUnitWeight ? parseFloat(recipe.expectedUnitWeight.toString()) : null;
+      const expectedUnitWeightUnit = recipe.expectedUnitWeightUnit || "g";
+
+      res.json({
+        hasRecipe: true,
+        recipeId: recipe.id,
+        recipeName: recipe.name,
+        batchWeight: parseFloat(batchWeight.toFixed(3)),
+        batchWeightUnit: primaryUnit,
+        outputCount: outputCount,
+        expectedUnitWeight,
+        expectedUnitWeightUnit,
+        productionTimeMinutes: recipe.productionTimeMinutes,
+      });
+    } catch (error: any) {
+      console.error("Get recipe info error:", error);
+      res.status(500).json({ error: "Reçete bilgisi alınamadı" });
     }
   });
 

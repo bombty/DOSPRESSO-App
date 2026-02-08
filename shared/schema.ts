@@ -11330,10 +11330,13 @@ export const factoryBatchSpecs = pgTable("factory_batch_specs", {
   id: serial("id").primaryKey(),
   productId: integer("product_id").notNull().references(() => factoryProducts.id, { onDelete: "cascade" }),
   machineId: integer("machine_id").references(() => factoryMachines.id, { onDelete: "set null" }),
-  batchWeightKg: numeric("batch_weight_kg", { precision: 10, scale: 2 }).notNull(), // örn: 41 kg
-  expectedPieces: integer("expected_pieces").notNull(), // örn: 650 adet
-  pieceWeightGrams: numeric("piece_weight_grams", { precision: 10, scale: 2 }), // örn: 55g
-  targetDurationMinutes: integer("target_duration_minutes").notNull(), // örn: 120 dk
+  batchWeightKg: numeric("batch_weight_kg", { precision: 10, scale: 2 }).notNull(),
+  batchWeightUnit: varchar("batch_weight_unit", { length: 10 }).default("kg").notNull(),
+  expectedPieces: integer("expected_pieces").notNull(),
+  pieceWeightGrams: numeric("piece_weight_grams", { precision: 10, scale: 2 }),
+  pieceWeightUnit: varchar("piece_weight_unit", { length: 10 }).default("g").notNull(),
+  targetDurationMinutes: integer("target_duration_minutes").notNull(),
+  recipeId: integer("recipe_id"),
   description: text("description"),
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at").defaultNow(),
