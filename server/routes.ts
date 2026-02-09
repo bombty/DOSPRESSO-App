@@ -497,6 +497,211 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
     }
   });
 
+  // GET /api/global-search - Global search across entities
+  app.get('/api/global-search', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const query = (req.query.q as string || '').trim().toLowerCase();
+      if (!query || query.length < 2) {
+        return res.json({ results: [] });
+      }
+
+      const searchPattern = `%${query}%`;
+      const results: Array<{ type: string; id: string | number; title: string; subtitle?: string; path: string; icon?: string }> = [];
+
+      const isBranch = isBranchRole(user.role as UserRoleType);
+      const userBranchId = user.branchId;
+
+      // 1. Search branches
+      try {
+        const branchResults = await db.select({
+          id: branches.id,
+          name: branches.name,
+          address: branches.address,
+        }).from(branches)
+          .where(or(
+            sql`LOWER(${branches.name}) LIKE ${searchPattern}`,
+            sql`LOWER(${branches.address}) LIKE ${searchPattern}`
+          ))
+          .limit(5);
+        
+        for (const b of branchResults) {
+          if (isBranch && userBranchId && b.id !== userBranchId) continue;
+          results.push({
+            type: 'branch',
+            id: b.id,
+            title: b.name,
+            subtitle: b.address || undefined,
+            path: `/sube-detay/${b.id}`,
+            icon: 'building',
+          });
+        }
+      } catch (e) {}
+
+      // 2. Search users/employees
+      try {
+        if (hasPermission(user.role as UserRoleType, 'employees', 'view')) {
+          const userResults = await db.select({
+            id: users.id,
+            firstName: users.firstName,
+            lastName: users.lastName,
+            role: users.role,
+            branchId: users.branchId,
+          }).from(users)
+            .where(and(
+              or(
+                sql`LOWER(${users.firstName}) LIKE ${searchPattern}`,
+                sql`LOWER(${users.lastName}) LIKE ${searchPattern}`,
+                sql`LOWER(CONCAT(${users.firstName}, ' ', ${users.lastName})) LIKE ${searchPattern}`
+              ),
+              sql`${users.accountStatus} != 'inactive'`
+            ))
+            .limit(8);
+          
+          for (const u of userResults) {
+            if (isBranch && userBranchId && u.branchId !== userBranchId) continue;
+            results.push({
+              type: 'employee',
+              id: u.id,
+              title: `${u.firstName || ''} ${u.lastName || ''}`.trim() || 'İsimsiz',
+              subtitle: u.role || undefined,
+              path: `/personel-profil/${u.id}`,
+              icon: 'user',
+            });
+          }
+        }
+      } catch (e) {}
+
+      // 3. Search equipment
+      try {
+        if (hasPermission(user.role as UserRoleType, 'equipment', 'view')) {
+          const equipResults = await db.select({
+            id: equipment.id,
+            name: equipment.name,
+            branchId: equipment.branchId,
+            type: equipment.type,
+          }).from(equipment)
+            .where(or(
+              sql`LOWER(${equipment.name}) LIKE ${searchPattern}`,
+              sql`LOWER(${equipment.type}) LIKE ${searchPattern}`
+            ))
+            .limit(5);
+          
+          for (const e2 of equipResults) {
+            if (isBranch && userBranchId && e2.branchId !== userBranchId) continue;
+            results.push({
+              type: 'equipment',
+              id: e2.id,
+              title: e2.name,
+              subtitle: e2.type || undefined,
+              path: `/ekipman-detay/${e2.id}`,
+              icon: 'wrench',
+            });
+          }
+        }
+      } catch (e) {}
+
+      // 4. Search tasks
+      try {
+        if (hasPermission(user.role as UserRoleType, 'tasks', 'view')) {
+          const taskResults = await db.select({
+            id: tasks.id,
+            description: tasks.description,
+            status: tasks.status,
+            branchId: tasks.branchId,
+          }).from(tasks)
+            .where(sql`LOWER(${tasks.description}) LIKE ${searchPattern}`)
+            .limit(5);
+          
+          for (const t of taskResults) {
+            if (isBranch && userBranchId && t.branchId !== userBranchId) continue;
+            results.push({
+              type: 'task',
+              id: t.id,
+              title: (t.description || '').substring(0, 80),
+              subtitle: t.status || undefined,
+              path: `/gorev-detay/${t.id}`,
+              icon: 'clipboard',
+            });
+          }
+        }
+      } catch (e) {}
+
+      // 5. Search faults
+      try {
+        if (hasPermission(user.role as UserRoleType, 'equipment_faults', 'view')) {
+          const faultResults = await db.select({
+            id: equipmentFaults.id,
+            description: equipmentFaults.description,
+            status: equipmentFaults.status,
+            branchId: equipmentFaults.branchId,
+          }).from(equipmentFaults)
+            .where(sql`LOWER(${equipmentFaults.description}) LIKE ${searchPattern}`)
+            .limit(5);
+          
+          for (const f of faultResults) {
+            if (isBranch && userBranchId && f.branchId !== userBranchId) continue;
+            results.push({
+              type: 'fault',
+              id: f.id,
+              title: (f.description || '').substring(0, 80),
+              subtitle: f.status || undefined,
+              path: `/ariza-detay/${f.id}`,
+              icon: 'alert-triangle',
+            });
+          }
+        }
+      } catch (e) {}
+
+      // 6. Search checklists
+      try {
+        const checklistResults = await db.select({
+          id: checklists.id,
+          title: checklists.title,
+        }).from(checklists)
+          .where(sql`LOWER(${checklists.title}) LIKE ${searchPattern}`)
+          .limit(5);
+        
+        for (const c of checklistResults) {
+          results.push({
+            type: 'checklist',
+            id: c.id,
+            title: c.title,
+            path: `/checklistler`,
+            icon: 'check-square',
+          });
+        }
+      } catch (e) {}
+
+      // 7. Search recipes
+      try {
+        const recipeResults = await db.select({
+          id: recipes.id,
+          name: recipes.name,
+          category: recipes.category,
+        }).from(recipes)
+          .where(sql`LOWER(${recipes.name}) LIKE ${searchPattern}`)
+          .limit(5);
+        
+        for (const r of recipeResults) {
+          results.push({
+            type: 'recipe',
+            id: r.id,
+            title: r.name,
+            subtitle: r.category || undefined,
+            path: `/recete-detay/${r.id}`,
+            icon: 'chef-hat',
+          });
+        }
+      } catch (e) {}
+
+      res.json({ results: results.slice(0, 20) });
+    } catch (error: any) {
+      console.error("Global search error:", error);
+      res.status(500).json({ message: "Arama sırasında hata oluştu" });
+    }
+  });
+
   // POST /api/auth/register - Public registration endpoint
   app.post('/api/auth/register', async (req, res) => {
     try {

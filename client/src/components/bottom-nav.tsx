@@ -1,16 +1,19 @@
+import { useState } from "react";
 import { useLocation, Link } from "wouter";
 import { Home, GraduationCap, Wrench, User, Brain, BarChart3, Factory, Settings, Building2, Users, Bell, CalendarDays, ClipboardCheck, Package, ShoppingCart, Clock, FileText, Megaphone, Search, Shield } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { NAV_ITEMS_BY_ROLE, UserRole } from "@/lib/role-visibility";
+import { GlobalSearchModal } from "@/components/global-search-modal";
 
 interface NavItem {
   icon: any;
   label: string;
   path: string;
   badge?: number;
+  isSearch?: boolean;
 }
 
-const NAV_ITEM_CONFIG: Record<string, { icon: any; label: string; getPath: (user: any) => string }> = {
+const NAV_ITEM_CONFIG: Record<string, { icon: any; label: string; getPath: (user: any) => string; isSearch?: boolean }> = {
   home: {
     icon: Home,
     label: "Ana Sayfa",
@@ -133,7 +136,8 @@ const NAV_ITEM_CONFIG: Record<string, { icon: any; label: string; getPath: (user
   search: {
     icon: Search,
     label: "Ara",
-    getPath: () => "/bilgi-bankasi",
+    getPath: () => "#search",
+    isSearch: true,
   },
   branches: {
     icon: Building2,
@@ -150,6 +154,7 @@ const NAV_ITEM_CONFIG: Record<string, { icon: any; label: string; getPath: (user
 export function BottomNav() {
   const [location] = useLocation();
   const { user } = useAuth();
+  const [searchOpen, setSearchOpen] = useState(false);
 
   const userRole = user?.role as UserRole | undefined;
   const navKeys = userRole ? (NAV_ITEMS_BY_ROLE[userRole] || ['home', 'profile']) : ['home', 'profile'];
@@ -163,52 +168,77 @@ export function BottomNav() {
         icon: config.icon,
         label: config.label,
         path: config.getPath(user),
+        isSearch: config.isSearch,
       };
     });
 
   const isActive = (path: string) => {
-    if (path === "/") return location === "/";
+    if (path === "/" || path === "#search") return location === path;
     return location.startsWith(path);
   };
 
   return (
-    <nav className="fixed bottom-3 left-3 right-3 z-[60]" data-testid="bottom-nav">
-      <div className="flex items-center justify-around h-14 max-w-md mx-auto px-2 rounded-2xl bg-card/95 backdrop-blur-xl border border-card-border shadow-xl">
-        {navItems.map((item, index) => {
-          const Icon = item.icon;
-          const active = isActive(item.path);
-          
-          return (
-            <Link
-              key={`${item.label}-${index}`}
-              href={item.path}
-              className={`flex flex-col items-center justify-center flex-1 h-full gap-0.5 transition-all duration-300 relative no-underline rounded-xl ${
-                active 
-                  ? "text-primary" 
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-              data-testid={`nav-${item.label.toLowerCase().replace(/\s/g, '-')}`}
-            >
-              {active && (
-                <div className="absolute inset-1 rounded-xl bg-primary/10 pointer-events-none" />
-              )}
-              <div className="relative pointer-events-none">
-                <div className={`p-1.5 rounded-xl transition-all duration-300 ${active ? "bg-primary shadow-sm" : ""}`}>
-                  <Icon className={`w-5 h-5 transition-colors duration-300 ${active ? "text-white stroke-[2.5px]" : ""}`} />
-                </div>
-                {item.badge && item.badge > 0 && (
-                  <span className="absolute -top-1 -right-1 w-4 h-4 bg-destructive text-destructive-foreground text-[9px] font-bold rounded-full flex items-center justify-center shadow-sm">
-                    {item.badge > 9 ? "9+" : item.badge}
+    <>
+      <nav className="fixed bottom-3 left-3 right-3 z-[60]" data-testid="bottom-nav">
+        <div className="flex items-center justify-around h-14 max-w-md mx-auto px-2 rounded-2xl bg-card/95 backdrop-blur-xl border border-card-border shadow-xl">
+          {navItems.map((item, index) => {
+            const Icon = item.icon;
+            const active = isActive(item.path);
+            
+            if (item.isSearch) {
+              return (
+                <button
+                  key={`${item.label}-${index}`}
+                  onClick={() => setSearchOpen(true)}
+                  className="flex flex-col items-center justify-center flex-1 h-full gap-0.5 transition-all duration-300 relative rounded-xl text-muted-foreground hover:text-foreground"
+                  data-testid="nav-ara"
+                >
+                  <div className="relative pointer-events-none">
+                    <div className="p-1.5 rounded-xl transition-all duration-300">
+                      <Icon className="w-5 h-5 transition-colors duration-300" />
+                    </div>
+                  </div>
+                  <span className="text-[10px] pointer-events-none transition-all duration-300 font-medium">
+                    {item.label}
                   </span>
+                </button>
+              );
+            }
+
+            return (
+              <Link
+                key={`${item.label}-${index}`}
+                href={item.path}
+                className={`flex flex-col items-center justify-center flex-1 h-full gap-0.5 transition-all duration-300 relative no-underline rounded-xl ${
+                  active 
+                    ? "text-primary" 
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+                data-testid={`nav-${item.label.toLowerCase().replace(/\s/g, '-')}`}
+              >
+                {active && (
+                  <div className="absolute inset-1 rounded-xl bg-primary/10 pointer-events-none" />
                 )}
-              </div>
-              <span className={`text-[10px] pointer-events-none transition-all duration-300 ${active ? "font-bold text-primary" : "font-medium"}`}>
-                {item.label}
-              </span>
-            </Link>
-          );
-        })}
-      </div>
-    </nav>
+                <div className="relative pointer-events-none">
+                  <div className={`p-1.5 rounded-xl transition-all duration-300 ${active ? "bg-primary shadow-sm" : ""}`}>
+                    <Icon className={`w-5 h-5 transition-colors duration-300 ${active ? "text-white stroke-[2.5px]" : ""}`} />
+                  </div>
+                  {item.badge && item.badge > 0 && (
+                    <span className="absolute -top-1 -right-1 w-4 h-4 bg-destructive text-destructive-foreground text-[9px] font-bold rounded-full flex items-center justify-center shadow-sm">
+                      {item.badge > 9 ? "9+" : item.badge}
+                    </span>
+                  )}
+                </div>
+                <span className={`text-[10px] pointer-events-none transition-all duration-300 ${active ? "font-bold text-primary" : "font-medium"}`}>
+                  {item.label}
+                </span>
+              </Link>
+            );
+          })}
+        </div>
+      </nav>
+      
+      <GlobalSearchModal open={searchOpen} onOpenChange={setSearchOpen} />
+    </>
   );
 }
