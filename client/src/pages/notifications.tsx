@@ -5,11 +5,13 @@ import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAdaptivePolling } from "@/hooks/useAdaptivePolling";
 import { useLocation } from "wouter";
-import type { Notification } from "@shared/schema";
+import type { Notification, Branch } from "@shared/schema";
+import { isHQRole } from "@shared/schema";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ListSkeleton } from "@/components/list-skeleton";
 import { EmptyState } from "@/components/empty-state";
 import { 
@@ -25,6 +27,9 @@ import {
   ClipboardCheck,
   ArrowRight,
   Filter,
+  Building2,
+  Package,
+  MapPin,
 } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
 import { tr } from "date-fns/locale";
@@ -39,17 +44,38 @@ const notificationTypeIcons: Record<string, any> = {
   task_overdue: AlertTriangle,
   task_acknowledged: CheckSquare,
   task_overdue_assigner: AlertTriangle,
+  task_check_requested: ClipboardCheck,
+  task_check_approved: CheckCheck,
+  task_check_rejected: AlertTriangle,
+  task_status_changed: ClipboardCheck,
   fault_reported: AlertTriangle,
   fault_assigned: Wrench,
   fault_resolved: Wrench,
   fault_updated: Wrench,
+  fault_alert: AlertTriangle,
+  critical_fault: AlertTriangle,
+  critical_service_request: AlertTriangle,
   training_assigned: GraduationCap,
+  training_overdue: AlertTriangle,
+  training_reminder: GraduationCap,
   maintenance_reminder: Wrench,
   checklist_reminder: CheckSquare,
+  checklist_overdue: CheckSquare,
   capa_overdue: AlertTriangle,
   shift_change: Clock,
+  shift_assigned: Clock,
+  shift_swap_request: Clock,
+  shift_swap_approved: CheckCheck,
+  shift_swap_rejected: AlertTriangle,
+  shift_swap_completed: CheckCheck,
+  shift_swap_pending_supervisor: Clock,
   leave_request: Clock,
+  stock_alert: Package,
+  onboarding_complete: GraduationCap,
   announcement: Megaphone,
+  info: Info,
+  warning: AlertTriangle,
+  alert: AlertTriangle,
   system: Info,
 };
 
@@ -63,27 +89,49 @@ const notificationTypeLabels: Record<string, string> = {
   task_overdue: "Gecikmiş Görev",
   task_acknowledged: "Görev Görüldü",
   task_overdue_assigner: "Gecikmiş Görev",
+  task_check_requested: "Kontrol Talebi",
+  task_check_approved: "Kontrol Onayı",
+  task_check_rejected: "Kontrol Reddi",
+  task_status_changed: "Görev Durumu",
   fault_reported: "Arıza Raporu",
   fault_assigned: "Arıza Atandı",
   fault_resolved: "Arıza Çözüldü",
   fault_updated: "Arıza Güncellendi",
+  fault_alert: "Arıza Uyarısı",
+  critical_fault: "Kritik Arıza",
+  critical_service_request: "Kritik Talep",
   training_assigned: "Eğitim Atandı",
+  training_overdue: "Gecikmiş Eğitim",
+  training_reminder: "Eğitim Hatırlatması",
   maintenance_reminder: "Bakım Hatırlatması",
   checklist_reminder: "Checklist Hatırlatması",
+  checklist_overdue: "Checklist Gecikmiş",
   capa_overdue: "Düzeltici Aksiyon",
   shift_change: "Vardiya Değişikliği",
+  shift_assigned: "Vardiya Atandı",
+  shift_swap_request: "Takas Talebi",
+  shift_swap_approved: "Takas Onayı",
+  shift_swap_rejected: "Takas Reddi",
+  shift_swap_completed: "Takas Tamamlandı",
+  shift_swap_pending_supervisor: "Takas Onay Bekliyor",
   leave_request: "İzin Talebi",
+  stock_alert: "Stok Uyarısı",
+  onboarding_complete: "Onboarding Tamamlandı",
   announcement: "Duyuru",
+  info: "Bilgi",
+  warning: "Uyarı",
+  alert: "Acil Uyarı",
   system: "Sistem",
 };
 
 const NOTIFICATION_CATEGORIES: Record<string, { label: string; icon: any; types: string[] }> = {
   all: { label: "Tümü", icon: Bell, types: [] },
-  tasks: { label: "Görevler", icon: ClipboardCheck, types: ["task_assigned", "task_started", "task_complete", "task_completed", "task_verified", "task_rejected", "task_overdue", "task_acknowledged", "task_overdue_assigner"] },
-  faults: { label: "Arızalar", icon: Wrench, types: ["fault_reported", "fault_assigned", "fault_resolved", "fault_updated", "maintenance_reminder"] },
-  checklists: { label: "Checklistler", icon: CheckSquare, types: ["checklist_reminder", "capa_overdue"] },
-  announcements: { label: "Duyurular", icon: Megaphone, types: ["announcement", "system"] },
-  hr: { label: "İK", icon: Clock, types: ["shift_change", "leave_request", "training_assigned"] },
+  tasks: { label: "Görevler", icon: ClipboardCheck, types: ["task_assigned", "task_started", "task_complete", "task_completed", "task_verified", "task_rejected", "task_overdue", "task_acknowledged", "task_overdue_assigner", "task_check_requested", "task_check_approved", "task_check_rejected", "task_status_changed"] },
+  faults: { label: "Arızalar", icon: Wrench, types: ["fault_reported", "fault_assigned", "fault_resolved", "fault_updated", "fault_alert", "critical_fault", "critical_service_request", "maintenance_reminder"] },
+  checklists: { label: "Checklistler", icon: CheckSquare, types: ["checklist_reminder", "checklist_overdue", "capa_overdue"] },
+  announcements: { label: "Duyurular", icon: Megaphone, types: ["announcement", "info", "warning", "alert", "system"] },
+  hr: { label: "İK", icon: Clock, types: ["shift_change", "shift_assigned", "shift_swap_request", "shift_swap_approved", "shift_swap_rejected", "shift_swap_completed", "shift_swap_pending_supervisor", "leave_request", "training_assigned", "training_overdue", "training_reminder", "onboarding_complete"] },
+  stock: { label: "Stok", icon: Package, types: ["stock_alert"] },
 };
 
 interface TaskSummary {
@@ -101,17 +149,35 @@ export default function Notifications() {
   const [, navigate] = useLocation();
   const [activeTab, setActiveTab] = useState("notifications");
   const [categoryFilter, setCategoryFilter] = useState("all");
+  const [branchFilter, setBranchFilter] = useState("all");
+  
+  const userIsHQ = user?.role && isHQRole(user.role as any);
   
   const pollingInterval = useAdaptivePolling();
   
   const { data: notifications, isLoading } = useQuery<Notification[]>({
-    queryKey: ['/api/notifications'],
+    queryKey: ['/api/notifications', branchFilter !== 'all' ? branchFilter : undefined],
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      params.set('limit', '200');
+      if (branchFilter !== 'all') {
+        params.set('branchId', branchFilter);
+      }
+      const res = await fetch(`/api/notifications?${params.toString()}`, { credentials: 'include' });
+      if (!res.ok) throw new Error('Failed to fetch');
+      return res.json();
+    },
     refetchInterval: pollingInterval,
   });
 
   const { data: unreadData } = useQuery<{ count: number }>({
     queryKey: ['/api/notifications/unread-count'],
     refetchInterval: pollingInterval,
+  });
+
+  const { data: branches } = useQuery<Branch[]>({
+    queryKey: ['/api/branches'],
+    enabled: !!userIsHQ,
   });
 
   const { data: myTasks, isLoading: tasksLoading } = useQuery<TaskSummary[]>({
@@ -125,6 +191,8 @@ export default function Notifications() {
   });
   
   const unreadCount = unreadData?.count || 0;
+  
+  const branchMap = (branches || []).reduce((acc, b) => { acc[b.id] = b.name; return acc; }, {} as Record<number, string>);
 
   const markAsReadMutation = useMutation({
     mutationFn: async (id: number) => {
@@ -195,23 +263,44 @@ export default function Notifications() {
       navigate(notification.link);
     } else {
       const typeFallbacks: Record<string, string> = {
-        'task_assigned': '/gorevler',
-        'task_started': '/gorevler',
-        'task_completed': '/gorevler',
-        'task_verified': '/gorevler',
-        'task_rejected': '/gorevler',
-        'task_overdue': '/gorevler',
-        'task_overdue_assigner': '/gorevler',
-        'fault_assigned': '/ariza',
-        'fault_updated': '/ariza',
-        'fault_reported': '/ariza',
-        'fault_resolved': '/ariza',
+        'task_assigned': '/operasyon?tab=gorevler',
+        'task_started': '/operasyon?tab=gorevler',
+        'task_completed': '/operasyon?tab=gorevler',
+        'task_complete': '/operasyon?tab=gorevler',
+        'task_verified': '/operasyon?tab=gorevler',
+        'task_rejected': '/operasyon?tab=gorevler',
+        'task_overdue': '/operasyon?tab=gorevler',
+        'task_overdue_assigner': '/operasyon?tab=gorevler',
+        'task_acknowledged': '/operasyon?tab=gorevler',
+        'task_check_requested': '/operasyon?tab=gorevler',
+        'task_check_approved': '/operasyon?tab=gorevler',
+        'task_check_rejected': '/operasyon?tab=gorevler',
+        'task_status_changed': '/operasyon?tab=gorevler',
+        'fault_assigned': '/ekipman?tab=ariza-yonetimi',
+        'fault_updated': '/ekipman?tab=ariza-yonetimi',
+        'fault_reported': '/ekipman?tab=ariza-yonetimi',
+        'fault_resolved': '/ekipman?tab=ariza-yonetimi',
+        'fault_alert': '/ekipman?tab=ariza-yonetimi',
+        'critical_fault': '/ekipman?tab=ariza-yonetimi',
+        'critical_service_request': '/crm',
         'maintenance_reminder': '/ekipman',
-        'shift_change': '/vardiyalarim',
-        'leave_request': '/ik',
-        'announcement': '/duyurular',
-        'checklist_reminder': '/checklistler',
+        'shift_change': '/operasyon?tab=vardiyalar',
+        'shift_assigned': '/operasyon?tab=vardiyalar',
+        'shift_swap_request': '/operasyon?tab=vardiyalar',
+        'shift_swap_approved': '/operasyon?tab=vardiyalar',
+        'shift_swap_rejected': '/operasyon?tab=vardiyalar',
+        'shift_swap_completed': '/operasyon?tab=vardiyalar',
+        'shift_swap_pending_supervisor': '/operasyon?tab=vardiyalar',
+        'leave_request': '/operasyon?tab=izinler',
+        'announcement': '/operasyon?tab=duyurular',
+        'checklist_reminder': '/operasyon?tab=checklistler',
+        'checklist_overdue': '/operasyon?tab=checklistler',
+        'capa_overdue': '/raporlar?tab=aksiyon-takip',
         'training_assigned': '/akademi',
+        'training_overdue': '/akademi',
+        'training_reminder': '/akademi',
+        'stock_alert': '/satinalma?tab=stok-yonetimi',
+        'onboarding_complete': '/operasyon?tab=onboarding',
       };
       
       const fallbackPath = typeFallbacks[notification.type] || '/';
@@ -250,18 +339,37 @@ export default function Notifications() {
           </p>
         </div>
         
-        {unreadCount > 0 && activeTab === "notifications" && (
-          <Button 
-            variant="outline" 
-            size="sm"
-            onClick={() => markAllAsReadMutation.mutate()}
-            disabled={markAllAsReadMutation.isPending}
-            data-testid="button-mark-all-read"
-          >
-            <CheckCheck className="w-4 h-4 mr-2" />
-            Tümünü Okundu İşaretle
-          </Button>
-        )}
+        <div className="flex items-center gap-2 flex-wrap">
+          {userIsHQ && branches && branches.length > 0 && (
+            <Select value={branchFilter} onValueChange={setBranchFilter}>
+              <SelectTrigger className="w-[180px]" data-testid="select-branch-filter">
+                <Building2 className="w-3.5 h-3.5 mr-1.5 flex-shrink-0" />
+                <SelectValue placeholder="Tüm Şubeler" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all" data-testid="branch-option-all">Tüm Şubeler</SelectItem>
+                {branches.map(branch => (
+                  <SelectItem key={branch.id} value={String(branch.id)} data-testid={`branch-option-${branch.id}`}>
+                    {branch.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+          
+          {unreadCount > 0 && activeTab === "notifications" && (
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={() => markAllAsReadMutation.mutate()}
+              disabled={markAllAsReadMutation.isPending}
+              data-testid="button-mark-all-read"
+            >
+              <CheckCheck className="w-4 h-4 mr-2" />
+              Tümünü Okundu İşaretle
+            </Button>
+          )}
+        </div>
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
@@ -325,6 +433,7 @@ export default function Notifications() {
                         key={notification.id}
                         notification={notification}
                         onClick={() => handleNotificationClick(notification)}
+                        branchName={notification.branchId ? branchMap[notification.branchId] : undefined}
                       />
                     ))}
                   </div>
@@ -344,6 +453,7 @@ export default function Notifications() {
                         key={notification.id}
                         notification={notification}
                         onClick={() => handleNotificationClick(notification)}
+                        branchName={notification.branchId ? branchMap[notification.branchId] : undefined}
                       />
                     ))}
                   </div>
@@ -499,21 +609,23 @@ export default function Notifications() {
   );
 }
 
-function NotificationCard({ notification, onClick }: { notification: Notification; onClick: () => void }) {
+function NotificationCard({ notification, onClick, branchName }: { notification: Notification; onClick: () => void; branchName?: string }) {
   const Icon = notificationTypeIcons[notification.type] || Bell;
   const typeLabel = notificationTypeLabels[notification.type] || "Bildirim";
   const isUnread = !notification.isRead;
 
+  const isCritical = ['critical_fault', 'critical_service_request', 'fault_alert', 'capa_overdue', 'alert'].includes(notification.type);
+
   return (
     <Card 
-      className={`cursor-pointer hover-elevate ${isUnread ? 'border-primary/30 bg-primary/5' : ''}`}
+      className={`cursor-pointer hover-elevate ${isUnread ? 'border-primary/30 bg-primary/5' : ''} ${isCritical ? 'border-destructive/40' : ''}`}
       onClick={onClick}
       data-testid={`card-notification-${notification.id}`}
     >
       <CardContent className="p-3">
         <div className="flex items-start gap-3">
-          <div className={`p-1.5 rounded-lg flex-shrink-0 ${isUnread ? 'bg-primary/10' : 'bg-muted'}`}>
-            <Icon className={`w-4 h-4 ${isUnread ? 'text-primary' : ''}`} />
+          <div className={`p-1.5 rounded-lg flex-shrink-0 ${isCritical ? 'bg-destructive/10' : isUnread ? 'bg-primary/10' : 'bg-muted'}`}>
+            <Icon className={`w-4 h-4 ${isCritical ? 'text-destructive' : isUnread ? 'text-primary' : ''}`} />
           </div>
           
           <div className="flex-1 min-w-0 space-y-0.5">
@@ -534,6 +646,12 @@ function NotificationCard({ notification, onClick }: { notification: Notificatio
               <Badge variant="secondary" className="text-[10px]" data-testid={`badge-type-${notification.id}`}>
                 {typeLabel}
               </Badge>
+              {branchName && (
+                <Badge variant="secondary" className="text-[10px] gap-0.5" data-testid={`badge-branch-${notification.id}`}>
+                  <MapPin className="w-2.5 h-2.5" />
+                  {branchName}
+                </Badge>
+              )}
               <span className="text-[11px] text-muted-foreground" data-testid={`text-time-${notification.id}`}>
                 {formatDistanceToNow(new Date(notification.createdAt!), { addSuffix: true, locale: tr })}
               </span>

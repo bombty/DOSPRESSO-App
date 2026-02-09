@@ -3544,6 +3544,7 @@ export const notifications = pgTable("notifications", {
   message: text("message").notNull(),
   link: text("link"),
   isRead: boolean("is_read").notNull().default(false),
+  branchId: integer("branch_id"),
   createdAt: timestamp("created_at").defaultNow(),
 }, (table) => ({
   userReadCreatedIdx: index("notifications_user_read_created_idx").on(table.userId, table.isRead, table.createdAt),

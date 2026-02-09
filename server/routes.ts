@@ -96,6 +96,7 @@ import {
   licenseRenewals,
   threadParticipants,
   messages,
+  notifications,
   announcements,
   announcementReadStatus,
   hasPermission,
@@ -1871,6 +1872,7 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
             title: 'Yeni Görev Atandı',
             message: `${assignerName} size yeni bir görev atadı: "${task.description?.substring(0, 50)}${(task.description?.length || 0) > 50 ? '...' : ''}"`,
             link: `/gorevler?taskId=${task.id}`,
+            branchId: taskBranchId,
           });
           
           // Send email notification asynchronously
@@ -1912,6 +1914,7 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
               title: 'Şubenize Yeni Görev',
               message: `${assignerName} şubenize yeni bir görev atadı: "${task.description?.substring(0, 50)}${(task.description?.length || 0) > 50 ? '...' : ''}"`,
               link: `/gorevler?taskId=${task.id}`,
+              branchId: taskBranchId,
             });
             
             // Send email to supervisor
@@ -1951,6 +1954,7 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
               title: 'Görev İnceleme Bekliyor',
               message: `${completerName} (${branchName}) bir görevi tamamladı ve onayınızı bekliyor: "${task.description?.substring(0, 50)}${(task.description?.length || 0) > 50 ? '...' : ''}"`,
               link: `/gorevler?taskId=${task.id}`,
+              branchId: task.branchId || taskBranchId,
             });
             
             // Send email to HQ admin
@@ -2023,6 +2027,7 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
             title: 'Görev Onaylandı ✓',
             message: `${verifierName} görevinizi onayladı: "${existingTask.description?.substring(0, 50)}${(existingTask.description?.length || 0) > 50 ? '...' : ''}"`,
             link: `/gorevler?taskId=${existingTask.id}`,
+            branchId: existingTask.branchId,
           });
           
           // Send email notification
@@ -2099,6 +2104,7 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
             title: 'Görev Reddedildi',
             message: `${rejectorName} görevinizi reddetti: "${existingTask.description?.substring(0, 50)}${(existingTask.description?.length || 0) > 50 ? '...' : ''}"${reason ? ` - Neden: ${reason}` : ''}`,
             link: `/gorevler?taskId=${existingTask.id}`,
+            branchId: existingTask.branchId,
           });
           
           // Send email notification
@@ -2189,6 +2195,7 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
           title: 'Onboarding Kontrolü Bekliyor',
           message: `${assigneeName} görevini tamamladı ve kontrolünüzü bekliyor: "${task.description?.substring(0, 50)}${(task.description?.length || 0) > 50 ? '...' : ''}"`,
           link: `/gorev-detay/${task.id}`,
+          branchId: task.branchId,
         });
       } catch (notifError) {
         console.error("Error sending checker notification:", notifError);
@@ -2252,6 +2259,7 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
             title: 'Görev Onaylandı ✓',
             message: `${checkerName} görevinizi onayladı: "${task.description?.substring(0, 50)}${(task.description?.length || 0) > 50 ? '...' : ''}"`,
             link: `/gorev-detay/${task.id}`,
+            branchId: task.branchId,
           });
         } catch (notifError) {
           console.error("Error sending check approved notification:", notifError);
@@ -2317,6 +2325,7 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
             title: 'Görev Reddedildi',
             message: `${checkerName} görevinizi reddetti: "${task.description?.substring(0, 50)}${(task.description?.length || 0) > 50 ? '...' : ''}"${reason ? ` - Neden: ${reason}` : ''}`,
             link: `/gorev-detay/${task.id}`,
+            branchId: task.branchId,
           });
         } catch (notifError) {
           console.error("Error sending check rejected notification:", notifError);
@@ -2392,6 +2401,7 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
             title: 'Görev Görüldü',
             message: `${acknowledgerName} atadığınız görevi gördü: "${task.description?.substring(0, 50)}${(task.description?.length || 0) > 50 ? '...' : ''}"`,
             link: `/gorevler?taskId=${task.id}`,
+            branchId: task.branchId,
           });
         } catch (notifError) {
           console.error("Error sending task status notification:", notifError);
@@ -2470,6 +2480,7 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
             title: 'Görev Başlatıldı',
             message: `${starterName} göreve başladı: "${task.description?.substring(0, 50)}${(task.description?.length || 0) > 50 ? '...' : ''}"`,
             link: `/gorev-detay/${task.id}`,
+            branchId: task.branchId,
           });
         } catch (notifError) {
           console.error("Error sending task start notification:", notifError);
@@ -2596,6 +2607,7 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
             title: 'Görev Tamamlandı',
             message: `${actorName} görevi tamamladı: "${task.description?.substring(0, 40)}..."`,
             link: `/gorev-detay/${taskId}`,
+            branchId: task.branchId,
           });
         }
         
@@ -2607,6 +2619,7 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
             title: status === 'onaylandi' ? 'Görev Onaylandı ✓' : 'Görev Reddedildi',
             message: `${actorName} görevinizi ${status === 'onaylandi' ? 'onayladı' : 'reddetti'}: "${task.description?.substring(0, 40)}..."`,
             link: `/gorev-detay/${taskId}`,
+            branchId: task.branchId,
           });
         }
       } catch (notifError) {
@@ -3796,6 +3809,7 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
               message: `${branch?.name || "Şube"} - ${equipment?.equipmentType || "Ekipman"} için kritik arıza rapor edildi (#${fault.id})`,
               link: `/ariza-yonetim`,
               isRead: false,
+              branchId: faultBranchId,
             });
           }
 
@@ -4773,6 +4787,7 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
               message: `${branch?.name || 'Bilinmeyen Şube'} - ${equipmentType}: ${notes?.substring(0, 50) || 'Acil teknik destek gerekiyor'}`,
               relatedId: serviceRequest.id,
               read: false,
+              branchId: branchId,
             });
           }
           console.log(`📢 Critical notification sent to HQ staff for service request ${serviceRequest.id}`);
@@ -11548,6 +11563,7 @@ JSON formatında yanıt ver:
         type: 'shift_swap_request',
         relatedId: created.id,
         relatedType: 'shift_swap_request',
+        branchId: branchId,
       });
       
       res.status(201).json(created);
@@ -11587,6 +11603,7 @@ JSON formatında yanıt ver:
         type: 'shift_swap_approved',
         relatedId: requestId,
         relatedType: 'shift_swap_request',
+        branchId: request.branchId,
       });
 
       // Notify branch supervisors
@@ -11599,6 +11616,7 @@ JSON formatında yanıt ver:
           type: 'shift_swap_pending_supervisor',
           relatedId: requestId,
           relatedType: 'shift_swap_request',
+          branchId: request.branchId,
         });
       }
       
@@ -11639,6 +11657,7 @@ JSON formatında yanıt ver:
         type: 'shift_swap_rejected',
         relatedId: requestId,
         relatedType: 'shift_swap_request',
+        branchId: request.branchId,
       });
       
       res.json(updated);
@@ -11686,6 +11705,7 @@ JSON formatında yanıt ver:
         type: 'shift_swap_completed',
         relatedId: requestId,
         relatedType: 'shift_swap_request',
+        branchId: request.branchId,
       });
 
       await storage.createNotification({
@@ -11695,6 +11715,7 @@ JSON formatında yanıt ver:
         type: 'shift_swap_completed',
         relatedId: requestId,
         relatedType: 'shift_swap_request',
+        branchId: request.branchId,
       });
       
       res.json({ request: updated, swapResult });
@@ -11739,6 +11760,7 @@ JSON formatında yanıt ver:
         type: 'shift_swap_rejected_supervisor',
         relatedId: requestId,
         relatedType: 'shift_swap_request',
+        branchId: request.branchId,
       });
 
       await storage.createNotification({
@@ -11748,6 +11770,7 @@ JSON formatında yanıt ver:
         type: 'shift_swap_rejected_supervisor',
         relatedId: requestId,
         relatedType: 'shift_swap_request',
+        branchId: request.branchId,
       });
       
       res.json(updated);
@@ -15023,6 +15046,7 @@ JSON formatında yanıt ver:
             title: 'Yeni Vardiya Atandı',
             message: `${shift.shiftDate} tarihinde ${shift.startTime?.substring(0, 5)} - ${shift.endTime?.substring(0, 5)} vardiyası atandı.`,
             link: '/vardiyalarim',
+            branchId: shift.branchId,
           });
           
           // Send email notification
@@ -15124,6 +15148,7 @@ JSON formatında yanıt ver:
               ? `${firstDate} tarihinde vardiya atandı.`
               : `${firstDate} - ${lastDate} arasında ${empShifts.length} vardiya atandı.`,
             link: '/vardiyalarim',
+            branchId: empShifts[0]?.branchId,
           });
           
           // Send email notification
@@ -15212,6 +15237,7 @@ JSON formatında yanıt ver:
               title: 'Vardiya Atandı',
               message: `${updated.shiftDate} tarihinde ${updated.startTime?.substring(0, 5)} - ${updated.endTime?.substring(0, 5)} vardiyası size atandı.`,
               link: '/vardiyalarim',
+              branchId: updated.branchId || shift.branchId,
             });
           } else if (validated.shiftDate || validated.startTime || validated.endTime) {
             // If date/time changed, notify existing assignee
@@ -15221,6 +15247,7 @@ JSON formatında yanıt ver:
               title: 'Vardiya Güncellendi',
               message: `${updated.shiftDate} tarihindeki vardiya güncellendi: ${updated.startTime?.substring(0, 5)} - ${updated.endTime?.substring(0, 5)}`,
               link: '/vardiyalarim',
+              branchId: updated.branchId || shift.branchId,
             });
           }
         } catch (notifErr) {
@@ -32699,6 +32726,90 @@ ${["yatirimci_hq", "yatirimci_branch"].includes(role) ? "- Yatirimci olarak sade
       res.status(500).json({ message: "AI yanit veremedi", error: error.message });
     }
   });
+  // ============ NOTIFICATION ENDPOINTS ============
+  
+  // GET /api/notifications - Get user's notifications with optional filters
+  // HQ/admin users see all system notifications; others only see their own
+  app.get('/api/notifications', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const { type, branchId, limit: limitParam, offset: offsetParam } = req.query;
+      
+      const limitVal = Math.min(parseInt(limitParam as string) || 100, 200);
+      const offsetVal = parseInt(offsetParam as string) || 0;
+      const userRole = user.role as any;
+      const isHQ = isHQRole(userRole) || userRole === 'admin';
+      
+      const conditions: any[] = [];
+      
+      if (isHQ) {
+        if (branchId) {
+          conditions.push(eq(notifications.branchId, parseInt(branchId as string)));
+        }
+      } else {
+        conditions.push(eq(notifications.userId, user.id));
+        if (branchId) {
+          conditions.push(eq(notifications.branchId, parseInt(branchId as string)));
+        }
+      }
+      
+      if (type) {
+        conditions.push(eq(notifications.type, type as string));
+      }
+      
+      const results = await db.select().from(notifications)
+        .where(conditions.length > 0 ? and(...conditions) : undefined)
+        .orderBy(desc(notifications.createdAt))
+        .limit(limitVal)
+        .offset(offsetVal);
+      
+      res.json(results);
+    } catch (error: any) {
+      console.error("Error fetching notifications:", error);
+      res.status(500).json({ message: "Bildirimler alınamadı" });
+    }
+  });
+
+  // GET /api/notifications/unread-count - Get unread notification count
+  app.get('/api/notifications/unread-count', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const count = await storage.getUnreadNotificationCount(user.id);
+      res.json({ count });
+    } catch (error: any) {
+      console.error("Error fetching unread count:", error);
+      res.status(500).json({ message: "Okunmamış bildirim sayısı alınamadı" });
+    }
+  });
+
+  // PATCH /api/notifications/:id/read - Mark notification as read
+  app.patch('/api/notifications/:id/read', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const id = parseInt(req.params.id);
+      const success = await storage.markNotificationAsRead(id, user.id);
+      if (!success) {
+        return res.status(404).json({ message: "Bildirim bulunamadı" });
+      }
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("Error marking notification as read:", error);
+      res.status(500).json({ message: "Bildirim güncellenemedi" });
+    }
+  });
+
+  // PATCH /api/notifications/mark-all-read - Mark all notifications as read
+  app.patch('/api/notifications/mark-all-read', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      await storage.markAllNotificationsAsRead(user.id);
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("Error marking all as read:", error);
+      res.status(500).json({ message: "Bildirimler güncellenemedi" });
+    }
+  });
+
   registerSatinalmaRoutes(app, isAuthenticated);
   registerMaliyetRoutes(app, isAuthenticated);
   registerFactoryShiftRoutes(app);

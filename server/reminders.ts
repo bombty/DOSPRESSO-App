@@ -133,6 +133,7 @@ async function checkChecklistReminders() {
               message: 'Vardiya checklist\'ini tamamlamayı unutmadınız mı?',
               link: `/vardiya/${shift.id}/checklists`,
               isRead: false,
+              branchId: shift.branchId,
             });
             sentChecklistReminders.set(checklistKey, now.getTime());
           } catch (err) {
@@ -193,11 +194,13 @@ async function checkCapaNotifications() {
       
       // Get audit/branch info for context
       let branchName = '';
+      let capaBranchId: number | undefined;
       if (capa.auditInstanceId) {
         const [audit] = await db.select({
           branchId: auditInstances.branchId,
         }).from(auditInstances).where(eq(auditInstances.id, capa.auditInstanceId));
         if (audit?.branchId) {
+          capaBranchId = audit.branchId;
           const [branch] = await db.select({ name: branches.name }).from(branches).where(eq(branches.id, audit.branchId));
           branchName = branch?.name || '';
         }
@@ -212,6 +215,7 @@ async function checkCapaNotifications() {
           message: `${priorityText} öncelikli aksiyon ${daysOverdue} gün gecikti${branchName ? ` - ${branchName}` : ''}`,
           link: `/raporlar/aksiyon-takip?capaId=${capa.id}`,
           isRead: false,
+          branchId: capaBranchId,
         });
       } catch (err) {
         console.error(`CAPA notification error for CAPA ${capa.id}:`, err);
@@ -333,6 +337,7 @@ async function checkOverdueTaskNotifications() {
             title: 'Geciken Görev Hatırlatması',
             message: `"${task.description?.substring(0, 40)}${(task.description?.length || 0) > 40 ? '...' : ''}" görevi ${daysOverdue} gün gecikti!`,
             link: `/gorevler?taskId=${task.id}`,
+            branchId: task.branchId,
           });
         } catch (err) {
           console.error(`Assignee notification error for task ${task.id}:`, err);
@@ -353,6 +358,7 @@ async function checkOverdueTaskNotifications() {
             title: 'Atadığınız Görev Gecikti',
             message: `${assigneeName}'a atadığınız "${task.description?.substring(0, 40)}${(task.description?.length || 0) > 40 ? '...' : ''}" görevi ${daysOverdue} gün gecikti!`,
             link: `/gorevler?taskId=${task.id}`,
+            branchId: task.branchId,
           });
         } catch (err) {
           console.error(`Assigner notification error for task ${task.id}:`, err);
@@ -444,6 +450,7 @@ async function checkMaintenanceReminders() {
             : `${eq.equipmentType} ekipmanının bakımı ${daysUntil} gün içinde yapılmalı.`,
           link: `/ekipman/${eq.id}`,
           isRead: false,
+          branchId: eq.branchId,
         });
 
         // Store this maintenance date to prevent duplicate notifications
@@ -800,6 +807,7 @@ export async function checkOnboardingCompletions() {
             title: 'Onboarding Tamamlandı - Değerlendirme Zamanı',
             message: `${employeeName} personelin deneme süreci tamamlandı. Değerlendirme yapın.`,
             link: '/sube/onboarding',
+            branchId: assignment.branchId,
           });
           console.log(`📧 Onboarding completion notification sent to supervisor ${supervisor.firstName} for employee ${employeeName}`);
         }

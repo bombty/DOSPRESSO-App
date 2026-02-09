@@ -3605,7 +3605,8 @@ export class DatabaseStorage implements IStorage {
     }
     return db.select().from(notifications)
       .where(and(...conditions))
-      .orderBy(desc(notifications.createdAt));
+      .orderBy(desc(notifications.createdAt))
+      .limit(200);
   }
 
   async getUnreadNotificationCount(userId: string): Promise<number> {
