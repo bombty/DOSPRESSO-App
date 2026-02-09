@@ -1,5 +1,5 @@
 import { useLocation, Link } from "wouter";
-import { Home, GraduationCap, Wrench, User, Headphones, Brain, BarChart3, Factory, Settings, Building2, Users } from "lucide-react";
+import { Home, GraduationCap, Wrench, User, Brain, BarChart3, Factory, Settings, Building2, Users, Bell, CalendarDays, ClipboardCheck, Package, ShoppingCart, Clock, FileText, Megaphone, Search, Shield } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { NAV_ITEMS_BY_ROLE, UserRole } from "@/lib/role-visibility";
 
@@ -29,25 +29,9 @@ const NAV_ITEM_CONFIG: Record<string, { icon: any; label: string; getPath: (user
     label: "Raporlar",
     getPath: () => "/raporlar",
   },
-  crm: {
-    icon: Headphones,
-    label: "CRM",
-    getPath: (user) => {
-      if (!user) return "/crm";
-      switch (user.role) {
-        case 'coach': return "/crm/coach-branches";
-        case 'satinalma': return "/crm/tedarikciler";
-        case 'muhasebe': return "/crm/cari-takip";
-        case 'teknik':
-        case 'ekipman_teknik': return "/crm/teknik-ariza";
-        case 'trainer': return "/crm/dashboard";
-        default: return "/crm";
-      }
-    },
-  },
   ai: {
     icon: Brain,
-    label: "AI",
+    label: "AI Asistan",
     getPath: () => "/ceo-command-center",
   },
   admin: {
@@ -79,6 +63,82 @@ const NAV_ITEM_CONFIG: Record<string, { icon: any; label: string; getPath: (user
     icon: Wrench,
     label: "Arıza",
     getPath: () => "/ariza",
+  },
+  notifications: {
+    icon: Bell,
+    label: "Bildirimler",
+    getPath: () => "/bildirimler",
+  },
+  tasks: {
+    icon: ClipboardCheck,
+    label: "Görevler",
+    getPath: () => "/gorevler",
+  },
+  shifts: {
+    icon: Clock,
+    label: "Vardiyalar",
+    getPath: () => "/vardiyalar",
+  },
+  myshifts: {
+    icon: Clock,
+    label: "Vardiyam",
+    getPath: () => "/vardiyalarim",
+  },
+  checklists: {
+    icon: ClipboardCheck,
+    label: "Checklist",
+    getPath: () => "/checklistler",
+  },
+  stock: {
+    icon: Package,
+    label: "Stok",
+    getPath: () => "/satinalma?tab=stok-yonetimi",
+  },
+  orders: {
+    icon: ShoppingCart,
+    label: "Siparişler",
+    getPath: () => "/satinalma?tab=siparisler",
+  },
+  calendar: {
+    icon: CalendarDays,
+    label: "Takvim",
+    getPath: () => "/vardiya-planlama",
+  },
+  crm: {
+    icon: FileText,
+    label: "CRM",
+    getPath: (user) => {
+      if (!user) return "/crm";
+      switch (user.role) {
+        case 'coach': return "/crm/coach-branches";
+        case 'satinalma': return "/crm/tedarikciler";
+        case 'muhasebe': return "/crm/cari-takip";
+        case 'teknik':
+        case 'ekipman_teknik': return "/crm/teknik-ariza";
+        case 'trainer': return "/crm/dashboard";
+        default: return "/crm";
+      }
+    },
+  },
+  quality: {
+    icon: Shield,
+    label: "Kalite",
+    getPath: () => "/kalite-denetimi",
+  },
+  announcements: {
+    icon: Megaphone,
+    label: "Duyurular",
+    getPath: () => "/duyurular",
+  },
+  search: {
+    icon: Search,
+    label: "Ara",
+    getPath: () => "/bilgi-bankasi",
+  },
+  branches: {
+    icon: Building2,
+    label: "Şubeler",
+    getPath: () => "/subeler",
   },
   profile: {
     icon: User,

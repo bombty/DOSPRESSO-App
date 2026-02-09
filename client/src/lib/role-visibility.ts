@@ -33,38 +33,40 @@ const BRANCH_ROLES: UserRole[] = ['supervisor', 'supervisor_buddy', 'barista', '
 // Fabrika Rolleri
 const FACTORY_ROLES: UserRole[] = ['fabrika_mudur', 'fabrika_sorumlu', 'fabrika_personel'];
 
-// Hızlı giriş butonları - Her rol için özelleştirilmiş
+// Hızlı giriş butonları - Alt menü ve modüllerle TEKRARLANMAMALI
+// Bu butonlar dashboard'da hızlı aksiyon sağlar
+// Alt menüde veya modüllerde zaten olan öğeleri İÇERMEMELİ
 export const QUICK_ACTIONS_BY_ROLE: Record<UserRole, string[]> = {
-  // Executive
-  ceo: ['reports', 'ai-dashboard', 'announcements'],
-  cgo: ['reports', 'ai-dashboard', 'announcements', 'branches'],
-  admin: ['announcements', 'settings', 'users', 'reports', 'system'],
+  // Executive - Nav: ai, notifications, search/branches | Modüller: all
+  ceo: ['announcements', 'tasks', 'branches'],
+  cgo: ['announcements', 'tasks', 'reports'],
+  admin: ['users', 'settings', 'system'],
   // HQ Departments
-  muhasebe: ['reports', 'invoices', 'personnel', 'leaves'],
-  muhasebe_ik: ['reports', 'invoices', 'personnel', 'leaves', 'attendance'],
-  satinalma: ['stock', 'orders', 'suppliers', 'reports'],
-  marketing: ['announcements', 'campaigns', 'reports'],
-  pazarlama: ['announcements', 'campaigns', 'reports'],
-  ik: ['personnel', 'leaves', 'shifts', 'attendance', 'reports'],
-  teknik: ['faults', 'equipment', 'maintenance', 'reports'],
-  destek: ['faults', 'support', 'reports'],
-  trainer: ['new-task', 'academy', 'courses', 'reports'],
-  coach: ['new-task', 'reports', 'branches', 'tasks'],
-  kalite_kontrol: ['quality', 'audits', 'reports'],
-  ekipman_teknik: ['faults', 'equipment', 'maintenance'],
-  fabrika: ['production', 'quality', 'stock'],
-  yatirimci_hq: ['reports', 'branches'],
-  // Branch Roles
-  supervisor: ['new-task', 'checklist', 'academy', 'shifts', 'leaves', 'personnel'],
-  supervisor_buddy: ['new-task', 'checklist', 'academy', 'shifts'],
-  barista: ['checklist', 'academy', 'shifts', 'leaves'],
-  bar_buddy: ['checklist', 'academy', 'shifts'],
-  stajyer: ['checklist', 'academy'],
-  yatirimci_branch: ['reports'],
-  // Factory Roles
-  fabrika_mudur: ['production', 'shifts', 'reports', 'personnel', 'stock'],
-  fabrika_sorumlu: ['production', 'shifts'],
-  fabrika_personel: ['production', 'shifts'],
+  muhasebe: ['invoices', 'leaves', 'attendance'],
+  muhasebe_ik: ['invoices', 'leaves', 'attendance'],
+  satinalma: ['suppliers', 'goods-receipt'],
+  marketing: ['campaigns', 'announcements'],
+  pazarlama: ['campaigns', 'announcements'],
+  ik: ['leaves', 'attendance', 'personnel'],
+  teknik: ['maintenance', 'sla'],
+  destek: ['support', 'tickets'],
+  trainer: ['courses', 'new-task'],
+  coach: ['new-task', 'personnel', 'tasks'],
+  kalite_kontrol: ['audits', 'branches'],
+  ekipman_teknik: ['maintenance', 'sla'],
+  fabrika: ['production', 'quality', 'shifts'],
+  yatirimci_hq: ['announcements', 'performance'],
+  // Branch Roles - Nav: checklists, academy, fault, myshifts
+  supervisor: ['new-task', 'shifts', 'leaves', 'personnel'],
+  supervisor_buddy: ['new-task', 'shifts', 'personnel'],
+  barista: ['checklist', 'leaves'],
+  bar_buddy: ['checklist'],
+  stajyer: ['leaves'],
+  yatirimci_branch: ['performance'],
+  // Factory Roles - Nav: factory, myshifts/shifts
+  fabrika_mudur: ['production', 'personnel', 'quality'],
+  fabrika_sorumlu: ['production', 'quality'],
+  fabrika_personel: ['production'],
 };
 
 // Admin TÜM modüllere erişebilir
@@ -137,37 +139,42 @@ export const STATS_BY_ROLE: Record<UserRole, string[]> = {
   fabrika_personel: ['production', 'shifts'],
 };
 
+// Alt menü - Modüller ve Hızlı İşlemlerle TEKRARLANMAMALI
+// Prensip: Her katman farklı içerik sunar
+// - Alt menü: En sık kullanılan navigasyon kısayolları (modüllerde olmayanlar)
+// - Hızlı İşlemler: Departman özel aksiyonlar
+// - Modüller: Ana bölüm kartları
 export const NAV_ITEMS_BY_ROLE: Record<UserRole, string[]> = {
-  // Executive - CEO/CGO: Raporlar, CRM, AI (Akademi YOK)
-  ceo: ['home', 'reports', 'crm', 'ai', 'profile'],
-  cgo: ['home', 'reports', 'crm', 'ai', 'profile'],
-  admin: ['home', 'admin', 'crm', 'reports', 'profile'],
-  // HQ Departments
-  muhasebe: ['home', 'reports', 'crm', 'profile'],
-  muhasebe_ik: ['home', 'reports', 'crm', 'hr', 'profile'],
-  satinalma: ['home', 'reports', 'crm', 'profile'],
-  marketing: ['home', 'reports', 'crm', 'profile'],
-  pazarlama: ['home', 'reports', 'crm', 'profile'],
-  ik: ['home', 'hr', 'crm', 'reports', 'profile'],
-  teknik: ['home', 'equipment', 'crm', 'reports', 'profile'],
-  destek: ['home', 'equipment', 'crm', 'profile'],
-  trainer: ['home', 'academy', 'crm', 'reports', 'profile'],
-  coach: ['home', 'operations', 'crm', 'reports', 'profile'],
-  kalite_kontrol: ['home', 'factory', 'crm', 'reports', 'profile'],
-  ekipman_teknik: ['home', 'equipment', 'crm', 'profile'],
-  fabrika: ['home', 'factory', 'crm', 'profile'],
-  yatirimci_hq: ['home', 'reports', 'crm', 'profile'],
-  // Branch Roles
-  supervisor: ['home', 'academy', 'crm', 'fault', 'profile'],
-  supervisor_buddy: ['home', 'academy', 'crm', 'fault', 'profile'],
-  barista: ['home', 'academy', 'fault', 'profile'],
-  bar_buddy: ['home', 'academy', 'fault', 'profile'],
-  stajyer: ['home', 'academy', 'profile'],
-  yatirimci_branch: ['home', 'reports', 'profile'],
-  // Factory Roles
-  fabrika_mudur: ['home', 'factory', 'crm', 'reports', 'profile'],
-  fabrika_sorumlu: ['home', 'factory', 'profile'],
-  fabrika_personel: ['home', 'factory', 'profile'],
+  // Executive - AI komut merkezi, bildirimler (raporlar+şubeler modüllerde var)
+  ceo: ['home', 'ai', 'notifications', 'search', 'profile'],
+  cgo: ['home', 'ai', 'branches', 'notifications', 'profile'],
+  admin: ['home', 'admin', 'notifications', 'search', 'profile'],
+  // HQ Departments - Departmana özel kısayollar (modüllerde olmayanlar)
+  muhasebe: ['home', 'crm', 'notifications', 'search', 'profile'],
+  muhasebe_ik: ['home', 'crm', 'notifications', 'search', 'profile'],
+  satinalma: ['home', 'crm', 'notifications', 'search', 'profile'],
+  marketing: ['home', 'notifications', 'search', 'calendar', 'profile'],
+  pazarlama: ['home', 'notifications', 'search', 'calendar', 'profile'],
+  ik: ['home', 'shifts', 'notifications', 'search', 'profile'],
+  teknik: ['home', 'fault', 'crm', 'notifications', 'profile'],
+  destek: ['home', 'fault', 'notifications', 'search', 'profile'],
+  trainer: ['home', 'tasks', 'notifications', 'search', 'profile'],
+  coach: ['home', 'branches', 'crm', 'notifications', 'profile'],
+  kalite_kontrol: ['home', 'quality', 'notifications', 'search', 'profile'],
+  ekipman_teknik: ['home', 'fault', 'crm', 'notifications', 'profile'],
+  fabrika: ['home', 'stock', 'notifications', 'search', 'profile'],
+  yatirimci_hq: ['home', 'branches', 'notifications', 'search', 'profile'],
+  // Branch Roles - Günlük operasyon kısayolları
+  supervisor: ['home', 'tasks', 'notifications', 'fault', 'profile'],
+  supervisor_buddy: ['home', 'tasks', 'notifications', 'fault', 'profile'],
+  barista: ['home', 'academy', 'myshifts', 'fault', 'profile'],
+  bar_buddy: ['home', 'academy', 'myshifts', 'fault', 'profile'],
+  stajyer: ['home', 'academy', 'notifications', 'profile'],
+  yatirimci_branch: ['home', 'branches', 'notifications', 'profile'],
+  // Factory Roles - Üretim odaklı kısayollar
+  fabrika_mudur: ['home', 'shifts', 'notifications', 'search', 'profile'],
+  fabrika_sorumlu: ['home', 'factory', 'myshifts', 'profile'],
+  fabrika_personel: ['home', 'factory', 'myshifts', 'profile'],
 };
 
 // Widget görünürlük kuralları - Tüm roller için widget erişimi
