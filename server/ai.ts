@@ -1185,93 +1185,54 @@ export async function generateShiftPlan(
     const experiencedRoles = ['barista', 'supervisor', 'supervisor_buddy'];
     const internRoles = ['intern', 'stajyer'];
 
+    const ftEmployees = employees.filter(e => e.employmentType !== 'parttime');
+    const ptEmployees = employees.filter(e => e.employmentType === 'parttime');
+    const expectedShiftCount = (ftEmployees.length * 6) + (ptEmployees.length * 3);
+
     const response = await openai.chat.completions.create({
-      model: CHAT_MODEL, // gpt-4o for planning
+      model: CHAT_MODEL,
       messages: [
         {
           role: "system",
-          content: `Sen DOSPRESSO kahve dükkanları için bir AI vardiya planlamacısısın. Şube çalışma saatlerine, personel tipine ve iş yoğunluğuna göre optimal vardiya planları oluşturursun. Mola saatlerini kademeli dağıt ve yorgunluk önleme kurallarına uy.`,
+          content: `Sen DOSPRESSO kahve dukkanları icin vardiya planlama AI'isın. HER personeli haftanın gunlerine DAGITMAK en onemli gorevdir. Hicbir personel planlanmadan kalmamalı!`,
         },
         {
           role: "user",
-          content: `DOSPRESSO Şube #${branchId} için ${weekStart} - ${weekEnd} tarihleri arası vardiya planı oluştur.
+          content: `Sube #${branchId} icin ${weekStart} - ${weekEnd} vardiya planı olustur.
 
-📍 ŞUBE ÇALIŞMA SAATLERİ (KESİNLİKLE UYULMALI):
-- Açılış: ${openingHours}
-- Kapanış: ${closingHours}
-- Tüm vardiyalar bu saatler arasında olmalı!
+SUBE SAATLERI: ${openingHours} - ${closingHours}
 
-⚠️ ZORUNLU KURALLAR:
-1. ŞUBE SAATLERİNE UYUM: Vardiyalar ${openingHours}-${closingHours} arasında olmalı. Açılış vardiyası ${openingHours}'da başlar, kapanış vardiyası ${closingHours}'da biter.
-
-2. VARDİYA SÜRESİ: Fulltime personel 8.5 saat (7.5 saat çalışma + 1 saat mola), Parttime personel 4 saat.
-
-3. MOLA STAGGERING (15dk ARALIK): Aynı vardiyada çalışan personelin molaları farklı saatlerde başlamalı:
-   - İlk kişi: Vardiya başlangıcından 4 saat sonra (ör: ${String(openH + 4).padStart(2,'0')}:00)
-   - İkinci kişi: +15 dakika (ör: ${String(openH + 4).padStart(2,'0')}:15)
-   - Üçüncü kişi: +30 dakika (ör: ${String(openH + 4).padStart(2,'0')}:30)
-   Bu sayede hiçbir zaman tüm personel aynı anda molada olmaz!
-
-4. STAJYER KURALI: Her stajyer/intern yanında mutlaka en az 1 deneyimli barista olmalı. Stajyer tek başına çalışamaz!
-
-5. HER VARDİYADA TECRÜBELİ: Her vardiyada en az 1 tecrbeli personel (barista/supervisor) olmalı (Skill Balancing).
-
-6. YORGUNLUK ÖNLEMİ (FATIGUE PREVENTION): Hiçbir personel ardışık 6 günden fazla çalışmamalı! 5 veya 6 ardışık günden sonra mutlaka OFF verin.
-
-7. HAFTALİK SAAT LİMİTLERİ:
-   - Fulltime (FT): Haftada max 45 saat
-   - Parttime (PT): Haftada max 25 saat
-
-8. ADİL HAFTA SONU DAĞILIMI: Hafta sonu vardiyaları (Cumartesi-Pazar) personeller arasında adil dağıtılmalı. Herkese dönüşümlü hafta sonu atayın.
-
-9. YOĞUNLUK DENGESİ:
-   - Sabah vardiyaları (${openingHours}-${String(midShiftH).padStart(2,'0')}:00): 2-3 personel
-   - Akşam vardiyaları (${String(midShiftH).padStart(2,'0')}:00-${closingHours}): 3-4 personel (daha yoğun)
-   - Kapanışta mutlaka minimum 3 personel
-
-10. OFF GÜN KONSANTRASYONU: İzin günlerini zayıf satış günlerine yoğunlaştır (Pazartesi, Salı).
-
-Geçmiş Vardiya İstatistikleri (son 6 hafta):
-- Toplam: ${shiftStats.totalShifts}, Sabah: ${shiftStats.morningShifts}, Akşam: ${shiftStats.eveningShifts}
-
-Mevcut Çalışanlar (FT=Fulltime, PT=Parttime):
+PERSONEL LISTESI (${employees.length} kisi):
 ${employeeList}
 
-${workloadMetrics?.averageDailySales ? `Yoğunluk: Günlük ort. ${workloadMetrics.averageDailySales} satış` : ''}
+KESIN KURALLAR:
+1. FT personel = 6 gun calisir, 1 gun OFF. Her FT icin KESINLIKLE 6 vardiya olustur!
+2. PT personel = 3 gun calisir. Her PT icin KESINLIKLE 3 vardiya olustur!
+3. Toplam MINIMUM ${expectedShiftCount} vardiya olusturulmali!
+4. Ayni personel ayni gun 2 vardiyaya atanamaz.
+5. Vardiya suresi: FT = 8.5 saat (7.5+1 mola), PT = 4 saat.
+6. Vardiya tipleri: morning (${openingHours}-${String(midShiftH).padStart(2,'0')}:30), evening (${String(midShiftH).padStart(2,'0')}:00-${closingHours})
+7. Her gun sabah 2-3 kisi, aksam 3-4 kisi olmali.
+8. Molalar kademeli: 15dk arayla (ornek: 12:00, 12:15, 12:30).
+9. OFF gunleri Pzt/Sal'a yogunlastir (zayif gunler).
+10. Her vardiyada en az 1 deneyimli personel (barista/supervisor).
+11. Stajyer tek basina calisamaz.
+12. Hafta sonu (Cmt/Paz) adil dagilim.
 
-GÖREV: ${weekStart} - ${weekEnd} tarihleri arası her gün için optimal vardiya planı oluştur.
+ORNEK CIKTI (${ftEmployees.length} FT, ${ptEmployees.length} PT):
+Her FT personel icin 6 farkli gune, her PT icin 3 farkli gune vardiya ata.
 
-Vardiya Tipleri:
-- morning: ${openingHours}-${String(midShiftH).padStart(2,'0')}:30 (açılış vardiyası)
-- evening: ${String(midShiftH).padStart(2,'0')}:00-${closingHours} (kapanış vardiyası)
-
-⚠️ UYARILAR:
-- Aynı personeli aynı gün birden fazla vardiyaya ATAMA!
-- FULLTIME ÇALIŞMA KURALI: Fulltime (FT) personeli haftada KESİNLİKLE 6 GÜN planla (45 saat = 6 gün × 7.5 saat). 1 gün OFF ver.
-- PARTTIME ÇALIŞMA KURALI: Parttime (PT) personeli haftada 3 GÜN planla (25 saat civarı).
-- breakStartTime'ları 15dk arayla kademeli ver!
-- Personel: ${employees.length} kişi.
-
-JSON formatında yanıt ver:
+JSON yanit ver:
 {
   "shifts": [
-    {
-      "shiftDate": "YYYY-MM-DD",
-      "startTime": "${openingHours}:00",
-      "endTime": "${String(openH + 8).padStart(2,'0')}:30:00",
-      "breakStartTime": "${String(openH + 4).padStart(2,'0')}:00:00",
-      "breakEndTime": "${String(openH + 5).padStart(2,'0')}:00:00",
-      "shiftType": "morning",
-      "assignedToId": "user-id",
-      "status": "draft"
-    }
+    {"shiftDate":"YYYY-MM-DD","startTime":"HH:MM:SS","endTime":"HH:MM:SS","breakStartTime":"HH:MM:SS","breakEndTime":"HH:MM:SS","shiftType":"morning|evening","assignedToId":"user-id","status":"draft"}
   ],
-  "summary": "Planlama özeti"
+  "summary":"Ozet"
 }`,
         },
       ],
       response_format: { type: "json_object" },
-      max_completion_tokens: 4096, // Limit tokens for cost
+      max_completion_tokens: 12000,
     });
 
     const content = response.choices[0]?.message?.content;

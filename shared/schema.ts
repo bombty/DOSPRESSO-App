@@ -9432,6 +9432,21 @@ export const branchShiftSessions = pgTable("branch_shift_sessions", {
   shiftAttendanceId: integer("shift_attendance_id").references(() => shiftAttendance.id, { onDelete: "set null" }),
   
   notes: text("notes"),
+  
+  // Lokasyon dogrulama
+  checkInLatitude: numeric("check_in_latitude", { precision: 10, scale: 7 }),
+  checkInLongitude: numeric("check_in_longitude", { precision: 10, scale: 7 }),
+  checkOutLatitude: numeric("check_out_latitude", { precision: 10, scale: 7 }),
+  checkOutLongitude: numeric("check_out_longitude", { precision: 10, scale: 7 }),
+  isLocationVerified: boolean("is_location_verified").default(false),
+  locationDistance: integer("location_distance"), // metre cinsinden mesafe
+  
+  // Planlanan vardiya karsilastirmasi
+  plannedShiftId: integer("planned_shift_id"),
+  lateMinutes: integer("late_minutes").default(0), // gec kalma dakikasi
+  earlyLeaveMinutes: integer("early_leave_minutes").default(0), // erken cikis dakikasi
+  overtimeMinutes: integer("overtime_minutes").default(0), // fazla mesai dakikasi
+  
   createdAt: timestamp("created_at").defaultNow(),
 }, (table) => [
   index("branch_shift_sessions_user_idx").on(table.userId),
@@ -9603,6 +9618,72 @@ export const insertBranchWeeklyAttendanceSummarySchema = createInsertSchema(bran
 
 export type InsertBranchWeeklyAttendanceSummary = z.infer<typeof insertBranchWeeklyAttendanceSummarySchema>;
 export type BranchWeeklyAttendanceSummary = typeof branchWeeklyAttendanceSummary.$inferSelect;
+
+// HQ Vardiya Oturumlari (Merkez ofis personel takibi)
+export const hqShiftSessions = pgTable("hq_shift_sessions", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  
+  checkInTime: timestamp("check_in_time").notNull().defaultNow(),
+  checkOutTime: timestamp("check_out_time"),
+  
+  workMinutes: integer("work_minutes").default(0),
+  breakMinutes: integer("break_minutes").default(0),
+  netWorkMinutes: integer("net_work_minutes").default(0),
+  outsideMinutes: integer("outside_minutes").default(0), // dis gorev suresi
+  
+  status: varchar("status", { length: 20 }).default("active").notNull(), // active, on_break, outside, completed
+  
+  // Lokasyon
+  checkInLatitude: numeric("check_in_latitude", { precision: 10, scale: 7 }),
+  checkInLongitude: numeric("check_in_longitude", { precision: 10, scale: 7 }),
+  isLocationVerified: boolean("is_location_verified").default(false),
+  
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("hq_shift_sessions_user_idx").on(table.userId),
+  index("hq_shift_sessions_date_idx").on(table.checkInTime),
+  index("hq_shift_sessions_status_idx").on(table.status),
+]);
+
+export const insertHqShiftSessionSchema = createInsertSchema(hqShiftSessions).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertHqShiftSession = z.infer<typeof insertHqShiftSessionSchema>;
+export type HqShiftSession = typeof hqShiftSessions.$inferSelect;
+
+// HQ Cikis Olaylari (mola, dis gorev, kisisel izin)
+export const hqShiftEvents = pgTable("hq_shift_events", {
+  id: serial("id").primaryKey(),
+  sessionId: integer("session_id").notNull().references(() => hqShiftSessions.id, { onDelete: "cascade" }),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  
+  eventType: varchar("event_type", { length: 30 }).notNull(), // check_in, check_out, break_start, break_end, outside_start, outside_end
+  exitReason: varchar("exit_reason", { length: 30 }), // break, external_task, personal, end_of_day
+  exitDescription: text("exit_description"), // dis gorev aciklamasi
+  estimatedReturnTime: timestamp("estimated_return_time"), // tahmini donus
+  
+  eventTime: timestamp("event_time").notNull().defaultNow(),
+  latitude: numeric("latitude", { precision: 10, scale: 7 }),
+  longitude: numeric("longitude", { precision: 10, scale: 7 }),
+  
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("hq_shift_events_session_idx").on(table.sessionId),
+  index("hq_shift_events_user_idx").on(table.userId),
+]);
+
+export const insertHqShiftEventSchema = createInsertSchema(hqShiftEvents).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertHqShiftEvent = z.infer<typeof insertHqShiftEventSchema>;
+export type HqShiftEvent = typeof hqShiftEvents.$inferSelect;
 
 // Şube Aylık Puantaj Özeti (İK raporlama için)
 export const branchMonthlyPayrollSummary = pgTable("branch_monthly_payroll_summary", {

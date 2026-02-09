@@ -124,6 +124,23 @@ export default function BranchKiosk() {
   const [showEndShiftConfirm2, setShowEndShiftConfirm2] = useState(false);
   const [showBreakConfirm1, setShowBreakConfirm1] = useState(false);
   const [showBreakConfirm2, setShowBreakConfirm2] = useState(false);
+  const [userLocation, setUserLocation] = useState<{latitude: number; longitude: number} | null>(null);
+  const [locationStatus, setLocationStatus] = useState<'pending' | 'granted' | 'denied'>('pending');
+
+  useEffect(() => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          setUserLocation({ latitude: pos.coords.latitude, longitude: pos.coords.longitude });
+          setLocationStatus('granted');
+        },
+        () => setLocationStatus('denied'),
+        { enableHighAccuracy: true, timeout: 10000 }
+      );
+    } else {
+      setLocationStatus('denied');
+    }
+  }, []);
 
   const { data: staffList = [], isLoading: loadingStaff, refetch: refetchStaff } = useQuery<StaffMember[]>({
     queryKey: ['/api/branches', branchId, 'kiosk', 'staff'],
@@ -203,7 +220,10 @@ export default function BranchKiosk() {
 
   const startShiftMutation = useMutation({
     mutationFn: async (userId: string) => {
-      const res = await apiRequest('POST', `/api/branches/${branchId}/kiosk/shift-start`, { userId });
+      const res = await apiRequest('POST', `/api/branches/${branchId}/kiosk/shift-start`, {
+        userId,
+        ...(userLocation ? { latitude: userLocation.latitude, longitude: userLocation.longitude } : {}),
+      });
       return res.json();
     },
     onSuccess: (data) => {
@@ -249,7 +269,10 @@ export default function BranchKiosk() {
 
   const endShiftMutation = useMutation({
     mutationFn: async (sessionId: number) => {
-      const res = await apiRequest('POST', `/api/branches/${branchId}/kiosk/shift-end`, { sessionId });
+      const res = await apiRequest('POST', `/api/branches/${branchId}/kiosk/shift-end`, {
+        sessionId,
+        ...(userLocation ? { latitude: userLocation.latitude, longitude: userLocation.longitude } : {}),
+      });
       return res.json();
     },
     onSuccess: (data) => {

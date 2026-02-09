@@ -1766,9 +1766,29 @@ function AIPlanModal({ open, onClose, weekStart, employees, branchId, existingSh
       setAiSummary(data.summary || '');
       setIsCached(data.cached || false);
       
+      const shiftCounts: Record<string, number> = {};
+      mappedShifts.forEach((s: any) => {
+        shiftCounts[s.assignedToId] = (shiftCounts[s.assignedToId] || 0) + 1;
+      });
+      
+      const missingEmployees = employees.filter((emp: any) => {
+        const count = shiftCounts[String(emp.id)] || 0;
+        const target = emp.employmentType === 'parttime' ? 3 : 6;
+        return count < target;
+      });
+      
+      const warningParts: string[] = [];
+      if (missingEmployees.length > 0) {
+        warningParts.push(`${missingEmployees.length} personelin vardiyasi eksik`);
+      }
+      
+      const desc = `${mappedShifts.length} vardiya onerisi olusturuldu` + 
+        (warningParts.length > 0 ? ` (${warningParts.join(', ')})` : '');
+      
       toast({ 
-        title: data.cached ? "Önbellek Kullanıldı" : "AI Plan Hazır", 
-        description: `${mappedShifts.length} vardiya önerisi oluşturuldu` 
+        title: data.cached ? "Onbellek Kullanildi" : "AI Plan Hazir", 
+        description: desc,
+        variant: missingEmployees.length > 0 ? "destructive" : "default",
       });
     } catch (error: any) {
       console.error("AI plan error:", error);
@@ -1871,10 +1891,80 @@ function AIPlanModal({ open, onClose, weekStart, employees, branchId, existingSh
             
             {aiSummary && (
               <div className="p-2 bg-muted/50 rounded text-xs text-muted-foreground">
-                <strong>AI Özeti:</strong> {aiSummary}
+                <strong>AI Ozeti:</strong> {aiSummary}
               </div>
             )}
             
+            {(() => {
+              const counts: Record<string, number> = {};
+              preview.forEach(s => { counts[s.assignedToId] = (counts[s.assignedToId] || 0) + 1; });
+              const issues = employees.filter((emp: any) => {
+                const c = counts[String(emp.id)] || 0;
+                const target = emp.employmentType === 'parttime' ? 3 : 6;
+                return c < target;
+              });
+              if (issues.length === 0) return null;
+              return (
+                <div className="p-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded text-xs">
+                  <strong className="text-red-600 dark:text-red-400">Eksik Vardiya Uyarisi:</strong>
+                  <ul className="mt-1 space-y-0.5">
+                    {issues.map((emp: any) => {
+                      const c = counts[String(emp.id)] || 0;
+                      const target = emp.employmentType === 'parttime' ? 3 : 6;
+                      return (
+                        <li key={emp.id} className="text-red-600 dark:text-red-400">
+                          {emp.fullName || emp.firstName}: {c}/{target} gun
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </div>
+              );
+            })()}
+
+            {(() => {
+              const empHours: Record<string, number> = {};
+              const empDays: Record<string, number> = {};
+              preview.forEach(s => {
+                const start = s.startTime ? parseInt(s.startTime.split(':')[0]) : 0;
+                const end = s.endTime ? parseInt(s.endTime.split(':')[0]) : 0;
+                const hours = end > start ? end - start : 24 - start + end;
+                empHours[s.assignedToId] = (empHours[s.assignedToId] || 0) + hours;
+                empDays[s.assignedToId] = (empDays[s.assignedToId] || 0) + 1;
+              });
+              const entries = employees.map((emp: any) => ({
+                name: emp.fullName || emp.firstName,
+                hours: empHours[String(emp.id)] || 0,
+                days: empDays[String(emp.id)] || 0,
+                limit: emp.weeklyHours || (emp.employmentType === 'parttime' ? 25 : 45),
+                targetDays: emp.employmentType === 'parttime' ? 3 : 6,
+                type: emp.employmentType,
+              }));
+              if (entries.length === 0) return null;
+              return (
+                <div className="p-2 bg-muted/30 rounded text-xs">
+                  <strong>Adil Dagilim Ozeti:</strong>
+                  <div className="space-y-1.5 mt-1">
+                    {entries.map((e, i) => {
+                      const pct = Math.min(100, Math.round((e.days / e.targetDays) * 100));
+                      const barColor = pct >= 100 ? 'bg-green-500' : pct >= 50 ? 'bg-yellow-500' : 'bg-red-500';
+                      return (
+                        <div key={i}>
+                          <div className="flex items-center justify-between gap-1 mb-0.5">
+                            <span className="truncate flex-1">{e.name}</span>
+                            <span className="text-muted-foreground whitespace-nowrap">{e.days}/{e.targetDays}g {e.hours}/{e.limit}s</span>
+                          </div>
+                          <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden">
+                            <div className={`h-full ${barColor} rounded-full transition-all`} style={{ width: `${pct}%` }} />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })()}
+
             <div className="grid grid-cols-7 gap-1">
               {weekDays.map(day => (
                 <div key={day.dateStr} className="text-center">

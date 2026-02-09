@@ -250,6 +250,8 @@ import {
   insertBranchWeeklyAttendanceSummarySchema,
   insertBranchMonthlyPayrollSummarySchema,
   insertBranchKioskSettingsSchema,
+  hqShiftSessions,
+  hqShiftEvents,
   dashboardAlerts,
   checklistAssignments,
   checklistCompletions,
@@ -15550,54 +15552,81 @@ JSON formatında yanıt ver:
           };
         });
 
-      // COVERAGE VALIDATION: Ensure all active employees get at least 1 shift
-      const plannedEmployees = new Set(validatedShifts.map(s => String(s.assignedToId)));
-      const unplannedEmployees = employees.filter(e => !plannedEmployees.has(String(e.id)));
-      
-      if (unplannedEmployees.length > 0) {
-        console.log(`⚠️ Coverage gap: ${unplannedEmployees.length} employees not planned. Adding filler shifts...`);
-        
-        // Generate week dates
-        const weekDates: string[] = [];
-        const current = new Date(startDate);
-        while (current <= endDate) {
-          weekDates.push(current.toISOString().split('T')[0]);
-          current.setDate(current.getDate() + 1);
-        }
-        
-        // Add shifts to unplanned employees - distribute across week
-        unplannedEmployees.forEach((emp, idx) => {
-          const daysToAssign = Math.ceil((weekDates.length * 3) / unplannedEmployees.length); // ~3 days per employee
-          for (let i = 0; i < daysToAssign && idx * 3 + i < weekDates.length; i++) {
-            const dateIdx = (idx * 3 + i) % weekDates.length;
-            const shiftDate = weekDates[dateIdx];
-            
-            // Check if this employee already has a shift that day
-            const dayKey = shiftDate;
-            const employeeId = String(emp.id);
-            const hasShiftThatDay = validatedShifts.some(s => s.shiftDate === dayKey && s.assignedToId === employeeId);
-            
-            if (!hasShiftThatDay) {
-              // Alternate between morning and evening
-              const shiftType = i % 2 === 0 ? 'evening' : 'morning';
-              validatedShifts.push({
-                shiftDate,
-                assignedToId: employeeId,
-                shiftType,
-                status: 'draft',
-                startTime: shiftType === 'morning' ? '07:00:00' : '15:00:00',
-                endTime: shiftType === 'morning' ? '15:00:00' : '23:00:00',
-                breakStartTime: shiftType === 'morning' ? '11:00:00' : '19:00:00',
-                breakEndTime: shiftType === 'morning' ? '12:00:00' : '20:00:00',
-              });
-              plannedEmployees.add(employeeId);
-              console.log(`✅ Filler: ${emp.name} added to ${shiftDate} (${shiftType})`);
-            }
-          }
-        });
+      // COVERAGE VALIDATION: Ensure every employee has correct shift count (FT=6, PT=3)
+      const weekDates: string[] = [];
+      const currentD = new Date(startDate);
+      while (currentD <= endDate) {
+        weekDates.push(currentD.toISOString().split('T')[0]);
+        currentD.setDate(currentD.getDate() + 1);
       }
 
-      console.log(`📊 Final shift plan: ${validatedShifts.length} shifts for ${plannedEmployees.size} employees`);
+      const branchHoursInfo = await storage.getBranch(bid);
+      const bOpen = branchHoursInfo?.openingHours || '08:00';
+      const bClose = branchHoursInfo?.closingHours || '22:00';
+      const bOpenHr = parseInt(bOpen.split(':')[0]);
+      const bCloseHr = parseInt(bClose.split(':')[0]);
+      const bMidHr = Math.floor((bOpenHr + bCloseHr) / 2);
+
+      for (const emp of employees) {
+        const employeeId = String(emp.id);
+        const currentCount = validatedShifts.filter(s => s.assignedToId === employeeId).length;
+        const targetDays = emp.employmentType === 'parttime' ? 3 : 6;
+        const missingDays = targetDays - currentCount;
+
+        if (missingDays <= 0) continue;
+
+        console.log(`Filler: ${emp.name} ${currentCount}/${targetDays} gun, ${missingDays} ekleniyor`);
+
+        const assignedDates = new Set(
+          validatedShifts.filter(s => s.assignedToId === employeeId).map(s => s.shiftDate)
+        );
+
+        const availableDates = weekDates.filter(d => !assignedDates.has(d));
+        const sortedDates = availableDates.sort((a, b) => {
+          const countA = validatedShifts.filter(s => s.shiftDate === a).length;
+          const countB = validatedShifts.filter(s => s.shiftDate === b).length;
+          return countA - countB;
+        });
+
+        const isFT = emp.employmentType !== 'parttime';
+        for (let i = 0; i < missingDays && i < sortedDates.length; i++) {
+          const shiftDate = sortedDates[i];
+          const mCount = validatedShifts.filter(s => s.shiftDate === shiftDate && s.shiftType === 'morning').length;
+          const eCount = validatedShifts.filter(s => s.shiftDate === shiftDate && s.shiftType === 'evening').length;
+          const shiftType = mCount <= eCount ? 'morning' : 'evening';
+
+          let sTime: string, eTime: string, bStart: string, bEnd: string;
+          if (shiftType === 'morning') {
+            sTime = `${bOpen}:00`;
+            const endH = bOpenHr + (isFT ? 8 : 4);
+            eTime = `${String(endH).padStart(2,'0')}:${isFT ? '30' : '00'}:00`;
+            const breakH = bOpenHr + 4;
+            bStart = `${String(breakH).padStart(2,'0')}:${String(Math.min(mCount * 15, 45)).padStart(2,'0')}:00`;
+            bEnd = `${String(breakH + 1).padStart(2,'0')}:${String(Math.min(mCount * 15, 45)).padStart(2,'0')}:00`;
+          } else {
+            sTime = `${String(bMidHr).padStart(2,'0')}:00:00`;
+            const endH = Math.min(bMidHr + (isFT ? 8 : 4), bCloseHr);
+            eTime = `${String(endH).padStart(2,'0')}:${isFT ? '30' : '00'}:00`;
+            const breakH = bMidHr + 4;
+            bStart = `${String(breakH).padStart(2,'0')}:${String(Math.min(eCount * 15, 45)).padStart(2,'0')}:00`;
+            bEnd = `${String(breakH + 1).padStart(2,'0')}:${String(Math.min(eCount * 15, 45)).padStart(2,'0')}:00`;
+          }
+
+          validatedShifts.push({
+            shiftDate,
+            assignedToId: employeeId,
+            shiftType,
+            status: 'draft',
+            startTime: sTime,
+            endTime: eTime,
+            breakStartTime: bStart,
+            breakEndTime: bEnd,
+          });
+        }
+      }
+
+      const finalPlannedCount = new Set(validatedShifts.map(s => s.assignedToId)).size;
+      console.log(`Final: ${validatedShifts.length} vardiya, ${finalPlannedCount}/${employees.length} personel`);
 
       res.json({
         recommendations: validatedShifts,
@@ -29659,6 +29688,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`
   });
 
   // Şube personeli listesi (kiosk için)
+
   app.get('/api/branches/:branchId/kiosk/staff', async (req, res) => {
     try {
       const branchId = parseInt(req.params.branchId);
@@ -29822,6 +29852,56 @@ DOSPRESSO İnsan Kaynakları Ekibi`
       }
 
       const now = new Date();
+      const { latitude, longitude } = req.body;
+
+      // Location verification
+      let checkInLatitude: string | null = null;
+      let checkInLongitude: string | null = null;
+      let isLocationVerified = false;
+      let locationDistance: number | null = null;
+
+      if (latitude && longitude) {
+        checkInLatitude = String(latitude);
+        checkInLongitude = String(longitude);
+
+        const [branch] = await db.select({
+          shiftCornerLatitude: branches.shiftCornerLatitude,
+          shiftCornerLongitude: branches.shiftCornerLongitude,
+          geoRadius: branches.geoRadius,
+        }).from(branches).where(eq(branches.id, branchId));
+
+        if (branch && branch.shiftCornerLatitude && branch.shiftCornerLongitude) {
+          const dist = calculateDistance(
+            Number(latitude), Number(longitude),
+            Number(branch.shiftCornerLatitude), Number(branch.shiftCornerLongitude)
+          );
+          locationDistance = dist;
+          isLocationVerified = dist <= (branch.geoRadius || 50);
+        }
+      }
+
+      // Find planned shift for today
+      const todayStr = now.toISOString().split('T')[0];
+      let plannedShiftId: number | null = null;
+      let lateMinutes = 0;
+
+      const [plannedShift] = await db.select().from(shifts)
+        .where(and(
+          eq(shifts.branchId, branchId),
+          eq(shifts.assignedToId, userId),
+          eq(shifts.shiftDate, todayStr)
+        ))
+        .limit(1);
+
+      if (plannedShift) {
+        plannedShiftId = plannedShift.id;
+        const [hours, minutes] = plannedShift.startTime.split(':').map(Number);
+        const plannedStart = new Date(now);
+        plannedStart.setHours(hours, minutes, 0, 0);
+        if (now.getTime() > plannedStart.getTime()) {
+          lateMinutes = Math.floor((now.getTime() - plannedStart.getTime()) / 60000);
+        }
+      }
 
       // Create shift session
       const [session] = await db.insert(branchShiftSessions).values({
@@ -29829,6 +29909,12 @@ DOSPRESSO İnsan Kaynakları Ekibi`
         branchId,
         checkInTime: now,
         status: 'active',
+        checkInLatitude,
+        checkInLongitude,
+        isLocationVerified,
+        locationDistance,
+        plannedShiftId,
+        lateMinutes,
       }).returning();
 
       // Log event
@@ -29984,7 +30070,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`
   app.post('/api/branches/:branchId/kiosk/shift-end', async (req, res) => {
     try {
       const branchId = parseInt(req.params.branchId);
-      const { sessionId, notes } = req.body;
+      const { sessionId, notes, latitude, longitude } = req.body;
       
       if (!sessionId) {
         return res.status(400).json({ message: "Oturum gerekli" });
@@ -30020,6 +30106,28 @@ DOSPRESSO İnsan Kaynakları Ekibi`
         }
       }
 
+      // Calculate early leave and overtime if planned shift exists
+      let earlyLeaveMinutes = 0;
+      let overtimeMinutes = 0;
+
+      if (session.plannedShiftId) {
+        const [plannedShift] = await db.select().from(shifts)
+          .where(eq(shifts.id, session.plannedShiftId))
+          .limit(1);
+
+        if (plannedShift) {
+          const [endH, endM] = plannedShift.endTime.split(':').map(Number);
+          const plannedEnd = new Date(now);
+          plannedEnd.setHours(endH, endM, 0, 0);
+          const diff = now.getTime() - plannedEnd.getTime();
+          if (diff < 0) {
+            earlyLeaveMinutes = Math.floor(Math.abs(diff) / 60000);
+          } else if (diff > 0) {
+            overtimeMinutes = Math.floor(diff / 60000);
+          }
+        }
+      }
+
       // Update session
       const [updatedSession] = await db.update(branchShiftSessions)
         .set({
@@ -30028,6 +30136,10 @@ DOSPRESSO İnsan Kaynakları Ekibi`
           netWorkMinutes: netWorkMinutes,
           status: 'completed',
           notes: notes || null,
+          checkOutLatitude: latitude ? String(latitude) : null,
+          checkOutLongitude: longitude ? String(longitude) : null,
+          earlyLeaveMinutes,
+          overtimeMinutes,
         })
         .where(eq(branchShiftSessions.id, sessionId))
         .returning();
@@ -30234,6 +30346,312 @@ DOSPRESSO İnsan Kaynakları Ekibi`
     } catch (error: any) {
       console.error("Error fetching active shifts:", error);
       res.status(500).json({ message: "Aktif vardiyalar alınamadı" });
+    }
+  });
+
+
+  // =================== HQ KIOSK ENDPOINTS ===================
+
+  app.get('/api/hq/kiosk/staff', async (req: any, res: any) => {
+    try {
+      const hqStaff = await db.select({
+        id: users.id,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        role: users.role,
+        profileImageUrl: users.profileImageUrl,
+      }).from(users)
+        .where(and(
+          isNull(users.branchId),
+          eq(users.isActive, true),
+          sql`${users.role} NOT IN ('barista', 'stajyer')`
+        ));
+      
+      res.json(hqStaff.map((s: any) => ({
+        ...s,
+        hasPin: true,
+      })));
+    } catch (error) {
+      console.error("HQ kiosk staff error:", error);
+      res.status(500).json({ message: "HQ personel listesi alinamadi" });
+    }
+  });
+
+  app.post('/api/hq/kiosk/login', async (req: any, res: any) => {
+    try {
+      const { userId, pin } = req.body;
+      if (!userId || !pin) {
+        return res.status(400).json({ message: "Kullanici ve PIN gerekli" });
+      }
+      
+      const [user] = await db.select().from(users).where(eq(users.id, userId));
+      if (!user) {
+        return res.status(404).json({ message: "Kullanici bulunamadi" });
+      }
+      
+      const userPin = user.phoneNumber ? user.phoneNumber.slice(-4) : '0000';
+      if (pin !== userPin) {
+        return res.status(401).json({ message: "Hatali PIN" });
+      }
+      
+      const [activeSession] = await db.select().from(hqShiftSessions)
+        .where(and(
+          eq(hqShiftSessions.userId, userId),
+          eq(hqShiftSessions.status, 'active')
+        ))
+        .orderBy(desc(hqShiftSessions.checkInTime))
+        .limit(1);
+      
+      const [breakSession] = await db.select().from(hqShiftSessions)
+        .where(and(
+          eq(hqShiftSessions.userId, userId),
+          inArray(hqShiftSessions.status, ['on_break', 'outside'])
+        ))
+        .orderBy(desc(hqShiftSessions.checkInTime))
+        .limit(1);
+      
+      res.json({
+        user: { id: user.id, firstName: user.firstName, lastName: user.lastName, role: user.role },
+        activeSession: activeSession || breakSession || null,
+      });
+    } catch (error) {
+      console.error("HQ kiosk login error:", error);
+      res.status(500).json({ message: "HQ giris hatasi" });
+    }
+  });
+
+  app.post('/api/hq/kiosk/shift-start', async (req: any, res: any) => {
+    try {
+      const { userId, latitude, longitude } = req.body;
+      if (!userId) {
+        return res.status(400).json({ message: "userId gerekli" });
+      }
+      
+      const [existing] = await db.select().from(hqShiftSessions)
+        .where(and(
+          eq(hqShiftSessions.userId, userId),
+          inArray(hqShiftSessions.status, ['active', 'on_break', 'outside'])
+        ));
+      
+      if (existing) {
+        return res.status(400).json({ message: "Zaten aktif bir oturumunuz var" });
+      }
+      
+      const [session] = await db.insert(hqShiftSessions).values({
+        userId,
+        checkInLatitude: latitude ? String(latitude) : null,
+        checkInLongitude: longitude ? String(longitude) : null,
+        status: 'active',
+      }).returning();
+      
+      await db.insert(hqShiftEvents).values({
+        sessionId: session.id,
+        userId,
+        eventType: 'check_in',
+        eventTime: new Date(),
+        latitude: latitude ? String(latitude) : null,
+        longitude: longitude ? String(longitude) : null,
+      });
+      
+      res.json({ session });
+    } catch (error) {
+      console.error("HQ shift start error:", error);
+      res.status(500).json({ message: "Vardiya baslatilamadi" });
+    }
+  });
+
+  app.post('/api/hq/kiosk/exit', async (req: any, res: any) => {
+    try {
+      const { sessionId, exitReason, exitDescription, estimatedReturnTime, latitude, longitude } = req.body;
+      if (!sessionId || !exitReason) {
+        return res.status(400).json({ message: "sessionId ve exitReason gerekli" });
+      }
+      
+      const [session] = await db.select().from(hqShiftSessions)
+        .where(eq(hqShiftSessions.id, sessionId));
+      
+      if (!session) {
+        return res.status(404).json({ message: "Oturum bulunamadi" });
+      }
+      
+      let newStatus = 'on_break';
+      let eventType = 'break_start';
+      if (exitReason === 'external_task') {
+        newStatus = 'outside';
+        eventType = 'outside_start';
+      } else if (exitReason === 'personal') {
+        newStatus = 'outside';
+        eventType = 'outside_start';
+      } else if (exitReason === 'end_of_day') {
+        const checkInTime = new Date(session.checkInTime).getTime();
+        const now = Date.now();
+        const totalMinutes = Math.round((now - checkInTime) / 60000);
+        const breakMins = session.breakMinutes || 0;
+        const outsideMins = session.outsideMinutes || 0;
+        const netMins = totalMinutes - breakMins - outsideMins;
+        
+        await db.update(hqShiftSessions)
+          .set({
+            status: 'completed',
+            checkOutTime: new Date(),
+            workMinutes: totalMinutes,
+            netWorkMinutes: Math.max(0, netMins),
+          })
+          .where(eq(hqShiftSessions.id, sessionId));
+        
+        await db.insert(hqShiftEvents).values({
+          sessionId,
+          userId: session.userId,
+          eventType: 'check_out',
+          exitReason: 'end_of_day',
+          exitDescription,
+          eventTime: new Date(),
+          latitude: latitude ? String(latitude) : null,
+          longitude: longitude ? String(longitude) : null,
+        });
+        
+        const [updated] = await db.select().from(hqShiftSessions)
+          .where(eq(hqShiftSessions.id, sessionId));
+        
+        return res.json({
+          session: updated,
+          summary: {
+            totalMinutes,
+            breakMinutes: breakMins,
+            outsideMinutes: outsideMins,
+            netWorkMinutes: Math.max(0, netMins),
+          },
+        });
+      }
+      
+      await db.update(hqShiftSessions)
+        .set({ status: newStatus })
+        .where(eq(hqShiftSessions.id, sessionId));
+      
+      await db.insert(hqShiftEvents).values({
+        sessionId,
+        userId: session.userId,
+        eventType,
+        exitReason,
+        exitDescription,
+        estimatedReturnTime: estimatedReturnTime ? new Date(estimatedReturnTime) : null,
+        eventTime: new Date(),
+        latitude: latitude ? String(latitude) : null,
+        longitude: longitude ? String(longitude) : null,
+      });
+      
+      const [updated] = await db.select().from(hqShiftSessions)
+        .where(eq(hqShiftSessions.id, sessionId));
+      
+      res.json({ session: updated });
+    } catch (error) {
+      console.error("HQ exit error:", error);
+      res.status(500).json({ message: "Cikis islemi basarisiz" });
+    }
+  });
+
+  app.post('/api/hq/kiosk/return', async (req: any, res: any) => {
+    try {
+      const { sessionId, latitude, longitude } = req.body;
+      if (!sessionId) {
+        return res.status(400).json({ message: "sessionId gerekli" });
+      }
+      
+      const [session] = await db.select().from(hqShiftSessions)
+        .where(eq(hqShiftSessions.id, sessionId));
+      
+      if (!session) {
+        return res.status(404).json({ message: "Oturum bulunamadi" });
+      }
+      
+      const [lastExitEvent] = await db.select().from(hqShiftEvents)
+        .where(and(
+          eq(hqShiftEvents.sessionId, sessionId),
+          inArray(hqShiftEvents.eventType, ['break_start', 'outside_start'])
+        ))
+        .orderBy(desc(hqShiftEvents.eventTime))
+        .limit(1);
+      
+      let exitDuration = 0;
+      if (lastExitEvent) {
+        exitDuration = Math.round((Date.now() - new Date(lastExitEvent.eventTime).getTime()) / 60000);
+      }
+      
+      const wasOnBreak = session.status === 'on_break';
+      const updateData: any = { status: 'active' };
+      
+      if (wasOnBreak) {
+        updateData.breakMinutes = (session.breakMinutes || 0) + exitDuration;
+      } else {
+        updateData.outsideMinutes = (session.outsideMinutes || 0) + exitDuration;
+      }
+      
+      await db.update(hqShiftSessions)
+        .set(updateData)
+        .where(eq(hqShiftSessions.id, sessionId));
+      
+      const eventType = wasOnBreak ? 'break_end' : 'outside_end';
+      await db.insert(hqShiftEvents).values({
+        sessionId,
+        userId: session.userId,
+        eventType,
+        eventTime: new Date(),
+        latitude: latitude ? String(latitude) : null,
+        longitude: longitude ? String(longitude) : null,
+      });
+      
+      const [updated] = await db.select().from(hqShiftSessions)
+        .where(eq(hqShiftSessions.id, sessionId));
+      
+      res.json({ session: updated, exitDuration });
+    } catch (error) {
+      console.error("HQ return error:", error);
+      res.status(500).json({ message: "Donus islemi basarisiz" });
+    }
+  });
+
+  app.get('/api/hq/kiosk/session/:userId', async (req: any, res: any) => {
+    try {
+      const { userId } = req.params;
+      
+      const [activeSession] = await db.select().from(hqShiftSessions)
+        .where(and(
+          eq(hqShiftSessions.userId, userId),
+          inArray(hqShiftSessions.status, ['active', 'on_break', 'outside'])
+        ))
+        .orderBy(desc(hqShiftSessions.checkInTime))
+        .limit(1);
+      
+      const events = activeSession ? await db.select().from(hqShiftEvents)
+        .where(eq(hqShiftEvents.sessionId, activeSession.id))
+        .orderBy(desc(hqShiftEvents.eventTime)) : [];
+      
+      res.json({ activeSession, events });
+    } catch (error) {
+      console.error("HQ session error:", error);
+      res.status(500).json({ message: "Oturum bilgisi alinamadi" });
+    }
+  });
+
+  app.get('/api/hq/kiosk/active-sessions', isAuthenticated, async (req: any, res: any) => {
+    try {
+      const hqSessions = await db.select({
+        session: hqShiftSessions,
+        user: {
+          id: users.id,
+          firstName: users.firstName,
+          lastName: users.lastName,
+          role: users.role,
+          profileImageUrl: users.profileImageUrl,
+        },
+      }).from(hqShiftSessions)
+        .innerJoin(users, eq(hqShiftSessions.userId, users.id))
+        .where(inArray(hqShiftSessions.status, ['active', 'on_break', 'outside']));
+      
+      res.json(hqSessions);
+    } catch (error) {
+      console.error("HQ active sessions error:", error);
+      res.status(500).json({ message: "Aktif oturumlar alinamadi" });
     }
   });
 

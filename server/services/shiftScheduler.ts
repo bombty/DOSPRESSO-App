@@ -21,11 +21,10 @@ interface ShiftRecommendation {
   startTime: string;
   endTime: string;
   reason: string;
-  fairnessScore: number; // 0-100
+  fairnessScore: number;
 }
 
 export class ShiftScheduler {
-  // Calculate hours between two times (HH:MM format)
   private static calculateHours(startTime: string, endTime: string): number {
     const [startH, startM] = startTime.split(':').map(Number);
     const [endH, endM] = endTime.split(':').map(Number);
@@ -34,7 +33,6 @@ export class ShiftScheduler {
     return (endMinutes - startMinutes) / 60;
   }
 
-  // Get hours worked by employee in week
   private static getWeeklyHours(
     employeeId: string,
     weekStart: string,
@@ -52,7 +50,6 @@ export class ShiftScheduler {
       .reduce((total, s) => total + this.calculateHours(s.startTime, s.endTime), 0);
   }
 
-  // Get days worked by employee in week
   private static getWeeklyDays(
     employeeId: string,
     weekStart: string,
@@ -73,7 +70,6 @@ export class ShiftScheduler {
     return daysSet.size;
   }
 
-  // Generate shift recommendations for a week
   static generateRecommendations(
     weekStart: string,
     employees: Employee[],
@@ -83,65 +79,84 @@ export class ShiftScheduler {
   ): ShiftRecommendation[] {
     const recommendations: ShiftRecommendation[] = [];
     const weekStartDate = parseISO(weekStart);
+    const openH = parseInt(openingHour.split(':')[0]);
+    const closeH = parseInt(closingHour.split(':')[0]);
+    const midH = Math.floor((openH + closeH) / 2);
 
-    for (let dayOffset = 0; dayOffset < 7; dayOffset++) {
-      const date = addDays(weekStartDate, dayOffset);
-      const dateStr = format(date, "yyyy-MM-dd");
-      const dayShifts = existingShifts.filter((s) => s.shiftDate === dateStr);
+    const allShifts = [...existingShifts];
 
-      // Skip if day already has many shifts
-      if (dayShifts.length >= Math.ceil(employees.length / 2)) continue;
+    const empDaysAssigned = new Map<string, Set<string>>();
+    employees.forEach(emp => {
+      const days = new Set<string>();
+      existingShifts.filter(s => s.assignedToId === emp.id).forEach(s => days.add(s.shiftDate));
+      empDaysAssigned.set(emp.id, days);
+    });
 
-      // Find best employee for this day
-      const candidates = employees.map((emp) => {
-        const weeklyHours = this.getWeeklyHours(emp.id, weekStart, existingShifts);
-        const weeklyDays = this.getWeeklyDays(emp.id, weekStart, existingShifts);
-        const targetHours = emp.employmentType === "fulltime" ? 45 : 25;
-        const targetDays = emp.employmentType === "fulltime" ? 6 : 3;
+    for (const emp of employees) {
+      const targetDays = emp.employmentType === 'fulltime' ? 6 : 
+                         emp.employmentType === 'parttime' ? 3 : 3;
+      const assigned = empDaysAssigned.get(emp.id)!;
+      const neededDays = targetDays - assigned.size;
 
-        // Calculate fairness: how far from targets
-        const hoursFairness = Math.max(0, 100 - Math.abs(targetHours - weeklyHours) * 5);
-        const daysFairness = weeklyDays >= targetDays ? 0 : (weeklyDays / targetDays) * 100;
+      if (neededDays <= 0) continue;
 
-        // Check if already on shift this day
-        const onShiftToday = dayShifts.some((s) => s.assignedToId === emp.id);
-        if (onShiftToday) return { emp, fairnessScore: -100 };
+      const weekDates: string[] = [];
+      for (let d = 0; d < 7; d++) {
+        const dateStr = format(addDays(weekStartDate, d), "yyyy-MM-dd");
+        if (!assigned.has(dateStr)) {
+          weekDates.push(dateStr);
+        }
+      }
 
-        return {
-          emp,
-          fairnessScore: (hoursFairness + daysFairness) / 2,
-        };
+      weekDates.sort((a, b) => {
+        const countA = allShifts.filter(s => s.shiftDate === a).length;
+        const countB = allShifts.filter(s => s.shiftDate === b).length;
+        return countA - countB;
       });
 
-      // Pick best candidate (highest fairness score)
-      const best = candidates
-        .filter((c) => c.fairnessScore > 0)
-        .sort((a, b) => b.fairnessScore - a.fairnessScore)[0];
+      const isFT = emp.employmentType === 'fulltime';
+      const shiftDuration = isFT ? 7.5 : 4;
 
-      if (best) {
-        const shiftHours = best.emp.employmentType === "fulltime" ? 7.5 : 4;
-        const endHour = parseInt(openingHour.split(":")[0]) + Math.floor(shiftHours);
-        const endTime = `${String(endHour).padStart(2, "0")}:${openingHour.split(":")[1]}`;
+      for (let i = 0; i < neededDays && i < weekDates.length; i++) {
+        const dateStr = weekDates[i];
+        const morningCount = allShifts.filter(s => s.shiftDate === dateStr && 
+          parseInt(s.startTime.split(':')[0]) < midH).length;
+        const eveningCount = allShifts.filter(s => s.shiftDate === dateStr && 
+          parseInt(s.startTime.split(':')[0]) >= midH).length;
+
+        const isMorning = morningCount <= eveningCount;
+        const startH = isMorning ? openH : midH;
+        const endH = startH + Math.floor(shiftDuration);
+        const endM = isFT ? '30' : '00';
+
+        const startTime = `${String(startH).padStart(2,'0')}:00`;
+        const endTime = `${String(Math.min(endH, closeH)).padStart(2,'0')}:${endM}`;
 
         recommendations.push({
-          employeeId: best.emp.id,
-          employeeName: best.emp.name,
+          employeeId: emp.id,
+          employeeName: emp.name,
           date: dateStr,
-          startTime: openingHour,
-          endTime: endTime,
-          reason:
-            best.emp.employmentType === "fulltime"
-              ? `Fulltime (${this.getWeeklyDays(best.emp.id, weekStart, existingShifts)}/6 gün, ${this.getWeeklyHours(best.emp.id, weekStart, existingShifts).toFixed(1)}/45 saat)`
-              : `Parttime (${this.getWeeklyDays(best.emp.id, weekStart, existingShifts)}/3 gün, ${this.getWeeklyHours(best.emp.id, weekStart, existingShifts).toFixed(1)}/25 saat)`,
-          fairnessScore: Math.round(best.fairnessScore),
+          startTime,
+          endTime,
+          reason: isFT
+            ? `Fulltime (${assigned.size + i + 1}/6 gun, hedef 45 saat)`
+            : `Parttime (${assigned.size + i + 1}/3 gun, hedef 25 saat)`,
+          fairnessScore: Math.round(100 - ((assigned.size + i) / targetDays) * 100),
         });
+
+        allShifts.push({
+          assignedToId: emp.id,
+          shiftDate: dateStr,
+          startTime,
+          endTime,
+        });
+        assigned.add(dateStr);
       }
     }
 
     return recommendations;
   }
 
-  // Validate week against constraints
   static validateWeek(
     weekStart: string,
     existingShifts: ExistingShift[],
@@ -151,7 +166,6 @@ export class ShiftScheduler {
     violations: string[];
   } {
     const violations: string[] = [];
-    const weekStartDate = parseISO(weekStart);
 
     employees.forEach((emp) => {
       const weeklyHours = this.getWeeklyHours(emp.id, weekStart, existingShifts);
@@ -159,12 +173,14 @@ export class ShiftScheduler {
 
       if (emp.employmentType === "fulltime") {
         if (weeklyDays < 6 && weeklyDays > 0) {
-          violations.push(`${emp.name}: ${weeklyDays} gün çalışacak (minimum 6 gerekli)`);
+          violations.push(`${emp.name}: ${weeklyDays} gun (minimum 6 gerekli)`);
         }
         if (weeklyHours < 45 && weeklyHours > 0) {
-          violations.push(
-            `${emp.name}: ${weeklyHours.toFixed(1)} saat (minimum 45 gerekli)`
-          );
+          violations.push(`${emp.name}: ${weeklyHours.toFixed(1)} saat (minimum 45 gerekli)`);
+        }
+      } else if (emp.employmentType === "parttime") {
+        if (weeklyDays < 3 && weeklyDays > 0) {
+          violations.push(`${emp.name}: ${weeklyDays} gun (minimum 3 gerekli)`);
         }
       }
     });

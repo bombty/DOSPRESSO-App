@@ -128,6 +128,8 @@ import FabrikaAIRaporlar from "@/pages/fabrika/ai-raporlar";
 import FabrikaUretimPlanlama from "@/pages/fabrika/uretim-planlama";
 import FabrikaVardiyaUyumluluk from "@/pages/fabrika/vardiya-uyumluluk";
 import SubeKiosk from "@/pages/sube/kiosk";
+import HqKiosk from "@/pages/hq/kiosk";
+import HqStaffDashboard from "@/pages/hq/staff-dashboard";
 import SubeDashboard from "@/pages/sube/dashboard";
 import ChecklistExecutionPage from "@/pages/sube/checklist-execution";
 import HQFabrikaAnalitik from "@/pages/hq-fabrika-analitik";
@@ -177,7 +179,8 @@ const PUBLIC_PATH_PREFIXES = [
   "/setup",
   "/sube/dashboard",
   "/sube/kiosk",
-  "/fabrika/kiosk"
+  "/fabrika/kiosk",
+  "/hq/kiosk"
 ];
 
 function isPublicPath(path: string) {
@@ -240,6 +243,7 @@ function Router() {
       <Route path="/personel-degerlendirme/:token" component={PublicStaffRating} />
       <Route path="/misafir-geri-bildirim/:token" component={MisafirGeriBildirimPublic} />
       <Route path="/fabrika/kiosk" component={FabrikaKiosk} />
+      <Route path="/hq/kiosk" component={HqKiosk} />
       <Route path="/sube/checklist-execution/:completionId" component={ChecklistExecutionPage} />
       <Route path="/sube/kiosk/:branchId" component={SubeKiosk} />
       <Route path="/sube/kiosk" component={SubeKiosk} />
@@ -333,6 +337,7 @@ function Router() {
           <Route path="/fabrika/:tab?" component={FabrikaMegaModule} />
           <Route path="/hq-fabrika-analitik" component={HQFabrikaAnalitik} />
           <Route path="/canli-takip" component={CanliTakip} />
+          <Route path="/hq-personel-durum" component={HqStaffDashboard} />
           <Route path="/kalite-denetimi" component={KaliteDenetimi} />
           <Route path="/denetim-sablonlari" component={DenetimSablonlari} />
           <Route path="/denetimler" component={Denetimler} />
