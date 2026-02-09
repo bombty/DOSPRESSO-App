@@ -31535,7 +31535,8 @@ DOSPRESSO İnsan Kaynakları Ekibi`
       
       const employeeResult = await db.select({ count: sql<number>`count(*)::int` }).from(users).where(and(
         eq(users.isActive, true),
-        sql`${users.role} NOT IN ('admin', 'ceo', 'cgo')`
+        sql`${users.role} NOT IN ('admin', 'ceo', 'cgo')`,
+        sql`${users.firstName} IS NOT NULL AND ${users.firstName} != ''`
       ));
       const activeEmployees = employeeResult[0]?.count || 0;
       
@@ -31564,6 +31565,43 @@ DOSPRESSO İnsan Kaynakları Ekibi`
       .groupBy(branches.id, branches.name)
       .orderBy(sql`count(${tasks.id}) FILTER (WHERE ${tasks.status} NOT IN ('completed', 'verified', 'cancelled')) DESC`)
       .limit(10);
+
+      const hqBranch = await db.select({ id: branches.id }).from(branches).where(sql`${branches.name} LIKE '%Merkez%' OR ${branches.name} LIKE '%HQ%'`).limit(1);
+      const hqBranchId = hqBranch[0]?.id;
+
+      let merkezStaff: any[] = [];
+      if (hqBranchId) {
+        const staffList = await db.select({
+          id: users.id,
+          firstName: users.firstName,
+          lastName: users.lastName,
+          role: users.role,
+        }).from(users).where(and(
+          eq(users.branchId, hqBranchId),
+          eq(users.isActive, true),
+          sql`${users.firstName} IS NOT NULL AND ${users.firstName} != ''`
+        )).orderBy(users.role, users.lastName);
+
+        const todayShifts = await db.select({
+          assignedToId: shifts.assignedToId,
+          startTime: shifts.startTime,
+          endTime: shifts.endTime,
+          shiftType: shifts.shiftType,
+        }).from(shifts).where(and(
+          eq(shifts.branchId, hqBranchId),
+          eq(shifts.shiftDate, todayStr)
+        ));
+
+        const shiftMap = new Map<string, any>();
+        for (const s of todayShifts) {
+          if (s.assignedToId) shiftMap.set(s.assignedToId, s);
+        }
+
+        merkezStaff = staffList.map(staff => ({
+          ...staff,
+          todayShift: shiftMap.get(staff.id) || null,
+        }));
+      }
       
       res.json({
         totalBranches,
@@ -31579,6 +31617,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`
           critical: alertsResult[0]?.critical || 0,
         },
         branchPerformance,
+        merkezStaff,
       });
     } catch (error: any) {
       console.error("Error fetching HQ dashboard summary:", error);

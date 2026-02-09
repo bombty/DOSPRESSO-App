@@ -439,6 +439,20 @@ function AppContent() {
 
   const branchName = getBranchName(user?.branchId);
 
+  const isStandaloneDashboard = location.startsWith("/merkez-dashboard") || 
+    location.startsWith("/sube/dashboard") || 
+    location.startsWith("/sube/employee-dashboard");
+
+  if (isStandaloneDashboard) {
+    return (
+      <div className="flex flex-col min-h-screen bg-background">
+        <main className="flex-1 overflow-auto">
+          <Router />
+        </main>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col min-h-screen bg-background">
       {/* Global Header */}
