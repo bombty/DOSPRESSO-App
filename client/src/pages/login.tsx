@@ -17,8 +17,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Building2, Factory, Store } from "lucide-react";
-import { Separator } from "@/components/ui/separator";
+import { Loader2 } from "lucide-react";
 import logoUrl from "@assets/IMG_6637_1765138781125.png";
 
 const loginSchema = z.object({
@@ -96,16 +95,17 @@ export default function Login() {
       // HQ departman rolleri için özel dashboard yönlendirmesi (shared/schema.ts ile senkronize)
       const userRole = data.user?.role;
       const departmentRoutes: Record<string, string> = {
+        'admin': '/merkez-dashboard',
         'ceo': '/ceo-command-center',
         'cgo': '/hq-dashboard/cgo',
-        'muhasebe_ik': '/hq-dashboard/ik',
+        'muhasebe_ik': '/merkez-dashboard',
         'satinalma': '/hq-dashboard/satinalma',
         'coach': '/hq-dashboard/coach',
         'marketing': '/hq-dashboard/marketing',
         'trainer': '/hq-dashboard/trainer',
         'kalite_kontrol': '/kalite-kontrol-dashboard',
         'fabrika_mudur': '/hq-dashboard/fabrika',
-        'muhasebe': '/hq-dashboard/ik',
+        'muhasebe': '/merkez-dashboard',
         'teknik': '/',
         'destek': '/',
         'fabrika': '/hq-dashboard/fabrika',
@@ -114,6 +114,14 @@ export default function Login() {
       if (userRole && departmentRoutes[userRole]) {
         setTimeout(() => {
           navigate(departmentRoutes[userRole]);
+        }, 100);
+        return;
+      }
+      
+      const branchRoles = ['stajyer', 'bar_buddy', 'barista', 'supervisor_buddy', 'supervisor', 'yatirimci_branch'];
+      if (userRole && branchRoles.includes(userRole) && data.user?.branchId) {
+        setTimeout(() => {
+          navigate('/sube/employee-dashboard');
         }, 100);
         return;
       }
@@ -235,61 +243,6 @@ export default function Login() {
             </form>
           </Form>
 
-          <Separator className="my-3" />
-
-          <div className="space-y-2">
-            <p className="text-xs text-muted-foreground text-center">Hızlı Giriş</p>
-            <div className="grid grid-cols-3 gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                className="gap-1.5"
-                onClick={() => {
-                  form.setValue("username", "merkez");
-                  form.setValue("password", "0000");
-                  form.handleSubmit(onSubmit)();
-                }}
-                disabled={loginMutation.isPending}
-                data-testid="button-quick-merkez"
-              >
-                <Building2 className="w-3.5 h-3.5" />
-                Merkez
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                className="gap-1.5"
-                onClick={() => {
-                  form.setValue("username", "fabrika");
-                  form.setValue("password", "0000");
-                  form.handleSubmit(onSubmit)();
-                }}
-                disabled={loginMutation.isPending}
-                data-testid="button-quick-fabrika"
-              >
-                <Factory className="w-3.5 h-3.5" />
-                Fabrika
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                className="gap-1.5"
-                onClick={() => {
-                  form.setValue("username", "ışıklar");
-                  form.setValue("password", "0000");
-                  form.handleSubmit(onSubmit)();
-                }}
-                disabled={loginMutation.isPending}
-                data-testid="button-quick-isiklar"
-              >
-                <Store className="w-3.5 h-3.5" />
-                Işıklar
-              </Button>
-            </div>
-            <p className="text-[10px] text-muted-foreground text-center">
-              Tüm şubeler: şube adı ile giriş, şifre: 0000
-            </p>
-          </div>
         </CardContent>
       </Card>
     </div>

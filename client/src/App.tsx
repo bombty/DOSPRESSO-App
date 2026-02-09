@@ -131,6 +131,8 @@ import SubeKiosk from "@/pages/sube/kiosk";
 import HqKiosk from "@/pages/hq/kiosk";
 import HqStaffDashboard from "@/pages/hq/staff-dashboard";
 import SubeDashboard from "@/pages/sube/dashboard";
+import EmployeeDashboard from "@/pages/sube/employee-dashboard";
+import MerkezDashboard from "@/pages/merkez-dashboard";
 import ChecklistExecutionPage from "@/pages/sube/checklist-execution";
 import HQFabrikaAnalitik from "@/pages/hq-fabrika-analitik";
 import CanliTakip from "@/pages/canli-takip";
@@ -247,6 +249,7 @@ function Router() {
       <Route path="/sube/checklist-execution/:completionId" component={ChecklistExecutionPage} />
       <Route path="/sube/kiosk/:branchId" component={SubeKiosk} />
       <Route path="/sube/kiosk" component={SubeKiosk} />
+      <Route path="/sube/employee-dashboard" component={EmployeeDashboard} />
       <Route path="/sube/dashboard" component={SubeDashboard} />
 
       {/* Auth guard - catch-all for unauthenticated users */}
@@ -256,6 +259,7 @@ function Router() {
       {isAuthenticated && (
         <>
           <Route path="/" component={Dashboard} />
+          <Route path="/merkez-dashboard" component={MerkezDashboard} />
           <Route path="/modul/:moduleId" component={MegaModulePage} />
           <Route path="/subeler/:id/nfc" component={SubeNFCDetay} />
           <Route path="/subeler/:id" component={SubeDetay} />

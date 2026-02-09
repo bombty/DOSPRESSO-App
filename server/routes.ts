@@ -31352,6 +31352,240 @@ DOSPRESSO İnsan Kaynakları Ekibi`
     }
   });
 
+  // ===== ENHANCED BRANCH DASHBOARD V2 =====
+  app.get('/api/branch-dashboard-v2/:branchId', async (req, res) => {
+    try {
+      const branchId = parseInt(req.params.branchId);
+      if (isNaN(branchId)) {
+        return res.status(400).json({ message: "Geçersiz şube ID" });
+      }
+      
+      const [branch] = await db.select({ id: branches.id, name: branches.name, city: branches.city, address: branches.address }).from(branches).where(eq(branches.id, branchId));
+      if (!branch) { return res.status(404).json({ message: "Şube bulunamadı" }); }
+      
+      const today = new Date();
+      const todayStr = today.toISOString().split('T')[0];
+      const dayOfWeek = today.getDay();
+      const monday = new Date(today);
+      monday.setDate(today.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
+      const sunday = new Date(monday);
+      sunday.setDate(monday.getDate() + 6);
+      const mondayStr = monday.toISOString().split('T')[0];
+      const sundayStr = sunday.toISOString().split('T')[0];
+      
+      const weeklyShifts = await db.select({
+        id: shifts.id,
+        assignedToId: shifts.assignedToId,
+        shiftDate: shifts.shiftDate,
+        startTime: shifts.startTime,
+        endTime: shifts.endTime,
+        shiftType: shifts.shiftType,
+        status: shifts.status,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        role: users.role,
+      })
+      .from(shifts)
+      .leftJoin(users, eq(shifts.assignedToId, users.id))
+      .where(and(
+        eq(shifts.branchId, branchId),
+        gte(shifts.shiftDate, mondayStr),
+        lte(shifts.shiftDate, sundayStr)
+      ))
+      .orderBy(shifts.shiftDate, shifts.startTime);
+      
+      const todayChecklists = await db.select({
+        id: checklistCompletions.id,
+        checklistId: checklistCompletions.checklistId,
+        userId: checklistCompletions.userId,
+        status: checklistCompletions.status,
+        completedTasks: checklistCompletions.completedTasks,
+        totalTasks: checklistCompletions.totalTasks,
+        completedAt: checklistCompletions.completedAt,
+        isLate: checklistCompletions.isLate,
+        score: checklistCompletions.score,
+        timeWindowStart: checklistCompletions.timeWindowStart,
+        timeWindowEnd: checklistCompletions.timeWindowEnd,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        checklistTitle: checklists.title,
+        checklistCategory: checklists.category,
+      })
+      .from(checklistCompletions)
+      .leftJoin(users, eq(checklistCompletions.userId, users.id))
+      .leftJoin(checklists, eq(checklistCompletions.checklistId, checklists.id))
+      .where(and(
+        eq(checklistCompletions.branchId, branchId),
+        eq(checklistCompletions.scheduledDate, todayStr)
+      ))
+      .orderBy(checklistCompletions.status);
+      
+      const activeSessionsResult = await db.select({ count: sql<number>`count(*)::int` }).from(branchShiftSessions).where(and(eq(branchShiftSessions.branchId, branchId), or(eq(branchShiftSessions.status, 'active'), eq(branchShiftSessions.status, 'on_break'))));
+      const activeStaff = activeSessionsResult[0]?.count || 0;
+      
+      const tasksResult = await db.select({ status: tasks.status, count: sql<number>`count(*)::int` }).from(tasks).where(and(eq(tasks.branchId, branchId), sql`DATE(${tasks.dueDate}) = ${todayStr}`)).groupBy(tasks.status);
+      let completedTasks = 0, pendingTasks = 0;
+      for (const t of tasksResult) { if (t.status === 'completed' || t.status === 'verified') { completedTasks += t.count; } else if (t.status !== 'cancelled') { pendingTasks += t.count; } }
+      
+      const completedChecklistCount = todayChecklists.filter(c => c.status === 'completed' || c.status === 'submitted' || c.status === 'reviewed').length;
+      const pendingChecklistCount = todayChecklists.filter(c => c.status !== 'completed' && c.status !== 'submitted' && c.status !== 'reviewed').length;
+      
+      const alertsResult = await db.select().from(dashboardAlerts).where(and(eq(dashboardAlerts.context, 'branch'), eq(dashboardAlerts.contextId, branchId), eq(dashboardAlerts.status, 'active'))).orderBy(desc(dashboardAlerts.occurredAt)).limit(10);
+      
+      res.json({
+        branch,
+        weekDates: { monday: mondayStr, sunday: sundayStr },
+        weeklyShifts,
+        todayChecklists,
+        stats: {
+          activeStaff,
+          completedTasks,
+          pendingTasks,
+          completedChecklists: completedChecklistCount,
+          pendingChecklists: pendingChecklistCount,
+          activeAlerts: alertsResult.length,
+        },
+        alerts: alertsResult,
+      });
+    } catch (error: any) {
+      console.error("Error fetching branch dashboard v2:", error);
+      res.status(500).json({ message: "Dashboard verisi alınamadı", error: error.message });
+    }
+  });
+
+  // ===== EMPLOYEE DASHBOARD =====
+  app.get('/api/employee-dashboard/:userId', async (req, res) => {
+    try {
+      const userId = req.params.userId;
+      const todayStr = new Date().toISOString().split('T')[0];
+      
+      const [userData] = await db.select({
+        id: users.id,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        role: users.role,
+        branchId: users.branchId,
+      }).from(users).where(eq(users.id, userId));
+      
+      if (!userData) {
+        return res.status(404).json({ message: "Kullanıcı bulunamadı" });
+      }
+      
+      const myShifts = await db.select({
+        id: shifts.id,
+        shiftDate: shifts.shiftDate,
+        startTime: shifts.startTime,
+        endTime: shifts.endTime,
+        shiftType: shifts.shiftType,
+        status: shifts.status,
+      }).from(shifts).where(and(
+        eq(shifts.assignedToId, userId),
+        eq(shifts.shiftDate, todayStr)
+      ));
+      
+      const myChecklists = await db.select({
+        id: checklistCompletions.id,
+        checklistId: checklistCompletions.checklistId,
+        status: checklistCompletions.status,
+        completedTasks: checklistCompletions.completedTasks,
+        totalTasks: checklistCompletions.totalTasks,
+        timeWindowStart: checklistCompletions.timeWindowStart,
+        timeWindowEnd: checklistCompletions.timeWindowEnd,
+        isLate: checklistCompletions.isLate,
+        checklistTitle: checklists.title,
+        checklistCategory: checklists.category,
+      })
+      .from(checklistCompletions)
+      .leftJoin(checklists, eq(checklistCompletions.checklistId, checklists.id))
+      .where(and(
+        eq(checklistCompletions.userId, userId),
+        eq(checklistCompletions.scheduledDate, todayStr)
+      ));
+      
+      const myTasks = await db.select({
+        id: tasks.id,
+        title: tasks.description,
+        status: tasks.status,
+        priority: tasks.priority,
+        dueDate: tasks.dueDate,
+      }).from(tasks).where(and(
+        eq(tasks.assignedToId, userId),
+        sql`DATE(${tasks.dueDate}) = ${todayStr}`
+      ));
+      
+      res.json({
+        user: userData,
+        myShifts,
+        myChecklists,
+        myTasks,
+      });
+    } catch (error: any) {
+      console.error("Error fetching employee dashboard:", error);
+      res.status(500).json({ message: "Personel dashboard verisi alınamadı", error: error.message });
+    }
+  });
+
+  // ===== HQ DASHBOARD SUMMARY =====
+  app.get('/api/hq-dashboard-summary', async (req, res) => {
+    try {
+      const todayStr = new Date().toISOString().split('T')[0];
+      
+      const branchResult = await db.select({ count: sql<number>`count(*)::int` }).from(branches);
+      const totalBranches = branchResult[0]?.count || 0;
+      
+      const employeeResult = await db.select({ count: sql<number>`count(*)::int` }).from(users).where(and(
+        eq(users.isActive, true),
+        sql`${users.role} NOT IN ('admin', 'ceo', 'cgo')`
+      ));
+      const activeEmployees = employeeResult[0]?.count || 0;
+      
+      const checklistStats = await db.select({ 
+        total: sql<number>`count(*)::int`,
+        completed: sql<number>`count(*) FILTER (WHERE ${checklistCompletions.status} IN ('completed', 'submitted', 'reviewed'))::int`
+      }).from(checklistCompletions).where(eq(checklistCompletions.scheduledDate, todayStr));
+      
+      const openTasksResult = await db.select({ count: sql<number>`count(*)::int` }).from(tasks).where(and(
+        sql`${tasks.status} NOT IN ('completed', 'verified', 'cancelled')`,
+        sql`DATE(${tasks.dueDate}) >= ${todayStr}`
+      ));
+      const openTasks = openTasksResult[0]?.count || 0;
+      
+      const alertsResult = await db.select({ 
+        total: sql<number>`count(*)::int`,
+        critical: sql<number>`count(*) FILTER (WHERE ${dashboardAlerts.severity} = 'critical')::int`
+      }).from(dashboardAlerts).where(eq(dashboardAlerts.status, 'active'));
+      
+      const branchPerformance = await db.select({
+        branchId: branches.id,
+        branchName: branches.name,
+        openTasks: sql<number>`count(${tasks.id}) FILTER (WHERE ${tasks.status} NOT IN ('completed', 'verified', 'cancelled'))::int`,
+      }).from(branches)
+      .leftJoin(tasks, eq(tasks.branchId, branches.id))
+      .groupBy(branches.id, branches.name)
+      .orderBy(sql`count(${tasks.id}) FILTER (WHERE ${tasks.status} NOT IN ('completed', 'verified', 'cancelled')) DESC`)
+      .limit(10);
+      
+      res.json({
+        totalBranches,
+        activeEmployees,
+        checklistCompletion: {
+          total: checklistStats[0]?.total || 0,
+          completed: checklistStats[0]?.completed || 0,
+          rate: checklistStats[0]?.total ? Math.round((checklistStats[0].completed / checklistStats[0].total) * 100) : 0,
+        },
+        openTasks,
+        alerts: {
+          total: alertsResult[0]?.total || 0,
+          critical: alertsResult[0]?.critical || 0,
+        },
+        branchPerformance,
+      });
+    } catch (error: any) {
+      console.error("Error fetching HQ dashboard summary:", error);
+      res.status(500).json({ message: "Merkez dashboard verisi alınamadı", error: error.message });
+    }
+  });
+
   // ===== MESSAGING SYSTEM =====
   app.get('/api/messages', isAuthenticated, async (req: any, res) => {
     try {
