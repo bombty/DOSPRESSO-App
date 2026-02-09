@@ -32729,28 +32729,27 @@ ${["yatirimci_hq", "yatirimci_branch"].includes(role) ? "- Yatirimci olarak sade
   // ============ NOTIFICATION ENDPOINTS ============
   
   // GET /api/notifications - Get user's notifications with optional filters
-  // HQ/admin users see all system notifications; others only see their own
+  // All users see their own notifications by default
+  // Admin/owner can pass viewAll=true to see all system notifications
   app.get('/api/notifications', isAuthenticated, async (req: any, res) => {
     try {
       const user = req.user!;
-      const { type, branchId, limit: limitParam, offset: offsetParam } = req.query;
+      const { type, branchId, limit: limitParam, offset: offsetParam, viewAll } = req.query;
       
       const limitVal = Math.min(parseInt(limitParam as string) || 100, 200);
       const offsetVal = parseInt(offsetParam as string) || 0;
       const userRole = user.role as any;
-      const isHQ = isHQRole(userRole) || userRole === 'admin';
+      const isAdmin = userRole === 'admin' || userRole === 'ceo';
+      const wantsAll = viewAll === 'true' && isAdmin;
       
       const conditions: any[] = [];
       
-      if (isHQ) {
-        if (branchId) {
+      if (wantsAll) {
+        if (branchId && branchId !== 'all') {
           conditions.push(eq(notifications.branchId, parseInt(branchId as string)));
         }
       } else {
         conditions.push(eq(notifications.userId, user.id));
-        if (branchId) {
-          conditions.push(eq(notifications.branchId, parseInt(branchId as string)));
-        }
       }
       
       if (type) {

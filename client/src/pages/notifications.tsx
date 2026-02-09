@@ -6,7 +6,6 @@ import { useToast } from "@/hooks/use-toast";
 import { useAdaptivePolling } from "@/hooks/useAdaptivePolling";
 import { useLocation } from "wouter";
 import type { Notification, Branch } from "@shared/schema";
-import { isHQRole } from "@shared/schema";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -151,17 +150,21 @@ export default function Notifications() {
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [branchFilter, setBranchFilter] = useState("all");
   
-  const userIsHQ = user?.role && isHQRole(user.role as any);
+  const isAdmin = user?.role === 'admin' || user?.role === 'ceo';
+  const [viewAll, setViewAll] = useState(false);
   
   const pollingInterval = useAdaptivePolling();
   
   const { data: notifications, isLoading } = useQuery<Notification[]>({
-    queryKey: ['/api/notifications', branchFilter !== 'all' ? branchFilter : undefined],
+    queryKey: ['/api/notifications', viewAll ? 'all' : 'personal', branchFilter !== 'all' ? branchFilter : undefined],
     queryFn: async () => {
       const params = new URLSearchParams();
       params.set('limit', '200');
-      if (branchFilter !== 'all') {
-        params.set('branchId', branchFilter);
+      if (viewAll && isAdmin) {
+        params.set('viewAll', 'true');
+        if (branchFilter !== 'all') {
+          params.set('branchId', branchFilter);
+        }
       }
       const res = await fetch(`/api/notifications?${params.toString()}`, { credentials: 'include' });
       if (!res.ok) throw new Error('Failed to fetch');
@@ -177,7 +180,7 @@ export default function Notifications() {
 
   const { data: branches } = useQuery<Branch[]>({
     queryKey: ['/api/branches'],
-    enabled: !!userIsHQ,
+    enabled: !!isAdmin,
   });
 
   const { data: myTasks, isLoading: tasksLoading } = useQuery<TaskSummary[]>({
@@ -340,7 +343,18 @@ export default function Notifications() {
         </div>
         
         <div className="flex items-center gap-2 flex-wrap">
-          {userIsHQ && branches && branches.length > 0 && (
+          {isAdmin && (
+            <Button
+              variant={viewAll ? "default" : "outline"}
+              size="sm"
+              onClick={() => { setViewAll(!viewAll); setBranchFilter('all'); }}
+              data-testid="button-toggle-view-all"
+            >
+              <Building2 className="w-3.5 h-3.5 mr-1.5" />
+              {viewAll ? 'Sistem Bildirimleri' : 'Kişisel'}
+            </Button>
+          )}
+          {isAdmin && viewAll && branches && branches.length > 0 && (
             <Select value={branchFilter} onValueChange={setBranchFilter}>
               <SelectTrigger className="w-[180px]" data-testid="select-branch-filter">
                 <Building2 className="w-3.5 h-3.5 mr-1.5 flex-shrink-0" />
