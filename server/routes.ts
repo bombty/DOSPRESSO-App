@@ -18591,6 +18591,11 @@ JSON formatında yanıt ver:
         updateData.anthropicApiKey = data.anthropicApiKey;
       }
       
+      // Detect provider change and flag re-embed needed
+      if (existing && existing.provider !== data.provider) {
+        updateData.needsReembed = true;
+      }
+      
       let result;
       if (existing) {
         [result] = await db.update(aiSettings)
@@ -18656,6 +18661,66 @@ JSON formatında yanıt ver:
     } catch (error: any) {
       console.error("Test AI connection error:", error);
       res.status(500).json({ success: false, message: "Bağlantı testi başarısız" });
+    }
+  });
+
+  app.post('/api/admin/ai/re-embed', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      if (user.role !== 'admin') {
+        return res.status(403).json({ message: "Admin yetkisi gerekli" });
+      }
+
+      const articles = await storage.getArticles(undefined, undefined, undefined);
+      if (articles.length === 0) {
+        return res.json({ success: true, processed: 0, total: 0, message: "Bilgi bankasında makale bulunamadı" });
+      }
+
+      let processed = 0;
+      let failed = 0;
+      const errors: string[] = [];
+
+      for (const article of articles) {
+        try {
+          await storage.deleteEmbeddingsByArticle(article.id);
+          const embeddings = await generateArticleEmbeddings(article.id, article.title, article.content);
+          await storage.createEmbeddings(embeddings.map(e => ({
+            articleId: article.id,
+            chunkText: e.chunkText,
+            chunkIndex: e.chunkIndex,
+            embedding: e.embedding,
+          })));
+          processed++;
+        } catch (err: any) {
+          failed++;
+          errors.push(`Makale #${article.id} (${article.title}): ${err.message}`);
+          console.error(`Re-embed failed for article ${article.id}:`, err.message);
+        }
+      }
+
+      // Clear needsReembed flag and set lastEmbeddingProvider
+      if (failed === 0) {
+        const [currentSettings] = await db.query.aiSettings.findMany({ limit: 1 });
+        if (currentSettings) {
+          await db.update(aiSettings)
+            .set({ needsReembed: false, lastEmbeddingProvider: currentSettings.provider })
+            .where(eq(aiSettings.id, currentSettings.id));
+        }
+      }
+
+      res.json({
+        success: failed === 0,
+        processed,
+        failed,
+        total: articles.length,
+        errors: errors.slice(0, 5),
+        message: failed === 0
+          ? `${processed} makale başarıyla yeniden indexlendi`
+          : `${processed}/${articles.length} makale işlendi, ${failed} başarısız`,
+      });
+    } catch (error: any) {
+      console.error("Re-embed all error:", error);
+      res.status(500).json({ success: false, message: "Vektör yenileme işlemi başarısız: " + error.message });
     }
   });
 

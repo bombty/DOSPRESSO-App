@@ -24,7 +24,10 @@ import {
   Loader2,
   Sparkles,
   Zap,
-  Brain
+  Brain,
+  RefreshCw,
+  AlertTriangle,
+  Database
 } from "lucide-react";
 
 const AI_PROVIDERS = [
@@ -68,6 +71,8 @@ interface AISettings {
   temperature: number;
   maxTokens: number;
   rateLimitPerMinute: number;
+  needsReembed: boolean;
+  lastEmbeddingProvider: string | null;
 }
 
 export default function AdminYapayZekaAyarlari() {
@@ -76,6 +81,9 @@ export default function AdminYapayZekaAyarlari() {
   const [showApiKey, setShowApiKey] = useState<Record<string, boolean>>({});
   const [isTesting, setIsTesting] = useState(false);
   const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
+  const [isReEmbedding, setIsReEmbedding] = useState(false);
+  const [reEmbedResult, setReEmbedResult] = useState<{ success: boolean; message: string; processed?: number; failed?: number; total?: number } | null>(null);
+  const [savedProvider, setSavedProvider] = useState<string | null>(null);
   
   const [formData, setFormData] = useState<Partial<AISettings>>({
     provider: "openai",
@@ -112,6 +120,7 @@ export default function AdminYapayZekaAyarlari() {
         geminiApiKey: settings.geminiApiKey ? "********" : "",
         anthropicApiKey: settings.anthropicApiKey ? "********" : "",
       });
+      setSavedProvider(settings.provider);
     }
   }, [settings]);
 
@@ -150,6 +159,29 @@ export default function AdminYapayZekaAyarlari() {
     if (dataToSave.anthropicApiKey === "********") delete dataToSave.anthropicApiKey;
     saveMutation.mutate(dataToSave);
   };
+
+  const handleReEmbed = async () => {
+    setIsReEmbedding(true);
+    setReEmbedResult(null);
+    try {
+      const response = await apiRequest("POST", "/api/admin/ai/re-embed");
+      const result = await response.json();
+      setReEmbedResult(result);
+      if (result.success) {
+        toast({ title: "Vektörler yenilendi", description: result.message });
+        queryClient.invalidateQueries({ queryKey: ["/api/admin/ai-settings"] });
+      } else {
+        toast({ title: "Kısmi başarı", description: result.message, variant: "destructive" });
+      }
+    } catch (error) {
+      setReEmbedResult({ success: false, message: "Vektör yenileme işlemi başarısız oldu" });
+      toast({ title: "Hata", description: "Vektör yenileme başarısız", variant: "destructive" });
+    } finally {
+      setIsReEmbedding(false);
+    }
+  };
+
+  const providerChanged = (savedProvider !== null && formData.provider !== savedProvider) || (settings?.needsReembed === true);
 
   const currentProvider = AI_PROVIDERS.find(p => p.value === formData.provider);
 
@@ -551,6 +583,93 @@ export default function AdminYapayZekaAyarlari() {
                   </div>
                 )}
               </div>
+            </CardContent>
+          </Card>
+
+          {providerChanged && (
+            <Card className="border-amber-500/50" data-testid="card-provider-change-warning">
+              <CardContent className="p-4">
+                <div className="flex items-start gap-3">
+                  <AlertTriangle className="h-5 w-5 text-amber-500 mt-0.5 shrink-0" />
+                  <div className="space-y-1">
+                    <p className="font-medium text-sm" data-testid="text-provider-change-title">
+                      {settings?.needsReembed ? "Vektör Yenileme Gerekli" : "AI Sağlayıcı Değişikliği Algılandı"}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {settings?.needsReembed ? (
+                        "AI sağlayıcı değiştirildi. Bilgi bankası vektörlerini yeniden oluşturmanız gerekiyor, aksi takdirde AI aramaları doğru çalışmayabilir."
+                      ) : (
+                        <>
+                          Sağlayıcıyı <span className="font-medium">{AI_PROVIDERS.find(p => p.value === savedProvider)?.label}</span>'dan{" "}
+                          <span className="font-medium">{AI_PROVIDERS.find(p => p.value === formData.provider)?.label}</span>'a değiştirdiniz.
+                          Kaydettikten sonra bilgi bankası vektörlerini yeniden oluşturmanız gerekir, aksi takdirde AI aramaları doğru çalışmayabilir.
+                        </>
+                      )}
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Database className="h-5 w-5" />
+                Bilgi Bankası Vektörleri
+              </CardTitle>
+              <CardDescription>
+                AI sağlayıcı değiştirdiğinizde, bilgi bankasındaki tüm içeriklerin vektörlerini yeniden oluşturmanız gerekir.
+                Bu işlem mevcut bilgileri silmez, sadece yeni AI ile uyumlu hale getirir.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex flex-wrap items-center gap-3">
+                <Button
+                  variant={providerChanged ? "default" : "outline"}
+                  onClick={handleReEmbed}
+                  disabled={isReEmbedding}
+                  data-testid="button-re-embed"
+                >
+                  {isReEmbedding ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Vektörler yenileniyor...
+                    </>
+                  ) : (
+                    <>
+                      <RefreshCw className="h-4 w-4 mr-2" />
+                      Vektörleri Yeniden Oluştur
+                    </>
+                  )}
+                </Button>
+
+                {reEmbedResult && (
+                  <div className={`flex items-center gap-2 ${reEmbedResult.success ? "text-green-600" : "text-destructive"}`} data-testid="text-re-embed-result">
+                    {reEmbedResult.success ? (
+                      <Check className="h-4 w-4" />
+                    ) : (
+                      <AlertCircle className="h-4 w-4" />
+                    )}
+                    <span className="text-sm">{reEmbedResult.message}</span>
+                  </div>
+                )}
+              </div>
+
+              {reEmbedResult && reEmbedResult.total !== undefined && (
+                <div className="flex flex-wrap gap-2" data-testid="badges-re-embed-stats">
+                  <Badge variant="secondary">Toplam: {reEmbedResult.total}</Badge>
+                  <Badge variant="default">{reEmbedResult.processed} Başarılı</Badge>
+                  {(reEmbedResult.failed || 0) > 0 && (
+                    <Badge variant="destructive">{reEmbedResult.failed} Başarısız</Badge>
+                  )}
+                </div>
+              )}
+
+              <p className="text-xs text-muted-foreground">
+                Bu işlem bilgi bankasındaki tüm makalelerin embedding vektörlerini aktif AI sağlayıcı ile yeniden oluşturur.
+                Makale sayısına göre birkaç dakika sürebilir.
+              </p>
             </CardContent>
           </Card>
         </div>

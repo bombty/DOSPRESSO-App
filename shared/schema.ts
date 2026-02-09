@@ -7383,6 +7383,9 @@ export const aiSettings = pgTable("ai_settings", {
   temperature: real("temperature").default(0.7),
   maxTokens: integer("max_tokens").default(2000),
   rateLimitPerMinute: integer("rate_limit_per_minute").default(60),
+  // Embedding tracking
+  lastEmbeddingProvider: varchar("last_embedding_provider", { length: 30 }),
+  needsReembed: boolean("needs_reembed").default(false),
   // Metadata
   updatedById: varchar("updated_by_id").references(() => users.id),
   updatedAt: timestamp("updated_at").defaultNow(),
