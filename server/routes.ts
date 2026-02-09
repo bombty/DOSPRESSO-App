@@ -271,6 +271,7 @@ import {
   insertEmployeeOnboardingAssignmentSchema,
   employeeOnboardingProgress,
   insertEmployeeOnboardingProgressSchema,
+  shiftCorrections,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, sql, and, or, isNull, isNotNull, inArray, lte, gte } from "drizzle-orm";
@@ -5577,7 +5578,7 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
       const employeeId = req.params.id;
 
       // HQ roles that can edit employees (full access)
-      const hqEditRoles = ['admin', 'muhasebe', 'satinalma', 'coach', 'teknik', 'destek', 'fabrika', 'yatirimci_hq'];
+      const hqEditRoles = ['admin', 'muhasebe', 'muhasebe_ik', 'satinalma', 'coach', 'teknik', 'destek', 'fabrika', 'yatirimci_hq'];
       
       // Only HQ roles can edit employee records
       if (!hqEditRoles.includes(role)) {
@@ -15097,21 +15098,29 @@ JSON formatında yanıt ver:
         endTime: z.string(),
         breakStartTime: z.string().optional().nullable(),
         breakEndTime: z.string().optional().nullable(),
-        shiftType: z.enum(['morning', 'evening', 'night']).optional(),
+        shiftType: z.string().optional(),
         status: z.string().optional(),
         notes: z.string().optional().nullable(),
-        branchId: z.number(),
-        assignedToId: z.string().optional().nullable(),
+        branchId: z.union([z.number(), z.string().transform(v => parseInt(v))]),
+        assignedToId: z.union([z.string(), z.number().transform(v => String(v))]).optional().nullable(),
         checklistId: z.number().optional().nullable(),
         checklist2Id: z.number().optional().nullable(),
         checklist3Id: z.number().optional().nullable(),
+        employeeName: z.string().optional(),
+        slotName: z.string().optional(),
+        fairnessScore: z.number().optional(),
       });
       
       const bulkSchema = z.object({
         shifts: z.array(shiftSchema),
       });
       
-      const { shifts: shiftsData } = bulkSchema.parse(req.body);
+      const parsed = bulkSchema.safeParse(req.body);
+      if (!parsed.success) {
+        console.error("Bulk shift validation error:", JSON.stringify(parsed.error.errors, null, 2));
+        return res.status(400).json({ message: "Geçersiz veri formatı", errors: parsed.error.errors });
+      }
+      const { shifts: shiftsData } = parsed.data;
       
       // Branch staff can only create for their own branch
       const invalidBranch = shiftsData.find(s => isBranchRole(role) && s.branchId !== user.branchId);
@@ -15123,8 +15132,13 @@ JSON formatında yanıt ver:
       const notifiedEmployees = new Set<string>();
       
       for (const shiftData of shiftsData) {
+        const { employeeName, slotName, fairnessScore, ...cleanShiftData } = shiftData as any;
+        const normalizedType = ['morning', 'evening', 'night'].includes(cleanShiftData.shiftType || '') 
+          ? cleanShiftData.shiftType 
+          : 'morning';
         const shift = await storage.createShift({
-          ...shiftData,
+          ...cleanShiftData,
+          shiftType: normalizedType,
           createdById: user.id,
         });
         createdShifts.push(shift);
@@ -15177,12 +15191,13 @@ JSON formatında yanıt ver:
         shifts: createdShifts,
         notifiedCount: notifiedEmployees.size
       });
-    } catch (error: Error | unknown) {
-      console.error("Error creating bulk shifts:", error);
-      if (error.name === 'ZodError') {
-        return res.status(400).json({ message: "Geçersiz veri", errors: error.errors });
+    } catch (error: any) {
+      console.error("Error creating bulk shifts:", error?.message || error);
+      if (error?.stack) console.error("Stack:", error.stack);
+      if (error?.name === 'ZodError') {
+        return res.status(400).json({ message: "Geçersiz veri formatı", errors: error.errors });
       }
-      res.status(500).json({ message: "Vardiyalar oluşturulamadı" });
+      res.status(500).json({ message: error?.message || "Vardiyalar oluşturulamadı" });
     }
   });
 
@@ -21005,23 +21020,137 @@ DOSPRESSO İnsan Kaynakları Ekibi`
     }
   });
 
-  // POST /api/employee-terminations - Create termination record
+  // POST /api/employee-terminations - Create termination record (enhanced with notifications)
   app.post('/api/employee-terminations', isAuthenticated, async (req: any, res) => {
     try {
       const user = req.user!;
-      if (!isHQRole(user.role as UserRoleType)) {
+      if (!isHQRole(user.role as UserRoleType) && !['supervisor'].includes(user.role)) {
         return res.status(403).json({ message: 'Erişim yetkiniz yok' });
       }
+
+      const { userId, terminationType, terminationDate, terminationReason, terminationSubReason,
+              lastWorkDay, severancePayment, otherPayments, totalPayment, returnedItems,
+              exitInterview, performanceRating, recommendation, documents, notes,
+              noticeGiven, finalSalary } = req.body;
+
+      if (!userId || !terminationType || !terminationDate) {
+        return res.status(400).json({ message: "userId, terminationType ve terminationDate zorunludur" });
+      }
+
+      const employee = await storage.getUser(userId);
+      if (!employee) {
+        return res.status(404).json({ message: "Personel bulunamadı" });
+      }
+
+      const hireDate = employee.startDate ? new Date(employee.startDate) : new Date(employee.createdAt || new Date());
+      const termDate = new Date(terminationDate);
+      const yearsOfService = (termDate.getTime() - hireDate.getTime()) / (365.25 * 24 * 60 * 60 * 1000);
+
+      let noticePeriodDays = 14;
+      if (yearsOfService >= 3) noticePeriodDays = 56;
+      else if (yearsOfService >= 1.5) noticePeriodDays = 42;
+      else if (yearsOfService >= 0.5) noticePeriodDays = 28;
+
+      const noticeEndDate = new Date(termDate);
+      noticeEndDate.setDate(noticeEndDate.getDate() + noticePeriodDays);
+
+      const severanceEligible = ['termination', 'retirement', 'mutual_agreement'].includes(terminationType) && yearsOfService >= 1;
+
       const result = await db.insert(employeeTerminations)
         .values({
-          ...req.body,
+          userId,
+          terminationType,
+          terminationDate,
+          terminationReason,
+          terminationSubReason: terminationSubReason || null,
+          lastWorkDay: lastWorkDay || null,
+          noticeGiven: noticeGiven || noticePeriodDays,
+          finalSalary: finalSalary || null,
+          severancePayment: severancePayment || null,
+          otherPayments: otherPayments || null,
+          totalPayment: totalPayment || null,
+          returnedItems: returnedItems || null,
+          exitInterview: exitInterview || null,
+          performanceRating: performanceRating || null,
+          recommendation: recommendation || null,
+          documents: documents || null,
+          notes: notes || null,
           processedById: user.id,
+          noticePeriodDays,
+          noticeEndDate: noticeEndDate.toISOString().split('T')[0],
+          severanceEligible,
         })
         .returning();
+
+      const empName = employee.fullName || `${employee.firstName} ${employee.lastName}`;
+      const typeLabels: Record<string, string> = {
+        resignation: 'İstifa', termination: 'Fesih/İşten Çıkarma',
+        retirement: 'Emeklilik', mutual_agreement: 'Karşılıklı Anlaşma', contract_end: 'Sözleşme Sonu'
+      };
+      const typeLabel = typeLabels[terminationType] || terminationType;
+
+      const notifTitle = `Personel Ayrılışı: ${empName}`;
+      let notifMessage = `${empName} - ${typeLabel} (${terminationDate})`;
+      if (severanceEligible) {
+        notifMessage += ` | Kıdem tazminatı hakkı var (${Math.floor(yearsOfService)} yıl)`;
+      }
+      notifMessage += ` | İhbar süresi: ${noticePeriodDays} gün (${noticeEndDate.toISOString().split('T')[0]})`;
+
+      const hqUsers = await db.select({ id: users.id, role: users.role })
+        .from(users)
+        .where(sql`${users.role} IN ('admin', 'muhasebe', 'muhasebe_ik') AND ${users.isActive} = true`);
+      
+      for (const hqUser of hqUsers) {
+        try {
+          await storage.createNotification({
+            userId: hqUser.id,
+            type: 'employee_departure',
+            title: notifTitle,
+            message: notifMessage,
+            link: `/personel-detay/${userId}`,
+            branchId: employee.branchId,
+          });
+        } catch (e) { console.error("Termination notification error:", e); }
+      }
+
+      if (employee.branchId) {
+        const branchSupervisors = await db.select({ id: users.id })
+          .from(users)
+          .where(sql`${users.branchId} = ${employee.branchId} AND ${users.role} IN ('supervisor', 'supervisor_buddy') AND ${users.isActive} = true`);
+        
+        for (const sup of branchSupervisors) {
+          try {
+            await storage.createNotification({
+              userId: sup.id,
+              type: 'employee_departure',
+              title: notifTitle,
+              message: notifMessage,
+              link: `/personel-detay/${userId}`,
+              branchId: employee.branchId,
+            });
+          } catch (e) { console.error("Supervisor termination notification error:", e); }
+        }
+      }
+
+      try {
+        const { sendNotificationEmail } = await import('./email');
+        for (const hqUser of hqUsers) {
+          const hqUserData = await storage.getUser(hqUser.id);
+          if (hqUserData?.email) {
+            sendNotificationEmail(
+              hqUserData.email,
+              `Personel Ayrılışı - ${empName}`,
+              `${notifMessage}\n\nİşlem yapan: ${user.fullName || user.firstName}\n\nDetaylar için sisteme giriş yapın.`,
+              'warning'
+            ).catch(err => console.error("Termination email error:", err));
+          }
+        }
+      } catch (e) { console.error("Email notification error:", e); }
+
       res.status(201).json(result[0]);
     } catch (error: any) {
       console.error("Error creating termination:", error);
-      res.status(500).json({ message: "Ayrılış kaydı oluşturulurken hata oluştu" });
+      res.status(500).json({ message: error?.message || "Ayrılış kaydı oluşturulurken hata oluştu" });
     }
   });
 
@@ -21044,6 +21173,97 @@ DOSPRESSO İnsan Kaynakları Ekibi`
     } catch (error: any) {
       console.error("Error updating termination:", error);
       res.status(500).json({ message: "Ayrılış kaydı güncellenirken hata oluştu" });
+    }
+  });
+
+  // POST /api/shift-corrections - Create a shift correction record
+  app.post('/api/shift-corrections', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const role = user.role as UserRoleType;
+      
+      if (!isHQRole(role) && !['supervisor', 'supervisor_buddy', 'admin'].includes(role)) {
+        return res.status(403).json({ message: "Vardiya düzeltme yetkiniz yok" });
+      }
+      
+      const { shiftId, sessionId, employeeId, correctionType, fieldChanged, oldValue, newValue, reason, branchId } = req.body;
+      
+      if (!employeeId || !correctionType || !fieldChanged || !reason) {
+        return res.status(400).json({ message: "Zorunlu alanlar eksik: employeeId, correctionType, fieldChanged, reason" });
+      }
+      
+      const [correction] = await db.insert(shiftCorrections)
+        .values({
+          shiftId: shiftId || null,
+          sessionId: sessionId || null,
+          correctedById: user.id,
+          employeeId,
+          correctionType,
+          fieldChanged,
+          oldValue: oldValue || null,
+          newValue: newValue || null,
+          reason,
+          branchId: branchId || user.branchId || null,
+        })
+        .returning();
+      
+      try {
+        await storage.createNotification({
+          userId: employeeId,
+          type: 'shift_correction',
+          title: 'Vardiya Düzeltmesi',
+          message: `${fieldChanged} alanı düzeltildi. Neden: ${reason}`,
+          link: '/vardiyalarim',
+          branchId: branchId || user.branchId,
+        });
+      } catch (e) { console.error("Shift correction notification error:", e); }
+      
+      res.status(201).json(correction);
+    } catch (error: any) {
+      console.error("Error creating shift correction:", error);
+      res.status(500).json({ message: "Vardiya düzeltmesi kaydedilemedi" });
+    }
+  });
+
+  // GET /api/shift-corrections - Get shift correction history
+  app.get('/api/shift-corrections', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const role = user.role as UserRoleType;
+      const { employeeId, shiftId, branchId } = req.query;
+      
+      let query = db.select({
+        correction: shiftCorrections,
+        correctedBy: {
+          id: users.id,
+          firstName: users.firstName,
+          lastName: users.lastName,
+          fullName: users.fullName,
+        },
+      })
+      .from(shiftCorrections)
+      .leftJoin(users, eq(shiftCorrections.correctedById, users.id));
+      
+      const conditions: any[] = [];
+      if (employeeId) conditions.push(eq(shiftCorrections.employeeId, employeeId as string));
+      if (shiftId) conditions.push(eq(shiftCorrections.shiftId, parseInt(shiftId as string)));
+      if (branchId) conditions.push(eq(shiftCorrections.branchId, parseInt(branchId as string)));
+      
+      if (!isHQRole(role)) {
+        if (user.branchId) {
+          conditions.push(eq(shiftCorrections.branchId, user.branchId));
+        }
+      }
+      
+      if (conditions.length > 0) {
+        query = query.where(and(...conditions)) as any;
+      }
+      
+      const results = await (query as any).orderBy(desc(shiftCorrections.createdAt)).limit(100);
+      res.json(results);
+    } catch (error: any) {
+      console.error("Error fetching shift corrections:", error);
+      res.status(500).json({ message: "Vardiya düzeltme geçmişi yüklenemedi" });
     }
   });
 

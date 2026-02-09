@@ -7722,6 +7722,10 @@ export const employeeTerminations = pgTable("employee_terminations", {
   approvedById: varchar("approved_by_id").references(() => users.id), // Onay yapan (genellikle HQ)
   documents: text("documents").array(), // Sözleşme, tazminat formu vb. URL'ler
   notes: text("notes"), // Genel notlar
+  noticeEndDate: date("notice_end_date"), // İhbar süresi bitiş tarihi
+  severanceEligible: boolean("severance_eligible").default(false), // Kıdem tazminatı hak ediyor mu
+  noticePeriodDays: integer("notice_period_days"), // İhbar süresi (gün)
+  terminationSubReason: varchar("termination_sub_reason", { length: 100 }), // Alt ayrılış nedeni (resigned_voluntarily, resigned_forced, fired_performance, fired_misconduct, etc.)
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => [
@@ -7738,6 +7742,33 @@ export const insertEmployeeTerminationSchema = createInsertSchema(employeeTermin
 
 export type InsertEmployeeTermination = z.infer<typeof insertEmployeeTerminationSchema>;
 export type EmployeeTermination = typeof employeeTerminations.$inferSelect;
+
+export const shiftCorrections = pgTable("shift_corrections", {
+  id: serial("id").primaryKey(),
+  shiftId: integer("shift_id").references(() => shifts.id, { onDelete: "cascade" }),
+  sessionId: integer("session_id"),
+  correctedById: varchar("corrected_by_id").notNull().references(() => users.id),
+  employeeId: varchar("employee_id").notNull().references(() => users.id),
+  correctionType: varchar("correction_type", { length: 50 }).notNull(),
+  fieldChanged: varchar("field_changed", { length: 100 }).notNull(),
+  oldValue: text("old_value"),
+  newValue: text("new_value"),
+  reason: text("reason").notNull(),
+  branchId: integer("branch_id").references(() => branches.id),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("shift_corrections_shift_idx").on(table.shiftId),
+  index("shift_corrections_employee_idx").on(table.employeeId),
+  index("shift_corrections_corrected_by_idx").on(table.correctedById),
+]);
+
+export const insertShiftCorrectionSchema = createInsertSchema(shiftCorrections).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertShiftCorrection = z.infer<typeof insertShiftCorrectionSchema>;
+export type ShiftCorrection = typeof shiftCorrections.$inferSelect;
 
 // Çalışan İzin Bakiyeleri
 export const employeeLeaves = pgTable("employee_leaves", {

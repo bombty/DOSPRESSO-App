@@ -73,6 +73,8 @@ const employeeFormSchema = z.object({
   notes: z.string().optional(),
   leaveStartDate: z.string().optional(),
   leaveReason: z.string().optional(),
+  leaveType: z.string().optional(),
+  leaveSubReason: z.string().optional(),
 });
 
 type EmployeeFormValues = z.infer<typeof employeeFormSchema>;
@@ -133,6 +135,8 @@ export default function PersonelDuzenle() {
       notes: "",
       leaveStartDate: "",
       leaveReason: "",
+      leaveType: "",
+      leaveSubReason: "",
     },
   });
 
@@ -172,6 +176,8 @@ export default function PersonelDuzenle() {
         notes: employee.notes || "",
         leaveStartDate: (employee as any).leaveStartDate ? (employee as any).leaveStartDate.split("T")[0] : "",
         leaveReason: (employee as any).leaveReason || "",
+        leaveType: (employee as any).leaveType || "",
+        leaveSubReason: (employee as any).leaveSubReason || "",
       });
     }
   }, [employee, form]);
@@ -923,16 +929,90 @@ export default function PersonelDuzenle() {
             <TabsContent value="termination" className="space-y-4 mt-4">
               <Card>
                 <CardHeader>
-                  <CardTitle>Ayrılış Bilgileri</CardTitle>
-                  <CardDescription>İşten ayrılma durumunda doldurulur</CardDescription>
+                  <CardTitle>Ayrilik Bilgileri</CardTitle>
+                  <CardDescription>Isten ayrilma durumunda doldurulur</CardDescription>
                 </CardHeader>
                 <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="leaveType"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Ayrilik Turu</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value || ""}>
+                          <FormControl>
+                            <SelectTrigger data-testid="select-leaveType">
+                              <SelectValue placeholder="Ayrilik turu secin" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="resignation">Istifa</SelectItem>
+                            <SelectItem value="termination">Fesih / Isten Cikarma</SelectItem>
+                            <SelectItem value="retirement">Emeklilik</SelectItem>
+                            <SelectItem value="mutual_agreement">Karsilikli Anlasma</SelectItem>
+                            <SelectItem value="contract_end">Sozlesme Sonu</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="leaveSubReason"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Alt Neden</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value || ""}>
+                          <FormControl>
+                            <SelectTrigger data-testid="select-leaveSubReason">
+                              <SelectValue placeholder="Alt neden secin" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {form.watch("leaveType") === "resignation" && (
+                              <>
+                                <SelectItem value="resigned_voluntarily">Gonullu Istifa</SelectItem>
+                                <SelectItem value="resigned_better_offer">Daha Iyi Teklif</SelectItem>
+                                <SelectItem value="resigned_personal">Kisisel Nedenler</SelectItem>
+                                <SelectItem value="resigned_relocation">Tasinma</SelectItem>
+                                <SelectItem value="resigned_health">Saglik Nedenleri</SelectItem>
+                              </>
+                            )}
+                            {form.watch("leaveType") === "termination" && (
+                              <>
+                                <SelectItem value="fired_performance">Performans Yetersizligi</SelectItem>
+                                <SelectItem value="fired_misconduct">Disiplin Ihlali</SelectItem>
+                                <SelectItem value="fired_restructuring">Yapisal Degisiklik</SelectItem>
+                                <SelectItem value="fired_probation">Deneme Suresi Basarisiz</SelectItem>
+                                <SelectItem value="fired_attendance">Devamsizlik</SelectItem>
+                              </>
+                            )}
+                            {form.watch("leaveType") === "mutual_agreement" && (
+                              <>
+                                <SelectItem value="mutual_downsizing">Kadro Daraltma</SelectItem>
+                                <SelectItem value="mutual_restructuring">Yeniden Yapilanma</SelectItem>
+                                <SelectItem value="mutual_other">Diger</SelectItem>
+                              </>
+                            )}
+                            {(!form.watch("leaveType") || form.watch("leaveType") === "retirement" || form.watch("leaveType") === "contract_end") && (
+                              <>
+                                <SelectItem value="normal">Normal</SelectItem>
+                                <SelectItem value="other">Diger</SelectItem>
+                              </>
+                            )}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                   <FormField
                     control={form.control}
                     name="leaveStartDate"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Ayrılış Tarihi</FormLabel>
+                        <FormLabel>Ayrilik Tarihi</FormLabel>
                         <FormControl>
                           <Input type="date" {...field} data-testid="input-leaveStartDate" />
                         </FormControl>
@@ -945,9 +1025,9 @@ export default function PersonelDuzenle() {
                     name="leaveReason"
                     render={({ field }) => (
                       <FormItem className="md:col-span-2">
-                        <FormLabel>Ayrılış Nedeni</FormLabel>
+                        <FormLabel>Ayrilik Nedeni (Acik Metin)</FormLabel>
                         <FormControl>
-                          <Textarea {...field} data-testid="input-leaveReason" />
+                          <Textarea {...field} placeholder="Ayrilik ile ilgili detaylari yazin..." data-testid="input-leaveReason" />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -955,6 +1035,58 @@ export default function PersonelDuzenle() {
                   />
                 </CardContent>
               </Card>
+
+              {form.watch("leaveType") && form.watch("leaveStartDate") && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-sm">Yasal Bilgilendirme</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-2 text-sm">
+                    {(() => {
+                      const startDate = (employee as any)?.startDate || (employee as any)?.createdAt;
+                      if (!startDate) return null;
+                      const hireDate = new Date(startDate);
+                      const termDate = new Date(form.watch("leaveStartDate")!);
+                      const years = (termDate.getTime() - hireDate.getTime()) / (365.25 * 24 * 60 * 60 * 1000);
+                      let noticeDays = 14;
+                      if (years >= 3) noticeDays = 56;
+                      else if (years >= 1.5) noticeDays = 42;
+                      else if (years >= 0.5) noticeDays = 28;
+                      const noticeEnd = new Date(termDate);
+                      noticeEnd.setDate(noticeEnd.getDate() + noticeDays);
+                      const severanceEligible = ['termination', 'retirement', 'mutual_agreement'].includes(form.watch("leaveType") || '') && years >= 1;
+                      return (
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between gap-2 p-2 bg-muted/50 rounded">
+                            <span>Calisma Suresi:</span>
+                            <span className="font-medium">{Math.floor(years)} yil {Math.floor((years % 1) * 12)} ay</span>
+                          </div>
+                          <div className="flex items-center justify-between gap-2 p-2 bg-muted/50 rounded">
+                            <span>Ihbar Suresi:</span>
+                            <span className="font-medium">{noticeDays} gun (Bitis: {noticeEnd.toLocaleDateString('tr-TR')})</span>
+                          </div>
+                          {severanceEligible ? (
+                            <div className="flex items-center justify-between gap-2 p-2 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded">
+                              <span className="text-yellow-700 dark:text-yellow-400 font-medium">Kidem Tazminati Hakki VAR</span>
+                              <span className="text-yellow-600 dark:text-yellow-400">{Math.floor(years)} yil hizmet</span>
+                            </div>
+                          ) : (
+                            <div className="flex items-center justify-between gap-2 p-2 bg-muted/50 rounded">
+                              <span>Kidem Tazminati:</span>
+                              <span className="text-muted-foreground">Hak etmiyor</span>
+                            </div>
+                          )}
+                          {form.watch("leaveType") === "termination" && (
+                            <div className="p-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded text-red-700 dark:text-red-400 text-xs">
+                              Isten cikarma durumunda ihbar suresi tamamlanmadan cikarilirsa ihbar tazminati odenmesi gerekir.
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()}
+                  </CardContent>
+                </Card>
+              )}
             </TabsContent>
 
             {(currentUser?.role === 'admin' || currentUser?.role === 'muhasebe') && (

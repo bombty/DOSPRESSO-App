@@ -403,6 +403,7 @@ function FabrikaDashboard() {
 }
 
 function IKDashboard() {
+  const [, navigate] = useLocation();
   const { data, isLoading } = useQuery<any>({
     queryKey: ['/api/hq-dashboard/ik'],
   });
@@ -449,9 +450,21 @@ function IKDashboard() {
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center gap-2 pb-2 border-b border-border/50">
-        <Briefcase className="w-4 h-4 text-primary" />
-        <h2 className="text-base font-semibold" data-testid="text-dashboard-title">İK & Muhasebe</h2>
+      <div className="flex items-center justify-between gap-2 pb-2 border-b border-border/50 flex-wrap">
+        <div className="flex items-center gap-2">
+          <Briefcase className="w-4 h-4 text-primary" />
+          <h2 className="text-base font-semibold" data-testid="text-dashboard-title">IK & Muhasebe</h2>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button size="sm" variant="default" className="gap-1.5" onClick={() => navigate('/hq/kiosk')} data-testid="button-hq-kiosk">
+            <Clock className="w-3.5 h-3.5" />
+            HQ Kiosk
+          </Button>
+          <Button size="sm" variant="outline" className="gap-1.5" onClick={() => navigate('/hq-personel-durum')} data-testid="button-hq-staff-status">
+            <Eye className="w-3.5 h-3.5" />
+            Personel Durum
+          </Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">

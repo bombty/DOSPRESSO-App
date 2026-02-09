@@ -4450,6 +4450,7 @@ function AddTerminationDialog({
   const { toast } = useToast();
   const [selectedUserId, setSelectedUserId] = useState("");
   const [terminationType, setTerminationType] = useState("resignation");
+  const [terminationSubReason, setTerminationSubReason] = useState("");
   const [terminationDate, setTerminationDate] = useState(new Date().toISOString().split('T')[0]);
   const [reason, setReason] = useState("");
   const [totalPayment, setTotalPayment] = useState(0);
@@ -4481,10 +4482,10 @@ function AddTerminationDialog({
     createMutation.mutate({
       userId: selectedUserId,
       terminationType,
+      terminationSubReason: terminationSubReason || undefined,
       terminationDate,
-      reason: reason || undefined,
+      terminationReason: reason || undefined,
       totalPayment: totalPayment || undefined,
-      processedById: undefined,
     });
   };
 
@@ -4511,26 +4512,68 @@ function AddTerminationDialog({
             </Select>
           </div>
           <div>
-            <label className="text-sm font-medium">Ayrılış Türü</label>
-            <Select value={terminationType} onValueChange={setTerminationType}>
+            <label className="text-sm font-medium">Ayrilik Turu</label>
+            <Select value={terminationType} onValueChange={(v) => { setTerminationType(v); setTerminationSubReason(""); }}>
               <SelectTrigger data-testid="select-termination-type">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="resignation">İstifa</SelectItem>
-                <SelectItem value="termination">Fesih</SelectItem>
+                <SelectItem value="resignation">Istifa</SelectItem>
+                <SelectItem value="termination">Fesih / Isten Cikarma</SelectItem>
                 <SelectItem value="retirement">Emeklilik</SelectItem>
-                <SelectItem value="mutual_agreement">Karşılıklı Anlaşma</SelectItem>
+                <SelectItem value="mutual_agreement">Karsilikli Anlasma</SelectItem>
+                <SelectItem value="contract_end">Sozlesme Sonu</SelectItem>
               </SelectContent>
             </Select>
           </div>
           <div>
-            <label className="text-sm font-medium">Ayrılış Tarihi</label>
+            <label className="text-sm font-medium">Alt Neden</label>
+            <Select value={terminationSubReason} onValueChange={setTerminationSubReason}>
+              <SelectTrigger data-testid="select-termination-sub-reason">
+                <SelectValue placeholder="Alt neden secin" />
+              </SelectTrigger>
+              <SelectContent>
+                {terminationType === "resignation" && (
+                  <>
+                    <SelectItem value="resigned_voluntarily">Gonullu Istifa</SelectItem>
+                    <SelectItem value="resigned_better_offer">Daha Iyi Teklif</SelectItem>
+                    <SelectItem value="resigned_personal">Kisisel Nedenler</SelectItem>
+                    <SelectItem value="resigned_relocation">Tasinma</SelectItem>
+                    <SelectItem value="resigned_health">Saglik Nedenleri</SelectItem>
+                  </>
+                )}
+                {terminationType === "termination" && (
+                  <>
+                    <SelectItem value="fired_performance">Performans Yetersizligi</SelectItem>
+                    <SelectItem value="fired_misconduct">Disiplin Ihlali</SelectItem>
+                    <SelectItem value="fired_restructuring">Yapisal Degisiklik</SelectItem>
+                    <SelectItem value="fired_probation">Deneme Suresi Basarisiz</SelectItem>
+                    <SelectItem value="fired_attendance">Devamsizlik</SelectItem>
+                  </>
+                )}
+                {terminationType === "mutual_agreement" && (
+                  <>
+                    <SelectItem value="mutual_downsizing">Kadro Daraltma</SelectItem>
+                    <SelectItem value="mutual_restructuring">Yeniden Yapilanma</SelectItem>
+                    <SelectItem value="mutual_other">Diger</SelectItem>
+                  </>
+                )}
+                {(terminationType === "retirement" || terminationType === "contract_end") && (
+                  <>
+                    <SelectItem value="normal">Normal</SelectItem>
+                    <SelectItem value="other">Diger</SelectItem>
+                  </>
+                )}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <label className="text-sm font-medium">Ayrilik Tarihi</label>
             <Input type="date" value={terminationDate} onChange={(e) => setTerminationDate(e.target.value)} data-testid="input-termination-date" />
           </div>
           <div>
-            <label className="text-sm font-medium">Sebep (Opsiyonel)</label>
-            <Textarea placeholder="Ayrılış sebebini yazın" value={reason} onChange={(e) => setReason(e.target.value)} className="resize-none" />
+            <label className="text-sm font-medium">Ayrilik Nedeni (Acik Metin)</label>
+            <Textarea placeholder="Ayrilik ile ilgili detaylari yazin..." value={reason} onChange={(e) => setReason(e.target.value)} className="resize-none" />
           </div>
           <div>
             <label className="text-sm font-medium">Toplam Ödeme (₺) (Opsiyonel)</label>
