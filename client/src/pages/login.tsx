@@ -17,7 +17,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2 } from "lucide-react";
+import { Loader2, Building2, Factory, Store } from "lucide-react";
+import { Separator } from "@/components/ui/separator";
 import logoUrl from "@assets/IMG_6637_1765138781125.png";
 
 const loginSchema = z.object({
@@ -213,7 +214,7 @@ export default function Login() {
                 )}
               </Button>
 
-              <div className="flex justify-between text-sm">
+              <div className="flex justify-between gap-2 text-sm flex-wrap">
                 <button
                   type="button"
                   className="text-primary hover:underline"
@@ -233,6 +234,62 @@ export default function Login() {
               </div>
             </form>
           </Form>
+
+          <Separator className="my-3" />
+
+          <div className="space-y-2">
+            <p className="text-xs text-muted-foreground text-center">Hızlı Giriş</p>
+            <div className="grid grid-cols-3 gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1.5"
+                onClick={() => {
+                  form.setValue("username", "merkez");
+                  form.setValue("password", "0000");
+                  form.handleSubmit(onSubmit)();
+                }}
+                disabled={loginMutation.isPending}
+                data-testid="button-quick-merkez"
+              >
+                <Building2 className="w-3.5 h-3.5" />
+                Merkez
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1.5"
+                onClick={() => {
+                  form.setValue("username", "fabrika");
+                  form.setValue("password", "0000");
+                  form.handleSubmit(onSubmit)();
+                }}
+                disabled={loginMutation.isPending}
+                data-testid="button-quick-fabrika"
+              >
+                <Factory className="w-3.5 h-3.5" />
+                Fabrika
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1.5"
+                onClick={() => {
+                  form.setValue("username", "ışıklar");
+                  form.setValue("password", "0000");
+                  form.handleSubmit(onSubmit)();
+                }}
+                disabled={loginMutation.isPending}
+                data-testid="button-quick-isiklar"
+              >
+                <Store className="w-3.5 h-3.5" />
+                Işıklar
+              </Button>
+            </div>
+            <p className="text-[10px] text-muted-foreground text-center">
+              Tüm şubeler: şube adı ile giriş, şifre: 0000
+            </p>
+          </div>
         </CardContent>
       </Card>
     </div>
