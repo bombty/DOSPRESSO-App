@@ -31603,6 +31603,99 @@ DOSPRESSO İnsan Kaynakları Ekibi`
         }));
       }
       
+      let branchInfoGraphics: any[] = [];
+      let criticalIssues: any[] = [];
+      try {
+      const allBranches = await db.select({ id: branches.id, name: branches.name }).from(branches)
+        .where(sql`${branches.name} NOT LIKE '%Merkez%' AND ${branches.name} NOT LIKE '%HQ%' AND ${branches.name} NOT LIKE '%Fabrika%'`);
+      
+      for (const br of allBranches) {
+        const [empCount] = await db.select({ count: sql<number>`count(*)::int` }).from(users).where(and(eq(users.branchId, br.id), eq(users.isActive, true), sql`${users.firstName} IS NOT NULL AND ${users.firstName} != ''`));
+        const [shiftCount] = await db.select({ count: sql<number>`count(*)::int` }).from(shifts).where(and(eq(shifts.branchId, br.id), eq(shifts.shiftDate, todayStr)));
+        const [clTotal] = await db.select({ count: sql<number>`count(*)::int` }).from(checklistCompletions).where(and(eq(checklistCompletions.branchId, br.id), eq(checklistCompletions.scheduledDate, todayStr)));
+        const [clDone] = await db.select({ count: sql<number>`count(*)::int` }).from(checklistCompletions).where(and(eq(checklistCompletions.branchId, br.id), eq(checklistCompletions.scheduledDate, todayStr), sql`${checklistCompletions.status} IN ('completed', 'submitted', 'reviewed')`));
+        const [faultCount] = await db.select({ count: sql<number>`count(*)::int` }).from(equipmentFaults).where(and(eq(equipmentFaults.branchId, br.id), sql`${equipmentFaults.status} NOT IN ('cozuldu', 'kapali')`));
+        
+        branchInfoGraphics.push({
+        branchId: br.id,
+          branchName: br.name,
+          employeeCount: empCount?.count || 0,
+          todayShiftCount: shiftCount?.count || 0,
+          checklistTotal: clTotal?.count || 0,
+          checklistDone: clDone?.count || 0,
+          openFaultCount: faultCount?.count || 0,
+        });
+      }
+
+
+
+      const openFaults = await db.select({
+        id: equipmentFaults.id,
+        equipmentName: equipmentFaults.equipmentName,
+        priorityLevel: equipmentFaults.priorityLevel,
+        currentStage: equipmentFaults.currentStage,
+        branchId: equipmentFaults.branchId,
+        createdAt: equipmentFaults.createdAt,
+      }).from(equipmentFaults).where(and(
+        sql`${equipmentFaults.status} NOT IN ('cozuldu', 'kapali')`,
+        sql`${equipmentFaults.priorityLevel} = 'red' OR ${equipmentFaults.currentStage} IN ('bekliyor', 'servis_bekleniyor')`
+      )).orderBy(desc(equipmentFaults.createdAt)).limit(10);
+
+      for (const f of openFaults) {
+        const branchInfo = branchInfoGraphics.find(b => b.branchId === f.branchId);
+        criticalIssues.push({
+          type: 'fault',
+          title: f.equipmentName + ' Arizasi',
+          detail: branchInfo ? branchInfo.branchName : 'Sube #' + f.branchId,
+          severity: f.priorityLevel === 'red' ? 'critical' : 'warning',
+          area: 'sube',
+        });
+      }
+
+      const overdueTasks = await db.select({
+        id: tasks.id,
+        title: tasks.title,
+        branchId: tasks.branchId,
+        dueDate: tasks.dueDate,
+      }).from(tasks).where(and(
+        sql`${tasks.status} NOT IN ('completed', 'verified', 'cancelled')`,
+        sql`DATE(${tasks.dueDate}) < ${todayStr}`
+      )).orderBy(tasks.dueDate).limit(10);
+
+      for (const t of overdueTasks) {
+        const branchInfo = branchInfoGraphics.find(b => b.branchId === t.branchId);
+        criticalIssues.push({
+          type: 'overdue_task',
+          title: t.title || 'Geciken Gorev',
+          detail: branchInfo ? branchInfo.branchName : (t.branchId ? 'Sube #' + t.branchId : 'Merkez'),
+          severity: 'warning',
+          area: t.branchId ? 'sube' : 'merkez',
+        });
+      }
+
+      const overdueMaintenances = await db.select({
+        id: maintenanceSchedules.id,
+        equipmentId: maintenanceSchedules.equipmentId,
+        nextMaintenanceDate: maintenanceSchedules.nextMaintenanceDate,
+      }).from(maintenanceSchedules).where(and(
+        eq(maintenanceSchedules.isActive, true),
+        sql`${maintenanceSchedules.nextMaintenanceDate} < ${todayStr}`
+      )).limit(5);
+
+      for (const m of overdueMaintenances) {
+        criticalIssues.push({
+          type: 'maintenance',
+          title: 'Bakim Gecikmis (Ekipman #' + m.equipmentId + ')',
+          detail: 'Son tarih: ' + m.nextMaintenanceDate,
+          severity: 'warning',
+          area: 'fabrika',
+        });
+      }
+
+      } catch (innerErr: any) {
+        console.error('Error fetching branch infographics:', innerErr.message);
+      }
+
       res.json({
         totalBranches,
         activeEmployees,
@@ -31618,6 +31711,8 @@ DOSPRESSO İnsan Kaynakları Ekibi`
         },
         branchPerformance,
         merkezStaff,
+        branchInfoGraphics,
+        criticalIssues,
       });
     } catch (error: any) {
       console.error("Error fetching HQ dashboard summary:", error);

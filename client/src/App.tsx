@@ -441,7 +441,10 @@ function AppContent() {
 
   const isStandaloneDashboard = location.startsWith("/merkez-dashboard") || 
     location.startsWith("/sube/dashboard") || 
-    location.startsWith("/sube/employee-dashboard");
+    location.startsWith("/sube/employee-dashboard") ||
+    location.startsWith("/hq/kiosk") ||
+    location.startsWith("/sube/kiosk") ||
+    location.startsWith("/fabrika/kiosk");
 
   if (isStandaloneDashboard) {
     return (

@@ -19,8 +19,32 @@ import {
   Clock,
   UserCheck,
   LogOut,
+  Monitor,
+  Wrench,
+  CalendarClock,
+  Factory,
+  Building2,
+  ShieldAlert,
 } from "lucide-react";
 import logoUrl from "@assets/IMG_6637_1765138781125.png";
+
+interface BranchInfo {
+  branchId: number;
+  branchName: string;
+  employeeCount: number;
+  todayShiftCount: number;
+  checklistTotal: number;
+  checklistDone: number;
+  openFaultCount: number;
+}
+
+interface CriticalIssue {
+  type: string;
+  title: string;
+  detail: string;
+  severity: string;
+  area: string;
+}
 
 interface HQSummaryData {
   totalBranches: number;
@@ -51,35 +75,37 @@ interface HQSummaryData {
       shiftType: string;
     } | null;
   }>;
+  branchInfoGraphics?: BranchInfo[];
+  criticalIssues?: CriticalIssue[];
 }
 
 const roleLabels: Record<string, string> = {
-  admin: "Yönetici",
+  admin: "Yonetici",
   ceo: "CEO",
   cgo: "CGO",
   coach: "Coach",
-  trainer: "Eğitmen",
-  muhasebe_ik: "Muhasebe/İK",
+  trainer: "Egitmen",
+  muhasebe_ik: "Muhasebe/IK",
   muhasebe: "Muhasebe",
-  satinalma: "Satınalma",
+  satinalma: "Satinalma",
   marketing: "Pazarlama",
-  supervisor: "Süpervizör",
-  supervisor_buddy: "Süpervizör Yrd.",
+  supervisor: "Supervizoer",
+  supervisor_buddy: "Supervizoer Yrd.",
   barista: "Barista",
   bar_buddy: "Bar Buddy",
   stajyer: "Stajyer",
-  yatirimci_branch: "Yatırımcı",
-  fabrika_mudur: "Fabrika Müdürü",
-  fabrika_operator: "Fabrika Operatör",
+  yatirimci_branch: "Yatirimci",
+  fabrika_mudur: "Fabrika Muduru",
+  fabrika_operator: "Fabrika Operator",
   teknik: "Teknik",
   destek: "Destek",
 };
 
 const shiftTypeLabels: Record<string, string> = {
   morning: "Sabah",
-  evening: "Akşam",
+  evening: "Aksam",
   night: "Gece",
-  full: "Tam Gün",
+  full: "Tam Gun",
 };
 
 export default function MerkezDashboard() {
@@ -107,6 +133,11 @@ export default function MerkezDashboard() {
     }
   };
 
+  const criticalIssues = data?.criticalIssues || [];
+  const merkezIssues = criticalIssues.filter(i => i.area === 'merkez');
+  const fabrikaIssues = criticalIssues.filter(i => i.area === 'fabrika');
+  const subeIssues = criticalIssues.filter(i => i.area === 'sube');
+
   return (
     <div className="min-h-screen bg-background">
       <div className="bg-card border-b px-3 py-2">
@@ -114,19 +145,23 @@ export default function MerkezDashboard() {
           <div className="flex items-center gap-2">
             <img src={logoUrl} alt="DOSPRESSO" className="h-8" data-testid="img-logo" />
             <div>
-              <h1 className="text-sm font-bold" data-testid="text-dashboard-title">Merkez Yönetim Paneli</h1>
+              <h1 className="text-sm font-bold" data-testid="text-dashboard-title">Merkez Yonetim Paneli</h1>
               <p className="text-[10px] text-muted-foreground">
                 {today.toLocaleDateString("tr-TR", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
               </p>
             </div>
           </div>
           <div className="flex items-center gap-1.5">
+            <Button variant="default" size="sm" onClick={() => setLocation("/hq/kiosk")} className="gap-1.5" data-testid="button-kiosk-mode">
+              <Monitor className="h-3.5 w-3.5" />
+              Kiosk
+            </Button>
             <Button variant="outline" size="icon" onClick={() => refetch()} data-testid="button-refresh">
               <RefreshCw className="h-3.5 w-3.5" />
             </Button>
             <Button variant="outline" size="sm" onClick={handleLogout} className="gap-1.5" data-testid="button-logout">
               <LogOut className="h-3.5 w-3.5" />
-              Çıkış
+              Cikis
             </Button>
           </div>
         </div>
@@ -156,7 +191,7 @@ export default function MerkezDashboard() {
                       <Store className="h-4 w-4 text-blue-600" />
                     </div>
                     <div>
-                      <p className="text-[10px] text-muted-foreground">Toplam Şube</p>
+                      <p className="text-[10px] text-muted-foreground">Toplam Sube</p>
                       <p className="text-lg font-bold" data-testid="text-total-branches">{data?.totalBranches || 0}</p>
                     </div>
                   </div>
@@ -198,7 +233,7 @@ export default function MerkezDashboard() {
                       <ListTodo className="h-4 w-4 text-amber-600" />
                     </div>
                     <div>
-                      <p className="text-[10px] text-muted-foreground">Açık Görev</p>
+                      <p className="text-[10px] text-muted-foreground">Acik Gorev</p>
                       <p className="text-lg font-bold" data-testid="text-open-tasks">{data?.openTasks || 0}</p>
                     </div>
                   </div>
@@ -212,10 +247,10 @@ export default function MerkezDashboard() {
                   <AlertCircle className="h-4 w-4 text-red-600 shrink-0" />
                   <div>
                     <p className="text-xs font-bold text-red-700 dark:text-red-400">
-                      {data?.alerts.critical} Kritik Uyarı
+                      {data?.alerts.critical} Kritik Uyari
                     </p>
                     <p className="text-[10px] text-red-600 dark:text-red-400/80">
-                      Toplam {data?.alerts.total} aktif uyarı mevcut
+                      Toplam {data?.alerts.total} aktif uyari mevcut
                     </p>
                   </div>
                 </div>
@@ -227,10 +262,142 @@ export default function MerkezDashboard() {
                 <div className="flex items-center gap-2">
                   <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0" />
                   <p className="text-xs text-amber-700 dark:text-amber-400">
-                    {data?.alerts.total} aktif uyarı mevcut
+                    {data?.alerts.total} aktif uyari mevcut
                   </p>
                 </div>
               </div>
+            )}
+
+            {criticalIssues.length > 0 && (
+              <Card data-testid="card-critical-issues">
+                <CardHeader className="pb-1 pt-3 px-3">
+                  <CardTitle className="flex items-center gap-2 text-xs">
+                    <ShieldAlert className="h-3.5 w-3.5 text-red-500" />
+                    Kritik Cozulmesi Gereken Konular
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="px-3 pb-3">
+                  <div className="space-y-2">
+                    {merkezIssues.length > 0 && (
+                      <div>
+                        <div className="flex items-center gap-1.5 mb-1.5">
+                          <Building2 className="h-3 w-3 text-blue-500" />
+                          <span className="text-[10px] font-semibold text-blue-600 dark:text-blue-400">Merkez</span>
+                        </div>
+                        <div className="space-y-1">
+                          {merkezIssues.slice(0, 5).map((issue, i) => (
+                            <div key={`m-${i}`} className="flex items-center gap-2 p-1.5 rounded border text-xs" data-testid={`issue-merkez-${i}`}>
+                              {issue.type === 'overdue_task' ? <CalendarClock className="h-3 w-3 text-amber-500 shrink-0" /> : <AlertTriangle className="h-3 w-3 text-red-500 shrink-0" />}
+                              <span className="flex-1 truncate">{issue.title}</span>
+                              <Badge variant={issue.severity === 'critical' ? 'destructive' : 'secondary'} className="text-[9px] shrink-0">
+                                {issue.severity === 'critical' ? 'Kritik' : 'Uyari'}
+                              </Badge>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {fabrikaIssues.length > 0 && (
+                      <div>
+                        <div className="flex items-center gap-1.5 mb-1.5">
+                          <Factory className="h-3 w-3 text-purple-500" />
+                          <span className="text-[10px] font-semibold text-purple-600 dark:text-purple-400">Fabrika</span>
+                        </div>
+                        <div className="space-y-1">
+                          {fabrikaIssues.slice(0, 5).map((issue, i) => (
+                            <div key={`f-${i}`} className="flex items-center gap-2 p-1.5 rounded border text-xs" data-testid={`issue-fabrika-${i}`}>
+                              {issue.type === 'maintenance' ? <Wrench className="h-3 w-3 text-purple-500 shrink-0" /> : <AlertTriangle className="h-3 w-3 text-red-500 shrink-0" />}
+                              <div className="flex-1 min-w-0">
+                                <span className="truncate block">{issue.title}</span>
+                                <span className="text-[10px] text-muted-foreground truncate block">{issue.detail}</span>
+                              </div>
+                              <Badge variant={issue.severity === 'critical' ? 'destructive' : 'secondary'} className="text-[9px] shrink-0">
+                                {issue.severity === 'critical' ? 'Kritik' : 'Uyari'}
+                              </Badge>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {subeIssues.length > 0 && (
+                      <div>
+                        <div className="flex items-center gap-1.5 mb-1.5">
+                          <Store className="h-3 w-3 text-orange-500" />
+                          <span className="text-[10px] font-semibold text-orange-600 dark:text-orange-400">Subeler</span>
+                        </div>
+                        <div className="space-y-1">
+                          {subeIssues.slice(0, 5).map((issue, i) => (
+                            <div key={`s-${i}`} className="flex items-center gap-2 p-1.5 rounded border text-xs" data-testid={`issue-sube-${i}`}>
+                              {issue.type === 'fault' ? <Wrench className="h-3 w-3 text-orange-500 shrink-0" /> : <CalendarClock className="h-3 w-3 text-amber-500 shrink-0" />}
+                              <div className="flex-1 min-w-0">
+                                <span className="truncate block">{issue.title}</span>
+                                <span className="text-[10px] text-muted-foreground truncate block">{issue.detail}</span>
+                              </div>
+                              <Badge variant={issue.severity === 'critical' ? 'destructive' : 'secondary'} className="text-[9px] shrink-0">
+                                {issue.severity === 'critical' ? 'Kritik' : 'Uyari'}
+                              </Badge>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {data?.branchInfoGraphics && data.branchInfoGraphics.length > 0 && (
+              <Card data-testid="card-branch-infographic">
+                <CardHeader className="pb-1 pt-3 px-3">
+                  <CardTitle className="flex items-center gap-2 text-xs">
+                    <Store className="h-3.5 w-3.5" />
+                    Sube Ozet Bilgileri
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="px-3 pb-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {data.branchInfoGraphics.map((branch) => {
+                      const checklistRate = branch.checklistTotal > 0
+                        ? Math.round((branch.checklistDone / branch.checklistTotal) * 100) : 0;
+                      return (
+                        <div
+                          key={branch.branchId}
+                          className="p-2.5 rounded-lg border space-y-2"
+                          data-testid={`infographic-branch-${branch.branchId}`}
+                        >
+                          <div className="flex items-center gap-2">
+                            <Store className="h-3.5 w-3.5 text-primary shrink-0" />
+                            <span className="text-xs font-bold truncate flex-1">{branch.branchName}</span>
+                            {branch.openFaultCount > 0 && (
+                              <Badge variant="destructive" className="text-[9px] shrink-0">
+                                {branch.openFaultCount} ariza
+                              </Badge>
+                            )}
+                          </div>
+                          <div className="grid grid-cols-3 gap-1.5">
+                            <div className="text-center p-1.5 rounded bg-blue-500/10">
+                              <Users className="h-3 w-3 mx-auto text-blue-500 mb-0.5" />
+                              <p className="text-sm font-bold text-blue-600 dark:text-blue-400">{branch.employeeCount}</p>
+                              <p className="text-[9px] text-muted-foreground">Personel</p>
+                            </div>
+                            <div className="text-center p-1.5 rounded bg-green-500/10">
+                              <Clock className="h-3 w-3 mx-auto text-green-500 mb-0.5" />
+                              <p className="text-sm font-bold text-green-600 dark:text-green-400">{branch.todayShiftCount}</p>
+                              <p className="text-[9px] text-muted-foreground">Vardiya</p>
+                            </div>
+                            <div className="text-center p-1.5 rounded bg-emerald-500/10">
+                              <ClipboardCheck className="h-3 w-3 mx-auto text-emerald-500 mb-0.5" />
+                              <p className="text-sm font-bold text-emerald-600 dark:text-emerald-400">%{checklistRate}</p>
+                              <p className="text-[9px] text-muted-foreground">Checklist</p>
+                            </div>
+                          </div>
+                          <Progress value={checklistRate} className="h-1.5" />
+                        </div>
+                      );
+                    })}
+                  </div>
+                </CardContent>
+              </Card>
             )}
 
             <Card>
@@ -274,7 +441,7 @@ export default function MerkezDashboard() {
                 ) : (
                   <div className="text-center py-4 text-muted-foreground">
                     <Users className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                    <p className="text-xs">Merkez personel verisi bulunamadı</p>
+                    <p className="text-xs">Merkez personel verisi bulunamadi</p>
                   </div>
                 )}
               </CardContent>
@@ -284,7 +451,7 @@ export default function MerkezDashboard() {
               <CardHeader className="pb-1 pt-3 px-3">
                 <CardTitle className="flex items-center gap-2 text-xs">
                   <ClipboardCheck className="h-3.5 w-3.5" />
-                  Bugünkü Checklist Özeti
+                  Bugunku Checklist Ozeti
                 </CardTitle>
               </CardHeader>
               <CardContent className="px-3 pb-3">
@@ -301,7 +468,7 @@ export default function MerkezDashboard() {
                     data-testid="progress-checklist-overall"
                   />
                   <p className="text-[10px] text-muted-foreground text-center">
-                    Tüm şubelerde günlük checklist tamamlanma oranı
+                    Tum subelerde gunluk checklist tamamlanma orani
                   </p>
                 </div>
               </CardContent>
@@ -311,7 +478,7 @@ export default function MerkezDashboard() {
               <CardHeader className="pb-1 pt-3 px-3">
                 <CardTitle className="flex items-center gap-2 text-xs">
                   <TrendingUp className="h-3.5 w-3.5" />
-                  Şube Durum Özeti
+                  Sube Durum Ozeti
                 </CardTitle>
               </CardHeader>
               <CardContent className="px-3 pb-3">
@@ -330,7 +497,7 @@ export default function MerkezDashboard() {
                             variant={branch.openTasks > 5 ? "destructive" : "secondary"}
                             className="text-[10px]"
                           >
-                            {branch.openTasks} görev
+                            {branch.openTasks} gorev
                           </Badge>
                         ) : (
                           <Badge variant="default" className="text-[10px] bg-green-600">
@@ -343,7 +510,7 @@ export default function MerkezDashboard() {
                 ) : (
                   <div className="text-center py-4 text-muted-foreground">
                     <Store className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                    <p className="text-xs">Şube verisi bulunamadı</p>
+                    <p className="text-xs">Sube verisi bulunamadi</p>
                   </div>
                 )}
               </CardContent>
