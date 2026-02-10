@@ -1,4 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
+import { useAuth } from "@/hooks/useAuth";
+import { useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -7,7 +9,7 @@ import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Link } from "wouter";
-import { UnifiedHero } from "@/components/widgets/unified-hero";
+import { apiRequest } from "@/lib/queryClient";
 import { 
   Factory, 
   Users, 
@@ -24,9 +26,12 @@ import {
   Calculator,
   DollarSign,
   Flame,
-  Target
+  Target,
+  LogOut,
+  Monitor,
 } from "lucide-react";
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip as RechartsTooltip, CartesianGrid } from "recharts";
+import logoUrl from "@assets/IMG_6637_1765138781125.png";
 
 interface DashboardStats {
   activeWorkers: number;
@@ -71,6 +76,9 @@ interface CostStats {
 }
 
 export default function FabrikaDashboard() {
+  const { user } = useAuth();
+  const [, setLocation] = useLocation();
+
   const { data: stats, isLoading: loadingStats, refetch } = useQuery<DashboardStats>({
     queryKey: ['/api/factory/dashboard/stats'],
     refetchInterval: 30000,
@@ -95,6 +103,17 @@ export default function FabrikaDashboard() {
     refetchInterval: 60000,
   });
 
+  const handleLogout = async () => {
+    try {
+      await apiRequest("POST", "/api/auth/logout");
+      window.location.href = "/login";
+    } catch {
+      window.location.href = "/login";
+    }
+  };
+
+  const today = new Date();
+
   const getStationName = (stationId: number) => {
     const station = stations.find(s => s.id === stationId);
     return station?.name || `İstasyon ${stationId}`;
@@ -115,20 +134,35 @@ export default function FabrikaDashboard() {
   };
 
   return (
-    <div className="container mx-auto p-3 space-y-3">
-      <UnifiedHero />
-
-      <div className="flex items-center gap-2 flex-wrap">
-        <Link href="/fabrika/kiosk">
-          <Button size="sm" variant="default" className="gap-1.5" data-testid="link-kiosk">
-            <Factory className="h-3.5 w-3.5" />
-            Kiosk
-          </Button>
-        </Link>
-        <Button variant="outline" size="sm" onClick={() => refetch()} data-testid="button-refresh">
-          <RefreshCw className="h-3.5 w-3.5" />
-        </Button>
+    <div className="min-h-screen bg-background">
+      <div className="bg-card border-b px-3 py-2">
+        <div className="container mx-auto flex items-center justify-between gap-2 flex-wrap">
+          <div className="flex items-center gap-2">
+            <img src={logoUrl} alt="DOSPRESSO" className="h-8" data-testid="img-logo" />
+            <div>
+              <h1 className="text-sm font-bold" data-testid="text-dashboard-title">Fabrika Yonetim Paneli</h1>
+              <p className="text-[10px] text-muted-foreground">
+                {today.toLocaleDateString("tr-TR", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <Button variant="default" size="sm" onClick={() => setLocation("/fabrika/kiosk")} className="gap-1.5" data-testid="button-kiosk-mode">
+              <Monitor className="h-3.5 w-3.5" />
+              Kiosk
+            </Button>
+            <Button variant="outline" size="icon" onClick={() => refetch()} data-testid="button-refresh">
+              <RefreshCw className="h-3.5 w-3.5" />
+            </Button>
+            <Button variant="outline" size="sm" onClick={handleLogout} className="gap-1.5" data-testid="button-logout">
+              <LogOut className="h-3.5 w-3.5" />
+              Cikis
+            </Button>
+          </div>
+        </div>
       </div>
+
+      <div className="container mx-auto p-3 space-y-3">
 
       {loadingStats ? (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
@@ -486,6 +520,7 @@ export default function FabrikaDashboard() {
           </CardContent>
         </Card>
       )}
+      </div>
     </div>
   );
 }

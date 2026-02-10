@@ -181,6 +181,7 @@ const PUBLIC_PATH_PREFIXES = [
   "/setup",
   "/sube/dashboard",
   "/sube/kiosk",
+  "/fabrika/dashboard",
   "/fabrika/kiosk",
   "/hq/kiosk"
 ];
@@ -244,6 +245,7 @@ function Router() {
       <Route path="/reset-password/:token" component={ResetPassword} />
       <Route path="/personel-degerlendirme/:token" component={PublicStaffRating} />
       <Route path="/misafir-geri-bildirim/:token" component={MisafirGeriBildirimPublic} />
+      <Route path="/fabrika/dashboard" component={FabrikaDashboard} />
       <Route path="/fabrika/kiosk" component={FabrikaKiosk} />
       <Route path="/hq/kiosk" component={HqKiosk} />
       <Route path="/sube/checklist-execution/:completionId" component={ChecklistExecutionPage} />
@@ -442,6 +444,7 @@ function AppContent() {
   const isStandaloneDashboard = location.startsWith("/merkez-dashboard") || 
     location.startsWith("/sube/dashboard") || 
     location.startsWith("/sube/employee-dashboard") ||
+    location.startsWith("/fabrika/dashboard") ||
     location.startsWith("/hq/kiosk") ||
     location.startsWith("/sube/kiosk") ||
     location.startsWith("/fabrika/kiosk");
