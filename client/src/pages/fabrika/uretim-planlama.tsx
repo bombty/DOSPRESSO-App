@@ -36,7 +36,8 @@ import {
   Link2,
   Brain,
   BarChart3,
-  Boxes
+  Boxes,
+  X
 } from "lucide-react";
 
 interface ProductionPlan {
@@ -163,8 +164,16 @@ export default function FabrikaUretimPlanlama() {
     productId: '',
     stationId: '',
     targetQuantity: '',
+    batchCount: '',
     notes: ''
   });
+  const [recipeInfo, setRecipeInfo] = useState<{
+    recipe: { id: number; name: string; outputQuantity: number; outputUnit: string; expectedOutputCount: number | null; expectedWastePercent: number; productionTimeMinutes: number; laborBatchSize: number } | null;
+    batchSpec: { id: number; batchWeightKg: number; expectedPieces: number; targetDurationMinutes: number; machineName: string | null } | null;
+    stationId: number | null;
+  } | null>(null);
+  const [loadingRecipeInfo, setLoadingRecipeInfo] = useState(false);
+  const [historyFilter, setHistoryFilter] = useState({ search: '', status: 'all', dateFrom: '', dateTo: '' });
 
   const { data: plans = [], isLoading, refetch } = useQuery<ProductionPlan[]>({
     queryKey: ['/api/factory/production-plans'],
@@ -239,8 +248,52 @@ export default function FabrikaUretimPlanlama() {
   });
 
   const resetForm = () => {
-    setFormData({ productId: '', stationId: '', targetQuantity: '', notes: '' });
+    setFormData({ productId: '', stationId: '', targetQuantity: '', batchCount: '', notes: '' });
     setSelectedDate(null);
+    setRecipeInfo(null);
+  };
+
+  const handleProductSelect = async (productId: string) => {
+    setFormData(prev => ({ ...prev, productId }));
+    setRecipeInfo(null);
+    if (!productId) return;
+    
+    setLoadingRecipeInfo(true);
+    try {
+      const res = await fetch(`/api/factory/product-recipe-info/${productId}`, { credentials: 'include' });
+      if (res.ok) {
+        const info = await res.json();
+        setRecipeInfo(info);
+        if (info.stationId) {
+          setFormData(prev => ({ ...prev, productId, stationId: info.stationId.toString() }));
+        } else {
+          setFormData(prev => ({ ...prev, productId }));
+        }
+        if (info.batchSpec?.expectedPieces && !formData.batchCount) {
+          setFormData(prev => ({ 
+            ...prev, 
+            productId,
+            stationId: info.stationId ? info.stationId.toString() : prev.stationId,
+            batchCount: '1',
+            targetQuantity: info.batchSpec.expectedPieces.toString()
+          }));
+        }
+      }
+    } catch (err) {
+      console.error("Recipe info fetch error:", err);
+    } finally {
+      setLoadingRecipeInfo(false);
+    }
+  };
+
+  const handleBatchCountChange = (count: string) => {
+    const batchCount = parseInt(count) || 0;
+    const piecesPerBatch = recipeInfo?.batchSpec?.expectedPieces || recipeInfo?.recipe?.expectedOutputCount || 0;
+    setFormData(prev => ({
+      ...prev,
+      batchCount: count,
+      targetQuantity: piecesPerBatch > 0 ? (batchCount * piecesPerBatch).toString() : prev.targetQuantity
+    }));
   };
 
   const resetCompleteForm = () => {
@@ -568,78 +621,178 @@ export default function FabrikaUretimPlanlama() {
         <TabsContent value="gecmis" className="mt-4">
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <History className="h-5 w-5" />
-                Üretim Geçmişi
-              </CardTitle>
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <CardTitle className="flex items-center gap-2">
+                  <History className="h-5 w-5" />
+                  Üretim Geçmişi
+                </CardTitle>
+                <Badge variant="secondary">{productionHistory.length} kayıt</Badge>
+              </div>
             </CardHeader>
-            <CardContent>
-              {productionHistory.length === 0 ? (
-                <div className="text-center py-12 text-muted-foreground">
-                  <Factory className="h-12 w-12 mx-auto mb-3 opacity-30" />
-                  <p className="text-lg font-medium">Henüz üretim kaydı yok</p>
-                  <p className="text-sm mt-1">"Üretimi Tamamla" butonunu kullanarak ilk üretim kaydınızı oluşturun</p>
+            <CardContent className="space-y-4">
+              <div className="flex items-end gap-3 flex-wrap">
+                <div className="flex-1 min-w-[160px]">
+                  <Label className="text-xs">Ara</Label>
+                  <Input
+                    placeholder="Üretim no veya not..."
+                    value={historyFilter.search}
+                    onChange={(e) => setHistoryFilter(prev => ({ ...prev, search: e.target.value }))}
+                    data-testid="input-history-search"
+                  />
                 </div>
-              ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Üretim No</TableHead>
-                      <TableHead>Tarih</TableHead>
-                      <TableHead>Miktar</TableHead>
-                      <TableHead>Fire</TableHead>
-                      <TableHead>Stok Düşümü</TableHead>
-                      <TableHead>Ürün Girişi</TableHead>
-                      <TableHead>Durum</TableHead>
-                      <TableHead>Notlar</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {productionHistory.map(record => (
-                      <TableRow key={record.id} data-testid={`production-record-${record.id}`}>
-                        <TableCell className="font-mono text-sm">{record.productionNumber}</TableCell>
-                        <TableCell>{new Date(record.productionDate).toLocaleDateString('tr-TR')}</TableCell>
-                        <TableCell className="font-medium">{record.producedQuantity} {record.unit}</TableCell>
-                        <TableCell>
-                          {parseFloat(record.wasteQuantity) > 0 ? (
-                            <span className="text-red-500">{record.wasteQuantity} {record.unit}</span>
-                          ) : (
-                            <span className="text-muted-foreground">-</span>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          {record.ingredientsDeducted ? (
-                            <Badge className="bg-green-500 text-white">
-                              <ArrowDownToLine className="h-3 w-3 mr-1" />
-                              Düşüldü
-                            </Badge>
-                          ) : (
-                            <Badge variant="secondary">Bekliyor</Badge>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          {record.productAddedToStock ? (
-                            <Badge className="bg-blue-500 text-white">
-                              <ArrowUpFromLine className="h-3 w-3 mr-1" />
-                              Eklendi
-                            </Badge>
-                          ) : (
-                            <Badge variant="secondary">-</Badge>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          <Badge className={`${getStatusColor(record.status)} text-white`}>
-                            {getStatusLabel(record.status)}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="max-w-[200px] truncate text-sm text-muted-foreground">
-                          {record.notes || "-"}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              )}
+                <div className="w-36">
+                  <Label className="text-xs">Durum</Label>
+                  <Select value={historyFilter.status} onValueChange={(val) => setHistoryFilter(prev => ({ ...prev, status: val }))}>
+                    <SelectTrigger data-testid="select-history-status">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Tümü</SelectItem>
+                      <SelectItem value="completed">Tamamlandı</SelectItem>
+                      <SelectItem value="in_progress">Devam Ediyor</SelectItem>
+                      <SelectItem value="cancelled">İptal</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="w-36">
+                  <Label className="text-xs">Başlangıç</Label>
+                  <Input
+                    type="date"
+                    value={historyFilter.dateFrom}
+                    onChange={(e) => setHistoryFilter(prev => ({ ...prev, dateFrom: e.target.value }))}
+                    data-testid="input-history-date-from"
+                  />
+                </div>
+                <div className="w-36">
+                  <Label className="text-xs">Bitiş</Label>
+                  <Input
+                    type="date"
+                    value={historyFilter.dateTo}
+                    onChange={(e) => setHistoryFilter(prev => ({ ...prev, dateTo: e.target.value }))}
+                    data-testid="input-history-date-to"
+                  />
+                </div>
+                {(historyFilter.search || historyFilter.status !== 'all' || historyFilter.dateFrom || historyFilter.dateTo) && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setHistoryFilter({ search: '', status: 'all', dateFrom: '', dateTo: '' })}
+                    data-testid="button-clear-history-filters"
+                  >
+                    <X className="h-3 w-3 mr-1" />
+                    Temizle
+                  </Button>
+                )}
+              </div>
+
+              {(() => {
+                const filtered = productionHistory.filter(record => {
+                  if (historyFilter.search) {
+                    const s = historyFilter.search.toLowerCase();
+                    if (!record.productionNumber?.toLowerCase().includes(s) && !record.notes?.toLowerCase().includes(s)) return false;
+                  }
+                  if (historyFilter.status !== 'all' && record.status !== historyFilter.status && record.status !== (historyFilter.status === 'completed' ? 'tamamlandi' : historyFilter.status === 'in_progress' ? 'devam_ediyor' : 'iptal')) return false;
+                  if (historyFilter.dateFrom && new Date(record.productionDate) < new Date(historyFilter.dateFrom)) return false;
+                  if (historyFilter.dateTo && new Date(record.productionDate) > new Date(historyFilter.dateTo + 'T23:59:59')) return false;
+                  return true;
+                });
+                return filtered.length === 0 ? (
+                  <div className="text-center py-12 text-muted-foreground">
+                    <Factory className="h-12 w-12 mx-auto mb-3 opacity-30" />
+                    <p className="text-lg font-medium">{productionHistory.length === 0 ? 'Henüz üretim kaydı yok' : 'Filtreye uygun kayıt bulunamadı'}</p>
+                    <p className="text-sm mt-1">{productionHistory.length === 0 ? '"Üretimi Tamamla" butonunu kullanarak ilk üretim kaydınızı oluşturun' : 'Farklı filtre kriterleri deneyin'}</p>
+                  </div>
+                ) : (
+                  <>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                      <div className="p-3 rounded-lg bg-muted/50">
+                        <p className="text-xs text-muted-foreground">Toplam Üretim</p>
+                        <p className="text-lg font-bold" data-testid="text-total-produced">
+                          {filtered.reduce((sum, r) => sum + parseFloat(r.producedQuantity || '0'), 0).toLocaleString('tr-TR')} adet
+                        </p>
+                      </div>
+                      <div className="p-3 rounded-lg bg-muted/50">
+                        <p className="text-xs text-muted-foreground">Toplam Fire</p>
+                        <p className="text-lg font-bold text-red-500" data-testid="text-total-waste">
+                          {filtered.reduce((sum, r) => sum + parseFloat(r.wasteQuantity || '0'), 0).toLocaleString('tr-TR')} adet
+                        </p>
+                      </div>
+                      <div className="p-3 rounded-lg bg-muted/50">
+                        <p className="text-xs text-muted-foreground">Fire Oranı</p>
+                        <p className="text-lg font-bold" data-testid="text-waste-rate">
+                          {(() => {
+                            const totalProduced = filtered.reduce((s, r) => s + parseFloat(r.producedQuantity || '0'), 0);
+                            const totalWaste = filtered.reduce((s, r) => s + parseFloat(r.wasteQuantity || '0'), 0);
+                            return totalProduced > 0 ? `%${((totalWaste / (totalProduced + totalWaste)) * 100).toFixed(1)}` : '%0';
+                          })()}
+                        </p>
+                      </div>
+                      <div className="p-3 rounded-lg bg-muted/50">
+                        <p className="text-xs text-muted-foreground">Kayıt Sayısı</p>
+                        <p className="text-lg font-bold">{filtered.length}</p>
+                      </div>
+                    </div>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Üretim No</TableHead>
+                          <TableHead>Tarih</TableHead>
+                          <TableHead>Miktar</TableHead>
+                          <TableHead>Fire</TableHead>
+                          <TableHead>Stok Düşümü</TableHead>
+                          <TableHead>Ürün Girişi</TableHead>
+                          <TableHead>Durum</TableHead>
+                          <TableHead>Notlar</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {filtered.map(record => (
+                          <TableRow key={record.id} data-testid={`production-record-${record.id}`}>
+                            <TableCell className="font-mono text-sm">{record.productionNumber}</TableCell>
+                            <TableCell>{new Date(record.productionDate).toLocaleDateString('tr-TR')}</TableCell>
+                            <TableCell className="font-medium">{record.producedQuantity} {record.unit}</TableCell>
+                            <TableCell>
+                              {parseFloat(record.wasteQuantity) > 0 ? (
+                                <span className="text-red-500">{record.wasteQuantity} {record.unit}</span>
+                              ) : (
+                                <span className="text-muted-foreground">-</span>
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              {record.ingredientsDeducted ? (
+                                <Badge className="bg-green-500 text-white">
+                                  <ArrowDownToLine className="h-3 w-3 mr-1" />
+                                  Düşüldü
+                                </Badge>
+                              ) : (
+                                <Badge variant="secondary">Bekliyor</Badge>
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              {record.productAddedToStock ? (
+                                <Badge className="bg-blue-500 text-white">
+                                  <ArrowUpFromLine className="h-3 w-3 mr-1" />
+                                  Eklendi
+                                </Badge>
+                              ) : (
+                                <Badge variant="secondary">-</Badge>
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              <Badge className={`${getStatusColor(record.status)} text-white`}>
+                                {getStatusLabel(record.status)}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="max-w-[200px] truncate text-sm text-muted-foreground">
+                              {record.notes || "-"}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </>
+                );
+              })()}
             </CardContent>
           </Card>
         </TabsContent>
@@ -929,7 +1082,7 @@ export default function FabrikaUretimPlanlama() {
 
       {/* Plan Ekleme Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle>
               {selectedDate ? `${selectedDate.toLocaleDateString('tr-TR')} - Üretim Planı` : 'Üretim Planı Ekle'}
@@ -939,7 +1092,7 @@ export default function FabrikaUretimPlanlama() {
           <div className="space-y-4">
             <div className="space-y-2">
               <Label>Ürün</Label>
-              <Select value={formData.productId} onValueChange={(val) => setFormData({...formData, productId: val})}>
+              <Select value={formData.productId} onValueChange={handleProductSelect}>
                 <SelectTrigger data-testid="select-product">
                   <SelectValue placeholder="Ürün seçin" />
                 </SelectTrigger>
@@ -953,8 +1106,66 @@ export default function FabrikaUretimPlanlama() {
               </Select>
             </div>
 
+            {loadingRecipeInfo && (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground p-2 bg-muted/50 rounded-md">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Reçete bilgileri yükleniyor...
+              </div>
+            )}
+
+            {recipeInfo && (recipeInfo.recipe || recipeInfo.batchSpec) && (
+              <Card className="border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-950/20">
+                <CardContent className="p-3 space-y-2">
+                  <p className="text-xs font-medium flex items-center gap-1.5 text-amber-700 dark:text-amber-400">
+                    <Zap className="h-3.5 w-3.5" />
+                    Reçete Bilgileri (Otomatik)
+                  </p>
+                  <div className="grid grid-cols-2 gap-2 text-xs">
+                    {recipeInfo.recipe && (
+                      <>
+                        <div>
+                          <span className="text-muted-foreground">Reçete:</span>{' '}
+                          <span className="font-medium">{recipeInfo.recipe.name}</span>
+                        </div>
+                        {recipeInfo.recipe.expectedWastePercent > 0 && (
+                          <div>
+                            <span className="text-muted-foreground">Beklenen Fire:</span>{' '}
+                            <span className="font-medium text-red-600">%{recipeInfo.recipe.expectedWastePercent}</span>
+                          </div>
+                        )}
+                        {recipeInfo.recipe.productionTimeMinutes > 0 && (
+                          <div>
+                            <span className="text-muted-foreground">Süre/Batch:</span>{' '}
+                            <span className="font-medium">{recipeInfo.recipe.productionTimeMinutes} dk</span>
+                          </div>
+                        )}
+                      </>
+                    )}
+                    {recipeInfo.batchSpec && (
+                      <>
+                        <div>
+                          <span className="text-muted-foreground">Batch Ağırlık:</span>{' '}
+                          <span className="font-medium">{recipeInfo.batchSpec.batchWeightKg} kg</span>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground">Batch Adet:</span>{' '}
+                          <span className="font-medium">{recipeInfo.batchSpec.expectedPieces} adet</span>
+                        </div>
+                        {recipeInfo.batchSpec.machineName && (
+                          <div>
+                            <span className="text-muted-foreground">Makine:</span>{' '}
+                            <span className="font-medium">{recipeInfo.batchSpec.machineName}</span>
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
             <div className="space-y-2">
-              <Label>İstasyon</Label>
+              <Label>İstasyon {recipeInfo?.stationId ? <Badge variant="secondary" className="ml-1 text-[10px]">Otomatik</Badge> : null}</Label>
               <Select value={formData.stationId} onValueChange={(val) => setFormData({...formData, stationId: val})}>
                 <SelectTrigger data-testid="select-station">
                   <SelectValue placeholder="İstasyon seçin" />
@@ -969,16 +1180,44 @@ export default function FabrikaUretimPlanlama() {
               </Select>
             </div>
 
-            <div className="space-y-2">
-              <Label>Hedef Miktar</Label>
-              <Input
-                type="number"
-                placeholder="Örn: 500"
-                value={formData.targetQuantity}
-                onChange={(e) => setFormData({...formData, targetQuantity: e.target.value})}
-                data-testid="input-target-quantity"
-              />
-            </div>
+            {recipeInfo?.batchSpec?.expectedPieces ? (
+              <div className="space-y-2">
+                <Label>Batch Adedi</Label>
+                <div className="flex items-center gap-2">
+                  <Input
+                    type="number"
+                    min="1"
+                    placeholder="Batch sayısı"
+                    value={formData.batchCount}
+                    onChange={(e) => handleBatchCountChange(e.target.value)}
+                    data-testid="input-batch-count"
+                    className="w-24"
+                  />
+                  <span className="text-sm text-muted-foreground">x</span>
+                  <span className="text-sm font-medium">{recipeInfo.batchSpec.expectedPieces} adet</span>
+                  <span className="text-sm text-muted-foreground">=</span>
+                  <span className="text-sm font-bold text-amber-600" data-testid="text-total-target">
+                    {formData.targetQuantity || 0} adet
+                  </span>
+                </div>
+                {recipeInfo.recipe?.expectedWastePercent ? (
+                  <p className="text-xs text-muted-foreground">
+                    Beklenen fire: ~{Math.round(Number(formData.targetQuantity || 0) * recipeInfo.recipe.expectedWastePercent / 100)} adet (%{recipeInfo.recipe.expectedWastePercent})
+                  </p>
+                ) : null}
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <Label>Hedef Miktar (adet)</Label>
+                <Input
+                  type="number"
+                  placeholder="Örn: 500"
+                  value={formData.targetQuantity}
+                  onChange={(e) => setFormData({...formData, targetQuantity: e.target.value})}
+                  data-testid="input-target-quantity"
+                />
+              </div>
+            )}
 
             <div className="space-y-2">
               <Label>Notlar (Opsiyonel)</Label>

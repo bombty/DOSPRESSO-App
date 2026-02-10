@@ -28313,6 +28313,186 @@ DOSPRESSO İnsan Kaynakları Ekibi`
     }
   });
 
+
+  // Cost dashboard stats for fabrika dashboard - admin & fabrika_mudur only
+  app.get('/api/factory/cost-dashboard-stats', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user as any;
+      if (user.role !== 'admin' && user.role !== 'fabrika_mudur') {
+        return res.status(403).json({ message: "Bu verilere erişim yetkiniz yok" });
+      }
+
+      const [productCount] = await db.execute(sql`SELECT COUNT(*) as count FROM factory_products WHERE is_active = true`);
+      const [recipeCount] = await db.execute(sql`SELECT COUNT(*) as count FROM product_recipes WHERE is_active = true`);
+      const [materialCount] = await db.execute(sql`SELECT COUNT(*) as count FROM raw_materials`);
+      const [fixedCostResult] = await db.execute(sql`SELECT COALESCE(SUM(CAST(monthly_amount AS numeric)), 0) as total FROM factory_fixed_costs WHERE is_recurring = true`);
+      const [marginResult] = await db.execute(sql`SELECT COALESCE(AVG(CAST(default_margin AS numeric)), 1) as avg_margin FROM profit_margin_templates`);
+      
+      const thisMonth = new Date();
+      thisMonth.setDate(1);
+      thisMonth.setHours(0, 0, 0, 0);
+      const [calcCount] = await db.execute(sql`SELECT COUNT(*) as count FROM product_recipes WHERE cost_last_calculated >= ${thisMonth}`);
+
+      res.json({
+        productCount: Number((productCount as any).count || 0),
+        recipeCount: Number((recipeCount as any).count || 0),
+        materialCount: Number((materialCount as any).count || 0),
+        totalFixedCosts: Number((fixedCostResult as any).total || 0),
+        avgProfitMargin: (Number((marginResult as any).avg_margin || 1) - 1) * 100,
+        calculationsThisMonth: Number((calcCount as any).count || 0),
+      });
+    } catch (error: any) {
+      console.error("Error fetching cost dashboard stats:", error);
+      res.status(500).json({ message: "Maliyet istatistikleri alınamadı" });
+    }
+  });
+
+  // Waste dashboard stats for fabrika dashboard
+  app.get('/api/factory/waste-dashboard-stats', isAuthenticated, async (req: any, res) => {
+    try {
+      const userRole = req.user?.role;
+      const canSeeCostData = userRole === 'admin' || userRole === 'fabrika_mudur';
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+      const batchStats = await db.execute(sql`
+        SELECT 
+          COUNT(*) as total_batches,
+          COALESCE(AVG(CAST(actual_waste_percent AS numeric)), 0) as avg_waste_percent,
+          COALESCE(SUM(CAST(waste_weight_kg AS numeric)), 0) as total_waste_kg,
+          COALESCE(SUM(CAST(waste_cost_tl AS numeric)), 0) as total_waste_cost_tl,
+          COUNT(CASE WHEN CAST(actual_waste_percent AS numeric) > COALESCE(CAST(expected_waste_percent AS numeric), 5) + COALESCE(CAST(waste_deviation_percent AS numeric), 5) THEN 1 END) as over_tolerance_count
+        FROM factory_production_batches
+        WHERE start_time >= ${thirtyDaysAgo}
+          AND status IN ('completed', 'verified')
+      `);
+
+      const row = (batchStats as any)[0] || {};
+      const totalBatches = Number(row.total_batches || 0);
+      const overToleranceCount = Number(row.over_tolerance_count || 0);
+
+      // Get trend data (last 30 days grouped by date)
+      const trendData = await db.execute(sql`
+        SELECT 
+          TO_CHAR(start_time, 'MM/DD') as date,
+          COALESCE(AVG(CAST(actual_waste_percent AS numeric)), 0) as waste_percent,
+          COUNT(*) as batch_count
+        FROM factory_production_batches
+        WHERE start_time >= ${thirtyDaysAgo}
+          AND status IN ('completed', 'verified')
+        GROUP BY TO_CHAR(start_time, 'MM/DD'), DATE(start_time)
+        ORDER BY DATE(start_time)
+      `);
+
+      // Get product ranking by waste
+      const productRanking = await db.execute(sql`
+        SELECT 
+          fpb.product_id,
+          fp.name,
+          COALESCE(AVG(CAST(fpb.actual_waste_percent AS numeric)), 0) as waste_percent,
+          COUNT(*) as batch_count
+        FROM factory_production_batches fpb
+        LEFT JOIN factory_products fp ON fpb.product_id = fp.id
+        WHERE fpb.start_time >= ${thirtyDaysAgo}
+          AND fpb.status IN ('completed', 'verified')
+        GROUP BY fpb.product_id, fp.name
+        ORDER BY waste_percent DESC
+        LIMIT 5
+      `);
+
+      res.json({
+        totalBatches,
+        avgWastePercent: Number(row.avg_waste_percent || 0),
+        totalWasteKg: Number(row.total_waste_kg || 0),
+        totalWasteCostTl: canSeeCostData ? Number(row.total_waste_cost_tl || 0) : null,
+        overToleranceCount,
+        overToleranceRate: totalBatches > 0 ? ((overToleranceCount / totalBatches) * 100).toFixed(1) : '0',
+        trend: (trendData as any[]).map((t: any) => ({
+          date: t.date,
+          wastePercent: Number(t.waste_percent || 0),
+          batchCount: Number(t.batch_count || 0),
+        })),
+        productRanking: (productRanking as any[]).map((p: any) => ({
+          productId: p.product_id,
+          name: p.name,
+          wastePercent: Number(p.waste_percent || 0),
+          batchCount: Number(p.batch_count || 0),
+        })),
+      });
+    } catch (error: any) {
+      console.error("Error fetching waste dashboard stats:", error);
+      res.status(500).json({ message: "Fire istatistikleri alınamadı" });
+    }
+  });
+
+  // GET /api/factory/product-recipe-info/:productId - Get recipe info for production planning auto-fill
+  app.get('/api/factory/product-recipe-info/:productId', isAuthenticated, async (req: any, res) => {
+    try {
+      const productId = parseInt(req.params.productId);
+      
+      // Get active recipe for this product
+      const [recipe] = await db.execute(sql`
+        SELECT 
+          pr.id, pr.name, pr.output_quantity, pr.output_unit,
+          pr.expected_output_count, pr.expected_waste_percent,
+          pr.production_time_minutes, pr.labor_batch_size,
+          pr.machine_id
+        FROM product_recipes pr
+        WHERE pr.product_id = ${productId} AND pr.is_active = true
+        ORDER BY pr.version DESC
+        LIMIT 1
+      `);
+
+      // Get batch spec for this product  
+      const [batchSpec] = await db.execute(sql`
+        SELECT 
+          bs.id, bs.batch_weight_kg, bs.expected_pieces,
+          bs.target_duration_minutes, bs.machine_id, bs.description,
+          fm.name as machine_name,
+          fm.station_id
+        FROM factory_batch_specs bs
+        LEFT JOIN factory_machines fm ON bs.machine_id = fm.id
+        WHERE bs.product_id = ${productId} AND bs.is_active = true
+        LIMIT 1
+      `);
+
+      // Get the station for this product from batch spec or recipe
+      let stationId = null;
+      if (batchSpec && (batchSpec as any).station_id) {
+        stationId = (batchSpec as any).station_id;
+      } else if (recipe && (recipe as any).machine_id) {
+        const [machine] = await db.execute(sql`
+          SELECT station_id FROM factory_machines WHERE id = ${(recipe as any).machine_id}
+        `);
+        if (machine) stationId = (machine as any).station_id;
+      }
+
+      res.json({
+        recipe: recipe ? {
+          id: (recipe as any).id,
+          name: (recipe as any).name,
+          outputQuantity: Number((recipe as any).output_quantity || 1),
+          outputUnit: (recipe as any).output_unit || 'adet',
+          expectedOutputCount: (recipe as any).expected_output_count,
+          expectedWastePercent: Number((recipe as any).expected_waste_percent || 0),
+          productionTimeMinutes: (recipe as any).production_time_minutes || 0,
+          laborBatchSize: (recipe as any).labor_batch_size || 1,
+        } : null,
+        batchSpec: batchSpec ? {
+          id: (batchSpec as any).id,
+          batchWeightKg: Number((batchSpec as any).batch_weight_kg || 0),
+          expectedPieces: (batchSpec as any).expected_pieces || 0,
+          targetDurationMinutes: (batchSpec as any).target_duration_minutes || 0,
+          machineName: (batchSpec as any).machine_name,
+        } : null,
+        stationId,
+      });
+    } catch (error: any) {
+      console.error("Error fetching product recipe info:", error);
+      res.status(500).json({ message: "Ürün reçete bilgisi alınamadı" });
+    }
+  });
+
   // Aktif oturum bilgisi al
   app.get('/api/factory/kiosk/session/:userId', isKioskAuthenticated, async (req, res) => {
     try {
@@ -28661,7 +28841,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`
         id: factoryProductionPlans.id,
         productId: factoryProductionPlans.productId,
         stationId: factoryProductionPlans.stationId,
-        plannedDate: factoryProductionPlans.plannedDate,
+        plannedDate: factoryProductionPlans.planDate,
         targetQuantity: factoryProductionPlans.targetQuantity,
         actualQuantity: factoryProductionPlans.actualQuantity,
         status: factoryProductionPlans.status,
@@ -28672,7 +28852,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`
       .from(factoryProductionPlans)
       .leftJoin(factoryProducts, eq(factoryProductionPlans.productId, factoryProducts.id))
       .leftJoin(factoryStations, eq(factoryProductionPlans.stationId, factoryStations.id))
-      .orderBy(factoryProductionPlans.plannedDate);
+      .orderBy(factoryProductionPlans.planDate);
 
       const plans = await query;
       res.json(plans);
@@ -28700,7 +28880,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`
       const [plan] = await db.insert(factoryProductionPlans).values({
         productId,
         stationId,
-        plannedDate: new Date(plannedDate),
+        planDate: new Date(plannedDate),
         targetQuantity,
         notes,
         createdBy: req.user?.id,
@@ -28880,7 +29060,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`
         .set({
           productId,
           stationId,
-          plannedDate: plannedDate ? new Date(plannedDate) : undefined,
+          planDate: plannedDate ? new Date(plannedDate) : undefined,
           targetQuantity,
           actualQuantity,
           status,

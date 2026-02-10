@@ -128,6 +128,26 @@ function ProductCostDetail({ productId, onEditLabor, onEditRecipe, onDeleteIngre
     }
   });
 
+  const [editingIngredientId, setEditingIngredientId] = useState<number | null>(null);
+  const [editIngredientQty, setEditIngredientQty] = useState("");
+  const [editIngredientUnit, setEditIngredientUnit] = useState("");
+
+  const updateIngredientMutation = useMutation({
+    mutationFn: async ({ recipeId, ingredientId, quantity, unit }: { recipeId: number; ingredientId: number; quantity: string; unit: string }) => {
+      const res = await apiRequest("PATCH", `/api/recipes/${recipeId}/ingredients/${ingredientId}`, { quantity, unit });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/product-costs', productId] });
+      queryClient.invalidateQueries({ queryKey: ['/api/cost-dashboard'] });
+      toast({ title: "Malzeme miktarı güncellendi" });
+      setEditingIngredientId(null);
+    },
+    onError: () => {
+      toast({ title: "Hata", description: "Malzeme güncellenemedi", variant: "destructive" });
+    }
+  });
+
   const [showAddPackaging, setShowAddPackaging] = useState(false);
   const [pkgName, setPkgName] = useState("");
   const [pkgUnitCost, setPkgUnitCost] = useState("");
@@ -376,19 +396,82 @@ function ProductCostDetail({ productId, onEditLabor, onEditRecipe, onDeleteIngre
                   {ing.materialName}
                   {ing.isKeyblend && <Badge className="ml-2 text-xs bg-amber-500">KB</Badge>}
                 </TableCell>
-                <TableCell className="text-right">{ing.quantity} {ing.unit}</TableCell>
+                <TableCell className="text-right">
+                  {editingIngredientId === ing.id ? (
+                    <div className="flex items-center gap-1 justify-end">
+                      <Input
+                        type="number"
+                        step="0.01"
+                        value={editIngredientQty}
+                        onChange={(e) => setEditIngredientQty(e.target.value)}
+                        className="w-20 h-7 text-xs text-right"
+                        data-testid={`input-edit-qty-${ing.id}`}
+                      />
+                      <span className="text-xs text-muted-foreground">{editIngredientUnit}</span>
+                    </div>
+                  ) : (
+                    <span>{ing.quantity} {ing.unit}</span>
+                  )}
+                </TableCell>
                 <TableCell className="text-right">{ing.isHidden ? "***" : formatCurrency(ing.unitCost)}</TableCell>
                 <TableCell className="text-right font-medium">{formatCurrency(ing.totalCost)}</TableCell>
                 <TableCell>
-                  {!ing.isHidden && onDeleteIngredient && data.recipe?.id && (
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      onClick={() => onDeleteIngredient(data.recipe.id, ing.id)}
-                      data-testid={`button-delete-ingredient-${ing.id}`}
-                    >
-                      <Trash2 className="w-3 h-3" />
-                    </Button>
+                  {!ing.isHidden && data.recipe?.id && (
+                    <div className="flex items-center gap-0.5 justify-end">
+                      {editingIngredientId === ing.id ? (
+                        <>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            onClick={() => {
+                              updateIngredientMutation.mutate({
+                                recipeId: data.recipe.id,
+                                ingredientId: ing.id,
+                                quantity: editIngredientQty,
+                                unit: editIngredientUnit
+                              });
+                            }}
+                            disabled={updateIngredientMutation.isPending}
+                            data-testid={`button-save-ingredient-${ing.id}`}
+                          >
+                            <Check className="w-3 h-3 text-green-600" />
+                          </Button>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            onClick={() => setEditingIngredientId(null)}
+                            data-testid={`button-cancel-edit-${ing.id}`}
+                          >
+                            <X className="w-3 h-3" />
+                          </Button>
+                        </>
+                      ) : (
+                        <>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            onClick={() => {
+                              setEditingIngredientId(ing.id);
+                              setEditIngredientQty(ing.quantity);
+                              setEditIngredientUnit(ing.unit);
+                            }}
+                            data-testid={`button-edit-ingredient-${ing.id}`}
+                          >
+                            <Edit className="w-3 h-3" />
+                          </Button>
+                          {onDeleteIngredient && (
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              onClick={() => onDeleteIngredient(data.recipe.id, ing.id)}
+                              data-testid={`button-delete-ingredient-${ing.id}`}
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </Button>
+                          )}
+                        </>
+                      )}
+                    </div>
                   )}
                 </TableCell>
               </TableRow>

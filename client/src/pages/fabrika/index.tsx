@@ -31,6 +31,7 @@ interface TabConfig {
   labelTr: string;
   icon: React.ReactNode;
   permissionModule?: string;
+  restrictedToRoles?: string[];
   component: React.LazyExoticComponent<React.ComponentType<any>>;
 }
 
@@ -57,6 +58,7 @@ const FABRIKA_TABS: TabConfig[] = [
     labelTr: "Vardiya Uyumluluk",
     icon: <Calendar className="h-4 w-4" />,
     permissionModule: "factory_compliance",
+    restrictedToRoles: ['admin', 'fabrika_mudur'],
     component: FabrikaVardiyaUyumluluk
   },
   {
@@ -65,6 +67,7 @@ const FABRIKA_TABS: TabConfig[] = [
     labelTr: "AI Raporlar",
     icon: <Brain className="h-4 w-4" />,
     permissionModule: "factory_analytics",
+    restrictedToRoles: ['admin', 'fabrika_mudur'],
     component: FabrikaAIRaporlar
   },
   {
@@ -81,6 +84,7 @@ const FABRIKA_TABS: TabConfig[] = [
     labelTr: "Maliyet Yönetimi",
     icon: <Calculator className="h-4 w-4" />,
     permissionModule: "factory_analytics",
+    restrictedToRoles: ['admin', 'fabrika_mudur'],
     component: FabrikaMaliyetYonetimi
   },
   {
@@ -112,9 +116,11 @@ export default function FabrikaMegaModule() {
   const [location, setLocation] = useLocation();
   
   const visibleTabs = FABRIKA_TABS.filter(tab => {
-    if (!tab.permissionModule) return true;
     if (!user?.role) return false;
-    // Admin ve fabrika rolleri tüm fabrika tab'larına erişebilir
+    if (tab.restrictedToRoles && !tab.restrictedToRoles.includes(user.role)) {
+      return false;
+    }
+    if (!tab.permissionModule) return true;
     if (['admin', 'fabrika_mudur', 'fabrika_operator'].includes(user.role)) return true;
     return hasPermission(user.role as any, tab.permissionModule as any, 'view');
   });

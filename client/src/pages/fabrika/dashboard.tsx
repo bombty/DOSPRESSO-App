@@ -94,13 +94,16 @@ export default function FabrikaDashboard() {
     refetchInterval: 15000,
   });
 
+  const isManagerOrAdmin = user?.role === 'admin' || user?.role === 'fabrika_mudur';
+
   const { data: costStats } = useQuery<CostStats>({
-    queryKey: ['/api/cost-dashboard/stats'],
+    queryKey: ['/api/factory/cost-dashboard-stats'],
     refetchInterval: 60000,
+    enabled: isManagerOrAdmin,
   });
 
   const { data: wasteStats } = useQuery<any>({
-    queryKey: ['/api/waste-stats/dashboard'],
+    queryKey: ['/api/factory/waste-dashboard-stats'],
     refetchInterval: 60000,
   });
 
@@ -249,7 +252,7 @@ export default function FabrikaDashboard() {
             </Card>
           </div>
 
-          {costStats && (
+          {costStats && isManagerOrAdmin && (
             <Card>
               <CardHeader className="pb-1 pt-3 px-3">
                 <CardTitle className="flex items-center gap-2 text-xs">
@@ -313,10 +316,12 @@ export default function FabrikaDashboard() {
                     <p className="text-sm font-bold text-orange-600" data-testid="text-waste-total-weight">{Number(wasteStats.totalWasteKg || 0).toFixed(1)} kg</p>
                     <p className="text-xs text-muted-foreground">Toplam Fire</p>
                   </div>
-                  <div className="text-center p-2 bg-red-500/10 rounded-lg">
-                    <p className="text-sm font-bold text-red-600" data-testid="text-waste-total-cost">₺{new Intl.NumberFormat('tr-TR').format(Number(wasteStats.totalWasteCostTl || 0))}</p>
-                    <p className="text-xs text-muted-foreground">Toplam Fire Maliyeti</p>
-                  </div>
+                  {isManagerOrAdmin && (
+                    <div className="text-center p-2 bg-red-500/10 rounded-lg">
+                      <p className="text-sm font-bold text-red-600" data-testid="text-waste-total-cost">₺{new Intl.NumberFormat('tr-TR').format(Number(wasteStats.totalWasteCostTl || 0))}</p>
+                      <p className="text-xs text-muted-foreground">Toplam Fire Maliyeti</p>
+                    </div>
+                  )}
                 </div>
 
                 {wasteStats.overToleranceCount > 0 && (

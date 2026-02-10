@@ -601,8 +601,53 @@ export function registerMaliyetRoutes(app: Express, isAuthenticated: AuthMiddlew
     }
   });
   
+  app.patch("/api/recipes/:recipeId/ingredients/:ingredientId", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const userRole = (req as any).user?.role;
+      if (userRole !== 'admin' && userRole !== 'fabrika_mudur') {
+        return res.status(403).json({ error: "Bu işlem için yetkiniz yok" });
+      }
+      const { recipeId, ingredientId } = req.params;
+      const { quantity, unit } = req.body;
+      
+      const [existing] = await db.select().from(productRecipeIngredients)
+        .where(eq(productRecipeIngredients.id, parseInt(ingredientId)));
+      if (!existing) {
+        return res.status(404).json({ error: "Malzeme bulunamadı" });
+      }
+      
+      const [material] = await db.select().from(rawMaterials)
+        .where(eq(rawMaterials.id, existing.rawMaterialId));
+      
+      const unitCost = parseFloat(material?.currentUnitPrice || existing.unitCost || "0");
+      const newQuantity = quantity || existing.quantity;
+      const totalCost = unitCost * parseFloat(newQuantity);
+      
+      const [updated] = await db.update(productRecipeIngredients)
+        .set({
+          quantity: newQuantity,
+          unit: unit || existing.unit,
+          unitCost: unitCost.toString(),
+          totalCost: totalCost.toString(),
+        })
+        .where(eq(productRecipeIngredients.id, parseInt(ingredientId)))
+        .returning();
+      
+      await updateRecipeCosts(parseInt(recipeId));
+      
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating ingredient:", error);
+      res.status(500).json({ error: "Malzeme güncellenemedi" });
+    }
+  });
+
   app.delete("/api/recipes/:recipeId/ingredients/:ingredientId", isAuthenticated, async (req: Request, res: Response) => {
     try {
+      const userRole = (req as any).user?.role;
+      if (userRole !== 'admin' && userRole !== 'fabrika_mudur') {
+        return res.status(403).json({ error: "Bu işlem için yetkiniz yok" });
+      }
       const { recipeId, ingredientId } = req.params;
       
       await db.delete(productRecipeIngredients)
