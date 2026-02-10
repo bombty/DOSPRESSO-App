@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -8,9 +8,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Progress } from "@/components/ui/progress";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { 
-  BarChart3, 
-  TrendingUp, 
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  BarChart3,
+  TrendingUp,
   TrendingDown,
   Users,
   Factory,
@@ -20,9 +21,59 @@ import {
   RefreshCw,
   Trash2,
   Target,
-  Zap
+  Zap,
+  Package,
+  Percent,
+  Timer,
+  Medal,
+  Settings,
+  Info,
+  ArrowUpRight,
+  ArrowDownRight,
+  Minus
 } from "lucide-react";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts";
+import {
+  BarChart, Bar, LineChart, Line, PieChart, Pie, XAxis, YAxis,
+  CartesianGrid, Tooltip, ResponsiveContainer, Cell, Legend,
+  AreaChart, Area, RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis
+} from "recharts";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
+
+interface ProductionSummary {
+  totalProducts: number;
+  totalProduced: number;
+  totalWaste: number;
+  avgWastePercent: number;
+  totalHours: number;
+  avgProductionPerHour: number;
+}
+
+interface ProductStat {
+  productId: number;
+  productName: string;
+  category: string;
+  totalProduced: number;
+  totalWaste: number;
+  wastePercent: number;
+  totalBatches: number;
+  avgBatchSize: number;
+  totalHours: number;
+  avgProductionPerHour: number;
+  trend: string;
+}
+
+interface DailyTrend {
+  date: string;
+  produced: number;
+  waste: number;
+}
+
+interface ProductionStatsResponse {
+  summary: ProductionSummary;
+  productStats: ProductStat[];
+  dailyTrend: DailyTrend[];
+}
 
 interface WorkerPerformance {
   userId: string;
@@ -39,14 +90,47 @@ interface WorkerPerformance {
   stationsWorked: string[];
 }
 
-interface StationPerformance {
-  stationId: number;
-  stationName: string;
+interface WorkerScoreBreakdown {
+  speedScore: number;
+  qualityScore: number;
+  consistencyScore: number;
+  attendanceScore: number;
+  improvementScore: number;
+}
+
+interface WorkerScoreDetail {
+  userId: string;
+  firstName: string;
+  lastName: string;
+  currentScore: number;
+  scoreHistory: { month: string; score: number; produced?: number; waste?: number }[];
+  breakdown: WorkerScoreBreakdown;
+  productBreakdown: { productName: string; produced: number; waste: number; wastePercent: number }[];
+  peakHours: { hour: number; avgProduction: number }[];
+  monthlyDataPoints: number;
+}
+
+interface ComparisonWorker {
+  userId: string;
+  firstName: string;
+  lastName: string;
+  profileImageUrl: string | null;
   totalProduced: number;
   totalWaste: number;
-  wastePercentage: number;
-  avgOutputPerHour: number;
-  workerCount: number;
+  wastePercent: number;
+  avgProductionPerHour: number;
+  totalHours: number;
+  batchCount: number;
+  avgBatchDuration: number;
+  consistencyScore: number;
+  speedScore: number;
+  qualityScore: number;
+  overallScore: number;
+}
+
+interface ComparisonResponse {
+  productName: string;
+  workers: ComparisonWorker[];
 }
 
 interface WasteAnalysis {
@@ -57,53 +141,190 @@ interface WasteAnalysis {
   percentage: number;
 }
 
-const CHART_COLORS = ['#f59e0b', '#10b981', '#ef4444', '#3b82f6', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316'];
+interface FactoryProduct {
+  id: number;
+  name: string;
+  category: string;
+  sku: string;
+  unit: string;
+}
+
+interface ScoreUpdateResult {
+  updated: number;
+  workers: { userId: string; firstName: string; lastName: string; oldScore: number; newScore: number }[];
+}
+
+const CHART_COLORS = ["#f59e0b", "#10b981", "#ef4444", "#3b82f6", "#8b5cf6", "#ec4899", "#14b8a6", "#f97316"];
+
+const PERIOD_OPTIONS = [
+  { value: "daily", label: "Bugun" },
+  { value: "weekly", label: "Bu Hafta" },
+  { value: "monthly", label: "Bu Ay" },
+  { value: "yearly", label: "Bu Yil" },
+];
+
+function LoadingState() {
+  return (
+    <div className="flex items-center justify-center py-12 text-muted-foreground">
+      Yukleniyor...
+    </div>
+  );
+}
+
+function EmptyState({ icon: Icon, message }: { icon: typeof Factory; message: string }) {
+  return (
+    <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+      <Icon className="h-12 w-12 mb-2 opacity-50" />
+      <p>{message}</p>
+    </div>
+  );
+}
+
+function TrendBadge({ trend }: { trend: string }) {
+  if (trend === "up") {
+    return (
+      <Badge className="bg-green-600 text-white">
+        <ArrowUpRight className="h-3 w-3 mr-1" />
+        Yukselis
+      </Badge>
+    );
+  }
+  if (trend === "down") {
+    return (
+      <Badge className="bg-red-600 text-white">
+        <ArrowDownRight className="h-3 w-3 mr-1" />
+        Dusus
+      </Badge>
+    );
+  }
+  return (
+    <Badge variant="secondary">
+      <Minus className="h-3 w-3 mr-1" />
+      Sabit
+    </Badge>
+  );
+}
+
+function MaturityBadge({ monthlyDataPoints }: { monthlyDataPoints: number }) {
+  if (monthlyDataPoints < 3) {
+    return <Badge className="bg-blue-600 text-white">Yeni</Badge>;
+  }
+  if (monthlyDataPoints <= 6) {
+    return <Badge className="bg-amber-600 text-white">Gelisen</Badge>;
+  }
+  return <Badge className="bg-green-600 text-white">Olgun</Badge>;
+}
 
 export default function FabrikaPerformans() {
   const [period, setPeriod] = useState("weekly");
-  const [activeTab, setActiveTab] = useState("overview");
+  const [activeTab, setActiveTab] = useState("production");
+  const [selectedProductId, setSelectedProductId] = useState<string>("");
+  const [comparisonProductId, setComparisonProductId] = useState<string>("");
+  const [selectedWorkerId, setSelectedWorkerId] = useState<string | null>(null);
+  const [workerDialogOpen, setWorkerDialogOpen] = useState(false);
+  const { toast } = useToast();
 
-  const { data: workerStats = [], isLoading: loadingWorkers, refetch } = useQuery<WorkerPerformance[]>({
-    queryKey: ['/api/factory/analytics/workers', period],
+  const { data: products = [] } = useQuery<FactoryProduct[]>({
+    queryKey: ["/api/factory/products"],
     queryFn: async () => {
-      const res = await fetch(`/api/factory/analytics/workers?period=${period}`, { credentials: 'include' });
-      if (!res.ok) throw new Error('Failed to fetch worker stats');
+      const res = await fetch("/api/factory/products", { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch products");
       return res.json();
     },
   });
 
-  const { data: stationStats = [], isLoading: loadingStations } = useQuery<StationPerformance[]>({
-    queryKey: ['/api/factory/analytics/stations', period],
+  const { data: productionStats, isLoading: loadingProduction } = useQuery<ProductionStatsResponse>({
+    queryKey: ["/api/factory/analytics/production-stats", period, selectedProductId],
     queryFn: async () => {
-      const res = await fetch(`/api/factory/analytics/stations?period=${period}`, { credentials: 'include' });
-      if (!res.ok) throw new Error('Failed to fetch station stats');
+      const params = new URLSearchParams({ period });
+      if (selectedProductId) params.set("productId", selectedProductId);
+      const res = await fetch(`/api/factory/analytics/production-stats?${params}`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch production stats");
       return res.json();
     },
+  });
+
+  const { data: workerStats = [], isLoading: loadingWorkers } = useQuery<WorkerPerformance[]>({
+    queryKey: ["/api/factory/analytics/workers", period],
+    queryFn: async () => {
+      const res = await fetch(`/api/factory/analytics/workers?period=${period}`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch worker stats");
+      return res.json();
+    },
+  });
+
+  const { data: workerScore, isLoading: loadingWorkerScore } = useQuery<WorkerScoreDetail>({
+    queryKey: ["/api/factory/analytics/worker-score", selectedWorkerId],
+    queryFn: async () => {
+      const res = await fetch(`/api/factory/analytics/worker-score/${selectedWorkerId}`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch worker score");
+      return res.json();
+    },
+    enabled: !!selectedWorkerId,
+  });
+
+  const { data: comparisonData, isLoading: loadingComparison } = useQuery<ComparisonResponse>({
+    queryKey: ["/api/factory/analytics/worker-comparison", period, comparisonProductId],
+    queryFn: async () => {
+      const params = new URLSearchParams({ period, productId: comparisonProductId });
+      const res = await fetch(`/api/factory/analytics/worker-comparison?${params}`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch comparison");
+      return res.json();
+    },
+    enabled: !!comparisonProductId,
   });
 
   const { data: wasteAnalysis = [], isLoading: loadingWaste } = useQuery<WasteAnalysis[]>({
-    queryKey: ['/api/factory/analytics/waste', period],
+    queryKey: ["/api/factory/analytics/waste", period],
     queryFn: async () => {
-      const res = await fetch(`/api/factory/analytics/waste?period=${period}`, { credentials: 'include' });
-      if (!res.ok) throw new Error('Failed to fetch waste analysis');
+      const res = await fetch(`/api/factory/analytics/waste?period=${period}`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch waste analysis");
       return res.json();
     },
   });
 
-  const totalProduction = workerStats.reduce((sum, w) => sum + w.totalProduced, 0);
-  const totalWaste = workerStats.reduce((sum, w) => sum + w.totalWaste, 0);
-  const avgEfficiency = workerStats.length > 0 
-    ? (workerStats.reduce((sum, w) => sum + w.efficiency, 0) / workerStats.length).toFixed(1)
-    : 0;
+  const updateScoresMutation = useMutation<ScoreUpdateResult>({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/factory/analytics/update-scores");
+      return res.json();
+    },
+    onSuccess: (data) => {
+      toast({ title: "Skorlar guncellendi", description: `${data.updated} personelin skoru guncellendi.` });
+      queryClient.invalidateQueries({ queryKey: ["/api/factory/analytics/workers"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/factory/analytics/worker-comparison"] });
+    },
+    onError: () => {
+      toast({ title: "Hata", description: "Skorlar guncellenirken bir hata olustu.", variant: "destructive" });
+    },
+  });
 
-  const topPerformers = [...workerStats]
-    .sort((a, b) => b.efficiency - a.efficiency)
-    .slice(0, 5);
+  const handleWorkerClick = (userId: string) => {
+    setSelectedWorkerId(userId);
+    setWorkerDialogOpen(true);
+  };
 
-  const highWasteWorkers = [...workerStats]
-    .filter(w => w.totalWaste > 0)
-    .sort((a, b) => (b.totalWaste / (b.totalProduced + b.totalWaste)) - (a.totalWaste / (a.totalProduced + a.totalWaste)))
-    .slice(0, 5);
+  const summary = productionStats?.summary;
+  const prodStats = productionStats?.productStats || [];
+  const dailyTrend = productionStats?.dailyTrend || [];
+
+  const sortedProducts = [...prodStats].sort((a, b) => b.totalProduced - a.totalProduced);
+  const mostProducedId = sortedProducts[0]?.productId;
+  const leastProducedId = sortedProducts.length > 1 ? sortedProducts[sortedProducts.length - 1]?.productId : null;
+
+  const sortedComparison = comparisonData?.workers
+    ? [...comparisonData.workers].sort((a, b) => b.overallScore - a.overallScore)
+    : [];
+  const topPerformerId = sortedComparison[0]?.userId;
+
+  const radarData = workerScore
+    ? [
+        { subject: "Hiz", value: workerScore.breakdown.speedScore, fullMark: 100 },
+        { subject: "Kalite", value: workerScore.breakdown.qualityScore, fullMark: 100 },
+        { subject: "Tutarlilik", value: workerScore.breakdown.consistencyScore, fullMark: 100 },
+        { subject: "Devam", value: workerScore.breakdown.attendanceScore, fullMark: 100 },
+        { subject: "Gelisim", value: workerScore.breakdown.improvementScore, fullMark: 100 },
+      ]
+    : [];
 
   return (
     <div className="container mx-auto p-6 space-y-6">
@@ -111,8 +332,8 @@ export default function FabrikaPerformans() {
         <div className="flex items-center gap-3">
           <BarChart3 className="h-8 w-8 text-amber-500" />
           <div>
-            <h1 className="text-2xl font-bold">Fabrika Performans Analitiği</h1>
-            <p className="text-muted-foreground">Üretim verimliliği ve personel performansı</p>
+            <h1 className="text-2xl font-bold">Fabrika Performans Analitigi</h1>
+            <p className="text-muted-foreground">Uretim istatistikleri ve personel performansi</p>
           </div>
         </div>
         <div className="flex items-center gap-3">
@@ -121,221 +342,240 @@ export default function FabrikaPerformans() {
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="daily">Bugün</SelectItem>
-              <SelectItem value="weekly">Bu Hafta</SelectItem>
-              <SelectItem value="monthly">Bu Ay</SelectItem>
+              {PERIOD_OPTIONS.map((opt) => (
+                <SelectItem key={opt.value} value={opt.value}>
+                  {opt.label}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
-          <Button variant="outline" onClick={() => refetch()} data-testid="button-refresh">
-            <RefreshCw className="h-4 w-4 mr-2" />
-            Yenile
-          </Button>
         </div>
-      </div>
-
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card className="hover-elevate">
-          <CardContent className="p-6">
-            <div className="flex items-center gap-3">
-              <div className="p-3 bg-green-500/20 rounded-lg">
-                <Factory className="h-6 w-6 text-green-500" />
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Toplam Üretim</p>
-                <p className="text-2xl font-bold" data-testid="text-total-production">{totalProduction}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="hover-elevate">
-          <CardContent className="p-6">
-            <div className="flex items-center gap-3">
-              <div className="p-3 bg-red-500/20 rounded-lg">
-                <Trash2 className="h-6 w-6 text-red-500" />
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Toplam Zaiyat</p>
-                <p className="text-2xl font-bold" data-testid="text-total-waste">{totalWaste}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="hover-elevate">
-          <CardContent className="p-6">
-            <div className="flex items-center gap-3">
-              <div className="p-3 bg-amber-500/20 rounded-lg">
-                <Zap className="h-6 w-6 text-amber-500" />
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Ort. Verimlilik</p>
-                <p className="text-2xl font-bold" data-testid="text-avg-efficiency">%{avgEfficiency}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="hover-elevate">
-          <CardContent className="p-6">
-            <div className="flex items-center gap-3">
-              <div className="p-3 bg-blue-500/20 rounded-lg">
-                <Users className="h-6 w-6 text-blue-500" />
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Aktif Personel</p>
-                <p className="text-2xl font-bold" data-testid="text-worker-count">{workerStats.length}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList>
-          <TabsTrigger value="overview" data-testid="tab-overview">Genel Bakış</TabsTrigger>
-          <TabsTrigger value="workers" data-testid="tab-workers">Personel</TabsTrigger>
-          <TabsTrigger value="stations" data-testid="tab-stations">İstasyonlar</TabsTrigger>
+          <TabsTrigger value="production" data-testid="tab-production">Uretim Raporu</TabsTrigger>
+          <TabsTrigger value="workers" data-testid="tab-workers">Personel Performans</TabsTrigger>
+          <TabsTrigger value="comparison" data-testid="tab-comparison">Karsilastirma</TabsTrigger>
           <TabsTrigger value="waste" data-testid="tab-waste">Zaiyat Analizi</TabsTrigger>
+          <TabsTrigger value="scores" data-testid="tab-scores">Skor Yonetimi</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="overview" className="space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Award className="h-5 w-5 text-amber-500" />
-                  En İyi Performans
-                </CardTitle>
-                <CardDescription>Verimlilik bazında sıralama</CardDescription>
-              </CardHeader>
-              <CardContent>
-                {loadingWorkers ? (
-                  <div className="text-center py-8 text-muted-foreground">Yükleniyor...</div>
-                ) : topPerformers.length > 0 ? (
-                  <div className="space-y-4">
-                    {topPerformers.map((worker, index) => (
-                      <div key={worker.userId} className="flex items-center gap-3" data-testid={`top-performer-${index}`}>
-                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold ${
-                          index === 0 ? 'bg-amber-500' : index === 1 ? 'bg-gray-400' : index === 2 ? 'bg-amber-700' : 'bg-muted'
-                        }`}>
-                          {index + 1}
-                        </div>
-                        <Avatar className="h-10 w-10">
-                          <AvatarImage src={worker.profileImageUrl || undefined} />
-                          <AvatarFallback className="bg-amber-600 text-white">
-                            {worker.firstName[0]}{worker.lastName[0]}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div className="flex-1">
-                          <p className="font-medium">{worker.firstName} {worker.lastName}</p>
-                          <p className="text-sm text-muted-foreground">{worker.totalProduced} üretim</p>
-                        </div>
-                        <Badge className={worker.efficiency >= 90 ? 'bg-green-600' : worker.efficiency >= 70 ? 'bg-amber-600' : 'bg-red-600'}>
-                          %{worker.efficiency.toFixed(0)}
-                        </Badge>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-center py-8 text-muted-foreground">
-                    <Award className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                    <p>Henüz veri yok</p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <AlertTriangle className="h-5 w-5 text-red-500" />
-                  Yüksek Zaiyat Oranı
-                </CardTitle>
-                <CardDescription>Dikkat gerektiren personeller</CardDescription>
-              </CardHeader>
-              <CardContent>
-                {loadingWorkers ? (
-                  <div className="text-center py-8 text-muted-foreground">Yükleniyor...</div>
-                ) : highWasteWorkers.length > 0 ? (
-                  <div className="space-y-4">
-                    {highWasteWorkers.map((worker) => {
-                      const wasteRate = ((worker.totalWaste / (worker.totalProduced + worker.totalWaste)) * 100).toFixed(1);
-                      return (
-                        <div key={worker.userId} className="flex items-center gap-3" data-testid={`high-waste-${worker.userId}`}>
-                          <Avatar className="h-10 w-10">
-                            <AvatarImage src={worker.profileImageUrl || undefined} />
-                            <AvatarFallback className="bg-red-600 text-white">
-                              {worker.firstName[0]}{worker.lastName[0]}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div className="flex-1">
-                            <p className="font-medium">{worker.firstName} {worker.lastName}</p>
-                            <p className="text-sm text-muted-foreground">{worker.totalWaste} zaiyat / {worker.totalProduced} üretim</p>
-                          </div>
-                          <Badge variant="destructive">%{wasteRate}</Badge>
-                        </div>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <div className="text-center py-8 text-muted-foreground">
-                    <TrendingUp className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                    <p>Yüksek zaiyat oranı yok</p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+        {/* Tab 1: Uretim Raporu */}
+        <TabsContent value="production" className="space-y-6">
+          <div className="flex items-center gap-3">
+            <Select value={selectedProductId} onValueChange={setSelectedProductId}>
+              <SelectTrigger className="w-56" data-testid="select-product-filter">
+                <SelectValue placeholder="Tum Urunler" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tum Urunler</SelectItem>
+                {products.map((p) => (
+                  <SelectItem key={p.id} value={String(p.id)}>
+                    {p.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
-          {stationStats.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle>İstasyon Bazlı Üretim</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="h-80">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={stationStats}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="stationName" />
-                      <YAxis />
-                      <Tooltip />
-                      <Legend />
-                      <Bar dataKey="totalProduced" name="Üretim" fill="#10b981" />
-                      <Bar dataKey="totalWaste" name="Zaiyat" fill="#ef4444" />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              </CardContent>
-            </Card>
+          {loadingProduction ? (
+            <LoadingState />
+          ) : summary ? (
+            <>
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+                <Card className="hover-elevate">
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-green-500/20 rounded-lg">
+                        <Package className="h-5 w-5 text-green-500" />
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground">Toplam Uretim</p>
+                        <p className="text-xl font-bold" data-testid="text-total-produced">{summary.totalProduced}</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card className="hover-elevate">
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-red-500/20 rounded-lg">
+                        <Trash2 className="h-5 w-5 text-red-500" />
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground">Toplam Zaiyat</p>
+                        <p className="text-xl font-bold" data-testid="text-total-waste">{summary.totalWaste}</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card className="hover-elevate">
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-amber-500/20 rounded-lg">
+                        <Percent className="h-5 w-5 text-amber-500" />
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground">Zaiyat Orani</p>
+                        <p className="text-xl font-bold" data-testid="text-waste-percent">%{summary.avgWastePercent.toFixed(1)}</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card className="hover-elevate">
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-blue-500/20 rounded-lg">
+                        <Zap className="h-5 w-5 text-blue-500" />
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground">Uretim/Saat</p>
+                        <p className="text-xl font-bold" data-testid="text-production-per-hour">{summary.avgProductionPerHour.toFixed(1)}</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card className="hover-elevate">
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-purple-500/20 rounded-lg">
+                        <Timer className="h-5 w-5 text-purple-500" />
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground">Toplam Saat</p>
+                        <p className="text-xl font-bold" data-testid="text-total-hours">{summary.totalHours.toFixed(1)}</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {dailyTrend.length > 0 && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Uretim Trendi</CardTitle>
+                    <CardDescription>Gunluk uretim ve zaiyat degisimi</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="h-80">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <AreaChart data={dailyTrend}>
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis dataKey="date" />
+                          <YAxis />
+                          <Tooltip />
+                          <Legend />
+                          <Area type="monotone" dataKey="produced" name="Uretim" stroke="#10b981" fill="#10b981" fillOpacity={0.3} />
+                          <Area type="monotone" dataKey="waste" name="Zaiyat" stroke="#ef4444" fill="#ef4444" fillOpacity={0.3} />
+                        </AreaChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Urun Bazli Uretim</CardTitle>
+                  <CardDescription>Uretim miktarina gore siralanmis</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {sortedProducts.length > 0 ? (
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Urun Adi</TableHead>
+                          <TableHead>Kategori</TableHead>
+                          <TableHead>Toplam Uretim</TableHead>
+                          <TableHead>Zaiyat</TableHead>
+                          <TableHead>Zaiyat %</TableHead>
+                          <TableHead>Batch Sayisi</TableHead>
+                          <TableHead>Ort. Batch</TableHead>
+                          <TableHead>Uretim/Saat</TableHead>
+                          <TableHead>Trend</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {sortedProducts.map((p) => (
+                          <TableRow key={p.productId} data-testid={`row-product-${p.productId}`}>
+                            <TableCell>
+                              <div className="flex items-center gap-2">
+                                <span className="font-medium">{p.productName}</span>
+                                {p.productId === mostProducedId && (
+                                  <Badge className="bg-green-600 text-white">En Cok</Badge>
+                                )}
+                                {p.productId === leastProducedId && (
+                                  <Badge className="bg-red-600 text-white">En Az</Badge>
+                                )}
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant="outline">{p.category}</Badge>
+                            </TableCell>
+                            <TableCell>
+                              <span className="font-semibold text-green-600">{p.totalProduced}</span>
+                            </TableCell>
+                            <TableCell>
+                              <span className="text-red-500">{p.totalWaste}</span>
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant={p.wastePercent < 5 ? "secondary" : p.wastePercent < 10 ? "outline" : "destructive"}>
+                                %{p.wastePercent.toFixed(1)}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>{p.totalBatches}</TableCell>
+                            <TableCell>{p.avgBatchSize.toFixed(1)}</TableCell>
+                            <TableCell>{p.avgProductionPerHour.toFixed(1)}</TableCell>
+                            <TableCell>
+                              <TrendBadge trend={p.trend} />
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  ) : (
+                    <EmptyState icon={Package} message="Henuz veri yok" />
+                  )}
+                </CardContent>
+              </Card>
+            </>
+          ) : (
+            <EmptyState icon={Factory} message="Henuz veri yok" />
           )}
         </TabsContent>
 
-        <TabsContent value="workers">
+        {/* Tab 2: Personel Performans */}
+        <TabsContent value="workers" className="space-y-6">
           <Card>
             <CardHeader>
               <CardTitle>Personel Performans Tablosu</CardTitle>
+              <CardDescription>Bir personele tiklayarak detayli skoru gorebilirsiniz</CardDescription>
             </CardHeader>
             <CardContent>
               {loadingWorkers ? (
-                <div className="text-center py-8 text-muted-foreground">Yükleniyor...</div>
+                <LoadingState />
               ) : workerStats.length > 0 ? (
                 <Table>
                   <TableHeader>
                     <TableRow>
                       <TableHead>Personel</TableHead>
-                      <TableHead>Üretim</TableHead>
+                      <TableHead>Uretim</TableHead>
                       <TableHead>Zaiyat</TableHead>
                       <TableHead>Verimlilik</TableHead>
-                      <TableHead>Ort. Üretim/Saat</TableHead>
-                      <TableHead>Kalite Onay</TableHead>
-                      <TableHead>İstasyonlar</TableHead>
+                      <TableHead>Uretim/Saat</TableHead>
+                      <TableHead>Kalite</TableHead>
+                      <TableHead>Istasyonlar</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {workerStats.map((worker) => (
-                      <TableRow key={worker.userId} data-testid={`row-worker-${worker.userId}`}>
+                      <TableRow
+                        key={worker.userId}
+                        className="cursor-pointer"
+                        onClick={() => handleWorkerClick(worker.userId)}
+                        data-testid={`row-worker-${worker.userId}`}
+                      >
                         <TableCell>
                           <div className="flex items-center gap-2">
                             <Avatar className="h-8 w-8">
@@ -356,7 +596,7 @@ export default function FabrikaPerformans() {
                         <TableCell>
                           <div className="flex items-center gap-2">
                             <Progress value={worker.efficiency} className="w-16 h-2" />
-                            <span className={worker.efficiency >= 80 ? 'text-green-600' : worker.efficiency >= 60 ? 'text-amber-600' : 'text-red-600'}>
+                            <span className={worker.efficiency >= 80 ? "text-green-600" : worker.efficiency >= 60 ? "text-amber-600" : "text-red-600"}>
                               %{worker.efficiency.toFixed(0)}
                             </span>
                           </div>
@@ -364,7 +604,7 @@ export default function FabrikaPerformans() {
                         <TableCell>{worker.avgProductionPerHour.toFixed(1)}</TableCell>
                         <TableCell>
                           <div className="flex items-center gap-1">
-                            <Badge className="bg-green-600">{worker.qualityApproved}</Badge>
+                            <Badge className="bg-green-600 text-white">{worker.qualityApproved}</Badge>
                             {worker.qualityRejected > 0 && (
                               <Badge variant="destructive">{worker.qualityRejected}</Badge>
                             )}
@@ -385,82 +625,261 @@ export default function FabrikaPerformans() {
                   </TableBody>
                 </Table>
               ) : (
-                <div className="text-center py-12 text-muted-foreground">
-                  <Users className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                  <p>Seçilen dönemde veri yok</p>
-                </div>
+                <EmptyState icon={Users} message="Secilen donemde veri yok" />
               )}
             </CardContent>
           </Card>
-        </TabsContent>
 
-        <TabsContent value="stations">
-          <Card>
-            <CardHeader>
-              <CardTitle>İstasyon Performansları</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {loadingStations ? (
-                <div className="text-center py-8 text-muted-foreground">Yükleniyor...</div>
-              ) : stationStats.length > 0 ? (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>İstasyon</TableHead>
-                      <TableHead>Toplam Üretim</TableHead>
-                      <TableHead>Toplam Zaiyat</TableHead>
-                      <TableHead>Zaiyat Oranı</TableHead>
-                      <TableHead>Ort. Üretim/Saat</TableHead>
-                      <TableHead>Çalışan Sayısı</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {stationStats.map((station) => (
-                      <TableRow key={station.stationId} data-testid={`row-station-${station.stationId}`}>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <Factory className="h-4 w-4 text-amber-500" />
-                            <span className="font-medium">{station.stationName}</span>
+          <Dialog open={workerDialogOpen} onOpenChange={setWorkerDialogOpen}>
+            <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  <Award className="h-5 w-5 text-amber-500" />
+                  {workerScore ? `${workerScore.firstName} ${workerScore.lastName} - Performans Detayi` : "Personel Detayi"}
+                </DialogTitle>
+              </DialogHeader>
+              {loadingWorkerScore ? (
+                <LoadingState />
+              ) : workerScore ? (
+                <div className="space-y-6">
+                  <div className="flex items-center justify-between flex-wrap gap-3">
+                    <div className="flex items-center gap-3">
+                      <div className="text-3xl font-bold" data-testid="text-current-score">
+                        {workerScore.currentScore.toFixed(0)}
+                      </div>
+                      <span className="text-muted-foreground">Genel Skor</span>
+                    </div>
+                    <MaturityBadge monthlyDataPoints={workerScore.monthlyDataPoints} />
+                  </div>
+
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="text-base">Yetkinlik Dagilimi</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="h-64">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <RadarChart data={radarData}>
+                              <PolarGrid />
+                              <PolarAngleAxis dataKey="subject" />
+                              <PolarRadiusAxis angle={30} domain={[0, 100]} />
+                              <Radar name="Skor" dataKey="value" stroke="#f59e0b" fill="#f59e0b" fillOpacity={0.4} />
+                            </RadarChart>
+                          </ResponsiveContainer>
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    {workerScore.scoreHistory.length > 0 && (
+                      <Card>
+                        <CardHeader>
+                          <CardTitle className="text-base">Aylik Skor Trendi</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="h-64">
+                            <ResponsiveContainer width="100%" height="100%">
+                              <LineChart data={workerScore.scoreHistory}>
+                                <CartesianGrid strokeDasharray="3 3" />
+                                <XAxis dataKey="month" />
+                                <YAxis domain={[0, 100]} />
+                                <Tooltip />
+                                <Line type="monotone" dataKey="score" name="Skor" stroke="#3b82f6" strokeWidth={2} dot />
+                              </LineChart>
+                            </ResponsiveContainer>
                           </div>
-                        </TableCell>
-                        <TableCell>
-                          <span className="font-semibold text-green-600">{station.totalProduced}</span>
-                        </TableCell>
-                        <TableCell>
-                          <span className="text-red-500">{station.totalWaste}</span>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant={station.wastePercentage < 5 ? 'secondary' : station.wastePercentage < 10 ? 'outline' : 'destructive'}>
-                            %{station.wastePercentage.toFixed(1)}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>{station.avgOutputPerHour.toFixed(1)}</TableCell>
-                        <TableCell>
-                          <Badge variant="secondary">{station.workerCount} kişi</Badge>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              ) : (
-                <div className="text-center py-12 text-muted-foreground">
-                  <Factory className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                  <p>Seçilen dönemde veri yok</p>
+                        </CardContent>
+                      </Card>
+                    )}
+                  </div>
+
+                  {workerScore.peakHours.length > 0 && (
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="text-base">Yoğun Calisma Saatleri</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="h-48">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={workerScore.peakHours}>
+                              <CartesianGrid strokeDasharray="3 3" />
+                              <XAxis dataKey="hour" tickFormatter={(h) => `${h}:00`} />
+                              <YAxis />
+                              <Tooltip labelFormatter={(h) => `${h}:00`} />
+                              <Bar dataKey="avgProduction" name="Ort. Uretim" fill="#8b5cf6" />
+                            </BarChart>
+                          </ResponsiveContainer>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
+
+                  {workerScore.productBreakdown.length > 0 && (
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="text-base">Urun Bazli Dagilim</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Urun</TableHead>
+                              <TableHead>Uretim</TableHead>
+                              <TableHead>Zaiyat</TableHead>
+                              <TableHead>Zaiyat %</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {workerScore.productBreakdown.map((pb, i) => (
+                              <TableRow key={i}>
+                                <TableCell className="font-medium">{pb.productName}</TableCell>
+                                <TableCell>{pb.produced}</TableCell>
+                                <TableCell className="text-red-500">{pb.waste}</TableCell>
+                                <TableCell>
+                                  <Badge variant={(pb.wastePercent || 0) < 5 ? "secondary" : (pb.wastePercent || 0) < 10 ? "outline" : "destructive"}>
+                                    %{(pb.wastePercent || 0).toFixed(1)}
+                                  </Badge>
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </CardContent>
+                    </Card>
+                  )}
                 </div>
+              ) : (
+                <EmptyState icon={Users} message="Henuz veri yok" />
               )}
-            </CardContent>
-          </Card>
+            </DialogContent>
+          </Dialog>
         </TabsContent>
 
-        <TabsContent value="waste">
+        {/* Tab 3: Karsilastirma */}
+        <TabsContent value="comparison" className="space-y-6">
+          <div className="flex items-center gap-3">
+            <Select value={comparisonProductId} onValueChange={setComparisonProductId}>
+              <SelectTrigger className="w-56" data-testid="select-comparison-product">
+                <SelectValue placeholder="Urun Secin" />
+              </SelectTrigger>
+              <SelectContent>
+                {products.map((p) => (
+                  <SelectItem key={p.id} value={String(p.id)}>
+                    {p.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {!comparisonProductId ? (
+            <EmptyState icon={Target} message="Karsilastirma icin bir urun secin" />
+          ) : loadingComparison ? (
+            <LoadingState />
+          ) : sortedComparison.length > 0 ? (
+            <>
+              <Card>
+                <CardHeader>
+                  <CardTitle>{comparisonData?.productName} - Personel Karsilastirmasi</CardTitle>
+                  <CardDescription>Genel skora gore siralanmis</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="h-80">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={sortedComparison} layout="vertical">
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis type="number" />
+                        <YAxis dataKey="firstName" type="category" width={80} />
+                        <Tooltip />
+                        <Legend />
+                        <Bar dataKey="totalProduced" name="Toplam Uretim" fill="#10b981" />
+                        <Bar dataKey="avgProductionPerHour" name="Uretim/Saat" fill="#3b82f6" />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Skor Karsilastirmasi</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Personel</TableHead>
+                        <TableHead>Hiz Skoru</TableHead>
+                        <TableHead>Kalite Skoru</TableHead>
+                        <TableHead>Tutarlilik Skoru</TableHead>
+                        <TableHead>Genel Skor</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {sortedComparison.map((w) => (
+                        <TableRow key={w.userId} data-testid={`row-comparison-${w.userId}`}>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <Avatar className="h-8 w-8">
+                                <AvatarImage src={w.profileImageUrl || undefined} />
+                                <AvatarFallback className="bg-amber-600 text-white text-xs">
+                                  {w.firstName[0]}{w.lastName[0]}
+                                </AvatarFallback>
+                              </Avatar>
+                              <span className="font-medium">{w.firstName} {w.lastName}</span>
+                              {w.userId === topPerformerId && (
+                                <Badge className="bg-amber-500 text-white">
+                                  <Medal className="h-3 w-3 mr-1" />
+                                  En Iyi
+                                </Badge>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <Progress value={w.speedScore} className="w-16 h-2" />
+                              <span>{w.speedScore.toFixed(0)}</span>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <Progress value={w.qualityScore} className="w-16 h-2" />
+                              <span>{w.qualityScore.toFixed(0)}</span>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <Progress value={w.consistencyScore} className="w-16 h-2" />
+                              <span>{w.consistencyScore.toFixed(0)}</span>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <Badge className={w.overallScore >= 80 ? "bg-green-600 text-white" : w.overallScore >= 60 ? "bg-amber-600 text-white" : "bg-red-600 text-white"}>
+                              {w.overallScore.toFixed(0)}
+                            </Badge>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </CardContent>
+              </Card>
+            </>
+          ) : (
+            <EmptyState icon={Users} message="Bu urun icin veri bulunamadi" />
+          )}
+        </TabsContent>
+
+        {/* Tab 4: Zaiyat Analizi */}
+        <TabsContent value="waste" className="space-y-6">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <Card>
               <CardHeader>
-                <CardTitle>Zaiyat Nedenleri Dağılımı</CardTitle>
+                <CardTitle>Zaiyat Nedenleri Dagilimi</CardTitle>
               </CardHeader>
               <CardContent>
                 {loadingWaste ? (
-                  <div className="text-center py-8 text-muted-foreground">Yükleniyor...</div>
+                  <LoadingState />
                 ) : wasteAnalysis.length > 0 ? (
                   <div className="h-80">
                     <ResponsiveContainer width="100%" height="100%">
@@ -472,9 +891,9 @@ export default function FabrikaPerformans() {
                           cx="50%"
                           cy="50%"
                           outerRadius={100}
-                          label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}
+                          label={({ name, percent }: { name: string; percent: number }) => `${name} (${(percent * 100).toFixed(0)}%)`}
                         >
-                          {wasteAnalysis.map((entry, index) => (
+                          {wasteAnalysis.map((_entry, index) => (
                             <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
                           ))}
                         </Pie>
@@ -483,28 +902,25 @@ export default function FabrikaPerformans() {
                     </ResponsiveContainer>
                   </div>
                 ) : (
-                  <div className="text-center py-12 text-muted-foreground">
-                    <Trash2 className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                    <p>Zaiyat kaydı yok</p>
-                  </div>
+                  <EmptyState icon={Trash2} message="Zaiyat kaydi yok" />
                 )}
               </CardContent>
             </Card>
 
             <Card>
               <CardHeader>
-                <CardTitle>Zaiyat Detayları</CardTitle>
+                <CardTitle>Zaiyat Detaylari</CardTitle>
               </CardHeader>
               <CardContent>
                 {loadingWaste ? (
-                  <div className="text-center py-8 text-muted-foreground">Yükleniyor...</div>
+                  <LoadingState />
                 ) : wasteAnalysis.length > 0 ? (
                   <div className="space-y-4">
                     {wasteAnalysis.map((reason, index) => (
                       <div key={reason.reasonId} className="flex items-center gap-3" data-testid={`waste-reason-${reason.reasonId}`}>
-                        <div 
-                          className="w-4 h-4 rounded-full" 
-                          style={{ backgroundColor: CHART_COLORS[index % CHART_COLORS.length] }} 
+                        <div
+                          className="w-4 h-4 rounded-full flex-shrink-0"
+                          style={{ backgroundColor: CHART_COLORS[index % CHART_COLORS.length] }}
                         />
                         <div className="flex-1">
                           <p className="font-medium">{reason.reasonName}</p>
@@ -518,14 +934,134 @@ export default function FabrikaPerformans() {
                     ))}
                   </div>
                 ) : (
-                  <div className="text-center py-12 text-muted-foreground">
-                    <Trash2 className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                    <p>Zaiyat kaydı yok</p>
-                  </div>
+                  <EmptyState icon={Trash2} message="Zaiyat kaydi yok" />
                 )}
               </CardContent>
             </Card>
           </div>
+        </TabsContent>
+
+        {/* Tab 5: Skor Yonetimi */}
+        <TabsContent value="scores" className="space-y-6">
+          <Card className="hover-elevate">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Info className="h-5 w-5 text-blue-500" />
+                Skorlama Algoritmasi
+              </CardTitle>
+              <CardDescription>Personel performans skorlari asagidaki agirliklarla hesaplanir</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <p className="text-sm text-muted-foreground">
+                  Her personelin genel performans skoru, 5 farkli bilesenin agirlikli ortalamasiyla hesaplanir.
+                  Skorlar 0-100 arasinda deger alir ve duzenlı olarak guncellenebilir.
+                </p>
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+                  <Card>
+                    <CardContent className="p-4 text-center">
+                      <Zap className="h-6 w-6 mx-auto mb-2 text-amber-500" />
+                      <p className="font-semibold">Hiz</p>
+                      <p className="text-2xl font-bold text-amber-500">%25</p>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardContent className="p-4 text-center">
+                      <Target className="h-6 w-6 mx-auto mb-2 text-green-500" />
+                      <p className="font-semibold">Kalite</p>
+                      <p className="text-2xl font-bold text-green-500">%30</p>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardContent className="p-4 text-center">
+                      <BarChart3 className="h-6 w-6 mx-auto mb-2 text-blue-500" />
+                      <p className="font-semibold">Tutarlilik</p>
+                      <p className="text-2xl font-bold text-blue-500">%20</p>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardContent className="p-4 text-center">
+                      <Clock className="h-6 w-6 mx-auto mb-2 text-purple-500" />
+                      <p className="font-semibold">Devam</p>
+                      <p className="text-2xl font-bold text-purple-500">%15</p>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardContent className="p-4 text-center">
+                      <TrendingUp className="h-6 w-6 mx-auto mb-2 text-red-500" />
+                      <p className="font-semibold">Gelisim</p>
+                      <p className="text-2xl font-bold text-red-500">%10</p>
+                    </CardContent>
+                  </Card>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="hover-elevate">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Settings className="h-5 w-5" />
+                Skor Guncelleme
+              </CardTitle>
+              <CardDescription>Tum personel skorlarini yeniden hesapla</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <Button
+                onClick={() => updateScoresMutation.mutate()}
+                disabled={updateScoresMutation.isPending}
+                data-testid="button-update-scores"
+              >
+                <RefreshCw className={`h-4 w-4 mr-2 ${updateScoresMutation.isPending ? "animate-spin" : ""}`} />
+                {updateScoresMutation.isPending ? "Hesaplaniyor..." : "Skorlari Guncelle"}
+              </Button>
+
+              {updateScoresMutation.data && (
+                <div className="space-y-3">
+                  <p className="text-sm text-muted-foreground">
+                    {updateScoresMutation.data.updated} personelin skoru guncellendi
+                  </p>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Personel</TableHead>
+                        <TableHead>Eski Skor</TableHead>
+                        <TableHead>Yeni Skor</TableHead>
+                        <TableHead>Degisim</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {updateScoresMutation.data.workers.map((w) => {
+                        const diff = w.newScore - w.oldScore;
+                        return (
+                          <TableRow key={w.userId} data-testid={`row-score-update-${w.userId}`}>
+                            <TableCell className="font-medium">{w.firstName} {w.lastName}</TableCell>
+                            <TableCell>{w.oldScore.toFixed(0)}</TableCell>
+                            <TableCell className="font-semibold">{w.newScore.toFixed(0)}</TableCell>
+                            <TableCell>
+                              {diff > 0 ? (
+                                <Badge className="bg-green-600 text-white">
+                                  <ArrowUpRight className="h-3 w-3 mr-1" />+{diff.toFixed(0)}
+                                </Badge>
+                              ) : diff < 0 ? (
+                                <Badge className="bg-red-600 text-white">
+                                  <ArrowDownRight className="h-3 w-3 mr-1" />{diff.toFixed(0)}
+                                </Badge>
+                              ) : (
+                                <Badge variant="secondary">
+                                  <Minus className="h-3 w-3 mr-1" />0
+                                </Badge>
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
     </div>

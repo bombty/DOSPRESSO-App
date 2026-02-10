@@ -272,9 +272,12 @@ import {
   employeeOnboardingProgress,
   insertEmployeeOnboardingProgressSchema,
   shiftCorrections,
+  factoryProducts,
+  factoryProductionBatches,
+  factoryBatchVerifications,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc, sql, and, or, isNull, isNotNull, inArray, lte, gte } from "drizzle-orm";
+import { eq, desc, asc, sql, and, or, isNull, isNotNull, inArray, lte, gte, ne, count, sum, avg } from "drizzle-orm";
 import { analyzeTaskPhoto, analyzeFaultPhoto, analyzeDressCodePhoto, generateArticleEmbeddings, generateEmbedding, answerQuestionWithRAG, answerTechnicalQuestion, generateAISummary, generateQuizQuestionsFromLesson, generateFlashcardsFromLesson, evaluateBranchPerformance, diagnoseFault, generateTrainingModule, processUploadedFile, generateBranchSummaryReport, generateArticleDraft, generatePersonalSummaryReport, verifyChecklistPhoto, generateEquipmentKnowledgeFromManual, researchEquipmentTroubleshooting } from "./ai";
 import multer from "multer";
 import { generateTrainingMaterialBundle } from "./ai-motor";
@@ -29580,6 +29583,617 @@ DOSPRESSO İnsan Kaynakları Ekibi`
     } catch (error: any) {
       console.error("Error fetching waste analytics:", error);
       res.status(500).json({ message: "Zaiyat analitiği alınamadı" });
+    }
+  });
+
+
+  // ========================================
+  // FACTORY ANALYTICS - Production Stats & Worker Scoring
+  // ========================================
+
+  // Helper: Get date range from period
+  function getAnalyticsPeriodDates(period: string, startDateStr?: string, endDateStr?: string): { startDate: Date; endDate: Date; prevStartDate: Date; prevEndDate: Date } {
+    const now = new Date();
+    let startDate: Date;
+    let endDate = new Date(now);
+    endDate.setHours(23, 59, 59, 999);
+
+    switch (period) {
+      case 'daily':
+        startDate = new Date(now);
+        startDate.setHours(0, 0, 0, 0);
+        break;
+      case 'weekly':
+        startDate = new Date(now);
+        startDate.setDate(startDate.getDate() - 7);
+        startDate.setHours(0, 0, 0, 0);
+        break;
+      case 'monthly':
+        startDate = new Date(now);
+        startDate.setDate(startDate.getDate() - 30);
+        startDate.setHours(0, 0, 0, 0);
+        break;
+      case 'yearly':
+        startDate = new Date(now);
+        startDate.setDate(startDate.getDate() - 365);
+        startDate.setHours(0, 0, 0, 0);
+        break;
+      case 'custom':
+        startDate = startDateStr ? new Date(startDateStr) : new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+        endDate = endDateStr ? new Date(endDateStr) : new Date(now);
+        startDate.setHours(0, 0, 0, 0);
+        endDate.setHours(23, 59, 59, 999);
+        break;
+      default:
+        startDate = new Date(now);
+        startDate.setDate(startDate.getDate() - 30);
+        startDate.setHours(0, 0, 0, 0);
+    }
+
+    const periodLength = endDate.getTime() - startDate.getTime();
+    const prevEndDate = new Date(startDate.getTime() - 1);
+    prevEndDate.setHours(23, 59, 59, 999);
+    const prevStartDate = new Date(prevEndDate.getTime() - periodLength);
+    prevStartDate.setHours(0, 0, 0, 0);
+
+    return { startDate, endDate, prevStartDate, prevEndDate };
+  }
+
+  // 1. GET /api/factory/analytics/production-stats
+  app.get('/api/factory/analytics/production-stats', isAuthenticated, async (req, res) => {
+    try {
+      const { period = 'monthly', startDate: startDateStr, endDate: endDateStr, productId: productIdStr } = req.query as any;
+      const { startDate, endDate, prevStartDate, prevEndDate } = getAnalyticsPeriodDates(period, startDateStr, endDateStr);
+      const productIdFilter = productIdStr ? parseInt(productIdStr) : null;
+
+      const baseConditions = [
+        gte(factoryProductionOutputs.createdAt, startDate),
+        lte(factoryProductionOutputs.createdAt, endDate),
+      ];
+      if (productIdFilter) {
+        baseConditions.push(eq(factoryProductionOutputs.productId, productIdFilter));
+      }
+
+      const outputStats = await db.select({
+        productId: factoryProductionOutputs.productId,
+        productName: factoryProductionOutputs.productName,
+        totalProduced: sql<string>`COALESCE(SUM(CAST(${factoryProductionOutputs.producedQuantity} AS numeric)), 0)`,
+        totalWaste: sql<string>`COALESCE(SUM(CAST(${factoryProductionOutputs.wasteQuantity} AS numeric)), 0)`,
+        totalBatches: sql<string>`COUNT(*)`,
+        totalMinutes: sql<string>`COALESCE(SUM(${factoryProductionOutputs.durationMinutes}), 0)`,
+      })
+      .from(factoryProductionOutputs)
+      .where(and(...baseConditions))
+      .groupBy(factoryProductionOutputs.productId, factoryProductionOutputs.productName);
+
+      const batchConditions: any[] = [
+        gte(factoryProductionBatches.startTime, startDate),
+        lte(factoryProductionBatches.startTime, endDate),
+      ];
+      if (productIdFilter) {
+        batchConditions.push(eq(factoryProductionBatches.productId, productIdFilter));
+      }
+
+      const batchStats = await db.select({
+        productId: factoryProductionBatches.productId,
+        totalPieces: sql<string>`COALESCE(SUM(${factoryProductionBatches.actualPieces}), 0)`,
+        totalWasteKg: sql<string>`COALESCE(SUM(CAST(${factoryProductionBatches.wasteWeightKg} AS numeric)), 0)`,
+        totalWastePieces: sql<string>`COALESCE(SUM(${factoryProductionBatches.wastePieces}), 0)`,
+        batchCount: sql<string>`COUNT(*)`,
+        totalDurationMin: sql<string>`COALESCE(SUM(${factoryProductionBatches.actualDurationMinutes}), 0)`,
+      })
+      .from(factoryProductionBatches)
+      .where(and(...batchConditions))
+      .groupBy(factoryProductionBatches.productId);
+
+      const prevConditions = [
+        gte(factoryProductionOutputs.createdAt, prevStartDate),
+        lte(factoryProductionOutputs.createdAt, prevEndDate),
+      ];
+      if (productIdFilter) {
+        prevConditions.push(eq(factoryProductionOutputs.productId, productIdFilter));
+      }
+
+      const prevStats = await db.select({
+        productId: factoryProductionOutputs.productId,
+        totalProduced: sql<string>`COALESCE(SUM(CAST(${factoryProductionOutputs.producedQuantity} AS numeric)), 0)`,
+      })
+      .from(factoryProductionOutputs)
+      .where(and(...prevConditions))
+      .groupBy(factoryProductionOutputs.productId);
+
+      const prevMap = new Map(prevStats.map(p => [p.productId, Number(p.totalProduced)]));
+      const batchMap = new Map(batchStats.map(b => [b.productId, b]));
+
+      const allProducts = await db.select({
+        id: factoryProducts.id,
+        name: factoryProducts.name,
+        category: factoryProducts.category,
+      }).from(factoryProducts);
+      const productMap = new Map(allProducts.map(p => [p.id, p]));
+
+      let totalProducedAll = 0;
+      let totalWasteAll = 0;
+      let totalMinutesAll = 0;
+      const productIds = new Set<number>();
+
+      const productStats = outputStats.map(stat => {
+        const pid = stat.productId || 0;
+        const prod = productMap.get(pid);
+        const batch = batchMap.get(pid);
+        const totalProduced = Number(stat.totalProduced) + (batch ? Number(batch.totalPieces) : 0);
+        const totalWaste = Number(stat.totalWaste) + (batch ? Number(batch.totalWasteKg) : 0);
+        const totalBatches = Number(stat.totalBatches) + (batch ? Number(batch.batchCount) : 0);
+        const totalMinutes = Number(stat.totalMinutes) + (batch ? Number(batch.totalDurationMin) : 0);
+        const totalHours = totalMinutes / 60;
+        const wastePercent = totalProduced > 0 ? (totalWaste / (totalProduced + totalWaste)) * 100 : 0;
+        const avgProductionPerHour = totalHours > 0 ? totalProduced / totalHours : 0;
+        const avgBatchSize = totalBatches > 0 ? totalProduced / totalBatches : 0;
+
+        const prevProduced = prevMap.get(pid) || 0;
+        const trend = prevProduced > 0 ? ((totalProduced - prevProduced) / prevProduced) * 100 : 0;
+
+        totalProducedAll += totalProduced;
+        totalWasteAll += totalWaste;
+        totalMinutesAll += totalMinutes;
+        if (pid) productIds.add(pid);
+
+        return {
+          productId: pid,
+          productName: prod?.name || stat.productName || 'Bilinmeyen',
+          category: prod?.category || '',
+          totalProduced: Math.round(totalProduced * 100) / 100,
+          totalWaste: Math.round(totalWaste * 100) / 100,
+          wastePercent: Math.round(wastePercent * 100) / 100,
+          totalBatches,
+          avgBatchSize: Math.round(avgBatchSize * 100) / 100,
+          totalHours: Math.round(totalHours * 100) / 100,
+          avgProductionPerHour: Math.round(avgProductionPerHour * 100) / 100,
+          trend: Math.round(trend * 100) / 100,
+        };
+      });
+
+      const totalHoursAll = totalMinutesAll / 60;
+
+      const dailyTrendConditions = [
+        gte(factoryProductionOutputs.createdAt, startDate),
+        lte(factoryProductionOutputs.createdAt, endDate),
+      ];
+      if (productIdFilter) {
+        dailyTrendConditions.push(eq(factoryProductionOutputs.productId, productIdFilter));
+      }
+
+      const dailyTrend = await db.select({
+        date: sql<string>`DATE(${factoryProductionOutputs.createdAt})`,
+        produced: sql<string>`COALESCE(SUM(CAST(${factoryProductionOutputs.producedQuantity} AS numeric)), 0)`,
+        waste: sql<string>`COALESCE(SUM(CAST(${factoryProductionOutputs.wasteQuantity} AS numeric)), 0)`,
+      })
+      .from(factoryProductionOutputs)
+      .where(and(...dailyTrendConditions))
+      .groupBy(sql`DATE(${factoryProductionOutputs.createdAt})`)
+      .orderBy(sql`DATE(${factoryProductionOutputs.createdAt})`);
+
+      res.json({
+        summary: {
+          totalProducts: productIds.size,
+          totalProduced: Math.round(totalProducedAll * 100) / 100,
+          totalWaste: Math.round(totalWasteAll * 100) / 100,
+          avgWastePercent: totalProducedAll > 0 ? Math.round((totalWasteAll / (totalProducedAll + totalWasteAll)) * 10000) / 100 : 0,
+          totalHours: Math.round(totalHoursAll * 100) / 100,
+          avgProductionPerHour: totalHoursAll > 0 ? Math.round((totalProducedAll / totalHoursAll) * 100) / 100 : 0,
+        },
+        productStats,
+        dailyTrend: dailyTrend.map(d => ({
+          date: String(d.date),
+          produced: Math.round(Number(d.produced) * 100) / 100,
+          waste: Math.round(Number(d.waste) * 100) / 100,
+        })),
+      });
+    } catch (error: any) {
+      console.error("Error fetching production stats:", error);
+      res.status(500).json({ message: "Üretim istatistikleri alınamadı" });
+    }
+  });
+
+  // 2. GET /api/factory/analytics/worker-comparison
+  app.get('/api/factory/analytics/worker-comparison', isAuthenticated, async (req, res) => {
+    try {
+      const { period = 'monthly', startDate: startDateStr, endDate: endDateStr, productId: productIdStr } = req.query as any;
+
+      if (!productIdStr) {
+        return res.status(400).json({ message: "productId gereklidir" });
+      }
+
+      const productIdFilter = parseInt(productIdStr);
+      const { startDate, endDate } = getAnalyticsPeriodDates(period, startDateStr, endDateStr);
+
+      const [product] = await db.select({ name: factoryProducts.name }).from(factoryProducts).where(eq(factoryProducts.id, productIdFilter));
+
+      const workerOutputs = await db.select({
+        userId: factoryProductionOutputs.userId,
+        totalProduced: sql<string>`COALESCE(SUM(CAST(${factoryProductionOutputs.producedQuantity} AS numeric)), 0)`,
+        totalWaste: sql<string>`COALESCE(SUM(CAST(${factoryProductionOutputs.wasteQuantity} AS numeric)), 0)`,
+        totalMinutes: sql<string>`COALESCE(SUM(${factoryProductionOutputs.durationMinutes}), 0)`,
+        batchCount: sql<string>`COUNT(*)`,
+      })
+      .from(factoryProductionOutputs)
+      .where(and(
+        eq(factoryProductionOutputs.productId, productIdFilter),
+        gte(factoryProductionOutputs.createdAt, startDate),
+        lte(factoryProductionOutputs.createdAt, endDate),
+      ))
+      .groupBy(factoryProductionOutputs.userId);
+
+      if (workerOutputs.length === 0) {
+        return res.json({ productName: product?.name || 'Bilinmeyen', workers: [] });
+      }
+
+      const userIds = workerOutputs.map(w => w.userId);
+      const workerUsers = await db.select({
+        id: users.id,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        profileImageUrl: users.profileImageUrl,
+      }).from(users).where(inArray(users.id, userIds));
+      const userMap = new Map(workerUsers.map(u => [u.id, u]));
+
+      const batchDetails = await db.select({
+        userId: factoryProductionOutputs.userId,
+        produced: factoryProductionOutputs.producedQuantity,
+        duration: factoryProductionOutputs.durationMinutes,
+      })
+      .from(factoryProductionOutputs)
+      .where(and(
+        eq(factoryProductionOutputs.productId, productIdFilter),
+        gte(factoryProductionOutputs.createdAt, startDate),
+        lte(factoryProductionOutputs.createdAt, endDate),
+      ));
+
+      const userBatchProductions = new Map<string, number[]>();
+      for (const b of batchDetails) {
+        const arr = userBatchProductions.get(b.userId) || [];
+        arr.push(Number(b.produced || 0));
+        userBatchProductions.set(b.userId, arr);
+      }
+
+      const workersRaw = workerOutputs.map(w => {
+        const user = userMap.get(w.userId);
+        const totalProduced = Number(w.totalProduced);
+        const totalWaste = Number(w.totalWaste);
+        const totalMinutes = Number(w.totalMinutes);
+        const totalHours = totalMinutes / 60;
+        const batchCount = Number(w.batchCount);
+        const wastePercent = (totalProduced + totalWaste) > 0 ? (totalWaste / (totalProduced + totalWaste)) * 100 : 0;
+        const avgProductionPerHour = totalHours > 0 ? totalProduced / totalHours : 0;
+        const avgBatchDuration = batchCount > 0 ? totalMinutes / batchCount : 0;
+
+        const productions = userBatchProductions.get(w.userId) || [];
+        let consistencyScore = 50;
+        if (productions.length > 1) {
+          const mean = productions.reduce((a, b) => a + b, 0) / productions.length;
+          const variance = productions.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) / productions.length;
+          const stdDev = Math.sqrt(variance);
+          const cv = mean > 0 ? stdDev / mean : 1;
+          consistencyScore = Math.max(0, Math.min(100, 100 - cv * 100));
+        }
+
+        const qualityScore = Math.max(0, Math.min(100, (1 - wastePercent / 100) * 100));
+
+        return {
+          userId: w.userId,
+          firstName: user?.firstName || '',
+          lastName: user?.lastName || '',
+          profileImageUrl: user?.profileImageUrl || null,
+          totalProduced: Math.round(totalProduced * 100) / 100,
+          totalWaste: Math.round(totalWaste * 100) / 100,
+          wastePercent: Math.round(wastePercent * 100) / 100,
+          avgProductionPerHour: Math.round(avgProductionPerHour * 100) / 100,
+          totalHours: Math.round(totalHours * 100) / 100,
+          batchCount,
+          avgBatchDuration: Math.round(avgBatchDuration * 100) / 100,
+          consistencyScore: Math.round(consistencyScore * 100) / 100,
+          qualityScore: Math.round(qualityScore * 100) / 100,
+          speedScore: 0,
+          overallScore: 0,
+        };
+      });
+
+      const maxSpeed = Math.max(...workersRaw.map(w => w.avgProductionPerHour), 1);
+      for (const w of workersRaw) {
+        w.speedScore = Math.round((w.avgProductionPerHour / maxSpeed) * 10000) / 100;
+        w.overallScore = Math.round((w.speedScore * 0.3 + w.qualityScore * 0.4 + w.consistencyScore * 0.3) * 100) / 100;
+      }
+
+      workersRaw.sort((a, b) => b.overallScore - a.overallScore);
+
+      res.json({
+        productName: product?.name || 'Bilinmeyen',
+        workers: workersRaw,
+      });
+    } catch (error: any) {
+      console.error("Error fetching worker comparison:", error);
+      res.status(500).json({ message: "Çalışan karşılaştırması alınamadı" });
+    }
+  });
+
+  // 3. GET /api/factory/analytics/worker-score/:userId
+  app.get('/api/factory/analytics/worker-score/:userId', isAuthenticated, async (req, res) => {
+    try {
+      const { userId } = req.params;
+
+      const [user] = await db.select({
+        id: users.id,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        profileImageUrl: users.profileImageUrl,
+      }).from(users).where(eq(users.id, userId));
+
+      if (!user) {
+        return res.status(404).json({ message: "Kullanıcı bulunamadı" });
+      }
+
+      const allOutputs = await db.select({
+        produced: factoryProductionOutputs.producedQuantity,
+        waste: factoryProductionOutputs.wasteQuantity,
+        duration: factoryProductionOutputs.durationMinutes,
+        createdAt: factoryProductionOutputs.createdAt,
+        productName: factoryProductionOutputs.productName,
+        productId: factoryProductionOutputs.productId,
+      })
+      .from(factoryProductionOutputs)
+      .where(eq(factoryProductionOutputs.userId, userId))
+      .orderBy(factoryProductionOutputs.createdAt);
+
+      const monthlyMap = new Map<string, { produced: number; waste: number; minutes: number; count: number; productions: number[] }>();
+      const productBreakdownMap = new Map<number, { productName: string; produced: number; waste: number; minutes: number }>();
+      const hourlyMap = new Map<number, { total: number; count: number }>();
+
+      let totalProduced = 0;
+      let totalWaste = 0;
+      let totalMinutes = 0;
+      const allProductions: number[] = [];
+
+      for (const o of allOutputs) {
+        const produced = Number(o.produced || 0);
+        const waste = Number(o.waste || 0);
+        const duration = Number(o.duration || 0);
+        const createdAt = o.createdAt ? new Date(o.createdAt) : new Date();
+        const monthKey = `${createdAt.getFullYear()}-${String(createdAt.getMonth() + 1).padStart(2, '0')}`;
+        const hour = createdAt.getHours();
+        const pid = o.productId || 0;
+
+        totalProduced += produced;
+        totalWaste += waste;
+        totalMinutes += duration;
+        allProductions.push(produced);
+
+        const m = monthlyMap.get(monthKey) || { produced: 0, waste: 0, minutes: 0, count: 0, productions: [] };
+        m.produced += produced;
+        m.waste += waste;
+        m.minutes += duration;
+        m.count += 1;
+        m.productions.push(produced);
+        monthlyMap.set(monthKey, m);
+
+        const pb = productBreakdownMap.get(pid) || { productName: o.productName || 'Bilinmeyen', produced: 0, waste: 0, minutes: 0 };
+        pb.produced += produced;
+        pb.waste += waste;
+        pb.minutes += duration;
+        productBreakdownMap.set(pid, pb);
+
+        const h = hourlyMap.get(hour) || { total: 0, count: 0 };
+        h.total += produced;
+        h.count += 1;
+        hourlyMap.set(hour, h);
+      }
+
+      const totalHours = totalMinutes / 60;
+      const userAvgPerHour = totalHours > 0 ? totalProduced / totalHours : 0;
+      const wastePercent = (totalProduced + totalWaste) > 0 ? totalWaste / (totalProduced + totalWaste) : 0;
+
+      const factoryAvgRows2 = await db.execute(sql`SELECT COALESCE(AVG(CAST(produced_quantity AS numeric)), 1) as avg_produced, COALESCE(AVG(duration_minutes), 60) as avg_minutes FROM factory_production_outputs`);
+      const factoryAvgRow2 = ((factoryAvgRows2 as any).rows?.[0] || (factoryAvgRows2 as any)[0] || { avg_produced: 1, avg_minutes: 60 }) as any;
+      const factoryAvgProduced = Number(factoryAvgRow2.avg_produced || 1);
+      const factoryAvgMinutes = Number(factoryAvgRow2.avg_minutes || 60);
+      const factoryAvgPerHour = factoryAvgMinutes > 0 ? factoryAvgProduced / (factoryAvgMinutes / 60) : 1;
+
+      const speedScore = Math.max(0, Math.min(100, (userAvgPerHour / Math.max(factoryAvgPerHour, 0.01)) * 50));
+      const qualityScore = Math.max(0, Math.min(100, (1 - wastePercent) * 100));
+
+      let consistencyScore = 50;
+      if (allProductions.length > 1) {
+        const mean = allProductions.reduce((a, b) => a + b, 0) / allProductions.length;
+        const variance = allProductions.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) / allProductions.length;
+        const stdDev = Math.sqrt(variance);
+        const cv = mean > 0 ? stdDev / mean : 1;
+        consistencyScore = Math.max(0, Math.min(100, 100 - cv * 100));
+      }
+
+      const shiftCountResult = await db.execute(sql`SELECT COUNT(*) as count FROM factory_shift_sessions WHERE user_id = ${userId}`);
+      const shiftRow = ((shiftCountResult as any).rows?.[0] || (shiftCountResult as any)[0] || { count: 0 }) as any;
+      const totalShifts = Number(shiftRow.count || 0);
+      const monthlyDataPoints = monthlyMap.size;
+      const expectedShifts = monthlyDataPoints * 22;
+      const attendanceScore = expectedShifts > 0 ? Math.max(0, Math.min(100, (totalShifts / expectedShifts) * 100)) : 80;
+
+      const sortedMonths = Array.from(monthlyMap.keys()).sort();
+      let improvementScore = 50;
+      if (sortedMonths.length >= 6) {
+        const last3 = sortedMonths.slice(-3);
+        const prev3 = sortedMonths.slice(-6, -3);
+        const last3Avg = last3.reduce((sum, key) => sum + (monthlyMap.get(key)?.produced || 0), 0) / 3;
+        const prev3Avg = prev3.reduce((sum, key) => sum + (monthlyMap.get(key)?.produced || 0), 0) / 3;
+        if (prev3Avg > 0) {
+          const improvement = ((last3Avg - prev3Avg) / prev3Avg) * 100;
+          improvementScore = Math.max(0, Math.min(100, 50 + improvement));
+        }
+      }
+
+      const currentScore = speedScore * 0.25 + qualityScore * 0.30 + consistencyScore * 0.20 + attendanceScore * 0.15 + improvementScore * 0.10;
+
+      const scoreHistory = sortedMonths.map(month => {
+        const m = monthlyMap.get(month)!;
+        const mHours = m.minutes / 60;
+        const mSpeed = mHours > 0 ? m.produced / mHours : 0;
+        const mSpeedScore = Math.max(0, Math.min(100, (mSpeed / Math.max(factoryAvgPerHour, 0.01)) * 50));
+        const mWaste = (m.produced + m.waste) > 0 ? m.waste / (m.produced + m.waste) : 0;
+        const mQuality = (1 - mWaste) * 100;
+        let mConsistency = 50;
+        if (m.productions.length > 1) {
+          const mean = m.productions.reduce((a, b) => a + b, 0) / m.productions.length;
+          const variance = m.productions.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) / m.productions.length;
+          const cv = mean > 0 ? Math.sqrt(variance) / mean : 1;
+          mConsistency = Math.max(0, Math.min(100, 100 - cv * 100));
+        }
+        const mScore = mSpeedScore * 0.25 + mQuality * 0.30 + mConsistency * 0.20 + attendanceScore * 0.15 + 50 * 0.10;
+        return {
+          month,
+          score: Math.round(mScore * 100) / 100,
+          produced: Math.round(m.produced * 100) / 100,
+          waste: Math.round(m.waste * 100) / 100,
+        };
+      });
+
+      const productBreakdown = Array.from(productBreakdownMap.entries()).map(([, pb]) => ({
+        productName: pb.productName,
+        produced: Math.round(pb.produced * 100) / 100,
+        waste: Math.round(pb.waste * 100) / 100,
+        wastePercent: (pb.produced + pb.waste) > 0 ? Math.round((pb.waste / (pb.produced + pb.waste)) * 100 * 10) / 10 : 0,
+        avgSpeed: pb.minutes > 0 ? Math.round((pb.produced / (pb.minutes / 60)) * 100) / 100 : 0,
+      }));
+
+      const peakHours = Array.from(hourlyMap.entries())
+        .map(([hour, h]) => ({
+          hour,
+          avgProduction: Math.round((h.total / h.count) * 100) / 100,
+        }))
+        .sort((a, b) => b.avgProduction - a.avgProduction);
+
+      res.json({
+        userId,
+        firstName: user.firstName || '',
+        lastName: user.lastName || '',
+        currentScore: Math.round(currentScore * 100) / 100,
+        scoreHistory,
+        breakdown: {
+          speedScore: Math.round(speedScore * 100) / 100,
+          qualityScore: Math.round(qualityScore * 100) / 100,
+          consistencyScore: Math.round(consistencyScore * 100) / 100,
+          attendanceScore: Math.round(attendanceScore * 100) / 100,
+          improvementScore: Math.round(improvementScore * 100) / 100,
+        },
+        productBreakdown,
+        peakHours,
+        monthlyDataPoints,
+      });
+    } catch (error: any) {
+      console.error("Error fetching worker score:", error);
+      res.status(500).json({ message: "Çalışan skoru alınamadı" });
+    }
+  });
+
+  app.post('/api/factory/analytics/update-scores', isAuthenticated, async (req, res) => {
+    try {
+      const factoryWorkersRows = await db.execute(sql`SELECT id, first_name as "firstName", last_name as "lastName", performance_score as "performanceScore" FROM users WHERE role IN ('fabrika', 'fabrika_operator')`);
+
+      const factoryWorkers = ((factoryWorkersRows as any).rows || factoryWorkersRows) as any[];
+      const factoryAvgRows = await db.execute(sql`SELECT COALESCE(AVG(CAST(produced_quantity AS numeric)), 1) as avg_produced, COALESCE(AVG(duration_minutes), 60) as avg_minutes FROM factory_production_outputs`);
+      const factoryAvgRow = (factoryAvgRows as any).rows?.[0] || factoryAvgRows[0] || { avg_produced: 1, avg_minutes: 60 };
+
+      const factoryAvgProduced = Number(factoryAvgRow.avg_produced || 1);
+      const factoryAvgMinutes = Number(factoryAvgRow.avg_minutes || 60);
+      const factoryAvgPerHour = factoryAvgMinutes > 0 ? factoryAvgProduced / (factoryAvgMinutes / 60) : 1;
+
+      const results: { userId: string; firstName: string; lastName: string; oldScore: number; newScore: number }[] = [];
+
+      for (const worker of factoryWorkers) {
+        const outputRows = await db.execute(sql`SELECT produced_quantity as produced, waste_quantity as waste, duration_minutes as duration, created_at as created_at FROM factory_production_outputs WHERE user_id = ${worker.id}`);
+        const outputs = ((outputRows as any).rows || outputRows) as any[];
+
+        if (outputs.length === 0) continue;
+
+        let totalProduced = 0;
+        let totalWaste = 0;
+        let totalMinutes = 0;
+        const allProductions: number[] = [];
+        const monthSet = new Set<string>();
+        const monthlyProduced = new Map<string, number>();
+
+        for (const o of outputs) {
+          const produced = Number(o.produced || 0);
+          const waste = Number(o.waste || 0);
+          const duration = Number(o.duration || 0);
+          totalProduced += produced;
+          totalWaste += waste;
+          totalMinutes += duration;
+          allProductions.push(produced);
+          if (o.createdAt) {
+            const d = new Date(o.createdAt);
+            const monthKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+            monthSet.add(monthKey);
+            monthlyProduced.set(monthKey, (monthlyProduced.get(monthKey) || 0) + produced);
+          }
+        }
+
+        const totalHours = totalMinutes / 60;
+        const userAvgPerHour = totalHours > 0 ? totalProduced / totalHours : 0;
+        const wastePercent = (totalProduced + totalWaste) > 0 ? totalWaste / (totalProduced + totalWaste) : 0;
+
+        const speedScore = Math.max(0, Math.min(100, (userAvgPerHour / Math.max(factoryAvgPerHour, 0.01)) * 50));
+        const qualityScore = Math.max(0, Math.min(100, (1 - wastePercent) * 100));
+
+        let consistencyScore = 50;
+        if (allProductions.length > 1) {
+          const mean = allProductions.reduce((a, b) => a + b, 0) / allProductions.length;
+          const variance = allProductions.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) / allProductions.length;
+          const cv = mean > 0 ? Math.sqrt(variance) / mean : 1;
+          consistencyScore = Math.max(0, Math.min(100, 100 - cv * 100));
+        }
+
+        const shiftCountRows = await db.execute(sql`SELECT COUNT(*) as count FROM factory_shift_sessions WHERE user_id = ${worker.id}`);
+        const totalShifts = Number(((shiftCountRows as any).rows?.[0] || shiftCountRows[0] || {}).count || 0);
+        const monthlyDataPoints = monthSet.size;
+        const expectedShifts = monthlyDataPoints * 22;
+        const attendanceScore = expectedShifts > 0 ? Math.max(0, Math.min(100, (totalShifts / expectedShifts) * 100)) : 80;
+
+        const sortedMonths = Array.from(monthSet).sort();
+        let improvementScore = 50;
+        if (sortedMonths.length >= 6) {
+          const last3 = sortedMonths.slice(-3);
+          const prev3 = sortedMonths.slice(-6, -3);
+          const last3Avg = last3.reduce((sum, key) => sum + (monthlyProduced.get(key) || 0), 0) / 3;
+          const prev3Avg = prev3.reduce((sum, key) => sum + (monthlyProduced.get(key) || 0), 0) / 3;
+          if (prev3Avg > 0) {
+            const improvement = ((last3Avg - prev3Avg) / prev3Avg) * 100;
+            improvementScore = Math.max(0, Math.min(100, 50 + improvement));
+          }
+        }
+
+        const compositeScore = speedScore * 0.25 + qualityScore * 0.30 + consistencyScore * 0.20 + attendanceScore * 0.15 + improvementScore * 0.10;
+
+        const maturityWeight = Math.min(monthlyDataPoints / 6, 1.0);
+        const finalScore = compositeScore * maturityWeight + 50 * (1 - maturityWeight);
+        const scaledScore = Math.round((finalScore / 20) * 10) / 10;
+
+        const oldScore = Number(worker.performanceScore || 0);
+        await db.execute(sql`UPDATE users SET performance_score = ${String(scaledScore)} WHERE id = ${worker.id}`);
+
+        results.push({
+          userId: worker.id,
+          firstName: worker.firstName || "",
+          lastName: worker.lastName || "",
+          oldScore,
+          newScore: scaledScore,
+        });
+      }
+
+      res.json({
+        updated: results.length,
+        workers: results,
+      });
+    } catch (error: any) {
+      console.error("Error updating worker scores:", error);
+      res.status(500).json({ message: "Çalışan skorları güncellenemedi" });
     }
   });
 
