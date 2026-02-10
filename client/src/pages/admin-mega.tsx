@@ -28,7 +28,8 @@ import {
   AlertTriangle,
   Lock,
   Cog,
-  BookOpen
+  BookOpen,
+  ListTodo
 } from "lucide-react";
 
 const AdminDashboard = lazy(() => import("./admin/index"));
@@ -59,6 +60,7 @@ const AdminSeed = lazy(() => import("./admin-seed"));
 const AdminAIBilgiYonetimi = lazy(() => import("./admin/ai-bilgi-yonetimi"));
 const AdminVeriDisaAktarma = lazy(() => import("./admin/veri-disa-aktarma"));
 const AdminGorunumAyarlari = lazy(() => import("./admin/gorunum-ayarlari"));
+const AdminGorevSablonlari = lazy(() => import("./admin/gorev-sablonlari"));
 
 interface TabConfig {
   id: string;
@@ -302,6 +304,15 @@ const ADMIN_TABS: TabConfig[] = [
     component: AdminTopluVeriYonetimi
   },
   {
+    id: "gorev-sablonlari",
+    label: "Task Templates",
+    labelTr: "Gorev Sablonlari",
+    icon: <ListTodo className="h-4 w-4" />,
+    permissionModule: "admin_panel",
+    group: "operasyon",
+    component: AdminGorevSablonlari
+  },
+  {
     id: "fabrika-istasyonlar",
     label: "Factory Stations",
     labelTr: "Fabrika İstasyonları",
@@ -377,6 +388,7 @@ const TAB_URL_MAP: Record<string, string> = {
   "ekipman-servis": "/admin/ekipman-servis",
   "servis-talepleri": "/admin/servis-talepleri",
   "toplu-veri": "/admin/toplu-veri",
+  "gorev-sablonlari": "/admin/gorev-sablonlari",
   "fabrika-istasyonlar": "/admin/fabrika-istasyonlar",
   "fire-sebepleri": "/admin/fire-sebepleri",
   "pin-yonetimi": "/admin/pin-yonetimi",

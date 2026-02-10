@@ -1,3 +1,4 @@
+import { registerDailyTaskRoutes } from "./daily-tasks-routes";
 import { registerFactoryShiftRoutes } from "./factory-shift-routes";
 import { registerHQDashboardRoutes } from "./hq-dashboard-routes";
 import { registerCRMRoutes } from "./crm-routes";
@@ -28346,6 +28347,77 @@ DOSPRESSO İnsan Kaynakları Ekibi`
       res.status(500).json({ message: "Maliyet istatistikleri alınamadı" });
     }
   });
+  // Quality Control Overview for fabrika dashboard
+  app.get('/api/factory/quality-overview', isAuthenticated, async (req: any, res) => {
+    try {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      const qualityResults = await db.execute(sql`
+        SELECT 
+          COUNT(*) as total_checked,
+          COUNT(CASE WHEN quality_status = 'approved' THEN 1 END) as passed,
+          COUNT(CASE WHEN quality_status = 'rejected' THEN 1 END) as failed,
+          COUNT(CASE WHEN quality_status = 'pending' THEN 1 END) as pending
+        FROM factory_production_batches
+        WHERE DATE(start_time) = CURRENT_DATE
+          AND status IN ('completed', 'verified')
+      `);
+
+      const row = (qualityResults as any)[0] || {};
+      const todayChecked = Number(row.total_checked || 0);
+      const todayPassed = Number(row.passed || 0);
+      const todayFailed = Number(row.failed || 0);
+      const pendingCheck = Number(row.pending || 0);
+      const qualityRate = todayChecked > 0 ? (todayPassed / todayChecked) * 100 : 100;
+
+      res.json({
+        todayChecked,
+        todayPassed,
+        todayFailed,
+        pendingCheck,
+        qualityRate,
+      });
+    } catch (error: any) {
+      console.error("Error fetching quality overview:", error);
+      res.status(500).json({ message: "Kalite kontrol özeti alınamadı" });
+    }
+  });
+
+  // Stock Overview for fabrika dashboard
+  app.get('/api/factory/stock-overview', isAuthenticated, async (req: any, res) => {
+    try {
+      const rawMaterialCount = await db.execute(sql`
+        SELECT COUNT(*) as count FROM raw_materials WHERE is_active = true
+      `);
+      const finishedProductCount = await db.execute(sql`
+        SELECT COUNT(*) as count FROM factory_products WHERE is_active = true
+      `);
+      const lowStockResult = await db.execute(sql`
+        SELECT COUNT(*) as count FROM inventory_items 
+        WHERE current_stock <= COALESCE(min_stock, 0) 
+          AND COALESCE(min_stock, 0) > 0
+      `);
+      const lastCountResult = await db.execute(sql`
+        SELECT MAX(created_at) as last_count FROM stock_counts
+      `);
+
+      res.json({
+        totalRawMaterials: Number((rawMaterialCount as any)[0]?.count || 0),
+        totalFinishedProducts: Number((finishedProductCount as any)[0]?.count || 0),
+        lowStockCount: Number((lowStockResult as any)[0]?.count || 0),
+        lastCountDate: (lastCountResult as any)[0]?.last_count || null,
+      });
+    } catch (error: any) {
+      console.error("Error fetching stock overview:", error);
+      res.json({
+        totalRawMaterials: 0,
+        totalFinishedProducts: 0,
+        lowStockCount: 0,
+        lastCountDate: null,
+      });
+    }
+  });
 
   // Waste dashboard stats for fabrika dashboard
   app.get('/api/factory/waste-dashboard-stats', isAuthenticated, async (req: any, res) => {
@@ -34609,6 +34681,7 @@ ${["yatirimci_hq", "yatirimci_branch"].includes(role) ? "- Yatirimci olarak sade
     }
   });
 
+  registerDailyTaskRoutes(app);
   registerSatinalmaRoutes(app, isAuthenticated);
   registerMaliyetRoutes(app, isAuthenticated);
   registerFactoryShiftRoutes(app);

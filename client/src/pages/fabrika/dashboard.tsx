@@ -30,9 +30,11 @@ import {
   Target,
   LogOut,
   Monitor,
+  CheckCircle2,
 } from "lucide-react";
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip as RechartsTooltip, CartesianGrid } from "recharts";
 import logoUrl from "@assets/IMG_6637_1765138781125.png";
+import { DailyTaskPanel } from "@/components/daily-task-panel";
 
 interface DashboardStats {
   activeWorkers: number;
@@ -76,6 +78,21 @@ interface CostStats {
   calculationsThisMonth: number;
 }
 
+interface QualityOverview {
+  todayChecked: number;
+  todayPassed: number;
+  todayFailed: number;
+  pendingCheck: number;
+  qualityRate: number;
+}
+
+interface StockOverview {
+  lowStockCount: number;
+  totalRawMaterials: number;
+  totalFinishedProducts: number;
+  lastCountDate: string | null;
+}
+
 export default function FabrikaDashboard() {
   const { user, isLoading: authLoading } = useAuth();
   const [, setLocation] = useLocation();
@@ -95,16 +112,29 @@ export default function FabrikaDashboard() {
   });
 
   const isManagerOrAdmin = user?.role === 'admin' || user?.role === 'fabrika_mudur';
+  const isCostRole = user?.role === 'admin' || user?.role === 'muhasebe' || user?.role === 'muhasebe_ik' || user?.role === 'satinalma';
 
   const { data: costStats } = useQuery<CostStats>({
     queryKey: ['/api/factory/cost-dashboard-stats'],
     refetchInterval: 60000,
-    enabled: isManagerOrAdmin,
+    enabled: isCostRole,
   });
 
   const { data: wasteStats } = useQuery<any>({
     queryKey: ['/api/factory/waste-dashboard-stats'],
     refetchInterval: 60000,
+  });
+
+  const { data: qualityOverview } = useQuery<QualityOverview>({
+    queryKey: ['/api/factory/quality-overview'],
+    refetchInterval: 60000,
+    enabled: isManagerOrAdmin,
+  });
+
+  const { data: stockOverview } = useQuery<StockOverview>({
+    queryKey: ['/api/factory/stock-overview'],
+    refetchInterval: 60000,
+    enabled: isManagerOrAdmin,
   });
 
   const handleLogout = async () => {
@@ -252,7 +282,7 @@ export default function FabrikaDashboard() {
             </Card>
           </div>
 
-          {costStats && isManagerOrAdmin && (
+          {costStats && isCostRole && (
             <Card>
               <CardHeader className="pb-1 pt-3 px-3">
                 <CardTitle className="flex items-center gap-2 text-xs">
@@ -292,6 +322,101 @@ export default function FabrikaDashboard() {
               </CardContent>
             </Card>
           )}
+
+          {isManagerOrAdmin && (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-2">
+              {stockOverview && (
+                <Card className="hover-elevate">
+                  <CardHeader className="pb-1 pt-3 px-3">
+                    <CardTitle className="flex items-center gap-2 text-xs">
+                      <Package className="h-3.5 w-3.5 text-indigo-500" />
+                      Stok Durumu
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="px-3 pb-3">
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="text-center p-2 bg-indigo-500/10 rounded-lg">
+                        <p className="text-sm font-bold text-indigo-600" data-testid="text-raw-materials">{stockOverview.totalRawMaterials}</p>
+                        <p className="text-xs text-muted-foreground">Hammadde</p>
+                      </div>
+                      <div className="text-center p-2 bg-teal-500/10 rounded-lg">
+                        <p className="text-sm font-bold text-teal-600" data-testid="text-finished-products">{stockOverview.totalFinishedProducts}</p>
+                        <p className="text-xs text-muted-foreground">Bitmiş Ürün</p>
+                      </div>
+                    </div>
+                    {stockOverview.lowStockCount > 0 && (
+                      <div className="flex items-center gap-2 p-2 bg-amber-500/10 border border-amber-200 dark:border-amber-800 rounded-lg mt-2">
+                        <AlertTriangle className="h-4 w-4 text-amber-500 flex-shrink-0" />
+                        <p className="text-xs font-medium text-amber-700 dark:text-amber-400" data-testid="text-low-stock-warning">
+                          {stockOverview.lowStockCount} üründe düşük stok uyarısı
+                        </p>
+                      </div>
+                    )}
+                    {stockOverview.lastCountDate && (
+                      <p className="text-xs text-muted-foreground mt-2">
+                        Son sayım: {new Date(stockOverview.lastCountDate).toLocaleDateString('tr-TR')}
+                      </p>
+                    )}
+                    <div className="mt-2 flex justify-end">
+                      <Link href="/fabrika?tab=stok-sayim">
+                        <Button variant="outline" size="sm" data-testid="link-stock-count">
+                          <ClipboardCheck className="h-3.5 w-3.5 mr-1" />
+                          Stok Sayımı
+                        </Button>
+                      </Link>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {qualityOverview && (
+                <Card className="hover-elevate">
+                  <CardHeader className="pb-1 pt-3 px-3">
+                    <CardTitle className="flex items-center gap-2 text-xs">
+                      <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
+                      Kalite Kontrol Özeti
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="px-3 pb-3">
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="text-center p-2 bg-emerald-500/10 rounded-lg">
+                        <p className="text-sm font-bold text-emerald-600" data-testid="text-quality-passed">{qualityOverview.todayPassed}</p>
+                        <p className="text-xs text-muted-foreground">Onaylanan</p>
+                      </div>
+                      <div className="text-center p-2 bg-red-500/10 rounded-lg">
+                        <p className="text-sm font-bold text-red-600" data-testid="text-quality-failed">{qualityOverview.todayFailed}</p>
+                        <p className="text-xs text-muted-foreground">Reddedilen</p>
+                      </div>
+                    </div>
+                    {qualityOverview.pendingCheck > 0 && (
+                      <div className="flex items-center gap-2 p-2 bg-amber-500/10 border border-amber-200 dark:border-amber-800 rounded-lg mt-2">
+                        <AlertTriangle className="h-4 w-4 text-amber-500 flex-shrink-0" />
+                        <p className="text-xs font-medium text-amber-700 dark:text-amber-400" data-testid="text-pending-quality">
+                          {qualityOverview.pendingCheck} ürün kalite kontrolü bekliyor
+                        </p>
+                      </div>
+                    )}
+                    {qualityOverview.todayChecked > 0 && (
+                      <div className="flex items-center gap-2 mt-2">
+                        <Progress value={qualityOverview.qualityRate} className="h-2 flex-1" />
+                        <span className="text-xs font-medium text-muted-foreground">%{qualityOverview.qualityRate.toFixed(0)}</span>
+                      </div>
+                    )}
+                    <div className="mt-2 flex justify-end">
+                      <Link href="/fabrika?tab=kalite-kontrol">
+                        <Button variant="outline" size="sm" data-testid="link-quality-control">
+                          <CheckCircle2 className="h-3.5 w-3.5 mr-1" />
+                          Kalite Kontrol
+                        </Button>
+                      </Link>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+          )}
+
+          <DailyTaskPanel />
 
           {wasteStats && (
             <Card>

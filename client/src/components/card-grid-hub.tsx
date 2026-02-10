@@ -13,6 +13,7 @@ import { EnhancedAnalyticsCard } from "@/components/enhanced-analytics-card";
 import { PersonalSummaryCard } from "@/components/personal-summary-card";
 import { AnnouncementBannerCarousel } from "@/components/AnnouncementBannerCarousel";
 import { EmployeeOfMonthWidget } from "@/components/employee-of-month-widget";
+import { DailyTaskPanel } from "@/components/daily-task-panel";
 import { RecentActivities } from "@/components/recent-activities";
 import { BranchScorecard } from "@/components/branch-scorecard";
 import { PersonnelStatusPanel } from "@/components/personnel-status-panel";
@@ -942,6 +943,9 @@ export function CardGridHub() {
 
       {/* Quick Actions - Role filtered internally */}
       {canSeeWidget(userRole, 'quick-actions') && <QuickActionsGrid />}
+
+      {/* Daily Task Panel - Available for all roles */}
+      <DailyTaskPanel />
 
       {/* Module Cards Grid - Role filtered internally */}
       {canSeeWidget(userRole, 'module-cards') && <ModuleCardsGrid />}

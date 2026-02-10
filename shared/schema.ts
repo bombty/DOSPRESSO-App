@@ -11562,3 +11562,73 @@ export const factoryBatchVerifications = pgTable("factory_batch_verifications", 
   index("fbv_batch_idx").on(table.batchId),
   index("fbv_verifier_idx").on(table.verifierUserId),
 ]);
+
+// ========================================
+// ROLE TASK TEMPLATES & COMPLETIONS
+// ========================================
+
+export const roleTaskTemplates = pgTable("role_task_templates", {
+  id: serial("id").primaryKey(),
+  role: varchar("role", { length: 50 }).notNull(),
+  title: varchar("title", { length: 200 }).notNull(),
+  description: text("description"),
+  frequency: varchar("frequency", { length: 20 }).notNull().default("daily"),
+  priority: integer("priority").notNull().default(2),
+  sortOrder: integer("sort_order").notNull().default(0),
+  icon: varchar("icon", { length: 50 }),
+  targetUrl: varchar("target_url", { length: 200 }),
+  moduleLink: varchar("module_link", { length: 100 }),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("rtt_role_idx").on(table.role),
+  index("rtt_frequency_idx").on(table.frequency),
+]);
+
+export const roleTaskCompletions = pgTable("role_task_completions", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id", { length: 255 }).notNull(),
+  templateId: integer("template_id").notNull(),
+  completedAt: timestamp("completed_at").defaultNow(),
+  periodDate: varchar("period_date", { length: 10 }).notNull(),
+  notes: text("notes"),
+}, (table) => [
+  index("rtc_user_idx").on(table.userId),
+  index("rtc_template_idx").on(table.templateId),
+  index("rtc_period_idx").on(table.periodDate),
+]);
+
+// ========================================
+// STOCK COUNTS (Stok Sayım)
+// ========================================
+
+export const stockCounts = pgTable("stock_counts", {
+  id: serial("id").primaryKey(),
+  countType: varchar("count_type", { length: 20 }).notNull().default("raw_material"),
+  status: varchar("status", { length: 20 }).notNull().default("in_progress"),
+  startedBy: varchar("started_by", { length: 255 }).notNull(),
+  approvedBy: varchar("approved_by", { length: 255 }),
+  startedAt: timestamp("started_at").defaultNow(),
+  completedAt: timestamp("completed_at"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("sc_status_idx").on(table.status),
+  index("sc_type_idx").on(table.countType),
+]);
+
+export const stockCountItems = pgTable("stock_count_items", {
+  id: serial("id").primaryKey(),
+  stockCountId: integer("stock_count_id").notNull(),
+  itemType: varchar("item_type", { length: 20 }).notNull(),
+  itemId: integer("item_id").notNull(),
+  itemName: varchar("item_name", { length: 200 }).notNull(),
+  expectedQuantity: varchar("expected_quantity", { length: 50 }).notNull().default("0"),
+  countedQuantity: varchar("counted_quantity", { length: 50 }),
+  unit: varchar("unit", { length: 20 }),
+  difference: varchar("difference", { length: 50 }),
+  notes: text("notes"),
+}, (table) => [
+  index("sci_count_idx").on(table.stockCountId),
+]);

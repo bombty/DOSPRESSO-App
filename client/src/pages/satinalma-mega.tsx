@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useLocation } from "wouter";
+import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -27,18 +28,34 @@ import SatinalmaDashboard from "./satinalma/satinalma-dashboard";
 import CariTakip from "./satinalma/cari-takip";
 import MaliyetYonetimi from "./fabrika/maliyet-yonetimi";
 
-const tabs = [
+interface TabConfig {
+  id: string;
+  label: string;
+  icon: any;
+  restrictedToRoles?: string[];
+}
+
+const ALL_TABS: TabConfig[] = [
   { id: "dashboard", label: "Dashboard", icon: BarChart3 },
   { id: "stok", label: "Stok Yönetimi", icon: Package },
   { id: "tedarikci", label: "Tedarikçiler", icon: Users },
   { id: "siparis", label: "Siparişler", icon: ShoppingCart },
   { id: "mal-kabul", label: "Mal Kabul", icon: ClipboardCheck },
-  { id: "cari-takip", label: "Cari Takip", icon: CreditCard },
-  { id: "urun-maliyetleri", label: "Ürün Maliyetleri", icon: Calculator },
+  { id: "cari-takip", label: "Cari Takip", icon: CreditCard, restrictedToRoles: ['admin', 'muhasebe', 'muhasebe_ik', 'satinalma', 'ceo'] },
+  { id: "urun-maliyetleri", label: "Ürün Maliyetleri", icon: Calculator, restrictedToRoles: ['admin', 'muhasebe', 'muhasebe_ik', 'satinalma', 'ceo'] },
 ];
 
 export default function SatinalmaMega() {
   const [, setLocation] = useLocation();
+  const { user } = useAuth();
+  
+  const tabs = useMemo(() => {
+    return ALL_TABS.filter(tab => {
+      if (!tab.restrictedToRoles) return true;
+      return tab.restrictedToRoles.includes(user?.role || '');
+    });
+  }, [user?.role]);
+  
   const [activeTab, setActiveTab] = useState("dashboard");
 
   const renderTabContent = () => {

@@ -24,6 +24,7 @@ const FabrikaAIRaporlar = lazy(() => import("./ai-raporlar"));
 const FabrikaUretimPlanlama = lazy(() => import("./uretim-planlama"));
 const FabrikaMaliyetYonetimi = lazy(() => import("./maliyet-yonetimi"));
 const FabrikaVardiyaPlanlama = lazy(() => import("./vardiya-planlama"));
+const FabrikaStokSayim = lazy(() => import("./stok-sayim"));
 
 interface TabConfig {
   id: string;
@@ -84,7 +85,7 @@ const FABRIKA_TABS: TabConfig[] = [
     labelTr: "Maliyet Yönetimi",
     icon: <Calculator className="h-4 w-4" />,
     permissionModule: "factory_analytics",
-    restrictedToRoles: ['admin', 'fabrika_mudur'],
+    restrictedToRoles: ['admin', 'muhasebe', 'muhasebe_ik', 'satinalma'],
     component: FabrikaMaliyetYonetimi
   },
   {
@@ -94,6 +95,15 @@ const FABRIKA_TABS: TabConfig[] = [
     icon: <Clock className="h-4 w-4" />,
     permissionModule: "factory_stations",
     component: FabrikaVardiyaPlanlama
+  },
+  {
+    id: "stok-sayim",
+    label: "Stock Count",
+    labelTr: "Stok Sayim",
+    icon: <ClipboardList className="h-4 w-4" />,
+    permissionModule: "factory_stations",
+    restrictedToRoles: ['admin', 'fabrika_mudur'],
+    component: FabrikaStokSayim
   }
 ];
 
