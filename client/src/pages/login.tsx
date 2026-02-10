@@ -95,7 +95,7 @@ export default function Login() {
       // HQ departman rolleri için özel dashboard yönlendirmesi (shared/schema.ts ile senkronize)
       const userRole = data.user?.role;
       const departmentRoutes: Record<string, string> = {
-        'admin': '/merkez-dashboard',
+        'admin': '/',
         'ceo': '/ceo-command-center',
         'cgo': '/hq-dashboard/cgo',
         'muhasebe_ik': '/merkez-dashboard',
@@ -118,7 +118,14 @@ export default function Login() {
         return;
       }
       
-      const branchRoles = ['stajyer', 'bar_buddy', 'barista', 'supervisor_buddy', 'supervisor', 'yatirimci_branch'];
+      if (userRole === 'supervisor' || userRole === 'supervisor_buddy') {
+        setTimeout(() => {
+          navigate('/');
+        }, 100);
+        return;
+      }
+      
+      const branchRoles = ['stajyer', 'bar_buddy', 'barista', 'yatirimci_branch'];
       if (userRole && branchRoles.includes(userRole) && data.user?.branchId) {
         setTimeout(() => {
           navigate('/sube/employee-dashboard');
