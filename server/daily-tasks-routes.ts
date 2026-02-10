@@ -1,7 +1,8 @@
 import { Express, Request, Response } from "express";
 import { db } from "./db";
-import { roleTaskTemplates, roleTaskCompletions, stockCounts, stockCountItems } from "@shared/schema";
-import { eq, and, desc, sql, inArray } from "drizzle-orm";
+import { roleTaskTemplates, roleTaskCompletions, stockCounts, stockCountItems, eventTriggeredTasks } from "@shared/schema";
+import { eq, and, desc, sql, inArray, gte, or, isNull } from "drizzle-orm";
+import { resolveEventTaskForUser } from "./event-task-generator";
 
 const isAuthenticated = (req: any, res: Response, next: Function) => {
   if (!req.user) return res.status(401).json({ message: "Unauthorized" });
@@ -164,14 +165,110 @@ export function registerDailyTaskRoutes(app: Express) {
       const monthlyCompletions = await db.select().from(roleTaskCompletions)
         .where(and(eq(roleTaskCompletions.userId, userId), eq(roleTaskCompletions.periodDate, monthPeriod)));
 
+      const now = new Date();
+      const eventTasks = await db.select().from(eventTriggeredTasks)
+        .where(and(
+          eq(eventTriggeredTasks.userId, userId),
+          or(isNull(eventTriggeredTasks.expiresAt), gte(eventTriggeredTasks.expiresAt, now))
+        ));
+      const eventCompleted = eventTasks.filter(t => t.isCompleted).length;
+      const eventTotal = eventTasks.length;
+
       res.json({
-        daily: { total: dailyTemplates.length, completed: dailyCompletions.length },
+        daily: { total: dailyTemplates.length + eventTotal, completed: dailyCompletions.length + eventCompleted },
         weekly: { total: weeklyTemplates.length, completed: weeklyCompletions.length },
         monthly: { total: monthlyTemplates.length, completed: monthlyCompletions.length },
+        events: { total: eventTotal, completed: eventCompleted },
       });
     } catch (error: any) {
       console.error("Error fetching task summary:", error);
       res.status(500).json({ message: "Özet alınamadı" });
+    }
+  });
+
+  app.get('/api/daily-tasks/events', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.id;
+      const now = new Date();
+
+      const tasks = await db.select().from(eventTriggeredTasks)
+        .where(and(
+          eq(eventTriggeredTasks.userId, userId),
+          or(isNull(eventTriggeredTasks.expiresAt), gte(eventTriggeredTasks.expiresAt, now))
+        ))
+        .orderBy(eventTriggeredTasks.priority, desc(eventTriggeredTasks.createdAt))
+        .limit(50);
+
+      res.json(tasks);
+    } catch (error: any) {
+      console.error("Error fetching event tasks:", error);
+      res.status(500).json({ message: "Sistem gorevleri alinamadi" });
+    }
+  });
+
+  app.post('/api/daily-tasks/events/:id/complete', isAuthenticated, async (req: any, res) => {
+    try {
+      const taskId = parseInt(req.params.id);
+      const userId = req.user?.id;
+
+      const [updated] = await db.update(eventTriggeredTasks)
+        .set({ isCompleted: true, completedAt: new Date() })
+        .where(and(
+          eq(eventTriggeredTasks.id, taskId),
+          eq(eventTriggeredTasks.userId, userId)
+        ))
+        .returning();
+
+      if (!updated) {
+        return res.status(404).json({ message: "Gorev bulunamadi" });
+      }
+
+      res.json(updated);
+    } catch (error: any) {
+      console.error("Error completing event task:", error);
+      res.status(500).json({ message: "Gorev tamamlanamadi" });
+    }
+  });
+
+  app.post('/api/daily-tasks/events/:id/uncomplete', isAuthenticated, async (req: any, res) => {
+    try {
+      const taskId = parseInt(req.params.id);
+      const userId = req.user?.id;
+
+      const [updated] = await db.update(eventTriggeredTasks)
+        .set({ isCompleted: false, isAutoResolved: false, completedAt: null })
+        .where(and(
+          eq(eventTriggeredTasks.id, taskId),
+          eq(eventTriggeredTasks.userId, userId)
+        ))
+        .returning();
+
+      if (!updated) {
+        return res.status(404).json({ message: "Gorev bulunamadi" });
+      }
+
+      res.json(updated);
+    } catch (error: any) {
+      console.error("Error uncompleting event task:", error);
+      res.status(500).json({ message: "Islem yapilamadi" });
+    }
+  });
+
+  app.delete('/api/daily-tasks/events/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const taskId = parseInt(req.params.id);
+      const userId = req.user?.id;
+
+      await db.delete(eventTriggeredTasks)
+        .where(and(
+          eq(eventTriggeredTasks.id, taskId),
+          eq(eventTriggeredTasks.userId, userId)
+        ));
+
+      res.json({ message: "Gorev silindi" });
+    } catch (error: any) {
+      console.error("Error deleting event task:", error);
+      res.status(500).json({ message: "Gorev silinemedi" });
     }
   });
 

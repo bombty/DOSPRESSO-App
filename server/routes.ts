@@ -1,3 +1,4 @@
+import { onTaskAssigned, onTaskCompleted, onFeedbackReceived, onFaultReported, onFaultAssigned, onChecklistAssigned, resolveEventTask } from "./event-task-generator";
 import { registerDailyTaskRoutes } from "./daily-tasks-routes";
 import { registerFactoryShiftRoutes } from "./factory-shift-routes";
 import { registerHQDashboardRoutes } from "./hq-dashboard-routes";
@@ -1980,6 +1981,13 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
         console.error("Error in HQ admin notification:", hqAdminError);
       }
       
+      // Event task: notify assignee
+      if (assigneeId && assigneeId !== userId) {
+        const assigner = await storage.getUser(userId);
+        const assignerName2 = assigner?.firstName && assigner?.lastName 
+          ? `${assigner.firstName} ${assigner.lastName}` : 'Yonetici';
+        onTaskAssigned(task.id, task.description || 'Gorev', assigneeId, assignerName2);
+      }
       res.json(task);
     } catch (error: any) {
       console.error("Error starting task:", error);
@@ -2633,6 +2641,14 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
         console.error("Error sending status notification:", notifError);
       }
       
+      // Event task: notify assigner that task is completed
+      if (task.assignedById && task.assignedById !== user.id) {
+        const completedByUser = await storage.getUser(user.id);
+        const completedByName = completedByUser?.firstName || 'Calisan';
+        onTaskCompleted(task.id, task.description || 'Gorev', task.assignedById, completedByName);
+      }
+      // Auto-resolve the assigned task for the completor
+      resolveEventTask('task_assigned', task.id);
       res.json({ ...updatedTask, message: transitionMessage });
     } catch (error: any) {
       console.error("Error updating task status:", error);
@@ -3177,6 +3193,18 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
         createdById: user.id
       });
       
+      // Event task: notify assigned users about new checklist
+      try {
+        const assignedUserId = req.body.assignedToId || req.body.userId;
+        if (assignedUserId) {
+          const branchInfo = req.body.branchId ? await storage.getBranch(req.body.branchId) : null;
+          onChecklistAssigned(
+            req.body.checklistName || 'Checklist',
+            [assignedUserId],
+            branchInfo?.name
+          );
+        }
+      } catch (e) { console.error("Event task error:", e); }
       res.status(201).json(assignment);
     } catch (error: any) {
       console.error('Error creating checklist assignment:', error);
@@ -3832,6 +3860,21 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
       invalidateCache('equipment');
       invalidateCache('critical-equipment');
       
+      // Event task: notify teknik team about new fault
+      try {
+        const teknikUsers = await storage.getUsersByRole('teknik');
+        const adminUsers = await storage.getUsersByRole('admin');
+        const targetIds = [...teknikUsers, ...adminUsers].map(u => u.id);
+        if (targetIds.length > 0) {
+          const branchInfo = fault.branchId ? await storage.getBranch(fault.branchId) : null;
+          onFaultReported(
+            fault.id,
+            fault.description || 'Yeni ariza',
+            targetIds,
+            branchInfo?.name
+          );
+        }
+      } catch (e) { console.error("Event task error:", e); }
       res.json(fault);
     } catch (error: Error | unknown) {
       console.error("Error creating fault:", error);
@@ -3938,6 +3981,9 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
       if (!fault) {
         return res.status(404).json({ message: "Fault not found" });
       }
+      // Auto-resolve fault event tasks
+      resolveEventTask('fault_reported', parseInt(req.params.id));
+      resolveEventTask('fault_assigned', parseInt(req.params.id));
       res.json(fault);
     } catch (error: any) {
       console.error("Error resolving fault:", error);
@@ -14581,6 +14627,21 @@ JSON formatında yanıt ver:
         subject,
         message,
       });
+      // Event task: notify muhasebe about new feedback
+      try {
+        const muhasebeUsers = await storage.getUsersByRole('muhasebe');
+        const muhasebeIkUsers = await storage.getUsersByRole('muhasebe_ik');
+        const targetIds = [...muhasebeUsers, ...muhasebeIkUsers].map(u => u.id);
+        if (targetIds.length > 0) {
+          const branchInfo = req.body.branchId ? await storage.getBranch(req.body.branchId) : null;
+          onFeedbackReceived(
+            feedback.id || 0,
+            req.body.message || req.body.content || 'Yeni geri bildirim',
+            targetIds,
+            branchInfo?.name
+          );
+        }
+      } catch (e) { console.error("Event task error:", e); }
       res.json(feedback);
     } catch (error: Error | unknown) {
       res.status(400).json({ error: error.message });

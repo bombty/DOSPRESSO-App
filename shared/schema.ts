@@ -11618,6 +11618,33 @@ export const stockCounts = pgTable("stock_counts", {
   index("sc_type_idx").on(table.countType),
 ]);
 
+// ========================================
+// EVENT-TRIGGERED DYNAMIC TASKS
+// ========================================
+
+export const eventTriggeredTasks = pgTable("event_triggered_tasks", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id", { length: 255 }).notNull(),
+  title: varchar("title", { length: 300 }).notNull(),
+  description: text("description"),
+  icon: varchar("icon", { length: 50 }),
+  priority: integer("priority").notNull().default(2),
+  targetUrl: varchar("target_url", { length: 300 }),
+  sourceType: varchar("source_type", { length: 50 }).notNull(),
+  sourceId: integer("source_id"),
+  sourceLabel: varchar("source_label", { length: 200 }),
+  isCompleted: boolean("is_completed").notNull().default(false),
+  isAutoResolved: boolean("is_auto_resolved").notNull().default(false),
+  completedAt: timestamp("completed_at"),
+  expiresAt: timestamp("expires_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("ett_user_idx").on(table.userId),
+  index("ett_source_idx").on(table.sourceType, table.sourceId),
+  index("ett_completed_idx").on(table.isCompleted),
+  index("ett_expires_idx").on(table.expiresAt),
+]);
+
 export const stockCountItems = pgTable("stock_count_items", {
   id: serial("id").primaryKey(),
   stockCountId: integer("stock_count_id").notNull(),
