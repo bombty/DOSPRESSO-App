@@ -26,6 +26,7 @@ import {
   AlertTriangle,
   Coffee,
   CircleDot,
+  LogOut,
 } from "lucide-react";
 import logoUrl from "@assets/IMG_6637_1765138781125.png";
 
@@ -159,6 +160,16 @@ export default function SubeDashboard() {
     );
   }
 
+  const handleLogout = async () => {
+    try {
+      sessionStorage.removeItem("branchAuth");
+      await apiRequest("POST", "/api/auth/logout");
+      window.location.href = "/login";
+    } catch {
+      window.location.href = "/login";
+    }
+  };
+
   const today = new Date();
   const todayStr = today.toISOString().split("T")[0];
   const todayDayIndex = today.getDay() === 0 ? 6 : today.getDay() - 1;
@@ -248,6 +259,10 @@ export default function SubeDashboard() {
             </Link>
             <Button variant="outline" size="icon" onClick={() => refetch()} data-testid="button-refresh">
               <RefreshCw className="h-3.5 w-3.5" />
+            </Button>
+            <Button variant="outline" size="sm" onClick={handleLogout} className="gap-1.5" data-testid="button-logout">
+              <LogOut className="h-3.5 w-3.5" />
+              Cikis
             </Button>
           </div>
         </div>

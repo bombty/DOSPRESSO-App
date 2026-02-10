@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { useLocation } from "wouter";
@@ -76,7 +77,7 @@ interface CostStats {
 }
 
 export default function FabrikaDashboard() {
-  const { user } = useAuth();
+  const { user, isLoading: authLoading } = useAuth();
   const [, setLocation] = useLocation();
 
   const { data: stats, isLoading: loadingStats, refetch } = useQuery<DashboardStats>({
@@ -113,6 +114,20 @@ export default function FabrikaDashboard() {
   };
 
   const today = new Date();
+
+  useEffect(() => {
+    if (!authLoading && !user) {
+      setLocation("/login");
+    }
+  }, [authLoading, user, setLocation]);
+
+  if (authLoading || !user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+      </div>
+    );
+  }
 
   const getStationName = (stationId: number) => {
     const station = stations.find(s => s.id === stationId);

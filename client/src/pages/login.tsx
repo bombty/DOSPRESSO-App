@@ -104,11 +104,11 @@ export default function Login() {
         'marketing': '/hq-dashboard/marketing',
         'trainer': '/hq-dashboard/trainer',
         'kalite_kontrol': '/kalite-kontrol-dashboard',
-        'fabrika_mudur': '/hq-dashboard/fabrika',
+        'fabrika_mudur': '/fabrika/dashboard',
         'muhasebe': '/merkez-dashboard',
         'teknik': '/',
         'destek': '/',
-        'fabrika': '/hq-dashboard/fabrika',
+        'fabrika': '/fabrika/dashboard',
       };
       
       if (userRole && departmentRoutes[userRole]) {

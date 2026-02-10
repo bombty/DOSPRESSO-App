@@ -7,21 +7,16 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import {
-  LayoutDashboard,
-  Monitor,
   CheckCircle2,
   TrendingUp,
   Calendar,
   Brain,
   ClipboardList,
-  BarChart3,
   Factory,
   Calculator,
   Clock
 } from "lucide-react";
 
-const FabrikaDashboard = lazy(() => import("./dashboard"));
-const FabrikaKiosk = lazy(() => import("./kiosk"));
 const FabrikaKaliteKontrol = lazy(() => import("./kalite-kontrol"));
 const FabrikaPerformans = lazy(() => import("./performans"));
 const FabrikaVardiyaUyumluluk = lazy(() => import("./vardiya-uyumluluk"));
@@ -40,22 +35,6 @@ interface TabConfig {
 }
 
 const FABRIKA_TABS: TabConfig[] = [
-  {
-    id: "dashboard",
-    label: "Dashboard",
-    labelTr: "Dashboard",
-    icon: <LayoutDashboard className="h-4 w-4" />,
-    permissionModule: "factory_dashboard",
-    component: FabrikaDashboard
-  },
-  {
-    id: "kiosk",
-    label: "Kiosk",
-    labelTr: "Kiosk",
-    icon: <Monitor className="h-4 w-4" />,
-    permissionModule: "factory_kiosk",
-    component: FabrikaKiosk
-  },
   {
     id: "kalite-kontrol",
     label: "Quality Control",
@@ -140,7 +119,7 @@ export default function FabrikaMegaModule() {
     return hasPermission(user.role as any, tab.permissionModule as any, 'view');
   });
 
-  const firstVisibleTab = visibleTabs[0]?.id || "dashboard";
+  const firstVisibleTab = visibleTabs[0]?.id || "kalite-kontrol";
   
   const getTabFromPath = (path: string) => {
     const pathParts = path.split('/');
