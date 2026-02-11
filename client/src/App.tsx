@@ -93,6 +93,7 @@ import EquipmentManagement from "@/pages/yonetim/ekipman-yonetimi";
 import EkipmanServis from "@/pages/yonetim/ekipman-servis";
 import AdminAcademy from "@/pages/yonetim/akademi";
 import KaliteDenetimi from "@/pages/kalite-denetimi";
+import CoachSubeDenetim from "@/pages/coach-sube-denetim";
 import Sikayetler from "@/pages/sikayetler";
 import PublicStaffRating from "@/pages/public-staff-rating";
 import StaffQrTokensPage from "@/pages/staff-qr-tokens";
@@ -171,6 +172,8 @@ import CRMMegaModule from "@/pages/crm-mega";
 import CEOCommandCenter from "@/pages/ceo-command-center";
 import HQDashboard from "@/pages/hq-dashboard";
 import SatinalmaMega from "@/pages/satinalma-mega";
+import UrunSikayet from "@/pages/urun-sikayet";
+import SubeSaglikSkoru from "@/pages/sube-saglik-skoru";
 
 const PUBLIC_PATH_PREFIXES = [
   "/login", 
@@ -345,6 +348,7 @@ function Router() {
           <Route path="/canli-takip" component={CanliTakip} />
           <Route path="/hq-personel-durum" component={HqStaffDashboard} />
           <Route path="/kalite-denetimi" component={KaliteDenetimi} />
+          <Route path="/coach-sube-denetim" component={CoachSubeDenetim} />
           <Route path="/denetim-sablonlari" component={DenetimSablonlari} />
           <Route path="/denetimler" component={Denetimler} />
           <Route path="/denetim/:id" component={DenetimYurutme} />
@@ -380,6 +384,8 @@ function Router() {
           <Route path="/hq-dashboard/:department?">{() => <HQOnly><HQDashboard /></HQOnly>}</Route>
           <Route path="/kalite-kontrol-dashboard">{() => <HQOnly><KaliteKontrolDashboard /></HQOnly>}</Route>
           <Route path="/satinalma/:tab?" component={SatinalmaMega} />
+          <Route path="/urun-sikayet" component={UrunSikayet} />
+          <Route path="/sube-saglik-skoru" component={SubeSaglikSkoru} />
         </>
       )}
       

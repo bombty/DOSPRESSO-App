@@ -6,6 +6,7 @@ import { registerCRMRoutes } from "./crm-routes";
 import { registerSatinalmaRoutes } from "./satinalma-routes";
 import type { Express } from "express";
 import { registerMaliyetRoutes } from "./maliyet-routes";
+import { registerInspectionRoutes } from "./inspection-routes";
 import { registerExportRoutes } from "./export-routes";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
@@ -34747,6 +34748,7 @@ ${["yatirimci_hq", "yatirimci_branch"].includes(role) ? "- Yatirimci olarak sade
   registerMaliyetRoutes(app, isAuthenticated);
   registerFactoryShiftRoutes(app);
   registerExportRoutes(app);
+  registerInspectionRoutes(app);
   const httpServer = createServer(app);
   return httpServer;
 }

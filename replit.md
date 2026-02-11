@@ -67,6 +67,10 @@ The frontend utilizes React 18+ with TypeScript and Vite, employing Shadcn/ui (N
 - **Branch Dashboard**: Comprehensive dashboard with real-time stats, alert management, kiosk mode access, and quick access buttons.
 - **PDF Generation**: Uses jsPDF with Helvetica font and Turkish character sanitization.
 - **Employee of Month System**: Complete implementation with multi-criteria scoring, manager evaluation, branch-specific visibility, and dedicated dashboards/reports.
+- **Branch Inspection System (Coach)**: 8-category branch audit system (dış mekan, bina görünüş, bar düzeni, depo, ürün sunumu, personel davranış, dress code, temizlik) with weighted scoring, checkbox-based item evaluation, per-category notes, and photo documentation. Coach-only creation permission.
+- **Product Complaint System**: Branch-to-factory product complaint workflow. Branch staff report quality issues (taste, appearance, packaging, freshness, etc.), complaints auto-route to kalite_kontrol role. Includes severity levels, status tracking, and resolution documentation.
+- **Branch Health Score Dashboard**: Aggregated branch health visualization combining inspection scores, product complaint stats, and category averages. Includes AI-powered summary generation per branch using OpenAI.
+- **Role Separation**: Coach handles branch inspections + guest QR ratings, Trainer handles recipes + training, Kalite Kontrol handles factory product QC + product complaints from branches.
 
 ## External Dependencies
 ### Third-Party Services

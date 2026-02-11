@@ -287,7 +287,10 @@ export type PermissionModule =
   | 'purchase_orders'
   | 'goods_receipt'
   // Cost management
-  | 'cost_management';
+  | 'cost_management'
+  // Branch inspection & product complaints
+  | 'branch_inspection'
+  | 'product_complaints';
 
 // Path to Permission Module mapping - Merkezi tanım
 // Dashboard modülleri için URL path'lerini permission modüllerine eşleştirir
@@ -371,6 +374,11 @@ export const PATH_TO_PERMISSION_MAP: Record<string, PermissionModule> = {
   
   // Cost Management
   '/fabrika/maliyet-yonetimi': 'cost_management',
+  
+  // Branch Inspection & Product Complaints
+  '/coach-sube-denetim': 'branch_inspection',
+  '/sube-saglik-skoru': 'branch_inspection',
+  '/urun-sikayet': 'product_complaints',
   '/maliyet-yonetimi': 'cost_management',
 };
 
@@ -427,6 +435,8 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     purchase_orders: ['view', 'create', 'edit', 'delete', 'approve'],
     goods_receipt: ['view', 'create', 'edit', 'delete'],
     cost_management: ['view', 'create', 'edit', 'delete'],
+    branch_inspection: ['view', 'create', 'edit', 'delete', 'approve'],
+    product_complaints: ['view', 'create', 'edit', 'delete', 'approve'],
     // Academy modules - Admin full access
     academy: ['view', 'create', 'edit', 'delete'],
     academy_admin: ['view', 'create', 'edit', 'delete'],
@@ -515,6 +525,8 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     purchase_orders: ['view'],
     goods_receipt: ['view'],
     cost_management: ['view'],
+    branch_inspection: [],
+    product_complaints: [],
   },
   satinalma: {
     dashboard: ['view'],
@@ -585,6 +597,8 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     purchase_orders: ['view', 'create', 'edit', 'delete', 'approve'],
     goods_receipt: ['view', 'create', 'edit', 'delete'],
     cost_management: ['view', 'create', 'edit', 'delete'],
+    branch_inspection: [],
+    product_complaints: [],
   },
   coach: {
     dashboard: ['view'],
@@ -612,6 +626,8 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     bulk_data: ['view', 'edit'],
     accounting: [],
     customer_satisfaction: ['view', 'create', 'edit', 'approve'],
+    branch_inspection: ['view', 'create', 'edit', 'approve'],
+    product_complaints: ['view'],
     // New modules
     lost_found: ['view', 'create', 'edit'],
     lost_found_hq: ['view'],
@@ -706,6 +722,8 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     purchase_orders: [],
     goods_receipt: [],
     cost_management: [],
+    branch_inspection: [],
+    product_complaints: [],
     // Academy modules - HQ access
     academy: ['view'],
     academy_admin: ['view'],
@@ -775,6 +793,8 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     purchase_orders: [],
     goods_receipt: [],
     cost_management: [],
+    branch_inspection: [],
+    product_complaints: [],
     // Academy modules - destek access
     academy: ['view'],
     academy_admin: ['view'],
@@ -844,6 +864,8 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     purchase_orders: [],
     goods_receipt: [],
     cost_management: [],
+    branch_inspection: [],
+    product_complaints: [],
 
     // Academy modules - HQ access
     academy: ['view', 'create', 'edit'],
@@ -914,6 +936,8 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     purchase_orders: [],
     goods_receipt: [],
     cost_management: [],
+    branch_inspection: [],
+    product_complaints: [],
     // Academy modules - HQ read access
     academy: ['view'],
     academy_admin: [],
@@ -960,6 +984,8 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     bulk_data: [],
     accounting: [],
     customer_satisfaction: ['view', 'create', 'edit'],
+    branch_inspection: ['view'],
+    product_complaints: ['view', 'create'],
     // New modules
     lost_found: ['view', 'create', 'edit'],
     lost_found_hq: [],
@@ -1054,6 +1080,8 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     purchase_orders: [],
     goods_receipt: [],
     cost_management: [],
+    branch_inspection: [],
+    product_complaints: [],
     // Academy modules
     academy: ['view'],
     academy_admin: [],
@@ -1141,6 +1169,8 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     purchase_orders: [],
     goods_receipt: [],
     cost_management: [],
+    branch_inspection: [],
+    product_complaints: [],
   },
   bar_buddy: {
     dashboard: ['view'],
@@ -1210,6 +1240,8 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     purchase_orders: [],
     goods_receipt: [],
     cost_management: [],
+    branch_inspection: [],
+    product_complaints: [],
   },
   stajyer: {
     dashboard: ['view'],
@@ -1279,6 +1311,8 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     purchase_orders: [],
     goods_receipt: [],
     cost_management: [],
+    branch_inspection: [],
+    product_complaints: [],
   },
   yatirimci_branch: {
     dashboard: ['view'],
@@ -1349,6 +1383,8 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     purchase_orders: [],
     goods_receipt: [],
     cost_management: [],
+    branch_inspection: [],
+    product_complaints: [],
   },
   // CEO - Full read access
   ceo: {
@@ -1416,6 +1452,8 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     purchase_orders: ['view'],
     goods_receipt: ['view'],
     cost_management: ['view'],
+    branch_inspection: ['view'],
+    product_complaints: ['view'],
   },
   // CGO - Chief Growth Officer
   cgo: {
@@ -1483,6 +1521,8 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     purchase_orders: ['view'],
     goods_receipt: ['view'],
     cost_management: ['view'],
+    branch_inspection: ['view'],
+    product_complaints: ['view'],
   },
   // MUHASEBE_IK - Muhasebe & İK
   muhasebe_ik: {
@@ -1550,6 +1590,8 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     purchase_orders: ['view'],
     goods_receipt: ['view'],
     cost_management: ['view', 'create', 'edit'],
+    branch_inspection: [],
+    product_complaints: [],
   },
   // MARKETING - Pazarlama
   marketing: {
@@ -1617,6 +1659,8 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     purchase_orders: [],
     goods_receipt: [],
     cost_management: [],
+    branch_inspection: [],
+    product_complaints: [],
   },
   // TRAINER - Eğitim Sorumlusu
   trainer: {
@@ -1684,6 +1728,8 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     purchase_orders: [],
     goods_receipt: [],
     cost_management: [],
+    branch_inspection: [],
+    product_complaints: [],
   },
   // KALITE_KONTROL - Kalite Kontrol
   kalite_kontrol: {
@@ -1712,6 +1758,8 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     bulk_data: [],
     accounting: [],
     customer_satisfaction: ['view', 'edit'],
+    branch_inspection: ['view'],
+    product_complaints: ['view', 'create', 'edit', 'approve'],
     lost_found: [],
     lost_found_hq: [],
     projects: [],
@@ -1818,6 +1866,8 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     purchase_orders: ['view'],
     goods_receipt: ['view', 'create', 'edit'],
     cost_management: ['view', 'create', 'edit'],
+    branch_inspection: [],
+    product_complaints: [],
   },
   // FABRIKA_OPERATOR - Fabrika Operatör
   fabrika_operator: {
@@ -1885,6 +1935,8 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     purchase_orders: [],
     goods_receipt: ['view'],
     cost_management: ['view'],
+    branch_inspection: [],
+    product_complaints: [],
   },
   fabrika_sorumlu: {
     dashboard: ['view'],
@@ -1951,6 +2003,8 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     purchase_orders: [],
     goods_receipt: ['view'],
     cost_management: ['view'],
+    branch_inspection: [],
+    product_complaints: [],
   },
   fabrika_personel: {
     dashboard: ['view'],
@@ -2017,6 +2071,8 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     purchase_orders: [],
     goods_receipt: ['view'],
     cost_management: ['view'],
+    branch_inspection: [],
+    product_complaints: [],
   },
 };
 
@@ -5580,12 +5636,22 @@ export const branchQualityAudits = pgTable("branch_quality_audits", {
   safetyComplianceScore: integer("safety_compliance_score").notNull(), // Güvenlik uyumu
   equipmentMaintenanceScore: integer("equipment_maintenance_score").notNull(), // Ekipman bakım
   
+  // Expanded Coach Inspection Categories (0-100 each)
+  exteriorScore: integer("exterior_score").default(0), // Dış mekan
+  buildingAppearanceScore: integer("building_appearance_score").default(0), // Bina görünüş
+  barLayoutScore: integer("bar_layout_score").default(0), // Bar düzeni
+  storageScore: integer("storage_score").default(0), // Depo tamamlığı
+  productPresentationScore: integer("product_presentation_score").default(0), // Ürün sunumu
+  dressCodeScore: integer("dress_code_score").default(0), // Personel dress code
+  
   // Overall
   overallScore: integer("overall_score").notNull(), // Weighted average
   
   // Notes and actions
   notes: text("notes"),
   actionItems: text("action_items"), // JSON array of required actions
+  categoryNotes: text("category_notes"), // JSON: { "exterior": "note", ... }
+  photoUrls: text("photo_urls"), // JSON array of photo URLs
   followUpRequired: boolean("follow_up_required").notNull().default(false),
   followUpDate: date("follow_up_date"),
   
@@ -5611,11 +5677,59 @@ export const insertBranchQualityAuditSchema = createInsertSchema(branchQualityAu
   staffBehaviorScore: z.number().int().min(0).max(100),
   safetyComplianceScore: z.number().int().min(0).max(100),
   equipmentMaintenanceScore: z.number().int().min(0).max(100),
+  exteriorScore: z.number().int().min(0).max(100).optional(),
+  buildingAppearanceScore: z.number().int().min(0).max(100).optional(),
+  barLayoutScore: z.number().int().min(0).max(100).optional(),
+  storageScore: z.number().int().min(0).max(100).optional(),
+  productPresentationScore: z.number().int().min(0).max(100).optional(),
+  dressCodeScore: z.number().int().min(0).max(100).optional(),
   overallScore: z.number().int().min(0).max(100),
 });
 
 export type InsertBranchQualityAudit = z.infer<typeof insertBranchQualityAuditSchema>;
 export type BranchQualityAudit = typeof branchQualityAudits.$inferSelect;
+
+// ========================================
+// PRODUCT COMPLAINTS - Ürün Şikayetleri (Şube → Kalite Kontrol)
+// ========================================
+
+export const productComplaints = pgTable("product_complaints", {
+  id: serial("id").primaryKey(),
+  branchId: integer("branch_id").notNull().references(() => branches.id, { onDelete: "cascade" }),
+  reportedById: varchar("reported_by_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  assignedToId: varchar("assigned_to_id").references(() => users.id, { onDelete: "set null" }),
+
+  productName: varchar("product_name", { length: 255 }).notNull(),
+  batchNumber: varchar("batch_number", { length: 100 }),
+  complaintType: varchar("complaint_type", { length: 50 }).notNull(), // taste, appearance, packaging, freshness, foreign_object, other
+  severity: varchar("severity", { length: 20 }).notNull().default("medium"), // low, medium, high, critical
+  description: text("description").notNull(),
+  photoUrls: text("photo_urls"), // JSON array
+  
+  status: varchar("status", { length: 30 }).notNull().default("new"), // new, investigating, resolved, rejected
+  resolution: text("resolution"),
+  resolvedById: varchar("resolved_by_id").references(() => users.id, { onDelete: "set null" }),
+  resolvedAt: timestamp("resolved_at"),
+
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("product_complaints_branch_idx").on(table.branchId),
+  index("product_complaints_status_idx").on(table.status),
+  index("product_complaints_assigned_idx").on(table.assignedToId),
+  index("product_complaints_created_idx").on(table.createdAt),
+]);
+
+export const insertProductComplaintSchema = createInsertSchema(productComplaints).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  resolvedAt: true,
+  status: true,
+});
+
+export type InsertProductComplaint = z.infer<typeof insertProductComplaintSchema>;
+export type ProductComplaint = typeof productComplaints.$inferSelect;
 
 // ========================================
 // EMPLOYEE DOCUMENTS - Özlük Dosyası Belgeleri
