@@ -5619,6 +5619,39 @@ export type InsertEmployeePerformanceScore = z.infer<typeof insertEmployeePerfor
 export type EmployeePerformanceScore = typeof employeePerformanceScores.$inferSelect;
 
 // ========================================
+// STAFF EVALUATIONS - Personel Değerlendirme Sistemi
+// ========================================
+
+export const staffEvaluations = pgTable("staff_evaluations", {
+  id: serial("id").primaryKey(),
+  employeeId: varchar("employee_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  evaluatorId: varchar("evaluator_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  evaluatorRole: varchar("evaluator_role", { length: 50 }).notNull(),
+  branchId: integer("branch_id").references(() => branches.id),
+  inspectionId: integer("inspection_id"),
+  customerBehavior: integer("customer_behavior").notNull().default(3),
+  friendliness: integer("friendliness").notNull().default(3),
+  knowledgeExperience: integer("knowledge_experience").notNull().default(3),
+  dressCode: integer("dress_code").notNull().default(3),
+  cleanliness: integer("cleanliness").notNull().default(3),
+  teamwork: integer("teamwork").notNull().default(3),
+  punctuality: integer("punctuality").notNull().default(3),
+  initiative: integer("initiative").notNull().default(3),
+  overallScore: real("overall_score").notNull().default(0),
+  notes: text("notes"),
+  evaluationType: varchar("evaluation_type", { length: 30 }).notNull().default("standard"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertStaffEvaluationSchema = createInsertSchema(staffEvaluations).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertStaffEvaluation = z.infer<typeof insertStaffEvaluationSchema>;
+export type StaffEvaluation = typeof staffEvaluations.$inferSelect;
+
+// ========================================
 // BRANCH QUALITY AUDITS - Şube Kalite Denetim Puanlama
 // ========================================
 

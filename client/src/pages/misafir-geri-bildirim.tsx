@@ -1105,33 +1105,43 @@ export default function MisafirGeriBildirim() {
                 </div>
               )}
 
-              {/* Contact Info (if not anonymous) */}
-              {!isAnonymous && (
+              {/* Contact Info (if not anonymous OR if requires contact) */}
+              {(!isAnonymous || requiresContact) && (
                 <div className="space-y-4 border-t pt-4">
-                  <p className="text-sm font-medium text-amber-800">{t.contactInfo}</p>
+                  <p className="text-sm font-medium text-amber-800">
+                    {t.contactInfo}
+                    {requiresContact && isAnonymous && (
+                      <span className="ml-2 text-xs text-blue-600">
+                        ({t.requiresContactDesc})
+                      </span>
+                    )}
+                  </p>
+                  {!isAnonymous && (
+                    <div className="space-y-2">
+                      <Label htmlFor="name">{t.name}</Label>
+                      <Input
+                        id="name"
+                        value={customerName}
+                        onChange={(e) => setCustomerName(e.target.value)}
+                        placeholder={t.namePlaceholder}
+                        data-testid="input-name"
+                      />
+                    </div>
+                  )}
                   <div className="space-y-2">
-                    <Label htmlFor="name">{t.name}</Label>
-                    <Input
-                      id="name"
-                      value={customerName}
-                      onChange={(e) => setCustomerName(e.target.value)}
-                      placeholder={t.namePlaceholder}
-                      data-testid="input-name"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="email">{t.email}</Label>
+                    <Label htmlFor="email">{t.email} {requiresContact && <span className="text-red-500">*</span>}</Label>
                     <Input
                       id="email"
                       type="email"
                       value={customerEmail}
                       onChange={(e) => setCustomerEmail(e.target.value)}
                       placeholder={t.emailPlaceholder}
+                      required={requiresContact}
                       data-testid="input-email"
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="phone">{t.phone}</Label>
+                    <Label htmlFor="phone">{t.phone} {requiresContact && <span className="text-red-500">*</span>}</Label>
                     <Input
                       id="phone"
                       value={customerPhone}

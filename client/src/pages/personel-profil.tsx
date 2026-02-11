@@ -15,8 +15,9 @@ import { ObjectUploader } from "@/components/ObjectUploader";
 import { 
   User, Calendar, Award, ClipboardCheck, Users,
   Clock, TrendingUp, AlertCircle, CheckCircle2, XCircle, LogOut, Camera, Trash2, Wallet, Banknote, 
-  Timer, Plus, Loader2, Shield
+  Timer, Plus, Loader2, Shield, Star, BookOpen, Target, Eye, Sparkles
 } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
@@ -142,6 +143,96 @@ export default function PersonelProfilPage() {
     enabled: !!id && canViewSalary,
   });
 
+  // Performance summary
+  type PerformanceSummary = {
+    attendanceRate: number;
+    taskCompletion: number;
+    checklistScore: number;
+    trainingProgress: number;
+    inspectionScore: number;
+    evaluationScore: number;
+    overallScore: number;
+  };
+
+  const { data: perfSummary } = useQuery<PerformanceSummary>({
+    queryKey: ['/api/personnel', id, 'performance-summary'],
+    queryFn: async () => {
+      const res = await fetch(`/api/personnel/${id}/performance-summary`, { credentials: 'include' });
+      if (!res.ok) throw new Error(await res.text());
+      return res.json();
+    },
+    enabled: !!id && !!profile,
+  });
+
+  // Evaluations
+  type StaffEvaluation = {
+    id: number;
+    employeeId: string;
+    evaluatorId: string;
+    evaluatorRole: string;
+    evaluatorName: string;
+    customerBehavior: number;
+    friendliness: number;
+    knowledgeExperience: number;
+    dressCode: number;
+    cleanliness: number;
+    teamwork: number;
+    punctuality: number;
+    initiative: number;
+    overallScore: number;
+    notes: string | null;
+    evaluationType: string;
+    createdAt: string;
+  };
+
+  type EvaluationResponse = {
+    evaluations: StaffEvaluation[];
+    averageScore: number;
+  };
+
+  const { data: evalData } = useQuery<EvaluationResponse>({
+    queryKey: ['/api/staff-evaluations', id],
+    queryFn: async () => {
+      const res = await fetch(`/api/staff-evaluations/${id}`, { credentials: 'include' });
+      if (!res.ok) throw new Error(await res.text());
+      return res.json();
+    },
+    enabled: !!id,
+  });
+
+  const [evalDialogOpen, setEvalDialogOpen] = useState(false);
+  const [evalForm, setEvalForm] = useState({
+    customerBehavior: 3,
+    friendliness: 3,
+    knowledgeExperience: 3,
+    dressCode: 3,
+    cleanliness: 3,
+    teamwork: 3,
+    punctuality: 3,
+    initiative: 3,
+    notes: "",
+    evaluationType: "standard",
+  });
+
+  const createEvalMutation = useMutation({
+    mutationFn: async (data: typeof evalForm & { employeeId: string }) => {
+      return apiRequest("POST", "/api/staff-evaluations", data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/staff-evaluations', id] });
+      queryClient.invalidateQueries({ queryKey: ['/api/personnel', id, 'performance-summary'] });
+      setEvalDialogOpen(false);
+      setEvalForm({
+        customerBehavior: 3, friendliness: 3, knowledgeExperience: 3, dressCode: 3,
+        cleanliness: 3, teamwork: 3, punctuality: 3, initiative: 3, notes: "", evaluationType: "standard",
+      });
+      toast({ title: "Değerlendirme kaydedildi" });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Hata", description: error.message, variant: "destructive" });
+    },
+  });
+
   // Overtime request state
   const [overtimeMinutes, setOvertimeMinutes] = useState<string>("");
   const [overtimeReason, setOvertimeReason] = useState<string>("");
@@ -207,6 +298,46 @@ export default function PersonelProfilPage() {
     createOvertimeMutation.mutate({ requestedMinutes: minutes, reason: overtimeReason.trim() });
   };
 
+  type AIRecommendations = {
+    weakAreas: string[];
+    recommendations: string[];
+    targetPlan: string[];
+    overallAdvice: string;
+    levelRisk: boolean;
+  };
+
+  const [aiRecsRequested, setAiRecsRequested] = useState(false);
+  const { data: aiRecs, isLoading: isLoadingAiRecs, error: aiRecsError } = useQuery<AIRecommendations>({
+    queryKey: ['/api/personnel', id, 'ai-recommendations'],
+    queryFn: async () => {
+      const res = await fetch(`/api/personnel/${id}/ai-recommendations`, { credentials: 'include' });
+      if (!res.ok) throw new Error(await res.text());
+      return res.json();
+    },
+    enabled: !!id && aiRecsRequested,
+  });
+
+  type LeaveSalarySummary = {
+    annualLeaveTotal: number;
+    usedLeave: number;
+    remainingLeave: number;
+    renewalDate: string;
+    unpaidLeaveDays: number;
+    latenessCount: number;
+    baseSalary: number | null;
+    canViewSalary: boolean;
+  };
+
+  const { data: leaveSalary } = useQuery<LeaveSalarySummary>({
+    queryKey: ['/api/personnel', id, 'leave-salary-summary'],
+    queryFn: async () => {
+      const res = await fetch(`/api/personnel/${id}/leave-salary-summary`, { credentials: 'include' });
+      if (!res.ok) throw new Error(await res.text());
+      return res.json();
+    },
+    enabled: !!id && !!profile,
+  });
+
   if (isLoading) {
     return (
       <div className="flex flex-col gap-3 sm:gap-4 p-3">
@@ -232,6 +363,8 @@ export default function PersonelProfilPage() {
 
   const performanceScore = profile.performanceScore || 0;
   const attendanceRate = profile.attendanceRate || 0;
+
+  const canEvaluate = user?.role === 'coach' || user?.role === 'admin' || user?.role === 'supervisor' || user?.role === 'yatirimci_hq';
 
   return (
     <div className="min-h-screen pb-20">
@@ -322,35 +455,205 @@ export default function PersonelProfilPage() {
         </div>
 
       {/* Performance Overview Card */}
-      <Card className="border-2">
+      {(() => {
+        const overall = perfSummary?.overallScore ?? performanceScore;
+        const scoreColor = overall >= 75 ? "text-emerald-500" : overall >= 65 ? "text-amber-500" : "text-red-500";
+        const ringColor = overall >= 75 ? "stroke-emerald-500" : overall >= 65 ? "stroke-amber-500" : "stroke-red-500";
+        const metrics = [
+          { label: "Devam Oranı", value: perfSummary?.attendanceRate ?? attendanceRate, weight: "15%", icon: Clock },
+          { label: "Görev Tamamlama", value: perfSummary?.taskCompletion ?? 0, weight: "20%", icon: Target },
+          { label: "Checklist Skoru", value: perfSummary?.checklistScore ?? 0, weight: "20%", icon: ClipboardCheck },
+          { label: "Eğitim İlerlemesi", value: perfSummary?.trainingProgress ?? 0, weight: "10%", icon: BookOpen },
+          { label: "Denetim Puanı", value: perfSummary?.inspectionScore ?? 0, weight: "15%", icon: Eye },
+          { label: "Değerlendirme Puanı", value: perfSummary?.evaluationScore ?? 0, weight: "20%", icon: Star },
+        ];
+        const circumference = 2 * Math.PI * 54;
+        const strokeDashoffset = circumference - (overall / 100) * circumference;
+
+        return (
+          <Card className="border-2" data-testid="card-performance-overview">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Award className="h-4 w-4 text-primary" />
+                Genel Performans
+              </CardTitle>
+              <CardDescription>Son 30 günlük performans özeti</CardDescription>
+            </CardHeader>
+            <CardContent className="w-full space-y-4">
+              <div className="flex flex-col items-center gap-3">
+                <div className="relative w-32 h-32">
+                  <svg className="w-full h-full -rotate-90" viewBox="0 0 120 120">
+                    <circle cx="60" cy="60" r="54" fill="none" strokeWidth="8" className="stroke-muted/30" />
+                    <circle cx="60" cy="60" r="54" fill="none" strokeWidth="8" className={ringColor}
+                      strokeLinecap="round" strokeDasharray={circumference} strokeDashoffset={strokeDashoffset}
+                      style={{ transition: "stroke-dashoffset 0.5s ease" }} />
+                  </svg>
+                  <div className="absolute inset-0 flex flex-col items-center justify-center">
+                    <span className={`text-3xl font-bold ${scoreColor}`} data-testid="performance-score">
+                      {overall.toFixed(0)}
+                    </span>
+                    <span className="text-xs text-muted-foreground">Genel Skor</span>
+                  </div>
+                </div>
+
+                {overall < 65 && (
+                  <Badge variant="destructive" data-testid="badge-critical-warning">
+                    <AlertCircle className="h-3 w-3 mr-1" />
+                    Kritik: Seviye düşüşü riski!
+                  </Badge>
+                )}
+                {overall >= 65 && overall < 75 && (
+                  <Badge variant="secondary" className="bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300" data-testid="badge-warning">
+                    <AlertCircle className="h-3 w-3 mr-1" />
+                    Dikkat: Skorunuz düşük, iyileştirme gerekli
+                  </Badge>
+                )}
+              </div>
+
+              <div className="w-full space-y-3">
+                {metrics.map((m) => {
+                  const mColor = m.value >= 75 ? "text-emerald-600" : m.value >= 65 ? "text-amber-600" : "text-red-600";
+                  return (
+                    <div key={m.label} data-testid={`metric-${m.label.toLowerCase().replace(/\s+/g, '-')}`}>
+                      <div className="flex items-center justify-between gap-2 mb-1">
+                        <div className="flex items-center gap-1.5 text-sm">
+                          <m.icon className="h-3.5 w-3.5 text-muted-foreground" />
+                          <span className="font-medium">{m.label}</span>
+                          <span className="text-xs text-muted-foreground">({m.weight})</span>
+                        </div>
+                        <span className={`text-sm font-semibold ${mColor}`}>{m.value.toFixed(0)}%</span>
+                      </div>
+                      <Progress value={m.value} className="h-2" />
+                    </div>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
+        );
+      })()}
+
+      {/* AI Performance Coach Card */}
+      <Card data-testid="card-ai-performance-coach">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Award className="h-4 w-4 text-primary" />
-            Genel Performans
+            <Sparkles className="h-4 w-4 text-primary" />
+            AI Performans Koçu
           </CardTitle>
-          <CardDescription>Son 30 günlük performans özeti</CardDescription>
+          <CardDescription>Yapay zeka destekli kişisel performans analizi ve öneriler</CardDescription>
         </CardHeader>
-        <CardContent className="w-full space-y-2 sm:space-y-3">
-          <div className="w-full space-y-2 sm:space-y-3">
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium">Performans Skoru</span>
-                <span className="text-2xl font-bold" data-testid="performance-score">
-                  {performanceScore.toFixed(1)}
-                </span>
-              </div>
-              <Progress value={performanceScore} className="h-2" />
+        <CardContent className="space-y-4">
+          {!aiRecs && !isLoadingAiRecs && (
+            <Button
+              onClick={() => setAiRecsRequested(true)}
+              data-testid="button-get-ai-recommendations"
+              className="w-full"
+            >
+              <Sparkles className="h-4 w-4 mr-2" />
+              Öneriler Al
+            </Button>
+          )}
+
+          {isLoadingAiRecs && (
+            <div className="flex items-center justify-center gap-2 py-6" data-testid="ai-recommendations-loading">
+              <Loader2 className="h-5 w-5 animate-spin text-primary" />
+              <span className="text-sm text-muted-foreground">AI analiz yapıyor...</span>
             </div>
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium">Devam Oranı</span>
-                <span className="text-2xl font-bold" data-testid="attendance-rate">
-                  {attendanceRate.toFixed(0)}%
-                </span>
-              </div>
-              <Progress value={attendanceRate} className="h-2" />
+          )}
+
+          {aiRecsError && (
+            <div className="text-sm text-destructive text-center py-4" data-testid="ai-recommendations-error">
+              Öneriler yüklenirken hata oluştu. Lütfen tekrar deneyin.
+              <Button
+                variant="outline"
+                size="sm"
+                className="mt-2 w-full"
+                onClick={() => {
+                  setAiRecsRequested(false);
+                  setTimeout(() => setAiRecsRequested(true), 100);
+                }}
+                data-testid="button-retry-ai-recommendations"
+              >
+                Tekrar Dene
+              </Button>
             </div>
-          </div>
+          )}
+
+          {aiRecs && (
+            <div className="space-y-4" data-testid="ai-recommendations-content">
+              {aiRecs.levelRisk && (
+                <div className="p-3 rounded-md bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800" data-testid="ai-level-risk-warning">
+                  <div className="flex items-start gap-2">
+                    <AlertCircle className="h-4 w-4 text-red-600 dark:text-red-400 mt-0.5 shrink-0" />
+                    <div>
+                      <p className="text-sm font-semibold text-red-700 dark:text-red-400">Kritik Uyarı</p>
+                      <p className="text-sm text-red-600 dark:text-red-300">
+                        Seviye düşüşü riski! Bir sonraki ayda seviyeniz düşebilir ve priminiz azalabilir.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {!aiRecs.levelRisk && perfSummary && perfSummary.overallScore < 75 && (
+                <div className="p-3 rounded-md bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800" data-testid="ai-score-warning">
+                  <div className="flex items-start gap-2">
+                    <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
+                    <p className="text-sm text-amber-700 dark:text-amber-300">
+                      Performans skorunuz düşük. Aşağıdaki önerilere dikkat ederek seviyenizi koruyabilirsiniz.
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {aiRecs.weakAreas.length > 0 && (
+                <div data-testid="ai-weak-areas">
+                  <p className="text-sm font-semibold mb-2">Zayıf Alanlar</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {aiRecs.weakAreas.map((area, i) => (
+                      <Badge key={i} variant="destructive" data-testid={`badge-weak-area-${i}`}>
+                        {area}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {aiRecs.recommendations.length > 0 && (
+                <div data-testid="ai-recommendations-list">
+                  <p className="text-sm font-semibold mb-2">İyileştirme Önerileri</p>
+                  <ol className="space-y-1.5 pl-4 list-decimal">
+                    {aiRecs.recommendations.map((rec, i) => (
+                      <li key={i} className="text-sm text-muted-foreground" data-testid={`text-recommendation-${i}`}>
+                        {rec}
+                      </li>
+                    ))}
+                  </ol>
+                </div>
+              )}
+
+              {aiRecs.targetPlan.length > 0 && (
+                <div data-testid="ai-target-plan">
+                  <p className="text-sm font-semibold mb-2">Hedef Plan</p>
+                  <ul className="space-y-1.5">
+                    {aiRecs.targetPlan.map((item, i) => (
+                      <li key={i} className="flex items-start gap-2 text-sm" data-testid={`text-target-plan-${i}`}>
+                        <CheckCircle2 className="h-4 w-4 text-emerald-500 mt-0.5 shrink-0" />
+                        <span className="text-muted-foreground">{item}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {aiRecs.overallAdvice && (
+                <div className="p-3 rounded-md bg-muted/50" data-testid="ai-overall-advice">
+                  <p className="text-sm font-medium mb-1">Genel Tavsiye</p>
+                  <p className="text-sm text-muted-foreground">{aiRecs.overallAdvice}</p>
+                </div>
+              )}
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -500,6 +803,7 @@ export default function PersonelProfilPage() {
             <TabsTrigger value="mesai" data-testid="tab-overtime" className="flex-1 min-w-fit">Mesai Talepleri</TabsTrigger>
           )}
           <TabsTrigger value="akademi" data-testid="tab-academy" className="flex-1 min-w-fit">Akademi</TabsTrigger>
+          <TabsTrigger value="degerlendirmeler" data-testid="tab-evaluations" className="flex-1 min-w-fit">Değerlendirmeler</TabsTrigger>
         </TabsList>
 
         <TabsContent value="bilgiler" className="flex flex-col gap-3">
@@ -554,6 +858,117 @@ export default function PersonelProfilPage() {
               </div>
             </CardContent>
           </Card>
+
+          {/* Leave & Salary Card */}
+          {leaveSalary && (
+            <Card data-testid="card-leave-salary">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Calendar className="h-4 w-4 text-primary" />
+                  İzin & Maaş Bilgileri
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-5">
+                <div data-testid="leave-info-section">
+                  <p className="text-sm font-semibold mb-3">İzin Durumu</p>
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Yıllık İzin Hakkı</p>
+                      <p className="text-base font-medium" data-testid="text-annual-leave-total">{leaveSalary.annualLeaveTotal} gün</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">Kullanılan İzin</p>
+                      <p className="text-base font-medium" data-testid="text-used-leave">{leaveSalary.usedLeave} gün</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">Kalan İzin</p>
+                      <p className="text-base font-medium" data-testid="text-remaining-leave">
+                        <Badge variant={leaveSalary.remainingLeave <= 3 ? "destructive" : "secondary"}>
+                          {leaveSalary.remainingLeave} gün
+                        </Badge>
+                      </p>
+                    </div>
+                    {leaveSalary.renewalDate && (
+                      <div>
+                        <p className="text-sm text-muted-foreground">Yıllık İzin Yenilenme</p>
+                        <p className="text-base font-medium" data-testid="text-renewal-date">{leaveSalary.renewalDate}</p>
+                      </div>
+                    )}
+                    <div>
+                      <p className="text-sm text-muted-foreground">Ücretsiz İzin Günleri</p>
+                      <p className="text-base font-medium" data-testid="text-unpaid-leave">{leaveSalary.unpaidLeaveDays} gün</p>
+                    </div>
+                  </div>
+                  <div className="mt-3">
+                    <div className="flex items-center justify-between gap-2 mb-1">
+                      <span className="text-sm text-muted-foreground">İzin Kullanım Oranı</span>
+                      <span className="text-sm font-medium">{leaveSalary.annualLeaveTotal > 0 ? Math.round((leaveSalary.usedLeave / leaveSalary.annualLeaveTotal) * 100) : 0}%</span>
+                    </div>
+                    <Progress value={leaveSalary.annualLeaveTotal > 0 ? (leaveSalary.usedLeave / leaveSalary.annualLeaveTotal) * 100 : 0} className="h-2" />
+                  </div>
+                </div>
+
+                {leaveSalary.canViewSalary && leaveSalary.baseSalary !== null && (
+                  <div data-testid="salary-info-section">
+                    <p className="text-sm font-semibold mb-3">Maaş Özeti</p>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <p className="text-sm text-muted-foreground">Temel Maaş</p>
+                        <p className="text-base font-medium" data-testid="text-base-salary">
+                          {leaveSalary.baseSalary > 0 ? `${leaveSalary.baseSalary.toLocaleString('tr-TR')} ₺` : '-'}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-muted-foreground">Prim</p>
+                        <p className="text-base font-medium" data-testid="text-bonus">
+                          {leaveSalary.baseSalary > 0 && perfSummary
+                            ? `${Math.round(leaveSalary.baseSalary * (perfSummary.overallScore >= 85 ? 0.15 : perfSummary.overallScore >= 70 ? 0.10 : 0.05)).toLocaleString('tr-TR')} ₺`
+                            : '-'}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-muted-foreground">Ücretsiz İzin Kesintisi</p>
+                        <p className="text-base font-medium" data-testid="text-unpaid-deduction">
+                          {leaveSalary.baseSalary > 0 && leaveSalary.unpaidLeaveDays > 0
+                            ? `-${Math.round((leaveSalary.baseSalary / 30) * leaveSalary.unpaidLeaveDays).toLocaleString('tr-TR')} ₺`
+                            : '0 ₺'}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-muted-foreground">Geç Kalma Kesintisi</p>
+                        <p className="text-base font-medium" data-testid="text-lateness-deduction">
+                          {leaveSalary.latenessCount > 0
+                            ? `-${(leaveSalary.latenessCount * 50).toLocaleString('tr-TR')} ₺`
+                            : '0 ₺'}
+                        </p>
+                      </div>
+                    </div>
+                    {leaveSalary.baseSalary > 0 && (
+                      <div className="mt-3 p-3 rounded-md bg-muted/50">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-sm font-semibold">Tahmini Net</span>
+                          <span className="text-base font-bold" data-testid="text-estimated-net">
+                            {(() => {
+                              const bonus = perfSummary
+                                ? leaveSalary.baseSalary * (perfSummary.overallScore >= 85 ? 0.15 : perfSummary.overallScore >= 70 ? 0.10 : 0.05)
+                                : 0;
+                              const unpaidDeduction = (leaveSalary.baseSalary / 30) * leaveSalary.unpaidLeaveDays;
+                              const latenessDeduction = leaveSalary.latenessCount * 50;
+                              const estimated = leaveSalary.baseSalary + bonus - unpaidDeduction - latenessDeduction;
+                              return `${Math.round(estimated).toLocaleString('tr-TR')} ₺`;
+                            })()}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                    <p className="text-xs text-muted-foreground mt-2" data-testid="text-salary-note">
+                      Detaylı maaş bilgileri için İK departmanına başvurunuz.
+                    </p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
 
         <TabsContent value="performans" className="flex flex-col gap-3">
@@ -755,7 +1170,7 @@ export default function PersonelProfilPage() {
                     {/* Coach Eğitimleri */}
                     {(profile?.role === 'coach' || profile?.role === 'admin' || profile?.role === 'yatirimci_hq') && (
                       <>
-                        <Card className="hover-elevate cursor-pointer border-blue-200 dark:border-blue-800" data-testid="card-training-franchise">
+                        <Card className="hover-elevate cursor-pointer border-blue-200 dark:border-blue-800" onClick={() => setLocation("/akademi?tab=egitimler")} data-testid="card-training-franchise">
                           <CardContent className="p-3">
                             <div className="flex items-center gap-2">
                               <div className="w-8 h-8 rounded bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
@@ -768,7 +1183,7 @@ export default function PersonelProfilPage() {
                             </div>
                           </CardContent>
                         </Card>
-                        <Card className="hover-elevate cursor-pointer border-green-200 dark:border-green-800" data-testid="card-training-performance">
+                        <Card className="hover-elevate cursor-pointer border-green-200 dark:border-green-800" onClick={() => setLocation("/akademi?tab=egitimler")} data-testid="card-training-performance">
                           <CardContent className="p-3">
                             <div className="flex items-center gap-2">
                               <div className="w-8 h-8 rounded bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
@@ -781,7 +1196,7 @@ export default function PersonelProfilPage() {
                             </div>
                           </CardContent>
                         </Card>
-                        <Card className="hover-elevate cursor-pointer border-red-200 dark:border-red-800" data-testid="card-training-crisis">
+                        <Card className="hover-elevate cursor-pointer border-red-200 dark:border-red-800" onClick={() => setLocation("/akademi?tab=egitimler")} data-testid="card-training-crisis">
                           <CardContent className="p-3">
                             <div className="flex items-center gap-2">
                               <div className="w-8 h-8 rounded bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
@@ -800,7 +1215,7 @@ export default function PersonelProfilPage() {
                     {/* Satınalma Eğitimleri */}
                     {(profile?.role === 'satinalma' || profile?.role === 'admin' || profile?.role === 'yatirimci_hq') && (
                       <>
-                        <Card className="hover-elevate cursor-pointer border-purple-200 dark:border-purple-800" data-testid="card-training-supply-chain">
+                        <Card className="hover-elevate cursor-pointer border-purple-200 dark:border-purple-800" onClick={() => setLocation("/akademi?tab=egitimler")} data-testid="card-training-supply-chain">
                           <CardContent className="p-3">
                             <div className="flex items-center gap-2">
                               <div className="w-8 h-8 rounded bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
@@ -813,7 +1228,7 @@ export default function PersonelProfilPage() {
                             </div>
                           </CardContent>
                         </Card>
-                        <Card className="hover-elevate cursor-pointer border-orange-200 dark:border-orange-800" data-testid="card-training-cost-analysis">
+                        <Card className="hover-elevate cursor-pointer border-orange-200 dark:border-orange-800" onClick={() => setLocation("/akademi?tab=egitimler")} data-testid="card-training-cost-analysis">
                           <CardContent className="p-3">
                             <div className="flex items-center gap-2">
                               <div className="w-8 h-8 rounded bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center">
@@ -826,7 +1241,7 @@ export default function PersonelProfilPage() {
                             </div>
                           </CardContent>
                         </Card>
-                        <Card className="hover-elevate cursor-pointer border-teal-200 dark:border-teal-800" data-testid="card-training-supplier">
+                        <Card className="hover-elevate cursor-pointer border-teal-200 dark:border-teal-800" onClick={() => setLocation("/akademi?tab=egitimler")} data-testid="card-training-supplier">
                           <CardContent className="p-3">
                             <div className="flex items-center gap-2">
                               <div className="w-8 h-8 rounded bg-teal-100 dark:bg-teal-900/30 flex items-center justify-center">
@@ -845,7 +1260,7 @@ export default function PersonelProfilPage() {
                     {/* Muhasebe Eğitimleri */}
                     {(profile?.role === 'muhasebe' || profile?.role === 'admin' || profile?.role === 'yatirimci_hq') && (
                       <>
-                        <Card className="hover-elevate cursor-pointer border-emerald-200 dark:border-emerald-800" data-testid="card-training-financial">
+                        <Card className="hover-elevate cursor-pointer border-emerald-200 dark:border-emerald-800" onClick={() => setLocation("/akademi?tab=egitimler")} data-testid="card-training-financial">
                           <CardContent className="p-3">
                             <div className="flex items-center gap-2">
                               <div className="w-8 h-8 rounded bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
@@ -858,7 +1273,7 @@ export default function PersonelProfilPage() {
                             </div>
                           </CardContent>
                         </Card>
-                        <Card className="hover-elevate cursor-pointer border-amber-200 dark:border-amber-800" data-testid="card-training-tax">
+                        <Card className="hover-elevate cursor-pointer border-amber-200 dark:border-amber-800" onClick={() => setLocation("/akademi?tab=egitimler")} data-testid="card-training-tax">
                           <CardContent className="p-3">
                             <div className="flex items-center gap-2">
                               <div className="w-8 h-8 rounded bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
@@ -871,7 +1286,7 @@ export default function PersonelProfilPage() {
                             </div>
                           </CardContent>
                         </Card>
-                        <Card className="hover-elevate cursor-pointer border-cyan-200 dark:border-cyan-800" data-testid="card-training-budget">
+                        <Card className="hover-elevate cursor-pointer border-cyan-200 dark:border-cyan-800" onClick={() => setLocation("/akademi?tab=egitimler")} data-testid="card-training-budget">
                           <CardContent className="p-3">
                             <div className="flex items-center gap-2">
                               <div className="w-8 h-8 rounded bg-cyan-100 dark:bg-cyan-900/30 flex items-center justify-center">
@@ -1104,6 +1519,150 @@ export default function PersonelProfilPage() {
               </Card>
             </>
           )}
+        </TabsContent>
+
+        <TabsContent value="degerlendirmeler" className="flex flex-col gap-3">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between gap-2 flex-wrap">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <Star className="h-4 w-4 text-primary" />
+                  Personel Değerlendirmeleri
+                </CardTitle>
+                <CardDescription>
+                  Ortalama Puan: {evalData?.averageScore?.toFixed(1) ?? "—"}/100
+                </CardDescription>
+              </div>
+              {canEvaluate && !isOwnProfile && (
+                <Dialog open={evalDialogOpen} onOpenChange={setEvalDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button size="sm" data-testid="button-new-evaluation">
+                      <Plus className="h-4 w-4 mr-1" />
+                      Yeni Değerlendirme
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+                    <DialogHeader>
+                      <DialogTitle>Personel Değerlendirme Formu</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4 py-2">
+                      {[
+                        { key: "customerBehavior" as const, label: "Müşteri Davranışı" },
+                        { key: "friendliness" as const, label: "Güler Yüz" },
+                        { key: "knowledgeExperience" as const, label: "Bilgi & Deneyim" },
+                        { key: "dressCode" as const, label: "Dress Code" },
+                        { key: "cleanliness" as const, label: "Temizlik" },
+                        { key: "teamwork" as const, label: "Takım Çalışması" },
+                        { key: "punctuality" as const, label: "Dakiklik" },
+                        { key: "initiative" as const, label: "İnisiyatif" },
+                      ].map(({ key, label }) => (
+                        <div key={key} data-testid={`eval-criteria-${key}`}>
+                          <Label className="text-sm font-medium">{label}</Label>
+                          <div className="flex items-center gap-1 mt-1">
+                            {[1, 2, 3, 4, 5].map((v) => (
+                              <button
+                                key={v}
+                                type="button"
+                                onClick={() => setEvalForm((f) => ({ ...f, [key]: v }))}
+                                className="p-0.5"
+                                data-testid={`star-${key}-${v}`}
+                              >
+                                <Star
+                                  className={`h-6 w-6 transition-colors ${v <= evalForm[key] ? "fill-amber-400 text-amber-400" : "text-muted-foreground/30"}`}
+                                />
+                              </button>
+                            ))}
+                            <span className="ml-2 text-sm text-muted-foreground">{evalForm[key]}/5</span>
+                          </div>
+                        </div>
+                      ))}
+
+                      <div>
+                        <Label className="text-sm font-medium">Notlar</Label>
+                        <Textarea
+                          value={evalForm.notes}
+                          onChange={(e) => setEvalForm((f) => ({ ...f, notes: e.target.value }))}
+                          placeholder="Ek yorumlarınızı buraya yazabilirsiniz..."
+                          className="mt-1"
+                          data-testid="input-eval-notes"
+                        />
+                      </div>
+
+                      <Button
+                        className="w-full"
+                        disabled={createEvalMutation.isPending}
+                        onClick={() => {
+                          if (!id) return;
+                          createEvalMutation.mutate({ ...evalForm, employeeId: id });
+                        }}
+                        data-testid="button-submit-evaluation"
+                      >
+                        {createEvalMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                        Değerlendirmeyi Kaydet
+                      </Button>
+                    </div>
+                  </DialogContent>
+                </Dialog>
+              )}
+            </CardHeader>
+            <CardContent>
+              {!evalData?.evaluations?.length ? (
+                <p className="text-muted-foreground text-sm" data-testid="text-no-evaluations">
+                  Henüz değerlendirme kaydı bulunmuyor.
+                </p>
+              ) : (
+                <div className="space-y-3">
+                  {evalData.evaluations.map((ev) => {
+                    const evColor = ev.overallScore >= 75 ? "text-emerald-600" : ev.overallScore >= 65 ? "text-amber-600" : "text-red-600";
+                    return (
+                      <Card key={ev.id} data-testid={`eval-card-${ev.id}`}>
+                        <CardContent className="p-3 space-y-2">
+                          <div className="flex items-center justify-between gap-2 flex-wrap">
+                            <div className="flex items-center gap-2">
+                              <Badge variant="outline">{roleLabels[ev.evaluatorRole] || ev.evaluatorRole}</Badge>
+                              <span className="text-sm text-muted-foreground">{ev.evaluatorName}</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className={`font-bold ${evColor}`} data-testid={`eval-score-${ev.id}`}>
+                                {ev.overallScore.toFixed(0)}/100
+                              </span>
+                              <span className="text-xs text-muted-foreground">
+                                {ev.createdAt ? format(new Date(ev.createdAt), "dd MMM yyyy", { locale: tr }) : ""}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 text-xs">
+                            {[
+                              { l: "Müşteri", v: ev.customerBehavior },
+                              { l: "Güler Yüz", v: ev.friendliness },
+                              { l: "Bilgi", v: ev.knowledgeExperience },
+                              { l: "Dress Code", v: ev.dressCode },
+                              { l: "Temizlik", v: ev.cleanliness },
+                              { l: "Takım", v: ev.teamwork },
+                              { l: "Dakiklik", v: ev.punctuality },
+                              { l: "İnisiyatif", v: ev.initiative },
+                            ].map((c) => (
+                              <div key={c.l} className="flex items-center gap-1">
+                                <span className="text-muted-foreground">{c.l}:</span>
+                                <div className="flex">
+                                  {[1, 2, 3, 4, 5].map((s) => (
+                                    <Star key={s} className={`h-3 w-3 ${s <= c.v ? "fill-amber-400 text-amber-400" : "text-muted-foreground/20"}`} />
+                                  ))}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                          {ev.notes && (
+                            <p className="text-sm text-muted-foreground italic">"{ev.notes}"</p>
+                          )}
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
       </div>

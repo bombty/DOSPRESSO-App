@@ -278,6 +278,13 @@ import {
   factoryProducts,
   factoryProductionBatches,
   factoryBatchVerifications,
+  quizResults,
+  userCareerProgress,
+  careerLevels,
+  staffEvaluations,
+  insertStaffEvaluationSchema,
+  employeePerformanceScores,
+  disciplinaryReports,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, asc, sql, and, or, isNull, isNotNull, inArray, lte, gte, ne, count, sum, avg } from "drizzle-orm";
@@ -14092,6 +14099,85 @@ JSON formatında yanıt ver:
     }
   });
 
+
+  // POST /api/academy/ai-assistant - Academy AI Assistant for chat
+  app.post('/api/academy/ai-assistant', isAuthenticated, async (req: any, res) => {
+    try {
+      const { message, userId, conversationHistory } = req.body;
+
+      if (!message || !userId) {
+        return res.status(400).json({ message: "Mesaj ve userId gereklidir" });
+      }
+
+      // Fetch user's academy progress data
+      let userProgress = null;
+      let userBadgesList: any[] = [];
+      let quizResultsList: any[] = [];
+
+      try {
+        // Get user's career progress
+        userProgress = await db.select().from(userCareerProgress)
+          .where(eq(userCareerProgress.userId, userId))
+          .limit(1);
+
+        // Get user's badges
+        userBadgesList = await db.select().from(userBadges)
+          .where(eq(userBadges.userId, userId));
+
+        // Get user's quiz results
+        quizResultsList = await db.select().from(quizResults)
+          .where(eq(quizResults.userId, userId))
+          .orderBy(desc(quizResults.completedAt))
+          .limit(5);
+      } catch (dbError: any) {
+        console.warn("Database fetch warning:", dbError);
+        // Continue without DB data if there's an issue
+      }
+
+      // Import OpenAI
+      const OpenAI = (await import('openai')).default;
+      const openai = new OpenAI();
+
+      // Turkish system prompt for Academy expert
+      const systemPrompt = `Siz DOSPRESSO Academy Uzmanısınız. DOSPRESSO Academy'nin kariyer sisteminde uzmanlaşmış bir danışmandır.
+
+Kariyer Seviyeleri: Çırak, Kalfa, Usta, Uzman Barista, Baş Barista
+
+Sorumluluklarınız:
+- Kariyer yolları, sertifikalar ve rozetler hakkında bilgi vermek
+- Kullanıcının ilerleme durumuna göre kişiselleştirilmiş rehberlik sağlamak
+- Quiz sistemi ve sınav talepleri hakkında yardım etmek
+- Öğrenme yolları ve öğretim materyalleri hakkında açıklama yapmak
+- Başarılar ve rozetler kazanma yollarını anlatmak
+
+Cevaplarınız kısa, faydalı ve türkçe olmalıdır.`;
+
+      // Prepare messages for OpenAI
+      const messages: any[] = [
+        ...(conversationHistory || []),
+        { role: "user", content: message }
+      ];
+
+      // Call OpenAI API
+      const response = await openai.chat.completions.create({
+        model: "gpt-4",
+        messages: [
+          { role: "system", content: systemPrompt },
+          ...messages
+        ],
+        temperature: 0.7,
+        max_tokens: 500
+      });
+
+      const assistantMessage = response.choices[0]?.message?.content || "Cevap oluşturulamadı.";
+
+      res.json({ response: assistantMessage });
+    } catch (error: any) {
+      console.error("AI Assistant error:", error);
+      const errorMessage = error.message || "Academy AI Asistanı hatası";
+      res.status(500).json({ message: `Academy AI hatası: ${errorMessage}` });
+    }
+  });
   // GET /api/academy/quiz/:quizId/questions - Get quiz questions
   app.get('/api/academy/quiz/:quizId/questions', isAuthenticated, async (req: any, res) => {
     try {
@@ -34744,6 +34830,483 @@ ${["yatirimci_hq", "yatirimci_branch"].includes(role) ? "- Yatirimci olarak sade
   });
 
   registerDailyTaskRoutes(app);
+
+  // ========================================
+  // STAFF EVALUATIONS & PERFORMANCE SUMMARY
+  // ========================================
+
+  // GET /api/personnel/:id/performance-summary
+  app.get('/api/personnel/:id/performance-summary', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const targetId = req.params.id;
+
+      const isOwnProfile = user.id === targetId;
+      const isHQ = isHQRole(user.role as UserRoleType);
+      if (!isOwnProfile && !isHQ && user.role !== 'supervisor') {
+        return res.status(403).json({ message: "Erişim yetkiniz yok" });
+      }
+
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      const thirtyDaysStr = thirtyDaysAgo.toISOString().split('T')[0];
+
+      // 1. Attendance from performance scores
+      const perfScores = await db.select({
+        avgAttendance: avg(employeePerformanceScores.attendanceScore),
+        avgChecklist: avg(employeePerformanceScores.checklistScore),
+        avgDaily: avg(employeePerformanceScores.dailyTotalScore),
+      }).from(employeePerformanceScores)
+        .where(and(
+          eq(employeePerformanceScores.userId, targetId),
+          gte(employeePerformanceScores.date, thirtyDaysStr)
+        ));
+
+      // 2. Task completion rate
+      const taskStats = await db.select({
+        total: count(),
+        completed: sql<number>`COUNT(CASE WHEN ${tasks.status} = 'onaylandi' THEN 1 END)`,
+      }).from(tasks)
+        .where(eq(tasks.assignedToId, targetId));
+
+      // 3. Checklist completion
+      const checklistStats = await db.select({
+        total: count(),
+        completed: sql<number>`COUNT(CASE WHEN ${checklistCompletions.completedAt} IS NOT NULL THEN 1 END)`,
+      }).from(checklistCompletions)
+        .where(eq(checklistCompletions.userId, targetId));
+
+      // 4. Training progress
+      const trainingStats = await db.select({
+        total: count(),
+        completed: sql<number>`COUNT(CASE WHEN ${trainingCompletions.completedAt} IS NOT NULL THEN 1 END)`,
+      }).from(trainingCompletions)
+        .where(eq(trainingCompletions.userId, targetId));
+
+      // 5. Inspection / audit scores (from user's branch quality audits)
+      const targetUser = await storage.getUserById(targetId);
+      let inspectionScoreVal = 0;
+      if (targetUser?.branchId) {
+        const auditScores = await db.select({
+          avgScore: avg(qualityAudits.percentageScore),
+        }).from(qualityAudits)
+          .where(eq(qualityAudits.branchId, targetUser.branchId));
+        inspectionScoreVal = auditScores[0]?.avgScore ? Number(auditScores[0].avgScore) : 0;
+      }
+
+      // 6. Staff evaluation scores
+      const evalScores = await db.select({
+        avgScore: avg(staffEvaluations.overallScore),
+      }).from(staffEvaluations)
+        .where(eq(staffEvaluations.employeeId, targetId));
+
+      const attendanceRate = perfScores[0]?.avgAttendance ? Number(perfScores[0].avgAttendance) : 0;
+      const taskTotal = Number(taskStats[0]?.total || 0);
+      const taskCompleted = Number(taskStats[0]?.completed || 0);
+      const taskCompletionRate = taskTotal > 0 ? (taskCompleted / taskTotal) * 100 : 0;
+
+      const clTotal = Number(checklistStats[0]?.total || 0);
+      const clCompleted = Number(checklistStats[0]?.completed || 0);
+      const checklistScore = clTotal > 0 ? (clCompleted / clTotal) * 100 : 0;
+
+      const trTotal = Number(trainingStats[0]?.total || 0);
+      const trCompleted = Number(trainingStats[0]?.completed || 0);
+      const trainingProgress = trTotal > 0 ? (trCompleted / trTotal) * 100 : 0;
+
+      const inspectionScore = inspectionScoreVal;
+      const evaluationScore = evalScores[0]?.avgScore ? Number(evalScores[0].avgScore) : 0;
+
+      // Weighted composite
+      const genelSkor = (
+        attendanceRate * 0.15 +
+        taskCompletionRate * 0.20 +
+        checklistScore * 0.20 +
+        trainingProgress * 0.10 +
+        inspectionScore * 0.15 +
+        evaluationScore * 0.20
+      );
+
+      res.json({
+        overallScore: Math.round(genelSkor * 10) / 10,
+        attendanceRate: Math.round(attendanceRate * 10) / 10,
+        taskCompletion: Math.round(taskCompletionRate * 10) / 10,
+        checklistScore: Math.round(checklistScore * 10) / 10,
+        trainingProgress: Math.round(trainingProgress * 10) / 10,
+        inspectionScore: Math.round(inspectionScore * 10) / 10,
+        evaluationScore: Math.round(evaluationScore * 10) / 10,
+      });
+    } catch (error: any) {
+      console.error("Error fetching performance summary:", error);
+      res.status(500).json({ message: "Performans özeti alınırken hata oluştu" });
+    }
+  });
+
+  // POST /api/staff-evaluations
+  app.post('/api/staff-evaluations', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const allowedRoles = ['coach', 'admin', 'supervisor', 'yatirimci_hq'];
+      if (!allowedRoles.includes(user.role)) {
+        return res.status(403).json({ message: "Değerlendirme oluşturma yetkiniz yok" });
+      }
+
+      const body = req.body;
+      const criteria = ['customerBehavior', 'friendliness', 'knowledgeExperience', 'dressCode', 'cleanliness', 'teamwork', 'punctuality', 'initiative'];
+      for (const c of criteria) {
+        const val = Number(body[c]);
+        if (!Number.isInteger(val) || val < 1 || val > 5) {
+          return res.status(400).json({ message: `${c} 1-5 arasında olmalıdır` });
+        }
+      }
+
+      const avgCriteria = criteria.reduce((sum, c) => sum + Number(body[c]), 0) / criteria.length;
+      const overallScore = (avgCriteria / 5) * 100;
+
+      const evalData = {
+        employeeId: body.employeeId,
+        evaluatorId: user.id,
+        evaluatorRole: user.role,
+        branchId: body.branchId || user.branchId || null,
+        inspectionId: body.inspectionId || null,
+        customerBehavior: Number(body.customerBehavior),
+        friendliness: Number(body.friendliness),
+        knowledgeExperience: Number(body.knowledgeExperience),
+        dressCode: Number(body.dressCode),
+        cleanliness: Number(body.cleanliness),
+        teamwork: Number(body.teamwork),
+        punctuality: Number(body.punctuality),
+        initiative: Number(body.initiative),
+        overallScore,
+        notes: body.notes || null,
+        evaluationType: body.evaluationType || 'standard',
+      };
+
+      const [result] = await db.insert(staffEvaluations).values(evalData).returning();
+      res.status(201).json(result);
+    } catch (error: any) {
+      console.error("Error creating staff evaluation:", error);
+      res.status(500).json({ message: "Değerlendirme oluşturulamadı" });
+    }
+  });
+
+  // GET /api/staff-evaluations/:employeeId
+  app.get('/api/staff-evaluations/:employeeId', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const employeeId = req.params.employeeId;
+
+      const isOwnProfile = user.id === employeeId;
+      const isHQ = isHQRole(user.role as UserRoleType);
+      if (!isOwnProfile && !isHQ && user.role !== 'supervisor') {
+        return res.status(403).json({ message: "Erişim yetkiniz yok" });
+      }
+
+      const evaluations = await db.select({
+        id: staffEvaluations.id,
+        employeeId: staffEvaluations.employeeId,
+        evaluatorId: staffEvaluations.evaluatorId,
+        evaluatorRole: staffEvaluations.evaluatorRole,
+        branchId: staffEvaluations.branchId,
+        customerBehavior: staffEvaluations.customerBehavior,
+        friendliness: staffEvaluations.friendliness,
+        knowledgeExperience: staffEvaluations.knowledgeExperience,
+        dressCode: staffEvaluations.dressCode,
+        cleanliness: staffEvaluations.cleanliness,
+        teamwork: staffEvaluations.teamwork,
+        punctuality: staffEvaluations.punctuality,
+        initiative: staffEvaluations.initiative,
+        overallScore: staffEvaluations.overallScore,
+        notes: staffEvaluations.notes,
+        evaluationType: staffEvaluations.evaluationType,
+        createdAt: staffEvaluations.createdAt,
+        evaluatorName: users.fullName,
+      })
+        .from(staffEvaluations)
+        .leftJoin(users, eq(staffEvaluations.evaluatorId, users.id))
+        .where(eq(staffEvaluations.employeeId, employeeId))
+        .orderBy(desc(staffEvaluations.createdAt));
+
+      const avgResult = await db.select({
+        avgScore: avg(staffEvaluations.overallScore),
+        totalCount: count(),
+      }).from(staffEvaluations)
+        .where(eq(staffEvaluations.employeeId, employeeId));
+
+      res.json({
+        evaluations,
+        averageScore: avgResult[0]?.avgScore ? Number(avgResult[0].avgScore) : 0,
+        totalCount: Number(avgResult[0]?.totalCount || 0),
+      });
+    } catch (error: any) {
+      console.error("Error fetching staff evaluations:", error);
+      res.status(500).json({ message: "Değerlendirmeler alınırken hata oluştu" });
+    }
+  });
+
+
+  // GET /api/personnel/:id/ai-recommendations - AI Performance Coach recommendations
+  app.get('/api/personnel/:id/ai-recommendations', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const targetId = req.params.id;
+      const isOwnProfile = user.id === targetId;
+      const isHQ = isHQRole(user.role as UserRoleType);
+      if (!isOwnProfile && !isHQ && user.role !== 'supervisor') {
+        return res.status(403).json({ message: "Erişim yetkiniz yok" });
+      }
+
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      const thirtyDaysStr = thirtyDaysAgo.toISOString().split('T')[0];
+
+      const perfScores = await db.select({
+        avgAttendance: avg(employeePerformanceScores.attendanceScore),
+        avgChecklist: avg(employeePerformanceScores.checklistScore),
+        avgDaily: avg(employeePerformanceScores.dailyTotalScore),
+      }).from(employeePerformanceScores)
+        .where(and(
+          eq(employeePerformanceScores.userId, targetId),
+          gte(employeePerformanceScores.date, thirtyDaysStr)
+        ));
+
+      const taskStats = await db.select({
+        total: count(),
+        completed: sql<number>`COUNT(CASE WHEN ${tasks.status} = 'onaylandi' THEN 1 END)`,
+      }).from(tasks)
+        .where(eq(tasks.assignedToId, targetId));
+
+      const checklistStats = await db.select({
+        total: count(),
+        completed: sql<number>`COUNT(CASE WHEN ${checklistCompletions.completedAt} IS NOT NULL THEN 1 END)`,
+      }).from(checklistCompletions)
+        .where(eq(checklistCompletions.userId, targetId));
+
+      const trainingStats = await db.select({
+        total: count(),
+        completed: sql<number>`COUNT(CASE WHEN ${trainingCompletions.completedAt} IS NOT NULL THEN 1 END)`,
+      }).from(trainingCompletions)
+        .where(eq(trainingCompletions.userId, targetId));
+
+      const evalScores = await db.select({
+        avgScore: avg(staffEvaluations.overallScore),
+      }).from(staffEvaluations)
+        .where(eq(staffEvaluations.employeeId, targetId));
+
+      const disciplinaryRecords = await db.select({
+        id: disciplinaryReports.id,
+        reportType: disciplinaryReports.reportType,
+        severity: disciplinaryReports.severity,
+        subject: disciplinaryReports.subject,
+        actionTaken: disciplinaryReports.actionTaken,
+        status: disciplinaryReports.status,
+      }).from(disciplinaryReports)
+        .where(eq(disciplinaryReports.userId, targetId))
+        .orderBy(desc(disciplinaryReports.createdAt))
+        .limit(5);
+
+      const targetUser = await storage.getUserById(targetId);
+      let inspectionScoreVal = 0;
+      if (targetUser?.branchId) {
+        const auditScores = await db.select({
+          avgScore: avg(qualityAudits.percentageScore),
+        }).from(qualityAudits)
+          .where(eq(qualityAudits.branchId, targetUser.branchId));
+        inspectionScoreVal = auditScores[0]?.avgScore ? Number(auditScores[0].avgScore) : 0;
+      }
+
+      const attendanceRate = perfScores[0]?.avgAttendance ? Number(perfScores[0].avgAttendance) : 0;
+      const taskTotal = Number(taskStats[0]?.total || 0);
+      const taskCompleted = Number(taskStats[0]?.completed || 0);
+      const taskCompletionRate = taskTotal > 0 ? (taskCompleted / taskTotal) * 100 : 0;
+      const clTotal = Number(checklistStats[0]?.total || 0);
+      const clCompleted = Number(checklistStats[0]?.completed || 0);
+      const checklistScore = clTotal > 0 ? (clCompleted / clTotal) * 100 : 0;
+      const trTotal = Number(trainingStats[0]?.total || 0);
+      const trCompleted = Number(trainingStats[0]?.completed || 0);
+      const trainingProgress = trTotal > 0 ? (trCompleted / trTotal) * 100 : 0;
+      const evaluationScore = evalScores[0]?.avgScore ? Number(evalScores[0].avgScore) : 0;
+
+      const overallScore = (attendanceRate * 0.15) + (taskCompletionRate * 0.20) + (checklistScore * 0.20) + (trainingProgress * 0.10) + (inspectionScoreVal * 0.15) + (evaluationScore * 0.20);
+
+      const performanceData = {
+        attendanceRate: Math.round(attendanceRate),
+        taskCompletionRate: Math.round(taskCompletionRate),
+        checklistScore: Math.round(checklistScore),
+        trainingProgress: Math.round(trainingProgress),
+        inspectionScore: Math.round(inspectionScoreVal),
+        evaluationScore: Math.round(evaluationScore),
+        overallScore: Math.round(overallScore),
+        disciplinaryCount: disciplinaryRecords.length,
+        disciplinarySummary: disciplinaryRecords.map(d => `${d.reportType} - ${d.subject} (${d.severity})`).join('; '),
+        role: targetUser?.role || 'barista',
+        fullName: targetUser?.fullName || '',
+      };
+
+      const OpenAI = (await import('openai')).default;
+      const openai = new OpenAI();
+      const response = await openai.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages: [
+          {
+            role: "system",
+            content: `Sen bir franchise kahve zincirinde (DOSPRESSO) çalışan personel için performans koçusun. Türkçe yanıt ver. Personelin performans verilerini analiz edip yapıcı öneriler sun. JSON formatında yanıt ver:
+{
+  "weakAreas": ["string - zayıf alanlar listesi"],
+  "recommendations": ["string - iyileştirme önerileri, numaralı"],
+  "targetPlan": ["string - hedef plan maddeleri"],
+  "overallAdvice": "string - genel tavsiye",
+  "levelRisk": boolean
+}
+Kurallar:
+- 75 altı skorlar zayıf alan olarak belirle
+- 65 altı genel skor levelRisk=true
+- Önerileri somut ve uygulanabilir yap
+- Türk iş hukuku ve franchise standartlarına uygun öneriler ver`
+          },
+          {
+            role: "user",
+            content: `Personel: ${performanceData.fullName} (${performanceData.role})
+Genel Skor: ${performanceData.overallScore}%
+Devam Oranı: ${performanceData.attendanceRate}%
+Görev Tamamlama: ${performanceData.taskCompletionRate}%
+Checklist Skoru: ${performanceData.checklistScore}%
+Eğitim İlerlemesi: ${performanceData.trainingProgress}%
+Denetim Puanı: ${performanceData.inspectionScore}%
+Değerlendirme Puanı: ${performanceData.evaluationScore}%
+Disiplin Kayıtları: ${performanceData.disciplinaryCount > 0 ? performanceData.disciplinarySummary : 'Yok'}
+
+Bu verilere dayanarak performans analizi ve iyileştirme önerileri oluştur.`
+          }
+        ],
+        response_format: { type: "json_object" },
+        temperature: 0.7,
+        max_tokens: 1000,
+      });
+
+      const content = response.choices[0]?.message?.content;
+      if (!content) {
+        return res.status(500).json({ message: "AI yanıt üretemedi" });
+      }
+
+      const parsed = JSON.parse(content);
+      res.json({
+        weakAreas: parsed.weakAreas || [],
+        recommendations: parsed.recommendations || [],
+        targetPlan: parsed.targetPlan || [],
+        overallAdvice: parsed.overallAdvice || '',
+        levelRisk: parsed.levelRisk || overallScore < 65,
+      });
+    } catch (error: any) {
+      console.error("Error generating AI recommendations:", error);
+      res.status(500).json({ message: "AI önerileri oluşturulurken hata oluştu" });
+    }
+  });
+
+  // GET /api/personnel/:id/leave-salary-summary - Leave and salary summary
+  app.get('/api/personnel/:id/leave-salary-summary', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const targetId = req.params.id;
+      const isOwnProfile = user.id === targetId;
+      const isHQ = isHQRole(user.role as UserRoleType);
+      if (!isOwnProfile && !isHQ && user.role !== 'supervisor') {
+        return res.status(403).json({ message: "Erişim yetkiniz yok" });
+      }
+
+      const targetUser = await storage.getUserById(targetId);
+      if (!targetUser) {
+        return res.status(404).json({ message: "Personel bulunamadı" });
+      }
+
+      const hireDate = targetUser.hireDate ? new Date(targetUser.hireDate) : null;
+      const now = new Date();
+      let annualLeaveTotal = 14;
+      let renewalDate = '';
+
+      if (hireDate) {
+        const yearsWorked = (now.getTime() - hireDate.getTime()) / (365.25 * 24 * 60 * 60 * 1000);
+        if (yearsWorked >= 15) {
+          annualLeaveTotal = 26;
+        } else if (yearsWorked >= 5) {
+          annualLeaveTotal = 20;
+        } else {
+          annualLeaveTotal = 14;
+        }
+        const nextAnniversary = new Date(hireDate);
+        nextAnniversary.setFullYear(now.getFullYear());
+        if (nextAnniversary < now) {
+          nextAnniversary.setFullYear(now.getFullYear() + 1);
+        }
+        renewalDate = `${String(nextAnniversary.getDate()).padStart(2, '0')}/${String(nextAnniversary.getMonth() + 1).padStart(2, '0')}/${nextAnniversary.getFullYear()}`;
+      }
+
+      const currentYear = now.getFullYear();
+      const yearStart = `${currentYear}-01-01`;
+      const yearEnd = `${currentYear}-12-31`;
+
+      const approvedLeaves = await db.select({
+        totalDays: sql<number>`COALESCE(SUM(${leaveRequests.totalDays}), 0)`,
+        leaveType: leaveRequests.leaveType,
+      }).from(leaveRequests)
+        .where(and(
+          eq(leaveRequests.userId, targetId),
+          eq(leaveRequests.status, 'approved'),
+          gte(leaveRequests.startDate, yearStart),
+          lte(leaveRequests.endDate, yearEnd),
+        ))
+        .groupBy(leaveRequests.leaveType);
+
+      let usedLeave = 0;
+      let unpaidLeaveDays = 0;
+      for (const leave of approvedLeaves) {
+        const days = Number(leave.totalDays);
+        if (leave.leaveType === 'unpaid') {
+          unpaidLeaveDays += days;
+        } else {
+          usedLeave += days;
+        }
+      }
+
+      const remainingLeave = Math.max(0, annualLeaveTotal - usedLeave);
+
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      const thirtyDaysStr = thirtyDaysAgo.toISOString().split('T')[0];
+
+      const perfScores = await db.select({
+        latenessCount: sql<number>`COUNT(CASE WHEN ${employeePerformanceScores.attendanceScore} < 50 THEN 1 END)`,
+      }).from(employeePerformanceScores)
+        .where(and(
+          eq(employeePerformanceScores.userId, targetId),
+          gte(employeePerformanceScores.date, thirtyDaysStr)
+        ));
+
+      const latenessCount = Number(perfScores[0]?.latenessCount || targetUser.latenessCount || 0);
+
+      const salaryRecord = await db.select().from(employeeSalaries)
+        .where(eq(employeeSalaries.userId, targetId))
+        .limit(1);
+
+      const baseSalary = salaryRecord[0]?.baseSalary ? Number(salaryRecord[0].baseSalary) : 0;
+
+      const canViewSalary = isOwnProfile || user.role === 'admin' || user.role === 'muhasebe' || user.role === 'muhasebe_ik';
+
+      res.json({
+        annualLeaveTotal,
+        usedLeave,
+        remainingLeave,
+        renewalDate,
+        unpaidLeaveDays,
+        latenessCount,
+        baseSalary: canViewSalary ? baseSalary : null,
+        canViewSalary,
+      });
+    } catch (error: any) {
+      console.error("Error fetching leave-salary summary:", error);
+      res.status(500).json({ message: "İzin ve maaş bilgileri alınırken hata oluştu" });
+    }
+  });
+
   registerSatinalmaRoutes(app, isAuthenticated);
   registerMaliyetRoutes(app, isAuthenticated);
   registerFactoryShiftRoutes(app);

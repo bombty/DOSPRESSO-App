@@ -1,4 +1,4 @@
-import { Mail, LogOut, QrCode, Search, X, User as UserIcon, Coffee, ClipboardList, Building2, Wrench, LayoutGrid, FileText, Sun, Moon } from "lucide-react";
+import { Bell, LogOut, QrCode, Search, X, User as UserIcon, Coffee, ClipboardList, Building2, Wrench, LayoutGrid, FileText, Sun, Moon } from "lucide-react";
 import { useTheme } from "@/contexts/theme-context";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -429,7 +429,7 @@ export function AppHeader({ notificationCount = 0, user, branchName, onQRClick }
               onClick={handleMailboxClick}
               data-testid="button-mailbox"
             >
-              <Mail className="w-4 h-4 text-white" />
+              <Bell className="w-4 h-4 text-white" />
             </Button>
             {notificationCount > 0 && (
               <Badge 
