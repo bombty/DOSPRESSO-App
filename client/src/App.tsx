@@ -59,6 +59,7 @@ import AcademyAdaptiveEngine from "@/pages/academy-adaptive-engine";
 import AcademySocialGroups from "@/pages/academy-social-groups";
 import AcademyAdvancedAnalytics from "@/pages/academy-advanced-analytics";
 import AcademySuite from "@/pages/academy-suite";
+import EgitimProgrami from "@/pages/egitim-programi";
 import BadgeCollection from "@/pages/badge-collection";
 import GorevDetay from "@/pages/gorev-detay";
 import SubeGorevler from "@/pages/sube-gorevler";
@@ -304,6 +305,7 @@ function Router() {
           <Route path="/akademi-quiz/:quizId" component={AcademyQuiz} />
           <Route path="/akademi-rozet-koleksiyonum" component={BadgeCollection} />
           <Route path="/akademi-learning-path/:pathId" component={AcademyLearningPathDetail} />
+          <Route path="/egitim-programi/:topicId" component={EgitimProgrami} />
           <Route path="/akademi-hq" component={AcademyHQ} />
           <Route path="/akademi-supervisor" component={AcademySupervisor} />
           <Route path="/akademi-analytics" component={AcademyAnalytics} />

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery } from "@tanstack/react-query";
@@ -18,6 +18,7 @@ import {
   Settings,
   Briefcase,
   ChevronRight,
+  ChevronDown,
   ClipboardList,
   Calendar,
   MessageSquare,
@@ -41,6 +42,7 @@ import {
   Heart,
   Bell,
   Truck,
+  LogOut,
 } from "lucide-react";
 
 interface MenuCategory {
@@ -73,6 +75,7 @@ function getIconComponent(iconName: string | undefined): any {
 
 export function HamburgerMenu() {
   const [open, setOpen] = useState(false);
+  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
   const [, setLocation] = useLocation();
   const { user } = useAuth();
 
@@ -123,9 +126,25 @@ export function HamburgerMenu() {
     }),
   }));
 
-  const handleNavigate = (path: string) => {
+  const handleNavigate = useCallback((path: string) => {
     setOpen(false);
     setLocation(path);
+  }, [setLocation]);
+
+  const toggleCategory = useCallback((categoryId: string) => {
+    setExpandedCategories(prev => {
+      const next = new Set(prev);
+      if (next.has(categoryId)) {
+        next.delete(categoryId);
+      } else {
+        next.add(categoryId);
+      }
+      return next;
+    });
+  }, []);
+
+  const getCategoryBadgeCount = (category: MenuCategory): number => {
+    return category.items.reduce((sum, item) => sum + (item.badge || 0), 0);
   };
 
   return (
@@ -142,33 +161,46 @@ export function HamburgerMenu() {
         </Button>
       </SheetTrigger>
       <SheetContent side="left" className="w-[300px] p-0" data-testid="panel-hamburger-menu">
-        <SheetHeader className="px-4 pt-4 pb-3 border-b">
-          <SheetTitle className="text-sm font-semibold flex items-center gap-2">
+        <SheetHeader className="px-4 pt-4 pb-3 border-b bg-primary/5">
+          <SheetTitle className="text-sm font-bold flex items-center gap-2">
             <Coffee className="w-4 h-4 text-primary" />
             DOSPRESSO
           </SheetTitle>
           {user && (
-            <p className="text-xs text-muted-foreground">
-              {user.firstName || user.username} - {user.role}
-            </p>
+            <div className="flex items-center gap-2 mt-1">
+              <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center">
+                <span className="text-[10px] font-bold text-primary">
+                  {(user.firstName || user.username || "?")[0].toUpperCase()}
+                </span>
+              </div>
+              <div className="flex flex-col">
+                <span className="text-xs font-medium">{user.firstName || user.username}</span>
+                <span className="text-[10px] text-muted-foreground capitalize">{user.role}</span>
+              </div>
+            </div>
           )}
         </SheetHeader>
 
-        <ScrollArea className="h-[calc(100vh-80px)]">
-          <div className="py-2">
+        <ScrollArea className="h-[calc(100vh-100px)]">
+          <div className="py-1">
             <button
               onClick={() => handleNavigate("/")}
-              className="w-full flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-accent transition-colors"
+              className="w-full flex items-center gap-3 px-4 py-2.5 text-sm hover-elevate transition-colors"
               data-testid="menu-item-home"
             >
               <Home className="w-4 h-4 text-primary" />
               <span className="font-medium">Ana Sayfa</span>
             </button>
 
+            <div className="mx-3 my-1 border-t" />
+
             {categories
               .filter((category) => category.items.length > 0)
               .map((category) => {
                 const CategoryIcon = category.icon;
+                const isExpanded = expandedCategories.has(category.id);
+                const totalBadge = getCategoryBadgeCount(category);
+
                 if (category.items.length === 1) {
                   const item = category.items[0];
                   const ItemIcon = item.icon;
@@ -176,11 +208,11 @@ export function HamburgerMenu() {
                     <button
                       key={category.id}
                       onClick={() => handleNavigate(item.path)}
-                      className="w-full flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-accent transition-colors"
+                      className="w-full flex items-center gap-3 px-4 py-2.5 text-sm hover-elevate transition-colors"
                       data-testid={`menu-item-${item.id}`}
                     >
-                      <CategoryIcon className="w-4 h-4 text-muted-foreground shrink-0" />
-                      <span className="flex-1 text-left font-medium">{category.title}</span>
+                      <ItemIcon className="w-4 h-4 text-muted-foreground shrink-0" />
+                      <span className="flex-1 text-left font-medium truncate">{category.title}</span>
                       {item.badge !== undefined && item.badge > 0 && (
                         <Badge variant="destructive" className="text-[10px] h-5 px-1.5">
                           {item.badge}
@@ -190,56 +222,95 @@ export function HamburgerMenu() {
                     </button>
                   );
                 }
+
                 return (
-                  <div key={category.id} className="mt-1">
-                    <div className="px-4 py-2 flex items-center gap-2">
-                      <CategoryIcon className="w-3.5 h-3.5 text-muted-foreground" />
-                      <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
-                        {category.title}
-                      </span>
+                  <div key={category.id}>
+                    <button
+                      onClick={() => toggleCategory(category.id)}
+                      className="w-full flex items-center gap-3 px-4 py-2.5 text-sm hover-elevate transition-colors"
+                      data-testid={`menu-category-${category.id}`}
+                    >
+                      <CategoryIcon className="w-4 h-4 text-muted-foreground shrink-0" />
+                      <span className="flex-1 text-left font-semibold truncate">{category.title}</span>
+                      {totalBadge > 0 && (
+                        <Badge variant="destructive" className="text-[10px] h-5 px-1.5 mr-1">
+                          {totalBadge}
+                        </Badge>
+                      )}
+                      <ChevronDown
+                        className={`w-3.5 h-3.5 text-muted-foreground shrink-0 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}
+                      />
+                    </button>
+
+                    <div
+                      className={`overflow-hidden transition-all duration-200 ease-in-out ${isExpanded ? 'max-h-[800px] opacity-100' : 'max-h-0 opacity-0'}`}
+                    >
+                      <div className="ml-4 border-l border-border/50 mb-1">
+                        {category.items.map((item) => {
+                          const ItemIcon = item.icon;
+                          return (
+                            <button
+                              key={item.id}
+                              onClick={() => handleNavigate(item.path)}
+                              className="w-full flex items-center gap-2.5 pl-4 pr-4 py-2 text-[13px] hover-elevate transition-colors"
+                              data-testid={`menu-item-${item.id}`}
+                            >
+                              <ItemIcon className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                              <span className="flex-1 text-left truncate">{item.label}</span>
+                              {item.badge !== undefined && item.badge > 0 && (
+                                <Badge variant="destructive" className="text-[10px] h-4 px-1">
+                                  {item.badge}
+                                </Badge>
+                              )}
+                            </button>
+                          );
+                        })}
+                      </div>
                     </div>
-                    {category.items.map((item) => {
-                      const ItemIcon = item.icon;
-                      return (
-                        <button
-                          key={item.id}
-                          onClick={() => handleNavigate(item.path)}
-                          className="w-full flex items-center gap-3 px-4 pl-8 py-2 text-sm hover:bg-accent transition-colors"
-                          data-testid={`menu-item-${item.id}`}
-                        >
-                          <ItemIcon className="w-4 h-4 text-muted-foreground shrink-0" />
-                          <span className="flex-1 text-left truncate">{item.label}</span>
-                          {item.badge !== undefined && item.badge > 0 && (
-                            <Badge variant="destructive" className="text-[10px] h-5 px-1.5">
-                              {item.badge}
-                            </Badge>
-                          )}
-                          <ChevronRight className="w-3 h-3 text-muted-foreground shrink-0" />
-                        </button>
-                      );
-                    })}
                   </div>
                 );
               })}
 
-            <div className="mt-3 pt-3 border-t">
-              <button
-                onClick={() => handleNavigate("/bildirimler")}
-                className="w-full flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-accent transition-colors"
-                data-testid="menu-item-notifications"
-              >
-                <Bell className="w-4 h-4 text-muted-foreground" />
-                <span>Bildirimler</span>
-              </button>
-              <button
-                onClick={() => handleNavigate(user ? `/personel/${user.id}` : "/login")}
-                className="w-full flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-accent transition-colors"
-                data-testid="menu-item-profile"
-              >
-                <UserCheck className="w-4 h-4 text-muted-foreground" />
-                <span>Profilim</span>
-              </button>
-            </div>
+            <div className="mx-3 my-1 border-t" />
+
+            <button
+              onClick={() => handleNavigate("/bildirimler")}
+              className="w-full flex items-center gap-3 px-4 py-2.5 text-sm hover-elevate transition-colors"
+              data-testid="menu-item-notifications"
+            >
+              <Bell className="w-4 h-4 text-muted-foreground" />
+              <span>Bildirimler</span>
+            </button>
+            <button
+              onClick={() => handleNavigate("/mesajlar")}
+              className="w-full flex items-center gap-3 px-4 py-2.5 text-sm hover-elevate transition-colors"
+              data-testid="menu-item-messages"
+            >
+              <MessageSquare className="w-4 h-4 text-muted-foreground" />
+              <span>Mesajlar</span>
+            </button>
+            <button
+              onClick={() => handleNavigate(user ? `/personel/${user.id}` : "/login")}
+              className="w-full flex items-center gap-3 px-4 py-2.5 text-sm hover-elevate transition-colors"
+              data-testid="menu-item-profile"
+            >
+              <UserCheck className="w-4 h-4 text-muted-foreground" />
+              <span>Profilim</span>
+            </button>
+
+            <div className="mx-3 my-1 border-t" />
+
+            <button
+              onClick={() => {
+                setOpen(false);
+                window.location.href = "/api/logout";
+              }}
+              className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-destructive hover-elevate transition-colors"
+              data-testid="menu-item-logout"
+            >
+              <LogOut className="w-4 h-4 shrink-0" />
+              <span>Çıkış Yap</span>
+            </button>
           </div>
         </ScrollArea>
       </SheetContent>

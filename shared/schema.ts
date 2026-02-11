@@ -11939,6 +11939,47 @@ export const eventTriggeredTasks = pgTable("event_triggered_tasks", {
   index("ett_expires_idx").on(table.expiresAt),
 ]);
 
+// ========================================
+// PROFESSIONAL TRAINING SYSTEM
+// ========================================
+
+export const professionalTrainingLessons = pgTable("professional_training_lessons", {
+  id: serial("id").primaryKey(),
+  topicId: varchar("topic_id", { length: 100 }).notNull(),
+  lessonIndex: integer("lesson_index").notNull(),
+  title: varchar("title", { length: 255 }).notNull(),
+  content: text("content").notNull(),
+  duration: integer("duration").notNull().default(15),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertProfessionalTrainingLessonSchema = createInsertSchema(professionalTrainingLessons).omit({ id: true, createdAt: true });
+export type InsertProfessionalTrainingLesson = z.infer<typeof insertProfessionalTrainingLessonSchema>;
+export type ProfessionalTrainingLesson = typeof professionalTrainingLessons.$inferSelect;
+
+export const professionalTrainingProgress = pgTable("professional_training_progress", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull(),
+  topicId: varchar("topic_id", { length: 100 }).notNull(),
+  lessonIndex: integer("lesson_index").notNull(),
+  completed: boolean("completed").notNull().default(false),
+  completedAt: timestamp("completed_at"),
+  quizScore: integer("quiz_score"),
+  quizPassed: boolean("quiz_passed"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertProfessionalTrainingProgressSchema = createInsertSchema(professionalTrainingProgress).omit({ id: true, createdAt: true });
+export type InsertProfessionalTrainingProgress = z.infer<typeof insertProfessionalTrainingProgressSchema>;
+export type ProfessionalTrainingProgress = typeof professionalTrainingProgress.$inferSelect;
+
+export const professionalTrainingQuizCache = pgTable("professional_training_quiz_cache", {
+  id: serial("id").primaryKey(),
+  topicId: varchar("topic_id", { length: 100 }).notNull(),
+  questions: jsonb("questions").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 export const stockCountItems = pgTable("stock_count_items", {
   id: serial("id").primaryKey(),
   stockCountId: integer("stock_count_id").notNull(),
@@ -11953,3 +11994,39 @@ export const stockCountItems = pgTable("stock_count_items", {
 }, (table) => [
   index("sci_count_idx").on(table.stockCountId),
 ]);
+
+// ========================================
+// DASHBOARD WIDGET CONFIGURATION
+// ========================================
+
+export const dashboardWidgets = pgTable("dashboard_widgets", {
+  id: serial("id").primaryKey(),
+  title: varchar("title", { length: 255 }).notNull(),
+  widgetType: varchar("widget_type", { length: 50 }).notNull(),
+  size: varchar("size", { length: 20 }).notNull().default("medium"),
+  dataSource: varchar("data_source", { length: 100 }).notNull(),
+  config: text("config"),
+  roles: text("roles").array(),
+  sortOrder: integer("sort_order").notNull().default(0),
+  isActive: boolean("is_active").notNull().default(true),
+  createdBy: varchar("created_by").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertDashboardWidgetSchema = createInsertSchema(dashboardWidgets).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertDashboardWidget = z.infer<typeof insertDashboardWidgetSchema>;
+export type DashboardWidget = typeof dashboardWidgets.$inferSelect;
+
+export const dashboardModuleVisibility = pgTable("dashboard_module_visibility", {
+  id: serial("id").primaryKey(),
+  moduleId: varchar("module_id", { length: 100 }).notNull(),
+  displayLocation: varchar("display_location", { length: 50 }).notNull().default("menu"),
+  roles: text("roles").array(),
+  updatedBy: varchar("updated_by").references(() => users.id),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertDashboardModuleVisibilitySchema = createInsertSchema(dashboardModuleVisibility).omit({ id: true, updatedAt: true });
+export type InsertDashboardModuleVisibility = z.infer<typeof insertDashboardModuleVisibilitySchema>;
+export type DashboardModuleVisibility = typeof dashboardModuleVisibility.$inferSelect;

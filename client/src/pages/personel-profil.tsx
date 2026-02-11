@@ -150,8 +150,11 @@ export default function PersonelProfilPage() {
     checklistScore: number;
     trainingProgress: number;
     inspectionScore: number;
+    roleKpi: number;
+    roleKpiLabel: string;
     evaluationScore: number;
     overallScore: number;
+    isHQ: boolean;
   };
 
   const { data: perfSummary } = useQuery<PerformanceSummary>({
@@ -459,12 +462,13 @@ export default function PersonelProfilPage() {
         const overall = perfSummary?.overallScore ?? performanceScore;
         const scoreColor = overall >= 75 ? "text-emerald-500" : overall >= 65 ? "text-amber-500" : "text-red-500";
         const ringColor = overall >= 75 ? "stroke-emerald-500" : overall >= 65 ? "stroke-amber-500" : "stroke-red-500";
+        const isHQProfile = perfSummary?.isHQ ?? false;
         const metrics = [
           { label: "Devam Oranı", value: perfSummary?.attendanceRate ?? attendanceRate, weight: "15%", icon: Clock },
           { label: "Görev Tamamlama", value: perfSummary?.taskCompletion ?? 0, weight: "20%", icon: Target },
-          { label: "Checklist Skoru", value: perfSummary?.checklistScore ?? 0, weight: "20%", icon: ClipboardCheck },
+          { label: "Checklist Skoru", value: perfSummary?.checklistScore ?? 0, weight: isHQProfile ? "15%" : "20%", icon: ClipboardCheck },
           { label: "Eğitim İlerlemesi", value: perfSummary?.trainingProgress ?? 0, weight: "10%", icon: BookOpen },
-          { label: "Denetim Puanı", value: perfSummary?.inspectionScore ?? 0, weight: "15%", icon: Eye },
+          { label: perfSummary?.roleKpiLabel || "Denetim Puanı", value: perfSummary?.roleKpi ?? perfSummary?.inspectionScore ?? 0, weight: isHQProfile ? "20%" : "15%", icon: Eye },
           { label: "Değerlendirme Puanı", value: perfSummary?.evaluationScore ?? 0, weight: "20%", icon: Star },
         ];
         const circumference = 2 * Math.PI * 54;
@@ -1170,7 +1174,7 @@ export default function PersonelProfilPage() {
                     {/* Coach Eğitimleri */}
                     {(profile?.role === 'coach' || profile?.role === 'admin' || profile?.role === 'yatirimci_hq') && (
                       <>
-                        <Card className="hover-elevate cursor-pointer border-blue-200 dark:border-blue-800" onClick={() => setLocation("/akademi?tab=egitimler")} data-testid="card-training-franchise">
+                        <Card className="hover-elevate cursor-pointer border-blue-200 dark:border-blue-800" onClick={() => setLocation("/egitim-programi/franchise-yonetimi")} data-testid="card-training-franchise">
                           <CardContent className="p-3">
                             <div className="flex items-center gap-2">
                               <div className="w-8 h-8 rounded bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
@@ -1183,7 +1187,7 @@ export default function PersonelProfilPage() {
                             </div>
                           </CardContent>
                         </Card>
-                        <Card className="hover-elevate cursor-pointer border-green-200 dark:border-green-800" onClick={() => setLocation("/akademi?tab=egitimler")} data-testid="card-training-performance">
+                        <Card className="hover-elevate cursor-pointer border-green-200 dark:border-green-800" onClick={() => setLocation("/egitim-programi/performans-analizi")} data-testid="card-training-performance">
                           <CardContent className="p-3">
                             <div className="flex items-center gap-2">
                               <div className="w-8 h-8 rounded bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
@@ -1196,7 +1200,7 @@ export default function PersonelProfilPage() {
                             </div>
                           </CardContent>
                         </Card>
-                        <Card className="hover-elevate cursor-pointer border-red-200 dark:border-red-800" onClick={() => setLocation("/akademi?tab=egitimler")} data-testid="card-training-crisis">
+                        <Card className="hover-elevate cursor-pointer border-red-200 dark:border-red-800" onClick={() => setLocation("/egitim-programi/kriz-yonetimi")} data-testid="card-training-crisis">
                           <CardContent className="p-3">
                             <div className="flex items-center gap-2">
                               <div className="w-8 h-8 rounded bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
@@ -1215,7 +1219,7 @@ export default function PersonelProfilPage() {
                     {/* Satınalma Eğitimleri */}
                     {(profile?.role === 'satinalma' || profile?.role === 'admin' || profile?.role === 'yatirimci_hq') && (
                       <>
-                        <Card className="hover-elevate cursor-pointer border-purple-200 dark:border-purple-800" onClick={() => setLocation("/akademi?tab=egitimler")} data-testid="card-training-supply-chain">
+                        <Card className="hover-elevate cursor-pointer border-purple-200 dark:border-purple-800" onClick={() => setLocation("/egitim-programi/tedarik-zinciri")} data-testid="card-training-supply-chain">
                           <CardContent className="p-3">
                             <div className="flex items-center gap-2">
                               <div className="w-8 h-8 rounded bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
@@ -1228,7 +1232,7 @@ export default function PersonelProfilPage() {
                             </div>
                           </CardContent>
                         </Card>
-                        <Card className="hover-elevate cursor-pointer border-orange-200 dark:border-orange-800" onClick={() => setLocation("/akademi?tab=egitimler")} data-testid="card-training-cost-analysis">
+                        <Card className="hover-elevate cursor-pointer border-orange-200 dark:border-orange-800" onClick={() => setLocation("/egitim-programi/maliyet-analizi")} data-testid="card-training-cost-analysis">
                           <CardContent className="p-3">
                             <div className="flex items-center gap-2">
                               <div className="w-8 h-8 rounded bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center">
@@ -1241,7 +1245,7 @@ export default function PersonelProfilPage() {
                             </div>
                           </CardContent>
                         </Card>
-                        <Card className="hover-elevate cursor-pointer border-teal-200 dark:border-teal-800" onClick={() => setLocation("/akademi?tab=egitimler")} data-testid="card-training-supplier">
+                        <Card className="hover-elevate cursor-pointer border-teal-200 dark:border-teal-800" onClick={() => setLocation("/egitim-programi/tedarikci-iliskileri")} data-testid="card-training-supplier">
                           <CardContent className="p-3">
                             <div className="flex items-center gap-2">
                               <div className="w-8 h-8 rounded bg-teal-100 dark:bg-teal-900/30 flex items-center justify-center">
@@ -1260,7 +1264,7 @@ export default function PersonelProfilPage() {
                     {/* Muhasebe Eğitimleri */}
                     {(profile?.role === 'muhasebe' || profile?.role === 'admin' || profile?.role === 'yatirimci_hq') && (
                       <>
-                        <Card className="hover-elevate cursor-pointer border-emerald-200 dark:border-emerald-800" onClick={() => setLocation("/akademi?tab=egitimler")} data-testid="card-training-financial">
+                        <Card className="hover-elevate cursor-pointer border-emerald-200 dark:border-emerald-800" onClick={() => setLocation("/egitim-programi/finansal-raporlama")} data-testid="card-training-financial">
                           <CardContent className="p-3">
                             <div className="flex items-center gap-2">
                               <div className="w-8 h-8 rounded bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
@@ -1273,7 +1277,7 @@ export default function PersonelProfilPage() {
                             </div>
                           </CardContent>
                         </Card>
-                        <Card className="hover-elevate cursor-pointer border-amber-200 dark:border-amber-800" onClick={() => setLocation("/akademi?tab=egitimler")} data-testid="card-training-tax">
+                        <Card className="hover-elevate cursor-pointer border-amber-200 dark:border-amber-800" onClick={() => setLocation("/egitim-programi/vergi-mevzuat")} data-testid="card-training-tax">
                           <CardContent className="p-3">
                             <div className="flex items-center gap-2">
                               <div className="w-8 h-8 rounded bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
@@ -1286,7 +1290,7 @@ export default function PersonelProfilPage() {
                             </div>
                           </CardContent>
                         </Card>
-                        <Card className="hover-elevate cursor-pointer border-cyan-200 dark:border-cyan-800" onClick={() => setLocation("/akademi?tab=egitimler")} data-testid="card-training-budget">
+                        <Card className="hover-elevate cursor-pointer border-cyan-200 dark:border-cyan-800" onClick={() => setLocation("/egitim-programi/butce-planlama")} data-testid="card-training-budget">
                           <CardContent className="p-3">
                             <div className="flex items-center gap-2">
                               <div className="w-8 h-8 rounded bg-cyan-100 dark:bg-cyan-900/30 flex items-center justify-center">
@@ -1305,7 +1309,7 @@ export default function PersonelProfilPage() {
                     {/* Teknik Eğitimleri */}
                     {(profile?.role === 'teknik' || profile?.role === 'admin' || profile?.role === 'yatirimci_hq') && (
                       <>
-                        <Card className="hover-elevate cursor-pointer border-slate-200 dark:border-slate-700" data-testid="card-training-equipment">
+                        <Card className="hover-elevate cursor-pointer border-slate-200 dark:border-slate-700" onClick={() => setLocation("/egitim-programi/ekipman-bakim")} data-testid="card-training-equipment">
                           <CardContent className="p-3">
                             <div className="flex items-center gap-2">
                               <div className="w-8 h-8 rounded bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
@@ -1318,7 +1322,7 @@ export default function PersonelProfilPage() {
                             </div>
                           </CardContent>
                         </Card>
-                        <Card className="hover-elevate cursor-pointer border-indigo-200 dark:border-indigo-800" data-testid="card-training-tech">
+                        <Card className="hover-elevate cursor-pointer border-indigo-200 dark:border-indigo-800" onClick={() => setLocation("/egitim-programi/yeni-teknolojiler")} data-testid="card-training-tech">
                           <CardContent className="p-3">
                             <div className="flex items-center gap-2">
                               <div className="w-8 h-8 rounded bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center">
@@ -1331,7 +1335,7 @@ export default function PersonelProfilPage() {
                             </div>
                           </CardContent>
                         </Card>
-                        <Card className="hover-elevate cursor-pointer border-rose-200 dark:border-rose-800" data-testid="card-training-troubleshoot">
+                        <Card className="hover-elevate cursor-pointer border-rose-200 dark:border-rose-800" onClick={() => setLocation("/egitim-programi/problem-cozme")} data-testid="card-training-troubleshoot">
                           <CardContent className="p-3">
                             <div className="flex items-center gap-2">
                               <div className="w-8 h-8 rounded bg-rose-100 dark:bg-rose-900/30 flex items-center justify-center">
@@ -1350,7 +1354,7 @@ export default function PersonelProfilPage() {
                     {/* Fabrika Eğitimleri */}
                     {(profile?.role === 'fabrika' || profile?.role === 'admin' || profile?.role === 'yatirimci_hq') && (
                       <>
-                        <Card className="hover-elevate cursor-pointer border-yellow-200 dark:border-yellow-800" data-testid="card-training-production">
+                        <Card className="hover-elevate cursor-pointer border-yellow-200 dark:border-yellow-800" onClick={() => setLocation("/egitim-programi/uretim-planlama")} data-testid="card-training-production">
                           <CardContent className="p-3">
                             <div className="flex items-center gap-2">
                               <div className="w-8 h-8 rounded bg-yellow-100 dark:bg-yellow-900/30 flex items-center justify-center">
@@ -1363,7 +1367,7 @@ export default function PersonelProfilPage() {
                             </div>
                           </CardContent>
                         </Card>
-                        <Card className="hover-elevate cursor-pointer border-lime-200 dark:border-lime-800" data-testid="card-training-quality">
+                        <Card className="hover-elevate cursor-pointer border-lime-200 dark:border-lime-800" onClick={() => setLocation("/egitim-programi/kalite-kontrol")} data-testid="card-training-quality">
                           <CardContent className="p-3">
                             <div className="flex items-center gap-2">
                               <div className="w-8 h-8 rounded bg-lime-100 dark:bg-lime-900/30 flex items-center justify-center">

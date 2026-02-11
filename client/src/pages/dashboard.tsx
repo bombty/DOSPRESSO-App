@@ -1,4 +1,5 @@
 import { CardGridHub } from "@/components/card-grid-hub";
+import { DashboardWidgets } from "@/components/dashboard-widgets";
 import { useAuth } from "@/hooks/useAuth";
 import { useLocation } from "wouter";
 import { useEffect, lazy, Suspense } from "react";
@@ -38,5 +39,10 @@ export default function Dashboard() {
     );
   }
 
-  return <CardGridHub />;
+  return (
+    <div className="space-y-4">
+      <DashboardWidgets />
+      <CardGridHub />
+    </div>
+  );
 }

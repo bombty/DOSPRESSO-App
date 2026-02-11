@@ -285,6 +285,15 @@ import {
   insertStaffEvaluationSchema,
   employeePerformanceScores,
   disciplinaryReports,
+  guestComplaints,
+  leaveRequests,
+  productComplaints,
+  productionBatches,
+  purchaseOrders,
+  dashboardWidgets,
+  insertDashboardWidgetSchema,
+  dashboardModuleVisibility,
+  insertDashboardModuleVisibilitySchema,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, asc, sql, and, or, isNull, isNotNull, inArray, lte, gte, ne, count, sum, avg } from "drizzle-orm";
@@ -34865,33 +34874,145 @@ ${["yatirimci_hq", "yatirimci_branch"].includes(role) ? "- Yatirimci olarak sade
       // 2. Task completion rate
       const taskStats = await db.select({
         total: count(),
-        completed: sql<number>`COUNT(CASE WHEN ${tasks.status} = 'onaylandi' THEN 1 END)`,
+        completed: sql`COUNT(CASE WHEN ${tasks.status} = 'onaylandi' THEN 1 END)`,
       }).from(tasks)
         .where(eq(tasks.assignedToId, targetId));
 
       // 3. Checklist completion
       const checklistStats = await db.select({
         total: count(),
-        completed: sql<number>`COUNT(CASE WHEN ${checklistCompletions.completedAt} IS NOT NULL THEN 1 END)`,
+        completed: sql`COUNT(CASE WHEN ${checklistCompletions.completedAt} IS NOT NULL THEN 1 END)`,
       }).from(checklistCompletions)
         .where(eq(checklistCompletions.userId, targetId));
 
       // 4. Training progress
       const trainingStats = await db.select({
         total: count(),
-        completed: sql<number>`COUNT(CASE WHEN ${trainingCompletions.completedAt} IS NOT NULL THEN 1 END)`,
+        completed: sql`COUNT(CASE WHEN ${trainingCompletions.completedAt} IS NOT NULL THEN 1 END)`,
       }).from(trainingCompletions)
         .where(eq(trainingCompletions.userId, targetId));
 
-      // 5. Inspection / audit scores (from user's branch quality audits)
+      // 5. Role-specific KPI calculation
       const targetUser = await storage.getUserById(targetId);
-      let inspectionScoreVal = 0;
-      if (targetUser?.branchId) {
-        const auditScores = await db.select({
-          avgScore: avg(qualityAudits.percentageScore),
-        }).from(qualityAudits)
-          .where(eq(qualityAudits.branchId, targetUser.branchId));
-        inspectionScoreVal = auditScores[0]?.avgScore ? Number(auditScores[0].avgScore) : 0;
+      const targetRole = (targetUser?.role || 'barista') as UserRoleType;
+      const targetIsHQ = isHQRole(targetRole);
+
+      let roleKpi = 0;
+      let roleKpiLabel = "Denetim Puanı";
+
+      if (targetRole === 'fabrika' || targetRole === 'fabrika_mudur') {
+        roleKpiLabel = "Zayi/Fire Oranı";
+        try {
+          const batchStats = await db.select({
+            total: count(),
+            rejected: sql`COUNT(CASE WHEN ${productionBatches.status} = 'rejected' THEN 1 END)`,
+          }).from(productionBatches);
+          const bTotal = Number(batchStats[0]?.total || 0);
+          const bRejected = Number(batchStats[0]?.rejected || 0);
+          roleKpi = bTotal > 0 ? Math.max(0, 100 - (bRejected / bTotal) * 100) : 80;
+        } catch { roleKpi = 80; }
+
+      } else if (targetRole === 'satinalma') {
+        roleKpiLabel = "Tedarik Performansı";
+        try {
+          const poStats = await db.select({
+            total: count(),
+            onTime: sql`COUNT(CASE WHEN ${purchaseOrders.actualDeliveryDate} IS NOT NULL AND ${purchaseOrders.actualDeliveryDate} <= ${purchaseOrders.expectedDeliveryDate} THEN 1 END)`,
+            delivered: sql`COUNT(CASE WHEN ${purchaseOrders.actualDeliveryDate} IS NOT NULL THEN 1 END)`,
+          }).from(purchaseOrders);
+          const poTotal = Number(poStats[0]?.delivered || 0);
+          const poOnTime = Number(poStats[0]?.onTime || 0);
+          roleKpi = poTotal > 0 ? (poOnTime / poTotal) * 100 : 75;
+        } catch { roleKpi = 75; }
+
+      } else if (targetRole === 'trainer') {
+        roleKpiLabel = "Eğitim Etkinliği";
+        try {
+          const trAllStats = await db.select({
+            total: count(),
+            completed: sql`COUNT(CASE WHEN ${trainingCompletions.completedAt} IS NOT NULL THEN 1 END)`,
+          }).from(trainingCompletions);
+          const trAllTotal = Number(trAllStats[0]?.total || 0);
+          const trAllCompleted = Number(trAllStats[0]?.completed || 0);
+          const completionRate = trAllTotal > 0 ? (trAllCompleted / trAllTotal) * 100 : 75;
+          const complaintStats = await db.select({ total: count() }).from(productComplaints)
+            .where(eq(productComplaints.complaintType, 'taste'));
+          const recipeErrors = Number(complaintStats[0]?.total || 0);
+          const errorPenalty = Math.min(recipeErrors * 2, 30);
+          roleKpi = Math.max(0, completionRate - errorPenalty);
+        } catch { roleKpi = 75; }
+
+      } else if (targetRole === 'coach') {
+        roleKpiLabel = "Şube Gelişim Skoru";
+        try {
+          const auditAvg = await db.select({ avgScore: avg(qualityAudits.percentageScore) }).from(qualityAudits);
+          roleKpi = auditAvg[0]?.avgScore ? Number(auditAvg[0].avgScore) : 75;
+        } catch { roleKpi = 75; }
+
+      } else if (targetRole === 'kalite_kontrol') {
+        roleKpiLabel = "Kalite Uyum Oranı";
+        try {
+          const compStats = await db.select({
+            total: count(),
+            resolved: sql`COUNT(CASE WHEN ${productComplaints.status} = 'resolved' THEN 1 END)`,
+          }).from(productComplaints);
+          const cTotal = Number(compStats[0]?.total || 0);
+          const cResolved = Number(compStats[0]?.resolved || 0);
+          roleKpi = cTotal > 0 ? (cResolved / cTotal) * 100 : 75;
+        } catch { roleKpi = 75; }
+
+      } else if (targetRole === 'muhasebe' || targetRole === 'muhasebe_ik') {
+        roleKpiLabel = "Raporlama Performansı";
+        try {
+          const muhasebeTaskStats = await db.select({
+            total: count(),
+            completed: sql`COUNT(CASE WHEN ${tasks.status} = 'onaylandi' THEN 1 END)`,
+          }).from(tasks).where(eq(tasks.assignedToId, targetId));
+          const mTotal = Number(muhasebeTaskStats[0]?.total || 0);
+          const mCompleted = Number(muhasebeTaskStats[0]?.completed || 0);
+          roleKpi = mTotal > 0 ? (mCompleted / mTotal) * 100 : 75;
+        } catch { roleKpi = 75; }
+
+      } else if (targetRole === 'teknik') {
+        roleKpiLabel = "Arıza Çözüm Performansı";
+        try {
+          const faultStats = await db.select({
+            total: count(),
+            resolved: sql`COUNT(CASE WHEN ${equipmentFaults.status} = 'cozuldu' THEN 1 END)`,
+          }).from(equipmentFaults);
+          const fTotal = Number(faultStats[0]?.total || 0);
+          const fResolved = Number(faultStats[0]?.resolved || 0);
+          roleKpi = fTotal > 0 ? (fResolved / fTotal) * 100 : 75;
+        } catch { roleKpi = 75; }
+
+      } else if (targetRole === 'destek') {
+        roleKpiLabel = "Destek Çözüm Oranı";
+        try {
+          const supportStats = await db.select({
+            total: count(),
+            resolved: sql`COUNT(CASE WHEN ${equipmentServiceRequests.status} = 'completed' OR ${equipmentServiceRequests.status} = 'resolved' THEN 1 END)`,
+          }).from(equipmentServiceRequests);
+          const sTotal = Number(supportStats[0]?.total || 0);
+          const sResolved = Number(supportStats[0]?.resolved || 0);
+          roleKpi = sTotal > 0 ? (sResolved / sTotal) * 100 : 75;
+        } catch { roleKpi = 75; }
+
+      } else if (targetRole === 'admin' || targetRole === 'ceo' || targetRole === 'cgo' || targetRole === 'yatirimci_hq' || targetRole === 'marketing') {
+        roleKpiLabel = "Operasyonel Skor";
+        try {
+          const branchAvg = await db.select({ avgScore: avg(qualityAudits.percentageScore) }).from(qualityAudits);
+          roleKpi = branchAvg[0]?.avgScore ? Number(branchAvg[0].avgScore) : 75;
+        } catch { roleKpi = 75; }
+
+      } else {
+        roleKpiLabel = "Denetim Puanı";
+        if (targetUser?.branchId) {
+          try {
+            const auditScores = await db.select({ avgScore: avg(qualityAudits.percentageScore) }).from(qualityAudits)
+              .where(eq(qualityAudits.branchId, targetUser.branchId));
+            roleKpi = auditScores[0]?.avgScore ? Number(auditScores[0].avgScore) : 0;
+          } catch { roleKpi = 0; }
+        }
       }
 
       // 6. Staff evaluation scores
@@ -34913,18 +35034,11 @@ ${["yatirimci_hq", "yatirimci_branch"].includes(role) ? "- Yatirimci olarak sade
       const trCompleted = Number(trainingStats[0]?.completed || 0);
       const trainingProgress = trTotal > 0 ? (trCompleted / trTotal) * 100 : 0;
 
-      const inspectionScore = inspectionScoreVal;
       const evaluationScore = evalScores[0]?.avgScore ? Number(evalScores[0].avgScore) : 0;
 
-      // Weighted composite
-      const genelSkor = (
-        attendanceRate * 0.15 +
-        taskCompletionRate * 0.20 +
-        checklistScore * 0.20 +
-        trainingProgress * 0.10 +
-        inspectionScore * 0.15 +
-        evaluationScore * 0.20
-      );
+      const genelSkor = targetIsHQ
+        ? (attendanceRate * 0.15 + taskCompletionRate * 0.20 + checklistScore * 0.15 + trainingProgress * 0.10 + roleKpi * 0.20 + evaluationScore * 0.20)
+        : (attendanceRate * 0.15 + taskCompletionRate * 0.20 + checklistScore * 0.20 + trainingProgress * 0.10 + roleKpi * 0.15 + evaluationScore * 0.20);
 
       res.json({
         overallScore: Math.round(genelSkor * 10) / 10,
@@ -34932,8 +35046,11 @@ ${["yatirimci_hq", "yatirimci_branch"].includes(role) ? "- Yatirimci olarak sade
         taskCompletion: Math.round(taskCompletionRate * 10) / 10,
         checklistScore: Math.round(checklistScore * 10) / 10,
         trainingProgress: Math.round(trainingProgress * 10) / 10,
-        inspectionScore: Math.round(inspectionScore * 10) / 10,
+        inspectionScore: Math.round(roleKpi * 10) / 10,
+        roleKpi: Math.round(roleKpi * 10) / 10,
+        roleKpiLabel,
         evaluationScore: Math.round(evaluationScore * 10) / 10,
+        isHQ: targetIsHQ,
       });
     } catch (error: any) {
       console.error("Error fetching performance summary:", error);
@@ -35304,6 +35421,476 @@ Bu verilere dayanarak performans analizi ve iyileştirme önerileri oluştur.`
     } catch (error: any) {
       console.error("Error fetching leave-salary summary:", error);
       res.status(500).json({ message: "İzin ve maaş bilgileri alınırken hata oluştu" });
+    }
+  });
+
+  // ========================================
+  // PROFESSIONAL TRAINING SYSTEM ROUTES
+  // ========================================
+
+  const TRAINING_TOPICS: Record<string, string> = {
+    'franchise-yonetimi': 'Franchise Yönetimi',
+    'performans-analizi': 'Performans Analizi',
+    'kriz-yonetimi': 'Kriz Yönetimi',
+    'tedarik-zinciri': 'Tedarik Zinciri',
+    'maliyet-analizi': 'Maliyet Analizi',
+    'tedarikci-iliskileri': 'Tedarikçi İlişkileri',
+    'finansal-raporlama': 'Finansal Raporlama',
+    'vergi-mevzuat': 'Vergi & Mevzuat',
+    'butce-planlama': 'Bütçe Planlama',
+    'ekipman-bakim': 'Ekipman Bakım',
+    'yeni-teknolojiler': 'Yeni Teknolojiler',
+    'problem-cozme': 'Problem Çözme',
+    'uretim-planlama': 'Üretim Planlama',
+    'kalite-kontrol': 'Kalite Kontrol',
+  };
+
+  app.get("/api/training-program/:topicId/lessons", isAuthenticated, async (req, res) => {
+    try {
+      const { topicId } = req.params;
+      if (!TRAINING_TOPICS[topicId]) {
+        return res.status(404).json({ message: "Eğitim konusu bulunamadı" });
+      }
+      const { professionalTrainingLessons } = await import("@shared/schema");
+      const { eq, asc } = await import("drizzle-orm");
+      const lessons = await db.select().from(professionalTrainingLessons)
+        .where(eq(professionalTrainingLessons.topicId, topicId))
+        .orderBy(asc(professionalTrainingLessons.lessonIndex));
+      res.json({ lessons, topicTitle: TRAINING_TOPICS[topicId] });
+    } catch (error: any) {
+      console.error("Error fetching training lessons:", error);
+      res.status(500).json({ message: "Dersler alınırken hata oluştu" });
+    }
+  });
+
+  app.post("/api/training-program/:topicId/generate-lessons", isAuthenticated, async (req, res) => {
+    try {
+      const { topicId } = req.params;
+      const topicTitle = TRAINING_TOPICS[topicId];
+      if (!topicTitle) {
+        return res.status(404).json({ message: "Eğitim konusu bulunamadı" });
+      }
+      const { professionalTrainingLessons } = await import("@shared/schema");
+      const { eq } = await import("drizzle-orm");
+      const existing = await db.select().from(professionalTrainingLessons)
+        .where(eq(professionalTrainingLessons.topicId, topicId));
+      if (existing.length > 0) {
+        return res.json({ message: "Dersler zaten mevcut", lessons: existing });
+      }
+      const OpenAI = (await import('openai')).default;
+      const openai = new OpenAI();
+      const completion = await openai.chat.completions.create({
+        model: "gpt-4o",
+        messages: [
+          {
+            role: "system",
+            content: "Sen DOSPRESSO kahve franchise zinciri için profesyonel eğitim içeriği üreten bir eğitim uzmanısın. Türkçe olarak, profesyonel ama anlaşılır bir dilde yaz. Her ders 800-1200 kelime uzunluğunda olmalı. İçerik formatı: Markdown kullan - başlıklar (##), madde işaretleri (-), numaralı listeler (1.), kalın metin (**) kullan. DOSPRESSO franchise bağlamında pratik örnekler, teknikler ve en iyi uygulamalar ekle. Kahve sektörü ve franchise yönetimine özgü gerçekçi senaryolar kullan."
+          },
+          {
+            role: "user",
+            content: '"' + topicTitle + '" konusu için 4 ders oluştur. Her ders için JSON formatında döndür: [{ "title": "Ders Başlığı", "content": "Markdown formatında ders içeriği", "duration": dakika_cinsinden_süre }] Sadece JSON array döndür, başka bir şey ekleme.'
+          }
+        ],
+        temperature: 0.7,
+        max_tokens: 8000,
+      });
+      const responseText = completion.choices[0]?.message?.content || "[]";
+      let lessonsData: Array<{ title: string; content: string; duration: number }>;
+      try {
+        const cleaned = responseText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+        lessonsData = JSON.parse(cleaned);
+      } catch {
+        return res.status(500).json({ message: "AI yanıtı ayrıştırılamadı" });
+      }
+      const insertedLessons: any[] = [];
+      for (let i = 0; i < lessonsData.length; i++) {
+        const lesson = lessonsData[i];
+        const [inserted] = await db.insert(professionalTrainingLessons).values({
+          topicId,
+          lessonIndex: i,
+          title: lesson.title,
+          content: lesson.content,
+          duration: lesson.duration || 15,
+        }).returning();
+        insertedLessons.push(inserted);
+      }
+      res.json({ lessons: insertedLessons });
+    } catch (error: any) {
+      console.error("Error generating training lessons:", error);
+      res.status(500).json({ message: "Ders içerikleri oluşturulurken hata oluştu" });
+    }
+  });
+
+  app.post("/api/training-program/:topicId/lesson/:lessonIndex/complete", isAuthenticated, async (req, res) => {
+    try {
+      const { topicId, lessonIndex } = req.params;
+      const user = req.user!;
+      const { professionalTrainingProgress } = await import("@shared/schema");
+      const { eq, and } = await import("drizzle-orm");
+      const existing = await db.select().from(professionalTrainingProgress)
+        .where(and(
+          eq(professionalTrainingProgress.userId, user.id),
+          eq(professionalTrainingProgress.topicId, topicId),
+          eq(professionalTrainingProgress.lessonIndex, parseInt(lessonIndex))
+        ));
+      if (existing.length > 0) {
+        await db.update(professionalTrainingProgress)
+          .set({ completed: true, completedAt: new Date() })
+          .where(eq(professionalTrainingProgress.id, existing[0].id));
+      } else {
+        await db.insert(professionalTrainingProgress).values({
+          userId: user.id,
+          topicId,
+          lessonIndex: parseInt(lessonIndex),
+          completed: true,
+          completedAt: new Date(),
+        });
+      }
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("Error completing lesson:", error);
+      res.status(500).json({ message: "Ders tamamlanırken hata oluştu" });
+    }
+  });
+
+  app.get("/api/training-program/:topicId/progress", isAuthenticated, async (req, res) => {
+    try {
+      const { topicId } = req.params;
+      const user = req.user!;
+      const { professionalTrainingProgress } = await import("@shared/schema");
+      const { eq, and } = await import("drizzle-orm");
+      const progress = await db.select().from(professionalTrainingProgress)
+        .where(and(
+          eq(professionalTrainingProgress.userId, user.id),
+          eq(professionalTrainingProgress.topicId, topicId)
+        ));
+      const completedLessons = progress.filter(p => p.completed && p.quizScore === null);
+      const quizResult = progress.find(p => p.quizScore !== null);
+      res.json({
+        completedLessons: completedLessons.map(p => p.lessonIndex),
+        quizScore: quizResult?.quizScore ?? null,
+        quizPassed: quizResult?.quizPassed ?? null,
+      });
+    } catch (error: any) {
+      console.error("Error fetching progress:", error);
+      res.status(500).json({ message: "İlerleme bilgisi alınırken hata oluştu" });
+    }
+  });
+
+  app.get("/api/training-program/:topicId/quiz", isAuthenticated, async (req, res) => {
+    try {
+      const { topicId } = req.params;
+      if (!TRAINING_TOPICS[topicId]) {
+        return res.status(404).json({ message: "Eğitim konusu bulunamadı" });
+      }
+      const { professionalTrainingQuizCache, professionalTrainingLessons } = await import("@shared/schema");
+      const { eq, asc } = await import("drizzle-orm");
+      const cached = await db.select().from(professionalTrainingQuizCache)
+        .where(eq(professionalTrainingQuizCache.topicId, topicId));
+      if (cached.length > 0) {
+        return res.json({ questions: cached[0].questions });
+      }
+      const lessons = await db.select().from(professionalTrainingLessons)
+        .where(eq(professionalTrainingLessons.topicId, topicId))
+        .orderBy(asc(professionalTrainingLessons.lessonIndex));
+      if (lessons.length === 0) {
+        return res.status(400).json({ message: "Önce dersleri oluşturmalısınız" });
+      }
+      const lessonSummaries = lessons.map(l => l.title + ': ' + l.content.substring(0, 300)).join('\n');
+      const OpenAI = (await import('openai')).default;
+      const openai = new OpenAI();
+      const completion = await openai.chat.completions.create({
+        model: "gpt-4o",
+        messages: [
+          {
+            role: "system",
+            content: "Sen DOSPRESSO kahve franchise zinciri eğitim sistemi için sınav soruları oluşturan bir uzmanısın. Türkçe olarak 5 çoktan seçmeli soru oluştur. Her sorunun 4 seçeneği olmalı (A, B, C, D). Doğru cevabı belirt. JSON formatında döndür."
+          },
+          {
+            role: "user",
+            content: 'Aşağıdaki ders içeriklerine dayalı 5 sınav sorusu oluştur:\n\n' + lessonSummaries + '\n\nJSON formatı: [{ "question": "Soru metni", "options": ["A) Seçenek", "B) Seçenek", "C) Seçenek", "D) Seçenek"], "correctAnswer": 0 }] Sadece JSON array döndür.'
+          }
+        ],
+        temperature: 0.5,
+        max_tokens: 3000,
+      });
+      const responseText = completion.choices[0]?.message?.content || "[]";
+      let questions: any;
+      try {
+        const cleaned = responseText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+        questions = JSON.parse(cleaned);
+      } catch {
+        return res.status(500).json({ message: "Sınav soruları ayrıştırılamadı" });
+      }
+      await db.insert(professionalTrainingQuizCache).values({
+        topicId,
+        questions,
+      });
+      res.json({ questions });
+    } catch (error: any) {
+      console.error("Error generating quiz:", error);
+      res.status(500).json({ message: "Sınav soruları oluşturulurken hata oluştu" });
+    }
+  });
+
+  app.post("/api/training-program/:topicId/quiz/submit", isAuthenticated, async (req, res) => {
+    try {
+      const { topicId } = req.params;
+      const user = req.user!;
+      const { answers } = req.body;
+      if (!answers || !Array.isArray(answers)) {
+        return res.status(400).json({ message: "Cevaplar gerekli" });
+      }
+      const { professionalTrainingQuizCache, professionalTrainingProgress } = await import("@shared/schema");
+      const { eq, and } = await import("drizzle-orm");
+      const cached = await db.select().from(professionalTrainingQuizCache)
+        .where(eq(professionalTrainingQuizCache.topicId, topicId));
+      if (cached.length === 0) {
+        return res.status(400).json({ message: "Sınav bulunamadı" });
+      }
+      const questions = cached[0].questions as Array<{ question: string; options: string[]; correctAnswer: number }>;
+      let correct = 0;
+      for (let i = 0; i < questions.length; i++) {
+        if (answers[i] === questions[i].correctAnswer) {
+          correct++;
+        }
+      }
+      const score = Math.round((correct / questions.length) * 100);
+      const passed = score >= 70;
+      const existingQuizProgress = await db.select().from(professionalTrainingProgress)
+        .where(and(
+          eq(professionalTrainingProgress.userId, user.id),
+          eq(professionalTrainingProgress.topicId, topicId),
+          eq(professionalTrainingProgress.lessonIndex, -1)
+        ));
+      if (existingQuizProgress.length > 0) {
+        await db.update(professionalTrainingProgress)
+          .set({ quizScore: score, quizPassed: passed, completedAt: new Date() })
+          .where(eq(professionalTrainingProgress.id, existingQuizProgress[0].id));
+      } else {
+        await db.insert(professionalTrainingProgress).values({
+          userId: user.id,
+          topicId,
+          lessonIndex: -1,
+          completed: true,
+          completedAt: new Date(),
+          quizScore: score,
+          quizPassed: passed,
+        });
+      }
+      res.json({ score, passed, correct, total: questions.length });
+    } catch (error: any) {
+      console.error("Error submitting quiz:", error);
+      res.status(500).json({ message: "Sınav gönderilirken hata oluştu" });
+    }
+  });
+
+
+  // ========================================
+  // DASHBOARD WIDGET CONFIGURATION ROUTES
+  // ========================================
+
+  // GET /api/admin/widgets - List all widgets (admin only)
+  app.get('/api/admin/widgets', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      if (user.role !== 'admin') {
+        return res.status(403).json({ message: 'Yetkiniz yok' });
+      }
+      const widgets = await db.select().from(dashboardWidgets).orderBy(asc(dashboardWidgets.sortOrder));
+      res.json(widgets);
+    } catch (error: any) {
+      console.error('Error fetching widgets:', error);
+      res.status(500).json({ message: 'Widget listesi alınamadı' });
+    }
+  });
+
+  // POST /api/admin/widgets - Create widget (admin only)
+  app.post('/api/admin/widgets', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      if (user.role !== 'admin') {
+        return res.status(403).json({ message: 'Yetkiniz yok' });
+      }
+      const parsed = insertDashboardWidgetSchema.parse({ ...req.body, createdBy: user.id });
+      const [widget] = await db.insert(dashboardWidgets).values(parsed).returning();
+      res.json(widget);
+    } catch (error: any) {
+      console.error('Error creating widget:', error);
+      res.status(500).json({ message: 'Widget oluşturulamadı' });
+    }
+  });
+
+  // PATCH /api/admin/widgets/:id - Update widget (admin only)
+  app.patch('/api/admin/widgets/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      if (user.role !== 'admin') {
+        return res.status(403).json({ message: 'Yetkiniz yok' });
+      }
+      const widgetId = parseInt(req.params.id);
+      const [updated] = await db.update(dashboardWidgets)
+        .set({ ...req.body, updatedAt: new Date() })
+        .where(eq(dashboardWidgets.id, widgetId))
+        .returning();
+      if (!updated) {
+        return res.status(404).json({ message: 'Widget bulunamadı' });
+      }
+      res.json(updated);
+    } catch (error: any) {
+      console.error('Error updating widget:', error);
+      res.status(500).json({ message: 'Widget güncellenemedi' });
+    }
+  });
+
+  // DELETE /api/admin/widgets/:id - Delete widget (admin only)
+  app.delete('/api/admin/widgets/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      if (user.role !== 'admin') {
+        return res.status(403).json({ message: 'Yetkiniz yok' });
+      }
+      const widgetId = parseInt(req.params.id);
+      const [deleted] = await db.delete(dashboardWidgets)
+        .where(eq(dashboardWidgets.id, widgetId))
+        .returning();
+      if (!deleted) {
+        return res.status(404).json({ message: 'Widget bulunamadı' });
+      }
+      res.json({ message: 'Widget silindi' });
+    } catch (error: any) {
+      console.error('Error deleting widget:', error);
+      res.status(500).json({ message: 'Widget silinemedi' });
+    }
+  });
+
+  // GET /api/dashboard/widgets - Get widgets for current user's role
+  app.get('/api/dashboard/widgets', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const allWidgets = await db.select().from(dashboardWidgets)
+        .where(eq(dashboardWidgets.isActive, true))
+        .orderBy(asc(dashboardWidgets.sortOrder));
+      const userWidgets = allWidgets.filter(w => {
+        if (!w.roles || w.roles.length === 0) return true;
+        return w.roles.includes(user.role);
+      });
+      res.json(userWidgets);
+    } catch (error: any) {
+      console.error('Error fetching user widgets:', error);
+      res.status(500).json({ message: 'Widget listesi alınamadı' });
+    }
+  });
+
+  // GET /api/admin/module-visibility - Get all module visibility settings
+  app.get('/api/admin/module-visibility', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      if (user.role !== 'admin') {
+        return res.status(403).json({ message: 'Yetkiniz yok' });
+      }
+      const visibility = await db.select().from(dashboardModuleVisibility);
+      res.json(visibility);
+    } catch (error: any) {
+      console.error('Error fetching module visibility:', error);
+      res.status(500).json({ message: 'Modül görünürlük ayarları alınamadı' });
+    }
+  });
+
+  // PATCH /api/admin/module-visibility/:moduleId - Update where a module appears
+  app.patch('/api/admin/module-visibility/:moduleId', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      if (user.role !== 'admin') {
+        return res.status(403).json({ message: 'Yetkiniz yok' });
+      }
+      const { moduleId } = req.params;
+      const { displayLocation, roles } = req.body;
+      const existing = await db.select().from(dashboardModuleVisibility)
+        .where(eq(dashboardModuleVisibility.moduleId, moduleId));
+      let result;
+      if (existing.length > 0) {
+        [result] = await db.update(dashboardModuleVisibility)
+          .set({ displayLocation, roles, updatedBy: user.id, updatedAt: new Date() })
+          .where(eq(dashboardModuleVisibility.moduleId, moduleId))
+          .returning();
+      } else {
+        [result] = await db.insert(dashboardModuleVisibility)
+          .values({ moduleId, displayLocation, roles, updatedBy: user.id })
+          .returning();
+      }
+      res.json(result);
+    } catch (error: any) {
+      console.error('Error updating module visibility:', error);
+      res.status(500).json({ message: 'Modül görünürlük ayarları güncellenemedi' });
+    }
+  });
+
+  // GET /api/dashboard/widget-data/:widgetId - Get data for a specific widget
+  app.get('/api/dashboard/widget-data/:widgetId', isAuthenticated, async (req: any, res) => {
+    try {
+      const widgetId = parseInt(req.params.widgetId);
+      const [widget] = await db.select().from(dashboardWidgets).where(eq(dashboardWidgets.id, widgetId));
+      if (!widget) {
+        return res.status(404).json({ message: 'Widget bulunamadı' });
+      }
+      let data: any = { value: 0, label: widget.title };
+      switch (widget.dataSource) {
+        case 'faults_count': {
+          const [result] = await db.select({ count: count() }).from(equipmentFaults)
+            .where(and(ne(equipmentFaults.status, 'cozuldu')));
+          data = { value: result?.count || 0, label: 'Açık Arızalar' };
+          break;
+        }
+        case 'tasks_pending': {
+          const [result] = await db.select({ count: count() }).from(tasks)
+            .where(eq(tasks.status, 'pending'));
+          data = { value: result?.count || 0, label: 'Bekleyen Görevler' };
+          break;
+        }
+        case 'checklists_today': {
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          const [total] = await db.select({ count: count() }).from(checklists);
+          data = { value: total?.count || 0, label: 'Checklist Sayısı', subtitle: 'Toplam' };
+          break;
+        }
+        case 'branch_health': {
+          const [result] = await db.select({ count: count() }).from(branches);
+          data = { value: result?.count || 0, label: 'Şube Sayısı' };
+          break;
+        }
+        case 'training_progress': {
+          const [result] = await db.select({ count: count() }).from(trainingModules)
+            .where(eq(trainingModules.isActive, true));
+          data = { value: result?.count || 0, label: 'Aktif Eğitim Modülü' };
+          break;
+        }
+        case 'staff_count': {
+          const [result] = await db.select({ count: count() }).from(users)
+            .where(eq(users.isActive, true));
+          data = { value: result?.count || 0, label: 'Aktif Personel' };
+          break;
+        }
+        case 'equipment_alerts': {
+          const [result] = await db.select({ count: count() }).from(equipment)
+            .where(eq(equipment.status, 'needs_repair'));
+          data = { value: result?.count || 0, label: 'Bakım Gerektiren Ekipman' };
+          break;
+        }
+        case 'complaints_open': {
+          const [result] = await db.select({ count: count() }).from(guestComplaints)
+            .where(and(ne(guestComplaints.status, 'resolved'), ne(guestComplaints.status, 'closed')));
+          data = { value: result?.count || 0, label: 'Açık Şikayetler' };
+          break;
+        }
+        default:
+          data = { value: 0, label: 'Bilinmeyen veri kaynağı' };
+      }
+      res.json(data);
+    } catch (error: any) {
+      console.error('Error fetching widget data:', error);
+      res.status(500).json({ message: 'Widget verisi alınamadı' });
     }
   });
 
