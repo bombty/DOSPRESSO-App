@@ -17,6 +17,11 @@ function hasPermission(role: string, module: PermissionModule, action: Permissio
   return (modulePerms as readonly string[]).includes(action);
 }
 
+const HQ_ROLES = ['admin', 'ceo', 'cgo', 'coach', 'kalite_kontrol'] as const;
+function isHqRole(role: string): boolean {
+  return (HQ_ROLES as readonly string[]).includes(role);
+}
+
 const INSPECTION_CATEGORIES = [
   { key: "exteriorScore", label: "Dış Mekan", weight: 10, items: [
     "Tabelalar temiz ve aydınlatması çalışıyor",
@@ -95,7 +100,7 @@ export function registerInspectionRoutes(app: Express) {
       if (branchId) {
         conditions.push(eq(branchQualityAudits.branchId, branchId));
       }
-      if (!['admin', 'ceo', 'cgo', 'coach', 'kalite_kontrol'].includes(user.role)) {
+      if (!isHqRole(user.role)) {
         if (user.branchId) {
           conditions.push(eq(branchQualityAudits.branchId, user.branchId));
         }
@@ -186,6 +191,11 @@ export function registerInspectionRoutes(app: Express) {
 
   app.get('/api/branch-inspections/:id', isAuthenticated, async (req: any, res) => {
     try {
+      const user = req.user;
+      if (!hasPermission(user.role, 'branch_inspection', 'view')) {
+        return res.status(403).json({ message: "Bu modüle erişim yetkiniz yok" });
+      }
+
       const id = parseInt(req.params.id);
       const [audit] = await db.select({
         audit: branchQualityAudits,
@@ -199,6 +209,10 @@ export function registerInspectionRoutes(app: Express) {
         .where(eq(branchQualityAudits.id, id));
 
       if (!audit) return res.status(404).json({ message: "Denetim bulunamadı" });
+
+      if (!isHqRole(user.role) && user.branchId && audit.audit.branchId !== user.branchId) {
+        return res.status(403).json({ message: "Bu denetimi görüntüleme yetkiniz yok" });
+      }
 
       res.json({
         ...audit.audit,
@@ -226,7 +240,7 @@ export function registerInspectionRoutes(app: Express) {
         // kalite_kontrol sees all complaints (assigned or unassigned)
       } else if (user.branchId) {
         conditions.push(eq(productComplaints.branchId, user.branchId));
-      } else if (!['admin', 'ceo', 'cgo', 'coach'].includes(user.role)) {
+      } else if (!isHqRole(user.role)) {
         conditions.push(eq(productComplaints.reportedById, user.id));
       }
 
@@ -332,7 +346,14 @@ export function registerInspectionRoutes(app: Express) {
         return res.status(403).json({ message: "Bu modüle erişim yetkiniz yok" });
       }
 
-      const branchList = await db.select({ id: branches.id, name: branches.name }).from(branches);
+      let branchConditions: any[] = [];
+      if (!isHqRole(user.role) && user.branchId) {
+        branchConditions.push(eq(branches.id, user.branchId));
+      }
+
+      const branchList = await db.select({ id: branches.id, name: branches.name })
+        .from(branches)
+        .where(branchConditions.length > 0 ? and(...branchConditions) : undefined);
 
       const scores = await Promise.all(branchList.map(async (branch) => {
         const recentAudits = await db.select({
@@ -378,6 +399,10 @@ export function registerInspectionRoutes(app: Express) {
         return res.status(403).json({ message: "Bu modüle erişim yetkiniz yok" });
       }
       const branchId = parseInt(req.params.branchId);
+
+      if (!isHqRole(user.role) && user.branchId && user.branchId !== branchId) {
+        return res.status(403).json({ message: "Bu şubenin verilerine erişim yetkiniz yok" });
+      }
 
       const [branch] = await db.select({ id: branches.id, name: branches.name })
         .from(branches).where(eq(branches.id, branchId));
@@ -435,6 +460,10 @@ export function registerInspectionRoutes(app: Express) {
       }
       const { branchId } = req.body;
       if (!branchId) return res.status(400).json({ message: "branchId gerekli" });
+
+      if (!isHqRole(user.role) && user.branchId && user.branchId !== branchId) {
+        return res.status(403).json({ message: "Bu şubenin verilerine erişim yetkiniz yok" });
+      }
 
       const [branch] = await db.select({ name: branches.name })
         .from(branches).where(eq(branches.id, branchId));
