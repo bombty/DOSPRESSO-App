@@ -15,7 +15,7 @@ import { ObjectUploader } from "@/components/ObjectUploader";
 import { 
   User, Calendar, Award, ClipboardCheck, Users,
   Clock, TrendingUp, AlertCircle, CheckCircle2, XCircle, LogOut, Camera, Trash2, Wallet, Banknote, 
-  Timer, Plus, Loader2
+  Timer, Plus, Loader2, Shield
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -300,6 +300,15 @@ export default function PersonelProfilPage() {
             <Badge variant={profile.isActive ? "default" : "secondary"} data-testid="personnel-status">
               {profile.isActive ? "Aktif" : "Pasif"}
             </Badge>
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={() => setLocation("/gizlilik-politikasi")}
+              data-testid="button-privacy-policy"
+            >
+              <Shield className="h-4 w-4 mr-2" />
+              KVKK
+            </Button>
             <Button 
               variant="destructive" 
               size="sm"

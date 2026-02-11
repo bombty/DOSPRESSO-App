@@ -8,7 +8,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { UnifiedHero } from "@/components/widgets/unified-hero";
-import { ModuleCardsGrid } from "@/components/widgets/module-cards-grid";
 import { CriticalAlerts } from "@/components/critical-alerts";
 import { DailyTaskPanel } from "@/components/daily-task-panel";
 import { motion } from "framer-motion";
@@ -1266,16 +1265,9 @@ export default function HQDashboard() {
   return (
     <div className="container mx-auto p-3 max-w-7xl space-y-3">
       <UnifiedHero />
+      <DailyTaskPanel />
       {!isCGO && <CriticalAlerts />}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
-        <div className="lg:col-span-2">
-          <DepartmentComponent />
-        </div>
-        <div className="lg:col-span-1">
-          <DailyTaskPanel />
-        </div>
-      </div>
-      <ModuleCardsGrid />
+      <DepartmentComponent />
     </div>
   );
 }

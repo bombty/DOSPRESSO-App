@@ -21,11 +21,6 @@ import { CriticalAlerts } from "@/components/critical-alerts";
 import { MEGA_MODULE_ORDER } from "@/lib/megaModuleConfig";
 import { HeroSection } from "@/components/ui/hero-section";
 import { UnifiedHero } from "@/components/widgets/unified-hero";
-import { CompactStatsBar } from "@/components/widgets/compact-stats-bar";
-import { QuickActionsGrid } from "@/components/widgets/quick-actions-grid";
-import { ActivityTimeline } from "@/components/widgets/activity-timeline";
-import { ModuleCardsGrid } from "@/components/widgets/module-cards-grid";
-import { AISummaryCard } from "@/components/widgets/ai-summary-card";
 import {
   Accordion,
   AccordionContent,
@@ -892,37 +887,23 @@ export function CardGridHub() {
 
   if (isCEO) {
     return (
-      <div className="p-3 pb-24 space-y-4">
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4 }}
-          className="rounded-2xl bg-gradient-to-br from-[hsl(var(--dospresso-navy))] via-[hsl(var(--dospresso-blue))] to-[hsl(var(--dospresso-blue)/0.8)] p-6 text-white"
-        >
-          <div className="flex items-center gap-3 mb-3">
-            <div className="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center">
-              <Coffee className="w-6 h-6 text-white" />
-            </div>
-            <div>
-              <h1 className="text-xl font-bold">Hoş geldiniz, {user?.firstName || user?.username}</h1>
-              <p className="text-sm text-white/70">CEO Dashboard</p>
-            </div>
-          </div>
-          <p className="text-sm text-white/80 mb-4">
-            DOSPRESSO franchise ağınızı AI Control Tower üzerinden yönetebilirsiniz.
-          </p>
-          <Button
-            variant="secondary"
-            className="w-full bg-white/20 text-white border-0"
-            onClick={() => setLocation("/ceo-command-center")}
-            data-testid="ceo-ai-control-tower-btn"
-          >
-            <BarChart3 className="w-4 h-4 mr-2" />
-            AI Control Tower'a Git
-          </Button>
-        </motion.div>
+      <div className="p-3 pb-24 space-y-3">
+        <UnifiedHero />
 
-        <AISummaryCard />
+        <DailyTaskPanel />
+
+        <Card className="hover-elevate cursor-pointer" onClick={() => setLocation("/ceo-command-center")} data-testid="ceo-ai-control-tower-btn">
+          <CardContent className="p-3 flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+              <BarChart3 className="w-5 h-5 text-primary" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold">AI Control Tower</p>
+              <p className="text-xs text-muted-foreground">Franchise analitik ve yapay zeka merkezi</p>
+            </div>
+            <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
+          </CardContent>
+        </Card>
 
         {bannerCarouselEnabled && <AnnouncementBannerCarousel />}
       </div>
@@ -931,64 +912,37 @@ export function CardGridHub() {
 
   return (
     <div className="p-3 pb-24 space-y-3">
-      {/* Unified Hero: Greeting + Progress Ring - For operational roles */}
       {canSeeWidget(userRole, 'unified-hero') && <UnifiedHero />}
 
-      {/* Compact Stats Bar - Role filtered internally */}
-      {canSeeWidget(userRole, 'compact-stats') && <CompactStatsBar />}
-
-
-      {/* Critical Alerts - Top priority notifications */}
-      {canSeeWidget(userRole, 'critical-alerts') && <CriticalAlerts />}
-
-      {/* Quick Actions - Role filtered internally */}
-      {canSeeWidget(userRole, 'quick-actions') && <QuickActionsGrid />}
-
-      {/* Daily Task Panel - Available for all roles */}
       <DailyTaskPanel />
 
-      {/* Module Cards Grid - Role filtered internally */}
-      {canSeeWidget(userRole, 'module-cards') && <ModuleCardsGrid />}
-
-
-      {/* Announcement Banners - Only show if enabled */}
-      {bannerCarouselEnabled && <AnnouncementBannerCarousel />}
-
-      {/* Branch Scorecard and Personnel Status - For supervisors */}
       {canSeeWidget(userRole, 'branch-scorecard') && isBranch && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-          <BranchScorecard />
-          {canSeeWidget(userRole, 'personnel-status') && <PersonnelStatusPanel />}
-        </div>
+        <BranchScorecard />
       )}
 
-      {/* Shift Status - Branch users only */}
+      {canSeeWidget(userRole, 'personnel-status') && <PersonnelStatusPanel />}
+
       {isBranch && <ShiftStatusCard />}
 
-      {/* Shift Checklists - Branch users only */}
       {isBranch && <ShiftChecklistCard />}
 
-      {/* Personal Summary Card - Non-supervisor branch roles (barista, etc.) */}
+      {canSeeWidget(userRole, 'critical-alerts') && <CriticalAlerts />}
+
       {isBranch && user?.role !== "supervisor" && user?.role !== "supervisor_buddy" && <PersonalSummaryCard />}
 
+      {bannerCarouselEnabled && <AnnouncementBannerCarousel />}
 
-      {/* Employee of Month Widget */}
-      <EmployeeOfMonthWidget />
-
-      {/* Today's Shift Card - Show assigned shifts for today */}
       {todayShifts.length > 0 && (
-        <Card className="border-primary/30 bg-primary/5 dark:bg-primary/10">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm flex items-center gap-2">
+        <Card>
+          <CardContent className="p-3 space-y-2">
+            <p className="text-sm font-semibold flex items-center gap-2">
               <Clock className="h-4 w-4 text-primary" />
               Bugünkü Vardiyam
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2">
+            </p>
             {todayShifts.map((shift: any) => (
               <div 
                 key={shift.id} 
-                className="flex items-center justify-between text-sm p-3 bg-background/80 rounded-lg border"
+                className="flex items-center justify-between text-sm p-2.5 bg-muted/50 rounded-lg"
               >
                 <div className="flex items-center gap-2">
                   <div className={`w-2 h-2 rounded-full ${
@@ -999,12 +953,9 @@ export function CardGridHub() {
                   <span className="font-medium capitalize">{shift.shiftType || 'Tam Gün'}</span>
                 </div>
                 <div className="text-right">
-                  <div className="font-semibold text-primary">
+                  <span className="font-semibold text-primary text-sm">
                     {shift.startTime?.slice(0,5) || '09:00'} - {shift.endTime?.slice(0,5) || '18:00'}
-                  </div>
-                  <div className="text-xs text-muted-foreground">
-                    {shift.branchName || 'Şube'}
-                  </div>
+                  </span>
                 </div>
               </div>
             ))}
@@ -1012,20 +963,16 @@ export function CardGridHub() {
         </Card>
       )}
 
-
-      {/* Factory Shift Compliance Warnings */}
       {isFactoryWorker && complianceWarnings?.warnings && complianceWarnings.warnings.length > 0 && (
-        <Card className="border-amber-500/50 bg-amber-50/50 dark:bg-amber-950/20">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm flex items-center gap-2 text-amber-700 dark:text-amber-400">
+        <Card>
+          <CardContent className="p-3 space-y-2">
+            <p className="text-sm font-semibold flex items-center gap-2 text-amber-700 dark:text-amber-400">
               <Clock className="h-4 w-4" />
-              Vardiya Uyumluluk Uyarıları
-              <Badge variant="outline" className="ml-auto bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300 text-xs">
+              Vardiya Uyumluluk
+              <Badge variant="outline" className="ml-auto text-xs">
                 Skor: {complianceWarnings.complianceScore || 100}
               </Badge>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2">
+            </p>
             {complianceWarnings.warnings.map((warning: any, idx: number) => (
               <div 
                 key={idx} 
@@ -1051,43 +998,23 @@ export function CardGridHub() {
                   </Badge>
                 </div>
                 <p className="text-muted-foreground">{warning.message}</p>
-                {warning.aiSuggestion && (
-                  <div className="mt-2 p-2 bg-background/50 rounded border border-primary/20">
-                    <div className="flex items-center gap-1 text-primary mb-1">
-                      <Sparkles className="h-3 w-3" />
-                      <span className="font-medium text-[10px]">AI Öneri</span>
-                    </div>
-                    <p className="text-[10px] text-muted-foreground">{warning.aiSuggestion}</p>
-                  </div>
-                )}
               </div>
             ))}
-            {complianceWarnings.weeklySummary && (
-              <div className="mt-2 p-2 bg-background/50 rounded border">
-                <p className="text-xs text-muted-foreground">
-                  Bu hafta: {Math.floor((complianceWarnings.weeklySummary.actualTotalMinutes || 0) / 60)} saat 
-                  / 45 saat hedef
-                </p>
-              </div>
-            )}
           </CardContent>
         </Card>
       )}
 
-      {/* Equipment Health Alert */}
       {criticalEquipment.length > 0 && (
-        <Card className="border-destructive bg-destructive/5 dark:bg-red-950/20">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm flex items-center gap-2 text-destructive">
+        <Card>
+          <CardContent className="p-3 space-y-2">
+            <p className="text-sm font-semibold flex items-center gap-2 text-destructive">
               <AlertCircle className="h-4 w-4" />
               Kritik Ekipmanlar ({criticalEquipment.length})
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2">
+            </p>
             {criticalEquipment.slice(0, 3).map((eq: any) => (
               <div 
                 key={eq.id} 
-                className="flex items-center justify-between text-xs p-2 bg-background/50 rounded border border-destructive/20 hover-elevate cursor-pointer"
+                className="flex items-center justify-between text-xs p-2 bg-muted/50 rounded-md hover-elevate cursor-pointer"
                 onClick={() => setLocation(`/ekipman?id=${eq.id}`)}
                 data-testid={`equipment-critical-${eq.id}`}
               >
@@ -1095,32 +1022,23 @@ export function CardGridHub() {
                 <span className="text-destructive font-bold">{Math.round(eq.healthScore || 0)}%</span>
               </div>
             ))}
-            {criticalEquipment.length > 3 && (
-              <p className="text-xs text-muted-foreground">+{criticalEquipment.length - 3} daha...</p>
-            )}
             <Button 
               size="sm" 
               variant="destructive" 
-              className="w-full mt-2 h-8"
+              className="w-full"
               onClick={() => setLocation("/ekipman")}
               data-testid="button-equipment-critical"
             >
-              <Heart className="h-3 w-3 mr-1" />
               Ekipmanları Gözden Geçir
             </Button>
           </CardContent>
         </Card>
       )}
 
+      <EmployeeOfMonthWidget />
 
-      {/* Enhanced Analytics Card - For supervisors and HQ */}
       {((isBranch && (user?.role === 'supervisor' || user?.role === 'supervisor_buddy')) || isHQ) && (
         <EnhancedAnalyticsCard />
-      )}
-
-      {/* Recent Activities Panel - For supervisors and HQ */}
-      {(isHQ || (isBranch && (user?.role === 'supervisor' || user?.role === 'supervisor_buddy'))) && (
-        <RecentActivities compact />
       )}
     </div>
   );

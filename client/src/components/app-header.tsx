@@ -12,6 +12,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { HamburgerMenu } from "@/components/hamburger-menu";
 import dospressoLogo from "@assets/IMG_6637_1765138781125.png";
 import type { User } from "@shared/schema";
 
@@ -178,8 +179,9 @@ export function AppHeader({ notificationCount = 0, user, branchName, onQRClick }
       {/* Header - User Left + Logo Center + Mailbox Right */}
       <div className="px-3 py-2 border-b bg-[#1e3a5f] dark:bg-[#1e3a5f] flex items-center gap-3 relative">
         
-        {/* Left: User Info Dropdown */}
-        <div className="flex-shrink-0">
+        {/* Left: Hamburger Menu + User Info */}
+        <div className="flex items-center gap-1 flex-shrink-0">
+          <HamburgerMenu />
           <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
             <DropdownMenuTrigger asChild>
               <Button

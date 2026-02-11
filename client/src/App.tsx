@@ -26,6 +26,7 @@ import Subeler from "@/pages/subeler";
 import SubeDetay from "@/pages/sube-detay";
 import SubeNFCDetay from "@/pages/sube-nfc-detay";
 import PersonelProfil from "@/pages/personel-profil";
+import PrivacyPolicy from "@/pages/privacy-policy";
 import PersonelDetay from "@/pages/personel-detay";
 import PersonelDuzenle from "@/pages/personel-duzenle";
 import Tasks from "@/pages/tasks";
@@ -269,6 +270,7 @@ function Router() {
           <Route path="/subeler/:id/nfc" component={SubeNFCDetay} />
           <Route path="/subeler/:id" component={SubeDetay} />
           <Route path="/subeler" component={Subeler} />
+          <Route path="/gizlilik-politikasi" component={PrivacyPolicy} />
           <Route path="/personel/:id" component={PersonelProfil} />
           <Route path="/personel-detay/:id" component={PersonelDetay} />
           <Route path="/personel-qr-tokenlar" component={StaffQrTokensPage} />
