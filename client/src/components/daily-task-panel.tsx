@@ -10,7 +10,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import {
   CheckCircle2, Circle, Clock, Calendar, CalendarDays,
-  ChevronRight, Sparkles, ListTodo, Trophy, Zap,
+  ChevronRight, ChevronDown, Sparkles, ListTodo, Trophy, Zap,
   Monitor, UserCheck, Bell, Shield, Database, BarChart, TrendingUp,
   DollarSign, AlertTriangle, BarChart3, FileText, Target, Briefcase,
   MapPin, Building, Megaphone, Globe, Calculator, FileCheck, Wallet,
@@ -19,7 +19,7 @@ import {
   PlusCircle, BookOpen, Share2, Image, MessageCircle, Wrench, Heart,
   Box, Headphones, AlertCircle, Factory, RefreshCw, CheckCircle, Users,
   ClipboardList, Coffee, Sunrise, Sunset, Settings, Droplet, Play,
-  Star, Edit, HelpCircle, Sparkles as SparklesIcon
+  Star, Edit, HelpCircle, Sparkles as SparklesIcon, ExternalLink
 } from "lucide-react";
 
 const iconMap: Record<string, any> = {
@@ -35,6 +35,11 @@ const iconMap: Record<string, any> = {
   Calendar,
 };
 
+interface DetailStep {
+  step: string;
+  tip?: string;
+}
+
 interface TaskItem {
   id: number;
   role: string;
@@ -46,6 +51,7 @@ interface TaskItem {
   icon: string | null;
   targetUrl: string | null;
   moduleLink: string | null;
+  detailSteps: DetailStep[] | null;
   isCompleted: boolean;
   completedAt: string | null;
 }
@@ -109,8 +115,44 @@ const sourceTypeLabels: Record<string, string> = {
   announcement: "Duyuru",
 };
 
+function TaskDetailPanel({ steps, targetUrl, onNavigate }: { steps: DetailStep[]; targetUrl: string | null; onNavigate: (url: string | null) => void }) {
+  return (
+    <div className="mt-2 ml-7 pb-1 space-y-1.5 animate-in fade-in slide-in-from-top-1 duration-200">
+      {steps.map((s, i) => (
+        <div key={i} className="flex items-start gap-2">
+          <span className="flex-shrink-0 mt-0.5 w-4 h-4 rounded-full bg-muted flex items-center justify-center text-[10px] font-semibold text-muted-foreground">
+            {i + 1}
+          </span>
+          <div className="flex-1 min-w-0">
+            <p className="text-xs leading-relaxed">{s.step}</p>
+            {s.tip && (
+              <p className="text-[10px] text-muted-foreground mt-0.5 italic">{s.tip}</p>
+            )}
+          </div>
+        </div>
+      ))}
+      {targetUrl && (
+        <Button
+          variant="outline"
+          size="sm"
+          className="mt-1.5 text-xs gap-1"
+          onClick={(e) => {
+            e.stopPropagation();
+            onNavigate(targetUrl);
+          }}
+          data-testid="task-detail-navigate"
+        >
+          <ExternalLink className="h-3 w-3" />
+          Ilgili module git
+        </Button>
+      )}
+    </div>
+  );
+}
+
 export function DailyTaskPanel() {
   const [frequency, setFrequency] = useState("daily");
+  const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null);
   const [, navigate] = useLocation();
   const { toast } = useToast();
 
@@ -179,7 +221,8 @@ export function DailyTaskPanel() {
   const allTotal = tasks.length + eventTasks.length;
   const progressPercent = allTotal > 0 ? Math.round((allCompleted / allTotal) * 100) : 0;
 
-  const handleToggle = (task: TaskItem) => {
+  const handleToggle = (e: React.MouseEvent, task: TaskItem) => {
+    e.stopPropagation();
     if (task.isCompleted) {
       uncompleteMutation.mutate(task.id);
     } else {
@@ -187,7 +230,8 @@ export function DailyTaskPanel() {
     }
   };
 
-  const handleEventToggle = (task: EventTask) => {
+  const handleEventToggle = (e: React.MouseEvent, task: EventTask) => {
+    e.stopPropagation();
     if (task.isCompleted) {
       eventUncompleteMutation.mutate(task.id);
     } else {
@@ -199,6 +243,10 @@ export function DailyTaskPanel() {
     if (url) {
       navigate(url);
     }
+  };
+
+  const toggleExpand = (taskKey: string) => {
+    setExpandedTaskId(prev => prev === taskKey ? null : taskKey);
   };
 
   const loading = isLoading || eventsLoading;
@@ -295,54 +343,77 @@ export function DailyTaskPanel() {
                 </div>
                 {activeEventTasks.map((task) => {
                   const IconComponent = (task.icon && iconMap[task.icon]) ? iconMap[task.icon] : Zap;
+                  const taskKey = `event-${task.id}`;
+                  const isExpanded = expandedTaskId === taskKey;
                   return (
                     <div
-                      key={`event-${task.id}`}
+                      key={taskKey}
                       data-testid={`event-task-${task.id}`}
-                      className="flex items-center gap-2 p-2 rounded-md transition-colors group bg-amber-50/50 dark:bg-amber-950/10 border border-amber-200/50 dark:border-amber-800/30"
+                      className="rounded-md transition-colors bg-amber-50/50 dark:bg-amber-950/10 border border-amber-200/50 dark:border-amber-800/30"
                     >
-                      <button
-                        onClick={() => handleEventToggle(task)}
-                        disabled={eventCompleteMutation.isPending || eventUncompleteMutation.isPending}
-                        className="flex-shrink-0 focus:outline-none"
-                        data-testid={`event-task-toggle-${task.id}`}
+                      <div
+                        className="flex items-center gap-2 p-2 cursor-pointer select-none"
+                        onClick={() => toggleExpand(taskKey)}
+                        data-testid={`event-task-row-${task.id}`}
                       >
-                        <Circle className={`h-5 w-5 ${priorityColors[task.priority] || "text-amber-500"}`} />
-                      </button>
+                        <button
+                          onClick={(e) => handleEventToggle(e, task)}
+                          disabled={eventCompleteMutation.isPending || eventUncompleteMutation.isPending}
+                          className="flex-shrink-0 focus:outline-none"
+                          data-testid={`event-task-toggle-${task.id}`}
+                        >
+                          <Circle className={`h-5 w-5 ${priorityColors[task.priority] || "text-amber-500"}`} />
+                        </button>
 
-                      <div className="flex-1 min-w-0">
-                        <div className="text-sm font-medium leading-tight">
-                          {task.title}
+                        <div className="flex-1 min-w-0">
+                          <div className="text-sm font-medium leading-tight">
+                            {task.title}
+                          </div>
+                          <div className="flex items-center gap-1 mt-0.5 flex-wrap">
+                            <Badge variant="outline" className="text-[9px] px-1 py-0 border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-400">
+                              {sourceTypeLabels[task.sourceType] || task.sourceType}
+                            </Badge>
+                            {task.description && (
+                              <span className="text-[10px] text-muted-foreground truncate">
+                                {task.description}
+                              </span>
+                            )}
+                          </div>
                         </div>
-                        <div className="flex items-center gap-1 mt-0.5">
-                          <Badge variant="outline" className="text-[9px] px-1 py-0 border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-400">
-                            {sourceTypeLabels[task.sourceType] || task.sourceType}
-                          </Badge>
-                          {task.description && (
-                            <span className="text-[10px] text-muted-foreground truncate">
-                              {task.description}
-                            </span>
+
+                        <div className="flex items-center gap-1 flex-shrink-0">
+                          <IconComponent className="h-3.5 w-3.5 text-amber-500" />
+                          {isExpanded ? (
+                            <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                          ) : (
+                            <ChevronRight className="h-4 w-4 text-muted-foreground" />
                           )}
                         </div>
                       </div>
-
-                      <div className="flex items-center gap-1 flex-shrink-0">
-                        <IconComponent className="h-3.5 w-3.5 text-amber-500" />
-                        {task.targetUrl && (
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleNavigate(task.targetUrl);
-                            }}
-                            data-testid={`event-task-navigate-${task.id}`}
-                          >
-                            <ChevronRight className="h-3.5 w-3.5" />
-                          </Button>
-                        )}
-                      </div>
+                      {isExpanded && (
+                        <div className="px-2 pb-2">
+                          <div className="ml-7 text-xs text-muted-foreground">
+                            {task.description || "Detay bilgisi bulunmuyor"}
+                          </div>
+                          {task.targetUrl && (
+                            <div className="ml-7 mt-1.5">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="text-xs gap-1"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleNavigate(task.targetUrl);
+                                }}
+                                data-testid={`event-task-navigate-${task.id}`}
+                              >
+                                <ExternalLink className="h-3 w-3" />
+                                Ilgili module git
+                              </Button>
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
                   );
                 })}
@@ -359,57 +430,91 @@ export function DailyTaskPanel() {
                 )}
                 {tasks.map((task) => {
                   const IconComponent = (task.icon && iconMap[task.icon]) ? iconMap[task.icon] : ListTodo;
+                  const taskKey = `template-${task.id}`;
+                  const isExpanded = expandedTaskId === taskKey;
+                  const hasSteps = task.detailSteps && task.detailSteps.length > 0;
                   return (
                     <div
-                      key={`template-${task.id}`}
+                      key={taskKey}
                       data-testid={`task-item-${task.id}`}
-                      className={`flex items-center gap-2 p-2 rounded-md transition-colors group ${
-                        task.isCompleted 
-                          ? "bg-green-50 dark:bg-green-950/20" 
-                          : "hover:bg-muted/50"
+                      className={`rounded-md transition-colors ${
+                        task.isCompleted
+                          ? "bg-green-50 dark:bg-green-950/20"
+                          : isExpanded
+                            ? "bg-muted/30"
+                            : "hover:bg-muted/50"
                       }`}
                     >
-                      <button
-                        onClick={() => handleToggle(task)}
-                        disabled={completeMutation.isPending || uncompleteMutation.isPending}
-                        className="flex-shrink-0 focus:outline-none"
-                        data-testid={`task-toggle-${task.id}`}
+                      <div
+                        className="flex items-center gap-2 p-2 cursor-pointer select-none"
+                        onClick={() => toggleExpand(taskKey)}
+                        data-testid={`task-row-${task.id}`}
                       >
-                        {task.isCompleted ? (
-                          <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400" />
-                        ) : (
-                          <Circle className={`h-5 w-5 ${priorityColors[task.priority] || "text-muted-foreground"}`} />
-                        )}
-                      </button>
+                        <button
+                          onClick={(e) => handleToggle(e, task)}
+                          disabled={completeMutation.isPending || uncompleteMutation.isPending}
+                          className="flex-shrink-0 focus:outline-none"
+                          data-testid={`task-toggle-${task.id}`}
+                        >
+                          {task.isCompleted ? (
+                            <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400" />
+                          ) : (
+                            <Circle className={`h-5 w-5 ${priorityColors[task.priority] || "text-muted-foreground"}`} />
+                          )}
+                        </button>
 
-                      <div className="flex-1 min-w-0">
-                        <div className={`text-sm font-medium leading-tight ${task.isCompleted ? "line-through text-muted-foreground" : ""}`}>
-                          {task.title}
-                        </div>
-                        {task.description && (
-                          <div className="text-xs text-muted-foreground truncate mt-0.5">
-                            {task.description}
+                        <div className="flex-1 min-w-0">
+                          <div className={`text-sm font-medium leading-tight ${task.isCompleted ? "line-through text-muted-foreground" : ""}`}>
+                            {task.title}
                           </div>
-                        )}
-                      </div>
+                          {task.description && !isExpanded && (
+                            <div className="text-xs text-muted-foreground truncate mt-0.5">
+                              {task.description}
+                            </div>
+                          )}
+                        </div>
 
-                      <div className="flex items-center gap-1 flex-shrink-0">
-                        <IconComponent className="h-3.5 w-3.5 text-muted-foreground" />
-                        {task.targetUrl && (
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleNavigate(task.targetUrl);
-                            }}
-                            data-testid={`task-navigate-${task.id}`}
-                          >
-                            <ChevronRight className="h-3.5 w-3.5" />
-                          </Button>
-                        )}
+                        <div className="flex items-center gap-1 flex-shrink-0">
+                          <IconComponent className="h-3.5 w-3.5 text-muted-foreground" />
+                          {isExpanded ? (
+                            <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                          ) : (
+                            <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                          )}
+                        </div>
                       </div>
+                      {isExpanded && (
+                        <div className="px-2 pb-2">
+                          {task.description && (
+                            <p className="ml-7 text-xs text-muted-foreground mb-1.5">{task.description}</p>
+                          )}
+                          {hasSteps ? (
+                            <TaskDetailPanel
+                              steps={task.detailSteps!}
+                              targetUrl={task.targetUrl}
+                              onNavigate={handleNavigate}
+                            />
+                          ) : (
+                            <div className="ml-7">
+                              {task.targetUrl && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="text-xs gap-1"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleNavigate(task.targetUrl);
+                                  }}
+                                  data-testid={`task-navigate-${task.id}`}
+                                >
+                                  <ExternalLink className="h-3 w-3" />
+                                  Ilgili module git
+                                </Button>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
                   );
                 })}
@@ -431,10 +536,13 @@ export function DailyTaskPanel() {
                     <div
                       key={`event-done-${task.id}`}
                       data-testid={`event-task-done-${task.id}`}
-                      className="flex items-center gap-2 p-2 rounded-md bg-green-50 dark:bg-green-950/20 group"
+                      className="flex items-center gap-2 p-2 rounded-md bg-green-50 dark:bg-green-950/20"
                     >
                       <button
-                        onClick={() => handleEventToggle(task)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleEventToggle(e, task);
+                        }}
                         disabled={eventUncompleteMutation.isPending}
                         className="flex-shrink-0 focus:outline-none"
                         data-testid={`event-task-toggle-done-${task.id}`}
@@ -445,7 +553,7 @@ export function DailyTaskPanel() {
                         <div className="text-sm font-medium leading-tight line-through text-muted-foreground">
                           {task.title}
                         </div>
-                        <div className="flex items-center gap-1 mt-0.5">
+                        <div className="flex items-center gap-1 mt-0.5 flex-wrap">
                           <Badge variant="outline" className="text-[9px] px-1 py-0 text-muted-foreground">
                             {sourceTypeLabels[task.sourceType] || task.sourceType}
                           </Badge>

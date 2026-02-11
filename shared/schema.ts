@@ -11838,6 +11838,7 @@ export const roleTaskTemplates = pgTable("role_task_templates", {
   icon: varchar("icon", { length: 50 }),
   targetUrl: varchar("target_url", { length: 200 }),
   moduleLink: varchar("module_link", { length: 100 }),
+  detailSteps: jsonb("detail_steps").$type<Array<{step: string; tip?: string}>>().default([]),
   isActive: boolean("is_active").notNull().default(true),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
