@@ -302,6 +302,7 @@ import multer from "multer";
 import { generateTrainingMaterialBundle } from "./ai-motor";
 import { updateEmployeeLocation, getActiveBranchEmployees, getEmployeeLocation, removeEmployeeLocation, startTrackingCleanup } from "./tracking";
 import { compressChecklistPhotoBase64 } from "./photo-utils";
+import { gatherAIAssistantContext } from "./ai-assistant-context";
 import { sendNotificationEmail, sendEmployeeOfMonthEmail } from "./email";
 import { startReminderSystem, startStockAlertSystem, startOnboardingCompletionSystem, notifyTeknikNewFault, notifySatinalmaLowStock } from "./reminders";
 import bcrypt from "bcrypt";
@@ -34343,392 +34344,17 @@ Dusuk puanli alanlara odaklan ve pozitif, motive edici ol. JSON dizisi olarak ya
         return res.status(400).json({ message: "Soru gerekli" });
       }
 
-      // Role-based context gathering - server-side only (no client context accepted)
-      let roleContext = "";
-      let roleDescription = "";
-      let accessibleData = "";
-      
-      try {
-        const role = user.role;
-        const branchId = user.branchId;
-        
-        // HQ Executive Roles (CEO, CGO)
-        if (["ceo", "cgo"].includes(role)) {
-          const [branchesData, usersData, faultsData, feedbackData] = await Promise.all([
-            db.select().from(branches),
-            db.select().from(users).where(eq(users.isActive, true)),
-            db.select().from(equipmentFaults),
-            db.select().from(customerFeedback)
-          ]);
-          
-          const openFaults = faultsData.filter((f: any) => f.status === "open" || f.status === "in_progress");
-          const avgRating = feedbackData.length > 0 
-            ? (feedbackData.reduce((sum, f) => sum + (f.overallRating || 0), 0) / feedbackData.length).toFixed(1)
-            : "Veri yok";
-          
-          roleDescription = role === "ceo" ? "DOSPRESSO CEO'su" : "DOSPRESSO CGO'su (Chief Growth Officer)";
-          roleContext = `SIRKET GENEL DURUMU:\n- Toplam Sube: ${branchesData.length}\n- Aktif Personel: ${usersData.length}\n- Acik Arizalar: ${openFaults.length}\n- Musteri Degerlendirme Ort: ${avgRating}/5\n- Son 30 Gun Geri Bildirim: ${feedbackData.length}`;
-          accessibleData = "Tum sirket verileri, tum subeler, finansal ozet, performans metrikleri";
-        }
-        
-        // Admin Role
-        else if (role === "admin") {
-          const [usersData, faultsData, branchesData] = await Promise.all([
-            db.select().from(users),
-            db.select().from(equipmentFaults),
-            db.select().from(branches)
-          ]);
-          
-          roleDescription = "Sistem Yoneticisi";
-          roleContext = `SISTEM DURUMU:\n- Toplam Kullanici: ${usersData.length} (Aktif: ${usersData.filter(u => u.isActive).length})\n- Sube Sayisi: ${branchesData.length}\n- Acik Arizalar: ${faultsData.filter((f: any) => f.status === "open").length}`;
-          accessibleData = "Sistem ayarlari, kullanici yonetimi, tum modullere erisim";
-        }
-        
-        // IK (Human Resources)
-        else if (role === "ik") {
-          const [usersData, leavesData] = await Promise.all([
-            db.select().from(users).where(eq(users.isActive, true)),
-            db.select().from(leaveRequests)
-          ]);
-          
-          const pendingLeaves = leavesData.filter((l: any) => l.status === "pending");
-          
-          roleDescription = "Insan Kaynaklari Uzmani";
-          roleContext = `IK DURUMU:\n- Aktif Personel: ${usersData.length}\n- Bekleyen Izin Talepleri: ${pendingLeaves.length}`;
-          accessibleData = "Personel bilgileri, izin talepleri, vardiya planlama, performans kayitlari";
-        }
-        
-        // Operasyon
-        else if (role === "operasyon") {
-          const [branchesData, faultsData, tasksData] = await Promise.all([
-            db.select().from(branches),
-            db.select().from(equipmentFaults),
-            db.select().from(tasks)
-          ]);
-          
-          const openFaults = faultsData.filter((f: any) => f.status === "open");
-          const pendingTasks = tasksData.filter((t: any) => t.status === "pending");
-          
-          roleDescription = "Operasyon Uzmani";
-          roleContext = `OPERASYON DURUMU:\n- Sube Sayisi: ${branchesData.length}\n- Acik Arizalar: ${openFaults.length}\n- Bekleyen Gorevler: ${pendingTasks.length}`;
-          accessibleData = "Sube operasyonlari, gorev yonetimi, checklist'ler, ekipman durumu";
-        }
-        
-        // Pazarlama
-        else if (role === "pazarlama") {
-          const [feedbackData, branchesData] = await Promise.all([
-            db.select().from(customerFeedback),
-            db.select().from(branches)
-          ]);
-          
-          const avgRating = feedbackData.length > 0 
-            ? (feedbackData.reduce((sum, f) => sum + (f.overallRating || 0), 0) / feedbackData.length).toFixed(1)
-            : "Veri yok";
-          
-          roleDescription = "Pazarlama Uzmani";
-          roleContext = `PAZARLAMA DURUMU:\n- Sube Sayisi: ${branchesData.length}\n- Musteri Geri Bildirimi: ${feedbackData.length}\n- Ortalama Puan: ${avgRating}/5`;
-          accessibleData = "Kampanyalar, musteri geri bildirimleri, marka iletisimi";
-        }
-        
-        // Egitim
-        else if (role === "egitim") {
-          const [usersData, quizData] = await Promise.all([
-            db.select().from(users).where(eq(users.isActive, true)),
-            db.select().from(quizzes)
-          ]);
-          
-          roleDescription = "Egitim Uzmani";
-          roleContext = `EGITIM DURUMU:\n- Aktif Personel: ${usersData.length}\n- Mevcut Quiz Sayisi: ${quizData.length}`;
-          accessibleData = "Egitim modulleri, quiz'ler, sertifikalar, akademi ilerlemeleri";
-        }
-        
-        // Muhasebe
-        else if (role === "muhasebe") {
-          const [branchesData] = await Promise.all([
-            db.select().from(branches)
-          ]);
-          
-          roleDescription = "Muhasebe Uzmani";
-          roleContext = `MUHASEBE DURUMU:\n- Sube Sayisi: ${branchesData.length}`;
-          accessibleData = "Finansal raporlar, maliyet analizi (sadece genel bilgiler)";
-        }
-        
-        // Coach
-        else if (role === "coach") {
-          const [usersData, quizData] = await Promise.all([
-            db.select().from(users).where(eq(users.isActive, true)),
-            db.select().from(quizzes)
-          ]);
-          
-          roleDescription = "Egitim Kocu";
-          roleContext = `COACHING DURUMU:\n- Aktif Personel: ${usersData.length}\n- Mevcut Quiz: ${quizData.length}`;
-          accessibleData = "Egitim ilerlemeleri, mentorluk, kariyer planlama";
-        }
-        
-        // Fabrika Mudur
-        else if (role === "fabrika_mudur") {
-          const [equipmentData, faultsData] = await Promise.all([
-            db.select().from(equipment),
-            db.select().from(equipmentFaults)
-          ]);
-          
-          const factoryFaults = faultsData.filter((f: any) => f.status === "open");
-          
-          roleDescription = "Fabrika Muduru";
-          roleContext = `FABRIKA DURUMU:\n- Toplam Ekipman: ${equipmentData.length}\n- Acik Arizalar: ${factoryFaults.length}`;
-          accessibleData = "Uretim planlama, kalite kontrol, stok yonetimi, fabrika personeli";
-        }
-        
-        // Fabrika Teknisyen
-        else if (role === "fabrika_teknisyen") {
-          const [equipmentData, faultsData] = await Promise.all([
-            db.select().from(equipment),
-            db.select().from(equipmentFaults)
-          ]);
-          
-          roleDescription = "Fabrika Teknisyeni";
-          roleContext = `TEKNIK DURUM:\n- Ekipman Sayisi: ${equipmentData.length}\n- Acik Arizalar: ${faultsData.filter((f: any) => f.status === "open").length}`;
-          accessibleData = "Ekipman bakimi, ariza kayitlari, teknik dokumantasyon";
-        }
-        
-        // Fabrika Personel
-        else if (role === "fabrika_personel") {
-          roleDescription = "Fabrika Personeli";
-          roleContext = "Gunluk uretim gorevleriniz";
-          accessibleData = "Kendi gorevleri, vardiya bilgisi, temel uretim verileri";
-        }
-        
-        // Yatirimci HQ
-        else if (role === "yatirimci_hq") {
-          const [branchesData] = await Promise.all([
-            db.select().from(branches)
-          ]);
-          
-          roleDescription = "Yatirimci (HQ)";
-          roleContext = `YATIRIM DURUMU:\n- Toplam Sube: ${branchesData.length}`;
-          accessibleData = "Genel performans raporlari (sadece okuma)";
-        }
-        
-        // Supervisor
-        else if (role === "supervisor" && branchId) {
-          const [branchData, usersData, tasksData, faultsData] = await Promise.all([
-            db.select().from(branches).where(eq(branches.id, branchId)),
-            db.select().from(users).where(and(eq(users.branchId, branchId), eq(users.isActive, true))),
-            db.select().from(tasks).where(eq(tasks.branchId, branchId)),
-            db.select().from(equipmentFaults).where(eq(equipmentFaults.branchId, branchId))
-          ]);
-          
-          const branchName = branchData[0]?.name || "Bilinmiyor";
-          const pendingTasks = tasksData.filter((t: any) => t.status === "pending");
-          const openFaults = faultsData.filter((f: any) => f.status === "open");
-          
-          roleDescription = `${branchName} Sube Supervisoru`;
-          roleContext = `SUBE DURUMU (${branchName}):\n- Aktif Personel: ${usersData.length}\n- Bekleyen Gorevler: ${pendingTasks.length}\n- Acik Arizalar: ${openFaults.length}`;
-          accessibleData = "Kendi subesinin tum verileri: personel, gorevler, checklistler, arizalar, vardiyalar";
-        }
-        
-        // Supervisor Buddy
-        else if (role === "supervisor_buddy" && branchId) {
-          const [branchData, tasksData] = await Promise.all([
-            db.select().from(branches).where(eq(branches.id, branchId)),
-            db.select().from(tasks).where(eq(tasks.branchId, branchId))
-          ]);
-          
-          const branchName = branchData[0]?.name || "Bilinmiyor";
-          const pendingTasks = tasksData.filter((t: any) => t.status === "pending");
-          
-          roleDescription = `${branchName} Supervisor Yardimcisi`;
-          roleContext = `SUBE DURUMU (${branchName}):\n- Bekleyen Gorevler: ${pendingTasks.length}`;
-          accessibleData = "Sube gorevleri, checklistler, ekipman durumu (sinirli yetki)";
-        }
-        
-        // Barista
-        else if (role === "barista" && branchId) {
-          const [branchData, tasksData] = await Promise.all([
-            db.select().from(branches).where(eq(branches.id, branchId)),
-            db.select().from(tasks).where(and(eq(tasks.branchId, branchId), eq(tasks.assignedTo, user.id)))
-          ]);
-          
-          const branchName = branchData[0]?.name || "Bilinmiyor";
-          const myPendingTasks = tasksData.filter((t: any) => t.status === "pending");
-          
-          roleDescription = `${branchName} Barista`;
-          roleContext = `GOREV DURUMU:\n- Bekleyen Gorevleriniz: ${myPendingTasks.length}`;
-          accessibleData = "Kendi gorevleri, gunluk checklist, egitim modulleri, izin talepleri";
-        }
-        
-        // Bar Buddy
-        else if (role === "bar_buddy" && branchId) {
-          const [branchData] = await Promise.all([
-            db.select().from(branches).where(eq(branches.id, branchId))
-          ]);
-          
-          const branchName = branchData[0]?.name || "Bilinmiyor";
-          
-          roleDescription = `${branchName} Bar Buddy`;
-          roleContext = "Gunluk gorevleriniz ve destek rolleri";
-          accessibleData = "Kendi gorevleri, gunluk checklist";
-        }
-        
-        // Stajyer - Most restricted access
-        else if (role === "stajyer" && branchId) {
-          const [branchData] = await Promise.all([
-            db.select().from(branches).where(eq(branches.id, branchId))
-          ]);
-          
-          const branchName = branchData[0]?.name || "Bilinmiyor";
-          
-          roleDescription = `${branchName} Stajyer`;
-          roleContext = "Egitim surecinizdeki ilerlemeniz";
-          accessibleData = "SADECE kendi egitim modulleri ve gunluk checklist. Diger verilere erisim yok.";
-        }
-        
-        // Yatirimci Branch
-        else if (role === "yatirimci_branch" && branchId) {
-          const [branchData] = await Promise.all([
-            db.select().from(branches).where(eq(branches.id, branchId))
-          ]);
-          
-          const branchName = branchData[0]?.name || "Bilinmiyor";
-          
-          roleDescription = `${branchName} Yatirimci`;
-          roleContext = `Sube: ${branchName}`;
-          accessibleData = "Sube performans raporlari (sadece okuma)";
-        }
-        
-        // Satinalma (Purchasing)
-        else if (role === "satinalma") {
-          roleDescription = "Satinalma Uzmani";
-          roleContext = "Satin alma ve tedarik surecleri";
-          accessibleData = "Stok yonetimi, tedarikci bilgileri, siparis takibi, mal kabul";
-        }
-        
-        // Teknik
-        else if (role === "teknik" || role === "ekipman_teknik") {
-          const [equipmentData, faultsData] = await Promise.all([
-            db.select().from(equipment),
-            db.select().from(equipmentFaults)
-          ]);
-          
-          const openFaults = faultsData.filter((f: any) => f.status === "open");
-          
-          roleDescription = "Teknik Destek Uzmani";
-          roleContext = `TEKNIK DURUM:\n- Toplam Ekipman: ${equipmentData.length}\n- Acik Arizalar: ${openFaults.length}`;
-          accessibleData = "Ariza yonetimi, ekipman bakimi, SLA takibi, teknik dokumantasyon";
-        }
-        
-        // Destek
-        else if (role === "destek") {
-          roleDescription = "Destek Uzmani";
-          roleContext = "Musteri ve sube destek surecleri";
-          accessibleData = "Destek talepleri, ariza bildirimleri, iletisim kayitlari";
-        }
-        
-        // Trainer
-        else if (role === "trainer") {
-          const [usersData, quizData] = await Promise.all([
-            db.select().from(users).where(eq(users.isActive, true)),
-            db.select().from(quizzes)
-          ]);
-          
-          roleDescription = "Egitmen";
-          roleContext = `EGITIM DURUMU:\n- Aktif Personel: ${usersData.length}\n- Mevcut Quiz: ${quizData.length}`;
-          accessibleData = "Egitim modulleri, quiz yonetimi, performans takibi, sertifikalar";
-        }
-        
-        // Kalite Kontrol
-        else if (role === "kalite_kontrol") {
-          roleDescription = "Kalite Kontrol Uzmani";
-          roleContext = "Kalite ve standart takibi";
-          accessibleData = "Kalite denetimleri, standart uyumluluk, recete yonetimi";
-        }
-        
-        // Muhasebe IK
-        else if (role === "muhasebe_ik") {
-          const [usersData] = await Promise.all([
-            db.select().from(users).where(eq(users.isActive, true))
-          ]);
-          
-          roleDescription = "Muhasebe ve IK Uzmani";
-          roleContext = `PERSONEL DURUMU:\n- Aktif Personel: ${usersData.length}`;
-          accessibleData = "Bordro, personel kayitlari, finansal raporlar";
-        }
-        
-        // Marketing (alias for pazarlama)
-        else if (role === "marketing") {
-          const [feedbackData] = await Promise.all([
-            db.select().from(customerFeedback)
-          ]);
-          
-          roleDescription = "Pazarlama Uzmani";
-          roleContext = `PAZARLAMA DURUMU:\n- Musteri Geri Bildirimi: ${feedbackData.length}`;
-          accessibleData = "Kampanyalar, musteri geri bildirimleri, marka iletisimi";
-        }
-        
-        // Fabrika Sorumlu (alias for fabrika_mudur)
-        else if (role === "fabrika_sorumlu" || role === "fabrika") {
-          const [equipmentData, faultsData] = await Promise.all([
-            db.select().from(equipment),
-            db.select().from(equipmentFaults)
-          ]);
-          
-          roleDescription = "Fabrika Sorumlusu";
-          roleContext = `FABRIKA DURUMU:\n- Toplam Ekipman: ${equipmentData.length}\n- Acik Arizalar: ${faultsData.filter((f: any) => f.status === "open").length}`;
-          accessibleData = "Uretim takibi, ekipman durumu, vardiya yonetimi";
-        }
-        
-        // Manager (similar to supervisor but HQ level)
-        else if (role === "manager") {
-          const [branchesData, usersData] = await Promise.all([
-            db.select().from(branches),
-            db.select().from(users).where(eq(users.isActive, true))
-          ]);
-          
-          roleDescription = "Bolge Muduru";
-          roleContext = `BOLGE DURUMU:\n- Sube Sayisi: ${branchesData.length}\n- Aktif Personel: ${usersData.length}`;
-          accessibleData = "Sube performanslari, personel yonetimi, operasyonel raporlar";
-        }
-        // Default fallback
-        else {
-          roleDescription = `DOSPRESSO Calisani (${role})`;
-          roleContext = "Genel bilgiler";
-          accessibleData = "Sinirli erisim - sadece genel bilgiler";
-        }
-        
-      } catch (e) {
-        console.log("Context gathering error:", e);
-        roleDescription = "DOSPRESSO Calisani";
-        roleContext = "Context yuklenemedi";
-        accessibleData = "Sinirli erisim";
+      const { systemPrompt } = await gatherAIAssistantContext(user);
+
+      const apiKey = process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY;
+      if (!apiKey) {
+        return res.status(500).json({ message: "OpenAI API key yapilandirilmamis" });
       }
-
-      const role = user.role;
-      // Server-side only system prompt - no client context accepted
-      const systemPrompt = `Sen DOSPRESSO kahve zinciri icin rol bazli bir AI asistanisin.
-
-KULLANICI BILGISI:
-- Ad: ${user.firstName || ""} ${user.lastName || ""}
-- Rol: ${roleDescription}
-- Erisebilecegi Veriler: ${accessibleData}
-
-${roleContext}
-
-ONEMLI KURALLAR:
-1. SADECE kullanicinin erisebilecegi veriler hakkinda bilgi ver
-2. Eger kullanici erisim yetkisi olmayan bir bilgi isterse, kibarca "Bu bilgiye erisim yetkiniz bulunmuyor" de
-3. Turkce ve samimi tonda cevap ver
-4. Kisa ve oz tut
-5. Somut oneriler sun
-
-KISITLAMALAR:
-${role === "stajyer" ? "- Stajyer olarak sadece egitim ve checklist sorularina cevap ver. Sube performansi, personel bilgileri veya finansal veriler hakkinda bilgi verme." : ""}
-${role === "barista" ? "- Barista olarak sadece kendi gorevlerin, egitim ve izin haklarin hakkinda bilgi ver. Diger personel veya sube geneli hakkinda detayli bilgi verme." : ""}
-${["yatirimci_hq", "yatirimci_branch"].includes(role) ? "- Yatirimci olarak sadece performans raporlari hakkinda bilgi ver. Operasyonel detaylar veya personel bilgileri paylasilmaz." : ""}`;
 
       const response = await fetch("https://api.openai.com/v1/chat/completions", {
         method: "POST",
         headers: {
-          "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`,
+          "Authorization": `Bearer ${apiKey}`,
           "Content-Type": "application/json"
         },
         body: JSON.stringify({
@@ -34738,11 +34364,13 @@ ${["yatirimci_hq", "yatirimci_branch"].includes(role) ? "- Yatirimci olarak sade
             { role: "user", content: question }
           ],
           temperature: 0.7,
-          max_tokens: 800
+          max_tokens: 1200
         })
       });
 
       if (!response.ok) {
+        const errorText = await response.text();
+        console.error("OpenAI API error:", errorText);
         throw new Error("OpenAI API error");
       }
 
@@ -34755,7 +34383,7 @@ ${["yatirimci_hq", "yatirimci_branch"].includes(role) ? "- Yatirimci olarak sade
       res.status(500).json({ message: "AI yanit veremedi", error: error.message });
     }
   });
-  // ============ NOTIFICATION ENDPOINTS ============
+    // ============ NOTIFICATION ENDPOINTS ============
   
   // GET /api/notifications - Get user's notifications with optional filters
   // All users see their own notifications by default
