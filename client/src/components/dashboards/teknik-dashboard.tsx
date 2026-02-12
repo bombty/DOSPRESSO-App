@@ -1,10 +1,12 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { AlertTriangle, Wrench, Zap, Clock, CheckCircle, TrendingDown } from "lucide-react";
+import { AlertTriangle, Wrench, Zap, Clock, CheckCircle, TrendingDown, ExternalLink } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Legend, ResponsiveContainer } from "recharts";
 import { Progress } from "@/components/ui/progress";
 import { GaugeCard, KPICard } from "./shared-dashboard-components";
+import { useLocation } from "wouter";
 
 interface TeknikDashboardProps {
   openFaults: number;
@@ -19,6 +21,7 @@ export function TeknikDashboard({
   faults,
   isLoading,
 }: TeknikDashboardProps) {
+  const [, setLocation] = useLocation();
   const criticalFaults = faults?.filter(f => f.priority === "kritik") || [];
   const highFaults = faults?.filter(f => f.priority === "yuksek") || [];
   const closedFaults = totalFaults - openFaults;
@@ -84,7 +87,7 @@ export function TeknikDashboard({
 
       {/* Alert Stats */}
       <div className="grid gap-0.5 grid-cols-4">
-        <Card className="border-l-4 border-l-red-600">
+        <Card>
           <CardContent className="pt-1.5 pb-1.5 text-center">
             <div className="flex justify-center mb-0.5">
               <AlertTriangle className="h-3.5 w-3.5 text-red-600" />
@@ -94,7 +97,7 @@ export function TeknikDashboard({
           </CardContent>
         </Card>
 
-        <Card className="border-l-4 border-l-orange-600">
+        <Card>
           <CardContent className="pt-1.5 pb-1.5 text-center">
             <div className="flex justify-center mb-0.5">
               <AlertTriangle className="h-3.5 w-3.5 text-orange-600" />
@@ -104,7 +107,7 @@ export function TeknikDashboard({
           </CardContent>
         </Card>
 
-        <Card className="border-l-4 border-l-yellow-600">
+        <Card>
           <CardContent className="pt-1.5 pb-1.5 text-center">
             <div className="flex justify-center mb-0.5">
               <Zap className="h-3.5 w-3.5 text-yellow-600" />
@@ -114,7 +117,7 @@ export function TeknikDashboard({
           </CardContent>
         </Card>
 
-        <Card className="border-l-4 border-l-blue-600">
+        <Card>
           <CardContent className="pt-1.5 pb-1.5 text-center">
             <div className="flex justify-center mb-0.5">
               <Clock className="h-3.5 w-3.5 text-blue-600" />
@@ -129,7 +132,7 @@ export function TeknikDashboard({
 
       {/* Critical Faults */}
       {criticalFaults.length > 0 && (
-        <Card className="border-l-4 border-l-red-600">
+        <Card>
           <CardHeader>
             <CardTitle className="text-base md:text-lg flex items-center gap-2">
               <AlertTriangle className="h-5 w-5 text-red-600" />
@@ -139,13 +142,14 @@ export function TeknikDashboard({
           <CardContent>
             <div className="space-y-2">
               {criticalFaults.slice(0, 5).map((fault) => (
-                <div key={fault.id} className="p-3 bg-red-50 dark:bg-red-950/30 rounded border-l-4 border-red-600">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <p className="font-semibold text-sm text-red-900 dark:text-red-100">
+                <div key={fault.id} className="p-3 bg-red-50 dark:bg-red-950/30 rounded hover-elevate cursor-pointer" onClick={() => setLocation(`/ariza-detay/${fault.id}`)} data-testid={`card-dashboard-critical-${fault.id}`}>
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-sm text-red-900 dark:text-red-100 truncate">
                         {fault.equipmentName || `Equipment ${fault.equipmentId}`}
                       </p>
-                      <p className="text-xs text-red-700 dark:text-red-300 mt-1">{fault.description}</p>
+                      <p className="text-xs text-red-700 dark:text-red-300 mt-1 line-clamp-1">{fault.description}</p>
+                      {fault.branchName && <p className="text-xs text-muted-foreground mt-0.5">{fault.branchName}</p>}
                     </div>
                     <Badge className="bg-red-600 text-white">KRİTİK</Badge>
                   </div>
@@ -158,7 +162,7 @@ export function TeknikDashboard({
 
       {/* High Priority Faults */}
       {highFaults.length > 0 && (
-        <Card className="border-l-4 border-l-yellow-600">
+        <Card>
           <CardHeader>
             <CardTitle className="text-base md:text-lg flex items-center gap-2">
               <Zap className="h-5 w-5 text-yellow-600" />
@@ -168,11 +172,12 @@ export function TeknikDashboard({
           <CardContent>
             <div className="space-y-2">
               {highFaults.slice(0, 5).map((fault) => (
-                <div key={fault.id} className="p-3 bg-yellow-50 dark:bg-yellow-950/30 rounded border-l-4 border-yellow-600">
-                  <p className="font-semibold text-sm text-yellow-900 dark:text-yellow-100">
+                <div key={fault.id} className="p-3 bg-yellow-50 dark:bg-yellow-950/30 rounded hover-elevate cursor-pointer" onClick={() => setLocation(`/ariza-detay/${fault.id}`)} data-testid={`card-dashboard-high-${fault.id}`}>
+                  <p className="font-semibold text-sm text-yellow-900 dark:text-yellow-100 truncate">
                     {fault.equipmentName || `Equipment ${fault.equipmentId}`}
                   </p>
-                  <p className="text-xs text-yellow-700 dark:text-yellow-300 mt-1">{fault.description}</p>
+                  <p className="text-xs text-yellow-700 dark:text-yellow-300 mt-1 line-clamp-1">{fault.description}</p>
+                  {fault.branchName && <p className="text-xs text-muted-foreground mt-0.5">{fault.branchName}</p>}
                 </div>
               ))}
             </div>

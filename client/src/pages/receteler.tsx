@@ -32,7 +32,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
-import { ScrollArea } from "@/components/ui/scroll-area";
+
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -316,39 +316,37 @@ export default function Receteler() {
           )}
         </div>
 
-        <ScrollArea className="w-full">
-          <div className="flex gap-2 pb-2">
-            <Button
-              variant={selectedCategory === "all" ? "default" : "outline"}
-              size="sm"
-              onClick={() => setSelectedCategory("all")}
-              data-testid="btn-category-all"
-            >
-              Tümü
-            </Button>
-            {loadingCategories ? (
-              <>
-                <Skeleton className="h-8 w-24" />
-                <Skeleton className="h-8 w-24" />
-                <Skeleton className="h-8 w-24" />
-              </>
-            ) : (
-              activeCategories.map((cat) => (
-                <Button
-                  key={cat.id}
-                  variant={selectedCategory === String(cat.id) ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setSelectedCategory(String(cat.id))}
-                  className="whitespace-nowrap flex items-center gap-1"
-                  data-testid={`btn-category-${cat.id}`}
-                >
-                  {getCategoryIcon(cat.iconName)}
-                  <span>{cat.titleTr}</span>
-                </Button>
-              ))
-            )}
-          </div>
-        </ScrollArea>
+        <div className="flex flex-wrap gap-2">
+          <Button
+            variant={selectedCategory === "all" ? "default" : "outline"}
+            size="sm"
+            onClick={() => setSelectedCategory("all")}
+            data-testid="btn-category-all"
+          >
+            Tümü
+          </Button>
+          {loadingCategories ? (
+            <>
+              <Skeleton className="h-8 w-24" />
+              <Skeleton className="h-8 w-24" />
+              <Skeleton className="h-8 w-24" />
+            </>
+          ) : (
+            activeCategories.map((cat) => (
+              <Button
+                key={cat.id}
+                variant={selectedCategory === String(cat.id) ? "default" : "outline"}
+                size="sm"
+                onClick={() => setSelectedCategory(String(cat.id))}
+                className="flex items-center gap-1"
+                data-testid={`btn-category-${cat.id}`}
+              >
+                {getCategoryIcon(cat.iconName)}
+                <span>{cat.titleTr}</span>
+              </Button>
+            ))
+          )}
+        </div>
       </div>
 
       {loadingRecipes ? (

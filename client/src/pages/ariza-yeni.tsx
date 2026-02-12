@@ -9,14 +9,15 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { compressImage } from "@/lib/image-utils";
 import { useLocation, useSearch } from "wouter";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { AlertTriangle, ArrowLeft, Upload, Loader2 } from "lucide-react";
-import type { Equipment, Branch } from "@shared/schema";
+import { AlertTriangle, ArrowLeft, Upload, Loader2, CheckCircle2, Circle, ClipboardList } from "lucide-react";
+import type { Equipment, Branch, EquipmentTroubleshootingStep } from "@shared/schema";
 
 const faultReportSchema = z.object({
   branchId: z.coerce.number().int().positive("Şube seçiniz"),
@@ -42,6 +43,8 @@ export default function NewFaultReport() {
   const searchString = useSearch();
   const [isUploading, setIsUploading] = useState(false);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [completedSteps, setCompletedSteps] = useState<Record<number, { done: boolean; notes: string }>>({});
+  const [troubleshootingPassed, setTroubleshootingPassed] = useState(false);
   
   // Parse URL parameters for QR code flow
   const urlParams = new URLSearchParams(searchString);
@@ -73,8 +76,37 @@ export default function NewFaultReport() {
     },
   });
 
+  const watchedEquipmentId = form.watch("equipmentId");
+  const selectedEq = equipment.find(eq => eq.id === watchedEquipmentId);
+  const equipmentType = selectedEq?.equipmentType || "";
+
+  const { data: troubleshootingSteps = [] } = useQuery<EquipmentTroubleshootingStep[]>({
+    queryKey: ['/api/troubleshooting', equipmentType],
+    enabled: !!equipmentType,
+  });
+
+  const hasTroubleshootingSteps = troubleshootingSteps.length > 0;
+  const allStepsCompleted = hasTroubleshootingSteps && troubleshootingSteps.every(s => completedSteps[s.id]?.done);
+
+  useEffect(() => {
+    if (!hasTroubleshootingSteps) {
+      setTroubleshootingPassed(true);
+    } else {
+      setTroubleshootingPassed(allStepsCompleted);
+    }
+  }, [hasTroubleshootingSteps, allStepsCompleted]);
+
+  useEffect(() => {
+    setCompletedSteps({});
+    setTroubleshootingPassed(!hasTroubleshootingSteps);
+  }, [equipmentType]);
+
   const createMutation = useMutation({
     mutationFn: async (data: FaultReportForm) => {
+      const tsSteps = Object.entries(completedSteps)
+        .filter(([, v]) => v.done)
+        .map(([stepId, v]) => ({ stepId: parseInt(stepId), notes: v.notes || "" }));
+      
       const response = await apiRequest("POST", "/api/faults", {
         branchId: data.branchId,
         equipmentId: data.equipmentId || null,
@@ -93,7 +125,8 @@ export default function NewFaultReport() {
         },
         currentStage: "bekliyor",
         priorityLevel: data.priority === "yuksek" ? "red" : data.priority === "dusuk" ? "green" : "yellow",
-        troubleshootingCompleted: false,
+        troubleshootingCompleted: hasTroubleshootingSteps ? allStepsCompleted : true,
+        completedTroubleshootingSteps: tsSteps,
       });
       return response as unknown as { id: number };
     },
@@ -149,7 +182,6 @@ export default function NewFaultReport() {
   };
 
   const selectedBranch = branches.find(b => b.id === form.watch("branchId"));
-  const selectedEquipment = equipment.find(eq => eq.id === form.watch("equipmentId"));
 
   // Auto-fill equipment when coming from QR code scan or when equipment is selected
   useEffect(() => {
@@ -182,10 +214,10 @@ export default function NewFaultReport() {
   // Update equipment name when user selects equipment from dropdown (not QR flow)
   useEffect(() => {
     const eqId = form.watch("equipmentId");
-    if (eqId && !urlEquipmentId && selectedEquipment) {
-      form.setValue("equipmentName", selectedEquipment.equipmentType || "");
+    if (eqId && !urlEquipmentId && selectedEq) {
+      form.setValue("equipmentName", selectedEq.equipmentType || "");
     }
-  }, [form.watch("equipmentId"), selectedEquipment, urlEquipmentId]);
+  }, [form.watch("equipmentId"), selectedEq, urlEquipmentId]);
 
   return (
     <div className="grid grid-cols-1 gap-2 sm:gap-3 max-w-2xl mx-auto">
@@ -287,7 +319,7 @@ export default function NewFaultReport() {
                     <FormControl>
                       <Input
                         placeholder="Espresso Makinesi, Değirmeni, vb."
-                        disabled={!!selectedEquipment}
+                        disabled={!!selectedEq}
                         {...field}
                       />
                     </FormControl>
@@ -320,6 +352,86 @@ export default function NewFaultReport() {
               />
             </CardContent>
           </Card>
+
+          {hasTroubleshootingSteps && (
+            <Card data-testid="card-troubleshooting-wizard">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <ClipboardList className="w-5 h-5" />
+                  Sorun Giderme Adımları
+                </CardTitle>
+                <CardDescription>
+                  Arıza bildirimi yapabilmek için aşağıdaki adımları tamamlamanız gerekmektedir
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {troubleshootingSteps.sort((a, b) => a.order - b.order).map((step) => {
+                  const isDone = completedSteps[step.id]?.done || false;
+                  return (
+                    <div
+                      key={step.id}
+                      className={`p-3 rounded-md border transition-colors ${isDone ? "bg-green-500/10 border-green-500/30" : "bg-muted/30 border-border"}`}
+                      data-testid={`troubleshooting-step-${step.id}`}
+                    >
+                      <div className="flex items-start gap-3">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setCompletedSteps(prev => ({
+                              ...prev,
+                              [step.id]: { done: !prev[step.id]?.done, notes: prev[step.id]?.notes || "" },
+                            }));
+                          }}
+                          className="mt-0.5 shrink-0"
+                          data-testid={`button-step-toggle-${step.id}`}
+                        >
+                          {isDone
+                            ? <CheckCircle2 className="w-5 h-5 text-green-600" />
+                            : <Circle className="w-5 h-5 text-muted-foreground" />}
+                        </button>
+                        <div className="flex-1 min-w-0">
+                          <p className={`text-sm font-medium ${isDone ? "line-through text-muted-foreground" : ""}`}>
+                            {step.description}
+                          </p>
+                          {isDone && (
+                            <Input
+                              placeholder="Not ekleyin (opsiyonel)"
+                              className="mt-2"
+                              value={completedSteps[step.id]?.notes || ""}
+                              onChange={(e) => {
+                                setCompletedSteps(prev => ({
+                                  ...prev,
+                                  [step.id]: { ...prev[step.id], notes: e.target.value },
+                                }));
+                              }}
+                              data-testid={`input-step-notes-${step.id}`}
+                            />
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+
+                <div className="flex items-center gap-2 pt-2">
+                  <Badge variant={allStepsCompleted ? "default" : "secondary"} data-testid="badge-troubleshooting-status">
+                    {allStepsCompleted
+                      ? "Tüm adımlar tamamlandı"
+                      : `${Object.values(completedSteps).filter(s => s.done).length}/${troubleshootingSteps.length} adım tamamlandı`}
+                  </Badge>
+                </div>
+
+                {!allStepsCompleted && (
+                  <div className="flex gap-2 p-3 rounded-md bg-amber-500/10">
+                    <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                    <p className="text-xs text-amber-700 dark:text-amber-400">
+                      Arıza bildirimi yapabilmek için tüm sorun giderme adımlarını tamamlamanız gerekmektedir.
+                    </p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
 
           {/* Detailed Description */}
           <Card>
@@ -507,7 +619,7 @@ export default function NewFaultReport() {
             </Button>
             <Button
               type="submit"
-              disabled={createMutation.isPending || isUploading}
+              disabled={createMutation.isPending || isUploading || (hasTroubleshootingSteps && !allStepsCompleted)}
               className="flex-1"
             >
               {createMutation.isPending ? (

@@ -2960,6 +2960,26 @@ export const insertFaultStageTransitionSchema = createInsertSchema(faultStageTra
 export type InsertFaultStageTransition = z.infer<typeof insertFaultStageTransitionSchema>;
 export type FaultStageTransition = typeof faultStageTransitions.$inferSelect;
 
+export const faultComments = pgTable("fault_comments", {
+  id: serial("id").primaryKey(),
+  faultId: integer("fault_id").notNull().references(() => equipmentFaults.id, { onDelete: "cascade" }),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  message: text("message").notNull(),
+  isInternal: boolean("is_internal").notNull().default(false),
+  attachmentUrl: text("attachment_url"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("fault_comments_fault_idx").on(table.faultId),
+]);
+
+export const insertFaultCommentSchema = createInsertSchema(faultComments).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertFaultComment = z.infer<typeof insertFaultCommentSchema>;
+export type FaultComment = typeof faultComments.$inferSelect;
+
 // Knowledge Base Articles table
 export const knowledgeBaseArticles = pgTable("knowledge_base_articles", {
   id: serial("id").primaryKey(),

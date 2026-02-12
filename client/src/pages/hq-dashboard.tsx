@@ -59,6 +59,8 @@ import {
   TrendingUpIcon,
   Lightbulb,
   ChevronRight,
+  Wrench,
+  Settings,
 } from "lucide-react";
 import {
   AreaChart,
@@ -1236,6 +1238,164 @@ function DashboardSkeleton() {
   );
 }
 
+function TeknikDashboard() {
+  const [, setLocation] = useLocation();
+  const { data: faults, isLoading } = useQuery<any[]>({
+    queryKey: ['/api/faults'],
+  });
+
+  const openFaults = faults?.filter(f => f.status !== 'resolved' && f.status !== 'closed') || [];
+  const criticalFaults = openFaults.filter(f => f.priority === 'kritik');
+  const highFaults = openFaults.filter(f => f.priority === 'yuksek');
+  const resolvedCount = faults?.filter(f => f.status === 'resolved' || f.status === 'closed').length || 0;
+  const resolutionRate = faults && faults.length > 0 ? Math.round((resolvedCount / faults.length) * 100) : 0;
+
+  const metrics: MetricCard[] = [
+    {
+      title: "Açık Arıza",
+      value: openFaults.length,
+      icon: <AlertTriangle className="w-5 h-5 text-red-500" />,
+      iconBgClass: "bg-red-500/10",
+      status: openFaults.length > 10 ? 'critical' : openFaults.length > 5 ? 'warning' : 'healthy',
+      onClick: () => setLocation('/operasyon/ariza')
+    },
+    {
+      title: "Kritik Arıza",
+      value: criticalFaults.length,
+      icon: <Flame className="w-5 h-5 text-orange-500" />,
+      iconBgClass: "bg-orange-500/10",
+      status: criticalFaults.length > 0 ? 'critical' : 'healthy',
+      onClick: () => setLocation('/operasyon/ariza')
+    },
+    {
+      title: "Çözüm Oranı",
+      value: `${resolutionRate}%`,
+      icon: <CheckCircle className="w-5 h-5 text-green-500" />,
+      iconBgClass: "bg-green-500/10",
+      status: resolutionRate >= 70 ? 'healthy' : resolutionRate >= 40 ? 'warning' : 'critical',
+      trend: resolutionRate >= 70 ? 'up' : 'down',
+      onClick: () => setLocation('/operasyon/ariza')
+    },
+    {
+      title: "Toplam Kayıt",
+      value: faults?.length || 0,
+      icon: <Wrench className="w-5 h-5 text-blue-500" />,
+      iconBgClass: "bg-blue-500/10",
+      status: 'healthy',
+      onClick: () => setLocation('/operasyon/ariza')
+    },
+  ];
+
+  if (isLoading) {
+    return <DashboardSkeleton />;
+  }
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center gap-2 pb-2 border-b border-border/50">
+        <Settings className="w-4 h-4 text-primary" />
+        <h2 className="text-base font-semibold" data-testid="text-dashboard-title">Teknik Servis</h2>
+      </div>
+
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+        {metrics.map((metric, index) => (
+          <MetricCardComponent key={index} metric={metric} />
+        ))}
+      </div>
+
+      {criticalFaults.length > 0 && (
+        <Card data-testid="panel-critical-faults">
+          <CardHeader className="pb-1 pt-3 px-3">
+            <CardTitle className="text-xs flex items-center gap-1.5">
+              <AlertTriangle className="w-3.5 h-3.5 text-red-500" />
+              Kritik Arızalar
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="px-3 pb-3 space-y-1.5">
+            {criticalFaults.slice(0, 5).map((fault: any) => (
+              <div
+                key={fault.id}
+                className="flex items-center justify-between gap-2 p-2 rounded-md bg-red-500/10 hover-elevate cursor-pointer"
+                onClick={() => setLocation(`/ariza-detay/${fault.id}`)}
+                data-testid={`card-critical-fault-${fault.id}`}
+              >
+                <div className="flex-1 min-w-0">
+                  <span className="text-xs font-medium truncate block">{fault.equipmentName || `Cihaz #${fault.equipmentId}`}</span>
+                  <span className="text-[11px] text-muted-foreground truncate block">{fault.description}</span>
+                  {fault.branchName && <span className="text-[10px] text-muted-foreground">{fault.branchName}</span>}
+                </div>
+                <Badge variant="destructive" className="text-[10px] shrink-0">KRİTİK</Badge>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
+
+      {highFaults.length > 0 && (
+        <Card data-testid="panel-high-faults">
+          <CardHeader className="pb-1 pt-3 px-3">
+            <CardTitle className="text-xs flex items-center gap-1.5">
+              <Zap className="w-3.5 h-3.5 text-yellow-500" />
+              Yüksek Öncelikli Arızalar
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="px-3 pb-3 space-y-1.5">
+            {highFaults.slice(0, 5).map((fault: any) => (
+              <div
+                key={fault.id}
+                className="flex items-center justify-between gap-2 p-2 rounded-md bg-yellow-500/10 hover-elevate cursor-pointer"
+                onClick={() => setLocation(`/ariza-detay/${fault.id}`)}
+                data-testid={`card-high-fault-${fault.id}`}
+              >
+                <div className="flex-1 min-w-0">
+                  <span className="text-xs font-medium truncate block">{fault.equipmentName || `Cihaz #${fault.equipmentId}`}</span>
+                  <span className="text-[11px] text-muted-foreground truncate block">{fault.description}</span>
+                  {fault.branchName && <span className="text-[10px] text-muted-foreground">{fault.branchName}</span>}
+                </div>
+                <Badge variant="secondary" className="text-[10px] shrink-0">YÜKSEK</Badge>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+        <Card
+          className="hover-elevate cursor-pointer"
+          onClick={() => setLocation('/operasyon/ariza')}
+          data-testid="card-all-faults"
+        >
+          <CardHeader className="pb-1 pt-3 px-3">
+            <CardTitle className="text-xs flex items-center gap-1.5">
+              <Wrench className="w-3.5 h-3.5" />
+              Son Arızalar
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="px-3 pb-3 space-y-1.5">
+            {openFaults.slice(0, 4).map((fault: any) => (
+              <div key={fault.id} className="flex items-center justify-between gap-2 p-1.5 rounded bg-muted/50" data-testid={`card-recent-fault-${fault.id}`}>
+                <span className="text-xs truncate flex-1">{fault.equipmentName || `Cihaz #${fault.equipmentId}`}</span>
+                <Badge variant={fault.priority === 'kritik' ? 'destructive' : 'secondary'} className="text-[10px]">
+                  {fault.priority === 'kritik' ? 'KRİTİK' : fault.priority === 'yuksek' ? 'YÜKSEK' : fault.priority === 'orta' ? 'ORTA' : 'DÜŞÜK'}
+                </Badge>
+              </div>
+            ))}
+            {openFaults.length === 0 && (
+              <p className="text-xs text-muted-foreground text-center py-4">Açık arıza bulunmuyor</p>
+            )}
+          </CardContent>
+        </Card>
+
+        <AlertPanel alerts={[
+          ...(criticalFaults.length > 0 ? [{ message: `${criticalFaults.length} kritik arıza bekliyor`, severity: 'critical' as RiskStatus }] : []),
+          ...(highFaults.length > 0 ? [{ message: `${highFaults.length} yüksek öncelikli arıza mevcut`, severity: 'warning' as RiskStatus }] : []),
+          ...(openFaults.length > 10 ? [{ message: `Toplam ${openFaults.length} açık arıza`, severity: 'warning' as RiskStatus }] : []),
+        ]} />
+      </div>
+    </div>
+  );
+}
+
 export default function HQDashboard() {
   const { user } = useAuth();
   const userRole = user?.role || '';
@@ -1255,7 +1415,7 @@ export default function HQDashboard() {
     'marketing': MarketingDashboard,
     'trainer': TrainerDashboard,
     'kalite_kontrol': KaliteDashboard,
-    'teknik': SatinalmaDashboard,
+    'teknik': TeknikDashboard,
     'destek': CoachDashboard,
     'yatirimci_hq': CGODashboard,
   };

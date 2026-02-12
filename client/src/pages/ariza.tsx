@@ -1,21 +1,12 @@
-import { useState, useMemo, useCallback, useEffect } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
+import { useState, useMemo, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
-import { useToast } from "@/hooks/use-toast";
-import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Form, FormControl, FormField, FormItem, FormLabel } from "@/components/ui/form";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
-import { AlertTriangle, Clock, CheckCircle2, Wrench, Search, Loader2, Plus, Building2, User, MapPin, X, Image } from "lucide-react";
+import { AlertTriangle, Clock, CheckCircle2, Wrench, Search, Building2, User } from "lucide-react";
 import { EmptyStatePreset } from "@/components/empty-state";
 import { format, differenceInHours } from "date-fns";
 import { tr } from "date-fns/locale";
@@ -45,12 +36,6 @@ const STAGE_LABELS: Record<string, string> = {
   kapatildi: "Kapatıldı",
 };
 
-const updateFaultSchema = z.object({
-  currentStage: z.string(),
-  assignedTo: z.string().optional(),
-  notes: z.string().optional(),
-  actualCost: z.string().optional(),
-});
 
 const PRIORITY_COLORS: Record<string, string> = {
   kritik: "bg-red-500 text-white",
@@ -116,11 +101,7 @@ function FaultSkeletonList() {
 
 export default function FaultHub() {
   const { user } = useAuth();
-  const { toast } = useToast();
   const [, setLocation] = useLocation();
-  const [selectedFault, setSelectedFault] = useState<ExtendedFault | null>(null);
-  const [isUpdateDialogOpen, setIsUpdateDialogOpen] = useState(false);
-  const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
   const [searchText, setSearchText] = useState("");
   const [managePage, setManagePage] = useState(1);
   const debouncedSearch = useDebounce(searchText, 300);
@@ -131,34 +112,6 @@ export default function FaultHub() {
   const faults = (Array.isArray(rawFaults) ? rawFaults : (rawFaults as any)?.data || []) as ExtendedFault[];
   const isFaultsLoading = false;
 
-  const { data: users = [] } = useQuery<any[]>({
-    queryKey: ["/api/users"],
-  });
-
-  const form = useForm<z.infer<typeof updateFaultSchema>>({
-    resolver: zodResolver(updateFaultSchema),
-    defaultValues: { currentStage: "bekliyor" },
-  });
-
-  const updateMutation = useMutation({
-    mutationFn: async (data: z.infer<typeof updateFaultSchema>) => {
-      if (!selectedFault) return;
-      await apiRequest("PATCH", `/api/faults/${selectedFault.id}`, {
-        currentStage: data.currentStage,
-        assignedTo: data.assignedTo || null,
-        actualCost: data.actualCost ? parseFloat(data.actualCost) : undefined,
-      });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/faults"] });
-      toast({ title: "Başarılı", description: "Arıza güncellendi" });
-      setIsUpdateDialogOpen(false);
-      setSelectedFault(null);
-    },
-    onError: () => {
-      toast({ title: "Hata", description: "Güncelleme başarısız", variant: "destructive" });
-    },
-  });
 
   // Memoized calculations
   const metrics = useMemo(() => {
@@ -207,11 +160,6 @@ export default function FaultHub() {
     }
   }, [manageFaults.length, managePage]);
 
-  const handleUpdateFault = useCallback((fault: EquipmentFault) => {
-    setSelectedFault(fault);
-    form.reset({ currentStage: fault.currentStage });
-    setIsUpdateDialogOpen(true);
-  }, [form]);
 
   return (
     <div className="max-w-6xl mx-auto px-3 sm:px-4 py-3 space-y-4">
@@ -280,7 +228,7 @@ export default function FaultHub() {
               <h3 className="text-sm font-medium mb-2">Kritik Arızalar</h3>
               <div className="flex flex-col gap-3 sm:gap-4">
                 {metrics.critical.map((fault: EquipmentFault) => (
-                  <Card key={fault.id} className="border-destructive bg-destructive/10 dark:bg-red-950 hover-elevate" data-testid={`card-critical-fault-${fault.id}`}>
+                  <Card key={fault.id} className="border-destructive bg-destructive/10 dark:bg-red-950 hover-elevate cursor-pointer" data-testid={`card-critical-fault-${fault.id}`} onClick={() => setLocation(`/ariza-detay/${fault.id}`)}>
                     <CardContent className="p-3">
                       <p className="font-medium text-sm line-clamp-2">{fault.equipmentName}</p>
                       <p className="text-xs text-muted-foreground mt-1 line-clamp-1">{fault.description}</p>
@@ -302,10 +250,7 @@ export default function FaultHub() {
                   key={fault.id}
                   className="hover-elevate cursor-pointer" 
                   data-testid={`card-recent-fault-${fault.id}`}
-                  onClick={() => {
-                    setSelectedFault(fault);
-                    setIsDetailDialogOpen(true);
-                  }}
+                  onClick={() => setLocation(`/ariza-detay/${fault.id}`)}
                 >
                   <CardContent className="p-3">
                     <div className="flex items-start justify-between gap-2">
@@ -437,7 +382,7 @@ export default function FaultHub() {
                   <EmptyStatePreset preset="faults" variant={searchText ? "search" : "default"} />
                 ) : (
                   paginatedManageFaults.map((fault: EquipmentFault) => (
-                    <div key={fault.id} className="flex items-center justify-between p-3 border rounded hover:bg-muted cursor-pointer hover-elevate" data-testid={`card-manage-fault-${fault.id}`} onClick={() => handleUpdateFault(fault)}>
+                    <div key={fault.id} className="flex items-center justify-between p-3 border rounded hover:bg-muted cursor-pointer hover-elevate" data-testid={`card-manage-fault-${fault.id}`} onClick={() => setLocation(`/ariza-detay/${fault.id}`)}>
                       <div className="flex-1">
                         <div className="flex items-center gap-2 flex-wrap">
                           <p className="font-medium">{fault.equipmentName}</p>
@@ -448,15 +393,15 @@ export default function FaultHub() {
                             {STAGE_LABELS[fault.currentStage]}
                           </Badge>
                         </div>
-                        <p className="text-xs text-muted-foreground mt-1">{fault.description}</p>
+                        <p className="text-xs text-muted-foreground mt-1 line-clamp-1">{fault.description}</p>
                       </div>
                       <Button
                         size="sm"
-                        onClick={(e) => { e.stopPropagation(); handleUpdateFault(fault); }}
+                        onClick={(e) => { e.stopPropagation(); setLocation(`/ariza-detay/${fault.id}`); }}
                         variant="outline"
                         data-testid={`button-update-fault-${fault.id}`}
                       >
-                        Güncelle
+                        Detay
                       </Button>
                     </div>
                   ))
@@ -494,95 +439,6 @@ export default function FaultHub() {
             </CardContent>
           </Card>
 
-          <Dialog open={isUpdateDialogOpen} onOpenChange={setIsUpdateDialogOpen}>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Arıza Güncelleyin: {selectedFault?.equipmentName}</DialogTitle>
-              </DialogHeader>
-              <Form {...form}>
-                <form onSubmit={form.handleSubmit((data) => updateMutation.mutate(data))} className="w-full space-y-2 sm:space-y-3">
-                  <FormField
-                    control={form.control}
-                    name="currentStage"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Durum</FormLabel>
-                        <FormControl>
-                          <Select value={field.value} onValueChange={field.onChange}>
-                            <SelectTrigger>
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="bekliyor">Beklemede</SelectItem>
-                              <SelectItem value="isleme_alindi">İşleme Alındı</SelectItem>
-                              <SelectItem value="devam_ediyor">Devam Ediyor</SelectItem>
-                              <SelectItem value="servis_cagrildi">Servis Çağrıldı</SelectItem>
-                              <SelectItem value="kargoya_verildi">Kargoya Verildi</SelectItem>
-                              <SelectItem value="kapatildi">Kapatıldı</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </FormControl>
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="assignedTo"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Technician</FormLabel>
-                        <FormControl>
-                          <Select value={field.value} onValueChange={field.onChange}>
-                            <SelectTrigger data-testid="select-assigned-to">
-                              <SelectValue placeholder="Seçin..." />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {users.map((u) => (
-                                <SelectItem key={u.id} value={u.id}>
-                                  {u.fullName || u.username}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </FormControl>
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="actualCost"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Maliyet (₺)</FormLabel>
-                        <FormControl>
-                          <Input type="number" placeholder="0.00" {...field} data-testid="input-actual-cost" />
-                        </FormControl>
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="notes"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Notlar</FormLabel>
-                        <FormControl>
-                          <Textarea placeholder="Servis notları..." {...field} data-testid="textarea-fault-notes" />
-                        </FormControl>
-                      </FormItem>
-                    )}
-                  />
-
-                  <Button type="submit" disabled={updateMutation.isPending} className="w-full" data-testid="button-fault-save">
-                    {updateMutation.isPending ? "Güncelleniyor..." : "Kaydet"}
-                  </Button>
-                </form>
-              </Form>
-            </DialogContent>
-          </Dialog>
         </TabsContent>
 
         {/* TAB 4: My Faults (Technician) */}
@@ -627,11 +483,11 @@ export default function FaultHub() {
                     <EmptyStatePreset preset="faults" />
                   ) : (
                     metrics.myFaults.map((fault: EquipmentFault) => (
-                      <div key={fault.id} className="p-3 border rounded" data-testid={`card-my-fault-${fault.id}`}>
+                      <div key={fault.id} className="p-3 border rounded hover-elevate cursor-pointer" data-testid={`card-my-fault-${fault.id}`} onClick={() => setLocation(`/ariza-detay/${fault.id}`)}>
                         <div className="flex items-center justify-between">
                           <div className="flex-1">
                             <p className="font-medium">{fault.equipmentName}</p>
-                            <p className="text-xs text-muted-foreground">{fault.description}</p>
+                            <p className="text-xs text-muted-foreground line-clamp-1">{fault.description}</p>
                           </div>
                           <div className="flex gap-2">
                             <Badge className={getPriorityColor(fault.priority)}>{fault.priority === "kritik" ? "Kritik" : "Yüksek"}</Badge>
@@ -648,134 +504,6 @@ export default function FaultHub() {
         )}
       </Tabs>
 
-      {/* Fault Detail Modal */}
-      <Dialog open={isDetailDialogOpen} onOpenChange={setIsDetailDialogOpen}>
-        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Wrench className="h-5 w-5" />
-              Arıza Detayı
-            </DialogTitle>
-          </DialogHeader>
-          {selectedFault && (
-            <div className="space-y-4">
-              {/* Equipment Info */}
-              <div className="space-y-2">
-                <h4 className="text-sm font-medium text-muted-foreground">Ekipman</h4>
-                <p className="font-semibold text-lg">{selectedFault.equipmentName}</p>
-              </div>
-
-              {/* Branch & Reporter */}
-              <div className="grid grid-cols-2 gap-3">
-                {selectedFault.branchName && (
-                  <div className="space-y-1">
-                    <h4 className="text-xs font-medium text-muted-foreground flex items-center gap-1">
-                      <Building2 className="h-3 w-3" /> Şube
-                    </h4>
-                    <p className="text-sm font-medium">{selectedFault.branchName}</p>
-                  </div>
-                )}
-                {selectedFault.reportedByName && (
-                  <div className="space-y-1">
-                    <h4 className="text-xs font-medium text-muted-foreground flex items-center gap-1">
-                      <User className="h-3 w-3" /> Bildiren
-                    </h4>
-                    <p className="text-sm font-medium">{selectedFault.reportedByName}</p>
-                  </div>
-                )}
-              </div>
-
-              {/* Date */}
-              <div className="space-y-1">
-                <h4 className="text-xs font-medium text-muted-foreground flex items-center gap-1">
-                  <Clock className="h-3 w-3" /> Bildirim Tarihi
-                </h4>
-                <p className="text-sm">{format(new Date(selectedFault.createdAt || new Date()), "dd MMMM yyyy HH:mm", { locale: tr })}</p>
-              </div>
-
-              {/* Status Badges */}
-              <div className="flex flex-wrap gap-2">
-                <Badge className={getPriorityColor(selectedFault.priority)}>
-                  {selectedFault.priority === "kritik" ? "Kritik" : selectedFault.priority === "yuksek" ? "Yüksek" : selectedFault.priority}
-                </Badge>
-                <Badge className={getStageColor(selectedFault.currentStage)}>
-                  {STAGE_LABELS[selectedFault.currentStage] || selectedFault.currentStage}
-                </Badge>
-              </div>
-
-              {/* Description */}
-              {selectedFault.description && (
-                <div className="space-y-1">
-                  <h4 className="text-sm font-medium text-muted-foreground">Açıklama</h4>
-                  <p className="text-sm bg-muted/50 p-3 rounded-md">{selectedFault.description}</p>
-                </div>
-              )}
-
-              {/* Photo */}
-              {selectedFault.photoUrl && (
-                <div className="space-y-1">
-                  <h4 className="text-sm font-medium text-muted-foreground flex items-center gap-1">
-                    <Image className="h-3 w-3" /> Fotoğraf
-                  </h4>
-                  <img 
-                    src={selectedFault.photoUrl} 
-                    alt="Arıza fotoğrafı" 
-                    className="w-full rounded-md border max-h-48 object-cover"
-                  />
-                </div>
-              )}
-
-              {/* AI Analysis */}
-              {selectedFault.aiAnalysis && (
-                <div className="space-y-1">
-                  <h4 className="text-sm font-medium text-muted-foreground">AI Analizi</h4>
-                  <p className="text-sm bg-blue-50 dark:bg-blue-950 p-3 rounded-md">{selectedFault.aiAnalysis}</p>
-                </div>
-              )}
-
-              {/* Cost Info */}
-              {(selectedFault.estimatedCost || selectedFault.actualCost) && (
-                <div className="grid grid-cols-2 gap-3">
-                  {selectedFault.estimatedCost && (
-                    <div className="space-y-1">
-                      <h4 className="text-xs font-medium text-muted-foreground">Tahmini Maliyet</h4>
-                      <p className="text-sm font-medium">{parseFloat(selectedFault.estimatedCost).toLocaleString('tr-TR')} TL</p>
-                    </div>
-                  )}
-                  {selectedFault.actualCost && (
-                    <div className="space-y-1">
-                      <h4 className="text-xs font-medium text-muted-foreground">Gerçek Maliyet</h4>
-                      <p className="text-sm font-medium">{parseFloat(selectedFault.actualCost).toLocaleString('tr-TR')} TL</p>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Actions */}
-              <div className="flex gap-2 pt-2">
-                <Button 
-                  variant="outline" 
-                  className="flex-1"
-                  onClick={() => setIsDetailDialogOpen(false)}
-                  data-testid="button-close-detail"
-                >
-                  Kapat
-                </Button>
-                <Button 
-                  className="flex-1"
-                  onClick={() => {
-                    setIsDetailDialogOpen(false);
-                    handleUpdateFault(selectedFault);
-                  }}
-                  data-testid="button-edit-fault"
-                >
-                  Düzenle
-                </Button>
-              </div>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

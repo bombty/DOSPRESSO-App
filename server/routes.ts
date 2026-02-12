@@ -295,6 +295,7 @@ import {
   insertDashboardWidgetSchema,
   dashboardModuleVisibility,
   insertDashboardModuleVisibilitySchema,
+  faultComments,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, asc, sql, and, or, isNull, isNotNull, inArray, lte, gte, ne, count, sum, avg } from "drizzle-orm";
@@ -4156,6 +4157,93 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
     } catch (error: any) {
       console.error("Error fetching fault history:", error);
       res.status(500).json({ message: "Failed to fetch fault history" });
+    }
+  });
+
+  app.get('/api/faults/:id/comments', isAuthenticated, async (req: any, res) => {
+    try {
+      const faultId = parseInt(req.params.id);
+      const fault = await storage.getFault(faultId);
+      if (!fault) return res.status(404).json({ message: "Fault not found" });
+
+      const comments = await db.select().from(faultComments).where(eq(faultComments.faultId, faultId)).orderBy(faultComments.createdAt);
+
+      const enriched = await Promise.all(comments.map(async (c) => {
+        const u = await storage.getUser(c.userId);
+        return { ...c, userName: u ? `${u.firstName} ${u.lastName}` : "Bilinmeyen", userRole: u?.role || "" };
+      }));
+      res.json(enriched);
+    } catch (error: any) {
+      console.error("Error fetching fault comments:", error);
+      res.status(500).json({ message: "Failed to fetch fault comments" });
+    }
+  });
+
+  app.post('/api/faults/:id/comments', isAuthenticated, async (req: any, res) => {
+    try {
+      const faultId = parseInt(req.params.id);
+      const user = req.user!;
+      const { message, isInternal, attachmentUrl } = req.body;
+
+      if (!message || message.trim() === "") {
+        return res.status(400).json({ message: "Mesaj boş olamaz" });
+      }
+
+      const fault = await storage.getFault(faultId);
+      if (!fault) return res.status(404).json({ message: "Fault not found" });
+
+      const [comment] = await db.insert(faultComments).values({
+        faultId,
+        userId: user.id,
+        message: message.trim(),
+        isInternal: isInternal || false,
+        attachmentUrl: attachmentUrl || null,
+      }).returning();
+
+      res.json(comment);
+    } catch (error: any) {
+      console.error("Error creating fault comment:", error);
+      res.status(500).json({ message: "Failed to create comment" });
+    }
+  });
+
+  app.get('/api/faults/:id/detail', isAuthenticated, async (req: any, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const fault = await storage.getFault(id);
+      if (!fault) return res.status(404).json({ message: "Fault not found" });
+
+      const history = await storage.getFaultStageHistory(id);
+      const comments = await db.select().from(faultComments).where(eq(faultComments.faultId, id)).orderBy(faultComments.createdAt);
+      const enrichedComments = await Promise.all(comments.map(async (c) => {
+        const u = await storage.getUser(c.userId);
+        return { ...c, userName: u ? `${u.firstName} ${u.lastName}` : "Bilinmeyen", userRole: u?.role || "" };
+      }));
+
+      let equipmentInfo = null;
+      if (fault.equipmentId) {
+        const allEquipment = await storage.getEquipment();
+        equipmentInfo = allEquipment.find((e: any) => e.id === fault.equipmentId) || null;
+      }
+
+      const reporter = await storage.getUser(fault.reportedById);
+      const assignee = fault.assignedTo ? await storage.getUser(fault.assignedTo) : null;
+
+      res.json({
+        fault: {
+          ...fault,
+          reporterName: reporter ? `${reporter.firstName} ${reporter.lastName}` : "Bilinmeyen",
+          reporterRole: reporter?.role || "",
+          assigneeName: assignee ? `${assignee.firstName} ${assignee.lastName}` : null,
+          assigneeRole: assignee?.role || null,
+        },
+        equipment: equipmentInfo,
+        history,
+        comments: enrichedComments,
+      });
+    } catch (error: any) {
+      console.error("Error fetching fault detail:", error);
+      res.status(500).json({ message: "Failed to fetch fault detail" });
     }
   });
 
