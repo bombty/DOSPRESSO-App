@@ -41,6 +41,7 @@ import Academy from "@/pages/academy";
 import AcademySupervisor from "@/pages/academy-supervisor";
 import AcademyHQ from "@/pages/academy-hq";
 import ModuleDetail from "@/pages/module-detail";
+import AcademyModuleEditor from "@/pages/academy-module-editor";
 import AcademyAnalytics from "@/pages/academy-analytics";
 import AcademyBadges from "@/pages/academy-badges";
 import AcademyLeaderboard from "@/pages/academy-leaderboard";
@@ -301,6 +302,8 @@ function Router() {
           <Route path="/qr-tara" component={QRScanner} />
           <Route path="/bilgi-bankasi" component={KnowledgeBase} />
           <Route path="/akademi/*?" component={AkademiMegaModule} />
+          <Route path="/akademi-modul-editor/:id" component={AcademyModuleEditor} />
+          <Route path="/akademi-modul-editor" component={AcademyModuleEditor} />
           <Route path="/akademi-modul/:id" component={ModuleDetail} />
           <Route path="/akademi-quiz/:quizId" component={AcademyQuiz} />
           <Route path="/akademi-rozet-koleksiyonum" component={BadgeCollection} />

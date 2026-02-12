@@ -17,7 +17,7 @@ import { BookOpen, CheckCircle, Clock, Lightbulb, ArrowLeft, Edit2, Save, Sparkl
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { TrainingModule, isHQRole } from "@shared/schema";
+import { TrainingModule, isHQRole, hasPermission, type UserRoleType } from "@shared/schema";
 
 const objectivesEditSchema = z.object({
   objectives: z.array(z.string()).default([]),
@@ -70,8 +70,7 @@ export default function ModuleDetail() {
   // Store referrer page for back navigation
   const referrerPage = typeof window !== 'undefined' ? sessionStorage.getItem('academyReferrer') : null;
   
-  // Determine if user is HQ/admin who can edit
-  const isEditor = user?.role === 'admin' || isHQRole(user?.role as any);
+  const isEditor = user ? hasPermission(user.role as UserRoleType, 'training', 'edit') : false;
   
   // Auto-mark module as started when opened by student
   useEffect(() => {
@@ -95,6 +94,64 @@ export default function ModuleDetail() {
   const [isMarkingComplete, setIsMarkingComplete] = useState(false);
   const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
   
+  // Quiz timer states
+  const [quizStarted, setQuizStarted] = useState(false);
+  const [quizTimeRemaining, setQuizTimeRemaining] = useState(0);
+  const [quizFinished, setQuizFinished] = useState(false);
+  const [quizAnswers, setQuizAnswers] = useState<Record<number, number>>({});
+  const [quizScore, setQuizScore] = useState<{correct: number; total: number; percentage: number} | null>(null);
+
+  // Quiz timer countdown effect
+  useEffect(() => {
+    if (!quizStarted || quizFinished || quizTimeRemaining <= 0) return;
+    const timer = setInterval(() => {
+      setQuizTimeRemaining((prev) => {
+        if (prev <= 1) {
+          clearInterval(timer);
+          setQuizFinished(true);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [quizStarted, quizFinished, quizTimeRemaining]);
+
+  // Auto-finish quiz when time runs out
+  useEffect(() => {
+    if (quizFinished && !quizScore && module?.quiz) {
+      const quiz = module.quiz;
+      let correct = 0;
+      quiz.forEach((q: any, idx: number) => {
+        if (quizAnswers[idx] === q.correct_option_index) correct++;
+      });
+      setQuizScore({ correct, total: quiz.length, percentage: Math.round((correct / quiz.length) * 100) });
+    }
+  }, [quizFinished, quizScore, module?.quiz, quizAnswers]);
+
+  const formatTime = (seconds: number) => {
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    return `${m}:${s.toString().padStart(2, '0')}`;
+  };
+
+  const startQuiz = () => {
+    const timeLimitMin = module?.timeLimitMinutes || 0;
+    setQuizAnswers({});
+    setQuizScore(null);
+    setQuizFinished(false);
+    if (timeLimitMin > 0) {
+      setQuizTimeRemaining(timeLimitMin * 60);
+    } else {
+      setQuizTimeRemaining(0);
+    }
+    setQuizStarted(true);
+  };
+
+  const submitQuiz = () => {
+    setQuizFinished(true);
+  };
+
   // AI Sales & Marketing states
   const [isGeneratingSales, setIsGeneratingSales] = useState(false);
   const [isGeneratingPresentation, setIsGeneratingPresentation] = useState(false);
@@ -409,41 +466,171 @@ export default function ModuleDetail() {
           <TabsContent value="quiz" className="w-full space-y-2 sm:space-y-3">
             {module.quiz && module.quiz.length > 0 ? (
               <>
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg">Modül Sınavı</CardTitle>
-                    <CardDescription>Öğrendiklerini pekiştir</CardDescription>
-                  </CardHeader>
-                </Card>
-                <Button 
-                  onClick={async () => {
-                    setIsMarkingComplete(true);
-                    try {
-                      await fetch(`/api/training/modules/${moduleId}/complete`, {
-                        method: 'POST',
-                        credentials: 'include',
-                        headers: { 'Content-Type': 'application/json' }
-                      });
-                      toast({ title: "Modül Tamamlandı!", description: "Başarıyla tamamlandı" });
-                      setPreviewPhase('completed');
-                      queryClient.invalidateQueries({ queryKey: ["/api/training/user-modules-stats"] });
-                      queryClient.invalidateQueries({ queryKey: ["/api/academy/career-progress"] });
-                    } catch (err) {
-                      toast({ title: "Hata", description: (err instanceof Error ? err.message : "Bilinmeyen hata"), variant: "destructive" });
-                    } finally {
-                      setIsMarkingComplete(false);
-                    }
-                  }}
-                  disabled={isMarkingComplete}
-                  className="w-full bg-success hover:bg-green-700"
-                >
-                  {isMarkingComplete ? "Kaydediliyor..." : "Sınavı Tamamla"} <CheckCircle className="w-4 h-4 ml-2" />
-                </Button>
+                {!quizStarted ? (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-lg">Mod\u00fcl S\u0131nav\u0131</CardTitle>
+                      <CardDescription>\u00d6\u011frendiklerini peki\u015ftir</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      <div className="flex flex-wrap gap-2">
+                        <Badge variant="outline" data-testid="badge-quiz-count">
+                          {module.quiz.length} Soru
+                        </Badge>
+                        {module.timeLimitMinutes && module.timeLimitMinutes > 0 && (
+                          <Badge variant="outline" data-testid="badge-quiz-time">
+                            <Clock className="w-3 h-3 mr-1" />
+                            {module.timeLimitMinutes} Dakika
+                          </Badge>
+                        )}
+                      </div>
+                      {module.timeLimitMinutes && module.timeLimitMinutes > 0 && (
+                        <div className="bg-muted/50 p-3 rounded text-sm text-muted-foreground">
+                          <AlertCircle className="w-4 h-4 inline mr-1" />
+                          S\u0131nav ba\u015flad\u0131ktan sonra {module.timeLimitMinutes} dakikan\u0131z olacak. S\u00fcre doldu\u011funda s\u0131nav otomatik olarak kapanacak ve sonu\u00e7lar\u0131n\u0131z g\u00f6r\u00fcnt\u00fclenecek.
+                        </div>
+                      )}
+                      <Button onClick={startQuiz} className="w-full" data-testid="button-start-quiz">
+                        S\u0131nav\u0131 Ba\u015flat
+                      </Button>
+                    </CardContent>
+                  </Card>
+                ) : quizFinished && quizScore ? (
+                  <div className="space-y-3">
+                    <Card className={quizScore.percentage >= 70 ? "border-green-500/50" : "border-destructive/50"}>
+                      <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                          {quizScore.percentage >= 70 ? (
+                            <><Award className="w-5 h-5 text-green-500" /> S\u0131nav Tamamland\u0131!</>
+                          ) : (
+                            <><AlertCircle className="w-5 h-5 text-destructive" /> S\u0131nav Sonucu</>
+                          )}
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        <div className="text-center">
+                          <p className="text-4xl font-bold" data-testid="text-quiz-score">%{quizScore.percentage}</p>
+                          <p className="text-sm text-muted-foreground mt-1">{quizScore.correct}/{quizScore.total} do\u011fru</p>
+                        </div>
+                        {quizTimeRemaining === 0 && module.timeLimitMinutes && module.timeLimitMinutes > 0 && (
+                          <div className="bg-muted/50 p-2 rounded text-xs text-center text-muted-foreground">
+                            S\u00fcre doldu - S\u0131nav otomatik olarak tamamland\u0131
+                          </div>
+                        )}
+                        <div className="space-y-2">
+                          {module.quiz.map((q: any, idx: number) => (
+                            <div key={idx} className={`p-3 rounded border text-sm ${quizAnswers[idx] === q.correct_option_index ? 'bg-green-500/10 border-green-500/30' : 'bg-destructive/10 border-destructive/30'}`}>
+                              <p className="font-medium mb-1">{idx + 1}. {q.question_text}</p>
+                              <p className="text-xs">
+                                Cevab\u0131n\u0131z: {quizAnswers[idx] !== undefined ? q.options[quizAnswers[idx]] : 'Cevaplanmad\u0131'}
+                                {quizAnswers[idx] !== q.correct_option_index && (
+                                  <span className="text-green-600 dark:text-green-400 ml-2">Do\u011fru: {q.options[q.correct_option_index]}</span>
+                                )}
+                              </p>
+                            </div>
+                          ))}
+                        </div>
+                        <div className="flex gap-2">
+                          <Button variant="outline" onClick={() => { setQuizStarted(false); setQuizFinished(false); setQuizScore(null); }} className="flex-1" data-testid="button-retry-quiz">
+                            <RotateCcw className="w-4 h-4 mr-1" /> Tekrar Dene
+                          </Button>
+                          {quizScore.percentage >= 70 && (
+                            <Button
+                              onClick={async () => {
+                                setIsMarkingComplete(true);
+                                try {
+                                  await fetch(`/api/training/modules/${moduleId}/complete`, {
+                                    method: 'POST', credentials: 'include',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ quizScore: quizScore.correct, quizPercentage: quizScore.percentage })
+                                  });
+                                  toast({ title: "Mod\u00fcl Tamamland\u0131!" });
+                                  setPreviewPhase('completed');
+                                  queryClient.invalidateQueries({ queryKey: ["/api/training/user-modules-stats"] });
+                                  queryClient.invalidateQueries({ queryKey: ["/api/training/user-progress"], exact: false });
+                                  queryClient.invalidateQueries({ queryKey: ["/api/academy/career-progress"] });
+                                } catch (err) {
+                                  toast({ title: "Hata", description: (err instanceof Error ? err.message : "Bilinmeyen hata"), variant: "destructive" });
+                                } finally { setIsMarkingComplete(false); }
+                              }}
+                              disabled={isMarkingComplete}
+                              className="flex-1"
+                              data-testid="button-complete-module"
+                            >
+                              {isMarkingComplete ? "Kaydediliyor..." : "Tamamla"} <CheckCircle className="w-4 h-4 ml-1" />
+                            </Button>
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {module.timeLimitMinutes && module.timeLimitMinutes > 0 && (
+                      <div className={`sticky top-0 z-50 p-3 rounded-md flex items-center justify-between ${quizTimeRemaining <= 30 ? 'bg-destructive/20 border border-destructive/50' : 'bg-muted'}`}>
+                        <div className="flex items-center gap-2">
+                          <Clock className={`w-4 h-4 ${quizTimeRemaining <= 30 ? 'text-destructive animate-pulse' : ''}`} />
+                          <span className={`font-mono text-lg font-bold ${quizTimeRemaining <= 30 ? 'text-destructive' : ''}`} data-testid="text-quiz-timer">
+                            {formatTime(quizTimeRemaining)}
+                          </span>
+                        </div>
+                        <Badge variant="outline">{Object.keys(quizAnswers).length}/{module.quiz.length} cevaplanm\u0131\u015f</Badge>
+                      </div>
+                    )}
+                    {module.quiz.map((q: any, idx: number) => (
+                      <Card key={idx}>
+                        <CardContent className="pt-4">
+                          <p className="font-medium mb-3 text-sm">{idx + 1}. {q.question_text}</p>
+                          <div className="space-y-2">
+                            {q.options?.map((opt: string, optIdx: number) => (
+                              <button
+                                key={optIdx}
+                                onClick={() => setQuizAnswers({ ...quizAnswers, [idx]: optIdx })}
+                                className={`w-full text-left p-3 rounded border-2 transition-colors text-sm ${
+                                  quizAnswers[idx] === optIdx
+                                    ? "border-primary bg-primary/10"
+                                    : "border-muted hover:border-primary/50"
+                                }`}
+                                data-testid={`button-quiz-answer-${idx}-${optIdx}`}
+                              >
+                                {opt}
+                              </button>
+                            ))}
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                    <Button onClick={submitQuiz} className="w-full" data-testid="button-submit-quiz">
+                      S\u0131nav\u0131 Tamamla ({Object.keys(quizAnswers).length}/{module.quiz.length})
+                    </Button>
+                  </div>
+                )}
               </>
             ) : (
               <Card>
                 <CardContent className="py-8 text-center text-muted-foreground">
-                  Sınav tanımlanmamış - Modülü tamamlamak için devam et
+                  S\u0131nav tan\u0131mlanmam\u0131\u015f
+                  <Button
+                    onClick={async () => {
+                      setIsMarkingComplete(true);
+                      try {
+                        await fetch(`/api/training/modules/${moduleId}/complete`, {
+                          method: 'POST', credentials: 'include',
+                          headers: { 'Content-Type': 'application/json' }
+                        });
+                        toast({ title: "Mod\u00fcl Tamamland\u0131!" });
+                        setPreviewPhase('completed');
+                        queryClient.invalidateQueries({ queryKey: ["/api/training/user-modules-stats"] });
+                      } catch (err) {
+                        toast({ title: "Hata", variant: "destructive" });
+                      } finally { setIsMarkingComplete(false); }
+                    }}
+                    disabled={isMarkingComplete}
+                    className="w-full mt-4"
+                    data-testid="button-complete-no-quiz"
+                  >
+                    Mod\u00fcl\u00fc Tamamla <CheckCircle className="w-4 h-4 ml-1" />
+                  </Button>
                 </CardContent>
               </Card>
             )}
@@ -825,7 +1012,7 @@ export default function ModuleDetail() {
                     <Button 
                       onClick={() => {
                         if (moduleId) {
-                          apiRequest("POST", `/api/training/modules/${moduleId}/complete`).catch(console.error);
+                          apiRequest("POST", `/api/training/modules/${moduleId}/complete`, { quizScore: quizScore?.correct || 0, quizPercentage: quizScore?.percentage || 100 }).catch(console.error);
                           setTimeout(() => setPreviewOpen(false), 300);
                         }
                       }}

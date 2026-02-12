@@ -6168,13 +6168,13 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
     }
   });
 
-  // Get training modules (published only for users, all for admin/coach)
+  // Get training modules (published only for users, all for admin/coach/trainer)
   app.get('/api/training/modules', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
-      const isAdminOrCoach = user.role === 'admin' || user.role === 'coach';
+      const canEditTraining = hasPermission(user.role as any, 'training', 'edit');
       
-      const modules = await storage.getTrainingModules(isAdminOrCoach ? undefined : true);
+      const modules = await storage.getTrainingModules(canEditTraining ? undefined : true);
       res.json(modules);
     } catch (error: any) {
       console.error("Error fetching training modules:", error);
@@ -6207,12 +6207,12 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
     }
   });
 
-  // Create training module (admin/coach only)
+  // Create training module (admin/coach/trainer only)
   app.post('/api/training/modules', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
-      if (user.role !== 'admin' && user.role !== 'coach') {
-        return res.status(403).json({ message: "Only admin and coach can create modules" });
+      if (!hasPermission(user.role as any, 'training', 'create')) {
+        return res.status(403).json({ message: "Bu işlem için yetkiniz yok" });
       }
 
       const validated = insertTrainingModuleSchema.parse(req.body);
@@ -6231,12 +6231,12 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
     }
   });
 
-  // Update training module (admin/coach only)
+  // Update training module (admin/coach/trainer only)
   app.put('/api/training/modules/:id', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
-      if (user.role !== 'admin' && user.role !== 'coach') {
-        return res.status(403).json({ message: "Only admin and coach can update modules" });
+      if (!hasPermission(user.role as any, 'training', 'edit')) {
+        return res.status(403).json({ message: "Bu işlem için yetkiniz yok" });
       }
 
       const moduleId = parseInt(req.params.id);
@@ -6257,12 +6257,12 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
     }
   });
 
-  // Delete training module (admin/coach only)
+  // Delete training module (admin/coach/trainer only)
   app.delete('/api/training/modules/:id', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
-      if (user.role !== 'admin' && user.role !== 'coach') {
-        return res.status(403).json({ message: "Only admin and coach can delete modules" });
+      if (!hasPermission(user.role as any, 'training', 'delete')) {
+        return res.status(403).json({ message: "Bu işlem için yetkiniz yok" });
       }
 
       const moduleId = parseInt(req.params.id);
@@ -6452,12 +6452,12 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
     }
   });
 
-  // Upload image for module gallery and get optimized URL (admin/coach only)
+  // Upload image for module gallery and get optimized URL (admin/coach/trainer only)
   app.post('/api/training/modules/:id/upload-image', isAuthenticated, trainingFileUpload.single('file'), async (req, res) => {
     try {
       const user = req.user!;
-      if (user.role !== 'admin' && user.role !== 'coach') {
-        return res.status(403).json({ message: "Sadece admin ve eğitmenler resim yükleyebilir" });
+      if (!hasPermission(user.role as any, 'training', 'edit')) {
+        return res.status(403).json({ message: "Bu işlem için yetkiniz yok" });
       }
 
       const moduleId = parseInt(req.params.id);
@@ -6509,12 +6509,12 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
     });
   });
 
-  // Delete image from module gallery (admin/coach only)
+  // Delete image from module gallery (admin/coach/trainer only)
   app.delete('/api/training/modules/:id/gallery/:imageIndex', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
-      if (user.role !== 'admin' && user.role !== 'coach') {
-        return res.status(403).json({ message: "Sadece admin ve eğitmenler resim silebilir" });
+      if (!hasPermission(user.role as any, 'training', 'edit')) {
+        return res.status(403).json({ message: "Bu işlem için yetkiniz yok" });
       }
 
       const moduleId = parseInt(req.params.id);
@@ -6577,12 +6577,12 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
     }
   });
 
-  // Generate learning objectives with AI (admin/coach only)
+  // Generate learning objectives with AI (admin/coach/trainer only)
   app.post('/api/training/modules/:id/generate-objectives', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
-      if (user.role !== 'admin' && user.role !== 'coach') {
-        return res.status(403).json({ message: "Only admin and coach can generate objectives" });
+      if (!hasPermission(user.role as any, 'training', 'edit')) {
+        return res.status(403).json({ message: "Bu işlem için yetkiniz yok" });
       }
 
       const moduleId = parseInt(req.params.id);
@@ -6842,12 +6842,12 @@ JSON formatında yanıt ver:
       res.status(500).json({ message: "Senaryolar oluşturulamadı" });
     }
   });
-  // Add video to module (admin/coach only)
+  // Add video to module (admin/coach/trainer only)
   app.post('/api/training/modules/:id/videos', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
-      if (user.role !== 'admin' && user.role !== 'coach') {
-        return res.status(403).json({ message: "Only admin and coach can add videos" });
+      if (!hasPermission(user.role as any, 'training', 'edit')) {
+        return res.status(403).json({ message: "Bu işlem için yetkiniz yok" });
       }
 
       const moduleId = parseInt(req.params.id);
@@ -6893,12 +6893,12 @@ JSON formatında yanıt ver:
     }
   });
 
-  // Add lesson to module (admin/coach only)
+  // Add lesson to module (admin/coach/trainer only)
   app.post('/api/training/modules/:id/lessons', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
-      if (user.role !== 'admin' && user.role !== 'coach') {
-        return res.status(403).json({ message: "Sadece admin ve eğitmenler ders ekleyebilir" });
+      if (!hasPermission(user.role as any, 'training', 'create')) {
+        return res.status(403).json({ message: "Bu işlem için yetkiniz yok" });
       }
 
       const moduleId = parseInt(req.params.id);
@@ -7034,12 +7034,12 @@ JSON formatında yanıt ver:
     }
   });
 
-  // Add quiz to module (admin/coach only)
+  // Add quiz to module (admin/coach/trainer only)
   app.post('/api/training/modules/:id/quizzes', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
-      if (user.role !== 'admin' && user.role !== 'coach') {
-        return res.status(403).json({ message: "Only admin and coach can add quizzes" });
+      if (!hasPermission(user.role as any, 'training', 'create')) {
+        return res.status(403).json({ message: "Bu işlem için yetkiniz yok" });
       }
 
       const moduleId = parseInt(req.params.id);
@@ -14959,17 +14959,18 @@ Cevaplarınız kısa, faydalı ve türkçe olmalıdır.`;
       const { id } = req.params;
       const moduleId = parseInt(id);
       const userId = req.user.id;
+      const { quizScore, quizPercentage } = req.body || {};
 
-      if (!moduleId) return res.status(400).json({ message: "Modül ID gerekli" });
+      if (!moduleId) return res.status(400).json({ message: "Mod\u00fcl ID gerekli" });
 
-      // Record training progress
+      // Record training progress with quiz score
       try {
         await storage.createOrUpdateUserTrainingProgress({
           userId,
           moduleId,
           status: 'completed',
           completedAt: new Date(),
-          score: 100,
+          score: quizPercentage || quizScore || 100,
         });
       } catch {
         // Continue even if progress recording fails

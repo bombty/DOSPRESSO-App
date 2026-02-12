@@ -216,7 +216,7 @@ export default function Academy() {
   };
 
   const currentLevel = CAREER_LEVELS.find(l => l.roleId === user?.role);
-  const nextLevel = currentLevel ? CAREER_LEVELS[currentLevel.levelNumber] : null;
+  const nextLevel = currentLevel ? CAREER_LEVELS.find(l => l.levelNumber === currentLevel.levelNumber + 1) : null;
   const progressPercent = userProgress?.averageQuizScore || 0;
 
   // Hub Card Component
@@ -419,12 +419,69 @@ export default function Academy() {
               </CardContent>
             </Card>
 
+            {/* Onboarding Progress - for new employees */}
+            {user?.role === 'stajyer' && (() => {
+              const onboardingModules = modules
+                .filter((m: any) => m.requiredForRole?.includes('stajyer') && m.isPublished)
+                .sort((a: any, b: any) => (a.id || 0) - (b.id || 0));
+              const completedOnboarding = onboardingModules.filter((m: any) => isModuleCompleted(m.id));
+              const onboardingPercent = onboardingModules.length > 0 
+                ? Math.round((completedOnboarding.length / onboardingModules.length) * 100) : 0;
+              const nextModule = onboardingModules.find((m: any) => !isModuleCompleted(m.id));
+              
+              if (onboardingModules.length === 0) return null;
+              return (
+                <Card className="border-2 border-primary/30 bg-gradient-to-br from-green-500/5 to-primary/5" data-testid="onboarding-card">
+                  <CardContent className="p-4 space-y-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
+                        <GraduationCap className="w-5 h-5 text-primary" />
+                      </div>
+                      <div className="flex-1">
+                        <h3 className="font-bold text-sm">Oryantasyon E\u011fitimlerin</h3>
+                        <p className="text-xs text-muted-foreground">{completedOnboarding.length}/{onboardingModules.length} tamamland\u0131</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-lg font-bold text-primary">%{onboardingPercent}</p>
+                      </div>
+                    </div>
+                    <Progress value={onboardingPercent} className="h-2" />
+                    <div className="space-y-1.5">
+                      {onboardingModules.map((m: any, idx: number) => {
+                        const completed = isModuleCompleted(m.id);
+                        const isNext = !completed && m.id === nextModule?.id;
+                        const prevCompleted = idx === 0 || isModuleCompleted(onboardingModules[idx - 1]?.id);
+                        const isLocked = !completed && !isNext && !prevCompleted;
+                        return (
+                          <div key={m.id} className={`flex items-center gap-2 p-2 rounded-md text-sm ${isNext ? 'bg-primary/10 border border-primary/30' : completed ? 'bg-green-500/10' : 'bg-muted/30'}`}>
+                            <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${completed ? 'bg-green-500 text-white' : isNext ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}>
+                              {completed ? <CheckCircle className="w-3 h-3" /> : idx + 1}
+                            </div>
+                            <span className={`flex-1 text-xs ${completed ? 'line-through text-muted-foreground' : isLocked ? 'text-muted-foreground' : 'font-medium'}`}>{m.title}</span>
+                            {isNext && (
+                              <Link to={`/akademi-modul/${m.id}`} onClick={() => sessionStorage.setItem('academyReferrer', '/akademi')}>
+                                <Button size="sm" variant="default" data-testid={`button-onboarding-start-${m.id}`}>
+                                  Ba\u015fla
+                                </Button>
+                              </Link>
+                            )}
+                            {isLocked && <Badge variant="outline" className="text-xs">Kilitli</Badge>}
+                            {completed && <Badge variant="secondary" className="text-xs">Tamam</Badge>}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })()}
+
             {/* Hub Categories Grid */}
             <div className="grid grid-cols-1 gap-2">
               <HubCard
                 icon={Target}
-                title="Kariyer Yolculuğum"
-                description={currentLevel ? `Mevcut: ${currentLevel.titleTr}` : "Kariyer yolculuğuna başla"}
+                title="Kariyer Yolculu\u011fum"
+                description={currentLevel ? `Mevcut: ${currentLevel.titleTr}` : "Kariyer yolculu\u011funa ba\u015fla"}
                 color="#1e3a5f"
                 onClick={() => setActiveView("career")}
                 badge={currentLevel?.levelNumber ? `Lvl ${currentLevel.levelNumber}` : undefined}
@@ -662,12 +719,23 @@ export default function Academy() {
                       const isCurrent = currentLevel?.levelNumber === level.levelNumber;
                       const isLocked = !isCompleted && !isCurrent;
                       
+                      const levelRoleMap: Record<number, string> = {
+                        1: "stajyer", 2: "bar_buddy", 3: "barista", 4: "supervisor_buddy", 5: "supervisor"
+                      };
+                      const levelRole = levelRoleMap[level.levelNumber];
+                      const requiredModulesForLevel = modules.filter((m: any) => 
+                        m.requiredForRole?.includes(levelRole) && m.isPublished !== false
+                      );
+                      const completedModulesForLevel = requiredModulesForLevel.filter((m: any) => isModuleCompleted(m.id));
+                      const levelCompletionPercent = requiredModulesForLevel.length > 0 
+                        ? Math.round((completedModulesForLevel.length / requiredModulesForLevel.length) * 100) 
+                        : 0;
                       const levelRequirements: Record<number, string[]> = {
-                        1: ["Oryantasyon eğitimi", "Temel hijyen kuralları"],
-                        2: ["5 temel reçete", "Müşteri hizmetleri eğitimi"],
-                        3: ["20+ reçete ustası", "Makine bakımı sertifikası", "Kalite standartları"],
-                        4: ["Tüm reçeteler", "Vardiya planlama eğitimi", "Ekip yönetimi temelleri"],
-                        5: ["Yönetim sertifikası", "Finansal okur-yazarlık", "Eğitmen yetkisi"]
+                        1: ["Oryantasyon e\u011fitimi", "Temel hijyen kurallar\u0131", ...requiredModulesForLevel.map((m: any) => m.title)],
+                        2: ["5 temel re\u00e7ete", "M\u00fc\u015fteri hizmetleri e\u011fitimi", ...requiredModulesForLevel.map((m: any) => m.title)],
+                        3: ["20+ re\u00e7ete ustas\u0131", "Makine bak\u0131m\u0131 sertifikas\u0131", ...requiredModulesForLevel.map((m: any) => m.title)],
+                        4: ["T\u00fcm re\u00e7eteler", "Vardiya planlama e\u011fitimi", ...requiredModulesForLevel.map((m: any) => m.title)],
+                        5: ["Y\u00f6netim sertifikas\u0131", "Finansal okur-yazarl\u0131k", ...requiredModulesForLevel.map((m: any) => m.title)]
                       };
                       
                       const levelRewards: Record<number, string> = {
@@ -723,6 +791,19 @@ export default function Academy() {
                                   ))}
                                 </div>
                               </div>
+                              
+                              {/* Module Completion Progress */}
+                              {isCurrent && requiredModulesForLevel.length > 0 && (
+                                <div className="mb-2" data-testid={`module-progress-${level.levelNumber}`}>
+                                  <div className="flex justify-between text-xs mb-1">
+                                    <span className="text-muted-foreground">Mod\u00fcl Tamamlama</span>
+                                    <span className="font-medium">{completedModulesForLevel.length}/{requiredModulesForLevel.length}</span>
+                                  </div>
+                                  <div className="w-full bg-muted rounded-full h-1.5 overflow-hidden">
+                                    <div className="bg-primary h-full transition-all" style={{ width: `${levelCompletionPercent}%` }} />
+                                  </div>
+                                </div>
+                              )}
                               
                               {/* Reward */}
                               <div className="flex items-center gap-2 p-2 bg-orange-100 dark:bg-orange-900/20 rounded-lg" data-testid={`reward-level-${level.levelNumber}`}>
