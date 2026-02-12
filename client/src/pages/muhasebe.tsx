@@ -3,6 +3,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { Link } from "wouter";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -302,17 +303,29 @@ export default function Muhasebe() {
 
   const updateMutation = useMutation({
     mutationFn: async (data: PayrollParameters) => {
-      // Only send the fields allowed by the Zod schema
       const payload = {
         minimumWageGross: data.minimumWageGross,
         minimumWageNet: data.minimumWageNet,
+        sgkEmployeeRate: data.sgkEmployeeRate,
+        sgkEmployerRate: data.sgkEmployerRate,
+        unemploymentEmployeeRate: data.unemploymentEmployeeRate,
+        unemploymentEmployerRate: data.unemploymentEmployerRate,
+        stampTaxRate: data.stampTaxRate,
         taxBracket1Limit: data.taxBracket1Limit,
+        taxBracket1Rate: data.taxBracket1Rate,
         taxBracket2Limit: data.taxBracket2Limit,
+        taxBracket2Rate: data.taxBracket2Rate,
         taxBracket3Limit: data.taxBracket3Limit,
+        taxBracket3Rate: data.taxBracket3Rate,
         taxBracket4Limit: data.taxBracket4Limit,
+        taxBracket4Rate: data.taxBracket4Rate,
+        taxBracket5Rate: data.taxBracket5Rate,
         mealAllowanceTaxExemptDaily: data.mealAllowanceTaxExemptDaily,
         mealAllowanceSgkExemptDaily: data.mealAllowanceSgkExemptDaily,
         transportAllowanceExemptDaily: data.transportAllowanceExemptDaily,
+        workingDaysPerMonth: data.workingDaysPerMonth,
+        workingHoursPerDay: data.workingHoursPerDay,
+        overtimeMultiplier: data.overtimeMultiplier,
         isActive: data.isActive,
         notes: data.notes,
       };
@@ -780,10 +793,11 @@ export default function Muhasebe() {
                     <CardHeader className="pb-2">
                       <CardTitle className="text-sm flex items-center gap-2">
                         <Percent className="h-4 w-4 text-blue-600" />
-                        SGK & İşsizlik (İşçi)
+                        SGK & İşsizlik
                       </CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-2">
+                      <div className="text-xs text-muted-foreground font-medium mb-1">İşçi Payı</div>
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">SGK:</span>
                         <span className="font-medium">%{formatPercent(currentYearParams.sgkEmployeeRate)}</span>
@@ -793,8 +807,21 @@ export default function Muhasebe() {
                         <span className="font-medium">%{formatPercent(currentYearParams.unemploymentEmployeeRate)}</span>
                       </div>
                       <div className="flex justify-between border-t pt-2">
-                        <span className="text-muted-foreground">Toplam:</span>
+                        <span className="text-muted-foreground">Toplam İşçi:</span>
                         <span className="font-bold">%{formatPercent(currentYearParams.sgkEmployeeRate + currentYearParams.unemploymentEmployeeRate)}</span>
+                      </div>
+                      <div className="text-xs text-muted-foreground font-medium mt-2 mb-1">İşveren Payı</div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">SGK:</span>
+                        <span className="font-medium">%{formatPercent(currentYearParams.sgkEmployerRate)}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">İşsizlik:</span>
+                        <span className="font-medium">%{formatPercent(currentYearParams.unemploymentEmployerRate)}</span>
+                      </div>
+                      <div className="flex justify-between border-t pt-2">
+                        <span className="text-muted-foreground">Toplam İşveren:</span>
+                        <span className="font-bold">%{formatPercent(currentYearParams.sgkEmployerRate + currentYearParams.unemploymentEmployerRate)}</span>
                       </div>
                     </CardContent>
                   </Card>
@@ -1099,12 +1126,49 @@ export default function Muhasebe() {
 
           <TabsContent value="reports" className="space-y-4 mt-4">
             <Card>
-              <CardContent className="py-8 text-center">
-                <TrendingUp className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                <p className="text-muted-foreground">Bordro raporları yakında eklenecek.</p>
-                <p className="text-sm text-muted-foreground mt-2">
-                  Aylık bordro özeti, vergi/SGK bildirgeleri ve daha fazlası...
-                </p>
+              <CardContent className="pt-6 pb-4">
+                <div className="flex flex-col items-center gap-3 text-center">
+                  <TrendingUp className="h-10 w-10 text-primary" />
+                  <div>
+                    <p className="font-medium">Yönetim & Mali Raporlama</p>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Gelir/gider takibi, şube karşılaştırması, AI analiz ve dönemsel raporlar
+                    </p>
+                  </div>
+                  <Link href="/muhasebe-raporlama">
+                    <Button data-testid="button-open-reporting">
+                      <FileText className="mr-2 h-4 w-4" />
+                      Raporlama Modülüne Git
+                    </Button>
+                  </Link>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm">Hızlı Bordro Özeti</CardTitle>
+                <CardDescription className="text-xs">Seçili yıl: {selectedYear}</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                {payrollRecords && payrollRecords.length > 0 ? (
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Toplam Kayıt:</span>
+                      <span className="font-medium">{payrollRecords.length}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Onaylanan:</span>
+                      <span className="font-medium">{payrollRecords.filter((r: any) => r.status === 'approved').length}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Ödenen:</span>
+                      <span className="font-medium">{payrollRecords.filter((r: any) => r.status === 'paid').length}</span>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground text-center py-3">Bu dönem için bordro kaydı yok</p>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
@@ -1122,6 +1186,7 @@ export default function Muhasebe() {
           
           {editingParam && (
             <div className="grid gap-4 py-4">
+              <h4 className="font-medium flex items-center gap-2"><Banknote className="h-4 w-4" /> Asgari Ücret</h4>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Brüt Asgari Ücret (TL)</Label>
@@ -1146,49 +1211,167 @@ export default function Muhasebe() {
               </div>
 
               <Separator />
-              <h4 className="font-medium">Gelir Vergisi Dilimleri (TL)</h4>
-              
+              <h4 className="font-medium flex items-center gap-2"><Percent className="h-4 w-4" /> SGK & İşsizlik Oranları (%)</h4>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>1. Dilim Üst Sınırı</Label>
+                  <Label>SGK İşçi Payı (%)</Label>
                   <Input
                     type="number"
-                    step="0.01"
-                    value={(editingParam.taxBracket1Limit / 100).toFixed(2)}
-                    onChange={(e) => setEditingParam({ ...editingParam, taxBracket1Limit: Math.round(parseFloat(e.target.value || "0") * 100) })}
+                    step="0.1"
+                    value={(editingParam.sgkEmployeeRate / 10).toFixed(1)}
+                    onChange={(e) => setEditingParam({ ...editingParam, sgkEmployeeRate: Math.round(parseFloat(e.target.value || "0") * 10) })}
+                    data-testid="input-edit-sgk-employee"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>2. Dilim Üst Sınırı</Label>
+                  <Label>SGK İşveren Payı (%)</Label>
                   <Input
                     type="number"
-                    step="0.01"
-                    value={(editingParam.taxBracket2Limit / 100).toFixed(2)}
-                    onChange={(e) => setEditingParam({ ...editingParam, taxBracket2Limit: Math.round(parseFloat(e.target.value || "0") * 100) })}
+                    step="0.1"
+                    value={(editingParam.sgkEmployerRate / 10).toFixed(1)}
+                    onChange={(e) => setEditingParam({ ...editingParam, sgkEmployerRate: Math.round(parseFloat(e.target.value || "0") * 10) })}
+                    data-testid="input-edit-sgk-employer"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>3. Dilim Üst Sınırı</Label>
+                  <Label>İşsizlik İşçi Payı (%)</Label>
                   <Input
                     type="number"
-                    step="0.01"
-                    value={(editingParam.taxBracket3Limit / 100).toFixed(2)}
-                    onChange={(e) => setEditingParam({ ...editingParam, taxBracket3Limit: Math.round(parseFloat(e.target.value || "0") * 100) })}
+                    step="0.1"
+                    value={(editingParam.unemploymentEmployeeRate / 10).toFixed(1)}
+                    onChange={(e) => setEditingParam({ ...editingParam, unemploymentEmployeeRate: Math.round(parseFloat(e.target.value || "0") * 10) })}
+                    data-testid="input-edit-unemployment-employee"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>4. Dilim Üst Sınırı</Label>
+                  <Label>İşsizlik İşveren Payı (%)</Label>
                   <Input
                     type="number"
-                    step="0.01"
-                    value={(editingParam.taxBracket4Limit / 100).toFixed(2)}
-                    onChange={(e) => setEditingParam({ ...editingParam, taxBracket4Limit: Math.round(parseFloat(e.target.value || "0") * 100) })}
+                    step="0.1"
+                    value={(editingParam.unemploymentEmployerRate / 10).toFixed(1)}
+                    onChange={(e) => setEditingParam({ ...editingParam, unemploymentEmployerRate: Math.round(parseFloat(e.target.value || "0") * 10) })}
+                    data-testid="input-edit-unemployment-employer"
                   />
                 </div>
               </div>
 
               <Separator />
-              <h4 className="font-medium">Yemek & Ulaşım Muafiyetleri (Günlük TL)</h4>
+              <h4 className="font-medium flex items-center gap-2"><Receipt className="h-4 w-4" /> Damga Vergisi</h4>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Damga Vergisi Oranı (Binde)</Label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    value={(editingParam.stampTaxRate / 100).toFixed(2)}
+                    onChange={(e) => setEditingParam({ ...editingParam, stampTaxRate: Math.round(parseFloat(e.target.value || "0") * 100) })}
+                    data-testid="input-edit-stamp-tax"
+                  />
+                </div>
+              </div>
+
+              <Separator />
+              <h4 className="font-medium flex items-center gap-2"><TrendingUp className="h-4 w-4" /> Gelir Vergisi Dilimleri</h4>
+              
+              <div className="grid grid-cols-3 gap-3">
+                <div className="space-y-2">
+                  <Label>1. Dilim Oran (%)</Label>
+                  <Input
+                    type="number"
+                    step="0.1"
+                    value={(editingParam.taxBracket1Rate / 10).toFixed(1)}
+                    onChange={(e) => setEditingParam({ ...editingParam, taxBracket1Rate: Math.round(parseFloat(e.target.value || "0") * 10) })}
+                    data-testid="input-edit-tax-rate-1"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>1. Dilim Üst Sınır (TL)</Label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    value={(editingParam.taxBracket1Limit / 100).toFixed(2)}
+                    onChange={(e) => setEditingParam({ ...editingParam, taxBracket1Limit: Math.round(parseFloat(e.target.value || "0") * 100) })}
+                    data-testid="input-edit-tax-limit-1"
+                  />
+                </div>
+                <div />
+                <div className="space-y-2">
+                  <Label>2. Dilim Oran (%)</Label>
+                  <Input
+                    type="number"
+                    step="0.1"
+                    value={(editingParam.taxBracket2Rate / 10).toFixed(1)}
+                    onChange={(e) => setEditingParam({ ...editingParam, taxBracket2Rate: Math.round(parseFloat(e.target.value || "0") * 10) })}
+                    data-testid="input-edit-tax-rate-2"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>2. Dilim Üst Sınır (TL)</Label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    value={(editingParam.taxBracket2Limit / 100).toFixed(2)}
+                    onChange={(e) => setEditingParam({ ...editingParam, taxBracket2Limit: Math.round(parseFloat(e.target.value || "0") * 100) })}
+                    data-testid="input-edit-tax-limit-2"
+                  />
+                </div>
+                <div />
+                <div className="space-y-2">
+                  <Label>3. Dilim Oran (%)</Label>
+                  <Input
+                    type="number"
+                    step="0.1"
+                    value={(editingParam.taxBracket3Rate / 10).toFixed(1)}
+                    onChange={(e) => setEditingParam({ ...editingParam, taxBracket3Rate: Math.round(parseFloat(e.target.value || "0") * 10) })}
+                    data-testid="input-edit-tax-rate-3"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>3. Dilim Üst Sınır (TL)</Label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    value={(editingParam.taxBracket3Limit / 100).toFixed(2)}
+                    onChange={(e) => setEditingParam({ ...editingParam, taxBracket3Limit: Math.round(parseFloat(e.target.value || "0") * 100) })}
+                    data-testid="input-edit-tax-limit-3"
+                  />
+                </div>
+                <div />
+                <div className="space-y-2">
+                  <Label>4. Dilim Oran (%)</Label>
+                  <Input
+                    type="number"
+                    step="0.1"
+                    value={(editingParam.taxBracket4Rate / 10).toFixed(1)}
+                    onChange={(e) => setEditingParam({ ...editingParam, taxBracket4Rate: Math.round(parseFloat(e.target.value || "0") * 10) })}
+                    data-testid="input-edit-tax-rate-4"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>4. Dilim Üst Sınır (TL)</Label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    value={(editingParam.taxBracket4Limit / 100).toFixed(2)}
+                    onChange={(e) => setEditingParam({ ...editingParam, taxBracket4Limit: Math.round(parseFloat(e.target.value || "0") * 100) })}
+                    data-testid="input-edit-tax-limit-4"
+                  />
+                </div>
+                <div />
+                <div className="space-y-2">
+                  <Label>5. Dilim Oran (%)</Label>
+                  <Input
+                    type="number"
+                    step="0.1"
+                    value={(editingParam.taxBracket5Rate / 10).toFixed(1)}
+                    onChange={(e) => setEditingParam({ ...editingParam, taxBracket5Rate: Math.round(parseFloat(e.target.value || "0") * 10) })}
+                    data-testid="input-edit-tax-rate-5"
+                  />
+                </div>
+              </div>
+
+              <Separator />
+              <h4 className="font-medium flex items-center gap-2"><Utensils className="h-4 w-4" /> Yemek & Ulaşım Muafiyetleri (Günlük TL)</h4>
               
               <div className="grid grid-cols-3 gap-4">
                 <div className="space-y-2">
@@ -1198,6 +1381,7 @@ export default function Muhasebe() {
                     step="0.01"
                     value={(editingParam.mealAllowanceTaxExemptDaily / 100).toFixed(2)}
                     onChange={(e) => setEditingParam({ ...editingParam, mealAllowanceTaxExemptDaily: Math.round(parseFloat(e.target.value || "0") * 100) })}
+                    data-testid="input-edit-meal-tax"
                   />
                 </div>
                 <div className="space-y-2">
@@ -1207,6 +1391,7 @@ export default function Muhasebe() {
                     step="0.01"
                     value={(editingParam.mealAllowanceSgkExemptDaily / 100).toFixed(2)}
                     onChange={(e) => setEditingParam({ ...editingParam, mealAllowanceSgkExemptDaily: Math.round(parseFloat(e.target.value || "0") * 100) })}
+                    data-testid="input-edit-meal-sgk"
                   />
                 </div>
                 <div className="space-y-2">
@@ -1216,8 +1401,55 @@ export default function Muhasebe() {
                     step="0.01"
                     value={(editingParam.transportAllowanceExemptDaily / 100).toFixed(2)}
                     onChange={(e) => setEditingParam({ ...editingParam, transportAllowanceExemptDaily: Math.round(parseFloat(e.target.value || "0") * 100) })}
+                    data-testid="input-edit-transport"
                   />
                 </div>
+              </div>
+
+              <Separator />
+              <h4 className="font-medium flex items-center gap-2"><Clock className="h-4 w-4" /> Çalışma Parametreleri</h4>
+              
+              <div className="grid grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label>Aylık Gün</Label>
+                  <Input
+                    type="number"
+                    value={editingParam.workingDaysPerMonth}
+                    onChange={(e) => setEditingParam({ ...editingParam, workingDaysPerMonth: parseInt(e.target.value || "30") })}
+                    data-testid="input-edit-working-days"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Günlük Saat</Label>
+                  <Input
+                    type="number"
+                    value={editingParam.workingHoursPerDay}
+                    onChange={(e) => setEditingParam({ ...editingParam, workingHoursPerDay: parseInt(e.target.value || "8") })}
+                    data-testid="input-edit-working-hours"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Fazla Mesai Çarpanı</Label>
+                  <Input
+                    type="number"
+                    step="0.1"
+                    value={editingParam.overtimeMultiplier}
+                    onChange={(e) => setEditingParam({ ...editingParam, overtimeMultiplier: e.target.value || "1.5" })}
+                    data-testid="input-edit-overtime"
+                  />
+                </div>
+              </div>
+
+              <Separator />
+              <div className="flex items-center gap-3">
+                <Label>Durum:</Label>
+                <Button
+                  variant={editingParam.isActive ? "default" : "outline"}
+                  onClick={() => setEditingParam({ ...editingParam, isActive: !editingParam.isActive })}
+                  data-testid="button-toggle-active"
+                >
+                  {editingParam.isActive ? "Aktif" : "Pasif"}
+                </Button>
               </div>
             </div>
           )}

@@ -24012,7 +24012,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`
 
   // Helper function to convert snake_case to camelCase
   const snakeToCamel = (str: string): string => 
-    str.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase());
+    str.replace(/_([a-z0-9])/g, (_, char) => char.toUpperCase());
 
   // Helper function to transform object keys from snake_case to camelCase
   const transformPayrollParams = (row: any) => {
@@ -24084,16 +24084,29 @@ DOSPRESSO İnsan Kaynakları Ekibi`
   const payrollParameterUpdateSchema = z.object({
     minimumWageGross: z.number().int().positive().optional(),
     minimumWageNet: z.number().int().positive().optional(),
+    sgkEmployeeRate: z.number().int().nonnegative().optional(),
+    sgkEmployerRate: z.number().int().nonnegative().optional(),
+    unemploymentEmployeeRate: z.number().int().nonnegative().optional(),
+    unemploymentEmployerRate: z.number().int().nonnegative().optional(),
+    stampTaxRate: z.number().int().nonnegative().optional(),
     taxBracket1Limit: z.number().int().positive().optional(),
+    taxBracket1Rate: z.number().int().positive().optional(),
     taxBracket2Limit: z.number().int().positive().optional(),
+    taxBracket2Rate: z.number().int().positive().optional(),
     taxBracket3Limit: z.number().int().positive().optional(),
+    taxBracket3Rate: z.number().int().positive().optional(),
     taxBracket4Limit: z.number().int().positive().optional(),
+    taxBracket4Rate: z.number().int().positive().optional(),
+    taxBracket5Rate: z.number().int().positive().optional(),
     mealAllowanceTaxExemptDaily: z.number().int().nonnegative().optional(),
     mealAllowanceSgkExemptDaily: z.number().int().nonnegative().optional(),
     transportAllowanceExemptDaily: z.number().int().nonnegative().optional(),
+    workingDaysPerMonth: z.number().int().positive().optional(),
+    workingHoursPerDay: z.number().int().positive().optional(),
+    overtimeMultiplier: z.string().optional(),
     isActive: z.boolean().optional(),
     notes: z.string().max(1000).optional(),
-  }).strict();
+  });
 
   app.patch('/api/payroll/parameters/:id', isAuthenticated, async (req: any, res) => {
     try {
@@ -24128,13 +24141,26 @@ DOSPRESSO İnsan Kaynakları Ekibi`
         UPDATE payroll_parameters SET
           minimum_wage_gross = COALESCE(${updates.minimumWageGross ?? null}, minimum_wage_gross),
           minimum_wage_net = COALESCE(${updates.minimumWageNet ?? null}, minimum_wage_net),
+          sgk_employee_rate = COALESCE(${updates.sgkEmployeeRate ?? null}, sgk_employee_rate),
+          sgk_employer_rate = COALESCE(${updates.sgkEmployerRate ?? null}, sgk_employer_rate),
+          unemployment_employee_rate = COALESCE(${updates.unemploymentEmployeeRate ?? null}, unemployment_employee_rate),
+          unemployment_employer_rate = COALESCE(${updates.unemploymentEmployerRate ?? null}, unemployment_employer_rate),
+          stamp_tax_rate = COALESCE(${updates.stampTaxRate ?? null}, stamp_tax_rate),
           tax_bracket_1_limit = COALESCE(${updates.taxBracket1Limit ?? null}, tax_bracket_1_limit),
+          tax_bracket_1_rate = COALESCE(${updates.taxBracket1Rate ?? null}, tax_bracket_1_rate),
           tax_bracket_2_limit = COALESCE(${updates.taxBracket2Limit ?? null}, tax_bracket_2_limit),
+          tax_bracket_2_rate = COALESCE(${updates.taxBracket2Rate ?? null}, tax_bracket_2_rate),
           tax_bracket_3_limit = COALESCE(${updates.taxBracket3Limit ?? null}, tax_bracket_3_limit),
+          tax_bracket_3_rate = COALESCE(${updates.taxBracket3Rate ?? null}, tax_bracket_3_rate),
           tax_bracket_4_limit = COALESCE(${updates.taxBracket4Limit ?? null}, tax_bracket_4_limit),
+          tax_bracket_4_rate = COALESCE(${updates.taxBracket4Rate ?? null}, tax_bracket_4_rate),
+          tax_bracket_5_rate = COALESCE(${updates.taxBracket5Rate ?? null}, tax_bracket_5_rate),
           meal_allowance_tax_exempt_daily = COALESCE(${updates.mealAllowanceTaxExemptDaily ?? null}, meal_allowance_tax_exempt_daily),
           meal_allowance_sgk_exempt_daily = COALESCE(${updates.mealAllowanceSgkExemptDaily ?? null}, meal_allowance_sgk_exempt_daily),
           transport_allowance_exempt_daily = COALESCE(${updates.transportAllowanceExemptDaily ?? null}, transport_allowance_exempt_daily),
+          working_days_per_month = COALESCE(${updates.workingDaysPerMonth ?? null}, working_days_per_month),
+          working_hours_per_day = COALESCE(${updates.workingHoursPerDay ?? null}, working_hours_per_day),
+          overtime_multiplier = COALESCE(${updates.overtimeMultiplier ?? null}, overtime_multiplier),
           is_active = COALESCE(${updates.isActive ?? null}, is_active),
           notes = COALESCE(${updates.notes ?? null}, notes),
           updated_at = NOW()
