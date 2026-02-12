@@ -41,7 +41,13 @@ import {
   Download,
   Check,
   XCircle,
-  Loader2
+  Loader2,
+  Brain,
+  RefreshCw,
+  ArrowUpDown,
+  ShieldCheck,
+  BarChart3,
+  Building2
 } from "lucide-react";
 
 interface PayrollParameters {
@@ -73,6 +79,25 @@ interface PayrollParameters {
   workingHoursPerDay: number;
   overtimeMultiplier: string;
   notes?: string;
+}
+
+interface AiRegulationSuggestion {
+  field: string;
+  fieldLabel: string;
+  currentValue: number;
+  suggestedValue: number;
+  reason: string;
+}
+
+interface AiRegulationResult {
+  status: 'up_to_date' | 'needs_update';
+  summary: string;
+  changes: AiRegulationSuggestion[];
+  source: string;
+  confidence: 'high' | 'medium' | 'low';
+  notes: string;
+  parameterId: number;
+  checkedAt: string;
 }
 
 interface Employee {
@@ -185,6 +210,9 @@ export default function Muhasebe() {
   const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth() + 1);
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>("");
   const [payrollCalc, setPayrollCalc] = useState<PayrollCalculation | null>(null);
+  const [aiCheckResult, setAiCheckResult] = useState<AiRegulationResult | null>(null);
+  const [isAiCheckDialogOpen, setIsAiCheckDialogOpen] = useState(false);
+  const [selectedAiChanges, setSelectedAiChanges] = useState<Set<number>>(new Set());
 
   const canEdit = user?.role === 'admin' || user?.role === 'muhasebe';
   
@@ -339,6 +367,41 @@ export default function Muhasebe() {
     },
     onError: () => {
       toast({ title: "Güncelleme başarısız", variant: "destructive" });
+    },
+  });
+
+  const aiCheckMutation = useMutation({
+    mutationFn: async (parameterId: number) => {
+      const response = await apiRequest("POST", "/api/payroll/ai-regulation-check", { parameterId });
+      return response.json();
+    },
+    onSuccess: (data: AiRegulationResult) => {
+      setAiCheckResult(data);
+      setIsAiCheckDialogOpen(true);
+      if (data.changes && data.changes.length > 0) {
+        setSelectedAiChanges(new Set(data.changes.map((_: any, i: number) => i)));
+      } else {
+        setSelectedAiChanges(new Set());
+      }
+    },
+    onError: (error: any) => {
+      toast({ title: "AI Kontrol Hatası", description: error.message || "Mevzuat kontrolü yapılamadı", variant: "destructive" });
+    },
+  });
+
+  const applyAiSuggestionsMutation = useMutation({
+    mutationFn: async ({ parameterId, changes }: { parameterId: number; changes: AiRegulationSuggestion[] }) => {
+      const response = await apiRequest("POST", "/api/payroll/apply-ai-suggestions", { parameterId, changes });
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Başarılı", description: "AI önerileri başarıyla uygulandı" });
+      queryClient.invalidateQueries({ queryKey: ['/api/payroll/parameters'] });
+      setIsAiCheckDialogOpen(false);
+      setAiCheckResult(null);
+    },
+    onError: (error: any) => {
+      toast({ title: "Hata", description: error.message || "Öneriler uygulanamadı", variant: "destructive" });
     },
   });
 
@@ -753,19 +816,34 @@ export default function Muhasebe() {
                     </span>
                   </div>
                   {canEdit && (
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      onClick={() => { 
-                        // Clone the object to avoid mutating query cache
-                        setEditingParam({ ...currentYearParams }); 
-                        setIsEditDialogOpen(true); 
-                      }}
-                      data-testid="button-edit-params"
-                    >
-                      <Edit className="h-4 w-4 mr-2" />
-                      Düzenle
-                    </Button>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={() => aiCheckMutation.mutate(currentYearParams.id)}
+                        disabled={aiCheckMutation.isPending}
+                        data-testid="button-ai-regulation-check"
+                      >
+                        {aiCheckMutation.isPending ? (
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        ) : (
+                          <Brain className="h-4 w-4 mr-2" />
+                        )}
+                        {aiCheckMutation.isPending ? "Kontrol Ediliyor..." : "AI ile Mevzuat Kontrol"}
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={() => { 
+                          setEditingParam({ ...currentYearParams }); 
+                          setIsEditDialogOpen(true); 
+                        }}
+                        data-testid="button-edit-params"
+                      >
+                        <Edit className="h-4 w-4 mr-2" />
+                        Düzenle
+                      </Button>
+                    </div>
                   )}
                 </div>
 
@@ -1125,25 +1203,47 @@ export default function Muhasebe() {
           </TabsContent>
 
           <TabsContent value="reports" className="space-y-4 mt-4">
-            <Card>
-              <CardContent className="pt-6 pb-4">
-                <div className="flex flex-col items-center gap-3 text-center">
-                  <TrendingUp className="h-10 w-10 text-primary" />
-                  <div>
-                    <p className="font-medium">Yönetim & Mali Raporlama</p>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      Gelir/gider takibi, şube karşılaştırması, AI analiz ve dönemsel raporlar
-                    </p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Card>
+                <CardContent className="pt-6 pb-4">
+                  <div className="flex flex-col items-center gap-3 text-center">
+                    <TrendingUp className="h-10 w-10 text-primary" />
+                    <div>
+                      <p className="font-medium">Yönetim & Mali Raporlama</p>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        Gelir/gider takibi, şube karşılaştırması, AI analiz ve dönemsel raporlar
+                      </p>
+                    </div>
+                    <Link href="/muhasebe-raporlama">
+                      <Button data-testid="button-open-reporting">
+                        <FileText className="mr-2 h-4 w-4" />
+                        Raporlama Modülüne Git
+                      </Button>
+                    </Link>
                   </div>
-                  <Link href="/muhasebe-raporlama">
-                    <Button data-testid="button-open-reporting">
-                      <FileText className="mr-2 h-4 w-4" />
-                      Raporlama Modülüne Git
-                    </Button>
-                  </Link>
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardContent className="pt-6 pb-4">
+                  <div className="flex flex-col items-center gap-3 text-center">
+                    <BarChart3 className="h-10 w-10 text-primary" />
+                    <div>
+                      <p className="font-medium">CEO Komuta Merkezi</p>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        Üst yönetim için mali KPI'lar, performans metrikleri ve stratejik analizler
+                      </p>
+                    </div>
+                    <Link href="/ceo-command-center">
+                      <Button data-testid="button-open-ceo-center">
+                        <Building2 className="mr-2 h-4 w-4" />
+                        CEO Paneline Git
+                      </Button>
+                    </Link>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
 
             <Card>
               <CardHeader className="pb-2">
@@ -1467,6 +1567,165 @@ export default function Muhasebe() {
               <Save className="h-4 w-4 mr-2" />
               Kaydet
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isAiCheckDialogOpen} onOpenChange={setIsAiCheckDialogOpen}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Brain className="h-5 w-5" />
+              AI Mevzuat Kontrol Sonuçları
+            </DialogTitle>
+            <DialogDescription>
+              Yapay zeka tarafından güncel Türk bordro mevzuatı ile karşılaştırma yapılmıştır
+            </DialogDescription>
+          </DialogHeader>
+          {aiCheckResult && (
+            <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                {aiCheckResult.status === 'up_to_date' ? (
+                  <Badge variant="default" data-testid="badge-ai-status-ok">
+                    <ShieldCheck className="h-3 w-3 mr-1" />
+                    Güncel
+                  </Badge>
+                ) : (
+                  <Badge variant="destructive" data-testid="badge-ai-status-update">
+                    <AlertCircle className="h-3 w-3 mr-1" />
+                    Güncelleme Gerekli
+                  </Badge>
+                )}
+                <Badge variant="secondary">
+                  Güven: {aiCheckResult.confidence === 'high' ? 'Yüksek' : aiCheckResult.confidence === 'medium' ? 'Orta' : 'Düşük'}
+                </Badge>
+              </div>
+
+              <Card>
+                <CardContent className="pt-4">
+                  <p className="text-sm" data-testid="text-ai-summary">{aiCheckResult.summary}</p>
+                </CardContent>
+              </Card>
+
+              {aiCheckResult.changes && aiCheckResult.changes.length > 0 && (
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h4 className="font-medium text-sm">Önerilen Değişiklikler</h4>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        if (selectedAiChanges.size === aiCheckResult.changes.length) {
+                          setSelectedAiChanges(new Set());
+                        } else {
+                          setSelectedAiChanges(new Set(aiCheckResult.changes.map((_: any, i: number) => i)));
+                        }
+                      }}
+                      data-testid="button-toggle-all-changes"
+                    >
+                      {selectedAiChanges.size === aiCheckResult.changes.length ? "Hiçbirini Seçme" : "Tümünü Seç"}
+                    </Button>
+                  </div>
+                  {aiCheckResult.changes.map((change: AiRegulationSuggestion, index: number) => {
+                    const isMonetary = ['minimumWageGross', 'minimumWageNet', 'taxBracket1Limit', 'taxBracket2Limit', 'taxBracket3Limit', 'taxBracket4Limit', 'mealAllowanceTaxExemptDaily', 'mealAllowanceSgkExemptDaily', 'transportAllowanceExemptDaily'].includes(change.field);
+                    const isRate = ['sgkEmployeeRate', 'sgkEmployerRate', 'unemploymentEmployeeRate', 'unemploymentEmployerRate'].includes(change.field);
+                    const isStampTax = change.field === 'stampTaxRate';
+                    const isTaxRate = change.field.includes('taxBracket') && change.field.includes('Rate');
+
+                    const formatValue = (val: number) => {
+                      if (isMonetary) return `${(val / 100).toLocaleString('tr-TR', { minimumFractionDigits: 2 })} TL`;
+                      if (isRate) return `%${(val / 10).toFixed(1)}`;
+                      if (isStampTax) return `%${(val / 10000).toFixed(4)}`;
+                      if (isTaxRate) return `%${(val / 100).toFixed(0)}`;
+                      return val.toString();
+                    };
+
+                    return (
+                      <Card
+                        key={index}
+                        className={`cursor-pointer transition-colors ${selectedAiChanges.has(index) ? 'border-primary' : ''}`}
+                        onClick={() => {
+                          const next = new Set(selectedAiChanges);
+                          if (next.has(index)) next.delete(index);
+                          else next.add(index);
+                          setSelectedAiChanges(next);
+                        }}
+                        data-testid={`card-ai-change-${index}`}
+                      >
+                        <CardContent className="pt-4 space-y-2">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="checkbox"
+                                checked={selectedAiChanges.has(index)}
+                                onChange={() => {}}
+                                className="rounded"
+                                data-testid={`checkbox-ai-change-${index}`}
+                              />
+                              <span className="font-medium text-sm">{change.fieldLabel}</span>
+                            </div>
+                            <ArrowUpDown className="h-4 w-4 text-muted-foreground" />
+                          </div>
+                          <div className="flex items-center gap-3 text-sm">
+                            <span className="text-muted-foreground line-through">{formatValue(change.currentValue)}</span>
+                            <ArrowRight className="h-3 w-3" />
+                            <span className="font-medium text-primary">{formatValue(change.suggestedValue)}</span>
+                          </div>
+                          <p className="text-xs text-muted-foreground">{change.reason}</p>
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                </div>
+              )}
+
+              {aiCheckResult.source && (
+                <div className="text-xs text-muted-foreground flex items-center gap-1">
+                  <Info className="h-3 w-3" />
+                  Kaynak: {aiCheckResult.source}
+                </div>
+              )}
+
+              {aiCheckResult.notes && (
+                <Card>
+                  <CardContent className="pt-3">
+                    <p className="text-xs text-muted-foreground">{aiCheckResult.notes}</p>
+                  </CardContent>
+                </Card>
+              )}
+
+              <Separator />
+
+              <p className="text-xs text-muted-foreground flex items-center gap-1">
+                <AlertCircle className="h-3 w-3" />
+                AI önerileri referans amaçlıdır. Uygulamadan önce Resmi Gazete ve SGK genelgelerinden teyit ediniz.
+              </p>
+            </div>
+          )}
+          <DialogFooter className="gap-2 flex-wrap">
+            <Button variant="outline" onClick={() => setIsAiCheckDialogOpen(false)} data-testid="button-close-ai-dialog">
+              Kapat
+            </Button>
+            {aiCheckResult?.changes && aiCheckResult.changes.length > 0 && selectedAiChanges.size > 0 && (
+              <Button
+                onClick={() => {
+                  const selectedChanges = aiCheckResult.changes.filter((_: any, i: number) => selectedAiChanges.has(i));
+                  applyAiSuggestionsMutation.mutate({
+                    parameterId: aiCheckResult.parameterId,
+                    changes: selectedChanges,
+                  });
+                }}
+                disabled={applyAiSuggestionsMutation.isPending}
+                data-testid="button-apply-ai-suggestions"
+              >
+                {applyAiSuggestionsMutation.isPending ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <CheckCircle className="h-4 w-4 mr-2" />
+                )}
+                {selectedAiChanges.size} Değişikliği Uygula
+              </Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>

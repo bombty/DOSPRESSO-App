@@ -24175,6 +24175,198 @@ DOSPRESSO İnsan Kaynakları Ekibi`
     }
   });
 
+  // POST /api/payroll/ai-regulation-check - AI ile güncel mevzuat kontrolü
+  app.post('/api/payroll/ai-regulation-check', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      if (user.role !== 'admin' && user.role !== 'muhasebe') {
+        return res.status(403).json({ message: "Bu işlem için yetkiniz yok" });
+      }
+
+      const { parameterId } = req.body;
+      if (!parameterId) {
+        return res.status(400).json({ message: "Parametre ID gerekli" });
+      }
+
+      const paramResult = await db.execute(sql`SELECT * FROM payroll_parameters WHERE id = ${parameterId}`);
+      if (paramResult.rows.length === 0) {
+        return res.status(404).json({ message: "Parametre bulunamadı" });
+      }
+
+      const currentParams = paramResult.rows[0] as any;
+      const year = currentParams.year;
+
+      const OpenAI = (await import('openai')).default;
+      const openai = new OpenAI();
+
+      const currentParamsText = `
+Mevcut Bordro Parametreleri (${year} Yılı):
+- Brüt Asgari Ücret: ${(currentParams.minimum_wage_gross / 100).toFixed(2)} TL
+- Net Asgari Ücret: ${(currentParams.minimum_wage_net / 100).toFixed(2)} TL
+- SGK İşçi Payı: %${(currentParams.sgk_employee_rate / 100).toFixed(2)}
+- SGK İşveren Payı: %${(currentParams.sgk_employer_rate / 100).toFixed(2)}
+- İşsizlik Sigortası İşçi: %${(currentParams.unemployment_employee_rate / 100).toFixed(2)}
+- İşsizlik Sigortası İşveren: %${(currentParams.unemployment_employer_rate / 100).toFixed(2)}
+- Damga Vergisi: %${(currentParams.stamp_tax_rate / 10000).toFixed(4)}
+- 1. Dilim Limit: ${(currentParams.tax_bracket_1_limit / 100).toFixed(2)} TL, Oran: %${(currentParams.tax_bracket_1_rate / 100).toFixed(0)}
+- 2. Dilim Limit: ${(currentParams.tax_bracket_2_limit / 100).toFixed(2)} TL, Oran: %${(currentParams.tax_bracket_2_rate / 100).toFixed(0)}
+- 3. Dilim Limit: ${(currentParams.tax_bracket_3_limit / 100).toFixed(2)} TL, Oran: %${(currentParams.tax_bracket_3_rate / 100).toFixed(0)}
+- 4. Dilim Limit: ${(currentParams.tax_bracket_4_limit / 100).toFixed(2)} TL, Oran: %${(currentParams.tax_bracket_4_rate / 100).toFixed(0)}
+- 5. Dilim Oran: %${(currentParams.tax_bracket_5_rate / 100).toFixed(0)}
+- Yemek Muafiyeti (Günlük Vergi): ${(currentParams.meal_allowance_tax_exempt_daily / 100).toFixed(2)} TL
+- Yemek Muafiyeti (Günlük SGK): ${(currentParams.meal_allowance_sgk_exempt_daily / 100).toFixed(2)} TL
+- Yol Muafiyeti (Günlük): ${(currentParams.transport_allowance_exempt_daily / 100).toFixed(2)} TL
+`;
+
+      const response = await openai.chat.completions.create({
+        model: "gpt-4o",
+        messages: [
+          {
+            role: "system",
+            content: `Sen Türkiye bordro ve iş hukuku uzmanısın. ${year} yılı için geçerli olan Türk bordro mevzuatını biliyorsun.
+
+Görevin: Verilen bordro parametrelerini ${year} yılı Türkiye mevzuatıyla karşılaştırmak ve değişiklik önerileri sunmaktır.
+
+MUTLAKA aşağıdaki JSON formatında yanıt ver:
+{
+  "status": "up_to_date" | "needs_update",
+  "summary": "Genel durum özeti (Türkçe, 2-3 cümle)",
+  "changes": [
+    {
+      "field": "minimumWageGross",
+      "fieldLabel": "Brüt Asgari Ücret",
+      "currentValue": 3303000,
+      "suggestedValue": 3500000,
+      "reason": "Değişiklik nedeni (Türkçe)"
+    }
+  ],
+  "source": "Referans kaynak (ör: Resmi Gazete, SGK Genelgesi vb.)",
+  "confidence": "high" | "medium" | "low",
+  "notes": "Ek notlar veya uyarılar (Türkçe)"
+}
+
+Önemli kurallar:
+- Tüm parasal değerler kuruş cinsindendir (1 TL = 100 kuruş)
+- SGK/İşsizlik oranları yüzde olarak ifade edilir ve 100 ile çarpılmış haldedir (ör: %14 = 1400)
+- Damga vergisi oranı 10000 ile çarpılmış haldedir (ör: %0.759 = 759)
+- Vergi dilimi limitleri kuruş cinsindendir
+- Sadece gerçekten değişmesi gereken parametreleri "changes" dizisine ekle
+- Emin olmadığın değerler için confidence "low" olarak belirt
+- field değerleri camelCase olmalı (ör: minimumWageGross, taxBracket1Rate)`
+          },
+          {
+            role: "user",
+            content: `Lütfen aşağıdaki ${year} yılı bordro parametrelerini güncel Türkiye mevzuatıyla karşılaştır ve gerekli güncelleme önerilerini JSON formatında sun:\n\n${currentParamsText}`
+          }
+        ],
+        max_completion_tokens: 2000,
+        response_format: { type: "json_object" },
+      });
+
+      const aiResponse = response.choices[0]?.message?.content;
+      if (!aiResponse) {
+        return res.status(500).json({ message: "AI yanıt üretemedi" });
+      }
+
+      const parsed = JSON.parse(aiResponse);
+      res.json({
+        ...parsed,
+        parameterId,
+        checkedAt: new Date().toISOString(),
+      });
+    } catch (error: any) {
+      console.error("AI regulation check error:", error);
+      res.status(500).json({ message: "AI mevzuat kontrolü başarısız: " + (error.message || "Bilinmeyen hata") });
+    }
+  });
+
+  // POST /api/payroll/apply-ai-suggestions - AI önerilerini uygula
+  app.post('/api/payroll/apply-ai-suggestions', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      if (user.role !== 'admin' && user.role !== 'muhasebe') {
+        return res.status(403).json({ message: "Bu işlem için yetkiniz yok" });
+      }
+
+      const aiApplySchema = z.object({
+        parameterId: z.number().int().positive(),
+        changes: z.array(z.object({
+          field: z.string(),
+          suggestedValue: z.union([z.number(), z.string()]),
+          fieldLabel: z.string().optional(),
+          currentValue: z.union([z.number(), z.string()]).optional(),
+          reason: z.string().optional(),
+        })).min(1),
+      });
+
+      const parseResult = aiApplySchema.safeParse(req.body);
+      if (!parseResult.success) {
+        return res.status(400).json({ message: "Geçersiz veri", errors: parseResult.error.flatten() });
+      }
+
+      const { parameterId, changes } = parseResult.data;
+
+      const allowedFields = new Set([
+        'minimumWageGross', 'minimumWageNet', 'sgkEmployeeRate', 'sgkEmployerRate',
+        'unemploymentEmployeeRate', 'unemploymentEmployerRate', 'stampTaxRate',
+        'taxBracket1Limit', 'taxBracket1Rate', 'taxBracket2Limit', 'taxBracket2Rate',
+        'taxBracket3Limit', 'taxBracket3Rate', 'taxBracket4Limit', 'taxBracket4Rate',
+        'taxBracket5Rate', 'mealAllowanceTaxExemptDaily', 'mealAllowanceSgkExemptDaily',
+        'transportAllowanceExemptDaily', 'workingDaysPerMonth', 'workingHoursPerDay',
+        'overtimeMultiplier',
+      ]);
+
+      const updateData: Record<string, any> = {};
+      for (const change of changes) {
+        if (change.field && allowedFields.has(change.field) && change.suggestedValue !== undefined) {
+          updateData[change.field] = change.suggestedValue;
+        }
+      }
+
+      if (Object.keys(updateData).length === 0) {
+        return res.status(400).json({ message: "Uygulanacak geçerli değişiklik bulunamadı" });
+      }
+
+      await db.execute(sql`
+        UPDATE payroll_parameters SET
+          minimum_wage_gross = COALESCE(${updateData.minimumWageGross ?? null}, minimum_wage_gross),
+          minimum_wage_net = COALESCE(${updateData.minimumWageNet ?? null}, minimum_wage_net),
+          sgk_employee_rate = COALESCE(${updateData.sgkEmployeeRate ?? null}, sgk_employee_rate),
+          sgk_employer_rate = COALESCE(${updateData.sgkEmployerRate ?? null}, sgk_employer_rate),
+          unemployment_employee_rate = COALESCE(${updateData.unemploymentEmployeeRate ?? null}, unemployment_employee_rate),
+          unemployment_employer_rate = COALESCE(${updateData.unemploymentEmployerRate ?? null}, unemployment_employer_rate),
+          stamp_tax_rate = COALESCE(${updateData.stampTaxRate ?? null}, stamp_tax_rate),
+          tax_bracket_1_limit = COALESCE(${updateData.taxBracket1Limit ?? null}, tax_bracket_1_limit),
+          tax_bracket_1_rate = COALESCE(${updateData.taxBracket1Rate ?? null}, tax_bracket_1_rate),
+          tax_bracket_2_limit = COALESCE(${updateData.taxBracket2Limit ?? null}, tax_bracket_2_limit),
+          tax_bracket_2_rate = COALESCE(${updateData.taxBracket2Rate ?? null}, tax_bracket_2_rate),
+          tax_bracket_3_limit = COALESCE(${updateData.taxBracket3Limit ?? null}, tax_bracket_3_limit),
+          tax_bracket_3_rate = COALESCE(${updateData.taxBracket3Rate ?? null}, tax_bracket_3_rate),
+          tax_bracket_4_limit = COALESCE(${updateData.taxBracket4Limit ?? null}, tax_bracket_4_limit),
+          tax_bracket_4_rate = COALESCE(${updateData.taxBracket4Rate ?? null}, tax_bracket_4_rate),
+          tax_bracket_5_rate = COALESCE(${updateData.taxBracket5Rate ?? null}, tax_bracket_5_rate),
+          meal_allowance_tax_exempt_daily = COALESCE(${updateData.mealAllowanceTaxExemptDaily ?? null}, meal_allowance_tax_exempt_daily),
+          meal_allowance_sgk_exempt_daily = COALESCE(${updateData.mealAllowanceSgkExemptDaily ?? null}, meal_allowance_sgk_exempt_daily),
+          transport_allowance_exempt_daily = COALESCE(${updateData.transportAllowanceExemptDaily ?? null}, transport_allowance_exempt_daily),
+          working_days_per_month = COALESCE(${updateData.workingDaysPerMonth ?? null}, working_days_per_month),
+          working_hours_per_day = COALESCE(${updateData.workingHoursPerDay ?? null}, working_hours_per_day),
+          overtime_multiplier = COALESCE(${updateData.overtimeMultiplier ?? null}, overtime_multiplier),
+          updated_at = NOW()
+        WHERE id = ${parameterId}
+      `);
+
+      const result = await db.execute(sql`SELECT * FROM payroll_parameters WHERE id = ${parameterId}`);
+      res.json({
+        success: true,
+        message: `${changes.length} parametre başarıyla güncellendi`,
+        updatedParams: transformPayrollParams(result.rows[0]),
+      });
+    } catch (error: any) {
+      console.error("Apply AI suggestions error:", error);
+      res.status(500).json({ message: "AI önerileri uygulanamadı: " + (error.message || "Bilinmeyen hata") });
+    }
+  });
+
   // POST /api/payroll/calculate - Brüt/Net maaş hesaplama
   // Zod schema for validating payroll calculation requests (all values in kuruş)
   const payrollCalculateSchema = z.object({
