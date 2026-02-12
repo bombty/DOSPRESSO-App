@@ -8,7 +8,7 @@ import { seedPermissionModules } from "./seed-permission-modules";
 import { seedRoleTemplates } from "./seed-role-templates";
 import { seedAdminMenu } from "./seed-admin-menu";
 import { seedServiceRequests } from "./seed-service-requests";
-import { seedMoreRecipes } from "./seed-more-recipes";
+import { seedDospressoRecipes } from "./seed-dospresso-recipes";
 import { seedDefaultAuditTemplate } from "./seed-audit-template";
 import { startWeeklyBackupScheduler, performHealthCheck } from "./backup";
 import { startTrackingCleanup } from "./tracking";
@@ -119,9 +119,9 @@ app.use((req, res, next) => {
       console.error("Error seeding service requests:", error);
     });
     
-    // Seed additional recipes to reach 100+ (idempotent)
-    await seedMoreRecipes().catch((error) => {
-      console.error("Error seeding more recipes:", error);
+    // Seed DOSPRESSO recipes (replaces old generic recipes with actual products)
+    await seedDospressoRecipes().catch((error) => {
+      console.error("Error seeding DOSPRESSO recipes:", error);
     });
     
     // Seed default audit template (idempotent)

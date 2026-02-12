@@ -126,6 +126,7 @@ import {
   recipeCategories,
   recipes,
   recipeVersions,
+  recipeNotifications,
   academyHubCategories,
   dailyMissions,
   userMissionProgress,
@@ -17120,6 +17121,36 @@ Cevaplarınız kısa, faydalı ve türkçe olmalıdır.`;
         }).returning();
         
         await db.update(recipes).set({ currentVersionId: version.id }).where(eq(recipes.id, recipe.id));
+
+        // Send recipe update notifications to all branch staff
+        try {
+          const allUsers = await db.select({ id: users.id, role: users.role }).from(users)
+            .where(eq(users.isApproved, true));
+          
+          const branchStaffRoles = ['sube_muduru', 'supervisor', 'barista', 'part_time', 'full_time', 'kasap'];
+          const targetUsers = allUsers.filter(u => branchStaffRoles.includes(u.role || ''));
+          
+          for (const targetUser of targetUsers) {
+            await db.insert(recipeNotifications).values({
+              recipeId: recipe.id,
+              versionId: version.id,
+              userId: targetUser.id,
+              isRead: false,
+            }).onConflictDoNothing();
+
+            await db.insert(notifications).values({
+              userId: targetUser.id,
+              type: 'recipe_update',
+              title: 'Reçete Güncellendi',
+              message: `"${recipe.nameTr}" reçetesi güncellendi (v${newVersionNumber}). Lütfen yeni adımları inceleyin.`,
+              link: `/academy/recipes/${recipe.id}`,
+              isRead: false,
+            });
+          }
+          console.log(`📢 Recipe update notifications sent to ${targetUsers.length} staff for "${recipe.nameTr}"`);
+        } catch (notifErr) {
+          console.error("Recipe notification error:", notifErr);
+        }
       }
       
       res.json(recipe);
@@ -17179,11 +17210,102 @@ Cevaplarınız kısa, faydalı ve türkçe olmalıdır.`;
       await db.update(recipes)
         .set({ currentVersionId: version.id, updatedAt: new Date() })
         .where(eq(recipes.id, data.recipeId!));
+
+      // Send recipe update notifications to all branch staff
+      try {
+        const [updatedRecipe] = await db.select().from(recipes).where(eq(recipes.id, data.recipeId!));
+        if (updatedRecipe) {
+          const allUsers = await db.select({ id: users.id, role: users.role }).from(users)
+            .where(eq(users.isApproved, true));
+          
+          const branchStaffRoles = ['sube_muduru', 'supervisor', 'barista', 'part_time', 'full_time', 'kasap'];
+          const targetUsers = allUsers.filter(u => branchStaffRoles.includes(u.role || ''));
+          
+          for (const targetUser of targetUsers) {
+            await db.insert(recipeNotifications).values({
+              recipeId: data.recipeId!,
+              versionId: version.id,
+              userId: targetUser.id,
+              isRead: false,
+            }).onConflictDoNothing();
+
+            await db.insert(notifications).values({
+              userId: targetUser.id,
+              type: 'recipe_update',
+              title: 'Reçete Güncellendi',
+              message: `"${updatedRecipe.nameTr}" reçetesi güncellendi (v${newVersionNumber}). Lütfen yeni adımları inceleyin.`,
+              link: `/academy/recipes/${data.recipeId}`,
+              isRead: false,
+            });
+          }
+          console.log(`📢 Recipe version notifications sent to ${targetUsers.length} staff for "${updatedRecipe.nameTr}"`);
+        }
+      } catch (notifErr) {
+        console.error("Recipe version notification error:", notifErr);
+      }
       
       res.status(201).json(version);
     } catch (error: any) {
       console.error("Create recipe version error:", error);
       res.status(500).json({ message: "Reçete versiyonu oluşturulamadı" });
+    }
+  });
+
+  // GET /api/academy/recipe-notifications - Kullanıcının okunmamış reçete bildirimlerini getir
+  app.get('/api/academy/recipe-notifications', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const unreadNotifs = await db.select({
+        id: recipeNotifications.id,
+        recipeId: recipeNotifications.recipeId,
+        versionId: recipeNotifications.versionId,
+        isRead: recipeNotifications.isRead,
+        createdAt: recipeNotifications.createdAt,
+        recipeName: recipes.nameTr,
+        recipeCode: recipes.code,
+        versionNumber: recipeVersions.versionNumber,
+      })
+        .from(recipeNotifications)
+        .leftJoin(recipes, eq(recipeNotifications.recipeId, recipes.id))
+        .leftJoin(recipeVersions, eq(recipeNotifications.versionId, recipeVersions.id))
+        .where(eq(recipeNotifications.userId, userId))
+        .orderBy(desc(recipeNotifications.createdAt))
+        .limit(50);
+      
+      res.json(unreadNotifs);
+    } catch (error: any) {
+      console.error("Recipe notifications error:", error);
+      res.status(500).json({ message: "Bildirimler getirilemedi" });
+    }
+  });
+
+  // PATCH /api/academy/recipe-notifications/:id/read - Bildirimi okundu olarak işaretle
+  app.patch('/api/academy/recipe-notifications/:id/read', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      await db.update(recipeNotifications)
+        .set({ isRead: true, readAt: new Date() })
+        .where(eq(recipeNotifications.id, parseInt(id)));
+      
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("Mark recipe notification read error:", error);
+      res.status(500).json({ message: "Bildirim güncellenemedi" });
+    }
+  });
+
+  // PATCH /api/academy/recipe-notifications/mark-all-read - Tüm bildirimleri okundu yap
+  app.patch('/api/academy/recipe-notifications/mark-all-read', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      await db.update(recipeNotifications)
+        .set({ isRead: true, readAt: new Date() })
+        .where(and(eq(recipeNotifications.userId, userId), eq(recipeNotifications.isRead, false)));
+      
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("Mark all recipe notifications read error:", error);
+      res.status(500).json({ message: "Bildirimler güncellenemedi" });
     }
   });
 
