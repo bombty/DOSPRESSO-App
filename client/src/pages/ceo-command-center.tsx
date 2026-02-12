@@ -267,6 +267,108 @@ function AIAssistant() {
   );
 }
 
+function FinancialSummaryTab() {
+  const year = new Date().getFullYear().toString();
+  const { data: summary } = useQuery<any>({
+    queryKey: ["/api/management-reports/summary", { year }],
+  });
+  const { data: branches } = useQuery<any[]>({
+    queryKey: ["/api/branches"],
+  });
+
+  const MONTHS_SHORT = ["Oca", "Şub", "Mar", "Nis", "May", "Haz", "Tem", "Ağu", "Eyl", "Eki", "Kas", "Ara"];
+
+  const fmtCurrency = (v: number) => new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY', minimumFractionDigits: 0 }).format(v);
+
+  if (!summary) {
+    return (
+      <div className="text-center py-8 text-muted-foreground text-sm">
+        <DollarSign className="mx-auto h-10 w-10 mb-3 opacity-50" />
+        <p>Henüz mali rapor girilmemiş</p>
+        <p className="text-xs mt-1">Muhasebe modülünden rapor girişi yapıldıkça burada gösterilecek</p>
+      </div>
+    );
+  }
+
+  const profitMargin = summary.totalRevenue > 0 ? ((summary.totalProfit / summary.totalRevenue) * 100).toFixed(1) : '0';
+
+  const branchRanking = Object.entries(summary.branchRevenue || {})
+    .map(([bid, rev]) => ({
+      name: (branches as any[])?.find((b: any) => b.id.toString() === bid)?.name || `Şube ${bid}`,
+      revenue: rev as number,
+    }))
+    .sort((a, b) => b.revenue - a.revenue);
+
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <Card data-testid="ceo-stat-revenue">
+          <CardContent className="pt-4 pb-3">
+            <div className="flex items-center gap-2">
+              <TrendingUp className="h-4 w-4 text-green-500" />
+              <span className="text-xs text-muted-foreground">Yıllık Gelir</span>
+            </div>
+            <p className="text-lg font-bold mt-1">{fmtCurrency(summary.totalRevenue)}</p>
+          </CardContent>
+        </Card>
+        <Card data-testid="ceo-stat-expenses">
+          <CardContent className="pt-4 pb-3">
+            <div className="flex items-center gap-2">
+              <ArrowDownRight className="h-4 w-4 text-red-500" />
+              <span className="text-xs text-muted-foreground">Yıllık Gider</span>
+            </div>
+            <p className="text-lg font-bold mt-1">{fmtCurrency(summary.totalExpenses)}</p>
+          </CardContent>
+        </Card>
+        <Card data-testid="ceo-stat-profit">
+          <CardContent className="pt-4 pb-3">
+            <div className="flex items-center gap-2">
+              <DollarSign className="h-4 w-4 text-blue-500" />
+              <span className="text-xs text-muted-foreground">Net Kar</span>
+            </div>
+            <p className={`text-lg font-bold mt-1 ${summary.totalProfit >= 0 ? '' : 'text-red-600'}`}>
+              {fmtCurrency(summary.totalProfit)}
+            </p>
+          </CardContent>
+        </Card>
+        <Card data-testid="ceo-stat-margin">
+          <CardContent className="pt-4 pb-3">
+            <div className="flex items-center gap-2">
+              <TrendingUp className="h-4 w-4 text-purple-500" />
+              <span className="text-xs text-muted-foreground">Kar Marjı</span>
+            </div>
+            <p className="text-lg font-bold mt-1">%{profitMargin}</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {branchRanking.length > 0 && (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <Building2 className="h-4 w-4" />
+              Şube Karlılık Sıralaması
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {branchRanking.slice(0, 8).map((branch, i) => (
+                <div key={i} className="flex items-center gap-2" data-testid={`ceo-branch-rank-${i}`}>
+                  <Badge variant={i < 3 ? "default" : "secondary"} className="text-[10px] w-6 justify-center">
+                    {i + 1}
+                  </Badge>
+                  <span className="text-sm flex-1 truncate">{branch.name}</span>
+                  <span className="text-sm font-semibold">{fmtCurrency(branch.revenue)}</span>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
+}
+
 export default function CEOCommandCenter() {
   const { toast } = useToast();
   
@@ -401,8 +503,9 @@ export default function CEOCommandCenter() {
       </div>
 
       <Tabs defaultValue="overview" className="w-full">
-        <TabsList className="grid grid-cols-3 w-full max-w-md">
+        <TabsList className="grid grid-cols-4 w-full max-w-lg">
           <TabsTrigger value="overview" data-testid="tab-overview">Genel Bakış</TabsTrigger>
+          <TabsTrigger value="financial" data-testid="tab-financial">Finansal</TabsTrigger>
           <TabsTrigger value="managers" data-testid="tab-managers">Yöneticiler</TabsTrigger>
           <TabsTrigger value="ai" data-testid="tab-ai">AI Asistan</TabsTrigger>
         </TabsList>
@@ -618,6 +721,10 @@ export default function CEOCommandCenter() {
               </div>
             </RiskPanel>
           </div>
+        </TabsContent>
+
+        <TabsContent value="financial" className="mt-4">
+          <FinancialSummaryTab />
         </TabsContent>
 
         <TabsContent value="managers" className="mt-4">

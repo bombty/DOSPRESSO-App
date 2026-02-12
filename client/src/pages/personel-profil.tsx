@@ -12,6 +12,7 @@ import { ListSkeleton } from "@/components/list-skeleton";
 import { EmptyState } from "@/components/empty-state";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { ObjectUploader } from "@/components/ObjectUploader";
+import { EmployeeOfMonthBadge } from "@/components/widgets/employee-of-month-widget";
 import { 
   User, Calendar, Award, ClipboardCheck, Users,
   Clock, TrendingUp, AlertCircle, CheckCircle2, XCircle, LogOut, Camera, Trash2, Wallet, Banknote, 
@@ -405,6 +406,7 @@ export default function PersonelProfilPage() {
               {profile.branchName && (
                 <Badge variant="secondary">{profile.branchName}</Badge>
               )}
+              <EmployeeOfMonthBadge userId={profile.id} />
             </div>
             {isOwnProfile && (
               <div className="mt-2">

@@ -177,6 +177,9 @@ import HQDashboard from "@/pages/hq-dashboard";
 import SatinalmaMega from "@/pages/satinalma-mega";
 import UrunSikayet from "@/pages/urun-sikayet";
 import SubeSaglikSkoru from "@/pages/sube-saglik-skoru";
+import HqVardiyaGoruntuleme from "@/pages/hq-vardiya-goruntuleme";
+import HQPersonelIstatistikleri from "@/pages/hq-personel-istatistikleri";
+import MuhasebeRaporlama from "@/pages/muhasebe-raporlama";
 
 const PUBLIC_PATH_PREFIXES = [
   "/login", 
@@ -354,6 +357,9 @@ function Router() {
           <Route path="/hq-fabrika-analitik" component={HQFabrikaAnalitik} />
           <Route path="/canli-takip" component={CanliTakip} />
           <Route path="/hq-personel-durum" component={HqStaffDashboard} />
+          <Route path="/hq-vardiya-goruntuleme" component={HqVardiyaGoruntuleme} />
+          <Route path="/hq-personel-istatistikleri" component={HQPersonelIstatistikleri} />
+          <Route path="/muhasebe-raporlama" component={MuhasebeRaporlama} />
           <Route path="/kalite-denetimi" component={KaliteDenetimi} />
           <Route path="/coach-sube-denetim" component={CoachSubeDenetim} />
           <Route path="/denetim-sablonlari" component={DenetimSablonlari} />

@@ -12050,3 +12050,26 @@ export const dashboardModuleVisibility = pgTable("dashboard_module_visibility", 
 export const insertDashboardModuleVisibilitySchema = createInsertSchema(dashboardModuleVisibility).omit({ id: true, updatedAt: true });
 export type InsertDashboardModuleVisibility = z.infer<typeof insertDashboardModuleVisibilitySchema>;
 export type DashboardModuleVisibility = typeof dashboardModuleVisibility.$inferSelect;
+
+// Management Reports (Yönetim Raporları)
+export const managementReports = pgTable("management_reports", {
+  id: serial("id").primaryKey(),
+  reportType: varchar("report_type", { length: 50 }).notNull(), // monthly, quarterly, yearly
+  period: varchar("period", { length: 20 }).notNull(), // e.g., "2026-01", "2026-Q1", "2026"
+  branchId: integer("branch_id").references(() => branches.id),
+  revenue: numeric("revenue", { precision: 12, scale: 2 }),
+  expenses: numeric("expenses", { precision: 12, scale: 2 }),
+  netProfit: numeric("net_profit", { precision: 12, scale: 2 }),
+  employeeCount: integer("employee_count"),
+  customerCount: integer("customer_count"),
+  averageTicket: numeric("average_ticket", { precision: 8, scale: 2 }),
+  notes: text("notes"),
+  aiAnalysis: text("ai_analysis"),
+  createdBy: varchar("created_by").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertManagementReportSchema = createInsertSchema(managementReports).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertManagementReport = z.infer<typeof insertManagementReportSchema>;
+export type ManagementReport = typeof managementReports.$inferSelect;
