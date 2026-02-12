@@ -432,7 +432,7 @@ export default function Academy() {
               <HubCard
                 icon={Coffee}
                 title="Reçete Akademisi"
-                description={`${recipeCategories.length} kategori, 120+ reçete`}
+                description={`${recipeCategories.length} kategori, 145+ reçete`}
                 color="#8B4513"
                 onClick={() => setActiveView("recipes")}
               />
@@ -488,7 +488,7 @@ export default function Academy() {
                   <Coffee className="w-8 h-8 text-amber-800" />
                   <div>
                     <h2 className="font-bold">Reçete Akademisi</h2>
-                    <p className="text-xs text-muted-foreground">120+ reçete, 10 kategori</p>
+                    <p className="text-xs text-muted-foreground">145+ reçete, 10 kategori</p>
                   </div>
                 </div>
               </CardContent>

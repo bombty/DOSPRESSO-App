@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,7 +20,10 @@ import {
   Droplets,
   Package,
   CircleDot,
-  Flower
+  Flower,
+  UtensilsCrossed,
+  BellDot,
+  CheckCheck
 } from "lucide-react";
 import {
   Dialog,
@@ -30,6 +33,8 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useAuth } from "@/hooks/useAuth";
 
 type RecipeCategory = {
   id: number;
@@ -92,6 +97,18 @@ type RecipeWithVersion = Recipe & {
   versions: RecipeVersion[];
 };
 
+type RecipeNotification = {
+  id: number;
+  recipeId: number;
+  versionId: number;
+  isRead: boolean;
+  createdAt: string;
+  recipeName: string | null;
+  versionNumber: number | null;
+};
+
+const FOOD_SLUGS = new Set(["donutlar", "tatlilar", "tuzlular"]);
+
 const iconMap: Record<string, React.ReactNode> = {
   Coffee: <Coffee className="h-5 w-5" />,
   Snowflake: <Snowflake className="h-5 w-5" />,
@@ -103,6 +120,7 @@ const iconMap: Record<string, React.ReactNode> = {
   CircleDot: <CircleDot className="h-5 w-5" />,
   Flower: <Flower className="h-5 w-5" />,
   Flower2: <Flower className="h-5 w-5" />,
+  UtensilsCrossed: <UtensilsCrossed className="h-5 w-5" />,
 };
 
 export default function Receteler() {
@@ -111,6 +129,8 @@ export default function Receteler() {
   const [selectedSize, setSelectedSize] = useState<"massivo" | "longDiva">("massivo");
   const [selectedRecipe, setSelectedRecipe] = useState<RecipeWithVersion | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [mainTab, setMainTab] = useState<"beverages" | "food">("beverages");
+  const { user } = useAuth();
 
   const { data: categories = [], isLoading: loadingCategories } = useQuery<RecipeCategory[]>({
     queryKey: ["/api/academy/recipe-categories"],
@@ -120,15 +140,57 @@ export default function Receteler() {
     queryKey: ["/api/academy/recipes"],
   });
 
+  const { data: notifications = [] } = useQuery<RecipeNotification[]>({
+    queryKey: ["/api/academy/recipe-notifications"],
+  });
+
+  const markAllReadMutation = useMutation({
+    mutationFn: async () => {
+      return apiRequest("PATCH", "/api/academy/recipe-notifications/mark-all-read");
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/academy/recipe-notifications"] });
+    },
+  });
+
+  const markReadMutation = useMutation({
+    mutationFn: async (id: number) => {
+      return apiRequest("PATCH", `/api/academy/recipe-notifications/${id}/read`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/academy/recipe-notifications"] });
+    },
+  });
+
+  const unreadNotifications = useMemo(() => {
+    return notifications.filter((n) => !n.isRead);
+  }, [notifications]);
+
+  const updatedRecipeIds = useMemo(() => {
+    return new Set(unreadNotifications.map((n) => n.recipeId));
+  }, [unreadNotifications]);
+
+  const beverageCategories = useMemo(() => {
+    return categories.filter((c) => !FOOD_SLUGS.has(c.slug));
+  }, [categories]);
+
+  const foodCategories = useMemo(() => {
+    return categories.filter((c) => FOOD_SLUGS.has(c.slug));
+  }, [categories]);
+
+  const activeCategories = mainTab === "beverages" ? beverageCategories : foodCategories;
+  const activeCategoryIds = useMemo(() => new Set(activeCategories.map((c) => c.id)), [activeCategories]);
+
   const filteredRecipes = useMemo(() => {
     return recipes.filter((recipe) => {
       const matchesSearch = recipe.nameTr.toLowerCase().includes(searchQuery.toLowerCase()) ||
         recipe.code.toLowerCase().includes(searchQuery.toLowerCase());
-      const matchesCategory = selectedCategory === "all" || 
-        recipe.categoryId === parseInt(selectedCategory);
+      const matchesCategory = selectedCategory === "all" 
+        ? activeCategoryIds.has(recipe.categoryId)
+        : recipe.categoryId === parseInt(selectedCategory);
       return matchesSearch && matchesCategory;
     });
-  }, [recipes, searchQuery, selectedCategory]);
+  }, [recipes, searchQuery, selectedCategory, activeCategoryIds]);
 
   const groupedRecipes = useMemo(() => {
     const grouped: Record<number, Recipe[]> = {};
@@ -150,6 +212,10 @@ export default function Receteler() {
         const data = await response.json();
         setSelectedRecipe(data);
         setIsDialogOpen(true);
+        const notification = unreadNotifications.find((n) => n.recipeId === recipe.id);
+        if (notification) {
+          markReadMutation.mutate(notification.id);
+        }
       }
     } catch (error) {
       console.error("Error fetching recipe details:", error);
@@ -164,11 +230,11 @@ export default function Receteler() {
   const getDifficultyBadge = (difficulty: string | null) => {
     switch (difficulty) {
       case "easy":
-        return <Badge variant="outline" className="bg-green-500/10 text-green-700 border-green-200">Kolay</Badge>;
+        return <Badge variant="secondary">Kolay</Badge>;
       case "medium":
-        return <Badge variant="outline" className="bg-yellow-500/10 text-yellow-700 border-yellow-200">Orta</Badge>;
+        return <Badge variant="outline">Orta</Badge>;
       case "hard":
-        return <Badge variant="outline" className="bg-red-500/10 text-red-700 border-red-200">Zor</Badge>;
+        return <Badge variant="destructive">Zor</Badge>;
       default:
         return null;
     }
@@ -177,18 +243,57 @@ export default function Receteler() {
   const currentVersion = selectedRecipe?.versions?.[0];
   const sizeData = currentVersion?.sizes?.[selectedSize];
 
+  const beverageCount = useMemo(() => {
+    const ids = new Set(beverageCategories.map(c => c.id));
+    return recipes.filter(r => ids.has(r.categoryId)).length;
+  }, [recipes, beverageCategories]);
+
+  const foodCount = useMemo(() => {
+    const ids = new Set(foodCategories.map(c => c.id));
+    return recipes.filter(r => ids.has(r.categoryId)).length;
+  }, [recipes, foodCategories]);
+
   return (
     <div className="container mx-auto p-4 space-y-4">
       <div className="flex flex-col gap-4">
-        <div className="flex items-center gap-3">
-          <ChefHat className="h-8 w-8 text-primary" />
-          <div>
-            <h1 className="text-2xl font-bold">Reçete Kartları</h1>
-            <p className="text-muted-foreground text-sm">
-              Tüm içecek ve yiyeceklerin hazırlanış tarifleri
-            </p>
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <div className="flex items-center gap-3">
+            <ChefHat className="h-8 w-8 text-primary" />
+            <div>
+              <h1 className="text-2xl font-bold" data-testid="text-page-title">Reçete Kartları</h1>
+              <p className="text-muted-foreground text-sm">
+                {recipes.length} ürün, {categories.length} kategori
+              </p>
+            </div>
           </div>
+          {unreadNotifications.length > 0 && (
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => markAllReadMutation.mutate()}
+              disabled={markAllReadMutation.isPending}
+              data-testid="button-mark-all-read"
+            >
+              <CheckCheck className="h-4 w-4 mr-1" />
+              {unreadNotifications.length} güncelleme okundu işaretle
+            </Button>
+          )}
         </div>
+
+        <Tabs value={mainTab} onValueChange={(v) => { setMainTab(v as "beverages" | "food"); setSelectedCategory("all"); }}>
+          <TabsList className="w-full">
+            <TabsTrigger value="beverages" className="flex-1 gap-2" data-testid="tab-beverages">
+              <Coffee className="h-4 w-4" />
+              İçecekler
+              <Badge variant="secondary" className="ml-1">{beverageCount}</Badge>
+            </TabsTrigger>
+            <TabsTrigger value="food" className="flex-1 gap-2" data-testid="tab-food">
+              <UtensilsCrossed className="h-4 w-4" />
+              Yiyecekler
+              <Badge variant="secondary" className="ml-1">{foodCount}</Badge>
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
 
         <div className="flex flex-col sm:flex-row gap-3">
           <div className="relative flex-1">
@@ -201,12 +306,14 @@ export default function Receteler() {
               data-testid="input-search-recipe"
             />
           </div>
-          <Tabs value={selectedSize} onValueChange={(v) => setSelectedSize(v as "massivo" | "longDiva")} className="w-auto">
-            <TabsList>
-              <TabsTrigger value="massivo" data-testid="tab-massivo">Massivo</TabsTrigger>
-              <TabsTrigger value="longDiva" data-testid="tab-longdiva">Long Diva</TabsTrigger>
-            </TabsList>
-          </Tabs>
+          {mainTab === "beverages" && (
+            <Tabs value={selectedSize} onValueChange={(v) => setSelectedSize(v as "massivo" | "longDiva")} className="w-auto">
+              <TabsList>
+                <TabsTrigger value="massivo" data-testid="tab-massivo">Massivo</TabsTrigger>
+                <TabsTrigger value="longDiva" data-testid="tab-longdiva">Long Diva</TabsTrigger>
+              </TabsList>
+            </Tabs>
+          )}
         </div>
 
         <ScrollArea className="w-full">
@@ -226,7 +333,7 @@ export default function Receteler() {
                 <Skeleton className="h-8 w-24" />
               </>
             ) : (
-              categories.map((cat) => (
+              activeCategories.map((cat) => (
                 <Button
                   key={cat.id}
                   variant={selectedCategory === String(cat.id) ? "default" : "outline"}
@@ -259,7 +366,7 @@ export default function Receteler() {
         </Card>
       ) : (
         <div className="space-y-6">
-          {categories.filter(cat => groupedRecipes[cat.id]?.length > 0).map((category) => (
+          {activeCategories.filter(cat => groupedRecipes[cat.id]?.length > 0).map((category) => (
             <div key={category.id}>
               <div className="flex items-center gap-2 mb-3">
                 <div 
@@ -272,48 +379,57 @@ export default function Receteler() {
                 <Badge variant="secondary">{groupedRecipes[category.id]?.length}</Badge>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-                {groupedRecipes[category.id]?.map((recipe) => (
-                  <Card 
-                    key={recipe.id} 
-                    className="hover-elevate cursor-pointer"
-                    onClick={() => handleRecipeClick(recipe)}
-                    data-testid={`card-recipe-${recipe.id}`}
-                  >
-                    <CardContent className="p-4">
-                      <div className="flex justify-between items-start gap-2">
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-1">
-                            <Badge variant="outline" className="text-xs font-mono">
-                              {recipe.code}
-                            </Badge>
-                            {recipe.isFeatured && (
-                              <Badge className="text-xs">Öne Çıkan</Badge>
-                            )}
+                {groupedRecipes[category.id]?.map((recipe) => {
+                  const isUpdated = updatedRecipeIds.has(recipe.id);
+                  return (
+                    <Card 
+                      key={recipe.id} 
+                      className="hover-elevate cursor-pointer"
+                      onClick={() => handleRecipeClick(recipe)}
+                      data-testid={`card-recipe-${recipe.id}`}
+                    >
+                      <CardContent className="p-4">
+                        <div className="flex justify-between items-start gap-2">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1 flex-wrap">
+                              <Badge variant="outline" className="text-xs font-mono">
+                                {recipe.code}
+                              </Badge>
+                              {recipe.isFeatured && (
+                                <Badge className="text-xs">Öne Çıkan</Badge>
+                              )}
+                              {isUpdated && (
+                                <Badge variant="secondary" className="text-xs" data-testid={`badge-updated-${recipe.id}`}>
+                                  <BellDot className="h-3 w-3 mr-1" />
+                                  Güncellendi
+                                </Badge>
+                              )}
+                            </div>
+                            <h3 className="font-medium truncate">{recipe.nameTr}</h3>
+                            <div className="flex items-center gap-2 mt-2 text-xs text-muted-foreground flex-wrap">
+                              {recipe.hasCoffee && (
+                                <span className="flex items-center gap-1">
+                                  <Coffee className="h-3 w-3" /> Kahveli
+                                </span>
+                              )}
+                              {recipe.hasMilk && (
+                                <span className="flex items-center gap-1">
+                                  <Droplets className="h-3 w-3" /> Sütlü
+                                </span>
+                              )}
+                              {recipe.estimatedMinutes && (
+                                <span className="flex items-center gap-1">
+                                  <Clock className="h-3 w-3" /> {recipe.estimatedMinutes} dk
+                                </span>
+                              )}
+                            </div>
                           </div>
-                          <h3 className="font-medium truncate">{recipe.nameTr}</h3>
-                          <div className="flex items-center gap-2 mt-2 text-xs text-muted-foreground">
-                            {recipe.hasCoffee && (
-                              <span className="flex items-center gap-1">
-                                <Coffee className="h-3 w-3" /> Kahveli
-                              </span>
-                            )}
-                            {recipe.hasMilk && (
-                              <span className="flex items-center gap-1">
-                                <Droplets className="h-3 w-3" /> Sütlü
-                              </span>
-                            )}
-                            {recipe.estimatedMinutes && (
-                              <span className="flex items-center gap-1">
-                                <Clock className="h-3 w-3" /> {recipe.estimatedMinutes} dk
-                              </span>
-                            )}
-                          </div>
+                          <ChevronRight className="h-5 w-5 text-muted-foreground flex-shrink-0" />
                         </div>
-                        <ChevronRight className="h-5 w-5 text-muted-foreground flex-shrink-0" />
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
+                      </CardContent>
+                    </Card>
+                  );
+                })}
               </div>
             </div>
           ))}
@@ -325,7 +441,7 @@ export default function Receteler() {
           {selectedRecipe && (
             <>
               <DialogHeader>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                   <Badge variant="outline" className="font-mono">{selectedRecipe.code}</Badge>
                   {getDifficultyBadge(selectedRecipe.difficulty)}
                 </div>
@@ -335,119 +451,160 @@ export default function Receteler() {
                 )}
               </DialogHeader>
 
-              <Tabs value={selectedSize} onValueChange={(v) => setSelectedSize(v as "massivo" | "longDiva")}>
-                <TabsList className="w-full">
-                  <TabsTrigger value="massivo" className="flex-1" data-testid="dialog-tab-massivo">
-                    Massivo {currentVersion?.sizes?.massivo?.cupMl && `(${currentVersion.sizes.massivo.cupMl}ml)`}
-                  </TabsTrigger>
-                  <TabsTrigger value="longDiva" className="flex-1" data-testid="dialog-tab-longdiva">
-                    Long Diva {currentVersion?.sizes?.longDiva?.cupMl && `(${currentVersion.sizes.longDiva.cupMl}ml)`}
-                  </TabsTrigger>
-                </TabsList>
+              {currentVersion?.sizes ? (
+                <Tabs value={selectedSize} onValueChange={(v) => setSelectedSize(v as "massivo" | "longDiva")}>
+                  <TabsList className="w-full">
+                    <TabsTrigger value="massivo" className="flex-1" data-testid="dialog-tab-massivo">
+                      Massivo {currentVersion?.sizes?.massivo?.cupMl && `(${currentVersion.sizes.massivo.cupMl}ml)`}
+                    </TabsTrigger>
+                    <TabsTrigger value="longDiva" className="flex-1" data-testid="dialog-tab-longdiva">
+                      Long Diva {currentVersion?.sizes?.longDiva?.cupMl && `(${currentVersion.sizes.longDiva.cupMl}ml)`}
+                    </TabsTrigger>
+                  </TabsList>
 
-                <TabsContent value={selectedSize} className="space-y-4 mt-4">
-                  {sizeData ? (
-                    <>
-                      {sizeData.espresso && (
-                        <Card>
-                          <CardHeader className="py-3">
-                            <CardTitle className="text-sm flex items-center gap-2">
-                              <Coffee className="h-4 w-4" /> Espresso
-                            </CardTitle>
-                          </CardHeader>
-                          <CardContent className="pt-0">
-                            <p className="font-medium">{sizeData.espresso}</p>
-                          </CardContent>
-                        </Card>
-                      )}
+                  <TabsContent value={selectedSize} className="space-y-4 mt-4">
+                    {sizeData ? (
+                      <>
+                        {sizeData.espresso && (
+                          <Card>
+                            <CardHeader className="py-3">
+                              <CardTitle className="text-sm flex items-center gap-2">
+                                <Coffee className="h-4 w-4" /> Espresso
+                              </CardTitle>
+                            </CardHeader>
+                            <CardContent className="pt-0">
+                              <p className="font-medium">{sizeData.espresso}</p>
+                            </CardContent>
+                          </Card>
+                        )}
 
-                      {sizeData.milk && (
-                        <Card>
-                          <CardHeader className="py-3">
-                            <CardTitle className="text-sm flex items-center gap-2">
-                              <Droplets className="h-4 w-4" /> Süt
-                            </CardTitle>
-                          </CardHeader>
-                          <CardContent className="pt-0">
-                            <p className="font-medium">{sizeData.milk.ml}ml - {sizeData.milk.type}</p>
-                          </CardContent>
-                        </Card>
-                      )}
+                        {sizeData.milk && (
+                          <Card>
+                            <CardHeader className="py-3">
+                              <CardTitle className="text-sm flex items-center gap-2">
+                                <Droplets className="h-4 w-4" /> Süt
+                              </CardTitle>
+                            </CardHeader>
+                            <CardContent className="pt-0">
+                              <p className="font-medium">{sizeData.milk.ml}ml - {sizeData.milk.type}</p>
+                            </CardContent>
+                          </Card>
+                        )}
 
-                      {sizeData.syrups && Object.keys(sizeData.syrups).length > 0 && (
-                        <Card>
-                          <CardHeader className="py-3">
-                            <CardTitle className="text-sm flex items-center gap-2">
-                              <Beaker className="h-4 w-4" /> Şuruplar
-                            </CardTitle>
-                          </CardHeader>
-                          <CardContent className="pt-0">
-                            <div className="flex flex-wrap gap-2">
-                              {Object.entries(sizeData.syrups).map(([name, amount]) => (
-                                <Badge key={name} variant="secondary">
-                                  {name}: {amount} pump
-                                </Badge>
-                              ))}
-                            </div>
-                          </CardContent>
-                        </Card>
-                      )}
+                        {sizeData.syrups && Object.keys(sizeData.syrups).length > 0 && (
+                          <Card>
+                            <CardHeader className="py-3">
+                              <CardTitle className="text-sm flex items-center gap-2">
+                                <Beaker className="h-4 w-4" /> Şuruplar
+                              </CardTitle>
+                            </CardHeader>
+                            <CardContent className="pt-0">
+                              <div className="flex flex-wrap gap-2">
+                                {Object.entries(sizeData.syrups).map(([name, amount]) => (
+                                  <Badge key={name} variant="secondary">
+                                    {name}: {amount} pump
+                                  </Badge>
+                                ))}
+                              </div>
+                            </CardContent>
+                          </Card>
+                        )}
 
-                      {sizeData.garnish && sizeData.garnish.length > 0 && (
-                        <Card>
-                          <CardHeader className="py-3">
-                            <CardTitle className="text-sm flex items-center gap-2">
-                              <Flower className="h-4 w-4" /> Süsleme
-                            </CardTitle>
-                          </CardHeader>
-                          <CardContent className="pt-0">
-                            <div className="flex flex-wrap gap-2">
-                              {sizeData.garnish.map((item, idx) => (
-                                <Badge key={idx} variant="outline">{item}</Badge>
-                              ))}
-                            </div>
-                          </CardContent>
-                        </Card>
-                      )}
+                        {sizeData.garnish && sizeData.garnish.length > 0 && (
+                          <Card>
+                            <CardHeader className="py-3">
+                              <CardTitle className="text-sm flex items-center gap-2">
+                                <Flower className="h-4 w-4" /> Süsleme
+                              </CardTitle>
+                            </CardHeader>
+                            <CardContent className="pt-0">
+                              <div className="flex flex-wrap gap-2">
+                                {sizeData.garnish.map((item, idx) => (
+                                  <Badge key={idx} variant="outline">{item}</Badge>
+                                ))}
+                              </div>
+                            </CardContent>
+                          </Card>
+                        )}
 
-                      {sizeData.steps && sizeData.steps.length > 0 && (
-                        <Card>
-                          <CardHeader className="py-3">
-                            <CardTitle className="text-sm flex items-center gap-2">
-                              <ChefHat className="h-4 w-4" /> Hazırlama Adımları
-                            </CardTitle>
-                          </CardHeader>
-                          <CardContent className="pt-0">
-                            <ol className="list-decimal list-inside space-y-2">
-                              {sizeData.steps.map((step, idx) => (
-                                <li key={idx} className="text-sm">{step}</li>
-                              ))}
-                            </ol>
-                          </CardContent>
-                        </Card>
-                      )}
+                        {sizeData.steps && sizeData.steps.length > 0 && (
+                          <Card>
+                            <CardHeader className="py-3">
+                              <CardTitle className="text-sm flex items-center gap-2">
+                                <ChefHat className="h-4 w-4" /> Hazırlama Adımları
+                              </CardTitle>
+                            </CardHeader>
+                            <CardContent className="pt-0">
+                              <ol className="list-decimal list-inside space-y-2">
+                                {sizeData.steps.map((step, idx) => (
+                                  <li key={idx} className="text-sm">{step}</li>
+                                ))}
+                              </ol>
+                            </CardContent>
+                          </Card>
+                        )}
 
-                      {currentVersion?.notes && (
-                        <Card className="bg-muted/50">
-                          <CardContent className="py-3">
-                            <p className="text-sm text-muted-foreground">
-                              <strong>Not:</strong> {currentVersion.notes}
-                            </p>
-                          </CardContent>
-                        </Card>
-                      )}
-                    </>
-                  ) : (
+                        {currentVersion?.notes && (
+                          <Card className="bg-muted/50">
+                            <CardContent className="py-3">
+                              <p className="text-sm text-muted-foreground">
+                                <strong>Not:</strong> {currentVersion.notes}
+                              </p>
+                            </CardContent>
+                          </Card>
+                        )}
+                      </>
+                    ) : (
+                      <Card>
+                        <CardContent className="py-8 text-center">
+                          <p className="text-muted-foreground">
+                            Bu boy için reçete bilgisi henüz eklenmemiş
+                          </p>
+                        </CardContent>
+                      </Card>
+                    )}
+                  </TabsContent>
+                </Tabs>
+              ) : currentVersion?.ingredients ? (
+                <div className="space-y-4 mt-4">
+                  {Array.isArray(currentVersion.ingredients) && currentVersion.ingredients.length > 0 && (
                     <Card>
-                      <CardContent className="py-8 text-center">
-                        <p className="text-muted-foreground">
-                          Bu boy için reçete bilgisi henüz eklenmemiş
+                      <CardHeader className="py-3">
+                        <CardTitle className="text-sm flex items-center gap-2">
+                          <Beaker className="h-4 w-4" /> İçerik / Malzeme
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="pt-0">
+                        <div className="space-y-1">
+                          {currentVersion.ingredients.map((ing: any, idx: number) => (
+                            <div key={idx} className="flex items-center gap-2 text-sm">
+                              <span className="w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center text-xs flex-shrink-0">{idx + 1}</span>
+                              <span>{typeof ing === 'string' ? ing : `${ing.name}${ing.amount ? ` - ${ing.amount}` : ''}${ing.unit ? ` ${ing.unit}` : ''}`}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
+                  {currentVersion?.notes && (
+                    <Card className="bg-muted/50">
+                      <CardContent className="py-3">
+                        <p className="text-sm text-muted-foreground">
+                          <strong>Not:</strong> {currentVersion.notes}
                         </p>
                       </CardContent>
                     </Card>
                   )}
-                </TabsContent>
-              </Tabs>
+                </div>
+              ) : (
+                <Card>
+                  <CardContent className="py-8 text-center">
+                    <p className="text-muted-foreground">
+                      Bu ürün için detaylı reçete bilgisi henüz eklenmemiş
+                    </p>
+                  </CardContent>
+                </Card>
+              )}
             </>
           )}
         </DialogContent>
