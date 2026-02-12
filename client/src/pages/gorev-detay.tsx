@@ -324,7 +324,7 @@ export default function GorevDetay() {
 
   if (isLoading) {
     return (
-      <div className="flex flex-col gap-3 sm:gap-4 p-3">
+      <div className="flex flex-col gap-3 sm:gap-4 p-3 pb-24">
         <Skeleton className="h-12 w-64" />
         <Skeleton className="h-96 w-full" />
       </div>
@@ -333,7 +333,7 @@ export default function GorevDetay() {
 
   if (!task) {
     return (
-      <div className="flex flex-col gap-3 sm:gap-4 p-3">
+      <div className="flex flex-col gap-3 sm:gap-4 p-3 pb-24">
         <Card>
           <CardContent className="pt-6 text-center">
             <p className="text-muted-foreground">Görev bulunamadı</p>
@@ -358,6 +358,7 @@ export default function GorevDetay() {
     reddedildi: "Reddedildi",
     basarisiz: "Başarısız",
     "gecikmiş": "Gecikmiş",
+    ek_bilgi_bekleniyor: "Ek Bilgi Bekleniyor",
   };
 
   const priorityLabels: Record<string, string> = {
@@ -371,13 +372,15 @@ export default function GorevDetay() {
   const isHQ = currentUser?.role && !['barista', 'senior_barista', 'supervisor', 'supervisor_buddy'].includes(currentUser.role);
   
   const canAcknowledge = isAssignee && !task.acknowledgedAt && task.status !== "onaylandi" && task.status !== "basarisiz";
-  const canStartProgress = isAssignee && (task.status === "beklemede" || task.status === "goruldu");
+  const canStartProgress = isAssignee && (task.status === "beklemede" || task.status === "goruldu" || task.status === "ek_bilgi_bekleniyor");
   const canMarkFailed = isAssignee && task.status !== "onaylandi" && task.status !== "basarisiz";
   const canComplete = isAssignee && (task.status === "devam_ediyor" || task.status === "beklemede");
   
-  // Assigner/HQ can approve or reject completed tasks
+  // Assigner/HQ can approve, reject, or request additional info
   const canApprove = (isAssigner || isHQ) && (task.status === "tamamlandi" || task.status === "incelemede");
   const canReject = (isAssigner || isHQ) && (task.status === "tamamlandi" || task.status === "incelemede");
+  const canRequestInfo = (isAssigner || isHQ) && ["devam_ediyor", "tamamlandi", "incelemede"].includes(task.status);
+  const canProvideInfo = isAssignee && task.status === "ek_bilgi_bekleniyor";
   const canRate = (isAssigner || isHQ) && task.status === "onaylandi";
 
   // Checker permissions
@@ -399,7 +402,7 @@ export default function GorevDetay() {
   const mustUseCheckerPath = isOnboarding && hasChecker;
 
   return (
-    <div className="flex flex-col gap-3 sm:gap-4 p-3">
+    <div className="flex flex-col gap-3 sm:gap-4 p-3 pb-24">
       {/* Header */}
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <div className="flex items-center gap-2 sm:gap-3">
@@ -781,6 +784,63 @@ export default function GorevDetay() {
                   Reddet
                 </Button>
               )}
+              {canRequestInfo && (
+                <Button
+                  variant="outline"
+                  onClick={() => updateStatusMutation.mutate({ status: "ek_bilgi_bekleniyor", note: "Ek bilgi istendi" })}
+                  disabled={updateStatusMutation.isPending}
+                  data-testid="button-request-info"
+                >
+                  <MessageSquare className="h-4 w-4 mr-2" />
+                  Ek Bilgi İste
+                </Button>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Request Info Action - For assignee when additional info is requested */}
+      {canProvideInfo && (
+        <Card className="border-blue-500/50 bg-blue-50/50 dark:bg-blue-900/10">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base flex items-center gap-2">
+              <MessageSquare className="h-4 w-4 text-blue-500" />
+              Ek Bilgi İstendi
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground mb-3">
+              Atayan kişi bu görev için ek bilgi talep etti. Notlar bölümünden açıklama ekleyip devam edebilirsiniz.
+            </p>
+            <Button
+              onClick={() => updateStatusMutation.mutate({ status: "devam_ediyor", note: "Ek bilgi sağlandı" })}
+              disabled={updateStatusMutation.isPending}
+              data-testid="button-provide-info"
+            >
+              <Send className="h-4 w-4 mr-2" />
+              Bilgi Sağla ve Devam Et
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Request Info for assigner when task is in progress (separate card when not in approval state) */}
+      {canRequestInfo && !canApprove && (
+        <Card className="border-blue-500/30">
+          <CardContent className="pt-4">
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <p className="text-sm text-muted-foreground">Atanan kişiden ek bilgi talep edebilirsiniz</p>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => updateStatusMutation.mutate({ status: "ek_bilgi_bekleniyor", note: "Ek bilgi istendi" })}
+                disabled={updateStatusMutation.isPending}
+                data-testid="button-request-info-standalone"
+              >
+                <MessageSquare className="h-4 w-4 mr-2" />
+                Ek Bilgi İste
+              </Button>
             </div>
           </CardContent>
         </Card>

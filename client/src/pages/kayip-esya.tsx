@@ -7,6 +7,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { compressImage } from "@/lib/image-utils";
+import { isHQRole } from "@/lib/role-visibility";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -15,10 +16,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Briefcase, PackageCheck, Clock, MapPin, User, Phone, Plus, Loader2, Camera, Calendar } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Briefcase, PackageCheck, Clock, MapPin, User, Phone, Plus, Loader2, Camera, Calendar, Building2 } from "lucide-react";
 import { format } from "date-fns";
 import { tr } from "date-fns/locale";
-import type { LostFoundItem } from "@shared/schema";
+import type { LostFoundItem, Branch } from "@shared/schema";
 
 const STATUS_LABELS: Record<string, string> = {
   bulunan: "Bulunan",
@@ -36,6 +38,7 @@ const newItemSchema = z.object({
   foundDate: z.string().min(1, "Tarih girilmeli"),
   foundTime: z.string().min(1, "Saat girilmeli"),
   notes: z.string().optional(),
+  branchId: z.number().optional(),
 });
 
 const handoverSchema = z.object({
@@ -72,6 +75,13 @@ export default function KayipEsyaPage() {
   const [selectedPhotoUrl, setSelectedPhotoUrl] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("bulunan");
 
+  const userIsHQ = isHQRole(user?.role);
+
+  const { data: branches = [] } = useQuery<Branch[]>({
+    queryKey: ["/api/branches"],
+    enabled: userIsHQ,
+  });
+
   const { data: items = [], isLoading } = useQuery<LostFoundItemEnriched[]>({
     queryKey: ["/api/lost-found"],
   });
@@ -101,10 +111,14 @@ export default function KayipEsyaPage() {
 
   const createMutation = useMutation({
     mutationFn: async (data: z.infer<typeof newItemSchema>) => {
-      return apiRequest("POST", "/api/lost-found", {
+      const payload: any = {
         ...data,
         photoUrl,
-      });
+      };
+      if (data.branchId) {
+        payload.branchId = data.branchId;
+      }
+      return apiRequest("POST", "/api/lost-found", payload);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/lost-found"] });
@@ -401,6 +415,36 @@ export default function KayipEsyaPage() {
                   </FormItem>
                 )}
               />
+
+              {userIsHQ && (
+                <FormField
+                  control={newItemForm.control}
+                  name="branchId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Konum *</FormLabel>
+                      <Select
+                        value={field.value ? String(field.value) : ""}
+                        onValueChange={(val) => field.onChange(parseInt(val))}
+                      >
+                        <FormControl>
+                          <SelectTrigger data-testid="select-branch">
+                            <SelectValue placeholder="Şube veya Merkez seçin" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {branches.map((b) => (
+                            <SelectItem key={b.id} value={String(b.id)}>
+                              {b.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
 
               <FormField
                 control={newItemForm.control}

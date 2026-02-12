@@ -2469,8 +2469,8 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
         return res.status(403).json({ message: "Bu görevi başlatma yetkiniz yok" });
       }
       
-      // Allow start from beklemede, goruldu, or reddedildi
-      const allowedStatuses = ['beklemede', 'goruldu', 'reddedildi'];
+      // Allow start from beklemede, goruldu, reddedildi, or ek_bilgi_bekleniyor
+      const allowedStatuses = ['beklemede', 'goruldu', 'reddedildi', 'ek_bilgi_bekleniyor'];
       if (!allowedStatuses.includes(task.status || 'beklemede')) {
         return res.status(400).json({ 
           message: `Bu görev '${task.status}' durumunda, başlatılamaz` 
@@ -2547,8 +2547,7 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
       const isAssignee = task.assignedToId === user.id;
       const isHQ = isHQRole(user.role as UserRoleType);
       
-      // Valid status transitions
-      const validStatuses = ['beklemede', 'devam_ediyor', 'tamamlandi', 'incelemede', 'basarisiz', 'onaylandi', 'reddedildi'];
+      const validStatuses = ['beklemede', 'devam_ediyor', 'tamamlandi', 'incelemede', 'basarisiz', 'onaylandi', 'reddedildi', 'ek_bilgi_bekleniyor'];
       if (!validStatuses.includes(status)) {
         return res.status(400).json({ message: `Geçersiz durum: ${status}` });
       }
@@ -2571,9 +2570,9 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
       
       // Assignee can: start task, complete task, mark as failed (only from active states)
       if (isAssignee) {
-        if (status === 'devam_ediyor' && (currentStatus === 'beklemede' || currentStatus === 'goruldu' || currentStatus === 'reddedildi')) {
+        if (status === 'devam_ediyor' && (currentStatus === 'beklemede' || currentStatus === 'goruldu' || currentStatus === 'reddedildi' || currentStatus === 'ek_bilgi_bekleniyor')) {
           allowed = true;
-          transitionMessage = "Görev başlatıldı";
+          transitionMessage = currentStatus === 'ek_bilgi_bekleniyor' ? "Ek bilgi sağlandı, görev devam ediyor" : "Görev başlatıldı";
         } else if (status === 'tamamlandi' && (currentStatus === 'devam_ediyor' || currentStatus === 'goruldu' || currentStatus === 'beklemede')) {
           allowed = true;
           transitionMessage = "Görev tamamlandı, onay bekleniyor";
@@ -2581,13 +2580,12 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
           allowed = true;
           transitionMessage = "Görev incelemeye gönderildi";
         } else if (status === 'basarisiz' && ['beklemede', 'goruldu', 'devam_ediyor', 'reddedildi'].includes(currentStatus)) {
-          // Can only mark failed from active (non-terminal, non-completed) states
           allowed = true;
           transitionMessage = "Görev başarısız olarak işaretlendi";
         }
       }
       
-      // Assigner/HQ can: approve, reject (only from completed states), or reset (only HQ)
+      // Assigner/HQ can: approve, reject, request info (only from active/completed states)
       if (isAssigner || isHQ) {
         if (status === 'onaylandi' && (currentStatus === 'tamamlandi' || currentStatus === 'incelemede')) {
           allowed = true;
@@ -2595,6 +2593,9 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
         } else if (status === 'reddedildi' && (currentStatus === 'tamamlandi' || currentStatus === 'incelemede')) {
           allowed = true;
           transitionMessage = "Görev reddedildi, düzeltme bekleniyor";
+        } else if (status === 'ek_bilgi_bekleniyor' && ['devam_ediyor', 'tamamlandi', 'incelemede'].includes(currentStatus)) {
+          allowed = true;
+          transitionMessage = "Ek bilgi istendi";
         }
       }
       
@@ -2644,13 +2645,25 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
           });
         }
         
-        // Notify assignee when task is approved/rejected by assigner
+        // Notify assignee when task is approved/rejected/info-requested by assigner
         if ((status === 'onaylandi' || status === 'reddedildi') && task.assignedToId) {
           await storage.createNotification({
             userId: task.assignedToId,
             type: status === 'onaylandi' ? 'task_verified' : 'task_rejected',
-            title: status === 'onaylandi' ? 'Görev Onaylandı ✓' : 'Görev Reddedildi',
+            title: status === 'onaylandi' ? 'Görev Onaylandı' : 'Görev Reddedildi',
             message: `${actorName} görevinizi ${status === 'onaylandi' ? 'onayladı' : 'reddetti'}: "${task.description?.substring(0, 40)}..."`,
+            link: `/gorev-detay/${taskId}`,
+            branchId: task.branchId,
+          });
+        }
+        
+        // Notify assignee when additional info is requested
+        if (status === 'ek_bilgi_bekleniyor' && task.assignedToId) {
+          await storage.createNotification({
+            userId: task.assignedToId,
+            type: 'task_info_requested',
+            title: 'Ek Bilgi İstendi',
+            message: `${actorName} göreviniz için ek bilgi istedi: "${task.description?.substring(0, 40)}..."`,
             link: `/gorev-detay/${taskId}`,
             branchId: task.branchId,
           });
@@ -15067,8 +15080,18 @@ Cevaplarınız kısa, faydalı ve türkçe olmalıdır.`;
         });
       }
       
-      // Ensure user can only create for their branch
-      const branchId = user.branchId || validation.data.branchId;
+      let branchId = user.branchId;
+      
+      if (isHQRole(user.role as UserRoleType)) {
+        branchId = req.body.branchId || user.branchId;
+        if (!branchId) {
+          const allBranches = await storage.getBranches();
+          if (allBranches.length > 0) {
+            branchId = allBranches[0].id;
+          }
+        }
+      }
+      
       if (!branchId) {
         return res.status(400).json({ message: "Şube bilgisi gerekli" });
       }

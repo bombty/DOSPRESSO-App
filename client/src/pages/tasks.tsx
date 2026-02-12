@@ -402,7 +402,7 @@ export default function Tasks() {
   }, [tasks, searchQuery, activeTab, user, filterBranchId, filterAssigneeId, filterStatus, filterPriority, filterDateFrom, filterDateTo, sortConfig, assignmentFilter]);
 
   return (
-    <div className="max-w-6xl mx-auto px-3 sm:px-4 py-3 space-y-4">
+    <div className="max-w-6xl mx-auto px-3 sm:px-4 py-3 pb-24 space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h1 className="text-xl sm:text-2xl font-semibold" data-testid="text-page-title">Tasklar</h1>
         <QuickTaskModal trigger={<Button size="sm" data-testid="button-add-task">Yeni Görev Ekle</Button>} />
@@ -684,6 +684,8 @@ export default function Tasks() {
                     <SelectItem value="devam_ediyor">Devam Ediyor</SelectItem>
                     <SelectItem value="foto_bekleniyor">Fotoğraf Bekleniyor</SelectItem>
                     <SelectItem value="incelemede">İncelemede</SelectItem>
+                    <SelectItem value="ek_bilgi_bekleniyor">Ek Bilgi Bekleniyor</SelectItem>
+                    <SelectItem value="tamamlandi">Tamamlandı</SelectItem>
                     <SelectItem value="onaylandi">Onaylandı</SelectItem>
                     <SelectItem value="reddedildi">Reddedildi</SelectItem>
                     <SelectItem value="gecikmiş">Gecikmiş</SelectItem>
@@ -947,6 +949,8 @@ export default function Tasks() {
                               {task.status === "reddedildi" && "Reddedildi"}
                               {task.status === "gecikmiş" && "Gecikmiş"}
                               {task.status === "basarisiz" && "Başarısız"}
+                              {task.status === "ek_bilgi_bekleniyor" && "Ek Bilgi"}
+                              {task.status === "tamamlandi" && "Tamamlandı"}
                             </Badge>
                           </div>
                           
@@ -1044,6 +1048,9 @@ export default function Tasks() {
                       {selectedTask.status === "onaylandi" && "Onaylandı"}
                       {selectedTask.status === "reddedildi" && "Reddedildi"}
                       {selectedTask.status === "gecikmiş" && "Gecikmiş"}
+                      {selectedTask.status === "ek_bilgi_bekleniyor" && "Ek Bilgi Bekleniyor"}
+                      {selectedTask.status === "tamamlandi" && "Tamamlandı"}
+                      {selectedTask.status === "basarisiz" && "Başarısız"}
                     </Badge>
                     {selectedTask.priority && (
                       <Badge variant="outline" data-testid="badge-task-detail-priority">
@@ -1229,8 +1236,8 @@ export default function Tasks() {
                 {/* Action Buttons - Start Task Only */}
                 <Separator />
                 <div className="flex flex-col gap-2">
-                  {/* Start Task - Branch users can start tasks */}
-                  {(selectedTask.status === "beklemede" || selectedTask.status === "reddedildi") && (
+                  {/* Start Task - Only assignee can start */}
+                  {user?.id === selectedTask.assignedToId && (selectedTask.status === "beklemede" || selectedTask.status === "reddedildi" || selectedTask.status === "ek_bilgi_bekleniyor") && (
                     <Button
                       onClick={() => startTaskMutation.mutate(selectedTask.id)}
                       disabled={startTaskMutation.isPending}

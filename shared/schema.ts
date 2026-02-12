@@ -2470,7 +2470,7 @@ export type ChecklistTaskCompletion = typeof checklistTaskCompletions.$inferSele
 // ========================================
 
 // Task status enum
-export const taskStatusEnum = ["beklemede", "goruldu", "devam_ediyor", "foto_bekleniyor", "incelemede", "kontrol_bekliyor", "onaylandi", "reddedildi", "gecikmiş"] as const;
+export const taskStatusEnum = ["beklemede", "goruldu", "devam_ediyor", "foto_bekleniyor", "incelemede", "kontrol_bekliyor", "onaylandi", "reddedildi", "gecikmiş", "ek_bilgi_bekleniyor", "tamamlandi", "basarisiz"] as const;
 export type TaskStatus = typeof taskStatusEnum[number];
 
 // Task priority enum
