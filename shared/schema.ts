@@ -124,7 +124,7 @@ export const HQ_DEPARTMENT_ROLES: ReadonlySet<UserRoleType> = new Set([
 // Her departman rolünün dashboard yolu
 export const DEPARTMENT_DASHBOARD_ROUTES: Record<string, string> = {
   [UserRole.CEO]: '/ceo-command-center',
-  [UserRole.CGO]: '/hq-dashboard/cgo',
+  [UserRole.CGO]: '/cgo-command-center',
   [UserRole.MUHASEBE_IK]: '/hq-dashboard/ik',
   [UserRole.SATINALMA]: '/hq-dashboard/satinalma',
   [UserRole.COACH]: '/hq-dashboard/coach',

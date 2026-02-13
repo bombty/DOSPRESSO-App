@@ -173,6 +173,7 @@ import AdminMegaModule from "@/pages/admin-mega";
 import AkademiMegaModule from "@/pages/akademi-mega";
 import CRMMegaModule from "@/pages/crm-mega";
 import CEOCommandCenter from "@/pages/ceo-command-center";
+import CGOCommandCenter from "@/pages/cgo-command-center";
 import HQDashboard from "@/pages/hq-dashboard";
 import SatinalmaMega from "@/pages/satinalma-mega";
 import UrunSikayet from "@/pages/urun-sikayet";
@@ -394,6 +395,7 @@ function Router() {
           <Route path="/crm/*?" component={CRMMegaModule} />
           <Route path="/admin/*?" component={AdminMegaModule} />
           <Route path="/ceo-command-center">{() => <ExecutiveOnly><CEOCommandCenter /></ExecutiveOnly>}</Route>
+          <Route path="/cgo-command-center">{() => <ExecutiveOnly><CGOCommandCenter /></ExecutiveOnly>}</Route>
           <Route path="/hq-dashboard/:department?">{() => <HQOnly><HQDashboard /></HQOnly>}</Route>
           <Route path="/kalite-kontrol-dashboard">{() => <HQOnly><KaliteKontrolDashboard /></HQOnly>}</Route>
           <Route path="/satinalma/:tab?" component={SatinalmaMega} />

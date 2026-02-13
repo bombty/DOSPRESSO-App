@@ -97,7 +97,7 @@ export default function Login() {
       const departmentRoutes: Record<string, string> = {
         'admin': '/',
         'ceo': '/ceo-command-center',
-        'cgo': '/hq-dashboard/cgo',
+        'cgo': '/cgo-command-center',
         'muhasebe_ik': '/merkez-dashboard',
         'satinalma': '/hq-dashboard/satinalma',
         'coach': '/hq-dashboard/coach',
