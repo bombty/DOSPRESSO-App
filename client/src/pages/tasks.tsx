@@ -55,6 +55,14 @@ export default function Tasks() {
   const [ratingTaskId, setRatingTaskId] = useState<number | null>(null);
   const [ratingScore, setRatingScore] = useState(0);
   const tasksContainerRef = useRef<HTMLDivElement>(null);
+  const [showBulkDialog, setShowBulkDialog] = useState(false);
+  const [bulkDescription, setBulkDescription] = useState("");
+  const [bulkPriority, setBulkPriority] = useState<string>("orta");
+  const [bulkDueDate, setBulkDueDate] = useState("");
+  const [bulkRoleFilter, setBulkRoleFilter] = useState("");
+  const [bulkBranchIds, setBulkBranchIds] = useState<number[]>([]);
+  const [bulkScheduledDate, setBulkScheduledDate] = useState("");
+  const [bulkScheduledTime, setBulkScheduledTime] = useState("");
 
   const { data: tasks, isLoading } = useQuery<Task[]>({
     queryKey: ["/api/tasks"],
@@ -280,6 +288,28 @@ export default function Tasks() {
     },
   });
 
+  const bulkAssignMutation = useMutation({
+    mutationFn: async (data: any) => {
+      const response = await apiRequest("POST", "/api/tasks/bulk", data);
+      return response.json();
+    },
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
+      setShowBulkDialog(false);
+      setBulkDescription("");
+      setBulkPriority("orta");
+      setBulkDueDate("");
+      setBulkRoleFilter("");
+      setBulkBranchIds([]);
+      setBulkScheduledDate("");
+      setBulkScheduledTime("");
+      toast({ title: "Başarılı", description: `${data.created || 0} görev oluşturuldu` });
+    },
+    onError: (error: any) => {
+      toast({ title: "Hata", description: error.message || "Toplu görev oluşturulamadı", variant: "destructive" });
+    },
+  });
+
   // Rating query - always call at top level
   const { data: selectedTaskRating } = useQuery<any>({
     queryKey: selectedTask ? [`/api/tasks/${selectedTask.id}/rating`] : ["no-task"],
@@ -375,6 +405,12 @@ export default function Tasks() {
         return new Date(t.dueDate) <= filterDateTo;
       });
     }
+
+    if (activeTab === "onay_bekleyen") {
+      filtered = filtered.filter(t => t.status === "onay_bekliyor");
+    } else if (activeTab === "zamanlanmis") {
+      filtered = filtered.filter(t => t.status === "zamanlanmis");
+    }
     
     // Sorting
     filtered.sort((a, b) => {
@@ -405,6 +441,12 @@ export default function Tasks() {
     <div className="max-w-6xl mx-auto px-3 sm:px-4 py-3 pb-24 space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h1 className="text-xl sm:text-2xl font-semibold" data-testid="text-page-title">Tasklar</h1>
+        {isHQ && (
+          <Button size="sm" variant="outline" onClick={() => setShowBulkDialog(true)} data-testid="button-bulk-assign">
+            <Send className="h-4 w-4 mr-2" />
+            Toplu Atama
+          </Button>
+        )}
         <QuickTaskModal trigger={<Button size="sm" data-testid="button-add-task">Yeni Görev Ekle</Button>} />
       </div>
 
@@ -757,10 +799,12 @@ export default function Tasks() {
         </Card>
       </Collapsible>
 
-      <Tabs defaultValue="all" className="w-full flex flex-col gap-3 sm:gap-4" ref={tasksContainerRef}>
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full flex flex-col gap-3 sm:gap-4" ref={tasksContainerRef}>
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-3">
           <TabsList data-testid="tabs-task-filter">
             <TabsTrigger value="all" data-testid="tab-all">Tümü</TabsTrigger>
+            <TabsTrigger value="onay_bekleyen" data-testid="tab-pending-approval">Onay Bekleyen</TabsTrigger>
+            {isHQ && <TabsTrigger value="zamanlanmis" data-testid="tab-scheduled">Zamanlanmış</TabsTrigger>}
           </TabsList>
           
         </div>
@@ -805,7 +849,7 @@ export default function Tasks() {
           </div>
         )}
 
-        {["all"].map((tabValue) => (
+        {["all", "onay_bekleyen", "zamanlanmis"].map((tabValue) => (
           <TabsContent key={tabValue} value={tabValue} className="w-full space-y-2 sm:space-y-3">
             {isLoading ? (
               <ListSkeleton count={3} variant="row" showHeader={false} />
@@ -1353,6 +1397,141 @@ export default function Tasks() {
                 İptal
               </Button>
             </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showBulkDialog} onOpenChange={setShowBulkDialog}>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Toplu Görev Atama</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <label className="text-sm font-medium block mb-1">Görev Açıklaması</label>
+              <Textarea
+                placeholder="Görev açıklaması..."
+                value={bulkDescription}
+                onChange={(e) => setBulkDescription(e.target.value)}
+                className="min-h-[60px]"
+                data-testid="input-bulk-description"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-sm font-medium block mb-1">Öncelik</label>
+                <Select value={bulkPriority} onValueChange={setBulkPriority}>
+                  <SelectTrigger data-testid="select-bulk-priority">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="düşük">Düşük</SelectItem>
+                    <SelectItem value="orta">Orta</SelectItem>
+                    <SelectItem value="yüksek">Yüksek</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <label className="text-sm font-medium block mb-1">Son Tarih</label>
+                <Input
+                  type="date"
+                  value={bulkDueDate}
+                  onChange={(e) => setBulkDueDate(e.target.value)}
+                  data-testid="input-bulk-due-date"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="text-sm font-medium block mb-1">Hedef Rol</label>
+              <Select value={bulkRoleFilter} onValueChange={setBulkRoleFilter}>
+                <SelectTrigger data-testid="select-bulk-role">
+                  <SelectValue placeholder="Rol seçin..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="barista">Barista</SelectItem>
+                  <SelectItem value="senior_barista">Kıdemli Barista</SelectItem>
+                  <SelectItem value="supervisor">Supervisor</SelectItem>
+                  <SelectItem value="supervisor_buddy">Supervisor Buddy</SelectItem>
+                  <SelectItem value="mudur">Müdür</SelectItem>
+                  <SelectItem value="mudur_yardimcisi">Müdür Yardımcısı</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <label className="text-sm font-medium block mb-1">Hedef Şubeler (İsteğe Bağlı)</label>
+              <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto p-2 border rounded-md">
+                {branches?.map((branch) => (
+                  <Badge
+                    key={branch.id}
+                    variant={bulkBranchIds.includes(branch.id) ? "default" : "outline"}
+                    className="cursor-pointer"
+                    onClick={() => {
+                      setBulkBranchIds(prev =>
+                        prev.includes(branch.id)
+                          ? prev.filter(id => id !== branch.id)
+                          : [...prev, branch.id]
+                      );
+                    }}
+                    data-testid={`badge-bulk-branch-${branch.id}`}
+                  >
+                    {branch.name}
+                  </Badge>
+                ))}
+              </div>
+              {bulkBranchIds.length > 0 && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  {bulkBranchIds.length} şube seçili
+                </p>
+              )}
+            </div>
+            <Separator />
+            <div>
+              <label className="text-sm font-medium block mb-1">Zamanlanmış İletim (İsteğe Bağlı)</label>
+              <p className="text-xs text-muted-foreground mb-2">
+                Belirtilen tarih ve saatte görevler otomatik olarak iletilecektir.
+              </p>
+              <div className="grid grid-cols-2 gap-3">
+                <Input
+                  type="date"
+                  value={bulkScheduledDate}
+                  onChange={(e) => setBulkScheduledDate(e.target.value)}
+                  data-testid="input-bulk-scheduled-date"
+                />
+                <Input
+                  type="time"
+                  value={bulkScheduledTime}
+                  onChange={(e) => setBulkScheduledTime(e.target.value)}
+                  data-testid="input-bulk-scheduled-time"
+                />
+              </div>
+            </div>
+          </div>
+          <div className="flex justify-end gap-2 mt-4">
+            <Button variant="outline" onClick={() => setShowBulkDialog(false)}>İptal</Button>
+            <Button
+              onClick={() => {
+                if (!bulkDescription.trim() || !bulkRoleFilter) {
+                  toast({ title: "Hata", description: "Açıklama ve hedef rol zorunludur", variant: "destructive" });
+                  return;
+                }
+                const payload: any = {
+                  description: bulkDescription,
+                  priority: bulkPriority,
+                  roleFilter: bulkRoleFilter,
+                };
+                if (bulkDueDate) payload.dueDate = new Date(bulkDueDate).toISOString();
+                if (bulkBranchIds.length > 0) payload.branchIds = bulkBranchIds;
+                if (bulkScheduledDate && bulkScheduledTime) {
+                  payload.scheduledDeliveryAt = new Date(`${bulkScheduledDate}T${bulkScheduledTime}`).toISOString();
+                }
+                bulkAssignMutation.mutate(payload);
+              }}
+              disabled={bulkAssignMutation.isPending || !bulkDescription.trim() || !bulkRoleFilter}
+              data-testid="button-bulk-create"
+            >
+              <Send className="h-4 w-4 mr-2" />
+              {bulkAssignMutation.isPending ? "Oluşturuluyor..." : "Toplu Görev Oluştur"}
+            </Button>
           </div>
         </DialogContent>
       </Dialog>

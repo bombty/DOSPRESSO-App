@@ -2234,13 +2234,18 @@ export type InsertEmployeeWarning = z.infer<typeof insertEmployeeWarningSchema>;
 export type EmployeeWarning = typeof employeeWarnings.$inferSelect;
 
 // Checklists table
+export const checklistScopeEnum = ["branch", "factory"] as const;
+export type ChecklistScope = typeof checklistScopeEnum[number];
+
 export const checklists = pgTable("checklists", {
   id: serial("id").primaryKey(),
   title: varchar("title", { length: 255 }).notNull(),
   description: text("description"),
   frequency: varchar("frequency", { length: 50 }).notNull(), // daily, weekly, monthly
   category: varchar("category", { length: 100 }), // opening, closing, cleaning, etc.
+  scope: varchar("scope", { length: 20 }).notNull().default("branch"), // branch or factory
   isEditable: boolean("is_editable").default(true),
+  editableFields: text("editable_fields").array(), // which fields branches can edit
   timeWindowStart: time("time_window_start", { precision: 0 }),
   timeWindowEnd: time("time_window_end", { precision: 0 }),
   isActive: boolean("is_active").default(true),
@@ -2472,7 +2477,7 @@ export type ChecklistTaskCompletion = typeof checklistTaskCompletions.$inferSele
 // ========================================
 
 // Task status enum
-export const taskStatusEnum = ["beklemede", "goruldu", "devam_ediyor", "foto_bekleniyor", "incelemede", "kontrol_bekliyor", "onaylandi", "reddedildi", "gecikmiş", "ek_bilgi_bekleniyor", "tamamlandi", "basarisiz"] as const;
+export const taskStatusEnum = ["beklemede", "goruldu", "devam_ediyor", "foto_bekleniyor", "incelemede", "kontrol_bekliyor", "onaylandi", "reddedildi", "gecikmiş", "ek_bilgi_bekleniyor", "tamamlandi", "basarisiz", "cevap_bekliyor", "onay_bekliyor", "sure_uzatma_talebi", "zamanlanmis"] as const;
 export type TaskStatus = typeof taskStatusEnum[number];
 
 // Task priority enum
@@ -2514,6 +2519,17 @@ export const tasks = pgTable("tasks", {
   checkerId: varchar("checker_id").references(() => users.id, { onDelete: "set null" }), // Who will verify completion
   checkedAt: timestamp("checked_at"), // When checker verified
   checkerNote: text("checker_note"), // Checker's verification note
+  // Scheduled delivery fields
+  scheduledDeliveryAt: timestamp("scheduled_delivery_at"), // When task should be delivered/visible
+  isDelivered: boolean("is_delivered").default(true), // false = scheduled but not yet delivered
+  // Assignee-Assigner approval workflow fields
+  questionText: text("question_text"), // Question from assignee to assigner
+  questionAnswerText: text("question_answer_text"), // Answer from assigner
+  extensionReason: text("extension_reason"), // Why assignee requests deadline extension
+  requestedDueDate: timestamp("requested_due_date"), // New deadline requested by assignee
+  approvedByAssignerId: varchar("approved_by_assigner_id").references(() => users.id, { onDelete: "set null" }),
+  approvedAt: timestamp("approved_at"), // When assigner approved closure
+  approverNote: text("approver_note"), // Note from assigner when approving
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => ({
@@ -2536,6 +2552,12 @@ export const insertTaskSchema = createInsertSchema(tasks).omit({
   // Onboarding checker fields
   isOnboarding: z.boolean().optional(),
   checkerId: z.string().nullable().optional(),
+  // Scheduled delivery
+  scheduledDeliveryAt: z.preprocess(
+    (val) => (val ? new Date(val as string | Date) : null),
+    z.date().nullable().optional()
+  ),
+  isDelivered: z.boolean().optional(),
 });
 
 export const updateTaskSchema = createInsertSchema(tasks).omit({
@@ -2562,6 +2584,26 @@ export const updateTaskSchema = createInsertSchema(tasks).omit({
     (val) => (val ? new Date(val as string | Date) : null),
     z.date().nullable().optional()
   ),
+  // Approval workflow fields
+  questionText: z.string().nullable().optional(),
+  questionAnswerText: z.string().nullable().optional(),
+  extensionReason: z.string().nullable().optional(),
+  requestedDueDate: z.preprocess(
+    (val) => (val ? new Date(val as string | Date) : null),
+    z.date().nullable().optional()
+  ),
+  approvedByAssignerId: z.string().nullable().optional(),
+  approvedAt: z.preprocess(
+    (val) => (val ? new Date(val as string | Date) : null),
+    z.date().nullable().optional()
+  ),
+  approverNote: z.string().nullable().optional(),
+  // Scheduled delivery
+  scheduledDeliveryAt: z.preprocess(
+    (val) => (val ? new Date(val as string | Date) : null),
+    z.date().nullable().optional()
+  ),
+  isDelivered: z.boolean().optional(),
 }).partial();
 
 export type InsertTask = z.infer<typeof insertTaskSchema>;

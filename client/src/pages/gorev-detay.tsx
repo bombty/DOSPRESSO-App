@@ -57,6 +57,16 @@ export default function GorevDetay() {
   const [ratingFeedback, setRatingFeedback] = useState("");
   const [showRatingDialog, setShowRatingDialog] = useState(false);
   const [newStepTitle, setNewStepTitle] = useState("");
+  const [showQuestionDialog, setShowQuestionDialog] = useState(false);
+  const [questionText, setQuestionText] = useState("");
+  const [showExtensionDialog, setShowExtensionDialog] = useState(false);
+  const [extensionReason, setExtensionReason] = useState("");
+  const [extensionDate, setExtensionDate] = useState("");
+  const [showApproveClosureDialog, setShowApproveClosureDialog] = useState(false);
+  const [approverNote, setApproverNote] = useState("");
+  const [showAnswerDialog, setShowAnswerDialog] = useState(false);
+  const [answerText, setAnswerText] = useState("");
+  const [showSubmitApprovalDialog, setShowSubmitApprovalDialog] = useState(false);
 
   const { data: task, isLoading } = useQuery<Task>({
     queryKey: ["/api/tasks", id],
@@ -297,6 +307,114 @@ export default function GorevDetay() {
     },
   });
 
+  const askQuestionMutation = useMutation({
+    mutationFn: async (question: string) => {
+      return apiRequest("POST", `/api/tasks/${id}/ask-question`, { question });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/tasks", id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/tasks", id, "history"] });
+      setShowQuestionDialog(false);
+      setQuestionText("");
+      toast({ title: "Başarılı", description: "Soru gönderildi" });
+    },
+    onError: (error: any) => {
+      toast({ title: "Hata", description: error.message || "Soru gönderilemedi", variant: "destructive" });
+    },
+  });
+
+  const answerQuestionMutation = useMutation({
+    mutationFn: async (answer: string) => {
+      return apiRequest("POST", `/api/tasks/${id}/answer-question`, { answer });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/tasks", id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/tasks", id, "history"] });
+      setShowAnswerDialog(false);
+      setAnswerText("");
+      toast({ title: "Başarılı", description: "Cevap gönderildi" });
+    },
+    onError: (error: any) => {
+      toast({ title: "Hata", description: error.message || "Cevap gönderilemedi", variant: "destructive" });
+    },
+  });
+
+  const requestExtensionMutation = useMutation({
+    mutationFn: async ({ reason, requestedDueDate }: { reason: string; requestedDueDate: string }) => {
+      return apiRequest("POST", `/api/tasks/${id}/request-extension`, { reason, requestedDueDate });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/tasks", id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/tasks", id, "history"] });
+      setShowExtensionDialog(false);
+      setExtensionReason("");
+      setExtensionDate("");
+      toast({ title: "Başarılı", description: "Süre uzatma talebi gönderildi" });
+    },
+    onError: (error: any) => {
+      toast({ title: "Hata", description: error.message || "Talep gönderilemedi", variant: "destructive" });
+    },
+  });
+
+  const approveExtensionMutation = useMutation({
+    mutationFn: async ({ approved, note, newDueDate }: { approved: boolean; note?: string; newDueDate?: string }) => {
+      return apiRequest("POST", `/api/tasks/${id}/approve-extension`, { approved, note, newDueDate });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/tasks", id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/tasks", id, "history"] });
+      toast({ title: "Başarılı", description: "Süre uzatma talebi yanıtlandı" });
+    },
+    onError: (error: any) => {
+      toast({ title: "Hata", description: error.message || "İşlem başarısız", variant: "destructive" });
+    },
+  });
+
+  const submitForApprovalMutation = useMutation({
+    mutationFn: async (note?: string) => {
+      return apiRequest("POST", `/api/tasks/${id}/submit-for-approval`, { note });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/tasks", id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/tasks", id, "history"] });
+      setShowSubmitApprovalDialog(false);
+      toast({ title: "Başarılı", description: "Görev onaya gönderildi" });
+    },
+    onError: (error: any) => {
+      toast({ title: "Hata", description: error.message || "İşlem başarısız", variant: "destructive" });
+    },
+  });
+
+  const approveClosureMutation = useMutation({
+    mutationFn: async (note?: string) => {
+      return apiRequest("POST", `/api/tasks/${id}/approve-closure`, { note });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/tasks", id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/tasks", id, "history"] });
+      setShowApproveClosureDialog(false);
+      setApproverNote("");
+      toast({ title: "Başarılı", description: "Görev kapatma onaylandı" });
+    },
+    onError: (error: any) => {
+      toast({ title: "Hata", description: error.message || "İşlem başarısız", variant: "destructive" });
+    },
+  });
+
+  const reactivateMutation = useMutation({
+    mutationFn: async (reason?: string) => {
+      return apiRequest("POST", `/api/tasks/${id}/reactivate`, { reason });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/tasks", id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/tasks", id, "history"] });
+      toast({ title: "Başarılı", description: "Görev tekrar aktif edildi" });
+    },
+    onError: (error: any) => {
+      toast({ title: "Hata", description: error.message || "İşlem başarısız", variant: "destructive" });
+    },
+  });
+
   const handleAddNote = async () => {
     if (!newNote.trim()) return;
     addNoteMutation.mutate(newNote);
@@ -359,6 +477,10 @@ export default function GorevDetay() {
     basarisiz: "Başarısız",
     "gecikmiş": "Gecikmiş",
     ek_bilgi_bekleniyor: "Ek Bilgi Bekleniyor",
+    cevap_bekliyor: "Cevap Bekliyor",
+    onay_bekliyor: "Onay Bekliyor",
+    sure_uzatma_talebi: "Süre Uzatma Talebi",
+    zamanlanmis: "Zamanlanmış",
   };
 
   const priorityLabels: Record<string, string> = {
@@ -382,6 +504,13 @@ export default function GorevDetay() {
   const canRequestInfo = (isAssigner || isHQ) && ["devam_ediyor", "tamamlandi", "incelemede"].includes(task.status);
   const canProvideInfo = isAssignee && task.status === "ek_bilgi_bekleniyor";
   const canRate = (isAssigner || isHQ) && task.status === "onaylandi";
+  const canAskQuestion = isAssignee && (task.status === "devam_ediyor" || task.status === "beklemede" || task.status === "goruldu");
+  const canAnswerQuestion = (isAssigner || isHQ) && task.status === "cevap_bekliyor";
+  const canRequestExtension = isAssignee && (task.status === "devam_ediyor" || task.status === "beklemede" || task.status === "goruldu");
+  const canApproveExtension = (isAssigner || isHQ) && task.status === "sure_uzatma_talebi";
+  const canSubmitForApproval = isAssignee && (task.status === "devam_ediyor" || task.status === "goruldu" || task.status === "beklemede");
+  const canApproveClosure = (isAssigner || isHQ) && task.status === "onay_bekliyor";
+  const canReactivate = isAssignee && task.status === "onay_bekliyor" && !(task as any).approvedByAssignerId;
 
   // Checker permissions
   const taskExt = task as any; // Extended task with checker fields
@@ -504,6 +633,94 @@ export default function GorevDetay() {
           </>
         )}
       </div>
+
+      {task.status === "cevap_bekliyor" && (task as any).questionText && (
+        <Card className="border-amber-500/50 bg-amber-50/50 dark:bg-amber-900/10">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base flex items-center gap-2">
+              <MessageSquare className="h-4 w-4 text-amber-500" />
+              Soru - Cevap Bekliyor
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="p-3 rounded-lg bg-muted">
+              <p className="text-xs text-muted-foreground mb-1">Soru:</p>
+              <p className="text-sm">{(task as any).questionText}</p>
+            </div>
+            {canAnswerQuestion && (
+              <Button onClick={() => setShowAnswerDialog(true)} data-testid="button-answer-question">
+                <MessageSquare className="h-4 w-4 mr-2" />
+                Cevap Ver
+              </Button>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {task.status === "sure_uzatma_talebi" && (
+        <Card className="border-orange-500/50 bg-orange-50/50 dark:bg-orange-900/10">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Clock className="h-4 w-4 text-orange-500" />
+              Süre Uzatma Talebi
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {(task as any).extensionReason && (
+              <div className="p-3 rounded-lg bg-muted">
+                <p className="text-xs text-muted-foreground mb-1">Neden:</p>
+                <p className="text-sm">{(task as any).extensionReason}</p>
+              </div>
+            )}
+            {(task as any).requestedDueDate && (
+              <p className="text-sm">
+                <span className="text-muted-foreground">Talep Edilen Tarih:</span>{" "}
+                {new Date((task as any).requestedDueDate).toLocaleDateString("tr-TR")}
+              </p>
+            )}
+            {canApproveExtension && (
+              <div className="flex flex-wrap gap-2">
+                <Button onClick={() => approveExtensionMutation.mutate({ approved: true, newDueDate: (task as any).requestedDueDate })} disabled={approveExtensionMutation.isPending} data-testid="button-approve-extension">
+                  <CheckCircle className="h-4 w-4 mr-2" />
+                  Uzatmayı Onayla
+                </Button>
+                <Button variant="destructive" onClick={() => approveExtensionMutation.mutate({ approved: false, note: "Uzatma talebi reddedildi" })} disabled={approveExtensionMutation.isPending} data-testid="button-reject-extension">
+                  <XCircle className="h-4 w-4 mr-2" />
+                  Reddet
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {task.status === "onay_bekliyor" && (
+        <Card className="border-blue-500/50 bg-blue-50/50 dark:bg-blue-900/10">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base flex items-center gap-2">
+              <AlertCircle className="h-4 w-4 text-blue-500" />
+              Kapatma Onayı Bekliyor
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              Atanan kişi görevi tamamladı ve kapatma onayınızı bekliyor.
+            </p>
+            {canApproveClosure && (
+              <Button onClick={() => setShowApproveClosureDialog(true)} data-testid="button-open-approve-closure">
+                <CheckCircle className="h-4 w-4 mr-2" />
+                Onayla ve Kapat
+              </Button>
+            )}
+            {canReactivate && (
+              <Button variant="outline" onClick={() => reactivateMutation.mutate()} disabled={reactivateMutation.isPending} data-testid="button-reactivate-task">
+                <PlayCircle className="h-4 w-4 mr-2" />
+                Tekrar Aktif Et
+              </Button>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Preview & Action Section */}
       {isAssignee && task.status !== "onaylandi" && task.status !== "basarisiz" && (
@@ -630,14 +847,27 @@ export default function GorevDetay() {
                     )}
                     
                     <Button
-                      onClick={() => setShowCompleteDialog(true)}
+                      onClick={() => setShowSubmitApprovalDialog(true)}
                       disabled={updateStatusMutation.isPending}
                       data-testid="button-complete-task"
                     >
                       <CheckCircle className="h-4 w-4 mr-2" />
-                      Tamamlandı
+                      Onaya Gönder
                     </Button>
                   </>
+                )}
+                
+                {canAskQuestion && (
+                  <Button variant="outline" onClick={() => setShowQuestionDialog(true)} data-testid="button-ask-question">
+                    <MessageSquare className="h-4 w-4 mr-2" />
+                    Soru Sor
+                  </Button>
+                )}
+                {canRequestExtension && (
+                  <Button variant="outline" onClick={() => setShowExtensionDialog(true)} data-testid="button-request-extension">
+                    <Clock className="h-4 w-4 mr-2" />
+                    Süre Uzatma
+                  </Button>
                 )}
                 
                 <Button
@@ -1293,6 +1523,105 @@ export default function GorevDetay() {
               data-testid="button-confirm-rating"
             >
               {ratingMutation.isPending ? "Kaydediliyor..." : "Puanla"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showQuestionDialog} onOpenChange={setShowQuestionDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Soru Sor</DialogTitle>
+            <DialogDescription>Atayan kişiye bir soru gönderin. Görev durumu "Cevap Bekliyor" olarak değişecektir.</DialogDescription>
+          </DialogHeader>
+          <Textarea placeholder="Sorunuzu yazın..." value={questionText} onChange={(e) => setQuestionText(e.target.value)} className="min-h-[80px]" data-testid="input-question-text" />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowQuestionDialog(false)}>İptal</Button>
+            <Button onClick={() => { if (questionText.trim()) askQuestionMutation.mutate(questionText); }} disabled={askQuestionMutation.isPending || !questionText.trim()} data-testid="button-send-question">
+              <Send className="h-4 w-4 mr-2" />
+              Gönder
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showAnswerDialog} onOpenChange={setShowAnswerDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Soruyu Yanıtla</DialogTitle>
+            <DialogDescription>Soruyu cevaplayın. Görev durumu "Devam Ediyor" olarak değişecektir.</DialogDescription>
+          </DialogHeader>
+          {(task as any).questionText && (
+            <div className="p-3 rounded-lg bg-muted">
+              <p className="text-xs text-muted-foreground mb-1">Soru:</p>
+              <p className="text-sm">{(task as any).questionText}</p>
+            </div>
+          )}
+          <Textarea placeholder="Cevabınızı yazın..." value={answerText} onChange={(e) => setAnswerText(e.target.value)} className="min-h-[80px]" data-testid="input-answer-text" />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowAnswerDialog(false)}>İptal</Button>
+            <Button onClick={() => { if (answerText.trim()) answerQuestionMutation.mutate(answerText); }} disabled={answerQuestionMutation.isPending || !answerText.trim()} data-testid="button-send-answer">
+              <Send className="h-4 w-4 mr-2" />
+              Cevapla
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showExtensionDialog} onOpenChange={setShowExtensionDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Süre Uzatma Talebi</DialogTitle>
+            <DialogDescription>Neden süre uzatma istediğinizi ve yeni tarihi belirtin.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div>
+              <label className="text-sm font-medium block mb-1">Neden</label>
+              <Textarea placeholder="Süre uzatma nedeninizi yazın..." value={extensionReason} onChange={(e) => setExtensionReason(e.target.value)} className="min-h-[60px]" data-testid="input-extension-reason" />
+            </div>
+            <div>
+              <label className="text-sm font-medium block mb-1">Yeni Tarih</label>
+              <Input type="date" value={extensionDate} onChange={(e) => setExtensionDate(e.target.value)} data-testid="input-extension-date" />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowExtensionDialog(false)}>İptal</Button>
+            <Button onClick={() => { if (extensionReason.trim() && extensionDate) requestExtensionMutation.mutate({ reason: extensionReason, requestedDueDate: new Date(extensionDate).toISOString() }); }} disabled={requestExtensionMutation.isPending || !extensionReason.trim() || !extensionDate} data-testid="button-send-extension">
+              <Clock className="h-4 w-4 mr-2" />
+              Talep Gönder
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showSubmitApprovalDialog} onOpenChange={setShowSubmitApprovalDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Görevi Onaya Gönder</DialogTitle>
+            <DialogDescription>Görevi tamamladığınızı belirtecek ve atayan kişinin onayına göndereceksiniz. Emin misiniz?</DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowSubmitApprovalDialog(false)}>İptal</Button>
+            <Button onClick={() => submitForApprovalMutation.mutate()} disabled={submitForApprovalMutation.isPending} data-testid="button-confirm-submit-approval">
+              <CheckCircle className="h-4 w-4 mr-2" />
+              Evet, Onaya Gönder
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showApproveClosureDialog} onOpenChange={setShowApproveClosureDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Görev Kapatma Onayı</DialogTitle>
+            <DialogDescription>Görevi onaylayıp kapatmak üzeresiniz. Bu işlem geri alınamaz.</DialogDescription>
+          </DialogHeader>
+          <Textarea placeholder="Onay notu (isteğe bağlı)..." value={approverNote} onChange={(e) => setApproverNote(e.target.value)} className="min-h-[60px]" data-testid="input-approver-note" />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowApproveClosureDialog(false)}>İptal</Button>
+            <Button onClick={() => approveClosureMutation.mutate(approverNote || undefined)} disabled={approveClosureMutation.isPending} data-testid="button-confirm-approve-closure">
+              <CheckCircle className="h-4 w-4 mr-2" />
+              Onayla ve Kapat
             </Button>
           </DialogFooter>
         </DialogContent>

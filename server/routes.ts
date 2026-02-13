@@ -275,6 +275,7 @@ import {
   insertEmployeeOnboardingAssignmentSchema,
   employeeOnboardingProgress,
   insertEmployeeOnboardingProgressSchema,
+  shiftChecklists,
   shiftCorrections,
   factoryProducts,
   factoryProductionBatches,
@@ -1760,12 +1761,42 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
         // Other branch roles can only see tasks assigned to themselves
         const isSupervisorRole = user.role === 'supervisor' || user.role === 'supervisor_buddy';
         if (isSupervisorRole) {
-          const tasks = await storage.getTasks(user.branchId); // All branch tasks for supervisors
-          return res.json(tasks);
+          let allTasks = await storage.getTasks(user.branchId);
+          let deliveredTasks = allTasks.filter((t: any) => t.isDelivered !== false);
+
+          const today = new Date().toISOString().split('T')[0];
+          const activeLeaves = await db.select().from(leaveRequests)
+            .where(and(
+              eq(leaveRequests.userId, user.id),
+              eq(leaveRequests.status, 'approved'),
+              lte(leaveRequests.startDate, today),
+              gte(leaveRequests.endDate, today)
+            ));
+          if (activeLeaves.length > 0) {
+            const hideStatuses = ['beklemede', 'goruldu', 'devam_ediyor', 'cevap_bekliyor', 'sure_uzatma_talebi'];
+            deliveredTasks = deliveredTasks.filter((t: any) => !hideStatuses.includes(t.status));
+          }
+
+          return res.json(deliveredTasks);
         } else {
           // SECURITY: Regular branch users can ONLY see tasks assigned to themselves
-          const tasks = await storage.getTasks(user.branchId, user.id);
-          return res.json(tasks);
+          let allTasks = await storage.getTasks(user.branchId, user.id);
+          let deliveredTasks = allTasks.filter((t: any) => t.isDelivered !== false);
+
+          const today = new Date().toISOString().split('T')[0];
+          const activeLeaves = await db.select().from(leaveRequests)
+            .where(and(
+              eq(leaveRequests.userId, user.id),
+              eq(leaveRequests.status, 'approved'),
+              lte(leaveRequests.startDate, today),
+              gte(leaveRequests.endDate, today)
+            ));
+          if (activeLeaves.length > 0) {
+            const hideStatuses = ['beklemede', 'goruldu', 'devam_ediyor', 'cevap_bekliyor', 'sure_uzatma_talebi'];
+            deliveredTasks = deliveredTasks.filter((t: any) => !hideStatuses.includes(t.status));
+          }
+
+          return res.json(deliveredTasks);
         }
       }
       
@@ -1855,6 +1886,115 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
     } catch (error: any) {
       console.error("Error fetching task:", error);
       res.status(500).json({ message: "Görev alınamadı" });
+    }
+  });
+
+  app.post('/api/tasks/bulk', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const userId = user.id;
+
+      if (!isHQRole(user.role as UserRoleType)) {
+        return res.status(403).json({ message: "Sadece HQ kullanıcıları toplu görev oluşturabilir" });
+      }
+      ensurePermission(user, 'tasks', 'create');
+
+      const { description, priority, dueDate, requiresPhoto, branchId, assigneeIds, roleFilter, branchIds, scheduledDeliveryAt } = req.body;
+
+      if (!description || !priority) {
+        return res.status(400).json({ message: "Açıklama ve öncelik zorunludur" });
+      }
+
+      let targetUserIds: string[] = [];
+
+      if (assigneeIds && Array.isArray(assigneeIds) && assigneeIds.length > 0) {
+        targetUserIds = assigneeIds;
+      } else if (roleFilter) {
+        const roleUsers = await storage.getUsersByRole(roleFilter);
+        let filteredUsers = roleUsers;
+        if (branchIds && Array.isArray(branchIds) && branchIds.length > 0) {
+          filteredUsers = roleUsers.filter(u => u.branchId && branchIds.includes(u.branchId));
+        }
+        targetUserIds = filteredUsers.map(u => u.id);
+      }
+
+      if (targetUserIds.length === 0) {
+        return res.status(400).json({ message: "Görev atanacak kullanıcı bulunamadı" });
+      }
+
+      const isScheduled = !!scheduledDeliveryAt;
+      const taskStatus = isScheduled ? 'zamanlanmis' : 'beklemede';
+      const taskIsDelivered = !isScheduled;
+
+      const createdTasks: any[] = [];
+
+      for (const targetUserId of targetUserIds) {
+        let taskBranchId = branchId;
+        if (!taskBranchId) {
+          const assignee = await storage.getUser(targetUserId);
+          if (assignee?.branchId) {
+            taskBranchId = assignee.branchId;
+          }
+        }
+        if (!taskBranchId) {
+          const allBranches = await storage.getBranches();
+          if (allBranches.length > 0) {
+            taskBranchId = allBranches[0].id;
+          }
+        }
+
+        const task = await storage.createTask({
+          description,
+          priority,
+          dueDate: dueDate || null,
+          requiresPhoto: requiresPhoto || false,
+          branchId: taskBranchId!,
+          assignedToId: targetUserId,
+          assignedById: userId,
+          status: taskStatus,
+          isDelivered: taskIsDelivered,
+          scheduledDeliveryAt: isScheduled ? new Date(scheduledDeliveryAt) : null,
+        });
+
+        createdTasks.push(task);
+
+        if (taskIsDelivered && targetUserId !== userId) {
+          try {
+            const assigner = await storage.getUser(userId);
+            const assignerName = assigner?.firstName && assigner?.lastName
+              ? `${assigner.firstName} ${assigner.lastName}`
+              : 'Bir yönetici';
+
+            await storage.createNotification({
+              userId: targetUserId,
+              type: 'task_assigned',
+              title: 'Yeni Görev Atandı',
+              message: `${assignerName} size yeni bir görev atadı: "${task.description?.substring(0, 50)}${(task.description?.length || 0) > 50 ? '...' : ''}"`,
+              link: `/gorevler?taskId=${task.id}`,
+              branchId: taskBranchId,
+            });
+
+            const assignee = await storage.getUser(targetUserId);
+            if (assignee?.email) {
+              sendNotificationEmail(
+                assignee.email,
+                'Yeni Görev Atandı - DOSPRESSO',
+                `Merhaba ${assignee.firstName || 'Değerli Çalışan'},\n\n${assignerName} size yeni bir görev atadı.\n\nGörev: ${task.description}\n\nGörevi tamamlamak için DOSPRESSO uygulamasına giriş yapın.\n\nSaygılarımızla,\nDOSPRESSO Ekibi`
+              ).catch(err => console.error("Background email error:", err));
+            }
+          } catch (notifError) {
+            console.error("Error sending bulk task notification:", notifError);
+          }
+        }
+      }
+
+      res.json({ created: createdTasks.length, tasks: createdTasks });
+    } catch (error: any) {
+      console.error("Error creating bulk tasks:", error);
+      if (error instanceof AuthorizationError) {
+        return res.status(403).json({ message: error.message });
+      }
+      res.status(500).json({ message: "Toplu görev oluşturma hatası" });
     }
   });
 
@@ -2568,7 +2708,7 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
       const isAssignee = task.assignedToId === user.id;
       const isHQ = isHQRole(user.role as UserRoleType);
       
-      const validStatuses = ['beklemede', 'devam_ediyor', 'tamamlandi', 'incelemede', 'basarisiz', 'onaylandi', 'reddedildi', 'ek_bilgi_bekleniyor'];
+      const validStatuses = ['beklemede', 'devam_ediyor', 'tamamlandi', 'incelemede', 'basarisiz', 'onaylandi', 'reddedildi', 'ek_bilgi_bekleniyor', 'cevap_bekliyor', 'onay_bekliyor', 'sure_uzatma_talebi'];
       if (!validStatuses.includes(status)) {
         return res.status(400).json({ message: `Geçersiz durum: ${status}` });
       }
@@ -2591,7 +2731,7 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
       
       // Assignee can: start task, complete task, mark as failed (only from active states)
       if (isAssignee) {
-        if (status === 'devam_ediyor' && (currentStatus === 'beklemede' || currentStatus === 'goruldu' || currentStatus === 'reddedildi' || currentStatus === 'ek_bilgi_bekleniyor')) {
+        if (status === 'devam_ediyor' && (currentStatus === 'beklemede' || currentStatus === 'goruldu' || currentStatus === 'reddedildi' || currentStatus === 'ek_bilgi_bekleniyor' || currentStatus === 'cevap_bekliyor')) {
           allowed = true;
           transitionMessage = currentStatus === 'ek_bilgi_bekleniyor' ? "Ek bilgi sağlandı, görev devam ediyor" : "Görev başlatıldı";
         } else if (status === 'tamamlandi' && (currentStatus === 'devam_ediyor' || currentStatus === 'goruldu' || currentStatus === 'beklemede')) {
@@ -2621,7 +2761,7 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
       }
       
       // Only HQ can reset to pending (supervisor retry) - includes all terminal states
-      if (isHQ && status === 'beklemede' && ['reddedildi', 'basarisiz', 'onaylandi'].includes(currentStatus)) {
+      if (isHQ && status === 'beklemede' && ['reddedildi', 'basarisiz', 'onaylandi', 'onay_bekliyor'].includes(currentStatus)) {
         allowed = true;
         transitionMessage = "Görev yeniden atandı (HQ tarafından)";
       }
@@ -2742,6 +2882,471 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
     } catch (error: any) {
       console.error("Error adding note to task:", error);
       res.status(500).json({ message: "Not eklenemedi" });
+    }
+  });
+
+  // ========================================
+  // TASK WORKFLOW ENDPOINTS (Question, Extension, Approval, Reactivation)
+  // ========================================
+
+  // POST /api/tasks/:id/ask-question - Assignee asks a question to the assigner
+  app.post('/api/tasks/:id/ask-question', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const taskId = parseInt(req.params.id);
+      const { question } = req.body;
+
+      if (isNaN(taskId)) {
+        return res.status(400).json({ message: "Geçersiz görev ID'si" });
+      }
+
+      if (!question || typeof question !== 'string' || !question.trim()) {
+        return res.status(400).json({ message: "Soru metni girilmelidir" });
+      }
+
+      const task = await storage.getTask(taskId);
+      if (!task) {
+        return res.status(404).json({ message: "Görev bulunamadı" });
+      }
+
+      const isAssignee = task.assignedToId === user.id;
+      if (!isAssignee) {
+        return res.status(403).json({ message: "Sadece görev atanan kişi soru sorabilir" });
+      }
+
+      if (!['devam_ediyor', 'beklemede', 'goruldu'].includes(task.status)) {
+        return res.status(400).json({ message: `Bu durumda soru sorulamaz: ${task.status}` });
+      }
+
+      const updatedTask = await storage.updateTask(taskId, {
+        status: 'cevap_bekliyor',
+        questionText: question.trim(),
+      });
+
+      try {
+        await storage.addNoteToTask(taskId, `Soru soruldu: ${question.trim()}`, user.id);
+      } catch (e) {
+        console.error("Error adding question history:", e);
+      }
+
+      try {
+        if (task.assignedById) {
+          const actor = await storage.getUser(user.id);
+          const actorName = actor?.firstName && actor?.lastName ? `${actor.firstName} ${actor.lastName}` : 'Kullanıcı';
+          await storage.createNotification({
+            userId: task.assignedById,
+            type: 'task_question',
+            title: 'Görevde Soru Soruldu',
+            message: `${actorName} görevde soru sordu: "${question.trim().substring(0, 50)}..."`,
+            link: `/gorev-detay/${taskId}`,
+            branchId: task.branchId,
+          });
+        }
+      } catch (e) {
+        console.error("Error sending question notification:", e);
+      }
+
+      res.json(updatedTask);
+    } catch (error: any) {
+      console.error("Error asking question on task:", error);
+      res.status(500).json({ message: "Soru gönderilemedi" });
+    }
+  });
+
+  // POST /api/tasks/:id/answer-question - Assigner or HQ answers assignee's question
+  app.post('/api/tasks/:id/answer-question', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const taskId = parseInt(req.params.id);
+      const { answer } = req.body;
+
+      if (isNaN(taskId)) {
+        return res.status(400).json({ message: "Geçersiz görev ID'si" });
+      }
+
+      if (!answer || typeof answer !== 'string' || !answer.trim()) {
+        return res.status(400).json({ message: "Yanıt metni girilmelidir" });
+      }
+
+      const task = await storage.getTask(taskId);
+      if (!task) {
+        return res.status(404).json({ message: "Görev bulunamadı" });
+      }
+
+      const isAssigner = task.assignedById === user.id;
+      const isHQ = isHQRole(user.role as UserRoleType);
+      if (!isAssigner && !isHQ) {
+        return res.status(403).json({ message: "Sadece görevi atayan veya HQ yanıt verebilir" });
+      }
+
+      if (task.status !== 'cevap_bekliyor') {
+        return res.status(400).json({ message: `Bu durumda yanıt verilemez: ${task.status}` });
+      }
+
+      const updatedTask = await storage.updateTask(taskId, {
+        status: 'devam_ediyor',
+        questionAnswerText: answer.trim(),
+      });
+
+      try {
+        await storage.addNoteToTask(taskId, `Soru yanıtlandı: ${answer.trim()}`, user.id);
+      } catch (e) {
+        console.error("Error adding answer history:", e);
+      }
+
+      try {
+        if (task.assignedToId) {
+          const actor = await storage.getUser(user.id);
+          const actorName = actor?.firstName && actor?.lastName ? `${actor.firstName} ${actor.lastName}` : 'Kullanıcı';
+          await storage.createNotification({
+            userId: task.assignedToId,
+            type: 'task_answer',
+            title: 'Sorunuz Yanıtlandı',
+            message: `${actorName} sorunuzu yanıtladı: "${answer.trim().substring(0, 50)}..."`,
+            link: `/gorev-detay/${taskId}`,
+            branchId: task.branchId,
+          });
+        }
+      } catch (e) {
+        console.error("Error sending answer notification:", e);
+      }
+
+      res.json(updatedTask);
+    } catch (error: any) {
+      console.error("Error answering question on task:", error);
+      res.status(500).json({ message: "Yanıt gönderilemedi" });
+    }
+  });
+
+  // POST /api/tasks/:id/request-extension - Assignee requests deadline extension
+  app.post('/api/tasks/:id/request-extension', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const taskId = parseInt(req.params.id);
+      const { reason, requestedDueDate } = req.body;
+
+      if (isNaN(taskId)) {
+        return res.status(400).json({ message: "Geçersiz görev ID'si" });
+      }
+
+      if (!reason || typeof reason !== 'string' || !reason.trim()) {
+        return res.status(400).json({ message: "Uzatma sebebi girilmelidir" });
+      }
+
+      if (!requestedDueDate || typeof requestedDueDate !== 'string') {
+        return res.status(400).json({ message: "Talep edilen tarih girilmelidir" });
+      }
+
+      const task = await storage.getTask(taskId);
+      if (!task) {
+        return res.status(404).json({ message: "Görev bulunamadı" });
+      }
+
+      const isAssignee = task.assignedToId === user.id;
+      if (!isAssignee) {
+        return res.status(403).json({ message: "Sadece görev atanan kişi süre uzatma talep edebilir" });
+      }
+
+      if (!['devam_ediyor', 'beklemede', 'goruldu'].includes(task.status)) {
+        return res.status(400).json({ message: `Bu durumda süre uzatma talep edilemez: ${task.status}` });
+      }
+
+      const updatedTask = await storage.updateTask(taskId, {
+        status: 'sure_uzatma_talebi',
+        extensionReason: reason.trim(),
+        requestedDueDate: requestedDueDate,
+      });
+
+      try {
+        await storage.addNoteToTask(taskId, `Süre uzatma talebi: ${reason.trim()} - Talep edilen tarih: ${requestedDueDate}`, user.id);
+      } catch (e) {
+        console.error("Error adding extension request history:", e);
+      }
+
+      try {
+        if (task.assignedById) {
+          const actor = await storage.getUser(user.id);
+          const actorName = actor?.firstName && actor?.lastName ? `${actor.firstName} ${actor.lastName}` : 'Kullanıcı';
+          await storage.createNotification({
+            userId: task.assignedById,
+            type: 'task_extension_request',
+            title: 'Süre Uzatma Talebi',
+            message: `${actorName} görev için süre uzatma talep etti: "${reason.trim().substring(0, 50)}..."`,
+            link: `/gorev-detay/${taskId}`,
+            branchId: task.branchId,
+          });
+        }
+      } catch (e) {
+        console.error("Error sending extension request notification:", e);
+      }
+
+      res.json(updatedTask);
+    } catch (error: any) {
+      console.error("Error requesting extension on task:", error);
+      res.status(500).json({ message: "Süre uzatma talebi gönderilemedi" });
+    }
+  });
+
+  // POST /api/tasks/:id/approve-extension - Assigner or HQ approves/rejects extension
+  app.post('/api/tasks/:id/approve-extension', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const taskId = parseInt(req.params.id);
+      const { approved, note, newDueDate } = req.body;
+
+      if (isNaN(taskId)) {
+        return res.status(400).json({ message: "Geçersiz görev ID'si" });
+      }
+
+      if (typeof approved !== 'boolean') {
+        return res.status(400).json({ message: "Onay durumu belirtilmelidir" });
+      }
+
+      const task = await storage.getTask(taskId);
+      if (!task) {
+        return res.status(404).json({ message: "Görev bulunamadı" });
+      }
+
+      const isAssigner = task.assignedById === user.id;
+      const isHQ = isHQRole(user.role as UserRoleType);
+      if (!isAssigner && !isHQ) {
+        return res.status(403).json({ message: "Sadece görevi atayan veya HQ onaylayabilir" });
+      }
+
+      if (task.status !== 'sure_uzatma_talebi') {
+        return res.status(400).json({ message: `Bu durumda uzatma onayı verilemez: ${task.status}` });
+      }
+
+      const updates: any = {
+        status: 'devam_ediyor',
+        extensionReason: null,
+        requestedDueDate: null,
+      };
+
+      if (approved) {
+        updates.dueDate = newDueDate || task.requestedDueDate;
+      }
+
+      const updatedTask = await storage.updateTask(taskId, updates);
+
+      const historyNote = approved
+        ? `Süre uzatma onaylandı${note ? ': ' + note : ''}. Yeni tarih: ${updates.dueDate}`
+        : `Süre uzatma reddedildi${note ? ': ' + note : ''}`;
+
+      try {
+        await storage.addNoteToTask(taskId, historyNote, user.id);
+      } catch (e) {
+        console.error("Error adding extension approval history:", e);
+      }
+
+      try {
+        if (task.assignedToId) {
+          const actor = await storage.getUser(user.id);
+          const actorName = actor?.firstName && actor?.lastName ? `${actor.firstName} ${actor.lastName}` : 'Kullanıcı';
+          await storage.createNotification({
+            userId: task.assignedToId,
+            type: 'task_extension_response',
+            title: approved ? 'Süre Uzatma Onaylandı' : 'Süre Uzatma Reddedildi',
+            message: `${actorName} süre uzatma talebinizi ${approved ? 'onayladı' : 'reddetti'}`,
+            link: `/gorev-detay/${taskId}`,
+            branchId: task.branchId,
+          });
+        }
+      } catch (e) {
+        console.error("Error sending extension response notification:", e);
+      }
+
+      res.json(updatedTask);
+    } catch (error: any) {
+      console.error("Error approving extension on task:", error);
+      res.status(500).json({ message: "Uzatma onayı işlenemedi" });
+    }
+  });
+
+  // POST /api/tasks/:id/submit-for-approval - Assignee submits task for approval
+  app.post('/api/tasks/:id/submit-for-approval', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const taskId = parseInt(req.params.id);
+      const { note } = req.body;
+
+      if (isNaN(taskId)) {
+        return res.status(400).json({ message: "Geçersiz görev ID'si" });
+      }
+
+      const task = await storage.getTask(taskId);
+      if (!task) {
+        return res.status(404).json({ message: "Görev bulunamadı" });
+      }
+
+      const isAssignee = task.assignedToId === user.id;
+      if (!isAssignee) {
+        return res.status(403).json({ message: "Sadece görev atanan kişi onaya gönderebilir" });
+      }
+
+      if (!['devam_ediyor', 'goruldu', 'beklemede'].includes(task.status)) {
+        return res.status(400).json({ message: `Bu durumda onaya gönderilemez: ${task.status}` });
+      }
+
+      const updatedTask = await storage.updateTask(taskId, {
+        status: 'onay_bekliyor',
+        completedAt: new Date(),
+      });
+
+      try {
+        await storage.addNoteToTask(taskId, note ? `Onaya gönderildi: ${note}` : 'Görev onaya gönderildi', user.id);
+      } catch (e) {
+        console.error("Error adding submit-for-approval history:", e);
+      }
+
+      try {
+        if (task.assignedById) {
+          const actor = await storage.getUser(user.id);
+          const actorName = actor?.firstName && actor?.lastName ? `${actor.firstName} ${actor.lastName}` : 'Kullanıcı';
+          await storage.createNotification({
+            userId: task.assignedById,
+            type: 'task_approval_requested',
+            title: 'Görev Onay Bekliyor',
+            message: `${actorName} görevi tamamladı ve onayınızı bekliyor: "${task.description?.substring(0, 40)}..."`,
+            link: `/gorev-detay/${taskId}`,
+            branchId: task.branchId,
+          });
+        }
+      } catch (e) {
+        console.error("Error sending submit-for-approval notification:", e);
+      }
+
+      res.json(updatedTask);
+    } catch (error: any) {
+      console.error("Error submitting task for approval:", error);
+      res.status(500).json({ message: "Görev onaya gönderilemedi" });
+    }
+  });
+
+  // POST /api/tasks/:id/approve-closure - Assigner approves task closure
+  app.post('/api/tasks/:id/approve-closure', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const taskId = parseInt(req.params.id);
+      const { note } = req.body;
+
+      if (isNaN(taskId)) {
+        return res.status(400).json({ message: "Geçersiz görev ID'si" });
+      }
+
+      const task = await storage.getTask(taskId);
+      if (!task) {
+        return res.status(404).json({ message: "Görev bulunamadı" });
+      }
+
+      const isAssigner = task.assignedById === user.id;
+      const isHQ = isHQRole(user.role as UserRoleType);
+      if (!isAssigner && !isHQ) {
+        return res.status(403).json({ message: "Sadece görevi atayan veya HQ onaylayabilir" });
+      }
+
+      if (task.status !== 'onay_bekliyor') {
+        return res.status(400).json({ message: `Bu durumda kapatma onayı verilemez: ${task.status}` });
+      }
+
+      const updatedTask = await storage.updateTask(taskId, {
+        status: 'onaylandi',
+        approvedByAssignerId: user.id,
+        approvedAt: new Date(),
+        approverNote: note || null,
+      });
+
+      try {
+        await storage.addNoteToTask(taskId, note ? `Görev onaylandı: ${note}` : 'Görev onaylandı ve kapatıldı', user.id);
+      } catch (e) {
+        console.error("Error adding approve-closure history:", e);
+      }
+
+      try {
+        if (task.assignedToId) {
+          const actor = await storage.getUser(user.id);
+          const actorName = actor?.firstName && actor?.lastName ? `${actor.firstName} ${actor.lastName}` : 'Kullanıcı';
+          await storage.createNotification({
+            userId: task.assignedToId,
+            type: 'task_closure_approved',
+            title: 'Görev Onaylandı',
+            message: `${actorName} görevinizi onayladı: "${task.description?.substring(0, 40)}..."`,
+            link: `/gorev-detay/${taskId}`,
+            branchId: task.branchId,
+          });
+        }
+      } catch (e) {
+        console.error("Error sending approve-closure notification:", e);
+      }
+
+      res.json(updatedTask);
+    } catch (error: any) {
+      console.error("Error approving task closure:", error);
+      res.status(500).json({ message: "Görev onaylanamadı" });
+    }
+  });
+
+  // POST /api/tasks/:id/reactivate - Assignee reactivates task before approval
+  app.post('/api/tasks/:id/reactivate', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const taskId = parseInt(req.params.id);
+      const { reason } = req.body;
+
+      if (isNaN(taskId)) {
+        return res.status(400).json({ message: "Geçersiz görev ID'si" });
+      }
+
+      const task = await storage.getTask(taskId);
+      if (!task) {
+        return res.status(404).json({ message: "Görev bulunamadı" });
+      }
+
+      const isAssignee = task.assignedToId === user.id;
+      if (!isAssignee) {
+        return res.status(403).json({ message: "Sadece görev atanan kişi tekrar aktif edebilir" });
+      }
+
+      if (task.status !== 'onay_bekliyor') {
+        return res.status(400).json({ message: `Bu durumda görev tekrar aktif edilemez: ${task.status}` });
+      }
+
+      if (task.approvedByAssignerId) {
+        return res.status(400).json({ message: "Görev zaten onaylanmış, tekrar aktif edilemez" });
+      }
+
+      const updatedTask = await storage.updateTask(taskId, {
+        status: 'devam_ediyor',
+        completedAt: null,
+      });
+
+      try {
+        await storage.addNoteToTask(taskId, reason ? `Görev tekrar aktif edildi: ${reason}` : 'Görev tekrar aktif edildi', user.id);
+      } catch (e) {
+        console.error("Error adding reactivation history:", e);
+      }
+
+      try {
+        if (task.assignedById) {
+          const actor = await storage.getUser(user.id);
+          const actorName = actor?.firstName && actor?.lastName ? `${actor.firstName} ${actor.lastName}` : 'Kullanıcı';
+          await storage.createNotification({
+            userId: task.assignedById,
+            type: 'task_reactivated',
+            title: 'Görev Tekrar Aktif',
+            message: `${actorName} görevi tekrar aktif etti: "${task.description?.substring(0, 40)}..."`,
+            link: `/gorev-detay/${taskId}`,
+            branchId: task.branchId,
+          });
+        }
+      } catch (e) {
+        console.error("Error sending reactivation notification:", e);
+      }
+
+      res.json(updatedTask);
+    } catch (error: any) {
+      console.error("Error reactivating task:", error);
+      res.status(500).json({ message: "Görev tekrar aktif edilemedi" });
     }
   });
 
@@ -3047,8 +3652,14 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
     try {
       const user = req.user!;
       ensurePermission(user, 'checklists', 'view');
-      const checklists = await storage.getChecklists();
-      res.json(checklists);
+      let checklistsResult = await storage.getChecklists();
+
+      const scope = req.query.scope as string | undefined;
+      if (scope && (scope === 'branch' || scope === 'factory')) {
+        checklistsResult = checklistsResult.filter((c: any) => c.scope === scope);
+      }
+
+      res.json(checklistsResult);
     } catch (error: any) {
       console.error("Error fetching checklists:", error);
       if (error instanceof AuthorizationError) {
@@ -3147,6 +3758,112 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
         return res.status(400).json({ message: "Invalid checklist data", errors: error.errors });
       }
       res.status(500).json({ message: "Checklist güncellenemedi" });
+    }
+  });
+
+  // GET /api/checklists/my-daily - Get user's daily checklists based on shift and leave status
+  app.get('/api/checklists/my-daily', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const today = new Date().toISOString().split('T')[0];
+
+      const activeLeaves = await db.select().from(leaveRequests)
+        .where(and(
+          eq(leaveRequests.userId, user.id),
+          eq(leaveRequests.status, 'approved'),
+          lte(leaveRequests.startDate, today),
+          gte(leaveRequests.endDate, today)
+        ));
+
+      if (activeLeaves.length > 0) {
+        return res.json({ onLeave: true, leaveType: activeLeaves[0].leaveType, checklists: [], shift: null });
+      }
+
+      const todayShifts = await db.select().from(shifts)
+        .where(and(
+          eq(shifts.assignedToId, user.id),
+          eq(shifts.shiftDate, today)
+        ));
+
+      const shift = todayShifts.length > 0 ? todayShifts[0] : null;
+
+      const shiftChecklistIds: number[] = [];
+      if (shift) {
+        if (shift.checklistId) shiftChecklistIds.push(shift.checklistId);
+        if (shift.checklist2Id) shiftChecklistIds.push(shift.checklist2Id);
+        if (shift.checklist3Id) shiftChecklistIds.push(shift.checklist3Id);
+
+        const junctionChecklists = await db.select().from(shiftChecklists)
+          .where(eq(shiftChecklists.shiftId, shift.id));
+        for (const jc of junctionChecklists) {
+          if (!shiftChecklistIds.includes(jc.checklistId)) {
+            shiftChecklistIds.push(jc.checklistId);
+          }
+        }
+      }
+
+      let checklistsData: any[] = [];
+      if (shiftChecklistIds.length > 0) {
+        checklistsData = await db.select().from(checklists)
+          .where(and(
+            inArray(checklists.id, shiftChecklistIds),
+            eq(checklists.isActive, true)
+          ));
+      }
+
+      const assignedChecklistIds = new Set(shiftChecklistIds);
+      const userAssignments = await db.select().from(checklistAssignments)
+        .where(and(
+          eq(checklistAssignments.isActive, true),
+          or(
+            eq(checklistAssignments.assignedUserId, user.id),
+            ...(user.branchId ? [
+              and(
+                eq(checklistAssignments.scope, 'branch'),
+                eq(checklistAssignments.branchId, user.branchId)
+              )
+            ] : []),
+            ...(user.role && user.branchId ? [
+              and(
+                eq(checklistAssignments.scope, 'role'),
+                eq(checklistAssignments.role, user.role),
+                eq(checklistAssignments.branchId, user.branchId)
+              )
+            ] : [])
+          )
+        ));
+
+      const additionalChecklistIds = userAssignments
+        .map(a => a.checklistId)
+        .filter(id => !assignedChecklistIds.has(id));
+
+      if (additionalChecklistIds.length > 0) {
+        const additionalChecklists = await db.select().from(checklists)
+          .where(and(
+            inArray(checklists.id, additionalChecklistIds),
+            eq(checklists.isActive, true)
+          ));
+        checklistsData = [...checklistsData, ...additionalChecklists];
+      }
+
+      const userScope = user.role && isBranchRole(user.role as UserRoleType) ? 'branch' : 'factory';
+      checklistsData = checklistsData.filter((c: any) => !c.scope || c.scope === userScope);
+
+      res.json({
+        onLeave: false,
+        shift: shift ? {
+          id: shift.id,
+          shiftDate: shift.shiftDate,
+          startTime: shift.startTime,
+          endTime: shift.endTime,
+          shiftType: shift.shiftType,
+          status: shift.status,
+        } : null,
+        checklists: checklistsData,
+      });
+    } catch (error) {
+      console.error("Error fetching daily checklists:", error);
+      res.status(500).json({ message: "Günlük checklist verisi alınamadı" });
     }
   });
 
@@ -13293,6 +14010,48 @@ JSON formatında yanıt ver:
 
 
   startReminderSystem();
+
+  setInterval(async () => {
+    try {
+      const now = new Date();
+      const scheduledTasks = await db.select().from(tasks)
+        .where(and(
+          eq(tasks.isDelivered, false),
+          lte(tasks.scheduledDeliveryAt, now),
+          eq(tasks.status, 'zamanlanmis')
+        ));
+
+      for (const task of scheduledTasks) {
+        await storage.updateTask(task.id, {
+          isDelivered: true,
+          status: 'beklemede',
+        });
+
+        if (task.assignedToId && task.assignedById) {
+          const assigner = await storage.getUser(task.assignedById);
+          const assignerName = assigner?.firstName && assigner?.lastName
+            ? `${assigner.firstName} ${assigner.lastName}`
+            : 'Bir yönetici';
+
+          await storage.createNotification({
+            userId: task.assignedToId,
+            type: 'task_assigned',
+            title: 'Yeni Görev Atandı',
+            message: `${assignerName} size yeni bir görev atadı: "${task.description?.substring(0, 50)}..."`,
+            link: `/gorevler?taskId=${task.id}`,
+            branchId: task.branchId,
+          });
+        }
+      }
+
+      if (scheduledTasks.length > 0) {
+        console.log(`${scheduledTasks.length} zamanlanmis gorev iletildi`);
+      }
+    } catch (error) {
+      console.error("Scheduled task delivery error:", error);
+    }
+  }, 60000);
+  console.log("Zamanlanmis gorev iletim sistemi baslatildi - Her dakika kontrol edilecek");
 
   // ========================================
   // ONBOARDING TEMPLATES API
