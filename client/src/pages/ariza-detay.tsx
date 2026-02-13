@@ -140,7 +140,7 @@ function ServiceNotificationCard({ fault }: { fault: any }) {
     mutationFn: async () => {
       if (!notifDate || !notifTime) return;
       const dateTime = new Date(`${notifDate}T${notifTime}`);
-      await apiRequest(`/api/faults/${fault.id}/service-notification`, 'POST', {
+      await apiRequest('POST', `/api/faults/${fault.id}/service-notification`, {
         serviceNotificationDate: dateTime.toISOString(),
         serviceNotificationMethod: 'email',
       });

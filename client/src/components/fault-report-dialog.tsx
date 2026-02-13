@@ -80,6 +80,10 @@ export function FaultReportDialog({ equipment, isOpen, onOpenChange }: FaultRepo
   const [notificationTime, setNotificationTime] = useState('');
   const [notificationSaved, setNotificationSaved] = useState(false);
   const [savedFormNotes, setSavedFormNotes] = useState('');
+  const [selectedSymptoms, setSelectedSymptoms] = useState<string[]>([]);
+  const [selectedAreas, setSelectedAreas] = useState<string[]>([]);
+  const [immediateImpact, setImmediateImpact] = useState(false);
+  const [safetyHazard, setSafetyHazard] = useState(false);
 
   const metadata = EQUIPMENT_METADATA[equipment.equipmentType as keyof typeof EQUIPMENT_METADATA];
   const isHQResponsible = equipment.faultProtocol === 'hq_teknik' || (equipment as any).maintenanceResponsible === 'hq';
@@ -97,13 +101,18 @@ export function FaultReportDialog({ equipment, isOpen, onOpenChange }: FaultRepo
         if (!response.ok) return [];
         const data = await response.json();
         const faults = Array.isArray(data) ? data : (data?.data || []);
-        return faults.slice(0, 5).reverse();
+        return faults.slice(0, 10).reverse();
       } catch {
         return [];
       }
     },
     enabled: isOpen,
   });
+
+  const openFaults = pastFaults.filter(f =>
+    f.currentStage !== 'kapatildi' && f.currentStage !== 'cozuldu'
+  );
+  const hasOpenFault = openFaults.length > 0;
 
   const form = useForm<CreateFaultInput>({
     resolver: zodResolver(createFaultSchema),
@@ -124,7 +133,7 @@ export function FaultReportDialog({ equipment, isOpen, onOpenChange }: FaultRepo
       }));
 
       setSavedFormNotes(data.notes || '');
-      const response = await apiRequest('/api/faults', 'POST', {
+      const response = await apiRequest('POST', '/api/faults', {
         equipmentId: equipment.id,
         branchId: equipment.branchId,
         equipmentName: metadata?.nameTr || equipment.equipmentType || 'Ekipman',
@@ -135,8 +144,17 @@ export function FaultReportDialog({ equipment, isOpen, onOpenChange }: FaultRepo
         troubleshootingCompleted: hasTroubleshooting ? completedSteps.size > 0 : false,
         completedTroubleshootingSteps: troubleshootingData.length > 0 ? troubleshootingData : undefined,
         responsibleParty: isHQResponsible ? 'hq' : 'branch',
+        faultReportDetails: (selectedSymptoms.length > 0 || selectedAreas.length > 0 || immediateImpact || safetyHazard) ? {
+          symptoms: selectedSymptoms,
+          affectedAreas: selectedAreas,
+          immediateImpact,
+          safetyHazard,
+          partsIdentified: [],
+          notes: data.notes || '',
+        } : undefined,
       });
-      return response as unknown as EquipmentFault;
+      const fault = await response.json();
+      return fault as EquipmentFault;
     },
     onSuccess: (fault: EquipmentFault) => {
       setCreatedFault(fault);
@@ -173,7 +191,7 @@ export function FaultReportDialog({ equipment, isOpen, onOpenChange }: FaultRepo
     mutationFn: async () => {
       if (!createdFault || !notificationDate || !notificationTime) return;
       const dateTime = new Date(`${notificationDate}T${notificationTime}`);
-      await apiRequest(`/api/faults/${createdFault.id}/service-notification`, 'POST', {
+      await apiRequest('POST', `/api/faults/${createdFault.id}/service-notification`, {
         serviceNotificationDate: dateTime.toISOString(),
         serviceNotificationMethod: 'email',
       });
@@ -216,6 +234,10 @@ export function FaultReportDialog({ equipment, isOpen, onOpenChange }: FaultRepo
     setNotificationTime('');
     setNotificationSaved(false);
     setSavedFormNotes('');
+    setSelectedSymptoms([]);
+    setSelectedAreas([]);
+    setImmediateImpact(false);
+    setSafetyHazard(false);
     form.reset();
   };
 
@@ -435,6 +457,80 @@ export function FaultReportDialog({ equipment, isOpen, onOpenChange }: FaultRepo
         )}
 
         {variant === 'detailed' && (
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base flex items-center gap-2">
+                <AlertCircle className="h-4 w-4" />
+                Arıza Detayları
+              </CardTitle>
+              <CardDescription>Arıza ile ilgili belirtileri ve etkilenen alanları işaretleyin</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <p className="text-sm font-medium mb-2">Belirtiler</p>
+                <div className="grid grid-cols-2 gap-2">
+                  {['Ses / titreşim sorunu', 'Sıcaklık problemi', 'Sızıntı / kaçak', 'Elektrik arızası', 'Mekanik hasar', 'Yazılım hatası', 'Basınç sorunu', 'Performans düşüklüğü'].map(symptom => (
+                    <label key={symptom} className="flex items-center gap-2 text-sm cursor-pointer" data-testid={`checkbox-symptom-${symptom.replace(/\s/g, '-')}`}>
+                      <input
+                        type="checkbox"
+                        checked={selectedSymptoms.includes(symptom)}
+                        onChange={(e) => {
+                          if (e.target.checked) setSelectedSymptoms(prev => [...prev, symptom]);
+                          else setSelectedSymptoms(prev => prev.filter(s => s !== symptom));
+                        }}
+                        className="rounded border-border"
+                      />
+                      {symptom}
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <p className="text-sm font-medium mb-2">Etkilenen Alanlar</p>
+                <div className="grid grid-cols-2 gap-2">
+                  {['Bar alanı', 'Mutfak', 'Depo', 'Müşteri alanı', 'Ofis', 'Dış mekan'].map(area => (
+                    <label key={area} className="flex items-center gap-2 text-sm cursor-pointer" data-testid={`checkbox-area-${area.replace(/\s/g, '-')}`}>
+                      <input
+                        type="checkbox"
+                        checked={selectedAreas.includes(area)}
+                        onChange={(e) => {
+                          if (e.target.checked) setSelectedAreas(prev => [...prev, area]);
+                          else setSelectedAreas(prev => prev.filter(a => a !== area));
+                        }}
+                        className="rounded border-border"
+                      />
+                      {area}
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-2">
+                <label className="flex items-center gap-2 text-sm cursor-pointer" data-testid="checkbox-immediate-impact">
+                  <input
+                    type="checkbox"
+                    checked={immediateImpact}
+                    onChange={(e) => setImmediateImpact(e.target.checked)}
+                    className="rounded border-border"
+                  />
+                  <span className="font-medium">Üretim / hizmet etkileniyor</span>
+                </label>
+                <label className="flex items-center gap-2 text-sm cursor-pointer" data-testid="checkbox-safety-hazard">
+                  <input
+                    type="checkbox"
+                    checked={safetyHazard}
+                    onChange={(e) => setSafetyHazard(e.target.checked)}
+                    className="rounded border-border"
+                  />
+                  <span className="font-medium text-destructive">Güvenlik riski var</span>
+                </label>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {variant === 'detailed' && (
           <FormField
             control={form.control}
             name="estimatedCost"
@@ -617,6 +713,37 @@ export function FaultReportDialog({ equipment, isOpen, onOpenChange }: FaultRepo
             S/N: {equipment.serialNumber}
           </DialogDescription>
         </DialogHeader>
+
+        {hasOpenFault && step !== 'outcome' && (
+          <Card className="border-destructive/50 bg-destructive/5">
+            <CardContent className="pt-4 space-y-2">
+              <div className="flex items-center gap-2">
+                <AlertCircle className="h-4 w-4 text-destructive flex-shrink-0" />
+                <p className="text-sm font-semibold text-destructive">
+                  Bu cihaz için açık arıza kaydı var
+                </p>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {openFaults.map(f => `#${f.id}`).join(', ')} numaralı arıza kayıtları hala açık durumda.
+                Yeni arıza kaydı açmak yerine mevcut arızayı güncellemeniz önerilir.
+              </p>
+              <div className="flex gap-2 flex-wrap">
+                {openFaults.slice(0, 3).map(f => (
+                  <Button
+                    key={f.id}
+                    size="sm"
+                    variant="outline"
+                    onClick={() => window.open(`/ariza-detay/${f.id}`, '_blank')}
+                    data-testid={`button-view-open-fault-${f.id}`}
+                  >
+                    <ExternalLink className="h-3 w-3 mr-1" />
+                    Arıza #{f.id}
+                  </Button>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {step === 'troubleshooting' && (
           <div className="space-y-4">

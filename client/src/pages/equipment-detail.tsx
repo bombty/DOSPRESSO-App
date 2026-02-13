@@ -1,4 +1,4 @@
-import { useParams, Link } from "wouter";
+import { useParams, Link, useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -43,6 +43,11 @@ interface EquipmentDetailResponse {
   maintenanceIntervalDays: number | null;
   qrCodeUrl: string | null;
   notes: string | null;
+  brand?: string | null;
+  model?: string | null;
+  modelNo?: string | null;
+  imageUrl?: string | null;
+  catalogId?: number | null;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
@@ -103,6 +108,7 @@ const TIMELINE_TYPE_COLORS: Record<string, string> = {
 };
 
 function EquipmentTimeline({ equipmentId }: { equipmentId: number }) {
+  const [, navigate] = useLocation();
   const { data: timeline, isLoading } = useQuery<TimelineEvent[]>({
     queryKey: ['/api/equipment', equipmentId, 'timeline'],
     queryFn: async () => {
@@ -148,32 +154,46 @@ function EquipmentTimeline({ equipmentId }: { equipmentId: number }) {
       <CardContent>
         <div className="relative space-y-0">
           <div className="absolute left-[11px] top-2 bottom-2 w-0.5 bg-border" />
-          {timeline.map((event, idx) => (
-            <div key={`${event.type}-${event.id}`} className="relative pl-8 pb-4" data-testid={`timeline-event-${idx}`}>
-              <div className={`absolute left-1 top-1.5 w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-                idx === 0 ? "bg-primary border-primary" : "bg-background border-border"
-              }`}>
-                <div className={`w-2 h-2 rounded-full ${idx === 0 ? "bg-primary-foreground" : "bg-muted-foreground"}`} />
-              </div>
-              <div>
-                <div className="flex items-center gap-2 flex-wrap">
-                  <Badge className={TIMELINE_TYPE_COLORS[event.type] || "bg-secondary"}>
-                    {TIMELINE_TYPE_LABELS[event.type] || event.type}
-                  </Badge>
-                  {event.status && (
-                    <span className="text-xs text-muted-foreground">{event.status}</span>
-                  )}
+          {timeline.map((event, idx) => {
+            const getEventLink = () => {
+              if (event.type === 'fault') return `/ariza-detay/${event.id}`;
+              return null;
+            };
+            const link = getEventLink();
+            return (
+              <div
+                key={`${event.type}-${event.id}`}
+                className={`relative pl-8 pb-4 ${link ? 'cursor-pointer hover-elevate rounded-md' : ''}`}
+                data-testid={`timeline-event-${idx}`}
+                onClick={() => {
+                  if (link) navigate(link);
+                }}
+              >
+                <div className={`absolute left-1 top-1.5 w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                  idx === 0 ? "bg-primary border-primary" : "bg-background border-border"
+                }`}>
+                  <div className={`w-2 h-2 rounded-full ${idx === 0 ? "bg-primary-foreground" : "bg-muted-foreground"}`} />
                 </div>
-                <p className="text-sm font-medium mt-1" data-testid={`timeline-title-${idx}`}>{event.title}</p>
-                {event.description && (
-                  <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{event.description}</p>
-                )}
-                <p className="text-xs text-muted-foreground mt-1">
-                  {event.date ? format(new Date(event.date), "dd MMM yyyy HH:mm", { locale: tr }) : "-"}
-                </p>
+                <div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <Badge className={TIMELINE_TYPE_COLORS[event.type] || "bg-secondary"}>
+                      {TIMELINE_TYPE_LABELS[event.type] || event.type}
+                    </Badge>
+                    {event.status && (
+                      <span className="text-xs text-muted-foreground">{event.status}</span>
+                    )}
+                  </div>
+                  <p className={`text-sm font-medium mt-1 ${link ? 'text-primary hover:underline' : ''}`} data-testid={`timeline-title-${idx}`}>{event.title}</p>
+                  {event.description && (
+                    <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{event.description}</p>
+                  )}
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {event.date ? format(new Date(event.date), "dd MMM yyyy HH:mm", { locale: tr }) : "-"}
+                  </p>
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </CardContent>
     </Card>

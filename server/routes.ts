@@ -3840,6 +3840,24 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
         faultBranchId = branchId;
       }
       
+      // Duplicate open fault check - prevent creating new fault if equipment already has an open one
+      if (validatedData.equipmentId) {
+        const openFaults = await db.select({ id: equipmentFaults.id })
+          .from(equipmentFaults)
+          .where(and(
+            eq(equipmentFaults.equipmentId, validatedData.equipmentId),
+            not(inArray(equipmentFaults.currentStage, ['kapatildi', 'cozuldu']))
+          ))
+          .limit(1);
+        if (openFaults.length > 0) {
+          return res.status(400).json({
+            message: `Bu cihaz için zaten açık bir arıza kaydı (#${openFaults[0].id}) bulunmaktadır. Lütfen önce mevcut arızayı kapatın.`,
+            existingFaultId: openFaults[0].id,
+            duplicateFault: true,
+          });
+        }
+      }
+
       // Mandatory Troubleshooting Enforcement
       // If troubleshooting steps exist for this equipment type and user hasn't completed them, reject the fault
       if (validatedData.equipmentId) {
@@ -4949,8 +4967,21 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
       const [existing] = await db.select().from(equipmentCatalog).where(eq(equipmentCatalog.id, id));
       if (!existing) return res.status(404).json({ message: "Katalog öğesi bulunamadı" });
 
+      const allowedFields = [
+        'name', 'brand', 'model', 'equipmentType', 'category', 'description',
+        'imageUrl', 'specifications', 'usageGuide', 'troubleshootingGuide',
+        'calibrationProcedure', 'maintenanceIntervalDays', 'defaultServiceProviderName',
+        'defaultServiceProviderPhone', 'defaultServiceProviderEmail', 'defaultServiceProviderAddress',
+        'warrantyDurationMonths', 'faultProtocol', 'isActive',
+      ];
+      const sanitized: Record<string, any> = {};
+      for (const key of allowedFields) {
+        if (key in req.body) sanitized[key] = req.body[key];
+      }
+      sanitized.updatedAt = new Date();
+
       const [updated] = await db.update(equipmentCatalog)
-        .set({ ...req.body, updatedAt: new Date() })
+        .set(sanitized)
         .where(eq(equipmentCatalog.id, id))
         .returning();
 
@@ -5090,6 +5121,13 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
         .where(eq(faultServiceTracking.id, id));
       if (!existing) return res.status(404).json({ message: "Servis takibi bulunamadı" });
 
+      if (user.role && isBranchRole(user.role as UserRoleType)) {
+        const branchId = assertBranchScope(user);
+        if (existing.branchId !== branchId) {
+          return res.status(403).json({ message: "Bu servis takibine erişim yetkiniz yok" });
+        }
+      }
+
       const [updated] = await db.update(faultServiceTracking)
         .set({ currentStatus: status, updatedAt: new Date() })
         .where(eq(faultServiceTracking.id, id))
@@ -5120,6 +5158,13 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
       const [existing] = await db.select().from(faultServiceTracking)
         .where(eq(faultServiceTracking.id, id));
       if (!existing) return res.status(404).json({ message: "Servis takibi bulunamadı" });
+
+      if (user.role && isBranchRole(user.role as UserRoleType)) {
+        const branchId = assertBranchScope(user);
+        if (existing.branchId !== branchId) {
+          return res.status(403).json({ message: "Bu servis takibine erişim yetkiniz yok" });
+        }
+      }
 
       const deliveryForm = req.body;
 
