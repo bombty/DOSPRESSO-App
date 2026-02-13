@@ -19,7 +19,11 @@ import {
   ShieldCheck,
   GraduationCap,
   Eye,
-  User
+  User,
+  Store,
+  Wrench,
+  Target,
+  TrendingUp
 } from "lucide-react";
 import { useState } from "react";
 import { Textarea } from "@/components/ui/textarea";
@@ -54,10 +58,20 @@ interface BottomManager {
   score: number;
 }
 
+interface KPISummary {
+  totalBranches: number;
+  totalEmployees: number;
+  activeFaults: number;
+  equipmentUptime: number;
+  monthlyRevenue?: string;
+  branchAvgScore: number;
+}
+
 interface CEODashboardData {
   urgentAlerts: UrgentAlert[];
   departments: DeptSummary[];
   bottomManagers: BottomManager[];
+  kpiSummary?: KPISummary;
   lastUpdated: string;
 }
 
@@ -273,6 +287,55 @@ export default function CEOCommandCenter() {
                 </div>
               </CardContent>
             </Card>
+          )}
+
+          {dashboardData.kpiSummary && (
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+              <Card data-testid="ceo-kpi-branches">
+                <CardContent className="pt-3 pb-2 px-3 text-center">
+                  <Store className="w-5 h-5 text-blue-500 mx-auto mb-1" />
+                  <p className="text-xl font-bold">{dashboardData.kpiSummary.totalBranches}</p>
+                  <p className="text-[10px] text-muted-foreground">Sube</p>
+                </CardContent>
+              </Card>
+              <Card data-testid="ceo-kpi-employees">
+                <CardContent className="pt-3 pb-2 px-3 text-center">
+                  <Users className="w-5 h-5 text-purple-500 mx-auto mb-1" />
+                  <p className="text-xl font-bold">{dashboardData.kpiSummary.totalEmployees}</p>
+                  <p className="text-[10px] text-muted-foreground">Personel</p>
+                </CardContent>
+              </Card>
+              <Card data-testid="ceo-kpi-faults">
+                <CardContent className="pt-3 pb-2 px-3 text-center">
+                  <AlertTriangle className={`w-5 h-5 mx-auto mb-1 ${dashboardData.kpiSummary.activeFaults > 5 ? 'text-red-500' : 'text-orange-500'}`} />
+                  <p className="text-xl font-bold">{dashboardData.kpiSummary.activeFaults}</p>
+                  <p className="text-[10px] text-muted-foreground">Aktif Ariza</p>
+                </CardContent>
+              </Card>
+              <Card data-testid="ceo-kpi-uptime">
+                <CardContent className="pt-3 pb-2 px-3 text-center">
+                  <Wrench className="w-5 h-5 text-emerald-500 mx-auto mb-1" />
+                  <p className="text-xl font-bold">%{dashboardData.kpiSummary.equipmentUptime}</p>
+                  <p className="text-[10px] text-muted-foreground">Uptime</p>
+                </CardContent>
+              </Card>
+              <Card data-testid="ceo-kpi-score">
+                <CardContent className="pt-3 pb-2 px-3 text-center">
+                  <Target className="w-5 h-5 text-blue-600 mx-auto mb-1" />
+                  <p className="text-xl font-bold">{dashboardData.kpiSummary.branchAvgScore}</p>
+                  <p className="text-[10px] text-muted-foreground">Ort. Skor</p>
+                </CardContent>
+              </Card>
+              {dashboardData.kpiSummary.monthlyRevenue && (
+                <Card data-testid="ceo-kpi-revenue">
+                  <CardContent className="pt-3 pb-2 px-3 text-center">
+                    <TrendingUp className="w-5 h-5 text-green-500 mx-auto mb-1" />
+                    <p className="text-lg font-bold">{dashboardData.kpiSummary.monthlyRevenue}</p>
+                    <p className="text-[10px] text-muted-foreground">Aylik Ciro</p>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
           )}
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">

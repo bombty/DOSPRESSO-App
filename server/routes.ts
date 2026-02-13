@@ -4954,7 +4954,7 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
       const catalogId = parseInt(req.params.id);
       if (isNaN(catalogId)) return res.status(400).json({ message: "Geçersiz katalog ID" });
 
-      const { branchId, serialNumber, notes } = req.body;
+      const { branchId, serialNumber, notes, warrantyEndDate, purchaseDate } = req.body;
       if (!branchId) return res.status(400).json({ message: "Şube ID zorunludur" });
 
       const [catalogItem] = await db.select().from(equipmentCatalog).where(eq(equipmentCatalog.id, catalogId));
@@ -4969,6 +4969,8 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
         equipmentType: catalogItem.equipmentType,
         modelNo: catalogItem.model || undefined,
         serialNumber: serialNumber || undefined,
+        warrantyEndDate: warrantyEndDate ? new Date(warrantyEndDate) : undefined,
+        purchaseDate: purchaseDate ? new Date(purchaseDate) : undefined,
         imageUrl: catalogItem.imageUrl || undefined,
         maintenanceIntervalDays: catalogItem.maintenanceIntervalDays || 30,
         serviceContactName: catalogItem.defaultServiceProviderName || undefined,
@@ -35124,10 +35126,20 @@ Dusuk puanli alanlara odaklan ve pozitif, motive edici ol. JSON dizisi olarak ya
 
       const bottomManagers = managersWithScores.slice(0, 3);
 
+      const runningEquipment = allEquipment.filter((e: any) => e.isActive);
+      const uptimeRate = allEquipment.length > 0 ? Math.round((runningEquipment.length / allEquipment.length) * 100) : 100;
+
       res.json({
         urgentAlerts,
         departments: [cgoSummary, muhasebeIkSummary, fabrikaSummary, coachSummary, kaliteSummary, egitimSummary],
         bottomManagers,
+        kpiSummary: {
+          totalBranches: allBranches.length,
+          totalEmployees: activeEmployees.length,
+          activeFaults: openFaults.length,
+          equipmentUptime: uptimeRate,
+          branchAvgScore: avgBranchScore,
+        },
         lastUpdated: new Date().toISOString()
       });
     } catch (error: any) {
@@ -36861,12 +36873,27 @@ AI analizi su an kullanilamiyor. Detayli bilgi icin ilgili modulleri kontrol edi
         const resolvedFaults = assignedFaults.filter(f => f.status === 'resolved' || f.status === 'closed');
         const userChecklists = allChecklists.filter((c: any) => c.completedBy === userId);
         const faultResolutionRate = assignedFaults.length > 0 ? Math.round((resolvedFaults.length / assignedFaults.length) * 100) : 100;
+
+        const slaCompliant = resolvedFaults.filter((f: any) => {
+          if (!f.slaDeadline || !f.resolvedAt) return true;
+          return new Date(f.resolvedAt) <= new Date(f.slaDeadline);
+        });
+        const slaComplianceRate = resolvedFaults.length > 0 ? Math.round((slaCompliant.length / resolvedFaults.length) * 100) : 100;
+
+        const responseTimes = assignedFaults
+          .filter((f: any) => f.firstResponseAt && f.createdAt)
+          .map((f: any) => (new Date(f.firstResponseAt).getTime() - new Date(f.createdAt).getTime()) / (1000 * 60 * 60));
+        const avgResponseHours = responseTimes.length > 0 ? responseTimes.reduce((a, b) => a + b, 0) / responseTimes.length : 0;
+        const avgResponseTime = avgResponseHours < 1 ? `${Math.round(avgResponseHours * 60)}dk` : `${avgResponseHours.toFixed(1)}sa`;
+
         return {
           assignedFaults: assignedFaults.length,
           resolvedFaults: resolvedFaults.length,
           faultResolutionRate,
           checklistsCompleted: userChecklists.length,
-          overallScore: Math.min(100, Math.round(faultResolutionRate * 0.6 + Math.min(userChecklists.length * 2, 40)))
+          overallScore: Math.min(100, Math.round(faultResolutionRate * 0.6 + Math.min(userChecklists.length * 2, 40))),
+          slaComplianceRate,
+          avgResponseTime: responseTimes.length > 0 ? avgResponseTime : undefined,
         };
       };
 

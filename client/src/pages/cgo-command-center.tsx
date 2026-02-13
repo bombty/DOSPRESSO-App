@@ -516,6 +516,9 @@ interface ManagerData {
     faultResolutionRate: number;
     checklistsCompleted: number;
     overallScore: number;
+    slaComplianceRate?: number;
+    trainingProgress?: number;
+    avgResponseTime?: string;
   };
 }
 
@@ -582,6 +585,28 @@ function ManagerCard({ manager }: { manager: ManagerData }) {
                 <p className="text-[10px] text-muted-foreground">Checklist</p>
               </div>
             </div>
+            {(manager.metrics.slaComplianceRate !== undefined || manager.metrics.trainingProgress !== undefined || manager.metrics.avgResponseTime) && (
+              <div className="mt-1.5 grid grid-cols-3 gap-2 text-center">
+                {manager.metrics.slaComplianceRate !== undefined && (
+                  <div className="bg-muted/50 rounded p-1.5">
+                    <p className={`text-sm font-bold ${getScoreColor(manager.metrics.slaComplianceRate)}`}>%{manager.metrics.slaComplianceRate}</p>
+                    <p className="text-[10px] text-muted-foreground">SLA Uyum</p>
+                  </div>
+                )}
+                {manager.metrics.trainingProgress !== undefined && (
+                  <div className="bg-muted/50 rounded p-1.5">
+                    <p className="text-sm font-bold">%{manager.metrics.trainingProgress}</p>
+                    <p className="text-[10px] text-muted-foreground">Egitim</p>
+                  </div>
+                )}
+                {manager.metrics.avgResponseTime && (
+                  <div className="bg-muted/50 rounded p-1.5">
+                    <p className="text-sm font-bold">{manager.metrics.avgResponseTime}</p>
+                    <p className="text-[10px] text-muted-foreground">Ort. Yanit</p>
+                  </div>
+                )}
+              </div>
+            )}
             <Progress value={manager.metrics.overallScore} className="h-1.5 mt-2" />
           </div>
         </div>

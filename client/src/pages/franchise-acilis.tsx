@@ -53,6 +53,10 @@ const CreateTaskSchema = z.object({
   assignedToCollaboratorId: z.coerce.number().optional(),
   dueDate: z.string().optional(),
   notes: z.string().optional(),
+  raciResponsible: z.string().optional(),
+  raciAccountable: z.string().optional(),
+  raciConsulted: z.string().optional(),
+  raciInformed: z.string().optional(),
 });
 type CreateTaskValues = z.infer<typeof CreateTaskSchema>;
 
@@ -354,7 +358,7 @@ function ProjectDetail({ projectId, onBack }: { projectId: number; onBack: () =>
 
   const taskForm = useForm<CreateTaskValues>({
     resolver: zodResolver(CreateTaskSchema),
-    defaultValues: { title: "", description: "", priority: "normal", assignedToUserId: "", dueDate: "", notes: "" },
+    defaultValues: { title: "", description: "", priority: "normal", assignedToUserId: "", dueDate: "", notes: "", raciResponsible: "", raciAccountable: "", raciConsulted: "", raciInformed: "" },
   });
 
   const collabForm = useForm<CreateCollaboratorValues>({
@@ -600,6 +604,14 @@ function ProjectDetail({ projectId, onBack }: { projectId: number; onBack: () =>
                               {task.assignedToUserId && <span className="text-[10px] text-muted-foreground">{getUserName(task.assignedToUserId)}</span>}
                               {task.assignedToCollaboratorId && <Badge variant="outline" className="text-[10px]">{getCollabName(task.assignedToCollaboratorId)}</Badge>}
                             </div>
+                            {((task as any).raciResponsible || (task as any).raciAccountable || (task as any).raciConsulted || (task as any).raciInformed) && (
+                              <div className="flex items-center gap-1 flex-wrap mt-0.5">
+                                {(task as any).raciResponsible && <Badge variant="outline" className="text-[10px] bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-800">R: {(task as any).raciResponsible}</Badge>}
+                                {(task as any).raciAccountable && <Badge variant="outline" className="text-[10px] bg-amber-50 dark:bg-amber-950 border-amber-200 dark:border-amber-800">A: {(task as any).raciAccountable}</Badge>}
+                                {(task as any).raciConsulted && <Badge variant="outline" className="text-[10px] bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-800">C: {(task as any).raciConsulted}</Badge>}
+                                {(task as any).raciInformed && <Badge variant="outline" className="text-[10px] bg-purple-50 dark:bg-purple-950 border-purple-200 dark:border-purple-800">I: {(task as any).raciInformed}</Badge>}
+                              </div>
+                            )}
                           </div>
                         </div>
                         <div className="flex items-center gap-1 shrink-0">
@@ -851,6 +863,23 @@ function ProjectDetail({ projectId, onBack }: { projectId: number; onBack: () =>
                   <FormMessage /></FormItem>
                 )} />
               )}
+              <div className="space-y-2 border-t pt-3 mt-2">
+                <p className="text-xs font-medium text-muted-foreground">RACI Matrisi</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <FormField control={taskForm.control} name="raciResponsible" render={({ field }) => (
+                    <FormItem><FormLabel className="text-xs">R - Sorumlu</FormLabel><FormControl><Input {...field} placeholder="Islemi yapacak kisi" className="text-xs" data-testid="input-raci-responsible" /></FormControl><FormMessage /></FormItem>
+                  )} />
+                  <FormField control={taskForm.control} name="raciAccountable" render={({ field }) => (
+                    <FormItem><FormLabel className="text-xs">A - Hesap Verebilir</FormLabel><FormControl><Input {...field} placeholder="Onay makami" className="text-xs" data-testid="input-raci-accountable" /></FormControl><FormMessage /></FormItem>
+                  )} />
+                  <FormField control={taskForm.control} name="raciConsulted" render={({ field }) => (
+                    <FormItem><FormLabel className="text-xs">C - Danisilan</FormLabel><FormControl><Input {...field} placeholder="Gorusu alinan kisi/ler" className="text-xs" data-testid="input-raci-consulted" /></FormControl><FormMessage /></FormItem>
+                  )} />
+                  <FormField control={taskForm.control} name="raciInformed" render={({ field }) => (
+                    <FormItem><FormLabel className="text-xs">I - Bilgilendirilen</FormLabel><FormControl><Input {...field} placeholder="Bilgilendirilecek kisi/ler" className="text-xs" data-testid="input-raci-informed" /></FormControl><FormMessage /></FormItem>
+                  )} />
+                </div>
+              </div>
               <DialogFooter>
                 <Button type="button" variant="outline" onClick={() => setIsTaskDialogOpen(false)}>Iptal</Button>
                 <Button type="submit" disabled={createTaskMutation.isPending} data-testid="button-submit-task">
