@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { isHQRole } from "@shared/schema";
@@ -19,6 +19,7 @@ import {
   DollarSign, TrendingUp, TrendingDown, FileText, Plus, Building,
   Calendar, ArrowLeft, BarChart3, PieChart as PieChartIcon, Loader2,
   Receipt, Wallet, Users, Coffee, Brain, Sparkles,
+  Upload, Download, FileSpreadsheet, CheckSquare, Square, ArrowRightLeft, Clock, Shield, Send as SendIcon,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient as qc } from "@/lib/queryClient";
@@ -44,6 +45,8 @@ const COLORS = [
   "hsl(var(--chart-5))",
 ];
 
+const MERKEZ_BRANCH_NAMES = ["Işıklar"];
+
 const reportFormSchema = z.object({
   reportType: z.string().min(1, "Rapor tipi seçiniz"),
   period: z.string().min(1, "Dönem seçiniz"),
@@ -62,6 +65,17 @@ function formatCurrency(value: number | string | null | undefined): string {
   return new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY', minimumFractionDigits: 0 }).format(num);
 }
 
+function getStatusBadge(status: string | null | undefined) {
+  switch (status) {
+    case 'approved':
+      return <Badge variant="default" className="bg-green-600 text-white text-[10px]" data-testid="badge-approved">Onaylandı</Badge>;
+    case 'pending':
+      return <Badge variant="secondary" className="bg-yellow-500 text-white text-[10px]" data-testid="badge-pending">Onay Bekliyor</Badge>;
+    default:
+      return <Badge variant="secondary" className="text-[10px]" data-testid="badge-draft">Taslak</Badge>;
+  }
+}
+
 export default function MuhasebeRaporlama() {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -70,6 +84,13 @@ export default function MuhasebeRaporlama() {
   const [selectedBranch, setSelectedBranch] = useState("all");
   const [reportTypeFilter, setReportTypeFilter] = useState("monthly");
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [branchCategory, setBranchCategory] = useState<"all" | "merkez" | "franchise">("all");
+  const [comparePeriod1, setComparePeriod1] = useState(`${new Date().getFullYear()}-01`);
+  const [comparePeriod2, setComparePeriod2] = useState(`${new Date().getFullYear() - 1}-01`);
+  const [importData, setImportData] = useState<string[][]>([]);
+  const [importFileName, setImportFileName] = useState("");
+  const [importLoading, setImportLoading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const isAuthorized = user?.role && (user.role === 'admin' || user.role === 'muhasebe_ik' || user.role === 'ceo' || isHQRole(user.role as any));
 
@@ -78,13 +99,36 @@ export default function MuhasebeRaporlama() {
     enabled: !!isAuthorized,
   });
 
+  const filteredBranches = useMemo(() => {
+    if (!branches) return [];
+    if (branchCategory === "merkez") {
+      return branches.filter((b: any) => MERKEZ_BRANCH_NAMES.includes(b.name));
+    }
+    if (branchCategory === "franchise") {
+      return branches.filter((b: any) => !MERKEZ_BRANCH_NAMES.includes(b.name));
+    }
+    return branches;
+  }, [branches, branchCategory]);
+
   const { data: reports, isLoading } = useQuery<any[]>({
-    queryKey: ["/api/management-reports", { reportType: reportTypeFilter, year: selectedYear, branchId: selectedBranch }],
+    queryKey: ["/api/management-reports", reportTypeFilter, selectedYear, selectedBranch],
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      params.set('reportType', reportTypeFilter);
+      params.set('year', selectedYear);
+      if (selectedBranch !== 'all') params.set('branchId', selectedBranch);
+      const res = await apiRequest("GET", `/api/management-reports?${params.toString()}`);
+      return res.json();
+    },
     enabled: !!isAuthorized,
   });
 
   const { data: summary } = useQuery<any>({
-    queryKey: ["/api/management-reports/summary", { year: selectedYear }],
+    queryKey: ["/api/management-reports/summary", selectedYear],
+    queryFn: async () => {
+      const res = await apiRequest("GET", `/api/management-reports/summary?year=${selectedYear}`);
+      return res.json();
+    },
     enabled: !!isAuthorized,
   });
 
@@ -127,6 +171,16 @@ export default function MuhasebeRaporlama() {
     },
   });
 
+  const approveMutation = useMutation({
+    mutationFn: async ({ id, status }: { id: number; status: string }) => {
+      return apiRequest("PATCH", `/api/management-reports/${id}/status`, { status });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/management-reports"] });
+      toast({ title: "Başarılı", description: "Rapor durumu güncellendi" });
+    },
+  });
+
   const monthlyChartData = useMemo(() => {
     if (!summary?.monthlyData) return [];
     return summary.monthlyData.map((d: any) => ({
@@ -145,11 +199,17 @@ export default function MuhasebeRaporlama() {
         return {
           name: branch?.name?.substring(0, 12) || `Şube ${branchId}`,
           revenue: revenue as number,
+          branchName: branch?.name || '',
         };
+      })
+      .filter(item => {
+        if (branchCategory === "merkez") return MERKEZ_BRANCH_NAMES.includes(item.branchName);
+        if (branchCategory === "franchise") return !MERKEZ_BRANCH_NAMES.includes(item.branchName);
+        return true;
       })
       .sort((a, b) => b.revenue - a.revenue)
       .slice(0, 10);
-  }, [summary, branches]);
+  }, [summary, branches, branchCategory]);
 
   const periodOptions = useMemo(() => {
     const type = form.watch("reportType");
@@ -170,6 +230,107 @@ export default function MuhasebeRaporlama() {
       return [{ value: year, label: `${year} Yılı` }];
     }
   }, [form.watch("reportType"), selectedYear]);
+
+  const exportToCSV = () => {
+    if (!reports?.length) return;
+    const headers = ['Dönem', 'Şube', 'Gelir', 'Gider', 'Net Kar', 'Müşteri', 'Ort. Adisyon'];
+    const rows = (reports as any[]).map((r: any) => {
+      const branchName = (branches as any[])?.find((b: any) => b.id === r.branchId)?.name || 'Genel';
+      const profit = (parseFloat(r.revenue) || 0) - (parseFloat(r.expenses) || 0);
+      return [r.period, branchName, r.revenue, r.expenses, profit.toFixed(2), r.customerCount || '', r.averageTicket || ''];
+    });
+    const csv = [headers.join(';'), ...rows.map(r => r.join(';'))].join('\n');
+    const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `muhasebe-rapor-${selectedYear}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const exportToPDF = () => {
+    window.print();
+  };
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setImportFileName(file.name);
+    const ext = file.name.split('.').pop()?.toLowerCase();
+    if (ext === 'csv') {
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        const text = ev.target?.result as string;
+        const lines = text.split('\n').filter(l => l.trim());
+        const parsed = lines.map(line => line.split(/[;,\t]/).map(c => c.trim().replace(/^"|"$/g, '')));
+        setImportData(parsed);
+      };
+      reader.readAsText(file, 'UTF-8');
+    } else {
+      toast({ title: "Bilgi", description: "Lütfen CSV formatında dosya yükleyin. Excel dosyaları için önce CSV olarak kaydedin." });
+      setImportData([]);
+    }
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const handleImportSubmit = async () => {
+    if (importData.length < 2) return;
+    setImportLoading(true);
+    try {
+      const headers = importData[0].map(h => h.toLowerCase());
+      const periodIdx = headers.findIndex(h => h.includes('dönem') || h.includes('period') || h.includes('donem'));
+      const revenueIdx = headers.findIndex(h => h.includes('gelir') || h.includes('revenue'));
+      const expensesIdx = headers.findIndex(h => h.includes('gider') || h.includes('expense'));
+      const branchIdx = headers.findIndex(h => h.includes('şube') || h.includes('sube') || h.includes('branch'));
+      const customerIdx = headers.findIndex(h => h.includes('müşteri') || h.includes('musteri') || h.includes('customer'));
+      const ticketIdx = headers.findIndex(h => h.includes('adisyon') || h.includes('ticket'));
+
+      let successCount = 0;
+      for (let i = 1; i < importData.length; i++) {
+        const row = importData[i];
+        if (!row[revenueIdx] && !row[expensesIdx]) continue;
+        const data: any = {
+          reportType: 'monthly',
+          period: row[periodIdx] || `${selectedYear}-${String(i).padStart(2, '0')}`,
+          revenue: row[revenueIdx] || '0',
+          expenses: row[expensesIdx] || '0',
+        };
+        if (branchIdx >= 0 && row[branchIdx]) {
+          const matchBranch = (branches as any[])?.find((b: any) => b.name.toLowerCase().includes(row[branchIdx].toLowerCase()));
+          if (matchBranch) data.branchId = matchBranch.id;
+        }
+        if (customerIdx >= 0 && row[customerIdx]) data.customerCount = parseInt(row[customerIdx]) || 0;
+        if (ticketIdx >= 0 && row[ticketIdx]) data.averageTicket = row[ticketIdx];
+        await apiRequest("POST", "/api/management-reports", data);
+        successCount++;
+      }
+      queryClient.invalidateQueries({ queryKey: ["/api/management-reports"] });
+      toast({ title: "Başarılı", description: `${successCount} rapor içe aktarıldı` });
+      setImportData([]);
+      setImportFileName("");
+    } catch (err: any) {
+      toast({ title: "Hata", description: err.message || "İçe aktarma başarısız", variant: "destructive" });
+    } finally {
+      setImportLoading(false);
+    }
+  };
+
+  const compareData = useMemo(() => {
+    if (!reports?.length) return null;
+    const r1 = (reports as any[]).filter((r: any) => r.period === comparePeriod1);
+    const r2 = (reports as any[]).filter((r: any) => r.period === comparePeriod2);
+    const sum = (arr: any[], key: string) => arr.reduce((s, r) => s + (parseFloat(r[key]) || 0), 0);
+    const rev1 = sum(r1, 'revenue'); const rev2 = sum(r2, 'revenue');
+    const exp1 = sum(r1, 'expenses'); const exp2 = sum(r2, 'expenses');
+    const p1 = rev1 - exp1; const p2 = rev2 - exp2;
+    const pct = (a: number, b: number) => b === 0 ? 0 : ((a - b) / Math.abs(b)) * 100;
+    return {
+      period1: { revenue: rev1, expenses: exp1, profit: p1 },
+      period2: { revenue: rev2, expenses: exp2, profit: p2 },
+      change: { revenue: pct(rev1, rev2), expenses: pct(exp1, exp2), profit: pct(p1, p2) },
+    };
+  }, [reports, comparePeriod1, comparePeriod2]);
 
   if (!isAuthorized) {
     return (
@@ -194,137 +355,147 @@ export default function MuhasebeRaporlama() {
           </h1>
           <p className="text-sm text-muted-foreground">Aylık, çeyreklik ve yıllık mali raporlar</p>
         </div>
-        {(user?.role === 'admin' || user?.role === 'muhasebe_ik') && (
-          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-            <DialogTrigger asChild>
-              <Button size="sm" data-testid="button-new-report">
-                <Plus className="h-3.5 w-3.5 mr-1.5" />
-                Yeni Rapor
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-md">
-              <DialogHeader>
-                <DialogTitle>Yeni Rapor Girişi</DialogTitle>
-              </DialogHeader>
-              <Form {...form}>
-                <form onSubmit={form.handleSubmit((values) => createMutation.mutate(values))} className="space-y-3">
-                  <FormField control={form.control} name="reportType" render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Rapor Tipi</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl>
-                          <SelectTrigger data-testid="select-report-type">
-                            <SelectValue placeholder="Seçiniz" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="monthly">Aylık</SelectItem>
-                          <SelectItem value="quarterly">Çeyreklik</SelectItem>
-                          <SelectItem value="yearly">Yıllık</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )} />
-
-                  <FormField control={form.control} name="period" render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Dönem</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl>
-                          <SelectTrigger data-testid="select-period">
-                            <SelectValue placeholder="Dönem seçiniz" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {periodOptions.map((opt) => (
-                            <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )} />
-
-                  <FormField control={form.control} name="branchId" render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Şube (Opsiyonel)</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl>
-                          <SelectTrigger data-testid="select-report-branch">
-                            <SelectValue placeholder="Genel" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="all">Genel (Tüm Şirket)</SelectItem>
-                          {(branches as any[])?.map((b: any) => (
-                            <SelectItem key={b.id} value={b.id.toString()}>{b.name}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </FormItem>
-                  )} />
-
-                  <div className="grid grid-cols-2 gap-3">
-                    <FormField control={form.control} name="revenue" render={({ field }) => (
+        <div className="flex items-center gap-2 flex-wrap">
+          <Button variant="outline" size="sm" onClick={exportToCSV} disabled={!reports?.length} data-testid="button-export-csv">
+            <Download className="h-3.5 w-3.5 mr-1.5" />
+            Excel İndir
+          </Button>
+          <Button variant="outline" size="sm" onClick={exportToPDF} data-testid="button-export-pdf">
+            <FileText className="h-3.5 w-3.5 mr-1.5" />
+            PDF İndir
+          </Button>
+          {(user?.role === 'admin' || user?.role === 'muhasebe_ik') && (
+            <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+              <DialogTrigger asChild>
+                <Button size="sm" data-testid="button-new-report">
+                  <Plus className="h-3.5 w-3.5 mr-1.5" />
+                  Yeni Rapor
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-md">
+                <DialogHeader>
+                  <DialogTitle>Yeni Rapor Girişi</DialogTitle>
+                </DialogHeader>
+                <Form {...form}>
+                  <form onSubmit={form.handleSubmit((values) => createMutation.mutate(values))} className="space-y-3">
+                    <FormField control={form.control} name="reportType" render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Gelir (TL)</FormLabel>
-                        <FormControl>
-                          <Input type="number" placeholder="0" data-testid="input-revenue" {...field} />
-                        </FormControl>
+                        <FormLabel>Rapor Tipi</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl>
+                            <SelectTrigger data-testid="select-report-type">
+                              <SelectValue placeholder="Seçiniz" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="monthly">Aylık</SelectItem>
+                            <SelectItem value="quarterly">Çeyreklik</SelectItem>
+                            <SelectItem value="yearly">Yıllık</SelectItem>
+                          </SelectContent>
+                        </Select>
                         <FormMessage />
                       </FormItem>
                     )} />
-                    <FormField control={form.control} name="expenses" render={({ field }) => (
+
+                    <FormField control={form.control} name="period" render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Gider (TL)</FormLabel>
-                        <FormControl>
-                          <Input type="number" placeholder="0" data-testid="input-expenses" {...field} />
-                        </FormControl>
+                        <FormLabel>Dönem</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl>
+                            <SelectTrigger data-testid="select-period">
+                              <SelectValue placeholder="Dönem seçiniz" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {periodOptions.map((opt) => (
+                              <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                         <FormMessage />
                       </FormItem>
                     )} />
-                  </div>
 
-                  <div className="grid grid-cols-2 gap-3">
-                    <FormField control={form.control} name="customerCount" render={({ field }) => (
+                    <FormField control={form.control} name="branchId" render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Müşteri Sayısı</FormLabel>
+                        <FormLabel>Şube (Opsiyonel)</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl>
+                            <SelectTrigger data-testid="select-report-branch">
+                              <SelectValue placeholder="Genel" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="all">Genel (Tüm Şirket)</SelectItem>
+                            {(branches as any[])?.map((b: any) => (
+                              <SelectItem key={b.id} value={b.id.toString()}>{b.name}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </FormItem>
+                    )} />
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <FormField control={form.control} name="revenue" render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Gelir (TL)</FormLabel>
+                          <FormControl>
+                            <Input type="number" placeholder="0" data-testid="input-revenue" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )} />
+                      <FormField control={form.control} name="expenses" render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Gider (TL)</FormLabel>
+                          <FormControl>
+                            <Input type="number" placeholder="0" data-testid="input-expenses" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )} />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <FormField control={form.control} name="customerCount" render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Müşteri Sayısı</FormLabel>
+                          <FormControl>
+                            <Input type="number" placeholder="0" data-testid="input-customers" {...field} />
+                          </FormControl>
+                        </FormItem>
+                      )} />
+                      <FormField control={form.control} name="averageTicket" render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Ort. Adisyon (TL)</FormLabel>
+                          <FormControl>
+                            <Input type="number" placeholder="0" data-testid="input-avg-ticket" {...field} />
+                          </FormControl>
+                        </FormItem>
+                      )} />
+                    </div>
+
+                    <FormField control={form.control} name="notes" render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Notlar</FormLabel>
                         <FormControl>
-                          <Input type="number" placeholder="0" data-testid="input-customers" {...field} />
+                          <Textarea placeholder="Ek notlar..." data-testid="input-notes" className="resize-none" {...field} />
                         </FormControl>
                       </FormItem>
                     )} />
-                    <FormField control={form.control} name="averageTicket" render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Ort. Adisyon (TL)</FormLabel>
-                        <FormControl>
-                          <Input type="number" placeholder="0" data-testid="input-avg-ticket" {...field} />
-                        </FormControl>
-                      </FormItem>
-                    )} />
-                  </div>
 
-                  <FormField control={form.control} name="notes" render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Notlar</FormLabel>
-                      <FormControl>
-                        <Textarea placeholder="Ek notlar..." data-testid="input-notes" className="resize-none" {...field} />
-                      </FormControl>
-                    </FormItem>
-                  )} />
-
-                  <DialogFooter>
-                    <Button type="submit" disabled={createMutation.isPending} data-testid="button-submit-report">
-                      {createMutation.isPending && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
-                      Kaydet
-                    </Button>
-                  </DialogFooter>
-                </form>
-              </Form>
-            </DialogContent>
-          </Dialog>
-        )}
+                    <DialogFooter>
+                      <Button type="submit" disabled={createMutation.isPending} data-testid="button-submit-report">
+                        {createMutation.isPending && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
+                        Kaydet
+                      </Button>
+                    </DialogFooter>
+                  </form>
+                </Form>
+              </DialogContent>
+            </Dialog>
+          )}
+        </div>
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
@@ -338,6 +509,16 @@ export default function MuhasebeRaporlama() {
             ))}
           </SelectContent>
         </Select>
+        <Select value={branchCategory} onValueChange={(v: "all" | "merkez" | "franchise") => { setBranchCategory(v); setSelectedBranch("all"); }}>
+          <SelectTrigger className="w-[170px]" data-testid="select-branch-category">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Tümü</SelectItem>
+            <SelectItem value="merkez">Merkez (Işıklar + HQ)</SelectItem>
+            <SelectItem value="franchise">Franchise Şubeler</SelectItem>
+          </SelectContent>
+        </Select>
         <Select value={selectedBranch} onValueChange={setSelectedBranch}>
           <SelectTrigger className="w-[150px]" data-testid="select-branch-filter">
             <Building className="mr-1.5 h-3.5 w-3.5" />
@@ -345,7 +526,7 @@ export default function MuhasebeRaporlama() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Tüm Şubeler</SelectItem>
-            {(branches as any[])?.map(b => (
+            {filteredBranches.map((b: any) => (
               <SelectItem key={b.id} value={b.id.toString()}>{b.name}</SelectItem>
             ))}
           </SelectContent>
@@ -408,6 +589,14 @@ export default function MuhasebeRaporlama() {
           <TabsTrigger value="branches" data-testid="tab-branches" className="flex items-center gap-1.5 text-xs sm:text-sm">
             <Building className="h-3.5 w-3.5" />
             Şube Karşılaştırma
+          </TabsTrigger>
+          <TabsTrigger value="compare" data-testid="tab-compare" className="flex items-center gap-1.5 text-xs sm:text-sm">
+            <ArrowRightLeft className="h-3.5 w-3.5" />
+            Karşılaştırma
+          </TabsTrigger>
+          <TabsTrigger value="import" data-testid="tab-import" className="flex items-center gap-1.5 text-xs sm:text-sm">
+            <Upload className="h-3.5 w-3.5" />
+            Veri Aktarma
           </TabsTrigger>
           <TabsTrigger value="ai-analysis" data-testid="tab-ai-analysis" className="flex items-center gap-1.5 text-xs sm:text-sm">
             <Brain className="h-3.5 w-3.5" />
@@ -509,6 +698,10 @@ export default function MuhasebeRaporlama() {
                         <TableHead className="text-right">Net Kar</TableHead>
                         <TableHead className="text-center">Müşteri</TableHead>
                         <TableHead className="text-center">Ort. Adisyon</TableHead>
+                        <TableHead className="text-center">Durum</TableHead>
+                        {(user?.role === 'admin' || user?.role === 'ceo') && (
+                          <TableHead className="text-center">İşlem</TableHead>
+                        )}
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -534,6 +727,48 @@ export default function MuhasebeRaporlama() {
                             <TableCell className="text-center text-xs">
                               {r.averageTicket ? formatCurrency(r.averageTicket) : '-'}
                             </TableCell>
+                            <TableCell className="text-center">
+                              {getStatusBadge(r.status)}
+                            </TableCell>
+                            {(user?.role === 'admin' || user?.role === 'ceo') && (
+                              <TableCell className="text-center">
+                                <div className="flex items-center justify-center gap-1">
+                                  {r.status !== 'approved' && (
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      onClick={() => approveMutation.mutate({ id: r.id, status: 'approved' })}
+                                      disabled={approveMutation.isPending}
+                                      data-testid={`button-approve-${r.id}`}
+                                    >
+                                      <CheckSquare className="h-3.5 w-3.5 text-green-600" />
+                                    </Button>
+                                  )}
+                                  {r.status === 'approved' && (
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      onClick={() => approveMutation.mutate({ id: r.id, status: 'draft' })}
+                                      disabled={approveMutation.isPending}
+                                      data-testid={`button-revoke-${r.id}`}
+                                    >
+                                      <Square className="h-3.5 w-3.5 text-muted-foreground" />
+                                    </Button>
+                                  )}
+                                  {r.status !== 'pending' && r.status !== 'approved' && (
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      onClick={() => approveMutation.mutate({ id: r.id, status: 'pending' })}
+                                      disabled={approveMutation.isPending}
+                                      data-testid={`button-send-approval-${r.id}`}
+                                    >
+                                      <SendIcon className="h-3.5 w-3.5 text-yellow-600" />
+                                    </Button>
+                                  )}
+                                </div>
+                              </TableCell>
+                            )}
                           </TableRow>
                         );
                       })}
@@ -583,8 +818,175 @@ export default function MuhasebeRaporlama() {
           </Card>
         </TabsContent>
 
+        <TabsContent value="compare">
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium">Dönem Karşılaştırma</CardTitle>
+              <CardDescription className="text-xs">İki dönemi yan yana karşılaştırın</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground mb-1 block">Dönem 1</label>
+                  <Select value={comparePeriod1} onValueChange={setComparePeriod1}>
+                    <SelectTrigger data-testid="select-compare-period1">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {MONTHS.map((m, i) => (
+                        <SelectItem key={`p1-${i}`} value={`${selectedYear}-${String(i + 1).padStart(2, '0')}`}>
+                          {m} {selectedYear}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground mb-1 block">Dönem 2</label>
+                  <Select value={comparePeriod2} onValueChange={setComparePeriod2}>
+                    <SelectTrigger data-testid="select-compare-period2">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {[parseInt(selectedYear) - 1, parseInt(selectedYear)].map(yr =>
+                        MONTHS.map((m, i) => (
+                          <SelectItem key={`p2-${yr}-${i}`} value={`${yr}-${String(i + 1).padStart(2, '0')}`}>
+                            {m} {yr}
+                          </SelectItem>
+                        ))
+                      )}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              {compareData ? (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  {[
+                    { label: 'Gelir', k: 'revenue' as const, color: 'text-green-600' },
+                    { label: 'Gider', k: 'expenses' as const, color: 'text-red-600' },
+                    { label: 'Net Kar', k: 'profit' as const, color: 'text-blue-600' },
+                  ].map(item => (
+                    <Card key={item.k} data-testid={`compare-card-${item.k}`}>
+                      <CardContent className="pt-4 pb-3 space-y-2">
+                        <p className="text-xs text-muted-foreground font-medium">{item.label}</p>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <p className="text-[10px] text-muted-foreground">Dönem 1</p>
+                            <p className={`text-sm font-bold ${item.color}`}>{formatCurrency(compareData.period1[item.k])}</p>
+                          </div>
+                          <div>
+                            <p className="text-[10px] text-muted-foreground">Dönem 2</p>
+                            <p className={`text-sm font-bold ${item.color}`}>{formatCurrency(compareData.period2[item.k])}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          {compareData.change[item.k] >= 0 ? (
+                            <TrendingUp className="h-3.5 w-3.5 text-green-500" />
+                          ) : (
+                            <TrendingDown className="h-3.5 w-3.5 text-red-500" />
+                          )}
+                          <span className={`text-xs font-semibold ${compareData.change[item.k] >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                            {compareData.change[item.k] >= 0 ? '+' : ''}{compareData.change[item.k].toFixed(1)}%
+                          </span>
+                          <span className="text-[10px] text-muted-foreground">değişim</span>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8 text-muted-foreground text-sm">
+                  <ArrowRightLeft className="mx-auto h-10 w-10 mb-3 opacity-50" />
+                  <p>Seçilen dönemlerde veri bulunamadı</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="import">
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium flex items-center gap-2">
+                <FileSpreadsheet className="h-4 w-4" />
+                Logo Muhasebe Veri Aktarma
+              </CardTitle>
+              <CardDescription className="text-xs">CSV dosyasından mali verileri içe aktarın</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="border-2 border-dashed rounded-md p-6 text-center">
+                <Upload className="mx-auto h-8 w-8 text-muted-foreground mb-2" />
+                <p className="text-sm text-muted-foreground mb-3">CSV dosyanızı yükleyin</p>
+                <p className="text-xs text-muted-foreground mb-3">Desteklenen format: CSV (noktalı virgül veya virgül ayraçlı)</p>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".csv,.xlsx,.xls"
+                  className="hidden"
+                  onChange={handleFileUpload}
+                  data-testid="input-file-upload"
+                />
+                <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} data-testid="button-upload-file">
+                  <Upload className="h-3.5 w-3.5 mr-1.5" />
+                  Dosya Seç
+                </Button>
+                {importFileName && (
+                  <p className="text-xs mt-2 text-muted-foreground">{importFileName}</p>
+                )}
+              </div>
+
+              {importData.length > 0 && (
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <p className="text-sm font-medium">Önizleme ({importData.length - 1} satır)</p>
+                    <Button
+                      size="sm"
+                      onClick={handleImportSubmit}
+                      disabled={importLoading}
+                      data-testid="button-import-submit"
+                    >
+                      {importLoading ? (
+                        <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+                      ) : (
+                        <Download className="h-3.5 w-3.5 mr-1.5" />
+                      )}
+                      {importLoading ? 'İçe aktarılıyor...' : 'Tümünü İçe Aktar'}
+                    </Button>
+                  </div>
+                  <div className="overflow-x-auto max-h-64">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          {importData[0]?.map((header, i) => (
+                            <TableHead key={i} className="text-xs whitespace-nowrap">{header}</TableHead>
+                          ))}
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {importData.slice(1, 11).map((row, ri) => (
+                          <TableRow key={ri} data-testid={`row-import-preview-${ri}`}>
+                            {row.map((cell, ci) => (
+                              <TableCell key={ci} className="text-xs whitespace-nowrap">{cell}</TableCell>
+                            ))}
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                    {importData.length > 11 && (
+                      <p className="text-xs text-muted-foreground text-center mt-2">
+                        ... ve {importData.length - 11} satır daha
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
         <TabsContent value="ai-analysis">
-          <AIAnalysisSection year={selectedYear} summary={summary} branches={branches} />
+          <AIAnalysisSection year={selectedYear} summary={summary} branches={branches || []} />
         </TabsContent>
       </Tabs>
     </div>
@@ -596,7 +998,7 @@ function AIAnalysisSection({ year, summary, branches }: { year: string; summary:
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
 
-  const formatCurrency = (v: number) =>
+  const fmtCurrency = (v: number) =>
     new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY', minimumFractionDigits: 0 }).format(v);
 
   const runAnalysis = async () => {
@@ -657,11 +1059,11 @@ function AIAnalysisSection({ year, summary, branches }: { year: string; summary:
               <div className="mt-3 grid grid-cols-2 gap-3 max-w-sm mx-auto text-xs">
                 <div className="p-2 rounded-md bg-muted/50">
                   <p className="font-medium">Toplam Gelir</p>
-                  <p className="text-foreground">{formatCurrency(summary.totalRevenue)}</p>
+                  <p className="text-foreground">{fmtCurrency(summary.totalRevenue)}</p>
                 </div>
                 <div className="p-2 rounded-md bg-muted/50">
                   <p className="font-medium">Net Kar</p>
-                  <p className="text-foreground">{formatCurrency(summary.totalProfit)}</p>
+                  <p className="text-foreground">{fmtCurrency(summary.totalProfit)}</p>
                 </div>
               </div>
             </div>

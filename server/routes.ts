@@ -36074,6 +36074,33 @@ Bu verilere dayanarak performans analizi ve iyileştirme önerileri oluştur.`
     }
   });
 
+
+  app.patch("/api/management-reports/:id/status", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user as any;
+      if (!user?.role || (user.role !== "admin" && user.role !== "ceo" && user.role !== "muhasebe_ik")) {
+        return res.status(403).json({ message: "Yetkisiz erişim" });
+      }
+      const reportId = parseInt(req.params.id);
+      const { status } = req.body;
+      if (!["draft", "pending", "approved"].includes(status)) {
+        return res.status(400).json({ message: "Geçersiz durum" });
+      }
+      const updateData: any = { status, updatedAt: new Date() };
+      if (status === "approved") {
+        updateData.approvedBy = user.id;
+        updateData.approvedAt = new Date();
+      }
+      const [updated] = await db.update(managementReports).set(updateData).where(eq(managementReports.id, reportId)).returning();
+      if (!updated) {
+        return res.status(404).json({ message: "Rapor bulunamadı" });
+      }
+      res.json(updated);
+    } catch (error: any) {
+      console.error("Error updating report status:", error);
+      res.status(500).json({ message: "Rapor durumu güncellenemedi" });
+    }
+  });
   app.get('/api/management-reports/summary', isAuthenticated, async (req, res) => {
     try {
       const user = req.user as any;

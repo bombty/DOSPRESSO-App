@@ -12054,8 +12054,8 @@ export type DashboardModuleVisibility = typeof dashboardModuleVisibility.$inferS
 // Management Reports (Yönetim Raporları)
 export const managementReports = pgTable("management_reports", {
   id: serial("id").primaryKey(),
-  reportType: varchar("report_type", { length: 50 }).notNull(), // monthly, quarterly, yearly
-  period: varchar("period", { length: 20 }).notNull(), // e.g., "2026-01", "2026-Q1", "2026"
+  reportType: varchar("report_type", { length: 50 }).notNull(),
+  period: varchar("period", { length: 20 }).notNull(),
   branchId: integer("branch_id").references(() => branches.id),
   revenue: numeric("revenue", { precision: 12, scale: 2 }),
   expenses: numeric("expenses", { precision: 12, scale: 2 }),
@@ -12065,6 +12065,9 @@ export const managementReports = pgTable("management_reports", {
   averageTicket: numeric("average_ticket", { precision: 8, scale: 2 }),
   notes: text("notes"),
   aiAnalysis: text("ai_analysis"),
+  status: varchar("status", { length: 20 }).default("draft"),
+  approvedBy: varchar("approved_by").references(() => users.id),
+  approvedAt: timestamp("approved_at"),
   createdBy: varchar("created_by").references(() => users.id),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),

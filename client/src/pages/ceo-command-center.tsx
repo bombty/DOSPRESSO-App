@@ -270,7 +270,11 @@ function AIAssistant() {
 function FinancialSummaryTab() {
   const year = new Date().getFullYear().toString();
   const { data: summary } = useQuery<any>({
-    queryKey: ["/api/management-reports/summary", { year }],
+    queryKey: ["/api/management-reports/summary", year],
+    queryFn: async () => {
+      const res = await apiRequest("GET", `/api/management-reports/summary?year=${year}`);
+      return res.json();
+    },
   });
   const { data: branches } = useQuery<any[]>({
     queryKey: ["/api/branches"],
