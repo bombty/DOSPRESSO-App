@@ -2901,6 +2901,9 @@ export const equipmentFaults = pgTable("equipment_faults", {
   // Service time tracking
   serviceRequestedAt: timestamp("service_requested_at"),
   serviceAlarmSent: boolean("service_alarm_sent").default(false),
+  serviceNotificationDate: timestamp("service_notification_date"),
+  serviceNotificationMethod: varchar("service_notification_method", { length: 50 }),
+  responsibleParty: varchar("responsible_party", { length: 20 }).default("branch"),
   resolvedAt: timestamp("resolved_at"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),

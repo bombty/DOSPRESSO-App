@@ -4011,6 +4011,46 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
     }
   });
 
+  app.post('/api/faults/:id/service-notification', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const id = parseInt(req.params.id);
+      const { serviceNotificationDate, serviceNotificationMethod } = req.body;
+
+      if (!serviceNotificationDate) {
+        return res.status(400).json({ message: "Bildirim tarihi gerekli" });
+      }
+
+      const existingFault = await db.select().from(equipmentFaults).where(eq(equipmentFaults.id, id)).limit(1);
+      if (!existingFault.length) {
+        return res.status(404).json({ message: "Arıza bulunamadı" });
+      }
+      if (existingFault[0].responsibleParty !== 'branch') {
+        return res.status(400).json({ message: "Bu arıza merkez sorumluluğundadır, servis bildirimi yapılamaz" });
+      }
+
+      await db.update(equipmentFaults)
+        .set({
+          serviceNotificationDate: new Date(serviceNotificationDate),
+          serviceNotificationMethod: serviceNotificationMethod || 'email',
+          currentStage: 'isleme_alindi',
+          stageHistory: sql`COALESCE(stage_history, '[]'::jsonb) || ${JSON.stringify([{
+            stage: 'isleme_alindi',
+            changedBy: user.id,
+            changedAt: new Date().toISOString(),
+            notes: `Servis bildirimi yapıldı (${serviceNotificationMethod || 'email'})`,
+          }])}::jsonb`,
+          updatedAt: new Date(),
+        })
+        .where(eq(equipmentFaults.id, id));
+
+      res.json({ success: true, message: "Servis bildirim tarihi kaydedildi" });
+    } catch (error) {
+      console.error("Service notification save error:", error);
+      res.status(500).json({ message: "Bildirim tarihi kaydedilemedi" });
+    }
+  });
+
   app.post('/api/faults/:id/resolve', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;

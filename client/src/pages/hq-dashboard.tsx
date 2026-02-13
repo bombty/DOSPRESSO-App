@@ -61,7 +61,12 @@ import {
   ChevronRight,
   Wrench,
   Settings,
+  Download,
+  Mail,
 } from "lucide-react";
+import jsPDF from "jspdf";
+import { format } from "date-fns";
+import { tr } from "date-fns/locale";
 import {
   AreaChart,
   Area,
@@ -1238,17 +1243,142 @@ function DashboardSkeleton() {
   );
 }
 
+const sanitizeTurkishPDF = (text: string): string => {
+  return text
+    .replace(/ı/g, 'i').replace(/İ/g, 'I')
+    .replace(/ö/g, 'o').replace(/Ö/g, 'O')
+    .replace(/ü/g, 'u').replace(/Ü/g, 'U')
+    .replace(/ş/g, 's').replace(/Ş/g, 'S')
+    .replace(/ç/g, 'c').replace(/Ç/g, 'C')
+    .replace(/ğ/g, 'g').replace(/Ğ/g, 'G');
+};
+
+function HQEscalatedFaults({ faults, onNavigate }: { faults: any[]; onNavigate: (path: string) => void }) {
+  const hqFaults = faults.filter(f =>
+    (f.responsibleParty === 'hq' || f.faultProtocol === 'hq_teknik') &&
+    f.currentStage !== 'kapatildi' && f.status !== 'resolved' && f.status !== 'closed'
+  );
+
+  const generateFaultPDF = (fault: any) => {
+    const doc = new jsPDF();
+    const pw = doc.internal.pageSize.getWidth();
+    doc.setFontSize(22);
+    doc.setTextColor(139, 69, 19);
+    doc.text("DOSPRESSO", pw / 2, 20, { align: "center" });
+    doc.setFontSize(14);
+    doc.setTextColor(100, 100, 100);
+    doc.text(sanitizeTurkishPDF("Ariza Raporu - Merkez Servis"), pw / 2, 28, { align: "center" });
+    doc.setDrawColor(139, 69, 19);
+    doc.setLineWidth(0.5);
+    doc.line(14, 35, pw - 14, 35);
+    let y = 45;
+    doc.setFontSize(16);
+    doc.setTextColor(0, 0, 0);
+    doc.text(sanitizeTurkishPDF(`Ariza #${fault.id}`), 14, y); y += 10;
+    doc.setFontSize(11);
+    doc.setTextColor(80, 80, 80);
+    const addField = (l: string, v: string) => {
+      doc.setFont("helvetica", "bold");
+      doc.text(sanitizeTurkishPDF(l) + ":", 14, y);
+      doc.setFont("helvetica", "normal");
+      doc.text(sanitizeTurkishPDF(v || "-"), 65, y);
+      y += 8;
+    };
+    addField("Ekipman", fault.equipmentName || "-");
+    addField("Sube", fault.branchName || `Sube #${fault.branchId}`);
+    addField("Oncelik", fault.priority === 'yuksek' ? 'Yuksek' : fault.priority === 'kritik' ? 'Kritik' : fault.priority === 'orta' ? 'Orta' : 'Dusuk');
+    addField("Durum", fault.currentStage || fault.status);
+    addField("Rapor Tarihi", fault.createdAt ? format(new Date(fault.createdAt), "dd MMM yyyy HH:mm", { locale: tr }) : "-");
+    addField("Raporlayan", fault.reportedByName || "-");
+    y += 5;
+    doc.setDrawColor(200, 200, 200);
+    doc.line(14, y, pw - 14, y); y += 10;
+    doc.setFont("helvetica", "bold");
+    doc.text(sanitizeTurkishPDF("Aciklama:"), 14, y); y += 7;
+    doc.setFont("helvetica", "normal");
+    const desc = fault.description || "Aciklama girilmedi";
+    const splitDesc = doc.splitTextToSize(sanitizeTurkishPDF(desc), pw - 28);
+    doc.text(splitDesc, 14, y);
+    y += splitDesc.length * 6 + 10;
+    doc.setFont("helvetica", "bold");
+    doc.text(sanitizeTurkishPDF("Servis Ileti Bilgisi:"), 14, y); y += 7;
+    doc.setFont("helvetica", "normal");
+    doc.text(sanitizeTurkishPDF("Bu ariza raporu teknik servise iletilmek uzere hazirlanmistir."), 14, y); y += 7;
+    doc.text(sanitizeTurkishPDF("Lutfen gerekli islemi baslatin ve sisteme bildirim tarihi girin."), 14, y);
+    doc.setFontSize(9);
+    doc.setTextColor(150, 150, 150);
+    doc.text(`DOSPRESSO - ${format(new Date(), "dd/MM/yyyy HH:mm")}`, pw / 2, doc.internal.pageSize.getHeight() - 10, { align: "center" });
+    doc.save(`DOSPRESSO_Ariza_Servis_${fault.id}_${format(new Date(), "yyyyMMdd")}.pdf`);
+  };
+
+  if (hqFaults.length === 0) return null;
+
+  return (
+    <Card data-testid="panel-hq-escalated-faults" className="border-primary/30">
+      <CardHeader className="pb-1 pt-3 px-3">
+        <CardTitle className="text-xs flex items-center gap-1.5">
+          <FileText className="w-3.5 h-3.5 text-primary" />
+          Merkeze İletilen Arızalar - PDF Hazır
+          <Badge variant="default" className="text-[10px] ml-auto">{hqFaults.length} kayıt</Badge>
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="px-3 pb-3 space-y-2">
+        {hqFaults.slice(0, 8).map((fault: any) => (
+          <div
+            key={fault.id}
+            className="flex items-center gap-2 p-2 rounded-md bg-primary/5 border border-primary/10"
+            data-testid={`card-hq-fault-${fault.id}`}
+          >
+            <div
+              className="flex-1 min-w-0 cursor-pointer hover-elevate rounded p-1"
+              onClick={() => onNavigate(`/ariza-detay/${fault.id}`)}
+            >
+              <span className="text-xs font-medium truncate block">{fault.equipmentName || `Cihaz #${fault.equipmentId}`}</span>
+              <span className="text-[11px] text-muted-foreground truncate block">{fault.description?.substring(0, 60)}</span>
+              <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                {fault.branchName && <span className="text-[10px] text-muted-foreground">{fault.branchName}</span>}
+                {fault.createdAt && (
+                  <span className="text-[10px] text-muted-foreground">
+                    {format(new Date(fault.createdAt), "dd.MM.yyyy HH:mm")}
+                  </span>
+                )}
+              </div>
+            </div>
+            <div className="flex items-center gap-1 shrink-0">
+              <Badge variant={fault.priority === 'kritik' ? 'destructive' : fault.priority === 'yuksek' ? 'default' : 'secondary'} className="text-[10px]">
+                {fault.priority === 'kritik' ? 'KRT' : fault.priority === 'yuksek' ? 'YKS' : 'ORT'}
+              </Badge>
+              <Button
+                size="icon"
+                variant="ghost"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  generateFaultPDF(fault);
+                }}
+                data-testid={`button-download-fault-pdf-${fault.id}`}
+              >
+                <Download className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+          </div>
+        ))}
+      </CardContent>
+    </Card>
+  );
+}
+
 function TeknikDashboard() {
   const [, setLocation] = useLocation();
-  const { data: faults, isLoading } = useQuery<any[]>({
+  const { data: faultsRaw, isLoading } = useQuery<any>({
     queryKey: ['/api/faults'],
   });
 
-  const openFaults = faults?.filter(f => f.status !== 'resolved' && f.status !== 'closed') || [];
+  const faults: any[] = Array.isArray(faultsRaw) ? faultsRaw : (faultsRaw?.data || []);
+  const openFaults = faults.filter(f => f.status !== 'resolved' && f.status !== 'closed' && f.currentStage !== 'kapatildi');
   const criticalFaults = openFaults.filter(f => f.priority === 'kritik');
   const highFaults = openFaults.filter(f => f.priority === 'yuksek');
-  const resolvedCount = faults?.filter(f => f.status === 'resolved' || f.status === 'closed').length || 0;
-  const resolutionRate = faults && faults.length > 0 ? Math.round((resolvedCount / faults.length) * 100) : 0;
+  const resolvedCount = faults.filter(f => f.status === 'resolved' || f.status === 'closed' || f.currentStage === 'kapatildi').length;
+  const resolutionRate = faults.length > 0 ? Math.round((resolvedCount / faults.length) * 100) : 0;
 
   const metrics: MetricCard[] = [
     {
@@ -1358,6 +1488,8 @@ function TeknikDashboard() {
           </CardContent>
         </Card>
       )}
+
+      <HQEscalatedFaults faults={faults || []} onNavigate={setLocation} />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
         <Card

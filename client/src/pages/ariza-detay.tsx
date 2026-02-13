@@ -128,6 +128,109 @@ function StageProgressBar({ currentStage }: { currentStage: string }) {
   );
 }
 
+function ServiceNotificationCard({ fault }: { fault: any }) {
+  const { toast } = useToast();
+  const [notifDate, setNotifDate] = useState('');
+  const [notifTime, setNotifTime] = useState('');
+  const [saved, setSaved] = useState(false);
+
+  const hasNotification = !!(fault.serviceNotificationDate);
+
+  const saveMutation = useMutation({
+    mutationFn: async () => {
+      if (!notifDate || !notifTime) return;
+      const dateTime = new Date(`${notifDate}T${notifTime}`);
+      await apiRequest(`/api/faults/${fault.id}/service-notification`, 'POST', {
+        serviceNotificationDate: dateTime.toISOString(),
+        serviceNotificationMethod: 'email',
+      });
+    },
+    onSuccess: () => {
+      setSaved(true);
+      toast({ title: 'Bildirim tarihi kaydedildi' });
+      queryClient.invalidateQueries({ queryKey: ['/api/faults'] });
+    },
+    onError: () => {
+      toast({ title: 'Hata', description: 'Kayıt başarısız', variant: 'destructive' });
+    },
+  });
+
+  const openMailClient = () => {
+    const subject = encodeURIComponent(`DOSPRESSO Arıza Bildirimi - ${fault.equipmentName} #${fault.id}`);
+    const body = encodeURIComponent(
+      `DOSPRESSO ARIZA RAPORU - #${fault.id}\n\nEkipman: ${fault.equipmentName}\nÖncelik: ${fault.priority}\nAçıklama: ${fault.description}\n\n---\nDOSPRESSO Franchise Yönetim Sistemi`
+    );
+    window.open(`mailto:?subject=${subject}&body=${body}`, '_self');
+  };
+
+  if (fault.currentStage === 'kapatildi') return null;
+  if (fault.responsibleParty !== 'branch') return null;
+
+  return (
+    <Card className="border-amber-500/30 bg-amber-50/50 dark:bg-amber-950/20" data-testid="card-service-notification">
+      <CardContent className="pt-4 space-y-3">
+        <div className="flex items-center gap-2">
+          <Clock className="h-4 w-4 text-amber-600" />
+          <span className="text-sm font-medium">Servis Bildirim Takibi</span>
+        </div>
+
+        {hasNotification || saved ? (
+          <div className="flex items-center gap-2 text-green-600 text-sm">
+            <CheckCircle2 className="h-4 w-4" />
+            <span>
+              Servis bildirimi yapıldı
+              {fault.serviceNotificationDate && (
+                <> - {format(new Date(fault.serviceNotificationDate), "dd.MM.yyyy HH:mm", { locale: tr })}</>
+              )}
+              {fault.serviceNotificationMethod && (
+                <> ({fault.serviceNotificationMethod})</>
+              )}
+            </span>
+          </div>
+        ) : (
+          <>
+            <div className="flex gap-2 flex-wrap">
+              <Button size="sm" variant="outline" onClick={openMailClient} data-testid="button-mail-service">
+                <Mail className="h-3.5 w-3.5 mr-1.5" />
+                Teknik Servise Mail
+              </Button>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="text-xs text-muted-foreground">Bildirim Tarihi</label>
+                <Input
+                  type="date"
+                  value={notifDate}
+                  onChange={(e) => setNotifDate(e.target.value)}
+                  data-testid="input-service-notif-date"
+                />
+              </div>
+              <div>
+                <label className="text-xs text-muted-foreground">Bildirim Saati</label>
+                <Input
+                  type="time"
+                  value={notifTime}
+                  onChange={(e) => setNotifTime(e.target.value)}
+                  data-testid="input-service-notif-time"
+                />
+              </div>
+            </div>
+            <Button
+              size="sm"
+              onClick={() => saveMutation.mutate()}
+              disabled={!notifDate || !notifTime || saveMutation.isPending}
+              className="w-full"
+              data-testid="button-save-service-notif"
+            >
+              {saveMutation.isPending ? 'Kaydediliyor...' : 'Bildirim Tarihini Kaydet ve İlk Adımı Başlat'}
+            </Button>
+          </>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 function ServiceResponsibilityBadge({ equipment }: { equipment: any }) {
   if (!equipment) return null;
   const isHQ = equipment.maintenanceResponsible === "hq" || equipment.faultProtocol === "hq_teknik";
@@ -896,6 +999,8 @@ export default function FaultDetail() {
           </p>
         </div>
       </div>
+
+      <ServiceNotificationCard fault={fault} />
 
       <Tabs defaultValue="details" className="w-full">
         <TabsList className="grid w-full grid-cols-5">
