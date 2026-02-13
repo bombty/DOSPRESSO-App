@@ -18,10 +18,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   ArrowLeft, AlertTriangle, Clock, CheckCircle2, DollarSign, User, Download, Send,
   Copy, MessageSquare, History, Wrench, Building2, Phone, Mail, Shield, Settings,
-  ChevronRight, Loader2, Image as ImageIcon
+  ChevronRight, Loader2, Image as ImageIcon, Truck
 } from "lucide-react";
 import jsPDF from "jspdf";
 import { format, differenceInHours } from "date-fns";
@@ -69,6 +70,26 @@ const PRIORITY_COLORS: Record<string, string> = {
 };
 
 const STAGE_ORDER = ["bekliyor", "isleme_alindi", "devam_ediyor", "servis_cagrildi", "kargoya_verildi", "kapatildi"];
+
+const SERVICE_STATUS_LABELS: Record<string, string> = {
+  servis_bekleniyor: "Servis Bekleniyor",
+  servise_gonderilecek: "Servise Gönderilecek",
+  servise_gonderildi: "Servise Gönderildi",
+  yedek_parca_bekleniyor: "Yedek Parça Bekleniyor",
+  servis_tamamlandi: "Servis Tamamlandı",
+  teslim_alindi: "Teslim Alındı",
+  kapandi: "Kapandı",
+};
+
+const SERVICE_STATUS_ORDER = [
+  "servis_bekleniyor",
+  "servise_gonderilecek",
+  "servise_gonderildi",
+  "yedek_parca_bekleniyor",
+  "servis_tamamlandi",
+  "teslim_alindi",
+  "kapandi",
+];
 
 interface FaultDetailData {
   fault: EquipmentFault & {
@@ -121,6 +142,479 @@ function ServiceResponsibilityBadge({ equipment }: { equipment: any }) {
           {isHQ ? "HQ Teknik ekibi sorumlu" : "Şube yöneticisi sorumlu"}
         </p>
       </div>
+    </div>
+  );
+}
+
+function ServiceTrackingTab({ fault, equipment, branchName }: { fault: any; equipment: any; branchName: string }) {
+  const { toast } = useToast();
+  const faultId = fault.id;
+  const [statusDialogOpen, setStatusDialogOpen] = useState(false);
+  const [statusValue, setStatusValue] = useState("");
+  const [statusComment, setStatusComment] = useState("");
+  const [deliveryForm, setDeliveryForm] = useState({
+    deviceConditionOnReturn: "",
+    additionalDamages: "",
+    reportedFaultResolved: false,
+    deviceTested: false,
+    testedByName: "",
+    testedDate: "",
+    serviceCost: "",
+    isWarrantyCovered: false,
+    warrantyNotes: "",
+    receivedByName: "",
+    receivedDate: "",
+    notes: "",
+  });
+
+  const { data: trackingData = [], isLoading: trackingLoading } = useQuery<any[]>({
+    queryKey: ["/api/fault-service-tracking", faultId],
+    queryFn: async () => {
+      const res = await fetch(`/api/fault-service-tracking/${faultId}`);
+      if (!res.ok) throw new Error("Failed");
+      return res.json();
+    },
+    enabled: !!faultId,
+  });
+
+  const tracking = trackingData.length > 0 ? trackingData[0] : null;
+
+  const { data: statusUpdates = [], isLoading: updatesLoading } = useQuery<any[]>({
+    queryKey: ["/api/fault-service-tracking", tracking?.id, "updates"],
+    queryFn: async () => {
+      const res = await fetch(`/api/fault-service-tracking/${tracking.id}/updates`);
+      if (!res.ok) throw new Error("Failed");
+      return res.json();
+    },
+    enabled: !!tracking?.id,
+  });
+
+  const createTrackingMutation = useMutation({
+    mutationFn: async () => {
+      return apiRequest("POST", "/api/fault-service-tracking", {
+        faultId,
+        equipmentId: fault.equipmentId,
+        branchId: fault.branchId,
+        serviceHandledBy: equipment?.maintenanceResponsible === "hq" ? "hq" : "branch",
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/fault-service-tracking", faultId] });
+      toast({ title: "Başarılı", description: "Servis takibi başlatıldı" });
+    },
+    onError: () => {
+      toast({ title: "Hata", description: "Servis takibi başlatılamadı", variant: "destructive" });
+    },
+  });
+
+  const updateStatusMutation = useMutation({
+    mutationFn: async () => {
+      return apiRequest("PATCH", `/api/fault-service-tracking/${tracking.id}/status`, {
+        toStatus: statusValue,
+        comment: statusComment,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/fault-service-tracking", faultId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/fault-service-tracking", tracking?.id, "updates"] });
+      toast({ title: "Başarılı", description: "Durum güncellendi" });
+      setStatusDialogOpen(false);
+      setStatusValue("");
+      setStatusComment("");
+    },
+    onError: () => {
+      toast({ title: "Hata", description: "Durum güncellenemedi", variant: "destructive" });
+    },
+  });
+
+  const deliveryFormMutation = useMutation({
+    mutationFn: async () => {
+      return apiRequest("PATCH", `/api/fault-service-tracking/${tracking.id}/delivery-form`, {
+        deliveryForm: {
+          ...deliveryForm,
+          serviceCost: deliveryForm.serviceCost ? parseFloat(deliveryForm.serviceCost) : undefined,
+        },
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/fault-service-tracking", faultId] });
+      toast({ title: "Başarılı", description: "Teslim-Tespit formu kaydedildi" });
+    },
+    onError: () => {
+      toast({ title: "Hata", description: "Form kaydedilemedi", variant: "destructive" });
+    },
+  });
+
+  const handleMailOlustur = () => {
+    const serviceEmail = equipment?.serviceContactEmail || "";
+    if (!serviceEmail) {
+      toast({ title: "Hata", description: "Servis e-posta adresi bulunamadı", variant: "destructive" });
+      return;
+    }
+    const priorityLabel = PRIORITY_LABELS[fault.priority || "normal"] || "Normal";
+    const dateStr = fault.createdAt ? format(new Date(fault.createdAt), "dd MMM yyyy HH:mm", { locale: tr }) : "-";
+    const subject = encodeURIComponent(`DOSPRESSO Arıza Raporu - ${fault.equipmentName} - Arıza #${fault.id}`);
+    const body = encodeURIComponent(`DOSPRESSO ARIZA RAPORU\n\nArıza No: #${fault.id}\nŞube: ${branchName}\nEkipman: ${fault.equipmentName}\nSeri No: ${equipment?.serialNumber || '-'}\nModel: ${equipment?.modelNo || '-'}\n\nArıza Açıklaması:\n${fault.description}\n\nÖncelik: ${priorityLabel}\nBildiren: ${fault.reporterName}\nTarih: ${dateStr}\n\nFotoğraf: ${fault.photoUrl || 'Eklenmedi'}`);
+    window.location.href = `mailto:${serviceEmail}?subject=${subject}&body=${body}`;
+  };
+
+  if (trackingLoading) {
+    return (
+      <div className="space-y-3">
+        <Skeleton className="h-32" />
+        <Skeleton className="h-48" />
+      </div>
+    );
+  }
+
+  if (!tracking) {
+    return (
+      <Card>
+        <CardContent className="py-8 text-center space-y-3">
+          <Truck className="w-10 h-10 mx-auto text-muted-foreground" />
+          <p className="text-sm text-muted-foreground">Bu arıza için henüz servis takibi başlatılmamış.</p>
+          <Button
+            onClick={() => createTrackingMutation.mutate()}
+            disabled={createTrackingMutation.isPending}
+            data-testid="button-start-service-tracking"
+          >
+            {createTrackingMutation.isPending ? (
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+            ) : (
+              <Truck className="w-4 h-4 mr-2" />
+            )}
+            Servis Takibi Başlat
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const currentStatus = tracking.currentStatus || "servis_bekleniyor";
+  const currentIdx = SERVICE_STATUS_ORDER.indexOf(currentStatus);
+  const showDeliveryForm = currentStatus === "servis_tamamlandi" || currentStatus === "teslim_alindi";
+
+  return (
+    <div className="space-y-3">
+      <Card>
+        <CardHeader className="pb-2">
+          <div className="flex items-center justify-between gap-2 flex-wrap">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Truck className="w-4 h-4" />
+              Servis Durumu
+            </CardTitle>
+            <Button
+              size="sm"
+              onClick={() => {
+                setStatusValue(currentStatus);
+                setStatusDialogOpen(true);
+              }}
+              data-testid="button-update-service-status"
+            >
+              Durum Güncelle
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center gap-1 overflow-x-auto pb-1">
+            {SERVICE_STATUS_ORDER.map((status, idx) => {
+              const isActive = idx <= currentIdx;
+              const isCurrent = status === currentStatus;
+              return (
+                <div key={status} className="flex items-center gap-1 min-w-0">
+                  <div
+                    className={`flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium whitespace-nowrap ${
+                      isCurrent
+                        ? "bg-primary text-primary-foreground"
+                        : isActive
+                        ? "bg-primary/20 text-primary"
+                        : "bg-muted text-muted-foreground"
+                    }`}
+                    data-testid={`service-status-step-${status}`}
+                  >
+                    {idx + 1}. {SERVICE_STATUS_LABELS[status]}
+                  </div>
+                  {idx < SERVICE_STATUS_ORDER.length - 1 && (
+                    <ChevronRight className={`h-3 w-3 flex-shrink-0 ${isActive ? "text-primary" : "text-muted-foreground"}`} />
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </CardContent>
+      </Card>
+
+      {(equipment?.serviceContactEmail || equipment?.serviceContactPhone || equipment?.serviceProvider) && (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base">Servis İletişim Bilgileri</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {equipment.serviceProvider && (
+              <div>
+                <p className="text-xs text-muted-foreground">Servis Firması</p>
+                <p className="text-sm font-medium" data-testid="text-service-provider">{equipment.serviceProvider}</p>
+              </div>
+            )}
+            <div className="grid grid-cols-2 gap-3">
+              {equipment.serviceContactPhone && (
+                <div className="flex items-center gap-2">
+                  <Phone className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                  <p className="text-sm" data-testid="text-service-phone">{equipment.serviceContactPhone}</p>
+                </div>
+              )}
+              {equipment.serviceContactEmail && (
+                <div className="flex items-center gap-2">
+                  <Mail className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                  <p className="text-sm truncate" data-testid="text-service-email">{equipment.serviceContactEmail}</p>
+                </div>
+              )}
+            </div>
+            {tracking.serviceContactDate && (
+              <div>
+                <p className="text-xs text-muted-foreground">Servise İrtibat Tarihi</p>
+                <p className="text-sm font-medium" data-testid="text-service-contact-date">
+                  {format(new Date(tracking.serviceContactDate), "dd MMM yyyy HH:mm", { locale: tr })}
+                </p>
+              </div>
+            )}
+            {equipment.serviceContactEmail && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleMailOlustur}
+                data-testid="button-mail-olustur"
+              >
+                <Mail className="w-4 h-4 mr-2" />
+                Mail Oluştur
+              </Button>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base flex items-center gap-2">
+            <History className="w-4 h-4" />
+            Durum Geçmişi
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {updatesLoading ? (
+            <Skeleton className="h-24" />
+          ) : statusUpdates.length === 0 ? (
+            <p className="text-center text-sm text-muted-foreground py-6">Henüz durum değişikliği yok</p>
+          ) : (
+            <div className="relative space-y-0">
+              <div className="absolute left-[11px] top-2 bottom-2 w-0.5 bg-border" />
+              {statusUpdates.map((u: any, idx: number) => (
+                <div key={u.id || idx} className="relative pl-8 pb-4" data-testid={`service-history-item-${idx}`}>
+                  <div className={`absolute left-1 top-1.5 w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                    idx === 0 ? "bg-primary border-primary" : "bg-background border-border"
+                  }`}>
+                    <div className={`w-2 h-2 rounded-full ${idx === 0 ? "bg-primary-foreground" : "bg-muted-foreground"}`} />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {u.fromStatus && (
+                        <>
+                          <Badge variant="outline" className="text-xs">{SERVICE_STATUS_LABELS[u.fromStatus] || u.fromStatus}</Badge>
+                          <ChevronRight className="w-3 h-3 text-muted-foreground" />
+                        </>
+                      )}
+                      <Badge className="text-xs bg-primary/20 text-primary">
+                        {SERVICE_STATUS_LABELS[u.toStatus] || u.toStatus}
+                      </Badge>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {u.changedByName && <span className="font-medium">{u.changedByName} · </span>}
+                      {u.createdAt ? format(new Date(u.createdAt), "dd MMM yyyy HH:mm", { locale: tr }) : ""}
+                    </p>
+                    {u.comment && <p className="text-xs mt-0.5 bg-muted p-2 rounded-md">{u.comment}</p>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {showDeliveryForm && (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4" />
+              Teslim-Tespit Formu
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">Cihaz Dönüş Durumu</label>
+              <Textarea
+                value={deliveryForm.deviceConditionOnReturn}
+                onChange={(e) => setDeliveryForm((f) => ({ ...f, deviceConditionOnReturn: e.target.value }))}
+                data-testid="input-device-condition"
+              />
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">Ek Hasar/Sorun</label>
+              <Textarea
+                value={deliveryForm.additionalDamages}
+                onChange={(e) => setDeliveryForm((f) => ({ ...f, additionalDamages: e.target.value }))}
+                data-testid="input-additional-damages"
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="reportedFaultResolved"
+                checked={deliveryForm.reportedFaultResolved}
+                onCheckedChange={(v) => setDeliveryForm((f) => ({ ...f, reportedFaultResolved: !!v }))}
+                data-testid="checkbox-fault-resolved"
+              />
+              <label htmlFor="reportedFaultResolved" className="text-sm">Bildirilen arıza giderildi mi?</label>
+            </div>
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="deviceTested"
+                checked={deliveryForm.deviceTested}
+                onCheckedChange={(v) => setDeliveryForm((f) => ({ ...f, deviceTested: !!v }))}
+                data-testid="checkbox-device-tested"
+              />
+              <label htmlFor="deviceTested" className="text-sm">Cihaz test edildi mi?</label>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Test Eden Kişi</label>
+                <Input
+                  value={deliveryForm.testedByName}
+                  onChange={(e) => setDeliveryForm((f) => ({ ...f, testedByName: e.target.value }))}
+                  data-testid="input-tested-by"
+                />
+              </div>
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Test Tarihi</label>
+                <Input
+                  type="date"
+                  value={deliveryForm.testedDate}
+                  onChange={(e) => setDeliveryForm((f) => ({ ...f, testedDate: e.target.value }))}
+                  data-testid="input-tested-date"
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Servis Ücreti (₺)</label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={deliveryForm.serviceCost}
+                  onChange={(e) => setDeliveryForm((f) => ({ ...f, serviceCost: e.target.value }))}
+                  data-testid="input-service-cost"
+                />
+              </div>
+              <div className="flex items-center gap-2 pt-5">
+                <Checkbox
+                  id="isWarrantyCovered"
+                  checked={deliveryForm.isWarrantyCovered}
+                  onCheckedChange={(v) => setDeliveryForm((f) => ({ ...f, isWarrantyCovered: !!v }))}
+                  data-testid="checkbox-warranty"
+                />
+                <label htmlFor="isWarrantyCovered" className="text-sm">Garanti Kapsamında mı?</label>
+              </div>
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">Garanti Notları</label>
+              <Textarea
+                value={deliveryForm.warrantyNotes}
+                onChange={(e) => setDeliveryForm((f) => ({ ...f, warrantyNotes: e.target.value }))}
+                data-testid="input-warranty-notes"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Teslim Alan</label>
+                <Input
+                  value={deliveryForm.receivedByName}
+                  onChange={(e) => setDeliveryForm((f) => ({ ...f, receivedByName: e.target.value }))}
+                  data-testid="input-received-by"
+                />
+              </div>
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Teslim Tarihi</label>
+                <Input
+                  type="date"
+                  value={deliveryForm.receivedDate}
+                  onChange={(e) => setDeliveryForm((f) => ({ ...f, receivedDate: e.target.value }))}
+                  data-testid="input-received-date"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">Ek Notlar</label>
+              <Textarea
+                value={deliveryForm.notes}
+                onChange={(e) => setDeliveryForm((f) => ({ ...f, notes: e.target.value }))}
+                data-testid="input-delivery-notes"
+              />
+            </div>
+            <Button
+              onClick={() => deliveryFormMutation.mutate()}
+              disabled={deliveryFormMutation.isPending}
+              data-testid="button-submit-delivery-form"
+            >
+              {deliveryFormMutation.isPending ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <CheckCircle2 className="w-4 h-4 mr-2" />
+              )}
+              Formu Kaydet
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
+      <Dialog open={statusDialogOpen} onOpenChange={setStatusDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Servis Durumu Güncelle</DialogTitle>
+            <DialogDescription>Yeni durumu seçin ve yorum ekleyin</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">Yeni Durum</label>
+              <Select value={statusValue} onValueChange={setStatusValue}>
+                <SelectTrigger data-testid="select-service-status">
+                  <SelectValue placeholder="Durum seçin..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.entries(SERVICE_STATUS_LABELS).map(([value, label]) => (
+                    <SelectItem key={value} value={value}>{label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">Yorum</label>
+              <Textarea
+                value={statusComment}
+                onChange={(e) => setStatusComment(e.target.value)}
+                placeholder="Durum değişikliği hakkında not ekleyin..."
+                data-testid="input-status-comment"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              onClick={() => updateStatusMutation.mutate()}
+              disabled={updateStatusMutation.isPending || !statusValue}
+              data-testid="button-submit-status-update"
+            >
+              {updateStatusMutation.isPending ? "Güncelleniyor..." : "Güncelle"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -404,7 +898,7 @@ export default function FaultDetail() {
       </div>
 
       <Tabs defaultValue="details" className="w-full">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="details" data-testid="tab-details">
             <Settings className="w-3.5 h-3.5 mr-1 hidden sm:inline" />
             Detaylar
@@ -423,6 +917,10 @@ export default function FaultDetail() {
           <TabsTrigger value="equipment" data-testid="tab-equipment">
             <Wrench className="w-3.5 h-3.5 mr-1 hidden sm:inline" />
             Cihaz
+          </TabsTrigger>
+          <TabsTrigger value="service-tracking" data-testid="tab-service-tracking">
+            <Truck className="w-3.5 h-3.5 mr-1 hidden sm:inline" />
+            Servis Takip
           </TabsTrigger>
         </TabsList>
 
@@ -701,6 +1199,14 @@ export default function FaultDetail() {
               </CardContent>
             </Card>
           )}
+        </TabsContent>
+
+        <TabsContent value="service-tracking" className="mt-3">
+          <ServiceTrackingTab
+            fault={fault}
+            equipment={equipmentInfo}
+            branchName={(fault as any).branchName || `Şube #${fault.branchId}`}
+          />
         </TabsContent>
       </Tabs>
 

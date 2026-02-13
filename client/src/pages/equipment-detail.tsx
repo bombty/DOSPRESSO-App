@@ -24,7 +24,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Checkbox } from "@/components/ui/checkbox";
-import { ArrowLeft, Settings, Calendar, Wrench, AlertTriangle, MessageSquare, DollarSign, User, QrCode, ClipboardList, Edit, FileText, Sparkles, Send, ChevronDown } from "lucide-react";
+import { ArrowLeft, Settings, Calendar, Wrench, AlertTriangle, MessageSquare, DollarSign, User, QrCode, ClipboardList, Edit, FileText, Sparkles, Send, ChevronDown, Clock, Shield } from "lucide-react";
 import { QRCodeSVG } from 'qrcode.react';
 import { format } from "date-fns";
 import { tr } from "date-fns/locale";
@@ -74,6 +74,110 @@ interface ProactiveMaintenanceLog {
   performedById: string;
   notes: string | null;
   createdAt: string;
+}
+
+interface TimelineEvent {
+  type: string;
+  id: number;
+  date: string;
+  title: string;
+  description?: string;
+  status?: string;
+  data: any;
+}
+
+const TIMELINE_TYPE_LABELS: Record<string, string> = {
+  fault: "Arıza",
+  maintenance: "Bakım",
+  service_request: "Servis Talebi",
+  calibration: "Kalibrasyon",
+  service_tracking: "Servis Takip",
+};
+
+const TIMELINE_TYPE_COLORS: Record<string, string> = {
+  fault: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200",
+  maintenance: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
+  service_request: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
+  calibration: "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200",
+  service_tracking: "bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200",
+};
+
+function EquipmentTimeline({ equipmentId }: { equipmentId: number }) {
+  const { data: timeline, isLoading } = useQuery<TimelineEvent[]>({
+    queryKey: ['/api/equipment', equipmentId, 'timeline'],
+    queryFn: async () => {
+      const res = await fetch(`/api/equipment/${equipmentId}/timeline`);
+      if (!res.ok) throw new Error("Failed");
+      return res.json();
+    },
+    enabled: !!equipmentId && equipmentId > 0,
+  });
+
+  if (isLoading) {
+    return (
+      <Card>
+        <CardContent className="py-6">
+          <div className="space-y-3">
+            {[1, 2, 3].map(i => <Skeleton key={i} className="h-16 w-full" />)}
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (!timeline || timeline.length === 0) {
+    return (
+      <Card>
+        <CardContent className="py-8">
+          <p className="text-center text-sm text-muted-foreground" data-testid="text-timeline-empty">
+            Bu cihaz için henüz bir geçmiş kaydı bulunmuyor.
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <CardTitle className="text-base flex items-center gap-2">
+          <Clock className="w-4 h-4" />
+          Cihaz Zaman Çizelgesi ({timeline.length} kayıt)
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="relative space-y-0">
+          <div className="absolute left-[11px] top-2 bottom-2 w-0.5 bg-border" />
+          {timeline.map((event, idx) => (
+            <div key={`${event.type}-${event.id}`} className="relative pl-8 pb-4" data-testid={`timeline-event-${idx}`}>
+              <div className={`absolute left-1 top-1.5 w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                idx === 0 ? "bg-primary border-primary" : "bg-background border-border"
+              }`}>
+                <div className={`w-2 h-2 rounded-full ${idx === 0 ? "bg-primary-foreground" : "bg-muted-foreground"}`} />
+              </div>
+              <div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <Badge className={TIMELINE_TYPE_COLORS[event.type] || "bg-secondary"}>
+                    {TIMELINE_TYPE_LABELS[event.type] || event.type}
+                  </Badge>
+                  {event.status && (
+                    <span className="text-xs text-muted-foreground">{event.status}</span>
+                  )}
+                </div>
+                <p className="text-sm font-medium mt-1" data-testid={`timeline-title-${idx}`}>{event.title}</p>
+                {event.description && (
+                  <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{event.description}</p>
+                )}
+                <p className="text-xs text-muted-foreground mt-1">
+                  {event.date ? format(new Date(event.date), "dd MMM yyyy HH:mm", { locale: tr }) : "-"}
+                </p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
+  );
 }
 
 const commentFormSchema = insertEquipmentCommentSchema.pick({ comment: true });
@@ -791,6 +895,10 @@ export default function EquipmentDetail() {
           <TabsTrigger value="guide" data-testid="tab-guide" className="text-xs px-2 py-1.5">
             <FileText className="h-3 w-3 mr-1" />
             Kılavuz & Bakım
+          </TabsTrigger>
+          <TabsTrigger value="timeline" data-testid="tab-timeline" className="text-xs px-2 py-1.5">
+            <Clock className="h-3 w-3 mr-1" />
+            Zaman Çizelgesi
           </TabsTrigger>
         </TabsList>
 
@@ -1526,6 +1634,10 @@ export default function EquipmentDetail() {
               </CardContent>
             </Card>
           )}
+        </TabsContent>
+
+        <TabsContent value="timeline" className="space-y-4">
+          <EquipmentTimeline equipmentId={parseInt(id || "0")} />
         </TabsContent>
       </Tabs>
 

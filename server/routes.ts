@@ -307,6 +307,13 @@ import {
   insertFranchiseCollaboratorSchema,
   franchiseProjectComments,
   insertFranchiseProjectCommentSchema,
+  equipmentCatalog,
+  insertEquipmentCatalogSchema,
+  faultServiceTracking,
+  insertFaultServiceTrackingSchema,
+  faultServiceStatusUpdates,
+  insertFaultServiceStatusUpdateSchema,
+  FAULT_SERVICE_STATUS,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, asc, sql, and, or, isNull, isNotNull, inArray, lte, gte, ne, count, sum, avg } from "drizzle-orm";
@@ -4812,6 +4819,412 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
     } catch (error: Error | unknown) {
       console.error("Error adding timeline entry:", error);
       res.status(500).json({ message: "Failed to add timeline entry" });
+    }
+  });
+
+  // ========================================
+  // EQUIPMENT CATALOG CRUD APIs
+  // ========================================
+
+  app.get('/api/equipment-catalog', isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user!;
+      const search = (req.query.search as string || '').trim().toLowerCase();
+      const typeFilter = req.query.equipmentType as string | undefined;
+
+      let conditions = [eq(equipmentCatalog.isActive, true)];
+      if (typeFilter) {
+        conditions.push(eq(equipmentCatalog.equipmentType, typeFilter));
+      }
+
+      let query = db.select().from(equipmentCatalog).where(and(...conditions)).orderBy(desc(equipmentCatalog.createdAt));
+      const results = await query;
+
+      if (search) {
+        const filtered = results.filter(item =>
+          item.name.toLowerCase().includes(search) ||
+          item.equipmentType.toLowerCase().includes(search) ||
+          (item.brand && item.brand.toLowerCase().includes(search)) ||
+          (item.model && item.model.toLowerCase().includes(search))
+        );
+        return res.json(filtered);
+      }
+
+      res.json(results);
+    } catch (error) {
+      console.error("Error fetching equipment catalog:", error);
+      res.status(500).json({ message: "Ekipman kataloğu yüklenirken hata oluştu" });
+    }
+  });
+
+  app.get('/api/equipment-catalog/:id', isAuthenticated, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ message: "Geçersiz ID" });
+
+      const [item] = await db.select().from(equipmentCatalog).where(eq(equipmentCatalog.id, id));
+      if (!item) return res.status(404).json({ message: "Katalog öğesi bulunamadı" });
+
+      res.json(item);
+    } catch (error) {
+      console.error("Error fetching catalog item:", error);
+      res.status(500).json({ message: "Katalog öğesi yüklenirken hata oluştu" });
+    }
+  });
+
+  app.post('/api/equipment-catalog', isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user!;
+      if (!isHQRole(user.role as UserRoleType)) {
+        return res.status(403).json({ message: "Bu işlem için yetkiniz yok" });
+      }
+
+      const parsed = insertEquipmentCatalogSchema.parse({
+        ...req.body,
+        createdById: user.id,
+      });
+
+      const [created] = await db.insert(equipmentCatalog).values(parsed).returning();
+      res.status(201).json(created);
+    } catch (error: any) {
+      console.error("Error creating catalog item:", error);
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ message: "Geçersiz veri", errors: error.errors });
+      }
+      res.status(500).json({ message: "Katalog öğesi oluşturulurken hata oluştu" });
+    }
+  });
+
+  app.put('/api/equipment-catalog/:id', isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user!;
+      if (!isHQRole(user.role as UserRoleType)) {
+        return res.status(403).json({ message: "Bu işlem için yetkiniz yok" });
+      }
+
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ message: "Geçersiz ID" });
+
+      const [existing] = await db.select().from(equipmentCatalog).where(eq(equipmentCatalog.id, id));
+      if (!existing) return res.status(404).json({ message: "Katalog öğesi bulunamadı" });
+
+      const [updated] = await db.update(equipmentCatalog)
+        .set({ ...req.body, updatedAt: new Date() })
+        .where(eq(equipmentCatalog.id, id))
+        .returning();
+
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating catalog item:", error);
+      res.status(500).json({ message: "Katalog öğesi güncellenirken hata oluştu" });
+    }
+  });
+
+  app.delete('/api/equipment-catalog/:id', isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user!;
+      if (!isHQRole(user.role as UserRoleType)) {
+        return res.status(403).json({ message: "Bu işlem için yetkiniz yok" });
+      }
+
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ message: "Geçersiz ID" });
+
+      const [updated] = await db.update(equipmentCatalog)
+        .set({ isActive: false, updatedAt: new Date() })
+        .where(eq(equipmentCatalog.id, id))
+        .returning();
+
+      if (!updated) return res.status(404).json({ message: "Katalog öğesi bulunamadı" });
+
+      res.json({ message: "Katalog öğesi devre dışı bırakıldı", item: updated });
+    } catch (error) {
+      console.error("Error deleting catalog item:", error);
+      res.status(500).json({ message: "Katalog öğesi silinirken hata oluştu" });
+    }
+  });
+
+  app.post('/api/equipment-catalog/:id/assign-to-branch', isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user!;
+      if (!isHQRole(user.role as UserRoleType)) {
+        return res.status(403).json({ message: "Bu işlem için yetkiniz yok" });
+      }
+
+      const catalogId = parseInt(req.params.id);
+      if (isNaN(catalogId)) return res.status(400).json({ message: "Geçersiz katalog ID" });
+
+      const { branchId, serialNumber, notes } = req.body;
+      if (!branchId) return res.status(400).json({ message: "Şube ID zorunludur" });
+
+      const [catalogItem] = await db.select().from(equipmentCatalog).where(eq(equipmentCatalog.id, catalogId));
+      if (!catalogItem) return res.status(404).json({ message: "Katalog öğesi bulunamadı" });
+
+      const [branch] = await db.select().from(branches).where(eq(branches.id, parseInt(branchId)));
+      if (!branch) return res.status(404).json({ message: "Şube bulunamadı" });
+
+      const [created] = await db.insert(equipment).values({
+        branchId: parseInt(branchId),
+        catalogId: catalogId,
+        equipmentType: catalogItem.equipmentType,
+        modelNo: catalogItem.model || undefined,
+        serialNumber: serialNumber || undefined,
+        imageUrl: catalogItem.imageUrl || undefined,
+        maintenanceIntervalDays: catalogItem.maintenanceIntervalDays || 30,
+        serviceContactName: catalogItem.defaultServiceProviderName || undefined,
+        serviceContactPhone: catalogItem.defaultServiceProviderPhone || undefined,
+        serviceContactEmail: catalogItem.defaultServiceProviderEmail || undefined,
+        serviceContactAddress: catalogItem.defaultServiceProviderAddress || undefined,
+        notes: notes || undefined,
+      }).returning();
+
+      res.status(201).json(created);
+    } catch (error) {
+      console.error("Error assigning catalog item to branch:", error);
+      res.status(500).json({ message: "Ekipman şubeye atanırken hata oluştu" });
+    }
+  });
+
+  // ========================================
+  // FAULT SERVICE TRACKING APIs
+  // ========================================
+
+  app.get('/api/fault-service-tracking/:faultId', isAuthenticated, async (req, res) => {
+    try {
+      const faultId = parseInt(req.params.faultId);
+      if (isNaN(faultId)) return res.status(400).json({ message: "Geçersiz arıza ID" });
+
+      const results = await db.select().from(faultServiceTracking)
+        .where(eq(faultServiceTracking.faultId, faultId))
+        .orderBy(desc(faultServiceTracking.createdAt));
+
+      res.json(results);
+    } catch (error) {
+      console.error("Error fetching fault service tracking:", error);
+      res.status(500).json({ message: "Servis takibi yüklenirken hata oluştu" });
+    }
+  });
+
+  app.post('/api/fault-service-tracking', isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user!;
+
+      const parsed = insertFaultServiceTrackingSchema.parse({
+        ...req.body,
+        createdById: user.id,
+      });
+
+      const [created] = await db.insert(faultServiceTracking).values(parsed).returning();
+
+      await db.insert(faultServiceStatusUpdates).values({
+        trackingId: created.id,
+        fromStatus: null,
+        toStatus: created.currentStatus,
+        comment: "Servis takibi oluşturuldu",
+        updatedById: user.id,
+      });
+
+      res.status(201).json(created);
+    } catch (error: any) {
+      console.error("Error creating fault service tracking:", error);
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ message: "Geçersiz veri", errors: error.errors });
+      }
+      res.status(500).json({ message: "Servis takibi oluşturulurken hata oluştu" });
+    }
+  });
+
+  app.patch('/api/fault-service-tracking/:id/status', isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user!;
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ message: "Geçersiz ID" });
+
+      const { status, comment, attachmentUrl } = req.body;
+      if (!status) return res.status(400).json({ message: "Yeni durum zorunludur" });
+
+      const [existing] = await db.select().from(faultServiceTracking)
+        .where(eq(faultServiceTracking.id, id));
+      if (!existing) return res.status(404).json({ message: "Servis takibi bulunamadı" });
+
+      const [updated] = await db.update(faultServiceTracking)
+        .set({ currentStatus: status, updatedAt: new Date() })
+        .where(eq(faultServiceTracking.id, id))
+        .returning();
+
+      await db.insert(faultServiceStatusUpdates).values({
+        trackingId: id,
+        fromStatus: existing.currentStatus,
+        toStatus: status,
+        comment: comment || null,
+        attachmentUrl: attachmentUrl || null,
+        updatedById: user.id,
+      });
+
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating fault service tracking status:", error);
+      res.status(500).json({ message: "Servis durumu güncellenirken hata oluştu" });
+    }
+  });
+
+  app.patch('/api/fault-service-tracking/:id/delivery-form', isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user!;
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ message: "Geçersiz ID" });
+
+      const [existing] = await db.select().from(faultServiceTracking)
+        .where(eq(faultServiceTracking.id, id));
+      if (!existing) return res.status(404).json({ message: "Servis takibi bulunamadı" });
+
+      const deliveryForm = req.body;
+
+      const [updated] = await db.update(faultServiceTracking)
+        .set({
+          deliveryForm: deliveryForm,
+          currentStatus: FAULT_SERVICE_STATUS.TESLIM_ALINDI,
+          updatedAt: new Date(),
+        })
+        .where(eq(faultServiceTracking.id, id))
+        .returning();
+
+      await db.insert(faultServiceStatusUpdates).values({
+        trackingId: id,
+        fromStatus: existing.currentStatus,
+        toStatus: FAULT_SERVICE_STATUS.TESLIM_ALINDI,
+        comment: "Teslim-tespit formu dolduruldu",
+        updatedById: user.id,
+      });
+
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating delivery form:", error);
+      res.status(500).json({ message: "Teslim formu güncellenirken hata oluştu" });
+    }
+  });
+
+  app.get('/api/fault-service-tracking/:id/updates', isAuthenticated, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ message: "Geçersiz ID" });
+
+      const updates = await db.select().from(faultServiceStatusUpdates)
+        .where(eq(faultServiceStatusUpdates.trackingId, id))
+        .orderBy(desc(faultServiceStatusUpdates.createdAt));
+
+      const enrichedUpdates = [];
+      for (const update of updates) {
+        const [updater] = await db.select({
+          id: users.id,
+          firstName: users.firstName,
+          lastName: users.lastName,
+        }).from(users).where(eq(users.id, update.updatedById));
+
+        enrichedUpdates.push({
+          ...update,
+          updatedBy: updater || null,
+        });
+      }
+
+      res.json(enrichedUpdates);
+    } catch (error) {
+      console.error("Error fetching service tracking updates:", error);
+      res.status(500).json({ message: "Durum güncellemeleri yüklenirken hata oluştu" });
+    }
+  });
+
+  app.get('/api/equipment/:id/timeline', isAuthenticated, async (req, res) => {
+    try {
+      const equipmentId = parseInt(req.params.id);
+      if (isNaN(equipmentId)) return res.status(400).json({ message: "Geçersiz ekipman ID" });
+
+      const timeline: Array<{
+        type: string;
+        id: number;
+        date: string;
+        title: string;
+        description?: string;
+        status?: string;
+        data?: any;
+      }> = [];
+
+      const faults = await db.select().from(equipmentFaults)
+        .where(eq(equipmentFaults.equipmentId, equipmentId));
+      for (const f of faults) {
+        timeline.push({
+          type: 'fault',
+          id: f.id,
+          date: f.createdAt ? f.createdAt.toISOString() : new Date().toISOString(),
+          title: `Arıza: ${f.description?.substring(0, 80) || 'Tanımsız'}`,
+          description: f.description || undefined,
+          status: f.status || undefined,
+          data: f,
+        });
+      }
+
+      const maintenance = await db.select().from(maintenanceLogs)
+        .where(eq(maintenanceLogs.equipmentId, equipmentId));
+      for (const m of maintenance) {
+        timeline.push({
+          type: 'maintenance',
+          id: m.id,
+          date: m.performedDate ? m.performedDate.toISOString() : (m.createdAt ? m.createdAt.toISOString() : new Date().toISOString()),
+          title: `Bakım: ${m.workDescription?.substring(0, 80) || 'Bakım yapıldı'}`,
+          description: m.workDescription || undefined,
+          status: m.maintenanceType || undefined,
+          data: m,
+        });
+      }
+
+      const serviceReqs = await db.select().from(equipmentServiceRequests)
+        .where(eq(equipmentServiceRequests.equipmentId, equipmentId));
+      for (const s of serviceReqs) {
+        timeline.push({
+          type: 'service_request',
+          id: s.id,
+          date: s.createdAt ? s.createdAt.toISOString() : new Date().toISOString(),
+          title: `Servis Talebi: ${s.serviceProvider || 'Servis talebi'}`,
+          description: s.notes || undefined,
+          status: s.status || undefined,
+          data: s,
+        });
+      }
+
+      const calibrations = await db.select().from(equipmentCalibrations)
+        .where(eq(equipmentCalibrations.equipmentId, equipmentId));
+      for (const c of calibrations) {
+        timeline.push({
+          type: 'calibration',
+          id: c.id,
+          date: c.calibrationDate ? c.calibrationDate.toISOString() : (c.createdAt ? c.createdAt.toISOString() : new Date().toISOString()),
+          title: `Kalibrasyon: ${c.calibrationType || 'Kalibrasyon'}`,
+          description: c.notes || undefined,
+          status: c.result || undefined,
+          data: c,
+        });
+      }
+
+      const serviceTracking = await db.select().from(faultServiceTracking)
+        .where(eq(faultServiceTracking.equipmentId, equipmentId));
+      for (const st of serviceTracking) {
+        timeline.push({
+          type: 'service_tracking',
+          id: st.id,
+          date: st.createdAt ? st.createdAt.toISOString() : new Date().toISOString(),
+          title: `Servis Takip: ${st.serviceProviderName || 'Servis'}`,
+          description: `Durum: ${st.currentStatus}`,
+          status: st.currentStatus || undefined,
+          data: st,
+        });
+      }
+
+      timeline.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+      res.json(timeline);
+    } catch (error) {
+      console.error("Error fetching equipment timeline:", error);
+      res.status(500).json({ message: "Ekipman zaman çizelgesi yüklenirken hata oluştu" });
     }
   });
 

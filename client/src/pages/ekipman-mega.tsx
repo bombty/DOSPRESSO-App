@@ -10,9 +10,11 @@ import {
   Wrench,
   AlertTriangle,
   BarChart3,
-  Settings2
+  Settings2,
+  BookOpen
 } from "lucide-react";
 
+const EkipmanKatalog = lazy(() => import("./ekipman-katalog"));
 const Equipment = lazy(() => import("./equipment"));
 const FaultHub = lazy(() => import("./ariza"));
 const EquipmentAnalytics = lazy(() => import("./ekipman-analitics"));
@@ -27,6 +29,14 @@ interface TabConfig {
 }
 
 const EKIPMAN_TABS: TabConfig[] = [
+  {
+    id: "katalog",
+    label: "Catalog",
+    labelTr: "Merkez Katalog",
+    icon: <BookOpen className="h-4 w-4" />,
+    permissionModule: "equipment",
+    component: EkipmanKatalog
+  },
   {
     id: "ekipman",
     label: "Equipment",
@@ -67,12 +77,14 @@ function TabSkeleton() {
 }
 
 const TAB_URL_MAP: Record<string, string> = {
+  "katalog": "/ekipman/katalog",
   "ekipman": "/ekipman",
   "ariza": "/ekipman/ariza",
   "analitik": "/ekipman/analitik"
 };
 
 function getTabFromUrl(pathname: string): string | null {
+  if (pathname.startsWith("/ekipman/katalog")) return "katalog";
   if (pathname === "/ekipman" || pathname === "/ekipman/") return "ekipman";
   if (pathname.startsWith("/ekipman/ariza")) return "ariza";
   if (pathname.startsWith("/ekipman/analitik")) return "analitik";

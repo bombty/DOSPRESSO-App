@@ -2789,6 +2789,7 @@ export const EQUIPMENT_METADATA: Record<EquipmentType, {
 export const equipment = pgTable("equipment", {
   id: serial("id").primaryKey(),
   branchId: integer("branch_id").notNull().references(() => branches.id, { onDelete: "cascade" }),
+  catalogId: integer("catalog_id"),
   equipmentType: varchar("equipment_type", { length: 50 }).notNull(), // espresso, krema, mixer, etc.
   modelNo: varchar("model_no", { length: 255 }), // Model numarası
   serialNumber: varchar("serial_number", { length: 255 }),
@@ -12200,6 +12201,134 @@ export const franchiseProjectComments = pgTable("franchise_project_comments", {
 export const insertFranchiseProjectCommentSchema = createInsertSchema(franchiseProjectComments).omit({ id: true, createdAt: true });
 export type InsertFranchiseProjectComment = z.infer<typeof insertFranchiseProjectCommentSchema>;
 export type FranchiseProjectComment = typeof franchiseProjectComments.$inferSelect;
+
+// ========================================
+// EQUIPMENT CATALOG (Merkez Ekipman Kataloğu)
+// ========================================
+
+export const equipmentCatalog = pgTable("equipment_catalog", {
+  id: serial("id").primaryKey(),
+  name: varchar("name", { length: 255 }).notNull(),
+  equipmentType: varchar("equipment_type", { length: 100 }).notNull(),
+  brand: varchar("brand", { length: 200 }),
+  model: varchar("model", { length: 200 }),
+  imageUrl: text("image_url"),
+  usageGuide: text("usage_guide"),
+  calibrationProcedure: text("calibration_procedure"),
+  calibrationIntervalDays: integer("calibration_interval_days"),
+  maintenanceIntervalDays: integer("maintenance_interval_days").default(30),
+  maintenanceGuide: text("maintenance_guide"),
+  troubleshootSteps: jsonb("troubleshoot_steps").$type<Array<{
+    order: number;
+    title: string;
+    description: string;
+    requiresPhoto: boolean;
+  }>>().default([]),
+  tips: text("tips"),
+  defaultServiceProviderName: varchar("default_service_provider_name", { length: 255 }),
+  defaultServiceProviderPhone: varchar("default_service_provider_phone", { length: 50 }),
+  defaultServiceProviderEmail: varchar("default_service_provider_email", { length: 255 }),
+  defaultServiceProviderAddress: text("default_service_provider_address"),
+  createdById: varchar("created_by_id").references(() => users.id),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("equipment_catalog_type_idx").on(table.equipmentType),
+]);
+
+export const insertEquipmentCatalogSchema = createInsertSchema(equipmentCatalog).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertEquipmentCatalog = z.infer<typeof insertEquipmentCatalogSchema>;
+export type EquipmentCatalog = typeof equipmentCatalog.$inferSelect;
+
+// ========================================
+// FAULT SERVICE TRACKING (Arıza Servis Takip)
+// ========================================
+
+export const FAULT_SERVICE_STATUS = {
+  SERVIS_BEKLENIYOR: 'servis_bekleniyor',
+  SERVISE_GONDERILECEK: 'servise_gonderilecek',
+  SERVISE_GONDERILDI: 'servise_gonderildi',
+  YEDEK_PARCA_BEKLENIYOR: 'yedek_parca_bekleniyor',
+  SERVIS_TAMAMLANDI: 'servis_tamamlandi',
+  TESLIM_ALINDI: 'teslim_alindi',
+  KAPANDI: 'kapandi',
+} as const;
+
+export type FaultServiceStatusType = typeof FAULT_SERVICE_STATUS[keyof typeof FAULT_SERVICE_STATUS];
+
+export const faultServiceTracking = pgTable("fault_service_tracking", {
+  id: serial("id").primaryKey(),
+  faultId: integer("fault_id").notNull().references(() => equipmentFaults.id, { onDelete: "cascade" }),
+  equipmentId: integer("equipment_id").references(() => equipment.id, { onDelete: "set null" }),
+  branchId: integer("branch_id").notNull().references(() => branches.id, { onDelete: "cascade" }),
+  currentStatus: varchar("current_status", { length: 50 }).notNull().default(FAULT_SERVICE_STATUS.SERVIS_BEKLENIYOR),
+  serviceContactedAt: timestamp("service_contacted_at"),
+  serviceProviderName: varchar("service_provider_name", { length: 255 }),
+  serviceProviderPhone: varchar("service_provider_phone", { length: 50 }),
+  serviceProviderEmail: varchar("service_provider_email", { length: 255 }),
+  serviceHandledBy: varchar("service_handled_by", { length: 20 }).default("branch"),
+  estimatedCompletionDate: date("estimated_completion_date"),
+  deliveryForm: jsonb("delivery_form").$type<{
+    deviceConditionOnReturn: string;
+    additionalDamages: string;
+    reportedFaultResolved: boolean;
+    deviceTested: boolean;
+    testedByName: string;
+    testedDate: string;
+    serviceCost: number;
+    isWarrantyCovered: boolean;
+    warrantyNotes: string;
+    receivedByName: string;
+    receivedDate: string;
+    photos: string[];
+    notes: string;
+  }>(),
+  createdById: varchar("created_by_id").notNull().references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("fault_service_tracking_fault_idx").on(table.faultId),
+  index("fault_service_tracking_equipment_idx").on(table.equipmentId),
+  index("fault_service_tracking_branch_idx").on(table.branchId),
+  index("fault_service_tracking_status_idx").on(table.currentStatus),
+]);
+
+export const insertFaultServiceTrackingSchema = createInsertSchema(faultServiceTracking).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertFaultServiceTracking = z.infer<typeof insertFaultServiceTrackingSchema>;
+export type FaultServiceTracking = typeof faultServiceTracking.$inferSelect;
+
+// Fault Service Status Updates (yorum geçmişi)
+export const faultServiceStatusUpdates = pgTable("fault_service_status_updates", {
+  id: serial("id").primaryKey(),
+  trackingId: integer("tracking_id").notNull().references(() => faultServiceTracking.id, { onDelete: "cascade" }),
+  fromStatus: varchar("from_status", { length: 50 }),
+  toStatus: varchar("to_status", { length: 50 }).notNull(),
+  comment: text("comment"),
+  attachmentUrl: text("attachment_url"),
+  updatedById: varchar("updated_by_id").notNull().references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("fault_service_status_updates_tracking_idx").on(table.trackingId),
+]);
+
+export const insertFaultServiceStatusUpdateSchema = createInsertSchema(faultServiceStatusUpdates).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertFaultServiceStatusUpdate = z.infer<typeof insertFaultServiceStatusUpdateSchema>;
+export type FaultServiceStatusUpdate = typeof faultServiceStatusUpdates.$inferSelect;
 
 export const DEFAULT_FRANCHISE_PHASES = [
   { phaseNumber: 1, name: "Sozlesme ve Planlama", description: "Franchise sozlesmesi imzalanmasi, is plani hazirligi, fizibilite calismasi" },
