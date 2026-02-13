@@ -23,7 +23,8 @@ import {
   Store,
   Wrench,
   Target,
-  TrendingUp
+  TrendingUp,
+  ShieldAlert
 } from "lucide-react";
 import { useState } from "react";
 import { Textarea } from "@/components/ui/textarea";
@@ -182,10 +183,34 @@ function AIAssistant() {
   );
 }
 
+interface AbuseAlert {
+  type: string;
+  severity: string;
+  correctedById: string;
+  correctorName: string;
+  employeeId?: string;
+  employeeName?: string;
+  branchId: number | null;
+  totalCorrections?: number;
+  uniqueEmployees?: number;
+  correctionCount?: number;
+  message: string;
+}
+
+interface AbuseReport {
+  alerts: AbuseAlert[];
+  totalAlerts: number;
+}
+
 export default function CEOCommandCenter() {
   const { data: dashboardData, isLoading, isRefetching, refetch } = useQuery<CEODashboardData>({
     queryKey: ["/api/ceo/command-center"],
     refetchInterval: 60000,
+  });
+
+  const { data: abuseReport } = useQuery<AbuseReport>({
+    queryKey: ["/api/shift-corrections/abuse-report"],
+    refetchInterval: 300000,
   });
 
   if (isLoading) {
@@ -376,6 +401,43 @@ export default function CEOCommandCenter() {
               </Card>
             ))}
           </div>
+
+          {abuseReport && abuseReport.alerts.length > 0 && (
+            <Card data-testid="card-abuse-alerts" className="border-red-200 dark:border-red-900/50">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <ShieldAlert className="w-4 h-4 text-red-500" />
+                  Suistimal Uyarilari ({abuseReport.totalAlerts})
+                </CardTitle>
+                <p className="text-xs text-muted-foreground">Son 30 gundeki asiri vardiya duzeltmeleri</p>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  {abuseReport.alerts.map((alert, i) => (
+                    <div key={i} className="flex items-start gap-2 p-2 rounded-lg border" data-testid={`abuse-alert-${i}`}>
+                      {alert.severity === 'critical' ? (
+                        <AlertTriangle className="w-4 h-4 text-red-500 shrink-0 mt-0.5" />
+                      ) : (
+                        <AlertCircle className="w-4 h-4 text-yellow-500 shrink-0 mt-0.5" />
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-sm font-medium">{alert.correctorName || 'Bilinmeyen'}</span>
+                          <Badge variant={alert.severity === 'critical' ? 'destructive' : 'secondary'} className="text-[10px]">
+                            {alert.type === 'person_focused' ? 'Kisi Odakli' : 'Yuksek Hacim'}
+                          </Badge>
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-0.5">{alert.message}</p>
+                        {alert.employeeName && (
+                          <p className="text-xs text-muted-foreground mt-0.5">Hedef personel: <span className="font-medium text-foreground">{alert.employeeName}</span></p>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {dashboardData.bottomManagers.length > 0 && (
             <Card data-testid="card-bottom-managers">

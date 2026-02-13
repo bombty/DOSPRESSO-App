@@ -6,7 +6,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "@/contexts/theme-context";
 import { BottomNav } from "@/components/bottom-nav";
-import { BreadcrumbNavigation } from "@/components/breadcrumb-navigation";
+import { BreadcrumbNavigation, BreadcrumbProvider } from "@/components/breadcrumb-navigation";
 import { InboxDialog } from "@/components/inbox-dialog";
 import { AppHeader } from "@/components/app-header";
 import { QRScannerModal } from "@/components/qr-scanner-modal";
@@ -518,7 +518,9 @@ export default function App() {
       <QueryClientProvider client={queryClient}>
         <ThemeProvider>
           <TooltipProvider>
-            <AppContent />
+            <BreadcrumbProvider>
+              <AppContent />
+            </BreadcrumbProvider>
             <Toaster />
           </TooltipProvider>
         </ThemeProvider>

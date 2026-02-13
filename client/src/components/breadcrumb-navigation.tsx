@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { ChevronRight, Home, History, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -45,42 +45,104 @@ const PATH_LABELS: Record<string, string> = {
 const MAX_HISTORY = 10;
 const STORAGE_KEY = 'dospresso-recent-visits';
 
-function getPathLabel(path: string): string {
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const NUMERIC_ID_REGEX = /^\d+$/;
+
+function isDynamicSegment(segment: string): boolean {
+  return UUID_REGEX.test(segment) || NUMERIC_ID_REGEX.test(segment);
+}
+
+interface BreadcrumbContextType {
+  dynamicLabels: Record<string, string>;
+  setDynamicLabel: (path: string, label: string) => void;
+}
+
+const BreadcrumbContext = createContext<BreadcrumbContextType>({
+  dynamicLabels: {},
+  setDynamicLabel: () => {},
+});
+
+export function BreadcrumbProvider({ children }: { children: React.ReactNode }) {
+  const [dynamicLabels, setDynamicLabels] = useState<Record<string, string>>({});
+
+  const setDynamicLabel = (path: string, label: string) => {
+    setDynamicLabels(prev => ({ ...prev, [path]: label }));
+  };
+
+  return (
+    <BreadcrumbContext.Provider value={{ dynamicLabels, setDynamicLabel }}>
+      {children}
+    </BreadcrumbContext.Provider>
+  );
+}
+
+export function useBreadcrumb(label: string, path?: string) {
+  const { setDynamicLabel } = useContext(BreadcrumbContext);
+  const [location] = useLocation();
+  const targetPath = path || location;
+
+  useEffect(() => {
+    if (label && targetPath) {
+      setDynamicLabel(targetPath, label);
+    }
+  }, [label, targetPath]);
+}
+
+function getPathLabel(path: string, dynamicLabels: Record<string, string>): string {
+  if (dynamicLabels[path]) return dynamicLabels[path];
   if (PATH_LABELS[path]) return PATH_LABELS[path];
-  
+
   const parts = path.split('/').filter(Boolean);
   if (parts.length === 0) return 'Ana Sayfa';
-  
+
   const basePath = '/' + parts[0];
-  const baseLabel = PATH_LABELS[basePath] || parts[0].charAt(0).toUpperCase() + parts[0].slice(1);
-  
+  const baseLabel = PATH_LABELS[basePath] || parts[0].charAt(0).toUpperCase() + parts[0].slice(1).replace(/-/g, ' ');
+
   if (parts.length > 1) {
-    return `${baseLabel} ${parts[1]}`;
+    const lastPart = parts[parts.length - 1];
+    if (isDynamicSegment(lastPart)) {
+      return baseLabel;
+    }
+    return lastPart.charAt(0).toUpperCase() + lastPart.slice(1).replace(/-/g, ' ');
   }
-  
+
   return baseLabel;
 }
 
-function getBreadcrumbPath(path: string): BreadcrumbItem[] {
+function getBreadcrumbPath(path: string, dynamicLabels: Record<string, string>): BreadcrumbItem[] {
   const parts = path.split('/').filter(Boolean);
   const items: BreadcrumbItem[] = [];
-  
+
   let currentPath = '';
-  for (const part of parts) {
+  for (let i = 0; i < parts.length; i++) {
+    const part = parts[i];
     currentPath += '/' + part;
-    items.push({
-      path: currentPath,
-      label: getPathLabel(currentPath),
-      timestamp: Date.now()
-    });
+
+    if (isDynamicSegment(part) && i > 0) {
+      const label = dynamicLabels[currentPath] || dynamicLabels[path] || '';
+      if (label) {
+        items.push({
+          path: currentPath,
+          label,
+          timestamp: Date.now()
+        });
+      }
+    } else {
+      items.push({
+        path: currentPath,
+        label: getPathLabel(currentPath, dynamicLabels),
+        timestamp: Date.now()
+      });
+    }
   }
-  
+
   return items;
 }
 
 export function BreadcrumbNavigation() {
   const [location, navigate] = useLocation();
   const [history, setHistory] = useState<BreadcrumbItem[]>([]);
+  const { dynamicLabels } = useContext(BreadcrumbContext);
 
   useEffect(() => {
     const saved = localStorage.getItem(STORAGE_KEY);
@@ -94,12 +156,13 @@ export function BreadcrumbNavigation() {
 
   useEffect(() => {
     if (location && location !== '/') {
+      const label = getPathLabel(location, dynamicLabels);
       const newItem: BreadcrumbItem = {
         path: location,
-        label: getPathLabel(location),
+        label,
         timestamp: Date.now()
       };
-      
+
       setHistory(prev => {
         const filtered = prev.filter(item => item.path !== location);
         const updated = [newItem, ...filtered].slice(0, MAX_HISTORY);
@@ -107,9 +170,9 @@ export function BreadcrumbNavigation() {
         return updated;
       });
     }
-  }, [location]);
+  }, [location, dynamicLabels]);
 
-  const breadcrumbs = getBreadcrumbPath(location);
+  const breadcrumbs = getBreadcrumbPath(location, dynamicLabels);
   const recentPages = history.filter(item => item.path !== location).slice(0, 5);
 
   const clearHistory = () => {
@@ -137,7 +200,7 @@ export function BreadcrumbNavigation() {
         <div key={item.path} className="flex items-center gap-1">
           <ChevronRight className="h-3 w-3 text-muted-foreground" />
           {idx === breadcrumbs.length - 1 ? (
-            <span className="font-medium text-foreground">{item.label}</span>
+            <span className="font-medium text-foreground truncate max-w-[200px]">{item.label}</span>
           ) : (
             <Button
               variant="ghost"

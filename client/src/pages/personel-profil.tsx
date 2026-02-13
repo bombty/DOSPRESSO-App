@@ -26,6 +26,7 @@ import { format } from "date-fns";
 import { tr } from "date-fns/locale";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useBreadcrumb } from "@/components/breadcrumb-navigation";
 
 type PersonnelProfile = {
   id: string;
@@ -126,6 +127,8 @@ export default function PersonelProfilPage() {
     },
     enabled: !!id,
   });
+
+  useBreadcrumb(profile?.fullName || (profile?.firstName ? `${profile.firstName} ${profile.lastName}` : ''));
 
   // Check if user can view salary info (admin, muhasebe, yatirimci_branch for their branch)
   const canViewSalary = user?.role === 'admin' || user?.role === 'muhasebe' || 
@@ -1479,50 +1482,70 @@ export default function PersonelProfilPage() {
                 </CardContent>
               </Card>
 
-              <Card className="border-dashed border-2 border-orange-300/30 bg-orange-50/5 dark:bg-orange-900/5" data-testid="card-recommended-next-step">
-                <CardContent className="p-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center">
-                      <TrendingUp className="w-5 h-5 text-orange-600 dark:text-orange-400" />
+              {isOwnProfile && (
+                <Card className="border-dashed border-2 border-orange-300/30 bg-orange-50/5 dark:bg-orange-900/5" data-testid="card-recommended-next-step">
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center">
+                        <TrendingUp className="w-5 h-5 text-orange-600 dark:text-orange-400" />
+                      </div>
+                      <div className="flex-1">
+                        <h4 className="font-semibold text-sm" data-testid="text-recommended-title">Önerilen Sonraki Adım</h4>
+                        <p className="text-xs text-muted-foreground mt-0.5" data-testid="text-recommended-description">Kariyer yolculuğuna devam etmek için Akademi sayfasını ziyaret edin</p>
+                      </div>
+                      <Link href="/akademi">
+                        <Button size="sm" data-testid="button-go-akademi">Başla</Button>
+                      </Link>
                     </div>
-                    <div className="flex-1">
-                      <h4 className="font-semibold text-sm" data-testid="text-recommended-title">Önerilen Sonraki Adım</h4>
-                      <p className="text-xs text-muted-foreground mt-0.5" data-testid="text-recommended-description">Kariyer yolculuğuna devam etmek için Akademi sayfasını ziyaret edin</p>
-                    </div>
-                    <Link href="/akademi">
-                      <Button size="sm" data-testid="button-go-akademi">Başla</Button>
-                    </Link>
-                  </div>
-                </CardContent>
-              </Card>
+                  </CardContent>
+                </Card>
+              )}
 
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm">Hızlı Erişim</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-3 gap-1.5">
-                    <Link href="/akademi">
-                      <Button variant="outline" size="sm" className="w-full text-xs" data-testid="link-akademi">Akademi</Button>
-                    </Link>
-                    <Link href="/akademi-badges">
-                      <Button variant="outline" size="sm" className="w-full text-xs" data-testid="link-akademi-badges">Rozetler</Button>
-                    </Link>
-                    <Link href="/akademi-leaderboard">
-                      <Button variant="outline" size="sm" className="w-full text-xs" data-testid="link-akademi-leaderboard">Sıralama</Button>
-                    </Link>
-                    <Link href="/akademi-learning-paths">
-                      <Button variant="outline" size="sm" className="w-full text-xs" data-testid="link-akademi-paths">Yollar</Button>
-                    </Link>
-                    <Link href="/akademi-certificates">
-                      <Button variant="outline" size="sm" className="w-full text-xs" data-testid="link-akademi-certificates">Sertifikalar</Button>
-                    </Link>
-                    <Link href="/akademi-streak-tracker">
-                      <Button variant="outline" size="sm" className="w-full text-xs" data-testid="link-akademi-streak">Seri</Button>
-                    </Link>
-                  </div>
-                </CardContent>
-              </Card>
+              {!isOwnProfile && (
+                <Card className="border-dashed border-2 border-blue-300/30 bg-blue-50/5 dark:bg-blue-900/5" data-testid="card-readonly-notice">
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
+                        <Eye className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                      </div>
+                      <div className="flex-1">
+                        <h4 className="font-semibold text-sm" data-testid="text-readonly-title">Görüntüleme Modu</h4>
+                        <p className="text-xs text-muted-foreground mt-0.5" data-testid="text-readonly-description">Bu personelin eğitim ilerlemesini görüntülüyorsunuz. Eğitim ilerletme yalnızca personelin kendisi tarafından yapılabilir.</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {isOwnProfile && (
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm">Hızlı Erişim</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-3 gap-1.5">
+                      <Link href="/akademi">
+                        <Button variant="outline" size="sm" className="w-full text-xs" data-testid="link-akademi">Akademi</Button>
+                      </Link>
+                      <Link href="/akademi-badges">
+                        <Button variant="outline" size="sm" className="w-full text-xs" data-testid="link-akademi-badges">Rozetler</Button>
+                      </Link>
+                      <Link href="/akademi-leaderboard">
+                        <Button variant="outline" size="sm" className="w-full text-xs" data-testid="link-akademi-leaderboard">Sıralama</Button>
+                      </Link>
+                      <Link href="/akademi-learning-paths">
+                        <Button variant="outline" size="sm" className="w-full text-xs" data-testid="link-akademi-paths">Yollar</Button>
+                      </Link>
+                      <Link href="/akademi-certificates">
+                        <Button variant="outline" size="sm" className="w-full text-xs" data-testid="link-akademi-certificates">Sertifikalar</Button>
+                      </Link>
+                      <Link href="/akademi-streak-tracker">
+                        <Button variant="outline" size="sm" className="w-full text-xs" data-testid="link-akademi-streak">Seri</Button>
+                      </Link>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
             </>
           )}
         </TabsContent>

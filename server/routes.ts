@@ -7662,13 +7662,42 @@ JSON formatında yanıt ver:
       
       // Validate partial update
       const validatedData = insertShiftAttendanceSchema.partial().parse(req.body);
+      const reason = req.body.correctionReason || '';
       
       const updated = await storage.updateShiftAttendance(id, validatedData);
+
+      if (existing.userId !== user.id) {
+        const changedFields: string[] = [];
+        const bodyKeys = Object.keys(req.body).filter(k => k !== 'correctionReason');
+        for (const key of bodyKeys) {
+          const oldVal = (existing as any)[key];
+          const newVal = req.body[key];
+          if (oldVal !== newVal) {
+            changedFields.push(key);
+            try {
+              await db.insert(shiftCorrections).values({
+                shiftId: existing.shiftId,
+                correctedById: user.id,
+                employeeId: existing.userId,
+                correctionType: 'attendance_update',
+                fieldChanged: key,
+                oldValue: oldVal != null ? String(oldVal) : null,
+                newValue: newVal != null ? String(newVal) : null,
+                reason: reason || `Supervisor düzeltmesi: ${key}`,
+                branchId: user.branchId,
+              });
+            } catch (e) {
+              console.error("Error logging shift correction:", e);
+            }
+          }
+        }
+      }
+
       res.json(updated);
     } catch (error: Error | unknown) {
       console.error("Error updating attendance record:", error);
-      if (error.name === 'ZodError') {
-        return res.status(400).json({ message: "Geçersiz yoklama verisi", errors: error.errors });
+      if ((error as any).name === 'ZodError') {
+        return res.status(400).json({ message: "Geçersiz yoklama verisi", errors: (error as any).errors });
       }
       res.status(500).json({ message: "Yoklama kaydı güncellenemedi" });
     }
@@ -22086,6 +22115,94 @@ DOSPRESSO İnsan Kaynakları Ekibi`
     } catch (error: any) {
       console.error("Error fetching shift corrections:", error);
       res.status(500).json({ message: "Vardiya düzeltme geçmişi yüklenemedi" });
+    }
+  });
+
+  app.get('/api/shift-corrections/abuse-report', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const role = user.role as UserRoleType;
+
+      if (!isHQRole(role) && role !== 'yatirimci') {
+        return res.status(403).json({ message: "Bu raporu görüntüleme yetkiniz yok" });
+      }
+
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+      const correctionStats = await db.select({
+        correctedById: shiftCorrections.correctedById,
+        correctorFirstName: users.firstName,
+        correctorLastName: users.lastName,
+        correctorFullName: users.fullName,
+        branchId: shiftCorrections.branchId,
+        totalCorrections: sql<number>`count(*)::int`,
+        uniqueEmployees: sql<number>`count(distinct ${shiftCorrections.employeeId})::int`,
+      })
+      .from(shiftCorrections)
+      .leftJoin(users, eq(shiftCorrections.correctedById, users.id))
+      .where(gte(shiftCorrections.createdAt, thirtyDaysAgo))
+      .groupBy(shiftCorrections.correctedById, users.firstName, users.lastName, users.fullName, shiftCorrections.branchId);
+
+      const employeeFocusStats = await db.select({
+        correctedById: shiftCorrections.correctedById,
+        employeeId: shiftCorrections.employeeId,
+        employeeFirstName: sql<string>`emp.first_name`,
+        employeeLastName: sql<string>`emp.last_name`,
+        correctionCount: sql<number>`count(*)::int`,
+      })
+      .from(shiftCorrections)
+      .leftJoin(sql`users emp`, sql`emp.id = ${shiftCorrections.employeeId}`)
+      .where(gte(shiftCorrections.createdAt, thirtyDaysAgo))
+      .groupBy(shiftCorrections.correctedById, shiftCorrections.employeeId, sql`emp.first_name`, sql`emp.last_name`);
+
+      const TOTAL_THRESHOLD = 10;
+      const PER_PERSON_THRESHOLD = 5;
+
+      const alerts: any[] = [];
+
+      for (const stat of correctionStats) {
+        if (stat.totalCorrections >= TOTAL_THRESHOLD) {
+          alerts.push({
+            type: 'excessive_total',
+            severity: stat.totalCorrections >= TOTAL_THRESHOLD * 2 ? 'critical' : 'warning',
+            correctedById: stat.correctedById,
+            correctorName: stat.correctorFullName || `${stat.correctorFirstName || ''} ${stat.correctorLastName || ''}`.trim(),
+            branchId: stat.branchId,
+            totalCorrections: stat.totalCorrections,
+            uniqueEmployees: stat.uniqueEmployees,
+            message: `Son 30 günde ${stat.totalCorrections} vardiya düzeltmesi yapıldı (${stat.uniqueEmployees} farklı personel)`,
+          });
+        }
+      }
+
+      for (const stat of employeeFocusStats) {
+        if (stat.correctionCount >= PER_PERSON_THRESHOLD) {
+          const corrector = correctionStats.find(c => c.correctedById === stat.correctedById);
+          alerts.push({
+            type: 'person_focused',
+            severity: stat.correctionCount >= PER_PERSON_THRESHOLD * 2 ? 'critical' : 'warning',
+            correctedById: stat.correctedById,
+            correctorName: corrector?.correctorFullName || `${corrector?.correctorFirstName || ''} ${corrector?.correctorLastName || ''}`.trim(),
+            employeeId: stat.employeeId,
+            employeeName: `${stat.employeeFirstName || ''} ${stat.employeeLastName || ''}`.trim(),
+            branchId: corrector?.branchId,
+            correctionCount: stat.correctionCount,
+            message: `Aynı personel için son 30 günde ${stat.correctionCount} düzeltme yapıldı - pozitif ayrımcılık riski`,
+          });
+        }
+      }
+
+      res.json({
+        period: '30_days',
+        thresholds: { total: TOTAL_THRESHOLD, perPerson: PER_PERSON_THRESHOLD },
+        stats: correctionStats,
+        alerts,
+        totalAlerts: alerts.length,
+      });
+    } catch (error: any) {
+      console.error("Error generating abuse report:", error);
+      res.status(500).json({ message: "Suistimal raporu oluşturulamadı" });
     }
   });
 

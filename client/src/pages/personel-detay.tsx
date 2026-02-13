@@ -68,6 +68,7 @@ import type { User, EmployeeDocument, DisciplinaryReport, EmployeeOnboarding, Em
 import { isHQRole } from "@shared/schema";
 import { CreateDisciplinaryDialog, AddResponseDialog, ResolveDialog } from "@/components/hr/DisciplinaryDialogs";
 import { OnboardingTaskDialog } from "@/components/hr/OnboardingTaskDialog";
+import { useBreadcrumb } from "@/components/breadcrumb-navigation";
 
 export default function PersonelDetay() {
   const { id } = useParams();
@@ -282,6 +283,8 @@ export default function PersonelDetay() {
       });
     },
   });
+
+  useBreadcrumb(employee?.firstName ? `${employee.firstName} ${employee.lastName || ''}`.trim() : '');
 
   // Yetki kontrolü - HQ rolleri ve admin şifre sıfırlayabilir
   const canManage = currentUser && (isHQRole(currentUser.role as any) || currentUser.role === "admin");
