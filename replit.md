@@ -63,7 +63,8 @@ The frontend utilizes React 18+ with TypeScript and Vite, employing Shadcn/ui (N
 - **Analytics Architecture**: Three-period tabbed interface with real-time metric aggregation, AI-powered summaries, and conditional alerts.
 - **Checklist Scoring**: 40% weight in compositeScore, max score 4/5 if not on-time, scored by supervisor, daily reminders active.
 - **Performance Score Data Flows**: Task ratings and checklist completions automatically update employee performance scores.
-- **Reminder System**: 5-minute interval checks for task reminders, overdue notifications, maintenance alerts, and checklist completion reminders.
+- **Evaluation Anti-Abuse System**: 24-hour cooldown between evaluations of same employee, monthly max 2 evaluations per evaluator-employee pair, frontend limit display with button disabling. Evaluation coverage tracked per branch with CEO dashboard visibility.
+- **Reminder System**: 5-minute interval checks for task reminders, overdue notifications, maintenance alerts, checklist completion reminders, and evaluation reminders (after 20th of month for supervisors with unevaluated employees).
 - **Branch Dashboard**: Comprehensive dashboard with real-time stats, alert management, kiosk mode access, and quick access buttons.
 - **PDF Generation**: Uses jsPDF with Helvetica font and Turkish character sanitization.
 - **Employee of Month System**: Complete implementation with multi-criteria scoring, manager evaluation, branch-specific visibility, and dedicated dashboards/reports.

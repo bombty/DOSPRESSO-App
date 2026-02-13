@@ -28,6 +28,7 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { Textarea } from "@/components/ui/textarea";
+import { Progress } from "@/components/ui/progress";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
@@ -210,6 +211,14 @@ export default function CEOCommandCenter() {
 
   const { data: abuseReport } = useQuery<AbuseReport>({
     queryKey: ["/api/shift-corrections/abuse-report"],
+    refetchInterval: 300000,
+  });
+
+  const { data: evalCoverage } = useQuery<{
+    branches: { branchId: number; branchName: string; totalEmployees: number; evaluatedCount: number; notEvaluatedCount: number; percentage: number }[];
+    summary: { totalBranches: number; totalEmployees: number; totalEvaluated: number; totalNotEvaluated: number; overallPercentage: number; daysLeft: number; month: string };
+  }>({
+    queryKey: ["/api/evaluation-coverage"],
     refetchInterval: 300000,
   });
 
@@ -431,6 +440,45 @@ export default function CEOCommandCenter() {
                         {alert.employeeName && (
                           <p className="text-xs text-muted-foreground mt-0.5">Hedef personel: <span className="font-medium text-foreground">{alert.employeeName}</span></p>
                         )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {evalCoverage && (
+            <Card data-testid="card-eval-coverage">
+              <CardHeader className="flex flex-row items-center justify-between gap-2 flex-wrap pb-2">
+                <div>
+                  <CardTitle className="text-sm flex items-center gap-2">
+                    <ClipboardCheck className="w-4 h-4 text-primary" />
+                    Degerlendirme Kapsami
+                  </CardTitle>
+                  <p className="text-xs text-muted-foreground">
+                    {evalCoverage.summary.month} - {evalCoverage.summary.daysLeft} gun kaldi
+                  </p>
+                </div>
+                <div className="text-right">
+                  <p className="text-lg font-bold" data-testid="text-eval-overall-pct">%{evalCoverage.summary.overallPercentage}</p>
+                  <p className="text-xs text-muted-foreground">{evalCoverage.summary.totalEvaluated}/{evalCoverage.summary.totalEmployees}</p>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                <Progress value={evalCoverage.summary.overallPercentage} className="h-2" />
+                <div className="space-y-1.5 max-h-[250px] overflow-y-auto">
+                  {evalCoverage.branches.map((b) => (
+                    <div key={b.branchId} className="flex items-center justify-between gap-2 p-1.5 rounded-md" data-testid={`eval-branch-${b.branchId}`}>
+                      <div className="flex items-center gap-2 min-w-0">
+                        <div className={`w-2 h-2 rounded-full shrink-0 ${b.percentage >= 80 ? 'bg-green-500' : b.percentage >= 50 ? 'bg-yellow-500' : 'bg-red-500'}`} />
+                        <span className="text-sm truncate">{b.branchName}</span>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span className="text-xs text-muted-foreground">{b.evaluatedCount}/{b.totalEmployees}</span>
+                        <Badge variant={b.percentage >= 80 ? 'secondary' : b.percentage >= 50 ? 'outline' : 'destructive'} className="text-xs min-w-[40px] justify-center">
+                          %{b.percentage}
+                        </Badge>
                       </div>
                     </div>
                   ))}

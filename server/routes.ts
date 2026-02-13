@@ -284,6 +284,7 @@ import {
   careerLevels,
   staffEvaluations,
   insertStaffEvaluationSchema,
+  managerEvaluations,
   employeePerformanceScores,
   disciplinaryReports,
   guestComplaints,
@@ -316,7 +317,7 @@ import {
   FAULT_SERVICE_STATUS,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc, asc, sql, and, or, isNull, isNotNull, inArray, lte, gte, ne, count, sum, avg } from "drizzle-orm";
+import { eq, desc, asc, sql, and, or, isNull, isNotNull, inArray, lte, gte, ne, not, count, sum, avg, max } from "drizzle-orm";
 import { analyzeTaskPhoto, analyzeFaultPhoto, analyzeDressCodePhoto, generateArticleEmbeddings, generateEmbedding, answerQuestionWithRAG, answerTechnicalQuestion, generateAISummary, generateQuizQuestionsFromLesson, generateFlashcardsFromLesson, evaluateBranchPerformance, diagnoseFault, generateTrainingModule, processUploadedFile, generateBranchSummaryReport, generateArticleDraft, generatePersonalSummaryReport, verifyChecklistPhoto, generateEquipmentKnowledgeFromManual, researchEquipmentTroubleshooting } from "./ai";
 import multer from "multer";
 import { generateTrainingMaterialBundle } from "./ai-motor";
@@ -14292,6 +14293,32 @@ JSON formatında yanıt ver:
       if (!parsed.success) {
         return res.status(400).json({ message: "Geçersiz veri", errors: parsed.error.errors });
       }
+      // Suistimal korumasi: 24 saat kurali
+      const twentyFourHoursAgo24 = new Date(Date.now() - 24 * 60 * 60 * 1000);
+      const [recentMgrEval] = await db.select({ cnt: count() })
+        .from(managerEvaluations)
+        .where(and(
+          eq(managerEvaluations.evaluatorId, req.user.id),
+          eq(managerEvaluations.employeeId, parsed.data.employeeId),
+          gte(managerEvaluations.createdAt, twentyFourHoursAgo24)
+        ));
+      if (recentMgrEval && recentMgrEval.cnt > 0) {
+        return res.status(429).json({ message: "Bu personeli son 24 saat içinde zaten değerlendirdiniz. Lütfen yarın tekrar deneyin." });
+      }
+
+      // Suistimal korumasi: Ayda max 2 degerlendirme
+      const currentMonth = new Date().toISOString().slice(0, 7);
+      const [monthlyMgrCount] = await db.select({ cnt: count() })
+        .from(managerEvaluations)
+        .where(and(
+          eq(managerEvaluations.evaluatorId, req.user.id),
+          eq(managerEvaluations.employeeId, parsed.data.employeeId),
+          eq(managerEvaluations.evaluationMonth, currentMonth)
+        ));
+      if (monthlyMgrCount && monthlyMgrCount.cnt >= 2) {
+        return res.status(429).json({ message: "Bu personel için bu ay maksimum 2 değerlendirme yapabilirsiniz." });
+      }
+
       const data = {
         ...parsed.data,
         evaluatorId: req.user.id,
@@ -35862,6 +35889,35 @@ Dusuk puanli alanlara odaklan ve pozitif, motive edici ol. JSON dizisi olarak ya
         }
       }
 
+      // Suistimal korumasi: 24 saat kurali
+      const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+      const [recentEval] = await db.select({ cnt: count() })
+        .from(staffEvaluations)
+        .where(and(
+          eq(staffEvaluations.evaluatorId, user.id),
+          eq(staffEvaluations.employeeId, body.employeeId),
+          gte(staffEvaluations.createdAt, twentyFourHoursAgo)
+        ));
+      if (recentEval && recentEval.cnt > 0) {
+        return res.status(429).json({ message: "Bu personeli son 24 saat içinde zaten değerlendirdiniz. Lütfen yarın tekrar deneyin." });
+      }
+
+      // Suistimal korumasi: Ayda max 2 degerlendirme
+      const now = new Date();
+      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+      const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+      const [monthlyCount] = await db.select({ cnt: count() })
+        .from(staffEvaluations)
+        .where(and(
+          eq(staffEvaluations.evaluatorId, user.id),
+          eq(staffEvaluations.employeeId, body.employeeId),
+          gte(staffEvaluations.createdAt, monthStart),
+          lte(staffEvaluations.createdAt, monthEnd)
+        ));
+      if (monthlyCount && monthlyCount.cnt >= 2) {
+        return res.status(429).json({ message: "Bu personel için bu ay maksimum 2 değerlendirme yapabilirsiniz." });
+      }
+
       const avgCriteria = criteria.reduce((sum, c) => sum + Number(body[c]), 0) / criteria.length;
       const overallScore = (avgCriteria / 5) * 100;
 
@@ -35889,6 +35945,205 @@ Dusuk puanli alanlara odaklan ve pozitif, motive edici ol. JSON dizisi olarak ya
     } catch (error: any) {
       console.error("Error creating staff evaluation:", error);
       res.status(500).json({ message: "Değerlendirme oluşturulamadı" });
+    }
+  });
+
+  // GET /api/evaluation-coverage - Sube bazli degerlendirme kapsam istatistigi (HQ/CEO)
+  app.get('/api/evaluation-coverage', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      if (!isHQRole(user.role as any)) {
+        return res.status(403).json({ message: "Erişim yetkiniz yok" });
+      }
+
+      const now = new Date();
+      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+      const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+      const daysLeft = Math.max(0, Math.ceil((monthEnd.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)));
+
+      const allBranches = await db.select({
+        id: branches.id,
+        name: branches.name,
+      }).from(branches).where(eq(branches.isActive, true));
+
+      const branchStats = [];
+      let totalEmployees = 0;
+      let totalEvaluated = 0;
+
+      for (const branch of allBranches) {
+        const branchEmps = await db.select({ id: users.id })
+          .from(users)
+          .where(and(
+            eq(users.branchId, branch.id),
+            eq(users.isActive, true)
+          ));
+
+        if (branchEmps.length === 0) continue;
+
+        const empIds = branchEmps.map(e => e.id);
+        const evaluatedEmps = await db.selectDistinct({ employeeId: staffEvaluations.employeeId })
+          .from(staffEvaluations)
+          .where(and(
+            gte(staffEvaluations.createdAt, monthStart),
+            lte(staffEvaluations.createdAt, monthEnd),
+            inArray(staffEvaluations.employeeId, empIds)
+          ));
+
+        const evaluatedCount = evaluatedEmps.length;
+        const empCount = branchEmps.length;
+        totalEmployees += empCount;
+        totalEvaluated += evaluatedCount;
+
+        branchStats.push({
+          branchId: branch.id,
+          branchName: branch.name,
+          totalEmployees: empCount,
+          evaluatedCount,
+          notEvaluatedCount: empCount - evaluatedCount,
+          percentage: Math.round((evaluatedCount / empCount) * 100),
+        });
+      }
+
+      branchStats.sort((a, b) => a.percentage - b.percentage);
+
+      res.json({
+        branches: branchStats,
+        summary: {
+          totalBranches: branchStats.length,
+          totalEmployees,
+          totalEvaluated,
+          totalNotEvaluated: totalEmployees - totalEvaluated,
+          overallPercentage: totalEmployees > 0 ? Math.round((totalEvaluated / totalEmployees) * 100) : 0,
+          daysLeft,
+          month: now.toISOString().slice(0, 7),
+        },
+      });
+    } catch (error: any) {
+      console.error("Evaluation coverage error:", error);
+      res.status(500).json({ message: "Değerlendirme kapsam bilgisi alınamadı" });
+    }
+  });
+
+  // GET /api/evaluation-status - Bu aydaki degerlendirme durumu (supervisor icin)
+  app.get('/api/evaluation-status', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      if (!['supervisor', 'admin', 'yatirimci_hq', 'operasyon_muduru', 'bolgeMuduru', 'coach'].includes(user.role)) {
+        return res.status(403).json({ message: "Erişim yetkiniz yok" });
+      }
+
+      const branchId = user.role === 'supervisor' ? user.branchId : (req.query.branchId ? parseInt(req.query.branchId as string) : null);
+      if (!branchId) {
+        return res.json({ evaluated: [], notEvaluated: [], summary: { total: 0, evaluated: 0, notEvaluated: 0, percentage: 0 } });
+      }
+
+      const now = new Date();
+      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+      const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+      const daysLeft = Math.max(0, Math.ceil((monthEnd.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)));
+
+      const branchEmployees = await db.select({
+        id: users.id,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        fullName: users.fullName,
+        role: users.role,
+        profilePhoto: users.profilePhoto,
+      }).from(users)
+        .where(and(
+          eq(users.branchId, branchId),
+          eq(users.isActive, true),
+          not(eq(users.id, user.id))
+        ));
+
+      const thisMonthEvals = await db.select({
+        employeeId: staffEvaluations.employeeId,
+        evalCount: count(),
+        lastEvalDate: max(staffEvaluations.createdAt),
+      }).from(staffEvaluations)
+        .where(and(
+          gte(staffEvaluations.createdAt, monthStart),
+          lte(staffEvaluations.createdAt, monthEnd),
+          eq(staffEvaluations.evaluatorId, user.id)
+        ))
+        .groupBy(staffEvaluations.employeeId);
+
+      const evalMap = new Map(thisMonthEvals.map(e => [e.employeeId, { count: Number(e.evalCount), lastDate: e.lastEvalDate }]));
+
+      const evaluated: any[] = [];
+      const notEvaluated: any[] = [];
+
+      for (const emp of branchEmployees) {
+        const evalInfo = evalMap.get(emp.id);
+        if (evalInfo && evalInfo.count > 0) {
+          evaluated.push({ ...emp, evalCount: evalInfo.count, lastEvalDate: evalInfo.lastDate });
+        } else {
+          notEvaluated.push(emp);
+        }
+      }
+
+      res.json({
+        evaluated,
+        notEvaluated,
+        summary: {
+          total: branchEmployees.length,
+          evaluated: evaluated.length,
+          notEvaluated: notEvaluated.length,
+          percentage: branchEmployees.length > 0 ? Math.round((evaluated.length / branchEmployees.length) * 100) : 0,
+          daysLeft,
+        },
+      });
+    } catch (error: any) {
+      console.error("Evaluation status error:", error);
+      res.status(500).json({ message: "Değerlendirme durumu alınamadı" });
+    }
+  });
+
+  // GET /api/staff-evaluations/:employeeId/limit-status - Degerlendirme limit durumu
+  app.get('/api/staff-evaluations/:employeeId/limit-status', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const employeeId = req.params.employeeId;
+      
+      const now = new Date();
+      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+      const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+      
+      const [monthlyResult] = await db.select({ cnt: count() })
+        .from(staffEvaluations)
+        .where(and(
+          eq(staffEvaluations.evaluatorId, user.id),
+          eq(staffEvaluations.employeeId, employeeId),
+          gte(staffEvaluations.createdAt, monthStart),
+          lte(staffEvaluations.createdAt, monthEnd)
+        ));
+      
+      const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+      const [recentResult] = await db.select({ cnt: count() })
+        .from(staffEvaluations)
+        .where(and(
+          eq(staffEvaluations.evaluatorId, user.id),
+          eq(staffEvaluations.employeeId, employeeId),
+          gte(staffEvaluations.createdAt, twentyFourHoursAgo)
+        ));
+      
+      const [lastEval] = await db.select({ createdAt: staffEvaluations.createdAt })
+        .from(staffEvaluations)
+        .where(and(
+          eq(staffEvaluations.evaluatorId, user.id),
+          eq(staffEvaluations.employeeId, employeeId)
+        ))
+        .orderBy(desc(staffEvaluations.createdAt))
+        .limit(1);
+      
+      res.json({
+        thisMonthCount: monthlyResult?.cnt || 0,
+        lastEvalDate: lastEval?.createdAt?.toISOString() || null,
+        canEvaluateToday: !(recentResult && recentResult.cnt > 0),
+      });
+    } catch (error: any) {
+      console.error("Eval limit status error:", error);
+      res.status(500).json({ message: "Limit durumu alınamadı" });
     }
   });
 

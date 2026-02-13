@@ -2,8 +2,8 @@ import { storage } from "./storage";
 import type { Task, Equipment, User } from "@shared/schema";
 import { sendNotificationEmail } from "./email";
 import { db } from "./db";
-import { correctiveActions, users, auditInstances, branches, factoryProducts, employeeOnboardingAssignments, onboardingTemplates, notifications } from "@shared/schema";
-import { eq, lt, and, ne, lte, or, inArray, gt } from "drizzle-orm";
+import { correctiveActions, users, auditInstances, branches, factoryProducts, employeeOnboardingAssignments, onboardingTemplates, notifications, staffEvaluations } from "@shared/schema";
+import { eq, lt, and, ne, lte, or, inArray, gt, gte, count, max } from "drizzle-orm";
 
 const REMINDER_INTERVAL = 5 * 60 * 1000; // 5 minutes in milliseconds
 const MAINTENANCE_WARNING_DAYS = 7; // Notify 7 days before maintenance due
@@ -431,6 +431,76 @@ async function checkMaintenanceReminders() {
   }
 }
 
+const sentEvalReminderKeys = new Set<string>();
+
+async function checkEvaluationReminders() {
+  try {
+    const now = new Date();
+    const dayOfMonth = now.getDate();
+    if (dayOfMonth < 20) return;
+
+    const todayKey = now.toISOString().slice(0, 10);
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+    const daysLeft = Math.max(0, Math.ceil((monthEnd.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)));
+
+    const supervisors = await db.select({
+      id: users.id,
+      firstName: users.firstName,
+      lastName: users.lastName,
+      branchId: users.branchId,
+    }).from(users)
+      .where(and(
+        eq(users.role, 'supervisor'),
+        eq(users.isActive, true)
+      ));
+
+    for (const sup of supervisors) {
+      if (!sup.branchId) continue;
+      const dedupKey = `eval-reminder:${sup.id}:${todayKey}`;
+      if (sentEvalReminderKeys.has(dedupKey)) continue;
+
+      const branchEmps = await db.select({ id: users.id })
+        .from(users)
+        .where(and(
+          eq(users.branchId, sup.branchId),
+          eq(users.isActive, true),
+          ne(users.id, sup.id)
+        ));
+
+      if (branchEmps.length === 0) continue;
+
+      const empIds = branchEmps.map(e => e.id);
+      const evaluatedEmps = await db.selectDistinct({ employeeId: staffEvaluations.employeeId })
+        .from(staffEvaluations)
+        .where(and(
+          eq(staffEvaluations.evaluatorId, sup.id),
+          gte(staffEvaluations.createdAt, monthStart),
+          lte(staffEvaluations.createdAt, monthEnd),
+          inArray(staffEvaluations.employeeId, empIds)
+        ));
+
+      const evaluatedIds = new Set(evaluatedEmps.map(e => e.employeeId));
+      const notEvaluatedCount = branchEmps.filter(e => !evaluatedIds.has(e.id)).length;
+
+      if (notEvaluatedCount > 0) {
+        await storage.createNotification({
+          userId: sup.id,
+          type: "evaluation_reminder",
+          title: "Değerlendirme Hatırlatması",
+          message: `Bu ay ${notEvaluatedCount} personeli henüz değerlendirmediniz. Ay sonuna ${daysLeft} gün kaldı.`,
+          link: "/personel",
+          isRead: false,
+          branchId: sup.branchId,
+        });
+        sentEvalReminderKeys.add(dedupKey);
+      }
+    }
+  } catch (error) {
+    console.error("Değerlendirme hatırlatma kontrolü hatası:", error);
+  }
+}
+
 export function startReminderSystem() {
   if (reminderInterval) {
     console.log("Hatırlatma sistemi zaten çalışıyor");
@@ -440,8 +510,12 @@ export function startReminderSystem() {
   console.log("Hatırlatma sistemi başlatıldı - Her 5 dakikada bir kontrol edilecek");
   
   checkAndSendReminders();
+  checkEvaluationReminders();
   
-  reminderInterval = setInterval(checkAndSendReminders, REMINDER_INTERVAL);
+  reminderInterval = setInterval(() => {
+    checkAndSendReminders();
+    checkEvaluationReminders();
+  }, REMINDER_INTERVAL);
 }
 
 export function stopReminderSystem() {

@@ -27,6 +27,7 @@ import { tr } from "date-fns/locale";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useBreadcrumb } from "@/components/breadcrumb-navigation";
+import { RadarChart, PolarGrid, PolarAngleAxis, Radar, ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts";
 
 type PersonnelProfile = {
   id: string;
@@ -207,6 +208,13 @@ export default function PersonelProfilPage() {
     enabled: !!id,
   });
 
+  const canEvaluateRole = user?.role === 'coach' || user?.role === 'admin' || user?.role === 'supervisor' || user?.role === 'yatirimci_hq';
+
+  const { data: evalLimitInfo } = useQuery<{ thisMonthCount: number; lastEvalDate: string | null; canEvaluateToday: boolean }>({
+    queryKey: [`/api/staff-evaluations/${id}/limit-status`],
+    enabled: !!id && canEvaluateRole && !isOwnProfile,
+  });
+
   const [evalDialogOpen, setEvalDialogOpen] = useState(false);
   const [evalForm, setEvalForm] = useState({
     customerBehavior: 3,
@@ -227,6 +235,7 @@ export default function PersonelProfilPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/staff-evaluations', id] });
+      queryClient.invalidateQueries({ queryKey: [`/api/staff-evaluations/${id}/limit-status`] });
       queryClient.invalidateQueries({ queryKey: ['/api/personnel', id, 'performance-summary'] });
       setEvalDialogOpen(false);
       setEvalForm({
@@ -1551,6 +1560,64 @@ export default function PersonelProfilPage() {
         </TabsContent>
 
         <TabsContent value="degerlendirmeler" className="flex flex-col gap-3">
+          {/* Kategori Ortalama Radar Chart + Ozet */}
+          {evalData?.evaluations?.length ? (() => {
+            const evals = evalData.evaluations;
+            const avgCat = (key: string) => Math.round(evals.reduce((s: number, e: any) => s + (e[key] || 0), 0) / evals.length * 10) / 10;
+            const radarData = [
+              { cat: "Müşteri", val: avgCat("customerBehavior") },
+              { cat: "Güler Yüz", val: avgCat("friendliness") },
+              { cat: "Bilgi", val: avgCat("knowledgeExperience") },
+              { cat: "Dress Code", val: avgCat("dressCode") },
+              { cat: "Temizlik", val: avgCat("cleanliness") },
+              { cat: "Takım", val: avgCat("teamwork") },
+              { cat: "Dakiklik", val: avgCat("punctuality") },
+              { cat: "İnisiyatif", val: avgCat("initiative") },
+            ];
+            const scoreHistory = evals
+              .slice().reverse()
+              .map((e: any) => ({
+                date: e.createdAt ? format(new Date(e.createdAt), "dd MMM", { locale: tr }) : "",
+                puan: Math.round(e.overallScore),
+              }));
+            return (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <Card data-testid="card-eval-radar">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm">Kategori Ortalamaları</CardTitle>
+                    <CardDescription>Tüm değerlendirmelerin ortalaması (5 üzerinden)</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <ResponsiveContainer width="100%" height={220}>
+                      <RadarChart data={radarData}>
+                        <PolarGrid />
+                        <PolarAngleAxis dataKey="cat" tick={{ fontSize: 10 }} />
+                        <Radar name="Ortalama" dataKey="val" stroke="hsl(var(--primary))" fill="hsl(var(--primary))" fillOpacity={0.2} />
+                      </RadarChart>
+                    </ResponsiveContainer>
+                  </CardContent>
+                </Card>
+                <Card data-testid="card-eval-history-chart">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm">Puan Gelişimi</CardTitle>
+                    <CardDescription>{evals.length} değerlendirme - Ort: {evalData.averageScore?.toFixed(0)}/100</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <ResponsiveContainer width="100%" height={220}>
+                      <LineChart data={scoreHistory}>
+                        <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
+                        <XAxis dataKey="date" tick={{ fontSize: 10 }} />
+                        <YAxis domain={[0, 100]} tick={{ fontSize: 10 }} />
+                        <Tooltip />
+                        <Line type="monotone" dataKey="puan" stroke="hsl(var(--primary))" strokeWidth={2} dot={{ r: 3 }} />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </CardContent>
+                </Card>
+              </div>
+            );
+          })() : null}
+
           <Card>
             <CardHeader className="flex flex-row items-center justify-between gap-2 flex-wrap">
               <div>
@@ -1560,14 +1627,29 @@ export default function PersonelProfilPage() {
                 </CardTitle>
                 <CardDescription>
                   Ortalama Puan: {evalData?.averageScore?.toFixed(1) ?? "—"}/100
+                  {evalData?.evaluations?.length ? ` | Toplam: ${evalData.evaluations.length} değerlendirme` : ""}
                 </CardDescription>
               </div>
               {canEvaluate && !isOwnProfile && (
+                <div className="flex flex-col items-end gap-1">
+                  {evalLimitInfo && (
+                    <span className="text-xs text-muted-foreground" data-testid="text-eval-limit">
+                      Bu ay: {evalLimitInfo.thisMonthCount}/2 değerlendirme
+                    </span>
+                  )}
                 <Dialog open={evalDialogOpen} onOpenChange={setEvalDialogOpen}>
                   <DialogTrigger asChild>
-                    <Button size="sm" data-testid="button-new-evaluation">
+                    <Button 
+                      size="sm" 
+                      data-testid="button-new-evaluation"
+                      disabled={evalLimitInfo ? (!evalLimitInfo.canEvaluateToday || evalLimitInfo.thisMonthCount >= 2) : false}
+                    >
                       <Plus className="h-4 w-4 mr-1" />
-                      Yeni Değerlendirme
+                      {evalLimitInfo && !evalLimitInfo.canEvaluateToday 
+                        ? "Bugün Değerlendirme Yapıldı" 
+                        : evalLimitInfo && evalLimitInfo.thisMonthCount >= 2 
+                          ? "Aylık Limit Doldu" 
+                          : "Yeni Değerlendirme"}
                     </Button>
                   </DialogTrigger>
                   <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
@@ -1632,6 +1714,7 @@ export default function PersonelProfilPage() {
                     </div>
                   </DialogContent>
                 </Dialog>
+                </div>
               )}
             </CardHeader>
             <CardContent>

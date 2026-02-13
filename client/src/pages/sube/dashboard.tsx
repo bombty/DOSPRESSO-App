@@ -130,6 +130,14 @@ export default function SubeDashboard() {
     enabled: !!branchId && authChecked,
   });
 
+  const { data: evalStatus } = useQuery<{
+    evaluated: any[];
+    notEvaluated: any[];
+    summary: { total: number; evaluated: number; notEvaluated: number; percentage: number; daysLeft: number };
+  }>({
+    queryKey: ["/api/evaluation-status"],
+  });
+
   const acknowledgeAlertMutation = useMutation({
     mutationFn: async (alertId: number) => {
       return apiRequest("PATCH", `/api/alerts/${alertId}/acknowledge`, {
@@ -382,6 +390,40 @@ export default function SubeDashboard() {
                       </div>
                     </div>
                   ))}
+                </CardContent>
+              </Card>
+            )}
+
+            {evalStatus && evalStatus.notEvaluated.length > 0 && (
+              <Card data-testid="card-eval-warnings">
+                <CardHeader className="flex flex-row items-center justify-between gap-2 flex-wrap pb-2">
+                  <CardTitle className="text-sm flex items-center gap-2">
+                    <AlertTriangle className={`h-4 w-4 ${evalStatus.summary.daysLeft < 5 ? "text-red-500" : evalStatus.summary.daysLeft < 15 ? "text-amber-500" : "text-muted-foreground"}`} />
+                    Değerlendirilmemiş Personel
+                  </CardTitle>
+                  <Badge variant={evalStatus.summary.daysLeft < 5 ? "destructive" : "secondary"} data-testid="badge-days-left">
+                    {evalStatus.summary.daysLeft} gün kaldı
+                  </Badge>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <span>{evalStatus.summary.evaluated}/{evalStatus.summary.total} personel değerlendirildi</span>
+                    <span className="font-medium">%{evalStatus.summary.percentage}</span>
+                  </div>
+                  <Progress value={evalStatus.summary.percentage} className="h-2" />
+                  <div className="space-y-1.5 max-h-[200px] overflow-y-auto">
+                    {evalStatus.notEvaluated.map((emp: any) => (
+                      <Link key={emp.id} href={`/personel/${emp.id}`}>
+                        <div className="flex items-center justify-between gap-2 p-2 rounded-md hover-elevate cursor-pointer" data-testid={`eval-warning-${emp.id}`}>
+                          <div className="flex items-center gap-2">
+                            <Users className="h-3.5 w-3.5 text-muted-foreground" />
+                            <span className="text-sm">{emp.fullName || `${emp.firstName || ''} ${emp.lastName || ''}`}</span>
+                          </div>
+                          <Badge variant="outline" className="text-xs">{emp.role}</Badge>
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
                 </CardContent>
               </Card>
             )}
