@@ -24,7 +24,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Checkbox } from "@/components/ui/checkbox";
-import { ArrowLeft, Settings, Calendar, Wrench, AlertTriangle, MessageSquare, DollarSign, User, QrCode, ClipboardList, Edit, FileText, Sparkles, Send, ChevronDown, Clock, Shield } from "lucide-react";
+import { ArrowLeft, Settings, Calendar, Wrench, AlertTriangle, MessageSquare, DollarSign, User, QrCode, ClipboardList, Edit, FileText, Sparkles, Send, ChevronDown, Clock, Shield, ExternalLink } from "lucide-react";
 import { QRCodeSVG } from 'qrcode.react';
 import { format } from "date-fns";
 import { tr } from "date-fns/locale";
@@ -851,6 +851,55 @@ export default function EquipmentDetail() {
           </Badge>
         </div>
       </div>
+
+      {equipment.faults && equipment.faults.filter(f => f.currentStage !== 'kapatildi' && f.currentStage !== 'cozuldu').length > 0 && (
+        <Card className="border-destructive/50 bg-destructive/5" data-testid="alert-open-faults">
+          <CardContent className="flex items-start gap-3 pt-4 pb-3">
+            <AlertTriangle className="h-5 w-5 text-destructive flex-shrink-0 mt-0.5" />
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-destructive">
+                {equipment.faults.filter(f => f.currentStage !== 'kapatildi' && f.currentStage !== 'cozuldu').length} adet açık arıza kaydı var
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Bu cihaz için çözülmemiş arıza kayıtları bulunmaktadır.
+              </p>
+              <div className="flex gap-2 flex-wrap mt-2">
+                {equipment.faults.filter(f => f.currentStage !== 'kapatildi' && f.currentStage !== 'cozuldu').slice(0, 3).map(f => (
+                  <Link key={f.id} href={`/ariza-detay/${f.id}`}>
+                    <Button size="sm" variant="outline" data-testid={`button-alert-fault-${f.id}`}>
+                      <ExternalLink className="h-3 w-3 mr-1" />
+                      Arıza #{f.id} - {f.priority === 'yuksek' ? 'Yüksek' : f.priority === 'dusuk' ? 'Düşük' : 'Orta'}
+                    </Button>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {serviceRequests.filter(sr => sr.status !== 'completed' && sr.status !== 'cancelled').length > 0 && (
+        <Card className="border-amber-500/50 bg-amber-50/50 dark:bg-amber-950/20" data-testid="alert-open-service-requests">
+          <CardContent className="flex items-start gap-3 pt-4 pb-3">
+            <Wrench className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-amber-700 dark:text-amber-400">
+                {serviceRequests.filter(sr => sr.status !== 'completed' && sr.status !== 'cancelled').length} adet açık servis talebi
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Bu cihaz için devam eden servis talepleri bulunmaktadır.
+              </p>
+              <div className="flex gap-2 flex-wrap mt-2">
+                {serviceRequests.filter(sr => sr.status !== 'completed' && sr.status !== 'cancelled').slice(0, 3).map(sr => (
+                  <Badge key={sr.id} variant="secondary" data-testid={`badge-service-request-${sr.id}`}>
+                    #{sr.id} - {sr.serviceProvider || 'Servis'} ({sr.status === 'pending' ? 'Beklemede' : sr.status === 'in_progress' ? 'Devam Ediyor' : sr.status})
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Compact Info Summary - responsive grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 text-xs">
