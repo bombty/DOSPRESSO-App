@@ -865,7 +865,7 @@ export default function EquipmentDetail() {
               </p>
               <div className="flex gap-2 flex-wrap mt-2">
                 {equipment.faults.filter(f => f.currentStage !== 'kapatildi' && f.currentStage !== 'cozuldu').slice(0, 3).map(f => (
-                  <Link key={f.id} href={`/ariza-detay/${f.id}`}>
+                  <Link key={f.id} href={`/ariza-detay/${f.id}`} asChild>
                     <Button size="sm" variant="outline" data-testid={`button-alert-fault-${f.id}`}>
                       <ExternalLink className="h-3 w-3 mr-1" />
                       Arıza #{f.id} - {f.priority === 'yuksek' ? 'Yüksek' : f.priority === 'dusuk' ? 'Düşük' : 'Orta'}
@@ -878,21 +878,21 @@ export default function EquipmentDetail() {
         </Card>
       )}
 
-      {serviceRequests.filter(sr => sr.status !== 'completed' && sr.status !== 'cancelled').length > 0 && (
+      {serviceRequests.filter(sr => sr.status !== SERVICE_REQUEST_STATUS.CLOSED && sr.status !== SERVICE_REQUEST_STATUS.FIXED && sr.status !== SERVICE_REQUEST_STATUS.NOT_FIXED).length > 0 && (
         <Card className="border-amber-500/50 bg-amber-50/50 dark:bg-amber-950/20" data-testid="alert-open-service-requests">
           <CardContent className="flex items-start gap-3 pt-4 pb-3">
             <Wrench className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold text-amber-700 dark:text-amber-400">
-                {serviceRequests.filter(sr => sr.status !== 'completed' && sr.status !== 'cancelled').length} adet açık servis talebi
+                {serviceRequests.filter(sr => sr.status !== SERVICE_REQUEST_STATUS.CLOSED && sr.status !== SERVICE_REQUEST_STATUS.FIXED && sr.status !== SERVICE_REQUEST_STATUS.NOT_FIXED).length} adet açık servis talebi
               </p>
               <p className="text-xs text-muted-foreground mt-1">
                 Bu cihaz için devam eden servis talepleri bulunmaktadır.
               </p>
               <div className="flex gap-2 flex-wrap mt-2">
-                {serviceRequests.filter(sr => sr.status !== 'completed' && sr.status !== 'cancelled').slice(0, 3).map(sr => (
+                {serviceRequests.filter(sr => sr.status !== SERVICE_REQUEST_STATUS.CLOSED && sr.status !== SERVICE_REQUEST_STATUS.FIXED && sr.status !== SERVICE_REQUEST_STATUS.NOT_FIXED).slice(0, 3).map(sr => (
                   <Badge key={sr.id} variant="secondary" data-testid={`badge-service-request-${sr.id}`}>
-                    #{sr.id} - {sr.serviceProvider || 'Servis'} ({sr.status === 'pending' ? 'Beklemede' : sr.status === 'in_progress' ? 'Devam Ediyor' : sr.status})
+                    #{sr.id} - {sr.serviceProvider || 'Servis'} ({statusLabels[sr.status] || sr.status})
                   </Badge>
                 ))}
               </div>
