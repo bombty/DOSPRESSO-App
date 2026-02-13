@@ -12078,3 +12078,135 @@ export const managementReports = pgTable("management_reports", {
 export const insertManagementReportSchema = createInsertSchema(managementReports).omit({ id: true, createdAt: true, updatedAt: true });
 export type InsertManagementReport = z.infer<typeof insertManagementReportSchema>;
 export type ManagementReport = typeof managementReports.$inferSelect;
+
+export const franchiseProjects = pgTable("franchise_projects", {
+  id: serial("id").primaryKey(),
+  name: varchar("name", { length: 255 }).notNull(),
+  franchiseeName: varchar("franchisee_name", { length: 255 }).notNull(),
+  contactPerson: varchar("contact_person", { length: 255 }),
+  contactPhone: varchar("contact_phone", { length: 30 }),
+  contactEmail: varchar("contact_email", { length: 255 }),
+  location: varchar("location", { length: 500 }),
+  city: varchar("city", { length: 100 }),
+  status: varchar("status", { length: 30 }).notNull().default("sozlesme"),
+  currentPhase: integer("current_phase").default(1),
+  totalPhases: integer("total_phases").default(7),
+  completionPercentage: integer("completion_percentage").default(0),
+  estimatedBudget: numeric("estimated_budget", { precision: 12, scale: 2 }),
+  actualBudget: numeric("actual_budget", { precision: 12, scale: 2 }),
+  startDate: date("start_date"),
+  expectedEndDate: date("expected_end_date"),
+  actualEndDate: date("actual_end_date"),
+  branchId: integer("branch_id").references(() => branches.id),
+  managerId: varchar("manager_id").references(() => users.id),
+  notes: text("notes"),
+  createdBy: varchar("created_by").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("franchise_projects_status_idx").on(table.status),
+]);
+
+export const insertFranchiseProjectSchema = createInsertSchema(franchiseProjects).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertFranchiseProject = z.infer<typeof insertFranchiseProjectSchema>;
+export type FranchiseProject = typeof franchiseProjects.$inferSelect;
+
+export const franchiseProjectPhases = pgTable("franchise_project_phases", {
+  id: serial("id").primaryKey(),
+  projectId: integer("project_id").notNull().references(() => franchiseProjects.id, { onDelete: "cascade" }),
+  phaseNumber: integer("phase_number").notNull(),
+  name: varchar("name", { length: 255 }).notNull(),
+  description: text("description"),
+  status: varchar("status", { length: 30 }).notNull().default("pending"),
+  startDate: date("start_date"),
+  endDate: date("end_date"),
+  actualStartDate: date("actual_start_date"),
+  actualEndDate: date("actual_end_date"),
+  completionPercentage: integer("completion_percentage").default(0),
+  dependsOnPhaseId: integer("depends_on_phase_id"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("franchise_phases_project_idx").on(table.projectId),
+]);
+
+export const insertFranchiseProjectPhaseSchema = createInsertSchema(franchiseProjectPhases).omit({ id: true, createdAt: true });
+export type InsertFranchiseProjectPhase = z.infer<typeof insertFranchiseProjectPhaseSchema>;
+export type FranchiseProjectPhase = typeof franchiseProjectPhases.$inferSelect;
+
+export const franchiseProjectTasks = pgTable("franchise_project_tasks", {
+  id: serial("id").primaryKey(),
+  projectId: integer("project_id").notNull().references(() => franchiseProjects.id, { onDelete: "cascade" }),
+  phaseId: integer("phase_id").notNull().references(() => franchiseProjectPhases.id, { onDelete: "cascade" }),
+  title: varchar("title", { length: 500 }).notNull(),
+  description: text("description"),
+  status: varchar("status", { length: 30 }).notNull().default("pending"),
+  priority: varchar("priority", { length: 20 }).default("normal"),
+  assignedToUserId: varchar("assigned_to_user_id").references(() => users.id),
+  assignedToCollaboratorId: integer("assigned_to_collaborator_id"),
+  dueDate: date("due_date"),
+  completedAt: timestamp("completed_at"),
+  raciResponsible: varchar("raci_responsible", { length: 255 }),
+  raciAccountable: varchar("raci_accountable", { length: 255 }),
+  raciConsulted: varchar("raci_consulted", { length: 500 }),
+  raciInformed: varchar("raci_informed", { length: 500 }),
+  dependsOnTaskId: integer("depends_on_task_id"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("franchise_tasks_project_idx").on(table.projectId),
+  index("franchise_tasks_phase_idx").on(table.phaseId),
+]);
+
+export const insertFranchiseProjectTaskSchema = createInsertSchema(franchiseProjectTasks).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertFranchiseProjectTask = z.infer<typeof insertFranchiseProjectTaskSchema>;
+export type FranchiseProjectTask = typeof franchiseProjectTasks.$inferSelect;
+
+export const franchiseCollaborators = pgTable("franchise_collaborators", {
+  id: serial("id").primaryKey(),
+  projectId: integer("project_id").notNull().references(() => franchiseProjects.id, { onDelete: "cascade" }),
+  name: varchar("name", { length: 255 }).notNull(),
+  role: varchar("role", { length: 100 }).notNull(),
+  company: varchar("company", { length: 255 }),
+  email: varchar("email", { length: 255 }),
+  phone: varchar("phone", { length: 30 }),
+  specialty: varchar("specialty", { length: 255 }),
+  accessToken: varchar("access_token", { length: 255 }),
+  isActive: boolean("is_active").default(true),
+  invitedAt: timestamp("invited_at").defaultNow(),
+  lastAccessAt: timestamp("last_access_at"),
+  notes: text("notes"),
+}, (table) => [
+  index("franchise_collaborators_project_idx").on(table.projectId),
+]);
+
+export const insertFranchiseCollaboratorSchema = createInsertSchema(franchiseCollaborators).omit({ id: true, invitedAt: true, lastAccessAt: true });
+export type InsertFranchiseCollaborator = z.infer<typeof insertFranchiseCollaboratorSchema>;
+export type FranchiseCollaborator = typeof franchiseCollaborators.$inferSelect;
+
+export const franchiseProjectComments = pgTable("franchise_project_comments", {
+  id: serial("id").primaryKey(),
+  projectId: integer("project_id").notNull().references(() => franchiseProjects.id, { onDelete: "cascade" }),
+  taskId: integer("task_id").references(() => franchiseProjectTasks.id, { onDelete: "cascade" }),
+  authorUserId: varchar("author_user_id").references(() => users.id),
+  authorCollaboratorId: integer("author_collaborator_id").references(() => franchiseCollaborators.id),
+  content: text("content").notNull(),
+  attachmentUrl: varchar("attachment_url", { length: 500 }),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("franchise_comments_project_idx").on(table.projectId),
+]);
+
+export const insertFranchiseProjectCommentSchema = createInsertSchema(franchiseProjectComments).omit({ id: true, createdAt: true });
+export type InsertFranchiseProjectComment = z.infer<typeof insertFranchiseProjectCommentSchema>;
+export type FranchiseProjectComment = typeof franchiseProjectComments.$inferSelect;
+
+export const DEFAULT_FRANCHISE_PHASES = [
+  { phaseNumber: 1, name: "Sozlesme ve Planlama", description: "Franchise sozlesmesi imzalanmasi, is plani hazirligi, fizibilite calismasi" },
+  { phaseNumber: 2, name: "Mekan Secimi ve Kiralama", description: "Uygun lokasyon arastirmasi, kira sozlesmesi, imar durumu kontrolu" },
+  { phaseNumber: 3, name: "Mimari Proje ve Tasarim", description: "Ic mekan tasarimi, dekorasyon projesi, DOSPRESSO marka standartlari uyumu" },
+  { phaseNumber: 4, name: "Tadilat ve Insaat", description: "Mekan renovasyonu, altyapi islemleri, elektrik-tesisat, mobilya uretim" },
+  { phaseNumber: 5, name: "Ekipman Kurulum", description: "Kahve makineleri, sogutma uniteleri, kasa sistemi, POS entegrasyonu" },
+  { phaseNumber: 6, name: "Personel Alim ve Egitim", description: "Kadro olusturma, DOSPRESSO Akademi egitimi, staj donemi" },
+  { phaseNumber: 7, name: "Acilis Oncesi ve Acilis", description: "Son kontroller, test servisleri, resmi acilis, marketing kampanyasi" },
+];

@@ -6,6 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Progress } from "@/components/ui/progress";
 import { Textarea } from "@/components/ui/textarea";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useState } from "react";
@@ -33,6 +34,10 @@ import {
   Activity,
   Target,
   BarChart3,
+  Crown,
+  Briefcase,
+  Phone,
+  Mail,
   Gauge,
   Zap
 } from "lucide-react";
@@ -493,6 +498,199 @@ function OperationalTab({ data }: { data: CGOData }) {
   );
 }
 
+interface ManagerData {
+  id: string;
+  name: string;
+  role: string;
+  department: string;
+  email: string | null;
+  phone: string | null;
+  profileImage: string | null;
+  hireDate: string | null;
+  type: 'hq' | 'branch';
+  branchName: string | null;
+  branchId?: number;
+  metrics: {
+    assignedFaults: number;
+    resolvedFaults: number;
+    faultResolutionRate: number;
+    checklistsCompleted: number;
+    overallScore: number;
+  };
+}
+
+interface ManagerPerformanceData {
+  hqManagers: ManagerData[];
+  branchManagers: ManagerData[];
+  summary: {
+    totalHQ: number;
+    totalBranch: number;
+    hqAverageScore: number;
+    branchAverageScore: number;
+    overallAverageScore: number;
+  };
+}
+
+function getScoreColor(score: number) {
+  if (score >= 80) return 'text-green-600 dark:text-green-400';
+  if (score >= 60) return 'text-yellow-600 dark:text-yellow-400';
+  return 'text-red-600 dark:text-red-400';
+}
+
+function getScoreBadge(score: number) {
+  if (score >= 80) return <Badge className="bg-green-500/10 text-green-700 dark:text-green-300">Basarili</Badge>;
+  if (score >= 60) return <Badge className="bg-yellow-500/10 text-yellow-700 dark:text-yellow-300">Orta</Badge>;
+  return <Badge className="bg-red-500/10 text-red-700 dark:text-red-300">Dusuk</Badge>;
+}
+
+function ManagerCard({ manager }: { manager: ManagerData }) {
+  const initials = manager.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+
+  return (
+    <Card data-testid={`card-manager-${manager.id}`} className="hover-elevate">
+      <CardContent className="pt-4 pb-3 px-4">
+        <div className="flex items-start gap-3">
+          <Avatar className="h-10 w-10">
+            <AvatarImage src={manager.profileImage || undefined} />
+            <AvatarFallback className="text-xs">{initials}</AvatarFallback>
+          </Avatar>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <div className="min-w-0">
+                <p className="font-semibold text-sm truncate" data-testid={`text-manager-name-${manager.id}`}>{manager.name}</p>
+                <p className="text-xs text-muted-foreground flex items-center gap-1 flex-wrap">
+                  <Briefcase className="w-3 h-3 shrink-0" />
+                  <span className="truncate">{manager.department}</span>
+                  {manager.branchName && (
+                    <Badge variant="outline" className="text-[10px] ml-1">{manager.branchName}</Badge>
+                  )}
+                </p>
+              </div>
+              {getScoreBadge(manager.metrics.overallScore)}
+            </div>
+            <div className="mt-2 grid grid-cols-3 gap-2 text-center">
+              <div className="bg-muted/50 rounded p-1.5">
+                <p className={`text-sm font-bold ${getScoreColor(manager.metrics.overallScore)}`} data-testid={`text-score-${manager.id}`}>{manager.metrics.overallScore}</p>
+                <p className="text-[10px] text-muted-foreground">Puan</p>
+              </div>
+              <div className="bg-muted/50 rounded p-1.5">
+                <p className="text-sm font-bold">{manager.metrics.resolvedFaults}/{manager.metrics.assignedFaults}</p>
+                <p className="text-[10px] text-muted-foreground">Ariza</p>
+              </div>
+              <div className="bg-muted/50 rounded p-1.5">
+                <p className="text-sm font-bold">{manager.metrics.checklistsCompleted}</p>
+                <p className="text-[10px] text-muted-foreground">Checklist</p>
+              </div>
+            </div>
+            <Progress value={manager.metrics.overallScore} className="h-1.5 mt-2" />
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function ManagerPerformanceTab() {
+  const { data, isLoading } = useQuery<ManagerPerformanceData>({
+    queryKey: ['/api/manager-performance'],
+  });
+
+  if (isLoading) {
+    return (
+      <div className="space-y-3">
+        {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-28" />)}
+      </div>
+    );
+  }
+
+  if (!data) {
+    return (
+      <Card>
+        <CardContent className="py-8 text-center text-muted-foreground">
+          Yonetici performans verileri yuklenemedi
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <Card data-testid="card-summary-hq">
+          <CardContent className="pt-4 pb-3 px-4">
+            <div className="flex items-center gap-2 mb-1">
+              <Crown className="w-4 h-4 text-blue-500" />
+              <span className="text-xs text-muted-foreground">HQ Merkez</span>
+            </div>
+            <p className="text-xl font-bold">{data.summary.totalHQ}</p>
+          </CardContent>
+        </Card>
+        <Card data-testid="card-summary-branch">
+          <CardContent className="pt-4 pb-3 px-4">
+            <div className="flex items-center gap-2 mb-1">
+              <Store className="w-4 h-4 text-purple-500" />
+              <span className="text-xs text-muted-foreground">Sube Yoneticileri</span>
+            </div>
+            <p className="text-xl font-bold">{data.summary.totalBranch}</p>
+          </CardContent>
+        </Card>
+        <Card data-testid="card-summary-hq-avg">
+          <CardContent className="pt-4 pb-3 px-4">
+            <div className="flex items-center gap-2 mb-1">
+              <Target className="w-4 h-4 text-emerald-500" />
+              <span className="text-xs text-muted-foreground">HQ Ort.</span>
+            </div>
+            <p className={`text-xl font-bold ${getScoreColor(data.summary.hqAverageScore)}`}>{data.summary.hqAverageScore}</p>
+          </CardContent>
+        </Card>
+        <Card data-testid="card-summary-branch-avg">
+          <CardContent className="pt-4 pb-3 px-4">
+            <div className="flex items-center gap-2 mb-1">
+              <BarChart3 className="w-4 h-4 text-orange-500" />
+              <span className="text-xs text-muted-foreground">Sube Ort.</span>
+            </div>
+            <p className={`text-xl font-bold ${getScoreColor(data.summary.branchAverageScore)}`}>{data.summary.branchAverageScore}</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div>
+        <h3 className="text-sm font-semibold mb-2 flex items-center gap-2" data-testid="heading-hq-staff">
+          <Crown className="w-4 h-4 text-blue-500" />
+          DOSPRESSO Merkez Kadro
+        </h3>
+        <p className="text-xs text-muted-foreground mb-3">Ece Hanim ve Yavuz Bey'e bagli merkez departman yoneticileri</p>
+        {data.hqManagers.length === 0 ? (
+          <Card><CardContent className="py-6 text-center text-muted-foreground text-sm">HQ merkez personeli bulunamadi</CardContent></Card>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {data.hqManagers.sort((a, b) => b.metrics.overallScore - a.metrics.overallScore).map(m => (
+              <ManagerCard key={m.id} manager={m} />
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div>
+        <h3 className="text-sm font-semibold mb-2 flex items-center gap-2" data-testid="heading-branch-supervisors">
+          <Store className="w-4 h-4 text-purple-500" />
+          Sube Yoneticileri (Supervisors)
+        </h3>
+        <p className="text-xs text-muted-foreground mb-3">Her subenin sorumlu supervisor yoneticileri</p>
+        {data.branchManagers.length === 0 ? (
+          <Card><CardContent className="py-6 text-center text-muted-foreground text-sm">Sube supervisor bulunamadi</CardContent></Card>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {data.branchManagers.sort((a, b) => b.metrics.overallScore - a.metrics.overallScore).map(m => (
+              <ManagerCard key={m.id} manager={m} />
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function AIStrategist() {
   const [question, setQuestion] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -662,10 +860,14 @@ export default function CGOCommandCenter() {
       </div>
 
       <Tabs defaultValue="growth" className="w-full">
-        <TabsList className="w-full grid grid-cols-4">
+        <TabsList className="w-full grid grid-cols-5">
           <TabsTrigger value="growth" className="text-xs" data-testid="tab-cgo-growth">
             <TrendingUp className="w-3.5 h-3.5 mr-1" />
             <span className="hidden sm:inline">Buyume</span>
+          </TabsTrigger>
+          <TabsTrigger value="managers" className="text-xs" data-testid="tab-cgo-managers">
+            <Crown className="w-3.5 h-3.5 mr-1" />
+            <span className="hidden sm:inline">Yoneticiler</span>
           </TabsTrigger>
           <TabsTrigger value="departments" className="text-xs" data-testid="tab-cgo-departments">
             <Building2 className="w-3.5 h-3.5 mr-1" />
@@ -677,12 +879,16 @@ export default function CGOCommandCenter() {
           </TabsTrigger>
           <TabsTrigger value="ai" className="text-xs" data-testid="tab-cgo-ai">
             <Brain className="w-3.5 h-3.5 mr-1" />
-            <span className="hidden sm:inline">AI Stratejist</span>
+            <span className="hidden sm:inline">AI</span>
           </TabsTrigger>
         </TabsList>
 
         <TabsContent value="growth" className="mt-4">
           <GrowthTab data={commandData} />
+        </TabsContent>
+
+        <TabsContent value="managers" className="mt-4">
+          <ManagerPerformanceTab />
         </TabsContent>
 
         <TabsContent value="departments" className="mt-4">

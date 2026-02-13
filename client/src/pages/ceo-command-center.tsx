@@ -267,6 +267,106 @@ function AIAssistant() {
   );
 }
 
+function CEOManagersTab() {
+  const { data, isLoading } = useQuery<any>({
+    queryKey: ['/api/manager-performance'],
+  });
+
+  if (isLoading) {
+    return <div className="space-y-3">{[...Array(3)].map((_, i) => <Skeleton key={i} className="h-16" />)}</div>;
+  }
+
+  if (!data) {
+    return <Card><CardContent className="py-8 text-center text-muted-foreground">Yonetici verileri yuklenemedi</CardContent></Card>;
+  }
+
+  const renderManagerRow = (m: any) => {
+    const score = m.metrics?.overallScore ?? 0;
+    return (
+    <div key={m.id} className="flex items-center justify-between p-3 rounded-lg border hover-elevate" data-testid={`card-ceo-manager-${m.id}`}>
+      <div className="flex items-center gap-3">
+        <div className={`w-2 h-2 rounded-full shrink-0 ${score >= 80 ? 'bg-green-500' : score >= 60 ? 'bg-yellow-500' : 'bg-red-500'}`} />
+        <div className="min-w-0">
+          <p className="font-medium text-sm truncate" data-testid={`text-ceo-mgr-name-${m.id}`}>{m.name}</p>
+          <p className="text-xs text-muted-foreground flex items-center gap-1 flex-wrap">
+            {m.department}
+            {m.branchName && <Badge variant="outline" className="text-[10px] ml-1">{m.branchName}</Badge>}
+          </p>
+        </div>
+      </div>
+      <div className="flex items-center gap-3 shrink-0">
+        <div className="text-right">
+          <span className={`text-lg font-bold ${score >= 80 ? 'text-green-600 dark:text-green-400' : score >= 60 ? 'text-yellow-600 dark:text-yellow-400' : 'text-red-600 dark:text-red-400'}`}>{score}</span>
+          <span className="text-xs text-muted-foreground">/100</span>
+        </div>
+        <Badge variant={score >= 80 ? 'default' : score >= 60 ? 'secondary' : 'destructive'}>
+          {score >= 80 ? 'Basarili' : score >= 60 ? 'Normal' : 'Risk'}
+        </Badge>
+      </div>
+    </div>
+  );
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-3 gap-3">
+        <Card data-testid="card-ceo-mgr-summary-hq">
+          <CardContent className="pt-3 pb-2 px-3 text-center">
+            <p className="text-xs text-muted-foreground">HQ Merkez</p>
+            <p className="text-xl font-bold">{data.summary.totalHQ}</p>
+            <p className="text-xs text-muted-foreground">Ort: {data.summary.hqAverageScore}</p>
+          </CardContent>
+        </Card>
+        <Card data-testid="card-ceo-mgr-summary-branch">
+          <CardContent className="pt-3 pb-2 px-3 text-center">
+            <p className="text-xs text-muted-foreground">Sube Yoneticileri</p>
+            <p className="text-xl font-bold">{data.summary.totalBranch}</p>
+            <p className="text-xs text-muted-foreground">Ort: {data.summary.branchAverageScore}</p>
+          </CardContent>
+        </Card>
+        <Card data-testid="card-ceo-mgr-summary-overall">
+          <CardContent className="pt-3 pb-2 px-3 text-center">
+            <p className="text-xs text-muted-foreground">Genel Ortalama</p>
+            <p className={`text-xl font-bold ${data.summary.overallAverageScore >= 80 ? 'text-green-600 dark:text-green-400' : 'text-yellow-600 dark:text-yellow-400'}`}>{data.summary.overallAverageScore}</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base">DOSPRESSO Merkez Kadro</CardTitle>
+          <p className="text-xs text-muted-foreground">Ece Hanim ve Yavuz Bey'e bagli yoneticiler</p>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-2">
+            {data.hqManagers.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-4">HQ personeli bulunamadi</p>
+            ) : (
+              data.hqManagers.sort((a: any, b: any) => b.metrics.overallScore - a.metrics.overallScore).map(renderManagerRow)
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base">Sube Yoneticileri (Supervisors)</CardTitle>
+          <p className="text-xs text-muted-foreground">Her subenin sorumlu supervisor yoneticisi</p>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-2">
+            {data.branchManagers.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-4">Sube supervisor bulunamadi</p>
+            ) : (
+              data.branchManagers.sort((a: any, b: any) => b.metrics.overallScore - a.metrics.overallScore).map(renderManagerRow)
+            )}
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
 function FinancialSummaryTab() {
   const year = new Date().getFullYear().toString();
   const { data: summary } = useQuery<any>({
@@ -732,51 +832,7 @@ export default function CEOCommandCenter() {
         </TabsContent>
 
         <TabsContent value="managers" className="mt-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Yönetici Performans Takibi</CardTitle>
-              <p className="text-sm text-muted-foreground">Departman bazlı AI skorları ve trend analizi</p>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {commandData.managers.map((manager) => (
-                  <div 
-                    key={manager.id} 
-                    className="flex items-center justify-between p-3 rounded-lg border hover-elevate"
-                    data-testid={`card-manager-${manager.id}`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className={`w-2 h-2 rounded-full ${
-                        manager.score >= 85 ? 'bg-green-500' : 
-                        manager.score >= 70 ? 'bg-yellow-500' : 'bg-red-500'
-                      }`} />
-                      <div>
-                        <p className="font-medium">{manager.name}</p>
-                        <p className="text-xs text-muted-foreground">{manager.department}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-4">
-                      <div className="text-right">
-                        <div className="flex items-center gap-1">
-                          <span className="text-lg font-bold">{manager.score}</span>
-                          <span className="text-xs text-muted-foreground">/100</span>
-                          {getTrendIcon(manager.trend)}
-                        </div>
-                        <div className="flex gap-2 text-xs text-muted-foreground">
-                          {Object.entries(manager.metrics).map(([key, value]) => (
-                            <span key={key}>{key}: {value}</span>
-                          ))}
-                        </div>
-                      </div>
-                      <Badge variant={manager.score >= 85 ? 'default' : manager.score >= 70 ? 'secondary' : 'destructive'}>
-                        {manager.score >= 85 ? 'Yıldız' : manager.score >= 70 ? 'Normal' : 'Risk'}
-                      </Badge>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
+          <CEOManagersTab />
         </TabsContent>
 
         <TabsContent value="ai" className="mt-4">

@@ -297,6 +297,16 @@ import {
   insertDashboardModuleVisibilitySchema,
   faultComments,
   managementReports,
+  franchiseProjects,
+  insertFranchiseProjectSchema,
+  franchiseProjectPhases,
+  insertFranchiseProjectPhaseSchema,
+  franchiseProjectTasks,
+  insertFranchiseProjectTaskSchema,
+  franchiseCollaborators,
+  insertFranchiseCollaboratorSchema,
+  franchiseProjectComments,
+  insertFranchiseProjectCommentSchema,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, asc, sql, and, or, isNull, isNotNull, inArray, lte, gte, ne, count, sum, avg } from "drizzle-orm";
@@ -36429,6 +36439,297 @@ AI analizi su an kullanilamiyor. Detayli bilgi icin ilgili modulleri kontrol edi
   registerFactoryShiftRoutes(app);
   registerExportRoutes(app);
   registerInspectionRoutes(app);
+
+  // ========================================
+  // MANAGER PERFORMANCE - Yonetici Performans API
+  // ========================================
+
+  app.get('/api/manager-performance', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const allowedRoles = ['ceo', 'admin', 'cgo', 'coach', 'trainer'];
+      if (!allowedRoles.includes(user.role)) {
+        return res.status(403).json({ message: "Yetkiniz yok" });
+      }
+
+      const allUsers = await db.select().from(users).where(eq(users.isActive, true));
+      const allBranches = await db.select().from(branches);
+      const allFaults = await db.select().from(faults);
+      const allChecklists = await db.select().from(checklistCompletions);
+
+      const hqRoles = ['muhasebe_ik', 'satinalma', 'coach', 'marketing', 'trainer', 'kalite_kontrol', 'fabrika_mudur', 'teknik', 'destek', 'muhasebe', 'fabrika'];
+      const hqStaff = allUsers.filter(u => hqRoles.includes(u.role || '') && !u.branchId);
+      const branchSupervisors = allUsers.filter(u => u.role === 'supervisor');
+
+      const getPerformanceMetrics = (userId: string) => {
+        const assignedFaults = allFaults.filter(f => f.assignedToId === userId);
+        const resolvedFaults = assignedFaults.filter(f => f.status === 'resolved' || f.status === 'closed');
+        const userChecklists = allChecklists.filter((c: any) => c.completedBy === userId);
+        const faultResolutionRate = assignedFaults.length > 0 ? Math.round((resolvedFaults.length / assignedFaults.length) * 100) : 100;
+        return {
+          assignedFaults: assignedFaults.length,
+          resolvedFaults: resolvedFaults.length,
+          faultResolutionRate,
+          checklistsCompleted: userChecklists.length,
+          overallScore: Math.min(100, Math.round(faultResolutionRate * 0.6 + Math.min(userChecklists.length * 2, 40)))
+        };
+      };
+
+      const departmentMap: Record<string, string> = {
+        'muhasebe_ik': 'Muhasebe & IK',
+        'satinalma': 'Satin Alma',
+        'coach': 'Coach & Performans',
+        'marketing': 'Pazarlama',
+        'trainer': 'Egitim',
+        'kalite_kontrol': 'Kalite Kontrol',
+        'fabrika_mudur': 'Fabrika Yonetim',
+        'teknik': 'Teknik Destek',
+        'destek': 'Destek',
+        'muhasebe': 'Muhasebe',
+        'fabrika': 'Fabrika',
+      };
+
+      const hqManagers = hqStaff.map(u => ({
+        id: u.id,
+        name: `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.username || 'Bilinmiyor',
+        role: u.role,
+        department: departmentMap[u.role || ''] || u.department || u.role || 'Bilinmiyor',
+        email: u.email,
+        phone: u.phoneNumber,
+        profileImage: u.profileImageUrl,
+        hireDate: u.hireDate,
+        type: 'hq' as const,
+        branchName: null as string | null,
+        metrics: getPerformanceMetrics(u.id),
+      }));
+
+      const supervisorManagers = branchSupervisors.map(u => {
+        const branch = allBranches.find(b => b.id === u.branchId);
+        return {
+          id: u.id,
+          name: `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.username || 'Bilinmiyor',
+          role: u.role,
+          department: 'Sube Yonetimi',
+          email: u.email,
+          phone: u.phoneNumber,
+          profileImage: u.profileImageUrl,
+          hireDate: u.hireDate,
+          type: 'branch' as const,
+          branchName: branch?.name || 'Bilinmiyor',
+          branchId: u.branchId,
+          metrics: getPerformanceMetrics(u.id),
+        };
+      });
+
+      const hqAvgScore = hqManagers.length > 0 ? Math.round(hqManagers.reduce((sum, m) => sum + m.metrics.overallScore, 0) / hqManagers.length) : 0;
+      const branchAvgScore = supervisorManagers.length > 0 ? Math.round(supervisorManagers.reduce((sum, m) => sum + m.metrics.overallScore, 0) / supervisorManagers.length) : 0;
+
+      res.json({
+        hqManagers,
+        branchManagers: supervisorManagers,
+        summary: {
+          totalHQ: hqManagers.length,
+          totalBranch: supervisorManagers.length,
+          hqAverageScore: hqAvgScore,
+          branchAverageScore: branchAvgScore,
+          overallAverageScore: Math.round((hqAvgScore + branchAvgScore) / 2),
+        }
+      });
+    } catch (error: any) {
+      console.error("Manager performance error:", error);
+      res.status(500).json({ message: "Yonetici performans verileri yuklenemedi" });
+    }
+  });
+
+  // ========================================
+  // FRANCHISE PROJECTS - Franchise Proje Yonetimi API
+  // ========================================
+
+  app.get('/api/franchise-projects', isAuthenticated, async (req: any, res) => {
+    try {
+      const projects = await db.select().from(franchiseProjects).orderBy(desc(franchiseProjects.createdAt));
+      res.json(projects);
+    } catch (error: any) {
+      console.error("Error fetching franchise projects:", error);
+      res.status(500).json({ message: "Projeler yuklenemedi" });
+    }
+  });
+
+  app.get('/api/franchise-projects/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const projectId = parseInt(req.params.id);
+      const [project] = await db.select().from(franchiseProjects).where(eq(franchiseProjects.id, projectId));
+      if (!project) return res.status(404).json({ message: "Proje bulunamadi" });
+
+      const phases = await db.select().from(franchiseProjectPhases).where(eq(franchiseProjectPhases.projectId, projectId)).orderBy(franchiseProjectPhases.phaseNumber);
+      const tasks = await db.select().from(franchiseProjectTasks).where(eq(franchiseProjectTasks.projectId, projectId));
+      const collaborators = await db.select().from(franchiseCollaborators).where(eq(franchiseCollaborators.projectId, projectId));
+      const comments = await db.select().from(franchiseProjectComments).where(eq(franchiseProjectComments.projectId, projectId)).orderBy(desc(franchiseProjectComments.createdAt));
+
+      const allUsers = await db.select({ id: users.id, firstName: users.firstName, lastName: users.lastName, username: users.username, role: users.role, profileImageUrl: users.profileImageUrl }).from(users);
+
+      res.json({ ...project, phases, tasks, collaborators, comments, users: allUsers });
+    } catch (error: any) {
+      console.error("Error fetching franchise project:", error);
+      res.status(500).json({ message: "Proje detaylari yuklenemedi" });
+    }
+  });
+
+  app.post('/api/franchise-projects', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      if (!isHQRole(user.role as UserRoleType)) {
+        return res.status(403).json({ message: "HQ yetkisi gerekli" });
+      }
+
+      const { name, franchiseeName, contactPerson, contactPhone, contactEmail, location, city, estimatedBudget, startDate, expectedEndDate, notes, managerId } = req.body;
+
+      const [project] = await db.insert(franchiseProjects).values({
+        name,
+        franchiseeName,
+        contactPerson,
+        contactPhone,
+        contactEmail,
+        location,
+        city,
+        estimatedBudget,
+        startDate,
+        expectedEndDate,
+        notes,
+        managerId,
+        createdBy: user.id,
+        status: 'sozlesme',
+        currentPhase: 1,
+        totalPhases: 7,
+        completionPercentage: 0,
+      }).returning();
+
+      const defaultPhases = [
+        { phaseNumber: 1, name: "Sozlesme ve Planlama", description: "Franchise sozlesmesi imzalanmasi, is plani hazirligi, fizibilite calismasi" },
+        { phaseNumber: 2, name: "Mekan Secimi ve Kiralama", description: "Uygun lokasyon arastirmasi, kira sozlesmesi, imar durumu kontrolu" },
+        { phaseNumber: 3, name: "Mimari Proje ve Tasarim", description: "Ic mekan tasarimi, dekorasyon projesi, DOSPRESSO marka standartlari uyumu" },
+        { phaseNumber: 4, name: "Tadilat ve Insaat", description: "Mekan renovasyonu, altyapi islemleri, elektrik-tesisat, mobilya uretim" },
+        { phaseNumber: 5, name: "Ekipman Kurulum", description: "Kahve makineleri, sogutma uniteleri, kasa sistemi, POS entegrasyonu" },
+        { phaseNumber: 6, name: "Personel Alim ve Egitim", description: "Kadro olusturma, DOSPRESSO Akademi egitimi, staj donemi" },
+        { phaseNumber: 7, name: "Acilis Oncesi ve Acilis", description: "Son kontroller, test servisleri, resmi acilis, marketing kampanyasi" },
+      ];
+
+      for (const phase of defaultPhases) {
+        await db.insert(franchiseProjectPhases).values({
+          projectId: project.id,
+          ...phase,
+          status: phase.phaseNumber === 1 ? 'in_progress' : 'pending',
+          dependsOnPhaseId: phase.phaseNumber > 1 ? phase.phaseNumber - 1 : null,
+        });
+      }
+
+      res.status(201).json(project);
+    } catch (error: any) {
+      console.error("Error creating franchise project:", error);
+      res.status(500).json({ message: "Proje olusturulamadi" });
+    }
+  });
+
+  app.patch('/api/franchise-projects/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const projectId = parseInt(req.params.id);
+      const updates = req.body;
+      const [updated] = await db.update(franchiseProjects).set({ ...updates, updatedAt: new Date() }).where(eq(franchiseProjects.id, projectId)).returning();
+      res.json(updated);
+    } catch (error: any) {
+      console.error("Error updating franchise project:", error);
+      res.status(500).json({ message: "Proje guncellenemedi" });
+    }
+  });
+
+  app.patch('/api/franchise-project-phases/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const phaseId = parseInt(req.params.id);
+      const updates = req.body;
+      const [updated] = await db.update(franchiseProjectPhases).set(updates).where(eq(franchiseProjectPhases.id, phaseId)).returning();
+
+      if (updated && updated.projectId) {
+        const allPhases = await db.select().from(franchiseProjectPhases).where(eq(franchiseProjectPhases.projectId, updated.projectId));
+        const totalCompletion = Math.round(allPhases.reduce((sum, p) => sum + (p.completionPercentage || 0), 0) / allPhases.length);
+        const currentPhase = allPhases.find(p => p.status === 'in_progress')?.phaseNumber || 1;
+        await db.update(franchiseProjects).set({ completionPercentage: totalCompletion, currentPhase, updatedAt: new Date() }).where(eq(franchiseProjects.id, updated.projectId));
+      }
+
+      res.json(updated);
+    } catch (error: any) {
+      console.error("Error updating phase:", error);
+      res.status(500).json({ message: "Faz guncellenemedi" });
+    }
+  });
+
+  app.post('/api/franchise-project-tasks', isAuthenticated, async (req: any, res) => {
+    try {
+      const { projectId, phaseId, title, description, priority, assignedToUserId, assignedToCollaboratorId, dueDate, raciResponsible, raciAccountable, raciConsulted, raciInformed, dependsOnTaskId, notes } = req.body;
+      const [task] = await db.insert(franchiseProjectTasks).values({
+        projectId, phaseId, title, description, status: 'pending', priority, assignedToUserId, assignedToCollaboratorId, dueDate, raciResponsible, raciAccountable, raciConsulted, raciInformed, dependsOnTaskId, notes,
+      }).returning();
+      res.status(201).json(task);
+    } catch (error: any) {
+      console.error("Error creating task:", error);
+      res.status(500).json({ message: "Gorev olusturulamadi" });
+    }
+  });
+
+  app.patch('/api/franchise-project-tasks/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const taskId = parseInt(req.params.id);
+      const updates = req.body;
+      if (updates.status === 'completed') {
+        updates.completedAt = new Date();
+      }
+      const [updated] = await db.update(franchiseProjectTasks).set({ ...updates, updatedAt: new Date() }).where(eq(franchiseProjectTasks.id, taskId)).returning();
+      res.json(updated);
+    } catch (error: any) {
+      console.error("Error updating task:", error);
+      res.status(500).json({ message: "Gorev guncellenemedi" });
+    }
+  });
+
+  app.post('/api/franchise-collaborators', isAuthenticated, async (req: any, res) => {
+    try {
+      const { projectId, name, role, company, email, phone, specialty, notes } = req.body;
+      const crypto = await import('crypto');
+      const accessToken = crypto.randomBytes(32).toString('hex');
+      const [collaborator] = await db.insert(franchiseCollaborators).values({
+        projectId, name, role, company, email, phone, specialty, accessToken, notes, isActive: true,
+      }).returning();
+      res.status(201).json(collaborator);
+    } catch (error: any) {
+      console.error("Error creating collaborator:", error);
+      res.status(500).json({ message: "Paydas eklenemedi" });
+    }
+  });
+
+  app.delete('/api/franchise-collaborators/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const collabId = parseInt(req.params.id);
+      await db.update(franchiseCollaborators).set({ isActive: false }).where(eq(franchiseCollaborators.id, collabId));
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("Error deactivating collaborator:", error);
+      res.status(500).json({ message: "Paydas devre disi birakilamadi" });
+    }
+  });
+
+  app.post('/api/franchise-project-comments', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const { projectId, taskId, content, attachmentUrl } = req.body;
+      const [comment] = await db.insert(franchiseProjectComments).values({
+        projectId, taskId, authorUserId: user.id, content, attachmentUrl,
+      }).returning();
+      res.status(201).json(comment);
+    } catch (error: any) {
+      console.error("Error creating comment:", error);
+      res.status(500).json({ message: "Yorum eklenemedi" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
