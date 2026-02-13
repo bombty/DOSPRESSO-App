@@ -1,131 +1,79 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
-import { 
-  DollarSign, 
-  Building2, 
-  Factory, 
-  Users, 
-  MessageSquare, 
-  TrendingUp,
+import {
   AlertTriangle,
   CheckCircle,
   AlertCircle,
   Brain,
   RefreshCw,
-  ArrowUpRight,
-  ArrowDownRight,
-  Minus,
   Send,
-  Loader2
+  Loader2,
+  Building2,
+  Users,
+  Factory,
+  ClipboardCheck,
+  ShieldCheck,
+  GraduationCap,
+  Eye,
+  User
 } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Textarea } from "@/components/ui/textarea";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
-interface RiskIndicator {
+interface DeptDetail {
+  key: string;
+  value: string;
+}
+
+interface DeptSummary {
+  label: string;
+  source: string;
   status: 'healthy' | 'warning' | 'critical';
-  score: number;
-  trend: 'up' | 'down' | 'stable';
+  mainMetric: string;
+  details: DeptDetail[];
+  alert: string | null;
+}
+
+interface UrgentAlert {
+  type: string;
+  severity: 'critical' | 'warning';
   message: string;
+  count?: number;
 }
 
-interface FinanceData {
-  dailyRevenue: number;
-  monthlyRevenue: number;
-  cashFlow: number;
-  variance: number;
-  riskIndicator: RiskIndicator;
-  topRisks: Array<{ name: string; impact: number; type: string }>;
-}
-
-interface FranchiseData {
-  totalBranches: number;
-  healthyBranches: number;
-  warningBranches: number;
-  criticalBranches: number;
-  averageScore: number;
-  riskIndicator: RiskIndicator;
-  bottomPerformers: Array<{ name: string; score: number; issues: string[] }>;
-}
-
-interface FactoryData {
-  dailyProduction: number;
-  wastePercentage: number;
-  qualityScore: number;
-  equipmentUptime: number;
-  riskIndicator: RiskIndicator;
-  criticalIssues: Array<{ area: string; issue: string; severity: string }>;
-}
-
-interface HRData {
-  totalEmployees: number;
-  turnoverRate: number;
-  trainingCompletion: number;
-  satisfactionScore: number;
-  riskIndicator: RiskIndicator;
-  atRiskEmployees: Array<{ department: string; count: number; reason: string }>;
-}
-
-interface CustomerData {
-  satisfactionScore: number;
-  complaintCount: number;
-  resolvedPercentage: number;
-  npsScore: number;
-  riskIndicator: RiskIndicator;
-  topComplaints: Array<{ category: string; count: number; trend: string }>;
-}
-
-interface GrowthData {
-  marketingROI: number;
-  campaignPerformance: number;
-  salesGrowth: number;
-  newCustomers: number;
-  riskIndicator: RiskIndicator;
-  topCampaigns: Array<{ name: string; roi: number; status: string }>;
-}
-
-interface ManagerPerformance {
-  id: string;
+interface BottomManager {
+  id: string | number;
   name: string;
   department: string;
   score: number;
-  metrics: Record<string, number>;
-  trend: 'up' | 'down' | 'stable';
 }
 
-interface CommandCenterData {
-  finance: FinanceData;
-  franchise: FranchiseData;
-  factory: FactoryData;
-  hr: HRData;
-  customer: CustomerData;
-  growth: GrowthData;
-  managers: ManagerPerformance[];
+interface CEODashboardData {
+  urgentAlerts: UrgentAlert[];
+  departments: DeptSummary[];
+  bottomManagers: BottomManager[];
   lastUpdated: string;
 }
 
-function getRiskColor(status: 'healthy' | 'warning' | 'critical') {
-  switch (status) {
-    case 'healthy': return 'bg-green-500';
-    case 'warning': return 'bg-yellow-500';
-    case 'critical': return 'bg-red-500';
+function getDeptIcon(source: string) {
+  switch (source) {
+    case 'CGO': return <Building2 className="w-4 h-4" />;
+    case 'Muhasebe & IK': return <Users className="w-4 h-4" />;
+    case 'Fabrika Muduru': return <Factory className="w-4 h-4" />;
+    case 'Coach': return <ClipboardCheck className="w-4 h-4" />;
+    case 'Kalite Kontrol': return <ShieldCheck className="w-4 h-4" />;
+    case 'Trainer': return <GraduationCap className="w-4 h-4" />;
+    default: return <Eye className="w-4 h-4" />;
   }
 }
 
-function getRiskBadgeVariant(status: 'healthy' | 'warning' | 'critical') {
-  switch (status) {
-    case 'healthy': return 'default';
-    case 'warning': return 'secondary';
-    case 'critical': return 'destructive';
-  }
-}
-
-function getRiskIcon(status: 'healthy' | 'warning' | 'critical') {
+function getStatusIcon(status: 'healthy' | 'warning' | 'critical') {
   switch (status) {
     case 'healthy': return <CheckCircle className="w-4 h-4 text-green-500" />;
     case 'warning': return <AlertCircle className="w-4 h-4 text-yellow-500" />;
@@ -133,339 +81,86 @@ function getRiskIcon(status: 'healthy' | 'warning' | 'critical') {
   }
 }
 
-function getTrendIcon(trend: 'up' | 'down' | 'stable') {
-  switch (trend) {
-    case 'up': return <ArrowUpRight className="w-4 h-4 text-green-500" />;
-    case 'down': return <ArrowDownRight className="w-4 h-4 text-red-500" />;
-    case 'stable': return <Minus className="w-4 h-4 text-muted-foreground" />;
+function getStatusVariant(status: 'healthy' | 'warning' | 'critical'): 'default' | 'secondary' | 'destructive' {
+  switch (status) {
+    case 'healthy': return 'default';
+    case 'warning': return 'secondary';
+    case 'critical': return 'destructive';
   }
-}
-
-function RiskPanel({ 
-  title, 
-  icon, 
-  data, 
-  children 
-}: { 
-  title: string; 
-  icon: React.ReactNode; 
-  data: { riskIndicator: RiskIndicator }; 
-  children: React.ReactNode;
-}) {
-  return (
-    <Card className="overflow-hidden">
-      <CardHeader className="pb-2">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            {getRiskIcon(data.riskIndicator.status)}
-            {icon}
-            <CardTitle className="text-base">{title}</CardTitle>
-          </div>
-          <div className="flex items-center gap-2">
-            {getTrendIcon(data.riskIndicator.trend)}
-            <Badge variant={getRiskBadgeVariant(data.riskIndicator.status)} className="text-xs">
-              {data.riskIndicator.score}%
-            </Badge>
-          </div>
-        </div>
-        <p className="text-xs text-muted-foreground mt-1">{data.riskIndicator.message}</p>
-      </CardHeader>
-      <CardContent className="pt-0">
-        {children}
-      </CardContent>
-    </Card>
-  );
 }
 
 function AIAssistant() {
-  const [question, setQuestion] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-  const [conversation, setConversation] = useState<Array<{ role: 'user' | 'assistant'; content: string }>>([]);
   const { toast } = useToast();
+  const [question, setQuestion] = useState("");
+  const [answer, setAnswer] = useState<string | null>(null);
 
-  const askAI = async () => {
-    if (!question.trim()) return;
-    
-    setIsLoading(true);
-    const userQuestion = question;
-    setQuestion("");
-    setConversation(prev => [...prev, { role: 'user', content: userQuestion }]);
-    
-    try {
-      const response = await apiRequest("POST", "/api/ceo/ai-assistant", { question: userQuestion });
-      const data = await response.json();
-      setConversation(prev => [...prev, { role: 'assistant', content: data.answer }]);
-    } catch (error) {
-      toast({
-        title: "Hata",
-        description: "AI yanıt veremedi. Lütfen tekrar deneyin.",
-        variant: "destructive"
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  return (
-    <Card className="h-full flex flex-col">
-      <CardHeader className="pb-2">
-        <div className="flex items-center gap-2">
-          <Brain className="w-5 h-5 text-primary" />
-          <CardTitle className="text-base">AI Asistan</CardTitle>
-        </div>
-        <p className="text-xs text-muted-foreground">Şirket hakkında her şeyi sorun</p>
-      </CardHeader>
-      <CardContent className="flex-1 flex flex-col gap-3">
-        <div className="flex-1 overflow-y-auto space-y-3 max-h-[300px]">
-          {conversation.length === 0 && (
-            <div className="text-center text-muted-foreground text-sm py-8">
-              <Brain className="w-12 h-12 mx-auto mb-3 opacity-20" />
-              <p>Örnek sorular:</p>
-              <p className="text-xs mt-2">"Bu şirket bugün nereden kan kaybediyor?"</p>
-              <p className="text-xs">"Hangi şube kâr düşürüyor?"</p>
-              <p className="text-xs">"Kim iyi performans gösteriyor?"</p>
-            </div>
-          )}
-          {conversation.map((msg, idx) => (
-            <div 
-              key={idx} 
-              className={`p-3 rounded-lg text-sm ${
-                msg.role === 'user' 
-                  ? 'bg-primary text-primary-foreground ml-8' 
-                  : 'bg-muted mr-8'
-              }`}
-            >
-              {msg.content}
-            </div>
-          ))}
-          {isLoading && (
-            <div className="bg-muted mr-8 p-3 rounded-lg">
-              <Loader2 className="w-4 h-4 animate-spin" />
-            </div>
-          )}
-        </div>
-        <div className="flex gap-2">
-          <Textarea 
-            value={question}
-            onChange={(e) => setQuestion(e.target.value)}
-            placeholder="Sorunuzu yazın..."
-            className="resize-none"
-            onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), askAI())}
-            data-testid="input-ceo-ai-question"
-          />
-          <Button 
-            size="icon" 
-            onClick={askAI} 
-            disabled={isLoading || !question.trim()}
-            data-testid="button-ceo-ai-send"
-          >
-            <Send className="w-4 h-4" />
-          </Button>
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
-function CEOManagersTab() {
-  const { data, isLoading } = useQuery<any>({
-    queryKey: ['/api/manager-performance'],
-  });
-
-  if (isLoading) {
-    return <div className="space-y-3">{[...Array(3)].map((_, i) => <Skeleton key={i} className="h-16" />)}</div>;
-  }
-
-  if (!data) {
-    return <Card><CardContent className="py-8 text-center text-muted-foreground">Yonetici verileri yuklenemedi</CardContent></Card>;
-  }
-
-  const renderManagerRow = (m: any) => {
-    const score = m.metrics?.overallScore ?? 0;
-    return (
-    <div key={m.id} className="flex items-center justify-between p-3 rounded-lg border hover-elevate" data-testid={`card-ceo-manager-${m.id}`}>
-      <div className="flex items-center gap-3">
-        <div className={`w-2 h-2 rounded-full shrink-0 ${score >= 80 ? 'bg-green-500' : score >= 60 ? 'bg-yellow-500' : 'bg-red-500'}`} />
-        <div className="min-w-0">
-          <p className="font-medium text-sm truncate" data-testid={`text-ceo-mgr-name-${m.id}`}>{m.name}</p>
-          <p className="text-xs text-muted-foreground flex items-center gap-1 flex-wrap">
-            {m.department}
-            {m.branchName && <Badge variant="outline" className="text-[10px] ml-1">{m.branchName}</Badge>}
-          </p>
-        </div>
-      </div>
-      <div className="flex items-center gap-3 shrink-0">
-        <div className="text-right">
-          <span className={`text-lg font-bold ${score >= 80 ? 'text-green-600 dark:text-green-400' : score >= 60 ? 'text-yellow-600 dark:text-yellow-400' : 'text-red-600 dark:text-red-400'}`}>{score}</span>
-          <span className="text-xs text-muted-foreground">/100</span>
-        </div>
-        <Badge variant={score >= 80 ? 'default' : score >= 60 ? 'secondary' : 'destructive'}>
-          {score >= 80 ? 'Basarili' : score >= 60 ? 'Normal' : 'Risk'}
-        </Badge>
-      </div>
-    </div>
-  );
-  };
-
-  return (
-    <div className="space-y-4">
-      <div className="grid grid-cols-3 gap-3">
-        <Card data-testid="card-ceo-mgr-summary-hq">
-          <CardContent className="pt-3 pb-2 px-3 text-center">
-            <p className="text-xs text-muted-foreground">HQ Merkez</p>
-            <p className="text-xl font-bold">{data.summary.totalHQ}</p>
-            <p className="text-xs text-muted-foreground">Ort: {data.summary.hqAverageScore}</p>
-          </CardContent>
-        </Card>
-        <Card data-testid="card-ceo-mgr-summary-branch">
-          <CardContent className="pt-3 pb-2 px-3 text-center">
-            <p className="text-xs text-muted-foreground">Sube Yoneticileri</p>
-            <p className="text-xl font-bold">{data.summary.totalBranch}</p>
-            <p className="text-xs text-muted-foreground">Ort: {data.summary.branchAverageScore}</p>
-          </CardContent>
-        </Card>
-        <Card data-testid="card-ceo-mgr-summary-overall">
-          <CardContent className="pt-3 pb-2 px-3 text-center">
-            <p className="text-xs text-muted-foreground">Genel Ortalama</p>
-            <p className={`text-xl font-bold ${data.summary.overallAverageScore >= 80 ? 'text-green-600 dark:text-green-400' : 'text-yellow-600 dark:text-yellow-400'}`}>{data.summary.overallAverageScore}</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-base">DOSPRESSO Merkez Kadro</CardTitle>
-          <p className="text-xs text-muted-foreground">Ece Hanim ve Yavuz Bey'e bagli yoneticiler</p>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-2">
-            {data.hqManagers.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-4">HQ personeli bulunamadi</p>
-            ) : (
-              data.hqManagers.sort((a: any, b: any) => b.metrics.overallScore - a.metrics.overallScore).map(renderManagerRow)
-            )}
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-base">Sube Yoneticileri (Supervisors)</CardTitle>
-          <p className="text-xs text-muted-foreground">Her subenin sorumlu supervisor yoneticisi</p>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-2">
-            {data.branchManagers.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-4">Sube supervisor bulunamadi</p>
-            ) : (
-              data.branchManagers.sort((a: any, b: any) => b.metrics.overallScore - a.metrics.overallScore).map(renderManagerRow)
-            )}
-          </div>
-        </CardContent>
-      </Card>
-    </div>
-  );
-}
-
-function FinancialSummaryTab() {
-  const year = new Date().getFullYear().toString();
-  const { data: summary } = useQuery<any>({
-    queryKey: ["/api/management-reports/summary", year],
-    queryFn: async () => {
-      const res = await apiRequest("GET", `/api/management-reports/summary?year=${year}`);
-      return res.json();
+  const askMutation = useMutation({
+    mutationFn: async (q: string) => {
+      const res = await apiRequest("POST", "/api/ceo/ai-assistant", { question: q });
+      return await res.json();
     },
+    onSuccess: (data) => setAnswer(data.answer),
+    onError: (error: any) => toast({ title: "Hata", description: error?.message || "AI yanit veremedi", variant: "destructive" }),
   });
-  const { data: branches } = useQuery<any[]>({
-    queryKey: ["/api/branches"],
-  });
 
-  const MONTHS_SHORT = ["Oca", "Şub", "Mar", "Nis", "May", "Haz", "Tem", "Ağu", "Eyl", "Eki", "Kas", "Ara"];
-
-  const fmtCurrency = (v: number) => new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY', minimumFractionDigits: 0 }).format(v);
-
-  if (!summary) {
-    return (
-      <div className="text-center py-8 text-muted-foreground text-sm">
-        <DollarSign className="mx-auto h-10 w-10 mb-3 opacity-50" />
-        <p>Henüz mali rapor girilmemiş</p>
-        <p className="text-xs mt-1">Muhasebe modülünden rapor girişi yapıldıkça burada gösterilecek</p>
-      </div>
-    );
-  }
-
-  const profitMargin = summary.totalRevenue > 0 ? ((summary.totalProfit / summary.totalRevenue) * 100).toFixed(1) : '0';
-
-  const branchRanking = Object.entries(summary.branchRevenue || {})
-    .map(([bid, rev]) => ({
-      name: (branches as any[])?.find((b: any) => b.id.toString() === bid)?.name || `Şube ${bid}`,
-      revenue: rev as number,
-    }))
-    .sort((a, b) => b.revenue - a.revenue);
+  const suggestions = [
+    "Bu hafta nelere dikkat etmeliyim?",
+    "Sube performanslari nasil?",
+    "Personel durumu hakkinda ozet ver",
+    "En buyuk riskler neler?",
+  ];
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <Card data-testid="ceo-stat-revenue">
-          <CardContent className="pt-4 pb-3">
-            <div className="flex items-center gap-2">
-              <TrendingUp className="h-4 w-4 text-green-500" />
-              <span className="text-xs text-muted-foreground">Yıllık Gelir</span>
-            </div>
-            <p className="text-lg font-bold mt-1">{fmtCurrency(summary.totalRevenue)}</p>
-          </CardContent>
-        </Card>
-        <Card data-testid="ceo-stat-expenses">
-          <CardContent className="pt-4 pb-3">
-            <div className="flex items-center gap-2">
-              <ArrowDownRight className="h-4 w-4 text-red-500" />
-              <span className="text-xs text-muted-foreground">Yıllık Gider</span>
-            </div>
-            <p className="text-lg font-bold mt-1">{fmtCurrency(summary.totalExpenses)}</p>
-          </CardContent>
-        </Card>
-        <Card data-testid="ceo-stat-profit">
-          <CardContent className="pt-4 pb-3">
-            <div className="flex items-center gap-2">
-              <DollarSign className="h-4 w-4 text-blue-500" />
-              <span className="text-xs text-muted-foreground">Net Kar</span>
-            </div>
-            <p className={`text-lg font-bold mt-1 ${summary.totalProfit >= 0 ? '' : 'text-red-600'}`}>
-              {fmtCurrency(summary.totalProfit)}
-            </p>
-          </CardContent>
-        </Card>
-        <Card data-testid="ceo-stat-margin">
-          <CardContent className="pt-4 pb-3">
-            <div className="flex items-center gap-2">
-              <TrendingUp className="h-4 w-4 text-purple-500" />
-              <span className="text-xs text-muted-foreground">Kar Marjı</span>
-            </div>
-            <p className="text-lg font-bold mt-1">%{profitMargin}</p>
-          </CardContent>
-        </Card>
-      </div>
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Brain className="w-5 h-5 text-primary" />
+            AI Strateji Danismani
+          </CardTitle>
+          <p className="text-xs text-muted-foreground">DOSPRESSO verilerine dayali akilli oneriler</p>
+        </CardHeader>
+        <CardContent>
+          <div className="flex gap-2">
+            <Textarea
+              value={question}
+              onChange={(e) => setQuestion(e.target.value)}
+              placeholder="Sorunuzu yazin..."
+              className="flex-1"
+              rows={2}
+              data-testid="textarea-ai-question"
+            />
+            <Button
+              size="icon"
+              onClick={() => { askMutation.mutate(question); }}
+              disabled={!question.trim() || askMutation.isPending}
+              data-testid="button-ai-ask"
+            >
+              {askMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+            </Button>
+          </div>
+          <div className="flex flex-wrap gap-1.5 mt-3">
+            {suggestions.map((s, i) => (
+              <Button
+                key={i}
+                variant="outline"
+                size="sm"
+                className="text-xs"
+                onClick={() => { setQuestion(s); askMutation.mutate(s); }}
+                disabled={askMutation.isPending}
+                data-testid={`button-ai-suggestion-${i}`}
+              >
+                {s}
+              </Button>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
 
-      {branchRanking.length > 0 && (
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <Building2 className="h-4 w-4" />
-              Şube Karlılık Sıralaması
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              {branchRanking.slice(0, 8).map((branch, i) => (
-                <div key={i} className="flex items-center gap-2" data-testid={`ceo-branch-rank-${i}`}>
-                  <Badge variant={i < 3 ? "default" : "secondary"} className="text-[10px] w-6 justify-center">
-                    {i + 1}
-                  </Badge>
-                  <span className="text-sm flex-1 truncate">{branch.name}</span>
-                  <span className="text-sm font-semibold">{fmtCurrency(branch.revenue)}</span>
-                </div>
-              ))}
-            </div>
+      {answer && (
+        <Card data-testid="card-ai-answer">
+          <CardContent className="pt-4">
+            <div className="prose dark:prose-invert prose-sm max-w-none whitespace-pre-wrap">{answer}</div>
           </CardContent>
         </Card>
       )}
@@ -474,405 +169,185 @@ function FinancialSummaryTab() {
 }
 
 export default function CEOCommandCenter() {
-  const { toast } = useToast();
-  
-  const { data, isLoading, refetch, isRefetching } = useQuery<CommandCenterData>({
-    queryKey: ['/api/ceo/command-center'],
-    refetchInterval: 60000, // Auto-refresh every minute
+  const { data: dashboardData, isLoading, isRefetching, refetch } = useQuery<CEODashboardData>({
+    queryKey: ["/api/ceo/command-center"],
+    refetchInterval: 60000,
   });
-
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('tr-TR', { 
-      style: 'currency', 
-      currency: 'TRY',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0
-    }).format(value);
-  };
-
-  const formatPercent = (value: number) => `${value.toFixed(1)}%`;
 
   if (isLoading) {
     return (
-      <div className="container mx-auto p-4 space-y-4">
-        <div className="flex items-center justify-between mb-6">
-          <Skeleton className="h-8 w-64" />
-          <Skeleton className="h-10 w-32" />
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {[...Array(6)].map((_, i) => (
-            <Skeleton key={i} className="h-48" />
-          ))}
+      <div className="p-4 space-y-4">
+        <Skeleton className="h-10 w-64" />
+        <Skeleton className="h-24 w-full" />
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+          {[...Array(6)].map((_, i) => <Skeleton key={i} className="h-40" />)}
         </div>
       </div>
     );
   }
 
-  // Fallback data for demo
-  const commandData: CommandCenterData = data || {
-    finance: {
-      dailyRevenue: 125000,
-      monthlyRevenue: 3750000,
-      cashFlow: 450000,
-      variance: -2.3,
-      riskIndicator: { status: 'warning', score: 72, trend: 'down', message: 'Nakit akışında küçük sapma' },
-      topRisks: [
-        { name: 'Kira ödemeleri', impact: 15000, type: 'expense' },
-        { name: 'Malzeme maliyeti artışı', impact: 8000, type: 'cost' }
-      ]
-    },
-    franchise: {
-      totalBranches: 24,
-      healthyBranches: 18,
-      warningBranches: 4,
-      criticalBranches: 2,
-      averageScore: 78,
-      riskIndicator: { status: 'warning', score: 78, trend: 'stable', message: '2 şube acil müdahale bekliyor' },
-      bottomPerformers: [
-        { name: 'Kadıköy', score: 52, issues: ['Personel devir', 'Kalite'] },
-        { name: 'Bakırköy', score: 58, issues: ['Satış düşüşü'] }
-      ]
-    },
-    factory: {
-      dailyProduction: 2450,
-      wastePercentage: 3.2,
-      qualityScore: 94,
-      equipmentUptime: 97.5,
-      riskIndicator: { status: 'healthy', score: 94, trend: 'up', message: 'Üretim hedeflerde' },
-      criticalIssues: []
-    },
-    hr: {
-      totalEmployees: 156,
-      turnoverRate: 8.5,
-      trainingCompletion: 82,
-      satisfactionScore: 76,
-      riskIndicator: { status: 'warning', score: 76, trend: 'down', message: 'Personel memnuniyeti düşüşte' },
-      atRiskEmployees: [
-        { department: 'Şubeler', count: 5, reason: 'Yüksek mesai' }
-      ]
-    },
-    customer: {
-      satisfactionScore: 88,
-      complaintCount: 23,
-      resolvedPercentage: 91,
-      npsScore: 45,
-      riskIndicator: { status: 'healthy', score: 88, trend: 'up', message: 'Müşteri memnuniyeti yükseliyor' },
-      topComplaints: [
-        { category: 'Bekleme süresi', count: 8, trend: 'down' },
-        { category: 'Ürün kalitesi', count: 5, trend: 'stable' }
-      ]
-    },
-    growth: {
-      marketingROI: 3.2,
-      campaignPerformance: 78,
-      salesGrowth: 12.5,
-      newCustomers: 342,
-      riskIndicator: { status: 'healthy', score: 85, trend: 'up', message: 'Büyüme hedeflerin üstünde' },
-      topCampaigns: [
-        { name: 'Yaz Kampanyası', roi: 4.5, status: 'active' },
-        { name: 'Sadakat Programı', roi: 3.8, status: 'active' }
-      ]
-    },
-    managers: [
-      { id: '1', name: 'Ahmet Y.', department: 'Satınalma', score: 92, metrics: { maliyet: 95, kalite: 90 }, trend: 'up' },
-      { id: '2', name: 'Mehmet K.', department: 'Fabrika', score: 88, metrics: { fire: 85, duruş: 91 }, trend: 'stable' },
-      { id: '3', name: 'Ayşe D.', department: 'İK', score: 75, metrics: { devir: 72, eğitim: 78 }, trend: 'down' },
-      { id: '4', name: 'Fatma S.', department: 'Coach', score: 85, metrics: { kâr: 88, uyum: 82 }, trend: 'up' },
-      { id: '5', name: 'Ali R.', department: 'Marketing', score: 91, metrics: { roi: 95, getiri: 87 }, trend: 'up' }
-    ],
-    lastUpdated: new Date().toISOString()
-  };
+  if (!dashboardData) {
+    return (
+      <div className="p-4">
+        <Card>
+          <CardContent className="py-12 text-center">
+            <AlertCircle className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
+            <p className="text-muted-foreground">Dashboard verileri yuklenemedi</p>
+            <Button variant="outline" className="mt-3" onClick={() => refetch()} data-testid="button-retry">Tekrar Dene</Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  const criticalAlerts = dashboardData.urgentAlerts.filter(a => a.severity === 'critical');
 
   return (
-    <div className="container mx-auto p-4 space-y-4">
-      <div className="flex items-center justify-between mb-2">
+    <div className="p-3 sm:p-4 space-y-4">
+      <div className="flex items-center justify-between flex-wrap gap-2">
         <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2" data-testid="text-ceo-title">
-            <Brain className="w-7 h-7 text-primary" />
-            AI Control Tower
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            Son güncelleme: {new Date(commandData.lastUpdated).toLocaleTimeString('tr-TR')}
+          <h1 className="text-xl font-bold" data-testid="heading-ceo-dashboard">CEO Komuta Merkezi</h1>
+          <p className="text-xs text-muted-foreground">
+            Son guncelleme: {new Date(dashboardData.lastUpdated).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}
           </p>
         </div>
-        <Button 
-          variant="outline" 
-          onClick={() => refetch()} 
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => refetch()}
           disabled={isRefetching}
-          data-testid="button-refresh-command-center"
+          data-testid="button-refresh"
         >
-          <RefreshCw className={`w-4 h-4 mr-2 ${isRefetching ? 'animate-spin' : ''}`} />
+          <RefreshCw className={`w-4 h-4 mr-1.5 ${isRefetching ? 'animate-spin' : ''}`} />
           Yenile
         </Button>
       </div>
 
       <Tabs defaultValue="overview" className="w-full">
-        <TabsList className="grid grid-cols-4 w-full max-w-lg">
-          <TabsTrigger value="overview" data-testid="tab-overview">Genel Bakış</TabsTrigger>
-          <TabsTrigger value="financial" data-testid="tab-financial">Finansal</TabsTrigger>
-          <TabsTrigger value="managers" data-testid="tab-managers">Yöneticiler</TabsTrigger>
-          <TabsTrigger value="ai" data-testid="tab-ai">AI Asistan</TabsTrigger>
+        <TabsList className="grid grid-cols-2 w-full max-w-xs">
+          <TabsTrigger value="overview" data-testid="tab-overview">
+            <Eye className="w-4 h-4 mr-1.5" />Ozet
+          </TabsTrigger>
+          <TabsTrigger value="ai" data-testid="tab-ai">
+            <Brain className="w-4 h-4 mr-1.5" />AI Asistan
+          </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="overview" className="mt-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            <RiskPanel 
-              title="Finance Radar" 
-              icon={<DollarSign className="w-5 h-5 text-primary" />}
-              data={commandData.finance}
-            >
-              <div className="space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Günlük Ciro</span>
-                  <span className="font-medium">{formatCurrency(commandData.finance.dailyRevenue)}</span>
+        <TabsContent value="overview" className="mt-4 space-y-4">
+
+          {dashboardData.urgentAlerts.length > 0 && (
+            <Card data-testid="card-urgent-alerts">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <AlertTriangle className={`w-4 h-4 ${criticalAlerts.length > 0 ? 'text-red-500' : 'text-yellow-500'}`} />
+                  Dikkat Gerektiren Konular ({dashboardData.urgentAlerts.length})
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-1.5">
+                  {dashboardData.urgentAlerts.map((alert, i) => (
+                    <div key={i} className="flex items-center gap-2 text-sm" data-testid={`alert-item-${i}`}>
+                      {alert.severity === 'critical' ? (
+                        <AlertTriangle className="w-3.5 h-3.5 text-red-500 shrink-0" />
+                      ) : (
+                        <AlertCircle className="w-3.5 h-3.5 text-yellow-500 shrink-0" />
+                      )}
+                      <span className="flex-1">{alert.message}</span>
+                      <Badge variant={alert.severity === 'critical' ? 'destructive' : 'secondary'} className="text-[10px]">
+                        {alert.severity === 'critical' ? 'Acil' : 'Uyari'}
+                      </Badge>
+                    </div>
+                  ))}
                 </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Aylık Ciro</span>
-                  <span className="font-medium">{formatCurrency(commandData.finance.monthlyRevenue)}</span>
+              </CardContent>
+            </Card>
+          )}
+
+          {dashboardData.urgentAlerts.length === 0 && (
+            <Card data-testid="card-all-clear">
+              <CardContent className="pt-4 pb-3 flex items-center gap-3">
+                <CheckCircle className="w-5 h-5 text-green-500 shrink-0" />
+                <div>
+                  <p className="text-sm font-medium">Her sey yolunda</p>
+                  <p className="text-xs text-muted-foreground">Acil dikkat gerektiren bir konu yok</p>
                 </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Nakit Akış</span>
-                  <span className="font-medium">{formatCurrency(commandData.finance.cashFlow)}</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Sapma</span>
-                  <span className={`font-medium ${commandData.finance.variance < 0 ? 'text-red-500' : 'text-green-500'}`}>
-                    {commandData.finance.variance > 0 ? '+' : ''}{formatPercent(commandData.finance.variance)}
-                  </span>
-                </div>
-                {commandData.finance.topRisks.length > 0 && (
-                  <div className="pt-2 border-t mt-2">
-                    <p className="text-xs font-medium mb-1">Riskler:</p>
-                    {commandData.finance.topRisks.map((risk, i) => (
-                      <div key={i} className="flex justify-between text-xs text-muted-foreground">
-                        <span>{risk.name}</span>
-                        <span className="text-red-500">-{formatCurrency(risk.impact)}</span>
+              </CardContent>
+            </Card>
+          )}
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+            {dashboardData.departments.map((dept, i) => (
+              <Card key={i} data-testid={`card-dept-${dept.source.toLowerCase().replace(/[^a-z]/g, '-')}`}>
+                <CardHeader className="pb-2">
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <div className="flex items-center gap-2">
+                      {getStatusIcon(dept.status)}
+                      {getDeptIcon(dept.source)}
+                      <CardTitle className="text-sm">{dept.label}</CardTitle>
+                    </div>
+                    <Badge variant={getStatusVariant(dept.status)} className="text-[10px]">
+                      {dept.status === 'healthy' ? 'Iyi' : dept.status === 'warning' ? 'Izle' : 'Kritik'}
+                    </Badge>
+                  </div>
+                  <p className="text-xs text-muted-foreground">Kaynak: {dept.source}</p>
+                </CardHeader>
+                <CardContent className="pt-0">
+                  <p className="text-sm font-semibold mb-2" data-testid={`text-dept-metric-${i}`}>{dept.mainMetric}</p>
+                  <div className="space-y-1">
+                    {dept.details.map((d, j) => (
+                      <div key={j} className="flex justify-between text-xs">
+                        <span className="text-muted-foreground">{d.key}</span>
+                        <span className="font-medium">{d.value}</span>
                       </div>
                     ))}
                   </div>
-                )}
-              </div>
-            </RiskPanel>
-
-            <RiskPanel 
-              title="Franchise Health" 
-              icon={<Building2 className="w-5 h-5 text-primary" />}
-              data={commandData.franchise}
-            >
-              <div className="space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Toplam Şube</span>
-                  <span className="font-medium">{commandData.franchise.totalBranches}</span>
-                </div>
-                <div className="flex gap-2 text-xs">
-                  <Badge variant="default" className="bg-green-500">{commandData.franchise.healthyBranches} Sağlıklı</Badge>
-                  <Badge variant="secondary" className="bg-yellow-500 text-black">{commandData.franchise.warningBranches} İzle</Badge>
-                  <Badge variant="destructive">{commandData.franchise.criticalBranches} Kritik</Badge>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Ort. Skor</span>
-                  <span className="font-medium">{commandData.franchise.averageScore}/100</span>
-                </div>
-                {commandData.franchise.bottomPerformers.length > 0 && (
-                  <div className="pt-2 border-t mt-2">
-                    <p className="text-xs font-medium mb-1">Düşük Performans:</p>
-                    {commandData.franchise.bottomPerformers.map((branch, i) => (
-                      <div key={i} className="flex justify-between text-xs">
-                        <span className="text-muted-foreground">{branch.name}</span>
-                        <span className="text-red-500">{branch.score}/100</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </RiskPanel>
-
-            <RiskPanel 
-              title="Factory & Quality" 
-              icon={<Factory className="w-5 h-5 text-primary" />}
-              data={commandData.factory}
-            >
-              <div className="space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Günlük Üretim</span>
-                  <span className="font-medium">{commandData.factory.dailyProduction} adet</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Fire Oranı</span>
-                  <span className={`font-medium ${commandData.factory.wastePercentage > 5 ? 'text-red-500' : 'text-green-500'}`}>
-                    {formatPercent(commandData.factory.wastePercentage)}
-                  </span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Kalite Skoru</span>
-                  <span className="font-medium">{commandData.factory.qualityScore}/100</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Ekipman Uptime</span>
-                  <span className="font-medium">{formatPercent(commandData.factory.equipmentUptime)}</span>
-                </div>
-              </div>
-            </RiskPanel>
-
-            <RiskPanel 
-              title="People & HR Pulse" 
-              icon={<Users className="w-5 h-5 text-primary" />}
-              data={commandData.hr}
-            >
-              <div className="space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Toplam Personel</span>
-                  <span className="font-medium">{commandData.hr.totalEmployees}</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Devir Oranı</span>
-                  <span className={`font-medium ${commandData.hr.turnoverRate > 10 ? 'text-red-500' : 'text-green-500'}`}>
-                    {formatPercent(commandData.hr.turnoverRate)}
-                  </span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Eğitim Tamamlama</span>
-                  <span className="font-medium">{formatPercent(commandData.hr.trainingCompletion)}</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Memnuniyet</span>
-                  <span className="font-medium">{commandData.hr.satisfactionScore}/100</span>
-                </div>
-                {commandData.hr.atRiskEmployees.length > 0 && (
-                  <div className="pt-2 border-t mt-2">
-                    <p className="text-xs font-medium mb-1">Risk Altında:</p>
-                    {commandData.hr.atRiskEmployees.map((dept, i) => (
-                      <div key={i} className="text-xs text-muted-foreground">
-                        {dept.department}: {dept.count} kişi - {dept.reason}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </RiskPanel>
-
-            <RiskPanel 
-              title="Customer Sentiment" 
-              icon={<MessageSquare className="w-5 h-5 text-primary" />}
-              data={commandData.customer}
-            >
-              <div className="space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Memnuniyet Skoru</span>
-                  <span className="font-medium">{commandData.customer.satisfactionScore}/100</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Şikayet Sayısı</span>
-                  <span className="font-medium">{commandData.customer.complaintCount}</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Çözüm Oranı</span>
-                  <span className="font-medium">{formatPercent(commandData.customer.resolvedPercentage)}</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">NPS Skoru</span>
-                  <span className={`font-medium ${commandData.customer.npsScore >= 50 ? 'text-green-500' : 'text-yellow-500'}`}>
-                    +{commandData.customer.npsScore}
-                  </span>
-                </div>
-                {commandData.customer.topComplaints.length > 0 && (
-                  <div className="pt-2 border-t mt-2">
-                    <p className="text-xs font-medium mb-1">En Çok Şikayet:</p>
-                    {commandData.customer.topComplaints.map((c, i) => (
-                      <div key={i} className="flex justify-between text-xs text-muted-foreground">
-                        <span>{c.category}</span>
-                        <span>{c.count} adet</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </RiskPanel>
-
-            <RiskPanel 
-              title="Growth Engine" 
-              icon={<TrendingUp className="w-5 h-5 text-primary" />}
-              data={commandData.growth}
-            >
-              <div className="space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Marketing ROI</span>
-                  <span className="font-medium">{commandData.growth.marketingROI}x</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Kampanya Performans</span>
-                  <span className="font-medium">{formatPercent(commandData.growth.campaignPerformance)}</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Satış Büyümesi</span>
-                  <span className="font-medium text-green-500">+{formatPercent(commandData.growth.salesGrowth)}</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Yeni Müşteri</span>
-                  <span className="font-medium">{commandData.growth.newCustomers}</span>
-                </div>
-                {commandData.growth.topCampaigns.length > 0 && (
-                  <div className="pt-2 border-t mt-2">
-                    <p className="text-xs font-medium mb-1">Aktif Kampanyalar:</p>
-                    {commandData.growth.topCampaigns.map((c, i) => (
-                      <div key={i} className="flex justify-between text-xs text-muted-foreground">
-                        <span>{c.name}</span>
-                        <span className="text-green-500">{c.roi}x ROI</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </RiskPanel>
+                  {dept.alert && (
+                    <div className="mt-2 pt-2 border-t">
+                      <p className="text-xs text-red-600 dark:text-red-400 flex items-center gap-1">
+                        <AlertCircle className="w-3 h-3 shrink-0" />
+                        {dept.alert}
+                      </p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            ))}
           </div>
-        </TabsContent>
 
-        <TabsContent value="financial" className="mt-4">
-          <FinancialSummaryTab />
-        </TabsContent>
-
-        <TabsContent value="managers" className="mt-4">
-          <CEOManagersTab />
+          {dashboardData.bottomManagers.length > 0 && (
+            <Card data-testid="card-bottom-managers">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <User className="w-4 h-4" />
+                  Dikkat Edilmesi Gereken Yoneticiler
+                </CardTitle>
+                <p className="text-xs text-muted-foreground">En dusuk performans skoruna sahip 3 yonetici</p>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  {dashboardData.bottomManagers.map((m) => (
+                    <div key={m.id} className="flex items-center justify-between p-2 rounded-lg border" data-testid={`card-bottom-mgr-${m.id}`}>
+                      <div className="flex items-center gap-2">
+                        <div className={`w-2 h-2 rounded-full shrink-0 ${m.score >= 80 ? 'bg-green-500' : m.score >= 60 ? 'bg-yellow-500' : 'bg-red-500'}`} />
+                        <div>
+                          <p className="text-sm font-medium">{m.name}</p>
+                          <p className="text-xs text-muted-foreground">{m.department}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span className={`text-lg font-bold ${m.score >= 80 ? 'text-green-600 dark:text-green-400' : m.score >= 60 ? 'text-yellow-600 dark:text-yellow-400' : 'text-red-600 dark:text-red-400'}`}>{m.score}</span>
+                        <span className="text-xs text-muted-foreground">/100</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
 
         <TabsContent value="ai" className="mt-4">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <AIAssistant />
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Hızlı Sorgular</CardTitle>
-                <p className="text-sm text-muted-foreground">Sık kullanılan sorular</p>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                {[
-                  "Bu şirket bugün nereden kan kaybediyor?",
-                  "Hangi şube kârımı düşürüyor?",
-                  "Hangi yöneticim zayıf performans gösteriyor?",
-                  "Hangi tedarikçi kaliteyi bozuyor?",
-                  "Personel devir hızı neden yüksek?",
-                  "Marketing harcamalarının getirisi ne?",
-                  "Müşteri şikayetlerinin ana kaynağı ne?",
-                  "Fabrika üretim hedeflerini tutturuyor mu?"
-                ].map((q, i) => (
-                  <Button 
-                    key={i} 
-                    variant="outline" 
-                    className="w-full justify-start text-left h-auto py-2 text-sm"
-                    onClick={() => {
-                      const input = document.querySelector('[data-testid="input-ceo-ai-question"]') as HTMLTextAreaElement;
-                      if (input) {
-                        input.value = q;
-                        input.dispatchEvent(new Event('input', { bubbles: true }));
-                      }
-                    }}
-                    data-testid={`button-quick-query-${i}`}
-                  >
-                    {q}
-                  </Button>
-                ))}
-              </CardContent>
-            </Card>
-          </div>
+          <AIAssistant />
         </TabsContent>
       </Tabs>
     </div>

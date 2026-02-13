@@ -34494,246 +34494,227 @@ Dusuk puanli alanlara odaklan ve pozitif, motive edici ol. JSON dizisi olarak ya
   // CEO COMMAND CENTER ENDPOINTS
   // ============================================
   
-  // CEO Command Center - aggregate dashboard data
+  // CEO Command Center - streamlined dashboard with real data
   app.get("/api/ceo/command-center", isAuthenticated, async (req: any, res) => {
     try {
       const user = req.user;
-      
-      // Only allow CEO and Admin roles
       if (!['ceo', 'admin'].includes(user.role)) {
         return res.status(403).json({ message: "Bu sayfaya erisim yetkiniz yok" });
       }
 
-      // Aggregate data from various sources
       const [
         allBranches,
         allUsers,
         allFaults,
         allAudits,
-        allFeedback,
-        allEquipment
+        allEquipment,
+        allChecklistCompletions,
+        allProductComplaints,
+        allLeaveRequests,
+        allProjects
       ] = await Promise.all([
         db.select().from(branches),
         db.select().from(users),
         db.select().from(equipmentFaults),
-        db.select().from(auditInstances).where(eq(auditInstances.status, 'completed')),
-        db.select().from(customerFeedback),
-        db.select().from(equipment)
+        db.select().from(auditInstances),
+        db.select().from(equipment),
+        db.select().from(checklistCompletions),
+        db.select().from(productComplaints),
+        db.select().from(leaveRequests),
+        db.select().from(franchiseProjects)
       ]);
 
-      // Calculate Finance metrics (using available data)
-      const totalBranches = allBranches.length;
-      const avgRevenuePerBranch = 125000;
-      const financeData = {
-        dailyRevenue: avgRevenuePerBranch * totalBranches / 30,
-        monthlyRevenue: avgRevenuePerBranch * totalBranches,
-        cashFlow: avgRevenuePerBranch * totalBranches * 0.12,
-        variance: -2.3,
-        riskIndicator: {
-          status: 'warning' as const,
-          score: 72,
-          trend: 'down' as const,
-          message: 'Nakit akisinda kucuk sapma'
-        },
-        topRisks: [
-          { name: 'Kira odemeleri', impact: 15000, type: 'expense' },
-          { name: 'Malzeme maliyeti artisi', impact: 8000, type: 'cost' }
-        ]
-      };
+      // ======= ACIL UYARILAR =======
+      const urgentAlerts: Array<{ type: string; severity: 'critical' | 'warning'; message: string; count?: number }> = [];
 
-      // Calculate Franchise Health
+      const openFaults = allFaults.filter((f: any) => f.status === 'open' || f.status === 'in_progress');
+      const criticalFaults = openFaults.filter((f: any) => f.priority === 'critical');
+      if (criticalFaults.length > 0) {
+        urgentAlerts.push({ type: 'fault', severity: 'critical', message: `${criticalFaults.length} kritik ariza cozum bekliyor`, count: criticalFaults.length });
+      }
+
+      const brokenEquipment = allEquipment.filter((e: any) => e.status === 'broken' || e.status === 'maintenance');
+      if (brokenEquipment.length > 0) {
+        urgentAlerts.push({ type: 'equipment', severity: brokenEquipment.filter((e: any) => e.status === 'broken').length > 0 ? 'critical' : 'warning', message: `${brokenEquipment.length} ekipman calismıyor veya bakimda`, count: brokenEquipment.length });
+      }
+
+      const pendingLeaves = allLeaveRequests.filter((l: any) => l.status === 'pending');
+      if (pendingLeaves.length >= 3) {
+        urgentAlerts.push({ type: 'leave', severity: 'warning', message: `${pendingLeaves.length} izin talebi onay bekliyor`, count: pendingLeaves.length });
+      }
+
+      const openComplaints = allProductComplaints.filter((c: any) => c.status === 'open' || c.status === 'investigating');
+      if (openComplaints.length > 0) {
+        urgentAlerts.push({ type: 'complaint', severity: openComplaints.some((c: any) => c.severity === 'critical') ? 'critical' : 'warning', message: `${openComplaints.length} urun sikayeti acik`, count: openComplaints.length });
+      }
+
+      // ======= CGO / SUBE SAGLIK =======
       const branchScores = allBranches.map(b => {
         const branchFaults = allFaults.filter(f => f.branchId === b.id);
-        const branchAudits = allAudits.filter((a: any) => a.branchId === b.id);
-        const faultPenalty = Math.min(branchFaults.length * 5, 30);
-        const auditBonus = branchAudits.length > 0 ? 10 : 0;
-        return {
-          id: b.id,
-          name: b.name,
-          score: Math.max(50, 100 - faultPenalty + auditBonus)
-        };
+        const openBranchFaults = branchFaults.filter((f: any) => f.status === 'open' || f.status === 'in_progress');
+        const completedAudits = allAudits.filter((a: any) => a.branchId === b.id && a.status === 'completed');
+        const faultPenalty = Math.min(openBranchFaults.length * 8, 40);
+        const auditBonus = completedAudits.length > 0 ? 10 : 0;
+        return { id: b.id, name: b.name, score: Math.max(30, 100 - faultPenalty + auditBonus), openFaults: openBranchFaults.length };
       });
-      
-      const avgScore = branchScores.length > 0 
-        ? Math.round(branchScores.reduce((sum, b) => sum + b.score, 0) / branchScores.length)
-        : 0;
-      
-      const healthyBranches = branchScores.filter(b => b.score >= 80).length;
-      const warningBranches = branchScores.filter(b => b.score >= 60 && b.score < 80).length;
-      const criticalBranches = branchScores.filter(b => b.score < 60).length;
-      
-      const franchiseData = {
-        totalBranches,
-        healthyBranches,
-        warningBranches,
-        criticalBranches,
-        averageScore: avgScore,
-        riskIndicator: {
-          status: criticalBranches > 0 ? 'warning' as const : 'healthy' as const,
-          score: avgScore,
-          trend: 'stable' as const,
-          message: criticalBranches > 0 ? criticalBranches + ' sube acil mudahale bekliyor' : 'Tum subeler saglikli'
-        },
-        bottomPerformers: branchScores
-          .sort((a, b) => a.score - b.score)
-          .slice(0, 3)
-          .map(b => ({ name: b.name, score: b.score, issues: ['Performans'] }))
+      const avgBranchScore = branchScores.length > 0 ? Math.round(branchScores.reduce((s, b) => s + b.score, 0) / branchScores.length) : 0;
+      const healthyCount = branchScores.filter(b => b.score >= 80).length;
+      const warningCount = branchScores.filter(b => b.score >= 60 && b.score < 80).length;
+      const criticalCount = branchScores.filter(b => b.score < 60).length;
+      const worstBranches = branchScores.sort((a, b) => a.score - b.score).slice(0, 2);
+
+      const activeProjectsCount = allProjects.filter((p: any) => p.status === 'active' || p.status === 'in_progress').length;
+
+      const cgoSummary = {
+        label: 'Sube Sagligi',
+        source: 'CGO',
+        status: criticalCount > 0 ? 'critical' as const : warningCount > 0 ? 'warning' as const : 'healthy' as const,
+        mainMetric: `${healthyCount}/${allBranches.length} saglikli`,
+        details: [
+          { key: 'Ortalama Skor', value: `${avgBranchScore}/100` },
+          { key: 'Uyari', value: `${warningCount} sube` },
+          { key: 'Kritik', value: `${criticalCount} sube` },
+          { key: 'Acilis Projesi', value: `${activeProjectsCount} aktif` }
+        ],
+        alert: criticalCount > 0 ? `${worstBranches.map(b => b.name).join(', ')} acil dikkat gerektiriyor` : null
       };
 
-      // Calculate Factory data
-      const equipmentIssues = allEquipment.filter((e: any) => e.status !== 'active');
-      const factoryData = {
-        dailyProduction: 2450,
-        wastePercentage: 3.2,
-        qualityScore: 94,
-        equipmentUptime: equipmentIssues.length > 0 ? 
-          Math.round((allEquipment.length - equipmentIssues.length) / allEquipment.length * 100) : 100,
-        riskIndicator: {
-          status: 'healthy' as const,
-          score: 94,
-          trend: 'up' as const,
-          message: 'Uretim hedeflerde'
-        },
-        criticalIssues: equipmentIssues.slice(0, 3).map((e: any) => ({
-          area: 'Ekipman',
-          issue: e.name,
-          severity: 'medium'
-        }))
-      };
-
-      // Calculate HR data
+      // ======= MUHASEBE/IK =======
       const activeEmployees = allUsers.filter(u => u.isActive);
-      const hrData = {
-        totalEmployees: activeEmployees.length,
-        turnoverRate: 8.5,
-        trainingCompletion: 82,
-        satisfactionScore: 76,
-        riskIndicator: {
-          status: 'warning' as const,
-          score: 76,
-          trend: 'down' as const,
-          message: 'Personel memnuniyeti dususte'
-        },
-        atRiskEmployees: [
-          { department: 'Subeler', count: 5, reason: 'Yuksek mesai' }
-        ]
+      const branchStaff = activeEmployees.filter(u => ['staff', 'supervisor', 'branch_manager'].includes(u.role));
+      const hqStaff = activeEmployees.filter(u => !['staff', 'supervisor', 'branch_manager', 'ceo'].includes(u.role));
+      const approvedLeaves = allLeaveRequests.filter((l: any) => l.status === 'approved');
+
+      const muhasebeIkSummary = {
+        label: 'Personel Durumu',
+        source: 'Muhasebe & IK',
+        status: pendingLeaves.length >= 5 ? 'warning' as const : 'healthy' as const,
+        mainMetric: `${activeEmployees.length} aktif personel`,
+        details: [
+          { key: 'HQ Kadro', value: `${hqStaff.length} kisi` },
+          { key: 'Sube Personeli', value: `${branchStaff.length} kisi` },
+          { key: 'Bekleyen Izin', value: `${pendingLeaves.length} talep` },
+          { key: 'Onayli Izin', value: `${approvedLeaves.length} kisi` }
+        ],
+        alert: pendingLeaves.length >= 5 ? `${pendingLeaves.length} izin talebi onay bekliyor` : null
       };
 
-      // Calculate Customer Sentiment
-      const recentFeedback = allFeedback.slice(-100);
-      const avgRating = recentFeedback.length > 0
-        ? recentFeedback.reduce((sum, f) => sum + (f.overallRating || 0), 0) / recentFeedback.length
-        : 4;
-      const satisfactionScore = Math.round(avgRating * 20);
-      
-      const customerData = {
-        satisfactionScore,
-        complaintCount: allFeedback.filter(f => (f.overallRating || 5) < 3).length,
-        resolvedPercentage: 91,
-        npsScore: 45,
-        riskIndicator: {
-          status: satisfactionScore >= 80 ? 'healthy' as const : 'warning' as const,
-          score: satisfactionScore,
-          trend: 'up' as const,
-          message: 'Musteri memnuniyeti yukseliyor'
-        },
-        topComplaints: [
-          { category: 'Bekleme suresi', count: 8, trend: 'down' },
-          { category: 'Urun kalitesi', count: 5, trend: 'stable' }
-        ]
+      // ======= FABRIKA =======
+      const activeEquipment = allEquipment.filter((e: any) => e.status === 'active');
+      const uptimePercent = allEquipment.length > 0 ? Math.round((activeEquipment.length / allEquipment.length) * 100) : 100;
+
+      const fabrikaSummary = {
+        label: 'Fabrika & Ekipman',
+        source: 'Fabrika Muduru',
+        status: brokenEquipment.filter((e: any) => e.status === 'broken').length > 0 ? 'critical' as const : brokenEquipment.length > 0 ? 'warning' as const : 'healthy' as const,
+        mainMetric: `Ekipman uptime %${uptimePercent}`,
+        details: [
+          { key: 'Toplam Ekipman', value: `${allEquipment.length} adet` },
+          { key: 'Aktif', value: `${activeEquipment.length} adet` },
+          { key: 'Bakimda/Arızali', value: `${brokenEquipment.length} adet` },
+          { key: 'Urun Sikayeti', value: `${openComplaints.length} acik` }
+        ],
+        alert: brokenEquipment.filter((e: any) => e.status === 'broken').length > 0 ? `${brokenEquipment.filter((e: any) => e.status === 'broken').length} ekipman arizali` : null
       };
 
-      // Calculate Growth data
-      const growthData = {
-        marketingROI: 3.2,
-        campaignPerformance: 78,
-        salesGrowth: 12.5,
-        newCustomers: 342,
-        riskIndicator: {
-          status: 'healthy' as const,
-          score: 85,
-          trend: 'up' as const,
-          message: 'Buyume hedeflerin ustunde'
-        },
-        topCampaigns: [
-          { name: 'Yaz Kampanyasi', roi: 4.5, status: 'active' },
-          { name: 'Sadakat Programi', roi: 3.8, status: 'active' }
-        ]
+      // ======= COACH / DENETIM =======
+      const completedAuditsAll = allAudits.filter((a: any) => a.status === 'completed');
+      const recentAudits = completedAuditsAll.filter((a: any) => {
+        const d = new Date(a.completedAt || a.createdAt);
+        return d > new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+      });
+      const avgAuditScore = recentAudits.length > 0 ? Math.round(recentAudits.reduce((s: number, a: any) => s + (a.totalScore || 0), 0) / recentAudits.length) : 0;
+
+      const coachSummary = {
+        label: 'Denetim Sonuclari',
+        source: 'Coach',
+        status: avgAuditScore >= 80 ? 'healthy' as const : avgAuditScore >= 60 ? 'warning' as const : recentAudits.length === 0 ? 'warning' as const : 'critical' as const,
+        mainMetric: recentAudits.length > 0 ? `Ort. skor: ${avgAuditScore}/100` : 'Son 30 gun denetim yok',
+        details: [
+          { key: 'Toplam Denetim', value: `${completedAuditsAll.length}` },
+          { key: 'Son 30 Gun', value: `${recentAudits.length} denetim` },
+          { key: 'Ort. Puan', value: recentAudits.length > 0 ? `${avgAuditScore}/100` : '-' }
+        ],
+        alert: recentAudits.length === 0 ? 'Son 30 gunde hicbir sube denetlenmemis' : avgAuditScore < 70 ? 'Denetim skorlari dusuk, iyilestirme gerekli' : null
       };
 
-      // Get manager performance data - ALL HQ personnel
-      const hqRoleSet = new Set([
-        'admin', 'cgo', 'muhasebe_ik', 'muhasebe', 'satinalma',
-        'coach', 'marketing', 'trainer', 'kalite_kontrol', 'fabrika_mudur',
-        'teknik', 'destek', 'fabrika', 'yatirimci_hq', 'ik'
-      ]);
-      const roleDepartmentMap: Record<string, string> = {
-        'admin': 'Yonetim',
-        'cgo': 'CGO',
-        'muhasebe_ik': 'Muhasebe & IK',
-        'muhasebe': 'Muhasebe',
-        'satinalma': 'Satinalma',
-        'coach': 'Franchise Coach',
-        'marketing': 'Pazarlama',
-        'trainer': 'Egitim',
-        'kalite_kontrol': 'Kalite Kontrol',
-        'fabrika_mudur': 'Fabrika Mudur',
-        'teknik': 'Teknik',
-        'destek': 'Destek',
-        'fabrika': 'Fabrika',
-        'yatirimci_hq': 'Yatirimci Iliskileri',
-        'ik': 'Insan Kaynaklari'
+      // ======= KALITE KONTROL =======
+      const resolvedComplaints = allProductComplaints.filter((c: any) => c.status === 'resolved' || c.status === 'closed');
+      const resolutionRate = allProductComplaints.length > 0 ? Math.round((resolvedComplaints.length / allProductComplaints.length) * 100) : 100;
+
+      const kaliteSummary = {
+        label: 'Kalite & Sikayetler',
+        source: 'Kalite Kontrol',
+        status: openComplaints.some((c: any) => c.severity === 'critical') ? 'critical' as const : openComplaints.length > 0 ? 'warning' as const : 'healthy' as const,
+        mainMetric: openComplaints.length === 0 ? 'Acik sikayet yok' : `${openComplaints.length} acik sikayet`,
+        details: [
+          { key: 'Toplam Sikayet', value: `${allProductComplaints.length}` },
+          { key: 'Acik', value: `${openComplaints.length}` },
+          { key: 'Cozum Orani', value: `%${resolutionRate}` }
+        ],
+        alert: openComplaints.some((c: any) => c.severity === 'critical') ? 'Kritik oncelikli sikayet var!' : null
       };
 
-      // Filter real HQ staff - exclude CEO (viewing role), deduplicate by full name
-      const seenUserIds = new Set<string>();
+      // ======= EGITIM / TRAINER =======
+      const totalCompletions = allChecklistCompletions.length;
+      const completedCompletions = allChecklistCompletions.filter((c: any) => c.status === 'completed');
+      const checklistRate = totalCompletions > 0 ? Math.round((completedCompletions.length / totalCompletions) * 100) : 0;
+
+      const egitimSummary = {
+        label: 'Egitim & Checklist',
+        source: 'Trainer',
+        status: checklistRate >= 80 ? 'healthy' as const : checklistRate >= 60 ? 'warning' as const : 'critical' as const,
+        mainMetric: `Checklist tamamlama: %${checklistRate}`,
+        details: [
+          { key: 'Toplam Gorev', value: `${totalCompletions}` },
+          { key: 'Tamamlanan', value: `${completedCompletions.length}` },
+          { key: 'Tamamlama Orani', value: `%${checklistRate}` }
+        ],
+        alert: checklistRate < 60 ? 'Checklist tamamlama orani cok dusuk!' : null
+      };
+
+      // ======= EN DUSUK 3 YONETICI =======
+      const hqRoleSet = new Set(['muhasebe_ik', 'muhasebe', 'satinalma', 'coach', 'marketing', 'trainer', 'kalite_kontrol', 'fabrika_mudur', 'teknik', 'ik']);
+      const roleDeptMap: Record<string, string> = {
+        'muhasebe_ik': 'Muhasebe & IK', 'muhasebe': 'Muhasebe', 'satinalma': 'Satinalma',
+        'coach': 'Coach', 'marketing': 'Pazarlama', 'trainer': 'Egitim',
+        'kalite_kontrol': 'Kalite Kontrol', 'fabrika_mudur': 'Fabrika', 'teknik': 'Teknik', 'ik': 'IK'
+      };
+
       const seenNames = new Set<string>();
-      const hqUsers = allUsers.filter(u => {
-        if (!hqRoleSet.has(u.role)) return false;
-        if (seenUserIds.has(u.id)) return false;
-        seenUserIds.add(u.id);
+      const hqManagers = allUsers.filter(u => {
+        if (!hqRoleSet.has(u.role) || !u.isActive) return false;
         const name = ((u.firstName || '') + ' ' + (u.lastName || '')).trim();
-        if (!name) return false;
-        // Deduplicate by full name - keep first occurrence only
-        const nameKey = name.toLowerCase();
-        if (seenNames.has(nameKey)) return false;
-        seenNames.add(nameKey);
-        // Exclude test/generic accounts by username pattern
+        if (!name || seenNames.has(name.toLowerCase())) return false;
+        seenNames.add(name.toLowerCase());
         if (u.username && /^(test|e2e|api[-_])/i.test(u.username)) return false;
-        if (u.username === 'fabrika') return false;
-        if (u.username && u.username.includes('sat-test')) return false;
-        // Exclude generic/placeholder names
-        if (/^(Test |E2E |API |Admin |Fabrika Y)/i.test(name)) return false;
+        if (/^(Test |E2E |API |Admin )/i.test(name)) return false;
         return true;
       });
 
-      // Get task data for performance calculation
       const allTasks = await db.select().from(tasks);
-      const managers = hqUsers.map((m) => {
+      const managersWithScores = hqManagers.map(m => {
+        const userFaults = allFaults.filter((f: any) => f.assignedToId === m.id);
+        const resolvedFaults = userFaults.filter((f: any) => f.status === 'resolved' || f.status === 'closed');
+        const faultRate = userFaults.length > 0 ? Math.round((resolvedFaults.length / userFaults.length) * 100) : 80;
         const userTasks = allTasks.filter((t: any) => t.assignedToId === m.id);
-        const completedTasks = userTasks.filter((t: any) => t.status === 'onaylandi');
-        const taskCompletionRate = userTasks.length > 0 ? Math.round((completedTasks.length / userTasks.length) * 100) : 85;
-        const performanceScore = (m as any).performanceScore || taskCompletionRate;
-        const score = Math.min(100, Math.max(0, performanceScore));
-        const trend: 'up' | 'down' | 'stable' = score >= 85 ? 'up' : score >= 70 ? 'stable' : 'down';
+        const completedUserTasks = userTasks.filter((t: any) => t.status === 'onaylandi' || t.status === 'completed');
+        const taskRate = userTasks.length > 0 ? Math.round((completedUserTasks.length / userTasks.length) * 100) : 80;
+        const score = Math.round((faultRate * 0.5 + taskRate * 0.5));
         return {
           id: m.id,
-          name: ((m.firstName || '') + ' ' + (m.lastName || '')).trim() || m.username,
-          department: roleDepartmentMap[m.role] || m.role,
-          score,
-          metrics: { performans: score },
-          trend
+          name: ((m.firstName || '') + ' ' + (m.lastName || '')).trim(),
+          department: roleDeptMap[m.role] || m.role,
+          score
         };
-      });
+      }).sort((a, b) => a.score - b.score);
+
+      const bottomManagers = managersWithScores.slice(0, 3);
 
       res.json({
-        finance: financeData,
-        franchise: franchiseData,
-        factory: factoryData,
-        hr: hrData,
-        customer: customerData,
-        growth: growthData,
-        managers,
+        urgentAlerts,
+        departments: [cgoSummary, muhasebeIkSummary, fabrikaSummary, coachSummary, kaliteSummary, egitimSummary],
+        bottomManagers,
         lastUpdated: new Date().toISOString()
       });
     } catch (error: any) {
@@ -34742,7 +34723,8 @@ Dusuk puanli alanlara odaklan ve pozitif, motive edici ol. JSON dizisi olarak ya
     }
   });
 
-  // CEO AI Assistant
+
+    // CEO AI Assistant
   app.post("/api/ceo/ai-assistant", isAuthenticated, async (req: any, res) => {
     try {
       const user = req.user;
