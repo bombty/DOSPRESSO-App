@@ -24816,10 +24816,12 @@ MUTLAKA aşağıdaki JSON formatında yanıt ver:
           COALESCE(u.meal_allowance, 0) as meal_allowance,
           COALESCE(u.transport_allowance, 0) as transport_allowance,
           COALESCE(u.bonus_base, 0) as bonus_base,
+          COALESCE(u.bonus_type, 'normal') as bonus_type,
+          COALESCE(u.bonus_percentage, 0) as bonus_percentage,
           b.id as branch_id, b.name as branch_name,
           eb.id as benefit_id, eb.meal_benefit_type, eb.meal_benefit_amount,
           eb.transport_benefit_type, eb.transport_benefit_amount,
-          eb.bonus_eligible, eb.bonus_percentage, 
+          eb.bonus_eligible, eb.bonus_percentage as eb_bonus_percentage, 
           eb.disability_discount, eb.disability_degree
         FROM users u
         LEFT JOIN branches b ON u.branch_id = b.id
@@ -24844,7 +24846,7 @@ MUTLAKA aşağıdaki JSON formatında yanıt ver:
       }
 
       const { id } = req.params;
-      const { netSalary, mealAllowance, transportAllowance, bonusBase } = req.body;
+      const { netSalary, mealAllowance, transportAllowance, bonusBase, bonusType, bonusPercentage } = req.body;
 
       // Validate all values are non-negative integers (kuruş)
       const validateValue = (val: any, name: string) => {
@@ -24858,6 +24860,8 @@ MUTLAKA aşağıdaki JSON formatında yanıt ver:
       const safeMealAllowance = validateValue(mealAllowance, 'yemek yardımı');
       const safeTransportAllowance = validateValue(transportAllowance, 'ulaşım yardımı');
       const safeBonusBase = validateValue(bonusBase, 'prim');
+      const safeBonusType = bonusType || null;
+      const safeBonusPercentage = bonusPercentage !== undefined ? bonusPercentage : null;
 
       const result = await db.execute(sql`
         UPDATE users 
@@ -24866,9 +24870,11 @@ MUTLAKA aşağıdaki JSON formatında yanıt ver:
           meal_allowance = COALESCE(${safeMealAllowance}, meal_allowance),
           transport_allowance = COALESCE(${safeTransportAllowance}, transport_allowance),
           bonus_base = COALESCE(${safeBonusBase}, bonus_base),
+          bonus_type = COALESCE(${safeBonusType}, bonus_type),
+          bonus_percentage = COALESCE(${safeBonusPercentage}, bonus_percentage),
           updated_at = NOW()
         WHERE id = ${id}
-        RETURNING id, username, first_name, last_name, net_salary, meal_allowance, transport_allowance, bonus_base
+        RETURNING id, username, first_name, last_name, net_salary, meal_allowance, transport_allowance, bonus_base, bonus_type, bonus_percentage
       `);
       
       if (result.rows.length === 0) {
@@ -25191,7 +25197,9 @@ MUTLAKA aşağıdaki JSON formatında yanıt ver:
       const transportAllowance = hasBenefitsRecord && benefits.transport_benefit_amount !== null && benefits.transport_benefit_amount !== undefined
         ? benefits.transport_benefit_amount * 22
         : userTransportAllowance; // users tablosundan aylık değer
-      const bonusPercentage = parseFloat(benefits?.bonus_percentage || '0');
+      const userBonusPercentage = parseFloat(employee.bonus_percentage || '0');
+      const benefitsBonusPercentage = parseFloat(benefits?.bonus_percentage || '0');
+      const bonusPercentage = userBonusPercentage > 0 ? userBonusPercentage : benefitsBonusPercentage;
       const bonusEligible = benefits?.bonus_eligible !== false;
       
       // 3. Onaylı mesai al
@@ -25228,8 +25236,8 @@ MUTLAKA aşağıdaki JSON formatında yanıt ver:
       const undertimeMinutes = Math.max(0, expectedMonthlyMinutes - workedMinutes);
       
       // 5. Prim hesaplama
-      // Şube personeli: kasa primi, fabrika: normal prim
-      const bonusType = employee.branch_id ? 'kasa_primi' : 'normal';
+      // Prim türü: personel bazlı ayar (users tablosundan)
+      const bonusType = employee.bonus_type || (employee.branch_id ? 'kasa_primi' : 'normal');
       // Prim matrahı: users tablosundan varsa onu kullan, yoksa base salary
       const bonusBase = userBonusBase > 0 ? userBonusBase : baseSalary;
       let bonusAmount = 0;

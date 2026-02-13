@@ -2182,6 +2182,8 @@ export const users = pgTable("users", {
   mealAllowance: integer("meal_allowance").default(0), // Yemek yardımı
   transportAllowance: integer("transport_allowance").default(0), // Ulaşım yardımı
   bonusBase: integer("bonus_base").default(0), // Prim matrahı
+  bonusType: varchar("bonus_type", { length: 30 }).default("normal"),
+  bonusPercentage: numeric("bonus_percentage").default("0"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

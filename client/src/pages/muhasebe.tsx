@@ -47,7 +47,8 @@ import {
   ArrowUpDown,
   ShieldCheck,
   BarChart3,
-  Building2
+  Building2,
+  Award
 } from "lucide-react";
 
 interface PayrollParameters {
@@ -110,6 +111,8 @@ interface Employee {
   meal_allowance: number;
   transport_allowance: number;
   bonus_base: number;
+  bonus_type: string;
+  bonus_percentage: number;
   branch_name?: string;
   branch_id?: number;
 }
@@ -1743,6 +1746,8 @@ function SalarySettingsSection({ employees, canEdit }: { employees: Employee[]; 
     mealAllowance: 0,
     transportAllowance: 0,
     bonusBase: 0,
+    bonusType: "normal",
+    bonusPercentage: 0,
   });
 
   const formatCurrency = (valueInKurus: number) => {
@@ -1756,6 +1761,8 @@ function SalarySettingsSection({ employees, canEdit }: { employees: Employee[]; 
         mealAllowance: data.mealAllowance,
         transportAllowance: data.transportAllowance,
         bonusBase: data.bonusBase,
+        bonusType: data.bonusType,
+        bonusPercentage: data.bonusPercentage.toString(),
       });
       return res.json();
     },
@@ -1782,6 +1789,8 @@ function SalarySettingsSection({ employees, canEdit }: { employees: Employee[]; 
       mealAllowance: emp.meal_allowance || 0,
       transportAllowance: emp.transport_allowance || 0,
       bonusBase: emp.bonus_base || 0,
+      bonusType: emp.bonus_type || "normal",
+      bonusPercentage: parseFloat(String(emp.bonus_percentage)) || 0,
     });
   };
 
@@ -1824,14 +1833,15 @@ function SalarySettingsSection({ employees, canEdit }: { employees: Employee[]; 
                     <th className="px-4 py-2 text-right font-medium">Net Maaş</th>
                     <th className="px-4 py-2 text-right font-medium">Yemek</th>
                     <th className="px-4 py-2 text-right font-medium">Ulaşım</th>
-                    <th className="px-4 py-2 text-right font-medium">Prim</th>
+                    <th className="px-4 py-2 text-right font-medium">Prim Türü</th>
+                    <th className="px-4 py-2 text-right font-medium">%</th>
                     <th className="px-4 py-2 text-center font-medium">İşlem</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y">
                   {filteredEmployees.length === 0 ? (
                     <tr>
-                      <td colSpan={7} className="px-4 py-8 text-center text-muted-foreground">
+                      <td colSpan={8} className="px-4 py-8 text-center text-muted-foreground">
                         {searchTerm ? "Sonuç bulunamadı" : "Personel yükleniyor..."}
                       </td>
                     </tr>
@@ -1853,7 +1863,12 @@ function SalarySettingsSection({ employees, canEdit }: { employees: Employee[]; 
                           {emp.transport_allowance > 0 ? `${formatCurrency(emp.transport_allowance)} TL` : '-'}
                         </td>
                         <td className="px-4 py-2 text-right">
-                          {emp.bonus_base > 0 ? `${formatCurrency(emp.bonus_base)} TL` : '-'}
+                          <Badge variant="secondary" className="text-[10px]">
+                            {emp.bonus_type === 'kasa_primi' ? 'Kasa' : emp.bonus_type === 'satis_primi' ? 'Satış' : emp.bonus_type === 'sabit_prim' ? 'Sabit' : 'Normal'}
+                          </Badge>
+                        </td>
+                        <td className="px-4 py-2 text-right">
+                          {parseFloat(String(emp.bonus_percentage)) > 0 ? `%${emp.bonus_percentage}` : '-'}
                         </td>
                         <td className="px-4 py-2 text-center">
                           {canEdit && (
@@ -1941,6 +1956,40 @@ function SalarySettingsSection({ employees, canEdit }: { employees: Employee[]; 
                 value={(formValues.bonusBase / 100).toFixed(2)}
                 onChange={(e) => setFormValues({ ...formValues, bonusBase: Math.round(parseFloat(e.target.value || "0") * 100) })}
                 data-testid="input-bonus-base"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label className="flex items-center gap-2">
+                <Award className="h-4 w-4 text-amber-600" />
+                Prim Türü
+              </Label>
+              <Select value={formValues.bonusType} onValueChange={(v) => setFormValues({ ...formValues, bonusType: v })}>
+                <SelectTrigger data-testid="select-bonus-type">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="normal">Normal Prim</SelectItem>
+                  <SelectItem value="kasa_primi">Kasa Primi</SelectItem>
+                  <SelectItem value="satis_primi">Satış Primi</SelectItem>
+                  <SelectItem value="sabit_prim">Sabit Prim</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label className="flex items-center gap-2">
+                <Percent className="h-4 w-4 text-indigo-600" />
+                Prim Yüzdesi (%)
+              </Label>
+              <Input
+                type="number"
+                step="0.1"
+                min="0"
+                max="100"
+                value={formValues.bonusPercentage}
+                onChange={(e) => setFormValues({ ...formValues, bonusPercentage: parseFloat(e.target.value || "0") })}
+                data-testid="input-bonus-percentage"
               />
             </div>
           </div>
