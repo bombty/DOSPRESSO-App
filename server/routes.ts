@@ -34862,6 +34862,169 @@ MUTLAKA aşağıdaki JSON formatında yanıt ver:
     }
   });
 
+
+  // GET /api/my-performance/periods - Periyod bazli performans (aylik/3aylik/yillik/tum)
+  app.get("/api/my-performance/periods", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.id;
+      if (!userId) return res.status(401).json({ message: "Yetkisiz" });
+      
+      const period = (req.query.period as string) || "monthly";
+      const now = new Date();
+      const currentMonth = now.getMonth() + 1;
+      const currentYear = now.getFullYear();
+      
+      const allHistory = await db.select().from(monthlyEmployeePerformance)
+        .where(eq(monthlyEmployeePerformance.employeeId, userId))
+        .orderBy(desc(monthlyEmployeePerformance.year), desc(monthlyEmployeePerformance.month));
+      
+      if (allHistory.length === 0) {
+        return res.json({
+          period,
+          current: null,
+          previous: null,
+          trend: null,
+          chartData: [],
+          summary: { avgScore: 0, bestMonth: null, worstMonth: null, totalMonths: 0 }
+        });
+      }
+      
+      const getScore = (p: any) => p.finalScore || p.totalScore || 0;
+      const monthNames = ["Oca", "Sub", "Mar", "Nis", "May", "Haz", "Tem", "Agu", "Eyl", "Eki", "Kas", "Ara"];
+      
+      const normalizeChartItem = (h: any) => ({
+        label: `${monthNames[h.month - 1]} ${h.year}`,
+        score: getScore(h),
+        attendance: h.attendanceScore || 0,
+        checklist: h.checklistScore || 0,
+        task: h.taskScore || 0,
+        customer: h.customerRatingScore || 0,
+        manager: h.managerRatingScore || 0
+      });
+      
+      const avgSubScores = (data: any[]) => {
+        const len = data.length || 1;
+        return {
+          attendance: data.reduce((s: number, h: any) => s + (h.attendanceScore || 0), 0) / len,
+          checklist: data.reduce((s: number, h: any) => s + (h.checklistScore || 0), 0) / len,
+          task: data.reduce((s: number, h: any) => s + (h.taskScore || 0), 0) / len,
+          customer: data.reduce((s: number, h: any) => s + (h.customerRatingScore || 0), 0) / len,
+          manager: data.reduce((s: number, h: any) => s + (h.managerRatingScore || 0), 0) / len,
+        };
+      };
+      
+      if (period === "monthly") {
+        const current = allHistory.find(h => h.month === currentMonth && h.year === currentYear) || null;
+        const prevMonth = currentMonth === 1 ? 12 : currentMonth - 1;
+        const prevYear = currentMonth === 1 ? currentYear - 1 : currentYear;
+        const previous = allHistory.find(h => h.month === prevMonth && h.year === prevYear) || null;
+        
+        const trend = (current && previous) ? getScore(current) - getScore(previous) : null;
+        
+        let rank = null;
+        if (current) {
+          const allCurrent = await db.select().from(monthlyEmployeePerformance)
+            .where(and(eq(monthlyEmployeePerformance.month, currentMonth), eq(monthlyEmployeePerformance.year, currentYear)))
+            .orderBy(desc(monthlyEmployeePerformance.finalScore));
+          rank = allCurrent.findIndex(p => p.employeeId === userId) + 1;
+        }
+        
+        const chartData = allHistory.slice(0, 12).reverse().map(normalizeChartItem);
+        
+        return res.json({
+          period: "monthly",
+          current: current ? { ...current, rank } : null,
+          previous,
+          trend,
+          chartData,
+          summary: {
+            avgScore: allHistory.reduce((s: number, h: any) => s + getScore(h), 0) / allHistory.length,
+            totalMonths: allHistory.length
+          }
+        });
+      }
+      
+      if (period === "quarterly") {
+        const currentQ = Math.ceil(currentMonth / 3);
+        const qMonths = [(currentQ - 1) * 3 + 1, (currentQ - 1) * 3 + 2, (currentQ - 1) * 3 + 3];
+        const currentQData = allHistory.filter(h => h.year === currentYear && qMonths.includes(h.month));
+        
+        const prevQ = currentQ === 1 ? 4 : currentQ - 1;
+        const prevQYear = currentQ === 1 ? currentYear - 1 : currentYear;
+        const prevQMonths = [(prevQ - 1) * 3 + 1, (prevQ - 1) * 3 + 2, (prevQ - 1) * 3 + 3];
+        const prevQData = allHistory.filter(h => h.year === prevQYear && prevQMonths.includes(h.month));
+        
+        const avgCurrent = currentQData.length > 0 ? currentQData.reduce((s: number, h: any) => s + getScore(h), 0) / currentQData.length : 0;
+        const avgPrev = prevQData.length > 0 ? prevQData.reduce((s: number, h: any) => s + getScore(h), 0) / prevQData.length : 0;
+        
+        const trend = (currentQData.length > 0 && prevQData.length > 0) ? avgCurrent - avgPrev : null;
+        
+        const chartData: any[] = [];
+        for (let yr = currentYear - 1; yr <= currentYear; yr++) {
+          for (let q = 1; q <= 4; q++) {
+            const ms = [(q - 1) * 3 + 1, (q - 1) * 3 + 2, (q - 1) * 3 + 3];
+            const qd = allHistory.filter(h => h.year === yr && ms.includes(h.month));
+            if (qd.length > 0) {
+              const avgScore = qd.reduce((s: number, h: any) => s + getScore(h), 0) / qd.length;
+              chartData.push({
+                label: `Q${q} ${yr}`,
+                score: avgScore,
+                ...avgSubScores(qd)
+              });
+            }
+          }
+        }
+        
+        return res.json({
+          period: "quarterly",
+          current: currentQData.length > 0 ? { totalScore: avgCurrent, ...avgSubScores(currentQData), quarter: currentQ, year: currentYear, monthCount: currentQData.length } : null,
+          previous: prevQData.length > 0 ? { totalScore: avgPrev, ...avgSubScores(prevQData), quarter: prevQ, year: prevQYear, monthCount: prevQData.length } : null,
+          trend,
+          chartData,
+          summary: { avgScore: allHistory.reduce((s: number, h: any) => s + getScore(h), 0) / allHistory.length, totalMonths: allHistory.length }
+        });
+      }
+      
+      if (period === "yearly") {
+        const currentYearData = allHistory.filter(h => h.year === currentYear);
+        const prevYearData = allHistory.filter(h => h.year === currentYear - 1);
+        
+        const avgCurrent = currentYearData.length > 0 ? currentYearData.reduce((s: number, h: any) => s + getScore(h), 0) / currentYearData.length : 0;
+        const avgPrev = prevYearData.length > 0 ? prevYearData.reduce((s: number, h: any) => s + getScore(h), 0) / prevYearData.length : 0;
+        
+        const trend = (currentYearData.length > 0 && prevYearData.length > 0) ? avgCurrent - avgPrev : null;
+        
+        const chartData = allHistory.slice(0, 24).reverse().map(normalizeChartItem);
+        
+        return res.json({
+          period: "yearly",
+          current: currentYearData.length > 0 ? { totalScore: avgCurrent, year: currentYear, monthCount: currentYearData.length } : null,
+          previous: prevYearData.length > 0 ? { totalScore: avgPrev, year: currentYear - 1, monthCount: prevYearData.length } : null,
+          trend,
+          chartData,
+          summary: { avgScore: allHistory.reduce((s: number, h: any) => s + getScore(h), 0) / allHistory.length, totalMonths: allHistory.length }
+        });
+      }
+      
+      // all-time
+      const allScores = allHistory.map(h => getScore(h));
+      const chartData = allHistory.slice().reverse().map(normalizeChartItem);
+      
+      return res.json({
+        period: "all",
+        current: { totalScore: allScores.reduce((a: number, b: number) => a + b, 0) / allScores.length, monthCount: allScores.length },
+        previous: null,
+        trend: null,
+        chartData,
+        summary: { avgScore: allScores.reduce((a: number, b: number) => a + b, 0) / allScores.length, bestScore: Math.max(...allScores), worstScore: Math.min(...allScores), totalMonths: allScores.length }
+      });
+    } catch (error: any) {
+      console.error("Error fetching period performance:", error);
+      res.status(500).json({ message: "Performans periyod verisi alinamadi" });
+    }
+  });
+
+
   // POST /api/my-performance/ai-tips - AI motivasyon onerileri
   app.post("/api/my-performance/ai-tips", isAuthenticated, async (req: any, res) => {
     try {

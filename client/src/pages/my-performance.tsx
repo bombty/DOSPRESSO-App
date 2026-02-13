@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -8,7 +8,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   TrendingUp, Award, Star, Calendar, Target, 
   Sparkles, Download, Trophy, Medal, ArrowUp, ArrowDown,
-  Loader2, MessageSquare, ThumbsUp, ClipboardCheck, Users
+  Loader2, MessageSquare, ThumbsUp, ClipboardCheck, Users,
+  Minus, BarChart3, Clock, CalendarRange, History
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
@@ -24,16 +25,28 @@ import {
 import {
   RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
   Radar, ResponsiveContainer, LineChart, Line, XAxis, YAxis,
-  CartesianGrid, Tooltip, Legend
+  CartesianGrid, Tooltip, Legend, AreaChart, Area
 } from "recharts";
 
-const MONTHS = [
-  "Ocak", "Subat", "Mart", "Nisan", "Mayis", "Haziran",
-  "Temmuz", "Agustos", "Eylul", "Ekim", "Kasim", "Aralik"
-];
+type PeriodType = "monthly" | "quarterly" | "yearly" | "all";
+
+const PERIOD_LABELS: Record<PeriodType, string> = {
+  monthly: "Aylik",
+  quarterly: "3 Aylik",
+  yearly: "Yillik",
+  all: "Tum Gecmis"
+};
+
+const PERIOD_DESCRIPTIONS: Record<PeriodType, string> = {
+  monthly: "Prim ve uyari degerlendirmesi",
+  quarterly: "Trend analizi ve gelisim takibi",
+  yearly: "Kariyer degerlendirmesi",
+  all: "Toplam ilerleme grafi\u011fi"
+};
 
 export default function MyPerformancePage() {
   const { toast } = useToast();
+  const [activePeriod, setActivePeriod] = useState<PeriodType>("monthly");
   const [aiTips, setAiTips] = useState<string[]>([]);
   const [generatingTips, setGeneratingTips] = useState(false);
   const [generatingPDF, setGeneratingPDF] = useState(false);
@@ -42,27 +55,25 @@ export default function MyPerformancePage() {
     queryKey: ["/api/user"],
   });
 
-  const { data: myPerformance, isLoading } = useQuery({
+  const { data: periodData, isLoading } = useQuery<any>({
+    queryKey: [`/api/my-performance/periods?period=${activePeriod}`],
+  });
+
+  const { data: myPerformance } = useQuery({
     queryKey: ["/api/my-performance"],
   });
 
-  const { data: monthlyHistory } = useQuery({
-    queryKey: ["/api/my-performance/history"],
-  });
+  const perf = myPerformance as any;
+  const totalScore = perf?.totalScore || 0;
+  const rank = perf?.rank;
 
-  const radarData = myPerformance ? [
-    { subject: "Devam", value: ((myPerformance as any).attendanceScore || 0) * 5, fullMark: 100 },
-    { subject: "Checklist", value: ((myPerformance as any).checklistScore || 0) * 5, fullMark: 100 },
-    { subject: "Gorevler", value: ((myPerformance as any).taskScore || 0) * 6.67, fullMark: 100 },
-    { subject: "Musteri", value: ((myPerformance as any).customerRatingScore || 0) * 6.67, fullMark: 100 },
-    { subject: "Yonetici", value: ((myPerformance as any).managerRatingScore || 0) * 5, fullMark: 100 },
+  const radarData = perf ? [
+    { subject: "Devam", value: (perf.attendanceScore || 0) * 5, fullMark: 100 },
+    { subject: "Checklist", value: (perf.checklistScore || 0) * 5, fullMark: 100 },
+    { subject: "Gorevler", value: (perf.taskScore || 0) * 6.67, fullMark: 100 },
+    { subject: "Musteri", value: (perf.customerRatingScore || 0) * 6.67, fullMark: 100 },
+    { subject: "Yonetici", value: (perf.managerRatingScore || 0) * 5, fullMark: 100 },
   ] : [];
-
-  const historyData = (monthlyHistory as any[])?.map((h: any) => ({
-    month: MONTHS[h.month - 1]?.substring(0, 3) || "",
-    puan: h.totalScore?.toFixed(1) || 0,
-    siralama: h.rank || "-"
-  })) || [];
 
   const generateAITips = async () => {
     setGeneratingTips(true);
@@ -91,7 +102,6 @@ export default function MyPerformancePage() {
   const generatePersonalReport = async () => {
     setGeneratingPDF(true);
     try {
-      const perf = myPerformance as any;
       const currentMonth = new Date().getMonth() + 1;
       const currentYear = new Date().getFullYear();
 
@@ -103,15 +113,12 @@ export default function MyPerformancePage() {
       });
 
       let yPos = startY;
-
-      // Personal info
       yPos = addSection(doc, "Kisisel Bilgiler", yPos);
       yPos = addKeyValue(doc, "Ad Soyad", `${(user as any)?.firstName || ""} ${(user as any)?.lastName || ""}`, yPos);
       yPos = addKeyValue(doc, "Pozisyon", (user as any)?.role || "-", yPos);
       yPos = addKeyValue(doc, "Sube", (user as any)?.branchName || "-", yPos);
       yPos += 5;
 
-      // Performance scores
       yPos = checkPageBreak(doc, yPos, 80);
       yPos = addSection(doc, "Performans Puanlari", yPos);
       yPos = addKeyValue(doc, "Toplam Puan", `${perf?.totalScore?.toFixed(1) || 0} / 100`, yPos);
@@ -122,7 +129,6 @@ export default function MyPerformancePage() {
       yPos = addKeyValue(doc, "Yonetici Puani", `${perf?.managerRatingScore?.toFixed(1) || 0} / 20`, yPos);
       yPos += 5;
 
-      // Ranking
       if (perf?.rank) {
         yPos = checkPageBreak(doc, yPos, 40);
         yPos = addSection(doc, "Siralama", yPos);
@@ -131,12 +137,11 @@ export default function MyPerformancePage() {
         yPos += 5;
       }
 
-      // AI Tips
       if (aiTips.length > 0) {
         yPos = checkPageBreak(doc, yPos, 60);
         yPos = addSection(doc, "Gelisim Onerileri", yPos);
         for (const tip of aiTips) {
-          yPos = addParagraph(doc, `• ${tip}`, yPos);
+          yPos = addParagraph(doc, `${sanitizeText(tip)}`, yPos);
         }
       }
 
@@ -156,15 +161,11 @@ export default function MyPerformancePage() {
     }
   }, [myPerformance]);
 
-  const perf = myPerformance as any;
-  const totalScore = perf?.totalScore || 0;
-  const rank = perf?.rank;
-
   return (
     <div className="container mx-auto py-6 space-y-6">
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
+          <h1 className="text-2xl font-bold flex items-center gap-2" data-testid="heading-my-performance">
             <TrendingUp className="h-6 w-6" />
             Performansim
           </h1>
@@ -193,24 +194,23 @@ export default function MyPerformancePage() {
         </div>
       ) : (
         <>
-          {/* Score Overview */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <Card className={totalScore >= 70 ? "border-green-500" : totalScore >= 50 ? "border-yellow-500" : "border-red-500"}>
+            <Card className={totalScore >= 70 ? "border-green-500" : totalScore >= 50 ? "border-yellow-500" : "border-red-500"} data-testid="card-total-score">
               <CardContent className="pt-6">
                 <div className="flex flex-col items-center">
                   <Trophy className={`h-8 w-8 mb-2 ${totalScore >= 70 ? "text-green-500" : totalScore >= 50 ? "text-yellow-500" : "text-red-500"}`} />
-                  <p className="text-3xl font-bold">{totalScore.toFixed(1)}</p>
+                  <p className="text-3xl font-bold" data-testid="text-total-score">{totalScore.toFixed(1)}</p>
                   <p className="text-sm text-muted-foreground">Toplam Puan</p>
                   <Progress value={totalScore} className="h-2 mt-2 w-full" />
                 </div>
               </CardContent>
             </Card>
 
-            <Card>
+            <Card data-testid="card-ranking">
               <CardContent className="pt-6">
                 <div className="flex flex-col items-center">
                   <Medal className="h-8 w-8 mb-2 text-blue-500" />
-                  <p className="text-3xl font-bold">{rank || "-"}</p>
+                  <p className="text-3xl font-bold" data-testid="text-rank">{rank || "-"}</p>
                   <p className="text-sm text-muted-foreground">Siralama</p>
                   {rank && rank <= 3 && (
                     <Badge className="mt-2">Ilk 3'te!</Badge>
@@ -219,7 +219,7 @@ export default function MyPerformancePage() {
               </CardContent>
             </Card>
 
-            <Card>
+            <Card data-testid="card-customer-score">
               <CardContent className="pt-6">
                 <div className="flex flex-col items-center">
                   <Star className="h-8 w-8 mb-2 text-yellow-500" />
@@ -231,7 +231,7 @@ export default function MyPerformancePage() {
               </CardContent>
             </Card>
 
-            <Card>
+            <Card data-testid="card-checklist-score">
               <CardContent className="pt-6">
                 <div className="flex flex-col items-center">
                   <ClipboardCheck className="h-8 w-8 mb-2 text-purple-500" />
@@ -244,21 +244,47 @@ export default function MyPerformancePage() {
             </Card>
           </div>
 
-          <Tabs defaultValue="scores" className="space-y-4">
-            <TabsList>
+          <Tabs defaultValue="periods" className="space-y-4">
+            <TabsList className="flex flex-wrap">
+              <TabsTrigger value="periods" data-testid="tab-periods">
+                <CalendarRange className="mr-2 h-4 w-4" />
+                Periyodlar
+              </TabsTrigger>
               <TabsTrigger value="scores" data-testid="tab-scores">
                 <Target className="mr-2 h-4 w-4" />
                 Puanlarim
-              </TabsTrigger>
-              <TabsTrigger value="history" data-testid="tab-history">
-                <Calendar className="mr-2 h-4 w-4" />
-                Gecmis
               </TabsTrigger>
               <TabsTrigger value="tips" data-testid="tab-tips">
                 <Sparkles className="mr-2 h-4 w-4" />
                 AI Onerileri
               </TabsTrigger>
             </TabsList>
+
+            <TabsContent value="periods">
+              <div className="space-y-4">
+                <div className="flex gap-2 flex-wrap">
+                  {(["monthly", "quarterly", "yearly", "all"] as PeriodType[]).map(p => (
+                    <Button
+                      key={p}
+                      variant={activePeriod === p ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setActivePeriod(p)}
+                      data-testid={`button-period-${p}`}
+                    >
+                      {p === "monthly" && <Clock className="mr-1.5 h-3.5 w-3.5" />}
+                      {p === "quarterly" && <CalendarRange className="mr-1.5 h-3.5 w-3.5" />}
+                      {p === "yearly" && <Calendar className="mr-1.5 h-3.5 w-3.5" />}
+                      {p === "all" && <History className="mr-1.5 h-3.5 w-3.5" />}
+                      {PERIOD_LABELS[p]}
+                    </Button>
+                  ))}
+                </div>
+
+                <p className="text-sm text-muted-foreground">{PERIOD_DESCRIPTIONS[activePeriod]}</p>
+
+                <PeriodContent data={periodData} period={activePeriod} />
+              </div>
+            </TabsContent>
 
             <TabsContent value="scores">
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -294,75 +320,14 @@ export default function MyPerformancePage() {
                     <CardDescription>Her kategorideki puaniniz</CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    <ScoreBar 
-                      label="Devam" 
-                      value={perf?.attendanceScore || 0} 
-                      max={20} 
-                      color="bg-green-500"
-                    />
-                    <ScoreBar 
-                      label="Checklist" 
-                      value={perf?.checklistScore || 0} 
-                      max={20} 
-                      color="bg-blue-500"
-                    />
-                    <ScoreBar 
-                      label="Gorevler" 
-                      value={perf?.taskScore || 0} 
-                      max={15} 
-                      color="bg-yellow-500"
-                    />
-                    <ScoreBar 
-                      label="Musteri" 
-                      value={perf?.customerRatingScore || 0} 
-                      max={15} 
-                      color="bg-purple-500"
-                    />
-                    <ScoreBar 
-                      label="Yonetici" 
-                      value={perf?.managerRatingScore || 0} 
-                      max={20} 
-                      color="bg-pink-500"
-                    />
+                    <ScoreBar label="Devam" value={perf?.attendanceScore || 0} max={20} color="bg-green-500" />
+                    <ScoreBar label="Checklist" value={perf?.checklistScore || 0} max={20} color="bg-blue-500" />
+                    <ScoreBar label="Gorevler" value={perf?.taskScore || 0} max={15} color="bg-yellow-500" />
+                    <ScoreBar label="Musteri" value={perf?.customerRatingScore || 0} max={15} color="bg-purple-500" />
+                    <ScoreBar label="Yonetici" value={perf?.managerRatingScore || 0} max={20} color="bg-pink-500" />
                   </CardContent>
                 </Card>
               </div>
-            </TabsContent>
-
-            <TabsContent value="history">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Aylik Performans Gecmisi</CardTitle>
-                  <CardDescription>Son 6 aylik puan degisimi</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="h-80">
-                    {historyData.length > 0 ? (
-                      <ResponsiveContainer width="100%" height="100%">
-                        <LineChart data={historyData}>
-                          <CartesianGrid strokeDasharray="3 3" />
-                          <XAxis dataKey="month" />
-                          <YAxis domain={[0, 100]} />
-                          <Tooltip />
-                          <Legend />
-                          <Line 
-                            type="monotone" 
-                            dataKey="puan" 
-                            name="Toplam Puan"
-                            stroke="#3b82f6" 
-                            strokeWidth={2}
-                            dot={{ fill: "#3b82f6" }}
-                          />
-                        </LineChart>
-                      </ResponsiveContainer>
-                    ) : (
-                      <div className="flex items-center justify-center h-full text-muted-foreground">
-                        Gecmis veri bulunamadi
-                      </div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
             </TabsContent>
 
             <TabsContent value="tips">
@@ -388,6 +353,7 @@ export default function MyPerformancePage() {
                         <div 
                           key={index}
                           className="flex items-start gap-3 p-3 rounded-lg bg-muted/50"
+                          data-testid={`tip-item-${index}`}
                         >
                           <div className="rounded-full bg-primary/10 p-2">
                             <ThumbsUp className="h-4 w-4 text-primary" />
@@ -414,6 +380,7 @@ export default function MyPerformancePage() {
                         className="mt-4"
                         onClick={generateAITips}
                         disabled={generatingTips}
+                        data-testid="button-generate-tips"
                       >
                         <Sparkles className="mr-2 h-4 w-4" />
                         AI Onerilerini Al
@@ -425,6 +392,193 @@ export default function MyPerformancePage() {
             </TabsContent>
           </Tabs>
         </>
+      )}
+    </div>
+  );
+}
+
+function TrendBadge({ value }: { value: number | null }) {
+  if (value === null || value === undefined) return null;
+  const rounded = Math.round(value * 10) / 10;
+  if (rounded === 0) {
+    return (
+      <Badge variant="secondary" className="text-xs" data-testid="badge-trend-neutral">
+        <Minus className="w-3 h-3 mr-1" />
+        Degisim yok
+      </Badge>
+    );
+  }
+  if (rounded > 0) {
+    return (
+      <Badge variant="default" className="text-xs bg-green-600" data-testid="badge-trend-up">
+        <ArrowUp className="w-3 h-3 mr-1" />
+        +{rounded} puan
+      </Badge>
+    );
+  }
+  return (
+    <Badge variant="destructive" className="text-xs" data-testid="badge-trend-down">
+      <ArrowDown className="w-3 h-3 mr-1" />
+      {rounded} puan
+    </Badge>
+  );
+}
+
+function PeriodContent({ data, period }: { data: any; period: PeriodType }) {
+  if (!data) {
+    return (
+      <Card>
+        <CardContent className="py-8 text-center text-muted-foreground">
+          <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2" />
+          Yukleniyor...
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (!data.current && data.chartData?.length === 0) {
+    return (
+      <Card>
+        <CardContent className="py-12 text-center text-muted-foreground">
+          <BarChart3 className="h-10 w-10 mx-auto mb-3 opacity-50" />
+          <p className="font-medium">Henuz veri yok</p>
+          <p className="text-sm mt-1">Bu periyod icin performans verisi bulunamadi</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const currentScore = data.current?.totalScore || data.current?.finalScore || 0;
+
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Card data-testid="card-period-score">
+          <CardContent className="pt-6">
+            <div className="flex flex-col items-center">
+              <p className="text-sm text-muted-foreground mb-1">{PERIOD_LABELS[period]} Puan</p>
+              <p className={`text-4xl font-bold ${currentScore >= 70 ? 'text-green-600 dark:text-green-400' : currentScore >= 50 ? 'text-yellow-600 dark:text-yellow-400' : 'text-red-600 dark:text-red-400'}`} data-testid="text-period-score">
+                {currentScore.toFixed(1)}
+              </p>
+              <Progress value={currentScore} className="h-2 mt-3 w-full" />
+              <div className="mt-2">
+                <TrendBadge value={data.trend} />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card data-testid="card-period-previous">
+          <CardContent className="pt-6">
+            <div className="flex flex-col items-center">
+              <p className="text-sm text-muted-foreground mb-1">Onceki Periyod</p>
+              {data.previous ? (
+                <>
+                  <p className="text-3xl font-bold text-muted-foreground" data-testid="text-previous-score">
+                    {(data.previous.totalScore || data.previous.finalScore || 0).toFixed(1)}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {period === "quarterly" && data.previous.quarter ? `Q${data.previous.quarter} ${data.previous.year}` : ""}
+                    {period === "yearly" && data.previous.year ? `${data.previous.year}` : ""}
+                    {period === "monthly" ? "Gecen ay" : ""}
+                  </p>
+                </>
+              ) : (
+                <p className="text-lg text-muted-foreground">-</p>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card data-testid="card-period-summary">
+          <CardContent className="pt-6">
+            <div className="flex flex-col items-center">
+              <p className="text-sm text-muted-foreground mb-1">Genel Ortalama</p>
+              <p className="text-3xl font-bold" data-testid="text-avg-score">
+                {(data.summary?.avgScore || 0).toFixed(1)}
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                {data.summary?.totalMonths || 0} aylik veri
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {data.chartData && data.chartData.length > 0 && (
+        <Card data-testid="card-period-chart">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base flex items-center gap-2">
+              <BarChart3 className="w-4 h-4" />
+              {PERIOD_LABELS[period]} Performans Trendi
+            </CardTitle>
+            <CardDescription>
+              {period === "monthly" ? "Son 12 aylik skor degisimi" : ""}
+              {period === "quarterly" ? "Ceyreklik ortalama skorlar" : ""}
+              {period === "yearly" ? "Yillik skor trendi" : ""}
+              {period === "all" ? "Tum zaman performans gecmisi" : ""}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="h-72">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={data.chartData}>
+                  <defs>
+                    <linearGradient id="scoreGradient" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/>
+                      <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+                  <XAxis dataKey="label" tick={{ fontSize: 11 }} />
+                  <YAxis domain={[0, 100]} tick={{ fontSize: 11 }} />
+                  <Tooltip
+                    contentStyle={{ borderRadius: 8, fontSize: 12 }}
+                    formatter={(value: any) => [`${Number(value).toFixed(1)}`, ""]}
+                  />
+                  <Legend wrapperStyle={{ fontSize: 11 }} />
+                  <Area
+                    type="monotone"
+                    dataKey="score"
+                    name="Toplam Skor"
+                    stroke="#3b82f6"
+                    fill="url(#scoreGradient)"
+                    strokeWidth={2}
+                    dot={{ fill: "#3b82f6", r: 3 }}
+                    activeDot={{ r: 5 }}
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {data.chartData && data.chartData.length > 1 && data.chartData[0]?.attendance !== undefined && (
+        <Card data-testid="card-category-trend">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base">Kategori Bazli Trend</CardTitle>
+            <CardDescription>Alt skorlarin zaman icindeki degisimi</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="h-72">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={data.chartData}>
+                  <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+                  <XAxis dataKey="label" tick={{ fontSize: 11 }} />
+                  <YAxis domain={[0, 100]} tick={{ fontSize: 11 }} />
+                  <Tooltip contentStyle={{ borderRadius: 8, fontSize: 12 }} />
+                  <Legend wrapperStyle={{ fontSize: 11 }} />
+                  <Line type="monotone" dataKey="attendance" name="Devam" stroke="#22c55e" strokeWidth={1.5} dot={false} />
+                  <Line type="monotone" dataKey="checklist" name="Checklist" stroke="#3b82f6" strokeWidth={1.5} dot={false} />
+                  <Line type="monotone" dataKey="task" name="Gorev" stroke="#eab308" strokeWidth={1.5} dot={false} />
+                  <Line type="monotone" dataKey="customer" name="Musteri" stroke="#a855f7" strokeWidth={1.5} dot={false} />
+                  <Line type="monotone" dataKey="manager" name="Yonetici" stroke="#ec4899" strokeWidth={1.5} dot={false} />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </CardContent>
+        </Card>
       )}
     </div>
   );
