@@ -392,210 +392,213 @@ export default function KayipEsyaPage() {
       </Tabs>
 
       <Dialog open={isNewDialogOpen} onOpenChange={setIsNewDialogOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
+        <DialogContent className="max-w-md max-h-[90vh] flex flex-col p-0">
+          <DialogHeader className="p-4 border-b">
             <DialogTitle>Yeni Bulunan Eşya</DialogTitle>
           </DialogHeader>
-          <Form {...newItemForm}>
-            <form onSubmit={newItemForm.handleSubmit((data) => createMutation.mutate(data))} className="space-y-4">
-              <FormField
-                control={newItemForm.control}
-                name="itemDescription"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Eşya Açıklaması *</FormLabel>
-                    <FormControl>
-                      <Input
-                        placeholder="Örn: Siyah cüzdan, mavi şemsiye..."
-                        {...field}
-                        data-testid="input-description"
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              {userIsHQ && (
+          <div className="flex-1 overflow-y-auto p-4">
+            <Form {...newItemForm}>
+              <form onSubmit={newItemForm.handleSubmit((data) => createMutation.mutate(data))} className="space-y-4">
                 <FormField
                   control={newItemForm.control}
-                  name="branchId"
+                  name="itemDescription"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Konum *</FormLabel>
-                      <Select
-                        value={field.value ? String(field.value) : ""}
-                        onValueChange={(val) => field.onChange(parseInt(val))}
-                      >
+                      <FormLabel>Eşya Açıklaması *</FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="Örn: Siyah cüzdan, mavi şemsiye..."
+                          {...field}
+                          data-testid="input-description"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                {userIsHQ && (
+                  <FormField
+                    control={newItemForm.control}
+                    name="branchId"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Konum *</FormLabel>
+                        <Select
+                          value={field.value ? String(field.value) : ""}
+                          onValueChange={(val) => field.onChange(parseInt(val))}
+                        >
+                          <FormControl>
+                            <SelectTrigger data-testid="select-branch">
+                              <SelectValue placeholder="Şube veya Merkez seçin" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {branches.map((b) => (
+                              <SelectItem key={b.id} value={String(b.id)}>
+                                {b.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )}
+
+                <FormField
+                  control={newItemForm.control}
+                  name="foundArea"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Bulunduğu Yer *</FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="Örn: Bar önü, masa 5, tuvalet girişi..."
+                          {...field}
+                          data-testid="input-location"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <div className="grid grid-cols-2 gap-2">
+                  <FormField
+                    control={newItemForm.control}
+                    name="foundDate"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Tarih *</FormLabel>
                         <FormControl>
-                          <SelectTrigger data-testid="select-branch">
-                            <SelectValue placeholder="Şube veya Merkez seçin" />
-                          </SelectTrigger>
+                          <Input type="date" {...field} data-testid="input-date" />
                         </FormControl>
-                        <SelectContent>
-                          {branches.map((b) => (
-                            <SelectItem key={b.id} value={String(b.id)}>
-                              {b.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              )}
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
 
-              <FormField
-                control={newItemForm.control}
-                name="foundArea"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Bulunduğu Yer *</FormLabel>
-                    <FormControl>
-                      <Input
-                        placeholder="Örn: Bar önü, masa 5, tuvalet girişi..."
-                        {...field}
-                        data-testid="input-location"
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                  <FormField
+                    control={newItemForm.control}
+                    name="foundTime"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Saat *</FormLabel>
+                        <FormControl>
+                          <Input type="time" {...field} data-testid="input-time" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
 
-              <div className="grid grid-cols-2 gap-2">
                 <FormField
                   control={newItemForm.control}
-                  name="foundDate"
+                  name="notes"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Tarih *</FormLabel>
+                      <FormLabel>Notlar (Opsiyonel)</FormLabel>
                       <FormControl>
-                        <Input type="date" {...field} data-testid="input-date" />
+                        <Textarea
+                          placeholder="Ek bilgiler..."
+                          rows={2}
+                          {...field}
+                          data-testid="input-notes"
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
 
-                <FormField
-                  control={newItemForm.control}
-                  name="foundTime"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Saat *</FormLabel>
-                      <FormControl>
-                        <Input type="time" {...field} data-testid="input-time" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-
-              <FormField
-                control={newItemForm.control}
-                name="notes"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Notlar (Opsiyonel)</FormLabel>
-                    <FormControl>
-                      <Textarea
-                        placeholder="Ek bilgiler..."
-                        rows={2}
-                        {...field}
-                        data-testid="input-notes"
+                <div className="space-y-2">
+                  <FormLabel>Fotoğraf (Opsiyonel)</FormLabel>
+                  {photoUrl ? (
+                    <div className="relative">
+                      <img
+                        src={photoUrl}
+                        alt="Yüklenen fotoğraf"
+                        className="w-full h-32 object-cover rounded-md"
                       />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <div className="space-y-2">
-                <FormLabel>Fotoğraf (Opsiyonel)</FormLabel>
-                {photoUrl ? (
-                  <div className="relative">
-                    <img
-                      src={photoUrl}
-                      alt="Yüklenen fotoğraf"
-                      className="w-full h-32 object-cover rounded-md"
-                    />
-                    <Button
-                      type="button"
-                      variant="destructive"
-                      size="sm"
-                      className="absolute top-1 right-1"
-                      onClick={() => setPhotoUrl(null)}
-                    >
-                      Kaldır
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={async (e) => {
-                        const file = e.target.files?.[0];
-                        if (file) {
-                          setIsCompressing(true);
-                          try {
-                            const compressed = await compressImage(file);
-                            setPhotoUrl(compressed);
-                            toast({ title: "Fotoğraf sıkıştırıldı", description: "Boyut optimize edildi" });
-                          } catch {
-                            const reader = new FileReader();
-                            reader.onloadend = () => setPhotoUrl(reader.result as string);
-                            reader.readAsDataURL(file);
-                          } finally {
-                            setIsCompressing(false);
-                          }
-                        }
-                      }}
-                      className="hidden"
-                      id="photo-upload"
-                      data-testid="input-photo"
-                    />
-                    <label htmlFor="photo-upload">
-                      <Button type="button" variant="outline" size="sm" asChild disabled={isCompressing}>
-                        <span className="cursor-pointer flex items-center gap-1">
-                          {isCompressing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Camera className="h-4 w-4" />}
-                          {isCompressing ? "Sıkıştırılıyor..." : "Fotoğraf Ekle"}
-                        </span>
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        size="sm"
+                        className="absolute top-1 right-1"
+                        onClick={() => setPhotoUrl(null)}
+                      >
+                        Kaldır
                       </Button>
-                    </label>
-                  </div>
-                )}
-              </div>
-
-              <DialogFooter className="gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setIsNewDialogOpen(false)}
-                  data-testid="button-cancel-new"
-                >
-                  İptal
-                </Button>
-                <Button
-                  type="submit"
-                  disabled={createMutation.isPending}
-                  data-testid="button-submit-new"
-                >
-                  {createMutation.isPending ? (
-                    <>
-                      <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-                      Kaydediliyor...
-                    </>
+                    </div>
                   ) : (
-                    "Kaydet"
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            setIsCompressing(true);
+                            try {
+                              const compressed = await compressImage(file);
+                              setPhotoUrl(compressed);
+                              toast({ title: "Fotoğraf sıkıştırıldı", description: "Boyut optimize edildi" });
+                            } catch {
+                              const reader = new FileReader();
+                              reader.onloadend = () => setPhotoUrl(reader.result as string);
+                              reader.readAsDataURL(file);
+                            } finally {
+                              setIsCompressing(false);
+                            }
+                          }
+                        }}
+                        className="hidden"
+                        id="photo-upload"
+                        data-testid="input-photo"
+                      />
+                      <label htmlFor="photo-upload">
+                        <Button type="button" variant="outline" size="sm" asChild disabled={isCompressing}>
+                          <span className="cursor-pointer flex items-center gap-1">
+                            {isCompressing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Camera className="h-4 w-4" />}
+                            {isCompressing ? "Sıkıştırılıyor..." : "Fotoğraf Ekle"}
+                          </span>
+                        </Button>
+                      </label>
+                    </div>
                   )}
-                </Button>
-              </DialogFooter>
-            </form>
-          </Form>
+                </div>
+              </form>
+            </Form>
+          </div>
+          <DialogFooter className="p-4 border-t gap-2 sm:gap-0">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setIsNewDialogOpen(false)}
+              data-testid="button-cancel-new"
+              disabled={createMutation.isPending}
+            >
+              İptal
+            </Button>
+            <Button
+              type="submit"
+              onClick={newItemForm.handleSubmit((data) => createMutation.mutate(data))}
+              disabled={createMutation.isPending}
+              data-testid="button-submit-new"
+            >
+              {createMutation.isPending ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                  Kaydediliyor...
+                </>
+              ) : (
+                "Kaydet"
+              )}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
