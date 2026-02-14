@@ -31,6 +31,7 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import { tr } from "date-fns/locale";
+import { ConfirmDeleteDialog, useConfirmDelete } from "@/components/confirm-delete-dialog";
 
 const ROLE_OPTIONS = [
   { value: "all", label: "Tüm Kullanıcılar" },
@@ -52,6 +53,7 @@ export default function AdminBannerlar() {
   const { toast } = useToast();
   const [createDialog, setCreateDialog] = useState(false);
   const [editingBanner, setEditingBanner] = useState<any>(null);
+  const { deleteState, requestDelete, cancelDelete, confirmDelete } = useConfirmDelete();
   const [formData, setFormData] = useState({
     title: "",
     description: "",
@@ -303,7 +305,7 @@ export default function AdminBannerlar() {
                           variant="ghost" 
                           size="icon" 
                           className="h-8 w-8 text-destructive"
-                          onClick={() => deleteMutation.mutate(banner.id)}
+                          onClick={() => requestDelete(banner.id, banner.title || "")}
                           data-testid={`button-delete-banner-${banner.id}`}
                         >
                           <Trash2 className="h-4 w-4" />
@@ -488,6 +490,17 @@ export default function AdminBannerlar() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ConfirmDeleteDialog
+        open={deleteState.open}
+        onOpenChange={(open) => !open && cancelDelete()}
+        onConfirm={() => {
+          const id = confirmDelete();
+          if (id) deleteMutation.mutate(id as number);
+        }}
+        title="Silmek istediğinize emin misiniz?"
+        description={`"${deleteState.itemName || ''}" banner silinecektir. Bu işlem geri alınamaz.`}
+      />
     </div>
   );
 }

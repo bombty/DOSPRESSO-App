@@ -15,6 +15,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { EmptyState } from "@/components/empty-state";
+import { ConfirmDeleteDialog, useConfirmDelete } from "@/components/confirm-delete-dialog";
 
 export default function SubelerPage() {
   const { user } = useAuth();
@@ -22,6 +23,7 @@ export default function SubelerPage() {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [editingBranch, setEditingBranch] = useState<Branch | null>(null);
   const [copiedBranchId, setCopiedBranchId] = useState<number | null>(null);
+  const { deleteState, requestDelete, cancelDelete, confirmDelete } = useConfirmDelete();
 
   const { data: branches = [], isLoading, error } = useQuery<Branch[]>({
     queryKey: ["/api/branches"],
@@ -96,9 +98,7 @@ export default function SubelerPage() {
   const handleDelete = (e: React.MouseEvent, id: number) => {
     e.preventDefault();
     e.stopPropagation();
-    if (confirm("Bu şubeyi silmek istediğinizden emin misiniz?")) {
-      deleteMutation.mutate(id);
-    }
+    requestDelete(id, "");
   };
 
   const handleSubmit = (data: InsertBranch) => {
@@ -338,6 +338,17 @@ export default function SubelerPage() {
           data-testid="empty-state-branches"
         />
       )}
+
+      <ConfirmDeleteDialog
+        open={deleteState.open}
+        onOpenChange={(open) => !open && cancelDelete()}
+        onConfirm={() => {
+          const id = confirmDelete();
+          if (id) deleteMutation.mutate(id as number);
+        }}
+        title="Silmek istediğinize emin misiniz?"
+        description="Bu şube silinecektir. Bu işlem geri alınamaz."
+      />
     </div>
   );
 }

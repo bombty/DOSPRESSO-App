@@ -20,6 +20,7 @@ import {
   UnlockIcon,
   Trash2
 } from "lucide-react";
+import { ConfirmDeleteDialog, useConfirmDelete } from "@/components/confirm-delete-dialog";
 
 interface StaffUser {
   id: number;
@@ -43,6 +44,7 @@ export default function AdminFabrikaPinYonetimi() {
   const { toast } = useToast();
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<StaffUser | null>(null);
+  const { deleteState, requestDelete, cancelDelete, confirmDelete } = useConfirmDelete();
   const [newPin, setNewPin] = useState("");
   const [confirmPin, setConfirmPin] = useState("");
 
@@ -272,7 +274,7 @@ export default function AdminFabrikaPinYonetimi() {
                               size="icon"
                               variant="ghost"
                               className="text-red-500 hover:text-red-700"
-                              onClick={() => deletePinMutation.mutate(user.id)}
+                              onClick={() => requestDelete(user.id, `${user.firstName} ${user.lastName}`)}
                               disabled={deletePinMutation.isPending}
                               data-testid={`button-delete-${user.id}`}
                             >
@@ -347,6 +349,17 @@ export default function AdminFabrikaPinYonetimi() {
           </div>
         </DialogContent>
       </Dialog>
+
+      <ConfirmDeleteDialog
+        open={deleteState.open}
+        onOpenChange={(open) => !open && cancelDelete()}
+        onConfirm={() => {
+          const id = confirmDelete();
+          if (id) deletePinMutation.mutate(id as number);
+        }}
+        title="Silmek istediğinize emin misiniz?"
+        description={`"${deleteState.itemName || ''}" kullanıcısının PIN'i silinecektir. Bu işlem geri alınamaz.`}
+      />
     </div>
   );
 }

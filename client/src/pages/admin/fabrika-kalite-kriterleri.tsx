@@ -28,6 +28,7 @@ import {
   FileText,
   Camera
 } from "lucide-react";
+import { ConfirmDeleteDialog, useConfirmDelete } from "@/components/confirm-delete-dialog";
 
 interface QualitySpec {
   id: number;
@@ -101,8 +102,7 @@ export default function AdminFabrikaKaliteKriterleri() {
   const { toast } = useToast();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingSpec, setEditingSpec] = useState<QualitySpec | null>(null);
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [specToDelete, setSpecToDelete] = useState<QualitySpec | null>(null);
+  const { deleteState, requestDelete, cancelDelete, confirmDelete } = useConfirmDelete();
   const [selectedStation, setSelectedStation] = useState<number | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
 
@@ -169,8 +169,6 @@ export default function AdminFabrikaKaliteKriterleri() {
     onSuccess: () => {
       toast({ title: "Kriter silindi" });
       queryClient.invalidateQueries({ queryKey: ['/api/factory/quality-specs'] });
-      setDeleteDialogOpen(false);
-      setSpecToDelete(null);
     },
     onError: (error: any) => {
       toast({ title: "Hata", description: error.message, variant: "destructive" });
@@ -218,8 +216,7 @@ export default function AdminFabrikaKaliteKriterleri() {
   };
 
   const handleDelete = (spec: QualitySpec) => {
-    setSpecToDelete(spec);
-    setDeleteDialogOpen(true);
+    requestDelete(spec.id, spec.name || "");
   };
 
   const onSubmit = (data: QualitySpecFormValues) => {
@@ -646,30 +643,16 @@ export default function AdminFabrikaKaliteKriterleri() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Kriter Sil</DialogTitle>
-            <DialogDescription>
-              "{specToDelete?.name}" kriterini silmek istediğinize emin misiniz? Bu işlem geri alınamaz.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="flex justify-end gap-2 pt-4">
-            <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>
-              İptal
-            </Button>
-            <Button 
-              variant="destructive" 
-              onClick={() => specToDelete && deleteMutation.mutate(specToDelete.id)}
-              disabled={deleteMutation.isPending}
-              data-testid="button-confirm-delete"
-            >
-              <Trash2 className="h-4 w-4 mr-2" />
-              {deleteMutation.isPending ? "Siliniyor..." : "Sil"}
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <ConfirmDeleteDialog
+        open={deleteState.open}
+        onOpenChange={(open) => !open && cancelDelete()}
+        onConfirm={() => {
+          const id = confirmDelete();
+          if (id) deleteMutation.mutate(id as number);
+        }}
+        title="Silmek istediğinize emin misiniz?"
+        description={`"${deleteState.itemName || ''}" kriteri silinecektir. Bu işlem geri alınamaz.`}
+      />
     </div>
   );
 }

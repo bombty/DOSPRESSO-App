@@ -40,6 +40,7 @@ import {
   MessageSquare,
   Store
 } from "lucide-react";
+import { ConfirmDeleteDialog, useConfirmDelete } from "@/components/confirm-delete-dialog";
 
 const ROLE_OPTIONS = [
   { value: "admin", label: "Admin" },
@@ -188,6 +189,7 @@ export default function AdminWidgetYonetimi() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingWidget, setEditingWidget] = useState<DashboardWidget | null>(null);
   const [formData, setFormData] = useState<WidgetFormData>(defaultFormData);
+  const { deleteState, requestDelete, cancelDelete, confirmDelete } = useConfirmDelete();
 
   if (user?.role !== "admin") {
     return <Redirect to="/" />;
@@ -402,11 +404,7 @@ export default function AdminWidgetYonetimi() {
                     <Button
                       size="sm"
                       variant="outline"
-                      onClick={() => {
-                        if (confirm("Bu widget'ı silmek istediğinize emin misiniz?")) {
-                          deleteMutation.mutate(widget.id);
-                        }
-                      }}
+                      onClick={() => requestDelete(widget.id, widget.title || "")}
                       data-testid={`button-delete-widget-${widget.id}`}
                     >
                       <Trash2 className="h-3.5 w-3.5" />
@@ -617,6 +615,17 @@ export default function AdminWidgetYonetimi() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ConfirmDeleteDialog
+        open={deleteState.open}
+        onOpenChange={(open) => !open && cancelDelete()}
+        onConfirm={() => {
+          const id = confirmDelete();
+          if (id) deleteMutation.mutate(id as number);
+        }}
+        title="Silmek istediğinize emin misiniz?"
+        description={`"${deleteState.itemName || ''}" widget silinecektir. Bu işlem geri alınamaz.`}
+      />
     </div>
   );
 }

@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { QrCode, Plus, Copy, Trash2, RefreshCw, Users, Star, Eye, Loader2 } from "lucide-react";
+import { ConfirmDeleteDialog, useConfirmDelete } from "@/components/confirm-delete-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { QRCodeSVG } from "qrcode.react";
@@ -18,6 +19,7 @@ export default function StaffQrTokensPage() {
   const queryClient = useQueryClient();
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [qrDialogOpen, setQrDialogOpen] = useState(false);
+  const { deleteState, requestDelete, cancelDelete, confirmDelete } = useConfirmDelete();
   const [selectedToken, setSelectedToken] = useState<any>(null);
   const [selectedBranchId, setSelectedBranchId] = useState<string>("");
   const [selectedStaffId, setSelectedStaffId] = useState<string>("");
@@ -283,7 +285,7 @@ export default function StaffQrTokensPage() {
                           size="icon"
                           variant="outline"
                           className="text-destructive"
-                          onClick={() => deleteMutation.mutate(token.id)}
+                          onClick={() => requestDelete(token.id, "")}
                           data-testid={`button-delete-${token.id}`}
                         >
                           <Trash2 className="h-4 w-4" />
@@ -331,6 +333,17 @@ export default function StaffQrTokensPage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      <ConfirmDeleteDialog
+        open={deleteState.open}
+        onOpenChange={(open) => !open && cancelDelete()}
+        onConfirm={() => {
+          const id = confirmDelete();
+          if (id) deleteMutation.mutate(id as number);
+        }}
+        title="Silmek istediğinize emin misiniz?"
+        description="Bu QR token silinecektir. Bu işlem geri alınamaz."
+      />
     </div>
   );
 }

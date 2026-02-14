@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { ConfirmDeleteDialog, useConfirmDelete } from "@/components/confirm-delete-dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -76,6 +77,10 @@ export default function FabrikaVardiyaPlanlama() {
   const [editingSpec, setEditingSpec] = useState<any>(null);
   const [selectedShiftId, setSelectedShiftId] = useState<number | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
+  const { deleteState: specDeleteState, requestDelete: requestSpecDelete, cancelDelete: cancelSpecDelete, confirmDelete: confirmSpecDelete } = useConfirmDelete();
+  const { deleteState: workerDeleteState, requestDelete: requestWorkerDelete, cancelDelete: cancelWorkerDelete, confirmDelete: confirmWorkerDelete } = useConfirmDelete();
+  const { deleteState: productionDeleteState, requestDelete: requestProductionDelete, cancelDelete: cancelProductionDelete, confirmDelete: confirmProductionDelete } = useConfirmDelete();
+  const { deleteState: shiftDeleteState, requestDelete: requestShiftDelete, cancelDelete: cancelShiftDelete, confirmDelete: confirmShiftDelete } = useConfirmDelete();
 
   // Wizard step state
   const [wizardStep, setWizardStep] = useState(1);
@@ -698,7 +703,7 @@ export default function FabrikaVardiyaPlanlama() {
                         <Button size="icon" variant="ghost" onClick={() => openEditSpec(spec)} data-testid={`btn-edit-spec-${spec.id}`}>
                           <Edit className="h-4 w-4" />
                         </Button>
-                        <Button size="icon" variant="ghost" onClick={() => deleteSpecMutation.mutate(spec.id)} data-testid={`btn-delete-spec-${spec.id}`}>
+                        <Button size="icon" variant="ghost" onClick={() => requestSpecDelete(spec.id, spec.productName || "Spesifikasyon")} data-testid={`btn-delete-spec-${spec.id}`}>
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
@@ -1133,7 +1138,7 @@ export default function FabrikaVardiyaPlanlama() {
                             </TableCell>
                             <TableCell>{w.selfSelected ? "Evet" : "Hayır"}</TableCell>
                             <TableCell className="text-right">
-                              <Button size="icon" variant="ghost" onClick={() => removeWorkerMutation.mutate(w.id)} data-testid={`btn-remove-worker-${w.id}`}>
+                              <Button size="icon" variant="ghost" onClick={() => requestWorkerDelete(w.id, w.userName || "Çalışan")} data-testid={`btn-remove-worker-${w.id}`}>
                                 <Trash2 className="h-4 w-4" />
                               </Button>
                             </TableCell>
@@ -1223,7 +1228,7 @@ export default function FabrikaVardiyaPlanlama() {
                               </Badge>
                             </TableCell>
                             <TableCell className="text-right">
-                              <Button size="icon" variant="ghost" onClick={() => removeProductionMutation.mutate(p.id)} data-testid={`btn-remove-production-${p.id}`}>
+                              <Button size="icon" variant="ghost" onClick={() => requestProductionDelete(p.id, p.productName || "Üretim")} data-testid={`btn-remove-production-${p.id}`}>
                                 <Trash2 className="h-4 w-4" />
                               </Button>
                             </TableCell>
@@ -1248,9 +1253,7 @@ export default function FabrikaVardiyaPlanlama() {
                   Düzenle
                 </Button>
                 <Button variant="outline" onClick={() => {
-                  deleteShiftMutation.mutate(selectedShift.id);
-                  setIsDetailOpen(false);
-                  setSelectedShiftId(null);
+                  requestShiftDelete(selectedShift.id, `${selectedShift.shiftType === 'morning' ? 'Sabah' : 'Akşam'} Vardiyası`);
                 }} data-testid="btn-delete-shift">
                   <Trash2 className="h-4 w-4 mr-1" />
                   Vardiyayı Sil
@@ -1685,6 +1688,54 @@ function ProductionStats() {
           </CardContent>
         </Card>
       )}
+
+      <ConfirmDeleteDialog
+        open={specDeleteState.open}
+        onOpenChange={(open) => !open && cancelSpecDelete()}
+        onConfirm={() => {
+          const id = confirmSpecDelete();
+          if (id !== null) deleteSpecMutation.mutate(id as number);
+        }}
+        title="Spesifikasyonu Sil"
+        description={`"${specDeleteState.itemName || ''}" spesifikasyonunu silmek istediğinize emin misiniz?`}
+      />
+
+      <ConfirmDeleteDialog
+        open={workerDeleteState.open}
+        onOpenChange={(open) => !open && cancelWorkerDelete()}
+        onConfirm={() => {
+          const id = confirmWorkerDelete();
+          if (id !== null) removeWorkerMutation.mutate(id as number);
+        }}
+        title="Çalışanı Kaldır"
+        description={`"${workerDeleteState.itemName || ''}" çalışanını vardiyadan kaldırmak istediğinize emin misiniz?`}
+      />
+
+      <ConfirmDeleteDialog
+        open={productionDeleteState.open}
+        onOpenChange={(open) => !open && cancelProductionDelete()}
+        onConfirm={() => {
+          const id = confirmProductionDelete();
+          if (id !== null) removeProductionMutation.mutate(id as number);
+        }}
+        title="Üretimi Kaldır"
+        description={`"${productionDeleteState.itemName || ''}" üretimini kaldırmak istediğinize emin misiniz?`}
+      />
+
+      <ConfirmDeleteDialog
+        open={shiftDeleteState.open}
+        onOpenChange={(open) => !open && cancelShiftDelete()}
+        onConfirm={() => {
+          const id = confirmShiftDelete();
+          if (id !== null) {
+            deleteShiftMutation.mutate(id as number);
+            setIsDetailOpen(false);
+            setSelectedShiftId(null);
+          }
+        }}
+        title="Vardiyayı Sil"
+        description={`"${shiftDeleteState.itemName || ''}" vardiyasını silmek istediğinize emin misiniz? Bu işlem geri alınamaz.`}
+      />
     </div>
   );
 }

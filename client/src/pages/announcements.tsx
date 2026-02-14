@@ -19,6 +19,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Megaphone, Plus, AlertCircle, Calendar, User, Image, Eye, Users, X, Pencil, Trash2, Layout } from "lucide-react";
 import BannerEditor from "./banner-editor";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { ConfirmDeleteDialog, useConfirmDelete } from "@/components/confirm-delete-dialog";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { format } from "date-fns";
@@ -63,8 +64,7 @@ export default function Announcements() {
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
   const [selectedAnnouncement, setSelectedAnnouncement] = useState<AnnouncementWithUser | null>(null);
   const [editingAnnouncement, setEditingAnnouncement] = useState<AnnouncementWithUser | null>(null);
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [announcementToDelete, setAnnouncementToDelete] = useState<number | null>(null);
+  const { deleteState, requestDelete, cancelDelete, confirmDelete } = useConfirmDelete();
   const [markedAsRead, setMarkedAsRead] = useState<Set<number>>(new Set());
 
   const isHQ = user?.role && isHQRole(user.role as any);
@@ -207,8 +207,6 @@ export default function Announcements() {
       queryClient.invalidateQueries({ queryKey: ['/api/announcements'] });
       queryClient.invalidateQueries({ queryKey: ['/api/announcements/banners'] });
       toast({ title: "Başarılı", description: "Duyuru silindi" });
-      setDeleteDialogOpen(false);
-      setAnnouncementToDelete(null);
     },
     onError: () => {
       toast({ title: "Hata", description: "Duyuru silinemedi", variant: "destructive" });
@@ -257,8 +255,7 @@ export default function Announcements() {
 
   const handleDeleteClick = (id: number, e: React.MouseEvent) => {
     e.stopPropagation();
-    setAnnouncementToDelete(id);
-    setDeleteDialogOpen(true);
+    requestDelete(id, "");
   };
 
   return (
@@ -1011,27 +1008,16 @@ export default function Announcements() {
         </DialogContent>
       </Dialog>
 
-      {/* Delete Confirmation */}
-      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Duyuruyu Sil</AlertDialogTitle>
-            <AlertDialogDescription>
-              Bu duyuruyu silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel data-testid="button-delete-cancel">İptal</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => announcementToDelete && deleteMutation.mutate(announcementToDelete)}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              data-testid="button-delete-confirm"
-            >
-              {deleteMutation.isPending ? "Siliniyor..." : "Sil"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <ConfirmDeleteDialog
+        open={deleteState.open}
+        onOpenChange={(open) => !open && cancelDelete()}
+        onConfirm={() => {
+          const id = confirmDelete();
+          if (id) deleteMutation.mutate(id as number);
+        }}
+        title="Silmek istediğinize emin misiniz?"
+        description="Bu duyuru silinecektir. Bu işlem geri alınamaz."
+      />
     </div>
   );
 }

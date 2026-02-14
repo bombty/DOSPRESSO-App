@@ -1,6 +1,7 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useState } from "react";
 import { queryClient, apiRequest } from "@/lib/queryClient";
+import { ConfirmDeleteDialog, useConfirmDelete } from "@/components/confirm-delete-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
@@ -24,6 +25,7 @@ export default function ContentManagement() {
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [editContent, setEditContent] = useState<PageContent | null>(null);
   const [previewContent, setPreviewContent] = useState<PageContent | null>(null);
+  const { deleteState, requestDelete, cancelDelete, confirmDelete } = useConfirmDelete();
 
   // Fetch all content
   const { data: contents = [], isLoading } = useQuery<PageContent[]>({
@@ -239,11 +241,7 @@ export default function ContentManagement() {
                           <Button
                             size="icon"
                             variant="ghost"
-                            onClick={() => {
-                              if (confirm(`"${content.title}" içeriğini silmek istediğinizden emin misiniz?`)) {
-                                deleteMutation.mutate(content.slug);
-                              }
-                            }}
+                            onClick={() => requestDelete(content.slug, content.title)}
                             data-testid={`button-delete-${content.id}`}
                           >
                             <Trash2 className="w-4 h-4" />
@@ -320,6 +318,17 @@ export default function ContentManagement() {
           </DialogContent>
         </Dialog>
       )}
+
+      <ConfirmDeleteDialog
+        open={deleteState.open}
+        onOpenChange={(open) => !open && cancelDelete()}
+        onConfirm={() => {
+          const id = confirmDelete();
+          if (id !== null) deleteMutation.mutate(id as string);
+        }}
+        title="İçeriği Sil"
+        description={`"${deleteState.itemName || ''}" içeriğini silmek istediğinize emin misiniz? Bu işlem geri alınamaz.`}
+      />
     </div>
   );
 }

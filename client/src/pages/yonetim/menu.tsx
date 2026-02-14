@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { ConfirmDeleteDialog, useConfirmDelete } from "@/components/confirm-delete-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { invalidateMenuCache } from "@/components/app-sidebar";
@@ -282,6 +283,9 @@ export default function AdminMenuManagement() {
   const [editingItem, setEditingItem] = useState<MenuItem | null>(null);
   const [visibilityItemId, setVisibilityItemId] = useState<number | null>(null);
   const [userSearchQuery, setUserSearchQuery] = useState("");
+  const { deleteState: sectionDeleteState, requestDelete: requestSectionDelete, cancelDelete: cancelSectionDelete, confirmDelete: confirmSectionDelete } = useConfirmDelete();
+  const { deleteState: itemDeleteState, requestDelete: requestItemDelete, cancelDelete: cancelItemDelete, confirmDelete: confirmItemDelete } = useConfirmDelete();
+  const { deleteState: ruleDeleteState, requestDelete: requestRuleDelete, cancelDelete: cancelRuleDelete, confirmDelete: confirmRuleDelete } = useConfirmDelete();
 
   // TanStack Query - Fetch all menu data
   const { data: menuData, isLoading } = useQuery<{
@@ -686,15 +690,13 @@ export default function AdminMenuManagement() {
                 items={items.filter(i => i.sectionId === section.id).sort((a, b) => a.sortOrder - b.sortOrder)}
                 onEditSection={handleEditSection}
                 onDeleteSection={(id) => {
-                  if (confirm("Bu bölümü silmek istediğinizden emin misiniz?")) {
-                    deleteSectionMutation.mutate(id);
-                  }
+                  const section = sections.find(s => s.id === id);
+                  requestSectionDelete(id, section?.titleTr || "Bölüm");
                 }}
                 onEditItem={handleEditItem}
                 onDeleteItem={(id) => {
-                  if (confirm("Bu öğeyi silmek istediğinizden emin misiniz?")) {
-                    deleteItemMutation.mutate(id);
-                  }
+                  const item = items.find(i => i.id === id);
+                  requestItemDelete(id, item?.titleTr || "Öğe");
                 }}
                 onManageVisibility={(itemId) => {
                   setVisibilityItemId(itemId);
@@ -1038,7 +1040,7 @@ export default function AdminMenuManagement() {
                       <Button 
                         variant="ghost" 
                         size="sm" 
-                        onClick={() => deleteRuleMutation.mutate(rule.id)}
+                        onClick={() => requestRuleDelete(rule.id, "Kural")}
                         data-testid={`button-delete-rule-${rule.id}`}
                       >
                         <X className="h-4 w-4" />
@@ -1284,6 +1286,39 @@ export default function AdminMenuManagement() {
           </div>
         </DialogContent>
       </Dialog>
+
+      <ConfirmDeleteDialog
+        open={sectionDeleteState.open}
+        onOpenChange={(open) => !open && cancelSectionDelete()}
+        onConfirm={() => {
+          const id = confirmSectionDelete();
+          if (id !== null) deleteSectionMutation.mutate(id as number);
+        }}
+        title="Bölümü Sil"
+        description={`"${sectionDeleteState.itemName || ''}" bölümünü silmek istediğinize emin misiniz? Bu işlem geri alınamaz.`}
+      />
+
+      <ConfirmDeleteDialog
+        open={itemDeleteState.open}
+        onOpenChange={(open) => !open && cancelItemDelete()}
+        onConfirm={() => {
+          const id = confirmItemDelete();
+          if (id !== null) deleteItemMutation.mutate(id as number);
+        }}
+        title="Öğeyi Sil"
+        description={`"${itemDeleteState.itemName || ''}" öğesini silmek istediğinize emin misiniz? Bu işlem geri alınamaz.`}
+      />
+
+      <ConfirmDeleteDialog
+        open={ruleDeleteState.open}
+        onOpenChange={(open) => !open && cancelRuleDelete()}
+        onConfirm={() => {
+          const id = confirmRuleDelete();
+          if (id !== null) deleteRuleMutation.mutate(id as number);
+        }}
+        title="Kuralı Sil"
+        description="Bu kuralı silmek istediğinize emin misiniz?"
+      />
     </div>
   );
 }

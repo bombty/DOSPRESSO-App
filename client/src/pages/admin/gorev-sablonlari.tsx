@@ -14,6 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 import {
   ListTodo, Plus, Edit, Trash2, Save, Loader2, Filter
 } from "lucide-react";
+import { ConfirmDeleteDialog, useConfirmDelete } from "@/components/confirm-delete-dialog";
 
 interface TaskTemplate {
   id: number;
@@ -69,6 +70,7 @@ export default function GorevSablonlari() {
   const [filterRole, setFilterRole] = useState<string>("all");
   const [editTemplate, setEditTemplate] = useState<TaskTemplate | null>(null);
   const [showNewDialog, setShowNewDialog] = useState(false);
+  const { deleteState, requestDelete, cancelDelete, confirmDelete } = useConfirmDelete();
 
   const queryUrl = filterRole === "all" 
     ? "/api/admin/task-templates" 
@@ -175,7 +177,7 @@ export default function GorevSablonlari() {
               <TemplateTable
                 templates={items}
                 onEdit={setEditTemplate}
-                onDelete={(id) => deleteMutation.mutate(id)}
+                onDelete={(id, name) => requestDelete(id, name)}
                 onToggle={(id, active) => toggleActiveMutation.mutate({ id, isActive: active })}
               />
             </CardContent>
@@ -187,7 +189,7 @@ export default function GorevSablonlari() {
             <TemplateTable
               templates={templates}
               onEdit={setEditTemplate}
-              onDelete={(id) => deleteMutation.mutate(id)}
+              onDelete={(id, name) => requestDelete(id, name)}
               onToggle={(id, active) => toggleActiveMutation.mutate({ id, isActive: active })}
             />
           </CardContent>
@@ -208,6 +210,17 @@ export default function GorevSablonlari() {
           isPending={createMutation.isPending || updateMutation.isPending}
         />
       )}
+
+      <ConfirmDeleteDialog
+        open={deleteState.open}
+        onOpenChange={(open) => !open && cancelDelete()}
+        onConfirm={() => {
+          const id = confirmDelete();
+          if (id) deleteMutation.mutate(id as number);
+        }}
+        title="Silmek istediğinize emin misiniz?"
+        description={`"${deleteState.itemName || ''}" şablonu silinecektir. Bu işlem geri alınamaz.`}
+      />
     </div>
   );
 }
@@ -220,7 +233,7 @@ function TemplateTable({
 }: {
   templates: TaskTemplate[];
   onEdit: (t: TaskTemplate) => void;
-  onDelete: (id: number) => void;
+  onDelete: (id: number, name: string) => void;
   onToggle: (id: number, active: boolean) => void;
 }) {
   const freqLabels: Record<string, string> = { daily: "Gunluk", weekly: "Haftalik", monthly: "Aylik" };
@@ -270,7 +283,7 @@ function TemplateTable({
                 <Button size="icon" variant="ghost" onClick={() => onEdit(t)} data-testid={`button-edit-${t.id}`}>
                   <Edit className="h-3.5 w-3.5" />
                 </Button>
-                <Button size="icon" variant="ghost" onClick={() => onDelete(t.id)} data-testid={`button-delete-${t.id}`}>
+                <Button size="icon" variant="ghost" onClick={() => onDelete(t.id, t.title || "")} data-testid={`button-delete-${t.id}`}>
                   <Trash2 className="h-3.5 w-3.5 text-red-500" />
                 </Button>
               </div>

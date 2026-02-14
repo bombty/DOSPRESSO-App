@@ -33,6 +33,7 @@ import {
 } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { ConfirmDeleteDialog, useConfirmDelete } from "@/components/confirm-delete-dialog";
 import { 
   insertAuditTemplateSchema, 
   insertAuditTemplateItemSchema,
@@ -115,6 +116,7 @@ type TemplateItemFormData = z.infer<typeof templateItemFormSchema>;
 export default function DenetimSablonlariPage() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const { deleteState, requestDelete, cancelDelete, confirmDelete } = useConfirmDelete();
   
   const [filterType, setFilterType] = useState<string>('all');
   const [filterCategory, setFilterCategory] = useState<string>('all');
@@ -344,10 +346,8 @@ export default function DenetimSablonlariPage() {
     }
   };
 
-  const handleDelete = (id: number) => {
-    if (confirm("Bu şablonu silmek istediğinizden emin misiniz?")) {
-      deleteMutation.mutate(id);
-    }
+  const handleDelete = (id: number, name?: string) => {
+    requestDelete(id, name || "Şablon");
   };
 
   if (isLoading) {
@@ -449,7 +449,7 @@ export default function DenetimSablonlariPage() {
                       size="icon"
                       variant="ghost"
                       className="h-4 w-4"
-                      onClick={() => handleDelete(template.id)}
+                      onClick={() => handleDelete(template.id, template.name)}
                       data-testid={`button-delete-template-${template.id}`}
                     >
                       <Trash2 className="h-3 w-3" />
@@ -875,6 +875,17 @@ export default function DenetimSablonlariPage() {
           </Form>
         </DialogContent>
       </Dialog>
+
+      <ConfirmDeleteDialog
+        open={deleteState.open}
+        onOpenChange={(open) => !open && cancelDelete()}
+        onConfirm={() => {
+          const id = confirmDelete();
+          if (id !== null) deleteMutation.mutate(id as number);
+        }}
+        title="Şablonu Sil"
+        description={`"${deleteState.itemName || ''}" şablonunu silmek istediğinize emin misiniz? Bu işlem geri alınamaz.`}
+      />
     </div>
   );
 }

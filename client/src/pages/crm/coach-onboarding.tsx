@@ -13,6 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Plus, Edit, Trash2, GraduationCap, Users, Calendar, ClipboardList, ChevronRight, ArrowUp, ArrowDown } from "lucide-react";
+import { ConfirmDeleteDialog, useConfirmDelete } from "@/components/confirm-delete-dialog";
 
 interface OnboardingTemplate {
   id: number;
@@ -58,6 +59,8 @@ export default function CoachOnboardingPage() {
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [stepDialogOpen, setStepDialogOpen] = useState(false);
   const [editStep, setEditStep] = useState<OnboardingTemplateStep | null>(null);
+  const { deleteState, requestDelete, cancelDelete, confirmDelete } = useConfirmDelete();
+  const [stepDeleteState, setStepDeleteState] = useState<{ open: boolean; itemId: number | null; itemName: string }>({ open: false, itemId: null, itemName: "" });
 
   const [newTemplate, setNewTemplate] = useState({
     name: "",
@@ -382,7 +385,7 @@ export default function CoachOnboardingPage() {
                     <Button
                       size="sm"
                       variant="destructive"
-                      onClick={() => deleteTemplateMutation.mutate(selectedTemplate.id)}
+                      onClick={() => requestDelete(selectedTemplate.id, selectedTemplate.name || "")}
                       data-testid="button-delete-template"
                     >
                       <Trash2 className="h-4 w-4" />
@@ -447,7 +450,7 @@ export default function CoachOnboardingPage() {
                             <Button
                               size="icon"
                               variant="ghost"
-                              onClick={() => deleteStepMutation.mutate(step.id)}
+                              onClick={() => setStepDeleteState({ open: true, itemId: step.id, itemName: step.title || "" })}
                               data-testid={`button-delete-step-${step.id}`}
                             >
                               <Trash2 className="h-4 w-4" />
@@ -469,6 +472,29 @@ export default function CoachOnboardingPage() {
           )}
         </Card>
       </div>
+
+      <ConfirmDeleteDialog
+        open={deleteState.open}
+        onOpenChange={(open) => !open && cancelDelete()}
+        onConfirm={() => {
+          const id = confirmDelete();
+          if (id) deleteTemplateMutation.mutate(id as number);
+        }}
+        title="Silmek istediğinize emin misiniz?"
+        description={`"${deleteState.itemName || ''}" şablonu silinecektir. Bu işlem geri alınamaz.`}
+      />
+
+      <ConfirmDeleteDialog
+        open={stepDeleteState.open}
+        onOpenChange={(open) => { if (!open) setStepDeleteState({ open: false, itemId: null, itemName: "" }); }}
+        onConfirm={() => {
+          const id = stepDeleteState.itemId;
+          setStepDeleteState({ open: false, itemId: null, itemName: "" });
+          if (id) deleteStepMutation.mutate(id);
+        }}
+        title="Silmek istediğinize emin misiniz?"
+        description={`"${stepDeleteState.itemName || ''}" adımı silinecektir. Bu işlem geri alınamaz.`}
+      />
     </div>
   );
 }

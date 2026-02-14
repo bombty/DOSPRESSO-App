@@ -16,6 +16,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { ArrowLeft, Plus, Edit2, Trash2, Eye, CheckCircle2, AlertTriangle, Loader2 } from "lucide-react";
+import { ConfirmDeleteDialog, useConfirmDelete } from "@/components/confirm-delete-dialog";
 
 interface AuditTemplate {
   id: number;
@@ -50,7 +51,7 @@ export default function AdminKaliteDenetimSablonlari() {
   const { toast } = useToast();
   const [isCreating, setIsCreating] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState<AuditTemplate | null>(null);
-  const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
+  const { deleteState, requestDelete, cancelDelete, confirmDelete } = useConfirmDelete();
 
   if (user?.role !== "admin" && user?.role !== "coach") {
     return <Redirect to="/" />;
@@ -92,7 +93,6 @@ export default function AdminKaliteDenetimSablonlari() {
       queryClient.invalidateQueries({ queryKey: ["/api/audit-templates"] });
       toast({ title: "Başarılı", description: "Şablon silindi" });
       setSelectedTemplate(null);
-      setDeleteConfirmId(null);
     },
     onError: (error: any) => {
       toast({ title: "Hata", description: error.message, variant: "destructive" });
@@ -247,7 +247,7 @@ export default function AdminKaliteDenetimSablonlari() {
                         size="sm"
                         variant="outline"
                         data-testid={`button-delete-${template.id}`}
-                        onClick={() => setDeleteConfirmId(template.id)}
+                        onClick={() => requestDelete(template.id, template.title || "")}
                         aria-label={`Şablonu sil: ${template.title}`}
                       >
                         <Trash2 className="h-3.5 w-3.5" />
@@ -260,45 +260,16 @@ export default function AdminKaliteDenetimSablonlari() {
           </div>
         )}
 
-        {/* Delete Confirmation Dialog */}
-        <Dialog 
-          open={!!deleteConfirmId} 
-          onOpenChange={(open) => {
-            if (!open && !deleteMutation.isPending) {
-              setDeleteConfirmId(null);
-            }
+        <ConfirmDeleteDialog
+          open={deleteState.open}
+          onOpenChange={(open) => !open && cancelDelete()}
+          onConfirm={() => {
+            const id = confirmDelete();
+            if (id) deleteMutation.mutate(id as number);
           }}
-        >
-          <DialogContent data-testid="dialog-delete-confirm">
-            <DialogHeader>
-              <DialogTitle>Şablonu Sil?</DialogTitle>
-              <DialogDescription>Bu işlem geri alınamaz. Şablonu silmek istediğinizden emin misiniz?</DialogDescription>
-            </DialogHeader>
-            <DialogFooter>
-              <Button 
-                variant="outline" 
-                onClick={() => setDeleteConfirmId(null)} 
-                disabled={deleteMutation.isPending}
-                data-testid="button-cancel-delete"
-              >
-                İptal
-              </Button>
-              <Button
-                variant="destructive"
-                onClick={() => {
-                  if (deleteConfirmId) {
-                    deleteMutation.mutate(deleteConfirmId);
-                  }
-                }}
-                disabled={deleteMutation.isPending}
-                data-testid="button-confirm-delete"
-              >
-                {deleteMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                Sil
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+          title="Silmek istediğinize emin misiniz?"
+          description={`"${deleteState.itemName || ''}" şablonu silinecektir. Bu işlem geri alınamaz.`}
+        />
 
         {/* Template Detail Dialog */}
         {selectedTemplate && (

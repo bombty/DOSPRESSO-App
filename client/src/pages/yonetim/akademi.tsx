@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
+import { ConfirmDeleteDialog, useConfirmDelete } from "@/components/confirm-delete-dialog";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -441,6 +442,7 @@ function CategoriesTab({ recipeCategories, hubCategories, onEdit, onAdd }: {
   onAdd: () => void;
 }) {
   const { toast } = useToast();
+  const { deleteState, requestDelete, cancelDelete, confirmDelete } = useConfirmDelete();
 
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => {
@@ -512,11 +514,7 @@ function CategoriesTab({ recipeCategories, hubCategories, onEdit, onAdd }: {
                           size="icon" 
                           variant="ghost" 
                           className="h-7 w-7 text-destructive"
-                          onClick={() => {
-                            if (confirm("Bu kategoriyi silmek istediğinize emin misiniz?")) {
-                              deleteMutation.mutate(cat.id);
-                            }
-                          }}
+                          onClick={() => requestDelete(cat.id, cat.titleTr)}
                           data-testid={`button-delete-category-${cat.id}`}
                         >
                           <Trash2 className="w-3 h-3" />
@@ -550,6 +548,17 @@ function CategoriesTab({ recipeCategories, hubCategories, onEdit, onAdd }: {
           </div>
         </CardContent>
       </Card>
+
+      <ConfirmDeleteDialog
+        open={deleteState.open}
+        onOpenChange={(open) => !open && cancelDelete()}
+        onConfirm={() => {
+          const id = confirmDelete();
+          if (id !== null) deleteMutation.mutate(id as number);
+        }}
+        title="Kategoriyi Sil"
+        description={`"${deleteState.itemName || ''}" kategorisini silmek istediğinize emin misiniz? Bu işlem geri alınamaz.`}
+      />
     </>
   );
 }
@@ -563,6 +572,7 @@ function ModulesTab({ modules, recipeCategories, onEdit, onAdd }: {
   const [filterLevel, setFilterLevel] = useState("all");
   const [aiModuleDialogOpen, setAiModuleDialogOpen] = useState(false);
   const { toast } = useToast();
+  const { deleteState, requestDelete, cancelDelete, confirmDelete } = useConfirmDelete();
 
   const filteredModules = modules.filter((m) => {
     if (filterLevel !== "all" && m.level !== filterLevel) return false;
@@ -654,11 +664,7 @@ function ModulesTab({ modules, recipeCategories, onEdit, onAdd }: {
                       size="icon" 
                       variant="ghost" 
                       className="h-7 w-7 text-destructive"
-                      onClick={() => {
-                        if (confirm("Bu modülü silmek istediğinize emin misiniz?")) {
-                          deleteMutation.mutate(mod.id);
-                        }
-                      }}
+                      onClick={() => requestDelete(mod.id, mod.title)}
                       data-testid={`button-delete-module-${mod.id}`}
                     >
                       <Trash2 className="w-3 h-3" />
@@ -681,6 +687,16 @@ function ModulesTab({ modules, recipeCategories, onEdit, onAdd }: {
       open={aiModuleDialogOpen}
       onOpenChange={setAiModuleDialogOpen}
     />
+      <ConfirmDeleteDialog
+        open={deleteState.open}
+        onOpenChange={(open) => !open && cancelDelete()}
+        onConfirm={() => {
+          const id = confirmDelete();
+          if (id !== null) deleteMutation.mutate(id as number);
+        }}
+        title="Modülü Sil"
+        description={`"${deleteState.itemName || ''}" modülünü silmek istediğinize emin misiniz? Bu işlem geri alınamaz.`}
+      />
     </>
   );
 }
@@ -1107,6 +1123,8 @@ function RecipesTab({ recipes, recipeCategories, onEditRecipe, onAddRecipe, onEd
   onDuplicateRecipe?: (rec: Recipe) => void;
 }) {
   const { toast } = useToast();
+  const { deleteState: recipeDeleteState, requestDelete: requestRecipeDelete, cancelDelete: cancelRecipeDelete, confirmDelete: confirmRecipeDelete } = useConfirmDelete();
+  const { deleteState: catDeleteState, requestDelete: requestCatDelete, cancelDelete: cancelCatDelete, confirmDelete: confirmCatDelete } = useConfirmDelete();
   const [selectedRecipeId, setSelectedRecipeId] = useState<number | null>(null);
   const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
@@ -1175,9 +1193,7 @@ function RecipesTab({ recipes, recipeCategories, onEditRecipe, onAddRecipe, onEd
       });
       return;
     }
-    if (confirm(`"${category.titleTr}" kategorisini silmek istediğinize emin misiniz?`)) {
-      deleteCategoryMutation.mutate(category.id);
-    }
+    requestCatDelete(category.id, category.titleTr);
   };
 
   const handleViewDetail = (recipe: Recipe) => {
@@ -1338,11 +1354,7 @@ function RecipesTab({ recipes, recipeCategories, onEditRecipe, onAddRecipe, onEd
                                   size="icon" 
                                   variant="ghost" 
                                   className="h-7 w-7 text-destructive"
-                                  onClick={() => {
-                                    if (confirm("Bu reçeteyi silmek istediğinize emin misiniz?")) {
-                                      deleteMutation.mutate(recipe.id);
-                                    }
-                                  }}
+                                  onClick={() => requestRecipeDelete(recipe.id, recipe.nameTr)}
                                   data-testid={`button-delete-recipe-${recipe.id}`}
                                   title="Sil"
                                 >
@@ -1411,6 +1423,28 @@ function RecipesTab({ recipes, recipeCategories, onEditRecipe, onAddRecipe, onEd
           )}
         </CardContent>
       </Card>
+
+      <ConfirmDeleteDialog
+        open={recipeDeleteState.open}
+        onOpenChange={(open) => !open && cancelRecipeDelete()}
+        onConfirm={() => {
+          const id = confirmRecipeDelete();
+          if (id !== null) deleteMutation.mutate(id as number);
+        }}
+        title="Reçeteyi Sil"
+        description={`"${recipeDeleteState.itemName || ''}" reçetesini silmek istediğinize emin misiniz? Bu işlem geri alınamaz.`}
+      />
+
+      <ConfirmDeleteDialog
+        open={catDeleteState.open}
+        onOpenChange={(open) => !open && cancelCatDelete()}
+        onConfirm={() => {
+          const id = confirmCatDelete();
+          if (id !== null) deleteCategoryMutation.mutate(id as number);
+        }}
+        title="Kategoriyi Sil"
+        description={`"${catDeleteState.itemName || ''}" kategorisini silmek istediğinize emin misiniz? Bu işlem geri alınamaz.`}
+      />
     </>
   );
 }

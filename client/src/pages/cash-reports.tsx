@@ -28,6 +28,7 @@ import { Plus, Calendar as CalendarIcon, Edit, Trash2, TrendingUp, DollarSign, A
 import { format, parseISO } from "date-fns";
 import { tr } from "date-fns/locale";
 import { cn } from "@/lib/utils";
+import { ConfirmDeleteDialog, useConfirmDelete } from "@/components/confirm-delete-dialog";
 
 type CashReportWithRelations = DailyCashReport & {
   branch: {
@@ -52,6 +53,7 @@ export default function CashReports() {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [editingReport, setEditingReport] = useState<CashReportWithRelations | null>(null);
   const [selectedBranchFilter, setSelectedBranchFilter] = useState<number | undefined>(undefined);
+  const { deleteState, requestDelete, cancelDelete, confirmDelete } = useConfirmDelete();
   const [dateFrom, setDateFrom] = useState<Date | undefined>(undefined);
   const [dateTo, setDateTo] = useState<Date | undefined>(undefined);
 
@@ -596,11 +598,7 @@ export default function CashReports() {
                         <Button
                           variant="outline"
                           size="icon"
-                          onClick={() => {
-                            if (confirm('Bu raporu silmek istediğinizden emin misiniz?')) {
-                              deleteMutation.mutate(report.id);
-                            }
-                          }}
+                          onClick={() => requestDelete(report.id, "")}
                           data-testid={`button-delete-${report.id}`}
                         >
                           <Trash2 className="w-4 h-4 text-destructive" />
@@ -687,6 +685,17 @@ export default function CashReports() {
           />
         )}
       </div>
+
+      <ConfirmDeleteDialog
+        open={deleteState.open}
+        onOpenChange={(open) => !open && cancelDelete()}
+        onConfirm={() => {
+          const id = confirmDelete();
+          if (id) deleteMutation.mutate(id as number);
+        }}
+        title="Silmek istediğinize emin misiniz?"
+        description="Bu rapor silinecektir. Bu işlem geri alınamaz."
+      />
     </div>
   );
 }

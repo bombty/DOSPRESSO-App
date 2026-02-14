@@ -29,6 +29,7 @@ import {
   FileText,
   Check,
 } from "lucide-react";
+import { ConfirmDeleteDialog, useConfirmDelete } from "@/components/confirm-delete-dialog";
 
 interface EquipmentKnowledge {
   id: number;
@@ -92,6 +93,7 @@ export default function AdminAIBilgiYonetimi() {
   const [filterCategory, setFilterCategory] = useState<string>("all");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<EquipmentKnowledge | null>(null);
+  const { deleteState, requestDelete, cancelDelete, confirmDelete } = useConfirmDelete();
   const [isAIDialogOpen, setIsAIDialogOpen] = useState(false);
   const [aiFormData, setAIFormData] = useState({
     equipmentType: "",
@@ -832,11 +834,7 @@ export default function AdminAIBilgiYonetimi() {
                           <Button 
                             size="icon" 
                             variant="ghost"
-                            onClick={() => {
-                              if (confirm("Bu bilgiyi silmek istediğinizden emin misiniz?")) {
-                                deleteMutation.mutate(item.id);
-                              }
-                            }}
+                            onClick={() => requestDelete(item.id, item.title || "")}
                             data-testid={`button-delete-${item.id}`}
                           >
                             <Trash2 className="h-4 w-4 text-destructive" />
@@ -851,6 +849,17 @@ export default function AdminAIBilgiYonetimi() {
           )}
         </CardContent>
       </Card>
+
+      <ConfirmDeleteDialog
+        open={deleteState.open}
+        onOpenChange={(open) => !open && cancelDelete()}
+        onConfirm={() => {
+          const id = confirmDelete();
+          if (id) deleteMutation.mutate(id as number);
+        }}
+        title="Silmek istediğinize emin misiniz?"
+        description={`"${deleteState.itemName || ''}" silinecektir. Bu işlem geri alınamaz.`}
+      />
     </div>
   );
 }

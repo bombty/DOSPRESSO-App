@@ -42,6 +42,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { ListSkeleton } from "@/components/list-skeleton";
 import { EmptyState } from "@/components/empty-state";
+import { ConfirmDeleteDialog, useConfirmDelete } from "@/components/confirm-delete-dialog";
 import {
   ArrowLeft,
   Plus,
@@ -87,6 +88,7 @@ export default function PersonelOnboardingPage() {
   const [searchText, setSearchText] = useState<string>("");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingRecord, setEditingRecord] = useState<EmployeeOnboarding | null>(null);
+  const { deleteState, requestDelete, cancelDelete, confirmDelete } = useConfirmDelete();
 
   // Fetch onboarding records
   const { data: onboardingRecords = [], isLoading } = useQuery<(EmployeeOnboarding & { user?: User })[]>({
@@ -184,9 +186,7 @@ export default function PersonelOnboardingPage() {
   };
 
   const handleDeleteClick = (recordId: number) => {
-    if (confirm("Bu kaydı silmek istediğinizden emin misiniz?")) {
-      deleteMutation.mutate(recordId);
-    }
+    requestDelete(recordId, "");
   };
 
   if (isLoading) {
@@ -400,6 +400,17 @@ export default function PersonelOnboardingPage() {
           }
         }}
         isLoading={createMutation.isPending || updateMutation.isPending}
+      />
+
+      <ConfirmDeleteDialog
+        open={deleteState.open}
+        onOpenChange={(open) => !open && cancelDelete()}
+        onConfirm={() => {
+          const id = confirmDelete();
+          if (id) deleteMutation.mutate(id as number);
+        }}
+        title="Silmek istediğinize emin misiniz?"
+        description="Bu kayıt silinecektir. Bu işlem geri alınamaz."
       />
     </div>
   );

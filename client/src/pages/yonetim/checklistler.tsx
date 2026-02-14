@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
+import { ConfirmDeleteDialog, useConfirmDelete } from "@/components/confirm-delete-dialog";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -187,10 +188,10 @@ export default function AdminChecklistManagement() {
     setEditDialogOpen(true);
   };
 
-  const handleDelete = (id: number) => {
-    if (confirm("Bu checklist'i silmek istediğinize emin misiniz?")) {
-      deleteChecklistMutation.mutate(id);
-    }
+  const { deleteState, requestDelete, cancelDelete, confirmDelete } = useConfirmDelete();
+
+  const handleDelete = (id: number, name?: string) => {
+    requestDelete(id, name || "Checklist");
   };
 
   const toggleExpand = (id: number) => {
@@ -328,7 +329,7 @@ export default function AdminChecklistManagement() {
                           <Button
                             variant="ghost"
                             size="icon"
-                            onClick={() => handleDelete(checklist.id)}
+                            onClick={() => handleDelete(checklist.id, checklist.title)}
                             data-testid={`button-delete-${checklist.id}`}
                           >
                             <Trash2 className="h-4 w-4" />
@@ -407,6 +408,17 @@ export default function AdminChecklistManagement() {
           }}
         />
       )}
+
+      <ConfirmDeleteDialog
+        open={deleteState.open}
+        onOpenChange={(open) => !open && cancelDelete()}
+        onConfirm={() => {
+          const id = confirmDelete();
+          if (id !== null) deleteChecklistMutation.mutate(id as number);
+        }}
+        title="Checklist'i Sil"
+        description={`"${deleteState.itemName || ''}" checklist'ini silmek istediğinize emin misiniz? Bu işlem geri alınamaz.`}
+      />
     </div>
   );
 }
@@ -865,6 +877,7 @@ interface AssignmentDialogProps {
 
 function AssignmentDialog({ checklist, open, onClose }: AssignmentDialogProps) {
   const { toast } = useToast();
+  const { deleteState: assignDeleteState, requestDelete: requestAssignDelete, cancelDelete: cancelAssignDelete, confirmDelete: confirmAssignDelete } = useConfirmDelete();
   const [scope, setScope] = useState<'user' | 'branch' | 'role'>('branch');
   const [selectedBranchId, setSelectedBranchId] = useState<string>('');
   const [selectedUserId, setSelectedUserId] = useState<string>('');
@@ -979,6 +992,7 @@ function AssignmentDialog({ checklist, open, onClose }: AssignmentDialogProps) {
   };
 
   return (
+    <>
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
@@ -998,7 +1012,7 @@ function AssignmentDialog({ checklist, open, onClose }: AssignmentDialogProps) {
                     <Button
                       variant="ghost"
                       size="icon"
-                      onClick={() => deleteAssignmentMutation.mutate(assignment.id)}
+                      onClick={() => requestAssignDelete(assignment.id, getAssignmentLabel(assignment))}
                       data-testid={`button-delete-assignment-${assignment.id}`}
                     >
                       <Trash2 className="h-4 w-4" />
@@ -1096,5 +1110,17 @@ function AssignmentDialog({ checklist, open, onClose }: AssignmentDialogProps) {
         </div>
       </DialogContent>
     </Dialog>
+
+    <ConfirmDeleteDialog
+      open={assignDeleteState.open}
+      onOpenChange={(open) => !open && cancelAssignDelete()}
+      onConfirm={() => {
+        const id = confirmAssignDelete();
+        if (id !== null) deleteAssignmentMutation.mutate(id as number);
+      }}
+      title="Atamayı Kaldır"
+      description={`"${assignDeleteState.itemName || ''}" atamasını kaldırmak istediğinize emin misiniz?`}
+    />
+    </>
   );
 }

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useParams, useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
+import { ConfirmDeleteDialog, useConfirmDelete } from "@/components/confirm-delete-dialog";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -74,6 +75,7 @@ export default function PersonelDetay() {
   const { id } = useParams();
   const { user: currentUser } = useAuth();
   const { toast } = useToast();
+  const { deleteState, requestDelete, cancelDelete, confirmDelete } = useConfirmDelete();
   const [, navigate] = useLocation();
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
   const [documentType, setDocumentType] = useState("");
@@ -867,8 +869,7 @@ export default function PersonelDetay() {
                               <Button
                                 variant="outline"
                                 size="sm"
-                                onClick={() => deleteDocumentMutation.mutate(doc.id)}
-                                disabled={deleteDocumentMutation.isPending}
+                                onClick={() => requestDelete(doc.id, doc.documentName || "Belge")}
                                 data-testid={`button-delete-document-${doc.id}`}
                               >
                                 <Trash2 className="h-4 w-4 text-destructive" />
@@ -1772,6 +1773,17 @@ export default function PersonelDetay() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      <ConfirmDeleteDialog
+        open={deleteState.open}
+        onOpenChange={(open) => !open && cancelDelete()}
+        onConfirm={() => {
+          const id = confirmDelete();
+          if (id !== null) deleteDocumentMutation.mutate(id as number);
+        }}
+        title="Belgeyi Sil"
+        description={`"${deleteState.itemName || ''}" belgesini silmek istediğinize emin misiniz? Bu işlem geri alınamaz.`}
+      />
     </div>
   );
 }

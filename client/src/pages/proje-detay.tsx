@@ -18,6 +18,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { ConfirmDeleteDialog, useConfirmDelete } from "@/components/confirm-delete-dialog";
 import { 
   ArrowLeft, 
   Plus, 
@@ -104,6 +105,7 @@ export default function ProjeDetay() {
   const projectId = params.id;
   const [, navigate] = useLocation();
   const { toast } = useToast();
+  const { deleteState, requestDelete, cancelDelete, confirmDelete } = useConfirmDelete();
   
   const [isAddTaskOpen, setIsAddTaskOpen] = useState(false);
   const [isAddMemberOpen, setIsAddMemberOpen] = useState(false);
@@ -821,7 +823,7 @@ export default function ProjeDetay() {
                             <Edit2 className="h-4 w-4 mr-2" />
                             Düzenle
                           </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => deleteMilestoneMutation.mutate(milestone.id)} className="text-red-600">
+                          <DropdownMenuItem onClick={() => requestDelete(milestone.id, milestone.title)} className="text-red-600">
                             <Trash2 className="h-4 w-4 mr-2" />
                             Sil
                           </DropdownMenuItem>
@@ -1089,6 +1091,17 @@ export default function ProjeDetay() {
           </DndContext>
         </TabsContent>
       </Tabs>
+
+      <ConfirmDeleteDialog
+        open={deleteState.open}
+        onOpenChange={(open) => !open && cancelDelete()}
+        onConfirm={() => {
+          const id = confirmDelete();
+          if (id !== null) deleteMilestoneMutation.mutate(id as number);
+        }}
+        title="Kilometre Taşını Sil"
+        description={`"${deleteState.itemName || ''}" kilometre taşını silmek istediğinize emin misiniz? Bu işlem geri alınamaz.`}
+      />
     </div>
   );
 }

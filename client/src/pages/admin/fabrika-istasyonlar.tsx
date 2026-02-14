@@ -27,6 +27,7 @@ import {
   RefreshCw,
   Save
 } from "lucide-react";
+import { ConfirmDeleteDialog, useConfirmDelete } from "@/components/confirm-delete-dialog";
 
 interface Station {
   id: number;
@@ -66,8 +67,7 @@ export default function AdminFabrikaIstasyonlar() {
   const { toast } = useToast();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingStation, setEditingStation] = useState<Station | null>(null);
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [stationToDelete, setStationToDelete] = useState<Station | null>(null);
+  const { deleteState, requestDelete, cancelDelete, confirmDelete } = useConfirmDelete();
 
   const { data: stations = [], isLoading, refetch } = useQuery<Station[]>({
     queryKey: ['/api/factory/stations'],
@@ -117,8 +117,6 @@ export default function AdminFabrikaIstasyonlar() {
     onSuccess: () => {
       toast({ title: "İstasyon silindi" });
       queryClient.invalidateQueries({ queryKey: ['/api/factory/stations'] });
-      setDeleteDialogOpen(false);
-      setStationToDelete(null);
     },
     onError: (error: any) => {
       toast({ title: "Hata", description: error.message, variant: "destructive" });
@@ -247,10 +245,7 @@ export default function AdminFabrikaIstasyonlar() {
                           size="icon" 
                           variant="ghost" 
                           className="text-red-500 hover:text-red-700"
-                          onClick={() => {
-                            setStationToDelete(station);
-                            setDeleteDialogOpen(true);
-                          }}
+                          onClick={() => requestDelete(station.id, station.name || "")}
                           data-testid={`button-delete-${station.id}`}
                         >
                           <Trash2 className="h-4 w-4" />
@@ -415,30 +410,16 @@ export default function AdminFabrikaIstasyonlar() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>İstasyonu Sil</DialogTitle>
-            <DialogDescription>
-              "{stationToDelete?.name}" istasyonunu silmek istediğinize emin misiniz? 
-              Bu işlem geri alınamaz ve bu istasyona ait tüm üretim verileri etkilenebilir.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="flex justify-end gap-3 pt-4">
-            <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>
-              İptal
-            </Button>
-            <Button 
-              variant="destructive" 
-              onClick={() => stationToDelete && deleteMutation.mutate(stationToDelete.id)}
-              disabled={deleteMutation.isPending}
-              data-testid="button-confirm-delete"
-            >
-              {deleteMutation.isPending ? "Siliniyor..." : "Sil"}
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <ConfirmDeleteDialog
+        open={deleteState.open}
+        onOpenChange={(open) => !open && cancelDelete()}
+        onConfirm={() => {
+          const id = confirmDelete();
+          if (id) deleteMutation.mutate(id as number);
+        }}
+        title="Silmek istediğinize emin misiniz?"
+        description={`"${deleteState.itemName || ''}" istasyonu silinecektir. Bu işlem geri alınamaz.`}
+      />
     </div>
   );
 }

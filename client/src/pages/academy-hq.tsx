@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { ArrowLeft, CheckCircle, XCircle, Clock, BookOpen, Users, Trash2, Plus, GraduationCap, Upload, FileText, Image, Edit2 } from "lucide-react";
+import { ConfirmDeleteDialog, useConfirmDelete } from "@/components/confirm-delete-dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel } from "@/components/ui/form";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -68,6 +69,7 @@ export default function AcademyHQ() {
   const { toast } = useToast();
   const { user } = useAuth();
   const [, setLocation] = useLocation();
+  const { deleteState, requestDelete, cancelDelete, confirmDelete } = useConfirmDelete();
   
   const canManageTraining = user && hasPermission(user.role as UserRoleType, 'training', 'edit');
   if (user && !canManageTraining) {
@@ -1192,7 +1194,7 @@ export default function AcademyHQ() {
                           className="h-7 w-7"
                           onClick={(e) => {
                             e.stopPropagation();
-                            deleteTrainingMutation.mutate(module.id);
+                            requestDelete(module.id, module.title || "");
                           }}
                           disabled={deleteTrainingMutation.isPending}
                           title="Sil"
@@ -1235,6 +1237,17 @@ export default function AcademyHQ() {
           )}
         </TabsContent>
       </Tabs>
+
+      <ConfirmDeleteDialog
+        open={deleteState.open}
+        onOpenChange={(open) => !open && cancelDelete()}
+        onConfirm={() => {
+          const id = confirmDelete();
+          if (id) deleteTrainingMutation.mutate(id as number);
+        }}
+        title="Silmek istediğinize emin misiniz?"
+        description={`"${deleteState.itemName || ''}" modülü silinecektir. Bu işlem geri alınamaz.`}
+      />
     </div>
   );
 }

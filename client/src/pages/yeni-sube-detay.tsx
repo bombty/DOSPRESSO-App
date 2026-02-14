@@ -24,6 +24,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { ConfirmDeleteDialog, useConfirmDelete } from "@/components/confirm-delete-dialog";
 import { format } from "date-fns";
 import { tr } from "date-fns/locale";
 import {
@@ -428,6 +429,11 @@ export default function YeniSubeDetay() {
   const [, navigate] = useLocation();
   const { toast } = useToast();
   const { user } = useAuth();
+  const { deleteState: budgetDeleteState, requestDelete: requestBudgetDelete, cancelDelete: cancelBudgetDelete, confirmDelete: confirmBudgetDelete } = useConfirmDelete();
+  const { deleteState: vendorDeleteState, requestDelete: requestVendorDelete, cancelDelete: cancelVendorDelete, confirmDelete: confirmVendorDelete } = useConfirmDelete();
+  const { deleteState: riskDeleteState, requestDelete: requestRiskDelete, cancelDelete: cancelRiskDelete, confirmDelete: confirmRiskDelete } = useConfirmDelete();
+  const { deleteState: subTaskDeleteState, requestDelete: requestSubTaskDelete, cancelDelete: cancelSubTaskDelete, confirmDelete: confirmSubTaskDelete } = useConfirmDelete();
+  const { deleteState: assignmentDeleteState, requestDelete: requestAssignmentDelete, cancelDelete: cancelAssignmentDelete, confirmDelete: confirmAssignmentDelete } = useConfirmDelete();
 
   // Authorization: Admin and HQ roles have full access
   const isHQRole = (role: string | undefined) => {
@@ -1389,7 +1395,7 @@ export default function YeniSubeDetay() {
                               <Button variant="ghost" size="icon" onClick={() => handleEditBudget(line)} data-testid={`button-edit-budget-${line.id}`}>
                                 <Edit2 className="h-4 w-4" />
                               </Button>
-                              <Button variant="ghost" size="icon" onClick={() => deleteBudgetMutation.mutate(line.id)} data-testid={`button-delete-budget-${line.id}`}>
+                              <Button variant="ghost" size="icon" onClick={() => requestBudgetDelete(line.id, line.description || "Bütçe kalemi")} data-testid={`button-delete-budget-${line.id}`}>
                                 <Trash2 className="h-4 w-4 text-destructive" />
                               </Button>
                             </div>
@@ -1497,7 +1503,7 @@ export default function YeniSubeDetay() {
                             <Button variant="ghost" size="icon" onClick={() => handleEditVendor(vendor)} data-testid={`button-edit-vendor-${vendor.id}`}>
                               <Edit2 className="h-4 w-4" />
                             </Button>
-                            <Button variant="ghost" size="icon" onClick={() => deleteVendorMutation.mutate(vendor.id)} data-testid={`button-delete-vendor-${vendor.id}`}>
+                            <Button variant="ghost" size="icon" onClick={() => requestVendorDelete(vendor.id, vendor.companyName || "Tedarikçi")} data-testid={`button-delete-vendor-${vendor.id}`}>
                               <Trash2 className="h-4 w-4 text-destructive" />
                             </Button>
                           </div>
@@ -1592,7 +1598,7 @@ export default function YeniSubeDetay() {
                             <Button variant="ghost" size="icon" onClick={() => handleEditRisk(risk)} data-testid={`button-edit-risk-${risk.id}`}>
                               <Edit2 className="h-4 w-4" />
                             </Button>
-                            <Button variant="ghost" size="icon" onClick={() => deleteRiskMutation.mutate(risk.id)} data-testid={`button-delete-risk-${risk.id}`}>
+                            <Button variant="ghost" size="icon" onClick={() => requestRiskDelete(risk.id, risk.description || "Risk")} data-testid={`button-delete-risk-${risk.id}`}>
                               <Trash2 className="h-4 w-4 text-destructive" />
                             </Button>
                           </div>
@@ -1891,7 +1897,7 @@ export default function YeniSubeDetay() {
                           <Button variant="ghost" size="icon" className="h-6 w-6" onClick={(e) => { e.stopPropagation(); handleEditSubTask(category); }} data-testid={`button-edit-category-${category.id}`}>
                             <Edit2 className="h-3 w-3" />
                           </Button>
-                          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={(e) => { e.stopPropagation(); deleteSubTaskMutation.mutate(category.id); }} data-testid={`button-delete-category-${category.id}`}>
+                          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={(e) => { e.stopPropagation(); requestSubTaskDelete(category.id, category.title || "Kategori"); }} data-testid={`button-delete-category-${category.id}`}>
                             <Trash2 className="h-3 w-3 text-destructive" />
                           </Button>
                         </div>
@@ -1924,7 +1930,7 @@ export default function YeniSubeDetay() {
                               <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleEditSubTask(task)} data-testid={`button-edit-subtask-${task.id}`}>
                                 <Edit2 className="h-3 w-3" />
                               </Button>
-                              <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => deleteSubTaskMutation.mutate(task.id)} data-testid={`button-delete-subtask-${task.id}`}>
+                              <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => requestSubTaskDelete(task.id, task.title || "Görev")} data-testid={`button-delete-subtask-${task.id}`}>
                                 <Trash2 className="h-3 w-3 text-destructive" />
                               </Button>
                             </div>
@@ -1967,7 +1973,7 @@ export default function YeniSubeDetay() {
                             <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleEditSubTask(task)} data-testid={`button-edit-subtask-${task.id}`}>
                               <Edit2 className="h-3 w-3" />
                             </Button>
-                            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => deleteSubTaskMutation.mutate(task.id)} data-testid={`button-delete-subtask-${task.id}`}>
+                            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => requestSubTaskDelete(task.id, task.title || "Görev")} data-testid={`button-delete-subtask-${task.id}`}>
                               <Trash2 className="h-3 w-3 text-destructive" />
                             </Button>
                           </div>
@@ -2048,7 +2054,7 @@ export default function YeniSubeDetay() {
                               {assignment.raciRole === "informed" && <Check className="h-4 w-4 mx-auto text-muted-foreground" />}
                             </TableCell>
                             <TableCell>
-                              <Button variant="ghost" size="icon" onClick={() => deleteAssignmentMutation.mutate(assignment.id)} data-testid={`button-delete-assignment-${assignment.id}`}>
+                              <Button variant="ghost" size="icon" onClick={() => requestAssignmentDelete(assignment.id, "Atama")} data-testid={`button-delete-assignment-${assignment.id}`}>
                                 <Trash2 className="h-4 w-4 text-destructive" />
                               </Button>
                             </TableCell>
@@ -3165,6 +3171,61 @@ export default function YeniSubeDetay() {
           </Form>
         </DialogContent>
       </Dialog>
+
+      <ConfirmDeleteDialog
+        open={budgetDeleteState.open}
+        onOpenChange={(open) => !open && cancelBudgetDelete()}
+        onConfirm={() => {
+          const id = confirmBudgetDelete();
+          if (id !== null) deleteBudgetMutation.mutate(id as number);
+        }}
+        title="Bütçe Kalemini Sil"
+        description={`"${budgetDeleteState.itemName || ''}" bütçe kalemini silmek istediğinize emin misiniz?`}
+      />
+
+      <ConfirmDeleteDialog
+        open={vendorDeleteState.open}
+        onOpenChange={(open) => !open && cancelVendorDelete()}
+        onConfirm={() => {
+          const id = confirmVendorDelete();
+          if (id !== null) deleteVendorMutation.mutate(id as number);
+        }}
+        title="Tedarikçiyi Sil"
+        description={`"${vendorDeleteState.itemName || ''}" tedarikçisini silmek istediğinize emin misiniz?`}
+      />
+
+      <ConfirmDeleteDialog
+        open={riskDeleteState.open}
+        onOpenChange={(open) => !open && cancelRiskDelete()}
+        onConfirm={() => {
+          const id = confirmRiskDelete();
+          if (id !== null) deleteRiskMutation.mutate(id as number);
+        }}
+        title="Riski Sil"
+        description={`"${riskDeleteState.itemName || ''}" riskini silmek istediğinize emin misiniz?`}
+      />
+
+      <ConfirmDeleteDialog
+        open={subTaskDeleteState.open}
+        onOpenChange={(open) => !open && cancelSubTaskDelete()}
+        onConfirm={() => {
+          const id = confirmSubTaskDelete();
+          if (id !== null) deleteSubTaskMutation.mutate(id as number);
+        }}
+        title="Görevi Sil"
+        description={`"${subTaskDeleteState.itemName || ''}" görevini silmek istediğinize emin misiniz?`}
+      />
+
+      <ConfirmDeleteDialog
+        open={assignmentDeleteState.open}
+        onOpenChange={(open) => !open && cancelAssignmentDelete()}
+        onConfirm={() => {
+          const id = confirmAssignmentDelete();
+          if (id !== null) deleteAssignmentMutation.mutate(id as number);
+        }}
+        title="Atamayı Kaldır"
+        description="Bu atamayı kaldırmak istediğinize emin misiniz?"
+      />
     </div>
   );
 }

@@ -7681,6 +7681,41 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
     }
   });
 
+  // General academy image upload - returns optimized URL without needing module ID
+  app.post('/api/training/upload-image', isAuthenticated, trainingFileUpload.single('file'), async (req, res) => {
+    try {
+      const user = req.user!;
+      if (!hasPermission(user.role as any, 'training', 'edit')) {
+        return res.status(403).json({ message: "Bu işlem için yetkiniz yok" });
+      }
+
+      const file = req.file;
+      if (!file) {
+        return res.status(400).json({ message: "Dosya yüklenmedi" });
+      }
+
+      const { optimizeImageForGallery } = await import('./ai');
+      const optimized = await optimizeImageForGallery(file.buffer, file.mimetype);
+
+      const timestamp = Date.now();
+      const purpose = req.body.purpose || 'general';
+      const objectKey = `academy/${purpose}/${timestamp}-${file.originalname.replace(/[^a-zA-Z0-9.-]/g, '_')}.webp`;
+
+      const url = await storage.uploadFile(objectKey, optimized, 'image/webp');
+
+      res.json({
+        success: true,
+        url,
+        fileName: file.originalname,
+        originalSize: file.size,
+        optimizedSize: optimized.length,
+      });
+    } catch (error: any) {
+      console.error("Academy image upload error:", error);
+      res.status(500).json({ message: error.message || "Resim yüklenemedi" });
+    }
+  });
+
   // Upload image for module gallery and get optimized URL (admin/coach/trainer only)
   app.post('/api/training/modules/:id/upload-image', isAuthenticated, trainingFileUpload.single('file'), async (req, res) => {
     try {

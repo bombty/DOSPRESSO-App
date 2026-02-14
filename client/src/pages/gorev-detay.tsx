@@ -36,6 +36,7 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { ConfirmDeleteDialog, useConfirmDelete } from "@/components/confirm-delete-dialog";
 import { ObjectUploader } from "@/components/ObjectUploader";
 import { StarRating } from "@/components/star-rating";
 import type { Task, User as UserType, TaskStatusHistory, TaskRating, TaskStep } from "@shared/schema";
@@ -49,6 +50,7 @@ export default function GorevDetay() {
   const { id } = useParams();
   const { user: currentUser } = useAuth();
   const { toast } = useToast();
+  const { deleteState, requestDelete, cancelDelete, confirmDelete } = useConfirmDelete();
   const [failureNote, setFailureNote] = useState("");
   const [showFailureDialog, setShowFailureDialog] = useState(false);
   const [showCompleteDialog, setShowCompleteDialog] = useState(false);
@@ -1211,8 +1213,7 @@ export default function GorevDetay() {
                       variant="ghost"
                       size="icon"
                       className="h-6 w-6 text-muted-foreground hover:text-destructive"
-                      onClick={() => deleteStepMutation.mutate(step.id)}
-                      disabled={deleteStepMutation.isPending}
+                      onClick={() => requestDelete(step.id, step.title || "Adım")}
                       data-testid={`button-delete-step-${step.id}`}
                     >
                       <Trash2 className="h-3 w-3" />
@@ -1626,6 +1627,17 @@ export default function GorevDetay() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ConfirmDeleteDialog
+        open={deleteState.open}
+        onOpenChange={(open) => !open && cancelDelete()}
+        onConfirm={() => {
+          const id = confirmDelete();
+          if (id !== null) deleteStepMutation.mutate(id as number);
+        }}
+        title="Adımı Sil"
+        description={`"${deleteState.itemName || ''}" adımını silmek istediğinize emin misiniz?`}
+      />
     </div>
   );
 }

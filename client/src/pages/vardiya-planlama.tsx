@@ -2,6 +2,7 @@ import { useState, useMemo, useCallback, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { queryClient, apiRequest } from "@/lib/queryClient";
+import { ConfirmDeleteDialog, useConfirmDelete } from "@/components/confirm-delete-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -1395,6 +1396,7 @@ function ShiftEditModal({ open, shiftId, employees, onClose, canEdit = true }: {
   canEdit?: boolean;
 }) {
   const { toast } = useToast();
+  const { deleteState: shiftDelState, requestDelete: requestShiftDel, cancelDelete: cancelShiftDel, confirmDelete: confirmShiftDel } = useConfirmDelete();
   const { data: shifts } = useQuery({ queryKey: ['/api/shifts'] });
   const { data: checklists } = useQuery({ queryKey: ['/api/checklists'] });
   const { data: tasks } = useQuery({ queryKey: ['/api/tasks'] });
@@ -1674,7 +1676,7 @@ function ShiftEditModal({ open, shiftId, employees, onClose, canEdit = true }: {
               <Button 
                 size="sm" 
                 variant="destructive" 
-                onClick={() => deleteMutation.mutate()}
+                onClick={() => requestShiftDel(shiftId!, shift?.shiftType === 'morning' ? 'Sabah Vardiyası' : 'Akşam Vardiyası')}
                 disabled={deleteMutation.isPending}
                 data-testid="button-delete-shift"
               >
@@ -1692,6 +1694,17 @@ function ShiftEditModal({ open, shiftId, employees, onClose, canEdit = true }: {
             </>
           )}
         </DialogFooter>
+
+        <ConfirmDeleteDialog
+          open={shiftDelState.open}
+          onOpenChange={(open) => !open && cancelShiftDel()}
+          onConfirm={() => {
+            const id = confirmShiftDel();
+            if (id !== null) deleteMutation.mutate();
+          }}
+          title="Vardiyayı Sil"
+          description={`"${shiftDelState.itemName || ''}" vardiyasını silmek istediğinize emin misiniz? Bu işlem geri alınamaz.`}
+        />
       </DialogContent>
     </Dialog>
   );

@@ -23,6 +23,7 @@ import {
   Warehouse, GraduationCap, Clock, Globe, Loader2, X, Play,
   Layout, Sun, Snowflake
 } from "lucide-react";
+import { ImageUploader } from "@/components/image-uploader";
 import type { LucideIcon } from "lucide-react";
 
 interface TemplateStep {
@@ -560,6 +561,7 @@ export default function AcademyModuleEditor() {
   const [requiredForRole, setRequiredForRole] = useState<string[]>([]);
   const [isPublished, setIsPublished] = useState(false);
   const [isRequired, setIsRequired] = useState(false);
+  const [heroImageUrl, setHeroImageUrl] = useState("");
 
   const [learningObjectives, setLearningObjectives] = useState<string[]>([]);
   const [steps, setSteps] = useState<StepItem[]>([]);
@@ -592,6 +594,7 @@ export default function AcademyModuleEditor() {
       setRequiredForRole(existingModule.requiredForRole || []);
       setIsPublished(existingModule.isPublished || false);
       setIsRequired(existingModule.isRequired || false);
+      setHeroImageUrl(existingModule.heroImageUrl || "");
       setLearningObjectives(existingModule.learningObjectives || []);
       setSteps((existingModule.steps || []).map((s: any, i: number) => ({
         stepNumber: s.stepNumber || s.step_number || i + 1,
@@ -644,6 +647,7 @@ export default function AcademyModuleEditor() {
   const buildModulePayload = (publish?: boolean) => ({
     title,
     description,
+    heroImageUrl,
     level,
     category,
     estimatedDuration,
@@ -914,6 +918,13 @@ export default function AcademyModuleEditor() {
                   <Textarea id="description" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Modül açıklaması" rows={3} data-testid="input-description" />
                 </div>
 
+                <ImageUploader
+                  value={heroImageUrl}
+                  onChange={setHeroImageUrl}
+                  purpose="cover"
+                  label="Kapak Fotoğrafı"
+                />
+
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <Label>Seviye</Label>
@@ -1182,20 +1193,17 @@ export default function AcademyModuleEditor() {
                             {step.videoUrl && <YouTubePreview url={step.videoUrl} />}
                           </div>
                           <div>
-                            <Label className="text-xs text-muted-foreground">Görsel URL (opsiyonel)</Label>
-                            <Input
+                            <ImageUploader
                               value={step.imageUrl || ""}
-                              onChange={(e) => {
-                                const updated = [...steps];
-                                updated[idx] = { ...updated[idx], imageUrl: e.target.value };
-                                setSteps(updated);
+                              onChange={(url) => {
+                                const newSteps = [...steps];
+                                newSteps[idx].imageUrl = url;
+                                setSteps(newSteps);
                               }}
-                              placeholder="https://..."
-                              data-testid={`input-step-image-${idx}`}
+                              purpose="step"
+                              label="Adım Görseli"
+                              compact
                             />
-                            {step.imageUrl && (
-                              <img src={step.imageUrl} alt="" className="mt-2 rounded-md max-h-40 object-cover" />
-                            )}
                           </div>
                         </div>
                       </CardContent>
@@ -1455,15 +1463,16 @@ export default function AcademyModuleEditor() {
                       {galleryImages.map((img, idx) => (
                         <div key={idx} className="flex gap-2 items-start">
                           <div className="flex-1 space-y-2">
-                            <Input
+                            <ImageUploader
                               value={img.url}
-                              onChange={(e) => {
+                              onChange={(url) => {
                                 const updated = [...galleryImages];
-                                updated[idx] = { ...updated[idx], url: e.target.value };
+                                updated[idx] = { ...updated[idx], url };
                                 setGalleryImages(updated);
                               }}
-                              placeholder="Görsel URL..."
-                              data-testid={`input-gallery-url-${idx}`}
+                              purpose="gallery"
+                              label={`Galeri Görseli ${idx + 1}`}
+                              compact
                             />
                             <Input
                               value={img.alt || ""}
@@ -1475,9 +1484,6 @@ export default function AcademyModuleEditor() {
                               placeholder="Alt metin..."
                               data-testid={`input-gallery-alt-${idx}`}
                             />
-                            {img.url && (
-                              <img src={img.url} alt={img.alt || ""} className="rounded-md max-h-32 object-cover" />
-                            )}
                           </div>
                           <Button
                             variant="outline"
