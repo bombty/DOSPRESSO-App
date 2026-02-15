@@ -1,18 +1,18 @@
 import { useQuery } from "@tanstack/react-query";
+import { getQueryFn } from "@/lib/queryClient";
 import type { User } from "@shared/schema";
 
 export function useAuth() {
-  // Check if we're in a branch-only login context (via sessionStorage)
-  // This allows kiosk/branch pages to work without user auth
   const isBranchOnlyContext = typeof window !== 'undefined' && 
     sessionStorage.getItem('branchAuth') && 
     window.location.pathname.startsWith('/sube/');
 
-  // Session-based auth via cookies - skip query for branch-only contexts
-  const { data: user, isLoading } = useQuery<User>({
+  const { data: user, isLoading } = useQuery<User | null>({
     queryKey: ["/api/auth/user"],
-    retry: false,
-    enabled: !isBranchOnlyContext, // Don't fetch if in branch-only context
+    queryFn: getQueryFn({ on401: "returnNull" }),
+    retry: 2,
+    retryDelay: 500,
+    enabled: !isBranchOnlyContext,
   });
 
   return {

@@ -212,10 +212,12 @@ export default function CEOCommandCenter() {
 
   const isCeoOrCgo = user?.role === 'ceo' || user?.role === 'cgo';
 
-  const { data: dashboardData, isLoading, isRefetching, refetch } = useQuery<CEODashboardData>({
+  const { data: dashboardData, isLoading, isRefetching, refetch, isError } = useQuery<CEODashboardData>({
     queryKey: ["/api/ceo/command-center"],
     refetchInterval: 60000,
     enabled: isCeoOrCgo,
+    retry: 3,
+    retryDelay: (attemptIndex) => Math.min(1000 * (attemptIndex + 1), 5000),
   });
 
   const { data: abuseReport } = useQuery<AbuseReport>({

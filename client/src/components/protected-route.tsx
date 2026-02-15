@@ -30,6 +30,7 @@ const ROLE_MAPPING: Record<string, RoleGroup[]> = {
   barista: ['sube'],
   bar_buddy: ['sube'],
   stajyer: ['sube'],
+  mudur: ['sube'],
   yatirimci_branch: ['sube'],
 };
 

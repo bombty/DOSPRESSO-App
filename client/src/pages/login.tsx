@@ -65,34 +65,30 @@ export default function Login() {
       return response.json();
     },
     onSuccess: async (data) => {
-      // Şube girişi kontrolü
       if (data.authType === 'branch') {
-        // Şube girişi - session storage'a şube bilgilerini kaydet
         sessionStorage.setItem('branchAuth', JSON.stringify(data.branch));
-        
         toast({
-          title: "Şube girişi başarılı",
-          description: `${data.branch.name} şubesine hoş geldiniz!`,
+          title: "Sube girisi basarili",
+          description: `${data.branch.name} subesine hos geldiniz!`,
         });
-        
-        // Şube dashboard'a yönlendir
         setTimeout(() => {
           navigate(data.redirectTo || '/sube/dashboard');
         }, 100);
         return;
       }
-      
-      // Normal kullanıcı girişi
+
+      await queryClient.cancelQueries();
+      queryClient.clear();
+
       if (data.user) {
         queryClient.setQueryData(["/api/auth/user"], data.user);
       }
-      
+
       toast({
-        title: "Giriş başarılı",
-        description: "Hoş geldiniz!",
+        title: "Giris basarili",
+        description: "Hos geldiniz!",
       });
-      
-      // HQ departman rolleri için özel dashboard yönlendirmesi (shared/schema.ts ile senkronize)
+
       const userRole = data.user?.role;
       const departmentRoutes: Record<string, string> = {
         'admin': '/',
@@ -110,36 +106,20 @@ export default function Login() {
         'destek': '/',
         'fabrika': '/fabrika/dashboard',
       };
-      
-      if (userRole && departmentRoutes[userRole]) {
-        setTimeout(() => {
-          navigate(departmentRoutes[userRole]);
-        }, 100);
-        return;
-      }
-      
-      if (userRole === 'supervisor' || userRole === 'supervisor_buddy') {
-        setTimeout(() => {
-          navigate('/');
-        }, 100);
-        return;
-      }
-      
-      const branchRoles = ['stajyer', 'bar_buddy', 'barista', 'yatirimci_branch'];
-      if (userRole && branchRoles.includes(userRole) && data.user?.branchId) {
-        setTimeout(() => {
-          navigate('/sube/employee-dashboard');
-        }, 100);
-        return;
-      }
-      
-      // Get redirect target and navigate
-      const target = getRedirectTarget();
-      
-      // Small delay to ensure cookie is set
+
+      const getTarget = () => {
+        if (userRole && departmentRoutes[userRole]) return departmentRoutes[userRole];
+        if (userRole === 'supervisor' || userRole === 'supervisor_buddy') return '/';
+        if (userRole === 'mudur' && data.user?.branchId) return `/sube/${data.user.branchId}/dashboard`;
+        const branchRoles = ['stajyer', 'bar_buddy', 'barista', 'yatirimci_branch'];
+        if (userRole && branchRoles.includes(userRole) && data.user?.branchId) return '/sube/employee-dashboard';
+        return getRedirectTarget();
+      };
+
+      const target = getTarget();
       setTimeout(() => {
         navigate(target);
-      }, 100);
+      }, 300);
     },
     onError: (error) => {
       setError(error.message || "Giriş başarısız");
