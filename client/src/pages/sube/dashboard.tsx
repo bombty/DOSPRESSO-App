@@ -119,55 +119,6 @@ export default function SubeDashboard() {
     enabled: !!needsBranchSelection,
   });
 
-  useEffect(() => {
-    if (authChecked && !hasBranchAccess && !needsBranchSelection) {
-      setLocation("/login");
-    }
-  }, [authChecked, hasBranchAccess, needsBranchSelection, setLocation]);
-
-  if (authChecked && needsBranchSelection && !selectedBranchId) {
-    if (branchesLoading) {
-      return (
-        <div className="min-h-screen flex items-center justify-center bg-background">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
-        </div>
-      );
-    }
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background p-4" data-testid="branch-selector">
-        <Card className="max-w-lg w-full">
-          <CardHeader className="text-center">
-            <img src={logoUrl} alt="DOSPRESSO" className="h-16 mx-auto mb-2" />
-            <CardTitle className="text-lg">Şube Seçin</CardTitle>
-            <p className="text-sm text-muted-foreground mt-1">
-              Dashboard'u görüntülemek için bir şube seçin
-            </p>
-          </CardHeader>
-          <CardContent className="space-y-2 max-h-80 overflow-y-auto">
-            {(branches || []).map((branch) => (
-              <Button
-                key={branch.id}
-                variant="outline"
-                className="w-full justify-start gap-2"
-                onClick={() => setSelectedBranchId(branch.id)}
-                data-testid={`select-branch-${branch.id}`}
-              >
-                <Coffee className="h-4 w-4 shrink-0" />
-                <span className="truncate">{branch.name}</span>
-                {branch.city && (
-                  <Badge variant="secondary" className="ml-auto shrink-0">{branch.city}</Badge>
-                )}
-              </Button>
-            ))}
-            {(!branches || branches.length === 0) && !branchesLoading && (
-              <p className="text-center text-muted-foreground py-4">Henüz şube bulunmuyor</p>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
   const {
     data: dashboardData,
     isLoading,
@@ -213,10 +164,59 @@ export default function SubeDashboard() {
     },
   });
 
+  useEffect(() => {
+    if (authChecked && !hasBranchAccess && !needsBranchSelection) {
+      setLocation("/login");
+    }
+  }, [authChecked, hasBranchAccess, needsBranchSelection, setLocation]);
+
   if (!authChecked) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+      </div>
+    );
+  }
+
+  if (needsBranchSelection && !selectedBranchId) {
+    if (branchesLoading) {
+      return (
+        <div className="min-h-screen flex items-center justify-center bg-background">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+        </div>
+      );
+    }
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background p-4" data-testid="branch-selector">
+        <Card className="max-w-lg w-full">
+          <CardHeader className="text-center">
+            <img src={logoUrl} alt="DOSPRESSO" className="h-16 mx-auto mb-2" />
+            <CardTitle className="text-lg">Şube Seçin</CardTitle>
+            <p className="text-sm text-muted-foreground mt-1">
+              Dashboard'u görüntülemek için bir şube seçin
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-2 max-h-80 overflow-y-auto">
+            {(branches || []).map((branch) => (
+              <Button
+                key={branch.id}
+                variant="outline"
+                className="w-full justify-start gap-2"
+                onClick={() => setSelectedBranchId(branch.id)}
+                data-testid={`select-branch-${branch.id}`}
+              >
+                <Coffee className="h-4 w-4 shrink-0" />
+                <span className="truncate">{branch.name}</span>
+                {branch.city && (
+                  <Badge variant="secondary" className="ml-auto shrink-0">{branch.city}</Badge>
+                )}
+              </Button>
+            ))}
+            {(!branches || branches.length === 0) && !branchesLoading && (
+              <p className="text-center text-muted-foreground py-4">Henüz şube bulunmuyor</p>
+            )}
+          </CardContent>
+        </Card>
       </div>
     );
   }
