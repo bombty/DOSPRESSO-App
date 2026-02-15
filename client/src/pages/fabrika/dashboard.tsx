@@ -418,6 +418,45 @@ export default function FabrikaDashboard() {
 
           <DailyTaskPanel />
 
+          {isManagerOrAdmin && (
+            <Card>
+              <CardHeader className="pb-1 pt-3 px-3">
+                <CardTitle className="flex items-center gap-2 text-xs">
+                  <ExternalLink className="h-3.5 w-3.5 text-primary" />
+                  Hizli Erisim
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="px-3 pb-3">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                  <Link href="/satinalma?tab=sayim-yonetimi">
+                    <Button variant="outline" className="w-full justify-start gap-2 text-xs" data-testid="quick-inventory-count">
+                      <ClipboardCheck className="h-3.5 w-3.5 text-indigo-500 flex-shrink-0" />
+                      <span className="truncate">Sayim Yonetimi</span>
+                    </Button>
+                  </Link>
+                  <Link href="/fabrika?tab=uretim-planlama">
+                    <Button variant="outline" className="w-full justify-start gap-2 text-xs" data-testid="quick-production">
+                      <Factory className="h-3.5 w-3.5 text-blue-500 flex-shrink-0" />
+                      <span className="truncate">Uretim Planlama</span>
+                    </Button>
+                  </Link>
+                  <Link href="/satinalma?tab=tedarikciler">
+                    <Button variant="outline" className="w-full justify-start gap-2 text-xs" data-testid="quick-suppliers">
+                      <BarChart3 className="h-3.5 w-3.5 text-green-500 flex-shrink-0" />
+                      <span className="truncate">Tedarikci Yonetimi</span>
+                    </Button>
+                  </Link>
+                  <Link href="/fabrika?tab=fabrika-yonetim-skoru">
+                    <Button variant="outline" className="w-full justify-start gap-2 text-xs" data-testid="quick-management-score">
+                      <Target className="h-3.5 w-3.5 text-amber-500 flex-shrink-0" />
+                      <span className="truncate">Yonetim Skoru</span>
+                    </Button>
+                  </Link>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           {wasteStats && (
             <Card>
               <CardHeader className="pb-1 pt-3 px-3">

@@ -65,7 +65,7 @@ export const QUICK_ACTIONS_BY_ROLE: Record<UserRole, string[]> = {
   stajyer: ['leaves'],
   yatirimci_branch: ['performance'],
   // Factory Roles - Nav: factory, myshifts/shifts
-  fabrika_mudur: ['production', 'personnel', 'quality'],
+  fabrika_mudur: ['production', 'personnel', 'quality', 'stock', 'tasks', 'shifts'],
   fabrika_operator: ['production', 'quality'],
   fabrika_sorumlu: ['production', 'quality'],
   fabrika_personel: ['production'],
@@ -103,7 +103,7 @@ export const MODULES_BY_ROLE: Record<UserRole, string[]> = {
   stajyer: ['training'],
   yatirimci_branch: ['reports'],
   // Factory Roles - Fabrika çalışanları
-  fabrika_mudur: ['factory', 'satinalma', 'reports', 'hr'],
+  fabrika_mudur: ['factory', 'satinalma', 'reports', 'hr', 'operations', 'training', 'equipment'],
   fabrika_operator: ['factory', 'satinalma'],
   fabrika_sorumlu: ['factory', 'satinalma'],
   fabrika_personel: ['factory'],
@@ -139,7 +139,7 @@ export const STATS_BY_ROLE: Record<UserRole, string[]> = {
   stajyer: ['checklist'],
   yatirimci_branch: ['revenue', 'performance'],
   // Factory Roles
-  fabrika_mudur: ['production', 'quality', 'stock', 'personnel'],
+  fabrika_mudur: ['production', 'quality', 'stock', 'personnel', 'tasks', 'faults'],
   fabrika_operator: ['production', 'quality', 'shifts'],
   fabrika_sorumlu: ['production', 'quality', 'stock'],
   fabrika_personel: ['production', 'shifts'],
@@ -179,7 +179,7 @@ export const NAV_ITEMS_BY_ROLE: Record<UserRole, string[]> = {
   stajyer: ['home', 'academy', 'notifications', 'profile'],
   yatirimci_branch: ['home', 'branches', 'notifications', 'profile'],
   // Factory Roles - Üretim odaklı kısayollar
-  fabrika_mudur: ['home', 'shifts', 'notifications', 'search', 'profile'],
+  fabrika_mudur: ['home', 'tasks', 'factory', 'notifications', 'profile'],
   fabrika_operator: ['home', 'factory', 'myshifts', 'notifications', 'profile'],
   fabrika_sorumlu: ['home', 'factory', 'myshifts', 'profile'],
   fabrika_personel: ['home', 'factory', 'myshifts', 'profile'],

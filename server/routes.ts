@@ -1371,9 +1371,9 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
           return new Set(['dashboard', 'factory', 'reports']);
         }
         
-        // FABRİKA MÜDÜRÜ: Fabrika, satınalma, raporlar ve İK
+        // FABRİKA MÜDÜRÜ: Fabrika, satınalma, raporlar, İK, operasyon, eğitim, ekipman
         if (role === 'fabrika_mudur') {
-          return new Set(['dashboard', 'factory', 'satinalma', 'hr', 'reports']);
+          return new Set(['dashboard', 'factory', 'satinalma', 'hr', 'reports', 'operations', 'training', 'equipment']);
         }
         
         // FABRİKA OPERATÖR/SORUMLU: Fabrika ve satınalma (sayım)
