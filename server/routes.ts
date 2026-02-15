@@ -23095,19 +23095,23 @@ DOSPRESSO İnsan Kaynakları Ekibi`
       const thirtyDaysAgo = new Date();
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-      const correctionStats = await db.select({
-        correctedById: shiftCorrections.correctedById,
-        correctorFirstName: users.firstName,
-        correctorLastName: users.lastName,
-        correctorFullName: users.fullName,
-        branchId: shiftCorrections.branchId,
-        totalCorrections: sql<number>`count(*)::int`,
-        uniqueEmployees: sql<number>`count(distinct ${shiftCorrections.employeeId})::int`,
-      })
-      .from(shiftCorrections)
-      .leftJoin(users, eq(shiftCorrections.correctedById, users.id))
-      .where(gte(shiftCorrections.createdAt, thirtyDaysAgo))
-      .groupBy(shiftCorrections.correctedById, users.firstName, users.lastName, users.fullName, shiftCorrections.branchId);
+      const correctionStatsResult = await db.execute(sql`
+        SELECT 
+          sc.corrected_by_id as "correctedById",
+          u.first_name as "correctorFirstName",
+          u.last_name as "correctorLastName",
+          COALESCE(u.first_name || ' ' || u.last_name, u.first_name, u.last_name, '') as "correctorFullName",
+          sc.branch_id as "branchId",
+          count(*)::int as "totalCorrections",
+          count(distinct sc.employee_id)::int as "uniqueEmployees"
+        FROM shift_corrections sc
+        LEFT JOIN users u ON u.id = sc.corrected_by_id
+        WHERE sc.created_at >= ${thirtyDaysAgo}
+        GROUP BY sc.corrected_by_id, u.first_name, u.last_name, sc.branch_id
+      `);
+      const correctionStats: any[] = Array.isArray(correctionStatsResult) 
+        ? correctionStatsResult 
+        : ((correctionStatsResult as any)?.rows ?? []);
 
       const employeeFocusResult = await db.execute(sql`
         SELECT 
