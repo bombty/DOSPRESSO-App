@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -7,60 +7,58 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import {
-  ClipboardList,
-  Plus,
-  Calendar,
-  Users,
-  CheckCircle,
-  AlertTriangle,
-  RefreshCw,
-  Eye,
-  UserPlus,
-  Hash,
-  ArrowRight,
-} from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
+import {
+  ClipboardList, Plus, Calendar, Users, CheckCircle, AlertTriangle,
+  RefreshCw, Eye, UserPlus, ArrowRight, Search, QrCode, Camera,
+  Package, Filter, BarChart3, TrendingDown, TrendingUp, Loader2,
+  X, ChevronDown, ChevronRight, FileText, Send, AlertCircle,
+  ScanLine, Hash, Boxes, Coffee, Croissant, Leaf, Droplets,
+  Candy, Cookie, Salad, Wrench, Store, Truck,
+} from "lucide-react";
 
 const MONTHS = [
-  "Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran",
-  "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"
+  "Ocak", "Subat", "Mart", "Nisan", "Mayis", "Haziran",
+  "Temmuz", "Agustos", "Eylul", "Ekim", "Kasim", "Aralik"
 ];
+
+const CATEGORY_CONFIG: Record<string, { label: string; icon: any; color: string }> = {
+  all: { label: "Tumumu", icon: Boxes, color: "text-foreground" },
+  hammadde: { label: "Hammaddeler", icon: Package, color: "text-amber-600 dark:text-amber-400" },
+  ambalaj: { label: "Ambalajlar", icon: Boxes, color: "text-blue-600 dark:text-blue-400" },
+  ekipman: { label: "Ekipman", icon: Wrench, color: "text-slate-600 dark:text-slate-400" },
+  sube_ekipman: { label: "Sube Ekipman", icon: Store, color: "text-purple-600 dark:text-purple-400" },
+  sube_malzeme: { label: "Sube Malzeme", icon: Store, color: "text-indigo-600 dark:text-indigo-400" },
+  konsantre: { label: "Konsantreler", icon: Droplets, color: "text-orange-600 dark:text-orange-400" },
+  donut: { label: "Donutlar", icon: Cookie, color: "text-pink-600 dark:text-pink-400" },
+  tatli: { label: "Tatlilar", icon: Candy, color: "text-rose-600 dark:text-rose-400" },
+  tuzlu: { label: "Tuzlular", icon: Salad, color: "text-green-600 dark:text-green-400" },
+  cay_grubu: { label: "Cay Gruplari", icon: Leaf, color: "text-emerald-600 dark:text-emerald-400" },
+  kahve: { label: "Kahveler", icon: Coffee, color: "text-amber-800 dark:text-amber-300" },
+  toz_topping: { label: "Toz & Topping", icon: Droplets, color: "text-violet-600 dark:text-violet-400" },
+};
 
 function getStatusBadge(status: string) {
   const map: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
-    planned: { label: "Planlandı", variant: "secondary" },
+    planned: { label: "Planlandi", variant: "secondary" },
     in_progress: { label: "Devam Ediyor", variant: "default" },
-    counting: { label: "Sayım Yapılıyor", variant: "default" },
-    review: { label: "İncelemede", variant: "outline" },
-    completed: { label: "Tamamlandı", variant: "default" },
-    overdue: { label: "Gecikmiş", variant: "destructive" },
+    counting: { label: "Sayim Yapiliyor", variant: "default" },
+    review: { label: "Incelemede", variant: "outline" },
+    completed: { label: "Tamamlandi", variant: "default" },
+    overdue: { label: "Gecikmis", variant: "destructive" },
     pending: { label: "Bekliyor", variant: "secondary" },
-    discrepancy: { label: "Tutarsızlık", variant: "destructive" },
-    recounting: { label: "Tekrar Sayım", variant: "outline" },
+    discrepancy: { label: "Tutarsizlik", variant: "destructive" },
+    recounting: { label: "Tekrar Sayim", variant: "outline" },
   };
   const cfg = map[status] || { label: status, variant: "secondary" as const };
   return <Badge variant={cfg.variant} data-testid={`badge-status-${status}`}>{cfg.label}</Badge>;
@@ -69,18 +67,19 @@ function getStatusBadge(status: string) {
 export default function SayimYonetimi() {
   const { user } = useAuth();
   const { toast } = useToast();
-  const isFabrikaMudur = user?.role === "fabrika_mudur" || user?.role === "admin";
-  const isCounter = ["fabrika_operator", "fabrika_sorumlu", "fabrika_personel", "fabrika_mudur", "fabrika"].includes(user?.role || "");
+  const isFabrikaMudur = user?.role === "fabrika_mudur" || user?.role === "admin" || user?.role === "ceo" || user?.role === "cgo";
+  const isCounter = ["fabrika_operator", "fabrika_sorumlu", "fabrika_personel", "fabrika_mudur", "fabrika", "admin"].includes(user?.role || "");
 
+  const [mainTab, setMainTab] = useState("sayimlar");
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showDetailDialog, setShowDetailDialog] = useState(false);
   const [showAssignDialog, setShowAssignDialog] = useState(false);
   const [showCountDialog, setShowCountDialog] = useState(false);
+  const [showQrScanner, setShowQrScanner] = useState(false);
   const [selectedCount, setSelectedCount] = useState<any>(null);
   const [selectedAssignment, setSelectedAssignment] = useState<any>(null);
   const [filterYear, setFilterYear] = useState(new Date().getFullYear());
 
-  // Form states
   const [newMonth, setNewMonth] = useState((new Date().getMonth() + 1).toString());
   const [newYear, setNewYear] = useState(new Date().getFullYear().toString());
   const [newDate, setNewDate] = useState("");
@@ -88,11 +87,14 @@ export default function SayimYonetimi() {
   const [countQuantity, setCountQuantity] = useState("");
   const [countNotes, setCountNotes] = useState("");
 
+  const [activeCategory, setActiveCategory] = useState("all");
+  const [searchQuery, setSearchQuery] = useState("");
+
   const { data: counts, isLoading } = useQuery<any[]>({
     queryKey: ["/api/inventory-counts", filterYear],
     queryFn: async () => {
       const res = await fetch(`/api/inventory-counts?year=${filterYear}`);
-      if (!res.ok) throw new Error("Sayım listesi alınamadı");
+      if (!res.ok) throw new Error("Sayim listesi alinamadi");
       return res.json();
     },
   });
@@ -100,542 +102,987 @@ export default function SayimYonetimi() {
   const { data: countDetail, isLoading: detailLoading } = useQuery<any>({
     queryKey: ["/api/inventory-counts", selectedCount?.id],
     queryFn: async () => {
-      if (!selectedCount?.id) return null;
       const res = await fetch(`/api/inventory-counts/${selectedCount.id}`);
-      if (!res.ok) throw new Error("Sayım detayı alınamadı");
+      if (!res.ok) throw new Error("Detay alinamadi");
       return res.json();
     },
-    enabled: !!selectedCount?.id,
+    enabled: !!selectedCount?.id && showDetailDialog,
   });
 
-  const { data: factoryWorkers } = useQuery<any[]>({
-    queryKey: ["/api/factory-workers"],
+  const { data: factoryUsers } = useQuery<any[]>({
+    queryKey: ["/api/factory/workers"],
     queryFn: async () => {
-      const res = await fetch("/api/factory-workers");
-      if (!res.ok) throw new Error("Fabrika çalışanları alınamadı");
+      const res = await fetch("/api/factory/workers");
+      if (!res.ok) return [];
       return res.json();
     },
-    enabled: showAssignDialog,
   });
 
   const createMutation = useMutation({
-    mutationFn: async (data: any) => {
-      const res = await apiRequest("POST", "/api/inventory-counts", data);
-      return res.json();
+    mutationFn: async () => {
+      return apiRequest("POST", "/api/inventory-counts", {
+        month: parseInt(newMonth),
+        year: parseInt(newYear),
+        scheduledDate: newDate || new Date().toISOString(),
+        notes: newNotes || null,
+      });
     },
-    onSuccess: () => {
-      toast({ title: "Sayım oluşturuldu" });
+    onSuccess: async () => {
       queryClient.invalidateQueries({ queryKey: ["/api/inventory-counts"] });
       setShowCreateDialog(false);
       setNewNotes("");
       setNewDate("");
+      toast({ title: "Sayim oturumu olusturuldu" });
     },
-    onError: (err: any) => {
-      toast({ title: "Hata", description: err.message, variant: "destructive" });
+    onError: (e: any) => {
+      toast({ title: "Hata", description: e.message || "Olusturulamadi", variant: "destructive" });
     },
   });
 
   const assignMutation = useMutation({
     mutationFn: async (data: any) => {
-      const res = await apiRequest("PUT", `/api/inventory-counts/${selectedCount.id}/assign`, data);
-      return res.json();
+      return apiRequest("PUT", `/api/inventory-counts/${selectedCount.id}/assign`, data);
     },
     onSuccess: () => {
-      toast({ title: "Sayımcılar atandı" });
       queryClient.invalidateQueries({ queryKey: ["/api/inventory-counts"] });
       setShowAssignDialog(false);
+      toast({ title: "Atamalar kaydedildi" });
     },
-    onError: (err: any) => {
-      toast({ title: "Hata", description: err.message, variant: "destructive" });
+    onError: () => {
+      toast({ title: "Hata", description: "Atama yapilamadi", variant: "destructive" });
     },
   });
 
   const countEntryMutation = useMutation({
     mutationFn: async (data: any) => {
-      const isRecount = selectedAssignment?.status === "discrepancy";
-      const url = isRecount ? "/api/inventory-count-entries/recount" : "/api/inventory-count-entries";
-      const res = await apiRequest("POST", url, data);
-      return res.json();
+      return apiRequest("POST", "/api/inventory-count-entries", data);
     },
     onSuccess: () => {
-      toast({ title: "Sayım kaydedildi" });
       queryClient.invalidateQueries({ queryKey: ["/api/inventory-counts"] });
       setShowCountDialog(false);
       setCountQuantity("");
       setCountNotes("");
+      toast({ title: "Sayim kaydedildi" });
     },
-    onError: (err: any) => {
-      toast({ title: "Hata", description: err.message, variant: "destructive" });
+    onError: (e: any) => {
+      toast({ title: "Hata", description: e.message || "Kaydedilemedi", variant: "destructive" });
     },
   });
 
-  const handleCreate = () => {
-    createMutation.mutate({
-      month: parseInt(newMonth),
-      year: parseInt(newYear),
-      scheduledDate: newDate,
-      notes: newNotes,
-    });
-  };
+  const recountMutation = useMutation({
+    mutationFn: async (data: any) => {
+      return apiRequest("POST", "/api/inventory-count-entries/recount", data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/inventory-counts"] });
+      setShowCountDialog(false);
+      setCountQuantity("");
+      setCountNotes("");
+      toast({ title: "Tekrar sayim kaydedildi" });
+    },
+    onError: (e: any) => {
+      toast({ title: "Hata", description: e.message || "Kaydedilemedi", variant: "destructive" });
+    },
+  });
 
-  const [assignmentMap, setAssignmentMap] = useState<Record<number, { counter1Id: string; counter2Id: string }>>({});
+  const finalizeMutation = useMutation({
+    mutationFn: async (countId: number) => {
+      return apiRequest("POST", `/api/inventory-counts/${countId}/finalize`, {});
+    },
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/inventory-counts"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/inventory-count-reports"] });
+      toast({ title: "Sayim sonlandirildi", description: data?.message || "Raporlar olusturuldu" });
+    },
+    onError: (e: any) => {
+      toast({ title: "Hata", description: e.message || "Sonlandirilamadi", variant: "destructive" });
+    },
+  });
 
-  const handleAssignCounters = () => {
-    const assignments = Object.entries(assignmentMap).map(([id, val]) => ({
-      assignmentId: parseInt(id),
-      counter1Id: val.counter1Id,
-      counter2Id: val.counter2Id,
-    })).filter(a => a.counter1Id && a.counter2Id);
+  const activeCounts = counts?.filter(c => ["planned", "in_progress", "counting"].includes(c.status)) || [];
+  const completedCounts = counts?.filter(c => ["completed", "review"].includes(c.status)) || [];
+  const overdueCounts = counts?.filter(c => c.status === "overdue") || [];
 
-    if (assignments.length === 0) {
-      toast({ title: "En az bir kalemin sayımcılarını atayın", variant: "destructive" });
-      return;
-    }
-    assignMutation.mutate({ assignments });
-  };
+  return (
+    <div className="space-y-3 p-3">
+      <div className="flex items-center justify-between gap-2 flex-wrap">
+        <div className="flex items-center gap-2">
+          <ClipboardList className="h-5 w-5 text-primary" />
+          <h2 className="text-lg font-bold" data-testid="text-page-title">Sayim Yonetimi</h2>
+        </div>
+        <div className="flex items-center gap-2">
+          {isFabrikaMudur && (
+            <Button size="sm" onClick={() => setShowCreateDialog(true)} data-testid="button-new-count">
+              <Plus className="h-4 w-4 mr-1" />
+              Yeni Sayim
+            </Button>
+          )}
+        </div>
+      </div>
 
-  const handleCountSubmit = () => {
-    if (!countQuantity) return;
-    countEntryMutation.mutate({
-      assignmentId: selectedAssignment.id,
-      countedQuantity: parseFloat(countQuantity),
-      notes: countNotes,
-    });
-  };
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+        <Card>
+          <CardContent className="pt-3 pb-3">
+            <div className="flex items-center gap-2">
+              <div className="p-2 bg-amber-500/20 rounded-lg">
+                <ClipboardList className="h-4 w-4 text-amber-500" />
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Aktif</p>
+                <p className="text-lg font-bold" data-testid="text-active-count">{activeCounts.length}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-3 pb-3">
+            <div className="flex items-center gap-2">
+              <div className="p-2 bg-green-500/20 rounded-lg">
+                <CheckCircle className="h-4 w-4 text-green-500" />
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Tamamlanan</p>
+                <p className="text-lg font-bold" data-testid="text-completed-count">{completedCounts.length}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-3 pb-3">
+            <div className="flex items-center gap-2">
+              <div className="p-2 bg-red-500/20 rounded-lg">
+                <AlertTriangle className="h-4 w-4 text-red-500" />
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Gecikmis</p>
+                <p className="text-lg font-bold" data-testid="text-overdue-count">{overdueCounts.length}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-3 pb-3">
+            <div className="flex items-center gap-2">
+              <div className="p-2 bg-blue-500/20 rounded-lg">
+                <BarChart3 className="h-4 w-4 text-blue-500" />
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Toplam</p>
+                <p className="text-lg font-bold" data-testid="text-total-count">{counts?.length || 0}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <Tabs value={mainTab} onValueChange={setMainTab}>
+        <TabsList className="w-full justify-start overflow-x-auto">
+          <TabsTrigger value="sayimlar" data-testid="tab-sayimlar">
+            <ClipboardList className="h-4 w-4 mr-1" />
+            Sayimlar
+          </TabsTrigger>
+          <TabsTrigger value="raporlar" data-testid="tab-raporlar">
+            <BarChart3 className="h-4 w-4 mr-1" />
+            Raporlar
+          </TabsTrigger>
+          <TabsTrigger value="tedarikci" data-testid="tab-tedarikci">
+            <Truck className="h-4 w-4 mr-1" />
+            Tedarikci
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="sayimlar" className="space-y-3 mt-2">
+          <SayimListesi
+            counts={counts || []}
+            isLoading={isLoading}
+            isFabrikaMudur={isFabrikaMudur}
+            isCounter={isCounter}
+            onDetail={(c: any) => { setSelectedCount(c); setShowDetailDialog(true); }}
+            onAssign={(c: any) => { setSelectedCount(c); setShowAssignDialog(true); }}
+            filterYear={filterYear}
+            setFilterYear={setFilterYear}
+          />
+        </TabsContent>
+
+        <TabsContent value="raporlar" className="space-y-3 mt-2">
+          <SayimRaporlari filterYear={filterYear} />
+        </TabsContent>
+
+        <TabsContent value="tedarikci" className="space-y-3 mt-2">
+          <TedarikciPuanlama />
+        </TabsContent>
+      </Tabs>
+
+      {showCreateDialog && (
+        <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Plus className="h-5 w-5" />
+                Yeni Sayim Oturumu
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <Label>Ay</Label>
+                  <Select value={newMonth} onValueChange={setNewMonth}>
+                    <SelectTrigger data-testid="select-month"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {MONTHS.map((m, i) => (
+                        <SelectItem key={i} value={(i + 1).toString()}>{m}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label>Yil</Label>
+                  <Select value={newYear} onValueChange={setNewYear}>
+                    <SelectTrigger data-testid="select-year"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {[2025, 2026, 2027].map(y => (
+                        <SelectItem key={y} value={y.toString()}>{y}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div>
+                <Label>Planlanan Tarih</Label>
+                <Input type="date" value={newDate} onChange={e => setNewDate(e.target.value)} data-testid="input-scheduled-date" />
+              </div>
+              <div>
+                <Label>Notlar</Label>
+                <Textarea value={newNotes} onChange={e => setNewNotes(e.target.value)} placeholder="Sayim ile ilgili notlar..." data-testid="input-notes" />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowCreateDialog(false)}>Iptal</Button>
+              <Button onClick={() => createMutation.mutate()} disabled={createMutation.isPending} data-testid="button-create-count">
+                {createMutation.isPending && <Loader2 className="h-4 w-4 animate-spin mr-1" />}
+                Olustur
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {showDetailDialog && selectedCount && (
+        <SayimDetailDialog
+          count={selectedCount}
+          detail={countDetail}
+          detailLoading={detailLoading}
+          isFabrikaMudur={isFabrikaMudur}
+          isCounter={isCounter}
+          userId={user?.id}
+          onClose={() => { setShowDetailDialog(false); setSelectedCount(null); }}
+          onAssign={(a: any) => { setSelectedAssignment(a); setShowAssignDialog(true); }}
+          onCount={(a: any) => { setSelectedAssignment(a); setShowCountDialog(true); }}
+          onQrScan={() => setShowQrScanner(true)}
+          onFinalize={(id: number) => finalizeMutation.mutate(id)}
+          isFinalizePending={finalizeMutation.isPending}
+          activeCategory={activeCategory}
+          setActiveCategory={setActiveCategory}
+          searchQuery={searchQuery}
+          setSearchQuery={setSearchQuery}
+        />
+      )}
+
+      {showCountDialog && selectedAssignment && (
+        <CountEntryDialog
+          assignment={selectedAssignment}
+          countQuantity={countQuantity}
+          setCountQuantity={setCountQuantity}
+          countNotes={countNotes}
+          setCountNotes={setCountNotes}
+          isPending={countEntryMutation.isPending || recountMutation.isPending}
+          onSubmit={(isRecount: boolean) => {
+            const data = {
+              assignmentId: selectedAssignment.id,
+              countedQuantity: countQuantity,
+              notes: countNotes || null,
+            };
+            if (isRecount) {
+              recountMutation.mutate(data);
+            } else {
+              countEntryMutation.mutate(data);
+            }
+          }}
+          onClose={() => { setShowCountDialog(false); setSelectedAssignment(null); setCountQuantity(""); setCountNotes(""); }}
+        />
+      )}
+
+      {showQrScanner && (
+        <QrScannerDialog
+          onScan={(qrCode: string) => {
+            setShowQrScanner(false);
+            if (countDetail?.assignments) {
+              const found = countDetail.assignments.find((a: any) => a.qr_code === qrCode || a.inventory_code === qrCode.replace("INV-", ""));
+              if (found) {
+                setSelectedAssignment(found);
+                setShowCountDialog(true);
+                toast({ title: "Urun bulundu", description: found.inventory_name });
+              } else {
+                toast({ title: "Urun bulunamadi", description: `QR: ${qrCode}`, variant: "destructive" });
+              }
+            }
+          }}
+          onClose={() => setShowQrScanner(false)}
+        />
+      )}
+    </div>
+  );
+}
+
+function SayimListesi({ counts, isLoading, isFabrikaMudur, isCounter, onDetail, onAssign, filterYear, setFilterYear }: any) {
+  const activeCounts = counts.filter((c: any) => ["planned", "in_progress", "counting"].includes(c.status));
+  const doneCounts = counts.filter((c: any) => ["completed", "review", "overdue"].includes(c.status));
 
   if (isLoading) {
-    return (
-      <div className="space-y-4 p-4">
-        <Skeleton className="h-10 w-48" />
-        <Skeleton className="h-64 w-full" />
-      </div>
-    );
+    return <div className="space-y-2">{[1,2,3].map(i => <Skeleton key={i} className="h-20 w-full" />)}</div>;
   }
 
   return (
-    <div className="space-y-4 p-2 md:p-4" data-testid="sayim-yonetimi-page">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
-          <ClipboardList className="h-5 w-5 text-muted-foreground" />
-          <h2 className="text-lg font-semibold">Stok Sayım Yönetimi</h2>
+    <div className="space-y-3">
+      <div className="flex items-center gap-2 flex-wrap">
+        <Select value={filterYear.toString()} onValueChange={v => setFilterYear(parseInt(v))}>
+          <SelectTrigger className="w-24" data-testid="select-filter-year"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            {[2025, 2026, 2027].map(y => (
+              <SelectItem key={y} value={y.toString()}>{y}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      {activeCounts.length > 0 && (
+        <div className="space-y-2">
+          <h3 className="text-sm font-semibold flex items-center gap-1">
+            <AlertCircle className="h-4 w-4 text-amber-500" />
+            Aktif Sayimlar ({activeCounts.length})
+          </h3>
+          {activeCounts.map((c: any) => (
+            <SayimCard key={c.id} count={c} isFabrikaMudur={isFabrikaMudur} onDetail={onDetail} onAssign={onAssign} />
+          ))}
         </div>
-        <div className="flex items-center gap-2">
-          <Select value={filterYear.toString()} onValueChange={(v) => setFilterYear(parseInt(v))}>
-            <SelectTrigger className="w-28" data-testid="select-filter-year">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {[2024, 2025, 2026].map((y) => (
-                <SelectItem key={y} value={y.toString()}>{y}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          {isFabrikaMudur && (
-            <Button onClick={() => setShowCreateDialog(true)} data-testid="button-create-count">
-              <Plus className="h-4 w-4 mr-1" />
-              Yeni Sayım
+      )}
+
+      {doneCounts.length > 0 && (
+        <div className="space-y-2">
+          <h3 className="text-sm font-semibold flex items-center gap-1">
+            <CheckCircle className="h-4 w-4 text-green-500" />
+            Tamamlanan / Gecmis ({doneCounts.length})
+          </h3>
+          {doneCounts.map((c: any) => (
+            <SayimCard key={c.id} count={c} isFabrikaMudur={isFabrikaMudur} onDetail={onDetail} onAssign={onAssign} />
+          ))}
+        </div>
+      )}
+
+      {counts.length === 0 && (
+        <Card>
+          <CardContent className="py-8 text-center text-muted-foreground">
+            <ClipboardList className="h-8 w-8 mx-auto mb-2 opacity-50" />
+            <p className="text-sm">Bu yil icin sayim kaydi bulunmuyor</p>
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
+}
+
+function SayimCard({ count, isFabrikaMudur, onDetail, onAssign }: any) {
+  return (
+    <Card className="hover-elevate cursor-pointer" onClick={() => onDetail(count)} data-testid={`sayim-card-${count.id}`}>
+      <CardContent className="pt-3 pb-3">
+        <div className="flex items-center justify-between gap-2 flex-wrap">
+          <div className="flex items-center gap-3">
+            <div className="flex flex-col">
+              <span className="text-sm font-semibold">
+                {MONTHS[(count.month || 1) - 1]} {count.year}
+              </span>
+              <span className="text-xs text-muted-foreground">
+                {count.scheduled_date ? new Date(count.scheduled_date).toLocaleDateString("tr-TR") : "Tarih belirlenmedi"}
+              </span>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            {count.total_items > 0 && (
+              <span className="text-xs text-muted-foreground">
+                {count.completed_items}/{count.total_items}
+              </span>
+            )}
+            {count.discrepancy_items > 0 && (
+              <Badge variant="destructive">{count.discrepancy_items} tutarsiz</Badge>
+            )}
+            {getStatusBadge(count.status)}
+            <div className="flex gap-1">
+              <Button size="icon" variant="ghost" onClick={(e) => { e.stopPropagation(); onDetail(count); }} data-testid={`button-detail-${count.id}`}>
+                <Eye className="h-4 w-4" />
+              </Button>
+              {isFabrikaMudur && ["planned", "in_progress"].includes(count.status) && (
+                <Button size="icon" variant="ghost" onClick={(e) => { e.stopPropagation(); onAssign(count); }} data-testid={`button-assign-${count.id}`}>
+                  <UserPlus className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
+          </div>
+        </div>
+        {count.notes && <p className="text-xs text-muted-foreground mt-1 truncate">{count.notes}</p>}
+      </CardContent>
+    </Card>
+  );
+}
+
+function SayimDetailDialog({
+  count, detail, detailLoading, isFabrikaMudur, isCounter, userId,
+  onClose, onAssign, onCount, onQrScan, onFinalize, isFinalizePending,
+  activeCategory, setActiveCategory, searchQuery, setSearchQuery
+}: any) {
+  const assignments = detail?.assignments || [];
+
+  const availableCategories = Array.from(new Set(assignments.map((a: any) => a.inventory_category) as string[])).filter(Boolean);
+
+  const filteredAssignments = assignments.filter((a: any) => {
+    const matchCategory = activeCategory === "all" || a.inventory_category === activeCategory;
+    const matchSearch = !searchQuery ||
+      a.inventory_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      a.inventory_code?.toLowerCase().includes(searchQuery.toLowerCase());
+    return matchCategory && matchSearch;
+  });
+
+  const groupedByCategory: Record<string, any[]> = {};
+  filteredAssignments.forEach((a: any) => {
+    const cat = a.inventory_category || "diger";
+    if (!groupedByCategory[cat]) groupedByCategory[cat] = [];
+    groupedByCategory[cat].push(a);
+  });
+
+  const totalItems = assignments.length;
+  const completedItems = assignments.filter((a: any) => a.status === "completed").length;
+  const discrepancyItems = assignments.filter((a: any) => a.status === "discrepancy").length;
+  const pendingItems = assignments.filter((a: any) => a.status === "pending").length;
+
+  return (
+    <Dialog open={true} onOpenChange={onClose}>
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <ClipboardList className="h-5 w-5" />
+            {MONTHS[(count.month || 1) - 1]} {count.year} Sayimi
+            {getStatusBadge(count.status)}
+          </DialogTitle>
+        </DialogHeader>
+
+        <div className="grid grid-cols-4 gap-2 mb-2">
+          <div className="text-center p-2 bg-muted/50 rounded-lg">
+            <p className="text-lg font-bold">{totalItems}</p>
+            <p className="text-xs text-muted-foreground">Toplam</p>
+          </div>
+          <div className="text-center p-2 bg-green-500/10 rounded-lg">
+            <p className="text-lg font-bold text-green-600 dark:text-green-400">{completedItems}</p>
+            <p className="text-xs text-muted-foreground">Tamamlanan</p>
+          </div>
+          <div className="text-center p-2 bg-red-500/10 rounded-lg">
+            <p className="text-lg font-bold text-red-600 dark:text-red-400">{discrepancyItems}</p>
+            <p className="text-xs text-muted-foreground">Tutarsiz</p>
+          </div>
+          <div className="text-center p-2 bg-amber-500/10 rounded-lg">
+            <p className="text-lg font-bold text-amber-600 dark:text-amber-400">{pendingItems}</p>
+            <p className="text-xs text-muted-foreground">Bekleyen</p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 mb-2">
+          <div className="relative flex-1">
+            <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Urun ara (isim veya kod)..."
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              className="pl-8"
+              data-testid="input-search-product"
+            />
+          </div>
+          {isCounter && ["in_progress", "counting", "planned"].includes(count.status) && (
+            <Button size="sm" variant="outline" onClick={onQrScan} data-testid="button-qr-scan">
+              <Camera className="h-4 w-4 mr-1" />
+              QR Tara
             </Button>
           )}
         </div>
-      </div>
 
-      {/* Summary cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <Card>
-          <CardContent className="p-3">
-            <div className="text-sm text-muted-foreground">Toplam Sayım</div>
-            <div className="text-2xl font-bold" data-testid="text-total-counts">{counts?.length || 0}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-3">
-            <div className="text-sm text-muted-foreground">Tamamlanan</div>
-            <div className="text-2xl font-bold text-green-600" data-testid="text-completed-counts">
-              {counts?.filter((c: any) => c.status === "completed").length || 0}
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-3">
-            <div className="text-sm text-muted-foreground">Devam Eden</div>
-            <div className="text-2xl font-bold text-blue-600" data-testid="text-active-counts">
-              {counts?.filter((c: any) => ["in_progress", "counting", "review"].includes(c.status)).length || 0}
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-3">
-            <div className="text-sm text-muted-foreground">Gecikmiş</div>
-            <div className="text-2xl font-bold text-red-600" data-testid="text-overdue-counts">
-              {counts?.filter((c: any) => c.status === "overdue").length || 0}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Counts table */}
-      <Card>
-        <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Ay</TableHead>
-                <TableHead>Tarih</TableHead>
-                <TableHead>Durum</TableHead>
-                <TableHead>İlerleme</TableHead>
-                <TableHead>Tutarsızlık</TableHead>
-                <TableHead className="text-right">İşlem</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {(!counts || counts.length === 0) ? (
-                <TableRow>
-                  <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
-                    Bu yıl için sayım kaydı bulunmuyor
-                  </TableCell>
-                </TableRow>
-              ) : (
-                counts.map((count: any) => (
-                  <TableRow key={count.id} data-testid={`row-count-${count.id}`}>
-                    <TableCell className="font-medium">
-                      {MONTHS[(count.month || 1) - 1]} {count.year}
-                    </TableCell>
-                    <TableCell>
-                      {count.scheduled_date ? new Date(count.scheduled_date).toLocaleDateString("tr-TR") : "-"}
-                    </TableCell>
-                    <TableCell>{getStatusBadge(count.status)}</TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-1">
-                        <span className="text-sm">{count.completed_items || 0}/{count.total_items || 0}</span>
-                        <div className="w-16 h-2 bg-muted rounded-full overflow-hidden">
-                          <div
-                            className="h-full bg-primary rounded-full"
-                            style={{ width: `${count.total_items ? ((count.completed_items || 0) / count.total_items * 100) : 0}%` }}
-                          />
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      {count.discrepancy_items > 0 && (
-                        <Badge variant="destructive">{count.discrepancy_items} tutarsız</Badge>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-1">
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          onClick={() => { setSelectedCount(count); setShowDetailDialog(true); }}
-                          data-testid={`button-view-count-${count.id}`}
-                        >
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                        {isFabrikaMudur && count.status === "planned" && (
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            onClick={() => { setSelectedCount(count); setShowAssignDialog(true); setAssignmentMap({}); }}
-                            data-testid={`button-assign-count-${count.id}`}
-                          >
-                            <UserPlus className="h-4 w-4" />
-                          </Button>
-                        )}
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
-
-      {/* Create Count Dialog */}
-      <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
-        <DialogContent className="max-w-md" aria-describedby="create-count-desc">
-          <DialogHeader>
-            <DialogTitle>Yeni Stok Sayımı Oluştur</DialogTitle>
-          </DialogHeader>
-          <p id="create-count-desc" className="text-sm text-muted-foreground">Aylık stok sayımı planla</p>
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label>Ay</Label>
-                <Select value={newMonth} onValueChange={setNewMonth}>
-                  <SelectTrigger data-testid="select-new-month"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {MONTHS.map((m, i) => (
-                      <SelectItem key={i} value={(i + 1).toString()}>{m}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label>Yıl</Label>
-                <Select value={newYear} onValueChange={setNewYear}>
-                  <SelectTrigger data-testid="select-new-year"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {[2024, 2025, 2026].map((y) => (
-                      <SelectItem key={y} value={y.toString()}>{y}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <div>
-              <Label>Sayım Tarihi (Ayın son 5 günü)</Label>
-              <Input
-                type="date"
-                value={newDate}
-                onChange={(e) => setNewDate(e.target.value)}
-                data-testid="input-scheduled-date"
-              />
-              <p className="text-xs text-muted-foreground mt-1">Seçilen tarih ayın son 5 günü içinde olmalıdır</p>
-            </div>
-            <div>
-              <Label>Notlar</Label>
-              <Textarea
-                value={newNotes}
-                onChange={(e) => setNewNotes(e.target.value)}
-                placeholder="Sayım ile ilgili notlar..."
-                data-testid="textarea-count-notes"
-              />
-            </div>
+        <ScrollArea className="w-full">
+          <div className="flex gap-1 pb-2">
             <Button
-              className="w-full"
-              onClick={handleCreate}
-              disabled={!newDate || createMutation.isPending}
-              data-testid="button-submit-create-count"
+              size="sm"
+              variant={activeCategory === "all" ? "default" : "outline"}
+              onClick={() => setActiveCategory("all")}
+              className="whitespace-nowrap"
+              data-testid="category-all"
             >
-              {createMutation.isPending ? "Oluşturuluyor..." : "Sayım Oluştur"}
+              <Boxes className="h-3.5 w-3.5 mr-1" />
+              Tumu ({assignments.length})
             </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Detail Dialog */}
-      <Dialog open={showDetailDialog} onOpenChange={setShowDetailDialog}>
-        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto" aria-describedby="detail-desc">
-          <DialogHeader>
-            <DialogTitle>
-              Sayım Detayı - {selectedCount && `${MONTHS[(selectedCount.month || 1) - 1]} ${selectedCount.year}`}
-            </DialogTitle>
-          </DialogHeader>
-          <p id="detail-desc" className="text-sm text-muted-foreground">Sayım kalemleri ve durumları</p>
-          {detailLoading ? (
-            <Skeleton className="h-40" />
-          ) : countDetail ? (
-            <div className="space-y-3">
-              <div className="flex flex-wrap gap-2 items-center">
-                {getStatusBadge(countDetail.status)}
-                <span className="text-sm text-muted-foreground">
-                  Tarih: {countDetail.scheduled_date ? new Date(countDetail.scheduled_date).toLocaleDateString("tr-TR") : "-"}
-                </span>
-                {countDetail.created_by_name && (
-                  <span className="text-sm text-muted-foreground">Oluşturan: {countDetail.created_by_name}</span>
-                )}
-              </div>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Stok Kodu</TableHead>
-                    <TableHead>Ürün</TableHead>
-                    <TableHead>Birim</TableHead>
-                    <TableHead>Sistem Stok</TableHead>
-                    <TableHead>Sayımcı 1</TableHead>
-                    <TableHead>Sayımcı 2</TableHead>
-                    <TableHead>Durum</TableHead>
-                    <TableHead className="text-right">İşlem</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {countDetail.assignments?.map((a: any) => {
-                    const canCount = isCounter && (a.counter_1_id === user?.id || a.counter_2_id === user?.id) &&
-                      (a.status === "pending" || a.status === "counting" || a.status === "discrepancy");
-                    return (
-                      <TableRow key={a.id} data-testid={`row-assignment-${a.id}`}>
-                        <TableCell className="font-mono text-sm">{a.inventory_code}</TableCell>
-                        <TableCell>{a.inventory_name}</TableCell>
-                        <TableCell>{a.unit}</TableCell>
-                        <TableCell>{parseFloat(a.current_stock || "0").toFixed(2)}</TableCell>
-                        <TableCell>{a.counter1_name || <span className="text-muted-foreground">-</span>}</TableCell>
-                        <TableCell>{a.counter2_name || <span className="text-muted-foreground">-</span>}</TableCell>
-                        <TableCell>{getStatusBadge(a.status)}</TableCell>
-                        <TableCell className="text-right">
-                          {canCount && (
-                            <Button
-                              size="sm"
-                              onClick={() => { setSelectedAssignment(a); setShowCountDialog(true); setCountQuantity(""); setCountNotes(""); }}
-                              data-testid={`button-count-${a.id}`}
-                            >
-                              <Hash className="h-3 w-3 mr-1" />
-                              {a.status === "discrepancy" ? "Tekrar Say" : "Say"}
-                            </Button>
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            </div>
-          ) : null}
-        </DialogContent>
-      </Dialog>
-
-      {/* Assign Counters Dialog */}
-      <Dialog open={showAssignDialog} onOpenChange={setShowAssignDialog}>
-        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto" aria-describedby="assign-desc">
-          <DialogHeader>
-            <DialogTitle>Sayımcı Atama</DialogTitle>
-          </DialogHeader>
-          <p id="assign-desc" className="text-sm text-muted-foreground">Her kalem için 2 bağımsız sayımcı atayın</p>
-          {countDetail ? (
-            <div className="space-y-3">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Ürün</TableHead>
-                    <TableHead>Sayımcı 1</TableHead>
-                    <TableHead>Sayımcı 2</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {countDetail.assignments?.map((a: any) => (
-                    <TableRow key={a.id}>
-                      <TableCell>{a.inventory_name} ({a.inventory_code})</TableCell>
-                      <TableCell>
-                        <Select
-                          value={assignmentMap[a.id]?.counter1Id || ""}
-                          onValueChange={(v) => setAssignmentMap(prev => ({
-                            ...prev,
-                            [a.id]: { ...prev[a.id], counter1Id: v, counter2Id: prev[a.id]?.counter2Id || "" }
-                          }))}
-                        >
-                          <SelectTrigger className="w-40" data-testid={`select-counter1-${a.id}`}>
-                            <SelectValue placeholder="Sayımcı 1" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {factoryWorkers?.map((w: any) => (
-                              <SelectItem key={w.id} value={w.id}>
-                                {w.first_name} {w.last_name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </TableCell>
-                      <TableCell>
-                        <Select
-                          value={assignmentMap[a.id]?.counter2Id || ""}
-                          onValueChange={(v) => setAssignmentMap(prev => ({
-                            ...prev,
-                            [a.id]: { ...prev[a.id], counter1Id: prev[a.id]?.counter1Id || "", counter2Id: v }
-                          }))}
-                        >
-                          <SelectTrigger className="w-40" data-testid={`select-counter2-${a.id}`}>
-                            <SelectValue placeholder="Sayımcı 2" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {factoryWorkers?.filter((w: any) => w.id !== assignmentMap[a.id]?.counter1Id).map((w: any) => (
-                              <SelectItem key={w.id} value={w.id}>
-                                {w.first_name} {w.last_name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-              <div className="flex justify-end">
+            {availableCategories.map((cat: string) => {
+              const cfg = CATEGORY_CONFIG[cat] || { label: cat, icon: Package, color: "" };
+              const Icon = cfg.icon;
+              const catCount = assignments.filter((a: any) => a.inventory_category === cat).length;
+              return (
                 <Button
-                  onClick={handleAssignCounters}
-                  disabled={assignMutation.isPending}
-                  data-testid="button-submit-assignments"
+                  key={cat}
+                  size="sm"
+                  variant={activeCategory === cat ? "default" : "outline"}
+                  onClick={() => setActiveCategory(cat)}
+                  className="whitespace-nowrap"
+                  data-testid={`category-${cat}`}
                 >
-                  {assignMutation.isPending ? "Atanıyor..." : "Sayımcıları Ata"}
+                  <Icon className="h-3.5 w-3.5 mr-1" />
+                  {cfg.label} ({catCount})
                 </Button>
-              </div>
+              );
+            })}
+          </div>
+        </ScrollArea>
+
+        <ScrollArea className="flex-1 min-h-0">
+          {detailLoading ? (
+            <div className="space-y-2 p-2">{[1,2,3].map(i => <Skeleton key={i} className="h-16 w-full" />)}</div>
+          ) : Object.keys(groupedByCategory).length === 0 ? (
+            <div className="py-8 text-center text-muted-foreground">
+              <Package className="h-8 w-8 mx-auto mb-2 opacity-50" />
+              <p className="text-sm">{searchQuery ? "Arama sonucu bulunamadi" : "Urun bulunamadi"}</p>
             </div>
           ) : (
-            <Skeleton className="h-40" />
-          )}
-        </DialogContent>
-      </Dialog>
-
-      {/* Count Entry Dialog */}
-      <Dialog open={showCountDialog} onOpenChange={setShowCountDialog}>
-        <DialogContent className="max-w-md" aria-describedby="count-entry-desc">
-          <DialogHeader>
-            <DialogTitle>
-              {selectedAssignment?.status === "discrepancy" ? "Tekrar Sayım" : "Sayım Girişi"}
-            </DialogTitle>
-          </DialogHeader>
-          <p id="count-entry-desc" className="text-sm text-muted-foreground">
-            {selectedAssignment?.inventory_name} ({selectedAssignment?.inventory_code})
-          </p>
-          {selectedAssignment && (
-            <div className="space-y-4">
-              {selectedAssignment.status === "discrepancy" && (
-                <Card className="border-destructive">
-                  <CardContent className="p-3">
-                    <div className="flex items-center gap-2 text-destructive">
-                      <AlertTriangle className="h-4 w-4" />
-                      <span className="text-sm font-medium">İki sayımcı arasında tutarsızlık var. Lütfen tekrar sayın.</span>
+            <div className="space-y-3 p-1">
+              {Object.entries(groupedByCategory).map(([cat, items]) => {
+                const cfg = CATEGORY_CONFIG[cat] || { label: cat, icon: Package, color: "" };
+                const Icon = cfg.icon;
+                return (
+                  <div key={cat}>
+                    <div className="flex items-center gap-2 mb-1.5 sticky top-0 bg-background z-10 py-1">
+                      <Icon className={`h-4 w-4 ${cfg.color}`} />
+                      <span className="text-sm font-semibold">{cfg.label}</span>
+                      <Badge variant="secondary">{items.length}</Badge>
                     </div>
-                  </CardContent>
-                </Card>
-              )}
-              <div>
-                <Label>Sistem Stok Miktarı</Label>
-                <div className="text-lg font-semibold">
-                  {parseFloat(selectedAssignment.current_stock || "0").toFixed(2)} {selectedAssignment.unit}
-                </div>
-              </div>
-              <div>
-                <Label>Sayılan Miktar</Label>
-                <Input
-                  type="number"
-                  step="0.001"
-                  value={countQuantity}
-                  onChange={(e) => setCountQuantity(e.target.value)}
-                  placeholder="Gerçek stok miktarını girin"
-                  data-testid="input-counted-quantity"
-                />
-              </div>
-              {countQuantity && (
-                <div>
-                  <Label>Fark</Label>
-                  <div className={`text-lg font-semibold ${
-                    parseFloat(countQuantity) - parseFloat(selectedAssignment.current_stock || "0") !== 0
-                      ? "text-destructive" : "text-green-600"
-                  }`}>
-                    {(parseFloat(countQuantity) - parseFloat(selectedAssignment.current_stock || "0")).toFixed(3)} {selectedAssignment.unit}
+                    <div className="space-y-1">
+                      {items.map((a: any) => (
+                        <AssignmentRow
+                          key={a.id}
+                          assignment={a}
+                          isCounter={isCounter}
+                          userId={userId}
+                          countStatus={count.status}
+                          onCount={() => onCount(a)}
+                        />
+                      ))}
+                    </div>
                   </div>
-                </div>
-              )}
-              <div>
-                <Label>Notlar</Label>
-                <Textarea
-                  value={countNotes}
-                  onChange={(e) => setCountNotes(e.target.value)}
-                  placeholder="Sayım notları..."
-                  data-testid="textarea-count-notes"
-                />
-              </div>
-              <Button
-                className="w-full"
-                onClick={handleCountSubmit}
-                disabled={!countQuantity || countEntryMutation.isPending}
-                data-testid="button-submit-count"
-              >
-                {countEntryMutation.isPending ? "Kaydediliyor..." : "Sayımı Kaydet"}
-              </Button>
+                );
+              })}
             </div>
           )}
-        </DialogContent>
-      </Dialog>
+        </ScrollArea>
+
+        <DialogFooter className="mt-2 flex items-center justify-between gap-2">
+          {isFabrikaMudur && ["in_progress", "counting"].includes(count.status) && (
+            <Button
+              variant="default"
+              onClick={() => onFinalize(count.id)}
+              disabled={isFinalizePending}
+              data-testid="button-finalize-count"
+            >
+              {isFinalizePending && <Loader2 className="h-4 w-4 animate-spin mr-1" />}
+              <CheckCircle className="h-4 w-4 mr-1" />
+              Sayimi Sonlandir
+            </Button>
+          )}
+          <Button variant="outline" onClick={onClose}>Kapat</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function AssignmentRow({ assignment: a, isCounter, userId, countStatus, onCount }: any) {
+  const canCount = isCounter && ["in_progress", "counting", "planned"].includes(countStatus) &&
+    (a.counter_1_id === userId || a.counter_2_id === userId) &&
+    a.status !== "completed";
+
+  const isDiscrepancy = a.status === "discrepancy";
+  const isCompleted = a.status === "completed";
+
+  return (
+    <Card className={`${isDiscrepancy ? "border-red-500/50" : isCompleted ? "border-green-500/30" : ""}`} data-testid={`assignment-row-${a.id}`}>
+      <CardContent className="py-2 px-3">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 min-w-0 flex-1">
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-1.5">
+                <span className="text-sm font-medium truncate">{a.inventory_name}</span>
+                <span className="text-xs text-muted-foreground shrink-0">{a.inventory_code}</span>
+              </div>
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <span>Sistem: {parseFloat(a.system_quantity || 0).toFixed(1)} {a.inventory_unit}</span>
+                {a.counted_avg && <span>Sayim: {parseFloat(a.counted_avg).toFixed(1)}</span>}
+                {a.difference_display && (
+                  <span className={parseFloat(a.difference_display) < 0 ? "text-red-600 dark:text-red-400 font-medium" : parseFloat(a.difference_display) > 0 ? "text-green-600 dark:text-green-400 font-medium" : ""}>
+                    Fark: {parseFloat(a.difference_display) > 0 ? "+" : ""}{parseFloat(a.difference_display).toFixed(1)}
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+          <div className="flex items-center gap-1.5 shrink-0">
+            {a.entry_count > 0 && (
+              <Badge variant="secondary" className="text-xs">{a.entry_count}/2</Badge>
+            )}
+            {getStatusBadge(a.status)}
+            {canCount && (
+              <Button size="sm" onClick={onCount} data-testid={`button-count-${a.id}`}>
+                <Hash className="h-3.5 w-3.5 mr-1" />
+                Say
+              </Button>
+            )}
+            {isDiscrepancy && canCount && (
+              <Button size="sm" variant="destructive" onClick={onCount} data-testid={`button-recount-${a.id}`}>
+                <RefreshCw className="h-3.5 w-3.5 mr-1" />
+                Tekrar
+              </Button>
+            )}
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function CountEntryDialog({ assignment, countQuantity, setCountQuantity, countNotes, setCountNotes, isPending, onSubmit, onClose }: any) {
+  const isRecount = assignment.status === "discrepancy" || assignment.status === "recounting";
+
+  return (
+    <Dialog open={true} onOpenChange={onClose}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Hash className="h-5 w-5" />
+            {isRecount ? "Tekrar Sayim" : "Sayim Girisi"}
+          </DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3">
+          <Card>
+            <CardContent className="pt-3 pb-3">
+              <p className="font-medium">{assignment.inventory_name}</p>
+              <p className="text-xs text-muted-foreground">Kod: {assignment.inventory_code}</p>
+              <p className="text-xs text-muted-foreground">Birim: {assignment.inventory_unit}</p>
+              <p className="text-xs text-muted-foreground">Sistem Miktari: {parseFloat(assignment.system_quantity || 0).toFixed(1)}</p>
+            </CardContent>
+          </Card>
+
+          <div>
+            <Label>Sayilan Miktar</Label>
+            <Input
+              type="number"
+              step="0.001"
+              value={countQuantity}
+              onChange={e => setCountQuantity(e.target.value)}
+              placeholder="Ornegin: 45.5"
+              autoFocus
+              data-testid="input-count-quantity"
+            />
+          </div>
+
+          <div>
+            <Label>Notlar (Opsiyonel)</Label>
+            <Textarea
+              value={countNotes}
+              onChange={e => setCountNotes(e.target.value)}
+              placeholder="Sayim notu..."
+              data-testid="input-count-notes"
+            />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>Iptal</Button>
+          <Button
+            onClick={() => onSubmit(isRecount)}
+            disabled={isPending || !countQuantity}
+            data-testid="button-submit-count"
+          >
+            {isPending && <Loader2 className="h-4 w-4 animate-spin mr-1" />}
+            {isRecount ? "Tekrar Sayimi Kaydet" : "Sayimi Kaydet"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function QrScannerDialog({ onScan, onClose }: { onScan: (code: string) => void; onClose: () => void }) {
+  const videoRef = useRef<HTMLDivElement>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [manualCode, setManualCode] = useState("");
+  const scannerRef = useRef<any>(null);
+
+  useEffect(() => {
+    let html5QrCode: any = null;
+
+    const startScanner = async () => {
+      try {
+        const { Html5Qrcode } = await import("html5-qrcode");
+        if (!videoRef.current) return;
+
+        html5QrCode = new Html5Qrcode("qr-reader");
+        scannerRef.current = html5QrCode;
+
+        await html5QrCode.start(
+          { facingMode: "environment" },
+          { fps: 10, qrbox: { width: 250, height: 250 } },
+          (decodedText: string) => {
+            html5QrCode.stop().catch(() => {});
+            onScan(decodedText);
+          },
+          () => {}
+        );
+      } catch (err: any) {
+        setError("Kamera erisimi saglanamadi. Manuel kod giriniz.");
+      }
+    };
+
+    startScanner();
+
+    return () => {
+      if (scannerRef.current) {
+        scannerRef.current.stop().catch(() => {});
+      }
+    };
+  }, [onScan]);
+
+  return (
+    <Dialog open={true} onOpenChange={onClose}>
+      <DialogContent className="max-w-sm">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Camera className="h-5 w-5" />
+            QR Kod Tara
+          </DialogTitle>
+        </DialogHeader>
+
+        <div className="space-y-3">
+          {!error && (
+            <div id="qr-reader" ref={videoRef} className="w-full rounded-lg overflow-hidden" />
+          )}
+
+          {error && (
+            <div className="text-center py-4 text-muted-foreground">
+              <Camera className="h-8 w-8 mx-auto mb-2 opacity-50" />
+              <p className="text-sm">{error}</p>
+            </div>
+          )}
+
+          <div className="border-t pt-3">
+            <Label>Manuel Kod Girisi</Label>
+            <div className="flex gap-2 mt-1">
+              <Input
+                value={manualCode}
+                onChange={e => setManualCode(e.target.value)}
+                placeholder="INV-HM-001"
+                data-testid="input-manual-qr"
+              />
+              <Button
+                onClick={() => {
+                  if (manualCode.trim()) {
+                    if (scannerRef.current) scannerRef.current.stop().catch(() => {});
+                    onScan(manualCode.trim());
+                  }
+                }}
+                disabled={!manualCode.trim()}
+                data-testid="button-manual-search"
+              >
+                <Search className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>Kapat</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function SayimRaporlari({ filterYear }: { filterYear: number }) {
+  const { data: reports, isLoading } = useQuery<any[]>({
+    queryKey: ["/api/inventory-count-reports", filterYear],
+    queryFn: async () => {
+      const res = await fetch(`/api/inventory-count-reports?year=${filterYear}`);
+      if (!res.ok) return [];
+      return res.json();
+    },
+  });
+
+  if (isLoading) {
+    return <div className="space-y-2">{[1,2,3].map(i => <Skeleton key={i} className="h-16 w-full" />)}</div>;
+  }
+
+  const highSeverity = reports?.filter(r => r.severity === "high" || r.severity === "critical") || [];
+  const mediumSeverity = reports?.filter(r => r.severity === "medium") || [];
+  const lowSeverity = reports?.filter(r => r.severity === "low") || [];
+
+  return (
+    <div className="space-y-3">
+      <div className="grid grid-cols-3 gap-2">
+        <Card>
+          <CardContent className="pt-3 pb-3 text-center">
+            <AlertTriangle className="h-5 w-5 text-red-500 mx-auto mb-1" />
+            <p className="text-lg font-bold text-red-600 dark:text-red-400">{highSeverity.length}</p>
+            <p className="text-xs text-muted-foreground">Kritik Fark</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-3 pb-3 text-center">
+            <AlertCircle className="h-5 w-5 text-amber-500 mx-auto mb-1" />
+            <p className="text-lg font-bold text-amber-600 dark:text-amber-400">{mediumSeverity.length}</p>
+            <p className="text-xs text-muted-foreground">Orta Fark</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-3 pb-3 text-center">
+            <CheckCircle className="h-5 w-5 text-green-500 mx-auto mb-1" />
+            <p className="text-lg font-bold text-green-600 dark:text-green-400">{lowSeverity.length}</p>
+            <p className="text-xs text-muted-foreground">Dusuk Fark</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {(!reports || reports.length === 0) ? (
+        <Card>
+          <CardContent className="py-8 text-center text-muted-foreground">
+            <BarChart3 className="h-8 w-8 mx-auto mb-2 opacity-50" />
+            <p className="text-sm">Henuz tutarsizlik raporu bulunmuyor</p>
+            <p className="text-xs mt-1">Sayimlar tamamlandiginda tutarsizlik raporlari burada gorunecektir</p>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="space-y-2">
+          {reports.map((r: any) => (
+            <Card key={r.id} className={r.severity === "critical" || r.severity === "high" ? "border-red-500/50" : ""} data-testid={`report-${r.id}`}>
+              <CardContent className="pt-3 pb-3">
+                <div className="flex items-center justify-between gap-2 flex-wrap">
+                  <div>
+                    <p className="text-sm font-medium">{r.inventory_name || `Urun #${r.inventory_id}`}</p>
+                    <p className="text-xs text-muted-foreground">
+                      Sistem: {parseFloat(r.system_quantity).toFixed(1)} | Sayim: {parseFloat(r.counted_quantity).toFixed(1)} | Fark: {parseFloat(r.difference).toFixed(1)} ({parseFloat(r.difference_percent).toFixed(1)}%)
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Badge variant={r.severity === "critical" || r.severity === "high" ? "destructive" : r.severity === "medium" ? "outline" : "secondary"}>
+                      {r.severity === "critical" ? "Kritik" : r.severity === "high" ? "Yuksek" : r.severity === "medium" ? "Orta" : "Dusuk"}
+                    </Badge>
+                    {r.resolved_at && <Badge variant="default">Cozuldu</Badge>}
+                  </div>
+                </div>
+                {r.action_taken && <p className="text-xs text-muted-foreground mt-1">{r.action_taken}</p>}
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function TedarikciPuanlama() {
+  const { data: scores, isLoading } = useQuery<any[]>({
+    queryKey: ["/api/supplier-performance-scores"],
+    queryFn: async () => {
+      const res = await fetch("/api/supplier-performance-scores");
+      if (!res.ok) return [];
+      return res.json();
+    },
+  });
+
+  const { data: suppliers } = useQuery<any[]>({
+    queryKey: ["/api/suppliers"],
+    queryFn: async () => {
+      const res = await fetch("/api/suppliers");
+      if (!res.ok) return [];
+      const data = await res.json();
+      return data.suppliers || data || [];
+    },
+  });
+
+  if (isLoading) {
+    return <div className="space-y-2">{[1,2,3].map(i => <Skeleton key={i} className="h-16 w-full" />)}</div>;
+  }
+
+  return (
+    <div className="space-y-3">
+      <h3 className="text-sm font-semibold flex items-center gap-2">
+        <Truck className="h-4 w-4" />
+        Tedarikci Performans Puanlari
+      </h3>
+
+      {(!suppliers || suppliers.length === 0) ? (
+        <Card>
+          <CardContent className="py-8 text-center text-muted-foreground">
+            <Truck className="h-8 w-8 mx-auto mb-2 opacity-50" />
+            <p className="text-sm">Tedarikci kaydi bulunmuyor</p>
+            <p className="text-xs mt-1">Tedarikci Yonetimi bolumunden tedarikci ekleyebilirsiniz</p>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="space-y-2">
+          {suppliers.map((s: any) => {
+            const supplierScores = scores?.filter(sc => sc.supplier_id === s.id) || [];
+            const latestScore = supplierScores[0];
+            const overallScore = latestScore ? parseFloat(latestScore.overall_score || 0) : parseFloat(s.performance_score || 0);
+
+            return (
+              <Card key={s.id} data-testid={`supplier-score-${s.id}`}>
+                <CardContent className="pt-3 pb-3">
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <div>
+                      <p className="text-sm font-medium">{s.name}</p>
+                      <p className="text-xs text-muted-foreground">{s.code} | {s.city || "Sehir belirtilmemis"}</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="text-right">
+                        <p className={`text-lg font-bold ${overallScore >= 80 ? "text-green-600 dark:text-green-400" : overallScore >= 60 ? "text-amber-600 dark:text-amber-400" : "text-red-600 dark:text-red-400"}`}>
+                          {overallScore.toFixed(1)}
+                        </p>
+                        <p className="text-xs text-muted-foreground">Genel Puan</p>
+                      </div>
+                    </div>
+                  </div>
+                  {latestScore && (
+                    <div className="grid grid-cols-3 gap-2 mt-2">
+                      <div className="text-center p-1.5 bg-muted/50 rounded">
+                        <p className="text-sm font-semibold">{parseFloat(latestScore.delivery_score || 0).toFixed(0)}</p>
+                        <p className="text-xs text-muted-foreground">Sevkiyat</p>
+                      </div>
+                      <div className="text-center p-1.5 bg-muted/50 rounded">
+                        <p className="text-sm font-semibold">{parseFloat(latestScore.price_performance_score || 0).toFixed(0)}</p>
+                        <p className="text-xs text-muted-foreground">Fiyat</p>
+                      </div>
+                      <div className="text-center p-1.5 bg-muted/50 rounded">
+                        <p className="text-sm font-semibold">{parseFloat(latestScore.quality_score || 0).toFixed(0)}</p>
+                        <p className="text-xs text-muted-foreground">Kalite</p>
+                      </div>
+                    </div>
+                  )}
+                  <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
+                    <span>Toplam Siparis: {s.total_orders || 0}</span>
+                    <span>Zamaninda: %{parseFloat(s.on_time_delivery_rate || 0).toFixed(0)}</span>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

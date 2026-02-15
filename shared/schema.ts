@@ -10811,39 +10811,39 @@ export type AiSystemConfig = typeof aiSystemConfig.$inferSelect;
 export const inventoryUnitEnum = ["kg", "gr", "lt", "ml", "adet", "paket", "kutu", "koli"] as const;
 export type InventoryUnit = typeof inventoryUnitEnum[number];
 
-export const inventoryCategoryEnum = ["hammadde", "yarimamul", "mamul", "ambalaj", "sarf_malzeme", "temizlik", "diger"] as const;
+export const inventoryCategoryEnum = [
+  "hammadde", "ambalaj", "ekipman", "sube_ekipman",
+  "sube_malzeme", "konsantre", "donut", "tatli", "tuzlu",
+  "cay_grubu", "kahve", "toz_topping", "yarimamul", "mamul", "sarf_malzeme", "temizlik", "diger"
+] as const;
 export type InventoryCategory = typeof inventoryCategoryEnum[number];
 
 export const inventory = pgTable("inventory", {
   id: serial("id").primaryKey(),
   
-  // Ürün bilgileri
   code: varchar("code", { length: 50 }).notNull().unique(),
   name: varchar("name", { length: 255 }).notNull(),
   description: text("description"),
-  category: varchar("category", { length: 50 }).notNull(), // hammadde, yarimamul, mamul, ambalaj, sarf_malzeme
-  unit: varchar("unit", { length: 20 }).notNull(), // kg, gr, lt, ml, adet, paket
+  category: varchar("category", { length: 50 }).notNull(),
+  subCategory: varchar("sub_category", { length: 50 }),
+  unit: varchar("unit", { length: 20 }).notNull(),
   
-  // Stok miktarları
   currentStock: numeric("current_stock", { precision: 12, scale: 3 }).default("0").notNull(),
   minimumStock: numeric("minimum_stock", { precision: 12, scale: 3 }).default("0").notNull(),
   maximumStock: numeric("maximum_stock", { precision: 12, scale: 3 }),
   reorderPoint: numeric("reorder_point", { precision: 12, scale: 3 }),
   
-  // Fiyat bilgileri
   unitCost: numeric("unit_cost", { precision: 10, scale: 2 }).default("0"),
   lastPurchasePrice: numeric("last_purchase_price", { precision: 10, scale: 2 }),
   
-  // Konum ve depolama
   warehouseLocation: varchar("warehouse_location", { length: 100 }),
   storageConditions: text("storage_conditions"),
-  shelfLife: integer("shelf_life"), // gün cinsinden raf ömrü
+  shelfLife: integer("shelf_life"),
   
-  // Barkod ve takip
   barcode: varchar("barcode", { length: 100 }),
+  qrCode: varchar("qr_code", { length: 255 }),
   batchTracking: boolean("batch_tracking").default(false),
   
-  // Durum
   isActive: boolean("is_active").default(true).notNull(),
   
   createdById: varchar("created_by_id").references(() => users.id, { onDelete: "set null" }),
@@ -10854,6 +10854,7 @@ export const inventory = pgTable("inventory", {
   index("inventory_category_idx").on(table.category),
   index("inventory_barcode_idx").on(table.barcode),
   index("inventory_active_idx").on(table.isActive),
+  index("inventory_qr_code_idx").on(table.qrCode),
 ]);
 
 export const insertInventorySchema = createInsertSchema(inventory).omit({
@@ -12588,3 +12589,65 @@ export const insertFactoryManagementScoreSchema = createInsertSchema(factoryMana
 });
 export type InsertFactoryManagementScore = z.infer<typeof insertFactoryManagementScoreSchema>;
 export type FactoryManagementScore = typeof factoryManagementScores.$inferSelect;
+
+// ========================================
+// TEDARİKÇİ PERFORMANS PUANLAMA
+// ========================================
+
+export const supplierPerformanceScores = pgTable("supplier_performance_scores", {
+  id: serial("id").primaryKey(),
+  supplierId: integer("supplier_id").references(() => suppliers.id, { onDelete: "cascade" }).notNull(),
+  month: integer("month").notNull(),
+  year: integer("year").notNull(),
+  deliveryScore: numeric("delivery_score", { precision: 5, scale: 2 }).default("0"),
+  pricePerformanceScore: numeric("price_performance_score", { precision: 5, scale: 2 }).default("0"),
+  qualityScore: numeric("quality_score", { precision: 5, scale: 2 }).default("0"),
+  overallScore: numeric("overall_score", { precision: 5, scale: 2 }).default("0"),
+  totalDeliveries: integer("total_deliveries").default(0),
+  onTimeDeliveries: integer("on_time_deliveries").default(0),
+  lateDeliveries: integer("late_deliveries").default(0),
+  avgDeliveryDays: numeric("avg_delivery_days", { precision: 5, scale: 1 }).default("0"),
+  returnCount: integer("return_count").default(0),
+  complaintCount: integer("complaint_count").default(0),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("sup_perf_supplier_idx").on(table.supplierId),
+  index("sup_perf_month_year_idx").on(table.month, table.year),
+]);
+
+export const insertSupplierPerformanceScoreSchema = createInsertSchema(supplierPerformanceScores).omit({
+  id: true,
+  createdAt: true,
+});
+export type InsertSupplierPerformanceScore = z.infer<typeof insertSupplierPerformanceScoreSchema>;
+export type SupplierPerformanceScore = typeof supplierPerformanceScores.$inferSelect;
+
+// ========================================
+// SAYIM TUTARSIZLIK RAPORLARI
+// ========================================
+
+export const inventoryCountReports = pgTable("inventory_count_reports", {
+  id: serial("id").primaryKey(),
+  countId: integer("count_id").references(() => inventoryCounts.id, { onDelete: "cascade" }).notNull(),
+  inventoryId: integer("inventory_id").references(() => inventory.id, { onDelete: "cascade" }).notNull(),
+  systemQuantity: numeric("system_quantity", { precision: 12, scale: 3 }).notNull(),
+  countedQuantity: numeric("counted_quantity", { precision: 12, scale: 3 }).notNull(),
+  difference: numeric("difference", { precision: 12, scale: 3 }).notNull(),
+  differencePercent: numeric("difference_percent", { precision: 5, scale: 2 }).notNull(),
+  severity: varchar("severity", { length: 20 }).notNull().default("low"),
+  notifiedRoles: text("notified_roles").array(),
+  actionTaken: text("action_taken"),
+  resolvedAt: timestamp("resolved_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("inv_report_count_idx").on(table.countId),
+  index("inv_report_severity_idx").on(table.severity),
+]);
+
+export const insertInventoryCountReportSchema = createInsertSchema(inventoryCountReports).omit({
+  id: true,
+  createdAt: true,
+});
+export type InsertInventoryCountReport = z.infer<typeof insertInventoryCountReportSchema>;
+export type InventoryCountReport = typeof inventoryCountReports.$inferSelect;
