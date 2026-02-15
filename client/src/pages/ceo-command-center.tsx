@@ -208,20 +208,20 @@ interface AbuseReport {
 export default function CEOCommandCenter() {
   const { user } = useAuth();
   const [, setLocation] = useLocation();
+  const { toast } = useToast();
 
-  if (user && user.role !== 'ceo' && user.role !== 'cgo') {
-    setLocation('/');
-    return null;
-  }
+  const isCeoOrCgo = user?.role === 'ceo' || user?.role === 'cgo';
 
   const { data: dashboardData, isLoading, isRefetching, refetch } = useQuery<CEODashboardData>({
     queryKey: ["/api/ceo/command-center"],
     refetchInterval: 60000,
+    enabled: isCeoOrCgo,
   });
 
   const { data: abuseReport } = useQuery<AbuseReport>({
     queryKey: ["/api/shift-corrections/abuse-report"],
     refetchInterval: 300000,
+    enabled: isCeoOrCgo,
   });
 
   const { data: evalCoverage } = useQuery<{
@@ -230,7 +230,13 @@ export default function CEOCommandCenter() {
   }>({
     queryKey: ["/api/evaluation-coverage"],
     refetchInterval: 300000,
+    enabled: isCeoOrCgo,
   });
+
+  if (user && !isCeoOrCgo) {
+    setLocation('/');
+    return null;
+  }
 
   if (isLoading) {
     return (

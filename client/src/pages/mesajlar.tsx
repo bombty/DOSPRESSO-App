@@ -462,10 +462,11 @@ function NewMessageForm({
 }: {
   users: User[];
   branches: any[];
-  onSubmit: (data) => void;
+  onSubmit: (data: { recipientId: string; subject: string; body: string; type: string; attachments: any[] }) => void;
   isLoading: boolean;
   currentUser: User | null;
 }) {
+  const [recipientCategory, setRecipientCategory] = useState<'hq' | 'branch'>('hq');
   const [selectedBranchId, setSelectedBranchId] = useState("");
   const [recipientId, setRecipientId] = useState("");
   const [subject, setSubject] = useState("");
@@ -474,149 +475,190 @@ function NewMessageForm({
 
   const isHQ = currentUser && isHQRole(currentUser.role as UserRoleType);
 
-  // Get personel from selected branch (for HQ cascading selection)
-  const branchPersonel = selectedBranchId
-    ? users.filter((u) => u.branchId === parseInt(selectedBranchId) && u.id !== currentUser?.id)
-    : [];
-
-  // Filter users based on messaging permissions
-  const filteredUsers = isHQ && selectedBranchId 
-    ? branchPersonel  // If HQ selected a branch, show only that branch's personnel
-    : users.filter((u) => {
-        if (!currentUser || u.id === currentUser.id) return false;
-        
-        const senderRole = currentUser.role as UserRoleType;
-        const recipientRole = u.role as UserRoleType;
-        
-        // HQ roles can message anyone
-        if (isHQRole(senderRole)) return true;
-        
-        // Supervisors can message HQ or team members in same branch
-        if (senderRole === 'supervisor') {
-          if (isHQRole(recipientRole)) return true;
-          if (u.branchId === currentUser.branchId) return true;
-          return false;
-        }
-        
-        // Branch employees can only message supervisor or HQ
-        if (isBranchRole(senderRole)) {
-          if (isHQRole(recipientRole)) return true;
-          if (recipientRole === 'supervisor' && u.branchId === currentUser.branchId) return true;
-          return false;
-        }
-        
-        return false;
-      });
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!recipientId || !subject || !body) return;
-    
-    onSubmit({
-      recipientId,
-      subject,
-      body,
-      type,
-      attachments: [],
-    });
-  };
-
-  // Role labels for Turkish UI
   const roleLabels: Record<string, string> = {
     admin: "Admin",
     ceo: "CEO",
     cgo: "CGO",
-    muhasebe_ik: "Muhasebe & İK",
-    satinalma: "Satın Alma",
+    muhasebe_ik: "Muhasebe & IK",
+    satinalma: "Satin Alma",
     coach: "Coach",
     marketing: "Marketing",
-    trainer: "Trainer (Eğitmen)",
+    trainer: "Trainer",
     kalite_kontrol: "Kalite Kontrol",
-    fabrika_mudur: "Fabrika Müdürü",
+    fabrika_mudur: "Fabrika Muduru",
     muhasebe: "Muhasebe",
     teknik: "Teknik",
     destek: "Destek",
     fabrika: "Fabrika",
-    yatirimci_hq: "Yatırımcı HQ",
+    yatirimci_hq: "Yatirimci HQ",
     stajyer: "Stajyer",
     bar_buddy: "Bar Buddy",
     barista: "Barista",
     supervisor_buddy: "Supervisor Buddy",
     supervisor: "Supervisor",
-    mudur: "Müdür",
-    yatirimci_branch: "Yatırımcı",
-    fabrika_operator: "Fabrika Operatör",
+    mudur: "Mudur",
+    yatirimci_branch: "Yatirimci",
+    fabrika_operator: "Fabrika Operator",
     fabrika_sorumlu: "Fabrika Sorumlu",
     fabrika_personel: "Fabrika Personel",
   };
 
+  const hqUsers = users.filter((u) => u.id !== currentUser?.id && isHQRole(u.role as UserRoleType));
+  const branchPersonel = selectedBranchId
+    ? users.filter((u) => u.branchId === parseInt(selectedBranchId) && u.id !== currentUser?.id)
+    : [];
+
+  const nonHqFilteredUsers = users.filter((u) => {
+    if (!currentUser || u.id === currentUser.id) return false;
+    const senderRole = currentUser.role as UserRoleType;
+    const recipientRole = u.role as UserRoleType;
+    if (senderRole === 'supervisor' || senderRole === 'mudur' || senderRole === 'yatirimci_branch') {
+      if (isHQRole(recipientRole)) return true;
+      if (u.branchId === currentUser.branchId) return true;
+      return false;
+    }
+    if (isBranchRole(senderRole)) {
+      if (isHQRole(recipientRole)) return true;
+      if ((recipientRole === 'supervisor' || recipientRole === 'mudur') && u.branchId === currentUser.branchId) return true;
+      return false;
+    }
+    if (isHQRole(senderRole)) return true;
+    if (isHQRole(recipientRole)) return true;
+    if (u.branchId === currentUser.branchId) return true;
+    return false;
+  });
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!recipientId || !subject || !body) return;
+    onSubmit({ recipientId, subject, body, type, attachments: [] });
+  };
+
   return (
     <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-2 sm:gap-3" data-testid="form-new-message">
-      {/* HQ cascading selection: Branch → Personnel */}
       {isHQ && (
         <>
-          <div className="flex flex-col gap-3 sm:gap-4">
-            <Label htmlFor="branch">Şube Seçin</Label>
-            <Select value={selectedBranchId} onValueChange={(val) => {
-              setSelectedBranchId(val);
-              setRecipientId(""); // Reset personnel selection
-            }}>
-              <SelectTrigger id="branch" data-testid="select-branch">
-                <SelectValue placeholder="Şube seçin" />
-              </SelectTrigger>
-              <SelectContent>
-                {branches.length === 0 ? (
-                  <div className="p-2 text-sm text-muted-foreground">Şube bulunamadı</div>
-                ) : (
-                  branches.map((branch) => (
-                    <SelectItem key={branch.id} value={branch.id.toString()}>
-                      {branch.name}
-                    </SelectItem>
-                  ))
-                )}
-              </SelectContent>
-            </Select>
+          <div className="flex flex-col gap-2">
+            <Label>Alici Tipi</Label>
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                variant={recipientCategory === 'hq' ? 'default' : 'outline'}
+                className="flex-1"
+                onClick={() => {
+                  setRecipientCategory('hq');
+                  setSelectedBranchId("");
+                  setRecipientId("");
+                }}
+                data-testid="button-category-hq"
+              >
+                Merkez Yonetim
+              </Button>
+              <Button
+                type="button"
+                variant={recipientCategory === 'branch' ? 'default' : 'outline'}
+                className="flex-1"
+                onClick={() => {
+                  setRecipientCategory('branch');
+                  setSelectedBranchId("");
+                  setRecipientId("");
+                }}
+                data-testid="button-category-branch"
+              >
+                Sube Personeli
+              </Button>
+            </div>
           </div>
 
-          <div className="flex flex-col gap-3 sm:gap-4">
-            <Label htmlFor="personnel">Personel Seçin</Label>
-            <Select value={recipientId} onValueChange={setRecipientId} disabled={!selectedBranchId}>
-              <SelectTrigger id="personnel" data-testid="select-personnel">
-                <SelectValue placeholder={selectedBranchId ? "Personel seçin" : "Önce şube seçin"} />
-              </SelectTrigger>
-              <SelectContent>
-                {branchPersonel.length === 0 ? (
-                  <div className="p-2 text-sm text-muted-foreground">
-                    {selectedBranchId ? "Bu şubede personel bulunamadı" : "Şube seçin"}
-                  </div>
-                ) : (
-                  branchPersonel.map((user) => (
-                    <SelectItem key={user.id} value={user.id}>
-                      {user.firstName} {user.lastName} ({roleLabels[user.role || ''] || user.role})
-                    </SelectItem>
-                  ))
-                )}
-              </SelectContent>
-            </Select>
-          </div>
+          {recipientCategory === 'hq' && (
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="hq-recipient">Merkez Personel</Label>
+              <Select value={recipientId} onValueChange={setRecipientId}>
+                <SelectTrigger id="hq-recipient" data-testid="select-hq-recipient">
+                  <SelectValue placeholder="Personel secin" />
+                </SelectTrigger>
+                <SelectContent>
+                  {hqUsers.length === 0 ? (
+                    <div className="p-2 text-sm text-muted-foreground">Merkez personeli bulunamadi</div>
+                  ) : (
+                    hqUsers.map((u) => (
+                      <SelectItem key={u.id} value={u.id}>
+                        {u.firstName} {u.lastName} ({roleLabels[u.role || ''] || u.role})
+                      </SelectItem>
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+          {recipientCategory === 'branch' && (
+            <>
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="branch">Sube Secin</Label>
+                <Select value={selectedBranchId} onValueChange={(val) => {
+                  setSelectedBranchId(val);
+                  setRecipientId("");
+                }}>
+                  <SelectTrigger id="branch" data-testid="select-branch">
+                    <SelectValue placeholder="Sube secin" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {branches.filter((b: any) => b.type !== 'hq' && b.type !== 'factory').length === 0 ? (
+                      <div className="p-2 text-sm text-muted-foreground">Sube bulunamadi</div>
+                    ) : (
+                      branches
+                        .filter((b: any) => b.type !== 'hq' && b.type !== 'factory')
+                        .map((branch: any) => (
+                          <SelectItem key={branch.id} value={branch.id.toString()}>
+                            {branch.name}
+                          </SelectItem>
+                        ))
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="personnel">Personel Secin</Label>
+                <Select value={recipientId} onValueChange={setRecipientId} disabled={!selectedBranchId}>
+                  <SelectTrigger id="personnel" data-testid="select-personnel">
+                    <SelectValue placeholder={selectedBranchId ? "Personel secin" : "Once sube secin"} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {branchPersonel.length === 0 ? (
+                      <div className="p-2 text-sm text-muted-foreground">
+                        {selectedBranchId ? "Bu subede personel bulunamadi" : "Sube secin"}
+                      </div>
+                    ) : (
+                      branchPersonel.map((u) => (
+                        <SelectItem key={u.id} value={u.id}>
+                          {u.firstName} {u.lastName} ({roleLabels[u.role || ''] || u.role})
+                        </SelectItem>
+                      ))
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+            </>
+          )}
         </>
       )}
 
-      {/* Standard recipient selection for non-HQ users */}
       {!isHQ && (
-        <div className="flex flex-col gap-3 sm:gap-4">
-          <Label htmlFor="recipient">Alıcı</Label>
+        <div className="flex flex-col gap-2">
+          <Label htmlFor="recipient">Alici</Label>
           <Select value={recipientId} onValueChange={setRecipientId}>
             <SelectTrigger id="recipient" data-testid="select-recipient">
-              <SelectValue placeholder="Kullanıcı seçin" />
+              <SelectValue placeholder="Kullanici secin" />
             </SelectTrigger>
             <SelectContent>
-              {filteredUsers.length === 0 ? (
-                <div className="p-2 text-sm text-muted-foreground">Mesaj gönderilebilecek kullanıcı yok</div>
+              {nonHqFilteredUsers.length === 0 ? (
+                <div className="p-2 text-sm text-muted-foreground">Mesaj gonderilebilecek kullanici yok</div>
               ) : (
-                filteredUsers.map((user) => (
-                  <SelectItem key={user.id} value={user.id}>
-                    {user.firstName} {user.lastName} ({roleLabels[user.role || ''] || user.role})
+                nonHqFilteredUsers.map((u) => (
+                  <SelectItem key={u.id} value={u.id}>
+                    {u.firstName} {u.lastName} ({roleLabels[u.role || ''] || u.role})
                   </SelectItem>
                 ))
               )}
@@ -625,7 +667,7 @@ function NewMessageForm({
         </div>
       )}
 
-      <div className="flex flex-col gap-3 sm:gap-4">
+      <div className="flex flex-col gap-2">
         <Label htmlFor="subject">Konu</Label>
         <Input
           id="subject"
@@ -636,13 +678,13 @@ function NewMessageForm({
         />
       </div>
 
-      <div className="flex flex-col gap-3 sm:gap-4">
+      <div className="flex flex-col gap-2">
         <Label htmlFor="body">Mesaj</Label>
         <Textarea
           id="body"
           value={body}
           onChange={(e) => setBody(e.target.value)}
-          placeholder="Mesajınızı yazın..."
+          placeholder="Mesajinizi yazin..."
           rows={5}
           data-testid="input-message-body"
         />
@@ -654,7 +696,7 @@ function NewMessageForm({
         className="w-full"
         data-testid="button-submit-new-message"
       >
-        {isLoading ? 'Gönderiliyor...' : 'Gönder'}
+        {isLoading ? 'Gonderiliyor...' : 'Gonder'}
       </Button>
     </form>
   );
