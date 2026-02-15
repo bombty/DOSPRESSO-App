@@ -22,9 +22,15 @@ export default function Dashboard() {
     if (user && isFactoryFloorRole(user.role as any)) {
       setLocation('/fabrika/dashboard');
     }
+    if (user?.role === 'ceo') {
+      setLocation('/ceo-command-center');
+    }
+    if (user?.role === 'cgo') {
+      setLocation('/cgo-command-center');
+    }
   }, [user, setLocation]);
 
-  if (user && isFactoryFloorRole(user.role as any)) {
+  if (user && (isFactoryFloorRole(user.role as any) || user.role === 'ceo' || user.role === 'cgo')) {
     return null;
   }
 

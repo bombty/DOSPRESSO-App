@@ -184,7 +184,10 @@ export function HamburgerMenu() {
         <ScrollArea className="h-[calc(100vh-100px)]">
           <div className="py-1">
             <button
-              onClick={() => handleNavigate("/")}
+              onClick={() => {
+                const homePath = user?.role === 'ceo' ? '/ceo-command-center' : user?.role === 'cgo' ? '/cgo-command-center' : '/';
+                handleNavigate(homePath);
+              }}
               className="w-full flex items-center gap-3 px-4 py-2.5 text-sm hover-elevate transition-colors"
               data-testid="menu-item-home"
             >

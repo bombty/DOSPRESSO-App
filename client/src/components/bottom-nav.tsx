@@ -17,7 +17,11 @@ const NAV_ITEM_CONFIG: Record<string, { icon: any; label: string; getPath: (user
   home: {
     icon: Home,
     label: "Ana Sayfa",
-    getPath: () => "/",
+    getPath: (user) => {
+      if (user?.role === 'ceo') return '/ceo-command-center';
+      if (user?.role === 'cgo') return '/cgo-command-center';
+      return '/';
+    },
   },
   academy: {
     icon: GraduationCap,
@@ -177,7 +181,8 @@ export function BottomNav() {
     });
 
   const isActive = (path: string) => {
-    if (path === "/" || path === "#search") return location === path;
+    if (path === "#search") return false;
+    if (path === "/") return location === "/";
     return location.startsWith(path);
   };
 
