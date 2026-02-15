@@ -14,7 +14,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { ArrowLeft, CheckCircle, XCircle, Clock, BookOpen, Users, Trash2, Plus, GraduationCap, Upload, FileText, Image, Edit2 } from "lucide-react";
+import { ArrowLeft, CheckCircle, XCircle, Clock, BookOpen, Users, Trash2, Plus, GraduationCap, Upload, FileText, Image, Edit2, BarChart3, TrendingUp, Award, Activity } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ConfirmDeleteDialog, useConfirmDelete } from "@/components/confirm-delete-dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel } from "@/components/ui/form";
 import { useForm } from "react-hook-form";
@@ -50,6 +52,31 @@ const trainingModuleSchema = z.object({
   requiredForRole: z.array(z.string()).default([]),
 });
 
+interface GeneratedModulePreview {
+  title?: string;
+  description?: string;
+  estimatedDuration?: number;
+  learningObjectives?: string[];
+  steps?: { stepNumber: number; title: string; content: string }[];
+  quiz?: { questionText: string; options?: string[]; correctOptionIndex?: number }[];
+  scenarioTasks?: { title: string; description: string }[];
+  supervisorChecklist?: { title: string; description: string }[];
+}
+
+interface QuizItem {
+  id: number;
+  title_tr?: string;
+  description_tr?: string;
+}
+
+interface ExamItem {
+  id: number;
+  userId: string;
+  targetRoleId: string;
+  status: string;
+  supervisorNotes?: string;
+}
+
 const ACADEMY_MODULES = [
   { id: 1, name: "Akademi", path: "/akademi", status: "active" },
   { id: 2, name: "Yönetim", path: "/akademi-hq", status: "active" },
@@ -64,6 +91,352 @@ const ACADEMY_MODULES = [
   { id: 11, name: "Seri", path: "/akademi-streak-tracker", status: "active" },
   { id: 12, name: "AI Asistan", path: "/akademi-ai-assistant", status: "active" },
 ];
+
+interface BranchAnalytics {
+  branchId: number;
+  branchName: string;
+  activeStudents: number;
+  completedQuizzes: number;
+  avgScore: number;
+  completionRate: number;
+}
+
+interface TrainingStats {
+  totalModules?: number;
+  publishedModules?: number;
+  draftModules?: number;
+  activePrograms?: number;
+  totalEnrollments?: number;
+  avgCompletionRate?: number;
+  recentQuizResults?: { userId: string; userName?: string; quizTitle?: string; score: number; completedAt?: string }[];
+  personnelProgress?: { userId: string; userName?: string; completedModules: number; totalModules: number; avgScore: number }[];
+}
+
+function RoleDashboardSection({
+  role,
+  branchAnalytics,
+  trainingStats,
+  trainingModules,
+  pendingExams,
+  isLoading,
+}: {
+  role: string;
+  branchAnalytics: BranchAnalytics[];
+  trainingStats: TrainingStats | null;
+  trainingModules: TrainingModule[];
+  pendingExams: any[];
+  isLoading: boolean;
+}) {
+  if (isLoading) {
+    return (
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2" data-testid="role-dashboard-loading">
+        {[1, 2, 3, 4].map((i) => (
+          <Card key={i}>
+            <CardContent className="p-3">
+              <div className="h-4 bg-muted animate-pulse rounded mb-2" />
+              <div className="h-6 bg-muted animate-pulse rounded w-1/2" />
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    );
+  }
+
+  const isCeoOrCgo = role === 'ceo' || role === 'cgo';
+  const isCoach = role === 'coach';
+  const isTrainer = role === 'trainer';
+
+  const totalModules = trainingModules.length;
+  const publishedModules = trainingModules.filter((m) => m.isPublished).length;
+  const draftModules = totalModules - publishedModules;
+  const avgCompletionRate = branchAnalytics.length > 0
+    ? Math.round(branchAnalytics.reduce((sum, b) => sum + (b.completionRate || 0), 0) / branchAnalytics.length)
+    : 0;
+  const totalActiveStudents = branchAnalytics.reduce((sum, b) => sum + (b.activeStudents || 0), 0);
+
+  if (isCeoOrCgo) {
+    return (
+      <div className="space-y-3" data-testid="executive-dashboard-section">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+          <Card data-testid="stat-total-modules">
+            <CardContent className="p-3">
+              <div className="flex items-center gap-2 mb-1">
+                <BookOpen className="w-4 h-4 text-muted-foreground" />
+                <span className="text-xs text-muted-foreground">Toplam Modül</span>
+              </div>
+              <p className="text-xl font-bold">{totalModules}</p>
+              <div className="flex gap-1 mt-1">
+                <Badge variant="default" className="text-xs">{publishedModules} Yayında</Badge>
+                <Badge variant="secondary" className="text-xs">{draftModules} Taslak</Badge>
+              </div>
+            </CardContent>
+          </Card>
+          <Card data-testid="stat-completion-rate">
+            <CardContent className="p-3">
+              <div className="flex items-center gap-2 mb-1">
+                <TrendingUp className="w-4 h-4 text-muted-foreground" />
+                <span className="text-xs text-muted-foreground">Tamamlanma Oranı</span>
+              </div>
+              <p className="text-xl font-bold">%{avgCompletionRate}</p>
+              <Progress value={avgCompletionRate} className="mt-1 h-1.5" />
+            </CardContent>
+          </Card>
+          <Card data-testid="stat-active-programs">
+            <CardContent className="p-3">
+              <div className="flex items-center gap-2 mb-1">
+                <Activity className="w-4 h-4 text-muted-foreground" />
+                <span className="text-xs text-muted-foreground">Aktif Öğrenci</span>
+              </div>
+              <p className="text-xl font-bold">{totalActiveStudents}</p>
+              <span className="text-xs text-muted-foreground">{branchAnalytics.length} şubede</span>
+            </CardContent>
+          </Card>
+          <Card data-testid="stat-pending-exams">
+            <CardContent className="p-3">
+              <div className="flex items-center gap-2 mb-1">
+                <Clock className="w-4 h-4 text-muted-foreground" />
+                <span className="text-xs text-muted-foreground">Bekleyen Sınav</span>
+              </div>
+              <p className="text-xl font-bold">{pendingExams.length}</p>
+              {pendingExams.length > 0 && (
+                <Badge variant="destructive" className="text-xs mt-1">Onay Bekliyor</Badge>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
+        {branchAnalytics.length > 0 && (
+          <Card data-testid="branch-metrics-table">
+            <CardHeader className="pb-2 pt-3 px-3">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <BarChart3 className="w-4 h-4" />
+                Şube Eğitim Metrikleri
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="px-3 pb-3">
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="text-xs">Şube</TableHead>
+                      <TableHead className="text-xs text-right">Aktif Öğrenci</TableHead>
+                      <TableHead className="text-xs text-right">Ort. Puan</TableHead>
+                      <TableHead className="text-xs text-right">Tamamlanma</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {branchAnalytics.map((branch) => (
+                      <TableRow key={branch.branchId} data-testid={`row-branch-${branch.branchId}`}>
+                        <TableCell className="text-xs font-medium">{branch.branchName}</TableCell>
+                        <TableCell className="text-xs text-right">{branch.activeStudents}</TableCell>
+                        <TableCell className="text-xs text-right">{branch.avgScore?.toFixed(1) || '—'}</TableCell>
+                        <TableCell className="text-xs text-right">
+                          <div className="flex items-center justify-end gap-2">
+                            <Progress value={branch.completionRate || 0} className="w-16 h-1.5" />
+                            <span>%{branch.completionRate || 0}</span>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+      </div>
+    );
+  }
+
+  if (isCoach) {
+    return (
+      <div className="space-y-3" data-testid="coach-dashboard-section">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+          <Card data-testid="stat-branch-compliance">
+            <CardContent className="p-3">
+              <div className="flex items-center gap-2 mb-1">
+                <Award className="w-4 h-4 text-muted-foreground" />
+                <span className="text-xs text-muted-foreground">Eğitim Uyumu</span>
+              </div>
+              <p className="text-xl font-bold">%{avgCompletionRate}</p>
+              <Progress value={avgCompletionRate} className="mt-1 h-1.5" />
+            </CardContent>
+          </Card>
+          <Card data-testid="stat-active-students-coach">
+            <CardContent className="p-3">
+              <div className="flex items-center gap-2 mb-1">
+                <Users className="w-4 h-4 text-muted-foreground" />
+                <span className="text-xs text-muted-foreground">Aktif Öğrenci</span>
+              </div>
+              <p className="text-xl font-bold">{totalActiveStudents}</p>
+              <span className="text-xs text-muted-foreground">{branchAnalytics.length} şube</span>
+            </CardContent>
+          </Card>
+          <Card data-testid="stat-pending-exams-coach">
+            <CardContent className="p-3">
+              <div className="flex items-center gap-2 mb-1">
+                <Clock className="w-4 h-4 text-muted-foreground" />
+                <span className="text-xs text-muted-foreground">Bekleyen Sınav</span>
+              </div>
+              <p className="text-xl font-bold">{pendingExams.length}</p>
+            </CardContent>
+          </Card>
+        </div>
+
+        {trainingStats?.personnelProgress && trainingStats.personnelProgress.length > 0 && (
+          <Card data-testid="personnel-progress-table">
+            <CardHeader className="pb-2 pt-3 px-3">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <Users className="w-4 h-4" />
+                Personel İlerleme Durumu
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="px-3 pb-3">
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="text-xs">Personel</TableHead>
+                      <TableHead className="text-xs text-right">Tamamlanan</TableHead>
+                      <TableHead className="text-xs text-right">Ort. Puan</TableHead>
+                      <TableHead className="text-xs text-right">İlerleme</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {trainingStats.personnelProgress.map((person, idx) => {
+                      const progressPct = person.totalModules > 0
+                        ? Math.round((person.completedModules / person.totalModules) * 100)
+                        : 0;
+                      return (
+                        <TableRow key={person.userId || idx} data-testid={`row-personnel-${idx}`}>
+                          <TableCell className="text-xs font-medium">{person.userName || person.userId}</TableCell>
+                          <TableCell className="text-xs text-right">{person.completedModules}/{person.totalModules}</TableCell>
+                          <TableCell className="text-xs text-right">{person.avgScore?.toFixed(1) || '—'}</TableCell>
+                          <TableCell className="text-xs text-right">
+                            <div className="flex items-center justify-end gap-2">
+                              <Progress value={progressPct} className="w-16 h-1.5" />
+                              <span>%{progressPct}</span>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {branchAnalytics.length > 0 && (
+          <Card data-testid="coach-branch-overview">
+            <CardHeader className="pb-2 pt-3 px-3">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <BarChart3 className="w-4 h-4" />
+                Şube Eğitim Uyumu
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="px-3 pb-3">
+              <div className="flex flex-col gap-2">
+                {branchAnalytics.map((branch) => (
+                  <div key={branch.branchId} className="flex items-center gap-3" data-testid={`coach-branch-${branch.branchId}`}>
+                    <span className="text-xs font-medium w-24 truncate">{branch.branchName}</span>
+                    <Progress value={branch.completionRate || 0} className="flex-1 h-2" />
+                    <span className="text-xs text-muted-foreground w-10 text-right">%{branch.completionRate || 0}</span>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+      </div>
+    );
+  }
+
+  if (isTrainer) {
+    return (
+      <div className="space-y-3" data-testid="trainer-dashboard-section">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+          <Card data-testid="stat-published-modules">
+            <CardContent className="p-3">
+              <div className="flex items-center gap-2 mb-1">
+                <BookOpen className="w-4 h-4 text-muted-foreground" />
+                <span className="text-xs text-muted-foreground">Yayında</span>
+              </div>
+              <p className="text-xl font-bold">{publishedModules}</p>
+            </CardContent>
+          </Card>
+          <Card data-testid="stat-draft-modules">
+            <CardContent className="p-3">
+              <div className="flex items-center gap-2 mb-1">
+                <FileText className="w-4 h-4 text-muted-foreground" />
+                <span className="text-xs text-muted-foreground">Taslak</span>
+              </div>
+              <p className="text-xl font-bold">{draftModules}</p>
+            </CardContent>
+          </Card>
+          <Card data-testid="stat-total-modules-trainer">
+            <CardContent className="p-3">
+              <div className="flex items-center gap-2 mb-1">
+                <GraduationCap className="w-4 h-4 text-muted-foreground" />
+                <span className="text-xs text-muted-foreground">Toplam</span>
+              </div>
+              <p className="text-xl font-bold">{totalModules}</p>
+            </CardContent>
+          </Card>
+          <Card data-testid="stat-pending-exams-trainer">
+            <CardContent className="p-3">
+              <div className="flex items-center gap-2 mb-1">
+                <Clock className="w-4 h-4 text-muted-foreground" />
+                <span className="text-xs text-muted-foreground">Bekleyen Sınav</span>
+              </div>
+              <p className="text-xl font-bold">{pendingExams.length}</p>
+            </CardContent>
+          </Card>
+        </div>
+
+        {trainingStats?.recentQuizResults && trainingStats.recentQuizResults.length > 0 && (
+          <Card data-testid="recent-quiz-results">
+            <CardHeader className="pb-2 pt-3 px-3">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <BarChart3 className="w-4 h-4" />
+                Son Quiz Sonuçları
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="px-3 pb-3">
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="text-xs">Kullanıcı</TableHead>
+                      <TableHead className="text-xs">Quiz</TableHead>
+                      <TableHead className="text-xs text-right">Puan</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {trainingStats.recentQuizResults.slice(0, 10).map((result, idx) => (
+                      <TableRow key={idx} data-testid={`row-quiz-result-${idx}`}>
+                        <TableCell className="text-xs">{result.userName || result.userId}</TableCell>
+                        <TableCell className="text-xs">{result.quizTitle || '—'}</TableCell>
+                        <TableCell className="text-xs text-right">
+                          <Badge variant={result.score >= 70 ? "default" : "destructive"} className="text-xs">
+                            {result.score}
+                          </Badge>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+      </div>
+    );
+  }
+
+  return null;
+}
 
 export default function AcademyHQ() {
   const { toast } = useToast();
@@ -106,7 +479,7 @@ export default function AcademyHQ() {
   const [aiInputText, setAiInputText] = useState("");
   const [aiRoleLevel, setAiRoleLevel] = useState("Stajyer");
   const [aiEstimatedMinutes, setAiEstimatedMinutes] = useState(15);
-  const [generatedModule, setGeneratedModule] = useState<unknown>(null);
+  const [generatedModule, setGeneratedModule] = useState<GeneratedModulePreview | null>(null);
   const [aiInputMode, setAiInputMode] = useState<"text" | "file">("text");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isExtractingText, setIsExtractingText] = useState(false);
@@ -240,6 +613,24 @@ export default function AcademyHQ() {
     },
   });
 
+  const { data: branchAnalytics = [], isLoading: branchAnalyticsLoading } = useQuery<BranchAnalytics[]>({
+    queryKey: ["/api/academy/branch-analytics"],
+    queryFn: async () => {
+      const res = await fetch(`/api/academy/branch-analytics`, { credentials: "include" });
+      if (!res.ok) return [];
+      return res.json();
+    },
+  });
+
+  const { data: trainingStatsData = null, isLoading: trainingStatsLoading } = useQuery<TrainingStats | null>({
+    queryKey: ["/api/training/stats"],
+    queryFn: async () => {
+      const res = await fetch(`/api/training/stats`, { credentials: "include" });
+      if (!res.ok) return null;
+      return res.json();
+    },
+  });
+
   const createTrainingMutation = useMutation({
     mutationFn: async (data: z.infer<typeof trainingModuleSchema>) => {
       return apiRequest("POST", "/api/training/modules", { ...data, createdBy: user?.id });
@@ -293,7 +684,7 @@ export default function AcademyHQ() {
         roleLevel: aiRoleLevel,
         estimatedMinutes: aiEstimatedMinutes,
       });
-      return await response.json() as { success: boolean; module: any };
+      return await response.json() as { success: boolean; module: GeneratedModulePreview };
     },
     onSuccess: (data) => {
       setGeneratedModule(data.module);
@@ -365,10 +756,10 @@ export default function AcademyHQ() {
       const result = await response.json();
       setAiInputText(result.extractedText);
       toast({ title: `Metin çıkarıldı: ${result.fileName}` });
-    } catch (error) {
+    } catch (error: unknown) {
       toast({
         title: "Dosya İşleme Hatası",
-        description: error.message || "Dosyadan metin çıkarılamadı",
+        description: (error as Error).message || "Dosyadan metin çıkarılamadı",
         variant: "destructive"
       });
       setSelectedFile(null);
@@ -426,6 +817,15 @@ export default function AcademyHQ() {
         <h1 className="text-lg font-bold tracking-tight">Akademi - HQ Yönetim Paneli</h1>
         <p className="text-muted-foreground mt-2">Modül yönetimi, sınav talepleri ve atamalar</p>
       </div>
+
+      <RoleDashboardSection
+        role={user?.role || ''}
+        branchAnalytics={branchAnalytics}
+        trainingStats={trainingStatsData}
+        trainingModules={trainingModules}
+        pendingExams={pendingExams}
+        isLoading={branchAnalyticsLoading || trainingStatsLoading}
+      />
 
       <Tabs defaultValue="training" className="w-full">
         <TabsList className="w-full flex flex-wrap gap-1">
@@ -630,7 +1030,7 @@ export default function AcademyHQ() {
                     </CardHeader>
                     <CardContent>
                       <div className="flex flex-col gap-3 sm:gap-4">
-                        {quizzes.slice(0, 3).map((quiz) => (
+                        {quizzes.slice(0, 3).map((quiz: QuizItem) => (
                           <div key={quiz.id} className="p-2 border rounded text-sm">
                             <p className="font-medium">{quiz.title_tr}</p>
                             <p className="text-xs text-muted-foreground">{quiz.description_tr}</p>
@@ -691,7 +1091,7 @@ export default function AcademyHQ() {
                   <p className="text-center py-8 text-muted-foreground text-sm">Talep yok</p>
                 ) : (
                   <div className="grid grid-cols-1 gap-2 max-h-96 overflow-y-auto">
-                    {pendingExams.map((exam) => (
+                    {pendingExams.map((exam: ExamItem) => (
                       <div key={exam.id} className="p-3 border rounded text-sm">
                         <div className="flex items-start justify-between mb-2">
                           <div>
@@ -741,7 +1141,7 @@ export default function AcademyHQ() {
                   <p className="text-center py-8 text-muted-foreground text-sm">Onay yok</p>
                 ) : (
                   <div className="grid grid-cols-1 gap-2 max-h-96 overflow-y-auto">
-                    {approvedExams.map((exam) => (
+                    {approvedExams.map((exam: ExamItem) => (
                       <div key={exam.id} className="p-3 border rounded text-sm">
                         <p className="font-medium">{exam.userId}</p>
                         <p className="text-xs text-muted-foreground">Rol: {exam.targetRoleId}</p>

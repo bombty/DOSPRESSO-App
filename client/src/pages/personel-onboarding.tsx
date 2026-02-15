@@ -8,6 +8,8 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Table,
   TableBody,
@@ -52,6 +54,7 @@ import {
   AlertCircle,
   Clock,
   CheckCircle2,
+  Users,
 } from "lucide-react";
 import { format } from "date-fns";
 import { tr } from "date-fns/locale";
@@ -70,12 +73,22 @@ const statusIcons: Record<string, any> = {
   completed: CheckCircle2,
 };
 
+const taskTypeLabels: Record<string, string> = {
+  orientation: "Oryantasyon",
+  training: "Eğitim",
+  document: "Belge",
+  system_access: "Sistem Erişimi",
+  introduction: "Tanışma",
+  other: "Diğer",
+};
+
 const onboardingSchema = z.object({
   userId: z.string().min(1, "Personel seçin"),
   branchId: z.string().min(1, "Şube seçin"),
   startDate: z.string().min(1, "Başlangıç tarihi seçin"),
   expectedCompletionDate: z.string().optional().default(""),
   status: z.enum(["not_started", "in_progress", "completed"]),
+  assignedMentorId: z.string().optional().default(""),
   supervisorNotes: z.string().optional().default(""),
 });
 
@@ -88,6 +101,7 @@ export default function PersonelOnboardingPage() {
   const [searchText, setSearchText] = useState<string>("");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingRecord, setEditingRecord] = useState<EmployeeOnboarding | null>(null);
+  const [selectedOnboardingId, setSelectedOnboardingId] = useState<number | null>(null);
   const { deleteState, requestDelete, cancelDelete, confirmDelete } = useConfirmDelete();
 
   // Fetch onboarding records
@@ -168,6 +182,26 @@ export default function PersonelOnboardingPage() {
     },
     onSuccess: () => {
       toast({ title: "Başarılı", description: "Onboarding kaydı silindi" });
+      queryClient.invalidateQueries({ queryKey: ["/api/employee-onboarding"] });
+    },
+    onError: (error) => {
+      toast({ title: "Hata", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const { data: onboardingTasks = [], isLoading: tasksLoading } = useQuery<any[]>({
+    queryKey: ["/api/onboarding-tasks", selectedOnboardingId],
+    queryFn: () => fetch(`/api/onboarding-tasks/${selectedOnboardingId}`).then(r => r.json()),
+    enabled: !!selectedOnboardingId,
+  });
+
+  const completeTaskMutation = useMutation({
+    mutationFn: async (taskId: number) => {
+      return apiRequest("POST", `/api/onboarding-tasks/${taskId}/complete`);
+    },
+    onSuccess: () => {
+      toast({ title: "Başarılı", description: "Görev tamamlandı" });
+      queryClient.invalidateQueries({ queryKey: ["/api/onboarding-tasks", selectedOnboardingId] });
       queryClient.invalidateQueries({ queryKey: ["/api/employee-onboarding"] });
     },
     onError: (error) => {
@@ -321,6 +355,8 @@ export default function PersonelOnboardingPage() {
                   <TableHead>Başlangıç Tarihi</TableHead>
                   <TableHead>Tamamlanma Hedefi</TableHead>
                   <TableHead>Durum</TableHead>
+                  <TableHead>Mentor</TableHead>
+                  <TableHead>İlerleme</TableHead>
                   <TableHead>Notlar</TableHead>
                   <TableHead className="text-right">İşlemler</TableHead>
                 </TableRow>
@@ -328,8 +364,17 @@ export default function PersonelOnboardingPage() {
               <TableBody>
                 {filteredRecords.map((record) => {
                   const StatusIcon = statusIcons[record.status] || Clock;
+                  const mentorEmployee = (record as any).assignedMentorId
+                    ? employees.find(e => e.id === (record as any).assignedMentorId)
+                    : null;
+                  const completionPct = (record as any).completionPercentage ?? 0;
                   return (
-                    <TableRow key={record.id} data-testid={`row-onboarding-${record.id}`}>
+                    <TableRow
+                      key={record.id}
+                      data-testid={`row-onboarding-${record.id}`}
+                      className="cursor-pointer"
+                      onClick={() => setSelectedOnboardingId(selectedOnboardingId === record.id ? null : record.id)}
+                    >
                       <TableCell className="font-medium">
                         {record.user?.firstName} {record.user?.lastName}
                       </TableCell>
@@ -347,6 +392,20 @@ export default function PersonelOnboardingPage() {
                           </Badge>
                         </div>
                       </TableCell>
+                      <TableCell data-testid={`text-mentor-${record.id}`}>
+                        {mentorEmployee ? (
+                          <div className="flex items-center gap-1">
+                            <Users className="h-3 w-3 text-muted-foreground" />
+                            <span className="text-sm">{mentorEmployee.firstName} {mentorEmployee.lastName}</span>
+                          </div>
+                        ) : "-"}
+                      </TableCell>
+                      <TableCell data-testid={`text-progress-${record.id}`}>
+                        <div className="flex items-center gap-2 min-w-[100px]">
+                          <Progress value={completionPct} className="h-2 flex-1" />
+                          <span className="text-xs text-muted-foreground whitespace-nowrap">{completionPct}%</span>
+                        </div>
+                      </TableCell>
                       <TableCell className="text-sm text-muted-foreground max-w-xs truncate">
                         {record.supervisorNotes || "-"}
                       </TableCell>
@@ -356,7 +415,7 @@ export default function PersonelOnboardingPage() {
                             size="sm"
                             variant="outline"
                             data-testid={`button-edit-${record.id}`}
-                            onClick={() => handleEditClick(record)}
+                            onClick={(e) => { e.stopPropagation(); handleEditClick(record); }}
                           >
                             <Edit className="h-4 w-4" />
                           </Button>
@@ -364,7 +423,7 @@ export default function PersonelOnboardingPage() {
                             size="sm"
                             variant="outline"
                             data-testid={`button-delete-${record.id}`}
-                            onClick={() => handleDeleteClick(record.id)}
+                            onClick={(e) => { e.stopPropagation(); handleDeleteClick(record.id); }}
                             disabled={deleteMutation.isPending}
                           >
                             <Trash2 className="h-4 w-4" />
@@ -384,6 +443,78 @@ export default function PersonelOnboardingPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Onboarding Task Detail */}
+      {selectedOnboardingId && (
+        <Card data-testid="card-onboarding-tasks">
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <CheckCircle2 className="h-5 w-5" />
+              Onboarding Görevleri
+            </CardTitle>
+            <CardDescription>
+              Seçili personelin onboarding görev listesi
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {tasksLoading ? (
+              <ListSkeleton count={3} variant="row" />
+            ) : onboardingTasks.length === 0 ? (
+              <div className="text-center py-6 text-muted-foreground">
+                Bu onboarding kaydı için henüz görev tanımlanmamış
+              </div>
+            ) : (
+              <div className="flex flex-col gap-2">
+                {onboardingTasks.map((task: any) => (
+                  <div
+                    key={task.id}
+                    data-testid={`task-item-${task.id}`}
+                    className="flex items-center justify-between gap-3 p-3 rounded-md border"
+                  >
+                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                      <Checkbox
+                        checked={task.status === "completed"}
+                        disabled={task.status === "completed" || completeTaskMutation.isPending}
+                        onCheckedChange={() => completeTaskMutation.mutate(task.id)}
+                        data-testid={`checkbox-task-${task.id}`}
+                      />
+                      <div className="flex flex-col gap-1 min-w-0">
+                        <span className={`text-sm font-medium ${task.status === "completed" ? "line-through text-muted-foreground" : ""}`} data-testid={`text-task-name-${task.id}`}>
+                          {task.taskName}
+                        </span>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <Badge variant="secondary" className="text-xs" data-testid={`badge-task-type-${task.id}`}>
+                            {taskTypeLabels[task.taskType] || task.taskType}
+                          </Badge>
+                          <Badge variant={task.status === "completed" ? "default" : "secondary"} className="text-xs" data-testid={`badge-task-status-${task.id}`}>
+                            {statusLabels[task.status] || task.status}
+                          </Badge>
+                          {task.dueDate && (
+                            <span className="text-xs text-muted-foreground" data-testid={`text-task-due-${task.id}`}>
+                              {format(new Date(task.dueDate), "d MMM yyyy", { locale: tr })}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    {task.status !== "completed" && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => completeTaskMutation.mutate(task.id)}
+                        disabled={completeTaskMutation.isPending}
+                        data-testid={`button-complete-task-${task.id}`}
+                      >
+                        Tamamla
+                      </Button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Add/Edit Dialog */}
       <OnboardingDialog
@@ -442,6 +573,7 @@ function OnboardingDialog({
       startDate: editingRecord?.startDate || "",
       expectedCompletionDate: editingRecord?.expectedCompletionDate || "",
       status: (editingRecord?.status as any) || "not_started",
+      assignedMentorId: (editingRecord as any)?.assignedMentorId || "",
       supervisorNotes: editingRecord?.supervisorNotes || "",
     },
   });
@@ -568,6 +700,32 @@ function OnboardingDialog({
                       <SelectItem value="not_started">Başlamadı</SelectItem>
                       <SelectItem value="in_progress">Devam Ediyor</SelectItem>
                       <SelectItem value="completed">Tamamlandı</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="assignedMentorId"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Mentor Ata</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value || ""}>
+                    <FormControl>
+                      <SelectTrigger data-testid="select-mentor">
+                        <SelectValue placeholder="Mentor seçin" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="">Seçilmedi</SelectItem>
+                      {employees.map((emp) => (
+                        <SelectItem key={emp.id} value={emp.id}>
+                          {emp.firstName} {emp.lastName}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                   <FormMessage />

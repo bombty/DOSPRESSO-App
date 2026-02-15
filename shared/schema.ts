@@ -6978,6 +6978,33 @@ export const insertUserPracticeSessionSchema = createInsertSchema(userPracticeSe
 export type InsertUserPracticeSession = z.infer<typeof insertUserPracticeSessionSchema>;
 export type UserPracticeSession = typeof userPracticeSessions.$inferSelect;
 
+export const learningStreaks = pgTable("learning_streaks", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  currentStreak: integer("current_streak").notNull().default(0),
+  bestStreak: integer("best_streak").notNull().default(0),
+  lastActivityDate: date("last_activity_date"),
+  totalActiveDays: integer("total_active_days").notNull().default(0),
+  weeklyGoalTarget: integer("weekly_goal_target").notNull().default(5),
+  weeklyGoalProgress: integer("weekly_goal_progress").notNull().default(0),
+  monthlyXp: integer("monthly_xp").notNull().default(0),
+  totalXp: integer("total_xp").notNull().default(0),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("learning_streaks_user_idx").on(table.userId),
+  unique("learning_streaks_user_unique").on(table.userId),
+]);
+
+export const insertLearningStreakSchema = createInsertSchema(learningStreaks).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertLearningStreak = z.infer<typeof insertLearningStreakSchema>;
+export type LearningStreak = typeof learningStreaks.$inferSelect;
+
 // Academy Hub Categories - Akademi ana sayfa kategorileri
 export const academyHubCategories = pgTable("academy_hub_categories", {
   id: serial("id").primaryKey(),

@@ -316,6 +316,7 @@ import {
   faultServiceStatusUpdates,
   insertFaultServiceStatusUpdateSchema,
   FAULT_SERVICE_STATUS,
+  learningStreaks,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, asc, sql, and, or, isNull, isNotNull, inArray, lte, gte, ne, not, count, sum, avg, max } from "drizzle-orm";
@@ -16131,25 +16132,83 @@ Cevaplarınız kısa, faydalı ve türkçe olmalıdır.`;
   app.get('/api/academy/streak-tracker/:userId', isAuthenticated, async (req: any, res) => {
     try {
       const { userId } = req.params;
-      const userResults = await storage.getQuizResults?.() || [];
-      const userQuizzes = userResults.filter((r: any) => r.userId === userId);
+      const streakData = await db.select().from(learningStreaks).where(eq(learningStreaks.userId, userId)).limit(1);
       
-      const currentStreak = Math.floor(Math.random() * 20) + 1;
-      const bestStreak = Math.floor(Math.random() * 50) + currentStreak;
+      if (streakData.length > 0) {
+        res.json(streakData[0]);
+      } else {
+        const newStreak = await db.insert(learningStreaks).values({
+          userId,
+          currentStreak: 0,
+          bestStreak: 0,
+          totalActiveDays: 0,
+          weeklyGoalTarget: 5,
+          weeklyGoalProgress: 0,
+          monthlyXp: 0,
+          totalXp: 0,
+        }).returning();
+        res.json(newStreak[0]);
+      }
+    } catch (error) {
+      res.json({ currentStreak: 0, bestStreak: 0, totalActiveDays: 0, weeklyGoalTarget: 5, weeklyGoalProgress: 0, monthlyXp: 0, totalXp: 0 });
+    }
+  });
+
+  // POST /api/academy/streak-activity - Record daily streak activity
+  app.post('/api/academy/streak-activity', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const today = new Date().toISOString().split('T')[0];
       
-      res.json({
-        currentStreak,
-        bestStreak,
-        lastActivityDay: 'Bugün',
-        totalDaysActive: userQuizzes.length,
-      });
-    } catch (error: Error | unknown) {
-      res.json({
-        currentStreak: 0,
-        bestStreak: 0,
-        lastActivityDay: 'Hiç',
-        totalDaysActive: 0,
-      });
+      let streakData = await db.select().from(learningStreaks).where(eq(learningStreaks.userId, userId)).limit(1);
+      
+      if (streakData.length === 0) {
+        streakData = await db.insert(learningStreaks).values({
+          userId,
+          currentStreak: 1,
+          bestStreak: 1,
+          lastActivityDate: today,
+          totalActiveDays: 1,
+          weeklyGoalProgress: 1,
+          monthlyXp: 10,
+          totalXp: 10,
+        }).returning();
+        return res.json(streakData[0]);
+      }
+      
+      const streak = streakData[0];
+      const lastDate = streak.lastActivityDate;
+      
+      if (lastDate === today) {
+        return res.json(streak);
+      }
+      
+      const yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1);
+      const yesterdayStr = yesterday.toISOString().split('T')[0];
+      
+      const isConsecutive = lastDate === yesterdayStr;
+      const newCurrentStreak = isConsecutive ? streak.currentStreak + 1 : 1;
+      const newBestStreak = Math.max(streak.bestStreak, newCurrentStreak);
+      
+      const updated = await db.update(learningStreaks)
+        .set({
+          currentStreak: newCurrentStreak,
+          bestStreak: newBestStreak,
+          lastActivityDate: today,
+          totalActiveDays: streak.totalActiveDays + 1,
+          weeklyGoalProgress: streak.weeklyGoalProgress + 1,
+          monthlyXp: streak.monthlyXp + 10,
+          totalXp: streak.totalXp + 10,
+          updatedAt: new Date(),
+        })
+        .where(eq(learningStreaks.id, streak.id))
+        .returning();
+      
+      res.json(updated[0]);
+    } catch (error) {
+      console.error('Streak activity error:', error);
+      res.status(500).json({ error: 'Internal error' });
     }
   });
 

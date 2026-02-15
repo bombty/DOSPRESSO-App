@@ -52,7 +52,7 @@ export default function AcademyQuiz() {
       if (!res.ok) return [];
       return res.json();
     },
-    enabled: !!quizId && (attemptInfo?.canRetry !== false || attemptInfo?.hasPassed),
+    enabled: !!quizId,
   });
 
   // Fetch adaptive recommendation

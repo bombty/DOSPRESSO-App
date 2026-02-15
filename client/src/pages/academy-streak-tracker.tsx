@@ -3,7 +3,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Flame, Calendar, Target, Trophy, Loader } from "lucide-react";
+import { ArrowLeft, Flame, Calendar, Target, Trophy, Loader, Zap, Star, Crown } from "lucide-react";
 
 export default function AcademyStreakTracker() {
   const { user } = useAuth();
@@ -21,16 +21,27 @@ export default function AcademyStreakTracker() {
 
   const streakDays = streak.currentStreak || 0;
   const bestStreak = streak.bestStreak || 0;
-  const lastActivityDay = streak.lastActivityDay || "Bugün";
+  const totalActiveDays = streak.totalActiveDays || 0;
+  const weeklyGoalTarget = streak.weeklyGoalTarget || 5;
+  const weeklyGoalProgress = streak.weeklyGoalProgress || 0;
+  const totalXp = streak.totalXp || 0;
+  const lastActivityDate = streak.lastActivityDate || streak.lastActivityDay || null;
+  const lastActivityDay = lastActivityDate
+    ? new Date(lastActivityDate).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' })
+    : "Henüz yok";
 
-  // Generate 30 days of activity
-  const generateActivityDays = () => {
+  const activityDays = (() => {
     const days = [];
     const today = new Date();
+    const todayStr = today.toISOString().split('T')[0];
     for (let i = 29; i >= 0; i--) {
       const date = new Date(today);
       date.setDate(date.getDate() - i);
-      const isActive = Math.random() > 0.3; // 70% active
+      const dateStr = date.toISOString().split('T')[0];
+      const daysFromToday = i;
+      const isActive = lastActivityDate
+        ? daysFromToday < streakDays && dateStr <= todayStr
+        : false;
       days.push({
         date: date.toLocaleDateString('tr-TR', { month: 'short', day: 'numeric' }),
         isActive,
@@ -38,15 +49,13 @@ export default function AcademyStreakTracker() {
       });
     }
     return days;
-  };
-
-  const activityDays = generateActivityDays();
+  })();
 
   const streakMilestones = [
-    { days: 7, label: "Hafta", icon: "🔥", unlocked: streakDays >= 7 },
-    { days: 14, label: "2 Hafta", icon: "🌟", unlocked: streakDays >= 14 },
-    { days: 30, label: "Ay", icon: "🏆", unlocked: streakDays >= 30 },
-    { days: 100, label: "100 Gün", icon: "👑", unlocked: streakDays >= 100 },
+    { days: 7, label: "Hafta", IconComponent: Flame, unlocked: streakDays >= 7 },
+    { days: 14, label: "2 Hafta", IconComponent: Star, unlocked: streakDays >= 14 },
+    { days: 30, label: "Ay", IconComponent: Trophy, unlocked: streakDays >= 30 },
+    { days: 100, label: "100 Gün", IconComponent: Crown, unlocked: streakDays >= 100 },
   ];
 
   return (
@@ -108,11 +117,38 @@ export default function AcademyStreakTracker() {
           <CardHeader className="pb-2">
             <CardTitle className="text-sm flex items-center gap-1">
               <Target className="w-3 h-3" />
-              Hedef
+              Haftalık Hedef
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-lg font-bold text-primary">30</p>
+            <p className="text-lg font-bold text-primary">{weeklyGoalProgress}/{weeklyGoalTarget}</p>
+            <p className="text-xs text-muted-foreground">gün</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm flex items-center gap-1">
+              <Zap className="w-3 h-3" />
+              Toplam XP
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-lg font-bold">{totalXp}</p>
+            <p className="text-xs text-muted-foreground">puan</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm flex items-center gap-1">
+              <Calendar className="w-3 h-3" />
+              Toplam Aktif Gün
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-lg font-bold">{totalActiveDays}</p>
             <p className="text-xs text-muted-foreground">gün</p>
           </CardContent>
         </Card>
@@ -134,7 +170,7 @@ export default function AcademyStreakTracker() {
                     : "bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-600 opacity-60"
                 }`}
               >
-                <p className="text-lg mb-0.5">{m.icon}</p>
+                <m.IconComponent className={`w-5 h-5 mb-0.5 ${m.unlocked ? 'text-warning' : 'text-muted-foreground'}`} />
                 <p className="text-xs font-semibold">{m.days}g</p>
                 <p className="text-xs text-muted-foreground">{m.label}</p>
               </div>
@@ -182,10 +218,10 @@ export default function AcademyStreakTracker() {
           <CardTitle className="text-base">Seri Hakkında İpuçları</CardTitle>
         </CardHeader>
         <CardContent className="grid grid-cols-1 gap-2 text-sm">
-          <p>🔥 Her gün en az bir sınav tamamla</p>
-          <p>30 günlük seriyi tuttuğunda özel rozet kazan</p>
-          <p>⏰ Aynı saatte pratik yapmak alışkanlık oluşturur</p>
-          <p>Seri kırılırsa endişelenme - yeniden başlamak hiç geç değil!</p>
+          <div className="flex items-center gap-2"><Flame className="w-4 h-4 text-warning shrink-0" /><span>Her gün en az bir sınav tamamla</span></div>
+          <div className="flex items-center gap-2"><Trophy className="w-4 h-4 text-warning shrink-0" /><span>30 günlük seriyi tuttuğunda özel rozet kazan</span></div>
+          <div className="flex items-center gap-2"><Calendar className="w-4 h-4 text-primary shrink-0" /><span>Aynı saatte pratik yapmak alışkanlık oluşturur</span></div>
+          <div className="flex items-center gap-2"><Star className="w-4 h-4 text-primary shrink-0" /><span>Seri kırılırsa endişelenme - yeniden başlamak hiç geç değil!</span></div>
         </CardContent>
       </Card>
     </div>
