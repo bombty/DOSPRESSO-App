@@ -98,19 +98,30 @@ const ALL_ROLES = Object.values(UserRole);
 
 const roleLabels: Record<string, string> = {
   [UserRole.ADMIN]: "Admin",
-  [UserRole.MUHASEBE]: "Muhasebe",
+  [UserRole.CEO]: "CEO",
+  [UserRole.CGO]: "CGO",
+  [UserRole.MUHASEBE_IK]: "Muhasebe & İK",
   [UserRole.SATINALMA]: "Satın Alma",
   [UserRole.COACH]: "Coach",
+  [UserRole.MARKETING]: "Marketing",
+  [UserRole.TRAINER]: "Trainer (Eğitmen)",
+  [UserRole.KALITE_KONTROL]: "Kalite Kontrol",
+  [UserRole.FABRIKA_MUDUR]: "Fabrika Müdürü",
+  [UserRole.MUHASEBE]: "Muhasebe",
   [UserRole.TEKNIK]: "Teknik",
   [UserRole.DESTEK]: "Destek",
   [UserRole.FABRIKA]: "Fabrika",
-  [UserRole.YATIRIMCI_HQ]: "Yatırımcı (HQ)",
+  [UserRole.YATIRIMCI_HQ]: "Yatırımcı HQ",
   [UserRole.STAJYER]: "Stajyer",
   [UserRole.BAR_BUDDY]: "Bar Buddy",
   [UserRole.BARISTA]: "Barista",
   [UserRole.SUPERVISOR_BUDDY]: "Supervisor Buddy",
   [UserRole.SUPERVISOR]: "Supervisor",
-  [UserRole.YATIRIMCI_BRANCH]: "Yatırımcı (Şube)",
+  [UserRole.MUDUR]: "Müdür",
+  [UserRole.YATIRIMCI_BRANCH]: "Yatırımcı",
+  [UserRole.FABRIKA_OPERATOR]: "Fabrika Operatör",
+  [UserRole.FABRIKA_SORUMLU]: "Fabrika Sorumlu",
+  [UserRole.FABRIKA_PERSONEL]: "Fabrika Personel",
 };
 
 // Sortable Section Component

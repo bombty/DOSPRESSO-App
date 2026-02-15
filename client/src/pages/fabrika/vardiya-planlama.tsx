@@ -447,14 +447,31 @@ export default function FabrikaVardiyaPlanlama() {
   }, [staffList, staffSearch]);
 
   const ROLE_LABELS: Record<string, string> = {
-    fabrika_mudur: "Fabrika Müdürü",
-    fabrika_supervisor: "Fabrika Supervisor",
-    fabrika_operator: "Fabrika Operatör",
-    kalite_kontrol: "Kalite Kontrol",
-    supervisor: "Supervisor",
     admin: "Admin",
     ceo: "CEO",
     cgo: "CGO",
+    muhasebe_ik: "Muhasebe & İK",
+    satinalma: "Satın Alma",
+    coach: "Coach",
+    marketing: "Marketing",
+    trainer: "Trainer (Eğitmen)",
+    kalite_kontrol: "Kalite Kontrol",
+    fabrika_mudur: "Fabrika Müdürü",
+    muhasebe: "Muhasebe",
+    teknik: "Teknik",
+    destek: "Destek",
+    fabrika: "Fabrika",
+    yatirimci_hq: "Yatırımcı HQ",
+    stajyer: "Stajyer",
+    bar_buddy: "Bar Buddy",
+    barista: "Barista",
+    supervisor_buddy: "Supervisor Buddy",
+    supervisor: "Supervisor",
+    mudur: "Müdür",
+    yatirimci_branch: "Yatırımcı",
+    fabrika_operator: "Fabrika Operatör",
+    fabrika_sorumlu: "Fabrika Sorumlu",
+    fabrika_personel: "Fabrika Personel",
   };
 
   function openEditShift(shift: any) {

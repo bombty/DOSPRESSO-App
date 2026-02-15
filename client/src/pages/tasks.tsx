@@ -1448,12 +1448,13 @@ export default function Tasks() {
                   <SelectValue placeholder="Rol seçin..." />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="stajyer">Stajyer</SelectItem>
+                  <SelectItem value="bar_buddy">Bar Buddy</SelectItem>
                   <SelectItem value="barista">Barista</SelectItem>
-                  <SelectItem value="senior_barista">Kıdemli Barista</SelectItem>
-                  <SelectItem value="supervisor">Supervisor</SelectItem>
                   <SelectItem value="supervisor_buddy">Supervisor Buddy</SelectItem>
+                  <SelectItem value="supervisor">Supervisor</SelectItem>
                   <SelectItem value="mudur">Müdür</SelectItem>
-                  <SelectItem value="mudur_yardimcisi">Müdür Yardımcısı</SelectItem>
+                  <SelectItem value="yatirimci_branch">Yatırımcı</SelectItem>
                 </SelectContent>
               </Select>
             </div>
