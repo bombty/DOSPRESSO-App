@@ -186,7 +186,7 @@ export default function FabrikaDashboard() {
       <div className="bg-card border-b px-3 py-2">
         <div className="container mx-auto flex items-center justify-between gap-2 flex-wrap">
           <div className="flex items-center gap-2">
-            <img src={logoUrl} alt="DOSPRESSO" className="h-8" data-testid="img-logo" />
+            <img src={logoUrl} alt="DOSPRESSO" className="h-8 cursor-pointer" data-testid="img-logo" onClick={() => setLocation("/")} />
             <div>
               <h1 className="text-sm font-bold" data-testid="text-dashboard-title">Fabrika Yonetim Paneli</h1>
               <p className="text-[10px] text-muted-foreground">

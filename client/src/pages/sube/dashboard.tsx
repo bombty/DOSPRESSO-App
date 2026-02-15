@@ -295,7 +295,7 @@ export default function SubeDashboard() {
       <div className="bg-card border-b px-3 py-2">
         <div className="container mx-auto flex items-center justify-between gap-2 flex-wrap">
           <div className="flex items-center gap-2">
-            <img src={logoUrl} alt="DOSPRESSO" className="h-7" data-testid="img-logo" />
+            <img src={logoUrl} alt="DOSPRESSO" className="h-7 cursor-pointer" data-testid="img-logo" onClick={() => setLocation("/")} />
             <div>
               <h1 className="text-sm font-bold" data-testid="text-branch-name">
                 {dashboardData?.branch.name || "Şube"}

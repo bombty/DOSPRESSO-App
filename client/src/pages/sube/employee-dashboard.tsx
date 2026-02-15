@@ -135,7 +135,7 @@ export default function EmployeeDashboard() {
       <div className="bg-card border-b px-3 py-2">
         <div className="container mx-auto flex items-center justify-between gap-2">
           <div className="flex items-center gap-2">
-            <img src={logoUrl} alt="DOSPRESSO" className="h-7" />
+            <img src={logoUrl} alt="DOSPRESSO" className="h-7 cursor-pointer" onClick={() => setLocation("/")} />
             <div>
               <h1 className="text-sm font-bold" data-testid="text-employee-name">
                 {data?.user?.firstName || user?.firstName || ""} {data?.user?.lastName || user?.lastName || ""}

@@ -228,7 +228,12 @@ export function AppHeader({ notificationCount = 0, user, branchName, onQRClick }
             src={dospressoLogo} 
             alt="DOSPRESSO" 
             className="h-8 object-contain cursor-pointer"
-            onClick={() => setLocation("/")}
+            onClick={() => {
+              const role = user?.role;
+              if (role === 'ceo') setLocation('/ceo-command-center');
+              else if (role === 'cgo') setLocation('/cgo-command-center');
+              else setLocation('/');
+            }}
             data-testid="img-dospresso-logo"
           />
         </div>

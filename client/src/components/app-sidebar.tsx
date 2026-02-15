@@ -241,8 +241,12 @@ export function AppSidebar() {
             <img 
               src={dospressoLogo} 
               alt="DOSPRESSO" 
-              className="h-12 w-auto"
+              className="h-12 w-auto cursor-pointer"
               data-testid="img-dospresso-logo"
+              onClick={() => {
+                const homePath = user?.role === 'ceo' ? '/ceo-command-center' : user?.role === 'cgo' ? '/cgo-command-center' : '/';
+                navigate(homePath);
+              }}
             />
           </SidebarGroupLabel>
           <SidebarGroupContent>

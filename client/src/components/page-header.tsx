@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { useLocation } from "wouter";
 import dospressoLogo from "@assets/IMG_6637_1765138781125.png";
 import { useState, useEffect } from "react";
+import { useAuth } from "@/hooks/useAuth";
 
 interface PageHeaderProps {
   title: string;
@@ -27,6 +28,13 @@ export function PageHeader({
   notificationCount = 0
 }: PageHeaderProps) {
   const [, setLocation] = useLocation();
+  const { user } = useAuth();
+
+  const getHomePath = () => {
+    if (user?.role === 'ceo') return '/ceo-command-center';
+    if (user?.role === 'cgo') return '/cgo-command-center';
+    return '/';
+  };
 
   const handleBack = () => {
     if (backPath) {
@@ -43,8 +51,9 @@ export function PageHeader({
         <img 
           src={dospressoLogo} 
           alt="DOSPRESSO" 
-          className="h-10 object-contain"
+          className="h-10 object-contain cursor-pointer"
           data-testid="img-dospresso-logo"
+          onClick={() => setLocation(getHomePath())}
         />
       </div>
       

@@ -1346,9 +1346,54 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
           return new Set(['dashboard', 'operations', 'equipment', 'reports', 'admin']);
         }
         
+        // TRAINER ROLÜ: Eğitim, akademi ve mutfak modülleri
+        if (role === 'trainer') {
+          return new Set(['dashboard', 'training', 'kitchen', 'reports']);
+        }
+        
+        // MARKETING / PAZARLAMA ROLÜ: İçerik, raporlar
+        if (role === 'marketing' || role === 'pazarlama') {
+          return new Set(['dashboard', 'reports', 'operations']);
+        }
+        
+        // İK ROLÜ: İnsan kaynakları ve raporlar
+        if (role === 'ik') {
+          return new Set(['dashboard', 'hr', 'reports']);
+        }
+        
+        // EKİPMAN TEKNİK ROLÜ: Ekipman ve arıza
+        if (role === 'ekipman_teknik') {
+          return new Set(['dashboard', 'equipment', 'reports']);
+        }
+        
+        // KALİTE KONTROL ROLÜ: Kalite, fabrika ve raporlar
+        if (role === 'kalite_kontrol') {
+          return new Set(['dashboard', 'factory', 'reports']);
+        }
+        
+        // FABRİKA MÜDÜRÜ: Fabrika, satınalma, raporlar ve İK
+        if (role === 'fabrika_mudur') {
+          return new Set(['dashboard', 'factory', 'satinalma', 'hr', 'reports']);
+        }
+        
+        // FABRİKA OPERATÖR/SORUMLU: Fabrika ve satınalma (sayım)
+        if (role === 'fabrika_operator' || role === 'fabrika_sorumlu' || role === 'fabrika_personel') {
+          return new Set(['dashboard', 'factory', 'satinalma']);
+        }
+        
         // YATIRIMCI HQ ROLÜ: Raporlar ve dashboard
         if (role === 'yatirimci_hq') {
           return new Set(['dashboard', 'reports', 'newshop']);
+        }
+        
+        // CEO ROLÜ: TÜM modüllere erişim
+        if (role === 'ceo') {
+          return new Set(['dashboard', 'operations', 'equipment', 'hr', 'training', 'kitchen', 'factory', 'reports', 'newshop', 'satinalma', 'admin']);
+        }
+        
+        // CGO ROLÜ: TÜM modüllere erişim
+        if (role === 'cgo') {
+          return new Set(['dashboard', 'operations', 'equipment', 'hr', 'training', 'kitchen', 'factory', 'reports', 'newshop', 'satinalma', 'admin']);
         }
         
         // ADMIN ROLÜ: TÜM modüllere tam erişim
@@ -1356,9 +1401,9 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
           return new Set(['dashboard', 'operations', 'equipment', 'hr', 'training', 'kitchen', 'factory', 'reports', 'newshop', 'satinalma', 'admin']);
         }
         
-        // DİĞER HQ rolleri: TÜM modüllere erişim (geriye dönük uyumluluk)
+        // Kalan HQ rolleri: Temel modüller
         if (isHQRole(role)) {
-          return new Set(['dashboard', 'operations', 'equipment', 'hr', 'training', 'kitchen', 'factory', 'reports', 'newshop', 'satinalma', 'admin']);
+          return new Set(['dashboard', 'operations', 'reports']);
         }
         
         // Şube rolleri (supervisor, barista, stajyer vs): şube odaklı modüller
