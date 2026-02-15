@@ -317,6 +317,14 @@ import {
   insertFaultServiceStatusUpdateSchema,
   FAULT_SERVICE_STATUS,
   learningStreaks,
+  inventoryCounts,
+  insertInventoryCountSchema,
+  inventoryCountAssignments,
+  insertInventoryCountAssignmentSchema,
+  inventoryCountEntries,
+  insertInventoryCountEntrySchema,
+  factoryManagementScores,
+  insertFactoryManagementScoreSchema,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, asc, sql, and, or, isNull, isNotNull, inArray, lte, gte, ne, not, count, sum, avg, max } from "drizzle-orm";
@@ -38632,6 +38640,516 @@ AI analizi su an kullanilamiyor. Detayli bilgi icin ilgili modulleri kontrol edi
     } catch (error: any) {
       console.error("Error creating comment:", error);
       res.status(500).json({ message: "Yorum eklenemedi" });
+    }
+  });
+
+  // ========================================
+  // STOK SAYIM (INVENTORY COUNT) ROUTES
+  // ========================================
+
+  // Get all inventory counts
+  app.get('/api/inventory-counts', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const role = user.role as string;
+      if (!['admin', 'ceo', 'cgo', 'fabrika_mudur', 'fabrika', 'satinalma', 'muhasebe'].includes(role)) {
+        return res.status(403).json({ message: "Yetkisiz erişim" });
+      }
+      const { year, month } = req.query;
+      let conditions = [];
+      if (year) conditions.push(sql`ic.year = ${parseInt(year as string)}`);
+      if (month) conditions.push(sql`ic.month = ${parseInt(month as string)}`);
+      const whereClause = conditions.length > 0 ? sql`WHERE ${sql.join(conditions, sql` AND `)}` : sql``;
+      
+      const result = await db.execute(sql`
+        SELECT ic.*, 
+          u.first_name || ' ' || u.last_name as created_by_name,
+          (SELECT count(*) FROM inventory_count_assignments WHERE count_id = ic.id)::int as total_items,
+          (SELECT count(*) FROM inventory_count_assignments WHERE count_id = ic.id AND status = 'completed')::int as completed_items,
+          (SELECT count(*) FROM inventory_count_assignments WHERE count_id = ic.id AND status = 'discrepancy')::int as discrepancy_items
+        FROM inventory_counts ic
+        LEFT JOIN users u ON u.id = ic.created_by_id
+        ${whereClause}
+        ORDER BY ic.year DESC, ic.month DESC, ic.id DESC
+      `);
+      const rows = Array.isArray(result) ? result : ((result as any)?.rows ?? []);
+      res.json(rows);
+    } catch (error: any) {
+      console.error("Error fetching inventory counts:", error);
+      res.status(500).json({ message: "Sayım listesi alınamadı" });
+    }
+  });
+
+  // Create new inventory count session
+  app.post('/api/inventory-counts', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const role = user.role as string;
+      if (role !== 'fabrika_mudur' && role !== 'admin') {
+        return res.status(403).json({ message: "Sadece fabrika yöneticisi sayım oluşturabilir" });
+      }
+      const { month, year, scheduledDate, notes } = req.body;
+      
+      // Validate scheduled date is in last 5 days of month
+      const scheduled = new Date(scheduledDate);
+      const lastDay = new Date(year, month, 0).getDate();
+      const dayOfMonth = scheduled.getDate();
+      if (dayOfMonth < lastDay - 4) {
+        return res.status(400).json({ message: "Sayım tarihi ayın son 5 günü içinde olmalıdır" });
+      }
+      
+      // Check if count already exists for this month
+      const existing = await db.execute(sql`
+        SELECT id FROM inventory_counts WHERE month = ${month} AND year = ${year} LIMIT 1
+      `);
+      const existingRows = Array.isArray(existing) ? existing : ((existing as any)?.rows ?? []);
+      if (existingRows.length > 0) {
+        return res.status(400).json({ message: "Bu ay için zaten bir sayım mevcut" });
+      }
+
+      const [newCount] = await db.insert(inventoryCounts).values({
+        month, year, scheduledDate: scheduled, notes, createdById: user.id, status: 'planned'
+      }).returning();
+
+      // Auto-create assignments for all active inventory items
+      const activeItems = await db.execute(sql`
+        SELECT id FROM inventory WHERE is_active = true
+      `);
+      const activeItemRows = Array.isArray(activeItems) ? activeItems : ((activeItems as any)?.rows ?? []);
+      
+      for (const item of activeItemRows) {
+        await db.insert(inventoryCountAssignments).values({
+          countId: newCount.id, inventoryId: (item as any).id, status: 'pending'
+        });
+      }
+
+      res.status(201).json(newCount);
+    } catch (error: any) {
+      console.error("Error creating inventory count:", error);
+      res.status(500).json({ message: "Sayım oluşturulamadı" });
+    }
+  });
+
+  // Get single inventory count with assignments
+  app.get('/api/inventory-counts/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const countId = parseInt(req.params.id);
+      const result = await db.execute(sql`
+        SELECT ic.*, u.first_name || ' ' || u.last_name as created_by_name
+        FROM inventory_counts ic
+        LEFT JOIN users u ON u.id = ic.created_by_id
+        WHERE ic.id = ${countId}
+      `);
+      const rows = Array.isArray(result) ? result : ((result as any)?.rows ?? []);
+      if (rows.length === 0) return res.status(404).json({ message: "Sayım bulunamadı" });
+
+      const assignments = await db.execute(sql`
+        SELECT ica.*, 
+          inv.name as inventory_name, inv.code as inventory_code, inv.unit, inv.current_stock,
+          c1.first_name || ' ' || c1.last_name as counter1_name,
+          c2.first_name || ' ' || c2.last_name as counter2_name
+        FROM inventory_count_assignments ica
+        JOIN inventory inv ON inv.id = ica.inventory_id
+        LEFT JOIN users c1 ON c1.id = ica.counter_1_id
+        LEFT JOIN users c2 ON c2.id = ica.counter_2_id
+        WHERE ica.count_id = ${countId}
+        ORDER BY inv.name
+      `);
+      const assignRows = Array.isArray(assignments) ? assignments : ((assignments as any)?.rows ?? []);
+
+      res.json({ ...rows[0], assignments: assignRows });
+    } catch (error: any) {
+      console.error("Error fetching inventory count:", error);
+      res.status(500).json({ message: "Sayım detayı alınamadı" });
+    }
+  });
+
+  // Assign counters to inventory items
+  app.put('/api/inventory-counts/:id/assign', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const role = user.role as string;
+      if (role !== 'fabrika_mudur' && role !== 'admin') {
+        return res.status(403).json({ message: "Sadece fabrika yöneticisi sayımcı atayabilir" });
+      }
+      const countId = parseInt(req.params.id);
+      const { assignments } = req.body; // [{assignmentId, counter1Id, counter2Id}]
+
+      for (const a of assignments) {
+        if (a.counter1Id === a.counter2Id) {
+          return res.status(400).json({ message: "İki sayımcı aynı kişi olamaz" });
+        }
+        await db.update(inventoryCountAssignments)
+          .set({ counter1Id: a.counter1Id, counter2Id: a.counter2Id })
+          .where(eq(inventoryCountAssignments.id, a.assignmentId));
+      }
+
+      // Update count status
+      await db.update(inventoryCounts)
+        .set({ status: 'in_progress', updatedAt: new Date() })
+        .where(eq(inventoryCounts.id, countId));
+
+      res.json({ message: "Sayımcılar atandı" });
+    } catch (error: any) {
+      console.error("Error assigning counters:", error);
+      res.status(500).json({ message: "Sayımcı atanamadı" });
+    }
+  });
+
+  // Get factory workers for counter assignment
+  app.get('/api/factory-workers', isAuthenticated, async (req: any, res) => {
+    try {
+      const result = await db.execute(sql`
+        SELECT id, first_name, last_name, role, username
+        FROM users 
+        WHERE role IN ('fabrika_operator', 'fabrika_sorumlu', 'fabrika_personel', 'fabrika_mudur', 'fabrika')
+        AND is_active = true
+        ORDER BY first_name, last_name
+      `);
+      const rows = Array.isArray(result) ? result : ((result as any)?.rows ?? []);
+      res.json(rows);
+    } catch (error: any) {
+      console.error("Error fetching factory workers:", error);
+      res.status(500).json({ message: "Fabrika çalışanları alınamadı" });
+    }
+  });
+
+  // Submit count entry (by counter)
+  app.post('/api/inventory-count-entries', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const { assignmentId, countedQuantity, notes, photoUrl } = req.body;
+
+      // Get assignment
+      const assignResult = await db.execute(sql`
+        SELECT ica.*, inv.current_stock 
+        FROM inventory_count_assignments ica
+        JOIN inventory inv ON inv.id = ica.inventory_id
+        WHERE ica.id = ${assignmentId}
+      `);
+      const assignRows = Array.isArray(assignResult) ? assignResult : ((assignResult as any)?.rows ?? []);
+      if (assignRows.length === 0) return res.status(404).json({ message: "Sayım ataması bulunamadı" });
+      
+      const assignment = assignRows[0] as any;
+      
+      // Verify this user is assigned as counter1 or counter2
+      if (assignment.counter_1_id !== user.id && assignment.counter_2_id !== user.id) {
+        return res.status(403).json({ message: "Bu sayıma atanmadınız" });
+      }
+
+      // Check if already counted by this user (non-recount)
+      const existingResult = await db.execute(sql`
+        SELECT id FROM inventory_count_entries 
+        WHERE assignment_id = ${assignmentId} AND counter_id = ${user.id} AND is_recount = false
+      `);
+      const existingRows = Array.isArray(existingResult) ? existingResult : ((existingResult as any)?.rows ?? []);
+      if (existingRows.length > 0) {
+        return res.status(400).json({ message: "Bu kalem için zaten sayım girdiniz" });
+      }
+
+      const systemQty = parseFloat(assignment.current_stock || '0');
+      const counted = parseFloat(countedQuantity);
+      const difference = counted - systemQty;
+
+      const [entry] = await db.insert(inventoryCountEntries).values({
+        assignmentId, counterId: user.id, countedQuantity: countedQuantity.toString(),
+        systemQuantity: systemQty.toString(), difference: difference.toString(),
+        isRecount: false, notes, photoUrl
+      }).returning();
+
+      // Check if BOTH assigned counters have submitted
+      const allEntriesResult = await db.execute(sql`
+        SELECT counter_id, counted_quantity FROM inventory_count_entries 
+        WHERE assignment_id = ${assignmentId} AND is_recount = false
+        AND counter_id IN (${assignment.counter_1_id}, ${assignment.counter_2_id})
+      `);
+      const allEntries = Array.isArray(allEntriesResult) ? allEntriesResult : ((allEntriesResult as any)?.rows ?? []);
+      
+      const entryCounterIds = new Set(allEntries.map((e) => e.counter_id));
+      if (entryCounterIds.has(assignment.counter_1_id) && entryCounterIds.has(assignment.counter_2_id)) {
+        const e1 = allEntries.find((e) => e.counter_id === assignment.counter_1_id);
+        const e2 = allEntries.find((e) => e.counter_id === assignment.counter_2_id);
+        const qty1 = parseFloat(e1.counted_quantity);
+        const qty2 = parseFloat(e2.counted_quantity);
+        const discrepancyThreshold = Math.max(systemQty * 0.02, 0.5); // 2% or 0.5 min
+        
+        if (Math.abs(qty1 - qty2) > discrepancyThreshold) {
+          await db.update(inventoryCountAssignments)
+            .set({ status: 'discrepancy' })
+            .where(eq(inventoryCountAssignments.id, assignmentId));
+        } else {
+          await db.update(inventoryCountAssignments)
+            .set({ status: 'completed' })
+            .where(eq(inventoryCountAssignments.id, assignmentId));
+          
+          // Update inventory stock with average of both counts
+          const avgQty = ((qty1 + qty2) / 2).toFixed(3);
+          const invId = assignment.inventory_id;
+          await db.update(inventory)
+            .set({ currentStock: avgQty, updatedAt: new Date() })
+            .where(eq(inventory.id, invId));
+        }
+      } else {
+        await db.update(inventoryCountAssignments)
+          .set({ status: 'counting' })
+          .where(eq(inventoryCountAssignments.id, assignmentId));
+      }
+
+      // Check if all assignments are done for this count
+      const countId = assignment.count_id;
+      const pendingResult = await db.execute(sql`
+        SELECT count(*) as cnt FROM inventory_count_assignments 
+        WHERE count_id = ${countId} AND status NOT IN ('completed')
+      `);
+      const pendingRows = Array.isArray(pendingResult) ? pendingResult : ((pendingResult as any)?.rows ?? []);
+      const pendingCount = parseInt((pendingRows[0] as any)?.cnt || '0');
+      
+      if (pendingCount === 0) {
+        await db.update(inventoryCounts)
+          .set({ status: 'completed', completedAt: new Date(), updatedAt: new Date() })
+          .where(eq(inventoryCounts.id, countId));
+      }
+
+      res.status(201).json(entry);
+    } catch (error: any) {
+      console.error("Error submitting count entry:", error);
+      res.status(500).json({ message: "Sayım girişi kaydedilemedi" });
+    }
+  });
+
+  // Submit recount entry
+  app.post('/api/inventory-count-entries/recount', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const { assignmentId, countedQuantity, notes, photoUrl } = req.body;
+
+      const assignResult = await db.execute(sql`
+        SELECT ica.*, inv.current_stock
+        FROM inventory_count_assignments ica
+        JOIN inventory inv ON inv.id = ica.inventory_id
+        WHERE ica.id = ${assignmentId} AND ica.status = 'discrepancy'
+      `);
+      const assignRows = Array.isArray(assignResult) ? assignResult : ((assignResult as any)?.rows ?? []);
+      if (assignRows.length === 0) return res.status(404).json({ message: "Tutarsızlık olan sayım bulunamadı" });
+      
+      const assignment = assignRows[0] as any;
+      if (assignment.counter_1_id !== user.id && assignment.counter_2_id !== user.id) {
+        return res.status(403).json({ message: "Bu sayıma atanmadınız" });
+      }
+
+      // Prevent duplicate recount by same user
+      const existingRecountResult = await db.execute(sql`
+        SELECT id FROM inventory_count_entries 
+        WHERE assignment_id = ${assignmentId} AND counter_id = ${user.id} AND is_recount = true
+      `);
+      const existingRecountRows = Array.isArray(existingRecountResult) ? existingRecountResult : ((existingRecountResult as any)?.rows ?? []);
+      if (existingRecountRows.length > 0) {
+        return res.status(400).json({ message: "Bu kalem için zaten tekrar sayım girdiniz" });
+      }
+
+      const systemQty = parseFloat(assignment.current_stock || '0');
+      const counted = parseFloat(countedQuantity);
+      const difference = counted - systemQty;
+
+      const [entry] = await db.insert(inventoryCountEntries).values({
+        assignmentId, counterId: user.id, countedQuantity: countedQuantity.toString(),
+        systemQuantity: systemQty.toString(), difference: difference.toString(),
+        isRecount: true, notes, photoUrl
+      }).returning();
+
+      // Check recount entries - both assigned counters must submit
+      const recountResult = await db.execute(sql`
+        SELECT counter_id, counted_quantity FROM inventory_count_entries 
+        WHERE assignment_id = ${assignmentId} AND is_recount = true
+        AND counter_id IN (${assignment.counter_1_id}, ${assignment.counter_2_id})
+      `);
+      const recountEntries = Array.isArray(recountResult) ? recountResult : ((recountResult as any)?.rows ?? []);
+      
+      const recountCounterIds = new Set(recountEntries.map((e) => e.counter_id));
+      if (recountCounterIds.has(assignment.counter_1_id) && recountCounterIds.has(assignment.counter_2_id)) {
+        const e1 = recountEntries.find((e) => e.counter_id === assignment.counter_1_id);
+        const e2 = recountEntries.find((e) => e.counter_id === assignment.counter_2_id);
+        const qty1 = parseFloat(e1.counted_quantity);
+        const qty2 = parseFloat(e2.counted_quantity);
+        // After recount, accept the average regardless
+        await db.update(inventoryCountAssignments)
+          .set({ status: 'completed' })
+          .where(eq(inventoryCountAssignments.id, assignmentId));
+        
+        const avgQty = ((qty1 + qty2) / 2).toFixed(3);
+        const invId = assignment.inventory_id;
+        await db.update(inventory)
+          .set({ currentStock: avgQty, updatedAt: new Date() })
+          .where(eq(inventory.id, invId));
+      }
+
+      res.status(201).json(entry);
+    } catch (error: any) {
+      console.error("Error submitting recount:", error);
+      res.status(500).json({ message: "Tekrar sayım kaydedilemedi" });
+    }
+  });
+
+  // Get count entries for an assignment
+  app.get('/api/inventory-count-entries/:assignmentId', isAuthenticated, async (req: any, res) => {
+    try {
+      const assignmentId = parseInt(req.params.assignmentId);
+      const result = await db.execute(sql`
+        SELECT ice.*, u.first_name || ' ' || u.last_name as counter_name
+        FROM inventory_count_entries ice
+        LEFT JOIN users u ON u.id = ice.counter_id
+        WHERE ice.assignment_id = ${assignmentId}
+        ORDER BY ice.counted_at
+      `);
+      const rows = Array.isArray(result) ? result : ((result as any)?.rows ?? []);
+      res.json(rows);
+    } catch (error: any) {
+      console.error("Error fetching count entries:", error);
+      res.status(500).json({ message: "Sayım girişleri alınamadı" });
+    }
+  });
+
+  // ========================================
+  // FACTORY MANAGEMENT SCORE ROUTES
+  // ========================================
+
+  // Get factory management scores
+  app.get('/api/factory-management-scores', isAuthenticated, async (req: any, res) => {
+    try {
+      const { year } = req.query;
+      const targetYear = year ? parseInt(year as string) : new Date().getFullYear();
+      const result = await db.execute(sql`
+        SELECT * FROM factory_management_scores 
+        WHERE year = ${targetYear}
+        ORDER BY month DESC
+      `);
+      const rows = Array.isArray(result) ? result : ((result as any)?.rows ?? []);
+      res.json(rows);
+    } catch (error: any) {
+      console.error("Error fetching factory scores:", error);
+      res.status(500).json({ message: "Fabrika yönetim skorları alınamadı" });
+    }
+  });
+
+  // Calculate/update factory management score for a month
+  app.post('/api/factory-management-scores/calculate', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const role = user.role as string;
+      if (!['admin', 'ceo', 'cgo', 'fabrika_mudur'].includes(role)) {
+        return res.status(403).json({ message: "Yetkisiz erişim" });
+      }
+
+      const { month, year } = req.body;
+      const targetMonth = month || new Date().getMonth() + 1;
+      const targetYear = year || new Date().getFullYear();
+
+      // 1. Check inventory count status
+      const countResult = await db.execute(sql`
+        SELECT * FROM inventory_counts WHERE month = ${targetMonth} AND year = ${targetYear} LIMIT 1
+      `);
+      const countRows = Array.isArray(countResult) ? countResult : ((countResult as any)?.rows ?? []);
+      const inventoryCount = countRows[0] as any;
+      
+      let inventoryCountScore = 100;
+      let inventoryCountCompleted = false;
+      let inventoryCountOnTime = false;
+      
+      if (!inventoryCount) {
+        inventoryCountScore = 0; // No count created
+      } else if (inventoryCount.status === 'completed') {
+        inventoryCountCompleted = true;
+        const lastDay = new Date(targetYear, targetMonth, 0);
+        const completedAt = new Date(inventoryCount.completed_at);
+        inventoryCountOnTime = completedAt <= lastDay;
+        inventoryCountScore = inventoryCountOnTime ? 100 : 60;
+      } else if (inventoryCount.status === 'overdue') {
+        inventoryCountScore = 20;
+      } else {
+        // Still in progress
+        const now = new Date();
+        const lastDay = new Date(targetYear, targetMonth, 0);
+        if (now > lastDay) {
+          inventoryCountScore = 30; // Past deadline
+        } else {
+          inventoryCountScore = 70; // In progress
+        }
+      }
+
+      // 2. Count production complaints from branches
+      const complaintsResult = await db.execute(sql`
+        SELECT count(*)::int as cnt FROM product_complaints 
+        WHERE EXTRACT(MONTH FROM created_at) = ${targetMonth} 
+        AND EXTRACT(YEAR FROM created_at) = ${targetYear}
+      `);
+      const complaintsRows = Array.isArray(complaintsResult) ? complaintsResult : ((complaintsResult as any)?.rows ?? []);
+      const branchComplaintCount = parseInt((complaintsRows[0] as any)?.cnt || '0');
+      const branchComplaintScore = Math.max(0, 100 - (branchComplaintCount * 10));
+
+      // 3. Count waste (fire/zayiat from inventory movements)
+      const wasteResult = await db.execute(sql`
+        SELECT count(*)::int as cnt FROM inventory_movements 
+        WHERE movement_type = 'fire'
+        AND EXTRACT(MONTH FROM created_at) = ${targetMonth}
+        AND EXTRACT(YEAR FROM created_at) = ${targetYear}
+      `);
+      const wasteRows = Array.isArray(wasteResult) ? wasteResult : ((wasteResult as any)?.rows ?? []);
+      const wasteCount = parseInt((wasteRows[0] as any)?.cnt || '0');
+      const wasteScore = Math.max(0, 100 - (wasteCount * 5));
+
+      // 4. Production errors (wrong production)
+      const prodErrorResult = await db.execute(sql`
+        SELECT count(*)::int as cnt FROM production_batches 
+        WHERE (quality_status = 'rejected' OR quality_status = 'failed')
+        AND EXTRACT(MONTH FROM created_at) = ${targetMonth}
+        AND EXTRACT(YEAR FROM created_at) = ${targetYear}
+      `);
+      const prodErrorRows = Array.isArray(prodErrorResult) ? prodErrorResult : ((prodErrorResult as any)?.rows ?? []);
+      const productionErrorCount = parseInt((prodErrorRows[0] as any)?.cnt || '0');
+      const productionErrorScore = Math.max(0, 100 - (productionErrorCount * 15));
+
+      // Calculate overall score (weighted average)
+      const overallScore = Math.round(
+        inventoryCountScore * 0.25 +
+        branchComplaintScore * 0.25 +
+        wasteScore * 0.25 +
+        productionErrorScore * 0.25
+      );
+
+      // Upsert score
+      const existingScore = await db.execute(sql`
+        SELECT id FROM factory_management_scores WHERE month = ${targetMonth} AND year = ${targetYear} LIMIT 1
+      `);
+      const existingScoreRows = Array.isArray(existingScore) ? existingScore : ((existingScore as any)?.rows ?? []);
+
+      let scoreRecord;
+      if (existingScoreRows.length > 0) {
+        [scoreRecord] = await db.update(factoryManagementScores)
+          .set({
+            inventoryCountScore, wasteScore, productionErrorScore,
+            wrongProductionScore: productionErrorScore,
+            branchComplaintScore, overallScore,
+            wasteCount, productionErrorCount, wrongProductionCount: productionErrorCount,
+            branchComplaintCount, inventoryCountCompleted, inventoryCountOnTime,
+            calculatedAt: new Date(), updatedAt: new Date()
+          })
+          .where(eq(factoryManagementScores.id, (existingScoreRows[0] as any).id))
+          .returning();
+      } else {
+        [scoreRecord] = await db.insert(factoryManagementScores).values({
+          month: targetMonth, year: targetYear,
+          inventoryCountScore, wasteScore, productionErrorScore,
+          wrongProductionScore: productionErrorScore,
+          branchComplaintScore, overallScore,
+          wasteCount, productionErrorCount, wrongProductionCount: productionErrorCount,
+          branchComplaintCount, inventoryCountCompleted, inventoryCountOnTime,
+        }).returning();
+      }
+
+      res.json(scoreRecord);
+    } catch (error: any) {
+      console.error("Error calculating factory score:", error);
+      res.status(500).json({ message: "Fabrika skoru hesaplanamadı" });
     }
   });
 

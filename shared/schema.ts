@@ -12477,3 +12477,114 @@ export const DEFAULT_FRANCHISE_PHASES = [
   { phaseNumber: 6, name: "Personel Alim ve Egitim", description: "Kadro olusturma, DOSPRESSO Akademi egitimi, staj donemi" },
   { phaseNumber: 7, name: "Acilis Oncesi ve Acilis", description: "Son kontroller, test servisleri, resmi acilis, marketing kampanyasi" },
 ];
+
+// ========================================
+// INVENTORY COUNTING SCHEMA
+// ========================================
+
+export const inventoryCountStatusEnum = ["planned", "in_progress", "counting", "review", "completed", "overdue"] as const;
+export type InventoryCountStatus = typeof inventoryCountStatusEnum[number];
+
+export const inventoryCounts = pgTable("inventory_counts", {
+  id: serial("id").primaryKey(),
+  month: integer("month").notNull(),
+  year: integer("year").notNull(),
+  scheduledDate: timestamp("scheduled_date").notNull(),
+  status: varchar("status", { length: 30 }).notNull().default("planned"),
+  createdById: varchar("created_by_id").references(() => users.id, { onDelete: "set null" }),
+  completedAt: timestamp("completed_at"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("inv_count_month_year_idx").on(table.month, table.year),
+  index("inv_count_status_idx").on(table.status),
+]);
+
+export const insertInventoryCountSchema = createInsertSchema(inventoryCounts).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertInventoryCount = z.infer<typeof insertInventoryCountSchema>;
+export type InventoryCount = typeof inventoryCounts.$inferSelect;
+
+export const inventoryCountAssignments = pgTable("inventory_count_assignments", {
+  id: serial("id").primaryKey(),
+  countId: integer("count_id").references(() => inventoryCounts.id, { onDelete: "cascade" }).notNull(),
+  inventoryId: integer("inventory_id").references(() => inventory.id, { onDelete: "cascade" }).notNull(),
+  counter1Id: varchar("counter_1_id").references(() => users.id, { onDelete: "set null" }),
+  counter2Id: varchar("counter_2_id").references(() => users.id, { onDelete: "set null" }),
+  status: varchar("status", { length: 30 }).notNull().default("pending"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("inv_count_assign_count_idx").on(table.countId),
+  index("inv_count_assign_inv_idx").on(table.inventoryId),
+]);
+
+export const insertInventoryCountAssignmentSchema = createInsertSchema(inventoryCountAssignments).omit({
+  id: true,
+  createdAt: true,
+});
+export type InsertInventoryCountAssignment = z.infer<typeof insertInventoryCountAssignmentSchema>;
+export type InventoryCountAssignment = typeof inventoryCountAssignments.$inferSelect;
+
+export const inventoryCountEntries = pgTable("inventory_count_entries", {
+  id: serial("id").primaryKey(),
+  assignmentId: integer("assignment_id").references(() => inventoryCountAssignments.id, { onDelete: "cascade" }).notNull(),
+  counterId: varchar("counter_id").references(() => users.id, { onDelete: "set null" }).notNull(),
+  countedQuantity: numeric("counted_quantity", { precision: 12, scale: 3 }).notNull(),
+  systemQuantity: numeric("system_quantity", { precision: 12, scale: 3 }).notNull(),
+  difference: numeric("difference", { precision: 12, scale: 3 }).notNull(),
+  isRecount: boolean("is_recount").default(false),
+  notes: text("notes"),
+  photoUrl: text("photo_url"),
+  countedAt: timestamp("counted_at").defaultNow(),
+}, (table) => [
+  index("inv_count_entry_assign_idx").on(table.assignmentId),
+  index("inv_count_entry_counter_idx").on(table.counterId),
+]);
+
+export const insertInventoryCountEntrySchema = createInsertSchema(inventoryCountEntries).omit({
+  id: true,
+  countedAt: true,
+});
+export type InsertInventoryCountEntry = z.infer<typeof insertInventoryCountEntrySchema>;
+export type InventoryCountEntry = typeof inventoryCountEntries.$inferSelect;
+
+// ========================================
+// FACTORY MANAGEMENT SCORES SCHEMA
+// ========================================
+
+export const factoryManagementScores = pgTable("factory_management_scores", {
+  id: serial("id").primaryKey(),
+  month: integer("month").notNull(),
+  year: integer("year").notNull(),
+  inventoryCountScore: integer("inventory_count_score").default(100),
+  wasteScore: integer("waste_score").default(100),
+  productionErrorScore: integer("production_error_score").default(100),
+  wrongProductionScore: integer("wrong_production_score").default(100),
+  branchComplaintScore: integer("branch_complaint_score").default(100),
+  overallScore: integer("overall_score").default(100),
+  wasteCount: integer("waste_count").default(0),
+  productionErrorCount: integer("production_error_count").default(0),
+  wrongProductionCount: integer("wrong_production_count").default(0),
+  branchComplaintCount: integer("branch_complaint_count").default(0),
+  inventoryCountCompleted: boolean("inventory_count_completed").default(false),
+  inventoryCountOnTime: boolean("inventory_count_on_time").default(false),
+  notes: text("notes"),
+  calculatedAt: timestamp("calculated_at").defaultNow(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("factory_mgmt_score_month_idx").on(table.month, table.year),
+]);
+
+export const insertFactoryManagementScoreSchema = createInsertSchema(factoryManagementScores).omit({
+  id: true,
+  calculatedAt: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertFactoryManagementScore = z.infer<typeof insertFactoryManagementScoreSchema>;
+export type FactoryManagementScore = typeof factoryManagementScores.$inferSelect;

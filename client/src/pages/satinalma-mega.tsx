@@ -17,7 +17,8 @@ import {
   Filter,
   BarChart3,
   Calculator,
-  CreditCard
+  CreditCard,
+  ClipboardList
 } from "lucide-react";
 
 import StokYonetimi from "./satinalma/stok-yonetimi";
@@ -27,6 +28,8 @@ import MalKabul from "./satinalma/mal-kabul";
 import SatinalmaDashboard from "./satinalma/satinalma-dashboard";
 import CariTakip from "./satinalma/cari-takip";
 import MaliyetYonetimi from "./fabrika/maliyet-yonetimi";
+import SayimYonetimi from "./satinalma/sayim-yonetimi";
+import FabrikaYonetimSkoru from "./fabrika/fabrika-yonetim-skoru";
 
 interface TabConfig {
   id: string;
@@ -41,6 +44,8 @@ const ALL_TABS: TabConfig[] = [
   { id: "tedarikci", label: "Tedarikçiler", icon: Users },
   { id: "siparis", label: "Siparişler", icon: ShoppingCart },
   { id: "mal-kabul", label: "Mal Kabul", icon: ClipboardCheck },
+  { id: "sayim", label: "Sayım", icon: ClipboardList, restrictedToRoles: ['admin', 'ceo', 'cgo', 'fabrika_mudur', 'fabrika', 'fabrika_operator', 'fabrika_sorumlu', 'satinalma'] },
+  { id: "fabrika-skor", label: "Fabrika Skoru", icon: BarChart3, restrictedToRoles: ['admin', 'ceo', 'cgo', 'fabrika_mudur'] },
   { id: "cari-takip", label: "Cari Takip", icon: CreditCard, restrictedToRoles: ['admin', 'muhasebe', 'muhasebe_ik', 'satinalma', 'ceo'] },
   { id: "urun-maliyetleri", label: "Ürün Maliyetleri", icon: Calculator, restrictedToRoles: ['admin', 'muhasebe', 'muhasebe_ik', 'satinalma', 'ceo'] },
 ];
@@ -70,6 +75,10 @@ export default function SatinalmaMega() {
         return <SiparisYonetimi />;
       case "mal-kabul":
         return <MalKabul />;
+      case "sayim":
+        return <SayimYonetimi />;
+      case "fabrika-skor":
+        return <FabrikaYonetimSkoru />;
       case "cari-takip":
         return <CariTakip />;
       case "urun-maliyetleri":

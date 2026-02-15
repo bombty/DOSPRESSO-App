@@ -104,8 +104,8 @@ export const MODULES_BY_ROLE: Record<UserRole, string[]> = {
   yatirimci_branch: ['reports'],
   // Factory Roles - Fabrika çalışanları
   fabrika_mudur: ['factory', 'satinalma', 'reports', 'hr'],
-  fabrika_operator: ['factory'],
-  fabrika_sorumlu: ['factory'],
+  fabrika_operator: ['factory', 'satinalma'],
+  fabrika_sorumlu: ['factory', 'satinalma'],
   fabrika_personel: ['factory'],
 };
 
