@@ -32947,11 +32947,11 @@ MUTLAKA aşağıdaki JSON formatında yanıt ver:
   app.post('/api/branches/:branchId/kiosk/login', async (req, res) => {
     try {
       const branchId = parseInt(req.params.branchId);
+      const { userId, pin } = req.body;
       const clientIp = req.ip || req.socket.remoteAddress || 'unknown';
       const rateLimitId = `branch_${branchId}_${clientIp}_${userId || 'unknown'}`;
       const rateCheck = checkKioskRateLimit(rateLimitId);
       if (!rateCheck.allowed) { return res.status(429).json({ message: `Çok fazla deneme. ${Math.ceil((rateCheck.retryAfter || 1800) / 60)} dakika sonra tekrar deneyin.`, retryAfter: rateCheck.retryAfter }); }
-      const { userId, pin } = req.body;
       
       if (!userId || !pin) {
         return res.status(400).json({ message: "Kullanıcı ve PIN gerekli" });
@@ -33018,6 +33018,8 @@ MUTLAKA aşağıdaki JSON formatında yanıt ver:
           )
         ))
         .limit(1);
+
+      const kioskToken = `kiosk_${branchId}_${userId}_${Date.now()}`;
 
       res.json({
         success: true,
