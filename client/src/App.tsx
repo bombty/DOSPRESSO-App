@@ -216,6 +216,10 @@ function ExecutiveOnly({ children }: { children: ReactNode }) {
   return <ProtectedRoute allowedRoles={["admin", "ceo", "cgo", "coach", "trainer", "muhasebe", "satinalma", "teknik", "destek", "fabrika", "yatirimci_hq"]}>{children}</ProtectedRoute>;
 }
 
+function CEOOnly({ children }: { children: ReactNode }) {
+  return <ProtectedRoute allowedRoles={["ceo", "cgo"]} strictRoles>{children}</ProtectedRoute>;
+}
+
 function AuthCatchAllToLogin() {
   const [location, setLocation] = useLocation();
 
@@ -394,7 +398,7 @@ function Router() {
           <Route path="/banner-editor">{() => <AdminOnly><BannerEditor /></AdminOnly>}</Route>
           <Route path="/crm/*?" component={CRMMegaModule} />
           <Route path="/admin/*?" component={AdminMegaModule} />
-          <Route path="/ceo-command-center">{() => <ExecutiveOnly><CEOCommandCenter /></ExecutiveOnly>}</Route>
+          <Route path="/ceo-command-center">{() => <CEOOnly><CEOCommandCenter /></CEOOnly>}</Route>
           <Route path="/cgo-command-center">{() => <ExecutiveOnly><CGOCommandCenter /></ExecutiveOnly>}</Route>
           <Route path="/hq-dashboard/:department?">{() => <HQOnly><HQDashboard /></HQOnly>}</Route>
           <Route path="/kalite-kontrol-dashboard">{() => <HQOnly><KaliteKontrolDashboard /></HQOnly>}</Route>

@@ -36158,7 +36158,7 @@ Dusuk puanli alanlara odaklan ve pozitif, motive edici ol. JSON dizisi olarak ya
   app.get("/api/ceo/command-center", isAuthenticated, async (req: any, res) => {
     try {
       const user = req.user;
-      if (!['ceo', 'admin'].includes(user.role)) {
+      if (!['ceo', 'cgo', 'admin'].includes(user.role)) {
         return res.status(403).json({ message: "Bu sayfaya erisim yetkiniz yok" });
       }
 

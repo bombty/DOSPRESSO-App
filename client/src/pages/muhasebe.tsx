@@ -1227,6 +1227,7 @@ export default function Muhasebe() {
                 </CardContent>
               </Card>
 
+              {(user?.role === 'ceo' || user?.role === 'cgo') && (
               <Card>
                 <CardContent className="pt-6 pb-4">
                   <div className="flex flex-col items-center gap-3 text-center">
@@ -1246,6 +1247,7 @@ export default function Muhasebe() {
                   </div>
                 </CardContent>
               </Card>
+              )}
             </div>
 
             <Card>

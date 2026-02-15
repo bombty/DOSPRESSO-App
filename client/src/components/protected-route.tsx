@@ -38,13 +38,15 @@ interface ProtectedRouteProps {
   allowedRoles?: string[];
   allowedGroups?: RoleGroup[];
   requireAuth?: boolean;
+  strictRoles?: boolean;
 }
 
 export function ProtectedRoute({ 
   children, 
   allowedRoles, 
   allowedGroups,
-  requireAuth = true 
+  requireAuth = true,
+  strictRoles = false,
 }: ProtectedRouteProps) {
   const { user, isLoading, isAuthenticated, isBranchOnlyContext } = useAuth();
   
@@ -70,7 +72,7 @@ export function ProtectedRoute({
   const hasRoleAccess = !allowedRoles || allowedRoles.length === 0 || allowedRoles.includes(userRole);
   const hasGroupAccess = !allowedGroups || allowedGroups.length === 0 || allowedGroups.some(g => userGroups.includes(g));
   
-  if (userRole === 'admin') {
+  if (userRole === 'admin' && !strictRoles) {
     return <>{children}</>;
   }
   

@@ -82,7 +82,7 @@ export function CompactStatsBar() {
       icon: Brain,
       bgColor: "bg-gradient-to-r from-blue-600 to-indigo-600",
       path: "/ceo-command-center",
-      roles: ["admin", "ceo"]
+      roles: ["ceo", "cgo"]
     },
     {
       id: "branches",

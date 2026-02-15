@@ -27,8 +27,7 @@ export function AISummaryCard() {
     enabled: !!user && isHQ,
   });
 
-  // Only show for CEO and admin users (matches backend restriction)
-  if (!isHQ || (user?.role !== 'ceo' && user?.role !== 'admin')) return null;
+  if (!isHQ || (user?.role !== 'ceo' && user?.role !== 'cgo')) return null;
 
   const healthyBranches = branches.filter((b: any) => (b.healthScore || 0) >= 80).length;
   const totalBranches = branches.length;

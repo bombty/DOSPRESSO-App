@@ -31,6 +31,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Progress } from "@/components/ui/progress";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
+import { useLocation } from "wouter";
 
 interface DeptDetail {
   key: string;
@@ -204,6 +206,14 @@ interface AbuseReport {
 }
 
 export default function CEOCommandCenter() {
+  const { user } = useAuth();
+  const [, setLocation] = useLocation();
+
+  if (user && user.role !== 'ceo' && user.role !== 'cgo') {
+    setLocation('/');
+    return null;
+  }
+
   const { data: dashboardData, isLoading, isRefetching, refetch } = useQuery<CEODashboardData>({
     queryKey: ["/api/ceo/command-center"],
     refetchInterval: 60000,
