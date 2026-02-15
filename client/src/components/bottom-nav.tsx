@@ -35,7 +35,11 @@ const NAV_ITEM_CONFIG: Record<string, { icon: any; label: string; getPath: (user
   ai: {
     icon: Brain,
     label: "AI Asistan",
-    getPath: () => "/ceo-command-center",
+    getPath: (user) => {
+      if (user?.role === 'ceo') return '/ceo-command-center';
+      if (user?.role === 'cgo') return '/cgo-command-center';
+      return '/ai-asistan';
+    },
   },
   admin: {
     icon: Settings,

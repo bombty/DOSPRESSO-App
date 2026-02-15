@@ -7,9 +7,9 @@ export type UserRole =
   | 'teknik' | 'destek' | 'trainer' | 'coach' | 'kalite_kontrol'
   | 'fabrika_mudur' | 'fabrika' | 'yatirimci_hq' | 'ekipman_teknik' | 'ik'
   // Branch Roles
-  | 'supervisor' | 'supervisor_buddy' | 'barista' | 'bar_buddy' | 'stajyer' | 'yatirimci_branch'
+  | 'mudur' | 'supervisor' | 'supervisor_buddy' | 'barista' | 'bar_buddy' | 'stajyer' | 'yatirimci_branch'
   // Factory Roles
-  | 'fabrika_sorumlu' | 'fabrika_personel';
+  | 'fabrika_operator' | 'fabrika_sorumlu' | 'fabrika_personel';
 
 // HQ Rolleri - Tüm merkez çalışanları
 const HQ_ROLES: UserRole[] = [
@@ -28,10 +28,10 @@ const HQ_MODULE_CARD_ROLES: UserRole[] = [
 ];
 
 // Şube Rolleri
-const BRANCH_ROLES: UserRole[] = ['supervisor', 'supervisor_buddy', 'barista', 'bar_buddy', 'stajyer', 'yatirimci_branch'];
+const BRANCH_ROLES: UserRole[] = ['mudur', 'supervisor', 'supervisor_buddy', 'barista', 'bar_buddy', 'stajyer', 'yatirimci_branch'];
 
 // Fabrika Rolleri
-const FACTORY_ROLES: UserRole[] = ['fabrika_mudur', 'fabrika_sorumlu', 'fabrika_personel'];
+const FACTORY_ROLES: UserRole[] = ['fabrika_mudur', 'fabrika_operator', 'fabrika_sorumlu', 'fabrika_personel'];
 
 // Hızlı giriş butonları - Alt menü ve modüllerle TEKRARLANMAMALI
 // Bu butonlar dashboard'da hızlı aksiyon sağlar
@@ -57,6 +57,7 @@ export const QUICK_ACTIONS_BY_ROLE: Record<UserRole, string[]> = {
   fabrika: ['production', 'quality', 'shifts'],
   yatirimci_hq: ['announcements', 'performance'],
   // Branch Roles - Nav: checklists, academy, fault, myshifts
+  mudur: ['new-task', 'shifts', 'leaves', 'personnel'],
   supervisor: ['new-task', 'shifts', 'leaves', 'personnel'],
   supervisor_buddy: ['new-task', 'shifts', 'personnel'],
   barista: ['checklist', 'leaves'],
@@ -65,6 +66,7 @@ export const QUICK_ACTIONS_BY_ROLE: Record<UserRole, string[]> = {
   yatirimci_branch: ['performance'],
   // Factory Roles - Nav: factory, myshifts/shifts
   fabrika_mudur: ['production', 'personnel', 'quality'],
+  fabrika_operator: ['production', 'quality'],
   fabrika_sorumlu: ['production', 'quality'],
   fabrika_personel: ['production'],
 };
@@ -93,6 +95,7 @@ export const MODULES_BY_ROLE: Record<UserRole, string[]> = {
   fabrika: ['factory', 'reports'],
   yatirimci_hq: ['reports'],
   // Branch Roles - Şube çalışanları
+  mudur: ['operations', 'equipment', 'training', 'hr', 'reports'],
   supervisor: ['operations', 'equipment', 'training', 'hr'],
   supervisor_buddy: ['operations', 'equipment', 'training'],
   barista: ['operations', 'training'],
@@ -101,6 +104,7 @@ export const MODULES_BY_ROLE: Record<UserRole, string[]> = {
   yatirimci_branch: ['reports'],
   // Factory Roles - Fabrika çalışanları
   fabrika_mudur: ['factory', 'satinalma', 'reports', 'hr'],
+  fabrika_operator: ['factory'],
   fabrika_sorumlu: ['factory'],
   fabrika_personel: ['factory'],
 };
@@ -127,6 +131,7 @@ export const STATS_BY_ROLE: Record<UserRole, string[]> = {
   fabrika: ['production', 'quality', 'stock'],
   yatirimci_hq: ['branches', 'revenue', 'performance'],
   // Branch Roles
+  mudur: ['tasks', 'faults', 'checklist', 'personnel', 'revenue'],
   supervisor: ['tasks', 'faults', 'checklist', 'personnel'],
   supervisor_buddy: ['tasks', 'faults', 'checklist'],
   barista: ['tasks', 'checklist'],
@@ -135,6 +140,7 @@ export const STATS_BY_ROLE: Record<UserRole, string[]> = {
   yatirimci_branch: ['revenue', 'performance'],
   // Factory Roles
   fabrika_mudur: ['production', 'quality', 'stock', 'personnel'],
+  fabrika_operator: ['production', 'quality', 'shifts'],
   fabrika_sorumlu: ['production', 'quality', 'stock'],
   fabrika_personel: ['production', 'shifts'],
 };
@@ -165,6 +171,7 @@ export const NAV_ITEMS_BY_ROLE: Record<UserRole, string[]> = {
   fabrika: ['home', 'stock', 'notifications', 'search', 'profile'],
   yatirimci_hq: ['home', 'branches', 'notifications', 'search', 'profile'],
   // Branch Roles - Günlük operasyon kısayolları
+  mudur: ['home', 'tasks', 'notifications', 'fault', 'profile'],
   supervisor: ['home', 'tasks', 'notifications', 'fault', 'profile'],
   supervisor_buddy: ['home', 'tasks', 'notifications', 'fault', 'profile'],
   barista: ['home', 'academy', 'myshifts', 'fault', 'profile'],
@@ -173,6 +180,7 @@ export const NAV_ITEMS_BY_ROLE: Record<UserRole, string[]> = {
   yatirimci_branch: ['home', 'branches', 'notifications', 'profile'],
   // Factory Roles - Üretim odaklı kısayollar
   fabrika_mudur: ['home', 'shifts', 'notifications', 'search', 'profile'],
+  fabrika_operator: ['home', 'factory', 'myshifts', 'notifications', 'profile'],
   fabrika_sorumlu: ['home', 'factory', 'myshifts', 'profile'],
   fabrika_personel: ['home', 'factory', 'myshifts', 'profile'],
 };
@@ -191,17 +199,17 @@ export const WIDGET_VISIBILITY: Record<string, UserRole[]> = {
   // Şube scorecard: Şube rolleri ve coach
   'branch-scorecard': [...BRANCH_ROLES, 'coach'],
   
-  // Personel durumu: Supervisor'lar, IK ve fabrika müdürü
-  'personnel-status': ['supervisor', 'supervisor_buddy', 'ik', 'fabrika_mudur', 'admin'],
+  // Personel durumu: Müdür, Supervisor'lar, IK ve fabrika müdürü
+  'personnel-status': ['mudur', 'supervisor', 'supervisor_buddy', 'ik', 'fabrika_mudur', 'admin'],
   
-  // Kritik uyarılar: HQ ve supervisor'lar
-  'critical-alerts': [...HQ_ROLES, 'supervisor', 'supervisor_buddy', 'fabrika_mudur'],
+  // Kritik uyarılar: HQ ve supervisor'lar ve müdürler
+  'critical-alerts': [...HQ_ROLES, 'mudur', 'supervisor', 'supervisor_buddy', 'fabrika_mudur'],
   
   // Hızlı giriş: TÜM roller görmeli
   'quick-actions': [...HQ_ROLES, ...BRANCH_ROLES, ...FACTORY_ROLES],
   
-  // Modül kartları: Tüm HQ (CEO dahil) ve supervisor'lar
-  'module-cards': [...HQ_MODULE_CARD_ROLES, 'supervisor', 'supervisor_buddy', 'fabrika_mudur'],
+  // Modül kartları: Tüm HQ (CEO dahil), müdürler ve supervisor'lar
+  'module-cards': [...HQ_MODULE_CARD_ROLES, 'mudur', 'supervisor', 'supervisor_buddy', 'fabrika_mudur'],
   
   // Aktivite zaman çizelgesi: HQ ve supervisor'lar
   'activity-timeline': [...HQ_ROLES, 'supervisor', 'supervisor_buddy'],

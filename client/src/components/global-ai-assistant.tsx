@@ -55,11 +55,12 @@ const roleBasedQueries: Record<string, QuickQuery[]> = {
     { text: "Açık arızalarımız var mı?" },
     { text: "Tamamlanmamış görevler neler?" },
   ],
-  manager: [
+  mudur: [
     { text: "Şube durumu nasıl?" },
     { text: "Açık arızalar var mı?" },
     { text: "Personel performansları nasıl?" },
     { text: "Bekleyen izin talepleri?" },
+    { text: "Bugün şubemde kimler çalışıyor?" },
   ],
   barista: [
     { text: "Bugünkü görevlerim neler?" },
@@ -79,6 +80,11 @@ const roleBasedQueries: Record<string, QuickQuery[]> = {
     { text: "Üretim durumu nasıl?" },
     { text: "Açık arızalar var mı?" },
     { text: "Ekipman bakımları güncel mi?" },
+  ],
+  fabrika_operator: [
+    { text: "Bugünkü üretim planı ne?" },
+    { text: "Açık arızalar var mı?" },
+    { text: "Vardiya saatlerim ne zaman?" },
   ],
   muhasebe: [
     { text: "Bekleyen izin talepleri var mı?" },

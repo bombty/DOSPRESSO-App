@@ -23109,17 +23109,21 @@ DOSPRESSO İnsan Kaynakları Ekibi`
       .where(gte(shiftCorrections.createdAt, thirtyDaysAgo))
       .groupBy(shiftCorrections.correctedById, users.firstName, users.lastName, users.fullName, shiftCorrections.branchId);
 
-      const employeeFocusStats = await db.select({
-        correctedById: shiftCorrections.correctedById,
-        employeeId: shiftCorrections.employeeId,
-        employeeFirstName: sql<string>`emp.first_name`,
-        employeeLastName: sql<string>`emp.last_name`,
-        correctionCount: sql<number>`count(*)::int`,
-      })
-      .from(shiftCorrections)
-      .leftJoin(sql`users emp`, sql`emp.id = ${shiftCorrections.employeeId}`)
-      .where(gte(shiftCorrections.createdAt, thirtyDaysAgo))
-      .groupBy(shiftCorrections.correctedById, shiftCorrections.employeeId, sql`emp.first_name`, sql`emp.last_name`);
+      const employeeFocusResult = await db.execute(sql`
+        SELECT 
+          sc.corrected_by_id as "correctedById",
+          sc.employee_id as "employeeId",
+          emp.first_name as "employeeFirstName",
+          emp.last_name as "employeeLastName",
+          count(*)::int as "correctionCount"
+        FROM shift_corrections sc
+        LEFT JOIN users emp ON emp.id = sc.employee_id
+        WHERE sc.created_at >= ${thirtyDaysAgo}
+        GROUP BY sc.corrected_by_id, sc.employee_id, emp.first_name, emp.last_name
+      `);
+      const employeeFocusStats: any[] = Array.isArray(employeeFocusResult) 
+        ? employeeFocusResult 
+        : ((employeeFocusResult as any)?.rows ?? []);
 
       const TOTAL_THRESHOLD = 10;
       const PER_PERSON_THRESHOLD = 5;

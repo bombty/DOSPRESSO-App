@@ -80,10 +80,6 @@ export default function Login() {
       await queryClient.cancelQueries();
       queryClient.clear();
 
-      if (data.user) {
-        queryClient.setQueryData(["/api/auth/user"], data.user);
-      }
-
       toast({
         title: "Giris basarili",
         description: "Hos geldiniz!",
@@ -117,9 +113,27 @@ export default function Login() {
       };
 
       const target = getTarget();
-      setTimeout(() => {
-        navigate(target);
-      }, 300);
+
+      const waitForSession = async (retries = 5): Promise<boolean> => {
+        for (let i = 0; i < retries; i++) {
+          try {
+            const res = await fetch("/api/auth/user", { credentials: "include" });
+            if (res.ok) {
+              const userData = await res.json();
+              queryClient.setQueryData(["/api/auth/user"], userData);
+              return true;
+            }
+          } catch {}
+          await new Promise(r => setTimeout(r, 200 * (i + 1)));
+        }
+        return false;
+      };
+
+      const sessionReady = await waitForSession();
+      if (!sessionReady && data.user) {
+        queryClient.setQueryData(["/api/auth/user"], data.user);
+      }
+      navigate(target);
     },
     onError: (error) => {
       setError(error.message || "Giriş başarısız");
