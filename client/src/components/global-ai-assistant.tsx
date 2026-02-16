@@ -165,7 +165,8 @@ function getDailyQuote(role: string): string {
   
   const quotes = motivationalQuotes[category];
   const today = new Date();
-  const dayIndex = (today.getFullYear() * 366 + today.getMonth() * 31 + today.getDate()) % quotes.length;
+  const roleHash = role.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
+  const dayIndex = (today.getFullYear() * 366 + today.getMonth() * 31 + today.getDate() + roleHash) % quotes.length;
   return quotes[dayIndex];
 }
 
@@ -619,7 +620,7 @@ export function GlobalAIAssistant() {
 
       <motion.button
         className="fixed bottom-20 sm:bottom-4 right-4 z-[70] flex items-center justify-center touch-none"
-        style={{ width: 56, height: 56, background: 'transparent', border: 'none', padding: 0, cursor: 'grab' }}
+        style={{ width: 68, height: 68, background: 'transparent', border: 'none', padding: 0, cursor: 'grab' }}
         drag
         dragConstraints={constraintsRef}
         dragElastic={0.1}
@@ -647,7 +648,7 @@ export function GlobalAIAssistant() {
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.5, opacity: 0 }}
             >
-              <DobodyIcon size={52} />
+              <DobodyIcon size={64} />
             </motion.div>
           )}
         </AnimatePresence>

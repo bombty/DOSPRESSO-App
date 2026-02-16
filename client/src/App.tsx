@@ -82,7 +82,6 @@ import NFCGiris from "@/pages/nfc-giris";
 import VardiyaPlanlama from "@/pages/vardiya-planlama";
 import Vardiyalarim from "@/pages/vardiyalarim";
 import PersonelMusaitlik from "@/pages/personel-musaitlik";
-import AIAssistant from "@/pages/ai-assistant";
 import Performance from "@/pages/performance";
 import AdminSeed from "@/pages/admin-seed";
 import AdminContentManagement from "@/pages/yonetim/icerik";
@@ -376,7 +375,6 @@ function Router() {
           <Route path="/misafir-memnuniyeti" component={MisafirMemnuniyeti} />
           <Route path="/sikayetler" component={Sikayetler} />
           <Route path="/hq-destek" component={HQSupport} />
-          <Route path="/ai-asistan" component={AIAssistant} />
           <Route path="/kampanya-yonetimi" component={KampanyaYonetimi} />
           <Route path="/franchise-acilis" component={FranchiseAcilis} />
           <Route path="/yonetim/icerik" component={AdminContentManagement} />

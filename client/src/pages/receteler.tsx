@@ -6,6 +6,16 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { 
   Search, 
   Coffee, 
@@ -24,7 +34,19 @@ import {
   UtensilsCrossed,
   BellDot,
   CheckCheck,
-  Flame
+  Flame,
+  Plus,
+  Pencil,
+  Trash2,
+  Loader2,
+  Sparkles,
+  Megaphone,
+  MessageSquare,
+  TrendingUp,
+  Presentation,
+  Thermometer,
+  AlertTriangle,
+  Image as ImageIcon
 } from "lucide-react";
 import {
   Dialog,
@@ -36,6 +58,9 @@ import {
 
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
+import { useToast } from "@/hooks/use-toast";
+import { isHQRole } from "@shared/schema";
+import { ImageUploader } from "@/components/image-uploader";
 
 type RecipeCategory = {
   id: number;
@@ -63,6 +88,13 @@ type Recipe = {
   isFeatured: boolean | null;
   categoryId: number;
   tags?: string[];
+  infographicUrl?: string | null;
+  marketingText?: string | null;
+  salesTips?: string | null;
+  presentationNotes?: string | null;
+  storageConditions?: string | null;
+  upsellingNotes?: string | null;
+  importantNotes?: string | null;
 };
 
 type RecipeVersion = {
@@ -134,6 +166,29 @@ export default function Receteler() {
   const [mainTab, setMainTab] = useState<"beverages" | "food">("beverages");
   const [tempFilter, setTempFilter] = useState<"all" | "hot" | "iced">("all");
   const { user } = useAuth();
+  const { toast } = useToast();
+
+  const canEdit = user?.role === 'admin' || isHQRole(user?.role as any);
+
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [editingRecipe, setEditingRecipe] = useState<Recipe | null>(null);
+  const [formNameTr, setFormNameTr] = useState("");
+  const [formCode, setFormCode] = useState("");
+  const [formCategoryId, setFormCategoryId] = useState("");
+  const [formDescription, setFormDescription] = useState("");
+  const [formDifficulty, setFormDifficulty] = useState("");
+  const [formEstimatedMinutes, setFormEstimatedMinutes] = useState("");
+  const [formHasCoffee, setFormHasCoffee] = useState(false);
+  const [formHasMilk, setFormHasMilk] = useState(false);
+  const [formTags, setFormTags] = useState("");
+  const [formPhotoUrl, setFormPhotoUrl] = useState("");
+  const [formInfographicUrl, setFormInfographicUrl] = useState("");
+  const [formMarketingText, setFormMarketingText] = useState("");
+  const [formSalesTips, setFormSalesTips] = useState("");
+  const [formUpsellingNotes, setFormUpsellingNotes] = useState("");
+  const [formPresentationNotes, setFormPresentationNotes] = useState("");
+  const [formStorageConditions, setFormStorageConditions] = useState("");
+  const [formImportantNotes, setFormImportantNotes] = useState("");
 
   const { data: categories = [], isLoading: loadingCategories } = useQuery<RecipeCategory[]>({
     queryKey: ["/api/academy/recipe-categories"],
@@ -165,6 +220,160 @@ export default function Receteler() {
     },
   });
 
+  const createRecipeMutation = useMutation({
+    mutationFn: async (data: Record<string, any>) => {
+      return apiRequest("POST", "/api/academy/recipes", data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/academy/recipes"] });
+      toast({ title: "Reçete oluşturuldu", description: "Yeni reçete başarıyla eklendi." });
+      setIsEditDialogOpen(false);
+      resetForm();
+    },
+    onError: (error: any) => {
+      toast({ title: "Hata", description: error.message || "Reçete oluşturulamadı.", variant: "destructive" });
+    },
+  });
+
+  const updateRecipeMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: number; data: Record<string, any> }) => {
+      return apiRequest("PATCH", `/api/academy/recipes/${id}`, data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/academy/recipes"] });
+      toast({ title: "Reçete güncellendi", description: "Reçete başarıyla kaydedildi." });
+      setIsEditDialogOpen(false);
+      resetForm();
+    },
+    onError: (error: any) => {
+      toast({ title: "Hata", description: error.message || "Reçete güncellenemedi.", variant: "destructive" });
+    },
+  });
+
+  const deleteRecipeMutation = useMutation({
+    mutationFn: async (id: number) => {
+      return apiRequest("DELETE", `/api/academy/recipes/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/academy/recipes"] });
+      toast({ title: "Reçete silindi", description: "Reçete başarıyla silindi." });
+      setIsEditDialogOpen(false);
+      resetForm();
+    },
+    onError: (error: any) => {
+      toast({ title: "Hata", description: error.message || "Reçete silinemedi.", variant: "destructive" });
+    },
+  });
+
+  const generateMarketingMutation = useMutation({
+    mutationFn: async (id: number) => {
+      const res = await apiRequest("POST", `/api/academy/recipes/${id}/generate-marketing`);
+      return res.json();
+    },
+    onSuccess: (data: any) => {
+      if (data.marketingText) setFormMarketingText(data.marketingText);
+      if (data.salesTips) setFormSalesTips(data.salesTips);
+      if (data.upsellingNotes) setFormUpsellingNotes(data.upsellingNotes);
+      if (data.presentationNotes) setFormPresentationNotes(data.presentationNotes);
+      if (data.storageConditions) setFormStorageConditions(data.storageConditions);
+      if (data.importantNotes) setFormImportantNotes(data.importantNotes);
+      toast({ title: "AI içerik oluşturuldu", description: "Pazarlama alanları dolduruldu." });
+    },
+    onError: (error: any) => {
+      toast({ title: "Hata", description: error.message || "AI içerik oluşturulamadı.", variant: "destructive" });
+    },
+  });
+
+  const resetForm = () => {
+    setEditingRecipe(null);
+    setFormNameTr("");
+    setFormCode("");
+    setFormCategoryId("");
+    setFormDescription("");
+    setFormDifficulty("");
+    setFormEstimatedMinutes("");
+    setFormHasCoffee(false);
+    setFormHasMilk(false);
+    setFormTags("");
+    setFormPhotoUrl("");
+    setFormInfographicUrl("");
+    setFormMarketingText("");
+    setFormSalesTips("");
+    setFormUpsellingNotes("");
+    setFormPresentationNotes("");
+    setFormStorageConditions("");
+    setFormImportantNotes("");
+  };
+
+  const openCreateDialog = () => {
+    resetForm();
+    setIsEditDialogOpen(true);
+  };
+
+  const openEditDialog = (recipe: Recipe, e?: React.MouseEvent) => {
+    if (e) {
+      e.stopPropagation();
+    }
+    setEditingRecipe(recipe);
+    setFormNameTr(recipe.nameTr || "");
+    setFormCode(recipe.code || "");
+    setFormCategoryId(String(recipe.categoryId));
+    setFormDescription(recipe.description || "");
+    setFormDifficulty(recipe.difficulty || "");
+    setFormEstimatedMinutes(recipe.estimatedMinutes ? String(recipe.estimatedMinutes) : "");
+    setFormHasCoffee(recipe.hasCoffee || false);
+    setFormHasMilk(recipe.hasMilk || false);
+    setFormTags(Array.isArray(recipe.tags) ? recipe.tags.join(", ") : "");
+    setFormPhotoUrl(recipe.photoUrl || "");
+    setFormInfographicUrl(recipe.infographicUrl || "");
+    setFormMarketingText(recipe.marketingText || "");
+    setFormSalesTips(recipe.salesTips || "");
+    setFormUpsellingNotes(recipe.upsellingNotes || "");
+    setFormPresentationNotes(recipe.presentationNotes || "");
+    setFormStorageConditions(recipe.storageConditions || "");
+    setFormImportantNotes(recipe.importantNotes || "");
+    setIsEditDialogOpen(true);
+  };
+
+  const handleSaveRecipe = () => {
+    if (!formNameTr.trim() || !formCode.trim()) {
+      toast({ title: "Eksik alan", description: "Reçete adı ve kodu zorunludur.", variant: "destructive" });
+      return;
+    }
+
+    const payload: Record<string, any> = {
+      nameTr: formNameTr.trim(),
+      code: formCode.trim(),
+      categoryId: formCategoryId ? parseInt(formCategoryId) : undefined,
+      description: formDescription.trim() || null,
+      difficulty: formDifficulty || null,
+      estimatedMinutes: formEstimatedMinutes ? parseInt(formEstimatedMinutes) : null,
+      hasCoffee: formHasCoffee,
+      hasMilk: formHasMilk,
+      tags: formTags.trim() ? formTags.split(",").map(t => t.trim()).filter(Boolean) : [],
+      photoUrl: formPhotoUrl || null,
+      infographicUrl: formInfographicUrl || null,
+      marketingText: formMarketingText.trim() || null,
+      salesTips: formSalesTips.trim() || null,
+      upsellingNotes: formUpsellingNotes.trim() || null,
+      presentationNotes: formPresentationNotes.trim() || null,
+      storageConditions: formStorageConditions.trim() || null,
+      importantNotes: formImportantNotes.trim() || null,
+    };
+
+    if (editingRecipe) {
+      updateRecipeMutation.mutate({ id: editingRecipe.id, data: payload });
+    } else {
+      createRecipeMutation.mutate(payload);
+    }
+  };
+
+  const handleDeleteRecipe = () => {
+    if (!editingRecipe) return;
+    if (!confirm("Bu reçeteyi silmek istediğinizden emin misiniz?")) return;
+    deleteRecipeMutation.mutate(editingRecipe.id);
+  };
+
   const unreadNotifications = useMemo(() => {
     return notifications.filter((n) => !n.isRead);
   }, [notifications]);
@@ -192,10 +401,8 @@ export default function Receteler() {
         ? activeCategoryIds.has(recipe.categoryId)
         : recipe.categoryId === parseInt(selectedCategory);
       
-      // Temperature filter logic
       if (tempFilter !== "all") {
         const isIced = recipe.code.startsWith('I') || (Array.isArray(recipe.tags) && recipe.tags.includes('iced'));
-        const isHot = recipe.code.includes('_HOT') || (!isIced && !recipe.code.startsWith('I'));
         if (tempFilter === "hot" && isIced) return false;
         if (tempFilter === "iced" && !isIced) return false;
       }
@@ -265,6 +472,8 @@ export default function Receteler() {
     return recipes.filter(r => ids.has(r.categoryId)).length;
   }, [recipes, foodCategories]);
 
+  const isSaving = createRecipeMutation.isPending || updateRecipeMutation.isPending;
+
   return (
     <div className="container mx-auto p-4 space-y-4">
       <div className="flex flex-col gap-4">
@@ -278,18 +487,29 @@ export default function Receteler() {
               </p>
             </div>
           </div>
-          {unreadNotifications.length > 0 && (
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={() => markAllReadMutation.mutate()}
-              disabled={markAllReadMutation.isPending}
-              data-testid="button-mark-all-read"
-            >
-              <CheckCheck className="h-4 w-4 mr-1" />
-              {unreadNotifications.length} güncelleme okundu işaretle
-            </Button>
-          )}
+          <div className="flex items-center gap-2 flex-wrap">
+            {canEdit && (
+              <Button
+                onClick={openCreateDialog}
+                data-testid="button-new-recipe"
+              >
+                <Plus className="h-4 w-4 mr-1" />
+                Yeni Reçete
+              </Button>
+            )}
+            {unreadNotifications.length > 0 && (
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => markAllReadMutation.mutate()}
+                disabled={markAllReadMutation.isPending}
+                data-testid="button-mark-all-read"
+              >
+                <CheckCheck className="h-4 w-4 mr-1" />
+                {unreadNotifications.length} güncelleme okundu işaretle
+              </Button>
+            )}
+          </div>
         </div>
 
         <Tabs value={mainTab} onValueChange={(v) => { const newTab = v as "beverages" | "food"; setMainTab(newTab); setSelectedCategory("all"); if (newTab === "food") { setTempFilter("all"); } }}>
@@ -428,10 +648,21 @@ export default function Receteler() {
                   return (
                     <Card 
                       key={recipe.id} 
-                      className="hover-elevate cursor-pointer"
+                      className="hover-elevate cursor-pointer relative"
                       onClick={() => handleRecipeClick(recipe)}
                       data-testid={`card-recipe-${recipe.id}`}
                     >
+                      {canEdit && (
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="absolute top-2 right-2 z-10"
+                          onClick={(e) => openEditDialog(recipe, e)}
+                          data-testid={`button-edit-recipe-${recipe.id}`}
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </Button>
+                      )}
                       <CardContent className="p-4">
                         <div className="flex justify-between items-start gap-2">
                           <div className="flex-1 min-w-0">
@@ -468,7 +699,9 @@ export default function Receteler() {
                               )}
                             </div>
                           </div>
-                          <ChevronRight className="h-5 w-5 text-muted-foreground flex-shrink-0" />
+                          {!canEdit && (
+                            <ChevronRight className="h-5 w-5 text-muted-foreground flex-shrink-0" />
+                          )}
                         </div>
                       </CardContent>
                     </Card>
@@ -649,8 +882,358 @@ export default function Receteler() {
                   </CardContent>
                 </Card>
               )}
+
+              {selectedRecipe.marketingText && (
+                <Card className="mt-4" data-testid="card-marketing-text">
+                  <CardHeader className="py-3 bg-primary/5 rounded-t-lg">
+                    <CardTitle className="text-sm flex items-center gap-2">
+                      <Megaphone className="h-4 w-4 text-primary" /> Pazarlama Dili
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="pt-3">
+                    <p className="text-sm whitespace-pre-wrap">{selectedRecipe.marketingText}</p>
+                  </CardContent>
+                </Card>
+              )}
+
+              {selectedRecipe.salesTips && (
+                <Card className="mt-4" data-testid="card-sales-tips">
+                  <CardHeader className="py-3 bg-blue-500/5 rounded-t-lg">
+                    <CardTitle className="text-sm flex items-center gap-2">
+                      <MessageSquare className="h-4 w-4 text-blue-500" /> Satış Dili
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="pt-3">
+                    <p className="text-sm whitespace-pre-wrap">{selectedRecipe.salesTips}</p>
+                  </CardContent>
+                </Card>
+              )}
+
+              {selectedRecipe.upsellingNotes && (
+                <Card className="mt-4" data-testid="card-upselling-notes">
+                  <CardHeader className="py-3 bg-green-500/5 rounded-t-lg">
+                    <CardTitle className="text-sm flex items-center gap-2">
+                      <TrendingUp className="h-4 w-4 text-green-500" /> Upselling Önerileri
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="pt-3">
+                    <p className="text-sm whitespace-pre-wrap">{selectedRecipe.upsellingNotes}</p>
+                  </CardContent>
+                </Card>
+              )}
+
+              {selectedRecipe.presentationNotes && (
+                <Card className="mt-4" data-testid="card-presentation-notes">
+                  <CardHeader className="py-3 bg-purple-500/5 rounded-t-lg">
+                    <CardTitle className="text-sm flex items-center gap-2">
+                      <Presentation className="h-4 w-4 text-purple-500" /> Sunum Notları
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="pt-3">
+                    <p className="text-sm whitespace-pre-wrap">{selectedRecipe.presentationNotes}</p>
+                  </CardContent>
+                </Card>
+              )}
+
+              {selectedRecipe.storageConditions && (
+                <Card className="mt-4" data-testid="card-storage-conditions">
+                  <CardHeader className="py-3 bg-orange-500/5 rounded-t-lg">
+                    <CardTitle className="text-sm flex items-center gap-2">
+                      <Thermometer className="h-4 w-4 text-orange-500" /> Saklama Koşulları
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="pt-3">
+                    <p className="text-sm whitespace-pre-wrap">{selectedRecipe.storageConditions}</p>
+                  </CardContent>
+                </Card>
+              )}
+
+              {selectedRecipe.importantNotes && (
+                <Card className="mt-4" data-testid="card-important-notes">
+                  <CardHeader className="py-3 bg-destructive/5 rounded-t-lg">
+                    <CardTitle className="text-sm flex items-center gap-2">
+                      <AlertTriangle className="h-4 w-4 text-destructive" /> Önemli Notlar
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="pt-3">
+                    <p className="text-sm whitespace-pre-wrap">{selectedRecipe.importantNotes}</p>
+                  </CardContent>
+                </Card>
+              )}
+
+              {selectedRecipe.infographicUrl && (
+                <Card className="mt-4" data-testid="card-infographic">
+                  <CardHeader className="py-3">
+                    <CardTitle className="text-sm flex items-center gap-2">
+                      <ImageIcon className="h-4 w-4" /> İnfografik
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="pt-0">
+                    <img 
+                      src={selectedRecipe.infographicUrl} 
+                      alt="İnfografik" 
+                      className="w-full rounded-md"
+                      data-testid="img-infographic"
+                    />
+                  </CardContent>
+                </Card>
+              )}
             </>
           )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{editingRecipe ? "Reçete Düzenle" : "Yeni Reçete"}</DialogTitle>
+            <DialogDescription>
+              {editingRecipe ? "Reçete bilgilerini güncelleyin." : "Yeni bir reçete ekleyin."}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="form-name">Reçete Adı *</Label>
+                <Input
+                  id="form-name"
+                  value={formNameTr}
+                  onChange={(e) => setFormNameTr(e.target.value)}
+                  placeholder="Örn: Caramel Latte"
+                  data-testid="input-recipe-name"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="form-code">Reçete Kodu *</Label>
+                <Input
+                  id="form-code"
+                  value={formCode}
+                  onChange={(e) => setFormCode(e.target.value)}
+                  placeholder="Örn: H_CL_01"
+                  data-testid="input-recipe-code"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Kategori</Label>
+                <Select value={formCategoryId} onValueChange={setFormCategoryId}>
+                  <SelectTrigger data-testid="select-category">
+                    <SelectValue placeholder="Kategori seçin" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {categories.map((cat) => (
+                      <SelectItem key={cat.id} value={String(cat.id)}>
+                        {cat.titleTr}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Zorluk</Label>
+                <Select value={formDifficulty} onValueChange={setFormDifficulty}>
+                  <SelectTrigger data-testid="select-difficulty">
+                    <SelectValue placeholder="Zorluk seçin" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="easy">Kolay</SelectItem>
+                    <SelectItem value="medium">Orta</SelectItem>
+                    <SelectItem value="hard">Zor</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="form-description">Açıklama</Label>
+              <Textarea
+                id="form-description"
+                value={formDescription}
+                onChange={(e) => setFormDescription(e.target.value)}
+                placeholder="Reçete açıklaması..."
+                data-testid="textarea-description"
+              />
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="form-minutes">Tahmini Süre (dk)</Label>
+                <Input
+                  id="form-minutes"
+                  type="number"
+                  value={formEstimatedMinutes}
+                  onChange={(e) => setFormEstimatedMinutes(e.target.value)}
+                  placeholder="5"
+                  data-testid="input-estimated-minutes"
+                />
+              </div>
+              <div className="flex items-center gap-2 pt-6">
+                <Checkbox
+                  id="form-coffee"
+                  checked={formHasCoffee}
+                  onCheckedChange={(v) => setFormHasCoffee(!!v)}
+                  data-testid="checkbox-has-coffee"
+                />
+                <Label htmlFor="form-coffee" className="cursor-pointer">Kahveli</Label>
+              </div>
+              <div className="flex items-center gap-2 pt-6">
+                <Checkbox
+                  id="form-milk"
+                  checked={formHasMilk}
+                  onCheckedChange={(v) => setFormHasMilk(!!v)}
+                  data-testid="checkbox-has-milk"
+                />
+                <Label htmlFor="form-milk" className="cursor-pointer">Sütlü</Label>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="form-tags">Etiketler (virgülle ayırın)</Label>
+              <Input
+                id="form-tags"
+                value={formTags}
+                onChange={(e) => setFormTags(e.target.value)}
+                placeholder="iced, signature, seasonal"
+                data-testid="input-tags"
+              />
+            </div>
+
+            <ImageUploader 
+              value={formPhotoUrl} 
+              onChange={setFormPhotoUrl} 
+              purpose="recipe" 
+              label="Reçete Fotoğrafı" 
+            />
+
+            <ImageUploader 
+              value={formInfographicUrl} 
+              onChange={setFormInfographicUrl} 
+              purpose="recipe" 
+              label="İnfografik" 
+            />
+
+            <div className="space-y-2">
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <Label htmlFor="form-marketing">Pazarlama Metni</Label>
+                {editingRecipe && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => generateMarketingMutation.mutate(editingRecipe.id)}
+                    disabled={generateMarketingMutation.isPending}
+                    data-testid="button-generate-marketing"
+                  >
+                    {generateMarketingMutation.isPending ? (
+                      <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                    ) : (
+                      <Sparkles className="h-4 w-4 mr-1" />
+                    )}
+                    AI ile Oluştur
+                  </Button>
+                )}
+              </div>
+              <Textarea
+                id="form-marketing"
+                value={formMarketingText}
+                onChange={(e) => setFormMarketingText(e.target.value)}
+                placeholder="Pazarlama dili metni..."
+                data-testid="textarea-marketing-text"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="form-sales">Satış İpuçları</Label>
+              <Textarea
+                id="form-sales"
+                value={formSalesTips}
+                onChange={(e) => setFormSalesTips(e.target.value)}
+                placeholder="Satış dili ipuçları..."
+                data-testid="textarea-sales-tips"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="form-upselling">Upselling Notları</Label>
+              <Textarea
+                id="form-upselling"
+                value={formUpsellingNotes}
+                onChange={(e) => setFormUpsellingNotes(e.target.value)}
+                placeholder="Upselling önerileri..."
+                data-testid="textarea-upselling-notes"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="form-presentation">Sunum Notları</Label>
+              <Textarea
+                id="form-presentation"
+                value={formPresentationNotes}
+                onChange={(e) => setFormPresentationNotes(e.target.value)}
+                placeholder="Sunum notları..."
+                data-testid="textarea-presentation-notes"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="form-storage">Saklama Koşulları</Label>
+              <Textarea
+                id="form-storage"
+                value={formStorageConditions}
+                onChange={(e) => setFormStorageConditions(e.target.value)}
+                placeholder="Saklama koşulları..."
+                data-testid="textarea-storage-conditions"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="form-important">Önemli Notlar</Label>
+              <Textarea
+                id="form-important"
+                value={formImportantNotes}
+                onChange={(e) => setFormImportantNotes(e.target.value)}
+                placeholder="Önemli notlar..."
+                data-testid="textarea-important-notes"
+              />
+            </div>
+
+            <div className="flex items-center justify-between gap-2 flex-wrap pt-4 border-t">
+              {editingRecipe && (
+                <Button
+                  variant="destructive"
+                  onClick={handleDeleteRecipe}
+                  disabled={deleteRecipeMutation.isPending}
+                  data-testid="button-delete-recipe"
+                >
+                  {deleteRecipeMutation.isPending ? (
+                    <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                  ) : (
+                    <Trash2 className="h-4 w-4 mr-1" />
+                  )}
+                  Sil
+                </Button>
+              )}
+              <div className="flex items-center gap-2 ml-auto flex-wrap">
+                <Button
+                  variant="outline"
+                  onClick={() => setIsEditDialogOpen(false)}
+                  data-testid="button-cancel-recipe"
+                >
+                  İptal
+                </Button>
+                <Button
+                  onClick={handleSaveRecipe}
+                  disabled={isSaving}
+                  data-testid="button-save-recipe"
+                >
+                  {isSaving && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}
+                  {editingRecipe ? "Kaydet" : "Oluştur"}
+                </Button>
+              </div>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

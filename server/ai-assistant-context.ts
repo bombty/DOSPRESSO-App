@@ -526,6 +526,31 @@ ${usersData.map(u => `- ${u.firstName} ${u.lastName} (${u.role})`).join("\n")}`;
     accessibleData = "Sinirli erisim";
   }
 
+  let recipeContext = "";
+  try {
+    const activeRecipes = await db.select({
+      id: recipes.id,
+      nameTr: recipes.nameTr,
+      description: recipes.description,
+      marketingText: recipes.marketingText,
+      salesTips: recipes.salesTips,
+      upsellingNotes: recipes.upsellingNotes,
+    }).from(recipes).where(eq(recipes.isActive, true)).limit(50);
+
+    if (activeRecipes.length > 0) {
+      const recipeLines = activeRecipes.map(r => {
+        const parts = [`- ${r.nameTr}: ${r.description || 'Açıklama yok'}`];
+        if (r.marketingText) parts.push(`Pazarlama: ${r.marketingText}`);
+        if (r.upsellingNotes) parts.push(`Upselling: ${r.upsellingNotes}`);
+        if (r.salesTips) parts.push(`Satış dili: ${r.salesTips}`);
+        return parts.join('. ');
+      });
+      recipeContext = `\nREÇETE BİLGİLERİ (Bu bilgileri ürünler hakkında soru sorulduğunda kullan):\n${recipeLines.join('\n')}`;
+    }
+  } catch (recipeErr) {
+    console.error("Recipe context error:", recipeErr);
+  }
+
   const navLinks = buildNavLinksPrompt(role);
 
   const firstName = user.firstName || "Kullanici";
@@ -548,6 +573,7 @@ ${roleContext}
 
 NAVIGASYON LINKLERI (kullaniciya yonlendirme yaparken bu linkleri kullan):
 ${navLinks}
+${recipeContext}
 
 YANITLAMA KURALLARI:
 1. Turkce ve samimi tonda cevap ver. Her zaman kullaniciyi ismiyle hitap et.
@@ -563,6 +589,7 @@ YANITLAMA KURALLARI:
 6. SADECE kullanicinin erisebilecegi veriler hakkinda bilgi ver. Yetkisi disindaki veriler hakkinda "${firstName}, bu bilgiye erisim yetkin bulunmuyor" de.
 7. max_tokens siniri var, bu yuzden gereksiz uzatma. Onemli bilgileri on plana al.
 8. Kullaniciya aksiyon onerileri sun ve hangi sayfaya gitmesi gerektigini linkle goster.
+9. Musteri bir urun hakkinda soru sordugunda, recete bilgilerinden yararlanarak detayli bilgi ver ve upselling onerilerinde bulun.
 
 KISITLAMALAR:
 ${role === "stajyer" ? "- Stajyer: SADECE egitim ve checklist bilgisi ver. Personel/sube/finans bilgisi VERME." : ""}

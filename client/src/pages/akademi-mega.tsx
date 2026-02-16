@@ -22,8 +22,7 @@ import {
   Target,
   TrendingUp,
   Flame,
-  Settings2,
-  Bot
+  Settings2
 } from "lucide-react";
 
 const Academy = lazy(() => import("./academy"));
@@ -43,7 +42,6 @@ const AcademyProgressOverview = lazy(() => import("./academy-progress-overview")
 const AcademyCohortAnalytics = lazy(() => import("./academy-cohort-analytics"));
 const AcademyBranchAnalytics = lazy(() => import("./academy-branch-analytics"));
 const AcademyStreakTracker = lazy(() => import("./academy-streak-tracker"));
-const AcademyAIAssistant = lazy(() => import("./academy-ai-assistant"));
 
 interface TabConfig {
   id: string;
@@ -223,15 +221,6 @@ const AKADEMI_TABS: TabConfig[] = [
     group: "advanced",
     component: AcademySupervisor
   },
-  {
-    id: "ai-asistan",
-    label: "AI Assistant",
-    labelTr: "AI Asistan",
-    icon: <Bot className="h-4 w-4" />,
-    permissionModule: "academy_ai",
-    group: "advanced",
-    component: AcademyAIAssistant
-  }
 ];
 
 function TabSkeleton() {
@@ -265,7 +254,6 @@ const TAB_URL_MAP: Record<string, string> = {
   "uyarlanabilir-motor": "/akademi/uyarlanabilir-motor",
   "sosyal-gruplar": "/akademi/sosyal-gruplar",
   "supervisor": "/akademi/supervisor",
-  "ai-asistan": "/akademi/ai-asistan"
 };
 
 function getTabFromUrl(pathname: string): string | null {

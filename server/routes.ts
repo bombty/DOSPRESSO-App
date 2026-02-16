@@ -1362,7 +1362,7 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
         
         // COACH ROLÜ: Eğitim ve akademi modülleri
         if (role === 'coach') {
-          return new Set(['dashboard', 'training', 'operations', 'reports']);
+          return new Set(['dashboard', 'training', 'reports']);
         }
         
         // DESTEK ROLÜ: Operasyon ve destek modülleri
@@ -18706,6 +18706,28 @@ Cevaplarınız kısa, faydalı ve türkçe olmalıdır.`;
         await db.update(recipes).set({ currentVersionId: version.id }).where(eq(recipes.id, recipe.id));
       }
       
+      // Non-blocking notifications for branch staff about new recipe
+      (async () => {
+        try {
+          const allBranchUsers = await db.select({ id: users.id, role: users.role }).from(users)
+            .where(eq(users.isActive, true));
+          const branchStaff = allBranchUsers.filter(u => isBranchRole(u.role as UserRoleType));
+          const notifValues = branchStaff.map(u => ({
+            userId: u.id,
+            type: 'recipe_update',
+            title: 'Yeni Reçete',
+            message: `"${recipe.nameTr}" reçetesi eklendi. Lütfen inceleyin.`,
+            link: '/receteler',
+            isRead: false,
+          }));
+          if (notifValues.length > 0) {
+            await db.insert(notifications).values(notifValues);
+          }
+        } catch (notifErr) {
+          console.error("Recipe create notification error:", notifErr);
+        }
+      })();
+
       res.status(201).json(recipe);
     } catch (error: any) {
       console.error("Create recipe error:", error);
@@ -18755,7 +18777,7 @@ Cevaplarınız kısa, faydalı ve türkçe olmalıdır.`;
         
         await db.update(recipes).set({ currentVersionId: version.id }).where(eq(recipes.id, recipe.id));
 
-        // Send recipe update notifications to all branch staff
+        // Send recipe version notifications
         try {
           const allUsers = await db.select({ id: users.id, role: users.role }).from(users)
             .where(eq(users.isApproved, true));
@@ -18770,21 +18792,33 @@ Cevaplarınız kısa, faydalı ve türkçe olmalıdır.`;
               userId: targetUser.id,
               isRead: false,
             }).onConflictDoNothing();
-
-            await db.insert(notifications).values({
-              userId: targetUser.id,
-              type: 'recipe_update',
-              title: 'Reçete Güncellendi',
-              message: `"${recipe.nameTr}" reçetesi güncellendi (v${newVersionNumber}). Lütfen yeni adımları inceleyin.`,
-              link: `/academy/recipes/${recipe.id}`,
-              isRead: false,
-            });
           }
-          console.log(`📢 Recipe update notifications sent to ${targetUsers.length} staff for "${recipe.nameTr}"`);
         } catch (notifErr) {
-          console.error("Recipe notification error:", notifErr);
+          console.error("Recipe version notification error:", notifErr);
         }
       }
+
+      // Non-blocking notifications for branch staff about recipe update
+      (async () => {
+        try {
+          const allBranchUsers = await db.select({ id: users.id, role: users.role }).from(users)
+            .where(eq(users.isActive, true));
+          const branchStaff = allBranchUsers.filter(u => isBranchRole(u.role as UserRoleType));
+          const notifValues = branchStaff.map(u => ({
+            userId: u.id,
+            type: 'recipe_update',
+            title: 'Reçete Güncellendi',
+            message: `"${recipe.nameTr}" reçetesi güncellendi. Lütfen inceleyin.`,
+            link: '/receteler',
+            isRead: false,
+          }));
+          if (notifValues.length > 0) {
+            await db.insert(notifications).values(notifValues);
+          }
+        } catch (notifErr) {
+          console.error("Recipe update notification error:", notifErr);
+        }
+      })();
       
       res.json(recipe);
     } catch (error: any) {
@@ -18793,6 +18827,80 @@ Cevaplarınız kısa, faydalı ve türkçe olmalıdır.`;
         return res.status(400).json({ message: error.errors[0].message });
       }
       res.status(500).json({ message: "Reçete güncellenemedi" });
+    }
+  });
+
+  // POST /api/academy/recipes/:id/generate-marketing - AI pazarlama içeriği oluşturma
+  app.post('/api/academy/recipes/:id/generate-marketing', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      if (!isHQRole(user.role) && user.role !== 'admin') {
+        return res.status(403).json({ message: "Bu işlem için yetkiniz yok" });
+      }
+
+      const { id } = req.params;
+      const [recipe] = await db.select().from(recipes).where(eq(recipes.id, parseInt(id)));
+      if (!recipe) {
+        return res.status(404).json({ message: "Reçete bulunamadı" });
+      }
+
+      const apiKey = process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY;
+      if (!apiKey) {
+        return res.status(500).json({ message: "OpenAI API anahtarı yapılandırılmamış" });
+      }
+
+      const OpenAI = (await import('openai')).default;
+      const openai = new OpenAI({ apiKey });
+
+      const systemPrompt = `Sen DOSPRESSO kahve zinciri için pazarlama içerik uzmanısın. Verilen reçete bilgilerine göre Türkçe olarak aşağıdaki içerikleri oluştur:
+1. **Pazarlama Metni** (marketingText): Müşteriye yönelik çekici, duygusal bir tanım cümlesi (1-2 cümle)
+2. **Satış Dili** (salesTips): Baristanın müşteriye ürünü tanıtırken kullanacağı doğal konuşma önerileri (2-3 madde)
+3. **Upselling Önerileri** (upsellingNotes): Bu ürünle birlikte önerilecek yan ürünler ve combo önerileri (2-3 madde)
+4. **Sunum Notları** (presentationNotes): Ürünün servis edilirken dikkat edilecek sunum detayları (1-2 madde)
+5. **Saklama Koşulları** (storageConditions): Hammadde ve ürün saklama bilgileri (1 madde)
+6. **Önemli Notlar** (importantNotes): Hazırlık sırasında dikkat edilecek kritik noktalar (1-2 madde)
+
+JSON formatında yanıt ver: {"marketingText": "...", "salesTips": "...", "upsellingNotes": "...", "presentationNotes": "...", "storageConditions": "...", "importantNotes": "..."}`;
+
+      const userPrompt = `Reçete: ${recipe.nameTr}
+Açıklama: ${recipe.description || 'Belirtilmemiş'}
+Kahve Türü: ${recipe.coffeeType || 'Belirtilmemiş'}
+Kahve İçerir: ${recipe.hasCoffee ? 'Evet' : 'Hayır'}
+Süt İçerir: ${recipe.hasMilk ? 'Evet' : 'Hayır'}`;
+
+      const response = await openai.chat.completions.create({
+        model: 'gpt-4o-mini',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userPrompt },
+        ],
+        temperature: 0.7,
+        response_format: { type: 'json_object' },
+      });
+
+      const content = response.choices[0]?.message?.content;
+      if (!content) {
+        return res.status(500).json({ message: "AI yanıt üretemedi" });
+      }
+
+      const parsed = JSON.parse(content);
+
+      const updateData: Record<string, string> = {};
+      if (parsed.marketingText) updateData.marketingText = parsed.marketingText;
+      if (parsed.salesTips) updateData.salesTips = parsed.salesTips;
+      if (parsed.upsellingNotes) updateData.upsellingNotes = parsed.upsellingNotes;
+      if (parsed.presentationNotes) updateData.presentationNotes = parsed.presentationNotes;
+      if (parsed.storageConditions) updateData.storageConditions = parsed.storageConditions;
+      if (parsed.importantNotes) updateData.importantNotes = parsed.importantNotes;
+
+      await db.update(recipes)
+        .set({ ...updateData, updatedAt: new Date() })
+        .where(eq(recipes.id, parseInt(id)));
+
+      res.json(updateData);
+    } catch (error: any) {
+      console.error("Generate marketing error:", error);
+      res.status(500).json({ message: "Pazarlama içeriği oluşturulamadı" });
     }
   });
 
