@@ -120,9 +120,9 @@ export default function SayimYonetimi() {
   });
 
   const { data: factoryUsers } = useQuery<any[]>({
-    queryKey: ["/api/factory/workers"],
+    queryKey: ["/api/factory-workers"],
     queryFn: async () => {
-      const res = await fetch("/api/factory/workers");
+      const res = await fetch("/api/factory-workers");
       if (!res.ok) return [];
       return res.json();
     },
@@ -171,6 +171,9 @@ export default function SayimYonetimi() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/inventory-counts"] });
+      if (selectedCount?.id) {
+        queryClient.invalidateQueries({ queryKey: ["/api/inventory-counts", selectedCount.id] });
+      }
       setShowCountDialog(false);
       setCountQuantity("");
       setCountNotes("");
@@ -187,6 +190,9 @@ export default function SayimYonetimi() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/inventory-counts"] });
+      if (selectedCount?.id) {
+        queryClient.invalidateQueries({ queryKey: ["/api/inventory-counts", selectedCount.id] });
+      }
       setShowCountDialog(false);
       setCountQuantity("");
       setCountNotes("");
