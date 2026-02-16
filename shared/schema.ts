@@ -6841,6 +6841,7 @@ export const recipes = pgTable("recipes", {
   isFeatured: boolean("is_featured").default(false), // Öne çıkan reçete
   displayOrder: integer("display_order").default(0),
   tags: varchar("tags", { length: 50 }).array(), // ["seasonal", "signature", "new"]
+  subCategory: varchar("sub_category", { length: 20 }), // hot, iced, blend
   currentVersionId: integer("current_version_id"), // En güncel versiyon
   aiEmbedding: vector("ai_embedding"), // pgvector for AI search
   createdById: varchar("created_by_id").references(() => users.id),
@@ -6864,6 +6865,28 @@ export const insertRecipeSchema = createInsertSchema(recipes).omit({
 export type InsertRecipe = z.infer<typeof insertRecipeSchema>;
 export type Recipe = typeof recipes.$inferSelect;
 
+// ========================================
+// Size Recipe Type - Comprehensive recipe card structure
+// ========================================
+export type SizeRecipe = {
+  cupMl: number;
+  steps: string[];
+  espresso?: string;
+  concentrates?: Array<{ name: string; pumps: number; }>;
+  milk?: { ml?: number; line?: string; type?: string; };
+  water?: { ml?: number; line?: string; };
+  syrups?: Record<string, number>;
+  powders?: Record<string, number>;
+  liquids?: Record<string, number>;
+  garnish?: string[];
+  toppings?: string[];
+  ice?: string;
+  lid?: string;
+  equipment?: string[];
+  blenderSetting?: string;
+  servingNotes?: string;
+};
+
 // Recipe Versions - Versiyon takibi
 export const recipeVersions = pgTable("recipe_versions", {
   id: serial("id").primaryKey(),
@@ -6875,28 +6898,16 @@ export const recipeVersions = pgTable("recipe_versions", {
   changedFields: jsonb("changed_fields").$type<string[]>().default([]), // ["steps", "syrups"] - highlighted fields
   // Size variants
   sizes: jsonb("sizes").$type<{
-    massivo?: {
-      cupMl: number;
-      steps: string[];
-      liquids?: Record<string, number>;
-      syrups?: Record<string, number>;
-      powders?: Record<string, number>;
-      garnish?: string[];
-      ice?: string;
-    };
-    longDiva?: {
-      cupMl: number;
-      steps: string[];
-      liquids?: Record<string, number>;
-      syrups?: Record<string, number>;
-      powders?: Record<string, number>;
-      garnish?: string[];
-      ice?: string;
-    };
+    massivo?: SizeRecipe;
+    longDiva?: SizeRecipe;
   }>(),
   // Common fields
   ingredients: jsonb("ingredients").$type<Array<{name: string; amount: string; unit?: string}>>().default([]),
   notes: text("notes"),
+  cookingSteps: jsonb("cooking_steps").$type<string[]>().default([]),
+  preparationNotes: text("preparation_notes"),
+  servingInstructions: text("serving_instructions"),
+  storageInfo: text("storage_info"),
   seasonInfo: varchar("season_info", { length: 100 }), // "Sonbahar-Kış sezon ürünü"
   isApproved: boolean("is_approved").default(false),
   approvedById: varchar("approved_by_id").references(() => users.id),

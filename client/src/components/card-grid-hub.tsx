@@ -941,6 +941,10 @@ export function CardGridHub() {
 
       {canSeeWidget(userRole, 'critical-alerts') && <CriticalAlerts />}
 
+      {((isBranch && (user?.role === 'supervisor' || user?.role === 'supervisor_buddy')) || isHQ) && (
+        <EnhancedAnalyticsCard />
+      )}
+
       {isBranch && user?.role !== "supervisor" && user?.role !== "supervisor_buddy" && <PersonalSummaryCard />}
 
       {bannerCarouselEnabled && <AnnouncementBannerCarousel />}
@@ -1062,10 +1066,6 @@ export function CardGridHub() {
         </Card>
 
       <EmployeeOfMonthWidget />
-
-      {((isBranch && (user?.role === 'supervisor' || user?.role === 'supervisor_buddy')) || isHQ) && (
-        <EnhancedAnalyticsCard />
-      )}
     </div>
   );
 }

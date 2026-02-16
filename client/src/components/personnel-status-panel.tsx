@@ -62,7 +62,7 @@ export function PersonnelStatusPanel() {
   
   const { data: personnel, isLoading, isError, refetch } = useQuery<PersonnelStatus[]>({
     queryKey: ["/api/branch/personnel-status"],
-    enabled: !!user?.branchId,
+    enabled: !!user,
     refetchInterval: 30000,
   });
 

@@ -18139,21 +18139,49 @@ Cevaplarınız kısa, faydalı ve türkçe olmalıdır.`;
     }
   });
 
-  // GET /api/branch/personnel-status - Personnel status for branch
+  // GET /api/branch/personnel-status - Personnel status for branch or all branches for HQ
   app.get('/api/branch/personnel-status', isAuthenticated, async (req: any, res) => {
     try {
       const user = req.user!;
-      if (!user.branchId) {
-        return res.status(403).json({ message: "Şube bilgisi bulunamadı" });
-      }
+      const userRole = user.role as UserRoleType;
+      const isHQ = isHQRole(userRole);
 
-      const branchId = user.branchId;
-      const employees = await db.select().from(users)
-        .where(and(
-          eq(users.branchId, branchId),
-          sql`${users.role} NOT IN ('admin', 'owner')`
-        ))
-        .limit(30);
+      let employees;
+      let branchIdMap: Map<number, string> = new Map(); // For HQ: map branchId to branchName
+
+      if (user.branchId) {
+        // Branch user: get personnel from their branch
+        const branchId = user.branchId;
+        employees = await db.select().from(users)
+          .where(and(
+            eq(users.branchId, branchId),
+            sql`${users.role} NOT IN ('admin', 'owner')`
+          ))
+          .limit(50);
+      } else if (isHQ) {
+        // HQ/admin user: get personnel from all branches (limited to 50 total)
+        employees = await db.select({
+          id: users.id,
+          firstName: users.firstName,
+          lastName: users.lastName,
+          username: users.username,
+          role: users.role,
+          branchId: users.branchId,
+          profilePhoto: users.profilePhoto,
+        }).from(users)
+          .where(sql`${users.role} NOT IN ('admin', 'owner')`)
+          .limit(50);
+
+        // Build branch name map for HQ users
+        const branchList = await db.select({
+          id: branches.id,
+          name: branches.name,
+        }).from(branches);
+        
+        branchList.forEach(b => branchIdMap.set(b.id, b.name));
+      } else {
+        return res.status(403).json({ message: "Yetkisiz erişim" });
+      }
 
       // Parse date range from query params
       const fromDate = req.query.from ? new Date(req.query.from as string) : new Date();
@@ -18166,7 +18194,7 @@ Cevaplarınız kısa, faydalı ve türkçe olmalıdır.`;
         const statuses: Array<'active' | 'on_shift' | 'late' | 'absent' | 'on_leave'> = ['active', 'on_shift', 'late', 'absent', 'on_leave'];
         const randomStatus = statuses[Math.floor(Math.random() * 5)];
         
-        return {
+        const result: any = {
           id: emp.id,
           name: ((emp.firstName || '') + ' ' + (emp.lastName || '')).trim() || emp.username,
           avatar: emp.profilePhoto,
@@ -18174,6 +18202,13 @@ Cevaplarınız kısa, faydalı ve türkçe olmalıdır.`;
           status: randomStatus,
           checkInTime: randomStatus === 'active' || randomStatus === 'on_shift' ? '08:' + Math.floor(Math.random() * 60).toString().padStart(2, '0') : undefined
         };
+
+        // Include branch name for HQ users
+        if (isHQ && emp.branchId && branchIdMap.has(emp.branchId)) {
+          result.branchName = branchIdMap.get(emp.branchId);
+        }
+
+        return result;
       });
 
       res.json(personnelStatus);

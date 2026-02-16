@@ -88,6 +88,7 @@ type Recipe = {
   isFeatured: boolean | null;
   categoryId: number;
   tags?: string[];
+  subCategory?: string | null;
   infographicUrl?: string | null;
   marketingText?: string | null;
   salesTips?: string | null;
@@ -106,25 +107,45 @@ type RecipeVersion = {
       cupMl: number;
       steps: string[];
       espresso?: string;
-      milk?: { ml: number; type: string };
+      concentrates?: Array<{ name: string; pumps: number; }>;
+      milk?: { ml?: number; line?: string; type?: string; };
+      water?: { ml?: number; line?: string; };
       syrups?: Record<string, number>;
       powders?: Record<string, number>;
+      liquids?: Record<string, number>;
       garnish?: string[];
+      toppings?: string[];
       ice?: string;
+      lid?: string;
+      equipment?: string[];
+      blenderSetting?: string;
+      servingNotes?: string;
     };
     longDiva?: {
       cupMl: number;
       steps: string[];
       espresso?: string;
-      milk?: { ml: number; type: string };
+      concentrates?: Array<{ name: string; pumps: number; }>;
+      milk?: { ml?: number; line?: string; type?: string; };
+      water?: { ml?: number; line?: string; };
       syrups?: Record<string, number>;
       powders?: Record<string, number>;
+      liquids?: Record<string, number>;
       garnish?: string[];
+      toppings?: string[];
       ice?: string;
+      lid?: string;
+      equipment?: string[];
+      blenderSetting?: string;
+      servingNotes?: string;
     };
   } | null;
   ingredients: Array<{ name: string; amount: string; unit?: string }> | null;
   notes: string | null;
+  cookingSteps?: string[];
+  preparationNotes?: string | null;
+  servingInstructions?: string | null;
+  storageInfo?: string | null;
 };
 
 type RecipeWithVersion = Recipe & {
@@ -164,7 +185,7 @@ export default function Receteler() {
   const [selectedRecipe, setSelectedRecipe] = useState<RecipeWithVersion | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [mainTab, setMainTab] = useState<"beverages" | "food">("beverages");
-  const [tempFilter, setTempFilter] = useState<"all" | "hot" | "iced">("all");
+  const [tempFilter, setTempFilter] = useState<"all" | "hot" | "iced" | "blend">("all");
   const { user } = useAuth();
   const { toast } = useToast();
 
@@ -180,6 +201,7 @@ export default function Receteler() {
   const [formEstimatedMinutes, setFormEstimatedMinutes] = useState("");
   const [formHasCoffee, setFormHasCoffee] = useState(false);
   const [formHasMilk, setFormHasMilk] = useState(false);
+  const [formSubCategory, setFormSubCategory] = useState("");
   const [formTags, setFormTags] = useState("");
   const [formPhotoUrl, setFormPhotoUrl] = useState("");
   const [formInfographicUrl, setFormInfographicUrl] = useState("");
@@ -294,6 +316,7 @@ export default function Receteler() {
     setFormEstimatedMinutes("");
     setFormHasCoffee(false);
     setFormHasMilk(false);
+    setFormSubCategory("");
     setFormTags("");
     setFormPhotoUrl("");
     setFormInfographicUrl("");
@@ -323,6 +346,7 @@ export default function Receteler() {
     setFormEstimatedMinutes(recipe.estimatedMinutes ? String(recipe.estimatedMinutes) : "");
     setFormHasCoffee(recipe.hasCoffee || false);
     setFormHasMilk(recipe.hasMilk || false);
+    setFormSubCategory(recipe.subCategory || "");
     setFormTags(Array.isArray(recipe.tags) ? recipe.tags.join(", ") : "");
     setFormPhotoUrl(recipe.photoUrl || "");
     setFormInfographicUrl(recipe.infographicUrl || "");
@@ -350,6 +374,7 @@ export default function Receteler() {
       estimatedMinutes: formEstimatedMinutes ? parseInt(formEstimatedMinutes) : null,
       hasCoffee: formHasCoffee,
       hasMilk: formHasMilk,
+      subCategory: formSubCategory || null,
       tags: formTags.trim() ? formTags.split(",").map(t => t.trim()).filter(Boolean) : [],
       photoUrl: formPhotoUrl || null,
       infographicUrl: formInfographicUrl || null,
@@ -402,9 +427,10 @@ export default function Receteler() {
         : recipe.categoryId === parseInt(selectedCategory);
       
       if (tempFilter !== "all") {
-        const isIced = recipe.code.startsWith('I') || (Array.isArray(recipe.tags) && recipe.tags.includes('iced'));
-        if (tempFilter === "hot" && isIced) return false;
-        if (tempFilter === "iced" && !isIced) return false;
+        const recipeSubCat = recipe.subCategory || (recipe.code.startsWith('I') || (Array.isArray(recipe.tags) && recipe.tags.includes('iced')) ? 'iced' : 'hot');
+        if (tempFilter === "hot" && recipeSubCat !== "hot") return false;
+        if (tempFilter === "iced" && recipeSubCat !== "iced") return false;
+        if (tempFilter === "blend" && recipeSubCat !== "blend") return false;
       }
       
       return matchesSearch && matchesCategory;
@@ -579,6 +605,16 @@ export default function Receteler() {
               <Snowflake className="h-3.5 w-3.5 mr-1" />
               Soğuk
             </Button>
+            <Button 
+              size="sm" 
+              variant="ghost"
+              className={`toggle-elevate ${tempFilter === 'blend' ? 'toggle-elevated' : ''}`}
+              onClick={() => setTempFilter('blend')}
+              data-testid="filter-temp-blend"
+            >
+              <IceCream className="h-3.5 w-3.5 mr-1" />
+              Blend
+            </Button>
           </div>
         )}
 
@@ -673,6 +709,14 @@ export default function Receteler() {
                               {recipe.isFeatured && (
                                 <Badge className="text-xs">Öne Çıkan</Badge>
                               )}
+                              {recipe.subCategory && (
+                                <Badge variant="outline" className="text-xs">
+                                  {recipe.subCategory === 'hot' && <Flame className="h-3 w-3 mr-0.5 text-orange-500" />}
+                                  {recipe.subCategory === 'iced' && <Snowflake className="h-3 w-3 mr-0.5 text-blue-500" />}
+                                  {recipe.subCategory === 'blend' && <IceCream className="h-3 w-3 mr-0.5 text-purple-500" />}
+                                  {recipe.subCategory === 'hot' ? 'Hot' : recipe.subCategory === 'iced' ? 'Iced' : 'Blend'}
+                                </Badge>
+                              )}
                               {isUpdated && (
                                 <Badge variant="secondary" className="text-xs" data-testid={`badge-updated-${recipe.id}`}>
                                   <BellDot className="h-3 w-3 mr-1" />
@@ -721,6 +765,14 @@ export default function Receteler() {
                 <div className="flex items-center gap-2 flex-wrap">
                   <Badge variant="outline" className="font-mono">{selectedRecipe.code}</Badge>
                   {getDifficultyBadge(selectedRecipe.difficulty)}
+                  {selectedRecipe.subCategory && (
+                    <Badge variant="outline" className="text-xs">
+                      {selectedRecipe.subCategory === 'hot' && <Flame className="h-3 w-3 mr-0.5 text-orange-500" />}
+                      {selectedRecipe.subCategory === 'iced' && <Snowflake className="h-3 w-3 mr-0.5 text-blue-500" />}
+                      {selectedRecipe.subCategory === 'blend' && <IceCream className="h-3 w-3 mr-0.5 text-purple-500" />}
+                      {selectedRecipe.subCategory === 'hot' ? 'Hot' : selectedRecipe.subCategory === 'iced' ? 'Iced' : 'Blend'}
+                    </Badge>
+                  )}
                 </div>
                 <DialogTitle className="text-xl">{selectedRecipe.nameTr}</DialogTitle>
                 {selectedRecipe.description && (
@@ -755,6 +807,25 @@ export default function Receteler() {
                           </Card>
                         )}
 
+                        {sizeData.concentrates && sizeData.concentrates.length > 0 && (
+                          <Card>
+                            <CardHeader className="py-3">
+                              <CardTitle className="text-sm flex items-center gap-2">
+                                <Beaker className="h-4 w-4" /> Konsantre / Aroma
+                              </CardTitle>
+                            </CardHeader>
+                            <CardContent className="pt-0">
+                              <div className="flex flex-wrap gap-2">
+                                {sizeData.concentrates.map((c, idx) => (
+                                  <Badge key={idx} variant="secondary">
+                                    {c.name}: {c.pumps} pump
+                                  </Badge>
+                                ))}
+                              </div>
+                            </CardContent>
+                          </Card>
+                        )}
+
                         {sizeData.milk && (
                           <Card>
                             <CardHeader className="py-3">
@@ -763,7 +834,27 @@ export default function Receteler() {
                               </CardTitle>
                             </CardHeader>
                             <CardContent className="pt-0">
-                              <p className="font-medium">{sizeData.milk.ml}ml - {sizeData.milk.type}</p>
+                              <div className="flex flex-wrap gap-2">
+                                {sizeData.milk.ml && <Badge variant="secondary">{sizeData.milk.ml} ml</Badge>}
+                                {sizeData.milk.line && <Badge variant="outline">Çizgi: {sizeData.milk.line}</Badge>}
+                                {sizeData.milk.type && <Badge variant="outline">{sizeData.milk.type}</Badge>}
+                              </div>
+                            </CardContent>
+                          </Card>
+                        )}
+
+                        {sizeData.water && (sizeData.water.ml || sizeData.water.line) && (
+                          <Card>
+                            <CardHeader className="py-3">
+                              <CardTitle className="text-sm flex items-center gap-2">
+                                <Droplets className="h-4 w-4" /> Su
+                              </CardTitle>
+                            </CardHeader>
+                            <CardContent className="pt-0">
+                              <div className="flex flex-wrap gap-2">
+                                {sizeData.water.ml && <Badge variant="secondary">{sizeData.water.ml} ml</Badge>}
+                                {sizeData.water.line && <Badge variant="outline">Çizgi: {sizeData.water.line}</Badge>}
+                              </div>
                             </CardContent>
                           </Card>
                         )}
@@ -781,6 +872,79 @@ export default function Receteler() {
                                   <Badge key={name} variant="secondary">
                                     {name}: {amount} pump
                                   </Badge>
+                                ))}
+                              </div>
+                            </CardContent>
+                          </Card>
+                        )}
+
+                        {sizeData.ice && (
+                          <Card>
+                            <CardHeader className="py-3">
+                              <CardTitle className="text-sm flex items-center gap-2">
+                                <Snowflake className="h-4 w-4" /> Buz
+                              </CardTitle>
+                            </CardHeader>
+                            <CardContent className="pt-0">
+                              <p className="font-medium">{sizeData.ice}</p>
+                            </CardContent>
+                          </Card>
+                        )}
+
+                        {sizeData.lid && (
+                          <Card>
+                            <CardHeader className="py-3">
+                              <CardTitle className="text-sm flex items-center gap-2">
+                                <Package className="h-4 w-4" /> Kapak Tipi
+                              </CardTitle>
+                            </CardHeader>
+                            <CardContent className="pt-0">
+                              <p className="font-medium">{sizeData.lid}</p>
+                            </CardContent>
+                          </Card>
+                        )}
+
+                        {sizeData.equipment && sizeData.equipment.length > 0 && (
+                          <Card>
+                            <CardHeader className="py-3">
+                              <CardTitle className="text-sm flex items-center gap-2">
+                                <UtensilsCrossed className="h-4 w-4" /> Ekipman
+                              </CardTitle>
+                            </CardHeader>
+                            <CardContent className="pt-0">
+                              <div className="flex flex-wrap gap-2">
+                                {sizeData.equipment.map((item, idx) => (
+                                  <Badge key={idx} variant="outline">{item}</Badge>
+                                ))}
+                              </div>
+                            </CardContent>
+                          </Card>
+                        )}
+
+                        {sizeData.blenderSetting && (
+                          <Card>
+                            <CardHeader className="py-3">
+                              <CardTitle className="text-sm flex items-center gap-2">
+                                <CircleDot className="h-4 w-4" /> Blender Ayarı
+                              </CardTitle>
+                            </CardHeader>
+                            <CardContent className="pt-0">
+                              <p className="font-medium">{sizeData.blenderSetting}</p>
+                            </CardContent>
+                          </Card>
+                        )}
+
+                        {sizeData.toppings && sizeData.toppings.length > 0 && (
+                          <Card>
+                            <CardHeader className="py-3">
+                              <CardTitle className="text-sm flex items-center gap-2">
+                                <Flower className="h-4 w-4" /> Topping
+                              </CardTitle>
+                            </CardHeader>
+                            <CardContent className="pt-0">
+                              <div className="flex flex-wrap gap-2">
+                                {sizeData.toppings.map((item, idx) => (
+                                  <Badge key={idx} variant="outline">{item}</Badge>
                                 ))}
                               </div>
                             </CardContent>
@@ -817,6 +981,16 @@ export default function Receteler() {
                                   <li key={idx} className="text-sm">{step}</li>
                                 ))}
                               </ol>
+                            </CardContent>
+                          </Card>
+                        )}
+
+                        {sizeData.servingNotes && (
+                          <Card className="bg-muted/50">
+                            <CardContent className="py-3">
+                              <p className="text-sm text-muted-foreground">
+                                <strong>Servis Notu:</strong> {sizeData.servingNotes}
+                              </p>
                             </CardContent>
                           </Card>
                         )}
@@ -863,6 +1037,62 @@ export default function Receteler() {
                       </CardContent>
                     </Card>
                   )}
+                  {currentVersion?.cookingSteps && currentVersion.cookingSteps.length > 0 && (
+                    <Card>
+                      <CardHeader className="py-3">
+                        <CardTitle className="text-sm flex items-center gap-2">
+                          <Flame className="h-4 w-4" /> Pişirme Adımları
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="pt-0">
+                        <ol className="list-decimal list-inside space-y-2">
+                          {currentVersion.cookingSteps.map((step: string, idx: number) => (
+                            <li key={idx} className="text-sm">{step}</li>
+                          ))}
+                        </ol>
+                      </CardContent>
+                    </Card>
+                  )}
+
+                  {currentVersion?.preparationNotes && (
+                    <Card>
+                      <CardHeader className="py-3">
+                        <CardTitle className="text-sm flex items-center gap-2">
+                          <ChefHat className="h-4 w-4" /> Hazırlık Notları
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="pt-0">
+                        <p className="text-sm whitespace-pre-wrap">{currentVersion.preparationNotes}</p>
+                      </CardContent>
+                    </Card>
+                  )}
+
+                  {currentVersion?.servingInstructions && (
+                    <Card>
+                      <CardHeader className="py-3">
+                        <CardTitle className="text-sm flex items-center gap-2">
+                          <Presentation className="h-4 w-4" /> Sunum Talimatları
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="pt-0">
+                        <p className="text-sm whitespace-pre-wrap">{currentVersion.servingInstructions}</p>
+                      </CardContent>
+                    </Card>
+                  )}
+
+                  {currentVersion?.storageInfo && (
+                    <Card>
+                      <CardHeader className="py-3">
+                        <CardTitle className="text-sm flex items-center gap-2">
+                          <Thermometer className="h-4 w-4" /> Saklama Bilgisi
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="pt-0">
+                        <p className="text-sm whitespace-pre-wrap">{currentVersion.storageInfo}</p>
+                      </CardContent>
+                    </Card>
+                  )}
+
                   {currentVersion?.notes && (
                     <Card className="bg-muted/50">
                       <CardContent className="py-3">
@@ -1016,7 +1246,7 @@ export default function Receteler() {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div className="space-y-2">
                 <Label>Kategori</Label>
                 <Select value={formCategoryId} onValueChange={setFormCategoryId}>
@@ -1029,6 +1259,34 @@ export default function Receteler() {
                         {cat.titleTr}
                       </SelectItem>
                     ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Alt Kategori</Label>
+                <Select value={formSubCategory} onValueChange={setFormSubCategory}>
+                  <SelectTrigger data-testid="select-sub-category">
+                    <SelectValue placeholder="Seçin" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="hot">
+                      <span className="flex items-center gap-1.5">
+                        <Flame className="h-3.5 w-3.5 text-orange-500" />
+                        Hot (Sıcak)
+                      </span>
+                    </SelectItem>
+                    <SelectItem value="iced">
+                      <span className="flex items-center gap-1.5">
+                        <Snowflake className="h-3.5 w-3.5 text-blue-500" />
+                        Iced (Soğuk)
+                      </span>
+                    </SelectItem>
+                    <SelectItem value="blend">
+                      <span className="flex items-center gap-1.5">
+                        <IceCream className="h-3.5 w-3.5 text-purple-500" />
+                        Blend
+                      </span>
+                    </SelectItem>
                   </SelectContent>
                 </Select>
               </div>
