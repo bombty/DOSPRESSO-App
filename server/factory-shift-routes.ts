@@ -44,12 +44,25 @@ const isFactoryUser = (req: any, res: Response, next: any) => {
   next();
 };
 
+const SUPERVISOR_ROLES = ["admin", "ceo", "cgo", "fabrika_mudur", "fabrika_supervisor", "supervisor", "kalite_kontrol"];
+
+const isSupervisorUser = (req: any, res: Response, next: any) => {
+  if (!req.isAuthenticated || !req.isAuthenticated()) {
+    return res.status(401).json({ error: "Yetkisiz erişim" });
+  }
+  const user = req.user;
+  if (!user || !SUPERVISOR_ROLES.includes(user.role)) {
+    return res.status(403).json({ error: "Bu işlem için yönetici yetkiniz gerekli" });
+  }
+  next();
+};
+
 export function registerFactoryShiftRoutes(app: Express) {
   // ========================================
   // FACTORY SHIFTS CRUD
   // ========================================
 
-  app.get("/api/factory-shifts", isAuthenticated, async (req: Request, res: Response) => {
+  app.get("/api/factory-shifts", isFactoryUser, async (req: Request, res: Response) => {
     try {
       const { startDate, endDate, status } = req.query;
       let conditions: any[] = [];
@@ -289,7 +302,7 @@ export function registerFactoryShiftRoutes(app: Express) {
   // BATCH SPECS (Batch Spesifikasyonları)
   // ========================================
 
-  app.get("/api/factory-batch-specs", isAuthenticated, async (req: Request, res: Response) => {
+  app.get("/api/factory-batch-specs", isFactoryUser, async (req: Request, res: Response) => {
     try {
       const specs = await db.select({
         id: factoryBatchSpecs.id,
@@ -318,7 +331,7 @@ export function registerFactoryShiftRoutes(app: Express) {
     }
   });
 
-  app.get("/api/factory-products/:productId/recipe-info", isAuthenticated, async (req: Request, res: Response) => {
+  app.get("/api/factory-products/:productId/recipe-info", isFactoryUser, async (req: Request, res: Response) => {
     try {
       const productId = parseInt(req.params.productId);
       const [recipe] = await db.select().from(productRecipes)
@@ -434,7 +447,7 @@ export function registerFactoryShiftRoutes(app: Express) {
   // PRODUCTION BATCHES (Üretim Batch'leri)
   // ========================================
 
-  app.get("/api/factory-production-batches", isAuthenticated, async (req: Request, res: Response) => {
+  app.get("/api/factory-production-batches", isFactoryUser, async (req: Request, res: Response) => {
     try {
       const { shiftId, status, operatorUserId, startDate, endDate } = req.query;
       let conditions: any[] = [];
@@ -489,7 +502,7 @@ export function registerFactoryShiftRoutes(app: Express) {
   });
 
   // Start a new batch
-  app.post("/api/factory-production-batches/start", isAuthenticated, async (req: Request, res: Response) => {
+  app.post("/api/factory-production-batches/start", isFactoryUser, async (req: Request, res: Response) => {
     try {
       const { shiftProductionId, shiftId, productId, machineId, batchSpecId, operatorUserId } = req.body;
 
@@ -537,150 +550,164 @@ export function registerFactoryShiftRoutes(app: Express) {
   });
 
   // Complete a batch (worker submits production data)
-  app.put("/api/factory-production-batches/:id/complete", isAuthenticated, async (req: Request, res: Response) => {
+  app.put("/api/factory-production-batches/:id/complete", isFactoryUser, async (req: Request, res: Response) => {
     try {
       const id = parseInt(req.params.id);
       const { actualWeightKg, actualPieces, wasteWeightKg, wastePieces, wasteReasonId, wasteNotes, photoUrl, notes } = req.body;
 
-      const [batch] = await db.select().from(factoryProductionBatches).where(eq(factoryProductionBatches.id, id));
-      if (!batch) return res.status(404).json({ error: "Batch bulunamadı" });
+      const result = await db.transaction(async (tx) => {
+        const [batch] = await tx.select().from(factoryProductionBatches).where(eq(factoryProductionBatches.id, id));
+        if (!batch) throw new Error("Batch bulunamadı");
 
-      const endTime = new Date();
-      const startTime = new Date(batch.startTime);
-      const actualDurationMinutes = Math.round((endTime.getTime() - startTime.getTime()) / 60000);
+        const endTime = new Date();
+        const startTime = new Date(batch.startTime);
+        const actualDurationMinutes = Math.round((endTime.getTime() - startTime.getTime()) / 60000);
 
-      let performanceScore = null;
-      let yieldRate = null;
-      const targetDur = batch.targetDurationMinutes;
-      const targetPcs = batch.targetPieces;
+        let performanceScore = null;
+        let yieldRate = null;
+        const targetDur = batch.targetDurationMinutes;
+        const targetPcs = batch.targetPieces;
 
-      if (targetDur && targetDur > 0) {
-        performanceScore = Math.round((targetDur / actualDurationMinutes) * 100 * 100) / 100;
-      }
-      if (targetPcs && targetPcs > 0 && actualPieces) {
-        yieldRate = Math.round((actualPieces / targetPcs) * 100 * 100) / 100;
-      }
-
-      // Fetch recipe batch yield settings for waste calculation
-      let expectedWastePercent: number | null = null;
-      let actualWastePercent: number | null = null;
-      let wasteDeviationPercent: number | null = null;
-      let totalInputWeightKg: number | null = null;
-      let totalOutputWeightKg: number | null = null;
-      let wasteCostTl: number | null = null;
-
-      const [recipe] = await db.select()
-        .from(productRecipes)
-        .where(and(
-          eq(productRecipes.productId, batch.productId),
-          eq(productRecipes.isActive, true)
-        ));
-      
-      if (recipe && recipe.expectedUnitWeight && recipe.expectedOutputCount) {
-        // Calculate total ingredient weight from recipe
-        const ingredients = await db.select({
-          ingredient: productRecipeIngredients,
-          material: rawMaterials
-        })
-          .from(productRecipeIngredients)
-          .leftJoin(rawMaterials, eq(productRecipeIngredients.rawMaterialId, rawMaterials.id))
-          .where(eq(productRecipeIngredients.recipeId, recipe.id));
-        
-        let ingredientTotalKg = 0;
-        let ingredientTotalCost = 0;
-        for (const ing of ingredients) {
-          const qty = parseFloat(ing.ingredient.quantity);
-          const unit = (ing.ingredient.unit || "kg").toLowerCase();
-          if (unit === "kg") ingredientTotalKg += qty;
-          else if (unit === "g") ingredientTotalKg += qty / 1000;
-          else if (unit === "lt" || unit === "l") ingredientTotalKg += qty;
-          else if (unit === "ml") ingredientTotalKg += qty / 1000;
-          else ingredientTotalKg += qty;
-          
-          const isKB = ing.material?.isKeyblend || false;
-          const price = isKB ? parseFloat(ing.material?.keyblendCost || "0") : parseFloat(ing.material?.currentUnitPrice || "0");
-          ingredientTotalCost += qty * price;
+        if (targetDur && targetDur > 0) {
+          performanceScore = Math.round((targetDur / actualDurationMinutes) * 100 * 100) / 100;
         }
+        if (targetPcs && targetPcs > 0 && actualPieces) {
+          yieldRate = Math.round((actualPieces / targetPcs) * 100 * 100) / 100;
+        }
+
+        // Fetch recipe batch yield settings for waste calculation
+        let expectedWastePercent: number | null = null;
+        let actualWastePercent: number | null = null;
+        let wasteDeviationPercent: number | null = null;
+        let totalInputWeightKg: number | null = null;
+        let totalOutputWeightKg: number | null = null;
+        let wasteCostTl: number | null = null;
+
+        const [recipe] = await tx.select()
+          .from(productRecipes)
+          .where(and(
+            eq(productRecipes.productId, batch.productId),
+            eq(productRecipes.isActive, true)
+          ));
         
-        totalInputWeightKg = ingredientTotalKg;
-        
-        const expUnitW = parseFloat(recipe.expectedUnitWeight);
-        const expUnit = recipe.expectedUnitWeightUnit || "g";
-        const expCount = recipe.expectedOutputCount;
-        
-        let expectedOutputKg = 0;
-        if (expUnit === "g" || expUnit === "ml") expectedOutputKg = (expUnitW * expCount) / 1000;
-        else expectedOutputKg = expUnitW * expCount;
-        
-        expectedWastePercent = ingredientTotalKg > 0
-          ? ((ingredientTotalKg - expectedOutputKg) / ingredientTotalKg) * 100
-          : 0;
-        
-        // Calculate actual output from actualPieces
-        if (actualPieces && actualPieces > 0) {
-          let actualOutputKg = 0;
-          if (expUnit === "g" || expUnit === "ml") actualOutputKg = (expUnitW * actualPieces) / 1000;
-          else actualOutputKg = expUnitW * actualPieces;
+        if (recipe && recipe.expectedUnitWeight && recipe.expectedOutputCount) {
+          // Calculate total ingredient weight from recipe
+          const ingredients = await tx.select({
+            ingredient: productRecipeIngredients,
+            material: rawMaterials
+          })
+            .from(productRecipeIngredients)
+            .leftJoin(rawMaterials, eq(productRecipeIngredients.rawMaterialId, rawMaterials.id))
+            .where(eq(productRecipeIngredients.recipeId, recipe.id));
           
-          totalOutputWeightKg = actualOutputKg;
-          const actualWasteKg = ingredientTotalKg - actualOutputKg;
-          actualWastePercent = ingredientTotalKg > 0
-            ? (actualWasteKg / ingredientTotalKg) * 100
+          let ingredientTotalKg = 0;
+          let ingredientTotalCost = 0;
+          for (const ing of ingredients) {
+            const qty = parseFloat(ing.ingredient.quantity);
+            const unit = (ing.ingredient.unit || "kg").toLowerCase();
+            if (unit === "kg") ingredientTotalKg += qty;
+            else if (unit === "g") ingredientTotalKg += qty / 1000;
+            else if (unit === "lt" || unit === "l") ingredientTotalKg += qty;
+            else if (unit === "ml") ingredientTotalKg += qty / 1000;
+            else ingredientTotalKg += qty;
+            
+            const isKB = ing.material?.isKeyblend || false;
+            const price = isKB ? parseFloat(ing.material?.keyblendCost || "0") : parseFloat(ing.material?.currentUnitPrice || "0");
+            ingredientTotalCost += qty * price;
+          }
+          
+          totalInputWeightKg = ingredientTotalKg;
+          
+          const expUnitW = parseFloat(recipe.expectedUnitWeight);
+          const expUnit = recipe.expectedUnitWeightUnit || "g";
+          const expCount = recipe.expectedOutputCount;
+          
+          let expectedOutputKg = 0;
+          if (expUnit === "g" || expUnit === "ml") expectedOutputKg = (expUnitW * expCount) / 1000;
+          else expectedOutputKg = expUnitW * expCount;
+          
+          expectedWastePercent = ingredientTotalKg > 0
+            ? ((ingredientTotalKg - expectedOutputKg) / ingredientTotalKg) * 100
             : 0;
           
-          wasteDeviationPercent = actualWastePercent - expectedWastePercent;
-          
-          const costPerKg = ingredientTotalKg > 0 ? ingredientTotalCost / ingredientTotalKg : 0;
-          wasteCostTl = actualWasteKg > 0 ? actualWasteKg * costPerKg : 0;
+          // Calculate actual output from actualPieces
+          if (actualPieces && actualPieces > 0) {
+            let actualOutputKg = 0;
+            if (expUnit === "g" || expUnit === "ml") actualOutputKg = (expUnitW * actualPieces) / 1000;
+            else actualOutputKg = expUnitW * actualPieces;
+            
+            totalOutputWeightKg = actualOutputKg;
+            const actualWasteKg = ingredientTotalKg - actualOutputKg;
+            actualWastePercent = ingredientTotalKg > 0
+              ? (actualWasteKg / ingredientTotalKg) * 100
+              : 0;
+            
+            wasteDeviationPercent = actualWastePercent - expectedWastePercent;
+            
+            const costPerKg = ingredientTotalKg > 0 ? ingredientTotalCost / ingredientTotalKg : 0;
+            wasteCostTl = actualWasteKg > 0 ? actualWasteKg * costPerKg : 0;
+          }
         }
-      }
 
-      const [updated] = await db.update(factoryProductionBatches).set({
-        endTime,
-        actualWeightKg: actualWeightKg?.toString(),
-        actualPieces,
-        actualDurationMinutes,
-        wasteWeightKg: wasteWeightKg?.toString() || "0",
-        wastePieces: wastePieces || 0,
-        wasteReasonId: wasteReasonId || null,
-        wasteNotes,
-        expectedWastePercent: expectedWastePercent?.toFixed(2),
-        actualWastePercent: actualWastePercent?.toFixed(2),
-        wasteDeviationPercent: wasteDeviationPercent?.toFixed(2),
-        totalInputWeightKg: totalInputWeightKg?.toFixed(2),
-        totalOutputWeightKg: totalOutputWeightKg?.toFixed(2),
-        wasteCostTl: wasteCostTl?.toFixed(2),
-        performanceScore: performanceScore?.toString(),
-        yieldRate: yieldRate?.toString(),
-        photoUrl,
-        notes,
-        status: "completed",
-      }).where(eq(factoryProductionBatches.id, id)).returning();
+        const [updated] = await tx.update(factoryProductionBatches).set({
+          endTime,
+          actualWeightKg: actualWeightKg?.toString(),
+          actualPieces,
+          actualDurationMinutes,
+          wasteWeightKg: wasteWeightKg?.toString() || "0",
+          wastePieces: wastePieces || 0,
+          wasteReasonId: wasteReasonId || null,
+          wasteNotes,
+          expectedWastePercent: expectedWastePercent?.toFixed(2),
+          actualWastePercent: actualWastePercent?.toFixed(2),
+          wasteDeviationPercent: wasteDeviationPercent?.toFixed(2),
+          totalInputWeightKg: totalInputWeightKg?.toFixed(2),
+          totalOutputWeightKg: totalOutputWeightKg?.toFixed(2),
+          wasteCostTl: wasteCostTl?.toFixed(2),
+          performanceScore: performanceScore?.toString(),
+          yieldRate: yieldRate?.toString(),
+          photoUrl,
+          notes,
+          status: "completed",
+        }).where(eq(factoryProductionBatches.id, id)).returning();
 
-      // Update shift production completed count
-      if (batch.shiftProductionId) {
-        await db.update(factoryShiftProductions).set({
-          completedBatchCount: sql`${factoryShiftProductions.completedBatchCount} + 1`,
-        }).where(eq(factoryShiftProductions.id, batch.shiftProductionId));
-      }
+        // Update shift production completed count
+        if (batch.shiftProductionId) {
+          await tx.update(factoryShiftProductions).set({
+            completedBatchCount: sql`${factoryShiftProductions.completedBatchCount} + 1`,
+          }).where(eq(factoryShiftProductions.id, batch.shiftProductionId));
+        }
 
-      // Check warnings
+        return {
+          updated,
+          expectedWastePercent,
+          actualWastePercent,
+          wasteDeviationPercent,
+          wasteCostTl,
+          targetDur,
+          actualDurationMinutes,
+          recipe,
+          batch,
+        };
+      });
+
+      // Check warnings (outside transaction)
       let warning = null;
       const warnings: string[] = [];
       
-      if (targetDur && actualDurationMinutes > targetDur) {
-        warnings.push(`Hedef süre aşıldı! Hedef: ${targetDur} dk, Gerçekleşen: ${actualDurationMinutes} dk`);
+      if (result.targetDur && result.actualDurationMinutes > result.targetDur) {
+        warnings.push(`Hedef süre aşıldı! Hedef: ${result.targetDur} dk, Gerçekleşen: ${result.actualDurationMinutes} dk`);
       }
 
-      const tolerancePercent = parseFloat(recipe?.wasteTolerancePercent || "5");
-      if (wasteDeviationPercent !== null && wasteDeviationPercent > tolerancePercent) {
-        warnings.push(`Fire toleransı aşıldı! Beklenen: %${expectedWastePercent?.toFixed(1)}, Gerçekleşen: %${actualWastePercent?.toFixed(1)}, Sapma: +%${wasteDeviationPercent.toFixed(1)}`);
+      const tolerancePercent = parseFloat(result.recipe?.wasteTolerancePercent || "5");
+      if (result.wasteDeviationPercent !== null && result.wasteDeviationPercent > tolerancePercent) {
+        warnings.push(`Fire toleransı aşıldı! Beklenen: %${result.expectedWastePercent?.toFixed(1)}, Gerçekleşen: %${result.actualWastePercent?.toFixed(1)}, Sapma: +%${result.wasteDeviationPercent.toFixed(1)}`);
         
         try {
           await db.insert(notifications).values({
             userId: (req as any).user?.id || "system",
             title: "Fire Toleransı Aşıldı",
-            message: `Ürün #${batch.productId} üretiminde fire toleransı aşıldı. Beklenen: %${expectedWastePercent?.toFixed(1)}, Gerçekleşen: %${actualWastePercent?.toFixed(1)}`,
+            message: `Ürün #${result.batch.productId} üretiminde fire toleransı aşıldı. Beklenen: %${result.expectedWastePercent?.toFixed(1)}, Gerçekleşen: %${result.actualWastePercent?.toFixed(1)}`,
             type: "warning",
           });
         } catch (e) {
@@ -691,20 +718,20 @@ export function registerFactoryShiftRoutes(app: Express) {
       if (warnings.length > 0) warning = warnings.join(" | ");
 
       res.json({ 
-        ...updated, 
+        ...result.updated, 
         warning,
-        wasteAnalysis: wasteDeviationPercent !== null ? {
-          expectedWastePercent: expectedWastePercent?.toFixed(2),
-          actualWastePercent: actualWastePercent?.toFixed(2),
-          deviationPercent: wasteDeviationPercent?.toFixed(2),
-          wasteCostTl: wasteCostTl?.toFixed(2),
-          toleranceExceeded: wasteDeviationPercent > tolerancePercent,
-          status: wasteDeviationPercent > tolerancePercent ? "over" : wasteDeviationPercent < -5 ? "under" : "normal"
+        wasteAnalysis: result.wasteDeviationPercent !== null ? {
+          expectedWastePercent: result.expectedWastePercent?.toFixed(2),
+          actualWastePercent: result.actualWastePercent?.toFixed(2),
+          deviationPercent: result.wasteDeviationPercent?.toFixed(2),
+          wasteCostTl: result.wasteCostTl?.toFixed(2),
+          toleranceExceeded: result.wasteDeviationPercent > tolerancePercent,
+          status: result.wasteDeviationPercent > tolerancePercent ? "over" : result.wasteDeviationPercent < -5 ? "under" : "normal"
         } : null
       });
     } catch (error: any) {
       console.error("Complete batch error:", error);
-      res.status(500).json({ error: "Batch tamamlanamadı" });
+      res.status(404).json({ error: error.message || "Batch tamamlanamadı" });
     }
   });
 
@@ -712,7 +739,7 @@ export function registerFactoryShiftRoutes(app: Express) {
   // BATCH VERIFICATIONS (Doğrulama)
   // ========================================
 
-  app.get("/api/factory-batch-verifications/pending", isAuthenticated, async (req: Request, res: Response) => {
+  app.get("/api/factory-batch-verifications/pending", isFactoryUser, async (req: Request, res: Response) => {
     try {
       const pendingBatches = await db.select({
         id: factoryProductionBatches.id,
@@ -753,26 +780,30 @@ export function registerFactoryShiftRoutes(app: Express) {
     }
   });
 
-  app.post("/api/factory-batch-verifications", isAuthenticated, async (req: Request, res: Response) => {
+  app.post("/api/factory-batch-verifications", isSupervisorUser, async (req: Request, res: Response) => {
     try {
       const { batchId, verifiedWeightKg, verifiedPieces, verifiedWasteKg, verifiedWastePieces, isApproved, rejectionReason, notes } = req.body;
 
-      const [verification] = await db.insert(factoryBatchVerifications).values({
-        batchId,
-        verifierUserId: (req as any).user?.id,
-        verifiedWeightKg: verifiedWeightKg?.toString(),
-        verifiedPieces,
-        verifiedWasteKg: verifiedWasteKg?.toString(),
-        verifiedWastePieces,
-        isApproved,
-        rejectionReason,
-        notes,
-      }).returning();
+      const verification = await db.transaction(async (tx) => {
+        const [newVerification] = await tx.insert(factoryBatchVerifications).values({
+          batchId,
+          verifierUserId: (req as any).user?.id,
+          verifiedWeightKg: verifiedWeightKg?.toString(),
+          verifiedPieces,
+          verifiedWasteKg: verifiedWasteKg?.toString(),
+          verifiedWastePieces,
+          isApproved,
+          rejectionReason,
+          notes,
+        }).returning();
 
-      // Update batch status
-      await db.update(factoryProductionBatches).set({
-        status: isApproved ? "verified" : "rejected",
-      }).where(eq(factoryProductionBatches.id, batchId));
+        // Update batch status
+        await tx.update(factoryProductionBatches).set({
+          status: isApproved ? "verified" : "rejected",
+        }).where(eq(factoryProductionBatches.id, batchId));
+
+        return newVerification;
+      });
 
       res.json(verification);
     } catch (error: any) {
@@ -842,29 +873,33 @@ export function registerFactoryShiftRoutes(app: Express) {
     try {
       const { userId, shiftId, machineId } = req.body;
 
-      const existing = await db.select().from(factoryShiftWorkers)
-        .where(and(
-          eq(factoryShiftWorkers.shiftId, shiftId),
-          eq(factoryShiftWorkers.userId, userId),
-        ));
+      const result = await db.transaction(async (tx) => {
+        const existing = await tx.select().from(factoryShiftWorkers)
+          .where(and(
+            eq(factoryShiftWorkers.shiftId, shiftId),
+            eq(factoryShiftWorkers.userId, userId),
+          ));
 
-      if (existing.length > 0) {
-        const [updated] = await db.update(factoryShiftWorkers).set({
+        if (existing.length > 0) {
+          const [updated] = await tx.update(factoryShiftWorkers).set({
+            machineId,
+            selfSelected: true,
+          }).where(eq(factoryShiftWorkers.id, existing[0].id)).returning();
+          return updated;
+        }
+
+        const [worker] = await tx.insert(factoryShiftWorkers).values({
+          shiftId,
+          userId,
           machineId,
           selfSelected: true,
-        }).where(eq(factoryShiftWorkers.id, existing[0].id)).returning();
-        return res.json(updated);
-      }
+          role: "operator",
+        }).returning();
 
-      const [worker] = await db.insert(factoryShiftWorkers).values({
-        shiftId,
-        userId,
-        machineId,
-        selfSelected: true,
-        role: "operator",
-      }).returning();
+        return worker;
+      });
 
-      res.json(worker);
+      res.json(result);
     } catch (error: any) {
       console.error("Self-select machine error:", error);
       res.status(500).json({ error: "Makine seçilemedi" });
@@ -875,7 +910,7 @@ export function registerFactoryShiftRoutes(app: Express) {
   // STATS & DASHBOARD
   // ========================================
 
-  app.get("/api/factory-production-stats", isAuthenticated, async (req: Request, res: Response) => {
+  app.get("/api/factory-production-stats", isFactoryUser, async (req: Request, res: Response) => {
     try {
       const { startDate, endDate, userId } = req.query;
       let conditions: any[] = [];
@@ -938,7 +973,7 @@ export function registerFactoryShiftRoutes(app: Express) {
   });
 
   // Team Performance & Compatibility Analysis
-  app.get("/api/factory-team-analysis", isAuthenticated, async (req: Request, res: Response) => {
+  app.get("/api/factory-team-analysis", isFactoryUser, async (req: Request, res: Response) => {
     try {
       const { startDate, productId } = req.query;
       const start = startDate ? new Date(startDate as string) : new Date(Date.now() - 30 * 86400000);

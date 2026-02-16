@@ -44,7 +44,7 @@ export function getSession() {
   });
 }
 
-export async function setupAuth(app: Express) {
+export async function setupAuth(app: Express, authLimiter?: any) {
   // Note: trust proxy is now set in server/index.ts before body parsers
   app.use(getSession());
   app.use(passport.initialize());
@@ -162,7 +162,7 @@ export async function setupAuth(app: Express) {
   };
 
   // Login endpoint with validation (supports both user and branch login)
-  app.post("/api/login", async (req, res, next) => {
+  app.post("/api/login", authLimiter, async (req, res, next) => {
     // Validate request body
     const validationResult = loginSchema.safeParse(req.body);
     

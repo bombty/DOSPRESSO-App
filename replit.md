@@ -53,7 +53,9 @@ The frontend utilizes React 18+ with TypeScript and Vite, employing Shadcn/ui (N
 - **Notifications**: Automatic in-app alerts and email notifications; manager notifications on critical events.
 - **State Management**: TanStack Query for server state and localStorage for theme persistence.
 - **Photo Upload**: Persistent storage on AWS S3 via an ObjectUploader component.
-- **Backup System**: Daily automatic backups to object storage.
+- **Backup System**: Daily automatic backups to object storage with 53+ critical tables, restore pipeline (restoreFromBackup), and time machine (getAvailableRestorePoints) for point-in-time recovery. Admin-only restore API endpoints.
+- **API Security**: Rate limiting (200 req/min general, 20 req/min auth) via express-rate-limit. Factory RBAC: isFactoryUser middleware for data access, isSupervisorUser for verification operations.
+- **Transaction Safety**: Factory batch completion, verification, and machine self-selection wrapped in Drizzle transactions for atomic operations.
 - **Live Tracking**: Real-time employee location tracking with in-memory cache for supervisors.
 - **RAG Knowledge Base**: Vector-based semantic search using OpenAI embeddings.
 - **Gamification**: Integrated badges, career progression, leaderboards, team competitions, adaptive difficulty, certificates, and daily learning streak tracker.

@@ -5,6 +5,7 @@ import { registerHQDashboardRoutes } from "./hq-dashboard-routes";
 import { registerCRMRoutes } from "./crm-routes";
 import { registerSatinalmaRoutes } from "./satinalma-routes";
 import type { Express } from "express";
+import rateLimit from 'express-rate-limit';
 import { registerMaliyetRoutes } from "./maliyet-routes";
 import { registerInspectionRoutes } from "./inspection-routes";
 import { registerExportRoutes } from "./export-routes";
@@ -542,7 +543,28 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
 
 function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.delete(identifier); }
 
-  await setupAuth(app);
+  // General API rate limit: 200 requests per minute per IP
+  const generalLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    max: 200,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: 'Çok fazla istek gönderdiniz, lütfen bir süre bekleyin' },
+  });
+
+  // Strict rate limit for auth routes: 20 requests per minute
+  const authLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    max: 20,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: 'Çok fazla giriş denemesi, lütfen bekleyin' },
+  });
+
+  // Apply general rate limit to all API routes
+  app.use('/api/', generalLimiter);
+
+  await setupAuth(app, authLimiter);
 
   // GET /api/health - Public health check for Docker/load balancer
   app.get('/api/health', async (req, res) => {
@@ -14784,6 +14806,40 @@ JSON formatında yanıt ver:
     } catch (error: Error | unknown) {
       console.error("Error triggering manual backup:", error);
       res.status(500).json({ message: "Backup tetiklenirken hata oluştu" });
+    }
+  });
+
+  app.post('/api/system/restore', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      if (user.role !== 'admin') {
+        return res.status(403).json({ message: 'Geri yükleme yetkiniz yok' });
+      }
+      const { backupId } = req.body;
+      if (!backupId) {
+        return res.status(400).json({ message: 'backupId gereklidir' });
+      }
+      const { restoreFromBackup } = await import('./backup');
+      const result = await restoreFromBackup(backupId);
+      res.json(result);
+    } catch (error: Error | unknown) {
+      console.error("Error restoring backup:", error);
+      res.status(500).json({ message: "Geri yükleme sırasında hata oluştu" });
+    }
+  });
+
+  app.get('/api/system/restore-points', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      if (user.role !== 'admin' && user.role !== 'genel_mudur') {
+        return res.status(403).json({ message: 'Restore noktalarını görüntüleme yetkiniz yok' });
+      }
+      const { getAvailableRestorePoints } = await import('./backup');
+      const restorePoints = await getAvailableRestorePoints();
+      res.json({ restorePoints });
+    } catch (error: Error | unknown) {
+      console.error("Error fetching restore points:", error);
+      res.status(500).json({ message: "Restore noktaları alınırken hata oluştu" });
     }
   });
 

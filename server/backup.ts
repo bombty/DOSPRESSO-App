@@ -40,6 +40,47 @@ const CRITICAL_TABLES = [
   'tasks',
   'checklists',
   'checklist_tasks',
+  'factory_shifts',
+  'factory_shift_workers',
+  'factory_shift_productions',
+  'factory_production_batches',
+  'factory_batch_specs',
+  'factory_batch_verifications',
+  'factory_machines',
+  'factory_products',
+  'factory_waste_reasons',
+  'notifications',
+  'product_recipes',
+  'product_recipe_ingredients',
+  'raw_materials',
+  'recipes',
+  'recipe_ingredients',
+  'roles',
+  'role_permissions',
+  'role_permission_grants',
+  'role_module_permissions',
+  'shift_schedules',
+  'shift_assignments',
+  'lost_and_found_items',
+  'knowledge_base_articles',
+  'knowledge_base_embeddings',
+  'procurement_orders',
+  'procurement_order_items',
+  'inventory_items',
+  'inventory_counts',
+  'inventory_count_items',
+  'training_materials',
+  'quiz_questions',
+  'quiz_attempts',
+  'badges',
+  'user_badges',
+  'banners',
+  'announcements',
+  'project_phases',
+  'project_tasks',
+  'suppliers',
+  'cost_templates',
+  'cost_calculations',
 ] as const;
 
 // Tables to fully backup to object storage (most critical for recovery)
@@ -55,6 +96,56 @@ const TABLES_TO_EXPORT = [
   'tasks',
   'checklists',
   'checklist_tasks',
+  'maintenance_schedules',
+  'maintenance_logs',
+  'employee_warnings',
+  'leave_requests',
+  'overtime_requests',
+  'attendance_penalties',
+  'monthly_attendance_summaries',
+  'employee_documents',
+  'disciplinary_reports',
+  'factory_shifts',
+  'factory_shift_workers',
+  'factory_shift_productions',
+  'factory_production_batches',
+  'factory_batch_specs',
+  'factory_batch_verifications',
+  'factory_machines',
+  'factory_products',
+  'factory_waste_reasons',
+  'notifications',
+  'product_recipes',
+  'product_recipe_ingredients',
+  'raw_materials',
+  'recipes',
+  'recipe_ingredients',
+  'roles',
+  'role_permissions',
+  'role_permission_grants',
+  'role_module_permissions',
+  'shift_schedules',
+  'shift_assignments',
+  'lost_and_found_items',
+  'knowledge_base_articles',
+  'knowledge_base_embeddings',
+  'procurement_orders',
+  'procurement_order_items',
+  'inventory_items',
+  'inventory_counts',
+  'inventory_count_items',
+  'training_materials',
+  'quiz_questions',
+  'quiz_attempts',
+  'badges',
+  'user_badges',
+  'banners',
+  'announcements',
+  'project_phases',
+  'project_tasks',
+  'suppliers',
+  'cost_templates',
+  'cost_calculations',
 ] as const;
 
 // Get bucket ID from environment
@@ -520,4 +611,127 @@ export async function getDataStats(): Promise<{
   const criticalTablesOk = !Object.values(tableCounts).includes(-1);
   
   return { totalRecords, tableCounts, criticalTablesOk };
+}
+
+export async function restoreFromBackup(backupId: string): Promise<{
+  success: boolean;
+  tablesRestored: string[];
+  totalRecords: number;
+  errors: string[];
+}> {
+  const errors: string[] = [];
+  const tablesRestored: string[] = [];
+  let totalRecords = 0;
+  
+  try {
+    const bucketId = getBackupBucketId();
+    if (!bucketId) {
+      return { success: false, tablesRestored: [], totalRecords: 0, errors: ['Object storage not configured'] };
+    }
+    
+    const bucket = objectStorageClient.bucket(bucketId);
+    
+    // Pre-download all backup data before starting transaction
+    const tableData: Array<{ tableName: string; rows: any[] }> = [];
+    
+    for (const tableName of TABLES_TO_EXPORT) {
+      try {
+        const filePath = `.private/backups/${backupId}/${tableName}.json`;
+        const file = bucket.file(filePath);
+        const [exists] = await file.exists();
+        
+        if (!exists) {
+          console.log(`⏭️ ${tableName} backup dosyası bulunamadı, atlanıyor`);
+          continue;
+        }
+        
+        const [content] = await file.download();
+        const rows = JSON.parse(content.toString());
+        
+        if (!Array.isArray(rows) || rows.length === 0) {
+          console.log(`⏭️ ${tableName} boş, atlanıyor`);
+          continue;
+        }
+        
+        tableData.push({ tableName, rows });
+      } catch (err: any) {
+        errors.push(`${tableName} download: ${err?.message || String(err)}`);
+      }
+    }
+    
+    if (tableData.length === 0) {
+      return { success: false, tablesRestored: [], totalRecords: 0, errors: ['No backup data found to restore'] };
+    }
+    
+    // Execute restore in a single transaction for atomicity
+    await db.transaction(async (tx) => {
+      for (const { tableName, rows } of tableData) {
+        try {
+          // Clear existing data
+          await tx.execute(sql.raw(`DELETE FROM "${tableName}"`));
+          
+          // Insert rows one at a time with safe value escaping
+          for (const row of rows) {
+            const columns = Object.keys(row);
+            const columnList = columns.map(c => `"${c}"`).join(', ');
+            const safeValues = columns.map(col => {
+              const val = row[col];
+              if (val === null || val === undefined) return 'NULL';
+              if (typeof val === 'boolean') return val ? 'TRUE' : 'FALSE';
+              if (typeof val === 'number') return val.toString();
+              if (typeof val === 'object') {
+                const jsonStr = JSON.stringify(val).replace(/'/g, "''");
+                return `'${jsonStr}'`;
+              }
+              return `'${String(val).replace(/'/g, "''")}'`;
+            }).join(', ');
+            
+            await tx.execute(sql.raw(
+              `INSERT INTO "${tableName}" (${columnList}) VALUES (${safeValues}) ON CONFLICT DO NOTHING`
+            ));
+          }
+          
+          tablesRestored.push(tableName);
+          totalRecords += rows.length;
+          console.log(`✅ ${tableName}: ${rows.length} kayıt geri yüklendi`);
+        } catch (err: any) {
+          // Transaction will rollback on error
+          throw new Error(`${tableName}: ${err?.message || String(err)}`);
+        }
+      }
+    });
+    
+    return { success: true, tablesRestored, totalRecords, errors };
+  } catch (error: any) {
+    return { success: false, tablesRestored: [], totalRecords: 0, errors: [error?.message || String(error)] };
+  }
+}
+
+export async function getAvailableRestorePoints(): Promise<Array<{
+  backupId: string;
+  timestamp: Date;
+  type: string;
+  tableCount: number;
+  recordCount: number;
+  success: boolean;
+}>> {
+  try {
+    const records = await db.select()
+      .from(schema.backupRecords)
+      .where(eq(schema.backupRecords.success, true))
+      .orderBy(desc(schema.backupRecords.timestamp))
+      .limit(30);
+    
+    return records.map(r => ({
+      backupId: r.backupId,
+      timestamp: r.timestamp,
+      type: r.backupType,
+      tableCount: (r.tablesBackedUp as string[])?.length || 0,
+      recordCount: Object.values(r.recordCounts as Record<string, number>).reduce((a, b) => a + Math.max(0, b), 0),
+      success: r.success,
+    }));
+  } catch (error) {
+    console.error('Restore noktaları alınamadı:', error);
+    return [];
+  }
 }
