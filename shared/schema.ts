@@ -12654,3 +12654,24 @@ export const insertInventoryCountReportSchema = createInsertSchema(inventoryCoun
 });
 export type InsertInventoryCountReport = z.infer<typeof insertInventoryCountReportSchema>;
 export type InventoryCountReport = typeof inventoryCountReports.$inferSelect;
+
+// ========================================
+// DASHBOARD WIDGET ITEMS
+// ========================================
+
+export const dashboardWidgetItems = pgTable("dashboard_widget_items", {
+  id: serial("id").primaryKey(),
+  title: varchar("title", { length: 200 }).notNull(),
+  subtitle: varchar("subtitle", { length: 500 }),
+  type: varchar("type", { length: 50 }).notNull().default("link"),
+  icon: varchar("icon", { length: 100 }),
+  url: varchar("url", { length: 500 }),
+  targetRoles: text("target_roles").array().notNull().default(sql`'{}'::text[]`),
+  displayOrder: integer("display_order").notNull().default(0),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertDashboardWidgetItemSchema = createInsertSchema(dashboardWidgetItems).omit({ id: true, createdAt: true });
+export type InsertDashboardWidgetItem = z.infer<typeof insertDashboardWidgetItemSchema>;
+export type DashboardWidgetItem = typeof dashboardWidgetItems.$inferSelect;

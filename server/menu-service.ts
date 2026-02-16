@@ -510,6 +510,14 @@ const MENU_BLUEPRINT: SidebarMenuSection[] = [
         moduleKey: "admin_settings",
         scope: "hq",
       },
+      {
+        id: "widget-editor",
+        titleTr: "Widget Editör",
+        path: "/admin/widget-editor",
+        icon: "LayoutGrid",
+        moduleKey: "admin_settings",
+        scope: "hq",
+      },
     ],
   },
 ];

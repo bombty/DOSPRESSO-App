@@ -29,7 +29,8 @@ import {
   Lock,
   Cog,
   BookOpen,
-  ListTodo
+  ListTodo,
+  LayoutGrid
 } from "lucide-react";
 
 const AdminDashboard = lazy(() => import("./admin/index"));
@@ -62,6 +63,7 @@ const AdminVeriDisaAktarma = lazy(() => import("./admin/veri-disa-aktarma"));
 const AdminGorunumAyarlari = lazy(() => import("./admin/gorunum-ayarlari"));
 const AdminGorevSablonlari = lazy(() => import("./admin/gorev-sablonlari"));
 const AdminWidgetYonetimi = lazy(() => import("./admin/widget-yonetimi"));
+const AdminHeroWidgetEditor = lazy(() => import("./admin/widget-editor"));
 
 interface TabConfig {
   id: string;
@@ -323,6 +325,15 @@ const ADMIN_TABS: TabConfig[] = [
     component: AdminWidgetYonetimi
   },
   {
+    id: "widget-editor",
+    label: "Hero Widget Editor",
+    labelTr: "Hero Widget Editör",
+    icon: <LayoutGrid className="h-4 w-4" />,
+    permissionModule: "admin_panel",
+    group: "sistem",
+    component: AdminHeroWidgetEditor
+  },
+  {
     id: "fabrika-istasyonlar",
     label: "Factory Stations",
     labelTr: "Fabrika İstasyonları",
@@ -400,6 +411,7 @@ const TAB_URL_MAP: Record<string, string> = {
   "toplu-veri": "/admin/toplu-veri",
   "gorev-sablonlari": "/admin/gorev-sablonlari",
   "widget-yonetimi": "/admin/widget-yonetimi",
+  "widget-editor": "/admin/widget-editor",
   "fabrika-istasyonlar": "/admin/fabrika-istasyonlar",
   "fire-sebepleri": "/admin/fire-sebepleri",
   "pin-yonetimi": "/admin/pin-yonetimi",

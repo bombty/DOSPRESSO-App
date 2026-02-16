@@ -413,7 +413,7 @@ export function GlobalAIAssistant() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.95 }}
             transition={{ duration: 0.2 }}
-            className="fixed bottom-20 right-4 z-50 w-[380px] max-w-[calc(100vw-32px)] bg-card border rounded-xl shadow-2xl flex flex-col"
+            className="fixed bottom-36 sm:bottom-20 right-4 z-[70] w-[380px] max-w-[calc(100vw-32px)] bg-card border rounded-xl shadow-2xl flex flex-col"
             style={{ maxHeight: 'calc(100vh - 120px)' }}
             data-testid="panel-ai-assistant"
           >
@@ -567,7 +567,7 @@ export function GlobalAIAssistant() {
       </AnimatePresence>
 
       <motion.button
-        className="fixed bottom-4 right-4 z-50 flex items-center justify-center"
+        className="fixed bottom-20 sm:bottom-4 right-4 z-[70] flex items-center justify-center"
         style={{ width: 56, height: 56, background: 'transparent', border: 'none', padding: 0, cursor: 'pointer' }}
         whileHover={{ scale: 1.1 }}
         whileTap={{ scale: 0.9 }}

@@ -326,6 +326,8 @@ import {
   insertInventoryCountEntrySchema,
   factoryManagementScores,
   insertFactoryManagementScoreSchema,
+  dashboardWidgetItems,
+  insertDashboardWidgetItemSchema,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, asc, sql, and, or, isNull, isNotNull, inArray, lte, gte, ne, not, count, sum, avg, max } from "drizzle-orm";
@@ -39705,6 +39707,155 @@ Kurallar:
     } catch (error: any) {
       console.error("Usage guide AI error:", error);
       res.status(500).json({ message: "AI yanıt üretemedi, lütfen tekrar deneyin" });
+    }
+  });
+
+  // ========================================
+  // DASHBOARD WIDGET ITEMS API
+  // ========================================
+
+  // Seed default dashboard widget items if table is empty
+  async function seedDashboardWidgetItems() {
+    try {
+      const existingWidgets = await db.select().from(dashboardWidgetItems);
+      if (existingWidgets.length === 0) {
+        await db.insert(dashboardWidgetItems).values([
+          { title: "Günlük Görevler", subtitle: "Bugünkü görevlerini kontrol et", type: "link", icon: "Target", url: "/gorevler", targetRoles: [], displayOrder: 1, isActive: true },
+          { title: "Checklistler", subtitle: "Günlük checklist durumun", type: "link", icon: "ClipboardList", url: "/checklistler", targetRoles: [], displayOrder: 2, isActive: true },
+          { title: "Eğitim", subtitle: "Akademi ve eğitim programları", type: "link", icon: "GraduationCap", url: "/akademi", targetRoles: ["barista", "bar_buddy", "stajyer", "supervisor", "mudur"], displayOrder: 3, isActive: true },
+          { title: "Arıza Bildir", subtitle: "Yeni arıza kaydı oluştur", type: "link", icon: "Wrench", url: "/ariza", targetRoles: ["supervisor", "mudur", "teknik", "ekipman_teknik"], displayOrder: 4, isActive: true },
+          { title: "Raporlar", subtitle: "Performans ve analitik", type: "link", icon: "BarChart3", url: "/raporlar", targetRoles: ["ceo", "cgo", "admin", "coach", "mudur"], displayOrder: 5, isActive: true },
+        ]);
+        console.log("Dashboard widget items seeded successfully");
+      }
+    } catch (error) {
+      console.error("Failed to seed dashboard widget items:", error);
+    }
+  }
+  seedDashboardWidgetItems();
+
+  // GET /api/dashboard-widgets - Get active widgets filtered by user role
+  app.get('/api/dashboard-widgets', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const userRole = user.role as string;
+
+      const allWidgets = await db.select().from(dashboardWidgetItems)
+        .where(eq(dashboardWidgetItems.isActive, true))
+        .orderBy(asc(dashboardWidgetItems.displayOrder));
+
+      const filtered = allWidgets.filter(w => {
+        if (!w.targetRoles || w.targetRoles.length === 0) return true;
+        return w.targetRoles.includes(userRole);
+      });
+
+      res.json(filtered);
+    } catch (error: any) {
+      console.error("Error fetching dashboard widgets:", error);
+      res.status(500).json({ message: "Dashboard widget'ları yüklenemedi" });
+    }
+  });
+
+  // GET /api/admin/dashboard-widgets - Get ALL widgets for admin editor
+  app.get('/api/admin/dashboard-widgets', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      if (user.role !== 'admin' && user.role !== 'ceo') {
+        return res.status(403).json({ message: "Yetkiniz yok" });
+      }
+
+      const allWidgets = await db.select().from(dashboardWidgetItems)
+        .orderBy(asc(dashboardWidgetItems.displayOrder));
+
+      res.json(allWidgets);
+    } catch (error: any) {
+      console.error("Error fetching admin dashboard widgets:", error);
+      res.status(500).json({ message: "Dashboard widget'ları yüklenemedi" });
+    }
+  });
+
+  // POST /api/admin/dashboard-widgets - Create a new widget item
+  app.post('/api/admin/dashboard-widgets', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      if (user.role !== 'admin' && user.role !== 'ceo') {
+        return res.status(403).json({ message: "Yetkiniz yok" });
+      }
+
+      const parsed = insertDashboardWidgetItemSchema.parse(req.body);
+      const [created] = await db.insert(dashboardWidgetItems).values(parsed).returning();
+      res.json(created);
+    } catch (error: any) {
+      console.error("Error creating dashboard widget:", error);
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ message: "Geçersiz veri", errors: error.errors });
+      }
+      res.status(500).json({ message: "Widget oluşturulamadı" });
+    }
+  });
+
+  // PATCH /api/admin/dashboard-widgets/:id - Update a widget item
+  app.patch('/api/admin/dashboard-widgets/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      if (user.role !== 'admin' && user.role !== 'ceo') {
+        return res.status(403).json({ message: "Yetkiniz yok" });
+      }
+
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Geçersiz ID" });
+      }
+
+      const { title, subtitle, type, icon, url, targetRoles, displayOrder, isActive } = req.body;
+      const updateData: any = {};
+      if (title !== undefined) updateData.title = title;
+      if (subtitle !== undefined) updateData.subtitle = subtitle;
+      if (type !== undefined) updateData.type = type;
+      if (icon !== undefined) updateData.icon = icon;
+      if (url !== undefined) updateData.url = url;
+      if (targetRoles !== undefined) updateData.targetRoles = targetRoles;
+      if (displayOrder !== undefined) updateData.displayOrder = displayOrder;
+      if (isActive !== undefined) updateData.isActive = isActive;
+
+      if (Object.keys(updateData).length === 0) {
+        return res.status(400).json({ message: "Güncellenecek alan bulunamadı" });
+      }
+
+      const [updated] = await db.update(dashboardWidgetItems)
+        .set(updateData)
+        .where(eq(dashboardWidgetItems.id, id))
+        .returning();
+
+      if (!updated) {
+        return res.status(404).json({ message: "Widget bulunamadı" });
+      }
+
+      res.json(updated);
+    } catch (error: any) {
+      console.error("Error updating dashboard widget:", error);
+      res.status(500).json({ message: "Widget güncellenemedi" });
+    }
+  });
+
+  // DELETE /api/admin/dashboard-widgets/:id - Delete a widget item
+  app.delete('/api/admin/dashboard-widgets/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      if (user.role !== 'admin' && user.role !== 'ceo') {
+        return res.status(403).json({ message: "Yetkiniz yok" });
+      }
+
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Geçersiz ID" });
+      }
+
+      await db.delete(dashboardWidgetItems).where(eq(dashboardWidgetItems.id, id));
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("Error deleting dashboard widget:", error);
+      res.status(500).json({ message: "Widget silinemedi" });
     }
   });
 
