@@ -34,6 +34,10 @@ import {
   Hash,
   ArrowLeft,
   ArrowRight,
+  Sparkles,
+  RefreshCw,
+  TrendingUp,
+  AlertCircle,
   UserPlus,
   Factory,
   Search,
@@ -93,7 +97,7 @@ export default function FabrikaVardiyaPlanlama() {
   const [shiftNotes, setShiftNotes] = useState("");
 
   // Worker selection state (Step 2 - wizard)
-  const [wizardWorkers, setWizardWorkers] = useState<Array<{ userId: string; userName: string; role: string; machineId: string }>>([]);
+  const [wizardWorkers, setWizardWorkers] = useState<Array<{ userId: string; userName: string; role: string; machineId: string; productId: string }>>([]);
   const [staffSearch, setStaffSearch] = useState("");
 
   // Production plan state (Step 3 - wizard)
@@ -374,6 +378,7 @@ export default function FabrikaVardiyaPlanlama() {
         data.workers = wizardWorkers.map(w => ({
           userId: w.userId,
           machineId: w.machineId && w.machineId !== "none" ? parseInt(w.machineId) : null,
+          productId: w.productId && w.productId !== "none" ? parseInt(w.productId) : null,
           role: w.role,
         }));
       }
@@ -396,6 +401,7 @@ export default function FabrikaVardiyaPlanlama() {
       userName: `${staff.firstName} ${staff.lastName}`,
       role: "operator",
       machineId: "",
+      productId: "",
     }]);
   }
 
@@ -409,6 +415,10 @@ export default function FabrikaVardiyaPlanlama() {
 
   function updateWizardWorkerMachine(userId: string, machineId: string) {
     setWizardWorkers(prev => prev.map(w => w.userId === userId ? { ...w, machineId } : w));
+  }
+
+  function updateWizardWorkerProduct(userId: string, productId: string) {
+    setWizardWorkers(prev => prev.map(w => w.userId === userId ? { ...w, productId } : w));
   }
 
   function addWizardProduction() {
@@ -496,7 +506,7 @@ export default function FabrikaVardiyaPlanlama() {
       shiftId: selectedShift.id,
       data: {
         userId: assignUserId,
-        machineId: parseMachineId(assignMachineId),
+        productId: parseMachineId(assignMachineId),
         role: assignRole,
       },
     });
@@ -588,6 +598,14 @@ export default function FabrikaVardiyaPlanlama() {
           <TabsTrigger value="istatistikler" data-testid="tab-stats">
             <Target className="h-4 w-4 mr-2" />
             Üretim İstatistikleri
+          </TabsTrigger>
+          <TabsTrigger value="takim-analiz" data-testid="tab-team-analysis">
+            <Users className="h-4 w-4 mr-2" />
+            Takım Analizi
+          </TabsTrigger>
+          <TabsTrigger value="ai-oneriler" data-testid="tab-ai-recommendations">
+            <Sparkles className="h-4 w-4 mr-2" />
+            AI Öneriler
           </TabsTrigger>
         </TabsList>
 
@@ -740,6 +758,14 @@ export default function FabrikaVardiyaPlanlama() {
         {/* ISTATISTIKLER TAB */}
         <TabsContent value="istatistikler" className="space-y-4">
           <ProductionStats />
+        </TabsContent>
+
+        <TabsContent value="takim-analiz" className="space-y-4">
+          <TeamAnalysis products={products} />
+        </TabsContent>
+
+        <TabsContent value="ai-oneriler" className="space-y-4">
+          <AIRecommendations openCreateShift={openCreateShift} />
         </TabsContent>
       </Tabs>
 
@@ -897,17 +923,18 @@ export default function FabrikaVardiyaPlanlama() {
                               <SelectContent>
                                 <SelectItem value="operator">Operatör</SelectItem>
                                 <SelectItem value="supervisor">Supervisor</SelectItem>
-                                <SelectItem value="quality_controller">Kalite Kontrol</SelectItem>
+                                <SelectItem value="kalite_kontrol">Kalite Kontrol</SelectItem>
+                                <SelectItem value="destek">Destek</SelectItem>
                               </SelectContent>
                             </Select>
-                            <Select value={w.machineId || "none"} onValueChange={(val) => updateWizardWorkerMachine(w.userId, val)}>
-                              <SelectTrigger data-testid={`select-wizard-machine-${w.userId}`}>
-                                <SelectValue placeholder="Makine" />
+                            <Select value={w.productId || "none"} onValueChange={(val) => updateWizardWorkerProduct(w.userId, val)}>
+                              <SelectTrigger data-testid={`select-wizard-product-${w.userId}`}>
+                                <SelectValue placeholder="Ürün/İstasyon" />
                               </SelectTrigger>
                               <SelectContent>
-                                <SelectItem value="none">Makine Yok</SelectItem>
-                                {machines.filter((m: any) => m.isActive).map((m: any) => (
-                                  <SelectItem key={m.id} value={m.id.toString()}>{m.name}</SelectItem>
+                                <SelectItem value="none">Ürün Atanmadı</SelectItem>
+                                {products.filter((p: any) => p.isActive).map((p: any) => (
+                                  <SelectItem key={p.id} value={p.id.toString()}>{p.name}</SelectItem>
                                 ))}
                               </SelectContent>
                             </Select>
@@ -1099,13 +1126,13 @@ export default function FabrikaVardiyaPlanlama() {
                           </SelectContent>
                         </Select>
                         <Select value={assignMachineId} onValueChange={setAssignMachineId}>
-                          <SelectTrigger data-testid="select-assign-machine">
-                            <SelectValue placeholder="Makine (opsiyonel)" />
+                          <SelectTrigger data-testid="select-assign-product">
+                            <SelectValue placeholder="Ürün/İstasyon" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="none">Atanmadı</SelectItem>
-                            {machines.filter((m: any) => m.isActive).map((m: any) => (
-                              <SelectItem key={m.id} value={m.id.toString()}>{m.name}</SelectItem>
+                            <SelectItem value="none">Ürün Atanmadı</SelectItem>
+                            {products.filter((p: any) => p.isActive).map((p: any) => (
+                              <SelectItem key={p.id} value={p.id.toString()}>{p.name}</SelectItem>
                             ))}
                           </SelectContent>
                         </Select>
@@ -1116,7 +1143,8 @@ export default function FabrikaVardiyaPlanlama() {
                           <SelectContent>
                             <SelectItem value="operator">Operatör</SelectItem>
                             <SelectItem value="supervisor">Supervisor</SelectItem>
-                            <SelectItem value="quality_controller">Kalite Kontrol</SelectItem>
+                            <SelectItem value="kalite_kontrol">Kalite Kontrol</SelectItem>
+                            <SelectItem value="destek">Destek</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
@@ -1137,7 +1165,7 @@ export default function FabrikaVardiyaPlanlama() {
                       <TableHeader>
                         <TableRow>
                           <TableHead>Personel</TableHead>
-                          <TableHead>Makine</TableHead>
+                          <TableHead>Atanan Ürün</TableHead>
                           <TableHead>Rol</TableHead>
                           <TableHead>Kendi Seçimi</TableHead>
                           <TableHead className="text-right">İşlem</TableHead>
@@ -1147,10 +1175,10 @@ export default function FabrikaVardiyaPlanlama() {
                         {selectedShift.workers.map((w: any) => (
                           <TableRow key={w.id} data-testid={`row-worker-${w.id}`}>
                             <TableCell className="font-medium">{w.userName}</TableCell>
-                            <TableCell>{w.machineName || <span className="text-muted-foreground">Atanmadı</span>}</TableCell>
+                            <TableCell>{w.productName || <span className="text-muted-foreground">Atanmadı</span>}</TableCell>
                             <TableCell>
                               <Badge variant="secondary">
-                                {w.role === "operator" ? "Operatör" : w.role === "supervisor" ? "Supervisor" : "Kalite Kontrol"}
+                                {w.role === "operator" ? "Operatör" : w.role === "supervisor" ? "Supervisor" : w.role === "kalite_kontrol" ? "Kalite Kontrol" : w.role === "destek" ? "Destek" : w.role}
                               </Badge>
                             </TableCell>
                             <TableCell>{w.selfSelected ? "Evet" : "Hayır"}</TableCell>
@@ -1753,6 +1781,416 @@ function ProductionStats() {
         title="Vardiyayı Sil"
         description={`"${shiftDeleteState.itemName || ''}" vardiyasını silmek istediğinize emin misiniz? Bu işlem geri alınamaz.`}
       />
+    </div>
+  );
+}
+
+function TeamAnalysis({ products }: { products: any[] }) {
+  const [period, setPeriod] = useState("month");
+  const [productFilter, setProductFilter] = useState("all");
+
+  const startDate = useMemo(() => {
+    const d = new Date();
+    if (period === "week") { d.setDate(d.getDate() - 7); return d.toISOString().split("T")[0]; }
+    if (period === "month") { d.setDate(d.getDate() - 30); return d.toISOString().split("T")[0]; }
+    d.setDate(d.getDate() - 90); return d.toISOString().split("T")[0];
+  }, [period]);
+
+  const queryParams = useMemo(() => {
+    let params = `?startDate=${startDate}`;
+    if (productFilter && productFilter !== "all") params += `&productId=${productFilter}`;
+    return params;
+  }, [startDate, productFilter]);
+
+  const { data, isLoading } = useQuery<any>({
+    queryKey: ["/api/factory-team-analysis", startDate, productFilter],
+    queryFn: async () => {
+      const res = await fetch(`/api/factory-team-analysis${queryParams}`);
+      return res.json();
+    },
+  });
+
+  if (isLoading) return <p className="text-center text-muted-foreground py-8">Yükleniyor...</p>;
+
+  const teamAnalysis = data?.teamAnalysis || [];
+  const workerComparison = data?.workerComparison || [];
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between gap-2 flex-wrap">
+        <h3 className="text-lg font-semibold" data-testid="text-team-analysis-title">Takım Uyumu & Performans Analizi</h3>
+        <div className="flex items-center gap-2 flex-wrap">
+          <Select value={productFilter} onValueChange={setProductFilter}>
+            <SelectTrigger className="w-44" data-testid="select-team-product-filter">
+              <SelectValue placeholder="Ürün filtresi" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Tüm Ürünler</SelectItem>
+              {products.filter((p: any) => p.isActive).map((p: any) => (
+                <SelectItem key={p.id} value={p.id.toString()}>{p.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={period} onValueChange={setPeriod}>
+            <SelectTrigger className="w-36" data-testid="select-team-period">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="week">Son 7 Gün</SelectItem>
+              <SelectItem value="month">Son 30 Gün</SelectItem>
+              <SelectItem value="quarter">Son 90 Gün</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <Card data-testid="stat-analyzed-shifts">
+          <CardContent className="p-4 text-center">
+            <Calendar className="h-5 w-5 mx-auto mb-1 text-blue-500" />
+            <p className="text-2xl font-bold">{data?.analyzedShifts || 0}</p>
+            <p className="text-xs text-muted-foreground">Analiz Edilen Vardiya</p>
+          </CardContent>
+        </Card>
+        <Card data-testid="stat-analyzed-batches">
+          <CardContent className="p-4 text-center">
+            <Package className="h-5 w-5 mx-auto mb-1 text-green-500" />
+            <p className="text-2xl font-bold">{data?.totalBatches || 0}</p>
+            <p className="text-xs text-muted-foreground">Toplam Batch</p>
+          </CardContent>
+        </Card>
+        <Card data-testid="stat-team-combos">
+          <CardContent className="p-4 text-center">
+            <Users className="h-5 w-5 mx-auto mb-1 text-purple-500" />
+            <p className="text-2xl font-bold">{teamAnalysis.length}</p>
+            <p className="text-xs text-muted-foreground">Takım Kombinasyonu</p>
+          </CardContent>
+        </Card>
+        <Card data-testid="stat-worker-count">
+          <CardContent className="p-4 text-center">
+            <Target className="h-5 w-5 mx-auto mb-1 text-amber-500" />
+            <p className="text-2xl font-bold">{workerComparison.length}</p>
+            <p className="text-xs text-muted-foreground">Toplam Çalışan</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {teamAnalysis.length > 0 && (
+        <Card>
+          <CardHeader className="py-3 px-4">
+            <CardTitle className="text-sm flex items-center gap-2">
+              <Users className="h-4 w-4" />
+              Takım Uyumu Sıralaması
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="px-4 pb-4">
+            <div className="space-y-3">
+              {teamAnalysis.slice(0, 10).map((team: any, idx: number) => {
+                const isTopTeam = idx === 0 && team.avgPerformance > 0;
+                return (
+                  <Card key={team.teamKey} className={isTopTeam ? "border-green-500/50" : ""} data-testid={`card-team-${idx}`}>
+                    <CardContent className="p-3 space-y-2">
+                      <div className="flex items-center justify-between gap-2 flex-wrap">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <Badge variant={isTopTeam ? "default" : "secondary"}>
+                            #{idx + 1}
+                          </Badge>
+                          <div className="flex items-center gap-1 flex-wrap">
+                            {team.workers.map((w: any, wi: number) => (
+                              <span key={wi}>
+                                <Badge variant="outline">{w.userName}</Badge>
+                                {wi < team.workers.length - 1 && <span className="mx-0.5 text-muted-foreground">+</span>}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                        <Badge variant={team.avgPerformance >= 80 ? "default" : team.avgPerformance >= 60 ? "secondary" : "destructive"}>
+                          {team.avgPerformance}%
+                        </Badge>
+                      </div>
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Vardiya:</span>
+                          <span className="font-mono">{team.shiftCount}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Batch:</span>
+                          <span className="font-mono">{team.totalBatches}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Toplam Adet:</span>
+                          <span className="font-mono">{team.totalPieces}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Fire (kg):</span>
+                          <span className="font-mono">{team.totalWasteKg}</span>
+                        </div>
+                      </div>
+                      {team.products.length > 0 && (
+                        <div className="flex items-center gap-1 flex-wrap">
+                          <span className="text-xs text-muted-foreground">Ürünler:</span>
+                          {team.products.map((p: string, pi: number) => (
+                            <Badge key={pi} variant="secondary" className="text-xs">{p}</Badge>
+                          ))}
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {workerComparison.length > 0 && (
+        <Card>
+          <CardHeader className="py-3 px-4">
+            <CardTitle className="text-sm flex items-center gap-2">
+              <Target className="h-4 w-4" />
+              Bireysel Performans Karşılaştırması (Solo vs Takım)
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="px-4 pb-4">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Çalışan</TableHead>
+                  <TableHead className="text-right">Batch</TableHead>
+                  <TableHead className="text-right">Solo Perf.</TableHead>
+                  <TableHead className="text-right">Takım Perf.</TableHead>
+                  <TableHead className="text-right">Fark</TableHead>
+                  <TableHead>Ürünler</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {workerComparison.map((w: any, i: number) => (
+                  <TableRow key={i} data-testid={`row-worker-comparison-${i}`}>
+                    <TableCell className="font-medium">{w.userName}</TableCell>
+                    <TableCell className="text-right font-mono">{w.totalBatches}</TableCell>
+                    <TableCell className="text-right font-mono">
+                      {w.avgSoloPerformance !== null ? `${w.avgSoloPerformance}%` : "-"}
+                    </TableCell>
+                    <TableCell className="text-right font-mono">
+                      {w.avgTeamPerformance !== null ? `${w.avgTeamPerformance}%` : "-"}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {w.teamBoost !== null ? (
+                        <Badge variant={w.teamBoost > 0 ? "default" : w.teamBoost < 0 ? "destructive" : "secondary"}>
+                          {w.teamBoost > 0 ? "+" : ""}{w.teamBoost}%
+                        </Badge>
+                      ) : "-"}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex gap-1 flex-wrap">
+                        {w.products.slice(0, 3).map((p: string, pi: number) => (
+                          <Badge key={pi} variant="secondary" className="text-xs">{p}</Badge>
+                        ))}
+                        {w.products.length > 3 && (
+                          <Badge variant="outline" className="text-xs">+{w.products.length - 3}</Badge>
+                        )}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      )}
+
+      {teamAnalysis.length === 0 && workerComparison.length === 0 && (
+        <Card>
+          <CardContent className="py-8 text-center text-muted-foreground">
+            <Users className="h-12 w-12 mx-auto mb-3 opacity-50" />
+            Seçilen dönemde takım analizi verisi bulunamadı
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
+}
+
+function AIRecommendations({ openCreateShift }: { openCreateShift: (date?: Date) => void }) {
+  const { toast } = useToast();
+
+  const { data, isLoading, refetch, isFetching } = useQuery<any>({
+    queryKey: ["/api/factory-ai-recommendations"],
+    queryFn: async () => {
+      const res = await fetch("/api/factory-ai-recommendations");
+      return res.json();
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const recommendations = data?.recommendations || [];
+  const summary = data?.summary || "";
+  const productSummary = data?.productSummary || [];
+
+  const priorityConfig = (priority: string) => {
+    switch (priority) {
+      case "critical": return { label: "Kritik", variant: "destructive" as const, icon: AlertCircle };
+      case "high": return { label: "Yüksek", variant: "default" as const, icon: TrendingUp };
+      case "medium": return { label: "Orta", variant: "secondary" as const, icon: Package };
+      default: return { label: "Düşük", variant: "outline" as const, icon: Package };
+    }
+  };
+
+  const shiftLabel = (shift: string) => {
+    switch (shift) {
+      case "morning": return "Sabah";
+      case "afternoon": return "Öğleden Sonra";
+      case "night": return "Gece";
+      default: return shift;
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between gap-2 flex-wrap">
+        <h3 className="text-lg font-semibold flex items-center gap-2" data-testid="text-ai-recommendations-title">
+          <Sparkles className="h-5 w-5 text-amber-500" />
+          AI Üretim Önerileri
+        </h3>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => refetch()}
+          disabled={isFetching}
+          data-testid="btn-refresh-recommendations"
+        >
+          <RefreshCw className={`h-4 w-4 mr-1 ${isFetching ? "animate-spin" : ""}`} />
+          Yenile
+        </Button>
+      </div>
+
+      {isLoading ? (
+        <Card>
+          <CardContent className="py-8 text-center text-muted-foreground">
+            <Sparkles className="h-8 w-8 mx-auto mb-3 animate-pulse text-amber-500" />
+            AI analiz yapılıyor...
+          </CardContent>
+        </Card>
+      ) : (
+        <>
+          {summary && (
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-start gap-3">
+                  <Sparkles className="h-5 w-5 text-amber-500 mt-0.5 shrink-0" />
+                  <div>
+                    <p className="text-sm font-medium mb-1">AI Özet</p>
+                    <p className="text-sm text-muted-foreground" data-testid="text-ai-summary">{summary}</p>
+                  </div>
+                </div>
+                {data?.generatedAt && (
+                  <p className="text-xs text-muted-foreground mt-2 text-right">
+                    {new Date(data.generatedAt).toLocaleString("tr-TR")}
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
+          {recommendations.length > 0 ? (
+            <div className="space-y-3">
+              {recommendations.map((rec: any, idx: number) => {
+                const cfg = priorityConfig(rec.priority);
+                const PriorityIcon = cfg.icon;
+                return (
+                  <Card key={idx} className={rec.priority === "critical" ? "border-red-500/50" : ""} data-testid={`card-recommendation-${idx}`}>
+                    <CardContent className="p-4 space-y-3">
+                      <div className="flex items-center justify-between gap-2 flex-wrap">
+                        <div className="flex items-center gap-2">
+                          <PriorityIcon className="h-4 w-4" />
+                          <span className="font-semibold">{rec.productName}</span>
+                        </div>
+                        <Badge variant={cfg.variant}>{cfg.label}</Badge>
+                      </div>
+                      <p className="text-sm text-muted-foreground">{rec.reason}</p>
+                      <div className="grid grid-cols-3 gap-3 text-xs">
+                        <div className="flex flex-col items-center bg-muted rounded-md p-2">
+                          <span className="text-muted-foreground">Batch</span>
+                          <span className="font-mono font-semibold text-base">{rec.suggestedBatches}</span>
+                        </div>
+                        <div className="flex flex-col items-center bg-muted rounded-md p-2">
+                          <span className="text-muted-foreground">Vardiya</span>
+                          <span className="font-semibold text-base">{shiftLabel(rec.suggestedShift)}</span>
+                        </div>
+                        <div className="flex flex-col items-center bg-muted rounded-md p-2">
+                          <span className="text-muted-foreground">Süre</span>
+                          <span className="font-mono font-semibold text-base">{rec.estimatedDurationHours}s</span>
+                        </div>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="w-full"
+                        onClick={() => {
+                          openCreateShift(new Date());
+                          toast({ title: "Vardiya oluşturucu açıldı", description: `${rec.productName} için vardiya oluşturabilirsiniz.` });
+                        }}
+                        data-testid={`btn-create-from-rec-${idx}`}
+                      >
+                        <Plus className="h-4 w-4 mr-1" />
+                        Bu Öneri İçin Vardiya Oluştur
+                      </Button>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          ) : (
+            <Card>
+              <CardContent className="py-8 text-center text-muted-foreground">
+                <CheckCircle2 className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                Şu anda üretim önerisi bulunmuyor
+              </CardContent>
+            </Card>
+          )}
+
+          {productSummary.length > 0 && (
+            <Card>
+              <CardHeader className="py-3 px-4">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <Package className="h-4 w-4" />
+                  Ürün Üretim Özeti (Son 7 Gün)
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="px-4 pb-4">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Ürün</TableHead>
+                      <TableHead className="text-right">Haftalık Batch</TableHead>
+                      <TableHead className="text-right">Haftalık Adet</TableHead>
+                      <TableHead className="text-right">Aylık Batch</TableHead>
+                      <TableHead className="text-right">Planlanan</TableHead>
+                      <TableHead className="text-right">Min Stok</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {productSummary.slice(0, 15).map((p: any) => (
+                      <TableRow key={p.id} data-testid={`row-product-summary-${p.id}`}>
+                        <TableCell className="font-medium">{p.name}</TableCell>
+                        <TableCell className="text-right font-mono">{p.weeklyProduction.batches}</TableCell>
+                        <TableCell className="text-right font-mono">{p.weeklyProduction.pieces}</TableCell>
+                        <TableCell className="text-right font-mono">{p.monthlyProduction.batches}</TableCell>
+                        <TableCell className="text-right font-mono">
+                          {p.plannedBatches > 0 ? (
+                            <Badge variant="secondary">{p.plannedBatches}</Badge>
+                          ) : "-"}
+                        </TableCell>
+                        <TableCell className="text-right font-mono">{p.minStock || "-"}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          )}
+        </>
+      )}
     </div>
   );
 }

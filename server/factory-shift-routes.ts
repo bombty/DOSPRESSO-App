@@ -1,6 +1,7 @@
 import { Express, Request, Response } from "express";
 import { db } from "./db";
-import { eq, and, desc, asc, gte, lte, sql, inArray, isNull } from "drizzle-orm";
+import { eq, and, desc, asc, gte, lte, sql, inArray, isNull, count } from "drizzle-orm";
+import OpenAI from "openai";
 import {
   factoryShifts,
   factoryShiftWorkers,
@@ -65,19 +66,23 @@ export function registerFactoryShiftRoutes(app: Express) {
       let productions: any[] = [];
 
       if (shiftIds.length > 0) {
+        const fpAlias = factoryProducts;
         workers = await db.select({
           id: factoryShiftWorkers.id,
           shiftId: factoryShiftWorkers.shiftId,
           userId: factoryShiftWorkers.userId,
           machineId: factoryShiftWorkers.machineId,
+          productId: factoryShiftWorkers.productId,
           role: factoryShiftWorkers.role,
           selfSelected: factoryShiftWorkers.selfSelected,
           notes: factoryShiftWorkers.notes,
           userName: sql<string>`${users.firstName} || ' ' || ${users.lastName}`,
           machineName: factoryMachines.name,
+          productName: fpAlias.name,
         }).from(factoryShiftWorkers)
           .leftJoin(users, eq(factoryShiftWorkers.userId, users.id))
           .leftJoin(factoryMachines, eq(factoryShiftWorkers.machineId, factoryMachines.id))
+          .leftJoin(fpAlias, eq(factoryShiftWorkers.productId, fpAlias.id))
           .where(inArray(factoryShiftWorkers.shiftId, shiftIds));
 
         productions = await db.select({
@@ -131,6 +136,7 @@ export function registerFactoryShiftRoutes(app: Express) {
               shiftId: shift.id,
               userId: w.userId,
               machineId: w.machineId || null,
+              productId: w.productId || null,
               role: w.role || "operator",
               notes: w.notes || null,
             }))
@@ -193,7 +199,7 @@ export function registerFactoryShiftRoutes(app: Express) {
   app.post("/api/factory-shifts/:shiftId/workers", isFactoryUser, async (req: Request, res: Response) => {
     try {
       const shiftId = parseInt(req.params.shiftId);
-      const { userId, machineId, role, notes } = req.body;
+      const { userId, machineId, productId, role, notes } = req.body;
 
       const existing = await db.select({ id: factoryShiftWorkers.id })
         .from(factoryShiftWorkers)
@@ -209,6 +215,7 @@ export function registerFactoryShiftRoutes(app: Express) {
         shiftId,
         userId,
         machineId: machineId || null,
+        productId: productId || null,
         role: role || "operator",
         notes,
       }).returning();
@@ -927,6 +934,358 @@ export function registerFactoryShiftRoutes(app: Express) {
     } catch (error: any) {
       console.error("Get production stats error:", error);
       res.status(500).json({ error: "Üretim istatistikleri alınamadı" });
+    }
+  });
+
+  // Team Performance & Compatibility Analysis
+  app.get("/api/factory-team-analysis", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const { startDate, productId } = req.query;
+      const start = startDate ? new Date(startDate as string) : new Date(Date.now() - 30 * 86400000);
+
+      let batchConditions: any[] = [
+        gte(factoryProductionBatches.startTime, start),
+        inArray(factoryProductionBatches.status, ["completed", "verified"]),
+      ];
+      if (productId) batchConditions.push(eq(factoryProductionBatches.productId, parseInt(productId as string)));
+
+      // Get all completed batches with their shift workers
+      const batches = await db.select({
+        batchId: factoryProductionBatches.id,
+        shiftId: factoryProductionBatches.shiftId,
+        productId: factoryProductionBatches.productId,
+        productName: factoryProducts.name,
+        operatorUserId: factoryProductionBatches.operatorUserId,
+        operatorName: sql<string>`${users.firstName} || ' ' || ${users.lastName}`,
+        actualPieces: factoryProductionBatches.actualPieces,
+        actualWeightKg: factoryProductionBatches.actualWeightKg,
+        performanceScore: factoryProductionBatches.performanceScore,
+        yieldRate: factoryProductionBatches.yieldRate,
+        actualDurationMinutes: factoryProductionBatches.actualDurationMinutes,
+        targetDurationMinutes: factoryProductionBatches.targetDurationMinutes,
+        wasteWeightKg: factoryProductionBatches.wasteWeightKg,
+        wastePieces: factoryProductionBatches.wastePieces,
+        startTime: factoryProductionBatches.startTime,
+      }).from(factoryProductionBatches)
+        .leftJoin(factoryProducts, eq(factoryProductionBatches.productId, factoryProducts.id))
+        .leftJoin(users, eq(factoryProductionBatches.operatorUserId, users.id))
+        .where(and(...batchConditions))
+        .orderBy(desc(factoryProductionBatches.startTime));
+
+      // Get shift workers for those shifts
+      const shiftIds = Array.from(new Set(batches.map(b => b.shiftId).filter(Boolean))) as number[];
+      let shiftWorkerMap: Record<number, Array<{ userId: string; userName: string; role: string }>> = {};
+
+      if (shiftIds.length > 0) {
+        const sw = await db.select({
+          shiftId: factoryShiftWorkers.shiftId,
+          userId: factoryShiftWorkers.userId,
+          userName: sql<string>`${users.firstName} || ' ' || ${users.lastName}`,
+          role: factoryShiftWorkers.role,
+        }).from(factoryShiftWorkers)
+          .leftJoin(users, eq(factoryShiftWorkers.userId, users.id))
+          .where(inArray(factoryShiftWorkers.shiftId, shiftIds));
+
+        for (const w of sw) {
+          if (!shiftWorkerMap[w.shiftId]) shiftWorkerMap[w.shiftId] = [];
+          shiftWorkerMap[w.shiftId].push({ userId: w.userId, userName: w.userName || "", role: w.role || "operator" });
+        }
+      }
+
+      // Build team combinations: for each shift, identify which workers worked together
+      // Key = sorted list of worker userIds, Value = performance data
+      const teamMap: Record<string, {
+        workers: Array<{ userId: string; userName: string }>;
+        shifts: number;
+        totalBatches: number;
+        totalPieces: number;
+        avgPerformance: number;
+        avgYield: number;
+        totalWasteKg: number;
+        products: Set<string>;
+        performanceScores: number[];
+      }> = {};
+
+      for (const batch of batches) {
+        if (!batch.shiftId) continue;
+        const workers = shiftWorkerMap[batch.shiftId] || [];
+        if (workers.length < 2) continue;
+
+        const sortedIds = workers.map(w => w.userId).sort();
+        const key = sortedIds.join("|");
+
+        if (!teamMap[key]) {
+          teamMap[key] = {
+            workers: workers.map(w => ({ userId: w.userId, userName: w.userName }))
+              .sort((a, b) => a.userId.localeCompare(b.userId)),
+            shifts: 0,
+            totalBatches: 0,
+            totalPieces: 0,
+            avgPerformance: 0,
+            avgYield: 0,
+            totalWasteKg: 0,
+            products: new Set(),
+            performanceScores: [],
+          };
+        }
+
+        const team = teamMap[key];
+        team.totalBatches++;
+        team.totalPieces += batch.actualPieces || 0;
+        team.totalWasteKg += parseFloat(String(batch.wasteWeightKg || "0"));
+        if (batch.productName) team.products.add(batch.productName);
+        if (batch.performanceScore) team.performanceScores.push(parseFloat(String(batch.performanceScore)));
+      }
+
+      // Count unique shifts per team
+      const shiftsByTeam: Record<string, Set<number>> = {};
+      for (const batch of batches) {
+        if (!batch.shiftId) continue;
+        const workers = shiftWorkerMap[batch.shiftId] || [];
+        if (workers.length < 2) continue;
+        const key = workers.map(w => w.userId).sort().join("|");
+        if (!shiftsByTeam[key]) shiftsByTeam[key] = new Set();
+        shiftsByTeam[key].add(batch.shiftId);
+      }
+
+      const teamAnalysis = Object.entries(teamMap).map(([key, team]) => {
+        const avgPerf = team.performanceScores.length > 0
+          ? team.performanceScores.reduce((a, b) => a + b, 0) / team.performanceScores.length
+          : 0;
+        return {
+          teamKey: key,
+          workers: team.workers,
+          workerCount: team.workers.length,
+          shiftCount: shiftsByTeam[key]?.size || 0,
+          totalBatches: team.totalBatches,
+          totalPieces: team.totalPieces,
+          avgPerformance: parseFloat(avgPerf.toFixed(1)),
+          totalWasteKg: parseFloat(team.totalWasteKg.toFixed(2)),
+          products: Array.from(team.products),
+        };
+      })
+        .filter(t => t.shiftCount >= 1)
+        .sort((a, b) => b.avgPerformance - a.avgPerformance);
+
+      // Individual worker comparison within shifts
+      const workerShiftPerf: Record<string, {
+        userId: string;
+        userName: string;
+        soloPerformances: number[];
+        teamPerformances: number[];
+        totalBatches: number;
+        products: Set<string>;
+      }> = {};
+
+      for (const batch of batches) {
+        if (!batch.operatorUserId) continue;
+        const uid = batch.operatorUserId;
+        if (!workerShiftPerf[uid]) {
+          workerShiftPerf[uid] = {
+            userId: uid,
+            userName: batch.operatorName || "",
+            soloPerformances: [],
+            teamPerformances: [],
+            totalBatches: 0,
+            products: new Set(),
+          };
+        }
+        const wp = workerShiftPerf[uid];
+        wp.totalBatches++;
+        if (batch.productName) wp.products.add(batch.productName);
+        const perf = batch.performanceScore ? parseFloat(String(batch.performanceScore)) : 0;
+        const workers = batch.shiftId ? (shiftWorkerMap[batch.shiftId] || []) : [];
+        if (workers.length >= 2) {
+          wp.teamPerformances.push(perf);
+        } else {
+          wp.soloPerformances.push(perf);
+        }
+      }
+
+      const workerComparison = Object.values(workerShiftPerf).map(wp => {
+        const avgSolo = wp.soloPerformances.length > 0
+          ? wp.soloPerformances.reduce((a, b) => a + b, 0) / wp.soloPerformances.length : null;
+        const avgTeam = wp.teamPerformances.length > 0
+          ? wp.teamPerformances.reduce((a, b) => a + b, 0) / wp.teamPerformances.length : null;
+        return {
+          userId: wp.userId,
+          userName: wp.userName,
+          totalBatches: wp.totalBatches,
+          avgSoloPerformance: avgSolo !== null ? parseFloat(avgSolo.toFixed(1)) : null,
+          avgTeamPerformance: avgTeam !== null ? parseFloat(avgTeam.toFixed(1)) : null,
+          teamBoost: avgSolo !== null && avgTeam !== null ? parseFloat((avgTeam - avgSolo).toFixed(1)) : null,
+          products: Array.from(wp.products),
+        };
+      }).sort((a, b) => (b.avgTeamPerformance || 0) - (a.avgTeamPerformance || 0));
+
+      res.json({
+        teamAnalysis,
+        workerComparison,
+        totalBatches: batches.length,
+        analyzedShifts: shiftIds.length,
+      });
+    } catch (error: any) {
+      console.error("Team analysis error:", error);
+      res.status(500).json({ error: "Takım analizi alınamadı" });
+    }
+  });
+
+  // AI Production Recommendations
+  app.get("/api/factory-ai-recommendations", isFactoryUser, async (req: Request, res: Response) => {
+    try {
+      const weekAgo = new Date(Date.now() - 7 * 86400000);
+      const monthAgo = new Date(Date.now() - 30 * 86400000);
+
+      // 1. Get all active factory products with minStock
+      const allProducts = await db.select({
+        id: factoryProducts.id,
+        name: factoryProducts.name,
+        category: factoryProducts.category,
+        unit: factoryProducts.unit,
+        minStock: factoryProducts.minStock,
+        sku: factoryProducts.sku,
+      }).from(factoryProducts)
+        .where(eq(factoryProducts.isActive, true));
+
+      // 2. Get recent production volumes (last 7 days)
+      const recentProduction = await db.select({
+        productId: factoryProductionBatches.productId,
+        totalPieces: sql<number>`coalesce(sum(${factoryProductionBatches.actualPieces}), 0)::int`,
+        totalWeightKg: sql<string>`coalesce(sum(${factoryProductionBatches.actualWeightKg}::numeric), 0)::text`,
+        batchCount: sql<number>`count(*)::int`,
+        avgPerformance: sql<string>`coalesce(avg(${factoryProductionBatches.performanceScore}::numeric), 0)::numeric(5,1)::text`,
+      }).from(factoryProductionBatches)
+        .where(and(
+          gte(factoryProductionBatches.startTime, weekAgo),
+          inArray(factoryProductionBatches.status, ["completed", "verified"]),
+        ))
+        .groupBy(factoryProductionBatches.productId);
+
+      // 3. Get monthly production volumes for trend
+      const monthlyProduction = await db.select({
+        productId: factoryProductionBatches.productId,
+        totalPieces: sql<number>`coalesce(sum(${factoryProductionBatches.actualPieces}), 0)::int`,
+        batchCount: sql<number>`count(*)::int`,
+      }).from(factoryProductionBatches)
+        .where(and(
+          gte(factoryProductionBatches.startTime, monthAgo),
+          inArray(factoryProductionBatches.status, ["completed", "verified"]),
+        ))
+        .groupBy(factoryProductionBatches.productId);
+
+      // 4. Get current shift plans (upcoming)
+      const today = new Date().toISOString().split("T")[0];
+      const plannedProductions = await db.select({
+        productId: factoryShiftProductions.productId,
+        productName: factoryProducts.name,
+        plannedBatchCount: sql<number>`coalesce(sum(${factoryShiftProductions.plannedBatchCount}), 0)::int`,
+      }).from(factoryShiftProductions)
+        .innerJoin(factoryShifts, eq(factoryShiftProductions.shiftId, factoryShifts.id))
+        .leftJoin(factoryProducts, eq(factoryShiftProductions.productId, factoryProducts.id))
+        .where(and(
+          gte(factoryShifts.shiftDate, today),
+          inArray(factoryShiftProductions.status, ["planned", "in_progress"]),
+        ))
+        .groupBy(factoryShiftProductions.productId, factoryProducts.name);
+
+      // 5. Get batch specs for production capacity info
+      const specs = await db.select({
+        productId: factoryBatchSpecs.productId,
+        batchWeightKg: factoryBatchSpecs.batchWeightKg,
+        expectedPieces: factoryBatchSpecs.expectedPieces,
+        targetDurationMinutes: factoryBatchSpecs.targetDurationMinutes,
+      }).from(factoryBatchSpecs);
+
+      // Build product summary for AI
+      const productSummary = allProducts.map(p => {
+        const recent = recentProduction.find(r => r.productId === p.id);
+        const monthly = monthlyProduction.find(m => m.productId === p.id);
+        const planned = plannedProductions.find(pl => pl.productId === p.id);
+        const spec = specs.find(s => s.productId === p.id);
+
+        return {
+          id: p.id,
+          name: p.name,
+          category: p.category,
+          unit: p.unit,
+          minStock: p.minStock,
+          weeklyProduction: {
+            pieces: recent?.totalPieces || 0,
+            weightKg: parseFloat(recent?.totalWeightKg || "0"),
+            batches: recent?.batchCount || 0,
+            avgPerformance: recent?.avgPerformance || "0",
+          },
+          monthlyProduction: {
+            pieces: monthly?.totalPieces || 0,
+            batches: monthly?.batchCount || 0,
+          },
+          plannedBatches: planned?.plannedBatchCount || 0,
+          batchSpec: spec ? {
+            weightKg: spec.batchWeightKg,
+            pieces: spec.expectedPieces,
+            durationMin: spec.targetDurationMinutes,
+          } : null,
+        };
+      });
+
+      // Generate AI recommendation
+      const openai = new OpenAI({
+        baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
+        apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
+      });
+
+      const prompt = `Sen bir fabrika üretim planlama uzmanısın. Aşağıdaki verilere göre bugünkü üretim önceliklerini belirle.
+
+ÜRÜN VERİLERİ:
+${JSON.stringify(productSummary.filter(p => p.monthlyProduction.batches > 0 || (p.minStock || 0) > 0).slice(0, 30), null, 2)}
+
+KURALLAR:
+1. Minimum stok seviyesinin altına düşme riski olan ürünlere öncelik ver
+2. Haftalık üretimi düşen ürünleri tespit et
+3. Zaten planlanan üretimleri dikkate al
+4. Her öneri için tahmini batch sayısı ve zaman dilimi belirt
+
+JSON formatında yanıt ver:
+{
+  "recommendations": [
+    {
+      "productId": number,
+      "productName": "string",
+      "priority": "critical" | "high" | "medium" | "low",
+      "reason": "string (Türkçe kısa açıklama)",
+      "suggestedBatches": number,
+      "suggestedShift": "morning" | "afternoon" | "night",
+      "estimatedDurationHours": number
+    }
+  ],
+  "summary": "string (Türkçe genel özet, max 2 cümle)"
+}`;
+
+      const completion = await openai.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages: [{ role: "user", content: prompt }],
+        response_format: { type: "json_object" },
+        temperature: 0.3,
+        max_tokens: 1500,
+      });
+
+      let aiResponse: any = { recommendations: [], summary: "Veri yetersiz" };
+      try {
+        const content = completion.choices[0]?.message?.content;
+        if (content) aiResponse = JSON.parse(content);
+      } catch (e) {
+        console.error("AI response parse error:", e);
+      }
+
+      res.json({
+        recommendations: aiResponse.recommendations || [],
+        summary: aiResponse.summary || "",
+        productSummary: productSummary.filter(p => p.monthlyProduction.batches > 0 || (p.minStock || 0) > 0),
+        generatedAt: new Date().toISOString(),
+      });
+    } catch (error: any) {
+      console.error("AI recommendations error:", error);
+      res.status(500).json({ error: "AI önerileri alınamadı" });
     }
   });
 

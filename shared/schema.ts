@@ -11879,7 +11879,8 @@ export const factoryShiftWorkers = pgTable("factory_shift_workers", {
   shiftId: integer("shift_id").notNull().references(() => factoryShifts.id, { onDelete: "cascade" }),
   userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   machineId: integer("machine_id").references(() => factoryMachines.id, { onDelete: "set null" }),
-  role: varchar("role", { length: 30 }).default("operator"), // operator, supervisor, quality_controller
+  productId: integer("product_id").references(() => factoryProducts.id, { onDelete: "set null" }),
+  role: varchar("role", { length: 30 }).default("operator"), // operator, supervisor, kalite_kontrol, destek
   selfSelected: boolean("self_selected").default(false),
   notes: text("notes"),
   createdAt: timestamp("created_at").defaultNow(),
