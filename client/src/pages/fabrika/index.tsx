@@ -1,7 +1,7 @@
 import { useState, useEffect, Suspense, lazy } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
-import { hasPermission } from "@shared/schema";
+import { useDynamicPermissions } from "@/hooks/useDynamicPermissions";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -123,6 +123,7 @@ function TabSkeleton() {
 
 export default function FabrikaMegaModule() {
   const { user } = useAuth();
+  const { canAccess } = useDynamicPermissions();
   const [location, setLocation] = useLocation();
   
   const visibleTabs = FABRIKA_TABS.filter(tab => {
@@ -131,8 +132,8 @@ export default function FabrikaMegaModule() {
       return false;
     }
     if (!tab.permissionModule) return true;
-    if (['admin', 'fabrika_mudur', 'fabrika_operator'].includes(user.role)) return true;
-    return hasPermission(user.role as any, tab.permissionModule as any, 'view');
+    if (user.role === 'admin') return true;
+    return canAccess(tab.permissionModule!, 'view');
   });
 
   const firstVisibleTab = visibleTabs[0]?.id || "kalite-kontrol";

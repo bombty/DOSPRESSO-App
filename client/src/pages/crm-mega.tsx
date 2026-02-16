@@ -1,7 +1,7 @@
 import { useState, useEffect, Suspense, lazy } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
-import { hasPermission } from "@shared/schema";
+import { useDynamicPermissions } from "@/hooks/useDynamicPermissions";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
@@ -189,6 +189,7 @@ function getTabFromUrl(pathname: string): string | null {
 
 export default function CRMMegaModule() {
   const { user } = useAuth();
+  const { canAccess } = useDynamicPermissions();
   const [location, setLocation] = useLocation();
   const [activeTab, setActiveTab] = useState<string>("dashboard");
 
@@ -197,21 +198,15 @@ export default function CRMMegaModule() {
   const allowedTabs = CRM_TABS.filter(tab => {
     if (!user) return false;
     
-    // Role-based tab kontrolü - eğer allowedRoles tanımlıysa
     if (tab.allowedRoles && tab.allowedRoles.length > 0) {
-      // Eğer kullanıcının rolü izin verilen roller arasındaysa, tab'ı göster
+      if (user.role === 'admin') return true;
       return tab.allowedRoles.includes(user.role);
     }
     
-    // Admin tüm tab'lara erişebilir
     if (user.role === 'admin') return true;
     
-    // HQ roller için genel tab'lara (allowedRoles tanımlı olmayanlar) erişim
-    if (isHQRole(user.role)) return true;
-    
-    // İzin modülü kontrolü
     if (!tab.permissionModule) return true;
-    return hasPermission(user.role as any, tab.permissionModule as any, 'view');
+    return canAccess(tab.permissionModule!, 'view');
   });
 
   useEffect(() => {

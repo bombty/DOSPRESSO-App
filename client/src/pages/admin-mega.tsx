@@ -1,7 +1,7 @@
 import { useState, useEffect, Suspense, lazy } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
-import { hasPermission } from "@shared/schema";
+import { useDynamicPermissions } from "@/hooks/useDynamicPermissions";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -433,14 +433,14 @@ function getTabFromUrl(pathname: string): string | null {
 
 export default function AdminMegaModule() {
   const { user } = useAuth();
+  const { canAccess } = useDynamicPermissions();
   const [location, setLocation] = useLocation();
 
   const visibleTabs = ADMIN_TABS.filter(tab => {
     if (!tab.permissionModule) return true;
     if (!user?.role) return false;
-    // Admin rolü tüm admin tab'larına erişebilir
     if (user.role === 'admin') return true;
-    return hasPermission(user.role as any, tab.permissionModule as any, 'view');
+    return canAccess(tab.permissionModule!, 'view');
   });
 
   const visibleGroups = TAB_GROUPS.filter(group => 

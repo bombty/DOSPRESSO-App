@@ -1,7 +1,8 @@
 import { useState, useEffect, Suspense, lazy } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
-import { hasPermission, isBranchRole } from "@shared/schema";
+import { useDynamicPermissions } from "@/hooks/useDynamicPermissions";
+import { isBranchRole } from "@shared/schema";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -228,17 +229,15 @@ function getTabFromUrl(pathname: string): string | null {
 
 export default function RaporlarMegaModule() {
   const { user } = useAuth();
+  const { canAccess } = useDynamicPermissions();
   const [location, setLocation] = useLocation();
 
   const visibleTabs = RAPORLAR_TABS.filter(tab => {
     if (!user?.role) return false;
-    // Admin/CEO/CGO and HQ department roles see all
-    if (['admin', 'ceo', 'cgo', 'muhasebe', 'satinalma', 'operasyon'].includes(user.role)) return true;
-    // Scope check: branch users cannot see HQ-only tabs
+    if (user.role === 'admin') return true;
     if (tab.scope === 'hq' && isBranchRole(user.role as any)) return false;
-    // Permission check
     if (!tab.permissionModule) return true;
-    return hasPermission(user.role as any, tab.permissionModule as any, 'view');
+    return canAccess(tab.permissionModule!, 'view');
   });
 
   const firstVisibleTab = visibleTabs[0]?.id || "genel";

@@ -9760,6 +9760,37 @@ JSON formatında yanıt ver:
   });
 
   
+  // GET /api/me/permissions - Returns dynamic permissions for current user's role
+  // Used by frontend mega-modules to check permissions against admin panel settings
+  app.get('/api/me/permissions', isAuthenticated, async (req: any, res) => {
+    try {
+      res.set('Cache-Control', 'private, no-store, no-cache, must-revalidate');
+      res.set('Pragma', 'no-cache');
+      
+      const user = req.user!;
+      const userRole = user.role as string;
+      
+      const allPermissions = await storage.getRolePermissions();
+      const rolePerms = allPermissions.filter(p => p.role === userRole);
+      
+      // Build a map: module -> actions[]
+      const permissionMap: Record<string, string[]> = {};
+      for (const p of rolePerms) {
+        const actions = Array.isArray(p.actions) ? p.actions : [];
+        permissionMap[p.module] = actions;
+      }
+      
+      return res.status(200).json({
+        role: userRole,
+        permissions: permissionMap,
+        hasDynamicPermissions: rolePerms.length > 0,
+      });
+    } catch (error: any) {
+      console.error("Error fetching user permissions:", error);
+      res.status(500).json({ message: "Failed to fetch permissions" });
+    }
+  });
+
   // GET /api/menu - Legacy endpoint (deprecated, redirects to static blueprint)
   app.get('/api/menu', isAuthenticated, async (req: any, res) => {
     try {
