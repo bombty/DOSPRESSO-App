@@ -12490,6 +12490,7 @@ export const inventoryCounts = pgTable("inventory_counts", {
   id: serial("id").primaryKey(),
   month: integer("month").notNull(),
   year: integer("year").notNull(),
+  countType: varchar("count_type", { length: 30 }).notNull().default("tam_sayim"),
   scheduledDate: timestamp("scheduled_date").notNull(),
   status: varchar("status", { length: 30 }).notNull().default("planned"),
   createdById: varchar("created_by_id").references(() => users.id, { onDelete: "set null" }),

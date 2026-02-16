@@ -35,6 +35,7 @@ const MONTHS = [
 const CATEGORY_CONFIG: Record<string, { label: string; icon: any; color: string }> = {
   all: { label: "Tumumu", icon: Boxes, color: "text-foreground" },
   hammadde: { label: "Hammaddeler", icon: Package, color: "text-amber-600 dark:text-amber-400" },
+  bitimis_urun: { label: "Bitmis Urunler", icon: Package, color: "text-emerald-600 dark:text-emerald-400" },
   ambalaj: { label: "Ambalajlar", icon: Boxes, color: "text-blue-600 dark:text-blue-400" },
   ekipman: { label: "Ekipman", icon: Wrench, color: "text-slate-600 dark:text-slate-400" },
   sube_ekipman: { label: "Sube Ekipman", icon: Store, color: "text-purple-600 dark:text-purple-400" },
@@ -46,6 +47,14 @@ const CATEGORY_CONFIG: Record<string, { label: string; icon: any; color: string 
   cay_grubu: { label: "Cay Gruplari", icon: Leaf, color: "text-emerald-600 dark:text-emerald-400" },
   kahve: { label: "Kahveler", icon: Coffee, color: "text-amber-800 dark:text-amber-300" },
   toz_topping: { label: "Toz & Topping", icon: Droplets, color: "text-violet-600 dark:text-violet-400" },
+};
+
+const COUNT_TYPE_LABELS: Record<string, string> = {
+  tam_sayim: "Tam Sayim",
+  bitimis_urun: "Bitmis Urun Sayimi",
+  hammadde: "Hammadde Sayimi",
+  ambalaj: "Ambalaj Sayimi",
+  ekipman: "Ekipman Sayimi",
 };
 
 function getStatusBadge(status: string) {
@@ -84,6 +93,7 @@ export default function SayimYonetimi() {
   const [newYear, setNewYear] = useState(new Date().getFullYear().toString());
   const [newDate, setNewDate] = useState("");
   const [newNotes, setNewNotes] = useState("");
+  const [newCountType, setNewCountType] = useState("tam_sayim");
   const [countQuantity, setCountQuantity] = useState("");
   const [countNotes, setCountNotes] = useState("");
 
@@ -125,6 +135,7 @@ export default function SayimYonetimi() {
         year: parseInt(newYear),
         scheduledDate: newDate || new Date().toISOString(),
         notes: newNotes || null,
+        countType: newCountType,
       });
     },
     onSuccess: async () => {
@@ -132,7 +143,8 @@ export default function SayimYonetimi() {
       setShowCreateDialog(false);
       setNewNotes("");
       setNewDate("");
-      toast({ title: "Sayim oturumu olusturuldu" });
+      setNewCountType("tam_sayim");
+      toast({ title: "Sayim oturumu olusturuldu", description: "Urunler otomatik yuklendi" });
     },
     onError: (e: any) => {
       toast({ title: "Hata", description: e.message || "Olusturulamadi", variant: "destructive" });
@@ -323,6 +335,26 @@ export default function SayimYonetimi() {
               </DialogTitle>
             </DialogHeader>
             <div className="space-y-3">
+              <div>
+                <Label>Sayim Turu</Label>
+                <Select value={newCountType} onValueChange={setNewCountType}>
+                  <SelectTrigger data-testid="select-count-type"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="tam_sayim">Tam Sayim (Tum Urunler)</SelectItem>
+                    <SelectItem value="bitimis_urun">Bitmis Urun Sayimi</SelectItem>
+                    <SelectItem value="hammadde">Hammadde Sayimi</SelectItem>
+                    <SelectItem value="ambalaj">Ambalaj Sayimi</SelectItem>
+                    <SelectItem value="ekipman">Ekipman Sayimi</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {newCountType === "tam_sayim" && "Tum envanter kalemleri otomatik yuklenecek"}
+                  {newCountType === "bitimis_urun" && "Donut, tatli, tuzlu gibi bitmis urunler yuklenecek"}
+                  {newCountType === "hammadde" && "Kahve, sut, un gibi hammaddeler yuklenecek"}
+                  {newCountType === "ambalaj" && "Bardak, kapak, pecete gibi ambalajlar yuklenecek"}
+                  {newCountType === "ekipman" && "Makine, yedek parca gibi ekipmanlar yuklenecek"}
+                </p>
+              </div>
               <div className="grid grid-cols-2 gap-2">
                 <div>
                   <Label>Ay</Label>
@@ -348,7 +380,7 @@ export default function SayimYonetimi() {
                 </div>
               </div>
               <div>
-                <Label>Planlanan Tarih</Label>
+                <Label>Planlanan Tarih (opsiyonel)</Label>
                 <Input type="date" value={newDate} onChange={e => setNewDate(e.target.value)} data-testid="input-scheduled-date" />
               </div>
               <div>
@@ -499,10 +531,10 @@ function SayimCard({ count, isFabrikaMudur, onDetail, onAssign }: any) {
           <div className="flex items-center gap-3">
             <div className="flex flex-col">
               <span className="text-sm font-semibold">
-                {MONTHS[(count.month || 1) - 1]} {count.year}
+                {COUNT_TYPE_LABELS[count.count_type] || count.count_type || "Tam Sayim"}
               </span>
               <span className="text-xs text-muted-foreground">
-                {count.scheduled_date ? new Date(count.scheduled_date).toLocaleDateString("tr-TR") : "Tarih belirlenmedi"}
+                {MONTHS[(count.month || 1) - 1]} {count.year} {count.scheduled_date ? ` - ${new Date(count.scheduled_date).toLocaleDateString("tr-TR")}` : ""}
               </span>
             </div>
           </div>
@@ -567,9 +599,9 @@ function SayimDetailDialog({
     <Dialog open={true} onOpenChange={onClose}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
+          <DialogTitle className="flex items-center gap-2 flex-wrap">
             <ClipboardList className="h-5 w-5" />
-            {MONTHS[(count.month || 1) - 1]} {count.year} Sayimi
+            {COUNT_TYPE_LABELS[count.count_type] || "Sayim"} - {MONTHS[(count.month || 1) - 1]} {count.year}
             {getStatusBadge(count.status)}
           </DialogTitle>
         </DialogHeader>
@@ -651,7 +683,8 @@ function SayimDetailDialog({
           ) : Object.keys(groupedByCategory).length === 0 ? (
             <div className="py-8 text-center text-muted-foreground">
               <Package className="h-8 w-8 mx-auto mb-2 opacity-50" />
-              <p className="text-sm">{searchQuery ? "Arama sonucu bulunamadi" : "Urun bulunamadi"}</p>
+              <p className="text-sm">{searchQuery ? "Arama sonucu bulunamadi" : "Henuz sayim kalemi bulunamadi"}</p>
+              {!searchQuery && <p className="text-xs mt-1">Sayim oturumunu kapatip yeniden acmayi deneyin</p>}
             </div>
           ) : (
             <div className="space-y-3 p-1">

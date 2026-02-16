@@ -38731,51 +38731,48 @@ AI analizi su an kullanilamiyor. Detayli bilgi icin ilgili modulleri kontrol edi
       const user = req.user!;
       const role = user.role as string;
       if (role !== 'fabrika_mudur' && role !== 'admin') {
-        return res.status(403).json({ message: "Sadece fabrika yöneticisi sayım oluşturabilir" });
+        return res.status(403).json({ message: "Sadece fabrika yoneticisi sayim olusturabilir" });
       }
-      const { month, year, scheduledDate, notes } = req.body;
+      const { month, year, scheduledDate, notes, countType } = req.body;
+      const cType = countType || 'tam_sayim';
       
-      // Validate scheduled date is in last 5 days of month
-      const scheduled = new Date(scheduledDate);
-      const lastDay = new Date(year, month, 0).getDate();
-      const dayOfMonth = scheduled.getDate();
-      if (dayOfMonth < lastDay - 4) {
-        return res.status(400).json({ message: "Sayım tarihi ayın son 5 günü içinde olmalıdır" });
-      }
-      
-      // Check if count already exists for this month
-      const existing = await db.execute(sql`
-        SELECT id FROM inventory_counts WHERE month = ${month} AND year = ${year} LIMIT 1
-      `);
-      const existingRows = Array.isArray(existing) ? existing : ((existing as any)?.rows ?? []);
-      if (existingRows.length > 0) {
-        return res.status(400).json({ message: "Bu ay için zaten bir sayım mevcut" });
-      }
+      const scheduled = scheduledDate ? new Date(scheduledDate) : new Date();
 
       const [newCount] = await db.insert(inventoryCounts).values({
-        month, year, scheduledDate: scheduled, notes, createdById: user.id, status: 'planned'
+        month, year, countType: cType, scheduledDate: scheduled, notes, createdById: user.id, status: 'in_progress'
       }).returning();
 
-      // Auto-create assignments for all active inventory items
-      const activeItems = await db.execute(sql`
-        SELECT id FROM inventory WHERE is_active = true
-      `);
-      const activeItemRows = Array.isArray(activeItems) ? activeItems : ((activeItems as any)?.rows ?? []);
+      const categoryMap: Record<string, string[]> = {
+        bitimis_urun: ['bitimis_urun', 'donut', 'tatli', 'tuzlu'],
+        hammadde: ['hammadde', 'kahve', 'konsantre', 'cay_grubu', 'toz_topping'],
+        ambalaj: ['ambalaj'],
+        ekipman: ['ekipman', 'sube_ekipman'],
+        tam_sayim: [],
+      };
+
+      let activeItems: any[];
+      if (cType === 'tam_sayim') {
+        const result = await db.execute(sql`SELECT id FROM inventory WHERE is_active = true ORDER BY category, name`);
+        activeItems = Array.isArray(result) ? result : ((result as any)?.rows ?? []);
+      } else {
+        const cats = categoryMap[cType] || [cType];
+        const catConditions = cats.map(c => `category = '${c}'`).join(' OR ');
+        const result = await db.execute(sql.raw(`SELECT id FROM inventory WHERE is_active = true AND (${catConditions}) ORDER BY category, name`));
+        activeItems = Array.isArray(result) ? result : ((result as any)?.rows ?? []);
+      }
       
-      for (const item of activeItemRows) {
+      for (const item of activeItems) {
         await db.insert(inventoryCountAssignments).values({
           countId: newCount.id, inventoryId: (item as any).id, status: 'pending'
         });
       }
 
-      res.status(201).json(newCount);
+      res.status(201).json({ ...newCount, itemCount: activeItems.length });
     } catch (error: any) {
       console.error("Error creating inventory count:", error);
-      res.status(500).json({ message: "Sayım oluşturulamadı" });
+      res.status(500).json({ message: "Sayim olusturulamadi" });
     }
   });
-
-  // Get single inventory count with assignments
   app.get('/api/inventory-counts/:id', isAuthenticated, async (req: any, res) => {
     try {
       const countId = parseInt(req.params.id);
