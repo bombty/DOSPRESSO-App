@@ -319,8 +319,35 @@ const DOG_POSES = [
   '/images/dobody/pose_curious.png',
 ];
 
-function DobodyIcon({ className, size = 24 }: { className?: string; size?: number }) {
+function DobodyIcon({ className, size = 24, sticker = false }: { className?: string; size?: number; sticker?: boolean }) {
   const [poseUrl] = useState(() => DOG_POSES[Math.floor(Math.random() * DOG_POSES.length)]);
+  if (sticker) {
+    return (
+      <div
+        className={className}
+        style={{
+          width: size,
+          height: size,
+          borderRadius: '50%',
+          border: '3px solid hsl(var(--destructive))',
+          boxShadow: '0 0 0 2px hsl(var(--background)), 0 4px 12px rgba(0,0,0,0.3)',
+          overflow: 'hidden',
+          background: 'hsl(var(--background))',
+        }}
+      >
+        <img
+          src={poseUrl}
+          alt="Mr. Dobody"
+          style={{
+            width: '100%',
+            height: '100%',
+            objectFit: 'cover',
+            objectPosition: 'center top',
+          }}
+        />
+      </div>
+    );
+  }
   return (
     <img
       src={poseUrl}
@@ -564,9 +591,10 @@ export function GlobalAIAssistant() {
       </AnimatePresence>
 
       <motion.button
-        className="fixed bottom-4 right-4 z-50 w-14 h-14 rounded-full bg-gradient-to-r from-primary to-primary/80 text-primary-foreground shadow-lg flex items-center justify-center"
-        whileHover={{ scale: 1.05 }}
-        whileTap={{ scale: 0.95 }}
+        className="fixed bottom-4 right-4 z-50 flex items-center justify-center"
+        style={{ width: 60, height: 60, background: 'transparent', border: 'none', padding: 0, cursor: 'pointer' }}
+        whileHover={{ scale: 1.08 }}
+        whileTap={{ scale: 0.92 }}
         onClick={() => setIsOpen(!isOpen)}
         data-testid="button-toggle-ai-assistant"
       >
@@ -577,17 +605,18 @@ export function GlobalAIAssistant() {
               initial={{ rotate: -90, opacity: 0 }}
               animate={{ rotate: 0, opacity: 1 }}
               exit={{ rotate: 90, opacity: 0 }}
+              className="w-14 h-14 rounded-full bg-destructive flex items-center justify-center shadow-lg"
             >
-              <X className="w-6 h-6" />
+              <X className="w-6 h-6 text-white" />
             </motion.div>
           ) : (
             <motion.div
               key="open"
-              initial={{ rotate: 90, opacity: 0 }}
-              animate={{ rotate: 0, opacity: 1 }}
-              exit={{ rotate: -90, opacity: 0 }}
+              initial={{ scale: 0.5, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.5, opacity: 0 }}
             >
-              <DobodyIcon size={28} />
+              <DobodyIcon size={56} sticker />
             </motion.div>
           )}
         </AnimatePresence>
