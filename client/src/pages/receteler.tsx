@@ -37,7 +37,11 @@ import {
   Flame,
   Plus,
   Pencil,
+  Copy,
   Trash2,
+  ChevronDown,
+  ChevronUp,
+  Minus,
   Loader2,
   Sparkles,
   Megaphone,
@@ -98,47 +102,35 @@ type Recipe = {
   importantNotes?: string | null;
 };
 
+type SizeData = {
+  cupMl: number;
+  steps: string[];
+  espresso?: string;
+  concentrates?: Array<{ name: string; pumps: number; }>;
+  milk?: { ml?: number; line?: string; type?: string; };
+  water?: { ml?: number; line?: string; };
+  syrups?: Record<string, number>;
+  powders?: Record<string, number>;
+  liquids?: Record<string, number>;
+  garnish?: string[];
+  toppings?: string[];
+  ice?: string;
+  lid?: string;
+  equipment?: string[];
+  blenderSetting?: string;
+  servingNotes?: string;
+};
+
 type RecipeVersion = {
   id: number;
   recipeId: number;
   versionNumber: number;
   sizes: {
-    massivo?: {
-      cupMl: number;
-      steps: string[];
-      espresso?: string;
-      concentrates?: Array<{ name: string; pumps: number; }>;
-      milk?: { ml?: number; line?: string; type?: string; };
-      water?: { ml?: number; line?: string; };
-      syrups?: Record<string, number>;
-      powders?: Record<string, number>;
-      liquids?: Record<string, number>;
-      garnish?: string[];
-      toppings?: string[];
-      ice?: string;
-      lid?: string;
-      equipment?: string[];
-      blenderSetting?: string;
-      servingNotes?: string;
-    };
-    longDiva?: {
-      cupMl: number;
-      steps: string[];
-      espresso?: string;
-      concentrates?: Array<{ name: string; pumps: number; }>;
-      milk?: { ml?: number; line?: string; type?: string; };
-      water?: { ml?: number; line?: string; };
-      syrups?: Record<string, number>;
-      powders?: Record<string, number>;
-      liquids?: Record<string, number>;
-      garnish?: string[];
-      toppings?: string[];
-      ice?: string;
-      lid?: string;
-      equipment?: string[];
-      blenderSetting?: string;
-      servingNotes?: string;
-    };
+    massivo?: SizeData;
+    longDiva?: SizeData;
+    camKupa?: SizeData;
+    porselenBardak?: SizeData;
+    [key: string]: SizeData | undefined;
   } | null;
   ingredients: Array<{ name: string; amount: string; unit?: string }> | null;
   notes: string | null;
@@ -181,7 +173,7 @@ const iconMap: Record<string, React.ReactNode> = {
 export default function Receteler() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
-  const [selectedSize, setSelectedSize] = useState<"massivo" | "longDiva">("massivo");
+  const [selectedSize, setSelectedSize] = useState<string>("massivo");
   const [selectedRecipe, setSelectedRecipe] = useState<RecipeWithVersion | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [mainTab, setMainTab] = useState<"beverages" | "food">("beverages");
@@ -211,6 +203,21 @@ export default function Receteler() {
   const [formPresentationNotes, setFormPresentationNotes] = useState("");
   const [formStorageConditions, setFormStorageConditions] = useState("");
   const [formImportantNotes, setFormImportantNotes] = useState("");
+  const [formCupTypes, setFormCupTypes] = useState<string[]>([]);
+  const [formCupMl, setFormCupMl] = useState<Record<string, string>>({});
+  const [formEspressoShots, setFormEspressoShots] = useState("");
+  const [formMilkLine, setFormMilkLine] = useState("");
+  const [formMilkType, setFormMilkType] = useState("");
+  const [formConcentrates, setFormConcentrates] = useState<Array<{name: string; pumps: string}>>([]);
+  const [formSyrups, setFormSyrups] = useState<Array<{name: string; pumps: string}>>([]);
+  const [formToppings, setFormToppings] = useState("");
+  const [formLidType, setFormLidType] = useState("");
+  const [formIce, setFormIce] = useState("");
+  const [formEquipment, setFormEquipment] = useState("");
+  const [formBlenderSetting, setFormBlenderSetting] = useState("");
+  const [formGarnish, setFormGarnish] = useState("");
+  const [formServingNotes, setFormServingNotes] = useState("");
+  const [ingredientDetailsOpen, setIngredientDetailsOpen] = useState(false);
 
   const { data: categories = [], isLoading: loadingCategories } = useQuery<RecipeCategory[]>({
     queryKey: ["/api/academy/recipe-categories"],
@@ -306,6 +313,32 @@ export default function Receteler() {
     },
   });
 
+  const generateMarketingFromTextMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/academy/recipes/generate-marketing-preview", {
+        nameTr: formNameTr,
+        description: formDescription,
+        subCategory: formSubCategory,
+        tags: formTags.split(",").map(t => t.trim()).filter(Boolean),
+        hasCoffee: formHasCoffee,
+        hasMilk: formHasMilk,
+      });
+      return res.json();
+    },
+    onSuccess: (data: any) => {
+      if (data.marketingText) setFormMarketingText(data.marketingText);
+      if (data.salesTips) setFormSalesTips(data.salesTips);
+      if (data.upsellingNotes) setFormUpsellingNotes(data.upsellingNotes);
+      if (data.presentationNotes) setFormPresentationNotes(data.presentationNotes);
+      if (data.storageConditions) setFormStorageConditions(data.storageConditions);
+      if (data.importantNotes) setFormImportantNotes(data.importantNotes);
+      toast({ title: "Mr. Dobody içerik oluşturdu", description: "Pazarlama alanları dolduruldu." });
+    },
+    onError: (error: any) => {
+      toast({ title: "Hata", description: error.message || "AI içerik oluşturulamadı.", variant: "destructive" });
+    },
+  });
+
   const resetForm = () => {
     setEditingRecipe(null);
     setFormNameTr("");
@@ -326,6 +359,21 @@ export default function Receteler() {
     setFormPresentationNotes("");
     setFormStorageConditions("");
     setFormImportantNotes("");
+    setFormCupTypes([]);
+    setFormCupMl({});
+    setFormEspressoShots("");
+    setFormMilkLine("");
+    setFormMilkType("");
+    setFormConcentrates([]);
+    setFormSyrups([]);
+    setFormToppings("");
+    setFormLidType("");
+    setFormIce("");
+    setFormEquipment("");
+    setFormBlenderSetting("");
+    setFormGarnish("");
+    setFormServingNotes("");
+    setIngredientDetailsOpen(false);
   };
 
   const openCreateDialog = () => {
@@ -340,6 +388,44 @@ export default function Receteler() {
     setEditingRecipe(recipe);
     setFormNameTr(recipe.nameTr || "");
     setFormCode(recipe.code || "");
+    setFormCategoryId(String(recipe.categoryId));
+    setFormDescription(recipe.description || "");
+    setFormDifficulty(recipe.difficulty || "");
+    setFormEstimatedMinutes(recipe.estimatedMinutes ? String(recipe.estimatedMinutes) : "");
+    setFormHasCoffee(recipe.hasCoffee || false);
+    setFormHasMilk(recipe.hasMilk || false);
+    setFormSubCategory(recipe.subCategory || "");
+    setFormTags(Array.isArray(recipe.tags) ? recipe.tags.join(", ") : "");
+    setFormPhotoUrl(recipe.photoUrl || "");
+    setFormInfographicUrl(recipe.infographicUrl || "");
+    setFormMarketingText(recipe.marketingText || "");
+    setFormSalesTips(recipe.salesTips || "");
+    setFormUpsellingNotes(recipe.upsellingNotes || "");
+    setFormPresentationNotes(recipe.presentationNotes || "");
+    setFormStorageConditions(recipe.storageConditions || "");
+    setFormImportantNotes(recipe.importantNotes || "");
+    setFormCupTypes([]);
+    setFormCupMl({});
+    setFormEspressoShots("");
+    setFormMilkLine("");
+    setFormMilkType("");
+    setFormConcentrates([]);
+    setFormSyrups([]);
+    setFormToppings("");
+    setFormLidType("");
+    setFormIce("");
+    setFormEquipment("");
+    setFormBlenderSetting("");
+    setFormGarnish("");
+    setFormServingNotes("");
+    setIsEditDialogOpen(true);
+  };
+
+  const handleDuplicateRecipe = (recipe: Recipe, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    resetForm();
+    setFormNameTr(recipe.nameTr + " (Kopya)");
+    setFormCode(recipe.code + "_" + Date.now().toString(36).toUpperCase());
     setFormCategoryId(String(recipe.categoryId));
     setFormDescription(recipe.description || "");
     setFormDifficulty(recipe.difficulty || "");
@@ -385,6 +471,26 @@ export default function Receteler() {
       storageConditions: formStorageConditions.trim() || null,
       importantNotes: formImportantNotes.trim() || null,
     };
+
+    const sizesPayload: Record<string, any> = {};
+    for (const cupType of formCupTypes) {
+      sizesPayload[cupType] = {
+        cupMl: formCupMl[cupType] ? parseInt(formCupMl[cupType]) : 0,
+        steps: [],
+        espresso: formEspressoShots ? `${formEspressoShots} shot` : undefined,
+        concentrates: formConcentrates.filter(c => c.name.trim()).map(c => ({ name: c.name.trim(), pumps: parseInt(c.pumps) || 0 })),
+        milk: (formMilkLine || formMilkType) ? { line: formMilkLine || undefined, type: formMilkType || undefined } : undefined,
+        syrups: formSyrups.reduce((acc, s) => { if (s.name.trim()) acc[s.name.trim()] = parseInt(s.pumps) || 0; return acc; }, {} as Record<string, number>),
+        toppings: formToppings.trim() ? formToppings.split(",").map(t => t.trim()).filter(Boolean) : undefined,
+        lid: formLidType || undefined,
+        ice: formIce || undefined,
+        equipment: formEquipment.trim() ? formEquipment.split(",").map(t => t.trim()).filter(Boolean) : undefined,
+        blenderSetting: formBlenderSetting || undefined,
+        garnish: formGarnish.trim() ? formGarnish.split(",").map(t => t.trim()).filter(Boolean) : undefined,
+        servingNotes: formServingNotes || undefined,
+      };
+    }
+    payload.sizes = Object.keys(sizesPayload).length > 0 ? sizesPayload : undefined;
 
     if (editingRecipe) {
       updateRecipeMutation.mutate({ id: editingRecipe.id, data: payload });
@@ -565,10 +671,12 @@ export default function Receteler() {
             />
           </div>
           {mainTab === "beverages" && (
-            <Tabs value={selectedSize} onValueChange={(v) => setSelectedSize(v as "massivo" | "longDiva")} className="w-auto">
+            <Tabs value={selectedSize} onValueChange={setSelectedSize} className="w-auto">
               <TabsList>
                 <TabsTrigger value="massivo" data-testid="tab-massivo">Massivo</TabsTrigger>
                 <TabsTrigger value="longDiva" data-testid="tab-longdiva">Long Diva</TabsTrigger>
+                <TabsTrigger value="camKupa" data-testid="tab-camkupa">Cam Kupa</TabsTrigger>
+                <TabsTrigger value="porselenBardak" data-testid="tab-porselen">Porselen</TabsTrigger>
               </TabsList>
             </Tabs>
           )}
@@ -689,15 +797,24 @@ export default function Receteler() {
                       data-testid={`card-recipe-${recipe.id}`}
                     >
                       {canEdit && (
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          className="absolute top-2 right-2 z-10"
-                          onClick={(e) => openEditDialog(recipe, e)}
-                          data-testid={`button-edit-recipe-${recipe.id}`}
-                        >
-                          <Pencil className="h-3.5 w-3.5" />
-                        </Button>
+                        <div className="absolute top-2 right-2 z-10 flex items-center gap-1">
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            onClick={(e) => handleDuplicateRecipe(recipe, e)}
+                            data-testid={`button-duplicate-recipe-${recipe.id}`}
+                          >
+                            <Copy className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            onClick={(e) => openEditDialog(recipe, e)}
+                            data-testid={`button-edit-recipe-${recipe.id}`}
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
                       )}
                       <CardContent className="p-4">
                         <div className="flex justify-between items-start gap-2">
@@ -781,14 +898,34 @@ export default function Receteler() {
               </DialogHeader>
 
               {currentVersion?.sizes ? (
-                <Tabs value={selectedSize} onValueChange={(v) => setSelectedSize(v as "massivo" | "longDiva")}>
-                  <TabsList className="w-full">
-                    <TabsTrigger value="massivo" className="flex-1" data-testid="dialog-tab-massivo">
-                      Massivo {currentVersion?.sizes?.massivo?.cupMl && `(${currentVersion.sizes.massivo.cupMl}ml)`}
-                    </TabsTrigger>
-                    <TabsTrigger value="longDiva" className="flex-1" data-testid="dialog-tab-longdiva">
-                      Long Diva {currentVersion?.sizes?.longDiva?.cupMl && `(${currentVersion.sizes.longDiva.cupMl}ml)`}
-                    </TabsTrigger>
+                <Tabs value={selectedSize} onValueChange={setSelectedSize}>
+                  <TabsList className="w-full flex-wrap">
+                    {currentVersion.sizes.massivo && (
+                      <TabsTrigger value="massivo" className="flex-1" data-testid="dialog-tab-massivo">
+                        Massivo {currentVersion.sizes.massivo.cupMl ? `(${currentVersion.sizes.massivo.cupMl}ml)` : ''}
+                      </TabsTrigger>
+                    )}
+                    {currentVersion.sizes.longDiva && (
+                      <TabsTrigger value="longDiva" className="flex-1" data-testid="dialog-tab-longdiva">
+                        Long Diva {currentVersion.sizes.longDiva.cupMl ? `(${currentVersion.sizes.longDiva.cupMl}ml)` : ''}
+                      </TabsTrigger>
+                    )}
+                    {currentVersion.sizes.camKupa && (
+                      <TabsTrigger value="camKupa" className="flex-1" data-testid="dialog-tab-camkupa">
+                        Cam Kupa {currentVersion.sizes.camKupa.cupMl ? `(${currentVersion.sizes.camKupa.cupMl}ml)` : ''}
+                      </TabsTrigger>
+                    )}
+                    {currentVersion.sizes.porselenBardak && (
+                      <TabsTrigger value="porselenBardak" className="flex-1" data-testid="dialog-tab-porselen">
+                        Porselen {currentVersion.sizes.porselenBardak.cupMl ? `(${currentVersion.sizes.porselenBardak.cupMl}ml)` : ''}
+                      </TabsTrigger>
+                    )}
+                    {!currentVersion.sizes.massivo && !currentVersion.sizes.longDiva && !currentVersion.sizes.camKupa && !currentVersion.sizes.porselenBardak && (
+                      <>
+                        <TabsTrigger value="massivo" className="flex-1" data-testid="dialog-tab-massivo">Massivo</TabsTrigger>
+                        <TabsTrigger value="longDiva" className="flex-1" data-testid="dialog-tab-longdiva">Long Diva</TabsTrigger>
+                      </>
+                    )}
                   </TabsList>
 
                   <TabsContent value={selectedSize} className="space-y-4 mt-4">
@@ -1359,6 +1496,306 @@ export default function Receteler() {
               />
             </div>
 
+            <Card>
+              <CardHeader className="py-3">
+                <CardTitle className="text-sm">Bardak Boyları</CardTitle>
+              </CardHeader>
+              <CardContent className="pt-0 space-y-3">
+                {[
+                  { key: "massivo", label: "Massivo (300-400ml)" },
+                  { key: "longDiva", label: "Long Diva (550-650ml)" },
+                  { key: "camKupa", label: "Cam Kupa" },
+                  { key: "porselenBardak", label: "Porselen Bardak" },
+                ].map((cup) => (
+                  <div key={cup.key} className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <Checkbox
+                        id={`cup-${cup.key}`}
+                        checked={formCupTypes.includes(cup.key)}
+                        onCheckedChange={(checked) => {
+                          if (checked) {
+                            setFormCupTypes([...formCupTypes, cup.key]);
+                          } else {
+                            setFormCupTypes(formCupTypes.filter(t => t !== cup.key));
+                          }
+                        }}
+                        data-testid={`checkbox-cup-${cup.key}`}
+                      />
+                      <Label htmlFor={`cup-${cup.key}`} className="cursor-pointer">{cup.label}</Label>
+                    </div>
+                    {formCupTypes.includes(cup.key) && (
+                      <div className="ml-6">
+                        <Input
+                          type="number"
+                          placeholder="ml değeri"
+                          value={formCupMl[cup.key] || ""}
+                          onChange={(e) => setFormCupMl({ ...formCupMl, [cup.key]: e.target.value })}
+                          className="w-32"
+                          data-testid={`input-cup-ml-${cup.key}`}
+                        />
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="py-3">
+                <Button
+                  variant="ghost"
+                  className="w-full flex items-center justify-between p-0"
+                  onClick={() => setIngredientDetailsOpen(!ingredientDetailsOpen)}
+                  data-testid="button-toggle-ingredient-details"
+                >
+                  <CardTitle className="text-sm">İçerik Detayları</CardTitle>
+                  {ingredientDetailsOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                </Button>
+              </CardHeader>
+              {ingredientDetailsOpen && (
+                <CardContent className="pt-0 space-y-4">
+                  <div className="space-y-2">
+                    <Label className="flex items-center gap-1.5">
+                      <Coffee className="h-4 w-4" /> Espresso
+                    </Label>
+                    <Select value={formEspressoShots} onValueChange={setFormEspressoShots}>
+                      <SelectTrigger data-testid="select-espresso-shots">
+                        <SelectValue placeholder="Shot sayısı" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="1">1 Shot</SelectItem>
+                        <SelectItem value="2">2 Shot</SelectItem>
+                        <SelectItem value="3">3 Shot</SelectItem>
+                        <SelectItem value="4">4 Shot</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="flex items-center gap-1.5">
+                      <Droplets className="h-4 w-4" /> Süt Oranı
+                    </Label>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <Input
+                        placeholder="Süt çizgisi (örn: 1. çizgi)"
+                        value={formMilkLine}
+                        onChange={(e) => setFormMilkLine(e.target.value)}
+                        data-testid="input-milk-line"
+                      />
+                      <Select value={formMilkType} onValueChange={setFormMilkType}>
+                        <SelectTrigger data-testid="select-milk-type">
+                          <SelectValue placeholder="Süt tipi" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Tam Yağlı">Tam Yağlı</SelectItem>
+                          <SelectItem value="Yarım Yağlı">Yarım Yağlı</SelectItem>
+                          <SelectItem value="Badem Sütü">Badem Sütü</SelectItem>
+                          <SelectItem value="Yulaf Sütü">Yulaf Sütü</SelectItem>
+                          <SelectItem value="Hindistan Cevizi">Hindistan Cevizi</SelectItem>
+                          <SelectItem value="Laktozsuz">Laktozsuz</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between gap-2 flex-wrap">
+                      <Label className="flex items-center gap-1.5">
+                        <Beaker className="h-4 w-4" /> Konsantre / Aroma
+                      </Label>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setFormConcentrates([...formConcentrates, { name: "", pumps: "" }])}
+                        data-testid="button-add-concentrate"
+                      >
+                        <Plus className="h-3.5 w-3.5 mr-1" /> Ekle
+                      </Button>
+                    </div>
+                    {formConcentrates.map((c, idx) => (
+                      <div key={idx} className="flex items-center gap-2">
+                        <Input
+                          placeholder="Konsantre adı"
+                          value={c.name}
+                          onChange={(e) => {
+                            const updated = [...formConcentrates];
+                            updated[idx] = { ...updated[idx], name: e.target.value };
+                            setFormConcentrates(updated);
+                          }}
+                          className="flex-1"
+                          data-testid={`input-concentrate-name-${idx}`}
+                        />
+                        <Input
+                          type="number"
+                          placeholder="Pump"
+                          value={c.pumps}
+                          onChange={(e) => {
+                            const updated = [...formConcentrates];
+                            updated[idx] = { ...updated[idx], pumps: e.target.value };
+                            setFormConcentrates(updated);
+                          }}
+                          className="w-20"
+                          data-testid={`input-concentrate-pumps-${idx}`}
+                        />
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          onClick={() => setFormConcentrates(formConcentrates.filter((_, i) => i !== idx))}
+                          data-testid={`button-remove-concentrate-${idx}`}
+                        >
+                          <Minus className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between gap-2 flex-wrap">
+                      <Label className="flex items-center gap-1.5">
+                        <Beaker className="h-4 w-4" /> Şurup
+                      </Label>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setFormSyrups([...formSyrups, { name: "", pumps: "" }])}
+                        data-testid="button-add-syrup"
+                      >
+                        <Plus className="h-3.5 w-3.5 mr-1" /> Ekle
+                      </Button>
+                    </div>
+                    {formSyrups.map((s, idx) => (
+                      <div key={idx} className="flex items-center gap-2">
+                        <Input
+                          placeholder="Şurup adı"
+                          value={s.name}
+                          onChange={(e) => {
+                            const updated = [...formSyrups];
+                            updated[idx] = { ...updated[idx], name: e.target.value };
+                            setFormSyrups(updated);
+                          }}
+                          className="flex-1"
+                          data-testid={`input-syrup-name-${idx}`}
+                        />
+                        <Input
+                          type="number"
+                          placeholder="Pump"
+                          value={s.pumps}
+                          onChange={(e) => {
+                            const updated = [...formSyrups];
+                            updated[idx] = { ...updated[idx], pumps: e.target.value };
+                            setFormSyrups(updated);
+                          }}
+                          className="w-20"
+                          data-testid={`input-syrup-pumps-${idx}`}
+                        />
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          onClick={() => setFormSyrups(formSyrups.filter((_, i) => i !== idx))}
+                          data-testid={`button-remove-syrup-${idx}`}
+                        >
+                          <Minus className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="flex items-center gap-1.5">
+                      <Flower className="h-4 w-4" /> Topping
+                    </Label>
+                    <Input
+                      placeholder="Topping (virgülle ayırın)"
+                      value={formToppings}
+                      onChange={(e) => setFormToppings(e.target.value)}
+                      data-testid="input-toppings"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="flex items-center gap-1.5">
+                      <Package className="h-4 w-4" /> Kapak Tipi
+                    </Label>
+                    <Select value={formLidType} onValueChange={setFormLidType}>
+                      <SelectTrigger data-testid="select-lid-type">
+                        <SelectValue placeholder="Kapak tipi seçin" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Düz Kapak">Düz Kapak</SelectItem>
+                        <SelectItem value="Kubbe Kapak">Kubbe Kapak</SelectItem>
+                        <SelectItem value="Pipetli Kapak">Pipetli Kapak</SelectItem>
+                        <SelectItem value="Kapaklı Bardak">Kapaklı Bardak</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="flex items-center gap-1.5">
+                      <Snowflake className="h-4 w-4" /> Buz
+                    </Label>
+                    <Select value={formIce} onValueChange={setFormIce}>
+                      <SelectTrigger data-testid="select-ice">
+                        <SelectValue placeholder="Buz seçin" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Buzsuz">Buzsuz</SelectItem>
+                        <SelectItem value="Az Buz">Az Buz</SelectItem>
+                        <SelectItem value="Normal Buz">Normal Buz</SelectItem>
+                        <SelectItem value="Çok Buz">Çok Buz</SelectItem>
+                        <SelectItem value="Kırılmış Buz">Kırılmış Buz</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="flex items-center gap-1.5">
+                      <UtensilsCrossed className="h-4 w-4" /> Ekipman
+                    </Label>
+                    <Input
+                      placeholder="Ekipman (virgülle ayırın)"
+                      value={formEquipment}
+                      onChange={(e) => setFormEquipment(e.target.value)}
+                      data-testid="input-equipment"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="flex items-center gap-1.5">
+                      <CircleDot className="h-4 w-4" /> Blender Ayarı
+                    </Label>
+                    <Input
+                      placeholder="Blender ayarı"
+                      value={formBlenderSetting}
+                      onChange={(e) => setFormBlenderSetting(e.target.value)}
+                      data-testid="input-blender-setting"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="flex items-center gap-1.5">
+                      <Flower className="h-4 w-4" /> Süsleme
+                    </Label>
+                    <Input
+                      placeholder="Süsleme (virgülle ayırın)"
+                      value={formGarnish}
+                      onChange={(e) => setFormGarnish(e.target.value)}
+                      data-testid="input-garnish"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Servis Notu</Label>
+                    <Textarea
+                      placeholder="Servis notu..."
+                      value={formServingNotes}
+                      onChange={(e) => setFormServingNotes(e.target.value)}
+                      data-testid="textarea-serving-notes"
+                    />
+                  </div>
+                </CardContent>
+              )}
+            </Card>
+
             <ImageUploader 
               value={formPhotoUrl} 
               onChange={setFormPhotoUrl} 
@@ -1376,22 +1813,26 @@ export default function Receteler() {
             <div className="space-y-2">
               <div className="flex items-center justify-between gap-2 flex-wrap">
                 <Label htmlFor="form-marketing">Pazarlama Metni</Label>
-                {editingRecipe && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => generateMarketingMutation.mutate(editingRecipe.id)}
-                    disabled={generateMarketingMutation.isPending}
-                    data-testid="button-generate-marketing"
-                  >
-                    {generateMarketingMutation.isPending ? (
-                      <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-                    ) : (
-                      <Sparkles className="h-4 w-4 mr-1" />
-                    )}
-                    AI ile Oluştur
-                  </Button>
-                )}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    if (editingRecipe) {
+                      generateMarketingMutation.mutate(editingRecipe.id);
+                    } else {
+                      generateMarketingFromTextMutation.mutate();
+                    }
+                  }}
+                  disabled={generateMarketingMutation.isPending || generateMarketingFromTextMutation.isPending}
+                  data-testid="button-generate-marketing"
+                >
+                  {(generateMarketingMutation.isPending || generateMarketingFromTextMutation.isPending) ? (
+                    <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                  ) : (
+                    <Sparkles className="h-4 w-4 mr-1" />
+                  )}
+                  Mr. Dobody ile Oluştur
+                </Button>
               </div>
               <Textarea
                 id="form-marketing"

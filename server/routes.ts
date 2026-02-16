@@ -18865,6 +18865,67 @@ Cevaplarınız kısa, faydalı ve türkçe olmalıdır.`;
     }
   });
 
+  // POST /api/academy/recipes/generate-marketing-preview - AI pazarlama içeriği (kayıtlı olmayan reçete için)
+  app.post('/api/academy/recipes/generate-marketing-preview', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      if (!isHQRole(user.role) && user.role !== 'admin') {
+        return res.status(403).json({ message: "Bu işlem için yetkiniz yok" });
+      }
+
+      const { nameTr, description, subCategory, tags, hasCoffee, hasMilk } = req.body;
+      if (!nameTr) {
+        return res.status(400).json({ message: "Reçete adı gerekli" });
+      }
+
+      const apiKey = process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY;
+      if (!apiKey) {
+        return res.status(500).json({ message: "OpenAI API anahtarı yapılandırılmamış" });
+      }
+
+      const OpenAI = (await import('openai')).default;
+      const openai = new OpenAI({ apiKey });
+
+      const systemPrompt = `Sen DOSPRESSO kahve zinciri için pazarlama içerik uzmanısın. Verilen reçete bilgilerine göre Türkçe olarak aşağıdaki içerikleri oluştur:
+1. **Pazarlama Metni** (marketingText): Müşteriye yönelik çekici, duygusal bir tanım cümlesi (1-2 cümle)
+2. **Satış Dili** (salesTips): Baristanın müşteriye ürünü tanıtırken kullanacağı doğal konuşma önerileri (2-3 madde)
+3. **Upselling Önerileri** (upsellingNotes): Bu ürünle birlikte önerilecek yan ürünler ve combo önerileri (2-3 madde)
+4. **Sunum Notları** (presentationNotes): Ürünün servis edilirken dikkat edilecek sunum detayları (1-2 madde)
+5. **Saklama Koşulları** (storageConditions): Hammadde ve ürün saklama bilgileri (1 madde)
+6. **Önemli Notlar** (importantNotes): Hazırlık sırasında dikkat edilecek kritik noktalar (1-2 madde)
+
+JSON formatında yanıt ver: {"marketingText": "...", "salesTips": "...", "upsellingNotes": "...", "presentationNotes": "...", "storageConditions": "...", "importantNotes": "..."}`;
+
+      const userPrompt = `Reçete: ${nameTr}
+Açıklama: ${description || 'Belirtilmemiş'}
+Alt Kategori: ${subCategory || 'Belirtilmemiş'}
+Etiketler: ${Array.isArray(tags) ? tags.join(', ') : 'Belirtilmemiş'}
+Kahve İçerir: ${hasCoffee ? 'Evet' : 'Hayır'}
+Süt İçerir: ${hasMilk ? 'Evet' : 'Hayır'}`;
+
+      const response = await openai.chat.completions.create({
+        model: 'gpt-4o-mini',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userPrompt },
+        ],
+        temperature: 0.7,
+        response_format: { type: 'json_object' },
+      });
+
+      const content = response.choices[0]?.message?.content;
+      if (!content) {
+        return res.status(500).json({ message: "AI yanıt üretemedi" });
+      }
+
+      const parsed = JSON.parse(content);
+      res.json(parsed);
+    } catch (error: any) {
+      console.error("Generate marketing preview error:", error);
+      res.status(500).json({ message: "Pazarlama içeriği oluşturulamadı" });
+    }
+  });
+
   // POST /api/academy/recipes/:id/generate-marketing - AI pazarlama içeriği oluşturma
   app.post('/api/academy/recipes/:id/generate-marketing', isAuthenticated, async (req: any, res) => {
     try {

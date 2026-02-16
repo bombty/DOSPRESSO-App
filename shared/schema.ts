@@ -6900,6 +6900,9 @@ export const recipeVersions = pgTable("recipe_versions", {
   sizes: jsonb("sizes").$type<{
     massivo?: SizeRecipe;
     longDiva?: SizeRecipe;
+    camKupa?: SizeRecipe;
+    porselenBardak?: SizeRecipe;
+    [key: string]: SizeRecipe | undefined;
   }>(),
   // Common fields
   ingredients: jsonb("ingredients").$type<Array<{name: string; amount: string; unit?: string}>>().default([]),
