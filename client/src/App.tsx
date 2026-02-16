@@ -181,6 +181,7 @@ import SubeSaglikSkoru from "@/pages/sube-saglik-skoru";
 import HqVardiyaGoruntuleme from "@/pages/hq-vardiya-goruntuleme";
 import HQPersonelIstatistikleri from "@/pages/hq-personel-istatistikleri";
 import MuhasebeRaporlama from "@/pages/muhasebe-raporlama";
+import KullanimKilavuzu from "@/pages/kullanim-kilavuzu";
 
 const PUBLIC_PATH_PREFIXES = [
   "/login", 
@@ -405,6 +406,7 @@ function Router() {
           <Route path="/satinalma/:tab?" component={SatinalmaMega} />
           <Route path="/urun-sikayet" component={UrunSikayet} />
           <Route path="/sube-saglik-skoru" component={SubeSaglikSkoru} />
+          <Route path="/kullanim-kilavuzu" component={KullanimKilavuzu} />
         </>
       )}
       
