@@ -123,28 +123,28 @@ export function AppHeader({ notificationCount = 0, user, branchName, onQRClick }
       "admin": "Admin",
       "ceo": "CEO",
       "cgo": "CGO",
-      "muhasebe_ik": "Muhasebe & İK",
-      "satinalma": "Satın Alma",
+      "muhasebe_ik": "Muhasebe İK",
+      "satinalma": "Satınalma",
       "coach": "Coach",
       "marketing": "Marketing",
-      "trainer": "Trainer (Eğitmen)",
-      "kalite_kontrol": "Kalite Kontrol",
-      "fabrika_mudur": "Fabrika Müdürü",
+      "trainer": "Eğitmen",
+      "kalite_kontrol": "Kalite K.",
+      "fabrika_mudur": "Fab. Müdür",
       "muhasebe": "Muhasebe",
       "teknik": "Teknik",
       "destek": "Destek",
       "fabrika": "Fabrika",
-      "yatirimci_hq": "Yatırımcı HQ",
+      "yatirimci_hq": "Yatırımcı",
       "stajyer": "Stajyer",
       "bar_buddy": "Bar Buddy",
       "barista": "Barista",
-      "supervisor_buddy": "Supervisor Buddy",
+      "supervisor_buddy": "Sup. Buddy",
       "supervisor": "Supervisor",
       "mudur": "Müdür",
       "yatirimci_branch": "Yatırımcı",
-      "fabrika_operator": "Fabrika Operatör",
-      "fabrika_sorumlu": "Fabrika Sorumlu",
-      "fabrika_personel": "Fabrika Personel",
+      "fabrika_operator": "Fab. Operatör",
+      "fabrika_sorumlu": "Fab. Sorumlu",
+      "fabrika_personel": "Fab. Personel",
     };
     return role ? roleMap[role] || role : "";
   };
@@ -199,9 +199,9 @@ export function AppHeader({ notificationCount = 0, user, branchName, onQRClick }
                 className="justify-start p-0 h-auto cursor-pointer hover:bg-transparent"
                 data-testid="button-profile-menu"
               >
-                <div className="text-left min-w-0">
-                  <p className="text-xs font-medium text-white" data-testid="text-user-name">
-                    <span className="truncate">{user?.firstName || user?.username || "Kullanıcı"}</span>
+                <div className="text-left min-w-0 max-w-[120px] sm:max-w-[180px]">
+                  <p className="text-xs font-medium text-white truncate" data-testid="text-user-name">
+                    <span>{user?.firstName || user?.username || "Kullanıcı"}</span>
                     <span className="text-gray-300 mx-1">•</span>
                     <span data-testid="text-user-role">{getRoleLabel(user?.role)}</span>
                   </p>

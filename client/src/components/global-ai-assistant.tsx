@@ -120,6 +120,55 @@ const roleBasedQueries: Record<string, QuickQuery[]> = {
   ]
 };
 
+const motivationalQuotes: Record<string, string[]> = {
+  branch: [
+    "Müşteri fark etmese bile, o Espresso olması gerekenden 2 saniye eksik çekildiyse lavaboya dökülmeli. Marka olmak, kimse bakmıyorken bile standardı korumaktır.",
+    "Seni değerli kılan üzerindeki DOSPRESSO önlüğü değil, o önlüğe ruhunu katan sensin. Sen o tezgaha geçtiğinde, en basit Filtre Kahve bile bir sanat eserine dönüşür.",
+    "Şu an sahnedesin! Dünyanın en karizmatik Baristası o Cortado bardağını nasıl tutardı? İşte tam öyle tut ve servis et.",
+    "Süt köpürtürken aklın evdeki sorunlarda olmasın. Odaklanmadan yapılan bir Cappuccino, ruhsuzdur.",
+    "Unutma, biz Kahve satmıyoruz. Senin duruşunla ve enerjinle oluşturduğun 'değerli hissetme' duygusunu satıyoruz.",
+    "Bir Latte Art yaparken elin titrediyse, müşteriye 'böyle idare et' deme. Bizim sahnemizde sadece en iyiler oynar.",
+    "Bugün dükkandan içeri girerken bir çalışan gibi değil, bu şubenin sahibiymiş gibi gir.",
+    "Bir Cookie her yerde yenebilir. Ama misafirlerimiz buraya senin yarattığın o sıcak karşılama için geliyorlar.",
+    "Enerjini bölünmüş düşüncelere değil, elindeki tabağın sunumuna ver. Başarı, o an yaptığın işe %100'ünü vermektir.",
+    "Müşteriye 'Hoş geldiniz' derken gözlerin başka yerde olmasın. O 3 saniyelik samimi bakış, sattığımız en pahalı Kahveden daha değerlidir.",
+  ],
+  factory: [
+    "Her ürettiğin ürün, bir şubede bir müşterinin gülümsemesine dönüşecek. Bu sorumluluğun farkında ol.",
+    "Kalite kontrolde 'bu da böyle olsun' dediğin an, sıradanlaştığın andır. DOSPRESSO'da her ürün mükemmel çıkar.",
+    "Tabağa koyduğun Cheesecake hafifçe çatlamışsa, onu servis etme. Bizim imzamız kusursuzluktur.",
+    "O Donut vitrinde harika görünebilir ama tadı bizim standartlarımızda değilse o tezgaha çıkamaz.",
+    "Fabrikada ürettiğin her ürün, DOSPRESSO'nun hikayesinin bir parçası. Bu hikayeyi mükemmel yaz.",
+    "Üretimde detaylara dikkat et. Küçük detaylar büyük farklar yaratır.",
+    "Her gün aynı ürünü üretsen bile, her seferinde ilk kez üretiyormuş gibi özen göster.",
+    "Kalite bir alışkanlık değil, bir karardır. Her gün yeniden karar ver.",
+  ],
+  hq: [
+    "Liderlik, insanlara ne yapmaları gerektiğini söylemek değil, onlara ilham vermektir.",
+    "Biz sadece kahve dükkanı değiliz, biz bir yaşam tarzıyız. Senin her kararın bu yaşam tarzını şekillendirir.",
+    "Strateji, doğru işleri yapmak; yönetim, işleri doğru yapmaktır. Sen ikisini de yapabilirsin.",
+    "Bir zincir, en zayıf halkası kadar güçlüdür. Her şubeyi güçlü tutmak senin elinde.",
+    "Bugün aldığın kararlar, yarının DOSPRESSO'sunu şekillendirecek. Büyük düşün.",
+    "Ekibine güven, onlara alan aç. En iyi liderler, başkalarını lider yapanlardır.",
+    "Veriye dayalı kararlar al, ama sezgilerini de dinle. İkisinin birleşimi mükemmelliği getirir.",
+    "Her şube ziyareti bir öğrenme fırsatıdır. Sahada ol, dinle, anla.",
+  ],
+};
+
+function getDailyQuote(role: string): string {
+  const branchRoles = ['barista', 'bar_buddy', 'stajyer', 'supervisor', 'supervisor_buddy', 'mudur'];
+  const factoryRoles = ['fabrika', 'fabrika_mudur', 'fabrika_sorumlu', 'fabrika_operator', 'fabrika_personel', 'kalite_kontrol'];
+  
+  let category = 'hq';
+  if (branchRoles.includes(role)) category = 'branch';
+  else if (factoryRoles.includes(role)) category = 'factory';
+  
+  const quotes = motivationalQuotes[category];
+  const today = new Date();
+  const dayIndex = (today.getFullYear() * 366 + today.getMonth() * 31 + today.getDate()) % quotes.length;
+  return quotes[dayIndex];
+}
+
 function renderMarkdownContent(content: string, navigate: (path: string) => void) {
   const lines = content.split('\n');
   const elements: JSX.Element[] = [];
@@ -345,6 +394,7 @@ export function GlobalAIAssistant() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const [, navigate] = useLocation();
+  const constraintsRef = useRef<HTMLDivElement>(null);
 
   const userRole = user?.role || 'default';
   const userName = user?.firstName || 'Kullanıcı';
@@ -406,6 +456,7 @@ export function GlobalAIAssistant() {
 
   return (
     <>
+      <div ref={constraintsRef} className="fixed inset-0 z-[69] pointer-events-none" />
       <AnimatePresence>
         {isOpen && (
           <motion.div
@@ -421,11 +472,11 @@ export function GlobalAIAssistant() {
               <div className="flex items-center justify-between gap-1">
                 <div className="flex items-center gap-2">
                   <div className="p-1.5 bg-white/20 rounded-lg">
-                    <DobodyIcon size={18} />
+                    <DobodyIcon size={28} />
                   </div>
                   <div>
                     <h3 className="font-semibold text-sm">Mr. Dobody</h3>
-                    <p className="text-[10px] opacity-80">Merhaba {userName}</p>
+                    <p className="text-[10px] opacity-80">Nasıl yardımcı olabilirim?</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-1">
@@ -458,13 +509,18 @@ export function GlobalAIAssistant() {
                 {messages.length === 0 ? (
                   <div className="space-y-3">
                     <div className="text-center py-3">
-                      <DobodyIcon size={48} className="mx-auto mb-2" />
+                      <DobodyIcon size={80} className="mx-auto mb-3" />
                       <p className="text-sm font-medium">
-                        Merhaba {userName}!
+                        Merhaba {userName}, ben Mr. Dobody.
                       </p>
                       <p className="text-xs text-muted-foreground mt-1">
-                        Ben Mr. Dobody, senin ozel asistaninim. Sana nasil yardimci olabilirim?
+                        Nasıl yardımcı olabilirim?
                       </p>
+                      <div className="mt-3 mx-2 p-2.5 bg-muted/50 rounded-lg border border-border/50">
+                        <p className="text-[11px] text-muted-foreground italic leading-relaxed">
+                          "{getDailyQuote(userRole)}"
+                        </p>
+                      </div>
                     </div>
                     
                     <div className="space-y-1.5">
@@ -567,10 +623,14 @@ export function GlobalAIAssistant() {
       </AnimatePresence>
 
       <motion.button
-        className="fixed bottom-20 sm:bottom-4 right-4 z-[70] flex items-center justify-center"
-        style={{ width: 56, height: 56, background: 'transparent', border: 'none', padding: 0, cursor: 'pointer' }}
+        className="fixed bottom-20 sm:bottom-4 right-4 z-[70] flex items-center justify-center touch-none"
+        style={{ width: 56, height: 56, background: 'transparent', border: 'none', padding: 0, cursor: 'grab' }}
+        drag
+        dragConstraints={constraintsRef}
+        dragElastic={0.1}
+        dragMomentum={false}
         whileHover={{ scale: 1.1 }}
-        whileTap={{ scale: 0.9 }}
+        whileTap={{ scale: 0.9, cursor: 'grabbing' }}
         onClick={() => setIsOpen(!isOpen)}
         data-testid="button-toggle-ai-assistant"
       >

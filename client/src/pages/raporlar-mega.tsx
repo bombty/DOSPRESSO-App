@@ -74,7 +74,7 @@ const RAPORLAR_TABS: TabConfig[] = [
   {
     id: "kalite-denetimi",
     label: "Audit Reports",
-    labelTr: "Denetim Raporları",
+    labelTr: "Denetim Rap.",
     icon: <ClipboardCheck className="h-4 w-4" />,
     permissionModule: "quality_audit",
     component: KaliteDenetimi
@@ -82,7 +82,7 @@ const RAPORLAR_TABS: TabConfig[] = [
   {
     id: "misafir-memnuniyeti",
     label: "Guest Satisfaction",
-    labelTr: "Misafir Memnuniyeti",
+    labelTr: "Misafir Memn.",
     icon: <MessageSquare className="h-4 w-4" />,
     permissionModule: "guest_satisfaction",
     component: MisafirMemnuniyeti
@@ -90,7 +90,7 @@ const RAPORLAR_TABS: TabConfig[] = [
   {
     id: "e2e-raporlar",
     label: "E2E Reports",
-    labelTr: "E2E Raporlar",
+    labelTr: "E2E",
     icon: <FileText className="h-4 w-4" />,
     permissionModule: "reports",
     component: E2ERaporlar
@@ -98,7 +98,7 @@ const RAPORLAR_TABS: TabConfig[] = [
   {
     id: "ik-raporlari",
     label: "HR Reports",
-    labelTr: "İK Raporları",
+    labelTr: "İK",
     icon: <Users className="h-4 w-4" />,
     permissionModule: "hr_reports",
     component: HRReports
@@ -106,7 +106,7 @@ const RAPORLAR_TABS: TabConfig[] = [
   {
     id: "kasa-raporlari",
     label: "Cash Reports",
-    labelTr: "Kasa Raporları",
+    labelTr: "Kasa",
     icon: <Wallet className="h-4 w-4" />,
     permissionModule: "cash_management",
     component: CashReports
@@ -122,7 +122,7 @@ const RAPORLAR_TABS: TabConfig[] = [
   {
     id: "denetim-sablonlari",
     label: "Audit Templates",
-    labelTr: "Denetim Şablonları",
+    labelTr: "Şablonlar",
     icon: <FileSearch className="h-4 w-4" />,
     permissionModule: "quality_templates",
     component: DenetimSablonlari
@@ -138,7 +138,7 @@ const RAPORLAR_TABS: TabConfig[] = [
   {
     id: "capa-raporlari",
     label: "CAPA Reports",
-    labelTr: "CAPA Raporlari",
+    labelTr: "CAPA",
     icon: <TrendingUp className="h-4 w-4" />,
     permissionModule: "quality_audit",
     component: CapaRaporlari
@@ -154,7 +154,7 @@ const RAPORLAR_TABS: TabConfig[] = [
   {
     id: "gelismis-raporlar",
     label: "Advanced Reports",
-    labelTr: "Gelişmiş Raporlar",
+    labelTr: "Gelişmiş",
     icon: <BarChart3 className="h-4 w-4" />,
     permissionModule: "advanced_reports",
     component: AdvancedReports
@@ -162,7 +162,7 @@ const RAPORLAR_TABS: TabConfig[] = [
   {
     id: "sube-karsilastirma",
     label: "Branch Comparison",
-    labelTr: "Şube Karşılaştırma",
+    labelTr: "Şubeler",
     icon: <Target className="h-4 w-4" />,
     permissionModule: "quality_audit",
     component: SubeKarsilastirma
