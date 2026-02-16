@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
@@ -37,11 +37,12 @@ import {
   Camera,
   ImageIcon,
   X,
-  CalendarOff
+  CalendarOff,
+  Users
 } from "lucide-react";
 import { ObjectUploader } from "@/components/ObjectUploader";
 
-type KioskStep = 'select-user' | 'enter-pin' | 'select-station' | 'working' | 'stop-options' | 'production-entry' | 'end-shift-summary' | 'auto-logout';
+type KioskStep = 'select-user' | 'enter-pin' | 'select-station' | 'working' | 'stop-options' | 'production-entry' | 'end-shift-summary' | 'auto-logout' | 'fault-report';
 type BreakReason = 'mola' | 'yardim' | 'ozel_ihtiyac' | 'gorev_bitis' | 'vardiya_kapat';
 
 interface StaffMember {
@@ -117,6 +118,9 @@ export default function FactoryKiosk() {
   const [autoLogoutCountdown, setAutoLogoutCountdown] = useState(10);
   const [productionPhotoUrl, setProductionPhotoUrl] = useState<string | null>(null);
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
+  const [faultType, setFaultType] = useState<'machine' | 'product' | null>(null);
+  const [faultDescription, setFaultDescription] = useState('');
+  const [faultStationId, setFaultStationId] = useState<number | null>(null);
 
   const { data: staffList = [], isLoading: loadingStaff } = useQuery<StaffMember[]>({
     queryKey: ['/api/factory/staff'],
@@ -129,6 +133,30 @@ export default function FactoryKiosk() {
   const { data: wasteReasons = [] } = useQuery<WasteReason[]>({
     queryKey: ['/api/factory/waste-reasons'],
   });
+
+  const { data: activeWorkers = [] } = useQuery<any[]>({
+    queryKey: ['/api/factory/active-workers'],
+    refetchInterval: 5000,
+  });
+
+  const { data: collaborativeScores } = useQuery<any>({
+    queryKey: ['/api/factory/collaborative-scores', currentStationInfo?.id],
+    queryFn: async () => {
+      if (!currentStationInfo?.id) return null;
+      const res = await apiRequest('GET', `/api/factory/collaborative-scores/${currentStationInfo.id}`);
+      return res.json();
+    },
+    enabled: !!currentStationInfo?.id && (step === 'working' || step === 'end-shift-summary'),
+    refetchInterval: 30000,
+  });
+
+  const activeWorkerMap = useMemo(() => {
+    const map: Record<string, { stationName: string; stationId: number }> = {};
+    activeWorkers.forEach((w: any) => {
+      map[w.userId] = { stationName: w.stationName, stationId: w.stationId };
+    });
+    return map;
+  }, [activeWorkers]);
 
   const loginMutation = useMutation({
     mutationFn: async (data: { userId: string; pin: string }) => {
@@ -223,6 +251,31 @@ export default function FactoryKiosk() {
     },
   });
 
+  const reportFaultMutation = useMutation({
+    mutationFn: async (data: {
+      faultType: 'machine' | 'product';
+      description: string;
+      stationId?: number | null;
+      sessionId?: number | null;
+      userId?: string | null;
+    }) => {
+      const res = await apiRequest('POST', '/api/factory/kiosk/report-fault', data);
+      return res.json();
+    },
+    onSuccess: (data) => {
+      toast({ 
+        title: "Arıza bildirildi", 
+        description: data.notifiedPerson 
+          ? `${data.notifiedPerson} bilgilendirildi` 
+          : "Yetkili kişiye bildirim gönderildi" 
+      });
+      startAutoLogout();
+    },
+    onError: (error: any) => {
+      toast({ title: "Arıza bildirilemedi", description: error.message, variant: "destructive" });
+    },
+  });
+
   const fetchSessionDetails = async (userId: string) => {
     try {
       const res = await fetch(`/api/factory/kiosk/session/${userId}`);
@@ -239,7 +292,7 @@ export default function FactoryKiosk() {
 
   const startAutoLogout = () => {
     setStep('auto-logout');
-    setAutoLogoutCountdown(10);
+    setAutoLogoutCountdown(3);
   };
 
   useEffect(() => {
@@ -249,7 +302,7 @@ export default function FactoryKiosk() {
         setAutoLogoutCountdown((prev) => {
           if (prev <= 1) {
             clearInterval(interval);
-            setLocation('/fabrika/dashboard');
+            resetKiosk();
             return 0;
           }
           return prev - 1;
@@ -257,7 +310,7 @@ export default function FactoryKiosk() {
       }, 1000);
     }
     return () => clearInterval(interval);
-  }, [step, setLocation]);
+  }, [step]);
 
   useEffect(() => {
     let interval: NodeJS.Timeout;
@@ -376,6 +429,9 @@ export default function FactoryKiosk() {
     setAutoLogoutCountdown(10);
     setProductionPhotoUrl(null);
     setIsUploadingPhoto(false);
+    setFaultType(null);
+    setFaultDescription('');
+    setFaultStationId(null);
   };
 
   return (
@@ -420,6 +476,11 @@ export default function FactoryKiosk() {
                       <span className="text-slate-200 font-medium text-center">
                         {staff.firstName} {staff.lastName}
                       </span>
+                      {activeWorkerMap[staff.id] && (
+                        <Badge variant="secondary" className="text-xs mt-1">
+                          {activeWorkerMap[staff.id].stationName}
+                        </Badge>
+                      )}
                     </Button>
                   ))}
                 </div>
@@ -580,6 +641,29 @@ export default function FactoryKiosk() {
                 </div>
               </div>
 
+              {collaborativeScores?.isCollaborative && (
+                <Card className="bg-slate-700/30 border-slate-600">
+                  <CardContent className="p-3">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Users className="h-4 w-4 text-blue-400" />
+                      <span className="text-sm font-medium text-slate-300">Ortak Çalışanlar</span>
+                    </div>
+                    <div className="space-y-1">
+                      {collaborativeScores.workers
+                        .filter((w: any) => w.userId !== selectedUser?.id)
+                        .map((w: any) => (
+                          <div key={w.userId} className="flex items-center justify-between text-xs">
+                            <span className="text-slate-400">{w.firstName} {w.lastName}</span>
+                            <Badge variant="secondary" className="text-xs">
+                              {w.activeMinutes} dk aktif
+                            </Badge>
+                          </div>
+                        ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
               {selectedUser && <KioskBatchSection userId={selectedUser.id} stationId={currentStationInfo.id} />}
 
               <div className="pt-4">
@@ -623,11 +707,110 @@ export default function FactoryKiosk() {
 
               <Button
                 variant="outline"
+                className="w-full h-auto p-4 flex items-center gap-4 bg-yellow-900/30 border-yellow-700 transition-all"
+                onClick={() => {
+                  setFaultType(null);
+                  setFaultDescription('');
+                  setFaultStationId(currentStationInfo?.id || null);
+                  setStep('fault-report');
+                }}
+                data-testid="button-fault-report"
+              >
+                <div className="p-3 rounded-full bg-yellow-600">
+                  <AlertTriangle className="h-6 w-6 text-white" />
+                </div>
+                <div className="text-left">
+                  <span className="text-yellow-300 font-semibold block">Arıza Bildir</span>
+                  <span className="text-slate-400 text-xs">Makina arızası veya ürün hatası bildirin</span>
+                </div>
+              </Button>
+
+              <Button
+                variant="outline"
                 className="w-full border-slate-600"
                 onClick={() => setStep('working')}
                 data-testid="button-cancel-stop"
               >
                 İptal - Çalışmaya Devam Et
+              </Button>
+            </div>
+          )}
+
+          {step === 'fault-report' && (
+            <div className="space-y-6">
+              <h3 className="text-xl font-semibold text-center text-slate-200">Arıza Türü Seçin</h3>
+              
+              {!faultType ? (
+                <div className="grid grid-cols-2 gap-4">
+                  <Button
+                    variant="outline"
+                    className="h-auto p-6 flex flex-col items-center gap-3 bg-slate-700/50 border-slate-600 transition-all"
+                    onClick={() => setFaultType('machine')}
+                    data-testid="fault-type-machine"
+                  >
+                    <div className="p-3 rounded-full bg-red-600">
+                      <Settings className="h-8 w-8 text-white" />
+                    </div>
+                    <span className="text-slate-200 font-semibold">Makina Arızası</span>
+                    <span className="text-slate-400 text-xs text-center">Ekipman veya makina arızası</span>
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="h-auto p-6 flex flex-col items-center gap-3 bg-slate-700/50 border-slate-600 transition-all"
+                    onClick={() => setFaultType('product')}
+                    data-testid="fault-type-product"
+                  >
+                    <div className="p-3 rounded-full bg-orange-600">
+                      <Package className="h-8 w-8 text-white" />
+                    </div>
+                    <span className="text-slate-200 font-semibold">Ürün Hatası</span>
+                    <span className="text-slate-400 text-xs text-center">Üretilen üründe kalite sorunu</span>
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <Badge className={faultType === 'machine' ? 'bg-red-600' : 'bg-orange-600'}>
+                    {faultType === 'machine' ? 'Makina Arızası' : 'Ürün Hatası'}
+                  </Badge>
+                  
+                  <div className="space-y-2">
+                    <Label className="text-slate-300">Açıklama</Label>
+                    <Textarea
+                      placeholder={faultType === 'machine' ? 'Arıza detaylarını yazın...' : 'Ürün hatasını açıklayın...'}
+                      value={faultDescription}
+                      onChange={(e) => setFaultDescription(e.target.value)}
+                      className="bg-slate-700 border-slate-600 resize-none text-white"
+                      rows={3}
+                      data-testid="input-fault-description"
+                    />
+                  </div>
+
+                  <Button
+                    className="w-full bg-red-600 h-14 text-lg"
+                    onClick={() => {
+                      reportFaultMutation.mutate({
+                        faultType,
+                        description: faultDescription,
+                        stationId: faultStationId || currentStationInfo?.id,
+                        sessionId: currentSession?.id,
+                        userId: selectedUser?.id,
+                      });
+                    }}
+                    disabled={reportFaultMutation.isPending || !faultDescription.trim()}
+                    data-testid="button-submit-fault"
+                  >
+                    {reportFaultMutation.isPending ? "Bildiriliyor..." : "Yetkili Kişiye Bildir"}
+                  </Button>
+                </div>
+              )}
+
+              <Button
+                variant="outline"
+                className="w-full border-slate-600"
+                onClick={() => setStep('stop-options')}
+                data-testid="button-back-fault"
+              >
+                Geri
               </Button>
             </div>
           )}
@@ -904,6 +1087,36 @@ export default function FactoryKiosk() {
                   </CardContent>
                 </Card>
               </div>
+
+              {collaborativeScores?.isCollaborative && (
+                <div className="mt-4 space-y-3">
+                  <h4 className="text-lg font-semibold text-slate-300 flex items-center gap-2">
+                    <Users className="h-5 w-5 text-blue-400" />
+                    Ortak Üretim Skorları
+                  </h4>
+                  <div className="space-y-2">
+                    {collaborativeScores.workers.map((w: any) => (
+                      <div key={w.userId} className="bg-slate-700/50 rounded-lg p-3 flex items-center justify-between" data-testid={`collab-score-${w.userId}`}>
+                        <div>
+                          <p className={`font-medium ${w.userId === selectedUser?.id ? 'text-amber-400' : 'text-slate-200'}`}>
+                            {w.firstName} {w.lastName}
+                            {w.userId === selectedUser?.id && ' (Sen)'}
+                          </p>
+                          <p className="text-xs text-slate-400">
+                            {w.activeMinutes} dk aktif / {w.breakMinutes} dk mola
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-xl font-bold text-amber-400" data-testid={`collab-share-${w.userId}`}>
+                            %{w.sharePercentage}
+                          </p>
+                          <p className="text-xs text-slate-400">Katkı payı</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -915,16 +1128,16 @@ export default function FactoryKiosk() {
               
               <h3 className="text-2xl font-semibold text-slate-200">İşlem Tamamlandı</h3>
               <p className="text-slate-400">
-                {autoLogoutCountdown} saniye sonra ana ekrana dönülecek...
+                {autoLogoutCountdown} saniye sonra personel seçim ekranına dönülecek...
               </p>
               
               <Button
                 className="w-full bg-amber-600 hover:bg-amber-700 h-14 text-lg"
-                onClick={() => setLocation('/fabrika/dashboard')}
+                onClick={resetKiosk}
                 data-testid="button-immediate-logout"
               >
-                <LogOut className="h-5 w-5 mr-2" />
-                Hemen Çıkış Yap
+                <ArrowRight className="h-5 w-5 mr-2" />
+                Personel Seçimine Dön
               </Button>
             </div>
           )}

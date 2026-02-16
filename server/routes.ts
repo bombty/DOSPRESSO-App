@@ -31957,6 +31957,216 @@ MUTLAKA aşağıdaki JSON formatında yanıt ver:
     }
   });
 
+  // Ortak Üretim Skor Sistemi - Collaborative Production Scoring
+  // Aynı istasyonda çalışan birden fazla kişinin mola/uzaklaşma sürelerini hesaba katarak skor paylaşımı
+  // Note: Score distribution is based on total active minutes per worker.
+  // Workers who take more breaks get lower share percentages automatically.
+  // This fairly rewards workers who contribute more active time.
+  app.get('/api/factory/collaborative-scores/:stationId', isKioskAuthenticated, async (req, res) => {
+    try {
+      const stationId = parseInt(req.params.stationId);
+      const dateStr = req.query.date as string || new Date().toISOString().split('T')[0];
+      
+      const dayStart = new Date(dateStr + 'T00:00:00');
+      const dayEnd = new Date(dateStr + 'T23:59:59');
+
+      // Get all sessions at this station for today
+      const sessions = await db.select({
+        sessionId: factoryShiftSessions.id,
+        userId: factoryShiftSessions.userId,
+        checkInTime: factoryShiftSessions.checkInTime,
+        checkOutTime: factoryShiftSessions.checkOutTime,
+        status: factoryShiftSessions.status,
+        firstName: users.firstName,
+        lastName: users.lastName,
+      })
+        .from(factoryShiftSessions)
+        .innerJoin(users, eq(factoryShiftSessions.userId, users.id))
+        .where(and(
+          eq(factoryShiftSessions.stationId, stationId),
+          gte(factoryShiftSessions.checkInTime, dayStart),
+          lte(factoryShiftSessions.checkInTime, dayEnd)
+        ));
+
+      if (sessions.length === 0) {
+        return res.json({ workers: [], isCollaborative: false });
+      }
+
+      // For each worker, calculate active time (total time - break time)
+      const workerScores = await Promise.all(sessions.map(async (session) => {
+        const now = new Date();
+        const endTime = session.checkOutTime || now;
+        const totalMinutes = Math.max(1, Math.round((endTime.getTime() - new Date(session.checkInTime).getTime()) / 60000));
+
+        // Get break logs for this session
+        const breaks = await db.select({
+          startedAt: factoryBreakLogs.startedAt,
+          endedAt: factoryBreakLogs.endedAt,
+          durationMinutes: factoryBreakLogs.durationMinutes,
+          breakReason: factoryBreakLogs.breakReason,
+        })
+          .from(factoryBreakLogs)
+          .where(eq(factoryBreakLogs.sessionId, session.sessionId));
+
+        // Calculate total break minutes
+        let totalBreakMinutes = 0;
+        breaks.forEach(brk => {
+          if (brk.durationMinutes) {
+            totalBreakMinutes += brk.durationMinutes;
+          } else if (brk.startedAt && brk.endedAt) {
+            totalBreakMinutes += Math.round((new Date(brk.endedAt).getTime() - new Date(brk.startedAt).getTime()) / 60000);
+          } else if (brk.startedAt && !brk.endedAt) {
+            // Ongoing break - count from start to now
+            totalBreakMinutes += Math.round((now.getTime() - new Date(brk.startedAt).getTime()) / 60000);
+          }
+        });
+
+        // Get production outputs for this session
+        const outputs = await db.select({
+          producedQuantity: factoryProductionOutputs.producedQuantity,
+          wasteQuantity: factoryProductionOutputs.wasteQuantity,
+        })
+          .from(factoryProductionOutputs)
+          .where(eq(factoryProductionOutputs.sessionId, session.sessionId));
+
+        const totalProduced = outputs.reduce((sum, o) => sum + parseFloat(o.producedQuantity || '0'), 0);
+        const totalWaste = outputs.reduce((sum, o) => sum + parseFloat(o.wasteQuantity || '0'), 0);
+
+        const activeMinutes = Math.max(0, totalMinutes - totalBreakMinutes);
+        const breakCount = breaks.length;
+
+        return {
+          userId: session.userId,
+          firstName: session.firstName,
+          lastName: session.lastName,
+          sessionId: session.sessionId,
+          totalMinutes,
+          breakMinutes: totalBreakMinutes,
+          activeMinutes,
+          breakCount,
+          totalProduced,
+          totalWaste,
+          status: session.status,
+        };
+      }));
+
+      // Calculate collaborative scores
+      const totalActiveMinutes = workerScores.reduce((sum, w) => sum + w.activeMinutes, 0);
+      const isCollaborative = workerScores.length > 1;
+
+      const scoredWorkers = workerScores.map(worker => {
+        const sharePercentage = totalActiveMinutes > 0
+          ? Math.round((worker.activeMinutes / totalActiveMinutes) * 100)
+          : Math.round(100 / workerScores.length);
+
+        // Efficiency penalty for excessive breaks
+        const breakRatio = worker.totalMinutes > 0 ? worker.breakMinutes / worker.totalMinutes : 0;
+        let efficiencyPenalty = 0;
+        if (breakRatio > 0.2) efficiencyPenalty = Math.round((breakRatio - 0.2) * 100); // Penalty if >20% break time
+
+        return {
+          ...worker,
+          sharePercentage,
+          efficiencyPenalty,
+          adjustedScore: Math.max(0, sharePercentage - efficiencyPenalty),
+        };
+      });
+
+      res.json({
+        stationId,
+        date: dateStr,
+        isCollaborative,
+        totalActiveMinutes,
+        workers: scoredWorkers,
+      });
+    } catch (error: any) {
+      console.error('Error calculating collaborative scores:', error);
+      res.status(500).json({ message: 'Ortak skor hesaplanamadı' });
+    }
+  });
+
+  app.post('/api/factory/kiosk/report-fault', async (req, res) => {
+    try {
+      const { faultType, description, stationId, sessionId, userId } = req.body;
+
+      if (!faultType || !description?.trim()) {
+        return res.status(400).json({ message: 'Arıza türü ve açıklama gerekli' });
+      }
+
+      const stationInfo = stationId
+        ? await db.select().from(factoryStations).where(eq(factoryStations.id, stationId)).limit(1)
+        : [];
+      const stationName = stationInfo.length > 0 ? stationInfo[0].name : 'Bilinmeyen İstasyon';
+
+      const reporterInfo = userId
+        ? await db.select({ firstName: users.firstName, lastName: users.lastName }).from(users).where(eq(users.id, userId)).limit(1)
+        : [];
+      const reporterName = reporterInfo.length > 0 ? `${reporterInfo[0].firstName} ${reporterInfo[0].lastName}` : 'Bilinmeyen Personel';
+
+      const faultTypeLabel = faultType === 'machine' ? 'Makina Arızası' : 'Ürün Hatası';
+
+      const factoryManagers = await db.select({ id: users.id, firstName: users.firstName, lastName: users.lastName })
+        .from(users)
+        .where(eq(users.role, 'fabrika_mudur'));
+
+      let notifiedPerson = '';
+
+      if (factoryManagers.length > 0) {
+        const notifValues = factoryManagers.map(manager => ({
+          userId: manager.id,
+          type: 'factory_fault_report',
+          title: `${faultTypeLabel} Bildirimi`,
+          message: `${reporterName} tarafından ${stationName} istasyonunda ${faultTypeLabel.toLowerCase()} bildirildi: ${description}`,
+          link: '/fabrika/dashboard',
+          isRead: false,
+        }));
+
+        await db.insert(notifications).values(notifValues);
+        notifiedPerson = factoryManagers.map(m => `${m.firstName} ${m.lastName}`).join(', ');
+      }
+
+      if (!notifiedPerson) {
+        const supervisors = await db.select({ id: users.id, firstName: users.firstName, lastName: users.lastName })
+          .from(users)
+          .where(eq(users.role, 'fabrika_sorumlu'));
+
+        if (supervisors.length > 0) {
+          const notifValues = supervisors.map(s => ({
+            userId: s.id,
+            type: 'factory_fault_report',
+            title: `${faultTypeLabel} Bildirimi`,
+            message: `${reporterName} tarafından ${stationName} istasyonunda ${faultTypeLabel.toLowerCase()} bildirildi: ${description}`,
+            link: '/fabrika/dashboard',
+            isRead: false,
+          }));
+          await db.insert(notifications).values(notifValues);
+          notifiedPerson = supervisors.map(s => `${s.firstName} ${s.lastName}`).join(', ');
+        }
+      }
+
+      if (sessionId) {
+        await db.insert(factorySessionEvents).values({
+          sessionId,
+          userId: userId || 'system',
+          stationId: stationId || null,
+          eventType: 'fault_report',
+          notes: `[${faultTypeLabel}] ${description}`,
+        });
+      }
+
+      res.json({
+        success: true,
+        notifiedPerson: notifiedPerson || null,
+        message: notifiedPerson
+          ? `Arıza bildirildi, ${notifiedPerson} bilgilendirildi`
+          : 'Arıza bildirildi ancak yetkili bulunamadı',
+      });
+    } catch (error: any) {
+      console.error('Error reporting fault:', error);
+      res.status(500).json({ message: 'Arıza bildirilemedi' });
+    }
+  });
+
   // Aktif çalışanlar listesi (dashboard için)
   app.get('/api/factory/active-workers', async (req, res) => {
     try {
