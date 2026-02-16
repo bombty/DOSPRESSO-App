@@ -7,6 +7,7 @@ export interface RoleGuideContent {
     description: string;
     icon: string;
     path: string;
+    detailedSteps?: string[];
   }>;
   quickTips: string[];
   commonTasks: Array<{
@@ -22,16 +23,16 @@ export const ROLE_GUIDE_CONTENT: Record<string, RoleGuideContent> = {
     roleTitle: "Sistem Yöneticisi",
     roleDescription: "Tüm sistem modüllerine tam erişim. Kullanıcı yönetimi, sistem ayarları, yedekleme ve güvenlik işlemlerinden sorumlusunuz.",
     availableModules: [
-      { name: "Kontrol Paneli", description: "Genel sistem durumu ve özet bilgiler", icon: "LayoutDashboard", path: "/" },
-      { name: "Kullanıcı Yönetimi", description: "Tüm kullanıcıları oluşturma, düzenleme ve yetkilendirme", icon: "Users", path: "/admin/kullanicilar" },
-      { name: "Sistem Ayarları", description: "Uygulama genelinde konfigürasyon ve tercihler", icon: "Settings", path: "/admin/ayarlar" },
-      { name: "Yedekleme & Güvenlik", description: "Veri yedekleme, güvenlik logları ve denetim", icon: "HardDrive", path: "/admin/yedekleme" },
-      { name: "Şube Yönetimi", description: "Tüm şubeleri görüntüleme ve yönetme", icon: "Building2", path: "/subeler" },
-      { name: "Ekipman & Bakım", description: "Ekipman envanteri, arıza takibi ve bakım planlaması", icon: "Wrench", path: "/ekipman" },
-      { name: "İK & Vardiya", description: "İnsan kaynakları, vardiya planlama ve devam takibi", icon: "Users", path: "/ik" },
-      { name: "Eğitim Akademisi", description: "Eğitim modülleri, quiz ve sertifika yönetimi", icon: "GraduationCap", path: "/akademi/*" },
-      { name: "Raporlar", description: "Tüm analitik ve raporlama araçları", icon: "BarChart3", path: "/raporlar" },
-      { name: "Yönetim Paneli", description: "Admin mega modülü ve gelişmiş ayarlar", icon: "LayoutDashboard", path: "/admin" },
+      { name: "Kontrol Paneli", description: "Genel sistem durumu ve özet bilgiler", icon: "LayoutDashboard", path: "/", detailedSteps: ["Genel sistem durumunu ve özet bilgileri görüntüleyin", "Şube performans karşılaştırmalarını inceleyin", "Kritik uyarıları ve bildirimleri kontrol edin", "AI destekli özet raporları inceleyin"] },
+      { name: "Kullanıcı Yönetimi", description: "Tüm kullanıcıları oluşturma, düzenleme ve yetkilendirme", icon: "Users", path: "/admin/kullanicilar", detailedSteps: ["Yeni kullanıcı hesabı oluşturun", "Mevcut kullanıcıların rollerini ve şubelerini düzenleyin", "Kullanıcı erişim yetkilerini yönetin", "Hesap durumunu aktif/pasif olarak değiştirin"] },
+      { name: "Sistem Ayarları", description: "Uygulama genelinde konfigürasyon ve tercihler", icon: "Settings", path: "/admin/ayarlar", detailedSteps: ["Genel uygulama ayarlarını yapılandırın", "E-posta ve bildirim tercihlerini düzenleyin", "Tema ve görünüm ayarlarını özelleştirin", "API entegrasyonlarını yönetin"] },
+      { name: "Yedekleme & Güvenlik", description: "Veri yedekleme, güvenlik logları ve denetim", icon: "HardDrive", path: "/admin/yedekleme", detailedSteps: ["Manuel veya otomatik veri yedekleme alın", "Güvenlik loglarını ve denetim izlerini inceleyin", "Yedekleme geçmişini görüntüleyin", "Güvenlik politikalarını yapılandırın"] },
+      { name: "Şube Yönetimi", description: "Tüm şubeleri görüntüleme ve yönetme", icon: "Building2", path: "/subeler", detailedSteps: ["Tüm şubelerin listesini ve durumlarını görüntüleyin", "Yeni şube kaydı oluşturun", "Şube bilgilerini ve iletişim detaylarını düzenleyin", "Şube performans karşılaştırmalarını inceleyin"] },
+      { name: "Ekipman & Bakım", description: "Ekipman envanteri, arıza takibi ve bakım planlaması", icon: "Wrench", path: "/ekipman", detailedSteps: ["Ekipman envanterini görüntüleyin ve yönetin", "Arıza bildirimlerini takip edin ve atayın", "Periyodik bakım planlarını oluşturun", "Ekipman garanti ve servis bilgilerini kaydedin"] },
+      { name: "İK & Vardiya", description: "İnsan kaynakları, vardiya planlama ve devam takibi", icon: "Users", path: "/ik", detailedSteps: ["Personel kayıtlarını görüntüleyin ve düzenleyin", "Vardiya programlarını oluşturun ve yönetin", "İzin taleplerini onaylayın veya reddedin", "Devam ve devamsızlık kayıtlarını takip edin"] },
+      { name: "Eğitim Akademisi", description: "Eğitim modülleri, quiz ve sertifika yönetimi", icon: "GraduationCap", path: "/akademi/*", detailedSteps: ["Eğitim modüllerini oluşturun ve düzenleyin", "Quiz ve sınav sorularını hazırlayın", "Personel eğitim ilerlemesini takip edin", "Sertifika ve başarı belgelerini yönetin"] },
+      { name: "Raporlar", description: "Tüm analitik ve raporlama araçları", icon: "BarChart3", path: "/raporlar", detailedSteps: ["Şube bazlı performans raporlarını inceleyin", "Finansal özet ve detay raporlarını görüntüleyin", "Personel ve İK raporlarını oluşturun", "Raporları dışa aktarın ve paylaşın"] },
+      { name: "Yönetim Paneli", description: "Admin mega modülü ve gelişmiş ayarlar", icon: "LayoutDashboard", path: "/admin", detailedSteps: ["Tüm yönetim modüllerine hızlı erişim sağlayın", "Sistem genelinde toplu işlemler yapın", "Gelişmiş yapılandırma seçeneklerini kullanın", "Denetim ve uyumluluk araçlarına erişin"] },
     ],
     quickTips: [
       "Yeni kullanıcı eklerken rol ve şube atamasını doğru yapın.",
@@ -433,12 +434,12 @@ export const ROLE_GUIDE_CONTENT: Record<string, RoleGuideContent> = {
     roleTitle: "Barista",
     roleDescription: "Günlük görevler, checklistler, reçeteler ve vardiya bilgilerinizi takip edebilirsiniz.",
     availableModules: [
-      { name: "Ana Sayfa", description: "Günlük özet ve görevleriniz", icon: "Home", path: "/sube/dashboard" },
-      { name: "Görevler", description: "Günlük görev listeniz", icon: "CheckSquare", path: "/gorevler" },
-      { name: "Checklistler", description: "Açılış/kapanış ve diğer checklistler", icon: "ClipboardList", path: "/checklistler" },
-      { name: "Reçeteler", description: "İçecek hazırlama reçeteleri", icon: "BookOpen", path: "/receteler" },
-      { name: "Eğitim Akademisi", description: "Eğitim ve gelişim modülleri", icon: "GraduationCap", path: "/akademi/*" },
-      { name: "Vardiyalarım", description: "Vardiya programınız", icon: "Calendar", path: "/vardiyalarim" },
+      { name: "Ana Sayfa", description: "Günlük özet ve görevleriniz", icon: "Home", path: "/sube/dashboard", detailedSteps: ["Günlük görev özetinizi görüntüleyin", "Vardiya bilgilerinizi kontrol edin", "Bekleyen checklist ve görevleri takip edin"] },
+      { name: "Görevler", description: "Günlük görev listeniz", icon: "CheckSquare", path: "/gorevler", detailedSteps: ["Size atanan günlük görevleri görüntüleyin", "Görevleri tamamlayın ve durumlarını güncelleyin", "Görev detaylarını ve notlarını inceleyin"] },
+      { name: "Checklistler", description: "Açılış/kapanış ve diğer checklistler", icon: "ClipboardList", path: "/checklistler", detailedSteps: ["Açılış checklistini tamamlayın", "Kapanış checklistini doldurun", "Gerekli fotoğrafları yükleyin ve onay alın"] },
+      { name: "Reçeteler", description: "İçecek hazırlama reçeteleri", icon: "BookOpen", path: "/receteler", detailedSteps: ["İçecek reçetelerini arayın ve görüntüleyin", "Malzeme listesi ve ölçüleri kontrol edin", "Hazırlanış adımlarını takip edin"] },
+      { name: "Eğitim Akademisi", description: "Eğitim ve gelişim modülleri", icon: "GraduationCap", path: "/akademi/*", detailedSteps: ["Eğitim modüllerini tamamlayın", "Quiz ve sınavlara katılın", "Sertifikalarınızı ve ilerlemenizi görüntüleyin"] },
+      { name: "Vardiyalarım", description: "Vardiya programınız", icon: "Calendar", path: "/vardiyalarim", detailedSteps: ["Haftalık vardiya programınızı görüntüleyin", "Vardiya saatlerinizi ve günlerinizi kontrol edin", "Vardiya değişiklik taleplerini iletin"] },
     ],
     quickTips: [
       "Açılış ve kapanış checklistlerini eksiksiz tamamlayın.",
@@ -502,13 +503,13 @@ export const ROLE_GUIDE_CONTENT: Record<string, RoleGuideContent> = {
     roleTitle: "Supervisor",
     roleDescription: "Şube operasyonları, ekip yönetimi, personel değerlendirmeleri ve vardiya planlamasından sorumlusunuz.",
     availableModules: [
-      { name: "Ana Sayfa", description: "Şube günlük özeti", icon: "Home", path: "/sube/dashboard" },
-      { name: "Görevler", description: "Görev oluşturma ve takip", icon: "CheckSquare", path: "/gorevler" },
-      { name: "Checklistler", description: "Checklist yönetimi", icon: "ClipboardList", path: "/checklistler" },
-      { name: "Vardiya Planlama", description: "Vardiya programı oluşturma", icon: "Calendar", path: "/vardiyalar" },
-      { name: "İK Yönetimi", description: "Personel takibi ve değerlendirme", icon: "Users", path: "/ik" },
-      { name: "Performans", description: "Ekip performans takibi", icon: "BarChart3", path: "/performans" },
-      { name: "Ekipman", description: "Ekipman durumu ve arıza bildirimi", icon: "Wrench", path: "/ekipman" },
+      { name: "Ana Sayfa", description: "Şube günlük özeti", icon: "Home", path: "/sube/dashboard", detailedSteps: ["Günlük şube özetini ve kritik bildirimleri görüntüleyin", "Vardiya durumunu ve aktif personeli kontrol edin", "Bekleyen görev ve checklist sayılarını takip edin"] },
+      { name: "Görevler", description: "Görev oluşturma ve takip", icon: "CheckSquare", path: "/gorevler", detailedSteps: ["Yeni görev oluşturun ve personele atayın", "Görev önceliklerini ve son tarihlerini belirleyin", "Tamamlanan ve bekleyen görevleri takip edin", "Görev detaylarına not ve yorum ekleyin"] },
+      { name: "Checklistler", description: "Checklist yönetimi", icon: "ClipboardList", path: "/checklistler", detailedSteps: ["Açılış ve kapanış checklistlerini yönetin", "Checklist tamamlama durumlarını takip edin", "Eksik maddeleri ve gecikmeleri kontrol edin"] },
+      { name: "Vardiya Planlama", description: "Vardiya programı oluşturma", icon: "Calendar", path: "/vardiyalar", detailedSteps: ["Haftalık vardiya programı oluşturun", "Personeli vardiyalara atayın", "Vardiya değişikliklerini ve takasları yönetin"] },
+      { name: "İK Yönetimi", description: "Personel takibi ve değerlendirme", icon: "Users", path: "/ik", detailedSteps: ["Personel bilgilerini görüntüleyin", "Performans değerlendirmesi yapın", "İzin ve devamsızlık kayıtlarını takip edin"] },
+      { name: "Performans", description: "Ekip performans takibi", icon: "BarChart3", path: "/performans", detailedSteps: ["Ekip performans metriklerini inceleyin", "Bireysel performans değerlendirmelerini görüntüleyin", "Hedef ve KPI takibi yapın"] },
+      { name: "Ekipman", description: "Ekipman durumu ve arıza bildirimi", icon: "Wrench", path: "/ekipman", detailedSteps: ["Ekipman durumlarını kontrol edin", "Arıza bildirimi oluşturun", "Bakım takvimini takip edin"] },
     ],
     quickTips: [
       "Günlük görev dağılımını vardiya başında yapın.",
@@ -530,14 +531,14 @@ export const ROLE_GUIDE_CONTENT: Record<string, RoleGuideContent> = {
     roleTitle: "Şube Müdürü",
     roleDescription: "Şubenizin tüm operasyonlarını yönetirsiniz. Personel, ekipman, performans analizi ve İK işlemlerinden sorumlusunuz.",
     availableModules: [
-      { name: "Ana Sayfa", description: "Şube günlük özeti ve kritik bilgiler", icon: "Home", path: "/sube/dashboard" },
-      { name: "Görevler", description: "Görev oluşturma, atama ve takip", icon: "CheckSquare", path: "/gorevler" },
-      { name: "Checklistler", description: "Tüm checklist yönetimi", icon: "ClipboardList", path: "/checklistler" },
-      { name: "İK Yönetimi", description: "Şube personel yönetimi", icon: "Users", path: "/ik" },
-      { name: "Vardiya Planlama", description: "Vardiya programı oluşturma ve düzenleme", icon: "Calendar", path: "/vardiyalar" },
-      { name: "Ekipman & Bakım", description: "Ekipman takibi ve arıza yönetimi", icon: "Wrench", path: "/ekipman" },
-      { name: "Performans", description: "Şube ve personel performans analizleri", icon: "BarChart3", path: "/performans" },
-      { name: "Raporlar", description: "Şube raporları ve analizler", icon: "FileText", path: "/raporlar" },
+      { name: "Ana Sayfa", description: "Şube günlük özeti ve kritik bilgiler", icon: "Home", path: "/sube/dashboard", detailedSteps: ["Günlük şube özetini ve kritik uyarıları görüntüleyin", "Personel durumunu ve vardiya bilgilerini kontrol edin", "Açık görev ve checklist sayılarını takip edin", "Misafir memnuniyeti skorlarını inceleyin"] },
+      { name: "Görevler", description: "Görev oluşturma, atama ve takip", icon: "CheckSquare", path: "/gorevler", detailedSteps: ["Yeni görev oluşturun ve ekip üyelerine atayın", "Görev önceliklerini ve teslim tarihlerini yönetin", "Tamamlanan görevleri onaylayın", "Görev raporlarını inceleyin"] },
+      { name: "Checklistler", description: "Tüm checklist yönetimi", icon: "ClipboardList", path: "/checklistler", detailedSteps: ["Açılış/kapanış checklistlerinin durumunu kontrol edin", "Yeni checklist şablonları oluşturun", "Tamamlanma oranlarını ve gecikmeleri takip edin"] },
+      { name: "İK Yönetimi", description: "Şube personel yönetimi", icon: "Users", path: "/ik", detailedSteps: ["Şube personel listesini görüntüleyin ve yönetin", "Personel değerlendirmelerini yapın", "İzin taleplerini onaylayın veya reddedin", "İşe alım ve işten çıkış süreçlerini yönetin"] },
+      { name: "Vardiya Planlama", description: "Vardiya programı oluşturma ve düzenleme", icon: "Calendar", path: "/vardiyalar", detailedSteps: ["Haftalık/aylık vardiya programı oluşturun", "Personeli vardiyalara atayın ve düzenleyin", "Vardiya değişiklik taleplerini yönetin", "Fazla mesai ve eksik personel durumlarını takip edin"] },
+      { name: "Ekipman & Bakım", description: "Ekipman takibi ve arıza yönetimi", icon: "Wrench", path: "/ekipman", detailedSteps: ["Şubedeki tüm ekipmanların durumunu görüntüleyin", "Arıza bildirimi oluşturun ve takip edin", "Periyodik bakım takvimini kontrol edin", "Ekipman ihtiyaçlarını raporlayın"] },
+      { name: "Performans", description: "Şube ve personel performans analizleri", icon: "BarChart3", path: "/performans", detailedSteps: ["Şube genel performans skorunu inceleyin", "Personel bazlı performans karşılaştırmaları yapın", "Hedef ve KPI gerçekleşme oranlarını takip edin", "Performans trendlerini analiz edin"] },
+      { name: "Raporlar", description: "Şube raporları ve analizler", icon: "FileText", path: "/raporlar", detailedSteps: ["Günlük/haftalık/aylık şube raporlarını görüntüleyin", "Satış ve gelir analizlerini inceleyin", "Personel performans raporlarını oluşturun", "Raporları dışa aktarın ve paylaşın"] },
     ],
     quickTips: [
       "Günlük açılış ve kapanış checklistlerini takip edin.",

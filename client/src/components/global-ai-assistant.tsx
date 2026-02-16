@@ -10,7 +10,6 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { motion, AnimatePresence } from "framer-motion";
 import { useLocation } from "wouter";
 import { 
-  Brain, 
   X, 
   Send, 
   Loader2, 
@@ -312,6 +311,31 @@ function renderMarkdownContent(content: string, navigate: (path: string) => void
   return elements;
 }
 
+function PeabuddyIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className={className} xmlns="http://www.w3.org/2000/svg">
+      {/* Head circle */}
+      <circle cx="12" cy="12" r="10" fill="currentColor" opacity="0.15" stroke="currentColor" strokeWidth="1.5" />
+      {/* Glasses - left lens */}
+      <circle cx="8.5" cy="10.5" r="3" stroke="currentColor" strokeWidth="1.5" fill="none" />
+      {/* Glasses - right lens */}
+      <circle cx="15.5" cy="10.5" r="3" stroke="currentColor" strokeWidth="1.5" fill="none" />
+      {/* Glasses bridge */}
+      <path d="M11.5 10.5 L12.5 10.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+      {/* Left eye dot */}
+      <circle cx="8.5" cy="10.5" r="1" fill="currentColor" />
+      {/* Right eye dot */}
+      <circle cx="15.5" cy="10.5" r="1" fill="currentColor" />
+      {/* Smile */}
+      <path d="M9 15.5 Q12 18 15 15.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" fill="none" />
+      {/* Left ear/temple */}
+      <path d="M5.5 10.5 L3 9" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+      {/* Right ear/temple */}
+      <path d="M18.5 10.5 L21 9" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+    </svg>
+  );
+}
+
 export function GlobalAIAssistant() {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -397,7 +421,7 @@ export function GlobalAIAssistant() {
               <div className="flex items-center justify-between gap-1">
                 <div className="flex items-center gap-2">
                   <div className="p-1.5 bg-white/20 rounded-lg">
-                    <Brain className="w-4 h-4" />
+                    <PeabuddyIcon className="w-4 h-4" />
                   </div>
                   <div>
                     <h3 className="font-semibold text-sm">DOSPRESSO AI</h3>
@@ -563,7 +587,7 @@ export function GlobalAIAssistant() {
               animate={{ rotate: 0, opacity: 1 }}
               exit={{ rotate: -90, opacity: 0 }}
             >
-              <Brain className="w-6 h-6" />
+              <PeabuddyIcon className="w-6 h-6" />
             </motion.div>
           )}
         </AnimatePresence>

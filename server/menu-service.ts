@@ -262,7 +262,7 @@ const MENU_BLUEPRINT: SidebarMenuSection[] = [
   // 7. EĞİTİM & AKADEMİ
   // ========================================
   {
-    id: "training-academy",
+    id: "training-academy-section",
     titleTr: "Eğitim & Akademi",
     icon: "GraduationCap",
     scope: "both",
@@ -603,7 +603,7 @@ export function buildMenuForUser(
         return true;
       }),
     }))
-    .filter(section => section.items.length > 0); // Remove empty sections
+    .filter(section => section.items.length > 0 || section.items.some(i => i.alwaysVisible)); // Remove empty sections
 
   return {
     sections: filteredSections,

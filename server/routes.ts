@@ -34929,6 +34929,49 @@ MUTLAKA aşağıdaki JSON formatında yanıt ver:
     }
   });
 
+  // POST /api/messages/:threadId/replies - Add a reply to an existing thread
+  app.post('/api/messages/:threadId/replies', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user!.id;
+      const threadId = req.params.threadId;
+      const { body, attachments } = req.body;
+
+      if (!body || typeof body !== 'string' || body.trim() === '') {
+        return res.status(400).json({ message: "Mesaj içeriği gerekli" });
+      }
+
+      // Verify user is a participant of the thread
+      const [participant] = await db.select().from(threadParticipants).where(
+        and(eq(threadParticipants.threadId, threadId), eq(threadParticipants.userId, userId))
+      );
+
+      if (!participant) {
+        return res.status(403).json({ message: "Bu thread'e erişim yetkiniz yok" });
+      }
+
+      // Insert new message as a reply
+      const [newMessage] = await db.insert(messages).values({
+        threadId,
+        senderId: userId,
+        recipientId: null,
+        recipientRole: null,
+        subject: null,
+        body: body.trim(),
+        attachments: attachments || null,
+      }).returning();
+
+      // Update sender's lastReadAt
+      await db.update(threadParticipants).set({ lastReadAt: new Date() }).where(
+        and(eq(threadParticipants.threadId, threadId), eq(threadParticipants.userId, userId))
+      );
+
+      res.json(newMessage);
+    } catch (error: any) {
+      console.error("Error creating message reply:", error);
+      res.status(500).json({ message: "Yanıt gönderilemedi" });
+    }
+  });
+
   // ===== MEGA MODULE MANAGEMENT =====
   // GET /api/admin/mega-modules - Tüm mega modül konfigürasyonlarını getir
   app.get('/api/admin/mega-modules', isAuthenticated, async (req: any, res) => {

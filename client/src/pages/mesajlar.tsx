@@ -15,8 +15,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
-import { Send, Paperclip, MoreVertical, Search, Plus, FileIcon, Download, CheckCheck, Check } from "lucide-react";
-import { ObjectUploader } from "@/components/ObjectUploader";
+import { Send, Paperclip, MoreVertical, Search, Plus, FileIcon, Download, CheckCheck, Check, ImageIcon } from "lucide-react";
 import type { Message, ThreadParticipant, User } from "@shared/schema";
 import { isHQRole, isBranchRole, type UserRoleType } from "@shared/schema";
 
@@ -43,6 +42,7 @@ export default function Mesajlar() {
   const [attachments, setAttachments] = useState<Array<{id: string; url: string; type: string; name: string; size: number}>>([]);
   const [isNewMessageOpen, setIsNewMessageOpen] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Fetch thread list with polling for real-time updates
   const { data: threads = [], isLoading: threadsLoading } = useQuery<ThreadSummary[]>({
@@ -140,44 +140,55 @@ export default function Mesajlar() {
     });
   };
 
-  const handleAttachmentUpload = async () => {
-    try {
-      const response = await fetch('/api/object-storage/upload-url', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ 
-          fileName: `message-${Date.now()}`,
-          directory: '.private/messages',
-        }),
-      });
-      
-      if (!response.ok) throw new Error('Failed to get upload URL');
-      
-      const { url } = await response.json();
-      return { method: 'PUT' as const, url };
-    } catch (error) {
-      toast({
-        title: "Hata",
-        description: "Dosya yükleme URL'si alınamadı",
-        variant: "destructive",
-      });
-      throw error;
-    }
+  const compressImage = (file: File, maxWidth = 800, quality = 0.7): Promise<{dataUrl: string; size: number}> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          let width = img.width;
+          let height = img.height;
+          if (width > maxWidth) {
+            height = Math.round((height * maxWidth) / width);
+            width = maxWidth;
+          }
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          if (!ctx) { reject(new Error('Canvas context error')); return; }
+          ctx.drawImage(img, 0, 0, width, height);
+          const dataUrl = canvas.toDataURL('image/jpeg', quality);
+          resolve({ dataUrl, size: Math.round(dataUrl.length * 0.75) });
+        };
+        img.onerror = reject;
+        img.src = e.target?.result as string;
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
   };
 
-  const handleAttachmentComplete = (result: { successful: Array<{ uploadURL: string }> }) => {
-    const url = result.successful[0]?.uploadURL;
-    if (url) {
-      const fileName = url.split('/').pop() || 'attachment';
-      setAttachments(prev => [...prev, {
-        id: `att_${Date.now()}`,
-        url,
-        name: fileName,
-        type: 'application/octet-stream',
-        size: 0,
-      }]);
+  const handlePhotoSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files) return;
+
+    for (const file of Array.from(files)) {
+      if (!file.type.startsWith('image/')) continue;
+      try {
+        const { dataUrl, size } = await compressImage(file);
+        setAttachments(prev => [...prev, {
+          id: `att_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+          url: dataUrl,
+          type: 'image/jpeg',
+          name: file.name,
+          size,
+        }]);
+      } catch (err) {
+        console.error('Image compression error:', err);
+      }
     }
+    e.target.value = '';
   };
 
   const formatDate = (date: Date | string) => {
@@ -358,20 +369,32 @@ export default function Mesajlar() {
                           
                           {/* Attachments */}
                           {message.attachments && message.attachments.length > 0 && (
-                            <div className="mt-2 grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
-                              {message.attachments.map((att) => (
-                                <a
-                                  key={att.id}
-                                  href={att.url}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="flex items-center gap-2 p-2 rounded bg-background/20 hover-elevate"
-                                  data-testid={`attachment-${att.id}`}
-                                >
-                                  <FileIcon className="w-4 h-4" />
-                                  <span className="text-sm truncate flex-1">{att.name}</span>
-                                  <Download className="w-4 h-4" />
-                                </a>
+                            <div className="mt-2 space-y-2">
+                              {message.attachments.map((att: any) => (
+                                att.type?.startsWith('image/') ? (
+                                  <img
+                                    key={att.id}
+                                    src={att.url}
+                                    alt={att.name || 'Fotoğraf'}
+                                    className="max-w-full rounded-md cursor-pointer"
+                                    style={{ maxHeight: '300px' }}
+                                    onClick={() => window.open(att.url, '_blank')}
+                                    data-testid={`image-attachment-${att.id}`}
+                                  />
+                                ) : (
+                                  <a
+                                    key={att.id}
+                                    href={att.url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="flex items-center gap-2 p-2 rounded bg-background/20 hover-elevate"
+                                    data-testid={`attachment-${att.id}`}
+                                  >
+                                    <FileIcon className="w-4 h-4" />
+                                    <span className="text-sm truncate flex-1">{att.name}</span>
+                                    <Download className="w-4 h-4" />
+                                  </a>
+                                )
                               ))}
                             </div>
                           )}
@@ -396,19 +419,34 @@ export default function Mesajlar() {
             <div className="p-3 border-t grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
               {/* Attachments Preview */}
               {attachments.length > 0 && (
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap gap-2 col-span-full">
                   {attachments.map((att) => (
-                    <Badge key={att.id} variant="secondary" className="gap-2" data-testid={`attachment-preview-${att.id}`}>
-                      <FileIcon className="w-3 h-3" />
-                      {att.name}
-                      <button
-                        onClick={() => setAttachments(prev => prev.filter(a => a.id !== att.id))}
-                        className="ml-1 hover:text-destructive"
-                        data-testid={`button-remove-attachment-${att.id}`}
-                      >
-                        ×
-                      </button>
-                    </Badge>
+                    <div key={att.id} className="relative group" data-testid={`attachment-preview-${att.id}`}>
+                      {att.type.startsWith('image/') ? (
+                        <div className="relative">
+                          <img src={att.url} alt={att.name} className="h-16 w-16 object-cover rounded-md border" />
+                          <button
+                            onClick={() => setAttachments(prev => prev.filter(a => a.id !== att.id))}
+                            className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground rounded-full w-5 h-5 flex items-center justify-center text-xs"
+                            data-testid={`button-remove-attachment-${att.id}`}
+                          >
+                            x
+                          </button>
+                        </div>
+                      ) : (
+                        <Badge variant="secondary" className="gap-2">
+                          <FileIcon className="w-3 h-3" />
+                          {att.name}
+                          <button
+                            onClick={() => setAttachments(prev => prev.filter(a => a.id !== att.id))}
+                            className="ml-1 hover:text-destructive"
+                            data-testid={`button-remove-attachment-${att.id}`}
+                          >
+                            x
+                          </button>
+                        </Badge>
+                      )}
+                    </div>
                   ))}
                 </div>
               )}
@@ -428,13 +466,25 @@ export default function Mesajlar() {
                   data-testid="input-message-text"
                 />
                 <div className="flex gap-2">
-                  <ObjectUploader
-                    onGetUploadParameters={handleAttachmentUpload}
-                    onComplete={handleAttachmentComplete}
-                    buttonClassName="h-[60px]"
-                  >
-                    <Paperclip className="w-4 h-4" />
-                  </ObjectUploader>
+                  <>
+                    <input
+                      type="file"
+                      ref={fileInputRef}
+                      accept="image/*"
+                      multiple
+                      className="hidden"
+                      onChange={handlePhotoSelect}
+                      data-testid="input-photo-file"
+                    />
+                    <Button
+                      variant="outline"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="h-[60px]"
+                      data-testid="button-attach-photo"
+                    >
+                      <Paperclip className="w-4 h-4" />
+                    </Button>
+                  </>
                   <Button
                     onClick={handleSendMessage}
                     disabled={!messageText.trim() || sendReplyMutation.isPending}

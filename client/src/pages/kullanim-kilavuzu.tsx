@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -62,6 +63,7 @@ interface RoleGuideContent {
     description: string;
     icon: string;
     path: string;
+    detailedSteps?: string[];
   }>;
   quickTips: string[];
   commonTasks: Array<{
@@ -118,9 +120,11 @@ function getIcon(iconName: string): LucideIcon {
 
 export default function KullanimKilavuzu() {
   const { toast } = useToast();
+  const [, navigate] = useLocation();
   const [question, setQuestion] = useState("");
   const [aiAnswer, setAiAnswer] = useState("");
   const [expandedTask, setExpandedTask] = useState<number | null>(null);
+  const [expandedModule, setExpandedModule] = useState<number | null>(null);
 
   const { data: guide, isLoading } = useQuery<RoleGuideContent>({
     queryKey: ["/api/me/usage-guide"],
@@ -192,16 +196,60 @@ export default function KullanimKilavuzu() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {guide.availableModules.map((mod, i) => {
                 const IconComp = getIcon(mod.icon);
+                const isExpanded = expandedModule === i;
                 return (
-                  <Card key={i} data-testid={`card-module-${i}`}>
-                    <CardContent className="p-4 flex items-start gap-3">
-                      <div className="p-2 rounded-md bg-primary/10 shrink-0">
-                        <IconComp className="h-5 w-5 text-primary" />
+                  <Card
+                    key={i}
+                    className="cursor-pointer hover-elevate transition-all"
+                    onClick={() => setExpandedModule(isExpanded ? null : i)}
+                    data-testid={`card-module-${i}`}
+                  >
+                    <CardContent className="p-4">
+                      <div className="flex items-start gap-3">
+                        <div className="p-2 rounded-md bg-primary/10 shrink-0">
+                          <IconComp className="h-5 w-5 text-primary" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between gap-2">
+                            <p className="font-medium text-sm">{mod.name}</p>
+                            {isExpanded ? (
+                              <ChevronUp className="h-4 w-4 text-muted-foreground shrink-0" />
+                            ) : (
+                              <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />
+                            )}
+                          </div>
+                          <p className="text-xs text-muted-foreground">{mod.description}</p>
+                        </div>
                       </div>
-                      <div className="min-w-0">
-                        <p className="font-medium text-sm">{mod.name}</p>
-                        <p className="text-xs text-muted-foreground">{mod.description}</p>
-                      </div>
+                      {isExpanded && (
+                        <div className="mt-3 pt-3 border-t space-y-2">
+                          <p className="text-xs font-medium text-muted-foreground">Bu modülde yapabilecekleriniz:</p>
+                          {mod.detailedSteps && mod.detailedSteps.length > 0 ? (
+                            <ul className="space-y-1">
+                              {mod.detailedSteps.map((step, j) => (
+                                <li key={j} className="flex items-start gap-2 text-xs text-muted-foreground">
+                                  <span className="text-primary font-bold shrink-0">•</span>
+                                  <span>{step}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          ) : (
+                            <p className="text-xs text-muted-foreground">{mod.description}</p>
+                          )}
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="mt-2 w-full"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              navigate(mod.path);
+                            }}
+                            data-testid={`button-go-module-${i}`}
+                          >
+                            Modüle Git
+                          </Button>
+                        </div>
+                      )}
                     </CardContent>
                   </Card>
                 );

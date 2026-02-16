@@ -905,6 +905,19 @@ export function CardGridHub() {
           </CardContent>
         </Card>
 
+        <Card className="hover-elevate cursor-pointer" onClick={() => setLocation("/kullanim-kilavuzu")} data-testid="link-usage-guide-ceo">
+          <CardContent className="p-3 flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg bg-emerald-500/10 flex items-center justify-center shrink-0">
+              <BookOpen className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold">Kullanım Kılavuzu</p>
+              <p className="text-xs text-muted-foreground">Sistem rehberi ve yardım</p>
+            </div>
+            <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
+          </CardContent>
+        </Card>
+
         {bannerCarouselEnabled && <AnnouncementBannerCarousel />}
       </div>
     );
@@ -1034,6 +1047,19 @@ export function CardGridHub() {
           </CardContent>
         </Card>
       )}
+
+      <Card className="hover-elevate cursor-pointer" onClick={() => setLocation("/kullanim-kilavuzu")} data-testid="link-usage-guide-dashboard">
+          <CardContent className="p-3 flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg bg-emerald-500/10 flex items-center justify-center shrink-0">
+              <BookOpen className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold">Kullanım Kılavuzu</p>
+              <p className="text-xs text-muted-foreground">Sistem rehberi ve yardım</p>
+            </div>
+            <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
+          </CardContent>
+        </Card>
 
       <EmployeeOfMonthWidget />
 
