@@ -1421,6 +1421,54 @@ export default function FabrikaVardiyaPlanlama() {
           </div>
         </DialogContent>
       </Dialog>
+
+      <ConfirmDeleteDialog
+        open={specDeleteState.open}
+        onOpenChange={(open) => !open && cancelSpecDelete()}
+        onConfirm={() => {
+          const id = confirmSpecDelete();
+          if (id !== null) deleteSpecMutation.mutate(id as number);
+        }}
+        title="Spesifikasyonu Sil"
+        description={`"${specDeleteState.itemName || ''}" spesifikasyonunu silmek istediğinize emin misiniz?`}
+      />
+
+      <ConfirmDeleteDialog
+        open={workerDeleteState.open}
+        onOpenChange={(open) => !open && cancelWorkerDelete()}
+        onConfirm={() => {
+          const id = confirmWorkerDelete();
+          if (id !== null) removeWorkerMutation.mutate(id as number);
+        }}
+        title="Çalışanı Kaldır"
+        description={`"${workerDeleteState.itemName || ''}" çalışanını vardiyadan kaldırmak istediğinize emin misiniz?`}
+      />
+
+      <ConfirmDeleteDialog
+        open={productionDeleteState.open}
+        onOpenChange={(open) => !open && cancelProductionDelete()}
+        onConfirm={() => {
+          const id = confirmProductionDelete();
+          if (id !== null) removeProductionMutation.mutate(id as number);
+        }}
+        title="Üretimi Kaldır"
+        description={`"${productionDeleteState.itemName || ''}" üretimini kaldırmak istediğinize emin misiniz?`}
+      />
+
+      <ConfirmDeleteDialog
+        open={shiftDeleteState.open}
+        onOpenChange={(open) => !open && cancelShiftDelete()}
+        onConfirm={() => {
+          const id = confirmShiftDelete();
+          if (id !== null) {
+            deleteShiftMutation.mutate(id as number);
+            setIsDetailOpen(false);
+            setSelectedShiftId(null);
+          }
+        }}
+        title="Vardiyayı Sil"
+        description={`"${shiftDeleteState.itemName || ''}" vardiyasını silmek istediğinize emin misiniz? Bu işlem geri alınamaz.`}
+      />
     </div>
   );
 }
@@ -1733,54 +1781,6 @@ function ProductionStats() {
           </CardContent>
         </Card>
       )}
-
-      <ConfirmDeleteDialog
-        open={specDeleteState.open}
-        onOpenChange={(open) => !open && cancelSpecDelete()}
-        onConfirm={() => {
-          const id = confirmSpecDelete();
-          if (id !== null) deleteSpecMutation.mutate(id as number);
-        }}
-        title="Spesifikasyonu Sil"
-        description={`"${specDeleteState.itemName || ''}" spesifikasyonunu silmek istediğinize emin misiniz?`}
-      />
-
-      <ConfirmDeleteDialog
-        open={workerDeleteState.open}
-        onOpenChange={(open) => !open && cancelWorkerDelete()}
-        onConfirm={() => {
-          const id = confirmWorkerDelete();
-          if (id !== null) removeWorkerMutation.mutate(id as number);
-        }}
-        title="Çalışanı Kaldır"
-        description={`"${workerDeleteState.itemName || ''}" çalışanını vardiyadan kaldırmak istediğinize emin misiniz?`}
-      />
-
-      <ConfirmDeleteDialog
-        open={productionDeleteState.open}
-        onOpenChange={(open) => !open && cancelProductionDelete()}
-        onConfirm={() => {
-          const id = confirmProductionDelete();
-          if (id !== null) removeProductionMutation.mutate(id as number);
-        }}
-        title="Üretimi Kaldır"
-        description={`"${productionDeleteState.itemName || ''}" üretimini kaldırmak istediğinize emin misiniz?`}
-      />
-
-      <ConfirmDeleteDialog
-        open={shiftDeleteState.open}
-        onOpenChange={(open) => !open && cancelShiftDelete()}
-        onConfirm={() => {
-          const id = confirmShiftDelete();
-          if (id !== null) {
-            deleteShiftMutation.mutate(id as number);
-            setIsDetailOpen(false);
-            setSelectedShiftId(null);
-          }
-        }}
-        title="Vardiyayı Sil"
-        description={`"${shiftDeleteState.itemName || ''}" vardiyasını silmek istediğinize emin misiniz? Bu işlem geri alınamaz.`}
-      />
     </div>
   );
 }
