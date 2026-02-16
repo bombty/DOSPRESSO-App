@@ -6468,6 +6468,13 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
 
       // Use enhanced technical assistant with fallback LLM
       const response = await answerTechnicalQuestion(question, equipmentContext, userId);
+      
+      const usageKeywords = ['nasıl kullanılır', 'nasıl yapılır', 'nerede bulabilirim', 'nereden ulaşabilirim', 'sistem', 'menü', 'sayfa', 'modül', 'yetki', 'erişim', 'kullanım', 'özellik'];
+      const questionLower = question.toLowerCase();
+      if (usageKeywords.some((kw: string) => questionLower.includes(kw)) && response.answer) {
+        response.answer += '\n\n---\n-- **Detaylı bilgi için [Kullanım Kılavuzu](/kullanim-kilavuzu) sayfasını ziyaret edebilirsiniz.**';
+      }
+      
       res.json(response);
     } catch (error: Error | unknown) {
       console.error("Error answering question:", error);
@@ -15752,7 +15759,13 @@ Cevaplarınız kısa, faydalı ve türkçe olmalıdır.`;
         max_tokens: 500
       });
 
-      const assistantMessage = response.choices[0]?.message?.content || "Cevap oluşturulamadı.";
+      let assistantMessage = response.choices[0]?.message?.content || "Cevap oluşturulamadı.";
+      
+      const usageKeywords = ['nasıl kullanılır', 'nasıl yapılır', 'nerede bulabilirim', 'nereden ulaşabilirim', 'sistem', 'menü', 'sayfa', 'modül', 'yetki', 'erişim', 'kullanım', 'özellik', 'buton', 'ekran'];
+      const questionLower = message.toLowerCase();
+      if (usageKeywords.some(kw => questionLower.includes(kw))) {
+        assistantMessage += '\n\n---\n-- **Daha fazla bilgi için [Kullanım Kılavuzu](/kullanim-kilavuzu) sayfasını ziyaret edebilirsiniz.** Rolünüze özel tüm modül bilgileri ve ipuçları orada yer almaktadır.';
+      }
 
       res.json({ response: assistantMessage });
     } catch (error: any) {
@@ -36567,7 +36580,13 @@ Dusuk puanli alanlara odaklan ve pozitif, motive edici ol. JSON dizisi olarak ya
       }
 
       const aiResponse = await response.json();
-      const answer = aiResponse.choices[0]?.message?.content || 'Yanit alinamadi';
+      let answer = aiResponse.choices[0]?.message?.content || 'Yanit alinamadi';
+      
+      const usageKeywords = ['nasıl kullanılır', 'nasıl yapılır', 'nerede bulabilirim', 'nereden ulaşabilirim', 'sistem', 'menü', 'sayfa', 'modül', 'yetki', 'erişim', 'kullanım', 'özellik'];
+      const questionLower = question.toLowerCase();
+      if (usageKeywords.some((kw: string) => questionLower.includes(kw))) {
+        answer += '\n\n---\n-- **Detaylı bilgi için [Kullanım Kılavuzu](/kullanim-kilavuzu) sayfasını ziyaret edebilirsiniz.**';
+      }
 
       res.json({ answer });
     } catch (error: any) {
@@ -36617,7 +36636,13 @@ Dusuk puanli alanlara odaklan ve pozitif, motive edici ol. JSON dizisi olarak ya
       }
 
       const aiResponse = await response.json();
-      const answer = aiResponse.choices[0]?.message?.content || "Yanit alinamadi";
+      let answer = aiResponse.choices[0]?.message?.content || "Yanit alinamadi";
+      
+      const usageKeywords = ['nasıl kullanılır', 'nasıl yapılır', 'nerede bulabilirim', 'nereden ulaşabilirim', 'sistem', 'menü', 'sayfa', 'modül', 'yetki', 'erişim', 'kullanım', 'özellik'];
+      const questionLower = question.toLowerCase();
+      if (usageKeywords.some((kw: string) => questionLower.includes(kw))) {
+        answer += '\n\n---\n-- **Detaylı bilgi için [Kullanım Kılavuzu](/kullanim-kilavuzu) sayfasını ziyaret edebilirsiniz.**';
+      }
 
       res.json({ answer });
     } catch (error: any) {
@@ -38418,7 +38443,15 @@ Buyume odakli, stratejik ve aksiyona yonelik cevaplar ver. Turkce yanit ver.`;
           max_tokens: 800,
           temperature: 0.7
         });
-        res.json({ answer: completion.choices[0]?.message?.content || 'Yanit alinamadi.' });
+        let cgoAnswer = completion.choices[0]?.message?.content || 'Yanit alinamadi.';
+        
+        const usageKeywords = ['nasıl kullanılır', 'nasıl yapılır', 'nerede bulabilirim', 'nereden ulaşabilirim', 'sistem', 'menü', 'sayfa', 'modül', 'yetki', 'erişim', 'kullanım', 'özellik'];
+        const questionLower = question.toLowerCase();
+        if (usageKeywords.some((kw: string) => questionLower.includes(kw))) {
+          cgoAnswer += '\n\n---\n-- **Detaylı bilgi için [Kullanım Kılavuzu](/kullanim-kilavuzu) sayfasını ziyaret edebilirsiniz.**';
+        }
+        
+        res.json({ answer: cgoAnswer });
       } catch (aiError: any) {
         console.error('CGO AI Error:', aiError);
         res.json({ answer: `DOSPRESSO Ozet:
@@ -39624,7 +39657,7 @@ Kurallar:
         temperature: 0.7,
       });
 
-      const answer = completion.choices[0]?.message?.content || "Üzgünüm, sorunuza yanıt veremedim. Lütfen tekrar deneyin.";
+      const answer = (completion.choices[0]?.message?.content || "Üzgünüm, sorunuza yanıt veremedim. Lütfen tekrar deneyin.") + '\n\n-- Kullanım Kılavuzu sayfasında rolünüze özel tüm modül bilgilerini ve ipuçlarını bulabilirsiniz.';
       res.json({ answer });
     } catch (error: any) {
       console.error("Usage guide AI error:", error);

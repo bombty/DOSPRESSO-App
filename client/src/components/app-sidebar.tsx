@@ -322,8 +322,14 @@ export function AppSidebar() {
         </SidebarGroup>
       </SidebarContent>
 
-      <SidebarFooter className="border-t p-4">
-        <div className="flex items-center gap-3">
+      <SidebarFooter className="border-t p-2">
+        <Link href="/kullanim-kilavuzu">
+          <SidebarMenuButton isActive={location === "/kullanim-kilavuzu"} data-testid="link-usage-guide-footer">
+            <LucideIcons.BookOpen className="h-4 w-4" />
+            <span>Kullanım Kılavuzu</span>
+          </SidebarMenuButton>
+        </Link>
+        <div className="flex items-center gap-3 pt-2">
           <Avatar className="h-10 w-10">
             <AvatarImage src={user?.profileImageUrl || undefined} />
             <AvatarFallback data-testid="avatar-fallback">{getUserInitials()}</AvatarFallback>

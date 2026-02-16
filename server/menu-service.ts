@@ -456,6 +456,7 @@ const MENU_BLUEPRINT: SidebarMenuSection[] = [
         icon: "BookOpen",
         moduleKey: "support",
         scope: "both",
+        alwaysVisible: true,
       },
     ],
   },
@@ -595,6 +596,8 @@ export function buildMenuForUser(
       items: section.items.filter(item => {
         // Check scope
         if (!isScopeAllowed(item.scope, userScope)) return false;
+        // Items marked as alwaysVisible skip permission check
+        if (item.alwaysVisible) return true;
         // Check module permission (with dynamic permissions support)
         if (!canAccessModule(role, item.moduleKey, dynamicPermissions)) return false;
         return true;

@@ -185,7 +185,8 @@ export interface SidebarMenuItem {
   icon: string;
   moduleKey: PermissionModule;
   scope: SidebarMenuScope;
-  badge?: string; // Badge key for dynamic counts (e.g., 'notifications', 'messages')
+  badge?: string;
+  alwaysVisible?: boolean;
 }
 
 export interface SidebarMenuSection {
