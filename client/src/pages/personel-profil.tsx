@@ -464,6 +464,15 @@ export default function PersonelProfilPage() {
             <Button 
               variant="outline" 
               size="sm"
+              onClick={() => setLocation("/kullanim-kilavuzu")}
+              data-testid="button-guide"
+            >
+              <BookOpen className="h-4 w-4 mr-2" />
+              Guide
+            </Button>
+            <Button 
+              variant="outline" 
+              size="sm"
               onClick={() => setLocation("/gizlilik-politikasi")}
               data-testid="button-privacy-policy"
             >

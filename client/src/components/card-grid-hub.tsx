@@ -911,7 +911,7 @@ export function CardGridHub() {
               <BookOpen className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold">Kullanım Kılavuzu</p>
+              <p className="text-sm font-semibold">Guide</p>
               <p className="text-xs text-muted-foreground">Sistem rehberi ve yardım</p>
             </div>
             <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
@@ -1054,7 +1054,7 @@ export function CardGridHub() {
               <BookOpen className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold">Kullanım Kılavuzu</p>
+              <p className="text-sm font-semibold">Guide</p>
               <p className="text-xs text-muted-foreground">Sistem rehberi ve yardım</p>
             </div>
             <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />

@@ -326,7 +326,7 @@ export function AppSidebar() {
         <Link href="/kullanim-kilavuzu">
           <SidebarMenuButton isActive={location === "/kullanim-kilavuzu"} data-testid="link-usage-guide-footer">
             <LucideIcons.BookOpen className="h-4 w-4" />
-            <span>Kullanım Kılavuzu</span>
+            <span>Guide</span>
           </SidebarMenuButton>
         </Link>
         <div className="flex items-center gap-3 pt-2">

@@ -6,7 +6,6 @@ import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { motion, AnimatePresence } from "framer-motion";
 import { useLocation } from "wouter";
 import { 
@@ -311,28 +310,29 @@ function renderMarkdownContent(content: string, navigate: (path: string) => void
   return elements;
 }
 
-function PeabuddyIcon({ className }: { className?: string }) {
+const DOG_POSES = [
+  '/images/dobody/pose_wave.png',
+  '/images/dobody/pose_happy.png',
+  '/images/dobody/pose_think.png',
+  '/images/dobody/pose_stand.png',
+  '/images/dobody/pose_confident.png',
+  '/images/dobody/pose_curious.png',
+];
+
+function DobodyIcon({ className, size = 24 }: { className?: string; size?: number }) {
+  const [poseUrl] = useState(() => DOG_POSES[Math.floor(Math.random() * DOG_POSES.length)]);
   return (
-    <svg viewBox="0 0 24 24" fill="none" className={className} xmlns="http://www.w3.org/2000/svg">
-      {/* Head circle */}
-      <circle cx="12" cy="12" r="10" fill="currentColor" opacity="0.15" stroke="currentColor" strokeWidth="1.5" />
-      {/* Glasses - left lens */}
-      <circle cx="8.5" cy="10.5" r="3" stroke="currentColor" strokeWidth="1.5" fill="none" />
-      {/* Glasses - right lens */}
-      <circle cx="15.5" cy="10.5" r="3" stroke="currentColor" strokeWidth="1.5" fill="none" />
-      {/* Glasses bridge */}
-      <path d="M11.5 10.5 L12.5 10.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-      {/* Left eye dot */}
-      <circle cx="8.5" cy="10.5" r="1" fill="currentColor" />
-      {/* Right eye dot */}
-      <circle cx="15.5" cy="10.5" r="1" fill="currentColor" />
-      {/* Smile */}
-      <path d="M9 15.5 Q12 18 15 15.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" fill="none" />
-      {/* Left ear/temple */}
-      <path d="M5.5 10.5 L3 9" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
-      {/* Right ear/temple */}
-      <path d="M18.5 10.5 L21 9" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
-    </svg>
+    <img
+      src={poseUrl}
+      alt="Mr. Dobody"
+      className={className}
+      style={{ 
+        width: size, 
+        height: size, 
+        objectFit: 'contain',
+        borderRadius: '50%',
+      }}
+    />
   );
 }
 
@@ -421,10 +421,10 @@ export function GlobalAIAssistant() {
               <div className="flex items-center justify-between gap-1">
                 <div className="flex items-center gap-2">
                   <div className="p-1.5 bg-white/20 rounded-lg">
-                    <PeabuddyIcon className="w-4 h-4" />
+                    <DobodyIcon size={18} />
                   </div>
                   <div>
-                    <h3 className="font-semibold text-sm">DOSPRESSO AI</h3>
+                    <h3 className="font-semibold text-sm">Mr. Dobody</h3>
                     <p className="text-[10px] opacity-80">Merhaba {userName}</p>
                   </div>
                 </div>
@@ -453,14 +453,14 @@ export function GlobalAIAssistant() {
               </div>
             </div>
 
-            <ScrollArea className="flex-1 min-h-0" style={{ maxHeight: '400px' }}>
+            <div className="flex-1 min-h-0 overflow-y-auto" style={{ maxHeight: '400px' }}>
               <div className="p-3">
                 {messages.length === 0 ? (
                   <div className="space-y-3">
                     <div className="text-center py-3">
                       <Sparkles className="w-8 h-8 mx-auto text-primary/50 mb-1" />
                       <p className="text-sm text-muted-foreground">
-                        Size nasıl yardımcı olabilirim?
+                        Merhaba! Ben Mr. Dobody, size nasıl yardımcı olabilirim?
                       </p>
                     </div>
                     
@@ -526,7 +526,7 @@ export function GlobalAIAssistant() {
                   </div>
                 )}
               </div>
-            </ScrollArea>
+            </div>
 
             <div className="p-2 border-t bg-background rounded-b-xl shrink-0">
               <form onSubmit={handleSubmit} className="flex gap-2">
@@ -534,7 +534,7 @@ export function GlobalAIAssistant() {
                   ref={inputRef}
                   value={question}
                   onChange={(e) => setQuestion(e.target.value)}
-                  placeholder="Sorunuzu yazın..."
+                  placeholder="Mr. Dobody'ye sorun..."
                   className="min-h-[36px] max-h-[72px] resize-none text-xs"
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' && !e.shiftKey) {
@@ -587,7 +587,7 @@ export function GlobalAIAssistant() {
               animate={{ rotate: 0, opacity: 1 }}
               exit={{ rotate: -90, opacity: 0 }}
             >
-              <PeabuddyIcon className="w-6 h-6" />
+              <DobodyIcon size={28} />
             </motion.div>
           )}
         </AnimatePresence>

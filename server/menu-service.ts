@@ -451,7 +451,7 @@ const MENU_BLUEPRINT: SidebarMenuSection[] = [
       },
       {
         id: "usage-guide",
-        titleTr: "Kullanım Kılavuzu",
+        titleTr: "Guide",
         path: "/kullanim-kilavuzu",
         icon: "BookOpen",
         moduleKey: "support",
