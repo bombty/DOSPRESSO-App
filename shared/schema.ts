@@ -6830,6 +6830,13 @@ export const recipes = pgTable("recipes", {
   estimatedMinutes: integer("estimated_minutes").default(3),
   requiredRole: varchar("required_role", { length: 50 }), // Minimum rol gereksinimi
   photoUrl: text("photo_url"), // Reçete fotoğrafı
+  infographicUrl: text("infographic_url"), // İnfografik / menü kart görseli
+  marketingText: text("marketing_text"), // AI destekli pazarlama cümlesi
+  salesTips: text("sales_tips"), // Satış dili ve stratejisi
+  presentationNotes: text("presentation_notes"), // Sunum bilgileri
+  storageConditions: text("storage_conditions"), // Saklama koşulları
+  upsellingNotes: text("upselling_notes"), // Upselling önerileri (yan ürün)
+  importantNotes: text("important_notes"), // Dikkat edilecek önemli bilgiler
   isActive: boolean("is_active").default(true),
   isFeatured: boolean("is_featured").default(false), // Öne çıkan reçete
   displayOrder: integer("display_order").default(0),
