@@ -48,40 +48,7 @@ export async function seedAdminMenu() {
     });
 
     // ========================================
-    // 2. AI ASISTAN
-    // ========================================
-    const [aiSection] = await db
-      .insert(menuSections)
-      .values({
-        slug: 'ai',
-        titleTr: 'AI Asistan',
-        scope: 'hq',
-        icon: 'Sparkles',
-        sortOrder: 20,
-      })
-      .onConflictDoUpdate({
-        target: menuSections.slug,
-        set: {
-          titleTr: 'AI Asistan',
-          scope: 'hq',
-          icon: 'Sparkles',
-          sortOrder: 20,
-        },
-      })
-      .returning();
-    sectionsInserted++;
-
-    await insertMenuItem(aiSection.id, {
-      titleTr: 'AI Asistan',
-      path: '/ai-asistan',
-      icon: 'Sparkles',
-      moduleKey: 'ai_assistant',
-      scope: 'hq',
-      sortOrder: 10,
-    });
-
-    // ========================================
-    // 3. ŞUBELER
+    // 2. ŞUBELER
     // ========================================
     const [subelerSection] = await db
       .insert(menuSections)

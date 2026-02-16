@@ -16,6 +16,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { isHQRole } from "@shared/schema";
+import { ImageUploader } from "@/components/image-uploader";
 import { 
   ArrowLeft, Clock, Coffee, ListCheck, Beaker, AlertTriangle, 
   Image, ChevronDown, ChevronUp, History, User, Star, Edit2, Plus, Trash2, Save, Loader2
@@ -63,6 +64,7 @@ export default function ReceteDetay() {
   const [stepsOpen, setStepsOpen] = useState(false);
   const [infoOpen, setInfoOpen] = useState(false);
   const [equipmentOpen, setEquipmentOpen] = useState(false);
+  const [photoDialogOpen, setPhotoDialogOpen] = useState(false);
   
   // Edit form states
   const [editIngredients, setEditIngredients] = useState<string[]>([]);
@@ -70,6 +72,7 @@ export default function ReceteDetay() {
   const [editEquipment, setEditEquipment] = useState<string[]>([]);
   const [editTips, setEditTips] = useState("");
   const [editAllergen, setEditAllergen] = useState("");
+  const [editPhotoUrl, setEditPhotoUrl] = useState("");
 
   const { data: recipe, isLoading } = useQuery({
     queryKey: ["/api/academy/recipe", recipeId],
@@ -106,6 +109,21 @@ export default function ReceteDetay() {
       setStepsOpen(false);
       setInfoOpen(false);
       setEquipmentOpen(false);
+    },
+    onError: (error: any) => {
+      toast({ title: "Hata", description: error.message, variant: "destructive" });
+    },
+  });
+
+  // Update photo mutation
+  const updatePhotoMutation = useMutation({
+    mutationFn: async (photoUrl: string) => {
+      return apiRequest("PATCH", `/api/academy/recipes/${recipeId}`, { photoUrl });
+    },
+    onSuccess: () => {
+      toast({ title: "Fotoğraf güncellendi" });
+      queryClient.invalidateQueries({ queryKey: ["/api/academy/recipe", recipeId] });
+      setPhotoDialogOpen(false);
     },
     onError: (error: any) => {
       toast({ title: "Hata", description: error.message, variant: "destructive" });
@@ -217,6 +235,17 @@ export default function ReceteDetay() {
             style={{ backgroundImage: `url(${recipe.photoUrl})` }}
           >
             <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent rounded-xl" />
+            {canEdit && (
+              <Button
+                size="icon"
+                variant="ghost"
+                className="absolute top-2 right-2 text-white bg-black/30"
+                onClick={() => { setEditPhotoUrl(recipe.photoUrl || ""); setPhotoDialogOpen(true); }}
+                data-testid="button-edit-photo"
+              >
+                <Edit2 className="h-4 w-4" />
+              </Button>
+            )}
             <div className="absolute bottom-4 left-4 right-4 text-white">
               <h1 className="text-xl font-bold">{recipe.nameTr}</h1>
               <div className="flex items-center gap-2 mt-1">
@@ -246,6 +275,16 @@ export default function ReceteDetay() {
                     {getDifficultyBadge(recipe.difficulty)}
                   </div>
                 </div>
+                {canEdit && (
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    onClick={() => { setEditPhotoUrl(""); setPhotoDialogOpen(true); }}
+                    data-testid="button-add-photo"
+                  >
+                    <Image className="h-4 w-4" />
+                  </Button>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -634,6 +673,36 @@ export default function ReceteDetay() {
               Kaydet
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Fotoğraf Düzenleme Dialog */}
+      <Dialog open={photoDialogOpen} onOpenChange={setPhotoDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Reçete Fotoğrafı</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <ImageUploader
+              value={editPhotoUrl}
+              onChange={setEditPhotoUrl}
+              purpose="recipe"
+              label="Reçete Fotoğrafı"
+            />
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setPhotoDialogOpen(false)} data-testid="button-cancel-photo">
+                İptal
+              </Button>
+              <Button
+                onClick={() => updatePhotoMutation.mutate(editPhotoUrl)}
+                disabled={updatePhotoMutation.isPending || !editPhotoUrl}
+                data-testid="button-save-photo"
+              >
+                {updatePhotoMutation.isPending && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}
+                Kaydet
+              </Button>
+            </DialogFooter>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

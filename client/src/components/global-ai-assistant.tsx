@@ -471,12 +471,10 @@ export function GlobalAIAssistant() {
             <div className="bg-gradient-to-r from-primary to-primary/80 text-primary-foreground p-3 rounded-t-xl shrink-0">
               <div className="flex items-center justify-between gap-1">
                 <div className="flex items-center gap-2">
-                  <div className="p-1.5 bg-white/20 rounded-lg">
-                    <DobodyIcon size={28} />
-                  </div>
+                  <DobodyIcon size={40} />
                   <div>
-                    <h3 className="font-semibold text-sm">Mr. Dobody</h3>
-                    <p className="text-[10px] opacity-80">Nasıl yardımcı olabilirim?</p>
+                    <h3 className="font-semibold text-base">Mr. Dobody</h3>
+                    <p className="text-[11px] opacity-80">Nasıl yardımcı olabilirim?</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-1">
@@ -512,9 +510,6 @@ export function GlobalAIAssistant() {
                       <DobodyIcon size={80} className="mx-auto mb-3" />
                       <p className="text-sm font-medium">
                         Merhaba {userName}, ben Mr. Dobody.
-                      </p>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Nasıl yardımcı olabilirim?
                       </p>
                       <div className="mt-3 mx-2 p-2.5 bg-muted/50 rounded-lg border border-border/50">
                         <p className="text-[11px] text-muted-foreground italic leading-relaxed">

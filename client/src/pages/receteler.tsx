@@ -23,7 +23,8 @@ import {
   Flower,
   UtensilsCrossed,
   BellDot,
-  CheckCheck
+  CheckCheck,
+  Flame
 } from "lucide-react";
 import {
   Dialog,
@@ -61,6 +62,7 @@ type Recipe = {
   photoUrl: string | null;
   isFeatured: boolean | null;
   categoryId: number;
+  tags?: string[];
 };
 
 type RecipeVersion = {
@@ -130,6 +132,7 @@ export default function Receteler() {
   const [selectedRecipe, setSelectedRecipe] = useState<RecipeWithVersion | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [mainTab, setMainTab] = useState<"beverages" | "food">("beverages");
+  const [tempFilter, setTempFilter] = useState<"all" | "hot" | "iced">("all");
   const { user } = useAuth();
 
   const { data: categories = [], isLoading: loadingCategories } = useQuery<RecipeCategory[]>({
@@ -188,9 +191,18 @@ export default function Receteler() {
       const matchesCategory = selectedCategory === "all" 
         ? activeCategoryIds.has(recipe.categoryId)
         : recipe.categoryId === parseInt(selectedCategory);
+      
+      // Temperature filter logic
+      if (tempFilter !== "all") {
+        const isIced = recipe.code.startsWith('I') || (Array.isArray(recipe.tags) && recipe.tags.includes('iced'));
+        const isHot = recipe.code.includes('_HOT') || (!isIced && !recipe.code.startsWith('I'));
+        if (tempFilter === "hot" && isIced) return false;
+        if (tempFilter === "iced" && !isIced) return false;
+      }
+      
       return matchesSearch && matchesCategory;
     });
-  }, [recipes, searchQuery, selectedCategory, activeCategoryIds]);
+  }, [recipes, searchQuery, selectedCategory, activeCategoryIds, tempFilter]);
 
   const groupedRecipes = useMemo(() => {
     const grouped: Record<number, Recipe[]> = {};
@@ -280,7 +292,7 @@ export default function Receteler() {
           )}
         </div>
 
-        <Tabs value={mainTab} onValueChange={(v) => { setMainTab(v as "beverages" | "food"); setSelectedCategory("all"); }}>
+        <Tabs value={mainTab} onValueChange={(v) => { const newTab = v as "beverages" | "food"; setMainTab(newTab); setSelectedCategory("all"); if (newTab === "food") { setTempFilter("all"); } }}>
           <TabsList className="w-full">
             <TabsTrigger value="beverages" className="flex-1 gap-2" data-testid="tab-beverages">
               <Coffee className="h-4 w-4" />
@@ -315,6 +327,40 @@ export default function Receteler() {
             </Tabs>
           )}
         </div>
+
+        {mainTab === "beverages" && (
+          <div className="flex items-center gap-1">
+            <Button 
+              size="sm" 
+              variant="ghost"
+              className={`toggle-elevate ${tempFilter === 'all' ? 'toggle-elevated' : ''}`}
+              onClick={() => setTempFilter('all')}
+              data-testid="filter-temp-all"
+            >
+              Tümü
+            </Button>
+            <Button 
+              size="sm" 
+              variant="ghost"
+              className={`toggle-elevate ${tempFilter === 'hot' ? 'toggle-elevated' : ''}`}
+              onClick={() => setTempFilter('hot')}
+              data-testid="filter-temp-hot"
+            >
+              <Flame className="h-3.5 w-3.5 mr-1" />
+              Sıcak
+            </Button>
+            <Button 
+              size="sm" 
+              variant="ghost"
+              className={`toggle-elevate ${tempFilter === 'iced' ? 'toggle-elevated' : ''}`}
+              onClick={() => setTempFilter('iced')}
+              data-testid="filter-temp-iced"
+            >
+              <Snowflake className="h-3.5 w-3.5 mr-1" />
+              Soğuk
+            </Button>
+          </div>
+        )}
 
         <div className="flex flex-wrap gap-2">
           <Button

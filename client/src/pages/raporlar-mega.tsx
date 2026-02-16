@@ -1,7 +1,7 @@
 import { useState, useEffect, Suspense, lazy } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
-import { hasPermission } from "@shared/schema";
+import { hasPermission, isBranchRole } from "@shared/schema";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -9,7 +9,6 @@ import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import {
   BarChart3,
   TrendingUp,
-  Brain,
   ClipboardCheck,
   MessageSquare,
   FileText,
@@ -23,7 +22,6 @@ import {
 
 const Raporlar = lazy(() => import("./raporlar"));
 const Performance = lazy(() => import("./performance"));
-const AIAssistant = lazy(() => import("./ai-assistant"));
 const KaliteDenetimi = lazy(() => import("./kalite-denetimi"));
 const MisafirMemnuniyeti = lazy(() => import("./misafir-memnuniyeti"));
 const E2ERaporlar = lazy(() => import("./e2e-raporlar"));
@@ -43,6 +41,7 @@ interface TabConfig {
   labelTr: string;
   icon: React.ReactNode;
   permissionModule?: string;
+  scope?: 'hq' | 'branch' | 'both';
   component: React.LazyExoticComponent<React.ComponentType<any>>;
 }
 
@@ -53,6 +52,7 @@ const RAPORLAR_TABS: TabConfig[] = [
     labelTr: "Raporlar",
     icon: <BarChart3 className="h-4 w-4" />,
     permissionModule: "reports",
+    scope: "both",
     component: Raporlar
   },
   {
@@ -61,22 +61,17 @@ const RAPORLAR_TABS: TabConfig[] = [
     labelTr: "Performans",
     icon: <TrendingUp className="h-4 w-4" />,
     permissionModule: "reports",
+    scope: "both",
     component: Performance
   },
-  {
-    id: "ai-asistan",
-    label: "AI Assistant",
-    labelTr: "AI Asistan",
-    icon: <Brain className="h-4 w-4" />,
-    permissionModule: "ai_assistant",
-    component: AIAssistant
-  },
+
   {
     id: "kalite-denetimi",
     label: "Audit Reports",
     labelTr: "Denetim Rap.",
     icon: <ClipboardCheck className="h-4 w-4" />,
     permissionModule: "quality_audit",
+    scope: "hq",
     component: KaliteDenetimi
   },
   {
@@ -85,6 +80,7 @@ const RAPORLAR_TABS: TabConfig[] = [
     labelTr: "Misafir Memn.",
     icon: <MessageSquare className="h-4 w-4" />,
     permissionModule: "guest_satisfaction",
+    scope: "hq",
     component: MisafirMemnuniyeti
   },
   {
@@ -93,6 +89,7 @@ const RAPORLAR_TABS: TabConfig[] = [
     labelTr: "E2E",
     icon: <FileText className="h-4 w-4" />,
     permissionModule: "reports",
+    scope: "hq",
     component: E2ERaporlar
   },
   {
@@ -101,6 +98,7 @@ const RAPORLAR_TABS: TabConfig[] = [
     labelTr: "İK",
     icon: <Users className="h-4 w-4" />,
     permissionModule: "hr_reports",
+    scope: "hq",
     component: HRReports
   },
   {
@@ -109,6 +107,7 @@ const RAPORLAR_TABS: TabConfig[] = [
     labelTr: "Kasa",
     icon: <Wallet className="h-4 w-4" />,
     permissionModule: "cash_management",
+    scope: "hq",
     component: CashReports
   },
   {
@@ -117,6 +116,7 @@ const RAPORLAR_TABS: TabConfig[] = [
     labelTr: "Denetimler",
     icon: <CheckCircle2 className="h-4 w-4" />,
     permissionModule: "quality_audit",
+    scope: "hq",
     component: Denetimler
   },
   {
@@ -125,6 +125,7 @@ const RAPORLAR_TABS: TabConfig[] = [
     labelTr: "Şablonlar",
     icon: <FileSearch className="h-4 w-4" />,
     permissionModule: "quality_templates",
+    scope: "hq",
     component: DenetimSablonlari
   },
   {
@@ -133,6 +134,7 @@ const RAPORLAR_TABS: TabConfig[] = [
     labelTr: "Aksiyon Takip",
     icon: <Target className="h-4 w-4" />,
     permissionModule: "quality_audit",
+    scope: "hq",
     component: AksiyonTakip
   },
   {
@@ -141,6 +143,7 @@ const RAPORLAR_TABS: TabConfig[] = [
     labelTr: "CAPA",
     icon: <TrendingUp className="h-4 w-4" />,
     permissionModule: "quality_audit",
+    scope: "hq",
     component: CapaRaporlari
   },
   {
@@ -149,6 +152,7 @@ const RAPORLAR_TABS: TabConfig[] = [
     labelTr: "Şikayetler",
     icon: <AlertTriangle className="h-4 w-4" />,
     permissionModule: "complaints",
+    scope: "hq",
     component: Sikayetler
   },
   {
@@ -157,6 +161,7 @@ const RAPORLAR_TABS: TabConfig[] = [
     labelTr: "Gelişmiş",
     icon: <BarChart3 className="h-4 w-4" />,
     permissionModule: "advanced_reports",
+    scope: "hq",
     component: AdvancedReports
   },
   {
@@ -165,6 +170,7 @@ const RAPORLAR_TABS: TabConfig[] = [
     labelTr: "Şubeler",
     icon: <Target className="h-4 w-4" />,
     permissionModule: "quality_audit",
+    scope: "hq",
     component: SubeKarsilastirma
   }
 ];
@@ -186,7 +192,7 @@ function TabSkeleton() {
 const TAB_URL_MAP: Record<string, string> = {
   "genel": "/raporlar",
   "performans": "/raporlar/performans",
-  "ai-asistan": "/raporlar/ai-asistan",
+
   "kalite-denetimi": "/raporlar/kalite-denetimi",
   "misafir-memnuniyeti": "/raporlar/misafir-memnuniyeti",
   "e2e-raporlar": "/raporlar/e2e",
@@ -197,13 +203,14 @@ const TAB_URL_MAP: Record<string, string> = {
   "aksiyon-takip": "/raporlar/aksiyon-takip",
   "capa-raporlari": "/raporlar/capa-raporlari",
   "sikayetler": "/raporlar/sikayetler",
-  "gelismis-raporlar": "/raporlar/gelismis"
+  "gelismis-raporlar": "/raporlar/gelismis",
+  "sube-karsilastirma": "/raporlar/sube-karsilastirma"
 };
 
 function getTabFromUrl(pathname: string): string | null {
   if (pathname === "/raporlar" || pathname === "/raporlar/") return "genel";
   if (pathname.startsWith("/raporlar/performans")) return "performans";
-  if (pathname.startsWith("/raporlar/ai-asistan")) return "ai-asistan";
+
   if (pathname.startsWith("/raporlar/kalite-denetimi")) return "kalite-denetimi";
   if (pathname.startsWith("/raporlar/misafir-memnuniyeti")) return "misafir-memnuniyeti";
   if (pathname.startsWith("/raporlar/e2e")) return "e2e-raporlar";
@@ -215,6 +222,7 @@ function getTabFromUrl(pathname: string): string | null {
   if (pathname.startsWith("/raporlar/capa-raporlari")) return "capa-raporlari";
   if (pathname.startsWith("/raporlar/sikayetler")) return "sikayetler";
   if (pathname.startsWith("/raporlar/gelismis")) return "gelismis-raporlar";
+  if (pathname.startsWith("/raporlar/sube-karsilastirma")) return "sube-karsilastirma";
   return null;
 }
 
@@ -223,10 +231,13 @@ export default function RaporlarMegaModule() {
   const [location, setLocation] = useLocation();
 
   const visibleTabs = RAPORLAR_TABS.filter(tab => {
-    if (!tab.permissionModule) return true;
     if (!user?.role) return false;
-    // Admin ve HQ rolleri tüm rapor tab'larına erişebilir
-    if (['admin', 'muhasebe', 'satinalma', 'operasyon'].includes(user.role)) return true;
+    // Admin/CEO/CGO and HQ department roles see all
+    if (['admin', 'ceo', 'cgo', 'muhasebe', 'satinalma', 'operasyon'].includes(user.role)) return true;
+    // Scope check: branch users cannot see HQ-only tabs
+    if (tab.scope === 'hq' && isBranchRole(user.role as any)) return false;
+    // Permission check
+    if (!tab.permissionModule) return true;
     return hasPermission(user.role as any, tab.permissionModule as any, 'view');
   });
 

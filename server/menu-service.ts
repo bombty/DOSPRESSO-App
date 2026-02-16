@@ -311,14 +311,6 @@ const MENU_BLUEPRINT: SidebarMenuSection[] = [
         moduleKey: "reports",
         scope: "both",
       },
-      {
-        id: "ai-chat",
-        titleTr: "AI Asistan",
-        path: "/ai-asistan",
-        icon: "Bot",
-        moduleKey: "ai_assistant",
-        scope: "hq",
-      },
     ],
   },
 
