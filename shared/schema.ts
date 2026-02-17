@@ -12758,3 +12758,97 @@ export const salaryScales = pgTable("salary_scales", {
 export const insertSalaryScaleSchema = createInsertSchema(salaryScales).omit({ id: true, createdAt: true, updatedAt: true });
 export type InsertSalaryScale = z.infer<typeof insertSalaryScaleSchema>;
 export type SalaryScale = typeof salaryScales.$inferSelect;
+
+// ========================================
+// SUPPLIER QUOTES - Tedarikçi Fiyat Teklifleri
+// ========================================
+
+export const supplierQuotes = pgTable("supplier_quotes", {
+  id: serial("id").primaryKey(),
+  inventoryId: integer("inventory_id").references(() => inventory.id, { onDelete: "cascade" }).notNull(),
+  supplierId: integer("supplier_id").references(() => suppliers.id, { onDelete: "cascade" }).notNull(),
+  unitPrice: numeric("unit_price", { precision: 12, scale: 2 }).notNull(),
+  minimumOrderQuantity: numeric("minimum_order_quantity", { precision: 12, scale: 3 }).default("1"),
+  leadTimeDays: integer("lead_time_days").default(3),
+  validUntil: timestamp("valid_until"),
+  shippingCost: numeric("shipping_cost", { precision: 10, scale: 2 }).default("0"),
+  shippingResponsibility: varchar("shipping_responsibility", { length: 50 }).default("tedarikci"),
+  paymentTermDays: integer("payment_term_days").default(30),
+  hasInstallments: boolean("has_installments").default(false),
+  qualityScore: numeric("quality_score", { precision: 3, scale: 1 }),
+  notes: text("notes"),
+  status: varchar("status", { length: 30 }).default("aktif").notNull(),
+  requestedById: varchar("requested_by_id").references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("sq_inventory_idx").on(table.inventoryId),
+  index("sq_supplier_idx").on(table.supplierId),
+  index("sq_status_idx").on(table.status),
+]);
+
+export const insertSupplierQuoteSchema = createInsertSchema(supplierQuotes).omit({
+  id: true,
+  createdAt: true,
+});
+export type InsertSupplierQuote = z.infer<typeof insertSupplierQuoteSchema>;
+export type SupplierQuote = typeof supplierQuotes.$inferSelect;
+
+// ========================================
+// SUPPLIER ISSUES - Tedarikçi Sorunları
+// ========================================
+
+export const supplierIssues = pgTable("supplier_issues", {
+  id: serial("id").primaryKey(),
+  supplierId: integer("supplier_id").references(() => suppliers.id, { onDelete: "cascade" }).notNull(),
+  inventoryId: integer("inventory_id").references(() => inventory.id, { onDelete: "set null" }),
+  issueType: varchar("issue_type", { length: 50 }).notNull(),
+  severity: varchar("severity", { length: 20 }).default("orta").notNull(),
+  description: text("description").notNull(),
+  resolution: text("resolution"),
+  status: varchar("status", { length: 30 }).default("acik").notNull(),
+  reportedById: varchar("reported_by_id").references(() => users.id, { onDelete: "set null" }),
+  resolvedAt: timestamp("resolved_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("si_supplier_idx").on(table.supplierId),
+  index("si_inventory_idx").on(table.inventoryId),
+  index("si_status_idx").on(table.status),
+]);
+
+export const insertSupplierIssueSchema = createInsertSchema(supplierIssues).omit({
+  id: true,
+  createdAt: true,
+});
+export type InsertSupplierIssue = z.infer<typeof insertSupplierIssueSchema>;
+export type SupplierIssue = typeof supplierIssues.$inferSelect;
+
+// ========================================
+// PURCHASE ORDER PAYMENTS - Sipariş Ödemeleri
+// ========================================
+
+export const purchaseOrderPayments = pgTable("purchase_order_payments", {
+  id: serial("id").primaryKey(),
+  purchaseOrderId: integer("purchase_order_id").references(() => purchaseOrders.id, { onDelete: "cascade" }).notNull(),
+  invoiceNumber: varchar("invoice_number", { length: 100 }),
+  invoiceDate: timestamp("invoice_date"),
+  paymentDate: timestamp("payment_date"),
+  dueDate: timestamp("due_date"),
+  amount: numeric("amount", { precision: 12, scale: 2 }).notNull(),
+  paymentMethod: varchar("payment_method", { length: 50 }).default("havale"),
+  status: varchar("status", { length: 30 }).default("beklemede").notNull(),
+  notes: text("notes"),
+  processedById: varchar("processed_by_id").references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("pop_order_idx").on(table.purchaseOrderId),
+  index("pop_status_idx").on(table.status),
+]);
+
+export const insertPurchaseOrderPaymentSchema = createInsertSchema(purchaseOrderPayments).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertPurchaseOrderPayment = z.infer<typeof insertPurchaseOrderPaymentSchema>;
+export type PurchaseOrderPayment = typeof purchaseOrderPayments.$inferSelect;

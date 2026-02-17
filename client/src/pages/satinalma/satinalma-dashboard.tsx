@@ -6,14 +6,12 @@ import {
   Users, 
   ShoppingCart, 
   AlertTriangle,
-  CheckCircle,
-  Clock,
   Beaker,
   Boxes,
-  TrendingUp,
-  TrendingDown,
-  Wallet,
-  CreditCard
+  ArrowUpDown,
+  Star,
+  Clock,
+  Truck
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { 
@@ -25,45 +23,99 @@ import {
   TableRow 
 } from "@/components/ui/table";
 
-interface RawMaterial {
-  id: number;
-  name: string;
-  category: string;
-  unit: string;
-  currentPrice: string;
-  isKeyblend: boolean;
-}
-
-interface InventoryItem {
-  id: number;
-  name: string;
-  currentStock: string;
-  minimumStock: string;
-  unit: string;
-  category: string;
-}
-
-interface AccountingData {
-  totalReceivables: number;
-  totalPayables: number;
-  accountCount: number;
-}
-
 interface DashboardData {
   totalSuppliers: number;
   pendingOrders: number;
   lowStockAlerts: number;
   recentReceipts: number;
   totalInventoryItems: number;
-  rawMaterials: RawMaterial[];
-  inventory: InventoryItem[];
   totalRawMaterials: number;
-  accounting: AccountingData;
 }
+
+interface PendingOrder {
+  id: number;
+  orderNumber: string;
+  totalAmount: string;
+  orderDate: string;
+  supplier: {
+    name: string;
+  } | null;
+}
+
+interface LowStockItem {
+  id: number;
+  name: string;
+  code: string;
+  currentStock: string;
+  minimumStock: string;
+  unit: string;
+  category: string;
+}
+
+interface SupplierPerformance {
+  id: number;
+  name: string;
+  performanceScore: string;
+  onTimeDeliveryRate: string;
+  status: string;
+}
+
+const categoryLabels: Record<string, string> = {
+  hammadde: "Hammadde",
+  yarimamul: "Yari Mamul",
+  mamul: "Mamul",
+  ambalaj: "Ambalaj",
+  ekipman: "Ekipman",
+  sube_ekipman: "Sube Ekipman",
+  sube_malzeme: "Sube Malzeme",
+  konsantre: "Konsantre",
+  donut: "Donut",
+  tatli: "Tatli",
+  tuzlu: "Tuzlu",
+  cay_grubu: "Cay Grubu",
+  kahve: "Kahve",
+  toz_topping: "Toz/Topping",
+  sarf_malzeme: "Sarf Malzeme",
+  temizlik: "Temizlik",
+  diger: "Diger",
+};
 
 export default function SatinalmaDashboard() {
   const { data, isLoading } = useQuery<DashboardData>({
     queryKey: ["/api/satinalma/dashboard"],
+  });
+
+  const { data: pendingOrders, isLoading: pendingLoading } = useQuery<PendingOrder[]>({
+    queryKey: ['/api/purchase-orders', 'onay_bekliyor'],
+    queryFn: async () => {
+      const res = await fetch('/api/purchase-orders?status=onay_bekliyor');
+      if (!res.ok) throw new Error('Failed to fetch pending orders');
+      return res.json();
+    },
+  });
+
+  const { data: lowStockItems, isLoading: lowStockLoading } = useQuery<LowStockItem[]>({
+    queryKey: ['/api/inventory', 'alerts', 'low-stock'],
+    queryFn: async () => {
+      const res = await fetch('/api/inventory/alerts/low-stock');
+      if (!res.ok) throw new Error('Failed to fetch low stock alerts');
+      return res.json();
+    },
+  });
+
+  const { data: allSuppliers, isLoading: suppliersLoading } = useQuery<SupplierPerformance[]>({
+    queryKey: ['/api/suppliers', 'performance'],
+    queryFn: async () => {
+      const res = await fetch('/api/suppliers');
+      if (!res.ok) throw new Error('Failed to fetch suppliers');
+      const data = await res.json();
+      return data
+        .filter((s: SupplierPerformance) => s.status === 'aktif')
+        .sort((a: SupplierPerformance, b: SupplierPerformance) => 
+          parseFloat(b.performanceScore || '0') - parseFloat(a.performanceScore || '0')
+        )
+        .slice(0, 5);
+    },
   });
 
   if (isLoading) {
@@ -81,18 +133,23 @@ export default function SatinalmaDashboard() {
             </Card>
           ))}
         </div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+          {[...Array(4)].map((_, i) => (
+            <Card key={i}>
+              <CardHeader className="pb-1 pt-3 px-3">
+                <Skeleton className="h-4 w-32" />
+              </CardHeader>
+              <CardContent className="px-3 pb-3">
+                <Skeleton className="h-32 w-full" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
       </div>
     );
   }
 
   const metrics = [
-    {
-      title: "Hammadde Kalemi",
-      value: data?.totalRawMaterials || 0,
-      icon: Beaker,
-      color: "text-purple-500",
-      bgColor: "bg-purple-500/10"
-    },
     {
       title: "Toplam Stok Kalemi",
       value: data?.totalInventoryItems || 0,
@@ -101,21 +158,28 @@ export default function SatinalmaDashboard() {
       bgColor: "bg-blue-500/10"
     },
     {
-      title: "Aktif Tedarikçi",
+      title: "Hammadde Kalemi",
+      value: data?.totalRawMaterials || 0,
+      icon: Beaker,
+      color: "text-purple-500",
+      bgColor: "bg-purple-500/10"
+    },
+    {
+      title: "Aktif Tedarikci",
       value: data?.totalSuppliers || 0,
       icon: Users,
       color: "text-green-500",
       bgColor: "bg-green-500/10"
     },
     {
-      title: "Bekleyen Sipariş",
+      title: "Bekleyen Siparis",
       value: data?.pendingOrders || 0,
       icon: ShoppingCart,
       color: "text-orange-500",
       bgColor: "bg-orange-500/10"
     },
     {
-      title: "Düşük Stok Uyarısı",
+      title: "Dusuk Stok Uyarisi",
       value: data?.lowStockAlerts || 0,
       icon: AlertTriangle,
       color: data?.lowStockAlerts && data.lowStockAlerts > 0 ? "text-red-500" : "text-gray-500",
@@ -123,15 +187,11 @@ export default function SatinalmaDashboard() {
     }
   ];
 
-  const isLowStock = (current: string, minimum: string) => {
-    return parseFloat(current) <= parseFloat(minimum);
-  };
-
   return (
     <div className="space-y-3">
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2">
         {metrics.map((metric, index) => (
-          <Card key={index} className="hover-elevate cursor-pointer" data-testid={`metric-card-${index}`}>
+          <Card key={index} data-testid={`metric-card-${index}`}>
             <CardHeader className="flex flex-row items-center justify-between pb-1 pt-3 px-3 gap-2">
               <CardTitle className="text-xs font-medium text-muted-foreground">
                 {metric.title}
@@ -141,52 +201,54 @@ export default function SatinalmaDashboard() {
               </div>
             </CardHeader>
             <CardContent className="px-3 pb-3">
-              <div className="text-lg font-bold">{metric.value}</div>
+              <div className="text-lg font-bold" data-testid={`metric-value-${index}`}>{metric.value}</div>
             </CardContent>
           </Card>
         ))}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-        {/* Hammaddeler Listesi */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-1 pt-3 px-3 gap-2">
             <CardTitle className="text-xs flex items-center gap-2">
-              <Beaker className="h-3.5 w-3.5 text-purple-500" />
-              Hammaddeler
+              <Clock className="h-3.5 w-3.5 text-orange-500" />
+              Onay Bekleyen Siparisler
             </CardTitle>
-            <Badge variant="secondary" className="text-[10px]">{data?.totalRawMaterials || 0} kalem</Badge>
+            <Badge variant="secondary" className="text-[10px]" data-testid="badge-pending-count">
+              {pendingOrders?.length || 0} adet
+            </Badge>
           </CardHeader>
           <CardContent className="px-3 pb-3">
-            {data?.rawMaterials && data.rawMaterials.length > 0 ? (
+            {pendingLoading ? (
+              <Skeleton className="h-32 w-full" />
+            ) : pendingOrders && pendingOrders.length > 0 ? (
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Hammadde</TableHead>
-                    <TableHead>Kategori</TableHead>
-                    <TableHead className="text-right">Fiyat</TableHead>
+                    <TableHead>Siparis No</TableHead>
+                    <TableHead>Tedarikci</TableHead>
+                    <TableHead className="text-right">Tutar</TableHead>
+                    <TableHead className="text-right">Tarih</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {data.rawMaterials.map((item) => (
-                    <TableRow key={item.id} data-testid={`raw-material-row-${item.id}`}>
-                      <TableCell className="font-medium">
-                        <div className="flex items-center gap-2">
-                          {item.name}
-                          {item.isKeyblend && (
-                            <Badge variant="outline" className="text-xs bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300">
-                              KB
-                            </Badge>
-                          )}
-                        </div>
+                  {pendingOrders.map((order) => (
+                    <TableRow 
+                      key={order.id} 
+                      className="cursor-pointer"
+                      data-testid={`pending-order-row-${order.id}`}
+                    >
+                      <TableCell className="font-mono text-sm" data-testid={`order-number-${order.id}`}>
+                        {order.orderNumber}
                       </TableCell>
-                      <TableCell>
-                        <Badge variant="outline" className="text-xs">
-                          {item.category}
-                        </Badge>
+                      <TableCell data-testid={`order-supplier-${order.id}`}>
+                        {order.supplier?.name || "-"}
                       </TableCell>
-                      <TableCell className="text-right font-mono">
-                        ₺{parseFloat(item.currentPrice).toFixed(2)}/{item.unit}
+                      <TableCell className="text-right font-mono" data-testid={`order-amount-${order.id}`}>
+                        {parseFloat(order.totalAmount || "0").toLocaleString("tr-TR", { minimumFractionDigits: 2 })} TL
+                      </TableCell>
+                      <TableCell className="text-right text-muted-foreground text-sm" data-testid={`order-date-${order.id}`}>
+                        {new Date(order.orderDate).toLocaleDateString("tr-TR")}
                       </TableCell>
                     </TableRow>
                   ))}
@@ -194,51 +256,51 @@ export default function SatinalmaDashboard() {
               </Table>
             ) : (
               <div className="text-center py-8 text-muted-foreground">
-                <Beaker className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                <p>Henüz hammadde kaydı yok</p>
+                <ShoppingCart className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                <p data-testid="text-no-pending-orders">Onay bekleyen siparis yok</p>
               </div>
             )}
           </CardContent>
         </Card>
 
-        {/* Stok Listesi */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-1 pt-3 px-3 gap-2">
             <CardTitle className="text-xs flex items-center gap-2">
-              <Boxes className="h-3.5 w-3.5 text-blue-500" />
-              Stok Durumu
+              <AlertTriangle className="h-3.5 w-3.5 text-red-500" />
+              Dusuk Stok Uyarilari
             </CardTitle>
-            <Badge variant="secondary" className="text-[10px]">{data?.totalInventoryItems || 0} kalem</Badge>
+            <Badge variant="secondary" className="text-[10px]" data-testid="badge-low-stock-count">
+              {lowStockItems?.length || 0} kalem
+            </Badge>
           </CardHeader>
           <CardContent className="px-3 pb-3">
-            {data?.inventory && data.inventory.length > 0 ? (
+            {lowStockLoading ? (
+              <Skeleton className="h-32 w-full" />
+            ) : lowStockItems && lowStockItems.length > 0 ? (
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Ürün</TableHead>
+                    <TableHead>Urun</TableHead>
                     <TableHead>Kategori</TableHead>
-                    <TableHead className="text-right">Stok</TableHead>
+                    <TableHead className="text-right">Stok / Min</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {data.inventory.map((item) => (
-                    <TableRow key={item.id} data-testid={`inventory-row-${item.id}`}>
-                      <TableCell className="font-medium">{item.name}</TableCell>
+                  {lowStockItems.slice(0, 10).map((item) => (
+                    <TableRow key={item.id} data-testid={`low-stock-row-${item.id}`}>
+                      <TableCell className="font-medium" data-testid={`low-stock-name-${item.id}`}>
+                        {item.name}
+                      </TableCell>
                       <TableCell>
-                        <Badge variant="outline" className="text-xs">
-                          {item.category}
+                        <Badge variant="outline" className="text-xs" data-testid={`low-stock-category-${item.id}`}>
+                          {categoryLabels[item.category] || item.category}
                         </Badge>
                       </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          <span className={`font-mono ${isLowStock(item.currentStock, item.minimumStock) ? 'text-red-500 font-bold' : ''}`}>
-                            {parseFloat(item.currentStock).toFixed(1)}
-                          </span>
-                          <span className="text-muted-foreground text-xs">{item.unit}</span>
-                          {isLowStock(item.currentStock, item.minimumStock) && (
-                            <AlertTriangle className="h-4 w-4 text-red-500" />
-                          )}
-                        </div>
+                      <TableCell className="text-right" data-testid={`low-stock-qty-${item.id}`}>
+                        <span className="text-red-500 font-mono font-bold">
+                          {parseFloat(item.currentStock).toFixed(1)}
+                        </span>
+                        <span className="text-muted-foreground"> / {parseFloat(item.minimumStock).toFixed(1)} {item.unit}</span>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -246,116 +308,125 @@ export default function SatinalmaDashboard() {
               </Table>
             ) : (
               <div className="text-center py-8 text-muted-foreground">
-                <Boxes className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                <p>Henüz stok kaydı yok</p>
+                <Package className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                <p data-testid="text-no-low-stock">Dusuk stok uyarisi yok</p>
               </div>
             )}
           </CardContent>
         </Card>
-      </div>
 
-      {/* Muhasebe Entegrasyonu */}
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between pb-1 pt-3 px-3 gap-2">
-          <CardTitle className="text-xs flex items-center gap-2">
-            <Wallet className="h-3.5 w-3.5 text-indigo-500" />
-            Muhasebe Özeti (Cari Hesaplar)
-          </CardTitle>
-          <Badge variant="secondary" className="text-[10px]">{data?.accounting?.accountCount || 0} hesap</Badge>
-        </CardHeader>
-        <CardContent className="px-3 pb-3">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <div className="p-2 bg-green-50 dark:bg-green-900/20 rounded-lg">
-              <div className="flex items-center gap-2 mb-1">
-                <TrendingUp className="h-3.5 w-3.5 text-green-600" />
-                <span className="text-xs font-medium text-green-700 dark:text-green-400">Toplam Alacak</span>
-              </div>
-              <div className="text-lg font-bold text-green-700 dark:text-green-400">
-                ₺{(data?.accounting?.totalReceivables || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
-              </div>
-            </div>
-            <div className="p-2 bg-red-50 dark:bg-red-900/20 rounded-lg">
-              <div className="flex items-center gap-2 mb-1">
-                <TrendingDown className="h-3.5 w-3.5 text-red-600" />
-                <span className="text-xs font-medium text-red-700 dark:text-red-400">Toplam Borç</span>
-              </div>
-              <div className="text-lg font-bold text-red-700 dark:text-red-400">
-                ₺{(data?.accounting?.totalPayables || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
-              </div>
-            </div>
-            <div className="p-2 bg-indigo-50 dark:bg-indigo-900/20 rounded-lg">
-              <div className="flex items-center gap-2 mb-1">
-                <CreditCard className="h-3.5 w-3.5 text-indigo-600" />
-                <span className="text-xs font-medium text-indigo-700 dark:text-indigo-400">Net Durum</span>
-              </div>
-              <div className={`text-lg font-bold ${((data?.accounting?.totalReceivables || 0) - (data?.accounting?.totalPayables || 0)) >= 0 ? 'text-green-700 dark:text-green-400' : 'text-red-700 dark:text-red-400'}`}>
-                ₺{((data?.accounting?.totalReceivables || 0) - (data?.accounting?.totalPayables || 0)).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
         <Card>
-          <CardHeader className="pb-1 pt-3 px-3">
-            <CardTitle className="text-xs">Son İşlemler</CardTitle>
+          <CardHeader className="flex flex-row items-center justify-between pb-1 pt-3 px-3 gap-2">
+            <CardTitle className="text-xs flex items-center gap-2">
+              <ArrowUpDown className="h-3.5 w-3.5 text-blue-500" />
+              Son Stok Hareketleri
+            </CardTitle>
+            <Badge variant="secondary" className="text-[10px]" data-testid="badge-receipts-count">
+              {data?.recentReceipts || 0} islem (30 gun)
+            </Badge>
           </CardHeader>
           <CardContent className="px-3 pb-3">
-            <div className="space-y-2">
-              <div className="flex items-center justify-between p-2 bg-muted/50 rounded-lg">
-                <div className="flex items-center gap-2">
-                  <CheckCircle className="h-4 w-4 text-green-500" />
-                  <span className="text-xs">Mal kabul - {data?.recentReceipts || 0} kayıt (son 30 gün)</span>
+            <div className="space-y-3" data-testid="stock-movements-summary">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="p-3 rounded-lg bg-green-500/10">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Truck className="h-3.5 w-3.5 text-green-600 dark:text-green-400" />
+                    <span className="text-xs font-medium text-green-700 dark:text-green-400">Mal Kabul</span>
+                  </div>
+                  <div className="text-lg font-bold text-green-700 dark:text-green-400" data-testid="value-recent-receipts">
+                    {data?.recentReceipts || 0}
+                  </div>
+                  <span className="text-xs text-muted-foreground">Son 30 gun</span>
                 </div>
-                <Badge variant="secondary" className="text-[10px]">Tamamlandı</Badge>
+                <div className="p-3 rounded-lg bg-orange-500/10">
+                  <div className="flex items-center gap-2 mb-1">
+                    <ShoppingCart className="h-3.5 w-3.5 text-orange-600 dark:text-orange-400" />
+                    <span className="text-xs font-medium text-orange-700 dark:text-orange-400">Bekleyen Siparis</span>
+                  </div>
+                  <div className="text-lg font-bold text-orange-700 dark:text-orange-400" data-testid="value-pending-orders">
+                    {data?.pendingOrders || 0}
+                  </div>
+                  <span className="text-xs text-muted-foreground">Onay bekliyor</span>
+                </div>
               </div>
-              <div className="flex items-center justify-between p-2 bg-muted/50 rounded-lg">
-                <div className="flex items-center gap-2">
-                  <Clock className="h-4 w-4 text-orange-500" />
-                  <span className="text-xs">{data?.pendingOrders || 0} sipariş onay bekliyor</span>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="p-3 rounded-lg bg-blue-500/10">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Boxes className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
+                    <span className="text-xs font-medium text-blue-700 dark:text-blue-400">Toplam Stok</span>
+                  </div>
+                  <div className="text-lg font-bold text-blue-700 dark:text-blue-400" data-testid="value-total-inventory">
+                    {data?.totalInventoryItems || 0}
+                  </div>
+                  <span className="text-xs text-muted-foreground">Aktif kalem</span>
                 </div>
-                <Badge variant="outline" className="text-[10px]">Beklemede</Badge>
+                <div className="p-3 rounded-lg bg-red-500/10">
+                  <div className="flex items-center gap-2 mb-1">
+                    <AlertTriangle className="h-3.5 w-3.5 text-red-600 dark:text-red-400" />
+                    <span className="text-xs font-medium text-red-700 dark:text-red-400">Dusuk Stok</span>
+                  </div>
+                  <div className="text-lg font-bold text-red-700 dark:text-red-400" data-testid="value-low-stock-alerts">
+                    {data?.lowStockAlerts || 0}
+                  </div>
+                  <span className="text-xs text-muted-foreground">Uyari</span>
+                </div>
               </div>
             </div>
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader className="pb-1 pt-3 px-3">
-            <CardTitle className="text-xs">Hızlı Erişim</CardTitle>
+          <CardHeader className="flex flex-row items-center justify-between pb-1 pt-3 px-3 gap-2">
+            <CardTitle className="text-xs flex items-center gap-2">
+              <Star className="h-3.5 w-3.5 text-amber-500" />
+              Tedarikci Performans Ozeti
+            </CardTitle>
+            <Badge variant="secondary" className="text-[10px]" data-testid="badge-supplier-count">
+              Top 5
+            </Badge>
           </CardHeader>
           <CardContent className="px-3 pb-3">
-            <div className="grid grid-cols-2 gap-2">
-              <button 
-                className="p-2 bg-muted/50 rounded-lg hover-elevate text-left"
-                data-testid="quick-access-new-order"
-              >
-                <ShoppingCart className="h-4 w-4 mb-2 text-primary" />
-                <div className="font-medium text-xs">Yeni Sipariş</div>
-              </button>
-              <button 
-                className="p-2 bg-muted/50 rounded-lg hover-elevate text-left"
-                data-testid="quick-access-goods-receipt"
-              >
-                <Package className="h-4 w-4 mb-2 text-primary" />
-                <div className="font-medium text-xs">Mal Kabul</div>
-              </button>
-              <button 
-                className="p-2 bg-muted/50 rounded-lg hover-elevate text-left"
-                data-testid="quick-access-low-stock"
-              >
-                <AlertTriangle className="h-4 w-4 mb-2 text-orange-500" />
-                <div className="font-medium text-xs">Düşük Stok</div>
-              </button>
-              <button 
-                className="p-2 bg-muted/50 rounded-lg hover-elevate text-left"
-                data-testid="quick-access-suppliers"
-              >
-                <Users className="h-4 w-4 mb-2 text-primary" />
-                <div className="font-medium text-xs">Tedarikçiler</div>
-              </button>
-            </div>
+            {suppliersLoading ? (
+              <Skeleton className="h-32 w-full" />
+            ) : allSuppliers && allSuppliers.length > 0 ? (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Tedarikci</TableHead>
+                    <TableHead className="text-right">Puan</TableHead>
+                    <TableHead className="text-right">Zamaninda Teslim</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {allSuppliers.map((supplier) => {
+                    const score = parseFloat(supplier.performanceScore || "0");
+                    return (
+                      <TableRow key={supplier.id} data-testid={`supplier-row-${supplier.id}`}>
+                        <TableCell className="font-medium" data-testid={`supplier-name-${supplier.id}`}>
+                          {supplier.name}
+                        </TableCell>
+                        <TableCell className="text-right" data-testid={`supplier-score-${supplier.id}`}>
+                          <Badge 
+                            variant={score >= 80 ? "outline" : score >= 50 ? "secondary" : "destructive"}
+                            className={`text-xs ${score >= 80 ? "bg-green-500/10 text-green-700 dark:text-green-400" : ""}`}
+                          >
+                            {score.toFixed(0)}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-right font-mono text-sm text-muted-foreground" data-testid={`supplier-delivery-${supplier.id}`}>
+                          %{parseFloat(supplier.onTimeDeliveryRate || "0").toFixed(0)}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            ) : (
+              <div className="text-center py-8 text-muted-foreground">
+                <Users className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                <p data-testid="text-no-suppliers">Tedarikci verisi yok</p>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

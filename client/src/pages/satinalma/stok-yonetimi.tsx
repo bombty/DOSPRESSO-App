@@ -47,6 +47,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
+import UrunKarti from "./urun-karti";
 
 interface InventoryItem {
   id: number;
@@ -82,8 +83,18 @@ const categories = [
   { value: "all", label: "Tümü" },
   { value: "hammadde", label: "Hammadde" },
   { value: "yarimamul", label: "Yarı Mamul" },
-  { value: "mamul", label: "Mamul" },
+  { value: "mamul", label: "Mamül Ürün" },
   { value: "ambalaj", label: "Ambalaj" },
+  { value: "ekipman", label: "Ekipman" },
+  { value: "sube_ekipman", label: "Şube Ekipman" },
+  { value: "sube_malzeme", label: "Şube Malzeme" },
+  { value: "konsantre", label: "Konsantre" },
+  { value: "donut", label: "Donut" },
+  { value: "tatli", label: "Tatlı" },
+  { value: "tuzlu", label: "Tuzlu" },
+  { value: "cay_grubu", label: "Çay Grubu" },
+  { value: "kahve", label: "Kahve" },
+  { value: "toz_topping", label: "Toz/Topping" },
   { value: "sarf_malzeme", label: "Sarf Malzeme" },
   { value: "temizlik", label: "Temizlik" },
   { value: "diger", label: "Diğer" }
@@ -100,6 +111,7 @@ export default function StokYonetimi() {
   const [isMovementDialogOpen, setIsMovementDialogOpen] = useState(false);
   const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null);
+  const [selectedProductId, setSelectedProductId] = useState<number | null>(null);
   
   const [newCategory, setNewCategory] = useState("");
   const [newUnit, setNewUnit] = useState("");
@@ -127,15 +139,19 @@ export default function StokYonetimi() {
     enabled: !!selectedItem && isDetailDialogOpen,
   });
 
-  const queryParams = new URLSearchParams();
-  if (category && category !== "all") queryParams.set("category", category);
-  if (search) queryParams.set("search", search);
-  if (showLowStock) queryParams.set("lowStock", "true");
-  const queryString = queryParams.toString();
-  const inventoryUrl = `/api/inventory${queryString ? `?${queryString}` : ""}`;
-
   const { data: items, isLoading } = useQuery<InventoryItem[]>({
-    queryKey: [inventoryUrl],
+    queryKey: ['/api/inventory', { category, search, lowStock: showLowStock }],
+    queryFn: async () => {
+      const queryParams = new URLSearchParams();
+      if (category && category !== "all") queryParams.set("category", category);
+      if (search) queryParams.set("search", search);
+      if (showLowStock) queryParams.set("lowStock", "true");
+      const queryString = queryParams.toString();
+      const url = `/api/inventory${queryString ? `?${queryString}` : ""}`;
+      const res = await fetch(url);
+      if (!res.ok) throw new Error('Failed to fetch inventory');
+      return res.json();
+    },
   });
 
   const addMutation = useMutation({
@@ -143,9 +159,7 @@ export default function StokYonetimi() {
       return apiRequest("POST", "/api/inventory", data);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ predicate: (query) => 
-        (query.queryKey[0] as string).startsWith("/api/inventory")
-      });
+      queryClient.invalidateQueries({ queryKey: ['/api/inventory'] });
       resetAddForm();
       toast({ title: "Stok kalemi eklendi" });
     },
@@ -159,9 +173,7 @@ export default function StokYonetimi() {
       return apiRequest("POST", `/api/inventory/${id}/movement`, data);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ predicate: (query) => 
-        (query.queryKey[0] as string).startsWith("/api/inventory")
-      });
+      queryClient.invalidateQueries({ queryKey: ['/api/inventory'] });
       setIsMovementDialogOpen(false);
       setSelectedItem(null);
       setMovementType("");
@@ -280,9 +292,7 @@ export default function StokYonetimi() {
         }
       }
       
-      queryClient.invalidateQueries({ predicate: (query) => 
-        (query.queryKey[0] as string).startsWith("/api/inventory")
-      });
+      queryClient.invalidateQueries({ queryKey: ['/api/inventory'] });
       toast({ title: "Başarılı", description: `${rows.length} ürün içe aktarıldı` });
     } catch (error) {
       toast({ title: "Hata", description: "Dosya işlenirken hata oluştu", variant: "destructive" });
@@ -304,6 +314,15 @@ export default function StokYonetimi() {
     };
     return labels[type] || type;
   };
+
+  if (selectedProductId) {
+    return (
+      <UrunKarti
+        productId={selectedProductId}
+        onBack={() => setSelectedProductId(null)}
+      />
+    );
+  }
 
   if (isLoading) {
     return (
@@ -481,8 +500,7 @@ export default function StokYonetimi() {
                       data-testid={`inventory-row-${item.id}`}
                       className="cursor-pointer hover:bg-muted/50"
                       onClick={() => {
-                        setSelectedItem(item);
-                        setIsDetailDialogOpen(true);
+                        setSelectedProductId(item.id);
                       }}
                     >
                       <TableCell className="font-mono text-sm">{item.code}</TableCell>
@@ -508,8 +526,7 @@ export default function StokYonetimi() {
                             size="icon"
                             onClick={(e) => {
                               e.stopPropagation();
-                              setSelectedItem(item);
-                              setIsDetailDialogOpen(true);
+                              setSelectedProductId(item.id);
                             }}
                             data-testid={`button-detail-${item.id}`}
                           >

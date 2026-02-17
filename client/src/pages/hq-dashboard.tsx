@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { useRoute, useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { MuhasebeIKDashboard } from "@/components/dashboards/muhasebe-ik-dashboard";
@@ -66,7 +66,12 @@ import {
   Settings,
   Download,
   Mail,
+  Check,
+  X,
 } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import jsPDF from "jspdf";
 import { format } from "date-fns";
 import { tr } from "date-fns/locale";
@@ -1019,8 +1024,46 @@ const departmentOwnerMap: Record<string, string> = {
 function CGODashboard() {
   const [, setLocation] = useLocation();
   const { user } = useAuth();
+  const { toast } = useToast();
   const { data, isLoading } = useQuery<any>({
     queryKey: ['/api/hq-dashboard/cgo'],
+  });
+
+  const { data: pendingOrders } = useQuery<any[]>({
+    queryKey: ['/api/purchase-orders', 'onay_bekliyor'],
+    queryFn: async () => {
+      const res = await fetch('/api/purchase-orders?status=onay_bekliyor');
+      if (!res.ok) throw new Error('Failed to fetch');
+      return res.json();
+    },
+  });
+
+  const approveOrderMutation = useMutation({
+    mutationFn: async (id: number) => {
+      return apiRequest("PATCH", `/api/purchase-orders/${id}/approve`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/purchase-orders', 'onay_bekliyor'] });
+      queryClient.invalidateQueries({ predicate: (query) => (query.queryKey[0] as string).startsWith("/api/purchase-orders") });
+      toast({ title: "Siparis onaylandi" });
+    },
+    onError: () => {
+      toast({ title: "Hata", description: "Onaylama basarisiz", variant: "destructive" });
+    }
+  });
+
+  const rejectOrderMutation = useMutation({
+    mutationFn: async (id: number) => {
+      return apiRequest("PATCH", `/api/purchase-orders/${id}/status`, { status: "iptal" });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/purchase-orders', 'onay_bekliyor'] });
+      queryClient.invalidateQueries({ predicate: (query) => (query.queryKey[0] as string).startsWith("/api/purchase-orders") });
+      toast({ title: "Siparis reddedildi" });
+    },
+    onError: () => {
+      toast({ title: "Hata", description: "Reddetme basarisiz", variant: "destructive" });
+    }
   });
 
   const departmentRouteMap: Record<string, string> = {
@@ -1148,6 +1191,67 @@ function CGODashboard() {
           </CardContent>
         </Card>
       </div>
+
+      {pendingOrders && pendingOrders.length > 0 && (
+        <Card data-testid="card-pending-orders">
+          <CardHeader className="pb-1 pt-3 px-3">
+            <CardTitle className="text-xs flex items-center gap-1.5">
+              <ShoppingCart className="w-3.5 h-3.5" />
+              Onay Bekleyen Satinalma Siparisleri
+              <Badge variant="secondary" className="ml-1" data-testid="badge-pending-count">{pendingOrders.length}</Badge>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="px-3 pb-3">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="text-xs">Siparis No</TableHead>
+                  <TableHead className="text-xs">Tedarikci</TableHead>
+                  <TableHead className="text-xs text-right">Tutar</TableHead>
+                  <TableHead className="text-xs">Tarih</TableHead>
+                  <TableHead className="text-xs text-right">Islem</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {pendingOrders.map((order: any) => (
+                  <TableRow key={order.id} data-testid={`row-pending-order-${order.id}`}>
+                    <TableCell className="text-xs font-medium" data-testid={`text-order-number-${order.id}`}>{order.orderNumber}</TableCell>
+                    <TableCell className="text-xs" data-testid={`text-supplier-${order.id}`}>{order.supplierName || order.supplier?.name || "-"}</TableCell>
+                    <TableCell className="text-xs text-right" data-testid={`text-amount-${order.id}`}>
+                      {new Intl.NumberFormat("tr-TR", { style: "currency", currency: "TRY" }).format(Number(order.totalAmount || 0))}
+                    </TableCell>
+                    <TableCell className="text-xs" data-testid={`text-date-${order.id}`}>
+                      {order.orderDate ? new Date(order.orderDate).toLocaleDateString("tr-TR") : "-"}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex items-center justify-end gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => approveOrderMutation.mutate(order.id)}
+                          disabled={approveOrderMutation.isPending}
+                          data-testid={`button-approve-pending-${order.id}`}
+                        >
+                          <Check className="h-4 w-4 text-green-500" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => rejectOrderMutation.mutate(order.id)}
+                          disabled={rejectOrderMutation.isPending}
+                          data-testid={`button-reject-pending-${order.id}`}
+                        >
+                          <X className="h-4 w-4 text-red-500" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
         <Card>

@@ -24,7 +24,16 @@ import {
   cariAccounts,
   cariTransactions,
   insertCariAccountSchema,
-  insertCariTransactionSchema
+  insertCariTransactionSchema,
+  supplierQuotes,
+  supplierIssues,
+  purchaseOrderPayments,
+  insertSupplierQuoteSchema,
+  insertSupplierIssueSchema,
+  insertPurchaseOrderPaymentSchema,
+  insertProductSupplierSchema,
+  rawMaterialPriceHistory,
+  users
 } from "@shared/schema";
 import { eq, desc, and, gte, lte, sql, or, like, asc } from "drizzle-orm";
 
@@ -247,6 +256,36 @@ export function registerSatinalmaRoutes(app: Express, isAuthenticated: AuthMiddl
     }
   });
   
+  // Tedarikçiye ait ürünler
+  app.get("/api/inventory/by-supplier/:supplierId", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const supplierId = parseInt(req.params.supplierId);
+      
+      const items = await db.select({
+        id: inventory.id,
+        code: inventory.code,
+        name: inventory.name,
+        unit: inventory.unit,
+        category: inventory.category,
+        currentStock: inventory.currentStock,
+        unitPrice: productSuppliers.unitPrice,
+      })
+        .from(productSuppliers)
+        .innerJoin(inventory, eq(productSuppliers.inventoryId, inventory.id))
+        .where(and(
+          eq(productSuppliers.supplierId, supplierId),
+          eq(productSuppliers.isActive, true),
+          eq(inventory.isActive, true)
+        ))
+        .orderBy(asc(inventory.name));
+      
+      res.json(items);
+    } catch (error) {
+      console.error("Error fetching supplier inventory:", error);
+      res.status(500).json({ error: "Tedarikçi ürünleri alınamadı" });
+    }
+  });
+
   // Düşük stok uyarıları
   app.get("/api/inventory/alerts/low-stock", isAuthenticated, async (req: Request, res: Response) => {
     try {
@@ -726,8 +765,53 @@ export function registerSatinalmaRoutes(app: Express, isAuthenticated: AuthMiddl
         return res.status(404).json({ error: "Mal kabul kaydı bulunamadı" });
       }
       
-      // Kabul edildi durumunda tedarikçi skorunu güncelle
-      if (status === "kabul_edildi" && updated.supplierId) {
+      // Kabul edildi veya kısmen kabul durumunda stok hareketleri oluştur
+      if ((status === "kabul_edildi" || status === "kismen_kabul") && updated.supplierId) {
+        // Mal kabul kalemlerini al
+        const receiptItems = await db.select()
+          .from(goodsReceiptItems)
+          .leftJoin(inventory, eq(goodsReceiptItems.inventoryId, inventory.id))
+          .where(eq(goodsReceiptItems.goodsReceiptId, id));
+        
+        for (const item of receiptItems) {
+          const grItem = item.goods_receipt_items;
+          const invItem = item.inventory;
+          
+          // Kabul edilen miktar (qualityStatus uygun veya sartli_kabul ise)
+          const qualityOk = grItem.qualityStatus === "uygun" || grItem.qualityStatus === "sartli_kabul" || grItem.qualityStatus === "gecti";
+          const acceptedQty = parseFloat(grItem.acceptedQuantity || grItem.receivedQuantity || "0");
+          
+          if (qualityOk && acceptedQty > 0 && invItem) {
+            const previousStock = parseFloat(invItem.currentStock);
+            const newStock = previousStock + acceptedQty;
+            
+            // Stok hareketini kaydet
+            await db.insert(inventoryMovements).values({
+              inventoryId: grItem.inventoryId,
+              movementType: "mal_kabul",
+              quantity: acceptedQty.toString(),
+              previousStock: previousStock.toString(),
+              newStock: newStock.toString(),
+              referenceType: "goods_receipt",
+              referenceId: id,
+              batchNumber: grItem.batchNumber,
+              expiryDate: grItem.expiryDate,
+              notes: `Mal kabul - ${updated.receiptNumber}`,
+              createdById: user?.id
+            });
+            
+            // Stok miktarını güncelle
+            await db.update(inventory)
+              .set({ 
+                currentStock: newStock.toString(),
+                lastPurchasePrice: grItem.unitPrice?.toString(),
+                updatedAt: new Date()
+              })
+              .where(eq(inventory.id, grItem.inventoryId));
+          }
+        }
+        
+        // Tedarikçi skorunu güncelle
         await updateSupplierScore(updated.supplierId);
       }
       
@@ -735,6 +819,35 @@ export function registerSatinalmaRoutes(app: Express, isAuthenticated: AuthMiddl
     } catch (error) {
       console.error("Error updating goods receipt status:", error);
       res.status(500).json({ error: "Mal kabul durumu güncellenemedi" });
+    }
+  });
+  
+  // Mal kabul kalemi kalite durumunu güncelle
+  app.patch("/api/goods-receipt-items/:id/quality", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      const { qualityStatus, qualityNotes, acceptedQuantity, rejectedQuantity, rejectionReason } = req.body;
+      
+      const updateData: any = {};
+      if (qualityStatus) updateData.qualityStatus = qualityStatus;
+      if (qualityNotes !== undefined) updateData.qualityNotes = qualityNotes;
+      if (acceptedQuantity !== undefined) updateData.acceptedQuantity = acceptedQuantity.toString();
+      if (rejectedQuantity !== undefined) updateData.rejectedQuantity = rejectedQuantity.toString();
+      if (rejectionReason !== undefined) updateData.rejectionReason = rejectionReason;
+      
+      const [updated] = await db.update(goodsReceiptItems)
+        .set(updateData)
+        .where(eq(goodsReceiptItems.id, id))
+        .returning();
+      
+      if (!updated) {
+        return res.status(404).json({ error: "Mal kabul kalemi bulunamadı" });
+      }
+      
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating goods receipt item quality:", error);
+      res.status(500).json({ error: "Kalite durumu güncellenemedi" });
     }
   });
   
@@ -1109,6 +1222,552 @@ export function registerSatinalmaRoutes(app: Express, isAuthenticated: AuthMiddl
     } catch (error) {
       console.error("Error creating cari transaction:", error);
       res.status(500).json({ error: "İşlem kaydedilemedi" });
+    }
+  });
+
+  // ========================================
+  // ÜRÜN KARTI - Product Card (Enriched Detail)
+  // ========================================
+
+  app.get("/api/inventory/:id/card", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+
+      const [product] = await db.select()
+        .from(inventory)
+        .where(eq(inventory.id, id));
+
+      if (!product) {
+        return res.status(404).json({ error: "Ürün bulunamadı" });
+      }
+
+      const productSuppliersData = await db.select({
+        id: productSuppliers.id,
+        supplierId: productSuppliers.supplierId,
+        unitPrice: productSuppliers.unitPrice,
+        leadTimeDays: productSuppliers.leadTimeDays,
+        isPrimary: productSuppliers.isPrimary,
+        preferenceOrder: productSuppliers.preferenceOrder,
+        supplierName: suppliers.name,
+        supplierCode: suppliers.code,
+        supplierStatus: suppliers.status,
+        paymentTerms: suppliers.paymentTerms,
+        qualityScore: suppliers.qualityScore,
+        deliveryRate: suppliers.deliveryRate,
+        contactPerson: suppliers.contactPerson,
+        phone: suppliers.phone,
+        email: suppliers.email,
+      })
+        .from(productSuppliers)
+        .leftJoin(suppliers, eq(productSuppliers.supplierId, suppliers.id))
+        .where(eq(productSuppliers.inventoryId, id))
+        .orderBy(asc(productSuppliers.preferenceOrder));
+
+      let priceHistory: any[] = [];
+      if (product.category === "hammadde" || product.category === "raw_material") {
+        const rawMat = await db.select()
+          .from(rawMaterials)
+          .where(eq(rawMaterials.inventoryId, id))
+          .limit(1);
+
+        if (rawMat.length > 0) {
+          priceHistory = await db.select()
+            .from(rawMaterialPriceHistory)
+            .where(eq(rawMaterialPriceHistory.rawMaterialId, rawMat[0].id))
+            .orderBy(desc(rawMaterialPriceHistory.createdAt))
+            .limit(50);
+        }
+      }
+
+      const quotes = await db.select()
+        .from(supplierQuotes)
+        .where(eq(supplierQuotes.inventoryId, id))
+        .orderBy(desc(supplierQuotes.createdAt));
+
+      const issues = await db.select()
+        .from(supplierIssues)
+        .where(eq(supplierIssues.inventoryId, id))
+        .orderBy(desc(supplierIssues.createdAt));
+
+      const ninetyDaysAgo = new Date();
+      ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
+
+      const movementSummary = await db.select({
+        movementType: inventoryMovements.movementType,
+        count: sql<number>`count(*)::int`,
+        totalQuantity: sql<string>`sum(${inventoryMovements.quantity}::numeric)::text`,
+      })
+        .from(inventoryMovements)
+        .where(and(
+          eq(inventoryMovements.inventoryId, id),
+          gte(inventoryMovements.createdAt, ninetyDaysAgo)
+        ))
+        .groupBy(inventoryMovements.movementType);
+
+      const poHistory = await db.select({
+        poItemId: purchaseOrderItems.id,
+        quantity: purchaseOrderItems.quantity,
+        unitPrice: purchaseOrderItems.unitPrice,
+        lineTotal: purchaseOrderItems.lineTotal,
+        orderId: purchaseOrders.id,
+        orderNumber: purchaseOrders.orderNumber,
+        orderDate: purchaseOrders.orderDate,
+        orderStatus: purchaseOrders.status,
+        supplierId: purchaseOrders.supplierId,
+      })
+        .from(purchaseOrderItems)
+        .leftJoin(purchaseOrders, eq(purchaseOrderItems.purchaseOrderId, purchaseOrders.id))
+        .where(eq(purchaseOrderItems.inventoryId, id))
+        .orderBy(desc(purchaseOrders.orderDate))
+        .limit(10);
+
+      res.json({
+        product,
+        suppliers: productSuppliersData,
+        priceHistory,
+        quotes,
+        issues,
+        movementSummary,
+        purchaseOrderHistory: poHistory,
+      });
+    } catch (error) {
+      console.error("Error fetching product card:", error);
+      res.status(500).json({ error: "Ürün kartı bilgileri alınamadı" });
+    }
+  });
+
+  // ========================================
+  // TEDARİKÇİ FİYAT TEKLİFLERİ - Supplier Quotes
+  // ========================================
+
+  app.get("/api/supplier-quotes", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const { inventoryId } = req.query;
+
+      let conditions = [];
+      if (inventoryId) {
+        conditions.push(eq(supplierQuotes.inventoryId, parseInt(inventoryId as string)));
+      }
+
+      const quotes = await db.select()
+        .from(supplierQuotes)
+        .leftJoin(suppliers, eq(supplierQuotes.supplierId, suppliers.id))
+        .leftJoin(inventory, eq(supplierQuotes.inventoryId, inventory.id))
+        .where(conditions.length > 0 ? and(...conditions) : undefined)
+        .orderBy(desc(supplierQuotes.createdAt));
+
+      res.json(quotes.map(q => ({
+        ...q.supplier_quotes,
+        supplier: q.suppliers,
+        inventory: q.inventory,
+      })));
+    } catch (error) {
+      console.error("Error fetching supplier quotes:", error);
+      res.status(500).json({ error: "Tedarikçi teklifleri alınamadı" });
+    }
+  });
+
+  app.post("/api/supplier-quotes", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const user = (req as any).user;
+      const validatedData = insertSupplierQuoteSchema.parse({
+        ...req.body,
+        requestedById: user?.id,
+      });
+
+      const [newQuote] = await db.insert(supplierQuotes)
+        .values(validatedData)
+        .returning();
+
+      res.status(201).json(newQuote);
+    } catch (error) {
+      console.error("Error creating supplier quote:", error);
+      res.status(500).json({ error: "Tedarikçi teklifi oluşturulamadı" });
+    }
+  });
+
+  app.patch("/api/supplier-quotes/:id", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+
+      const [updated] = await db.update(supplierQuotes)
+        .set(req.body)
+        .where(eq(supplierQuotes.id, id))
+        .returning();
+
+      if (!updated) {
+        return res.status(404).json({ error: "Tedarikçi teklifi bulunamadı" });
+      }
+
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating supplier quote:", error);
+      res.status(500).json({ error: "Tedarikçi teklifi güncellenemedi" });
+    }
+  });
+
+  // ========================================
+  // TEDARİKÇİ SORUNLARI - Supplier Issues
+  // ========================================
+
+  app.get("/api/supplier-issues", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const { supplierId, inventoryId } = req.query;
+
+      let conditions = [];
+      if (supplierId) {
+        conditions.push(eq(supplierIssues.supplierId, parseInt(supplierId as string)));
+      }
+      if (inventoryId) {
+        conditions.push(eq(supplierIssues.inventoryId, parseInt(inventoryId as string)));
+      }
+
+      const issues = await db.select()
+        .from(supplierIssues)
+        .leftJoin(suppliers, eq(supplierIssues.supplierId, suppliers.id))
+        .leftJoin(inventory, eq(supplierIssues.inventoryId, inventory.id))
+        .where(conditions.length > 0 ? and(...conditions) : undefined)
+        .orderBy(desc(supplierIssues.createdAt));
+
+      res.json(issues.map(i => ({
+        ...i.supplier_issues,
+        supplier: i.suppliers,
+        inventory: i.inventory,
+      })));
+    } catch (error) {
+      console.error("Error fetching supplier issues:", error);
+      res.status(500).json({ error: "Tedarikçi sorunları alınamadı" });
+    }
+  });
+
+  app.post("/api/supplier-issues", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const user = (req as any).user;
+      const validatedData = insertSupplierIssueSchema.parse({
+        ...req.body,
+        reportedById: user?.id,
+      });
+
+      const [newIssue] = await db.insert(supplierIssues)
+        .values(validatedData)
+        .returning();
+
+      res.status(201).json(newIssue);
+    } catch (error) {
+      console.error("Error creating supplier issue:", error);
+      res.status(500).json({ error: "Tedarikçi sorunu oluşturulamadı" });
+    }
+  });
+
+  app.patch("/api/supplier-issues/:id", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      const updateData = { ...req.body };
+
+      if (updateData.status === "cozuldu" && !updateData.resolvedAt) {
+        updateData.resolvedAt = new Date();
+      }
+
+      const [updated] = await db.update(supplierIssues)
+        .set(updateData)
+        .where(eq(supplierIssues.id, id))
+        .returning();
+
+      if (!updated) {
+        return res.status(404).json({ error: "Tedarikçi sorunu bulunamadı" });
+      }
+
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating supplier issue:", error);
+      res.status(500).json({ error: "Tedarikçi sorunu güncellenemedi" });
+    }
+  });
+
+  // ========================================
+  // SİPARİŞ ÖDEMELERİ - Purchase Order Payments
+  // ========================================
+
+  app.get("/api/purchase-order-payments", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const { purchaseOrderId, status } = req.query;
+
+      let conditions = [];
+      if (purchaseOrderId) {
+        conditions.push(eq(purchaseOrderPayments.purchaseOrderId, parseInt(purchaseOrderId as string)));
+      }
+      if (status) {
+        conditions.push(eq(purchaseOrderPayments.status, status as string));
+      }
+
+      const payments = await db.select()
+        .from(purchaseOrderPayments)
+        .leftJoin(purchaseOrders, eq(purchaseOrderPayments.purchaseOrderId, purchaseOrders.id))
+        .where(conditions.length > 0 ? and(...conditions) : undefined)
+        .orderBy(desc(purchaseOrderPayments.createdAt));
+
+      res.json(payments.map(p => ({
+        ...p.purchase_order_payments,
+        purchaseOrder: p.purchase_orders,
+      })));
+    } catch (error) {
+      console.error("Error fetching purchase order payments:", error);
+      res.status(500).json({ error: "Sipariş ödemeleri alınamadı" });
+    }
+  });
+
+  app.post("/api/purchase-order-payments", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const user = (req as any).user;
+      const validatedData = insertPurchaseOrderPaymentSchema.parse({
+        ...req.body,
+        processedById: user?.id,
+      });
+
+      const [newPayment] = await db.insert(purchaseOrderPayments)
+        .values(validatedData)
+        .returning();
+
+      res.status(201).json(newPayment);
+    } catch (error) {
+      console.error("Error creating purchase order payment:", error);
+      res.status(500).json({ error: "Ödeme kaydı oluşturulamadı" });
+    }
+  });
+
+  app.patch("/api/purchase-order-payments/:id", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+
+      const [updated] = await db.update(purchaseOrderPayments)
+        .set({ ...req.body, updatedAt: new Date() })
+        .where(eq(purchaseOrderPayments.id, id))
+        .returning();
+
+      if (!updated) {
+        return res.status(404).json({ error: "Ödeme kaydı bulunamadı" });
+      }
+
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating purchase order payment:", error);
+      res.status(500).json({ error: "Ödeme kaydı güncellenemedi" });
+    }
+  });
+
+  // ========================================
+  // CEO ONAY - Purchase Order Approval
+  // ========================================
+
+  app.patch("/api/purchase-orders/:id/approve", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const user = (req as any).user;
+      const id = parseInt(req.params.id);
+
+      if (!user || (user.role !== "ceo" && user.role !== "admin")) {
+        return res.status(403).json({ error: "Bu işlem için yetkiniz yok. Sadece CEO/Admin onaylayabilir." });
+      }
+
+      const [order] = await db.select()
+        .from(purchaseOrders)
+        .where(eq(purchaseOrders.id, id));
+
+      if (!order) {
+        return res.status(404).json({ error: "Sipariş bulunamadı" });
+      }
+
+      if (order.status !== "onay_bekliyor") {
+        return res.status(400).json({ error: "Bu sipariş onay bekliyor durumunda değil" });
+      }
+
+      const [updated] = await db.update(purchaseOrders)
+        .set({
+          status: "onaylandi",
+          approvedById: user.id,
+          approvedAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .where(eq(purchaseOrders.id, id))
+        .returning();
+
+      res.json(updated);
+    } catch (error) {
+      console.error("Error approving purchase order:", error);
+      res.status(500).json({ error: "Sipariş onaylanamadı" });
+    }
+  });
+
+  // ========================================
+  // ÜRÜN TEDARİKÇİ YÖNETİMİ - Product Supplier Management
+  // ========================================
+
+  app.post("/api/inventory/:id/suppliers", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const inventoryId = parseInt(req.params.id);
+
+      const [product] = await db.select()
+        .from(inventory)
+        .where(eq(inventory.id, inventoryId));
+
+      if (!product) {
+        return res.status(404).json({ error: "Ürün bulunamadı" });
+      }
+
+      const validatedData = insertProductSupplierSchema.parse({
+        ...req.body,
+        inventoryId,
+      });
+
+      const [newLink] = await db.insert(productSuppliers)
+        .values(validatedData)
+        .returning();
+
+      res.status(201).json(newLink);
+    } catch (error) {
+      console.error("Error adding product supplier:", error);
+      res.status(500).json({ error: "Ürün tedarikçisi eklenemedi" });
+    }
+  });
+
+  // ========================================
+  // TREND ANALİZİ - Trend Analysis Dashboard
+  // ========================================
+
+  app.get("/api/satinalma/trends", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const now = new Date();
+      const ninetyDaysAgo = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+      const sixMonthsAgo = new Date(now.getTime() - 180 * 24 * 60 * 60 * 1000);
+      const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+      const topOrderedProductsQuery = db.execute(sql`
+        SELECT 
+          i.name as product_name,
+          SUM(CAST(poi.quantity AS DECIMAL)) as total_quantity,
+          SUM(CAST(poi.line_total AS DECIMAL)) as total_cost
+        FROM purchase_order_items poi
+        JOIN inventory i ON poi.inventory_id = i.id
+        JOIN purchase_orders po ON poi.purchase_order_id = po.id
+        WHERE po.order_date >= ${ninetyDaysAgo}
+        GROUP BY i.name
+        ORDER BY total_quantity DESC
+        LIMIT 10
+      `);
+
+      const priceChangesQuery = db.execute(sql`
+        SELECT 
+          rm.name as product_name,
+          rmph.previous_price as old_price,
+          rmph.new_price as new_price,
+          rmph.change_percent,
+          rmph.created_at as date
+        FROM raw_material_price_history rmph
+        JOIN raw_materials rm ON rmph.raw_material_id = rm.id
+        WHERE rmph.created_at >= ${ninetyDaysAgo}
+        ORDER BY rmph.created_at DESC
+        LIMIT 20
+      `);
+
+      const monthlySpendingQuery = db.execute(sql`
+        SELECT 
+          TO_CHAR(order_date, 'YYYY-MM') as month,
+          SUM(CAST(total_amount AS DECIMAL)) as total_spending,
+          COUNT(*) as order_count
+        FROM purchase_orders
+        WHERE order_date >= ${sixMonthsAgo}
+        GROUP BY TO_CHAR(order_date, 'YYYY-MM')
+        ORDER BY month ASC
+      `);
+
+      const stockMovementTrendsQuery = db.execute(sql`
+        SELECT 
+          TO_CHAR(created_at, 'YYYY-MM-DD') as date,
+          movement_type,
+          COUNT(*) as count
+        FROM inventory_movements
+        WHERE created_at >= ${thirtyDaysAgo}
+        GROUP BY TO_CHAR(created_at, 'YYYY-MM-DD'), movement_type
+        ORDER BY date ASC
+      `);
+
+      const categoryDistributionQuery = db.execute(sql`
+        SELECT 
+          i.category,
+          SUM(CAST(poi.line_total AS DECIMAL)) as total_cost
+        FROM purchase_order_items poi
+        JOIN inventory i ON poi.inventory_id = i.id
+        GROUP BY i.category
+        ORDER BY total_cost DESC
+      `);
+
+      const totalSpendingQuery = db.execute(sql`
+        SELECT 
+          COALESCE(SUM(CAST(total_amount AS DECIMAL)), 0) as total_spending,
+          COUNT(*) as order_count
+        FROM purchase_orders
+        WHERE order_date >= ${ninetyDaysAgo}
+      `);
+
+      const [
+        topOrderedProducts,
+        priceChanges,
+        monthlySpending,
+        stockMovementTrends,
+        categoryDistribution,
+        totalSpendingResult
+      ] = await Promise.all([
+        topOrderedProductsQuery,
+        priceChangesQuery,
+        monthlySpendingQuery,
+        stockMovementTrendsQuery,
+        categoryDistributionQuery,
+        totalSpendingQuery
+      ]);
+
+      const totalSpending = parseFloat((totalSpendingResult.rows[0] as any)?.total_spending || "0");
+      const orderCount = parseInt((totalSpendingResult.rows[0] as any)?.order_count || "0");
+      const avgOrderAmount = orderCount > 0 ? totalSpending / orderCount : 0;
+
+      const priceIncreases = priceChanges.rows.filter((p: any) => parseFloat(p.change_percent || "0") > 0).length;
+      const priceIncreaseRate = priceChanges.rows.length > 0 
+        ? (priceIncreases / priceChanges.rows.length) * 100 
+        : 0;
+
+      res.json({
+        topOrderedProducts: topOrderedProducts.rows,
+        priceChanges: priceChanges.rows,
+        monthlySpending: monthlySpending.rows,
+        stockMovementTrends: stockMovementTrends.rows,
+        categoryDistribution: categoryDistribution.rows,
+        summary: {
+          totalSpending,
+          orderCount,
+          avgOrderAmount,
+          priceIncreaseRate
+        }
+      });
+    } catch (error) {
+      console.error("Error fetching trend data:", error);
+      res.status(500).json({ error: "Trend verileri alınamadı" });
+    }
+  });
+
+  app.delete("/api/product-suppliers/:id", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+
+      const [deleted] = await db.delete(productSuppliers)
+        .where(eq(productSuppliers.id, id))
+        .returning();
+
+      if (!deleted) {
+        return res.status(404).json({ error: "Ürün-tedarikçi bağlantısı bulunamadı" });
+      }
+
+      res.json({ message: "Tedarikçi bağlantısı silindi", deleted });
+    } catch (error) {
+      console.error("Error removing product supplier:", error);
+      res.status(500).json({ error: "Ürün tedarikçisi silinemedi" });
     }
   });
 }

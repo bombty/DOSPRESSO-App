@@ -21,6 +21,8 @@ import {
   ClipboardList
 } from "lucide-react";
 
+import { lazy, Suspense } from "react";
+import { Skeleton } from "@/components/ui/skeleton";
 import StokYonetimi from "./satinalma/stok-yonetimi";
 import TedarikciYonetimi from "./satinalma/tedarikci-yonetimi";
 import SiparisYonetimi from "./satinalma/siparis-yonetimi";
@@ -30,6 +32,8 @@ import CariTakip from "./satinalma/cari-takip";
 import MaliyetYonetimi from "./fabrika/maliyet-yonetimi";
 import SayimYonetimi from "./satinalma/sayim-yonetimi";
 import FabrikaYonetimSkoru from "./fabrika/fabrika-yonetim-skoru";
+
+const TrendAnalizi = lazy(() => import("./satinalma/trend-analizi"));
 
 interface TabConfig {
   id: string;
@@ -48,6 +52,7 @@ const ALL_TABS: TabConfig[] = [
   { id: "fabrika-skor", label: "Fabrika Skoru", icon: BarChart3, restrictedToRoles: ['admin', 'ceo', 'cgo', 'fabrika_mudur'] },
   { id: "cari-takip", label: "Cari Takip", icon: CreditCard, restrictedToRoles: ['admin', 'muhasebe', 'muhasebe_ik', 'satinalma', 'ceo'] },
   { id: "urun-maliyetleri", label: "Ürün Maliyetleri", icon: Calculator, restrictedToRoles: ['admin', 'muhasebe', 'muhasebe_ik', 'satinalma', 'ceo'] },
+  { id: "trend-analizi", label: "Trend Analizi", icon: TrendingUp },
 ];
 
 export default function SatinalmaMega() {
@@ -83,6 +88,12 @@ export default function SatinalmaMega() {
         return <CariTakip />;
       case "urun-maliyetleri":
         return <MaliyetYonetimi />;
+      case "trend-analizi":
+        return (
+          <Suspense fallback={<div className="space-y-4"><Skeleton className="h-32 w-full" /><Skeleton className="h-64 w-full" /></div>}>
+            <TrendAnalizi />
+          </Suspense>
+        );
       default:
         return <SatinalmaDashboard />;
     }
