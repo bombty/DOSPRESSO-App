@@ -12696,3 +12696,35 @@ export const dashboardWidgetItems = pgTable("dashboard_widget_items", {
 export const insertDashboardWidgetItemSchema = createInsertSchema(dashboardWidgetItems).omit({ id: true, createdAt: true });
 export type InsertDashboardWidgetItem = z.infer<typeof insertDashboardWidgetItemSchema>;
 export type DashboardWidgetItem = typeof dashboardWidgetItems.$inferSelect;
+
+// ========================================
+// FINANCIAL RECORDS - Gelir/Gider Kayıtları
+// ========================================
+
+export const financialRecords = pgTable("financial_records", {
+  id: serial("id").primaryKey(),
+  branchId: integer("branch_id").references(() => branches.id, { onDelete: "cascade" }).notNull(),
+  recordDate: timestamp("record_date").notNull(),
+  month: integer("month").notNull(),
+  year: integer("year").notNull(),
+  type: varchar("type", { length: 20 }).notNull(), // 'gelir' or 'gider'
+  category: varchar("category", { length: 100 }).notNull(),
+  subCategory: varchar("sub_category", { length: 100 }),
+  description: text("description"),
+  amount: numeric("amount", { precision: 12, scale: 2 }).notNull(),
+  currency: varchar("currency", { length: 10 }).default("TRY"),
+  invoiceNo: varchar("invoice_no", { length: 100 }),
+  status: varchar("status", { length: 20 }).default("onaylandi"),
+  createdBy: varchar("created_by").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("fin_record_branch_idx").on(table.branchId),
+  index("fin_record_date_idx").on(table.recordDate),
+  index("fin_record_type_idx").on(table.type),
+  index("fin_record_month_year_idx").on(table.month, table.year),
+]);
+
+export const insertFinancialRecordSchema = createInsertSchema(financialRecords).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertFinancialRecord = z.infer<typeof insertFinancialRecordSchema>;
+export type FinancialRecord = typeof financialRecords.$inferSelect;
