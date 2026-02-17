@@ -103,7 +103,7 @@ export default function Checklists() {
       setTimeout(() => setHighlightedChecklistId(null), 3000);
     }
   }, [searchString]);
-  
+
   const canManageChecklists = isHQRole((user?.role || 'barista') as UserRoleType) || isCoach || isSupervisor;
   
   const checklistEndpoint = canManageChecklists ? "/api/checklists" : "/api/checklists/my-assignments";
@@ -126,6 +126,16 @@ export default function Checklists() {
     },
     enabled: !canManageChecklists,
   });
+
+  useEffect(() => {
+    setLocalCompletions(() => {
+      const newMap = new Map<number, ChecklistCompletion>();
+      todayCompletions.forEach(c => {
+        newMap.set(c.checklistId, c);
+      });
+      return newMap;
+    });
+  }, [todayCompletions]);
 
   const startCompletionMutation = useMutation({
     mutationFn: async ({ assignmentId, checklistId }: { assignmentId: number; checklistId: number }) => {
@@ -162,7 +172,30 @@ export default function Checklists() {
       if (!res.ok) throw new Error(await res.text());
       return res.json();
     },
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
+      setLocalCompletions(prev => {
+        const newMap = new Map(prev);
+        for (const [checklistId, completion] of Array.from(newMap.entries())) {
+          if (completion.id === variables.completionId) {
+            const updatedTaskCompletions = [...(completion.taskCompletions || [])];
+            const existingIdx = updatedTaskCompletions.findIndex(tc => tc.taskId === variables.taskId);
+            if (existingIdx >= 0) {
+              updatedTaskCompletions[existingIdx] = { ...updatedTaskCompletions[existingIdx], isCompleted: true, completedAt: new Date().toISOString() };
+            } else {
+              updatedTaskCompletions.push({
+                id: Date.now(),
+                completionId: variables.completionId,
+                taskId: variables.taskId,
+                isCompleted: true,
+                completedAt: new Date().toISOString(),
+              });
+            }
+            newMap.set(checklistId, { ...completion, taskCompletions: updatedTaskCompletions });
+            break;
+          }
+        }
+        return newMap;
+      });
       refetchCompletions();
       queryClient.invalidateQueries({ queryKey: ["/api/checklist-completions/my/today"] });
     },
@@ -588,6 +621,7 @@ export default function Checklists() {
                                   size="sm"
                                   onClick={() => {
                                     setCurrentTaskIdForUpload(task.id);
+                                    setCurrentCompletionIdForUpload(completion!.id);
                                     fileInputRef.current?.click();
                                   }}
                                   disabled={isUploading}

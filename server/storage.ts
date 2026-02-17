@@ -1781,7 +1781,7 @@ export class DatabaseStorage implements IStorage {
   async uploadChecklistPhoto(photoBuffer: Buffer, completionId: number, taskId: number): Promise<string> {
     const filename = `checklist-photos/${completionId}/${taskId}_${Date.now()}.webp`;
     const { Client } = await import("@replit/object-storage");
-    const client = new Client();
+    const client = new Client({ bucketId: process.env.DEFAULT_OBJECT_STORAGE_BUCKET_ID });
     await client.uploadFromBytes(filename, photoBuffer);
     return filename;
   }
@@ -1789,7 +1789,7 @@ export class DatabaseStorage implements IStorage {
   async getChecklistReferencePhoto(photoUrl: string): Promise<Buffer | null> {
     try {
       const { Client } = await import("@replit/object-storage");
-      const client = new Client();
+      const client = new Client({ bucketId: process.env.DEFAULT_OBJECT_STORAGE_BUCKET_ID });
       const data = await client.downloadAsBytes(photoUrl);
       return Buffer.from(data);
     } catch (error) {
@@ -1891,7 +1891,7 @@ export class DatabaseStorage implements IStorage {
     if (bucketId) {
       try {
         const { Client } = await import("@replit/object-storage");
-        client = new Client();
+        client = new Client({ bucketId: process.env.DEFAULT_OBJECT_STORAGE_BUCKET_ID });
       } catch (initError: any) {
         console.log(`⚠️ Object Storage client init failed: ${initError?.message || initError}, will only update database`);
       }

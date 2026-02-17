@@ -1292,7 +1292,7 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
       const accessToken = crypto.randomBytes(32).toString('hex');
       
       // Upload to Object Storage
-      const client = new Client();
+      const client = new Client({ bucketId: process.env.DEFAULT_OBJECT_STORAGE_BUCKET_ID });
       const path = `.private/shift-photos/${req.user.id}/${filename}`;
       const { ok, error } = await client.uploadFromBytes(path, buffer);
       
@@ -1350,7 +1350,7 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
       const accessToken = crypto.randomBytes(32).toString('hex');
       
       // Upload to Object Storage
-      const client = new Client();
+      const client = new Client({ bucketId: process.env.DEFAULT_OBJECT_STORAGE_BUCKET_ID });
       const path = `.private/${folder}/${req.user.id}/${filename}`;
       const { ok, error } = await client.uploadFromBytes(path, file.buffer);
       
@@ -1385,7 +1385,7 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
   app.get('/api/files/public/:token', async (req, res) => {
     try {
       const { Client } = await import('@replit/object-storage');
-      const client = new Client();
+      const client = new Client({ bucketId: process.env.DEFAULT_OBJECT_STORAGE_BUCKET_ID });
       const token = req.params.token;
       
       // Check token validity
@@ -1428,7 +1428,7 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
   app.get('/api/files/*', isAuthenticated, async (req: any, res) => {
     try {
       const { Client } = await import('@replit/object-storage');
-      const client = new Client();
+      const client = new Client({ bucketId: process.env.DEFAULT_OBJECT_STORAGE_BUCKET_ID });
       const path = req.params[0];
       const user = req.user!;
       
@@ -28893,7 +28893,7 @@ MUTLAKA aşağıdaki JSON formatında yanıt ver:
       if (bucketId) {
         try {
           const { Client } = await import('@replit/object-storage');
-          const client = new Client();
+          const client = new Client({ bucketId: process.env.DEFAULT_OBJECT_STORAGE_BUCKET_ID });
           
           // Convert base64 to buffer
           const base64Data = imageData.replace(/^data:image\/\w+;base64,/, '');
