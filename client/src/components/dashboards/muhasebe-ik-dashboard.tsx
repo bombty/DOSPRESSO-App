@@ -1,21 +1,16 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import {
   Users,
-  Building2,
   Calendar,
   Clock,
   DollarSign,
   FileText,
   CreditCard,
   Briefcase,
-  Factory,
-  MapPin,
-  ArrowRight,
   TrendingUp,
 } from "lucide-react";
 
@@ -36,18 +31,6 @@ interface MuhasebeIKData {
   payrollCount: number;
   payrollTotal: number;
 }
-
-const BRANCH_ICONS: Record<number, any> = {
-  5: MapPin,
-  23: Building2,
-  24: Factory,
-};
-
-const BRANCH_COLORS: Record<number, string> = {
-  5: "bg-amber-500",
-  23: "bg-blue-600",
-  24: "bg-purple-600",
-};
 
 export function MuhasebeIKDashboard() {
   const [, setLocation] = useLocation();
@@ -81,8 +64,6 @@ export function MuhasebeIKDashboard() {
       </div>
     );
   }
-
-  const focusBranches = data?.focusBranches || [];
 
   return (
     <div className="space-y-3" data-testid="muhasebe-ik-dashboard">
@@ -161,52 +142,6 @@ export function MuhasebeIKDashboard() {
         </Card>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-        {focusBranches.map((branch) => {
-          const BranchIcon = BRANCH_ICONS[branch.branchId] || Building2;
-          const bgColor = BRANCH_COLORS[branch.branchId] || "bg-gray-500";
-          const topRoles = Object.entries(branch.roles)
-            .sort(([, a], [, b]) => (b as number) - (a as number))
-            .slice(0, 3);
-
-          return (
-            <Card key={branch.branchId} className="overflow-visible" data-testid={`branch-card-${branch.branchId}`}>
-              <CardHeader className="pb-1 pt-3 px-3">
-                <CardTitle className="text-xs flex items-center gap-1.5">
-                  <div className={`p-1 rounded ${bgColor} text-white`}>
-                    <BranchIcon className="w-3 h-3" />
-                  </div>
-                  <span className="truncate">{branch.branchName}</span>
-                  <Badge variant="secondary" className="ml-auto text-[10px] shrink-0">
-                    {branch.employeeCount} kişi
-                  </Badge>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="px-3 pb-3">
-                <div className="space-y-1 mt-1">
-                  {topRoles.map(([role, count]) => (
-                    <div key={role} className="flex items-center justify-between text-[11px]">
-                      <span className="text-muted-foreground capitalize truncate">{role.replace(/_/g, ' ')}</span>
-                      <span className="font-medium">{count as number}</span>
-                    </div>
-                  ))}
-                </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="w-full mt-2 text-[11px] gap-1"
-                  onClick={() => setLocation(`/ik?branch=${branch.branchId}`)}
-                  data-testid={`btn-branch-detail-${branch.branchId}`}
-                >
-                  Personel Detay
-                  <ArrowRight className="w-3 h-3" />
-                </Button>
-              </CardContent>
-            </Card>
-          );
-        })}
-      </div>
-
       <Card className="border-0 bg-gradient-to-r from-slate-50/80 to-emerald-50/50 dark:from-slate-900/50 dark:to-emerald-900/30">
         <CardHeader className="py-2 px-3">
           <CardTitle className="text-xs font-semibold text-slate-600 dark:text-slate-400">Hızlı Erişim</CardTitle>
@@ -232,15 +167,6 @@ export function MuhasebeIKDashboard() {
         </CardContent>
       </Card>
 
-      <div className="flex items-center justify-between px-1">
-        <p className="text-[10px] text-muted-foreground">
-          Toplam sistem personeli: {data?.totalAllEmployees || 0} | Tüm bekleyen izinler: {data?.pendingLeaves || 0}
-        </p>
-        <Button variant="ghost" size="sm" className="text-[10px] h-auto p-0 gap-1" onClick={() => setLocation('/merkez-dashboard')} data-testid="btn-all-branches">
-          Tüm Şubeler
-          <ArrowRight className="w-3 h-3" />
-        </Button>
-      </div>
     </div>
   );
 }

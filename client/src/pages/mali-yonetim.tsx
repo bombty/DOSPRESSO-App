@@ -171,9 +171,10 @@ function RecordsTab({ year, month }: { year: number; month: number }) {
     },
   });
 
-  const { data: categories = [] } = useQuery<string[]>({
+  const { data: categoriesData } = useQuery<any>({
     queryKey: ['/api/financial/expense-categories'],
   });
+  const categories = categoriesData ? [...(categoriesData.gelir || []), ...(categoriesData.gider || [])] : [];
 
   const { data: branches = [] } = useQuery<any[]>({ queryKey: ['/api/branches'] });
 
@@ -239,7 +240,7 @@ function RecordsTab({ year, month }: { year: number; month: number }) {
             <SelectTrigger className="w-[120px]" data-testid="select-records-category"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Tümü</SelectItem>
-              {categories.map((c: string) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+              {categories.map((c: any) => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}
             </SelectContent>
           </Select>
         </div>
@@ -260,12 +261,22 @@ function RecordsTab({ year, month }: { year: number; month: number }) {
               </div>
               <div className="space-y-1">
                 <Label>Tür</Label>
-                <Select value={form.type} onValueChange={v => setForm({ ...form, type: v })}>
+                <Select value={form.type} onValueChange={v => setForm({ ...form, type: v, category: '' })}>
                   <SelectTrigger data-testid="select-record-type"><SelectValue /></SelectTrigger>
                   <SelectContent><SelectItem value="gelir">Gelir</SelectItem><SelectItem value="gider">Gider</SelectItem></SelectContent>
                 </Select>
               </div>
-              <div className="space-y-1"><Label>Kategori</Label><Input value={form.category} onChange={e => setForm({ ...form, category: e.target.value })} data-testid="input-record-category" /></div>
+              <div className="space-y-1">
+                <Label>Kategori</Label>
+                <Select value={form.category} onValueChange={v => setForm({ ...form, category: v })}>
+                  <SelectTrigger data-testid="select-record-category"><SelectValue placeholder="Kategori seçin" /></SelectTrigger>
+                  <SelectContent>
+                    {(form.type === 'gelir' ? (categoriesData?.gelir || []) : (categoriesData?.gider || [])).map((c: any) => (
+                      <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
               <div className="space-y-1"><Label>Açıklama</Label><Input value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} data-testid="input-record-description" /></div>
               <div className="space-y-1"><Label>Tutar (TL)</Label><Input type="number" value={form.amount} onChange={e => setForm({ ...form, amount: e.target.value })} data-testid="input-record-amount" /></div>
             </div>

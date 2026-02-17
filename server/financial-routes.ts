@@ -7,6 +7,51 @@ import {
 } from "@shared/schema";
 import { eq, and, sql, desc, asc, gte, lte, inArray } from "drizzle-orm";
 
+const PRODUCT_NAMES: Record<number, string> = {
+  1: "Karton Bardak 8oz",
+  2: "Karton Bardak 12oz",
+  3: "Karton Bardak 16oz",
+  4: "Bardak Kapağı 8oz",
+  5: "Bardak Kapağı 12oz",
+  6: "Bardak Kapağı 16oz",
+  7: "Pipet",
+  8: "Kağıt Çanta Küçük",
+  9: "Kağıt Çanta Büyük",
+  10: "Kese Kağıdı",
+  11: "Peçete",
+  12: "Porselen Kupa",
+  13: "Porselen Fincan Seti",
+  14: "Thermops Bardak",
+  15: "Makara (POS Rulosu)",
+  16: "Plastik Kaşık",
+  17: "Karıştırıcı",
+  18: "Şeker Poşeti",
+  19: "Servis Tepsisi",
+  20: "Ambalaj Filmi",
+  40: "Espresso Konsantre",
+  41: "Latte Konsantre",
+  42: "Mocha Konsantre",
+  43: "Vanilya Konsantre",
+  44: "Karamel Konsantre",
+  45: "Chai Konsantre",
+  46: "Matcha Konsantre",
+  47: "Limonata Konsantre",
+  48: "Mango Smoothie Bazı",
+  49: "Çilek Smoothie Bazı",
+  50: "Frozen Yogurt Bazı",
+  51: "Çikolatalı Donut Hamuru",
+  52: "Sade Donut Hamuru",
+  53: "Brownie Karışımı",
+  54: "Cookie Hamuru",
+  55: "Cheesecake Bazı",
+  56: "Tuzlu Kurabiye Karışımı",
+  57: "Poğaça Hamuru",
+  58: "Börek Hamuru",
+  59: "Sandviç Ekmeği",
+  60: "Granola Karışımı",
+  61: "Türk Kahvesi Blend",
+};
+
 export function registerFinancialRoutes(app: Express, isAuthenticated: any) {
 
   app.get("/api/financial/dashboard", isAuthenticated, async (req: any, res) => {
@@ -183,7 +228,7 @@ export function registerFinancialRoutes(app: Express, isAuthenticated: any) {
         const wasteCost = parseFloat(b.wasteCostTl || '0');
         totalWasteCost += wasteCost;
 
-        const productKey = `Ürün ${b.productId}`;
+        const productKey = PRODUCT_NAMES[b.productId] || `Ürün ${b.productId}`;
         if (!productWaste[productKey]) {
           productWaste[productKey] = { productName: productKey, wasteKg: 0, wasteCost: 0, batchCount: 0 };
         }
@@ -235,7 +280,7 @@ export function registerFinancialRoutes(app: Express, isAuthenticated: any) {
 
       const products = Object.values(latestByProduct).map((c: any) => ({
         productId: c.productId,
-        productName: `Ürün ${c.productId}`,
+        productName: PRODUCT_NAMES[c.productId] || `Ürün ${c.productId}`,
         unitCost: parseFloat(c.totalUnitCost || '0'),
         sellingPrice: parseFloat(c.suggestedSellingPrice || '0'),
         profitPerUnit: parseFloat(c.profitPerUnit || '0'),
