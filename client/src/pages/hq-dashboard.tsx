@@ -11,6 +11,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { UnifiedHero } from "@/components/widgets/unified-hero";
 import { CriticalAlerts } from "@/components/critical-alerts";
 import { DailyTaskPanel } from "@/components/daily-task-panel";
+import { MrDobody } from "@/components/mr-dobody";
 import { motion } from "framer-motion";
 import {
   TrendingUp,
@@ -1557,7 +1558,10 @@ export default function HQDashboard() {
 
   return (
     <div className="container mx-auto p-3 max-w-7xl space-y-3">
-      <UnifiedHero />
+      <div className="flex items-center gap-3">
+        <MrDobody size={40} />
+        <UnifiedHero />
+      </div>
       <DailyTaskPanel />
       {!isCGO && <CriticalAlerts />}
       <DepartmentComponent />

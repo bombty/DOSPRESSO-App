@@ -28,6 +28,8 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { Textarea } from "@/components/ui/textarea";
+import { MrDobody } from "@/components/mr-dobody";
+import { CEOFinancialCard } from "@/components/ceo-financial-card";
 import { Progress } from "@/components/ui/progress";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -243,7 +245,10 @@ export default function CEOCommandCenter() {
   if (isLoading) {
     return (
       <div className="p-4 space-y-4">
-        <Skeleton className="h-10 w-64" />
+        <div className="flex items-center gap-3">
+          <MrDobody size={48} />
+          <Skeleton className="h-10 w-64" />
+        </div>
         <Skeleton className="h-24 w-full" />
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
           {[...Array(6)].map((_, i) => <Skeleton key={i} className="h-40" />)}
@@ -257,7 +262,7 @@ export default function CEOCommandCenter() {
       <div className="p-4">
         <Card>
           <CardContent className="py-12 text-center">
-            <AlertCircle className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
+            <MrDobody size={64} message="Veriler yüklenemedi, tekrar deneyelim!" className="mx-auto mb-2" />
             <p className="text-muted-foreground">Dashboard verileri yuklenemedi</p>
             <Button variant="outline" className="mt-3" onClick={() => refetch()} data-testid="button-retry">Tekrar Dene</Button>
           </CardContent>
@@ -271,11 +276,14 @@ export default function CEOCommandCenter() {
   return (
     <div className="p-3 sm:p-4 space-y-4">
       <div className="flex items-center justify-between flex-wrap gap-2">
-        <div>
-          <h1 className="text-xl font-bold" data-testid="heading-ceo-dashboard">CEO Komuta Merkezi</h1>
-          <p className="text-xs text-muted-foreground">
-            Son guncelleme: {new Date(dashboardData.lastUpdated).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}
-          </p>
+        <div className="flex items-center gap-3">
+          <MrDobody size={48} />
+          <div>
+            <h1 className="text-xl font-bold" data-testid="heading-ceo-dashboard">CEO Komuta Merkezi</h1>
+            <p className="text-xs text-muted-foreground">
+              Son guncelleme: {new Date(dashboardData.lastUpdated).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}
+            </p>
+          </div>
         </div>
         <Button
           variant="outline"
@@ -428,6 +436,8 @@ export default function CEOCommandCenter() {
               </Card>
             ))}
           </div>
+
+          <CEOFinancialCard />
 
           {abuseReport && abuseReport.alerts.length > 0 && (
             <Card data-testid="card-abuse-alerts" className="border-red-200 dark:border-red-900/50">

@@ -20,6 +20,7 @@ import { PersonnelStatusPanel } from "@/components/personnel-status-panel";
 import { CriticalAlerts } from "@/components/critical-alerts";
 import { MEGA_MODULE_ORDER } from "@/lib/megaModuleConfig";
 import { HeroSection } from "@/components/ui/hero-section";
+import { MrDobody } from "@/components/mr-dobody";
 import { UnifiedHero } from "@/components/widgets/unified-hero";
 import {
   Accordion,
@@ -888,7 +889,10 @@ export function CardGridHub() {
   if (isCEO) {
     return (
       <div className="p-3 pb-24 space-y-3">
-        <UnifiedHero />
+        <div className="flex items-center gap-3">
+          <MrDobody size={40} />
+          <div className="flex-1"><UnifiedHero /></div>
+        </div>
 
         <DailyTaskPanel />
 

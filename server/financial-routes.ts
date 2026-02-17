@@ -3,7 +3,7 @@ import { db } from "./db";
 import { 
   financialRecords, branches, users, monthlyPayrolls,
   rawMaterials, factoryFixedCosts, productCostCalculations,
-  factoryProductionBatches, profitMarginTemplates
+  factoryProductionBatches, profitMarginTemplates, inventory
 } from "@shared/schema";
 import { eq, and, sql, desc, asc, gte, lte, inArray } from "drizzle-orm";
 
@@ -494,6 +494,118 @@ export function registerFinancialRoutes(app: Express, isAuthenticated: any) {
     } catch (error: any) {
       console.error("Fixed costs error:", error);
       res.json({ totalMonthly: 0, totalAnnual: 0, costs: [], byCategory: [] });
+    }
+  });
+
+  app.get("/api/financial/ceo-summary", isAuthenticated, async (req: any, res) => {
+    try {
+      const now = new Date();
+      const currentMonth = now.getMonth() + 1;
+      const currentYear = now.getFullYear();
+
+      const currentRecords = await db.select().from(financialRecords)
+        .where(and(
+          eq(financialRecords.year, currentYear),
+          eq(financialRecords.month, currentMonth)
+        ));
+
+      const totalRevenue = currentRecords.filter(r => r.type === 'gelir').reduce((sum, r) => sum + parseFloat(r.amount || '0'), 0);
+      const totalExpenses = currentRecords.filter(r => r.type === 'gider').reduce((sum, r) => sum + parseFloat(r.amount || '0'), 0);
+      const netProfit = totalRevenue - totalExpenses;
+      const profitMargin = totalRevenue > 0 ? (netProfit / totalRevenue * 100) : 0;
+
+      const prevMonth = currentMonth === 1 ? 12 : currentMonth - 1;
+      const prevYear = currentMonth === 1 ? currentYear - 1 : currentYear;
+      const prevRecords = await db.select().from(financialRecords)
+        .where(and(
+          eq(financialRecords.year, prevYear),
+          eq(financialRecords.month, prevMonth)
+        ));
+      const prevRevenue = prevRecords.filter(r => r.type === 'gelir').reduce((sum, r) => sum + parseFloat(r.amount || '0'), 0);
+      const prevExpenses = prevRecords.filter(r => r.type === 'gider').reduce((sum, r) => sum + parseFloat(r.amount || '0'), 0);
+      const revenueTrend = prevRevenue > 0 ? ((totalRevenue - prevRevenue) / prevRevenue * 100) : 0;
+
+      const inventoryItems = await db.select().from(inventory).where(eq(inventory.isActive, true));
+      const totalStockValue = inventoryItems.reduce((sum, item: any) => {
+        const stock = parseFloat(item.currentStock || '0');
+        const unitCost = parseFloat(item.unitCost || item.lastPurchasePrice || '0');
+        return sum + (stock * unitCost);
+      }, 0);
+      const materials = await db.select().from(rawMaterials);
+
+      const calculations = await db.select().from(productCostCalculations)
+        .orderBy(desc(productCostCalculations.calculationDate));
+      const latestByProduct: Record<number, any> = {};
+      calculations.forEach(c => {
+        if (!latestByProduct[c.productId]) latestByProduct[c.productId] = c;
+      });
+
+      const products = Object.values(latestByProduct).map((c: any) => ({
+        productName: PRODUCT_NAMES[c.productId] || `Ürün ${c.productId}`,
+        profitMargin: parseFloat(c.profitMarginPercentage || '0'),
+        profitPerUnit: parseFloat(c.profitPerUnit || '0'),
+        unitCost: parseFloat(c.totalUnitCost || '0'),
+        sellingPrice: parseFloat(c.suggestedSellingPrice || '0'),
+      }));
+
+      const topProducts = [...products].sort((a, b) => b.profitMargin - a.profitMargin).slice(0, 5);
+      const bottomProducts = [...products].sort((a, b) => a.profitMargin - b.profitMargin).slice(0, 5);
+
+      const employees = await db.select().from(users).where(eq(users.isActive, true));
+      const totalPersonnelCost = employees.reduce((sum, e: any) => {
+        const netSalary = (e.netSalary || 0) / 100;
+        return sum + netSalary * 1.42;
+      }, 0);
+      const totalNetSalaries = employees.reduce((sum, e: any) => sum + (e.netSalary || 0) / 100, 0);
+
+      const expenseByCategory: Record<string, number> = {};
+      currentRecords.filter(r => r.type === 'gider').forEach(r => {
+        expenseByCategory[r.category] = (expenseByCategory[r.category] || 0) + parseFloat(r.amount || '0');
+      });
+      const topExpenseCategories = Object.entries(expenseByCategory)
+        .map(([category, amount]) => ({ category, amount }))
+        .sort((a, b) => b.amount - a.amount)
+        .slice(0, 5);
+
+      const batches = await db.select().from(factoryProductionBatches);
+      const thisMonthBatches = batches.filter((b: any) => {
+        const d = new Date(b.createdAt);
+        return d.getMonth() + 1 === currentMonth && d.getFullYear() === currentYear;
+      });
+      const monthlyWasteCost = thisMonthBatches.reduce((sum, b: any) => sum + parseFloat(b.wasteCostTl || '0'), 0);
+
+      const aylar = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
+
+      res.json({
+        period: `${aylar[currentMonth - 1]} ${currentYear}`,
+        gelirGider: {
+          totalRevenue,
+          totalExpenses,
+          netProfit,
+          profitMargin: Math.round(profitMargin * 10) / 10,
+          revenueTrend: Math.round(revenueTrend * 10) / 10,
+        },
+        stokMaliyeti: {
+          totalStockValue,
+          totalItems: inventoryItems.filter((i: any) => parseFloat(i.currentStock || '0') > 0).length,
+          rawMaterialCount: materials.length,
+        },
+        enCokKazandiran: topProducts,
+        enAzKazandiran: bottomProducts,
+        personelMaliyeti: {
+          totalEmployees: employees.length,
+          totalNetSalaries,
+          totalGrossCost: totalPersonnelCost,
+        },
+        giderDagilimi: topExpenseCategories,
+        uretimFire: {
+          monthlyWasteCost,
+          batchCount: thisMonthBatches.length,
+        },
+      });
+    } catch (error: any) {
+      console.error("CEO financial summary error:", error);
+      res.status(500).json({ message: "Mali özet verisi alınamadı" });
     }
   });
 
