@@ -325,6 +325,9 @@ import {
   insertInventoryCountAssignmentSchema,
   inventoryCountEntries,
   insertInventoryCountEntrySchema,
+  inventory,
+  inventoryMovements,
+  equipmentMaintenanceLogs,
   factoryManagementScores,
   insertFactoryManagementScoreSchema,
   dashboardWidgetItems,
@@ -577,6 +580,211 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
       res.json({ status: 'ok', timestamp: new Date().toISOString() });
     } catch (error: any) {
       res.status(503).json({ status: 'error', message: 'Database connection failed' });
+    }
+  });
+
+  // ========================================
+  // QR Code Lookup Endpoints
+  // ========================================
+
+  // GET /api/qr/equipment/:id - Comprehensive equipment data for QR scan
+  app.get("/api/qr/equipment/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const idParam = req.params.id;
+      const numericId = parseInt(idParam);
+
+      let equipmentData: any = null;
+
+      // If numeric, try to find by ID first
+      if (!isNaN(numericId)) {
+        const [item] = await db.select({
+          id: equipment.id,
+          branchId: equipment.branchId,
+          equipmentType: equipment.equipmentType,
+          serialNumber: equipment.serialNumber,
+          purchaseDate: equipment.purchaseDate,
+          warrantyEndDate: equipment.warrantyEndDate,
+          maintenanceResponsible: equipment.maintenanceResponsible,
+          faultProtocol: equipment.faultProtocol,
+          lastMaintenanceDate: equipment.lastMaintenanceDate,
+          nextMaintenanceDate: equipment.nextMaintenanceDate,
+          maintenanceIntervalDays: equipment.maintenanceIntervalDays,
+          qrCodeUrl: equipment.qrCodeUrl,
+          notes: equipment.notes,
+          isActive: equipment.isActive,
+          createdAt: equipment.createdAt,
+          updatedAt: equipment.updatedAt,
+          servicingScope: equipment.servicingScope,
+          maxServiceTimeHours: equipment.maxServiceTimeHours,
+          alertThresholdHours: equipment.alertThresholdHours,
+          modelNo: equipment.modelNo,
+          imageUrl: equipment.imageUrl,
+          serviceCompany: equipment.serviceCompany,
+          servicePhone: equipment.servicePhone,
+          serviceEmail: equipment.serviceEmail,
+          serviceAddress: equipment.serviceAddress,
+          serviceContactName: equipment.serviceContactName,
+          serviceContactPhone: equipment.serviceContactPhone,
+          serviceContactEmail: equipment.serviceContactEmail,
+          serviceHandledBy: equipment.serviceHandledBy,
+          catalogId: equipment.catalogId,
+          branchName: branches.name,
+        }).from(equipment)
+          .leftJoin(branches, eq(equipment.branchId, branches.id))
+          .where(eq(equipment.id, numericId));
+        equipmentData = item;
+      }
+
+      // If not found by ID (or ID was not numeric), try by serial number
+      if (!equipmentData) {
+        const [item] = await db.select({
+          id: equipment.id,
+          branchId: equipment.branchId,
+          equipmentType: equipment.equipmentType,
+          serialNumber: equipment.serialNumber,
+          purchaseDate: equipment.purchaseDate,
+          warrantyEndDate: equipment.warrantyEndDate,
+          maintenanceResponsible: equipment.maintenanceResponsible,
+          faultProtocol: equipment.faultProtocol,
+          lastMaintenanceDate: equipment.lastMaintenanceDate,
+          nextMaintenanceDate: equipment.nextMaintenanceDate,
+          maintenanceIntervalDays: equipment.maintenanceIntervalDays,
+          qrCodeUrl: equipment.qrCodeUrl,
+          notes: equipment.notes,
+          isActive: equipment.isActive,
+          createdAt: equipment.createdAt,
+          updatedAt: equipment.updatedAt,
+          servicingScope: equipment.servicingScope,
+          maxServiceTimeHours: equipment.maxServiceTimeHours,
+          alertThresholdHours: equipment.alertThresholdHours,
+          modelNo: equipment.modelNo,
+          imageUrl: equipment.imageUrl,
+          serviceCompany: equipment.serviceCompany,
+          servicePhone: equipment.servicePhone,
+          serviceEmail: equipment.serviceEmail,
+          serviceAddress: equipment.serviceAddress,
+          serviceContactName: equipment.serviceContactName,
+          serviceContactPhone: equipment.serviceContactPhone,
+          serviceContactEmail: equipment.serviceContactEmail,
+          serviceHandledBy: equipment.serviceHandledBy,
+          catalogId: equipment.catalogId,
+          branchName: branches.name,
+        }).from(equipment)
+          .leftJoin(branches, eq(equipment.branchId, branches.id))
+          .where(eq(equipment.serialNumber, idParam));
+        equipmentData = item;
+      }
+
+      if (!equipmentData) {
+        return res.status(404).json({ error: "Ekipman bulunamadı" });
+      }
+
+      const faults = await db.select({
+        id: equipmentFaults.id,
+        description: equipmentFaults.description,
+        status: equipmentFaults.status,
+        priority: equipmentFaults.priority,
+        priorityLevel: equipmentFaults.priorityLevel,
+        createdAt: equipmentFaults.createdAt,
+        resolvedAt: equipmentFaults.resolvedAt,
+        equipmentName: equipmentFaults.equipmentName,
+        currentStage: equipmentFaults.currentStage,
+      }).from(equipmentFaults)
+        .where(eq(equipmentFaults.equipmentId, equipmentData.id))
+        .orderBy(desc(equipmentFaults.createdAt))
+        .limit(10);
+
+      const maintenanceLogs = await db.select({
+        id: equipmentMaintenanceLogs.id,
+        performedBy: equipmentMaintenanceLogs.performedBy,
+        maintenanceType: equipmentMaintenanceLogs.maintenanceType,
+        description: equipmentMaintenanceLogs.description,
+        cost: equipmentMaintenanceLogs.cost,
+        performedAt: equipmentMaintenanceLogs.performedAt,
+        nextScheduledDate: equipmentMaintenanceLogs.nextScheduledDate,
+        createdAt: equipmentMaintenanceLogs.createdAt,
+      }).from(equipmentMaintenanceLogs)
+        .where(eq(equipmentMaintenanceLogs.equipmentId, equipmentData.id))
+        .orderBy(desc(equipmentMaintenanceLogs.performedAt))
+        .limit(10);
+
+      let healthScore = 100;
+      const openFaults = faults.filter(f => f.status !== 'resolved' && f.status !== 'closed');
+      healthScore -= openFaults.length * 10;
+
+      const now = new Date();
+      if (equipmentData.nextMaintenanceDate) {
+        const nextMaint = new Date(equipmentData.nextMaintenanceDate);
+        if (nextMaint < now) {
+          healthScore -= 5;
+        }
+      }
+
+      healthScore = Math.max(0, Math.min(100, healthScore));
+
+      res.json({
+        equipment: equipmentData,
+        faults,
+        maintenanceLogs,
+        healthScore,
+      });
+    } catch (error: any) {
+      console.error("QR equipment lookup error:", error);
+      res.status(500).json({ error: "Ekipman bilgisi alınamadı" });
+    }
+  });
+
+  // GET /api/qr/inventory/:id - Comprehensive inventory data for QR scan
+  app.get("/api/qr/inventory/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const idParam = req.params.id;
+      const numericId = parseInt(idParam);
+
+      let inventoryData: any = null;
+
+      if (!isNaN(numericId)) {
+        const [item] = await db.select().from(inventory).where(eq(inventory.id, numericId));
+        inventoryData = item;
+      }
+
+      if (!inventoryData) {
+        const [item] = await db.select().from(inventory).where(eq(inventory.qrCode, idParam));
+        inventoryData = item;
+      }
+
+      if (!inventoryData) {
+        const [item] = await db.select().from(inventory).where(eq(inventory.code, idParam));
+        inventoryData = item;
+      }
+
+      if (!inventoryData) {
+        return res.status(404).json({ error: "Ürün bulunamadı" });
+      }
+
+      const movements = await db.select({
+        id: inventoryMovements.id,
+        movementType: inventoryMovements.movementType,
+        quantity: inventoryMovements.quantity,
+        previousStock: inventoryMovements.previousStock,
+        newStock: inventoryMovements.newStock,
+        referenceType: inventoryMovements.referenceType,
+        fromLocation: inventoryMovements.fromLocation,
+        toLocation: inventoryMovements.toLocation,
+        batchNumber: inventoryMovements.batchNumber,
+        notes: inventoryMovements.notes,
+        createdAt: inventoryMovements.createdAt,
+      }).from(inventoryMovements)
+        .where(eq(inventoryMovements.inventoryId, inventoryData.id))
+        .orderBy(desc(inventoryMovements.createdAt))
+        .limit(20);
+
+      res.json({
+        inventory: inventoryData,
+        movements,
+      });
+    } catch (error: any) {
+      console.error("QR inventory lookup error:", error);
+      res.status(500).json({ error: "Ürün bilgisi alınamadı" });
     }
   });
 

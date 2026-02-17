@@ -5,11 +5,64 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import { QrCode, X, Camera, MapPin } from "lucide-react";
+import { QrCode, X, Camera, MapPin, Wrench, Package, Loader2 } from "lucide-react";
+import { QREquipmentDetail } from "@/components/qr-equipment-detail";
+import { QRInventoryDetail } from "@/components/qr-inventory-detail";
 
 interface QRScannerModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+}
+
+type QRType = "shift" | "equipment" | "inventory" | "unknown";
+
+interface DetectedQR {
+  type: QRType;
+  id: string | number;
+  raw: string;
+}
+
+function detectQRType(text: string): DetectedQR {
+  const trimmed = text.trim();
+
+  if (trimmed.startsWith("shift:")) {
+    return { type: "shift", id: trimmed, raw: trimmed };
+  }
+
+  const eqPathMatch = trimmed.match(/\/ekipman\/(\d+)/i) || trimmed.match(/\/equipment\/(\d+)/i);
+  if (eqPathMatch) {
+    return { type: "equipment", id: parseInt(eqPathMatch[1]), raw: trimmed };
+  }
+
+  const dospressoEqMatch = trimmed.match(/DOSPRESSO-EQ-(\d+)/i);
+  if (dospressoEqMatch) {
+    return { type: "equipment", id: parseInt(dospressoEqMatch[1]), raw: trimmed };
+  }
+
+  const serialMatch = trimmed.match(/ESPRESSO-B\d+-/i);
+  if (serialMatch) {
+    // Pass the full serial number string, not just trailing digits
+    return { type: "equipment", id: trimmed, raw: trimmed };
+  }
+
+  const invPathMatch = trimmed.match(/\/inventory\/(\d+)/i) || trimmed.match(/\/envanter\/(\d+)/i) || trimmed.match(/\/stok\/(\d+)/i);
+  if (invPathMatch) {
+    return { type: "inventory", id: parseInt(invPathMatch[1]), raw: trimmed };
+  }
+
+  if (trimmed.startsWith("INV-")) {
+    return { type: "inventory", id: trimmed, raw: trimmed };
+  }
+
+  const urlMatch = trimmed.match(/[?&]id=(\d+)/);
+  if (urlMatch && (trimmed.includes("equipment") || trimmed.includes("ekipman"))) {
+    return { type: "equipment", id: parseInt(urlMatch[1]), raw: trimmed };
+  }
+  if (urlMatch && (trimmed.includes("inventory") || trimmed.includes("envanter") || trimmed.includes("stok"))) {
+    return { type: "inventory", id: parseInt(urlMatch[1]), raw: trimmed };
+  }
+
+  return { type: "unknown", id: trimmed, raw: trimmed };
 }
 
 export function QRScannerModal({ open, onOpenChange }: QRScannerModalProps) {
@@ -17,10 +70,17 @@ export function QRScannerModal({ open, onOpenChange }: QRScannerModalProps) {
   const [isScanning, setIsScanning] = useState(false);
   const [isCapturingPhoto, setIsCapturingPhoto] = useState(false);
   const [isGettingLocation, setIsGettingLocation] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const processedRef = useRef<boolean>(false);
+
+  const [equipmentDetailId, setEquipmentDetailId] = useState<string | number | null>(null);
+  const [equipmentDetailOpen, setEquipmentDetailOpen] = useState(false);
+  const [inventoryDetailId, setInventoryDetailId] = useState<string | number | null>(null);
+  const [inventoryDetailOpen, setInventoryDetailOpen] = useState(false);
 
   useEffect(() => {
     return () => {
@@ -32,6 +92,23 @@ export function QRScannerModal({ open, onOpenChange }: QRScannerModalProps) {
       }
     };
   }, []);
+
+  useEffect(() => {
+    if (!open) {
+      processedRef.current = false;
+      setIsProcessing(false);
+    }
+  }, [open]);
+
+  const stopScannerSilent = async () => {
+    try {
+      if (scannerRef.current) {
+        await scannerRef.current.stop();
+        scannerRef.current = null;
+      }
+    } catch {}
+    setIsScanning(false);
+  };
 
   const capturePhoto = async (): Promise<string> => {
     try {
@@ -71,7 +148,7 @@ export function QRScannerModal({ open, onOpenChange }: QRScannerModalProps) {
       const { url } = await response.json();
       setIsCapturingPhoto(false);
       return url;
-    } catch (error) {
+    } catch (error: any) {
       setIsCapturingPhoto(false);
       throw new Error(error.message || "Fotoğraf çekilemedi");
     }
@@ -102,8 +179,104 @@ export function QRScannerModal({ open, onOpenChange }: QRScannerModalProps) {
     });
   };
 
+  const handleShiftQR = async (decodedText: string) => {
+    try {
+      const photoUrl = await capturePhoto();
+      const loc = await getLocation();
+
+      await apiRequest("POST", "/api/shift-attendance/check-in", {
+        qrData: decodedText,
+        photoUrl,
+        latitude: loc.latitude,
+        longitude: loc.longitude,
+      });
+
+      toast({
+        title: "Giriş Başarılı",
+        description: "Vardiyaya giriş yapıldı",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/shift-attendance"] });
+      onOpenChange(false);
+    } catch (error: any) {
+      toast({
+        title: "Hata",
+        description: error.message || "Giriş yapılamadı",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleEquipmentQR = async (id: number | string) => {
+    // Accept both numeric IDs and string serial numbers
+    if (typeof id === "string" && id.length === 0) {
+      toast({
+        title: "Hata",
+        description: "Geçersiz ekipman ID",
+        variant: "destructive",
+      });
+      return;
+    }
+    await stopScannerSilent();
+    onOpenChange(false);
+    setTimeout(() => {
+      setEquipmentDetailId(id);
+      setEquipmentDetailOpen(true);
+    }, 200);
+  };
+
+  const handleInventoryQR = async (id: number | string) => {
+    // Pass string IDs through (e.g., "INV-001", barcodes) to the backend for lookup
+    await stopScannerSilent();
+    onOpenChange(false);
+    setTimeout(() => {
+      setInventoryDetailId(id);
+      setInventoryDetailOpen(true);
+    }, 200);
+  };
+
+  const handleQRScanned = async (decodedText: string) => {
+    if (processedRef.current) return;
+    processedRef.current = true;
+    setIsProcessing(true);
+
+    const detected = detectQRType(decodedText);
+
+    try {
+      await stopScannerSilent();
+
+      switch (detected.type) {
+        case "shift":
+          await handleShiftQR(decodedText);
+          break;
+        case "equipment":
+          await handleEquipmentQR(detected.id);
+          break;
+        case "inventory":
+          await handleInventoryQR(detected.id);
+          break;
+        default:
+          toast({
+            title: "Bilinmeyen QR Kod",
+            description: "Bu QR kod tanınamadı. Lütfen geçerli bir QR kod tarayın.",
+            variant: "destructive",
+          });
+          processedRef.current = false;
+          break;
+      }
+    } catch (error: any) {
+      toast({
+        title: "Hata",
+        description: error.message || "QR kod işlenemedi",
+        variant: "destructive",
+      });
+      processedRef.current = false;
+    }
+    setIsProcessing(false);
+  };
+
   const startScanning = async () => {
     try {
+      processedRef.current = false;
       setIsScanning(true);
       await new Promise(resolve => setTimeout(resolve, 100));
       const html5QrCode = new Html5Qrcode("qr-reader-modal");
@@ -116,51 +289,7 @@ export function QRScannerModal({ open, onOpenChange }: QRScannerModalProps) {
           qrbox: { width: 250, height: 250 },
         },
         async (decodedText) => {
-          try {
-            if (!decodedText.startsWith("shift:")) {
-              toast({
-                title: "Hata",
-                description: "Bu bir vardiya QR kodu değil",
-                variant: "destructive",
-              });
-              return;
-            }
-
-            await html5QrCode.stop();
-            setIsScanning(false);
-
-            try {
-              const photoUrl = await capturePhoto();
-              const loc = await getLocation();
-              
-              // Check-in işlemi
-              await apiRequest("POST", "/api/shift-attendance/check-in", {
-                qrData: decodedText,
-                photoUrl,
-                latitude: loc.latitude,
-                longitude: loc.longitude,
-              });
-
-              toast({
-                title: "Giriş Başarılı",
-                description: "Vardiyaya giriş yapıldı",
-              });
-              queryClient.invalidateQueries({ queryKey: ["/api/shift-attendance"] });
-              onOpenChange(false);
-            } catch (error) {
-              toast({
-                title: "Hata",
-                description: error.message || "Giriş yapılamadı",
-                variant: "destructive",
-              });
-            }
-          } catch (error) {
-            toast({
-              title: "Hata",
-              description: error.message || "QR kod işlenemedi",
-              variant: "destructive",
-            });
-          }
+          await handleQRScanned(decodedText);
         },
         () => {}
       );
@@ -175,81 +304,114 @@ export function QRScannerModal({ open, onOpenChange }: QRScannerModalProps) {
   };
 
   const stopScanning = async () => {
-    try {
-      if (scannerRef.current) {
-        await scannerRef.current.stop();
-        setIsScanning(false);
-      }
-    } catch (error) {}
+    await stopScannerSilent();
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-sm">
-        <video ref={videoRef} className="hidden" autoPlay playsInline />
-        <canvas ref={canvasRef} className="hidden" />
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <QrCode className="h-5 w-5" />
-            Hızlı QR Giriş/Çıkış
-          </DialogTitle>
-        </DialogHeader>
-        
-        <div className="space-y-3">
-          {(isCapturingPhoto || isGettingLocation) && (
-            <Card className="bg-primary/10 dark:bg-blue-950 border-primary/30">
-              <CardContent className="pt-4">
-                <div className="flex items-center gap-2">
-                  {isCapturingPhoto && (
-                    <>
-                      <Camera className="h-4 w-4 text-primary animate-pulse" />
-                      <span className="text-xs font-medium">Fotoğraf çekiliyor...</span>
-                    </>
-                  )}
-                  {isGettingLocation && (
-                    <>
-                      <MapPin className="h-4 w-4 text-primary animate-pulse" />
-                      <span className="text-xs font-medium">Konum alınıyor...</span>
-                    </>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          )}
+    <>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="max-w-sm">
+          <video ref={videoRef} className="hidden" autoPlay playsInline />
+          <canvas ref={canvasRef} className="hidden" />
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2" data-testid="title-qr-scanner">
+              <QrCode className="h-5 w-5" />
+              QR Kod Tarayıcı
+            </DialogTitle>
+          </DialogHeader>
 
-          <div
-            id="qr-reader-modal"
-            className="w-full rounded-lg overflow-hidden bg-muted"
-            style={{ minHeight: "300px" }}
-          />
-
-          <div className="flex gap-2">
-            {!isScanning ? (
-              <Button onClick={startScanning} className="flex-1" data-testid="button-qr-start">
-                <QrCode className="h-4 w-4 mr-2" />
-                QR Tara
-              </Button>
-            ) : (
-              <Button
-                onClick={stopScanning}
-                variant="destructive"
-                className="flex-1"
-                data-testid="button-qr-stop"
-              >
-                <X className="h-4 w-4 mr-2" />
-                Durdur
-              </Button>
+          <div className="space-y-3">
+            {isProcessing && (
+              <Card className="bg-primary/10 dark:bg-blue-950 border-primary/30">
+                <CardContent className="pt-4">
+                  <div className="flex items-center gap-2">
+                    <Loader2 className="h-4 w-4 text-primary animate-spin" />
+                    <span className="text-xs font-medium">QR kod işleniyor...</span>
+                  </div>
+                </CardContent>
+              </Card>
             )}
-            <Button
-              onClick={() => onOpenChange(false)}
-              variant="outline"
-              data-testid="button-qr-close"
-            >
-              Kapat
-            </Button>
+
+            {(isCapturingPhoto || isGettingLocation) && (
+              <Card className="bg-primary/10 dark:bg-blue-950 border-primary/30">
+                <CardContent className="pt-4">
+                  <div className="flex items-center gap-2">
+                    {isCapturingPhoto && (
+                      <>
+                        <Camera className="h-4 w-4 text-primary animate-pulse" />
+                        <span className="text-xs font-medium">Fotoğraf çekiliyor...</span>
+                      </>
+                    )}
+                    {isGettingLocation && (
+                      <>
+                        <MapPin className="h-4 w-4 text-primary animate-pulse" />
+                        <span className="text-xs font-medium">Konum alınıyor...</span>
+                      </>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            <div className="text-xs text-muted-foreground text-center flex items-center justify-center gap-3 flex-wrap">
+              <span className="flex items-center gap-1"><QrCode className="h-3 w-3" /> Vardiya</span>
+              <span className="flex items-center gap-1"><Wrench className="h-3 w-3" /> Ekipman</span>
+              <span className="flex items-center gap-1"><Package className="h-3 w-3" /> Envanter</span>
+            </div>
+
+            <div
+              id="qr-reader-modal"
+              className="w-full rounded-lg overflow-hidden bg-muted"
+              style={{ minHeight: "300px" }}
+            />
+
+            <div className="flex gap-2">
+              {!isScanning ? (
+                <Button onClick={startScanning} className="flex-1" data-testid="button-qr-start" disabled={isProcessing}>
+                  <QrCode className="h-4 w-4 mr-2" />
+                  QR Tara
+                </Button>
+              ) : (
+                <Button
+                  onClick={stopScanning}
+                  variant="destructive"
+                  className="flex-1"
+                  data-testid="button-qr-stop"
+                  disabled={isProcessing}
+                >
+                  <X className="h-4 w-4 mr-2" />
+                  Durdur
+                </Button>
+              )}
+              <Button
+                onClick={() => onOpenChange(false)}
+                variant="outline"
+                data-testid="button-qr-close"
+              >
+                Kapat
+              </Button>
+            </div>
           </div>
-        </div>
-      </DialogContent>
-    </Dialog>
+        </DialogContent>
+      </Dialog>
+
+      <QREquipmentDetail
+        equipmentId={equipmentDetailId}
+        open={equipmentDetailOpen}
+        onOpenChange={(val) => {
+          setEquipmentDetailOpen(val);
+          if (!val) setEquipmentDetailId(null);
+        }}
+      />
+
+      <QRInventoryDetail
+        inventoryId={inventoryDetailId}
+        open={inventoryDetailOpen}
+        onOpenChange={(val) => {
+          setInventoryDetailOpen(val);
+          if (!val) setInventoryDetailId(null);
+        }}
+      />
+    </>
   );
 }

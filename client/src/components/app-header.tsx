@@ -432,7 +432,7 @@ export function AppHeader({ notificationCount = 0, user, branchName, onQRClick }
             className="h-8 w-8"
             onClick={onQRClick}
             data-testid="button-qr-scanner"
-            title="Hızlı QR Giriş"
+            title="QR Tarayıcı"
           >
             <QrCode className="w-4 h-4 text-white" />
           </Button>
