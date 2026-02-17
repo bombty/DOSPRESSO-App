@@ -13378,6 +13378,247 @@ JSON formatında yanıt ver:
   });
 
   // ========================
+  // LEAVE REQUESTS - İzin Talepleri
+  // ========================
+
+  // GET /api/leave-requests - Get leave requests (filtered by role)
+  app.get('/api/leave-requests', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const { userId, status, leaveType, startDate, endDate } = req.query;
+
+      let query = db.select({
+        id: leaveRequests.id,
+        userId: leaveRequests.userId,
+        leaveType: leaveRequests.leaveType,
+        startDate: leaveRequests.startDate,
+        endDate: leaveRequests.endDate,
+        totalDays: leaveRequests.totalDays,
+        reason: leaveRequests.reason,
+        status: leaveRequests.status,
+        approvedBy: leaveRequests.approvedBy,
+        approvedAt: leaveRequests.approvedAt,
+        rejectionReason: leaveRequests.rejectionReason,
+        createdAt: leaveRequests.createdAt,
+        updatedAt: leaveRequests.updatedAt,
+        userName: users.fullName,
+        userRole: users.role,
+      }).from(leaveRequests)
+        .leftJoin(users, eq(leaveRequests.userId, users.id));
+
+      const conditions: any[] = [];
+
+      const isSupervisorOrAbove = user.role === 'supervisor' || user.role === 'supervisor_buddy' || user.role === 'mudur' || isHQRole(user.role);
+      if (!isSupervisorOrAbove) {
+        conditions.push(eq(leaveRequests.userId, user.id));
+      } else if (!isHQRole(user.role) && user.branchId) {
+        conditions.push(eq(users.branchId, user.branchId));
+      }
+
+      if (userId) conditions.push(eq(leaveRequests.userId, userId as string));
+      if (status) conditions.push(eq(leaveRequests.status, status as string));
+      if (leaveType) conditions.push(eq(leaveRequests.leaveType, leaveType as string));
+      if (startDate) conditions.push(gte(leaveRequests.startDate, startDate as string));
+      if (endDate) conditions.push(lte(leaveRequests.endDate, endDate as string));
+
+      const results = conditions.length > 0
+        ? await query.where(and(...conditions)).orderBy(desc(leaveRequests.createdAt))
+        : await query.orderBy(desc(leaveRequests.createdAt));
+
+      res.json(results);
+    } catch (error: any) {
+      console.error("Error fetching leave requests:", error);
+      res.status(500).json({ message: "İzin talepleri yüklenirken hata oluştu" });
+    }
+  });
+
+  // GET /api/leave-requests/my - Get current user's leave requests
+  app.get('/api/leave-requests/my', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+
+      const results = await db.select({
+        id: leaveRequests.id,
+        userId: leaveRequests.userId,
+        leaveType: leaveRequests.leaveType,
+        startDate: leaveRequests.startDate,
+        endDate: leaveRequests.endDate,
+        totalDays: leaveRequests.totalDays,
+        reason: leaveRequests.reason,
+        status: leaveRequests.status,
+        approvedBy: leaveRequests.approvedBy,
+        approvedAt: leaveRequests.approvedAt,
+        rejectionReason: leaveRequests.rejectionReason,
+        createdAt: leaveRequests.createdAt,
+        updatedAt: leaveRequests.updatedAt,
+      }).from(leaveRequests)
+        .where(eq(leaveRequests.userId, user.id))
+        .orderBy(desc(leaveRequests.createdAt));
+
+      res.json(results);
+    } catch (error: any) {
+      console.error("Error fetching my leave requests:", error);
+      res.status(500).json({ message: "İzin talepleriniz yüklenirken hata oluştu" });
+    }
+  });
+
+  // POST /api/leave-requests - Create a new leave request
+  app.post('/api/leave-requests', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const { userId, leaveType, startDate, endDate, totalDays, reason } = req.body;
+
+      if (!leaveType || !startDate || !endDate || !totalDays) {
+        return res.status(400).json({ message: "Eksik alanlar: leaveType, startDate, endDate, totalDays zorunludur" });
+      }
+
+      const targetUserId = userId || user.id;
+
+      const isSupervisorOrAbove = user.role === 'supervisor' || user.role === 'supervisor_buddy' || user.role === 'mudur' || isHQRole(user.role);
+      if (targetUserId !== user.id && !isSupervisorOrAbove) {
+        return res.status(403).json({ message: "Başka kullanıcı adına izin talebi oluşturma yetkiniz yok" });
+      }
+
+      if (leaveType === 'annual') {
+        const currentYear = new Date().getFullYear();
+        const yearStart = `${currentYear}-01-01`;
+        const yearEnd = `${currentYear}-12-31`;
+
+        const [usedDays] = await db.select({
+          total: sql<number>`COALESCE(SUM(${leaveRequests.totalDays}), 0)`,
+        }).from(leaveRequests)
+          .where(and(
+            eq(leaveRequests.userId, targetUserId),
+            eq(leaveRequests.leaveType, 'annual'),
+            eq(leaveRequests.status, 'approved'),
+            gte(leaveRequests.startDate, yearStart),
+            lte(leaveRequests.endDate, yearEnd),
+          ));
+
+        const usedAnnualDays = Number(usedDays?.total || 0);
+        const maxAnnualDays = 14;
+        if (usedAnnualDays + totalDays > maxAnnualDays) {
+          return res.status(400).json({
+            message: `Yıllık izin limiti aşılıyor. Bu yıl kullanılan: ${usedAnnualDays} gün, kalan: ${maxAnnualDays - usedAnnualDays} gün`,
+            usedDays: usedAnnualDays,
+            remainingDays: maxAnnualDays - usedAnnualDays,
+          });
+        }
+      }
+
+      const [created] = await db.insert(leaveRequests).values({
+        userId: targetUserId,
+        leaveType,
+        startDate,
+        endDate,
+        totalDays,
+        reason: reason || null,
+        status: 'pending',
+      }).returning();
+
+      res.status(201).json(created);
+    } catch (error: any) {
+      console.error("Error creating leave request:", error);
+      res.status(500).json({ message: "İzin talebi oluşturulurken hata oluştu" });
+    }
+  });
+
+  // PATCH /api/leave-requests/:id/approve - Supervisor approves a leave request
+  app.patch('/api/leave-requests/:id/approve', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const requestId = parseInt(req.params.id);
+
+      const canApprove = user.role === 'supervisor' || user.role === 'supervisor_buddy' || user.role === 'mudur' || isHQRole(user.role);
+      if (!canApprove) {
+        return res.status(403).json({ message: "İzin taleplerini onaylama yetkiniz yok" });
+      }
+
+      const [existing] = await db.select().from(leaveRequests).where(eq(leaveRequests.id, requestId));
+      if (!existing) {
+        return res.status(404).json({ message: "İzin talebi bulunamadı" });
+      }
+
+      if (existing.status !== 'pending') {
+        return res.status(400).json({ message: "Bu talep zaten işlenmiş" });
+      }
+
+      const [updated] = await db.update(leaveRequests)
+        .set({
+          status: 'approved',
+          approvedBy: user.id,
+          approvedAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .where(eq(leaveRequests.id, requestId))
+        .returning();
+
+      await storage.createNotification({
+        userId: existing.userId,
+        title: 'İzin Talebi Onaylandı',
+        message: `${existing.startDate} - ${existing.endDate} tarihleri arasındaki izin talebiniz onaylandı.`,
+        type: 'leave_approved',
+        relatedId: requestId,
+        relatedType: 'leave_request',
+        branchId: user.branchId || undefined,
+      });
+
+      res.json(updated);
+    } catch (error: any) {
+      console.error("Error approving leave request:", error);
+      res.status(500).json({ message: "İzin talebi onaylanırken hata oluştu" });
+    }
+  });
+
+  // PATCH /api/leave-requests/:id/reject - Supervisor rejects a leave request
+  app.patch('/api/leave-requests/:id/reject', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const requestId = parseInt(req.params.id);
+      const { rejectionReason } = req.body;
+
+      const canReject = user.role === 'supervisor' || user.role === 'supervisor_buddy' || user.role === 'mudur' || isHQRole(user.role);
+      if (!canReject) {
+        return res.status(403).json({ message: "İzin taleplerini reddetme yetkiniz yok" });
+      }
+
+      const [existing] = await db.select().from(leaveRequests).where(eq(leaveRequests.id, requestId));
+      if (!existing) {
+        return res.status(404).json({ message: "İzin talebi bulunamadı" });
+      }
+
+      if (existing.status !== 'pending') {
+        return res.status(400).json({ message: "Bu talep zaten işlenmiş" });
+      }
+
+      const [updated] = await db.update(leaveRequests)
+        .set({
+          status: 'rejected',
+          approvedBy: user.id,
+          rejectionReason: rejectionReason || null,
+          updatedAt: new Date(),
+        })
+        .where(eq(leaveRequests.id, requestId))
+        .returning();
+
+      await storage.createNotification({
+        userId: existing.userId,
+        title: 'İzin Talebi Reddedildi',
+        message: `${existing.startDate} - ${existing.endDate} tarihleri arasındaki izin talebiniz reddedildi.${rejectionReason ? ' Sebep: ' + rejectionReason : ''}`,
+        type: 'leave_rejected',
+        relatedId: requestId,
+        relatedType: 'leave_request',
+        branchId: user.branchId || undefined,
+      });
+
+      res.json(updated);
+    } catch (error: any) {
+      console.error("Error rejecting leave request:", error);
+      res.status(500).json({ message: "İzin talebi reddedilirken hata oluştu" });
+    }
+  });
+
+  // ========================
   // SHIFT SWAP REQUESTS - Vardiya Takas Talepleri (Çift Onay Sistemi)
   // ========================
 
@@ -39017,6 +39258,29 @@ Bu verilere dayanarak performans analizi ve iyileştirme önerileri oluştur.`
 
       const canViewSalary = isOwnProfile || user.role === 'admin' || user.role === 'muhasebe' || user.role === 'muhasebe_ik';
 
+      const overtimeResult = await db.execute(sql`
+        SELECT COALESCE(SUM(approved_minutes), 0) as total_minutes
+        FROM overtime_requests
+        WHERE user_id = ${targetId}
+        AND status = 'approved'
+        AND overtime_date >= ${monthStart}
+        AND overtime_date <= ${monthEnd}
+      `);
+      const totalOvertimeMinutes = Number((overtimeResult.rows[0] as any)?.total_minutes || 0);
+      const overtimeHoursThisMonth = Math.round((totalOvertimeMinutes / 60) * 100) / 100;
+
+      const effectiveBaseSalary = salaryScaleData ? salaryScaleData.baseSalary : baseSalary;
+      const hourlyRate = effectiveBaseSalary > 0 ? effectiveBaseSalary / (26 * 7.5) : 0;
+      const overtimeAmountThisMonth = Math.round(hourlyRate * 1.5 * overtimeHoursThisMonth);
+
+      const expectedWorkDays = 26;
+      const missingDaysThisMonth = Math.max(0, expectedWorkDays - workedDaysThisMonth);
+      const missingDayDeduction = effectiveBaseSalary > 0 ? Math.round((effectiveBaseSalary / 30) * missingDaysThisMonth) : 0;
+
+      const performanceBonus = salaryScaleData ? salaryScaleData.performanceBonus : 0;
+      const cashRegisterBonus = salaryScaleData ? salaryScaleData.cashRegisterBonus : 0;
+      const netEstimatedSalary = effectiveBaseSalary + overtimeAmountThisMonth + performanceBonus + cashRegisterBonus + monthlyMealAllowance - missingDayDeduction;
+
       res.json({
         annualLeaveTotal,
         usedLeave,
@@ -39029,6 +39293,12 @@ Bu verilere dayanarak performans analizi ve iyileştirme önerileri oluştur.`
         salaryScale: canViewSalary ? salaryScaleData : null,
         workedDaysThisMonth: canViewSalary ? workedDaysThisMonth : null,
         monthlyMealAllowance: canViewSalary ? monthlyMealAllowance : null,
+        overtimeHoursThisMonth: canViewSalary ? overtimeHoursThisMonth : 0,
+        overtimeAmountThisMonth: canViewSalary ? overtimeAmountThisMonth : 0,
+        missingDaysThisMonth: canViewSalary ? missingDaysThisMonth : 0,
+        missingDayDeduction: canViewSalary ? missingDayDeduction : 0,
+        expectedWorkDays,
+        netEstimatedSalary: canViewSalary ? netEstimatedSalary : 0,
       });
     } catch (error: any) {
       console.error("Error fetching leave-salary summary:", error);

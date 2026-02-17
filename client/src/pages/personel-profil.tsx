@@ -364,6 +364,12 @@ export default function PersonelProfilPage() {
     } | null;
     workedDaysThisMonth: number | null;
     monthlyMealAllowance: number | null;
+    overtimeHoursThisMonth: number;
+    overtimeAmountThisMonth: number;
+    missingDaysThisMonth: number;
+    missingDayDeduction: number;
+    expectedWorkDays: number;
+    netEstimatedSalary: number;
   };
 
   const { data: leaveSalary } = useQuery<LeaveSalarySummary>({
@@ -1026,33 +1032,77 @@ export default function PersonelProfilPage() {
                                 : '0 ₺'}
                             </p>
                           </div>
+                          <div>
+                            <p className="text-sm text-muted-foreground">Fazla Mesai</p>
+                            <p className="text-base font-medium" data-testid="text-overtime">
+                              {leaveSalary.overtimeHoursThisMonth > 0
+                                ? <>{leaveSalary.overtimeHoursThisMonth} saat | <span className="text-green-600 dark:text-green-400">+{leaveSalary.overtimeAmountThisMonth.toLocaleString('tr-TR')} ₺</span></>
+                                : '0 saat'}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-sm text-muted-foreground">Eksik Gün</p>
+                            <p className="text-base font-medium" data-testid="text-missing-days">
+                              {leaveSalary.missingDaysThisMonth > 0
+                                ? <>{leaveSalary.missingDaysThisMonth} gün | <span className="text-destructive">-{leaveSalary.missingDayDeduction.toLocaleString('tr-TR')} ₺</span></>
+                                : '0 gün'}
+                            </p>
+                          </div>
                         </div>
-                        <div className="mt-3 p-3 rounded-md bg-muted/50">
+                        <div className="my-3 border-t" />
+                        <div className="p-3 rounded-md bg-muted/50">
                           <div className="flex items-center justify-between gap-2">
-                            <span className="text-sm font-semibold">Toplam Maaş (Skala)</span>
-                            <span className="text-base font-bold" data-testid="text-total-salary">
-                              {leaveSalary.salaryScale.totalSalary.toLocaleString('tr-TR')} ₺
+                            <span className="text-sm font-bold">Tahmini Net Maaş</span>
+                            <span className="text-base font-bold" data-testid="text-net-estimated-salary">
+                              {leaveSalary.netEstimatedSalary.toLocaleString('tr-TR')} ₺
                             </span>
                           </div>
                         </div>
                       </>
                     ) : leaveSalary.baseSalary !== null && leaveSalary.baseSalary > 0 ? (
-                      <div className="grid grid-cols-2 gap-3">
-                        <div>
-                          <p className="text-sm text-muted-foreground">Temel Maaş</p>
-                          <p className="text-base font-medium" data-testid="text-base-salary">
-                            {leaveSalary.baseSalary.toLocaleString('tr-TR')} ₺
-                          </p>
+                      <>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <p className="text-sm text-muted-foreground">Temel Maaş</p>
+                            <p className="text-base font-medium" data-testid="text-base-salary">
+                              {leaveSalary.baseSalary.toLocaleString('tr-TR')} ₺
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-sm text-muted-foreground">Geç Kalma Kesintisi</p>
+                            <p className="text-base font-medium" data-testid="text-lateness-deduction">
+                              {leaveSalary.latenessCount > 0
+                                ? `-${(leaveSalary.latenessCount * 50).toLocaleString('tr-TR')} ₺`
+                                : '0 ₺'}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-sm text-muted-foreground">Fazla Mesai</p>
+                            <p className="text-base font-medium" data-testid="text-overtime-fallback">
+                              {leaveSalary.overtimeHoursThisMonth > 0
+                                ? <>{leaveSalary.overtimeHoursThisMonth} saat | <span className="text-green-600 dark:text-green-400">+{leaveSalary.overtimeAmountThisMonth.toLocaleString('tr-TR')} ₺</span></>
+                                : '0 saat'}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-sm text-muted-foreground">Eksik Gün</p>
+                            <p className="text-base font-medium" data-testid="text-missing-days-fallback">
+                              {leaveSalary.missingDaysThisMonth > 0
+                                ? <>{leaveSalary.missingDaysThisMonth} gün | <span className="text-destructive">-{leaveSalary.missingDayDeduction.toLocaleString('tr-TR')} ₺</span></>
+                                : '0 gün'}
+                            </p>
+                          </div>
                         </div>
-                        <div>
-                          <p className="text-sm text-muted-foreground">Geç Kalma Kesintisi</p>
-                          <p className="text-base font-medium" data-testid="text-lateness-deduction">
-                            {leaveSalary.latenessCount > 0
-                              ? `-${(leaveSalary.latenessCount * 50).toLocaleString('tr-TR')} ₺`
-                              : '0 ₺'}
-                          </p>
+                        <div className="my-3 border-t" />
+                        <div className="p-3 rounded-md bg-muted/50">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="text-sm font-bold">Tahmini Net Maaş</span>
+                            <span className="text-base font-bold" data-testid="text-net-estimated-salary-fallback">
+                              {leaveSalary.netEstimatedSalary.toLocaleString('tr-TR')} ₺
+                            </span>
+                          </div>
                         </div>
-                      </div>
+                      </>
                     ) : null}
                     <p className="text-xs text-muted-foreground mt-2" data-testid="text-salary-note">
                       Detaylı maaş bilgileri için İK departmanına başvurunuz.

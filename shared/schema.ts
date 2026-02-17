@@ -4015,6 +4015,8 @@ export const shifts = pgTable("shifts", {
   startTime: time("start_time", { precision: 0 }).notNull(),
   endTime: time("end_time", { precision: 0 }).notNull(),
   shiftType: varchar("shift_type", { length: 20 }).notNull(),
+  breakStartTime: time("break_start_time", { precision: 0 }),
+  breakEndTime: time("break_end_time", { precision: 0 }),
   status: varchar("status", { length: 20 }).notNull().default("draft"),
   workloadScore: numeric("workload_score", { precision: 5, scale: 2 }),
   aiPlanId: varchar("ai_plan_id", { length: 50 }),
