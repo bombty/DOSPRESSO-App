@@ -3,6 +3,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { UserRole } from "@shared/schema";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -92,16 +93,50 @@ const SCOPE_LABELS: Record<string, { label: string; icon: any; color: string }> 
   global: { label: "Tümü", icon: Globe, color: "text-green-500" },
 };
 
-const ROLE_GROUPS = {
-  admin: { label: "Admin", color: "bg-red-500", roles: ["admin"], scope: "admin" },
+// Base ROLE_GROUPS with all roles organized by category
+const ROLE_GROUPS_BASE = {
+  yonetim: { 
+    label: "Yönetim", 
+    color: "bg-red-500", 
+    roles: ["admin", "ceo", "cgo"], 
+    scope: "admin" 
+  },
   hq: { 
-    label: "HQ Rolleri", 
+    label: "HQ Departmanları", 
     color: "bg-blue-500", 
-    roles: ["muhasebe", "teknik", "destek", "coach", "satinalma", "yatirimci_hq"],
+    roles: ["muhasebe_ik", "muhasebe", "satinalma", "coach", "marketing", "trainer", "kalite_kontrol", "teknik", "destek", "yatirimci_hq"],
     scope: "hq"
   },
-  fabrika: { label: "Fabrika", color: "bg-orange-500", roles: ["fabrika", "fabrika_mudur", "fabrika_operator"], scope: "hq" },
-  sube: { label: "Şube Rolleri", color: "bg-green-500", roles: ["supervisor", "supervisor_buddy", "barista", "bar_buddy", "stajyer", "yatirimci_branch"], scope: "branch" },
+  fabrika: { 
+    label: "Fabrika", 
+    color: "bg-orange-500", 
+    roles: ["fabrika", "fabrika_mudur", "fabrika_operator", "fabrika_sorumlu", "fabrika_personel"], 
+    scope: "hq" 
+  },
+  sube: { 
+    label: "Şube Rolleri", 
+    color: "bg-green-500", 
+    roles: ["mudur", "supervisor", "supervisor_buddy", "barista", "bar_buddy", "stajyer", "yatirimci_branch"], 
+    scope: "branch" 
+  },
+};
+
+// Safety mechanism: ensure all UserRole values are in ROLE_GROUPS
+const allRolesInGroups = Object.values(ROLE_GROUPS_BASE).flatMap(group => group.roles);
+const allUserRoles = Object.values(UserRole);
+const uncategorizedRoles = allUserRoles.filter(role => !allRolesInGroups.includes(role));
+
+// Build final ROLE_GROUPS with uncategorized roles added if any
+const ROLE_GROUPS = {
+  ...ROLE_GROUPS_BASE,
+  ...(uncategorizedRoles.length > 0 && {
+    uncategorized: {
+      label: "Kategorize Edilmemiş",
+      color: "bg-gray-500",
+      roles: uncategorizedRoles,
+      scope: "hq" as const
+    }
+  })
 };
 
 const ROLE_LABELS: Record<string, string> = {

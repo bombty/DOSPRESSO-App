@@ -4005,7 +4005,7 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
     }
   });
 
-  // Update checklist with tasks (HQ coach always, supervisors only if isEditable=true)
+  // Update checklist with tasks (Admin/CEO/CGO/Coach/Trainer always, supervisors only if isEditable=true)
   app.patch('/api/checklists/:id', isAuthenticated, async (req: any, res) => {
     try {
       const user = req.user!;
@@ -4019,13 +4019,17 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
       }
 
       // Authorization:
-      // - HQ coach: Always allowed
-      // - Supervisors: Only if isEditable=true
+      // - Admin/CEO/CGO: Always allowed (executive override)
+      // - HQ coach/trainer: Always allowed
+      // - Supervisors/mudur: Only if isEditable=true
       // - Others: Denied
-      if (role === 'coach') {
-        // HQ coach can always edit
-      } else if (role === 'supervisor' || role === 'supervisor_buddy') {
-        // Supervisors can only edit if isEditable=true
+      const alwaysAllowedRoles = ['admin', 'ceo', 'cgo', 'coach', 'trainer'];
+      const editableOnlyRoles = ['supervisor', 'supervisor_buddy', 'mudur'];
+      
+      if (alwaysAllowedRoles.includes(role)) {
+        // Admin, executive and HQ roles can always edit
+      } else if (editableOnlyRoles.includes(role)) {
+        // Supervisors and branch managers can only edit if isEditable=true
         if (!existingChecklist.isEditable) {
           return res.status(403).json({ message: "Bu checklist düzenlenemez (isEditable=false)" });
         }
