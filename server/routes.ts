@@ -2144,6 +2144,111 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
     }
   });
 
+  app.get('/api/tasks/fairness-report', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const userRole = user.role as string;
+      const isHQ = isHQRole(userRole as UserRoleType);
+      
+      const days = parseInt(req.query.days as string) || 30;
+      const sinceDate = new Date();
+      sinceDate.setDate(sinceDate.getDate() - days);
+      
+      const branchId = req.query.branchId ? parseInt(req.query.branchId as string) : null;
+      
+      const userBranchId = !isHQ ? user.branchId : branchId;
+      
+      const allTasks = await db.select({
+        assignedToId: tasks.assignedToId,
+        status: tasks.status,
+        priority: tasks.priority,
+        createdAt: tasks.createdAt,
+        branchId: tasks.branchId,
+      })
+      .from(tasks)
+      .where(
+        and(
+          gte(tasks.createdAt, sinceDate),
+          userBranchId ? eq(tasks.branchId, userBranchId) : undefined,
+        )
+      );
+      
+      const allUsers = await db.select({
+        id: users.id,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        role: users.role,
+        branchId: users.branchId,
+      })
+      .from(users)
+      .where(
+        userBranchId ? eq(users.branchId, userBranchId) : undefined,
+      );
+      
+      const userTaskCounts: Record<string, { 
+        userId: string;
+        name: string;
+        role: string;
+        branchId: number | null;
+        totalTasks: number;
+        completedTasks: number;
+        overdueCount: number;
+        avgPriority: number;
+      }> = {};
+      
+      for (const u of allUsers) {
+        if (!u.id) continue;
+        const userTasks = allTasks.filter(t => t.assignedToId === u.id);
+        const priorityMap: Record<string, number> = { 'düşük': 1, 'orta': 2, 'yüksek': 3 };
+        const priorities = userTasks.map(t => priorityMap[t.priority || 'orta'] || 2);
+        
+        userTaskCounts[u.id] = {
+          userId: u.id,
+          name: `${u.firstName || ''} ${u.lastName || ''}`.trim(),
+          role: u.role || '',
+          branchId: u.branchId,
+          totalTasks: userTasks.length,
+          completedTasks: userTasks.filter(t => t.status === 'onaylandi').length,
+          overdueCount: userTasks.filter(t => t.status === 'gecikmiş').length,
+          avgPriority: priorities.length > 0 ? Math.round((priorities.reduce((a, b) => a + b, 0) / priorities.length) * 10) / 10 : 0,
+        };
+      }
+      
+      const roleGroups: Record<string, typeof userTaskCounts[string][]> = {};
+      for (const data of Object.values(userTaskCounts)) {
+        if (data.totalTasks === 0 && !data.role) continue;
+        const role = data.role || 'unknown';
+        if (!roleGroups[role]) roleGroups[role] = [];
+        roleGroups[role].push(data);
+      }
+      
+      const report = Object.entries(roleGroups).map(([role, members]) => {
+        const avgTasks = members.reduce((sum, m) => sum + m.totalTasks, 0) / Math.max(members.length, 1);
+        const maxTasks = Math.max(...members.map(m => m.totalTasks));
+        const minTasks = Math.min(...members.map(m => m.totalTasks));
+        
+        return {
+          role,
+          memberCount: members.length,
+          avgTasks: Math.round(avgTasks * 10) / 10,
+          maxTasks,
+          minTasks,
+          spread: maxTasks - minTasks,
+          members: members.sort((a, b) => b.totalTasks - a.totalTasks),
+        };
+      }).filter(r => r.memberCount > 0);
+      
+      res.json({
+        period: days,
+        branchId: userBranchId,
+        report,
+      });
+    } catch (error: any) {
+      console.error("Error generating fairness report:", error);
+      res.status(500).json({ message: "Adalet raporu oluşturulamadı" });
+    }
+  });
+
   app.get('/api/tasks/:id', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
@@ -17646,6 +17751,263 @@ Cevaplarınız kısa, faydalı ve türkçe olmalıdır.`;
     } catch (error: Error | unknown) {
       console.error("Error deleting shift:", error);
       res.status(500).json({ message: "Vardiya silinemedi" });
+    }
+  });
+
+  // POST /api/shifts/validate-plan - Validate weekly shift plan against DOSPRESSO rules
+  app.post('/api/shifts/validate-plan', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const role = user.role as UserRoleType;
+
+      if (!isHQRole(role) && !['supervisor', 'supervisor_buddy', 'admin'].includes(role)) {
+        return res.status(403).json({ message: "Vardiya doğrulama yetkiniz yok" });
+      }
+
+      const { z } = await import('zod');
+      const validateSchema = z.object({
+        weekStart: z.string(),
+        branchId: z.number(),
+      });
+
+      const { weekStart, branchId } = validateSchema.parse(req.body);
+
+      if (isBranchRole(role) && branchId !== user.branchId) {
+        return res.status(403).json({ message: "Sadece kendi şubenizi doğrulayabilirsiniz" });
+      }
+
+      const startDate = new Date(weekStart);
+      const endDate = new Date(startDate);
+      endDate.setDate(endDate.getDate() + 6);
+      const weekEnd = endDate.toISOString().split('T')[0];
+
+      const weekShifts = await storage.getShifts(branchId, undefined, weekStart, weekEnd);
+      const allEmployees = await storage.getAllEmployees(branchId);
+
+      const prevWeekStart = new Date(startDate);
+      prevWeekStart.setDate(prevWeekStart.getDate() - 7);
+      const prevWeekEnd = new Date(startDate);
+      prevWeekEnd.setDate(prevWeekEnd.getDate() - 1);
+      const prevWeekShifts = await storage.getShifts(
+        branchId, undefined,
+        prevWeekStart.toISOString().split('T')[0],
+        prevWeekEnd.toISOString().split('T')[0]
+      );
+
+      interface ShiftValidation {
+        type: 'error' | 'warning';
+        message: string;
+        category: 'hours' | 'rotation' | 'power_balance' | 'weekend' | 'peak_hours' | 'opening';
+        affectedEmployees?: string[];
+        day?: string;
+      }
+
+      const validations: ShiftValidation[] = [];
+
+      const timeToMinutes = (t: string | null | undefined): number => {
+        if (!t) return 0;
+        const parts = t.substring(0, 5).split(':').map(Number);
+        return parts[0] * 60 + parts[1];
+      };
+
+      const getShiftDurationHours = (s: any): number => {
+        const start = timeToMinutes(s.startTime);
+        const end = timeToMinutes(s.endTime);
+        let diff = end - start;
+        if (diff < 0) diff += 24 * 60;
+        return diff / 60;
+      };
+
+      const getDospressoType = (startTime: string | null | undefined): string => {
+        const mins = timeToMinutes(startTime);
+        if (mins <= 8 * 60) return 'opening';
+        if (mins <= 12 * 60) return 'intermediate';
+        if (mins <= 16 * 60) return 'first_closing';
+        return 'closing';
+      };
+
+      const experiencedRoles = ['supervisor', 'supervisor_buddy', 'barista', 'admin'];
+
+      // 1. 45-Hour Weekly Minimum for full-time employees
+      const fulltimeEmployees = allEmployees.filter((e: any) => e.employmentType !== 'parttime');
+      for (const emp of fulltimeEmployees) {
+        const empShifts = weekShifts.filter((s: any) => String(s.assignedToId) === String(emp.id));
+        const totalHours = empShifts.reduce((sum: number, s: any) => sum + getShiftDurationHours(s), 0);
+        if (totalHours < 45) {
+          validations.push({
+            type: 'warning',
+            message: `${emp.fullName || emp.firstName} haftalık ${totalHours.toFixed(1)} saat çalışıyor (minimum 45 saat)`,
+            category: 'hours',
+            affectedEmployees: [String(emp.id)],
+          });
+        }
+      }
+
+      // 2. Weekly Rotation Fairness
+      for (const emp of allEmployees) {
+        const currentShifts = weekShifts.filter((s: any) => String(s.assignedToId) === String(emp.id));
+        const prevShifts = prevWeekShifts.filter((s: any) => String(s.assignedToId) === String(emp.id));
+
+        if (currentShifts.length > 0 && prevShifts.length > 0) {
+          const currentTypes = new Set(currentShifts.map((s: any) => getDospressoType(s.startTime)));
+          const prevTypes = new Set(prevShifts.map((s: any) => getDospressoType(s.startTime)));
+
+          if (currentTypes.size === 1 && prevTypes.size === 1) {
+            const currentType = [...currentTypes][0];
+            const prevType = [...prevTypes][0];
+            if (currentType === prevType) {
+              const typeLabels: Record<string, string> = {
+                opening: 'Açılış', intermediate: 'Aracı',
+                first_closing: '1. Kapanış', closing: 'Kapanış'
+              };
+              validations.push({
+                type: 'warning',
+                message: `${(emp as any).fullName || (emp as any).firstName} ardışık 2 hafta aynı vardiya tipinde (${typeLabels[currentType] || currentType})`,
+                category: 'rotation',
+                affectedEmployees: [String(emp.id)],
+              });
+            }
+          }
+        }
+      }
+
+      // Group shifts by day for day-level checks
+      const dayNames = ['Pazar', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi'];
+
+      for (let d = 0; d < 7; d++) {
+        const dayDate = new Date(startDate);
+        dayDate.setDate(dayDate.getDate() + d);
+        const dayStr = dayDate.toISOString().split('T')[0];
+        const dayOfWeek = dayDate.getDay();
+        const dayName = dayNames[dayOfWeek];
+        const dayShifts = weekShifts.filter((s: any) => s.shiftDate === dayStr);
+
+        // 3. Power Balance checks
+        const shiftSlots: Record<string, any[]> = {};
+        for (const s of dayShifts) {
+          const sType = getDospressoType(s.startTime);
+          if (!shiftSlots[sType]) shiftSlots[sType] = [];
+          shiftSlots[sType].push(s);
+        }
+
+        for (const [slotType, slotShifts] of Object.entries(shiftSlots)) {
+          const slotEmps = slotShifts.map((s: any) => {
+            const emp = allEmployees.find((e: any) => String(e.id) === String(s.assignedToId));
+            return emp;
+          }).filter(Boolean);
+
+          const trainees = slotEmps.filter((e: any) => e.role === 'stajyer');
+          if (trainees.length >= 2 && slotEmps.length === trainees.length) {
+            validations.push({
+              type: 'error',
+              message: `${dayName}: ${slotType} vardiyasında yalnızca stajyerler var`,
+              category: 'power_balance',
+              affectedEmployees: trainees.map((e: any) => String(e.id)),
+              day: dayStr,
+            });
+          }
+
+          const hasExperienced = slotEmps.some((e: any) => experiencedRoles.includes(e.role));
+          if (slotEmps.length > 0 && !hasExperienced) {
+            validations.push({
+              type: 'error',
+              message: `${dayName}: ${slotType} vardiyasında deneyimli personel yok`,
+              category: 'power_balance',
+              affectedEmployees: slotEmps.map((e: any) => String(e.id)),
+              day: dayStr,
+            });
+          }
+
+          const supervisors = slotEmps.filter((e: any) => e.role === 'supervisor');
+          const buddies = slotEmps.filter((e: any) => e.role === 'supervisor_buddy');
+          if (supervisors.length > 0 && buddies.length > 0) {
+            validations.push({
+              type: 'warning',
+              message: `${dayName}: ${slotType} vardiyasında supervisor ve buddy aynı anda çalışıyor`,
+              category: 'power_balance',
+              affectedEmployees: [...supervisors, ...buddies].map((e: any) => String(e.id)),
+              day: dayStr,
+            });
+          }
+        }
+
+        // 4. Weekend Rules (Saturday=6, Sunday=0)
+        if (dayOfWeek === 0 || dayOfWeek === 6) {
+          if (dayShifts.length < 2) {
+            validations.push({
+              type: 'warning',
+              message: `${dayName} (${dayStr}): Hafta sonunda yetersiz personel (${dayShifts.length} kişi)`,
+              category: 'weekend',
+              day: dayStr,
+            });
+          }
+        }
+
+        // 5. Peak Hour Break Check (13:00-17:30)
+        const peakStart = 13 * 60;
+        const peakEnd = 17 * 60 + 30;
+        const peakBreaks = dayShifts.filter((s: any) => {
+          const breakMin = timeToMinutes(s.breakStartTime);
+          return breakMin >= peakStart && breakMin <= peakEnd;
+        });
+
+        if (peakBreaks.length > 1) {
+          validations.push({
+            type: 'warning',
+            message: `${dayName}: Yoğun saatlerde (13:00-17:30) ${peakBreaks.length} kişi aynı anda molada`,
+            category: 'peak_hours',
+            affectedEmployees: peakBreaks.map((s: any) => String(s.assignedToId)),
+            day: dayStr,
+          });
+        }
+
+        // 6. Opening Shift Check (must have exactly 2 people at 07:30, one experienced)
+        const openingShifts = dayShifts.filter((s: any) => {
+          const startMin = timeToMinutes(s.startTime);
+          return startMin <= 8 * 60;
+        });
+
+        if (openingShifts.length > 0 && openingShifts.length < 2) {
+          validations.push({
+            type: 'error',
+            message: `${dayName}: Açılış vardiyasında ${openingShifts.length} kişi var (minimum 2 olmalı)`,
+            category: 'opening',
+            affectedEmployees: openingShifts.map((s: any) => String(s.assignedToId)),
+            day: dayStr,
+          });
+        }
+
+        if (openingShifts.length > 0) {
+          const openingEmps = openingShifts.map((s: any) =>
+            allEmployees.find((e: any) => String(e.id) === String(s.assignedToId))
+          ).filter(Boolean);
+          const hasExpOpening = openingEmps.some((e: any) => experiencedRoles.includes(e.role));
+          if (!hasExpOpening) {
+            validations.push({
+              type: 'error',
+              message: `${dayName}: Açılış vardiyasında deneyimli personel yok`,
+              category: 'opening',
+              affectedEmployees: openingEmps.map((e: any) => String(e.id)),
+              day: dayStr,
+            });
+          }
+        }
+      }
+
+      res.json({
+        validations,
+        summary: {
+          errors: validations.filter(v => v.type === 'error').length,
+          warnings: validations.filter(v => v.type === 'warning').length,
+          total: validations.length,
+        },
+      });
+    } catch (error: any) {
+      console.error("Error validating shift plan:", error);
+      if (error?.name === 'ZodError') {
+        return res.status(400).json({ message: "Geçersiz veri", errors: error.errors });
+      }
+      res.status(500).json({ message: "Vardiya planı doğrulanamadı" });
     }
   });
 

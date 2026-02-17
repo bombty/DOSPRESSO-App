@@ -27,7 +27,7 @@ import { QuickTaskModal } from "@/components/quick-task-modal";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { insertTaskSchema, type Task, type InsertTask, type Branch, type User, isHQRole as checkIsHQRole, type TaskStatus, type TaskPriority } from "@shared/schema";
-import { Camera, Check, Clock, AlertCircle, CheckCircle2, PlayCircle, Search, X, ThumbsUp, ThumbsDown, Calendar, User as UserIcon, ChevronDown, Filter, XCircle, ArrowUp, ArrowDown, Eye, EyeOff, Building2, Send, Star } from "lucide-react";
+import { Camera, Check, Clock, AlertCircle, CheckCircle2, PlayCircle, Search, X, ThumbsUp, ThumbsDown, Calendar, User as UserIcon, ChevronDown, Filter, XCircle, ArrowUp, ArrowDown, Eye, EyeOff, Building2, Send, Star, BarChart3 } from "lucide-react";
 import { StarRating } from "@/components/star-rating";
 import { format } from "date-fns";
 
@@ -63,6 +63,8 @@ export default function Tasks() {
   const [bulkBranchIds, setBulkBranchIds] = useState<number[]>([]);
   const [bulkScheduledDate, setBulkScheduledDate] = useState("");
   const [bulkScheduledTime, setBulkScheduledTime] = useState("");
+  const [showFairnessDialog, setShowFairnessDialog] = useState(false);
+  const [fairnessPeriod, setFairnessPeriod] = useState(30);
 
   const { data: tasks, isLoading } = useQuery<Task[]>({
     queryKey: ["/api/tasks"],
@@ -109,6 +111,16 @@ export default function Tasks() {
 
   const { data: allUsers, isLoading: isAllUsersLoading } = useQuery<User[]>({
     queryKey: ["/api/users"],
+  });
+
+  const { data: fairnessData, isLoading: isFairnessLoading } = useQuery<any>({
+    queryKey: ["/api/tasks/fairness-report", fairnessPeriod],
+    queryFn: async () => {
+      const res = await fetch(`/api/tasks/fairness-report?days=${fairnessPeriod}`, { credentials: 'include' });
+      if (!res.ok) throw new Error("Failed to fetch");
+      return res.json();
+    },
+    enabled: showFairnessDialog,
   });
 
   // Handle URL parameters for status filter
@@ -441,12 +453,20 @@ export default function Tasks() {
     <div className="max-w-6xl mx-auto px-3 sm:px-4 py-3 pb-24 space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h1 className="text-xl sm:text-2xl font-semibold" data-testid="text-page-title">Tasklar</h1>
-        {isHQ && (
-          <Button size="sm" variant="outline" onClick={() => setShowBulkDialog(true)} data-testid="button-bulk-assign">
-            <Send className="h-4 w-4 mr-2" />
-            Toplu Atama
-          </Button>
-        )}
+        <div className="flex flex-wrap gap-2">
+          {isHQ && (
+            <Button size="sm" variant="outline" onClick={() => setShowFairnessDialog(true)} data-testid="button-fairness-report">
+              <BarChart3 className="h-4 w-4 mr-2" />
+              Dağılım Raporu
+            </Button>
+          )}
+          {isHQ && (
+            <Button size="sm" variant="outline" onClick={() => setShowBulkDialog(true)} data-testid="button-bulk-assign">
+              <Send className="h-4 w-4 mr-2" />
+              Toplu Atama
+            </Button>
+          )}
+        </div>
         <QuickTaskModal trigger={<Button size="sm" data-testid="button-add-task">Yeni Görev Ekle</Button>} />
       </div>
 
@@ -1031,7 +1051,7 @@ export default function Tasks() {
                               {new Date(task.createdAt!).toLocaleDateString("tr-TR", { day: "numeric", month: "short" })}
                             </p>
                             {task.status === "onaylandi" ? (
-                              <RatingDisplay taskId={task.id} onRateClick={() => setRatingTaskId(task.id)} />
+                              <RatingDisplay taskId={task.id} onRateClick={() => setRatingTaskId(task.id)} canRate={user?.id === task.assignedById} />
                             ) : !task.acknowledgedAt && task.status !== "basarisiz" ? (
                               <div className="flex items-center gap-1 text-muted-foreground">
                                 <EyeOff className="h-3 w-3" />
@@ -1346,7 +1366,8 @@ export default function Tasks() {
       <Dialog open={!!ratingTaskId} onOpenChange={(open) => !open && setRatingTaskId(null)}>
         <DialogContent data-testid="dialog-task-rating">
           <DialogHeader>
-            <DialogTitle>Görev Değerlendir</DialogTitle>
+            <DialogTitle>Görevi Puanla</DialogTitle>
+            <p className="text-sm text-muted-foreground mt-2">Atayan kişi olarak bu görevi değerlendirin</p>
           </DialogHeader>
           <div className="space-y-4">
             <div>
@@ -1536,11 +1557,94 @@ export default function Tasks() {
           </div>
         </DialogContent>
       </Dialog>
+
+      <Dialog open={showFairnessDialog} onOpenChange={setShowFairnessDialog}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle data-testid="text-fairness-title">Görev Dağılım Raporu</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="flex flex-wrap gap-2">
+              {[7, 30, 90].map((d) => (
+                <Button
+                  key={d}
+                  size="sm"
+                  variant={fairnessPeriod === d ? "default" : "outline"}
+                  onClick={() => setFairnessPeriod(d)}
+                  data-testid={`button-fairness-period-${d}`}
+                >
+                  {d} Gün
+                </Button>
+              ))}
+            </div>
+
+            {isFairnessLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary" />
+              </div>
+            ) : fairnessData?.report?.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-8" data-testid="text-fairness-empty">
+                Bu dönemde görev verisi bulunamadı.
+              </p>
+            ) : (
+              fairnessData?.report?.map((group: any) => {
+                const isFair = group.spread <= Math.max(group.avgTasks * 0.3, 2);
+                return (
+                  <Card key={group.role} data-testid={`card-fairness-role-${group.role}`}>
+                    <CardHeader className="flex flex-row items-center justify-between gap-2 pb-2">
+                      <CardTitle className="text-sm font-medium capitalize">
+                        {group.role}
+                      </CardTitle>
+                      <div className="flex items-center gap-2">
+                        <Badge variant={isFair ? "secondary" : "destructive"} data-testid={`badge-fairness-${group.role}`}>
+                          {isFair ? "Dengeli" : "Dengesiz"}
+                        </Badge>
+                        <span className="text-xs text-muted-foreground">
+                          Ort: {group.avgTasks} | Fark: {group.spread}
+                        </span>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="space-y-2">
+                      {group.members.map((member: any) => {
+                        const barWidth = group.maxTasks > 0 ? (member.totalTasks / group.maxTasks) * 100 : 0;
+                        const isAboveAvg = member.totalTasks > group.avgTasks * 1.2;
+                        const isBelowAvg = member.totalTasks < group.avgTasks * 0.8;
+                        return (
+                          <div key={member.userId} className="space-y-1" data-testid={`row-fairness-member-${member.userId}`}>
+                            <div className="flex items-center justify-between gap-2 text-xs">
+                              <span className="font-medium truncate max-w-[140px]">{member.name || "İsimsiz"}</span>
+                              <div className="flex items-center gap-3 text-muted-foreground">
+                                <span>Toplam: <span className="font-semibold text-foreground">{member.totalTasks}</span></span>
+                                <span>Tamamlanan: {member.completedTasks}</span>
+                                {member.overdueCount > 0 && (
+                                  <span className="text-destructive">Gecikmiş: {member.overdueCount}</span>
+                                )}
+                              </div>
+                            </div>
+                            <div className="h-2 rounded-full bg-muted overflow-hidden">
+                              <div
+                                className={`h-full rounded-full transition-all ${
+                                  isAboveAvg ? "bg-destructive" : isBelowAvg ? "bg-yellow-500" : "bg-primary"
+                                }`}
+                                style={{ width: `${barWidth}%` }}
+                              />
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </CardContent>
+                  </Card>
+                );
+              })
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
 
-function RatingDisplay({ taskId, onRateClick }: { taskId: number; onRateClick: () => void }) {
+function RatingDisplay({ taskId, onRateClick, canRate }: { taskId: number; onRateClick: () => void; canRate: boolean }) {
   const { data: taskRating } = useQuery<{ rawRating?: number }>({
     queryKey: [`/api/tasks/${taskId}/rating`],
   });
@@ -1560,6 +1664,10 @@ function RatingDisplay({ taskId, onRateClick }: { taskId: number; onRateClick: (
     );
   }
 
+  if (!canRate) {
+    return <span className="text-xs text-muted-foreground">-</span>;
+  }
+
   return (
     <Button
       onClick={(e) => {
@@ -1571,7 +1679,7 @@ function RatingDisplay({ taskId, onRateClick }: { taskId: number; onRateClick: (
       className="h-6 px-2 text-[10px]"
       data-testid="button-rate-now"
     >
-      Rate Now
+      Puanla
     </Button>
   );
 }

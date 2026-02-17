@@ -324,33 +324,66 @@ export default function VardiyaPlanlama() {
     setChecklist3('');
   };
 
-  // Auto-calculate end time AND break time when start time changes
-  // Fulltime = 8.5 hours total (7.5h work + 1h break), parttime = 4 hours (no break required)
-  // Break starts at +4 hours from shift start
+  const getDospressoShiftType = useCallback((time: string): { label: string; key: string } => {
+    const [h, m] = time.split(':').map(Number);
+    const minutes = h * 60 + m;
+    if (minutes <= 8 * 60) return { label: 'Açılış', key: 'opening' };
+    if (minutes <= 12 * 60) return { label: 'Aracı', key: 'intermediate' };
+    if (minutes <= 16 * 60) return { label: '1. Kapanış', key: 'first_closing' };
+    return { label: 'Kapanış', key: 'closing' };
+  }, []);
+
+  const validateBreakTime = useCallback((start: string, breakVal: string): boolean => {
+    const [sH, sM] = start.split(':').map(Number);
+    const [bH, bM] = breakVal.split(':').map(Number);
+    const startMin = sH * 60 + sM;
+    const breakMin = bH * 60 + bM;
+    const diff = breakMin - startMin;
+    return diff >= 180 && diff <= 300;
+  }, []);
+
+  const [breakWarning, setBreakWarning] = useState('');
+
   useEffect(() => {
     if (!selectedEmployee || !selectedEmployeeDetails) return;
 
-    const isFulltime = selectedEmployeeDetails.employmentType === 'fulltime';
-    const hoursToAdd = isFulltime ? 8.5 : 4; // Fulltime 8:30 saat, parttime 4 saat
-
+    const isParttime = selectedEmployeeDetails.employmentType === 'parttime';
     const [sH, sM] = startTime.split(':').map(Number);
-    
-    // Calculate end time: start + hoursToAdd
-    const endMinutes = sH * 60 + sM + Math.floor(hoursToAdd * 60);
-    const endH = Math.floor(endMinutes / 60) % 24;
-    const endM = endMinutes % 60;
-    const newEndTime = `${String(endH).padStart(2, '0')}:${String(endM).padStart(2, '0')}`;
-    setEndTime(newEndTime);
+    const startMinutes = sH * 60 + sM;
 
-    // Calculate break time: start + 4 hours (for fulltime shifts)
-    if (isFulltime) {
-      const breakMinutes = sH * 60 + sM + (4 * 60);
+    if (isParttime) {
+      const endMinutes = startMinutes + 4 * 60;
+      const endH = Math.floor(endMinutes / 60) % 24;
+      const endM = endMinutes % 60;
+      setEndTime(`${String(endH).padStart(2, '0')}:${String(endM).padStart(2, '0')}`);
+      setBreakWarning('');
+    } else {
+      const totalMinutes = 8 * 60 + 30;
+      const endMinutes = startMinutes + totalMinutes;
+      const endH = Math.floor(endMinutes / 60) % 24;
+      const endM = endMinutes % 60;
+      setEndTime(`${String(endH).padStart(2, '0')}:${String(endM).padStart(2, '0')}`);
+
+      const breakMinutes = startMinutes + 4 * 60;
       const breakH = Math.floor(breakMinutes / 60) % 24;
       const breakM = breakMinutes % 60;
-      const newBreakTime = `${String(breakH).padStart(2, '0')}:${String(breakM).padStart(2, '0')}`;
-      setBreakTime(newBreakTime);
+      setBreakTime(`${String(breakH).padStart(2, '0')}:${String(breakM).padStart(2, '0')}`);
+      setBreakWarning('');
     }
   }, [startTime, selectedEmployee, selectedEmployeeDetails]);
+
+  useEffect(() => {
+    if (!selectedEmployee || !selectedEmployeeDetails) return;
+    if (selectedEmployeeDetails.employmentType === 'parttime') {
+      setBreakWarning('');
+      return;
+    }
+    if (!validateBreakTime(startTime, breakTime)) {
+      setBreakWarning('Mola başlangıçtan 3-5 saat sonra olmalıdır');
+    } else {
+      setBreakWarning('');
+    }
+  }, [breakTime, startTime, selectedEmployee, selectedEmployeeDetails, validateBreakTime]);
 
   // Create shifts mutation for inline form
   const createShiftsMutation = useMutation({
@@ -910,6 +943,23 @@ export default function VardiyaPlanlama() {
                   />
                 </div>
               </div>
+
+              {breakWarning && (
+                <div className="text-[10px] text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 p-1.5 rounded flex items-center gap-1">
+                  <AlertTriangle className="w-3 h-3 flex-shrink-0" />
+                  {breakWarning}
+                </div>
+              )}
+
+              {/* Shift Type Label */}
+              {startTime && (
+                <div className="flex items-center justify-between text-xs bg-muted/50 p-2 rounded">
+                  <span className="text-muted-foreground">Vardiya Tipi:</span>
+                  <Badge variant="outline" className="text-[10px]" data-testid="badge-shift-type">
+                    {getDospressoShiftType(startTime).label}
+                  </Badge>
+                </div>
+              )}
 
               {/* Shift Duration */}
               <div className="flex justify-between text-xs text-muted-foreground bg-muted/50 p-2 rounded">

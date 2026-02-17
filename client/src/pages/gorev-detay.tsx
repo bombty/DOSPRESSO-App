@@ -24,7 +24,6 @@ import {
   Eye, 
   PlayCircle,
   XCircle,
-  History,
   AlertTriangle,
   MessageSquare,
   Send,
@@ -444,7 +443,7 @@ export default function GorevDetay() {
 
   if (isLoading) {
     return (
-      <div className="flex flex-col gap-3 sm:gap-4 p-3 pb-24">
+      <div className="flex flex-col gap-3 sm:gap-4 p-3 pb-32">
         <Skeleton className="h-12 w-64" />
         <Skeleton className="h-96 w-full" />
       </div>
@@ -453,7 +452,7 @@ export default function GorevDetay() {
 
   if (!task) {
     return (
-      <div className="flex flex-col gap-3 sm:gap-4 p-3 pb-24">
+      <div className="flex flex-col gap-3 sm:gap-4 p-3 pb-32">
         <Card>
           <CardContent className="pt-6 text-center">
             <p className="text-muted-foreground">Görev bulunamadı</p>
@@ -533,7 +532,7 @@ export default function GorevDetay() {
   const mustUseCheckerPath = isOnboarding && hasChecker;
 
   return (
-    <div className="flex flex-col gap-3 sm:gap-4 p-3 pb-24">
+    <div className="flex flex-col gap-3 sm:gap-4 p-3 pb-32">
       {/* Header */}
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <div className="flex items-center gap-2 sm:gap-3">
@@ -752,58 +751,37 @@ export default function GorevDetay() {
             </Card>
           )}
 
-          {/* Note & Photo Section - shows after task is started */}
+          {/* Photo Upload Section - shows after task is started */}
           {task.status === "devam_ediyor" && (
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-base">Not ve Fotoğraf</CardTitle>
+                <CardTitle className="text-base flex items-center gap-2">
+                  <ImageIcon className="h-4 w-4" />
+                  Fotoğraf
+                </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-3">
-                <div>
-                  <label className="text-sm font-medium mb-2 block">Not Ekle</label>
-                  <Textarea
-                    placeholder="Görev hakkında bir not yazın..."
-                    value={newNote}
-                    onChange={(e) => setNewNote(e.target.value)}
-                    className="resize-none min-h-[60px]"
-                    data-testid="input-preview-note"
-                  />
-                  <Button
-                    onClick={handleAddNote}
-                    disabled={addNoteMutation.isPending || !newNote.trim()}
-                    className="w-full mt-2"
-                    size="sm"
-                    data-testid="button-add-preview-note"
-                  >
-                    <Send className="h-3 w-3 mr-2" />
-                    {addNoteMutation.isPending ? "Kaydediliyor..." : "Not Ekle"}
+              <CardContent>
+                <ObjectUploader 
+                  maxNumberOfFiles={1}
+                  maxFileSize={10485760}
+                  onGetUploadParameters={async () => {
+                    const response = await fetch("/api/objects/upload", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                    });
+                    if (!response.ok) throw new Error("Upload başarısız");
+                    return response.json();
+                  }}
+                  onComplete={() => {
+                    queryClient.invalidateQueries({ queryKey: ["/api/tasks", id] });
+                    toast({ title: "Başarılı", description: "Fotoğraf yüklendi" });
+                  }}
+                >
+                  <Button variant="outline" size="sm" type="button" className="w-full">
+                    <ImageIcon className="h-4 w-4 mr-2" />
+                    Fotoğraf Yükle
                   </Button>
-                </div>
-
-                <div>
-                  <label className="text-sm font-medium mb-2 block">Fotoğraf Yükle</label>
-                  <ObjectUploader 
-                    maxNumberOfFiles={1}
-                    maxFileSize={10485760}
-                    onGetUploadParameters={async () => {
-                      const response = await fetch("/api/objects/upload", {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                      });
-                      if (!response.ok) throw new Error("Upload başarısız");
-                      return response.json();
-                    }}
-                    onComplete={() => {
-                      queryClient.invalidateQueries({ queryKey: ["/api/tasks", id] });
-                      toast({ title: "Başarılı", description: "Fotoğraf yüklendi" });
-                    }}
-                  >
-                    <Button variant="outline" size="sm" type="button" className="w-full">
-                      <ImageIcon className="h-4 w-4 mr-2" />
-                      Fotoğraf Yükle
-                    </Button>
-                  </ObjectUploader>
-                </div>
+                </ObjectUploader>
               </CardContent>
             </Card>
           )}
@@ -1271,112 +1249,149 @@ export default function GorevDetay() {
         </CardContent>
       </Card>
 
-      {/* Status History & Notes - Compact Timeline */}
+      {/* Görev Mesajlaşma - Ticket Thread */}
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
-            <History className="h-4 w-4" />
-            Durum Geçmişi & Notlar
+            <MessageSquare className="h-4 w-4" />
+            Görev İletişimi
+            {taskHistory && taskHistory.length > 0 && (
+              <Badge variant="secondary" className="ml-auto text-xs">{taskHistory.length}</Badge>
+            )}
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-2 text-xs">
-          {/* Creation */}
-          <div className="flex items-center gap-2">
-            <Clock className="h-3 w-3 text-muted-foreground flex-shrink-0" />
-            <span>Oluşturuldu</span>
-            <span className="text-muted-foreground">
-              {task.createdAt ? new Date(task.createdAt).toLocaleDateString("tr-TR") : "-"}
-            </span>
-          </div>
-
-          {/* Acknowledgment */}
-          {task.acknowledgedAt && (
-            <div className="flex items-center gap-2">
-              <Eye className="h-3 w-3 text-primary flex-shrink-0" />
-              <span>Görüldü</span>
-              <span className="text-muted-foreground">
-                {new Date(task.acknowledgedAt).toLocaleDateString("tr-TR")}
+        <CardContent>
+          <div className="space-y-3 max-h-[400px] overflow-y-auto">
+            <div className="flex items-center justify-center">
+              <span className="text-xs text-muted-foreground bg-muted px-3 py-1 rounded-full">
+                Görev oluşturuldu - {task.createdAt ? new Date(task.createdAt).toLocaleDateString("tr-TR", {day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}) : "-"}
               </span>
             </div>
-          )}
 
-          {/* History from API with notes */}
-          {taskHistory && taskHistory.length > 0 && taskHistory.map((entry, idx) => (
-            <div key={entry.id || idx} className="flex flex-col gap-1">
-              <div className="flex items-center gap-2">
-                <AlertCircle className="h-3 w-3 text-muted-foreground flex-shrink-0" />
-                <span>
-                  {entry.previousStatus && entry.previousStatus !== entry.newStatus 
-                    ? `${statusLabels[entry.newStatus] || entry.newStatus}`
-                    : entry.note || "Güncelleme"
-                  }
-                </span>
-                <span className="text-muted-foreground">
-                  {entry.createdAt ? new Date(entry.createdAt).toLocaleDateString("tr-TR") : "-"}
+            {task.acknowledgedAt && (
+              <div className="flex items-center justify-center">
+                <span className="text-xs text-muted-foreground bg-muted px-3 py-1 rounded-full">
+                  <Eye className="h-3 w-3 inline mr-1" />
+                  Görüldü - {new Date(task.acknowledgedAt).toLocaleDateString("tr-TR", {day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}
                 </span>
               </div>
-              {entry.note && entry.previousStatus && entry.previousStatus !== entry.newStatus && (
-                <div className="ml-5 text-xs text-muted-foreground italic border-l border-muted-foreground/30 pl-2 py-0.5">
-                  "{entry.note}"
+            )}
+
+            {taskHistory && taskHistory.map((entry, idx) => {
+              const isStatusChange = entry.previousStatus && entry.previousStatus !== entry.newStatus;
+              const isSystemMessage = isStatusChange && !entry.note;
+              const senderIsAssigner = entry.changedById === task.assignedById;
+              const senderIsAssignee = entry.changedById === task.assignedToId;
+
+              if (isSystemMessage) {
+                return (
+                  <div key={entry.id || idx} className="flex items-center justify-center" data-testid={`thread-event-${entry.id}`}>
+                    <span className="text-xs text-muted-foreground bg-muted px-3 py-1 rounded-full">
+                      {statusLabels[entry.newStatus] || entry.newStatus} - {entry.createdAt ? new Date(entry.createdAt).toLocaleDateString("tr-TR", {day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}) : ""}
+                    </span>
+                  </div>
+                );
+              }
+
+              return (
+                <div
+                  key={entry.id || idx}
+                  className={`flex ${senderIsAssigner ? 'justify-start' : 'justify-end'}`}
+                  data-testid={`thread-message-${entry.id}`}
+                >
+                  <div className={`max-w-[80%] ${senderIsAssigner ? 'bg-muted' : 'bg-primary/10'} rounded-lg p-3`}>
+                    <div className="flex items-center gap-2 mb-1 flex-wrap">
+                      <span className="text-xs font-medium">
+                        {senderIsAssigner
+                          ? `${assignedByUser?.firstName || 'Atayan'}`
+                          : senderIsAssignee
+                          ? `${assignedUser?.firstName || 'Atanan'}`
+                          : 'Sistem'
+                        }
+                      </span>
+                      <Badge variant="outline" className="text-[9px] h-4">
+                        {senderIsAssigner ? 'Atayan' : senderIsAssignee ? 'Atanan' : 'Sistem'}
+                      </Badge>
+                    </div>
+                    {isStatusChange && (
+                      <p className="text-xs text-muted-foreground mb-1">
+                        Durum: {statusLabels[entry.newStatus] || entry.newStatus}
+                      </p>
+                    )}
+                    {entry.note && (
+                      <p className="text-sm break-words">{entry.note}</p>
+                    )}
+                    <p className="text-[10px] text-muted-foreground mt-1">
+                      {entry.createdAt ? new Date(entry.createdAt).toLocaleDateString("tr-TR", {day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}) : ""}
+                    </p>
+                  </div>
                 </div>
+              );
+            })}
+
+            {task.status === "onaylandi" && (
+              <div className="flex items-center justify-center">
+                <span className="text-xs text-success bg-success/10 px-3 py-1 rounded-full flex items-center gap-1">
+                  <CheckCircle className="h-3 w-3" />
+                  Görev Tamamlandı {task.completedAt ? `- ${new Date(task.completedAt).toLocaleDateString("tr-TR")}` : ""}
+                </span>
+              </div>
+            )}
+
+            {task.status === "basarisiz" && (
+              <div className="flex items-center justify-center">
+                <span className="text-xs text-destructive bg-destructive/10 px-3 py-1 rounded-full flex items-center gap-1">
+                  <XCircle className="h-3 w-3" />
+                  Tamamlanamadı
+                </span>
+              </div>
+            )}
+          </div>
+
+          {task.status === "onaylandi" && ratingData?.rawRating && (
+            <div className="mt-3 pt-3 border-t flex items-center gap-2 flex-wrap">
+              <Star className="h-4 w-4 text-amber-400" />
+              <span className="text-sm">Puan:</span>
+              <StarRating value={ratingData.finalRating} readonly size="sm" />
+              <span className="text-sm font-medium">{ratingData.finalRating}/5</span>
+              {ratingData.penaltyApplied === 1 && (
+                <AlertTriangle className="h-3 w-3 text-orange-500" />
               )}
             </div>
-          ))}
+          )}
 
-          {/* Completion status */}
-          {task.status === "onaylandi" && (
-            <div className="flex items-start gap-2 p-2 rounded-lg bg-success/10 border-t border-muted mt-2 pt-2">
-              <CheckCircle className="h-3 w-3 text-success flex-shrink-0 mt-0.5" />
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-1 flex-wrap">
-                  <span className="text-success font-medium">Tamamlandı</span>
-                  {task.completedAt && (
-                    <span className="text-muted-foreground">
-                      {new Date(task.completedAt).toLocaleDateString("tr-TR")}
-                    </span>
-                  )}
-                </div>
-                
-                {/* Rating section - Compact */}
-                {ratingData?.rawRating ? (
-                  <div className="mt-1 flex items-center gap-1">
-                    <span className="text-muted-foreground">Puan:</span>
-                    <StarRating 
-                      value={ratingData.finalRating} 
-                      readonly 
-                      size="sm"
-                    />
-                    <span className="font-medium">{ratingData.finalRating}/5</span>
-                    {ratingData.penaltyApplied === 1 && (
-                      <AlertTriangle className="h-3 w-3 text-orange-500" />
-                    )}
-                  </div>
-                ) : (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setShowRatingDialog(true)}
-                    className="mt-1 h-6 px-2 text-[10px]"
-                    data-testid="button-rate-task"
-                  >
-                    <Star className="h-3 w-3 mr-1" />
-                    Puanla
-                  </Button>
-                )}
-              </div>
+          {task.status === "onaylandi" && !ratingData?.rawRating && canRate && (
+            <div className="mt-3 pt-3 border-t">
+              <Button variant="outline" size="sm" onClick={() => setShowRatingDialog(true)} data-testid="button-rate-task">
+                <Star className="h-4 w-4 mr-2" />
+                Görevi Puanla
+              </Button>
             </div>
           )}
 
-          {/* Failure status */}
-          {task.status === "basarisiz" && (
-            <div className="flex items-start gap-2 p-2 rounded-lg bg-destructive/10 border-t border-muted mt-2 pt-2">
-              <XCircle className="h-3 w-3 text-destructive flex-shrink-0 mt-0.5" />
-              <div>
-                <span className="font-medium text-destructive">Tamamlanamadı</span>
-                {task.failureNote && (
-                  <p className="text-muted-foreground mt-0.5 break-words">{task.failureNote}</p>
-                )}
-              </div>
+          {task.status !== "onaylandi" && task.status !== "basarisiz" && (
+            <div className="mt-3 pt-3 border-t flex gap-2">
+              <Textarea
+                placeholder="Mesaj yaz..."
+                value={newNote}
+                onChange={(e) => setNewNote(e.target.value)}
+                className="min-h-[40px] max-h-[80px] resize-none flex-1 text-sm"
+                data-testid="input-thread-message"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey && newNote.trim()) {
+                    e.preventDefault();
+                    addNoteMutation.mutate(newNote.trim());
+                  }
+                }}
+              />
+              <Button
+                size="icon"
+                onClick={() => newNote.trim() && addNoteMutation.mutate(newNote.trim())}
+                disabled={addNoteMutation.isPending || !newNote.trim()}
+                data-testid="button-send-thread-message"
+              >
+                <Send className="h-4 w-4" />
+              </Button>
             </div>
           )}
         </CardContent>
