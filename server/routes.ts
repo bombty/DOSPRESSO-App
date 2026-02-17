@@ -2,6 +2,7 @@ import { onTaskAssigned, onTaskCompleted, onFeedbackReceived, onFaultReported, o
 import { registerDailyTaskRoutes } from "./daily-tasks-routes";
 import { registerFactoryShiftRoutes } from "./factory-shift-routes";
 import { registerHQDashboardRoutes } from "./hq-dashboard-routes";
+import { registerFinancialRoutes } from "./financial-routes";
 import { registerCRMRoutes } from "./crm-routes";
 import { registerSatinalmaRoutes } from "./satinalma-routes";
 import type { Express } from "express";
@@ -38958,6 +38959,7 @@ AI analizi su an kullanilamiyor. Detayli bilgi icin ilgili modulleri kontrol edi
 
 
   registerMaliyetRoutes(app, isAuthenticated);
+  registerFinancialRoutes(app, isAuthenticated);
   registerFactoryShiftRoutes(app);
   registerExportRoutes(app);
   registerInspectionRoutes(app);

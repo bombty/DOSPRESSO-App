@@ -383,6 +383,14 @@ const MENU_BLUEPRINT: SidebarMenuSection[] = [
         moduleKey: "accounting",
         scope: "both",
       },
+      {
+        id: "financial-management",
+        titleTr: "Mali Yönetim",
+        path: "/mali-yonetim",
+        icon: "BarChart3",
+        moduleKey: "accounting",
+        scope: "both",
+      },
     ],
   },
 
