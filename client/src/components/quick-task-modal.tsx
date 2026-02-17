@@ -247,13 +247,13 @@ export function QuickTaskModal({ trigger }: QuickTaskModalProps) {
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent className="max-w-sm">
+      <DialogContent className="max-w-md max-h-[90vh] flex flex-col">
         <DialogHeader>
           <DialogTitle>Hızlı Görev Oluştur</DialogTitle>
         </DialogHeader>
 
         <Form {...form}>
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-4 overflow-y-auto flex-1 pr-1">
             <FormField
               control={form.control}
               name="description"
@@ -402,48 +402,53 @@ export function QuickTaskModal({ trigger }: QuickTaskModalProps) {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Öncelik</FormLabel>
-                  <div className="flex gap-2">
+                  <div className="flex flex-wrap gap-2">
                     <Button
                       type="button"
+                      size="sm"
                       onClick={() => field.onChange("düşük")}
                       variant={field.value === "düşük" ? "default" : "outline"}
-                      className="flex-1 toggle-elevate"
+                      className="toggle-elevate"
                       data-testid="button-priority-low"
                     >
                       Düşük
                     </Button>
                     <Button
                       type="button"
+                      size="sm"
                       onClick={() => field.onChange("orta")}
                       variant={field.value === "orta" ? "default" : "outline"}
-                      className="flex-1 toggle-elevate"
+                      className="toggle-elevate"
                       data-testid="button-priority-medium"
                     >
                       Orta
                     </Button>
                     <Button
                       type="button"
+                      size="sm"
                       onClick={() => field.onChange("yüksek")}
                       variant={field.value === "yüksek" ? "secondary" : "outline"}
-                      className="flex-1 toggle-elevate"
+                      className="toggle-elevate"
                       data-testid="button-priority-high"
                     >
                       Yüksek
                     </Button>
                     <Button
                       type="button"
+                      size="sm"
                       onClick={() => field.onChange("acil")}
                       variant={field.value === "acil" ? "destructive" : "outline"}
-                      className="flex-1 toggle-elevate"
+                      className="toggle-elevate"
                       data-testid="button-priority-urgent"
                     >
                       Acil
                     </Button>
                     <Button
                       type="button"
+                      size="sm"
                       onClick={() => field.onChange("kritik")}
                       variant={field.value === "kritik" ? "destructive" : "outline"}
-                      className="flex-1 toggle-elevate"
+                      className="toggle-elevate"
                       data-testid="button-priority-critical"
                     >
                       Kritik

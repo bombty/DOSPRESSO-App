@@ -11,7 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { format, startOfWeek, addDays, isToday, differenceInDays, startOfMonth, endOfMonth, eachDayOfInterval } from "date-fns";
 import { tr } from "date-fns/locale";
-import { Clock, Sun, Sunset, Moon, ArrowRightLeft, Calendar, Check, X, Coffee, UserMinus, AlertTriangle, Timer, FileText } from "lucide-react";
+import { Clock, Sun, Sunset, Moon, ArrowRightLeft, Calendar, Check, X, Coffee, UserMinus, AlertTriangle, AlertCircle, Timer, FileText } from "lucide-react";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
@@ -975,6 +975,16 @@ export default function Vardiyalarim() {
                   >
                     <UserMinus className="w-3 h-3" />
                     Gelemeyen Personel
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className={`toggle-elevate ${overtimeReasonType === "Yonetici Talebi" ? "toggle-elevated" : ""}`}
+                    onClick={() => { setOvertimeReasonType("Yonetici Talebi"); setOvertimeMissingEmployee(""); }}
+                    data-testid="button-reason-manager"
+                  >
+                    <AlertCircle className="w-3 h-3" />
+                    Yonetici Talebi
                   </Button>
                 </div>
               </div>

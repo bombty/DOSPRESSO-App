@@ -16,7 +16,7 @@ import { EmployeeOfMonthBadge } from "@/components/widgets/employee-of-month-wid
 import { 
   User, Calendar, Award, ClipboardCheck, Users,
   Clock, TrendingUp, AlertCircle, CheckCircle2, XCircle, LogOut, Camera, Trash2, Wallet, Banknote, 
-  Timer, Plus, Loader2, Shield, Star, BookOpen, Target, Eye, Sparkles
+  Timer, Plus, Loader2, Shield, Star, BookOpen, Target, Eye, Sparkles, FileWarning
 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -380,6 +380,16 @@ export default function PersonelProfilPage() {
       return res.json();
     },
     enabled: !!id && !!profile,
+  });
+
+  const { data: disciplinaryReports = [] } = useQuery<any[]>({
+    queryKey: ['/api/disciplinary-reports', id],
+    queryFn: async () => {
+      const res = await fetch(`/api/disciplinary-reports?userId=${id}`, { credentials: 'include' });
+      if (!res.ok) return [];
+      return res.json();
+    },
+    enabled: !!id && (isOwnProfile || canViewSalary || (user?.role === 'supervisor' && profile?.branchId === user?.branchId)),
   });
 
   if (isLoading) {
@@ -1109,6 +1119,47 @@ export default function PersonelProfilPage() {
                     </p>
                   </div>
                 )}
+              </CardContent>
+            </Card>
+          )}
+
+          {disciplinaryReports.length > 0 && (
+            <Card data-testid="card-disciplinary-records">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <FileWarning className="h-4 w-4 text-destructive" />
+                  Tutanaklar & Disiplin İşlemleri
+                </CardTitle>
+                <CardDescription>{disciplinaryReports.length} kayıt</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {disciplinaryReports.map((report: any) => (
+                    <div key={report.id} className="p-3 rounded-md border" data-testid={`disciplinary-report-${report.id}`}>
+                      <div className="flex items-start justify-between gap-2 flex-wrap">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate">{report.subject}</p>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {report.incidentDate ? new Date(report.incidentDate).toLocaleDateString('tr-TR') : '-'}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <Badge variant={report.severity === 'critical' ? 'destructive' : report.severity === 'high' ? 'destructive' : 'secondary'}>
+                            {report.severity === 'critical' ? 'Kritik' : report.severity === 'high' ? 'Yüksek' : report.severity === 'medium' ? 'Orta' : 'Düşük'}
+                          </Badge>
+                          <Badge variant="outline">
+                            {report.status === 'open' ? 'Açık' : report.status === 'under_review' ? 'İnceleniyor' : report.status === 'resolved' ? 'Çözüldü' : 'Kapatıldı'}
+                          </Badge>
+                        </div>
+                      </div>
+                      {report.actionTaken && (
+                        <p className="text-xs text-muted-foreground mt-2">
+                          İşlem: {report.actionTaken === 'verbal_warning' ? 'Sözlü Uyarı' : report.actionTaken === 'written_warning' ? 'Yazılı Uyarı' : report.actionTaken === 'suspension' ? 'Uzaklaştırma' : report.actionTaken === 'termination' ? 'İşten Çıkarma' : report.actionTaken === 'cleared' ? 'Aklandı' : report.actionTaken}
+                        </p>
+                      )}
+                    </div>
+                  ))}
+                </div>
               </CardContent>
             </Card>
           )}

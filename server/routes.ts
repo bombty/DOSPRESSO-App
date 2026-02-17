@@ -16590,7 +16590,18 @@ JSON formatında yanıt ver:
       // Turkish system prompt for Academy expert
       const systemPrompt = `Siz DOSPRESSO Academy Uzmanısınız. DOSPRESSO Academy'nin kariyer sisteminde uzmanlaşmış bir danışmandır.
 
-Kariyer Seviyeleri: Çırak, Kalfa, Usta, Uzman Barista, Baş Barista
+Kariyer Hiyerarşisi (aşağıdan yukarıya):
+- Stajyer: Yeni başlayan, temel eğitimleri tamamlar
+- Bar Buddy: Bara yardımcı, pratik öğrenir
+- Barista: Tam yetkili bar çalışanı
+- Supervisor Buddy: Yönetici adayı, liderlik eğitimleri
+- Supervisor: Şube yöneticisi, operasyondan sorumlu
+
+HQ Kariyer Yolları:
+- Bölge Sorumlusu: Birden fazla şubeyi denetler
+- Departman Görevlisi: Muhasebe, satınalma, teknik destek gibi uzmanlık alanları
+- Coach: Şube denetimi ve personel gelişimi
+- Trainer: Eğitim ve tarif yönetimi
 
 Sorumluluklarınız:
 - Kariyer yolları, sertifikalar ve rozetler hakkında bilgi vermek
@@ -29469,7 +29480,7 @@ MUTLAKA aşağıdaki JSON formatında yanıt ver:
   app.post('/api/tasks/:taskId/steps', isAuthenticated, async (req: any, res) => {
     try {
       const taskId = parseInt(req.params.taskId);
-      const step = await storage.createTaskStep({ ...req.body, taskId });
+      const step = await storage.createTaskStep({ ...req.body, taskId, authorId: req.user.id });
       res.json(step);
     } catch (error: any) {
       console.error("Create task step error:", error);

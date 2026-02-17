@@ -1354,15 +1354,12 @@ export default function GorevDetay() {
                     <div className="flex items-center gap-2 mb-1 flex-wrap">
                       <span className="text-xs font-medium">
                         {senderIsAssigner
-                          ? `${assignedByUser?.firstName || 'Atayan'}`
+                          ? `${assignedByUser?.firstName || ''} ${assignedByUser?.lastName || ''}`.trim() || 'Bilinmiyor'
                           : senderIsAssignee
-                          ? `${assignedUser?.firstName || 'Atanan'}`
+                          ? `${assignedUser?.firstName || ''} ${assignedUser?.lastName || ''}`.trim() || 'Bilinmiyor'
                           : 'Sistem'
                         }
                       </span>
-                      <Badge variant="outline" className="text-[9px] h-4">
-                        {senderIsAssigner ? 'Atayan' : senderIsAssignee ? 'Atanan' : 'Sistem'}
-                      </Badge>
                     </div>
                     {isStatusChange && (
                       <p className="text-xs text-muted-foreground mb-1">

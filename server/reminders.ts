@@ -2,8 +2,9 @@ import { storage } from "./storage";
 import type { Task, Equipment, User } from "@shared/schema";
 import { sendNotificationEmail } from "./email";
 import { db } from "./db";
-import { correctiveActions, users, auditInstances, branches, factoryProducts, employeeOnboardingAssignments, onboardingTemplates, notifications, staffEvaluations, employeeOnboarding } from "@shared/schema";
-import { eq, lt, and, ne, lte, or, inArray, gt, gte, count, max } from "drizzle-orm";
+import { correctiveActions, users, auditInstances, branches, factoryProducts, employeeOnboardingAssignments, onboardingTemplates, notifications, staffEvaluations, employeeOnboarding, hqSupportTickets, hqSupportMessages, HQ_SUPPORT_STATUS } from "@shared/schema";
+import { eq, lt, and, ne, lte, or, inArray, gt, gte, count, max, sql } from "drizzle-orm";
+import { ObjectStorageService } from "./objectStorage";
 
 const REMINDER_INTERVAL = 5 * 60 * 1000; // 5 minutes in milliseconds
 const MAINTENANCE_WARNING_DAYS = 7; // Notify 7 days before maintenance due
@@ -764,13 +765,82 @@ async function cleanupExpiredPhotos() {
   }
 }
 
+async function cleanupExpiredTicketPhotos() {
+  try {
+    const now = new Date();
+    const fourteenDaysAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
+    
+    // Find all closed tickets where closedAt is more than 14 days ago
+    const closedTickets = await db.select({
+      id: hqSupportTickets.id,
+    })
+      .from(hqSupportTickets)
+      .where(and(
+        eq(hqSupportTickets.status, HQ_SUPPORT_STATUS.KAPATILDI),
+        lte(hqSupportTickets.closedAt, fourteenDaysAgo)
+      ));
+
+    if (closedTickets.length === 0) {
+      return;
+    }
+
+    // Find messages from these tickets that have attachments
+    const messagesWithAttachments = await db.select({
+      id: hqSupportMessages.id,
+      attachments: hqSupportMessages.attachments,
+    })
+      .from(hqSupportMessages)
+      .where(and(
+        inArray(hqSupportMessages.ticketId, closedTickets.map(t => t.id)),
+        ne(hqSupportMessages.attachments, sql`'[]'::jsonb`)
+      ));
+
+    if (messagesWithAttachments.length === 0) {
+      return;
+    }
+
+    // Delete files from object storage and collect all URLs
+    const objectStorageService = new ObjectStorageService();
+    let deletedCount = 0;
+
+    for (const message of messagesWithAttachments) {
+      const attachments = Array.isArray(message.attachments) ? message.attachments : [];
+      
+      for (const attachment of attachments) {
+        if (attachment.url && attachment.url.startsWith('/objects/')) {
+          try {
+            await objectStorageService.deleteObjectEntity(attachment.url);
+            deletedCount++;
+          } catch (err) {
+            console.error(`Failed to delete object storage file ${attachment.url}:`, err);
+            // Continue with other files even if one fails
+          }
+        }
+      }
+    }
+
+    // Clear attachments for all these messages
+    await db.update(hqSupportMessages)
+      .set({ attachments: [] })
+      .where(inArray(hqSupportMessages.id, messagesWithAttachments.map(m => m.id)));
+
+    console.log(`🗑️ Ticket photo cleanup: ${messagesWithAttachments.length} message attachments cleared from closed tickets (${deletedCount} files deleted from storage)`);
+  } catch (error) {
+    console.error("Ticket photo cleanup error:", error);
+  }
+}
+
 export function startPhotoCleanupSystem() {
   console.log("Fotoğraf temizleme sistemi başlatıldı - Her 6 saatte bir kontrol edilecek");
   
   // Run initial cleanup
   cleanupExpiredPhotos();
+  cleanupExpiredTicketPhotos();
   
-  photoCleanupInterval = setInterval(cleanupExpiredPhotos, PHOTO_CLEANUP_INTERVAL);
+  photoCleanupInterval = setInterval(() => {
+    cleanupExpiredPhotos();
+    cleanupExpiredTicketPhotos();
+  }, PHOTO_CLEANUP_INTERVAL);
 }
 
 export function stopPhotoCleanupSystem() {
