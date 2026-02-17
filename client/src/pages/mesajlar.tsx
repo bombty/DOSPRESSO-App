@@ -25,12 +25,12 @@ type ThreadSummary = {
   lastMessageBody: string;
   lastMessageAt: Date;
   unreadCount: number;
-  participants: Array<{userId: string; firstName: string; lastName: string}>;
+  participants: Array<{id: string; firstName: string; lastName: string; profileImageUrl?: string | null}>;
 };
 
 type ThreadData = {
   messages: Message[];
-  participants: ThreadParticipant[];
+  participants: Array<{id: string; firstName: string; lastName: string; profileImageUrl?: string | null; role?: string}>;
 };
 
 export default function Mesajlar() {
@@ -45,9 +45,14 @@ export default function Mesajlar() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Fetch thread list with polling for real-time updates
-  const { data: threads = [], isLoading: threadsLoading } = useQuery<ThreadSummary[]>({
-    queryKey: ['/api/messages', folder],
-    refetchInterval: 5000, // Poll every 5 seconds
+  const { data: allThreads = [], isLoading: threadsLoading } = useQuery<ThreadSummary[]>({
+    queryKey: ['/api/messages'],
+    refetchInterval: 5000,
+  });
+
+  const threads = allThreads.filter((thread) => {
+    if (folder === 'unread') return thread.unreadCount > 0;
+    return true;
   });
 
   // Fetch selected thread messages
@@ -57,9 +62,9 @@ export default function Mesajlar() {
     refetchInterval: selectedThreadId ? 3000 : false, // Poll every 3 seconds when thread is open
   });
 
-  // Fetch all users for new message dialog
+  // Fetch recipients for new message dialog (dedicated endpoint accessible by all roles)
   const { data: allUsers = [] } = useQuery<User[]>({
-    queryKey: ['/api/users'],
+    queryKey: ['/api/messages/recipients'],
     enabled: isNewMessageOpen,
   });
 
@@ -208,8 +213,8 @@ export default function Mesajlar() {
     return `${firstName?.[0] || ''}${lastName?.[0] || ''}`.toUpperCase();
   };
 
-  const getParticipantNames = (participants: Array<{userId: string; firstName: string; lastName: string}>) => {
-    const others = participants.filter(p => p.userId !== user?.id);
+  const getParticipantNames = (participants: Array<{id?: string; userId?: string; firstName: string; lastName: string}>) => {
+    const others = participants.filter(p => (p.id || p.userId) !== user?.id);
     if (others.length === 0) return 'Sen';
     if (others.length === 1) return `${others[0].firstName} ${others[0].lastName}`;
     return `${others[0].firstName} ${others[0].lastName} +${others.length - 1}`;
@@ -330,12 +335,12 @@ export default function Mesajlar() {
               <h2 className="font-semibold text-lg" data-testid="text-thread-title">
                 {threadData.messages[0]?.subject}
               </h2>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-muted-foreground" data-testid="text-thread-participants">
                 {getParticipantNames(
-                  threadData.participants.map(p => ({
-                    userId: p.userId,
-                    firstName: '',
-                    lastName: '',
+                  threadData.participants.map((p: any) => ({
+                    id: p.id || p.userId,
+                    firstName: p.firstName || '',
+                    lastName: p.lastName || '',
                   }))
                 )}
               </p>
@@ -477,18 +482,18 @@ export default function Mesajlar() {
                       data-testid="input-photo-file"
                     />
                     <Button
+                      size="icon"
                       variant="outline"
                       onClick={() => fileInputRef.current?.click()}
-                      className="h-[60px]"
                       data-testid="button-attach-photo"
                     >
                       <Paperclip className="w-4 h-4" />
                     </Button>
                   </>
                   <Button
+                    size="icon"
                     onClick={handleSendMessage}
                     disabled={!messageText.trim() || sendReplyMutation.isPending}
-                    className="h-[60px]"
                     data-testid="button-send-message"
                   >
                     <Send className="w-4 h-4" />

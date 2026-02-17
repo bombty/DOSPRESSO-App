@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { ListSkeleton } from "@/components/list-skeleton";
 import { EmptyState } from "@/components/empty-state";
 import { 
@@ -372,16 +373,36 @@ export default function Notifications() {
           )}
           
           {unreadCount > 0 && activeTab === "notifications" && (
-            <Button 
-              variant="outline" 
-              size="sm"
-              onClick={() => markAllAsReadMutation.mutate()}
-              disabled={markAllAsReadMutation.isPending}
-              data-testid="button-mark-all-read"
-            >
-              <CheckCheck className="w-4 h-4 mr-2" />
-              Tümünü Okundu İşaretle
-            </Button>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  data-testid="button-mark-all-read"
+                >
+                  <CheckCheck className="w-4 h-4 mr-2" />
+                  Tümünü Okundu İşaretle
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent data-testid="dialog-confirm-mark-all-read">
+                <AlertDialogHeader>
+                  <AlertDialogTitle data-testid="dialog-title-confirm">Emin misiniz?</AlertDialogTitle>
+                  <AlertDialogDescription data-testid="dialog-description">
+                    Tüm bildirimler okundu olarak işaretlenecek. Bu işlem geri alınamaz.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel data-testid="button-dialog-cancel">Vazgeç</AlertDialogCancel>
+                  <AlertDialogAction 
+                    onClick={() => markAllAsReadMutation.mutate()}
+                    disabled={markAllAsReadMutation.isPending}
+                    data-testid="button-dialog-confirm"
+                  >
+                    Evet, İşaretle
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           )}
         </div>
       </div>

@@ -68,6 +68,8 @@ export default function GorevDetay() {
   const [showAnswerDialog, setShowAnswerDialog] = useState(false);
   const [answerText, setAnswerText] = useState("");
   const [showSubmitApprovalDialog, setShowSubmitApprovalDialog] = useState(false);
+  const [showCancelDialog, setShowCancelDialog] = useState(false);
+  const [cancelReason, setCancelReason] = useState("");
 
   const { data: task, isLoading } = useQuery<Task>({
     queryKey: ["/api/tasks", id],
@@ -482,6 +484,7 @@ export default function GorevDetay() {
     onay_bekliyor: "Onay Bekliyor",
     sure_uzatma_talebi: "Süre Uzatma Talebi",
     zamanlanmis: "Zamanlanmış",
+    iptal_edildi: "İptal Edildi",
   };
 
   const priorityLabels: Record<string, string> = {
@@ -513,6 +516,7 @@ export default function GorevDetay() {
   const canApproveExtension = (isAssigner || isHQ) && task.status === "sure_uzatma_talebi";
   const canSubmitForApproval = isAssignee && (task.status === "devam_ediyor" || task.status === "goruldu" || task.status === "beklemede");
   const canApproveClosure = (isAssigner || isHQ) && task.status === "onay_bekliyor";
+  const canCancel = (isAssigner || isHQ) && !['onaylandi', 'iptal_edildi'].includes(task.status);
   const canReactivate = isAssignee && task.status === "onay_bekliyor" && !(task as any).approvedByAssignerId;
 
   // Checker permissions
@@ -597,9 +601,9 @@ export default function GorevDetay() {
           </div>
         </div>
         <div className="p-2 rounded-lg border bg-card">
-          <span className="text-muted-foreground">Atanan</span>
-          <p className="font-medium mt-1 truncate">
-            {assignedUser ? `${assignedUser.firstName} ${assignedUser.lastName}` : "-"}
+          <span className="text-muted-foreground" data-testid="label-assigned-to">Atanan</span>
+          <p className="font-medium mt-1 truncate" data-testid="text-assigned-to-name">
+            {(task as any).assignedToName || (assignedUser ? `${assignedUser.firstName} ${assignedUser.lastName}` : "-")}
           </p>
         </div>
         {task.status === "onaylandi" && task.completedAt ? (
@@ -611,9 +615,9 @@ export default function GorevDetay() {
               </p>
             </div>
             <div className="p-2 rounded-lg border bg-card">
-              <span className="text-muted-foreground">Atayan</span>
-              <p className="font-medium mt-1 truncate">
-                {assignedByUser ? `${assignedByUser.firstName} ${assignedByUser.lastName}` : "-"}
+              <span className="text-muted-foreground" data-testid="label-assigned-by">Atayan</span>
+              <p className="font-medium mt-1 truncate" data-testid="text-assigned-by-name">
+                {(task as any).assignedByName || (assignedByUser ? `${assignedByUser.firstName} ${assignedByUser.lastName}` : "-")}
               </p>
             </div>
           </>
@@ -766,6 +770,7 @@ export default function GorevDetay() {
                 <ObjectUploader 
                   maxNumberOfFiles={1}
                   maxFileSize={10485760}
+                  testId="task-photo"
                   onGetUploadParameters={async () => {
                     const response = await fetch("/api/objects/upload", {
                       method: "POST",
@@ -774,12 +779,33 @@ export default function GorevDetay() {
                     if (!response.ok) throw new Error("Upload başarısız");
                     return response.json();
                   }}
-                  onComplete={() => {
-                    queryClient.invalidateQueries({ queryKey: ["/api/tasks", id] });
-                    toast({ title: "Başarılı", description: "Fotoğraf yüklendi" });
+                  onComplete={async (result) => {
+                    if (result.successful && result.successful.length > 0) {
+                      const photoUrl = result.successful[0].uploadURL;
+                      try {
+                        const saveResponse = await fetch(`/api/tasks/${id}/photo`, {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          credentials: "include",
+                          body: JSON.stringify({ photoUrl }),
+                        });
+                        if (!saveResponse.ok) {
+                          throw new Error("Fotoğraf kaydedilemedi");
+                        }
+                        queryClient.invalidateQueries({ queryKey: ["/api/tasks", id] });
+                        toast({ title: "Başarılı", description: "Fotoğraf başarıyla yüklendi" });
+                      } catch (error: any) {
+                        console.error("Error saving photo:", error);
+                        toast({ 
+                          title: "Hata", 
+                          description: error.message || "Fotoğraf kaydedilemedi",
+                          variant: "destructive"
+                        });
+                      }
+                    }
                   }}
                 >
-                  <Button variant="outline" size="sm" type="button" className="w-full">
+                  <Button variant="outline" size="sm" type="button" className="w-full" data-testid="button-upload-photo">
                     <ImageIcon className="h-4 w-4 mr-2" />
                     Fotoğraf Yükle
                   </Button>
@@ -865,6 +891,29 @@ export default function GorevDetay() {
             </Card>
           )}
         </>
+      )}
+
+      {/* Cancel Task Section - Shows for assigner/creator */}
+      {canCancel && (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base flex items-center gap-2">
+              <XCircle className="h-4 w-4" />
+              Gorevi Iptal Et
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Button
+              variant="destructive"
+              onClick={() => setShowCancelDialog(true)}
+              disabled={updateStatusMutation.isPending}
+              data-testid="button-cancel-task"
+            >
+              <XCircle className="h-4 w-4 mr-2" />
+              Gorevi Iptal Et
+            </Button>
+          </CardContent>
+        </Card>
       )}
 
       {/* Request Check Section - Shows for assignee when task is completed and has checker */}
@@ -1118,10 +1167,10 @@ export default function GorevDetay() {
             {/* Atanan Kişi */}
             <div>
               <p className="text-xs text-muted-foreground">Atanan</p>
-              {assignedUser ? (
-                <Link href={`/personel-detay/${assignedUser.id}`}>
-                  <p className="font-medium text-sm hover:underline cursor-pointer text-primary">
-                    {assignedUser.firstName} {assignedUser.lastName}
+              {(task as any).assignedToName || assignedUser ? (
+                <Link href={`/personel-detay/${task.assignedToId}`}>
+                  <p className="font-medium text-sm hover:underline cursor-pointer text-primary" data-testid="text-detail-assigned-to">
+                    {(task as any).assignedToName || `${assignedUser?.firstName} ${assignedUser?.lastName}`}
                   </p>
                 </Link>
               ) : (
@@ -1132,10 +1181,10 @@ export default function GorevDetay() {
             {/* Atayan Kişi */}
             <div>
               <p className="text-xs text-muted-foreground">Atayan</p>
-              {assignedByUser ? (
-                <Link href={`/personel-detay/${assignedByUser.id}`}>
-                  <p className="font-medium text-sm hover:underline cursor-pointer text-primary">
-                    {assignedByUser.firstName} {assignedByUser.lastName}
+              {(task as any).assignedByName || assignedByUser ? (
+                <Link href={`/personel-detay/${task.assignedById}`}>
+                  <p className="font-medium text-sm hover:underline cursor-pointer text-primary" data-testid="text-detail-assigned-by">
+                    {(task as any).assignedByName || `${assignedByUser?.firstName} ${assignedByUser?.lastName}`}
                   </p>
                 </Link>
               ) : (
@@ -1640,6 +1689,49 @@ export default function GorevDetay() {
             <Button onClick={() => approveClosureMutation.mutate(approverNote || undefined)} disabled={approveClosureMutation.isPending} data-testid="button-confirm-approve-closure">
               <CheckCircle className="h-4 w-4 mr-2" />
               Onayla ve Kapat
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Cancel Task Dialog */}
+      <Dialog open={showCancelDialog} onOpenChange={setShowCancelDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Gorevi Iptal Et</DialogTitle>
+            <DialogDescription>
+              Gorevi iptal etmek istediginize emin misiniz? Lutfen iptal sebebini belirtin.
+            </DialogDescription>
+          </DialogHeader>
+          <Textarea
+            placeholder="Iptal sebebi..."
+            value={cancelReason}
+            onChange={(e) => setCancelReason(e.target.value)}
+            className="min-h-[100px]"
+            data-testid="input-cancel-reason"
+          />
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowCancelDialog(false);
+                setCancelReason("");
+              }}
+              data-testid="button-dismiss-cancel"
+            >
+              Vazgec
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => {
+                updateStatusMutation.mutate({ status: "iptal_edildi", note: cancelReason.trim() || "Gorev iptal edildi" });
+                setShowCancelDialog(false);
+                setCancelReason("");
+              }}
+              disabled={updateStatusMutation.isPending || !cancelReason.trim()}
+              data-testid="button-confirm-cancel-task"
+            >
+              {updateStatusMutation.isPending ? "Kaydediliyor..." : "Gorevi Iptal Et"}
             </Button>
           </DialogFooter>
         </DialogContent>

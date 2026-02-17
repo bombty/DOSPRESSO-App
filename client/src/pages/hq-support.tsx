@@ -28,7 +28,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { Plus, MessageSquare, X, Send, Paperclip, Download, AlertCircle, CheckCircle, Clock, User as UserIcon } from "lucide-react";
+import { Plus, MessageSquare, X, Send, Paperclip, Download, AlertCircle, CheckCircle, Clock, User as UserIcon, Star, ImagePlus } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -156,7 +156,7 @@ export default function HQSupport() {
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="content" className="w-full space-y-2 sm:space-y-3">
+        <TabsContent value="aktif" className="w-full space-y-2 sm:space-y-3">
           {isLoading ? (
             <Card>
               <CardContent className="p-6">
@@ -174,7 +174,7 @@ export default function HQSupport() {
           )}
         </TabsContent>
 
-        <TabsContent value="content" className="w-full space-y-2 sm:space-y-3">
+        <TabsContent value="kapatildi" className="w-full space-y-2 sm:space-y-3">
           {isLoading ? (
             <Card>
               <CardContent className="p-6">
@@ -307,13 +307,25 @@ function TicketCard({
               </span>
             </div>
           </div>
-          <Badge 
-            variant={ticket.status === HQ_SUPPORT_STATUS.AKTIF ? "default" : "secondary"}
-            className={ticket.status === HQ_SUPPORT_STATUS.AKTIF ? "bg-warning/100" : ""}
-            data-testid={`badge-status-${ticket.id}`}
-          >
-            {ticket.status === HQ_SUPPORT_STATUS.AKTIF ? "Aktif" : "Kapatıldı"}
-          </Badge>
+          <div className="flex flex-col items-end gap-1">
+            <Badge 
+              variant={ticket.status === HQ_SUPPORT_STATUS.AKTIF ? "default" : "secondary"}
+              className={ticket.status === HQ_SUPPORT_STATUS.AKTIF ? "bg-warning/100" : ""}
+              data-testid={`badge-status-${ticket.id}`}
+            >
+              {ticket.status === HQ_SUPPORT_STATUS.AKTIF ? "Aktif" : "Kapatildi"}
+            </Badge>
+            {ticket.rating && ticket.rating > 0 && (
+              <div className="flex items-center gap-0.5" data-testid={`rating-display-${ticket.id}`}>
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <Star
+                    key={star}
+                    className={`w-3 h-3 ${star <= ticket.rating! ? "fill-yellow-400 text-yellow-400" : "text-muted-foreground"}`}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </CardContent>
     </Card>
@@ -529,7 +541,42 @@ function CreateTicketDialog({
   );
 }
 
-// Ticket Detail Dialog Component
+function compressImage(file: File, maxSize: number = 800): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        let width = img.width;
+        let height = img.height;
+        if (width > maxSize || height > maxSize) {
+          if (width > height) {
+            height = Math.round((height * maxSize) / width);
+            width = maxSize;
+          } else {
+            width = Math.round((width * maxSize) / height);
+            height = maxSize;
+          }
+        }
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) {
+          reject(new Error("Canvas context not available"));
+          return;
+        }
+        ctx.drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL("image/jpeg", 0.8));
+      };
+      img.onerror = reject;
+      img.src = e.target?.result as string;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
 function TicketDetailDialog({ 
   ticketId, 
   open, 
@@ -544,19 +591,21 @@ function TicketDetailDialog({
   const { user } = useAuth();
   const { toast } = useToast();
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [pendingAttachment, setPendingAttachment] = useState<string | null>(null);
+  const [showRatingDialog, setShowRatingDialog] = useState(false);
+  const [selectedRating, setSelectedRating] = useState(0);
 
-  // Fetch ticket details with polling
   const { data: ticket } = useQuery<TicketWithRelations>({
     queryKey: ["/api/hq-support/tickets", ticketId],
     enabled: open,
-    refetchInterval: 10000, // Poll every 10 seconds
+    refetchInterval: 10000,
   });
 
-  // Fetch messages with polling
-  const { data: messages = [] } = useQuery<(HQSupportMessage & { sender: User })[]>({
+  const { data: messages = [] } = useQuery<(HQSupportMessage & { sender: any })[]>({
     queryKey: ["/api/hq-support/tickets", ticketId, "messages"],
     enabled: open,
-    refetchInterval: 10000, // Poll every 10 seconds
+    refetchInterval: 10000,
   });
 
   const form = useForm<MessageFormData>({
@@ -566,7 +615,6 @@ function TicketDetailDialog({
     },
   });
 
-  // Auto-scroll to latest message
   useEffect(() => {
     if (messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
@@ -574,7 +622,7 @@ function TicketDetailDialog({
   }, [messages]);
 
   const sendMessageMutation = useMutation({
-    mutationFn: async (data: MessageFormData) => {
+    mutationFn: async (data: { message: string; attachments?: any[] }) => {
       const response = await apiRequest("POST", `/api/hq-support/tickets/${ticketId}/messages`, data);
       return response.json();
     },
@@ -582,6 +630,7 @@ function TicketDetailDialog({
       queryClient.invalidateQueries({ queryKey: ["/api/hq-support/tickets", ticketId, "messages"] });
       queryClient.invalidateQueries({ queryKey: ["/api/hq-support/tickets"] });
       form.reset();
+      setPendingAttachment(null);
     },
     onError: (error: Error) => {
       toast({
@@ -593,17 +642,22 @@ function TicketDetailDialog({
   });
 
   const closeTicketMutation = useMutation({
-    mutationFn: async () => {
-      const response = await apiRequest("PATCH", `/api/hq-support/tickets/${ticketId}/close`, {});
+    mutationFn: async (rating: number) => {
+      const response = await apiRequest("PATCH", `/api/hq-support/tickets/${ticketId}`, {
+        status: "kapatildi",
+        rating,
+      });
       return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/hq-support/tickets"] });
       queryClient.invalidateQueries({ queryKey: ["/api/hq-support/tickets", ticketId] });
       toast({
-        title: "Başarılı",
-        description: "Talep kapatıldı",
+        title: "Basarili",
+        description: "Talep kapatildi",
       });
+      setShowRatingDialog(false);
+      setSelectedRating(0);
       onClose();
     },
     onError: (error: Error) => {
@@ -616,13 +670,39 @@ function TicketDetailDialog({
   });
 
   const onSubmit = (data: MessageFormData) => {
-    sendMessageMutation.mutate(data);
+    const payload: any = { message: data.message };
+    if (pendingAttachment) {
+      payload.attachments = [{ id: crypto.randomUUID(), url: pendingAttachment, type: "image", name: "photo.jpg", size: 0 }];
+    }
+    sendMessageMutation.mutate(payload);
+  };
+
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      toast({ title: "Hata", description: "Sadece resim dosyalari yuklenebilir", variant: "destructive" });
+      return;
+    }
+    try {
+      const compressed = await compressImage(file, 800);
+      setPendingAttachment(compressed);
+    } catch {
+      toast({ title: "Hata", description: "Resim isleme hatasi", variant: "destructive" });
+    }
+    if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
   const handleCloseTicket = () => {
-    if (confirm("Bu talebi kapatmak istediğinize emin misiniz?")) {
-      closeTicketMutation.mutate();
+    setShowRatingDialog(true);
+  };
+
+  const handleConfirmClose = () => {
+    if (selectedRating < 1) {
+      toast({ title: "Uyari", description: "Lutfen bir puan seciniz", variant: "destructive" });
+      return;
     }
+    closeTicketMutation.mutate(selectedRating);
   };
 
   if (!ticket) {
@@ -630,6 +710,59 @@ function TicketDetailDialog({
   }
 
   const isTicketActive = ticket.status === HQ_SUPPORT_STATUS.AKTIF;
+  const isCreator = user?.id === ticket.createdById;
+
+  if (showRatingDialog) {
+    return (
+      <Dialog open={open} onOpenChange={() => { setShowRatingDialog(false); }}>
+        <DialogContent data-testid="dialog-rating">
+          <DialogHeader>
+            <DialogTitle>Talep Degerlendirmesi</DialogTitle>
+          </DialogHeader>
+          <div className="flex flex-col items-center gap-4 py-4">
+            <p className="text-sm text-muted-foreground">Destek deneyiminizi puanlayin</p>
+            <div className="flex items-center gap-1" data-testid="rating-stars-input">
+              {[1, 2, 3, 4, 5].map((star) => (
+                <button
+                  key={star}
+                  type="button"
+                  onClick={() => setSelectedRating(star)}
+                  className="p-1"
+                  data-testid={`button-star-${star}`}
+                >
+                  <Star
+                    className={`w-8 h-8 cursor-pointer transition-colors ${
+                      star <= selectedRating ? "fill-yellow-400 text-yellow-400" : "text-muted-foreground"
+                    }`}
+                  />
+                </button>
+              ))}
+            </div>
+            <p className="text-sm font-medium" data-testid="text-rating-value">
+              {selectedRating > 0 ? `${selectedRating} / 5` : "Puan seciniz"}
+            </p>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowRatingDialog(false)}
+              data-testid="button-cancel-rating"
+            >
+              Iptal
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleConfirmClose}
+              disabled={closeTicketMutation.isPending || selectedRating < 1}
+              data-testid="button-confirm-close"
+            >
+              {closeTicketMutation.isPending ? "Kapatiliyor..." : "Kapat ve Degerlendir"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    );
+  }
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
@@ -655,45 +788,50 @@ function TicketDetailDialog({
                   className={isTicketActive ? "bg-warning/100" : ""}
                   data-testid="badge-detail-status"
                 >
-                  {isTicketActive ? "Aktif" : "Kapatıldı"}
+                  {isTicketActive ? "Aktif" : "Kapatildi"}
                 </Badge>
                 {ticket.assignedToId && (
                   <Badge variant="outline" className="flex items-center gap-1">
                     <UserIcon className="w-3 h-3" />
-                    Atandı
+                    Atandi
                   </Badge>
                 )}
               </div>
+              {ticket.rating && ticket.rating > 0 && (
+                <div className="flex items-center gap-1 mt-2" data-testid="detail-rating-display">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <Star
+                      key={star}
+                      className={`w-4 h-4 ${star <= ticket.rating! ? "fill-yellow-400 text-yellow-400" : "text-muted-foreground"}`}
+                    />
+                  ))}
+                </div>
+              )}
             </div>
-            <Button variant="ghost" size="icon" onClick={onClose} data-testid="button-close-detail">
-              <X className="w-4 h-4" />
-            </Button>
           </div>
         </DialogHeader>
 
-        <div className="grid grid-cols-1 gap-2 sm:gap-3 flex-1 overflow-hidden flex flex-col">
-          {/* Ticket Info */}
+        <div className="flex flex-col gap-2 sm:gap-3 flex-1 overflow-hidden">
           <div className="flex flex-col gap-3 sm:gap-4">
             <p className="text-sm text-muted-foreground" data-testid="text-detail-description">
               {ticket.description}
             </p>
-            <div className="flex items-center gap-2 sm:gap-3 text-sm text-muted-foreground">
+            <div className="flex items-center gap-2 sm:gap-3 text-sm text-muted-foreground flex-wrap">
               <span data-testid="text-detail-branch">
-                <strong>Şube:</strong> {ticket.branch?.name}
+                <strong>Sube:</strong> {ticket.branch?.name}
               </span>
               <span data-testid="text-detail-created">
-                <strong>Oluşturulma:</strong> {ticket.createdAt && format(new Date(ticket.createdAt), "d MMMM yyyy, HH:mm", { locale: tr })}
+                <strong>Olusturulma:</strong> {ticket.createdAt && format(new Date(ticket.createdAt), "d MMMM yyyy, HH:mm", { locale: tr })}
               </span>
             </div>
           </div>
 
           <Separator />
 
-          {/* Messages */}
           <ScrollArea className="flex-1 pr-4">
-            <div className="grid grid-cols-1 gap-2 sm:gap-3 pb-4">
+            <div className="flex flex-col gap-2 sm:gap-3 pb-4">
               {messages.length === 0 ? (
-                <p className="text-center text-muted-foreground py-8">Henüz mesaj yok</p>
+                <p className="text-center text-muted-foreground py-8">Henuz mesaj yok</p>
               ) : (
                 messages.map((msg) => {
                   const isCurrentUser = msg.senderId === user?.id;
@@ -710,7 +848,7 @@ function TicketDetailDialog({
                         </AvatarFallback>
                       </Avatar>
                       <div className={`flex-1 space-y-1 ${isCurrentUser ? "text-right" : ""}`}>
-                        <div className="flex items-center gap-2">
+                        <div className={`flex items-center gap-2 ${isCurrentUser ? "justify-end" : ""}`}>
                           <p className="text-sm font-medium">
                             {msg.sender?.firstName} {msg.sender?.lastName}
                           </p>
@@ -726,6 +864,21 @@ function TicketDetailDialog({
                           }`}
                         >
                           <p className="text-sm">{msg.message}</p>
+                          {msg.attachments && Array.isArray(msg.attachments) && msg.attachments.length > 0 && (
+                            <div className="mt-2 space-y-1">
+                              {(msg.attachments as any[]).map((att: any, idx: number) => (
+                                att.type === "image" && att.url ? (
+                                  <img
+                                    key={idx}
+                                    src={att.url}
+                                    alt={att.name || "Ek"}
+                                    className="max-w-[200px] rounded-md"
+                                    data-testid={`attachment-image-${msg.id}-${idx}`}
+                                  />
+                                ) : null
+                              ))}
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -736,12 +889,42 @@ function TicketDetailDialog({
             </div>
           </ScrollArea>
 
-          {/* Message Input */}
           {isTicketActive && (
             <>
               <Separator />
+              {pendingAttachment && (
+                <div className="flex items-center gap-2 p-2 bg-muted rounded-md">
+                  <img src={pendingAttachment} alt="Ek" className="w-12 h-12 object-cover rounded-md" />
+                  <span className="text-sm text-muted-foreground flex-1">Resim eklendi</span>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setPendingAttachment(null)}
+                    data-testid="button-remove-attachment"
+                  >
+                    <X className="w-4 h-4" />
+                  </Button>
+                </div>
+              )}
               <Form {...form}>
                 <form onSubmit={form.handleSubmit(onSubmit)} className="flex gap-2">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleFileSelect}
+                    data-testid="input-file-upload"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    onClick={() => fileInputRef.current?.click()}
+                    data-testid="button-attach-photo"
+                  >
+                    <ImagePlus className="w-4 h-4" />
+                  </Button>
                   <FormField
                     control={form.control}
                     name="message"
@@ -750,7 +933,7 @@ function TicketDetailDialog({
                         <FormControl>
                           <Input 
                             {...field} 
-                            placeholder="Mesajınızı yazın..." 
+                            placeholder="Mesajinizi yazin..." 
                             data-testid="input-message"
                           />
                         </FormControl>
@@ -771,8 +954,7 @@ function TicketDetailDialog({
           )}
         </div>
 
-        {/* Footer Actions */}
-        {isHQ && isTicketActive && (
+        {isCreator && isTicketActive && (
           <DialogFooter>
             <Button
               variant="destructive"
@@ -780,7 +962,7 @@ function TicketDetailDialog({
               disabled={closeTicketMutation.isPending}
               data-testid="button-close-ticket"
             >
-              {closeTicketMutation.isPending ? "Kapatılıyor..." : "Talebi Kapat"}
+              {closeTicketMutation.isPending ? "Kapatiliyor..." : "Talebi Kapat"}
             </Button>
           </DialogFooter>
         )}

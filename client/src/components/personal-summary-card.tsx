@@ -26,6 +26,8 @@ interface DashboardSummary {
     startTime: string;
     endTime: string;
     shiftType: string;
+    breakStartTime?: string;
+    breakEndTime?: string;
   } | null;
   performanceScore: number | null;
   aiSummary: string;
@@ -129,8 +131,13 @@ export function PersonalSummaryCard() {
                 <Calendar className="h-3 w-3" /> Bugünkü Vardiya
               </p>
               <p className="text-sm font-medium text-green-600 dark:text-green-400">
-                {summary.todayShift.startTime} - {summary.todayShift.endTime}
+                {summary.todayShift.startTime?.slice(0,5)} - {summary.todayShift.endTime?.slice(0,5)}
               </p>
+              {summary.todayShift.breakStartTime && summary.todayShift.breakEndTime && (
+                <p className="text-[10px] text-muted-foreground">
+                  Mola: {summary.todayShift.breakStartTime?.slice(0,5)} - {summary.todayShift.breakEndTime?.slice(0,5)}
+                </p>
+              )}
             </div>
           )}
 

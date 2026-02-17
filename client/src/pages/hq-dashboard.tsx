@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { UnifiedHero } from "@/components/widgets/unified-hero";
 import { CriticalAlerts } from "@/components/critical-alerts";
 import { DailyTaskPanel } from "@/components/daily-task-panel";
@@ -1559,7 +1560,12 @@ export default function HQDashboard() {
   return (
     <div className="container mx-auto p-3 max-w-7xl space-y-3">
       <div className="flex items-center gap-3">
-        <MrDobody size={40} />
+        <Avatar className="h-10 w-10" data-testid="avatar-user-profile">
+          <AvatarImage src={user?.profileImageUrl || undefined} alt={user?.firstName || ''} />
+          <AvatarFallback className="bg-primary/10 text-primary text-sm font-semibold">
+            {(user?.firstName?.[0] || '').toUpperCase()}{(user?.lastName?.[0] || '').toUpperCase()}
+          </AvatarFallback>
+        </Avatar>
         <UnifiedHero />
       </div>
       <DailyTaskPanel />

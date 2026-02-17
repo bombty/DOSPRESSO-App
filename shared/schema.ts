@@ -3461,9 +3461,9 @@ export const messages = pgTable("messages", {
   senderId: varchar("sender_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   recipientId: varchar("recipient_id").references(() => users.id, { onDelete: "cascade" }), // null for role-based broadcast
   recipientRole: varchar("recipient_role", { length: 50 }), // null for specific user messages
-  subject: text("subject").notNull(),
+  subject: text("subject"),
   body: text("body").notNull(),
-  type: varchar("type", { length: 50 }).notNull(), // task_assignment, hq_message, branch_message, notification
+  type: varchar("type", { length: 50 }).default("direct"), // task_assignment, hq_message, branch_message, notification, direct
   attachments: jsonb("attachments").$type<{id: string, url: string, type: string, name: string, size: number}[]>().default([]),
   isRead: boolean("is_read").default(false).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -3774,6 +3774,7 @@ export const hqSupportTickets = pgTable("hq_support_tickets", {
   status: varchar("status", { length: 20 }).notNull().default(HQ_SUPPORT_STATUS.AKTIF),
   closedAt: timestamp("closed_at"),
   closedBy: varchar("closed_by").references(() => users.id, { onDelete: "set null" }),
+  rating: integer("rating"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => [

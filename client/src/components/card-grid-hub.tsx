@@ -973,6 +973,11 @@ export function CardGridHub() {
                   <span className="font-semibold text-primary text-sm">
                     {shift.startTime?.slice(0,5) || '09:00'} - {shift.endTime?.slice(0,5) || '18:00'}
                   </span>
+                  {shift.breakStartTime && shift.breakEndTime && (
+                    <span className="text-[10px] text-muted-foreground ml-1">
+                      (Mola: {shift.breakStartTime?.slice(0,5)}-{shift.breakEndTime?.slice(0,5)})
+                    </span>
+                  )}
                 </div>
               </div>
             ))}

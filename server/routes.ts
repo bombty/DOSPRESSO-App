@@ -2284,7 +2284,29 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
         }
       }
       
-      res.json(task);
+      const enrichedTask: any = { ...task };
+      const userIdsToFetch: string[] = [];
+      if (task.assignedToId) userIdsToFetch.push(task.assignedToId);
+      if (task.assignedById) userIdsToFetch.push(task.assignedById);
+      if ((task as any).checkerId) userIdsToFetch.push((task as any).checkerId);
+
+      if (userIdsToFetch.length > 0) {
+        const usersMap = await storage.getUsersByIds(userIdsToFetch);
+        if (task.assignedToId) {
+          const u = usersMap.get(task.assignedToId);
+          enrichedTask.assignedToName = u ? `${u.firstName || ''} ${u.lastName || ''}`.trim() : null;
+        }
+        if (task.assignedById) {
+          const u = usersMap.get(task.assignedById);
+          enrichedTask.assignedByName = u ? `${u.firstName || ''} ${u.lastName || ''}`.trim() : null;
+        }
+        if ((task as any).checkerId) {
+          const u = usersMap.get((task as any).checkerId);
+          enrichedTask.checkerName = u ? `${u.firstName || ''} ${u.lastName || ''}`.trim() : null;
+        }
+      }
+
+      res.json(enrichedTask);
     } catch (error: any) {
       console.error("Error fetching task:", error);
       res.status(500).json({ message: "Görev alınamadı" });
@@ -3110,7 +3132,7 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
       const isAssignee = task.assignedToId === user.id;
       const isHQ = isHQRole(user.role as UserRoleType);
       
-      const validStatuses = ['beklemede', 'devam_ediyor', 'tamamlandi', 'incelemede', 'basarisiz', 'onaylandi', 'reddedildi', 'ek_bilgi_bekleniyor', 'cevap_bekliyor', 'onay_bekliyor', 'sure_uzatma_talebi'];
+      const validStatuses = ['beklemede', 'devam_ediyor', 'tamamlandi', 'incelemede', 'basarisiz', 'onaylandi', 'reddedildi', 'ek_bilgi_bekleniyor', 'cevap_bekliyor', 'onay_bekliyor', 'sure_uzatma_talebi', 'iptal_edildi'];
       if (!validStatuses.includes(status)) {
         return res.status(400).json({ message: `Geçersiz durum: ${status}` });
       }
@@ -3121,7 +3143,7 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
       let transitionMessage = "";
       
       // Terminal states - no transitions allowed from these (except supervisor retry)
-      const terminalStates = ['onaylandi', 'basarisiz'];
+      const terminalStates = ['onaylandi', 'basarisiz', 'iptal_edildi'];
       const isTerminal = terminalStates.includes(currentStatus);
       
       // Block all transitions from terminal states (except HQ reset)
@@ -3148,7 +3170,7 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
         }
       }
       
-      // Assigner/HQ can: approve, reject, request info (only from active/completed states)
+      // Assigner/HQ can: approve, reject, request info, cancel (only from active/completed states)
       if (isAssigner || isHQ) {
         if (status === 'onaylandi' && (currentStatus === 'tamamlandi' || currentStatus === 'incelemede')) {
           allowed = true;
@@ -3159,11 +3181,14 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
         } else if (status === 'ek_bilgi_bekleniyor' && ['devam_ediyor', 'tamamlandi', 'incelemede'].includes(currentStatus)) {
           allowed = true;
           transitionMessage = "Ek bilgi istendi";
+        } else if (status === 'iptal_edildi' && !['onaylandi', 'iptal_edildi'].includes(currentStatus)) {
+          allowed = true;
+          transitionMessage = note || "Görev iptal edildi";
         }
       }
       
       // Only HQ can reset to pending (supervisor retry) - includes all terminal states
-      if (isHQ && status === 'beklemede' && ['reddedildi', 'basarisiz', 'onaylandi', 'onay_bekliyor'].includes(currentStatus)) {
+      if (isHQ && status === 'beklemede' && ['reddedildi', 'basarisiz', 'onaylandi', 'onay_bekliyor', 'iptal_edildi'].includes(currentStatus)) {
         allowed = true;
         transitionMessage = "Görev yeniden atandı (HQ tarafından)";
       }
@@ -3290,6 +3315,47 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
   // ========================================
   // TASK WORKFLOW ENDPOINTS (Question, Extension, Approval, Reactivation)
   // ========================================
+
+  // POST /api/tasks/:id/photo - Save photo URL to task
+  app.post('/api/tasks/:id/photo', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const taskId = parseInt(req.params.id);
+      const { photoUrl } = req.body;
+
+      if (isNaN(taskId)) {
+        return res.status(400).json({ message: "Geçersiz görev ID'si" });
+      }
+
+      if (!photoUrl || typeof photoUrl !== 'string' || !photoUrl.trim()) {
+        return res.status(400).json({ message: "Fotoğraf URL'si gereklidir" });
+      }
+
+      const task = await storage.getTask(taskId);
+      if (!task) {
+        return res.status(404).json({ message: "Görev bulunamadı" });
+      }
+
+      const isAssignee = task.assignedToId === user.id;
+      const isAssigner = task.assignedById === user.id;
+      const isHQ = isHQRole(user.role as UserRoleType);
+
+      // Only assignee, assigner, or HQ can upload photos
+      if (!isAssignee && !isAssigner && !isHQ) {
+        return res.status(403).json({ message: "Bu göreve fotoğraf yükleyemezsiniz" });
+      }
+
+      // Update task with photo URL
+      const updatedTask = await storage.updateTask(taskId, {
+        photoUrl: photoUrl.trim(),
+      });
+
+      res.json({ success: true, message: "Fotoğraf kaydedildi", task: updatedTask });
+    } catch (error: any) {
+      console.error("Error saving task photo:", error);
+      res.status(500).json({ message: "Fotoğraf kaydedilemedi" });
+    }
+  });
 
   // POST /api/tasks/:id/ask-question - Assignee asks a question to the assigner
   app.post('/api/tasks/:id/ask-question', isAuthenticated, async (req: any, res) => {
@@ -10009,7 +10075,9 @@ JSON formatında yanıt ver:
         todayShift: todayShift ? {
           startTime: todayShift.startTime,
           endTime: todayShift.endTime,
-          shiftType: todayShift.shiftType
+          shiftType: todayShift.shiftType,
+          breakStartTime: todayShift.breakStartTime,
+          breakEndTime: todayShift.breakEndTime
         } : null,
         performanceScore: performanceScore?.compositeScore || null,
         aiSummary,
@@ -21405,7 +21473,7 @@ Süt İçerir: ${recipe.hasMilk ? 'Evet' : 'Hayır'}`;
     }
   });
   
-  // GET /api/hq-support/tickets/:id - Get single ticket with messages
+  // GET /api/hq-support/tickets/:id - Get single ticket with branch/user info
   app.get('/api/hq-support/tickets/:id', isAuthenticated, async (req: any, res) => {
     try {
       const user = req.user;
@@ -21416,43 +21484,83 @@ Süt İçerir: ${recipe.hasMilk ? 'Evet' : 'Hayır'}`;
         return res.status(404).json({ message: "Talep bulunamadı" });
       }
       
-      // Check authorization
       if (!isHQRole(user.role) && user.role !== 'admin' && ticket.createdById !== user.id) {
         return res.status(403).json({ message: "Bu talebe erişim yetkiniz yok" });
       }
       
-      const messages = await storage.getHQSupportMessages(ticketId);
+      const allBranches = await storage.getBranches();
+      const branch = allBranches.find(b => b.id === ticket.branchId);
+      const allUsers = await db.select().from(users);
+      const createdBy = allUsers.find(u => u.id === ticket.createdById);
+      
+      res.json({
+        ...ticket,
+        branch: branch || { name: 'Unknown' },
+        createdBy: createdBy ? { firstName: createdBy.firstName, lastName: createdBy.lastName } : { firstName: 'Unknown', lastName: '' },
+        messageCount: 0,
+      });
+    } catch (error: any) {
+      console.error("Get ticket details error:", error);
+      res.status(500).json({ message: "Talep detayları alınamadı" });
+    }
+  });
+
+  // GET /api/hq-support/tickets/:id/messages - Get messages for a ticket
+  app.get('/api/hq-support/tickets/:id/messages', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      const ticketId = parseInt(req.params.id);
+      
+      const ticket = await storage.getHQSupportTicket(ticketId);
+      if (!ticket) {
+        return res.status(404).json({ message: "Talep bulunamadı" });
+      }
+      
+      if (!isHQRole(user.role) && user.role !== 'admin' && ticket.createdById !== user.id) {
+        return res.status(403).json({ message: "Bu talebe erişim yetkiniz yok" });
+      }
+      
+      const messagesList = await storage.getHQSupportMessages(ticketId);
       const allUsers = await db.select().from(users);
       
-      const enrichedMessages = messages.map((msg: any) => {
-        const sender = allUsers.find(u => u.id === msg.senderId);
+      const enrichedMessages = messagesList.map((msg: any) => {
+        const sender = allUsers.find((u: any) => u.id === msg.senderId);
         return {
           ...msg,
           sender: sender ? { firstName: sender.firstName, lastName: sender.lastName, profileImageUrl: sender.profileImageUrl } : null,
         };
       });
       
-      res.json({ ticket, messages: enrichedMessages });
+      res.json(enrichedMessages);
     } catch (error: any) {
-      console.error("Get ticket details error:", error);
-      res.status(500).json({ message: "Talep detayları alınamadı" });
+      console.error("Get messages error:", error);
+      res.status(500).json({ message: "Mesajlar alınamadı" });
     }
   });
   
-  // PATCH /api/hq-support/tickets/:id - Update ticket
+  // PATCH /api/hq-support/tickets/:id - Update ticket (close with rating by creator)
   app.patch('/api/hq-support/tickets/:id', isAuthenticated, async (req: any, res) => {
     try {
       const user = req.user;
       const ticketId = parseInt(req.params.id);
       
-      if (!isHQRole(user.role) && user.role !== 'admin') {
-        return res.status(403).json({ message: "Talep güncelleme yetkiniz yok" });
+      const ticket = await storage.getHQSupportTicket(ticketId);
+      if (!ticket) {
+        return res.status(404).json({ message: "Talep bulunamadı" });
       }
       
       const updates = req.body;
+      
       if (updates.status === 'kapatildi') {
+        if (ticket.createdById !== user.id && user.role !== 'admin') {
+          return res.status(403).json({ message: "Sadece talebi olusturan kisi kapatabilir" });
+        }
         updates.closedAt = new Date();
         updates.closedBy = user.id;
+      } else {
+        if (!isHQRole(user.role) && user.role !== 'admin' && ticket.createdById !== user.id) {
+          return res.status(403).json({ message: "Talep güncelleme yetkiniz yok" });
+        }
       }
       
       const updated = await storage.updateHQSupportTicket(ticketId, updates);
@@ -36478,6 +36586,29 @@ MUTLAKA aşağıdaki JSON formatında yanıt ver:
   });
 
   // ===== MESSAGING SYSTEM =====
+
+  // GET /api/messages/recipients - Get list of users available for messaging (no employees permission needed)
+  app.get('/api/messages/recipients', isAuthenticated, async (req: any, res) => {
+    try {
+      const currentUser = req.user!;
+      if (!hasPermission(currentUser.role as UserRoleType, 'messages', 'view')) {
+        return res.status(403).json({ message: "Mesaj erişim yetkiniz yok" });
+      }
+      const allUsersList = await db.select({
+        id: users.id,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        role: users.role,
+        branchId: users.branchId,
+        profileImageUrl: users.profileImageUrl,
+      }).from(users).where(and(ne(users.id, currentUser.id), eq(users.isActive, true)));
+      res.json(allUsersList);
+    } catch (error: any) {
+      console.error("Error fetching message recipients:", error);
+      res.status(500).json({ message: "Alici listesi alinamadi" });
+    }
+  });
+
   app.get('/api/messages', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user!.id;
@@ -36487,9 +36618,10 @@ MUTLAKA aşağıdaki JSON formatında yanıt ver:
       for (const ut of userThreads) {
         const [lastMessage] = await db.select().from(messages).where(eq(messages.threadId, ut.threadId)).orderBy(desc(messages.createdAt)).limit(1);
         if (!lastMessage) continue;
+        const [firstMessage] = await db.select({ subject: messages.subject }).from(messages).where(eq(messages.threadId, ut.threadId)).orderBy(asc(messages.createdAt)).limit(1);
         const participants = await db.select({ id: users.id, firstName: users.firstName, lastName: users.lastName, profileImageUrl: users.profileImageUrl }).from(threadParticipants).innerJoin(users, eq(users.id, threadParticipants.userId)).where(eq(threadParticipants.threadId, ut.threadId));
         const unreadResult = await db.select({ count: sql<number>`count(*)::int` }).from(messages).where(and(eq(messages.threadId, ut.threadId), ut.lastReadAt ? sql`${messages.createdAt} > ${ut.lastReadAt}` : sql`1=1`, sql`${messages.senderId} != ${userId}`));
-        threadSummaries.push({ threadId: ut.threadId, participants, lastMessageBody: lastMessage.body, lastMessageAt: lastMessage.createdAt, unreadCount: unreadResult[0]?.count || 0 });
+        threadSummaries.push({ threadId: ut.threadId, subject: firstMessage?.subject || 'Mesaj', participants, lastMessageBody: lastMessage.body, lastMessageAt: lastMessage.createdAt, unreadCount: unreadResult[0]?.count || 0 });
       }
       threadSummaries.sort((a, b) => new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime());
       res.json(threadSummaries);
@@ -36530,7 +36662,7 @@ MUTLAKA aşağıdaki JSON formatında yanıt ver:
   app.post('/api/messages', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user!.id;
-      const { threadId, recipientId, recipientRole, subject, body, attachments } = req.body;
+      const { threadId, recipientId, recipientRole, subject, body, type, attachments } = req.body;
       if (!body || body.trim() === '') { return res.status(400).json({ message: "Mesaj içeriği gerekli" }); }
       let targetThreadId = threadId;
       if (!targetThreadId) {
@@ -36542,7 +36674,7 @@ MUTLAKA aşağıdaki JSON formatında yanıt ver:
           for (const u of roleUsers) { if (u.id !== userId) { await db.insert(threadParticipants).values({ threadId: targetThreadId, userId: u.id }).onConflictDoNothing(); } }
         }
       }
-      const [newMessage] = await db.insert(messages).values({ threadId: targetThreadId, senderId: userId, recipientId, recipientRole, subject: subject || null, body: body.trim(), attachments: attachments || null }).returning();
+      const [newMessage] = await db.insert(messages).values({ threadId: targetThreadId, senderId: userId, recipientId: recipientId || null, recipientRole: recipientRole || null, subject: subject || 'Mesaj', body: body.trim(), type: type || 'direct', attachments: attachments && attachments.length > 0 ? attachments : null }).returning();
       await db.update(threadParticipants).set({ lastReadAt: new Date() }).where(and(eq(threadParticipants.threadId, targetThreadId), eq(threadParticipants.userId, userId)));
       res.json(newMessage);
     } catch (error: any) {
@@ -36582,15 +36714,16 @@ MUTLAKA aşağıdaki JSON formatında yanıt ver:
         return res.status(403).json({ message: "Bu thread'e erişim yetkiniz yok" });
       }
 
-      // Insert new message as a reply
+      const [firstMsg] = await db.select({ subject: messages.subject }).from(messages).where(eq(messages.threadId, threadId)).orderBy(asc(messages.createdAt)).limit(1);
       const [newMessage] = await db.insert(messages).values({
         threadId,
         senderId: userId,
         recipientId: null,
         recipientRole: null,
-        subject: null,
+        subject: firstMsg?.subject || 'Mesaj',
         body: body.trim(),
-        attachments: attachments || null,
+        type: 'direct',
+        attachments: attachments && attachments.length > 0 ? attachments : null,
       }).returning();
 
       // Update sender's lastReadAt
@@ -39273,7 +39406,16 @@ Bu verilere dayanarak performans analizi ve iyileştirme önerileri oluştur.`
       const hourlyRate = effectiveBaseSalary > 0 ? effectiveBaseSalary / (26 * 7.5) : 0;
       const overtimeAmountThisMonth = Math.round(hourlyRate * 1.5 * overtimeHoursThisMonth);
 
-      const expectedWorkDays = 26;
+      const totalDaysInMonth = new Date(currentYear, currentMonth, 0).getDate();
+      const todayDate = Math.min(now.getDate(), totalDaysInMonth);
+      // Count business days (Mon-Sat, excluding Sunday) from 1st to today
+      let expectedWorkDays = 0;
+      for (let d = 1; d <= todayDate; d++) {
+        const date = new Date(currentYear, currentMonth - 1, d);
+        if (date.getDay() !== 0) { // 0 = Sunday
+          expectedWorkDays++;
+        }
+      }
       const missingDaysThisMonth = Math.max(0, expectedWorkDays - workedDaysThisMonth);
       const missingDayDeduction = effectiveBaseSalary > 0 ? Math.round((effectiveBaseSalary / 30) * missingDaysThisMonth) : 0;
 
