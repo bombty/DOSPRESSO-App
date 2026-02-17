@@ -57,10 +57,10 @@ export function MuhasebeIKDashboard() {
   });
 
   const quickActions = [
+    { label: "Mali Yönetim", icon: TrendingUp, path: "/mali-yonetim", color: "bg-emerald-700" },
     { label: "Personel Listesi", icon: Users, path: "/ik", color: "bg-blue-500" },
     { label: "İzin Talepleri", icon: Calendar, path: "/izin-talepleri", color: "bg-green-500" },
     { label: "Bordro", icon: DollarSign, path: "/muhasebe", color: "bg-emerald-600" },
-    { label: "Maliyet", icon: TrendingUp, path: "/fabrika", color: "bg-purple-500" },
     { label: "Satınalma", icon: CreditCard, path: "/satinalma", color: "bg-indigo-500" },
     { label: "Raporlar", icon: FileText, path: "/muhasebe-raporlama", color: "bg-teal-500" },
   ];
@@ -96,9 +96,9 @@ export function MuhasebeIKDashboard() {
             <Clock className="w-3.5 h-3.5" />
             HQ Kiosk
           </Button>
-          <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setLocation('/muhasebe-raporlama')} data-testid="button-muhasebe-rapor">
-            <FileText className="w-3.5 h-3.5" />
-            Raporlama
+          <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setLocation('/mali-yonetim')} data-testid="button-mali-yonetim">
+            <TrendingUp className="w-3.5 h-3.5" />
+            Mali Yönetim
           </Button>
         </div>
       </div>

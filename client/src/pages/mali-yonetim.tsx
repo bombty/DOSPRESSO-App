@@ -31,9 +31,10 @@ const MONTHS = [
 ];
 const COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#f97316'];
 
-function KpiCard({ title, value, prev, icon: Icon, color, testId }: any) {
-  const diff = prev ? ((value - prev) / Math.abs(prev || 1)) * 100 : 0;
+function KpiCard({ title, value, prev, trend, icon: Icon, color, testId }: any) {
+  const diff = trend !== undefined ? trend : (prev ? ((value - prev) / Math.abs(prev || 1)) * 100 : 0);
   const up = diff >= 0;
+  const showTrend = trend !== undefined || prev !== undefined;
   return (
     <Card data-testid={testId}>
       <CardContent className="p-4">
@@ -42,7 +43,7 @@ function KpiCard({ title, value, prev, icon: Icon, color, testId }: any) {
           <Icon className={`h-4 w-4 ${color}`} />
         </div>
         <p className="text-lg font-bold mt-1" data-testid={`${testId}-value`}>{typeof value === 'string' ? value : fmt(value)}</p>
-        {prev !== undefined && (
+        {showTrend && (
           <div className={`flex items-center gap-1 text-xs mt-1 ${up ? 'text-emerald-600' : 'text-red-500'}`}>
             {up ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
             <span>%{Math.abs(diff).toFixed(1)}</span>
@@ -70,25 +71,25 @@ function DashboardTab({ year, month }: { year: number; month: number }) {
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <KpiCard title="Toplam Gelir" value={d.totalRevenue || 0} prev={d.prevRevenue} icon={TrendingUp} color="text-emerald-600" testId="kpi-revenue" />
-        <KpiCard title="Toplam Gider" value={d.totalExpense || 0} prev={d.prevExpense} icon={TrendingDown} color="text-red-500" testId="kpi-expense" />
-        <KpiCard title="Net Kar" value={d.netProfit || 0} prev={d.prevProfit} icon={DollarSign} color="text-blue-600" testId="kpi-profit" />
-        <KpiCard title="Kar Marjı %" value={`%${(d.profitMargin || 0).toFixed(1)}`} prev={undefined} icon={Percent} color="text-purple-600" testId="kpi-margin" />
+        <KpiCard title="Toplam Gelir" value={d?.summary?.totalRevenue || 0} trend={d?.summary?.revenueTrend} icon={TrendingUp} color="text-emerald-600" testId="kpi-revenue" />
+        <KpiCard title="Toplam Gider" value={d?.summary?.totalExpenses || 0} trend={d?.summary?.expenseTrend} icon={TrendingDown} color="text-red-500" testId="kpi-expense" />
+        <KpiCard title="Net Kar" value={d?.summary?.netProfit || 0} trend={d?.summary?.profitTrend} icon={DollarSign} color="text-blue-600" testId="kpi-profit" />
+        <KpiCard title="Kar Marjı %" value={`%${(d?.summary?.profitMargin || 0).toFixed(1)}`} icon={Percent} color="text-purple-600" testId="kpi-margin" />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <Card>
           <CardHeader className="pb-2"><CardTitle className="text-sm">6 Aylık Gelir/Gider Trendi</CardTitle></CardHeader>
           <CardContent>
-            {d.trend && d.trend.length > 0 ? (
+            {d?.monthlyTrend && d.monthlyTrend.length > 0 ? (
               <ResponsiveContainer width="100%" height={220}>
-                <AreaChart data={d.trend}>
+                <AreaChart data={d.monthlyTrend}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="month" tick={{ fontSize: 11 }} />
                   <YAxis tick={{ fontSize: 11 }} tickFormatter={(v: number) => `${(v / 1000).toFixed(0)}k`} />
                   <Tooltip formatter={(v: number) => fmt(v)} />
                   <Area type="monotone" dataKey="revenue" stroke="#10b981" fill="#10b98130" name="Gelir" />
-                  <Area type="monotone" dataKey="expense" stroke="#ef4444" fill="#ef444430" name="Gider" />
+                  <Area type="monotone" dataKey="expenses" stroke="#ef4444" fill="#ef444430" name="Gider" />
                   <Legend />
                 </AreaChart>
               </ResponsiveContainer>
@@ -99,21 +100,24 @@ function DashboardTab({ year, month }: { year: number; month: number }) {
         <Card>
           <CardHeader className="pb-2"><CardTitle className="text-sm">Gider Dağılımı</CardTitle></CardHeader>
           <CardContent>
-            {d.expenseByCategory && d.expenseByCategory.length > 0 ? (
+            {d?.categoryBreakdown && d.categoryBreakdown.length > 0 ? (() => {
+              const pieData = d.categoryBreakdown.map((c: any) => ({ name: c.category, value: c.amount }));
+              return (
               <ResponsiveContainer width="100%" height={220}>
                 <PieChart>
-                  <Pie data={d.expenseByCategory} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} label={({ name, percent }: any) => `${name} %${(percent * 100).toFixed(0)}`}>
-                    {d.expenseByCategory.map((_: any, i: number) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+                  <Pie data={pieData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} label={({ name, percent }: any) => `${name} %${(percent * 100).toFixed(0)}`}>
+                    {pieData.map((_: any, i: number) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
                   </Pie>
                   <Tooltip formatter={(v: number) => fmt(v)} />
                 </PieChart>
               </ResponsiveContainer>
-            ) : <p className="text-sm text-muted-foreground text-center py-8">Gider verisi yok</p>}
+              );
+            })() : <p className="text-sm text-muted-foreground text-center py-8">Gider verisi yok</p>}
           </CardContent>
         </Card>
       </div>
 
-      {d.branchPnL && d.branchPnL.length > 0 && (
+      {d?.branchBreakdown && d.branchBreakdown.length > 0 && (
         <Card>
           <CardHeader className="pb-2"><CardTitle className="text-sm">Şube Kar/Zarar (Top 10)</CardTitle></CardHeader>
           <CardContent className="overflow-x-auto">
@@ -127,12 +131,12 @@ function DashboardTab({ year, month }: { year: number; month: number }) {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {d.branchPnL.slice(0, 10).map((b: any, i: number) => (
+                {d.branchBreakdown.slice(0, 10).map((b: any, i: number) => (
                   <TableRow key={i} data-testid={`row-branch-pnl-${i}`}>
-                    <TableCell className="font-medium">{b.branch}</TableCell>
+                    <TableCell className="font-medium">{b.branchName}</TableCell>
                     <TableCell className="text-right text-emerald-600">{fmt(b.revenue || 0)}</TableCell>
-                    <TableCell className="text-right text-red-500">{fmt(b.expense || 0)}</TableCell>
-                    <TableCell className={`text-right font-semibold ${(b.profit || 0) >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>{fmt(b.profit || 0)}</TableCell>
+                    <TableCell className="text-right text-red-500">{fmt(b.expenses || 0)}</TableCell>
+                    <TableCell className={`text-right font-semibold ${(b.netProfit || 0) >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>{fmt(b.netProfit || 0)}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -176,7 +180,7 @@ function RecordsTab({ year, month }: { year: number; month: number }) {
   const createMutation = useMutation({
     mutationFn: async () => {
       return apiRequest("POST", '/api/financial/records', {
-        date: form.date,
+        recordDate: form.date,
         branchId: form.branchId ? Number(form.branchId) : null,
         type: form.type,
         category: form.category,
@@ -193,8 +197,8 @@ function RecordsTab({ year, month }: { year: number; month: number }) {
     onError: () => { toast({ title: "Kayıt eklenemedi", variant: "destructive" }); },
   });
 
-  const totalGelir = records.filter((r: any) => r.type === 'gelir').reduce((s: number, r: any) => s + (r.amount || 0), 0);
-  const totalGider = records.filter((r: any) => r.type === 'gider').reduce((s: number, r: any) => s + (r.amount || 0), 0);
+  const totalGelir = records.filter((r: any) => r.type === 'gelir').reduce((s: number, r: any) => s + (parseFloat(r.amount) || 0), 0);
+  const totalGider = records.filter((r: any) => r.type === 'gider').reduce((s: number, r: any) => s + (parseFloat(r.amount) || 0), 0);
 
   return (
     <div className="space-y-4">
@@ -293,12 +297,12 @@ function RecordsTab({ year, month }: { year: number; month: number }) {
                   <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-8">Kayıt bulunamadı</TableCell></TableRow>
                 ) : records.map((r: any, i: number) => (
                   <TableRow key={r.id || i} data-testid={`row-record-${i}`}>
-                    <TableCell className="text-sm">{r.date}</TableCell>
+                    <TableCell className="text-sm">{r.recordDate ? new Date(r.recordDate).toLocaleDateString('tr-TR') : '-'}</TableCell>
                     <TableCell className="text-sm">{r.branchName || '-'}</TableCell>
                     <TableCell><Badge variant={r.type === 'gelir' ? 'default' : 'destructive'} className="text-xs">{r.type === 'gelir' ? 'Gelir' : 'Gider'}</Badge></TableCell>
                     <TableCell className="text-sm">{r.category || '-'}</TableCell>
                     <TableCell className="text-sm max-w-[200px] truncate">{r.description || '-'}</TableCell>
-                    <TableCell className={`text-right font-medium ${r.type === 'gelir' ? 'text-emerald-600' : 'text-red-500'}`}>{fmt(r.amount || 0)}</TableCell>
+                    <TableCell className={`text-right font-medium ${r.type === 'gelir' ? 'text-emerald-600' : 'text-red-500'}`}>{fmt(parseFloat(r.amount) || 0)}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -319,9 +323,9 @@ function WasteTab() {
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-        <KpiCard title="Toplam Fire Maliyeti" value={data.totalWasteCost || 0} icon={Flame} color="text-orange-500" testId="kpi-waste-cost" />
-        <KpiCard title="Ortalama Fire/Batch" value={`${fmtNum(data.avgWastePerBatch || 0)} kg`} icon={Package} color="text-amber-500" testId="kpi-waste-avg" />
-        <KpiCard title="Toplam Batch" value={fmtNum(data.totalBatches || 0)} icon={ShoppingCart} color="text-blue-500" testId="kpi-waste-batch" />
+        <KpiCard title="Toplam Fire Maliyeti" value={data?.summary?.totalWasteCost || 0} icon={Flame} color="text-orange-500" testId="kpi-waste-cost" />
+        <KpiCard title="Ortalama Fire/Batch" value={`${fmtNum(data?.summary?.averageWastePerBatch || 0)} kg`} icon={Package} color="text-amber-500" testId="kpi-waste-avg" />
+        <KpiCard title="Toplam Batch" value={fmtNum(data?.summary?.totalBatches || 0)} icon={ShoppingCart} color="text-blue-500" testId="kpi-waste-batch" />
       </div>
 
       {data.monthlyTrend && data.monthlyTrend.length > 0 && (
@@ -341,7 +345,7 @@ function WasteTab() {
         </Card>
       )}
 
-      {data.topProducts && data.topProducts.length > 0 && (
+      {data?.wasteByProduct && data.wasteByProduct.length > 0 && (
         <Card>
           <CardHeader className="pb-2"><CardTitle className="text-sm">En Yüksek Fire - İlk 20 Ürün</CardTitle></CardHeader>
           <CardContent className="p-0 overflow-x-auto">
@@ -355,7 +359,7 @@ function WasteTab() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {data.topProducts.slice(0, 20).map((p: any, i: number) => (
+                {data.wasteByProduct.slice(0, 20).map((p: any, i: number) => (
                   <TableRow key={i} data-testid={`row-waste-${i}`}>
                     <TableCell>{i + 1}</TableCell>
                     <TableCell className="font-medium">{p.productName}</TableCell>
@@ -378,14 +382,14 @@ function ProfitabilityTab() {
   if (isLoading) return <div className="space-y-3">{Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-20" />)}</div>;
   if (!data) return <p className="text-sm text-muted-foreground p-4">Veri bulunamadı</p>;
 
-  const topProfit = (data.products || []).filter((p: any) => (p.margin || 0) > 0).slice(0, 5);
-  const lowProfit = (data.products || []).filter((p: any) => (p.margin || 0) <= 30).slice(0, 5);
+  const topProfit = (data?.mostProfitable || []).slice(0, 5);
+  const lowProfit = (data?.leastProfitable || []).slice(0, 5);
 
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-2 gap-3">
-        <KpiCard title="Toplam Ürün Sayısı" value={fmtNum(data.totalProducts || 0)} icon={Package} color="text-blue-600" testId="kpi-product-count" />
-        <KpiCard title="Ortalama Kar Marjı" value={`%${(data.avgMargin || 0).toFixed(1)}`} icon={Percent} color="text-emerald-600" testId="kpi-avg-margin" />
+        <KpiCard title="Toplam Ürün Sayısı" value={fmtNum(data?.totalProducts || 0)} icon={Package} color="text-blue-600" testId="kpi-product-count" />
+        <KpiCard title="Ortalama Kar Marjı" value={`%${(data?.averageMargin || 0).toFixed(1)}`} icon={Percent} color="text-emerald-600" testId="kpi-avg-margin" />
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -394,8 +398,8 @@ function ProfitabilityTab() {
           <CardContent className="space-y-2">
             {topProfit.length === 0 ? <p className="text-sm text-muted-foreground">Veri yok</p> : topProfit.map((p: any, i: number) => (
               <div key={i} className="flex items-center justify-between" data-testid={`row-top-profit-${i}`}>
-                <span className="text-sm truncate flex-1">{p.name}</span>
-                <Badge variant="secondary" className="text-emerald-700 ml-2">%{(p.margin || 0).toFixed(1)}</Badge>
+                <span className="text-sm truncate flex-1">{p.productName}</span>
+                <Badge variant="secondary" className="text-emerald-700 ml-2">%{(p.profitMargin || 0).toFixed(1)}</Badge>
               </div>
             ))}
           </CardContent>
@@ -405,8 +409,8 @@ function ProfitabilityTab() {
           <CardContent className="space-y-2">
             {lowProfit.length === 0 ? <p className="text-sm text-muted-foreground">Veri yok</p> : lowProfit.map((p: any, i: number) => (
               <div key={i} className="flex items-center justify-between" data-testid={`row-low-profit-${i}`}>
-                <span className="text-sm truncate flex-1">{p.name}</span>
-                <Badge variant="secondary" className="text-red-600 ml-2">%{(p.margin || 0).toFixed(1)}</Badge>
+                <span className="text-sm truncate flex-1">{p.productName}</span>
+                <Badge variant="secondary" className="text-red-600 ml-2">%{(p.profitMargin || 0).toFixed(1)}</Badge>
               </div>
             ))}
           </CardContent>
@@ -420,7 +424,7 @@ function ProfitabilityTab() {
             <ResponsiveContainer width="100%" height={200}>
               <BarChart data={data.marginDistribution}>
                 <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="range" tick={{ fontSize: 11 }} />
+                <XAxis dataKey="label" tick={{ fontSize: 11 }} />
                 <YAxis tick={{ fontSize: 11 }} />
                 <Tooltip />
                 <Bar dataKey="count" fill="#3b82f6" name="Ürün Sayısı" radius={[4, 4, 0, 0]} />
@@ -430,7 +434,7 @@ function ProfitabilityTab() {
         </Card>
       )}
 
-      {data.products && data.products.length > 0 && (
+      {data?.allProducts && data.allProducts.length > 0 && (
         <Card>
           <CardHeader className="pb-2"><CardTitle className="text-sm">Tüm Ürünler</CardTitle></CardHeader>
           <CardContent className="p-0 overflow-x-auto">
@@ -445,13 +449,13 @@ function ProfitabilityTab() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {data.products.map((p: any, i: number) => (
+                {data.allProducts.map((p: any, i: number) => (
                   <TableRow key={i} data-testid={`row-product-${i}`}>
-                    <TableCell className="font-medium">{p.name}</TableCell>
-                    <TableCell className="text-right">{fmt(p.cost || 0)}</TableCell>
-                    <TableCell className="text-right">{fmt(p.price || 0)}</TableCell>
-                    <TableCell className="text-right">{fmt(p.profit || 0)}</TableCell>
-                    <TableCell className={`text-right font-semibold ${(p.margin || 0) >= 30 ? 'text-emerald-600' : 'text-red-500'}`}>%{(p.margin || 0).toFixed(1)}</TableCell>
+                    <TableCell className="font-medium">{p.productName}</TableCell>
+                    <TableCell className="text-right">{fmt(p.unitCost || 0)}</TableCell>
+                    <TableCell className="text-right">{fmt(p.sellingPrice || 0)}</TableCell>
+                    <TableCell className="text-right">{fmt(p.profitPerUnit || 0)}</TableCell>
+                    <TableCell className={`text-right font-semibold ${(p.profitMargin || 0) >= 30 ? 'text-emerald-600' : 'text-red-500'}`}>%{(p.profitMargin || 0).toFixed(1)}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -472,19 +476,19 @@ function InventoryTab() {
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-        <KpiCard title="Toplam Stok Değeri" value={data.totalValue || 0} icon={DollarSign} color="text-blue-600" testId="kpi-stock-value" />
-        <KpiCard title="Ürün Çeşidi" value={fmtNum(data.totalItems || 0)} icon={Package} color="text-purple-600" testId="kpi-stock-items" />
-        <KpiCard title="Düşük Stok Uyarıları" value={fmtNum(data.lowStockCount || 0)} icon={AlertTriangle} color="text-orange-500" testId="kpi-low-stock" />
+        <KpiCard title="Toplam Stok Değeri" value={data?.summary?.totalStockValue || 0} icon={DollarSign} color="text-blue-600" testId="kpi-stock-value" />
+        <KpiCard title="Ürün Çeşidi" value={fmtNum(data?.summary?.totalItems || 0)} icon={Package} color="text-purple-600" testId="kpi-stock-items" />
+        <KpiCard title="Düşük Stok Uyarıları" value={fmtNum(data?.summary?.lowStockCount || 0)} icon={AlertTriangle} color="text-orange-500" testId="kpi-low-stock" />
       </div>
 
-      {data.categories && data.categories.length > 0 && (
+      {data?.categoryBreakdown && data.categoryBreakdown.length > 0 && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          {data.categories.map((c: any, i: number) => (
+          {data.categoryBreakdown.map((c: any, i: number) => (
             <Card key={i}>
               <CardContent className="p-3">
-                <p className="text-xs text-muted-foreground truncate">{c.name}</p>
-                <p className="text-sm font-bold">{fmt(c.value || 0)}</p>
-                <p className="text-xs text-muted-foreground">{c.count} ürün</p>
+                <p className="text-xs text-muted-foreground truncate">{c.category}</p>
+                <p className="text-sm font-bold">{fmt(c.totalValue || 0)}</p>
+                <p className="text-xs text-muted-foreground">{c.itemCount} ürün</p>
               </CardContent>
             </Card>
           ))}
@@ -536,9 +540,9 @@ function InventoryTab() {
                 {data.highValueItems.map((item: any, i: number) => (
                   <TableRow key={i} data-testid={`row-high-value-${i}`}>
                     <TableCell className="font-medium">{item.name}</TableCell>
-                    <TableCell className="text-right">{fmtNum(item.quantity || 0)}</TableCell>
+                    <TableCell className="text-right">{item.unit || '-'}</TableCell>
                     <TableCell className="text-right">{fmt(item.unitPrice || 0)}</TableCell>
-                    <TableCell className="text-right font-medium">{fmt(item.totalValue || 0)}</TableCell>
+                    <TableCell className="text-right font-medium">{fmt(item.stockValue || 0)}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -566,22 +570,22 @@ function PersonnelTab({ year, month }: { year: number; month: number }) {
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-        <KpiCard title="Toplam Personel" value={fmtNum(data.totalEmployees || 0)} icon={Users} color="text-blue-600" testId="kpi-personnel-count" />
-        <KpiCard title="Toplam Brüt" value={data.totalGross || 0} icon={DollarSign} color="text-emerald-600" testId="kpi-personnel-gross" />
-        <KpiCard title="Toplam Net" value={data.totalNet || 0} icon={DollarSign} color="text-blue-500" testId="kpi-personnel-net" />
-        <KpiCard title="SGK" value={data.totalSgk || 0} icon={Building2} color="text-purple-600" testId="kpi-personnel-sgk" />
-        <KpiCard title="Vergi" value={data.totalTax || 0} icon={Percent} color="text-orange-500" testId="kpi-personnel-tax" />
+        <KpiCard title="Toplam Personel" value={fmtNum(data?.summary?.totalEmployees || 0)} icon={Users} color="text-blue-600" testId="kpi-personnel-count" />
+        <KpiCard title="Toplam Brüt" value={data?.summary?.totalGross || 0} icon={DollarSign} color="text-emerald-600" testId="kpi-personnel-gross" />
+        <KpiCard title="Toplam Net" value={data?.summary?.totalNet || 0} icon={DollarSign} color="text-blue-500" testId="kpi-personnel-net" />
+        <KpiCard title="SGK" value={data?.summary?.totalSgk || 0} icon={Building2} color="text-purple-600" testId="kpi-personnel-sgk" />
+        <KpiCard title="Vergi" value={data?.summary?.totalTax || 0} icon={Percent} color="text-orange-500" testId="kpi-personnel-tax" />
       </div>
 
-      {data.roles && data.roles.length > 0 && (
+      {data?.roleDistribution && data.roleDistribution.length > 0 && (
         <div className="flex flex-wrap gap-2">
-          {data.roles.map((r: any, i: number) => (
+          {data.roleDistribution.map((r: any, i: number) => (
             <Badge key={i} variant="secondary" data-testid={`badge-role-${i}`}>{r.role}: {r.count}</Badge>
           ))}
         </div>
       )}
 
-      {data.branches && data.branches.length > 0 && (
+      {data?.branchBreakdown && data.branchBreakdown.length > 0 && (
         <Card>
           <CardHeader className="pb-2"><CardTitle className="text-sm">Şube Bazında Personel Maliyeti</CardTitle></CardHeader>
           <CardContent className="p-0 overflow-x-auto">
@@ -598,14 +602,14 @@ function PersonnelTab({ year, month }: { year: number; month: number }) {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {data.branches.map((b: any, i: number) => (
+                {data.branchBreakdown.map((b: any, i: number) => (
                   <TableRow key={i} data-testid={`row-personnel-branch-${i}`}>
                     <TableCell className="font-medium">{b.branchName}</TableCell>
                     <TableCell className="text-right">{b.employeeCount}</TableCell>
-                    <TableCell className="text-right">{fmt(b.gross || 0)}</TableCell>
-                    <TableCell className="text-right">{fmt(b.net || 0)}</TableCell>
-                    <TableCell className="text-right">{fmt(b.sgk || 0)}</TableCell>
-                    <TableCell className="text-right">{fmt(b.tax || 0)}</TableCell>
+                    <TableCell className="text-right">{fmt(b.totalGross || 0)}</TableCell>
+                    <TableCell className="text-right">{fmt(b.totalNet || 0)}</TableCell>
+                    <TableCell className="text-right">{fmt(b.totalSgk || 0)}</TableCell>
+                    <TableCell className="text-right">{fmt(b.totalTax || 0)}</TableCell>
                     <TableCell className="text-right font-semibold">{fmt(b.totalCost || 0)}</TableCell>
                   </TableRow>
                 ))}
