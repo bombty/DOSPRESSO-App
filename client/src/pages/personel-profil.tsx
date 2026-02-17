@@ -353,6 +353,17 @@ export default function PersonelProfilPage() {
     latenessCount: number;
     baseSalary: number | null;
     canViewSalary: boolean;
+    salaryScale: {
+      positionName: string;
+      level: number;
+      baseSalary: number;
+      cashRegisterBonus: number;
+      performanceBonus: number;
+      bonusCalculationType: string;
+      totalSalary: number;
+    } | null;
+    workedDaysThisMonth: number | null;
+    monthlyMealAllowance: number | null;
   };
 
   const { data: leaveSalary } = useQuery<LeaveSalarySummary>({
@@ -946,59 +957,103 @@ export default function PersonelProfilPage() {
                   </div>
                 </div>
 
-                {leaveSalary.canViewSalary && leaveSalary.baseSalary !== null && (
+                {leaveSalary.canViewSalary && (leaveSalary.salaryScale || leaveSalary.baseSalary !== null) && (
                   <div data-testid="salary-info-section">
                     <p className="text-sm font-semibold mb-3">Maaş Özeti</p>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <p className="text-sm text-muted-foreground">Temel Maaş</p>
-                        <p className="text-base font-medium" data-testid="text-base-salary">
-                          {leaveSalary.baseSalary > 0 ? `${leaveSalary.baseSalary.toLocaleString('tr-TR')} ₺` : '-'}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-sm text-muted-foreground">Prim</p>
-                        <p className="text-base font-medium" data-testid="text-bonus">
-                          {leaveSalary.baseSalary > 0 && perfSummary
-                            ? `${Math.round(leaveSalary.baseSalary * (perfSummary.overallScore >= 85 ? 0.15 : perfSummary.overallScore >= 70 ? 0.10 : 0.05)).toLocaleString('tr-TR')} ₺`
-                            : '-'}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-sm text-muted-foreground">Ücretsiz İzin Kesintisi</p>
-                        <p className="text-base font-medium" data-testid="text-unpaid-deduction">
-                          {leaveSalary.baseSalary > 0 && leaveSalary.unpaidLeaveDays > 0
-                            ? `-${Math.round((leaveSalary.baseSalary / 30) * leaveSalary.unpaidLeaveDays).toLocaleString('tr-TR')} ₺`
-                            : '0 ₺'}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-sm text-muted-foreground">Geç Kalma Kesintisi</p>
-                        <p className="text-base font-medium" data-testid="text-lateness-deduction">
-                          {leaveSalary.latenessCount > 0
-                            ? `-${(leaveSalary.latenessCount * 50).toLocaleString('tr-TR')} ₺`
-                            : '0 ₺'}
-                        </p>
-                      </div>
-                    </div>
-                    {leaveSalary.baseSalary > 0 && (
-                      <div className="mt-3 p-3 rounded-md bg-muted/50">
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="text-sm font-semibold">Tahmini Net</span>
-                          <span className="text-base font-bold" data-testid="text-estimated-net">
-                            {(() => {
-                              const bonus = perfSummary
-                                ? leaveSalary.baseSalary * (perfSummary.overallScore >= 85 ? 0.15 : perfSummary.overallScore >= 70 ? 0.10 : 0.05)
-                                : 0;
-                              const unpaidDeduction = (leaveSalary.baseSalary / 30) * leaveSalary.unpaidLeaveDays;
-                              const latenessDeduction = leaveSalary.latenessCount * 50;
-                              const estimated = leaveSalary.baseSalary + bonus - unpaidDeduction - latenessDeduction;
-                              return `${Math.round(estimated).toLocaleString('tr-TR')} ₺`;
-                            })()}
-                          </span>
+                    {leaveSalary.salaryScale ? (
+                      <>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <p className="text-sm text-muted-foreground">Pozisyon</p>
+                            <p className="text-base font-medium" data-testid="text-position-name">
+                              {leaveSalary.salaryScale.positionName}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-sm text-muted-foreground">Temel Maaş</p>
+                            <p className="text-base font-medium" data-testid="text-base-salary">
+                              {leaveSalary.salaryScale.baseSalary.toLocaleString('tr-TR')} ₺
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-sm text-muted-foreground">Kasa Primi</p>
+                            <p className="text-base font-medium" data-testid="text-cash-register-bonus">
+                              {leaveSalary.salaryScale.cashRegisterBonus > 0
+                                ? `${leaveSalary.salaryScale.cashRegisterBonus.toLocaleString('tr-TR')} ₺`
+                                : '-'}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-sm text-muted-foreground">Performans Primi</p>
+                            <p className="text-base font-medium" data-testid="text-performance-bonus">
+                              {leaveSalary.salaryScale.performanceBonus.toLocaleString('tr-TR')} ₺
+                              <span className="text-xs text-muted-foreground ml-1">
+                                ({leaveSalary.salaryScale.bonusCalculationType === 'per_day' ? 'günlük' : 'aylık'})
+                              </span>
+                            </p>
+                          </div>
+                          {leaveSalary.workedDaysThisMonth !== null && (
+                            <div>
+                              <p className="text-sm text-muted-foreground">Bu Ay Çalışılan Gün</p>
+                              <p className="text-base font-medium" data-testid="text-worked-days">
+                                {leaveSalary.workedDaysThisMonth} gün
+                              </p>
+                            </div>
+                          )}
+                          {leaveSalary.monthlyMealAllowance !== null && (
+                            <div>
+                              <p className="text-sm text-muted-foreground">Yemek Hak Edişi</p>
+                              <p className="text-base font-medium" data-testid="text-meal-allowance">
+                                {leaveSalary.monthlyMealAllowance > 0
+                                  ? `${leaveSalary.monthlyMealAllowance.toLocaleString('tr-TR')} ₺`
+                                  : '-'}
+                              </p>
+                            </div>
+                          )}
+                          <div>
+                            <p className="text-sm text-muted-foreground">Ücretsiz İzin Kesintisi</p>
+                            <p className="text-base font-medium" data-testid="text-unpaid-deduction">
+                              {leaveSalary.unpaidLeaveDays > 0
+                                ? `-${Math.round((leaveSalary.salaryScale.baseSalary / 30) * leaveSalary.unpaidLeaveDays).toLocaleString('tr-TR')} ₺`
+                                : '0 ₺'}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-sm text-muted-foreground">Geç Kalma Kesintisi</p>
+                            <p className="text-base font-medium" data-testid="text-lateness-deduction">
+                              {leaveSalary.latenessCount > 0
+                                ? `-${(leaveSalary.latenessCount * 50).toLocaleString('tr-TR')} ₺`
+                                : '0 ₺'}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="mt-3 p-3 rounded-md bg-muted/50">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="text-sm font-semibold">Toplam Maaş (Skala)</span>
+                            <span className="text-base font-bold" data-testid="text-total-salary">
+                              {leaveSalary.salaryScale.totalSalary.toLocaleString('tr-TR')} ₺
+                            </span>
+                          </div>
+                        </div>
+                      </>
+                    ) : leaveSalary.baseSalary !== null && leaveSalary.baseSalary > 0 ? (
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <p className="text-sm text-muted-foreground">Temel Maaş</p>
+                          <p className="text-base font-medium" data-testid="text-base-salary">
+                            {leaveSalary.baseSalary.toLocaleString('tr-TR')} ₺
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-muted-foreground">Geç Kalma Kesintisi</p>
+                          <p className="text-base font-medium" data-testid="text-lateness-deduction">
+                            {leaveSalary.latenessCount > 0
+                              ? `-${(leaveSalary.latenessCount * 50).toLocaleString('tr-TR')} ₺`
+                              : '0 ₺'}
+                          </p>
                         </div>
                       </div>
-                    )}
+                    ) : null}
                     <p className="text-xs text-muted-foreground mt-2" data-testid="text-salary-note">
                       Detaylı maaş bilgileri için İK departmanına başvurunuz.
                     </p>

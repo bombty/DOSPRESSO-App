@@ -4,16 +4,13 @@ import { Link } from "wouter";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
-import { isUnauthorizedError } from "@/lib/authUtils";
 import { isHQRole } from "@shared/schema";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { EmptyStatePreset } from "@/components/empty-state";
 import { ListSkeleton } from "@/components/list-skeleton";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerFooter, DrawerClose } from "@/components/ui/drawer";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -22,19 +19,14 @@ import { Separator } from "@/components/ui/separator";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { ObjectUploader } from "@/components/ObjectUploader";
 import { QuickTaskModal } from "@/components/quick-task-modal";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { insertTaskSchema, type Task, type InsertTask, type Branch, type User, isHQRole as checkIsHQRole, type TaskStatus, type TaskPriority } from "@shared/schema";
-import { Camera, Check, Clock, AlertCircle, CheckCircle2, PlayCircle, Search, X, ThumbsUp, ThumbsDown, Calendar, User as UserIcon, ChevronDown, Filter, XCircle, ArrowUp, ArrowDown, Eye, EyeOff, Building2, Send, Star, BarChart3 } from "lucide-react";
-import { StarRating } from "@/components/star-rating";
+import { type Task, type Branch, type User, isHQRole as checkIsHQRole, type TaskStatus, type TaskPriority } from "@shared/schema";
+import { Check, Clock, AlertCircle, CheckCircle2, PlayCircle, Search, X, Calendar, ChevronDown, Filter, XCircle, ArrowUp, ArrowDown, Eye, EyeOff, Building2, Send, Star, BarChart3 } from "lucide-react";
 import { format } from "date-fns";
 
 export default function Tasks() {
   const { user } = useAuth();
   const { toast } = useToast();
-  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState("all");
   
@@ -49,7 +41,6 @@ export default function Tasks() {
     direction: 'desc',
   });
   const [filterOpen, setFilterOpen] = useState(false);
-  const [taskNotes, setTaskNotes] = useState("");
   const [assignmentFilter, setAssignmentFilter] = useState<"bana_atanan" | "atadiklarim" | null>(null);
   const [branchPopoverOpen, setBranchPopoverOpen] = useState(false);
   const [ratingTaskId, setRatingTaskId] = useState<number | null>(null);
@@ -137,35 +128,6 @@ export default function Tasks() {
     }
   }, []);
 
-  // Handle URL parameter for deep linking to specific task (from notifications)
-  useEffect(() => {
-    if (!tasks || tasks.length === 0) return;
-    
-    const params = new URLSearchParams(window.location.search);
-    const taskIdParam = params.get('taskId');
-    
-    if (taskIdParam) {
-      const taskId = parseInt(taskIdParam);
-      const foundTask = tasks.find(t => t.id === taskId);
-      if (foundTask) {
-        setSelectedTask(foundTask);
-        // Clear the URL parameter after opening the drawer
-        window.history.replaceState({}, '', window.location.pathname);
-      }
-    }
-  }, [tasks]);
-
-  // Auto-acknowledge task when drawer opens
-  useEffect(() => {
-    if (selectedTask && user) {
-      const isAssignee = user.id === selectedTask.assignedToId;
-      const canAutoAck = isAssignee && !selectedTask.acknowledgedAt && selectedTask.status !== "onaylandi" && selectedTask.status !== "basarisiz";
-      
-      if (canAutoAck) {
-        acknowledgeMutation.mutate(selectedTask.id);
-      }
-    }
-  }, [selectedTask?.id, user?.id]);
 
   const clearAllFilters = () => {
     setSearchQuery("");
@@ -189,116 +151,6 @@ export default function Tasks() {
   }, [searchQuery, filterBranchId, filterAssigneeId, filterStatus, filterPriority, filterDateFrom, filterDateTo]);
 
 
-  const completeMutation = useMutation({
-    mutationFn: async ({ taskId, photoUrl }: { taskId: number; photoUrl?: string }) => {
-      await apiRequest("POST", `/api/tasks/${taskId}/complete`, { photoUrl, notes: taskNotes || undefined });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
-      toast({ title: "Başarılı", description: "Görev tamamlandı olarak işaretlendi" });
-      setTaskNotes("");
-      setSelectedTask(null);
-    },
-    onError: (error: Error) => {
-      if (isUnauthorizedError(error)) {
-        toast({
-          title: "Yetkisiz",
-          description: "Oturumunuz sonlandı. Tekrar giriş yapılıyor...",
-          variant: "destructive",
-        });
-        setTimeout(() => {
-          window.location.href = "/api/login";
-        }, 500);
-        return;
-      }
-      toast({
-        title: "Hata",
-        description: "Görev tamamlanamadı",
-        variant: "destructive",
-      });
-    },
-  });
-
-  const acknowledgeMutation = useMutation({
-    mutationFn: async (taskId: number) => {
-      await apiRequest("PATCH", `/api/tasks/${taskId}/acknowledge`);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
-    },
-    onError: () => {
-      // Silently fail - don't interrupt user
-    },
-  });
-
-  const startTaskMutation = useMutation({
-    mutationFn: async (taskId: number) => {
-      await apiRequest("POST", `/api/tasks/${taskId}/start`, { notes: taskNotes || undefined });
-    },
-    onSuccess: async (_data, taskId) => {
-      await queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
-      const updatedTasks = queryClient.getQueryData<Task[]>(["/api/tasks"]);
-      const updatedTask = updatedTasks?.find(t => t.id === taskId);
-      if (updatedTask) {
-        setSelectedTask(updatedTask);
-      }
-      setTaskNotes("");
-      toast({ title: "Başarılı", description: "Görev başlatıldı" });
-    },
-    onError: (error: Error) => {
-      toast({
-        title: "Hata",
-        description: error.message || "Görev başlatılamadı",
-        variant: "destructive",
-      });
-    },
-  });
-
-  const verifyTaskMutation = useMutation({
-    mutationFn: async (taskId: number) => {
-      await apiRequest("POST", `/api/tasks/${taskId}/verify`, {});
-    },
-    onSuccess: async (_data, taskId) => {
-      await queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
-      const updatedTasks = queryClient.getQueryData<Task[]>(["/api/tasks"]);
-      const updatedTask = updatedTasks?.find(t => t.id === taskId);
-      if (updatedTask) {
-        setSelectedTask(updatedTask);
-      }
-      toast({ title: "Başarılı", description: "Görev onaylandı" });
-      setTimeout(() => setSelectedTask(null), 500);
-    },
-    onError: (error: Error) => {
-      toast({
-        title: "Hata",
-        description: error.message || "Görev onaylanamadı",
-        variant: "destructive",
-      });
-    },
-  });
-
-  const rejectTaskMutation = useMutation({
-    mutationFn: async ({ taskId, reason }: { taskId: number; reason?: string }) => {
-      await apiRequest("POST", `/api/tasks/${taskId}/reject`, { reason });
-    },
-    onSuccess: async (_data, { taskId }) => {
-      await queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
-      const updatedTasks = queryClient.getQueryData<Task[]>(["/api/tasks"]);
-      const updatedTask = updatedTasks?.find(t => t.id === taskId);
-      if (updatedTask) {
-        setSelectedTask(updatedTask);
-      }
-      toast({ title: "Başarılı", description: "Görev reddedildi" });
-      setTimeout(() => setSelectedTask(null), 500);
-    },
-    onError: (error: Error) => {
-      toast({
-        title: "Hata",
-        description: error.message || "Görev reddedilemedi",
-        variant: "destructive",
-      });
-    },
-  });
 
   const bulkAssignMutation = useMutation({
     mutationFn: async (data: any) => {
@@ -321,28 +173,6 @@ export default function Tasks() {
       toast({ title: "Hata", description: error.message || "Toplu görev oluşturulamadı", variant: "destructive" });
     },
   });
-
-  // Rating query - always call at top level
-  const { data: selectedTaskRating } = useQuery<any>({
-    queryKey: selectedTask ? [`/api/tasks/${selectedTask.id}/rating`] : ["no-task"],
-    enabled: selectedTask?.status === "onaylandi",
-  });
-
-  const handleGetUploadParams = async () => {
-    const response = await fetch("/api/objects/upload", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-    });
-    const data = await response.json();
-    return { method: "PUT" as const, url: data.url };
-  };
-
-  const handleUploadComplete = (taskId: number) => (result: { successful: Array<{ uploadURL: string }> }) => {
-    if (result.successful && result.successful[0]) {
-      const photoUrl = result.successful[0].uploadURL;
-      completeMutation.mutate({ taskId, photoUrl });
-    }
-  };
 
   const stats = useMemo(() => {
     if (!filteredTasksForStats) return { beklemede: 0, devamEden: 0, tamamlanmayan: 0, tamamlanan: 0 };
@@ -763,10 +593,11 @@ export default function Tasks() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">Tüm öncelikler</SelectItem>
-                    <SelectItem value="low">Düşük</SelectItem>
-                    <SelectItem value="medium">Orta</SelectItem>
-                    <SelectItem value="high">Yüksek</SelectItem>
-                    <SelectItem value="critical">Kritik</SelectItem>
+                    <SelectItem value="düşük">Düşük</SelectItem>
+                    <SelectItem value="orta">Orta</SelectItem>
+                    <SelectItem value="yüksek">Yüksek</SelectItem>
+                    <SelectItem value="acil">Acil</SelectItem>
+                    <SelectItem value="kritik">Kritik</SelectItem>
                   </SelectContent>
                 </Select>
 
@@ -983,42 +814,63 @@ export default function Tasks() {
                     const branch = branches?.find(b => b.id === task.branchId);
                     
                     return (
+                    <Link key={task.id} href={`/gorev-detay/${task.id}`} data-testid={`link-task-${task.id}`}>
                     <Card 
-                      key={task.id} 
                       data-testid={`card-task-${task.id}`}
                       className="hover-elevate cursor-pointer"
-                      onClick={() => setSelectedTask(task)}
                     >
                       <CardContent className="p-3">
                         <div className="flex flex-col gap-2">
-                          {/* Başlık ve Status */}
                           <div className="flex items-start justify-between gap-2">
                             <h3 className="text-sm font-medium line-clamp-2 flex-1">{task.description}</h3>
-                            <Badge
-                              variant={
-                                task.status === "onaylandi"
-                                  ? "default"
-                                  : task.status === "reddedildi" || task.status === "gecikmiş" || task.status === "basarisiz"
-                                  ? "destructive"
-                                  : "secondary"
-                              }
-                              className="text-xs whitespace-nowrap"
-                              data-testid={`badge-task-status-${task.id}`}
-                            >
-                              {task.status === "beklemede" && "Beklemede"}
-                              {task.status === "devam_ediyor" && "Devam"}
-                              {task.status === "foto_bekleniyor" && "Foto"}
-                              {task.status === "incelemede" && "İncele"}
-                              {task.status === "onaylandi" && "Onaylı"}
-                              {task.status === "reddedildi" && "Reddedildi"}
-                              {task.status === "gecikmiş" && "Gecikmiş"}
-                              {task.status === "basarisiz" && "Başarısız"}
-                              {task.status === "ek_bilgi_bekleniyor" && "Ek Bilgi"}
-                              {task.status === "tamamlandi" && "Tamamlandı"}
-                            </Badge>
+                            <div className="flex flex-wrap gap-1 items-center">
+                              <Badge
+                                variant={
+                                  task.status === "onaylandi"
+                                    ? "default"
+                                    : task.status === "reddedildi" || task.status === "gecikmiş" || task.status === "basarisiz"
+                                    ? "destructive"
+                                    : "secondary"
+                                }
+                                className="text-xs whitespace-nowrap"
+                                data-testid={`badge-task-status-${task.id}`}
+                              >
+                                {task.status === "beklemede" && "Beklemede"}
+                                {task.status === "devam_ediyor" && "Devam"}
+                                {task.status === "foto_bekleniyor" && "Foto"}
+                                {task.status === "incelemede" && "İncele"}
+                                {task.status === "onaylandi" && "Onaylı"}
+                                {task.status === "reddedildi" && "Reddedildi"}
+                                {task.status === "gecikmiş" && "Gecikmiş"}
+                                {task.status === "basarisiz" && "Başarısız"}
+                                {task.status === "ek_bilgi_bekleniyor" && "Ek Bilgi"}
+                                {task.status === "tamamlandi" && "Tamamlandı"}
+                                {task.status === "onay_bekliyor" && "Onay Bekliyor"}
+                                {task.status === "cevap_bekliyor" && "Cevap Bekliyor"}
+                                {task.status === "sure_uzatma_talebi" && "Süre Uzatma"}
+                              </Badge>
+                              {task.priority && (
+                                <Badge
+                                  variant={
+                                    task.priority === "kritik" || task.priority === "acil"
+                                      ? "destructive"
+                                      : task.priority === "yüksek" || task.priority === "orta"
+                                      ? "secondary"
+                                      : "outline"
+                                  }
+                                  className="text-xs whitespace-nowrap"
+                                  data-testid={`badge-task-priority-${task.id}`}
+                                >
+                                  {task.priority === "kritik" && "Kritik"}
+                                  {task.priority === "acil" && "Acil"}
+                                  {task.priority === "yüksek" && "Yüksek"}
+                                  {task.priority === "orta" && "Orta"}
+                                  {task.priority === "düşük" && "Düşük"}
+                                </Badge>
+                              )}
+                            </div>
                           </div>
                           
-                          {/* Atanan/Atayan/Şube Bilgileri - Kompakt 3-4 Sütun */}
                           <div className="grid grid-cols-3 gap-1 text-xs text-muted-foreground">
                             {task.assignedToId && (
                               <div className="min-w-0">
@@ -1044,8 +896,6 @@ export default function Tasks() {
                             )}
                           </div>
                           
-                          
-                          {/* Tarih ve Görülme Durumu / Rating */}
                           <div className="flex items-center justify-between text-xs gap-2">
                             <p className="text-muted-foreground">
                               {new Date(task.createdAt!).toLocaleDateString("tr-TR", { day: "numeric", month: "short" })}
@@ -1067,6 +917,7 @@ export default function Tasks() {
                         </div>
                       </CardContent>
                     </Card>
+                    </Link>
                     );
                   })}
                 {(!filteredTasks || filteredTasks.length === 0) && !isLoading && (
@@ -1078,289 +929,6 @@ export default function Tasks() {
           </TabsContent>
         ))}
       </Tabs>
-
-      {/* Task Detail Drawer */}
-      <Drawer open={!!selectedTask} onOpenChange={(open) => !open && setSelectedTask(null)}>
-        <DrawerContent data-testid="drawer-task-detail">
-          <div className="mx-auto w-full max-w-2xl">
-            <DrawerHeader>
-              <DrawerTitle className="text-left" data-testid="text-task-detail-title">
-                Görev Detayları
-              </DrawerTitle>
-            </DrawerHeader>
-            
-            {selectedTask && (
-              <div className="px-3 pb-4 space-y-3">
-                {/* Task Description */}
-                <div>
-                  <h3 className="font-semibold text-lg mb-2">{selectedTask.description}</h3>
-                  <div className="flex flex-wrap gap-2">
-                    <Badge
-                      variant={
-                        selectedTask.status === "onaylandi"
-                          ? "default"
-                          : selectedTask.status === "reddedildi"
-                          ? "destructive"
-                          : "secondary"
-                      }
-                      data-testid="badge-task-detail-status"
-                    >
-                      {selectedTask.status === "beklemede" && "Beklemede"}
-                      {selectedTask.status === "devam_ediyor" && "Devam Ediyor"}
-                      {selectedTask.status === "foto_bekleniyor" && "Fotoğraf Bekleniyor"}
-                      {selectedTask.status === "incelemede" && "İncelemede"}
-                      {selectedTask.status === "onaylandi" && "Onaylandı"}
-                      {selectedTask.status === "reddedildi" && "Reddedildi"}
-                      {selectedTask.status === "gecikmiş" && "Gecikmiş"}
-                      {selectedTask.status === "ek_bilgi_bekleniyor" && "Ek Bilgi Bekleniyor"}
-                      {selectedTask.status === "tamamlandi" && "Tamamlandı"}
-                      {selectedTask.status === "basarisiz" && "Başarısız"}
-                    </Badge>
-                    {selectedTask.priority && (
-                      <Badge variant="outline" data-testid="badge-task-detail-priority">
-                        Öncelik: {selectedTask.priority === "düşük" ? "Düşük" : selectedTask.priority === "orta" ? "Orta" : "Yüksek"}
-                      </Badge>
-                    )}
-                  </div>
-                </div>
-
-                <Separator />
-
-                {/* Task Info */}
-                <div className="space-y-3">
-                  {selectedTask.dueDate && (
-                    <div className="flex items-start gap-2">
-                      <Calendar className="h-4 w-4 text-muted-foreground mt-0.5" />
-                      <div>
-                        <p className="text-sm text-muted-foreground">Teslim Tarihi</p>
-                        <p className="font-medium">
-                          {new Date(selectedTask.dueDate).toLocaleDateString("tr-TR")}
-                        </p>
-                      </div>
-                    </div>
-                  )}
-                  
-                  {/* Tüm görevler için ortak bilgiler */}
-                  <div className="space-y-2">
-                    {selectedTask.assignedToId && (
-                      <div>
-                        <p className="text-sm text-muted-foreground">Atanan Kişi</p>
-                        <p className="font-medium">
-                          {(() => {
-                            const assignee = allUsers?.find(u => u.id === selectedTask.assignedToId);
-                            return assignee ? `${assignee.firstName} ${assignee.lastName}` : "Bilinmiyor";
-                          })()}
-                        </p>
-                      </div>
-                    )}
-                    {selectedTask.assignedById && (
-                      <div>
-                        <p className="text-sm text-muted-foreground">Atayan Kişi</p>
-                        <p className="font-medium">
-                          {(() => {
-                            const assigner = allUsers?.find(u => u.id === selectedTask.assignedById);
-                            return assigner ? `${assigner.firstName} ${assigner.lastName}` : "Bilinmiyor";
-                          })()}
-                        </p>
-                      </div>
-                    )}
-                    {branches && selectedTask.branchId && (
-                      <div>
-                        <p className="text-sm text-muted-foreground">Şube</p>
-                        <p className="font-medium">{branches.find(b => b.id === selectedTask.branchId)?.name || `Şube ${selectedTask.branchId}`}</p>
-                      </div>
-                    )}
-                  </div>
-                  
-                  {/* Tamamlanan görev ek bilgileri */}
-                  {selectedTask.status === "onaylandi" && (
-                    <div className="space-y-2 pt-2 border-t">
-                      {selectedTask.completedAt && (
-                        <div>
-                          <p className="text-sm text-muted-foreground">Tamamlanan Tarih</p>
-                          <p className="font-medium">{new Date(selectedTask.completedAt).toLocaleDateString("tr-TR")}</p>
-                        </div>
-                      )}
-                      {selectedTaskRating && (
-                        <div>
-                          <p className="text-sm text-muted-foreground">Aldığı Puan</p>
-                          <div className="flex items-center gap-2">
-                            <span className="font-medium">{selectedTaskRating.finalRating || 0}/5</span>
-                            <div className="flex items-center gap-0.5">
-                              {[...Array(5)].map((_, i) => (
-                                <Star
-                                  key={i}
-                                  className={`h-4 w-4 ${i < (selectedTaskRating.finalRating || 0) ? 'fill-yellow-400 text-yellow-400' : 'text-muted-foreground'}`}
-                                />
-                              ))}
-                            </div>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-
-                {/* Photo Preview */}
-                {selectedTask.photoUrl && (
-                  <>
-                    <Separator />
-                    <div>
-                      <p className="font-medium mb-2">Yüklenen Fotoğraf</p>
-                      <img
-                        src={selectedTask.photoUrl}
-                        alt="Görev fotoğrafı"
-                        className="rounded-md w-full max-h-96 object-contain border"
-                        data-testid="img-task-detail-photo"
-                      />
-                    </div>
-                  </>
-                )}
-
-                {/* AI Analysis */}
-                {selectedTask.aiAnalysis && (
-                  <>
-                    <Separator />
-                    <div>
-                      <p className="font-medium mb-2">AI Analizi</p>
-                      <div className="bg-muted p-3 rounded-md grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
-                        {selectedTask.aiScore !== null && selectedTask.aiScore !== undefined && (
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm font-medium">Skor:</span>
-                            <Badge variant={selectedTask.aiScore >= 70 ? "default" : "destructive"} data-testid="badge-ai-score">
-                              {selectedTask.aiScore}/100
-                            </Badge>
-                          </div>
-                        )}
-                        <p className="text-sm text-muted-foreground whitespace-pre-wrap" data-testid="text-ai-analysis">
-                          {selectedTask.aiAnalysis}
-                        </p>
-                      </div>
-                    </div>
-                  </>
-                )}
-
-                {/* Notes Section - Quick action, no completion */}
-                {(selectedTask.status === "beklemede" || selectedTask.status === "devam_ediyor") && (
-                  <>
-                    <Separator />
-                    <div className="flex flex-col gap-2">
-                      <label className="text-sm font-medium">Not Ekle</label>
-                      <Textarea
-                        placeholder="Bu görev için bir not yazınız..."
-                        value={taskNotes}
-                        onChange={(e) => setTaskNotes(e.target.value)}
-                        className="resize-none"
-                        data-testid="textarea-task-notes"
-                      />
-                      <Button
-                        onClick={() => {
-                          if (taskNotes.trim()) {
-                            apiRequest("POST", `/api/tasks/${selectedTask.id}/note`, { note: taskNotes }).then(() => {
-                              queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
-                              setTaskNotes("");
-                              toast({ title: "Başarılı", description: "Not eklendi" });
-                            }).catch(() => {
-                              toast({ title: "Hata", description: "Not eklenemedi", variant: "destructive" });
-                            });
-                          }
-                        }}
-                        disabled={!taskNotes.trim()}
-                        size="sm"
-                        className="w-full"
-                        data-testid="button-add-drawer-note"
-                      >
-                        <Send className="h-3 w-3 mr-2" />
-                        Not Ekle
-                      </Button>
-                    </div>
-                  </>
-                )}
-
-                {/* Photo Upload - Quick action only, not for completion */}
-                {selectedTask.status === "devam_ediyor" && (
-                  <>
-                    <Separator />
-                    <ObjectUploader
-                      maxNumberOfFiles={1}
-                      maxFileSize={10485760}
-                      onGetUploadParameters={handleGetUploadParams}
-                      onComplete={() => {
-                        queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
-                        toast({ title: "Başarılı", description: "Fotoğraf yüklendi" });
-                      }}
-                      buttonClassName="w-full"
-                    >
-                      <Camera className="mr-2 h-4 w-4" />
-                      Fotoğraf Yükle
-                    </ObjectUploader>
-                  </>
-                )}
-
-                {/* Action Buttons - Start Task Only */}
-                <Separator />
-                <div className="flex flex-col gap-2">
-                  {/* Start Task - Only assignee can start */}
-                  {user?.id === selectedTask.assignedToId && (selectedTask.status === "beklemede" || selectedTask.status === "reddedildi" || selectedTask.status === "ek_bilgi_bekleniyor") && (
-                    <Button
-                      onClick={() => startTaskMutation.mutate(selectedTask.id)}
-                      disabled={startTaskMutation.isPending}
-                      className="w-full"
-                      data-testid="button-start-task"
-                    >
-                      <PlayCircle className="mr-2 h-4 w-4" />
-                      {startTaskMutation.isPending ? "Başlatılıyor..." : "Görevi Başlat"}
-                    </Button>
-                  )}
-
-                  {/* HQ Actions - Verify and Reject */}
-                  {isHQ && (selectedTask.status === "incelemede" || selectedTask.status === "foto_bekleniyor") && (
-                    <div className="flex gap-2">
-                      <Button
-                        onClick={() => verifyTaskMutation.mutate(selectedTask.id)}
-                        disabled={verifyTaskMutation.isPending}
-                        className="flex-1"
-                        variant="default"
-                        data-testid="button-verify-task"
-                      >
-                        <ThumbsUp className="mr-2 h-4 w-4" />
-                        {verifyTaskMutation.isPending ? "Onaylanıyor..." : "Onayla"}
-                      </Button>
-                      <Button
-                        onClick={() => {
-                          const reason = prompt("Red nedeni (opsiyonel):");
-                          rejectTaskMutation.mutate({ taskId: selectedTask.id, reason: reason || undefined });
-                        }}
-                        disabled={rejectTaskMutation.isPending}
-                        className="flex-1"
-                        variant="destructive"
-                        data-testid="button-reject-task"
-                      >
-                        <ThumbsDown className="mr-2 h-4 w-4" />
-                        {rejectTaskMutation.isPending ? "Reddediliyor..." : "Reddet"}
-                      </Button>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-
-            <DrawerFooter className="flex flex-row gap-2">
-              <Link href={`/gorev-detay/${selectedTask?.id}`} className="flex-1">
-                <Button variant="default" className="w-full" data-testid="button-goto-task-detail">
-                  Detay Sayfası
-                </Button>
-              </Link>
-              <DrawerClose asChild>
-                <Button variant="outline" data-testid="button-close-drawer">
-                  <X className="mr-2 h-4 w-4" />
-                  Kapat
-                </Button>
-              </DrawerClose>
-            </DrawerFooter>
-          </div>
-        </DrawerContent>
-      </Drawer>
 
       {/* Rating Dialog */}
       <Dialog open={!!ratingTaskId} onOpenChange={(open) => !open && setRatingTaskId(null)}>
@@ -1449,6 +1017,8 @@ export default function Tasks() {
                     <SelectItem value="düşük">Düşük</SelectItem>
                     <SelectItem value="orta">Orta</SelectItem>
                     <SelectItem value="yüksek">Yüksek</SelectItem>
+                    <SelectItem value="acil">Acil</SelectItem>
+                    <SelectItem value="kritik">Kritik</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

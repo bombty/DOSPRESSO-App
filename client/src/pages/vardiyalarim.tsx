@@ -5,10 +5,13 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { format, startOfWeek, addDays, isToday, differenceInDays } from "date-fns";
 import { tr } from "date-fns/locale";
-import { Clock, ChevronDown, ChevronUp, CheckCircle, ListTodo, ClipboardList, CheckSquare } from "lucide-react";
+import { Clock, ChevronDown, ChevronUp, Sun, Sunset, Moon, ClipboardList, ArrowRightLeft, Check, X } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
@@ -45,6 +48,7 @@ interface MyShift {
   status: string;
   branch: { name: string };
   createdBy: { fullName: string };
+  assignedTo?: { id: string; firstName: string; lastName: string };
   notes?: string;
   tasks?: ShiftTask[];
   checklists?: ShiftChecklist[];
@@ -53,8 +57,12 @@ interface MyShift {
 export default function Vardiyalarim() {
   const { user } = useAuth();
   const { toast } = useToast();
-  const [selectedWeekOffset, setSelectedWeekOffset] = useState(0);
+  const [selectedWeekOffset, setSelectedWeekOffset] = useState<0 | 1>(0);
+  const [viewMode, setViewMode] = useState<"my" | "branch">("my");
   const [expandedShifts, setExpandedShifts] = useState<Set<number>>(new Set());
+  const [swapShift, setSwapShift] = useState<MyShift | null>(null);
+  const [swapTargetUser, setSwapTargetUser] = useState<string>("");
+  const [swapReason, setSwapReason] = useState<string>("");
 
   const toggleShiftExpanded = (shiftId: number) => {
     setExpandedShifts(prev => {
@@ -68,7 +76,6 @@ export default function Vardiyalarim() {
     });
   };
 
-  // Task completion mutation
   const completeTaskMutation = useMutation({
     mutationFn: async ({ shiftTaskId, isCompleted }: { shiftTaskId: number; isCompleted: boolean }) => {
       await apiRequest('PATCH', `/api/shift-tasks/${shiftTaskId}`, { isCompleted });
@@ -82,7 +89,6 @@ export default function Vardiyalarim() {
     },
   });
 
-  // Checklist completion mutation
   const completeChecklistMutation = useMutation({
     mutationFn: async ({ shiftChecklistId, isCompleted }: { shiftChecklistId: number; isCompleted: boolean }) => {
       await apiRequest('PATCH', `/api/shift-checklists/${shiftChecklistId}`, { isCompleted });
@@ -96,36 +102,112 @@ export default function Vardiyalarim() {
     },
   });
 
+  const { data: branchColleagues } = useQuery({
+    queryKey: ['/api/branches', (user as any)?.branchId, 'users'],
+    queryFn: async () => {
+      const branchId = (user as any)?.branchId;
+      if (!branchId) return [];
+      const res = await fetch(`/api/branches/${branchId}/users`);
+      if (!res.ok) throw new Error('Failed to fetch colleagues');
+      return res.json();
+    },
+    enabled: !!swapShift && !!(user as any)?.branchId,
+  });
+
+  const { data: pendingSwapRequests } = useQuery<any[]>({
+    queryKey: ['/api/shift-swap-requests/pending-for-me'],
+  });
+
+  const createSwapMutation = useMutation({
+    mutationFn: async (body: any) => {
+      await apiRequest('POST', '/api/shift-swap-requests', body);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/shifts/my'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/shift-swap-requests/pending-for-me'] });
+      setSwapShift(null);
+      setSwapTargetUser("");
+      setSwapReason("");
+      toast({ title: "Başarılı", description: "Takas talebi gönderildi" });
+    },
+    onError: () => {
+      toast({ title: "Hata", description: "Takas talebi gönderilemedi", variant: "destructive" });
+    },
+  });
+
+  const approveSwapMutation = useMutation({
+    mutationFn: async (id: number) => {
+      await apiRequest('PATCH', `/api/shift-swap-requests/${id}/target-approve`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/shifts/my'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/shift-swap-requests/pending-for-me'] });
+      toast({ title: "Başarılı", description: "Takas talebi onaylandı" });
+    },
+    onError: () => {
+      toast({ title: "Hata", description: "Takas talebi onaylanamadı", variant: "destructive" });
+    },
+  });
+
+  const rejectSwapMutation = useMutation({
+    mutationFn: async (id: number) => {
+      await apiRequest('PATCH', `/api/shift-swap-requests/${id}/target-reject`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/shifts/my'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/shift-swap-requests/pending-for-me'] });
+      toast({ title: "Başarılı", description: "Takas talebi reddedildi" });
+    },
+    onError: () => {
+      toast({ title: "Hata", description: "Takas talebi reddedilemedi", variant: "destructive" });
+    },
+  });
+
   const weekStart = useMemo(() => {
     const today = new Date();
     const weekStarts = startOfWeek(new Date(today.getTime() + selectedWeekOffset * 7 * 24 * 60 * 60 * 1000), { weekStartsOn: 1 });
     return weekStarts;
   }, [selectedWeekOffset]);
 
-  // Fetch shifts assigned to current user only
+  const startDate = format(weekStart, 'yyyy-MM-dd');
+  const endDate = format(addDays(weekStart, 6), 'yyyy-MM-dd');
+
   const { data: myShifts, isLoading } = useQuery({
-    queryKey: ['/api/shifts/my', format(weekStart, 'yyyy-MM-dd')],
+    queryKey: ['/api/shifts/my', startDate],
     queryFn: async () => {
-      const startDate = format(weekStart, 'yyyy-MM-dd');
-      const endDate = format(addDays(weekStart, 6), 'yyyy-MM-dd');
       const res = await fetch(`/api/shifts/my?start=${startDate}&end=${endDate}`);
       if (!res.ok) throw new Error('Failed to fetch shifts');
       return res.json();
     },
   });
 
+  const { data: branchShifts, isLoading: isBranchLoading } = useQuery({
+    queryKey: ['/api/shifts', 'branch', (user as any)?.branchId, startDate],
+    queryFn: async () => {
+      const branchId = (user as any)?.branchId;
+      if (!branchId) return [];
+      const res = await fetch(`/api/shifts?branchId=${branchId}&dateFrom=${startDate}&dateTo=${endDate}`);
+      if (!res.ok) throw new Error('Failed to fetch branch shifts');
+      return res.json();
+    },
+    enabled: viewMode === "branch",
+  });
+
+  const activeShifts = viewMode === "my" ? myShifts : branchShifts;
+  const activeLoading = viewMode === "my" ? isLoading : isBranchLoading;
+
   const shiftsByDay = useMemo(() => {
-    if (!myShifts) return new Map();
+    if (!activeShifts) return new Map();
     const grouped = new Map<string, MyShift[]>();
     
-    myShifts.forEach((shift: MyShift) => {
+    activeShifts.forEach((shift: MyShift) => {
       const day = shift.shiftDate;
       if (!grouped.has(day)) grouped.set(day, []);
       grouped.get(day)!.push(shift);
     });
     
     return grouped;
-  }, [myShifts]);
+  }, [activeShifts]);
 
   const weekDays = useMemo(() => {
     return Array.from({ length: 7 }, (_, i) => {
@@ -141,9 +223,8 @@ export default function Vardiyalarim() {
     });
   }, [weekStart, shiftsByDay]);
 
-  const totalShifts = myShifts?.length || 0;
-  const confirmedShifts = myShifts?.filter((s: MyShift) => s.status === 'confirmed').length || 0;
-  const upcomingShifts = myShifts?.filter((s: MyShift) => {
+  const totalShifts = activeShifts?.length || 0;
+  const upcomingShifts = activeShifts?.filter((s: MyShift) => {
     const daysUntil = differenceInDays(new Date(s.shiftDate), new Date());
     return daysUntil >= 0;
   }).length || 0;
@@ -155,34 +236,45 @@ export default function Vardiyalarim() {
   };
 
   const getShiftTypeLabel = (type: string) => {
-    return type === 'morning' ? '🌅 Sabah' :
-           type === 'evening' ? '🌆 Akşam' :
-           '🌙 Gece';
+    return type === 'morning' ? 'Sabah' :
+           type === 'evening' ? 'Akşam' :
+           'Gece';
+  };
+
+  const getShiftTypeIcon = (type: string) => {
+    if (type === 'morning') return <Sun className="w-3 h-3" />;
+    if (type === 'evening') return <Sunset className="w-3 h-3" />;
+    return <Moon className="w-3 h-3" />;
   };
 
   return (
     <div className="flex flex-col gap-3 sm:gap-4 p-3">
-      {/* Header */}
       <div>
-        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Vardiyalarım</h1>
-        <p className="text-muted-foreground mt-1">Bu haftanın çalışma programınız</p>
+        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight" data-testid="text-page-title">Vardiyalarım</h1>
+        <p className="text-muted-foreground mt-1" data-testid="text-page-description">Bu haftanın çalışma programınız</p>
       </div>
 
-      {/* Stats Cards */}
+      <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as "my" | "branch")} data-testid="tabs-view-mode">
+        <TabsList>
+          <TabsTrigger value="my" data-testid="tab-my-shifts">Benim Vardiyalarım</TabsTrigger>
+          <TabsTrigger value="branch" data-testid="tab-branch-plan">Şube Planı</TabsTrigger>
+        </TabsList>
+      </Tabs>
+
       <div className="grid grid-cols-3 md:grid-cols-3 gap-2 sm:gap-3">
         <Card>
           <CardContent className="p-2 sm:p-3">
             <div className="flex flex-col items-center text-center gap-1">
               <p className="text-xs text-muted-foreground">Toplam</p>
-              <p className="text-lg sm:text-2xl font-bold">{totalShifts}</p>
+              <p className="text-lg sm:text-2xl font-bold" data-testid="text-total-shifts">{totalShifts}</p>
             </div>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-2 sm:p-3">
             <div className="flex flex-col items-center text-center gap-1">
-              <p className="text-xs text-muted-foreground">Onaylı</p>
-              <p className="text-lg sm:text-2xl font-bold text-success">{confirmedShifts}</p>
+              <p className="text-xs text-muted-foreground">Vardiya</p>
+              <p className="text-lg sm:text-2xl font-bold text-success" data-testid="text-confirmed-shifts">{totalShifts}</p>
             </div>
           </CardContent>
         </Card>
@@ -190,43 +282,37 @@ export default function Vardiyalarim() {
           <CardContent className="p-2 sm:p-3">
             <div className="flex flex-col items-center text-center gap-1">
               <p className="text-xs text-muted-foreground">Yaklaşan</p>
-              <p className="text-lg sm:text-2xl font-bold text-primary">{upcomingShifts}</p>
+              <p className="text-lg sm:text-2xl font-bold text-primary" data-testid="text-upcoming-shifts">{upcomingShifts}</p>
             </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Week Navigation */}
       <div className="flex gap-2 flex-wrap">
-        <button 
-          onClick={() => setSelectedWeekOffset(prev => prev - 1)}
-          className="px-2 py-1 text-xs border rounded hover:bg-accent"
-          data-testid="button-prev-week"
-        >
-          ← Önceki
-        </button>
-        <button 
+        <Button
+          variant={selectedWeekOffset === 0 ? "default" : "outline"}
+          size="sm"
           onClick={() => setSelectedWeekOffset(0)}
-          className="px-2 py-1 text-xs border rounded hover:bg-accent"
-          data-testid="button-current-week"
+          data-testid="button-this-week"
         >
           Bu Hafta
-        </button>
-        <button 
-          onClick={() => setSelectedWeekOffset(prev => prev + 1)}
-          className="px-2 py-1 text-xs border rounded hover:bg-accent"
+        </Button>
+        <Button
+          variant={selectedWeekOffset === 1 ? "default" : "outline"}
+          size="sm"
+          onClick={() => setSelectedWeekOffset(1)}
           data-testid="button-next-week"
         >
-          Sonraki →
-        </button>
+          Gelecek Hafta
+        </Button>
       </div>
 
-      {isLoading ? (
-        <div className="text-center py-8 text-muted-foreground">Yükleniyor...</div>
+      {activeLoading ? (
+        <div className="text-center py-8 text-muted-foreground" data-testid="text-loading">Yükleniyor...</div>
       ) : (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3">
           {weekDays.map((day, idx) => (
-            <Card key={idx} className={day.isToday ? "border-primary/50 bg-primary/5" : ""}>
+            <Card key={idx} className={day.isToday ? "border-primary/50 bg-primary/5" : ""} data-testid={`card-day-${idx}`}>
               <CardHeader className="pb-2">
                 <div className="flex items-start justify-between gap-1">
                   <div>
@@ -242,15 +328,18 @@ export default function Vardiyalarim() {
               </CardHeader>
               <CardContent className="space-y-1.5">
                 {day.shifts.length === 0 ? (
-                  <p className="text-xs text-muted-foreground text-center py-2">İzin günü</p>
+                  <p className="text-xs text-muted-foreground text-center py-2" data-testid={`text-no-shift-${idx}`}>İzin günü</p>
                 ) : (
-                  day.shifts.map((shift) => {
+                  day.shifts.map((shift: MyShift) => {
                     const taskCount = shift.tasks?.length || 0;
                     const checklistCount = shift.checklists?.length || 0;
-                    const completedTasks = shift.tasks?.filter(t => t.isCompleted).length || 0;
-                    const completedChecklists = shift.checklists?.filter(c => c.isCompleted).length || 0;
+                    const completedTasks = shift.tasks?.filter((t: ShiftTask) => t.isCompleted).length || 0;
+                    const completedChecklists = shift.checklists?.filter((c: ShiftChecklist) => c.isCompleted).length || 0;
                     const hasItems = taskCount > 0 || checklistCount > 0;
                     const isExpanded = expandedShifts.has(shift.id);
+                    const employeeName = shift.assignedTo
+                      ? `${shift.assignedTo.firstName || ''} ${shift.assignedTo.lastName || ''}`.trim()
+                      : '';
 
                     return (
                       <div 
@@ -261,13 +350,33 @@ export default function Vardiyalarim() {
                         <div className="font-semibold flex items-center gap-1">
                           <Clock className="w-3 h-3" />
                           {shift.startTime?.substring(0, 5)} - {shift.endTime?.substring(0, 5)}
+                          {viewMode === "my" && (
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="ml-auto"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSwapShift(shift);
+                                setSwapTargetUser("");
+                                setSwapReason("");
+                              }}
+                              data-testid={`button-swap-${shift.id}`}
+                            >
+                              <ArrowRightLeft className="w-3 h-3" />
+                            </Button>
+                          )}
                         </div>
-                        <div className="flex items-center justify-between mt-1">
-                          <Badge variant="outline" className="text-xs h-4 font-normal">
-                            {shift.status === 'draft' ? 'Taslak' :
-                             shift.status === 'pending_hq' ? 'Beklemede' :
-                             shift.status === 'confirmed' ? 'Onaylı' : shift.status}
-                          </Badge>
+                        <div className="flex items-center gap-1 mt-0.5">
+                          {getShiftTypeIcon(shift.shiftType)}
+                          <span className="text-xs">{getShiftTypeLabel(shift.shiftType)}</span>
+                        </div>
+                        {viewMode === "branch" && employeeName && (
+                          <div className="text-xs mt-0.5 opacity-80" data-testid={`text-employee-${shift.id}`}>
+                            {employeeName}
+                          </div>
+                        )}
+                        <div className="flex items-center justify-end mt-1">
                           {hasItems && (
                             <button 
                               onClick={() => toggleShiftExpanded(shift.id)}
@@ -330,36 +439,134 @@ export default function Vardiyalarim() {
         </div>
       )}
 
-      {/* All Shifts Tab View */}
-      {myShifts && myShifts.length > 0 && (
-        <Card className="mt-4">
+      {pendingSwapRequests && (pendingSwapRequests as any[]).length > 0 && (
+        <Card data-testid="card-pending-swaps">
           <CardHeader>
-            <CardTitle className="text-sm sm:text-base">Tüm Vardiyalar</CardTitle>
+            <CardTitle className="text-sm flex items-center gap-2">
+              <ArrowRightLeft className="w-4 h-4" />
+              Bekleyen Takas Talepleri
+            </CardTitle>
+            <CardDescription className="text-xs">Size gelen vardiya takas talepleri</CardDescription>
           </CardHeader>
           <CardContent className="space-y-2">
-            {myShifts.map((shift) => (
-              <div key={shift.id} className="flex items-start justify-between p-2 border rounded text-xs sm:text-sm hover-elevate">
-                <div className="flex-1">
-                  <div className="font-semibold flex items-center gap-2">
-                    <Clock className="w-4 h-4" />
-                    {format(new Date(shift.shiftDate), 'd MMM yyyy', { locale: tr })}
-                  </div>
-                  <div className="text-muted-foreground">
-                    {shift.startTime?.substring(0, 5)} - {shift.endTime?.substring(0, 5)}
-                  </div>
-                  {shift.notes && (
-                    <div className="mt-1 text-muted-foreground">{shift.notes}</div>
+            {(pendingSwapRequests as any[]).map((req: any) => (
+              <div
+                key={req.id}
+                className="flex items-center justify-between gap-2 p-2 rounded border"
+                data-testid={`swap-request-${req.id}`}
+              >
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium" data-testid={`text-swap-requester-${req.id}`}>
+                    {req.requester?.fullName || req.requester?.firstName || 'Bilinmeyen'}
+                  </p>
+                  <p className="text-xs text-muted-foreground" data-testid={`text-swap-date-${req.id}`}>
+                    {req.swapDate ? format(new Date(req.swapDate), 'd MMM yyyy', { locale: tr }) : ''}
+                    {req.requesterShift && ` ${req.requesterShift.startTime?.substring(0, 5)} - ${req.requesterShift.endTime?.substring(0, 5)}`}
+                  </p>
+                  {req.reason && (
+                    <p className="text-xs text-muted-foreground mt-0.5" data-testid={`text-swap-reason-${req.id}`}>
+                      {req.reason}
+                    </p>
                   )}
                 </div>
-                <Badge variant="outline">
-                  {shift.status === 'confirmed' ? 'Onaylı' :
-                   shift.status === 'pending_hq' ? 'Beklemede' : 'Taslak'}
-                </Badge>
+                <div className="flex items-center gap-1">
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    onClick={() => approveSwapMutation.mutate(req.id)}
+                    disabled={approveSwapMutation.isPending}
+                    data-testid={`button-approve-swap-${req.id}`}
+                  >
+                    <Check className="w-4 h-4 text-green-600" />
+                  </Button>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    onClick={() => rejectSwapMutation.mutate(req.id)}
+                    disabled={rejectSwapMutation.isPending}
+                    data-testid={`button-reject-swap-${req.id}`}
+                  >
+                    <X className="w-4 h-4 text-red-600" />
+                  </Button>
+                </div>
               </div>
             ))}
           </CardContent>
         </Card>
       )}
+
+      <Dialog open={!!swapShift} onOpenChange={(open) => { if (!open) setSwapShift(null); }}>
+        <DialogContent data-testid="dialog-swap-request">
+          <DialogHeader>
+            <DialogTitle>Vardiya Takas Talebi</DialogTitle>
+          </DialogHeader>
+          {swapShift && (
+            <div className="space-y-4">
+              <div>
+                <p className="text-sm font-medium">Takas edilecek vardiya</p>
+                <p className="text-sm text-muted-foreground" data-testid="text-swap-shift-info">
+                  {format(new Date(swapShift.shiftDate), 'd MMMM yyyy, EEEE', { locale: tr })} - {swapShift.startTime?.substring(0, 5)} / {swapShift.endTime?.substring(0, 5)}
+                </p>
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium">Takas yapılacak kişi</label>
+                <Select value={swapTargetUser} onValueChange={setSwapTargetUser}>
+                  <SelectTrigger data-testid="select-swap-target">
+                    <SelectValue placeholder="Çalışan seçin" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(branchColleagues as any[] || [])
+                      .filter((c: any) => c.id !== (user as any)?.id)
+                      .map((colleague: any) => (
+                        <SelectItem
+                          key={colleague.id}
+                          value={String(colleague.id)}
+                          data-testid={`option-colleague-${colleague.id}`}
+                        >
+                          {colleague.fullName || `${colleague.firstName || ''} ${colleague.lastName || ''}`.trim()}
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium">Sebep (opsiyonel)</label>
+                <Textarea
+                  value={swapReason}
+                  onChange={(e) => setSwapReason(e.target.value)}
+                  placeholder="Takas sebebinizi yazın..."
+                  data-testid="textarea-swap-reason"
+                />
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setSwapShift(null)}
+              data-testid="button-cancel-swap"
+            >
+              İptal
+            </Button>
+            <Button
+              onClick={() => {
+                if (!swapShift || !swapTargetUser) return;
+                createSwapMutation.mutate({
+                  requesterShiftId: swapShift.id,
+                  targetUserId: swapTargetUser,
+                  branchId: (user as any)?.branchId,
+                  swapDate: swapShift.shiftDate,
+                  reason: swapReason || undefined,
+                });
+              }}
+              disabled={!swapTargetUser || createSwapMutation.isPending}
+              data-testid="button-confirm-swap"
+            >
+              Takas Talebi Gönder
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

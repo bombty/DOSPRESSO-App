@@ -17404,6 +17404,7 @@ Cevaplarınız kısa, faydalı ve türkçe olmalıdır.`;
       
       const shift = await storage.createShift({
         ...validated,
+        status: 'confirmed',
         createdById: user.id,
       });
       
@@ -17522,6 +17523,7 @@ Cevaplarınız kısa, faydalı ve türkçe olmalıdır.`;
         const shift = await storage.createShift({
           ...cleanShiftData,
           shiftType: normalizedType,
+          status: 'confirmed',
           createdById: user.id,
         });
         createdShifts.push(shift);
@@ -38962,6 +38964,57 @@ Bu verilere dayanarak performans analizi ve iyileştirme önerileri oluştur.`
 
       const baseSalary = salaryRecord[0]?.baseSalary ? Number(salaryRecord[0].baseSalary) : 0;
 
+      // Salary scales mapping - map user role to salary_scales position
+      const roleToPositionMap: Record<string, { positionName: string; locationType: string }> = {
+        'stajyer': { positionName: 'Stajyer', locationType: 'sube' },
+        'bar_buddy': { positionName: 'Bar Buddy', locationType: 'sube' },
+        'barista': { positionName: 'Barista', locationType: 'sube' },
+        'senior_barista': { positionName: 'Barista', locationType: 'sube' },
+        'supervisor_buddy': { positionName: 'Supervisor Buddy', locationType: 'sube' },
+        'supervisor': { positionName: 'Süpervizör', locationType: 'sube' },
+      };
+
+      let salaryScaleData: any = null;
+      const roleMapping = roleToPositionMap[targetUser.role || ''];
+      if (roleMapping) {
+        const scaleResult = await db.execute(sql`
+          SELECT * FROM salary_scales 
+          WHERE position_name = ${roleMapping.positionName} 
+          AND location_type = ${roleMapping.locationType} 
+          AND is_active = true 
+          LIMIT 1
+        `);
+        if (scaleResult.rows.length > 0) {
+          const scale = scaleResult.rows[0] as any;
+          salaryScaleData = {
+            positionName: scale.position_name,
+            level: scale.level,
+            baseSalary: Number(scale.base_salary),
+            cashRegisterBonus: Number(scale.cash_register_bonus),
+            performanceBonus: Number(scale.performance_bonus),
+            bonusCalculationType: scale.bonus_calculation_type,
+            totalSalary: Number(scale.total_salary),
+          };
+        }
+      }
+
+      // Calculate daily meal allowance from worked days this month
+      const currentMonth = now.getMonth() + 1;
+      const monthStart = `${currentYear}-${String(currentMonth).padStart(2, '0')}-01`;
+      const monthEnd = now.toISOString().split('T')[0];
+
+      const workedShifts = await db.execute(sql`
+        SELECT COUNT(DISTINCT shift_date) as worked_days
+        FROM shifts 
+        WHERE assigned_to_id = ${targetId}
+        AND shift_date >= ${monthStart}
+        AND shift_date <= ${monthEnd}
+        AND status = 'confirmed'
+      `);
+      const workedDaysThisMonth = Number((workedShifts.rows[0] as any)?.worked_days || 0);
+      const dailyMealAllowance = targetUser.mealAllowance ? Number(targetUser.mealAllowance) : 0;
+      const monthlyMealAllowance = Math.round((dailyMealAllowance / 26) * workedDaysThisMonth);
+
       const canViewSalary = isOwnProfile || user.role === 'admin' || user.role === 'muhasebe' || user.role === 'muhasebe_ik';
 
       res.json({
@@ -38973,6 +39026,9 @@ Bu verilere dayanarak performans analizi ve iyileştirme önerileri oluştur.`
         latenessCount,
         baseSalary: canViewSalary ? baseSalary : null,
         canViewSalary,
+        salaryScale: canViewSalary ? salaryScaleData : null,
+        workedDaysThisMonth: canViewSalary ? workedDaysThisMonth : null,
+        monthlyMealAllowance: canViewSalary ? monthlyMealAllowance : null,
       });
     } catch (error: any) {
       console.error("Error fetching leave-salary summary:", error);

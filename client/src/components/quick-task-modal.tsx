@@ -61,7 +61,7 @@ interface Branch {
 
 const quickTaskSchema = z.object({
   description: z.string().min(1, "Görev açıklaması gereklidir").max(500),
-  priority: z.enum(["düşük", "orta", "yüksek"]),
+  priority: z.enum(["düşük", "orta", "yüksek", "acil", "kritik"]),
   dueDate: z.string().optional(),
   assignedToId: z.string().optional(),
   photoUrl: z.string().optional(),
@@ -407,11 +407,7 @@ export function QuickTaskModal({ trigger }: QuickTaskModalProps) {
                       type="button"
                       onClick={() => field.onChange("düşük")}
                       variant={field.value === "düşük" ? "default" : "outline"}
-                      className={`flex-1 ${
-                        field.value === "düşük"
-                          ? "bg-green-600 hover:bg-green-700 text-white"
-                          : "bg-green-50 dark:bg-green-950 text-green-900 dark:text-green-100 border-green-300 hover:bg-green-100 dark:hover:bg-green-900"
-                      }`}
+                      className="flex-1 toggle-elevate"
                       data-testid="button-priority-low"
                     >
                       Düşük
@@ -420,11 +416,7 @@ export function QuickTaskModal({ trigger }: QuickTaskModalProps) {
                       type="button"
                       onClick={() => field.onChange("orta")}
                       variant={field.value === "orta" ? "default" : "outline"}
-                      className={`flex-1 ${
-                        field.value === "orta"
-                          ? "bg-yellow-600 hover:bg-yellow-700 text-white"
-                          : "bg-yellow-50 dark:bg-yellow-950 text-yellow-900 dark:text-yellow-100 border-yellow-300 hover:bg-yellow-100 dark:hover:bg-yellow-900"
-                      }`}
+                      className="flex-1 toggle-elevate"
                       data-testid="button-priority-medium"
                     >
                       Orta
@@ -432,15 +424,29 @@ export function QuickTaskModal({ trigger }: QuickTaskModalProps) {
                     <Button
                       type="button"
                       onClick={() => field.onChange("yüksek")}
-                      variant={field.value === "yüksek" ? "default" : "outline"}
-                      className={`flex-1 ${
-                        field.value === "yüksek"
-                          ? "bg-red-600 hover:bg-red-700 text-white"
-                          : "bg-red-50 dark:bg-red-950 text-red-900 dark:text-red-100 border-red-300 hover:bg-red-100 dark:hover:bg-red-900"
-                      }`}
+                      variant={field.value === "yüksek" ? "secondary" : "outline"}
+                      className="flex-1 toggle-elevate"
                       data-testid="button-priority-high"
                     >
                       Yüksek
+                    </Button>
+                    <Button
+                      type="button"
+                      onClick={() => field.onChange("acil")}
+                      variant={field.value === "acil" ? "destructive" : "outline"}
+                      className="flex-1 toggle-elevate"
+                      data-testid="button-priority-urgent"
+                    >
+                      Acil
+                    </Button>
+                    <Button
+                      type="button"
+                      onClick={() => field.onChange("kritik")}
+                      variant={field.value === "kritik" ? "destructive" : "outline"}
+                      className="flex-1 toggle-elevate"
+                      data-testid="button-priority-critical"
+                    >
+                      Kritik
                     </Button>
                   </div>
                   <FormMessage />

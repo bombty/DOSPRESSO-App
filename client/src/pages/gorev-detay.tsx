@@ -488,6 +488,8 @@ export default function GorevDetay() {
     "düşük": "Düşük",
     orta: "Orta",
     "yüksek": "Yüksek",
+    acil: "Acil",
+    kritik: "Kritik",
   };
 
   const isAssignee = currentUser?.id === task.assignedToId;
@@ -626,7 +628,7 @@ export default function GorevDetay() {
             <div className="p-2 rounded-lg border bg-card">
               <span className="text-muted-foreground">Öncelik</span>
               <div className="mt-1">
-                <Badge variant="outline" className="text-xs">
+                <Badge variant={task.priority === "kritik" || task.priority === "acil" ? "destructive" : task.priority === "yüksek" ? "secondary" : "outline"} className="text-xs">
                   {priorityLabels[task.priority || "orta"] || task.priority}
                 </Badge>
               </div>
@@ -1092,7 +1094,7 @@ export default function GorevDetay() {
             {/* Öncelik */}
             <div>
               <p className="text-xs text-muted-foreground mb-1">Öncelik</p>
-              <Badge variant={task.priority === "yüksek" ? "destructive" : "outline"}>
+              <Badge variant={task.priority === "kritik" || task.priority === "acil" ? "destructive" : task.priority === "yüksek" ? "secondary" : "outline"}>
                 {task.priority ? (priorityLabels[task.priority] || task.priority) : "-"}
               </Badge>
             </div>

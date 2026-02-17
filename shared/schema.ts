@@ -2548,7 +2548,7 @@ export const taskStatusEnum = ["beklemede", "goruldu", "devam_ediyor", "foto_bek
 export type TaskStatus = typeof taskStatusEnum[number];
 
 // Task priority enum
-export const taskPriorityEnum = ["düşük", "orta", "yüksek"] as const;
+export const taskPriorityEnum = ["düşük", "orta", "yüksek", "acil", "kritik"] as const;
 export type TaskPriority = typeof taskPriorityEnum[number];
 
 // Tasks table (actual task instances)
