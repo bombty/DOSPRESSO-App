@@ -7,6 +7,14 @@ const ICON_MAP: Record<string, LucideIcon> = {
   Target, ClipboardList, GraduationCap, Wrench, BarChart3, Settings, BookOpen, Users, Package, ShoppingCart, Bell, Calendar, Shield, Briefcase, Heart, Star, Zap, TrendingUp, FileText, MessageSquare, Award, CheckCircle2, Sun, Moon, Cloud, Coffee,
 };
 
+const URL_TO_COUNT_KEY: Record<string, string> = {
+  '/gorevler': 'tasks',
+  '/checklistler': 'checklists',
+  '/ekipman/ariza': 'faults',
+  '/akademi': 'training',
+  '/raporlar': 'reports',
+};
+
 function getGreeting(): { text: string; icon: any } {
   const hour = new Date().getHours();
   if (hour >= 5 && hour < 12) return { text: "Günaydın", icon: Sun };
@@ -32,6 +40,12 @@ export function UnifiedHero() {
     enabled: !!user,
   });
 
+  const { data: counts = {} } = useQuery<Record<string, number>>({
+    queryKey: ["/api/dashboard-widgets/counts"],
+    enabled: !!user,
+    refetchInterval: 60 * 1000,
+  });
+
   return (
     <div
       className="relative overflow-hidden rounded-xl bg-gradient-to-br from-[hsl(var(--dospresso-navy))] via-[hsl(var(--dospresso-blue))] to-[hsl(var(--dospresso-blue)/0.8)] p-3 text-white"
@@ -51,20 +65,22 @@ export function UnifiedHero() {
           <div className="flex flex-wrap gap-1.5">
             {widgets.map((widget: any) => {
               const IconComp = ICON_MAP[widget.icon] || Target;
+              const countKey = URL_TO_COUNT_KEY[widget.url] || '';
+              const count = countKey ? (counts[countKey] || 0) : 0;
               return (
                 <button
                   key={widget.id}
                   onClick={() => widget.url && setLocation(widget.url)}
-                  className="flex items-center gap-1.5 bg-white/10 hover:bg-white/20 rounded-lg px-2 py-1.5 text-[11px] transition-colors"
+                  className="flex items-center gap-1.5 bg-white/10 hover:bg-white/20 rounded-lg px-2.5 py-1.5 text-[11px] transition-colors"
                   data-testid={`hero-widget-${widget.id}`}
                 >
                   <IconComp className="w-3.5 h-3.5 text-white/80" />
-                  <div className="text-left">
-                    <span className="font-medium text-white">{widget.title}</span>
-                    {widget.subtitle && (
-                      <span className="text-white/50 ml-1 hidden sm:inline">{widget.subtitle}</span>
-                    )}
-                  </div>
+                  <span className="font-medium text-white">{widget.title}</span>
+                  {count > 0 && (
+                    <span className="ml-0.5 min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-white/25 text-[10px] font-bold text-white px-1" data-testid={`hero-widget-count-${widget.id}`}>
+                      {count > 99 ? '99+' : count}
+                    </span>
+                  )}
                 </button>
               );
             })}

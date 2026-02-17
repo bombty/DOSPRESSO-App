@@ -40179,6 +40179,90 @@ Kurallar:
   }
   seedDashboardWidgetItems();
 
+  // GET /api/dashboard-widgets/counts - Get widget badge counts for current user
+  app.get('/api/dashboard-widgets/counts', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const userId = user.id as string;
+      const userRole = user.role as string;
+      const branchId = user.branchId ? Number(user.branchId) : null;
+
+      const counts: Record<string, number> = {};
+
+      try {
+        const taskResult = await db.select({ count: sql<number>`count(*)` })
+          .from(tasks)
+          .where(
+            and(
+              inArray(tasks.status, ['pending', 'in_progress', 'onay_bekliyor', 'cevap_bekliyor']),
+              or(
+                eq(tasks.assignedToId, userId),
+                ...(branchId ? [eq(tasks.branchId, branchId)] : [])
+              )
+            )
+          );
+        counts['tasks'] = Number(taskResult[0]?.count || 0);
+      } catch { counts['tasks'] = 0; }
+
+      try {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const checklistResult = await db.select({ count: sql<number>`count(*)` })
+          .from(checklistAssignments)
+          .where(
+            and(
+              eq(checklistAssignments.userId, userId),
+              eq(checklistAssignments.status, 'pending')
+            )
+          );
+        counts['checklists'] = Number(checklistResult[0]?.count || 0);
+      } catch { counts['checklists'] = 0; }
+
+      try {
+        const faultConditions = [
+          inArray(equipmentFaults.status, ['open', 'in_progress', 'waiting_parts', 'escalated'])
+        ];
+        if (branchId) {
+          faultConditions.push(eq(equipmentFaults.branchId, branchId));
+        }
+        const faultResult = await db.select({ count: sql<number>`count(*)` })
+          .from(equipmentFaults)
+          .where(and(...faultConditions));
+        counts['faults'] = Number(faultResult[0]?.count || 0);
+      } catch { counts['faults'] = 0; }
+
+      try {
+        const trainingResult = await db.select({ count: sql<number>`count(*)` })
+          .from(notifications)
+          .where(
+            and(
+              eq(notifications.userId, userId),
+              eq(notifications.isRead, false),
+              eq(notifications.type, 'training')
+            )
+          );
+        counts['training'] = Number(trainingResult[0]?.count || 0);
+      } catch { counts['training'] = 0; }
+
+      try {
+        const reportResult = await db.select({ count: sql<number>`count(*)` })
+          .from(notifications)
+          .where(
+            and(
+              eq(notifications.userId, userId),
+              eq(notifications.isRead, false)
+            )
+          );
+        counts['reports'] = Number(reportResult[0]?.count || 0);
+      } catch { counts['reports'] = 0; }
+
+      res.json(counts);
+    } catch (error: any) {
+      console.error("Error fetching widget counts:", error);
+      res.status(500).json({ message: "Widget sayıları yüklenemedi" });
+    }
+  });
+
   // GET /api/dashboard-widgets - Get active widgets filtered by user role
   app.get('/api/dashboard-widgets', isAuthenticated, async (req: any, res) => {
     try {
