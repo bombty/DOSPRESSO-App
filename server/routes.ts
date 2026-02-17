@@ -269,6 +269,8 @@ import {
   monthlyEmployeePerformance,
   employeeOfMonthAwards,
   managerMonthlyRatings,
+  employeeOnboarding,
+  employeeOnboardingTasks,
   onboardingTemplates,
   insertOnboardingTemplateSchema,
   onboardingTemplateSteps,
@@ -14190,6 +14192,56 @@ JSON formatında yanıt ver:
     }
   });
 
+  app.get('/api/employee-onboarding/mentor/my-mentees', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      ensurePermission(user, 'hr', 'view', 'Mentee kayıtlarını görüntüleme yetkiniz yok');
+
+      const menteeOnboardings = await db.select().from(employeeOnboarding)
+        .where(eq(employeeOnboarding.assignedMentorId, user.id));
+
+      const results = [];
+      for (const onb of menteeOnboardings) {
+        const menteeUser = await storage.getUser(onb.userId);
+        const tasks = await storage.getOnboardingTasks(onb.id);
+
+        const completedTasks = tasks.filter(t => t.status === 'completed').length;
+        const totalTasks = tasks.length;
+        const completionPercentage = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+
+        let daysRemaining = 0;
+        if (onb.expectedCompletionDate) {
+          const expDate = new Date(onb.expectedCompletionDate);
+          const now = new Date();
+          daysRemaining = Math.max(0, Math.ceil((expDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)));
+        }
+
+        results.push({
+          onboarding: onb,
+          user: menteeUser ? {
+            id: menteeUser.id,
+            firstName: menteeUser.firstName,
+            lastName: menteeUser.lastName,
+            email: menteeUser.email,
+            role: menteeUser.role,
+            branchId: menteeUser.branchId,
+          } : undefined,
+          tasks,
+          daysRemaining,
+          completionPercentage,
+        });
+      }
+
+      res.json(results);
+    } catch (error: Error | unknown) {
+      console.error("Error fetching mentee records:", error);
+      if (error instanceof AuthorizationError) {
+        return res.status(403).json({ message: error.message });
+      }
+      res.status(500).json({ message: "Mentee kayıtları yüklenirken hata oluştu" });
+    }
+  });
+
   app.get('/api/employee-onboarding/:userId', isAuthenticated, async (req: any, res) => {
     try {
       const user = req.user!;
@@ -14246,6 +14298,145 @@ JSON formatında yanıt ver:
         return res.status(400).json({ message: "Geçersiz veri", errors: error.errors });
       }
       res.status(500).json({ message: "Onboarding kaydı oluşturulurken hata oluştu" });
+    }
+  });
+
+  app.post('/api/employee-onboarding/start-from-template', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      ensurePermission(user, 'hr', 'create', 'Şablondan onboarding başlatma yetkiniz yok');
+
+      const validatedData = z.object({
+        userId: z.string().min(1, "userId gereklidir"),
+        branchId: z.number().int().positive("Geçerli bir branchId gereklidir"),
+        templateId: z.number().int().positive("Geçerli bir templateId gereklidir"),
+        mentorId: z.string().optional(),
+        startDate: z.string().optional(),
+      }).parse(req.body);
+
+      const { userId, branchId, templateId, mentorId } = validatedData;
+      const startDate = validatedData.startDate ? new Date(validatedData.startDate) : new Date();
+      const startDateStr = startDate.toISOString().split('T')[0];
+
+      if (!isHQRole(user.role) && branchId !== user.branchId) {
+        return res.status(403).json({ message: "Sadece kendi şubeniz için onboarding başlatabilirsiniz" });
+      }
+
+      const [template] = await db.select().from(onboardingTemplates).where(eq(onboardingTemplates.id, templateId));
+      if (!template) {
+        return res.status(404).json({ message: "Onboarding şablonu bulunamadı" });
+      }
+      if (!template.isActive) {
+        return res.status(400).json({ message: "Bu şablon aktif değil" });
+      }
+
+      const steps = await db.select().from(onboardingTemplateSteps)
+        .where(eq(onboardingTemplateSteps.templateId, templateId))
+        .orderBy(asc(onboardingTemplateSteps.stepOrder));
+
+      const onboarding = await storage.getOrCreateEmployeeOnboarding(userId, branchId, user.id);
+
+      await storage.updateEmployeeOnboarding(onboarding.id, {
+        startDate: startDateStr,
+      });
+
+      const createdTasks = [];
+      for (const step of steps) {
+        const dueDate = new Date(startDate);
+        dueDate.setDate(dueDate.getDate() + step.endDay);
+
+        const titleLower = step.title.toLowerCase();
+        let taskType = 'training';
+        if (titleLower.includes('oryantasyon') || titleLower.includes('orientation')) taskType = 'orientation';
+        else if (titleLower.includes('eğitim') || titleLower.includes('training')) taskType = 'training';
+        else if (titleLower.includes('belge') || titleLower.includes('document') || titleLower.includes('evrak')) taskType = 'document_upload';
+        else if (titleLower.includes('sistem') || titleLower.includes('system') || titleLower.includes('erişim')) taskType = 'system_access';
+        else if (titleLower.includes('tanışma') || titleLower.includes('meet') || titleLower.includes('ekip')) taskType = 'meet_team';
+
+        const task = await storage.createOnboardingTask({
+          onboardingId: onboarding.id,
+          taskType,
+          taskName: step.title,
+          description: step.description || undefined,
+          dueDate: dueDate.toISOString().split('T')[0],
+          priority: step.requiredCompletion ? 'high' : 'medium',
+          status: 'pending',
+        });
+        createdTasks.push(task);
+      }
+
+      const expectedCompletionDate = new Date(startDate);
+      expectedCompletionDate.setDate(expectedCompletionDate.getDate() + 60);
+
+      const updated = await storage.updateEmployeeOnboarding(onboarding.id, {
+        assignedMentorId: mentorId || undefined,
+        status: 'in_progress',
+        startDate: startDateStr,
+        expectedCompletionDate: expectedCompletionDate.toISOString().split('T')[0],
+      });
+
+      res.json({ onboarding: updated, tasks: createdTasks });
+    } catch (error: Error | unknown) {
+      console.error("Error starting onboarding from template:", error);
+      if (error instanceof AuthorizationError) {
+        return res.status(403).json({ message: error.message });
+      }
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Geçersiz veri", errors: error.errors });
+      }
+      res.status(500).json({ message: "Şablondan onboarding başlatılırken hata oluştu" });
+    }
+  });
+
+  app.post('/api/employee-onboarding/:id/mentor-note', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const onboardingId = parseInt(req.params.id);
+
+      ensurePermission(user, 'hr', 'edit', 'Mentor notu ekleme yetkiniz yok');
+
+      const validatedData = z.object({
+        note: z.string().min(1, "Not içeriği gereklidir"),
+        rating: z.number().int().min(1).max(5).optional(),
+      }).parse(req.body);
+
+      const [existing] = await db.select().from(employeeOnboarding)
+        .where(eq(employeeOnboarding.id, onboardingId));
+
+      if (!existing) {
+        return res.status(404).json({ message: "Onboarding kaydı bulunamadı" });
+      }
+
+      if (!isHQRole(user.role) && existing.assignedMentorId !== user.id) {
+        return res.status(403).json({ message: "Bu kayda mentor notu ekleme yetkiniz yok" });
+      }
+
+      const noteEntry = {
+        date: new Date().toISOString(),
+        mentorId: user.id,
+        mentorName: `${user.firstName || ''} ${user.lastName || ''}`.trim(),
+        note: validatedData.note,
+        rating: validatedData.rating || undefined,
+      };
+
+      const existingNotes = existing.supervisorNotes ? existing.supervisorNotes : '';
+      const newNoteStr = `[${noteEntry.date}] (${noteEntry.mentorName}${noteEntry.rating ? ` - Puan: ${noteEntry.rating}/5` : ''}): ${noteEntry.note}`;
+      const updatedNotes = existingNotes ? `${existingNotes}\n${newNoteStr}` : newNoteStr;
+
+      const updated = await storage.updateEmployeeOnboarding(onboardingId, {
+        supervisorNotes: updatedNotes,
+      });
+
+      res.json(updated);
+    } catch (error: Error | unknown) {
+      console.error("Error adding mentor note:", error);
+      if (error instanceof AuthorizationError) {
+        return res.status(403).json({ message: error.message });
+      }
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Geçersiz veri", errors: error.errors });
+      }
+      res.status(500).json({ message: "Mentor notu eklenirken hata oluştu" });
     }
   });
 

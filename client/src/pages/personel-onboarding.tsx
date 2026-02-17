@@ -5,19 +5,11 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { Checkbox } from "@/components/ui/checkbox";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Select,
   SelectContent,
@@ -46,15 +38,21 @@ import { ListSkeleton } from "@/components/list-skeleton";
 import { EmptyState } from "@/components/empty-state";
 import { ConfirmDeleteDialog, useConfirmDelete } from "@/components/confirm-delete-dialog";
 import {
-  ArrowLeft,
   Plus,
-  Edit,
-  Trash2,
   Search,
   AlertCircle,
   Clock,
   CheckCircle2,
   Users,
+  Calendar,
+  ChevronDown,
+  ChevronUp,
+  AlertTriangle,
+  ShieldCheck,
+  Trash2,
+  MessageSquarePlus,
+  UserCheck,
+  CircleDot,
 } from "lucide-react";
 import { format } from "date-fns";
 import { tr } from "date-fns/locale";
@@ -62,67 +60,118 @@ import { z } from "zod";
 import type { User, EmployeeOnboarding } from "@shared/schema";
 
 const statusLabels: Record<string, string> = {
-  not_started: "Başlamadı",
+  not_started: "Baslamadi",
   in_progress: "Devam Ediyor",
-  completed: "Tamamlandı",
-};
-
-const statusIcons: Record<string, any> = {
-  not_started: AlertCircle,
-  in_progress: Clock,
-  completed: CheckCircle2,
+  completed: "Tamamlandi",
 };
 
 const taskTypeLabels: Record<string, string> = {
   orientation: "Oryantasyon",
-  training: "Eğitim",
-  document: "Belge",
-  system_access: "Sistem Erişimi",
-  introduction: "Tanışma",
-  other: "Diğer",
+  training: "Egitim",
+  document: "Belge Teslimi",
+  system_access: "Sistem Erisimi",
+  introduction: "Tanisma",
+  practical: "Pratik Uygulama",
+  evaluation: "Degerlendirme",
+  other: "Diger",
 };
 
-const onboardingSchema = z.object({
-  userId: z.string().min(1, "Personel seçin"),
-  branchId: z.string().min(1, "Şube seçin"),
-  startDate: z.string().min(1, "Başlangıç tarihi seçin"),
-  expectedCompletionDate: z.string().optional().default(""),
-  status: z.enum(["not_started", "in_progress", "completed"]),
-  assignedMentorId: z.string().optional().default(""),
-  supervisorNotes: z.string().optional().default(""),
+const MENTOR_ROLES = ["supervisor", "supervisor_buddy", "barista", "mudur"];
+
+const startOnboardingSchema = z.object({
+  userId: z.string().min(1, "Personel secin"),
+  branchId: z.string().min(1, "Sube secin"),
+  templateId: z.string().min(1, "Sablon secin"),
+  mentorId: z.string().optional().default(""),
+  startDate: z.string().min(1, "Baslangic tarihi secin"),
 });
 
-type OnboardingFormData = z.infer<typeof onboardingSchema>;
+type StartOnboardingForm = z.infer<typeof startOnboardingSchema>;
+
+const mentorNoteSchema = z.object({
+  note: z.string().min(1, "Not giriniz"),
+  rating: z.string().optional().default(""),
+});
+
+type MentorNoteForm = z.infer<typeof mentorNoteSchema>;
+
+function getDaysRemaining(expectedDate: string | null | undefined): number | null {
+  if (!expectedDate) return null;
+  return Math.ceil((new Date(expectedDate).getTime() - new Date().getTime()) / 86400000);
+}
+
+function getDaysColor(days: number | null): string {
+  if (days === null) return "text-muted-foreground";
+  if (days < 0) return "text-destructive";
+  if (days < 14) return "text-destructive";
+  if (days <= 30) return "text-yellow-600 dark:text-yellow-400";
+  return "text-green-600 dark:text-green-400";
+}
+
+function DaysRemainingBadge({ days }: { days: number | null }) {
+  if (days === null) return null;
+  const isOverdue = days < 0;
+  const isUrgent = days >= 0 && days < 14;
+  return (
+    <Badge
+      variant={isOverdue || isUrgent ? "destructive" : "secondary"}
+      data-testid="badge-days-remaining"
+    >
+      {isOverdue && <AlertTriangle className="h-3 w-3 mr-1" />}
+      {isOverdue ? `${Math.abs(days)} gun gecikme` : `Kalan: ${days} gun`}
+    </Badge>
+  );
+}
+
+function StatusBadge({ status }: { status: string }) {
+  const variant = status === "completed" ? "default" : status === "in_progress" ? "secondary" : "outline";
+  return (
+    <Badge variant={variant} data-testid={`badge-status-${status}`}>
+      {status === "completed" && <CheckCircle2 className="h-3 w-3 mr-1" />}
+      {status === "in_progress" && <Clock className="h-3 w-3 mr-1" />}
+      {status === "not_started" && <AlertCircle className="h-3 w-3 mr-1" />}
+      {statusLabels[status] || status}
+    </Badge>
+  );
+}
 
 export default function PersonelOnboardingPage() {
   const { user } = useAuth();
   const { toast } = useToast();
-  const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [searchText, setSearchText] = useState<string>("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [searchText, setSearchText] = useState("");
+  const [expandedId, setExpandedId] = useState<number | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [editingRecord, setEditingRecord] = useState<EmployeeOnboarding | null>(null);
-  const [selectedOnboardingId, setSelectedOnboardingId] = useState<number | null>(null);
+  const [mentorNoteDialogId, setMentorNoteDialogId] = useState<number | null>(null);
   const { deleteState, requestDelete, cancelDelete, confirmDelete } = useConfirmDelete();
 
-  // Fetch onboarding records
+  const isMentorEligible = user?.role && MENTOR_ROLES.includes(user.role);
+
   const { data: onboardingRecords = [], isLoading } = useQuery<(EmployeeOnboarding & { user?: User })[]>({
-    queryKey: ["/api/employee-onboarding", { filter: "all" }],
+    queryKey: ["/api/employee-onboarding?filter=all"],
     enabled: !!user,
   });
 
-  // Fetch employees for dropdown
   const { data: employees = [] } = useQuery<User[]>({
     queryKey: ["/api/employees"],
     enabled: !!user,
   });
 
-  // Fetch branches
   const { data: branches = [] } = useQuery<any[]>({
     queryKey: ["/api/branches"],
     enabled: !!user,
   });
 
-  // Filter records
+  const { data: templates = [] } = useQuery<any[]>({
+    queryKey: ["/api/onboarding-templates"],
+    enabled: !!user,
+  });
+
+  const { data: mentees = [], isLoading: menteesLoading } = useQuery<(EmployeeOnboarding & { user?: User })[]>({
+    queryKey: ["/api/employee-onboarding/mentor/my-mentees"],
+    enabled: !!user && !!isMentorEligible,
+  });
+
   const filteredRecords = useMemo(() => {
     return onboardingRecords.filter((record) => {
       if (statusFilter !== "all" && record.status !== statusFilter) return false;
@@ -135,7 +184,6 @@ export default function PersonelOnboardingPage() {
     });
   }, [onboardingRecords, statusFilter, searchText]);
 
-  // Stats
   const stats = useMemo(() => ({
     total: onboardingRecords.length,
     notStarted: onboardingRecords.filter(r => r.status === "not_started").length,
@@ -143,361 +191,418 @@ export default function PersonelOnboardingPage() {
     completed: onboardingRecords.filter(r => r.status === "completed").length,
   }), [onboardingRecords]);
 
-  // Create mutation
-  const createMutation = useMutation({
-    mutationFn: async (data: OnboardingFormData) => {
-      return apiRequest("POST", "/api/employee-onboarding", data);
+  const startMutation = useMutation({
+    mutationFn: async (data: StartOnboardingForm) => {
+      return apiRequest("POST", "/api/employee-onboarding/start-from-template", {
+        userId: data.userId,
+        branchId: parseInt(data.branchId),
+        templateId: parseInt(data.templateId),
+        mentorId: data.mentorId || undefined,
+        startDate: data.startDate || undefined,
+      });
     },
     onSuccess: () => {
-      toast({ title: "Başarılı", description: "Onboarding kaydı oluşturuldu" });
-      queryClient.invalidateQueries({ queryKey: ["/api/employee-onboarding"] });
+      toast({ title: "Basarili", description: "Onboarding sureci baslatildi" });
+      queryClient.invalidateQueries({ queryKey: ["/api/employee-onboarding?filter=all"] });
       setDialogOpen(false);
-      setEditingRecord(null);
     },
     onError: (error) => {
       toast({ title: "Hata", description: error.message, variant: "destructive" });
     },
   });
 
-  // Update mutation
-  const updateMutation = useMutation({
-    mutationFn: async ({ recordId, data }: { recordId: number; data: OnboardingFormData }) => {
-      return apiRequest("PATCH", `/api/employee-onboarding/${recordId}`, data);
-    },
-    onSuccess: () => {
-      toast({ title: "Başarılı", description: "Onboarding kaydı güncellendi" });
-      queryClient.invalidateQueries({ queryKey: ["/api/employee-onboarding"] });
-      setDialogOpen(false);
-      setEditingRecord(null);
-    },
-    onError: (error) => {
-      toast({ title: "Hata", description: error.message, variant: "destructive" });
-    },
-  });
-
-  // Delete mutation
   const deleteMutation = useMutation({
-    mutationFn: async (recordId: number) => {
-      return apiRequest("DELETE", `/api/employee-onboarding/${recordId}`);
-    },
+    mutationFn: async (id: number) => apiRequest("DELETE", `/api/employee-onboarding/${id}`),
     onSuccess: () => {
-      toast({ title: "Başarılı", description: "Onboarding kaydı silindi" });
-      queryClient.invalidateQueries({ queryKey: ["/api/employee-onboarding"] });
+      toast({ title: "Basarili", description: "Kayit silindi" });
+      queryClient.invalidateQueries({ queryKey: ["/api/employee-onboarding?filter=all"] });
     },
     onError: (error) => {
       toast({ title: "Hata", description: error.message, variant: "destructive" });
     },
   });
 
-  const { data: onboardingTasks = [], isLoading: tasksLoading } = useQuery<any[]>({
-    queryKey: ["/api/onboarding-tasks", selectedOnboardingId],
-    queryFn: () => fetch(`/api/onboarding-tasks/${selectedOnboardingId}`).then(r => r.json()),
-    enabled: !!selectedOnboardingId,
-  });
-
-  const completeTaskMutation = useMutation({
-    mutationFn: async (taskId: number) => {
-      return apiRequest("POST", `/api/onboarding-tasks/${taskId}/complete`);
+  const mentorNoteMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: number; data: MentorNoteForm }) => {
+      return apiRequest("POST", `/api/employee-onboarding/${id}/mentor-note`, {
+        note: data.note,
+        rating: data.rating ? parseInt(data.rating) : undefined,
+      });
     },
     onSuccess: () => {
-      toast({ title: "Başarılı", description: "Görev tamamlandı" });
-      queryClient.invalidateQueries({ queryKey: ["/api/onboarding-tasks", selectedOnboardingId] });
-      queryClient.invalidateQueries({ queryKey: ["/api/employee-onboarding"] });
+      toast({ title: "Basarili", description: "Mentor notu eklendi" });
+      queryClient.invalidateQueries({ queryKey: ["/api/employee-onboarding/mentor/my-mentees"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/employee-onboarding?filter=all"] });
+      setMentorNoteDialogId(null);
     },
     onError: (error) => {
       toast({ title: "Hata", description: error.message, variant: "destructive" });
     },
   });
-
-  const handleAddClick = () => {
-    setEditingRecord(null);
-    setDialogOpen(true);
-  };
-
-  const handleEditClick = (record: EmployeeOnboarding) => {
-    setEditingRecord(record);
-    setDialogOpen(true);
-  };
-
-  const handleDeleteClick = (recordId: number) => {
-    requestDelete(recordId, "");
-  };
 
   if (isLoading) {
     return (
-      <div className="flex flex-col gap-3">
+      <div className="flex flex-col gap-3 p-4">
         <ListSkeleton count={5} variant="row" showHeader />
       </div>
     );
   }
 
-  return (
-    <div className="flex flex-col gap-3 sm:gap-4">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2 sm:gap-3">
-          <Button
-            variant="ghost"
-            size="icon"
-            data-testid="button-back"
-            onClick={() => window.history.back()}
-          >
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-          <div>
-            <h1 className="text-3xl font-bold">Yeni Personel Onboarding</h1>
-            <p className="text-muted-foreground mt-1">Yeni personellerin işe alım ve oryantasyon süreçlerini yönet</p>
+  const mentorEmployees = employees.filter(e => MENTOR_ROLES.includes(e.role || ""));
+
+  const renderRecordCard = (record: EmployeeOnboarding & { user?: User }, showActions = true) => {
+    const days = getDaysRemaining(record.expectedCompletionDate);
+    const pct = (record as any).completionPercentage ?? 0;
+    const mentor = record.assignedMentorId ? employees.find(e => e.id === record.assignedMentorId) : null;
+    const branch = branches.find((b: any) => b.id === record.branchId);
+    const isExpanded = expandedId === record.id;
+
+    return (
+      <Card key={record.id} data-testid={`card-onboarding-${record.id}`}>
+        <CardContent className="p-4">
+          <div className="flex flex-col gap-3">
+            <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2">
+              <div className="flex flex-col gap-1 min-w-0 flex-1">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="font-semibold" data-testid={`text-employee-name-${record.id}`}>
+                    {record.user?.firstName} {record.user?.lastName}
+                  </span>
+                  <StatusBadge status={record.status} />
+                  {days !== null && <DaysRemainingBadge days={days} />}
+                </div>
+                <div className="flex items-center gap-3 text-sm text-muted-foreground flex-wrap">
+                  {record.user?.role && (
+                    <span data-testid={`text-role-${record.id}`}>{record.user.role}</span>
+                  )}
+                  {branch && (
+                    <span data-testid={`text-branch-${record.id}`}>{(branch as any).name}</span>
+                  )}
+                  {mentor && (
+                    <span className="flex items-center gap-1" data-testid={`text-mentor-${record.id}`}>
+                      <UserCheck className="h-3 w-3" />
+                      {mentor.firstName} {mentor.lastName}
+                    </span>
+                  )}
+                </div>
+                <div className="flex items-center gap-3 text-xs text-muted-foreground flex-wrap">
+                  {record.startDate && (
+                    <span className="flex items-center gap-1">
+                      <Calendar className="h-3 w-3" />
+                      {format(new Date(record.startDate), "d MMM yyyy", { locale: tr })}
+                    </span>
+                  )}
+                  {record.expectedCompletionDate && (
+                    <span className={`flex items-center gap-1 ${getDaysColor(days)}`}>
+                      <Clock className="h-3 w-3" />
+                      {format(new Date(record.expectedCompletionDate), "d MMM yyyy", { locale: tr })}
+                    </span>
+                  )}
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                {showActions && (
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    data-testid={`button-delete-${record.id}`}
+                    onClick={(e) => { e.stopPropagation(); requestDelete(record.id, ""); }}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                )}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  data-testid={`button-detail-${record.id}`}
+                  onClick={() => setExpandedId(isExpanded ? null : record.id)}
+                >
+                  {isExpanded ? <ChevronUp className="h-4 w-4 mr-1" /> : <ChevronDown className="h-4 w-4 mr-1" />}
+                  Detay
+                </Button>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <Progress value={pct} className="h-2 flex-1" />
+              <span className="text-xs text-muted-foreground whitespace-nowrap" data-testid={`text-progress-${record.id}`}>
+                %{pct}
+              </span>
+            </div>
           </div>
+          {isExpanded && <TimelineDetail onboardingId={record.id} record={record} />}
+        </CardContent>
+      </Card>
+    );
+  };
+
+  return (
+    <div className="flex flex-col gap-3 sm:gap-4 p-2 sm:p-4">
+      <div className="flex items-center justify-between gap-2 flex-wrap">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-bold" data-testid="text-page-title">Personel Onboarding</h1>
+          <p className="text-sm text-muted-foreground mt-1">Yeni personellerin ise alim ve oryantasyon sureclerini yonet</p>
         </div>
-        <Button
-          onClick={handleAddClick}
-          data-testid="button-add-onboarding"
-          className="gap-2"
-        >
+        <Button onClick={() => setDialogOpen(true)} data-testid="button-start-onboarding" className="gap-2">
           <Plus className="h-4 w-4" />
-          Yeni Kayıt
+          Yeni Onboarding Baslat
         </Button>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Toplam</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.total}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Başlamadı</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-warning">{stats.notStarted}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Devam Ediyor</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-primary">{stats.inProgress}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Tamamlandı</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-success">{stats.completed}</div>
-          </CardContent>
-        </Card>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
+        {[
+          { label: "Toplam", value: stats.total, testId: "stat-total" },
+          { label: "Baslamadi", value: stats.notStarted, testId: "stat-not-started" },
+          { label: "Devam Ediyor", value: stats.inProgress, testId: "stat-in-progress" },
+          { label: "Tamamlandi", value: stats.completed, testId: "stat-completed" },
+        ].map((s) => (
+          <Card key={s.testId}>
+            <CardHeader className="flex flex-row items-center justify-between gap-1 space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">{s.label}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold" data-testid={s.testId}>{s.value}</div>
+            </CardContent>
+          </Card>
+        ))}
       </div>
 
-      {/* Filters Card */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Filtreler</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex gap-2 sm:gap-3 flex-col md:flex-row">
-            <div className="flex-1">
-              <label className="text-sm font-medium">Durum</label>
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger data-testid="select-status-filter">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Tümü</SelectItem>
-                  <SelectItem value="not_started">Başlamadı</SelectItem>
-                  <SelectItem value="in_progress">Devam Ediyor</SelectItem>
-                  <SelectItem value="completed">Tamamlandı</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="flex-1">
-              <label className="text-sm font-medium">Ara</label>
-              <div className="relative">
-                <Search className="absolute left-2 top-3 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Personel adı..."
-                  value={searchText}
-                  onChange={(e) => setSearchText(e.target.value)}
-                  className="pl-8"
-                  data-testid="input-search"
-                />
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      <div className="flex gap-2 sm:gap-3 flex-col sm:flex-row">
+        <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <SelectTrigger className="sm:w-48" data-testid="select-status-filter">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Tumu</SelectItem>
+            <SelectItem value="not_started">Baslamadi</SelectItem>
+            <SelectItem value="in_progress">Devam Ediyor</SelectItem>
+            <SelectItem value="completed">Tamamlandi</SelectItem>
+          </SelectContent>
+        </Select>
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Personel adi ara..."
+            value={searchText}
+            onChange={(e) => setSearchText(e.target.value)}
+            className="pl-9"
+            data-testid="input-search"
+          />
+        </div>
+      </div>
 
-      {/* Records Table */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">
-            Onboarding Kayıtları
-            <Badge variant="secondary" className="ml-2">
-              {filteredRecords.length}
-            </Badge>
-          </CardTitle>
-          <CardDescription>
-            {filteredRecords.length === 0 ? "Kayıt bulunamadı" : `${filteredRecords.length} kayıt`}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Personel Adı</TableHead>
-                  <TableHead>Başlangıç Tarihi</TableHead>
-                  <TableHead>Tamamlanma Hedefi</TableHead>
-                  <TableHead>Durum</TableHead>
-                  <TableHead>Mentor</TableHead>
-                  <TableHead>İlerleme</TableHead>
-                  <TableHead>Notlar</TableHead>
-                  <TableHead className="text-right">İşlemler</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredRecords.map((record) => {
-                  const StatusIcon = statusIcons[record.status] || Clock;
-                  const mentorEmployee = (record as any).assignedMentorId
-                    ? employees.find(e => e.id === (record as any).assignedMentorId)
-                    : null;
-                  const completionPct = (record as any).completionPercentage ?? 0;
-                  return (
-                    <TableRow
-                      key={record.id}
-                      data-testid={`row-onboarding-${record.id}`}
-                      className="cursor-pointer"
-                      onClick={() => setSelectedOnboardingId(selectedOnboardingId === record.id ? null : record.id)}
-                    >
-                      <TableCell className="font-medium">
-                        {record.user?.firstName} {record.user?.lastName}
-                      </TableCell>
-                      <TableCell>
-                        {record.startDate ? format(new Date(record.startDate), "d MMM yyyy", { locale: tr }) : "-"}
-                      </TableCell>
-                      <TableCell>
-                        {record.expectedCompletionDate ? format(new Date(record.expectedCompletionDate), "d MMM yyyy", { locale: tr }) : "-"}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <StatusIcon className="h-4 w-4" />
-                          <Badge variant={record.status === "completed" ? "default" : "secondary"}>
-                            {statusLabels[record.status] || record.status}
-                          </Badge>
-                        </div>
-                      </TableCell>
-                      <TableCell data-testid={`text-mentor-${record.id}`}>
-                        {mentorEmployee ? (
-                          <div className="flex items-center gap-1">
-                            <Users className="h-3 w-3 text-muted-foreground" />
-                            <span className="text-sm">{mentorEmployee.firstName} {mentorEmployee.lastName}</span>
-                          </div>
-                        ) : "-"}
-                      </TableCell>
-                      <TableCell data-testid={`text-progress-${record.id}`}>
-                        <div className="flex items-center gap-2 min-w-[100px]">
-                          <Progress value={completionPct} className="h-2 flex-1" />
-                          <span className="text-xs text-muted-foreground whitespace-nowrap">{completionPct}%</span>
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-sm text-muted-foreground max-w-xs truncate">
-                        {record.supervisorNotes || "-"}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-2">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            data-testid={`button-edit-${record.id}`}
-                            onClick={(e) => { e.stopPropagation(); handleEditClick(record); }}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            data-testid={`button-delete-${record.id}`}
-                            onClick={(e) => { e.stopPropagation(); handleDeleteClick(record.id); }}
-                            disabled={deleteMutation.isPending}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          </div>
-          {filteredRecords.length === 0 && (
-            <div className="text-center py-8 text-muted-foreground">
-              {searchText || statusFilter !== "all" ? "Seçili filtreler için kayıt bulunamadı" : "Henüz onboarding kaydı oluşturulmamış"}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Onboarding Task Detail */}
-      {selectedOnboardingId && (
-        <Card data-testid="card-onboarding-tasks">
-          <CardHeader>
-            <CardTitle className="text-lg flex items-center gap-2">
-              <CheckCircle2 className="h-5 w-5" />
-              Onboarding Görevleri
-            </CardTitle>
-            <CardDescription>
-              Seçili personelin onboarding görev listesi
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {tasksLoading ? (
+      {isMentorEligible ? (
+        <Tabs defaultValue="all" className="w-full">
+          <TabsList data-testid="tabs-onboarding">
+            <TabsTrigger value="all" data-testid="tab-all-records">Tum Kayitlar</TabsTrigger>
+            <TabsTrigger value="mentees" data-testid="tab-mentees">Mentorluklerin</TabsTrigger>
+          </TabsList>
+          <TabsContent value="all" className="flex flex-col gap-3 mt-3">
+            <RecordsList records={filteredRecords} renderCard={renderRecordCard} searchText={searchText} statusFilter={statusFilter} />
+          </TabsContent>
+          <TabsContent value="mentees" className="flex flex-col gap-3 mt-3">
+            {menteesLoading ? (
               <ListSkeleton count={3} variant="row" />
-            ) : onboardingTasks.length === 0 ? (
-              <div className="text-center py-6 text-muted-foreground">
-                Bu onboarding kaydı için henüz görev tanımlanmamış
-              </div>
+            ) : mentees.length === 0 ? (
+              <EmptyState title="Mentee bulunamadi" description="Henuz size atanmis mentee yok" />
             ) : (
-              <div className="flex flex-col gap-2">
-                {onboardingTasks.map((task: any) => (
-                  <div
-                    key={task.id}
-                    data-testid={`task-item-${task.id}`}
-                    className="flex items-center justify-between gap-3 p-3 rounded-md border"
-                  >
-                    <div className="flex items-center gap-3 flex-1 min-w-0">
-                      <Checkbox
-                        checked={task.status === "completed"}
-                        disabled={task.status === "completed" || completeTaskMutation.isPending}
-                        onCheckedChange={() => completeTaskMutation.mutate(task.id)}
-                        data-testid={`checkbox-task-${task.id}`}
-                      />
-                      <div className="flex flex-col gap-1 min-w-0">
-                        <span className={`text-sm font-medium ${task.status === "completed" ? "line-through text-muted-foreground" : ""}`} data-testid={`text-task-name-${task.id}`}>
-                          {task.taskName}
+              mentees.map((m) => (
+                <div key={m.id} className="flex flex-col gap-2">
+                  {renderRecordCard(m, false)}
+                  <div className="pl-4">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      data-testid={`button-add-note-${m.id}`}
+                      onClick={() => setMentorNoteDialogId(m.id)}
+                      className="gap-1"
+                    >
+                      <MessageSquarePlus className="h-4 w-4" />
+                      Not Ekle
+                    </Button>
+                  </div>
+                </div>
+              ))
+            )}
+          </TabsContent>
+        </Tabs>
+      ) : (
+        <div className="flex flex-col gap-3">
+          <RecordsList records={filteredRecords} renderCard={renderRecordCard} searchText={searchText} statusFilter={statusFilter} />
+        </div>
+      )}
+
+      <StartOnboardingDialog
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        employees={employees}
+        branches={branches}
+        templates={templates}
+        mentorEmployees={mentorEmployees}
+        onSubmit={(data) => startMutation.mutate(data)}
+        isLoading={startMutation.isPending}
+      />
+
+      <MentorNoteDialog
+        open={mentorNoteDialogId !== null}
+        onOpenChange={(open) => !open && setMentorNoteDialogId(null)}
+        onSubmit={(data) => {
+          if (mentorNoteDialogId) mentorNoteMutation.mutate({ id: mentorNoteDialogId, data });
+        }}
+        isLoading={mentorNoteMutation.isPending}
+      />
+
+      <ConfirmDeleteDialog
+        open={deleteState.open}
+        onOpenChange={(open) => !open && cancelDelete()}
+        onConfirm={() => {
+          const id = confirmDelete();
+          if (id) deleteMutation.mutate(id as number);
+        }}
+        title="Silmek istediginize emin misiniz?"
+        description="Bu kayit silinecektir. Bu islem geri alinamaz."
+      />
+    </div>
+  );
+}
+
+function RecordsList({
+  records,
+  renderCard,
+  searchText,
+  statusFilter,
+}: {
+  records: (EmployeeOnboarding & { user?: User })[];
+  renderCard: (r: EmployeeOnboarding & { user?: User }) => React.ReactNode;
+  searchText: string;
+  statusFilter: string;
+}) {
+  if (records.length === 0) {
+    return (
+      <EmptyState
+        title="Kayit bulunamadi"
+        description={searchText || statusFilter !== "all" ? "Secili filtreler icin kayit bulunamadi" : "Henuz onboarding kaydi olusturulmamis"}
+      />
+    );
+  }
+  return <>{records.map((r) => renderCard(r))}</>;
+}
+
+function TimelineDetail({
+  onboardingId,
+  record,
+}: {
+  onboardingId: number;
+  record: EmployeeOnboarding & { user?: User };
+}) {
+  const { toast } = useToast();
+  const { user } = useAuth();
+
+  const { data: tasks = [], isLoading } = useQuery<any[]>({
+    queryKey: ["/api/onboarding-tasks", onboardingId],
+    queryFn: () => fetch(`/api/onboarding-tasks/${onboardingId}`, { credentials: "include" }).then(r => r.json()),
+    enabled: !!onboardingId,
+  });
+
+  const completeTaskMutation = useMutation({
+    mutationFn: async (taskId: number) => apiRequest("POST", `/api/onboarding-tasks/${taskId}/complete`),
+    onSuccess: () => {
+      toast({ title: "Basarili", description: "Gorev tamamlandi" });
+      queryClient.invalidateQueries({ queryKey: ["/api/onboarding-tasks", onboardingId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/employee-onboarding?filter=all"] });
+    },
+    onError: (error) => {
+      toast({ title: "Hata", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const verifyTaskMutation = useMutation({
+    mutationFn: async (taskId: number) => apiRequest("POST", `/api/onboarding-tasks/${taskId}/verify`),
+    onSuccess: () => {
+      toast({ title: "Basarili", description: "Gorev dogrulandi" });
+      queryClient.invalidateQueries({ queryKey: ["/api/onboarding-tasks", onboardingId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/employee-onboarding?filter=all"] });
+    },
+    onError: (error) => {
+      toast({ title: "Hata", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const canVerify = user?.role && MENTOR_ROLES.includes(user.role);
+
+  if (isLoading) return <ListSkeleton count={3} variant="row" />;
+
+  if (tasks.length === 0) {
+    return (
+      <div className="mt-4 pt-4 border-t text-center text-sm text-muted-foreground py-6">
+        Bu onboarding kaydi icin henuz gorev tanimlanmamis
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-4 pt-4 border-t" data-testid={`timeline-${onboardingId}`}>
+      <div className="flex items-center justify-between gap-2 mb-4 flex-wrap">
+        <h3 className="font-semibold text-sm">Onboarding Zaman Cizelgesi</h3>
+        <span className="text-xs text-muted-foreground">
+          {tasks.filter((t: any) => t.status === "completed").length}/{tasks.length} tamamlandi
+        </span>
+      </div>
+      <div className="relative flex flex-col gap-0">
+        {tasks.map((task: any, idx: number) => {
+          const isCompleted = task.status === "completed";
+          const isInProgress = task.status === "in_progress";
+          const isLast = idx === tasks.length - 1;
+
+          return (
+            <div key={task.id} className="flex gap-3 relative" data-testid={`timeline-item-${task.id}`}>
+              <div className="flex flex-col items-center">
+                <div className={`
+                  w-8 h-8 rounded-full flex items-center justify-center shrink-0 border-2
+                  ${isCompleted ? "bg-green-100 border-green-500 dark:bg-green-900/30 dark:border-green-400" : ""}
+                  ${isInProgress ? "bg-blue-100 border-blue-500 dark:bg-blue-900/30 dark:border-blue-400" : ""}
+                  ${!isCompleted && !isInProgress ? "bg-muted border-muted-foreground/30" : ""}
+                `}>
+                  {isCompleted && <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />}
+                  {isInProgress && <Clock className="h-4 w-4 text-blue-600 dark:text-blue-400" />}
+                  {!isCompleted && !isInProgress && <CircleDot className="h-4 w-4 text-muted-foreground" />}
+                </div>
+                {!isLast && (
+                  <div className={`w-0.5 flex-1 min-h-[24px] ${isCompleted ? "bg-green-300 dark:bg-green-700" : "bg-border"}`} />
+                )}
+              </div>
+              <div className={`pb-6 flex-1 min-w-0 ${isLast ? "pb-0" : ""}`}>
+                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2">
+                  <div className="flex flex-col gap-1 min-w-0">
+                    <span
+                      className={`text-sm font-medium ${isCompleted ? "line-through text-muted-foreground" : ""}`}
+                      data-testid={`text-task-name-${task.id}`}
+                    >
+                      {task.taskName}
+                    </span>
+                    {task.description && (
+                      <span className="text-xs text-muted-foreground">{task.description}</span>
+                    )}
+                    <div className="flex items-center gap-2 flex-wrap mt-1">
+                      <Badge variant="secondary" className="text-xs" data-testid={`badge-task-type-${task.id}`}>
+                        {taskTypeLabels[task.taskType] || task.taskType}
+                      </Badge>
+                      {isCompleted && (
+                        <Badge variant="default" className="text-xs">Tamamlandi</Badge>
+                      )}
+                      {task.verifiedAt && (
+                        <Badge variant="default" className="text-xs">
+                          <ShieldCheck className="h-3 w-3 mr-1" />
+                          Dogrulandi
+                        </Badge>
+                      )}
+                      {task.dueDate && (
+                        <span className="text-xs text-muted-foreground" data-testid={`text-task-due-${task.id}`}>
+                          {format(new Date(task.dueDate), "d MMM yyyy", { locale: tr })}
                         </span>
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <Badge variant="secondary" className="text-xs" data-testid={`badge-task-type-${task.id}`}>
-                            {taskTypeLabels[task.taskType] || task.taskType}
-                          </Badge>
-                          <Badge variant={task.status === "completed" ? "default" : "secondary"} className="text-xs" data-testid={`badge-task-status-${task.id}`}>
-                            {statusLabels[task.status] || task.status}
-                          </Badge>
-                          {task.dueDate && (
-                            <span className="text-xs text-muted-foreground" data-testid={`text-task-due-${task.id}`}>
-                              {format(new Date(task.dueDate), "d MMM yyyy", { locale: tr })}
-                            </span>
-                          )}
-                        </div>
-                      </div>
+                      )}
                     </div>
-                    {task.status !== "completed" && (
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    {!isCompleted && (
                       <Button
                         size="sm"
                         variant="outline"
@@ -508,102 +613,73 @@ export default function PersonelOnboardingPage() {
                         Tamamla
                       </Button>
                     )}
+                    {isCompleted && !task.verifiedAt && canVerify && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => verifyTaskMutation.mutate(task.id)}
+                        disabled={verifyTaskMutation.isPending}
+                        data-testid={`button-verify-task-${task.id}`}
+                      >
+                        <ShieldCheck className="h-4 w-4 mr-1" />
+                        Dogrula
+                      </Button>
+                    )}
                   </div>
-                ))}
+                </div>
               </div>
-            )}
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Add/Edit Dialog */}
-      <OnboardingDialog
-        open={dialogOpen}
-        onOpenChange={setDialogOpen}
-        editingRecord={editingRecord}
-        employees={employees}
-        branches={branches}
-        onSubmit={(data) => {
-          if (editingRecord) {
-            updateMutation.mutate({ recordId: editingRecord.id, data });
-          } else {
-            createMutation.mutate(data);
-          }
-        }}
-        isLoading={createMutation.isPending || updateMutation.isPending}
-      />
-
-      <ConfirmDeleteDialog
-        open={deleteState.open}
-        onOpenChange={(open) => !open && cancelDelete()}
-        onConfirm={() => {
-          const id = confirmDelete();
-          if (id) deleteMutation.mutate(id as number);
-        }}
-        title="Silmek istediğinize emin misiniz?"
-        description="Bu kayıt silinecektir. Bu işlem geri alınamaz."
-      />
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
 
-// Dialog Component
-function OnboardingDialog({
+function StartOnboardingDialog({
   open,
   onOpenChange,
-  editingRecord,
   employees,
   branches,
+  templates,
+  mentorEmployees,
   onSubmit,
   isLoading,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  editingRecord: EmployeeOnboarding | null;
   employees: User[];
   branches: any[];
-  onSubmit: (data: OnboardingFormData) => void;
+  templates: any[];
+  mentorEmployees: User[];
+  onSubmit: (data: StartOnboardingForm) => void;
   isLoading: boolean;
 }) {
-  const form = useForm<OnboardingFormData>({
-    resolver: zodResolver(onboardingSchema),
+  const form = useForm<StartOnboardingForm>({
+    resolver: zodResolver(startOnboardingSchema),
     defaultValues: {
-      userId: editingRecord?.userId || "",
-      branchId: editingRecord?.branchId?.toString() || "",
-      startDate: editingRecord?.startDate || "",
-      expectedCompletionDate: editingRecord?.expectedCompletionDate || "",
-      status: (editingRecord?.status as any) || "not_started",
-      assignedMentorId: (editingRecord as any)?.assignedMentorId || "",
-      supervisorNotes: editingRecord?.supervisorNotes || "",
+      userId: "",
+      branchId: "",
+      templateId: "",
+      mentorId: "",
+      startDate: new Date().toISOString().split("T")[0],
     },
   });
 
   const handleOpenChange = (newOpen: boolean) => {
     onOpenChange(newOpen);
-    if (!newOpen) {
-      form.reset();
-    }
+    if (!newOpen) form.reset();
   };
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>
-            {editingRecord ? "Onboarding Düzenle" : "Yeni Onboarding Kaydı"}
-          </DialogTitle>
-          <DialogDescription>
-            {editingRecord
-              ? "Personel onboarding detaylarını güncelleyin"
-              : "Yeni personel için onboarding kaydı oluşturun"}
-          </DialogDescription>
+          <DialogTitle>Yeni Onboarding Baslat</DialogTitle>
+          <DialogDescription>Personel icin onboarding sureci baslatmak uzere bilgileri girin</DialogDescription>
         </DialogHeader>
-
         <Form {...form}>
-          <form
-            onSubmit={form.handleSubmit(onSubmit)}
-            className="grid grid-cols-1 gap-2 sm:gap-3"
-          >
+          <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col gap-4">
             <FormField
               control={form.control}
               name="userId"
@@ -613,13 +689,13 @@ function OnboardingDialog({
                   <Select onValueChange={field.onChange} value={field.value}>
                     <FormControl>
                       <SelectTrigger data-testid="select-employee">
-                        <SelectValue placeholder="Personel seçin" />
+                        <SelectValue placeholder="Personel secin" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {employees.map((emp) => (
-                        <SelectItem key={emp.id} value={emp.id}>
-                          {emp.firstName} {emp.lastName}
+                      {employees.map((e) => (
+                        <SelectItem key={e.id} value={e.id}>
+                          {e.firstName} {e.lastName} {e.role ? `(${e.role})` : ""}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -628,24 +704,21 @@ function OnboardingDialog({
                 </FormItem>
               )}
             />
-
             <FormField
               control={form.control}
               name="branchId"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Şube</FormLabel>
+                  <FormLabel>Sube</FormLabel>
                   <Select onValueChange={field.onChange} value={field.value}>
                     <FormControl>
                       <SelectTrigger data-testid="select-branch">
-                        <SelectValue placeholder="Şube seçin" />
+                        <SelectValue placeholder="Sube secin" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {branches.map((branch) => (
-                        <SelectItem key={branch.id} value={branch.id.toString()}>
-                          {branch.name}
-                        </SelectItem>
+                      {branches.map((b: any) => (
+                        <SelectItem key={b.id} value={String(b.id)}>{b.name}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -653,77 +726,22 @@ function OnboardingDialog({
                 </FormItem>
               )}
             />
-
-            <div className="grid grid-cols-2 gap-2 sm:gap-3">
-              <FormField
-                control={form.control}
-                name="startDate"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Başlangıç Tarihi</FormLabel>
-                    <FormControl>
-                      <Input type="date" {...field} data-testid="input-start-date" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="expectedCompletionDate"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Hedef Tamamlanma</FormLabel>
-                    <FormControl>
-                      <Input type="date" {...field} value={field.value || ""} data-testid="input-completion-date" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-
             <FormField
               control={form.control}
-              name="status"
+              name="templateId"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Durum</FormLabel>
+                  <FormLabel>Sablon</FormLabel>
                   <Select onValueChange={field.onChange} value={field.value}>
                     <FormControl>
-                      <SelectTrigger data-testid="select-status">
-                        <SelectValue />
+                      <SelectTrigger data-testid="select-template">
+                        <SelectValue placeholder="Sablon secin" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="not_started">Başlamadı</SelectItem>
-                      <SelectItem value="in_progress">Devam Ediyor</SelectItem>
-                      <SelectItem value="completed">Tamamlandı</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="assignedMentorId"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Mentor Ata</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value || ""}>
-                    <FormControl>
-                      <SelectTrigger data-testid="select-mentor">
-                        <SelectValue placeholder="Mentor seçin" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value="">Seçilmedi</SelectItem>
-                      {employees.map((emp) => (
-                        <SelectItem key={emp.id} value={emp.id}>
-                          {emp.firstName} {emp.lastName}
+                      {templates.map((t: any) => (
+                        <SelectItem key={t.id} value={String(t.id)}>
+                          {t.name} ({t.targetRole})
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -732,39 +750,124 @@ function OnboardingDialog({
                 </FormItem>
               )}
             />
-
             <FormField
               control={form.control}
-              name="supervisorNotes"
+              name="mentorId"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Supervisor Notları</FormLabel>
+                  <FormLabel>Mentor (opsiyonel)</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger data-testid="select-mentor">
+                        <SelectValue placeholder="Mentor secin" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="none">Mentor atanmasin</SelectItem>
+                      {mentorEmployees.map((e) => (
+                        <SelectItem key={e.id} value={e.id}>
+                          {e.firstName} {e.lastName} ({e.role})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="startDate"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Baslangic Tarihi</FormLabel>
                   <FormControl>
-                    <Textarea
-                      placeholder="Ek notlar..."
-                      {...field}
-                      data-testid="textarea-notes"
-                      rows={3}
-                    />
+                    <Input type="date" {...field} data-testid="input-start-date" />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
+            <Button type="submit" disabled={isLoading} data-testid="button-submit-onboarding" className="gap-2">
+              <Users className="h-4 w-4" />
+              Baslat
+            </Button>
+          </form>
+        </Form>
+      </DialogContent>
+    </Dialog>
+  );
+}
 
-            <div className="flex gap-2 justify-end">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => handleOpenChange(false)}
-                disabled={isLoading}
-              >
-                İptal
-              </Button>
-              <Button type="submit" disabled={isLoading} data-testid="button-submit">
-                {isLoading ? "Kaydediliyor..." : "Kaydet"}
-              </Button>
-            </div>
+function MentorNoteDialog({
+  open,
+  onOpenChange,
+  onSubmit,
+  isLoading,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onSubmit: (data: MentorNoteForm) => void;
+  isLoading: boolean;
+}) {
+  const form = useForm<MentorNoteForm>({
+    resolver: zodResolver(mentorNoteSchema),
+    defaultValues: { note: "", rating: "" },
+  });
+
+  const handleOpenChange = (newOpen: boolean) => {
+    onOpenChange(newOpen);
+    if (!newOpen) form.reset();
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>Mentor Notu Ekle</DialogTitle>
+          <DialogDescription>Mentee hakkinda not ve degerlendirme ekleyin</DialogDescription>
+        </DialogHeader>
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col gap-4">
+            <FormField
+              control={form.control}
+              name="note"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Not</FormLabel>
+                  <FormControl>
+                    <Textarea {...field} placeholder="Notunuzu yazin..." data-testid="textarea-mentor-note" />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="rating"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Degerlendirme (1-5)</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger data-testid="select-rating">
+                        <SelectValue placeholder="Puan secin" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {["1", "2", "3", "4", "5"].map((v) => (
+                        <SelectItem key={v} value={v}>{v}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <Button type="submit" disabled={isLoading} data-testid="button-submit-note" className="gap-2">
+              <MessageSquarePlus className="h-4 w-4" />
+              Kaydet
+            </Button>
           </form>
         </Form>
       </DialogContent>

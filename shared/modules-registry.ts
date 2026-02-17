@@ -184,6 +184,7 @@ export const MODULES: ModuleDefinition[] = [
   { moduleKey: 'employee_of_month', moduleName: 'Ayın Elemanı', category: 'hq', megaModule: 'hr', description: 'Ayın elemanı seçimi ve ödüllendirme', icon: 'Award', route: '/ayin-elemani', sortOrder: 38 },
   { moduleKey: 'staff_qr_tokens', moduleName: 'Personel QR Token', category: 'hq', megaModule: 'hr', description: 'Personel değerlendirme QR kodları', icon: 'QrCode', route: '/personel-qr-tokenlar', sortOrder: 39 },
   { moduleKey: 'personel_onboarding', moduleName: 'Personel Onboarding', category: 'hq', megaModule: 'hr', description: 'Yeni personel başlangıç süreci', icon: 'UserPlus', route: '/personel-onboarding', sortOrder: 40 },
+  { moduleKey: 'staff_evaluation', moduleName: 'Personel Değerlendirme', category: 'shared', megaModule: 'hr', description: 'Supervisor personel değerlendirme sistemi', icon: 'ClipboardCheck', route: '/yonetim/degerlendirme', sortOrder: 38 },
   { moduleKey: 'personel_musaitlik', moduleName: 'Personel Müsaitlik', category: 'shared', megaModule: 'hr', description: 'Personel müsaitlik takibi', icon: 'CalendarCheck', route: '/personel-musaitlik', sortOrder: 41 },
   { moduleKey: 'my_shifts', moduleName: 'Vardiyalarım', category: 'shared', megaModule: 'hr', description: 'Kendi vardiya takibi', icon: 'CalendarDays', route: '/vardiyalarim', sortOrder: 42 },
   { moduleKey: 'shift_checkin', moduleName: 'Vardiya Giriş', category: 'shared', megaModule: 'hr', description: 'Vardiya check-in', icon: 'Clock', route: '/vardiya-checkin', sortOrder: 43 },

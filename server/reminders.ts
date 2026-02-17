@@ -2,7 +2,7 @@ import { storage } from "./storage";
 import type { Task, Equipment, User } from "@shared/schema";
 import { sendNotificationEmail } from "./email";
 import { db } from "./db";
-import { correctiveActions, users, auditInstances, branches, factoryProducts, employeeOnboardingAssignments, onboardingTemplates, notifications, staffEvaluations } from "@shared/schema";
+import { correctiveActions, users, auditInstances, branches, factoryProducts, employeeOnboardingAssignments, onboardingTemplates, notifications, staffEvaluations, employeeOnboarding } from "@shared/schema";
 import { eq, lt, and, ne, lte, or, inArray, gt, gte, count, max } from "drizzle-orm";
 
 const REMINDER_INTERVAL = 5 * 60 * 1000; // 5 minutes in milliseconds
@@ -15,6 +15,7 @@ let reminderInterval: NodeJS.Timeout | null = null;
 let slaInterval: NodeJS.Timeout | null = null;
 
 const sentCapaNotifications = new Map<number, number>();
+const sentOnboardingReminderKeys = new Set<string>();
 
 export async function checkAndSendReminders() {
   try {
@@ -86,6 +87,9 @@ export async function checkAndSendReminders() {
 
     // Check overdue CAPA (Corrective Actions) and send notifications
     await checkCapaNotifications();
+
+    // Check employee onboarding deadline reminders
+    await checkOnboardingDeadlineReminders();
   } catch (error) {
     console.error("Hatırlatma kontrolü hatası:", error);
   }
@@ -278,6 +282,200 @@ DOSPRESSO Franchise Yönetim Sistemi`,
     }
   } catch (error) {
     console.error("CAPA bildirim hatası:", error);
+  }
+}
+
+// Check employee onboarding deadline reminders
+// Notifies mentor and branch supervisors when onboarding is approaching deadline or overdue
+// Also notifies if onboarding stuck at not_started for more than 3 days
+async function checkOnboardingDeadlineReminders() {
+  try {
+    const now = new Date();
+    const todayKey = now.toISOString().slice(0, 10); // YYYY-MM-DD format for deduplication
+
+    // Get all in_progress onboarding records where deadline is within 14 days or overdue
+    const inProgressOnboardings = await db.select({
+      id: employeeOnboarding.id,
+      userId: employeeOnboarding.userId,
+      branchId: employeeOnboarding.branchId,
+      expectedCompletionDate: employeeOnboarding.expectedCompletionDate,
+      assignedMentorId: employeeOnboarding.assignedMentorId,
+    })
+      .from(employeeOnboarding)
+      .where(eq(employeeOnboarding.status, 'in_progress'));
+
+    // Get all not_started onboarding records created more than 3 days ago
+    const threeDaysAgo = new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000);
+    const stuckOnboardings = await db.select({
+      id: employeeOnboarding.id,
+      userId: employeeOnboarding.userId,
+      branchId: employeeOnboarding.branchId,
+      createdAt: employeeOnboarding.createdAt,
+      assignedMentorId: employeeOnboarding.assignedMentorId,
+    })
+      .from(employeeOnboarding)
+      .where(and(
+        eq(employeeOnboarding.status, 'not_started'),
+        lt(employeeOnboarding.createdAt, threeDaysAgo)
+      ));
+
+    // Process in_progress onboardings
+    for (const onboarding of inProgressOnboardings) {
+      if (!onboarding.expectedCompletionDate) continue;
+
+      const expectedDate = new Date(onboarding.expectedCompletionDate);
+      const daysUntil = Math.ceil((expectedDate.getTime() - now.getTime()) / (24 * 60 * 60 * 1000));
+
+      // Only notify if within 14 days or overdue
+      if (daysUntil > 14) continue;
+
+      // Get employee details
+      const [employee] = await db.select({
+        firstName: users.firstName,
+        lastName: users.lastName,
+      }).from(users).where(eq(users.id, onboarding.userId));
+
+      if (!employee) continue;
+
+      const employeeName = employee.firstName && employee.lastName
+        ? `${employee.firstName} ${employee.lastName}`
+        : 'Personel';
+
+      // Determine message based on urgency
+      let message = '';
+      if (daysUntil < 0) {
+        message = `UYARI: ${employeeName} personelin onboarding süresi doldu! Acil değerlendirme yapın.`;
+      } else if (daysUntil <= 7) {
+        message = `DİKKAT: ${employeeName} personelin onboarding süresinin bitmesine ${daysUntil} gün kaldı.`;
+      } else {
+        message = `${employeeName} personelin onboarding süresinin bitmesine ${daysUntil} gün kaldı.`;
+      }
+
+      // Notify assigned mentor
+      if (onboarding.assignedMentorId) {
+        const dedupKey = `onboarding_${onboarding.id}_mentor_${todayKey}`;
+        if (!sentOnboardingReminderKeys.has(dedupKey)) {
+          try {
+            await storage.createNotification({
+              userId: onboarding.assignedMentorId,
+              type: 'onboarding_deadline',
+              title: daysUntil < 0 ? 'Onboarding Süresi Doldu' : 'Onboarding Süresi Yaklaşıyor',
+              message: message,
+              link: `/personel?employeeId=${onboarding.userId}`,
+              isRead: false,
+              branchId: onboarding.branchId,
+            });
+            sentOnboardingReminderKeys.add(dedupKey);
+          } catch (err) {
+            console.error(`Mentor notification error for onboarding ${onboarding.id}:`, err);
+          }
+        }
+      }
+
+      // Notify branch supervisors (supervisor and mudur roles)
+      const supervisors = await db.select({
+        id: users.id,
+      }).from(users).where(and(
+        eq(users.branchId, onboarding.branchId),
+        or(
+          eq(users.role, 'supervisor'),
+          eq(users.role, 'mudur')
+        ),
+        eq(users.isActive, true)
+      ));
+
+      for (const supervisor of supervisors) {
+        const dedupKey = `onboarding_${onboarding.id}_supervisor_${todayKey}`;
+        if (!sentOnboardingReminderKeys.has(dedupKey)) {
+          try {
+            await storage.createNotification({
+              userId: supervisor.id,
+              type: 'onboarding_deadline',
+              title: daysUntil < 0 ? 'Onboarding Süresi Doldu' : 'Onboarding Süresi Yaklaşıyor',
+              message: message,
+              link: `/personel?employeeId=${onboarding.userId}`,
+              isRead: false,
+              branchId: onboarding.branchId,
+            });
+            sentOnboardingReminderKeys.add(dedupKey);
+          } catch (err) {
+            console.error(`Supervisor notification error for onboarding ${onboarding.id}:`, err);
+          }
+        }
+      }
+    }
+
+    // Process stuck (not_started for 3+ days) onboardings
+    for (const onboarding of stuckOnboardings) {
+      // Get employee details
+      const [employee] = await db.select({
+        firstName: users.firstName,
+        lastName: users.lastName,
+      }).from(users).where(eq(users.id, onboarding.userId));
+
+      if (!employee) continue;
+
+      const employeeName = employee.firstName && employee.lastName
+        ? `${employee.firstName} ${employee.lastName}`
+        : 'Personel';
+
+      const message = `Uyarı: ${employeeName} personelin onboarding süreci 3 günden uzun süredir başlatılmamış. Lütfen kontrol edin.`;
+
+      // Notify assigned mentor
+      if (onboarding.assignedMentorId) {
+        const dedupKey = `onboarding_${onboarding.id}_stuck_mentor_${todayKey}`;
+        if (!sentOnboardingReminderKeys.has(dedupKey)) {
+          try {
+            await storage.createNotification({
+              userId: onboarding.assignedMentorId,
+              type: 'onboarding_stuck',
+              title: 'Onboarding Başlatılmamış',
+              message: message,
+              link: `/personel?employeeId=${onboarding.userId}`,
+              isRead: false,
+              branchId: onboarding.branchId,
+            });
+            sentOnboardingReminderKeys.add(dedupKey);
+          } catch (err) {
+            console.error(`Mentor stuck notification error for onboarding ${onboarding.id}:`, err);
+          }
+        }
+      }
+
+      // Notify branch supervisors
+      const supervisors = await db.select({
+        id: users.id,
+      }).from(users).where(and(
+        eq(users.branchId, onboarding.branchId),
+        or(
+          eq(users.role, 'supervisor'),
+          eq(users.role, 'mudur')
+        ),
+        eq(users.isActive, true)
+      ));
+
+      for (const supervisor of supervisors) {
+        const dedupKey = `onboarding_${onboarding.id}_stuck_supervisor_${todayKey}`;
+        if (!sentOnboardingReminderKeys.has(dedupKey)) {
+          try {
+            await storage.createNotification({
+              userId: supervisor.id,
+              type: 'onboarding_stuck',
+              title: 'Onboarding Başlatılmamış',
+              message: message,
+              link: `/personel?employeeId=${onboarding.userId}`,
+              isRead: false,
+              branchId: onboarding.branchId,
+            });
+            sentOnboardingReminderKeys.add(dedupKey);
+          } catch (err) {
+            console.error(`Supervisor stuck notification error for onboarding ${onboarding.id}:`, err);
+          }
+        }
+      }
+    }
+  } catch (error) {
+    console.error("Onboarding hatırlatma kontrolü hatası:", error);
   }
 }
 
