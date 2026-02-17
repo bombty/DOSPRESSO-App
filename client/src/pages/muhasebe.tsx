@@ -51,6 +51,19 @@ import {
   Award
 } from "lucide-react";
 
+interface SalaryScale {
+  id: number;
+  locationType: string;
+  positionName: string;
+  level: number;
+  baseSalary: string;
+  cashRegisterBonus: string;
+  performanceBonus: string;
+  bonusCalculationType: string;
+  totalSalary: string;
+  isActive: boolean;
+}
+
 interface PayrollParameters {
   id: number;
   year: number;
@@ -1752,6 +1765,219 @@ function SalarySettingsSection({ employees, canEdit }: { employees: Employee[]; 
     bonusPercentage: 0,
   });
 
+  const [editingScaleId, setEditingScaleId] = useState<number | null>(null);
+  const [scaleEditValues, setScaleEditValues] = useState({
+    baseSalary: "",
+    cashRegisterBonus: "",
+    performanceBonus: "",
+    bonusCalculationType: "",
+    totalSalary: "",
+  });
+
+  const { data: salaryScales = [] } = useQuery<SalaryScale[]>({ queryKey: ['/api/salary-scales'] });
+
+  const fabrikaScales = salaryScales.filter(s => s.locationType === 'fabrika');
+  const subeScales = salaryScales.filter(s => s.locationType === 'sube');
+
+  const formatScaleCurrency = (value: string) => {
+    const num = parseFloat(value || "0");
+    return num.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  };
+
+  const handleScaleEdit = (scale: SalaryScale) => {
+    setEditingScaleId(scale.id);
+    setScaleEditValues({
+      baseSalary: parseFloat(scale.baseSalary).toString(),
+      cashRegisterBonus: parseFloat(scale.cashRegisterBonus).toString(),
+      performanceBonus: parseFloat(scale.performanceBonus).toString(),
+      bonusCalculationType: scale.bonusCalculationType,
+      totalSalary: parseFloat(scale.totalSalary).toString(),
+    });
+  };
+
+  const updateScaleMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: number; data: typeof scaleEditValues }) => {
+      const res = await apiRequest("PUT", `/api/salary-scales/${id}`, {
+        baseSalary: data.baseSalary,
+        cashRegisterBonus: data.cashRegisterBonus,
+        performanceBonus: data.performanceBonus,
+        bonusCalculationType: data.bonusCalculationType,
+        totalSalary: data.totalSalary,
+      });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/salary-scales'] });
+      toast({ title: "Maaş skalası güncellendi" });
+      setEditingScaleId(null);
+    },
+    onError: (error: any) => {
+      toast({ title: "Güncelleme başarısız", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const handleScaleSave = () => {
+    if (editingScaleId === null) return;
+    updateScaleMutation.mutate({ id: editingScaleId, data: scaleEditValues });
+  };
+
+  const renderScaleTable = (scales: SalaryScale[], title: string, showCashRegister: boolean) => (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Building2 className="h-5 w-5" />
+          {title}
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="border rounded-lg overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm" data-testid={`table-salary-scale-${showCashRegister ? 'sube' : 'fabrika'}`}>
+              <thead className="bg-muted">
+                <tr>
+                  <th className="px-4 py-2 text-left font-medium">Pozisyon / Seviye</th>
+                  <th className="px-4 py-2 text-right font-medium">Temel Maaş</th>
+                  {showCashRegister && <th className="px-4 py-2 text-right font-medium">Kasa Primi</th>}
+                  <th className="px-4 py-2 text-right font-medium">Performans Primi</th>
+                  <th className="px-4 py-2 text-center font-medium">Prim Hesaplama</th>
+                  <th className="px-4 py-2 text-right font-medium">Toplam</th>
+                  {canEdit && <th className="px-4 py-2 text-center font-medium">İşlem</th>}
+                </tr>
+              </thead>
+              <tbody className="divide-y">
+                {scales.length === 0 ? (
+                  <tr>
+                    <td colSpan={showCashRegister ? 7 : 6} className="px-4 py-8 text-center text-muted-foreground">
+                      Veri bulunamadı
+                    </td>
+                  </tr>
+                ) : (
+                  scales.map((scale) => {
+                    const isEditing = editingScaleId === scale.id;
+                    return (
+                      <tr key={scale.id} data-testid={`row-salary-scale-${scale.id}`}>
+                        <td className="px-4 py-2 font-medium">{scale.positionName}</td>
+                        <td className="px-4 py-2 text-right">
+                          {isEditing ? (
+                            <Input
+                              type="number"
+                              step="0.01"
+                              value={scaleEditValues.baseSalary}
+                              onChange={(e) => setScaleEditValues({ ...scaleEditValues, baseSalary: e.target.value })}
+                              className="w-28 text-right ml-auto"
+                              data-testid={`input-scale-base-salary-${scale.id}`}
+                            />
+                          ) : (
+                            <span data-testid={`text-scale-base-salary-${scale.id}`}>{formatScaleCurrency(scale.baseSalary)} TL</span>
+                          )}
+                        </td>
+                        {showCashRegister && (
+                          <td className="px-4 py-2 text-right">
+                            {isEditing ? (
+                              <Input
+                                type="number"
+                                step="0.01"
+                                value={scaleEditValues.cashRegisterBonus}
+                                onChange={(e) => setScaleEditValues({ ...scaleEditValues, cashRegisterBonus: e.target.value })}
+                                className="w-28 text-right ml-auto"
+                                data-testid={`input-scale-cash-bonus-${scale.id}`}
+                              />
+                            ) : (
+                              <span data-testid={`text-scale-cash-bonus-${scale.id}`}>{formatScaleCurrency(scale.cashRegisterBonus)} TL</span>
+                            )}
+                          </td>
+                        )}
+                        <td className="px-4 py-2 text-right">
+                          {isEditing ? (
+                            <Input
+                              type="number"
+                              step="0.01"
+                              value={scaleEditValues.performanceBonus}
+                              onChange={(e) => setScaleEditValues({ ...scaleEditValues, performanceBonus: e.target.value })}
+                              className="w-28 text-right ml-auto"
+                              data-testid={`input-scale-perf-bonus-${scale.id}`}
+                            />
+                          ) : (
+                            <span data-testid={`text-scale-perf-bonus-${scale.id}`}>{formatScaleCurrency(scale.performanceBonus)} TL</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-2 text-center">
+                          {isEditing ? (
+                            <Select value={scaleEditValues.bonusCalculationType} onValueChange={(v) => setScaleEditValues({ ...scaleEditValues, bonusCalculationType: v })}>
+                              <SelectTrigger className="w-40 mx-auto" data-testid={`select-scale-bonus-type-${scale.id}`}>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="per_day">Gün Bazlı</SelectItem>
+                                <SelectItem value="full">Tam Prim</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          ) : (
+                            <Badge variant="secondary" data-testid={`badge-scale-bonus-type-${scale.id}`}>
+                              {scale.bonusCalculationType === 'per_day' ? 'Gün Bazlı (x gün)' : 'Tam Prim'}
+                            </Badge>
+                          )}
+                        </td>
+                        <td className="px-4 py-2 text-right font-medium">
+                          {isEditing ? (
+                            <Input
+                              type="number"
+                              step="0.01"
+                              value={scaleEditValues.totalSalary}
+                              onChange={(e) => setScaleEditValues({ ...scaleEditValues, totalSalary: e.target.value })}
+                              className="w-28 text-right ml-auto"
+                              data-testid={`input-scale-total-${scale.id}`}
+                            />
+                          ) : (
+                            <span data-testid={`text-scale-total-${scale.id}`}>{formatScaleCurrency(scale.totalSalary)} TL</span>
+                          )}
+                        </td>
+                        {canEdit && (
+                          <td className="px-4 py-2 text-center">
+                            {isEditing ? (
+                              <div className="flex items-center justify-center gap-1">
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  onClick={handleScaleSave}
+                                  disabled={updateScaleMutation.isPending}
+                                  data-testid={`button-save-scale-${scale.id}`}
+                                >
+                                  {updateScaleMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                                </Button>
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  onClick={() => setEditingScaleId(null)}
+                                  data-testid={`button-cancel-scale-${scale.id}`}
+                                >
+                                  <X className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            ) : (
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                onClick={() => handleScaleEdit(scale)}
+                                data-testid={`button-edit-scale-${scale.id}`}
+                              >
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                            )}
+                          </td>
+                        )}
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+
   const formatCurrency = (valueInKurus: number) => {
     return (valueInKurus / 100).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   };
@@ -1803,6 +2029,9 @@ function SalarySettingsSection({ employees, canEdit }: { employees: Employee[]; 
 
   return (
     <div className="space-y-4">
+      {renderScaleTable(fabrikaScales, "Fabrika Maaş Tablosu", false)}
+      {renderScaleTable(subeScales, "Şube Maaş Tablosu", true)}
+
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">

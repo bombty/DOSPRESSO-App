@@ -12728,3 +12728,30 @@ export const financialRecords = pgTable("financial_records", {
 export const insertFinancialRecordSchema = createInsertSchema(financialRecords).omit({ id: true, createdAt: true, updatedAt: true });
 export type InsertFinancialRecord = z.infer<typeof insertFinancialRecordSchema>;
 export type FinancialRecord = typeof financialRecords.$inferSelect;
+
+// ========================================
+// SALARY SCALES - Maaş & Prim Tablosu
+// ========================================
+
+export const salaryScales = pgTable("salary_scales", {
+  id: serial("id").primaryKey(),
+  locationType: varchar("location_type", { length: 20 }).notNull(), // 'sube' or 'fabrika'
+  positionName: varchar("position_name", { length: 100 }).notNull(),
+  level: integer("level").notNull(), // ordering/display level
+  baseSalary: numeric("base_salary", { precision: 12, scale: 2 }).notNull(), // temel maaş
+  cashRegisterBonus: numeric("cash_register_bonus", { precision: 12, scale: 2 }).default("0"), // kasa primi (only branches)
+  performanceBonus: numeric("performance_bonus", { precision: 12, scale: 2 }).notNull(), // performans primi
+  bonusCalculationType: varchar("bonus_calculation_type", { length: 20 }).notNull().default("per_day"), // 'per_day' or 'full'
+  totalSalary: numeric("total_salary", { precision: 12, scale: 2 }).notNull(), // toplam
+  isActive: boolean("is_active").default(true),
+  updatedBy: varchar("updated_by").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("salary_scale_type_idx").on(table.locationType),
+  index("salary_scale_level_idx").on(table.level),
+]);
+
+export const insertSalaryScaleSchema = createInsertSchema(salaryScales).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertSalaryScale = z.infer<typeof insertSalaryScaleSchema>;
+export type SalaryScale = typeof salaryScales.$inferSelect;

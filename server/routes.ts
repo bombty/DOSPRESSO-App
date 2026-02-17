@@ -25276,7 +25276,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`
   app.post('/api/salary/deduction-types', isAuthenticated, async (req: any, res) => {
     try {
       const user = req.user;
-      if (user.role !== 'admin' && user.role !== 'muhasebe') {
+      if (user.role !== 'admin' && user.role !== 'muhasebe' && user.role !== 'muhasebe_ik') {
         return res.status(403).json({ message: "Kesinti tipi oluşturma yetkiniz yok" });
       }
       const validated = insertSalaryDeductionTypeSchema.parse(req.body);
@@ -25325,7 +25325,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`
   app.post('/api/salary/employee', isAuthenticated, async (req: any, res) => {
     try {
       const user = req.user;
-      if (user.role !== 'admin' && user.role !== 'muhasebe') {
+      if (user.role !== 'admin' && user.role !== 'muhasebe' && user.role !== 'muhasebe_ik') {
         return res.status(403).json({ message: "Maaş bilgisi ekleme yetkiniz yok" });
       }
 
@@ -25354,7 +25354,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`
   app.patch('/api/salary/employee/:id', isAuthenticated, async (req: any, res) => {
     try {
       const user = req.user;
-      if (user.role !== 'admin' && user.role !== 'muhasebe') {
+      if (user.role !== 'admin' && user.role !== 'muhasebe' && user.role !== 'muhasebe_ik') {
         return res.status(403).json({ message: "Maaş bilgisi güncelleme yetkiniz yok" });
       }
 
@@ -25423,7 +25423,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`
   app.post('/api/salary/deductions', isAuthenticated, async (req: any, res) => {
     try {
       const user = req.user;
-      if (user.role !== 'admin' && user.role !== 'muhasebe' && user.role !== 'yatirimci_branch') {
+      if (user.role !== 'admin' && user.role !== 'muhasebe' && user.role !== 'muhasebe_ik' && user.role !== 'yatirimci_branch') {
         return res.status(403).json({ message: "Kesinti ekleme yetkiniz yok" });
       }
 
@@ -25453,7 +25453,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`
   app.delete('/api/salary/deductions/:id', isAuthenticated, async (req: any, res) => {
     try {
       const user = req.user;
-      if (user.role !== 'admin' && user.role !== 'muhasebe') {
+      if (user.role !== 'admin' && user.role !== 'muhasebe' && user.role !== 'muhasebe_ik') {
         return res.status(403).json({ message: "Kesinti silme yetkiniz yok" });
       }
 
@@ -25513,7 +25513,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`
   app.post('/api/salary/payroll/calculate', isAuthenticated, async (req: any, res) => {
     try {
       const user = req.user;
-      if (user.role !== 'admin' && user.role !== 'muhasebe') {
+      if (user.role !== 'admin' && user.role !== 'muhasebe' && user.role !== 'muhasebe_ik') {
         return res.status(403).json({ message: "Bordro hesaplama yetkiniz yok" });
       }
 
@@ -25682,7 +25682,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`
   app.post('/api/salary/payroll/:id/approve', isAuthenticated, async (req: any, res) => {
     try {
       const user = req.user;
-      if (user.role !== 'admin' && user.role !== 'muhasebe') {
+      if (user.role !== 'admin' && user.role !== 'muhasebe' && user.role !== 'muhasebe_ik') {
         return res.status(403).json({ message: "Bordro onaylama yetkiniz yok" });
       }
 
@@ -25711,7 +25711,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`
   app.post('/api/salary/payroll/:id/pay', isAuthenticated, async (req: any, res) => {
     try {
       const user = req.user;
-      if (user.role !== 'admin' && user.role !== 'muhasebe') {
+      if (user.role !== 'admin' && user.role !== 'muhasebe' && user.role !== 'muhasebe_ik') {
         return res.status(403).json({ message: "Ödeme işlemi yetkiniz yok" });
       }
 
@@ -25801,7 +25801,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`
   app.post('/api/salary/auto-deductions/calculate', isAuthenticated, async (req: any, res) => {
     try {
       const user = req.user;
-      if (user.role !== 'admin' && user.role !== 'muhasebe') {
+      if (user.role !== 'admin' && user.role !== 'muhasebe' && user.role !== 'muhasebe_ik') {
         return res.status(403).json({ message: "Otomatik kesinti hesaplama yetkiniz yok" });
       }
 
@@ -25986,7 +25986,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`
   app.patch('/api/payroll/parameters/:id', isAuthenticated, async (req: any, res) => {
     try {
       const user = req.user;
-      if (user.role !== 'admin' && user.role !== 'muhasebe') {
+      if (user.role !== 'admin' && user.role !== 'muhasebe' && user.role !== 'muhasebe_ik') {
         return res.status(403).json({ message: "Bordro parametrelerini düzenleme yetkiniz yok" });
       }
 
@@ -26054,7 +26054,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`
   app.post('/api/payroll/ai-regulation-check', isAuthenticated, async (req: any, res) => {
     try {
       const user = req.user;
-      if (user.role !== 'admin' && user.role !== 'muhasebe') {
+      if (user.role !== 'admin' && user.role !== 'muhasebe' && user.role !== 'muhasebe_ik') {
         return res.status(403).json({ message: "Bu işlem için yetkiniz yok" });
       }
 
@@ -26159,7 +26159,7 @@ MUTLAKA aşağıdaki JSON formatında yanıt ver:
   app.post('/api/payroll/apply-ai-suggestions', isAuthenticated, async (req: any, res) => {
     try {
       const user = req.user;
-      if (user.role !== 'admin' && user.role !== 'muhasebe') {
+      if (user.role !== 'admin' && user.role !== 'muhasebe' && user.role !== 'muhasebe_ik') {
         return res.status(403).json({ message: "Bu işlem için yetkiniz yok" });
       }
 
@@ -40387,6 +40387,93 @@ Kurallar:
     } catch (error: any) {
       console.error("Error deleting dashboard widget:", error);
       res.status(500).json({ message: "Widget silinemedi" });
+    }
+  });
+
+  // ============================================
+  // SALARY SCALES (Maaş Tablosu) ENDPOINTS
+  // ============================================
+
+  // GET /api/salary-scales - Get all active salary scales
+  app.get('/api/salary-scales', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const allowedRoles = ['admin', 'muhasebe', 'muhasebe_ik', 'yatirimci_hq', 'yatirimci_branch', 'supervisor'];
+      if (!allowedRoles.includes(user.role)) {
+        return res.status(403).json({ message: "Bu verilere erişim yetkiniz yok" });
+      }
+
+      const result = await db.execute(sql`SELECT * FROM salary_scales WHERE is_active = true ORDER BY location_type, level`);
+
+      const scales = result.rows.map((row: any) => ({
+        id: row.id,
+        locationType: row.location_type,
+        positionName: row.position_name,
+        level: row.level,
+        baseSalary: row.base_salary,
+        cashRegisterBonus: row.cash_register_bonus,
+        performanceBonus: row.performance_bonus,
+        bonusCalculationType: row.bonus_calculation_type,
+        totalSalary: row.total_salary,
+        isActive: row.is_active,
+      }));
+
+      res.json(scales);
+    } catch (error: any) {
+      console.error("Error fetching salary scales:", error);
+      res.status(500).json({ message: "Maaş tablosu alınamadı" });
+    }
+  });
+
+  // PUT /api/salary-scales/:id - Update a salary scale
+  app.put('/api/salary-scales/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const allowedRoles = ['admin', 'muhasebe', 'muhasebe_ik'];
+      if (!allowedRoles.includes(user.role)) {
+        return res.status(403).json({ message: "Bu işlem için yetkiniz yok" });
+      }
+
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Geçersiz ID" });
+      }
+
+      const { baseSalary, cashRegisterBonus, performanceBonus, bonusCalculationType, totalSalary } = req.body;
+
+      const result = await db.execute(sql`
+        UPDATE salary_scales 
+        SET base_salary = ${baseSalary},
+            cash_register_bonus = ${cashRegisterBonus},
+            performance_bonus = ${performanceBonus},
+            bonus_calculation_type = ${bonusCalculationType},
+            total_salary = ${totalSalary},
+            updated_by = ${user.id},
+            updated_at = NOW()
+        WHERE id = ${id}
+        RETURNING *
+      `);
+
+      if (result.rows.length === 0) {
+        return res.status(404).json({ message: "Maaş skalası bulunamadı" });
+      }
+
+      const row = result.rows[0] as any;
+      res.json({
+        id: row.id,
+        locationType: row.location_type,
+        positionName: row.position_name,
+        level: row.level,
+        baseSalary: row.base_salary,
+        cashRegisterBonus: row.cash_register_bonus,
+        performanceBonus: row.performance_bonus,
+        bonusCalculationType: row.bonus_calculation_type,
+        totalSalary: row.total_salary,
+        isActive: row.is_active,
+      });
+    } catch (error: any) {
+      console.error("Error updating salary scale:", error);
+      res.status(500).json({ message: "Maaş skalası güncellenemedi" });
     }
   });
 
