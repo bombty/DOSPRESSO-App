@@ -9,7 +9,6 @@ import { Button } from "@/components/ui/button";
 import { QuickTaskModal } from "@/components/quick-task-modal";
 import { ShiftStatusCard } from "@/components/shift-status-card";
 import { ShiftChecklistCard } from "@/components/shift-checklist-card";
-import { EnhancedAnalyticsCard } from "@/components/enhanced-analytics-card";
 import { PersonalSummaryCard } from "@/components/personal-summary-card";
 import { AnnouncementBannerCarousel } from "@/components/AnnouncementBannerCarousel";
 import { EmployeeOfMonthWidget } from "@/components/employee-of-month-widget";
@@ -945,9 +944,6 @@ export function CardGridHub() {
 
       {canSeeWidget(userRole, 'critical-alerts') && <CriticalAlerts />}
 
-      {((isBranch && (user?.role === 'supervisor' || user?.role === 'supervisor_buddy')) || isHQ) && (
-        <EnhancedAnalyticsCard />
-      )}
 
       {isBranch && user?.role !== "supervisor" && user?.role !== "supervisor_buddy" && <PersonalSummaryCard />}
 

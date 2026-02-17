@@ -122,7 +122,7 @@ export function CompactStatsBar() {
     },
     {
       id: "checklists",
-      label: "",
+      label: "Checklist",
       value: activeChecklists,
       icon: Clock,
       bgColor: "bg-purple-500 dark:bg-purple-600",
