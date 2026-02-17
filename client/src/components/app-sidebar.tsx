@@ -284,7 +284,7 @@ export function AppSidebar() {
               )}
               
               {/* Academy Link - Hidden for muhasebe, satinalma */}
-              {user?.role !== "muhasebe" && user?.role !== "satinalma" && (
+              {user?.role !== "muhasebe" && user?.role !== "muhasebe_ik" && user?.role !== "satinalma" && (
                 <>
                   {(branchSections.length > 0 || hqSections.length > 0 || bothSections.length > 0) && <div className="my-2 border-t" />}
                   <div className="mt-2 mb-2 px-3 py-1 text-xs font-bold uppercase tracking-wide text-muted-foreground">

@@ -1140,7 +1140,7 @@ export default function YeniSubeDetay() {
   const isAdmin = user?.role === 'admin';
   
   // Roles that can see budget information
-  const BUDGET_VISIBLE_ROLES = ["admin", "muhasebe", "genel_mudur"];
+  const BUDGET_VISIBLE_ROLES = ["admin", "muhasebe", "muhasebe_ik", "genel_mudur"];
   const canSeeBudget = user?.role && BUDGET_VISIBLE_ROLES.includes(user.role);
 
   const totalPlanned = project.budgetLines?.reduce((sum, bl) => sum + (bl.plannedAmount || 0), 0) || 0;

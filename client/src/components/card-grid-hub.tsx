@@ -420,7 +420,7 @@ export function CardGridHub() {
       path: "/muhasebe",
       color: "bg-emerald-600",
       description: "Bordro & Maaş Yönetimi",
-      roles: ["admin", "muhasebe"]
+      roles: ["admin", "muhasebe", "muhasebe_ik"]
     },
     { 
       id: "reports", 

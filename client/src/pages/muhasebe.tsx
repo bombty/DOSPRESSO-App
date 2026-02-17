@@ -217,7 +217,7 @@ export default function Muhasebe() {
   const [isAiCheckDialogOpen, setIsAiCheckDialogOpen] = useState(false);
   const [selectedAiChanges, setSelectedAiChanges] = useState<Set<number>>(new Set());
 
-  const canEdit = user?.role === 'admin' || user?.role === 'muhasebe';
+  const canEdit = user?.role === 'admin' || user?.role === 'muhasebe' || user?.role === 'muhasebe_ik';
   
   // Check if user has access to accounting module
   const { data: hasAccess = false, isLoading: isLoadingAccess } = useQuery<boolean>({

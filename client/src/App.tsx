@@ -213,7 +213,7 @@ function FabrikaOnly({ children }: { children: ReactNode }) {
 }
 
 function ExecutiveOnly({ children }: { children: ReactNode }) {
-  return <ProtectedRoute allowedRoles={["admin", "ceo", "cgo", "coach", "trainer", "muhasebe", "satinalma", "teknik", "destek", "fabrika", "yatirimci_hq"]}>{children}</ProtectedRoute>;
+  return <ProtectedRoute allowedRoles={["admin", "ceo", "cgo", "coach", "trainer", "muhasebe", "muhasebe_ik", "satinalma", "teknik", "destek", "fabrika", "yatirimci_hq"]}>{children}</ProtectedRoute>;
 }
 
 function CEOOnly({ children }: { children: ReactNode }) {

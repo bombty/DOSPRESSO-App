@@ -2,8 +2,8 @@
 import { Express } from "express";
 import { storage } from "./storage";
 import { db } from "./db";
-import { branches, users, equipmentFaults, checklistCompletions, customerFeedback } from "@shared/schema";
-import { eq } from "drizzle-orm";
+import { branches, users, equipmentFaults, checklistCompletions, customerFeedback, leaveRequests, overtimeRequests, monthlyPayrolls } from "@shared/schema";
+import { eq, and, inArray, sql } from "drizzle-orm";
 
 export function registerHQDashboardRoutes(app: Express, isAuthenticated: any) {
   
@@ -119,6 +119,102 @@ export function registerHQDashboardRoutes(app: Express, isAuthenticated: any) {
     }
   });
   
+  // HQ Dashboard - Muhasebe İK (Mahmut) - Focus: Işıklar, Merkez Ofis, Fabrika
+  app.get("/api/hq-dashboard/muhasebe-ik", isAuthenticated, async (req: any, res) => {
+    try {
+      const focusBranchIds = [5, 23, 24]; // Işıklar, Merkez Ofis (HQ), Fabrika
+
+      const focusBranchesData = await db.select().from(branches).where(inArray(branches.id, focusBranchIds));
+
+      const branchEmployees = await db.select().from(users).where(
+        and(
+          inArray(users.branchId, focusBranchIds),
+          eq(users.isActive, true)
+        )
+      );
+
+      const allEmployees = await db.select({ count: sql<number>`count(*)` }).from(users).where(eq(users.isActive, true));
+
+      const pendingLeaves = await db.select({ count: sql<number>`count(*)` })
+        .from(leaveRequests)
+        .where(eq(leaveRequests.status, 'beklemede'));
+
+      const focusLeaves = await db.select({ count: sql<number>`count(*)` })
+        .from(leaveRequests)
+        .innerJoin(users, eq(leaveRequests.userId, users.id))
+        .where(
+          and(
+            eq(leaveRequests.status, 'beklemede'),
+            inArray(users.branchId, focusBranchIds)
+          )
+        );
+
+      const pendingOvertimes = await db.select({ count: sql<number>`count(*)` })
+        .from(overtimeRequests)
+        .where(eq(overtimeRequests.status, 'beklemede'));
+
+      let payrollData = { count: 0, totalAmount: 0 };
+      try {
+        const now = new Date();
+        const currentMonth = now.getMonth() + 1;
+        const currentYear = now.getFullYear();
+        const payrollResult = await db.select({ 
+          count: sql<number>`count(*)`, 
+          totalAmount: sql<number>`COALESCE(sum(${monthlyPayrolls.netSalary}), 0)` 
+        })
+          .from(monthlyPayrolls)
+          .where(
+            and(
+              eq(monthlyPayrolls.month, currentMonth),
+              eq(monthlyPayrolls.year, currentYear)
+            )
+          );
+        payrollData = {
+          count: Number(payrollResult[0]?.count || 0),
+          totalAmount: Number(payrollResult[0]?.totalAmount || 0),
+        };
+      } catch (e) {
+        // payroll table might not have data
+      }
+
+      const branchStats = focusBranchesData.map(branch => {
+        const employees = branchEmployees.filter(e => e.branchId === branch.id);
+        return {
+          branchId: branch.id,
+          branchName: branch.name,
+          employeeCount: employees.length,
+          roles: employees.reduce((acc: Record<string, number>, e) => {
+            acc[e.role || 'unknown'] = (acc[e.role || 'unknown'] || 0) + 1;
+            return acc;
+          }, {})
+        };
+      });
+
+      res.json({
+        focusBranches: branchStats,
+        totalFocusEmployees: branchEmployees.length,
+        totalAllEmployees: Number(allEmployees[0]?.count || 0),
+        pendingLeaves: Number(pendingLeaves[0]?.count || 0),
+        focusPendingLeaves: Number(focusLeaves[0]?.count || 0),
+        pendingOvertimes: Number(pendingOvertimes[0]?.count || 0),
+        payrollCount: payrollData.count,
+        payrollTotal: payrollData.totalAmount,
+      });
+    } catch (error: any) {
+      console.error("Muhasebe İK dashboard error:", error);
+      res.json({
+        focusBranches: [],
+        totalFocusEmployees: 0,
+        totalAllEmployees: 0,
+        pendingLeaves: 0,
+        focusPendingLeaves: 0,
+        pendingOvertimes: 0,
+        payrollCount: 0,
+        payrollTotal: 0,
+      });
+    }
+  });
+
   // HQ Dashboard - IK
   app.get("/api/hq-dashboard/ik", isAuthenticated, async (req: any, res) => {
     try {

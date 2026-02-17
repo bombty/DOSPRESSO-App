@@ -124,6 +124,7 @@ const NAV_ITEM_CONFIG: Record<string, { icon: any; label: string; getPath: (user
         case 'coach': return "/crm/coach-branches";
         case 'satinalma': return "/crm/tedarikciler";
         case 'muhasebe': return "/crm/cari-takip";
+        case 'muhasebe_ik': return "/crm/cari-takip";
         case 'teknik':
         case 'ekipman_teknik': return "/crm/teknik-ariza";
         case 'trainer': return "/crm/dashboard";

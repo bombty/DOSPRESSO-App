@@ -185,7 +185,7 @@ function PhaseSwimlanesPreview({ phases }: { phases: ProjectPhase[] }) {
 }
 
 // Roles that can see budget information
-const BUDGET_VISIBLE_ROLES = ["admin", "muhasebe", "genel_mudur"];
+const BUDGET_VISIBLE_ROLES = ["admin", "muhasebe", "muhasebe_ik", "genel_mudur"];
 
 export default function Projeler() {
   const [, navigate] = useLocation();

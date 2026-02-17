@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useRoute, useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
+import { MuhasebeIKDashboard } from "@/components/dashboards/muhasebe-ik-dashboard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -1542,7 +1543,7 @@ export default function HQDashboard() {
     'fabrika': FabrikaDashboard,
     'fabrika_mudur': FabrikaDashboard,
     'muhasebe': IKDashboard,
-    'muhasebe_ik': IKDashboard,
+    'muhasebe_ik': MuhasebeIKDashboard,
     'coach': CoachDashboard,
     'marketing': MarketingDashboard,
     'trainer': TrainerDashboard,
