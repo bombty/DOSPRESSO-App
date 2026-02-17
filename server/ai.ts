@@ -1206,7 +1206,7 @@ PERSONEL LISTESI (${employees.length} kisi):
 ${employeeList}
 
 KESIN KURALLAR:
-1. FT personel = 6 gun calisir, 1 gun OFF. Her FT icin KESINLIKLE 6 vardiya olustur!
+1. FT personel = KESINLIKLE 6 gun calisir, 1 gun OFF. 6'DAN FAZLA OLAMAZ! Haftalik MAKSIMUM 45 saat (6 x 7.5 saat calısma). 45 saati ASLA gecme!
 2. PT personel = 3 gun calisir. Her PT icin KESINLIKLE 3 vardiya olustur!
 3. Toplam MINIMUM ${expectedShiftCount} vardiya olusturulmali!
 4. Ayni personel ayni gun 2 vardiyaya atanamaz.
@@ -1214,10 +1214,10 @@ KESIN KURALLAR:
 6. Vardiya tipleri: morning (${openingHours}-${String(midShiftH).padStart(2,'0')}:30), evening (${String(midShiftH).padStart(2,'0')}:00-${closingHours})
 7. Her gun sabah 2-3 kisi, aksam 3-4 kisi olmali.
 8. Molalar kademeli: 15dk arayla (ornek: 12:00, 12:15, 12:30).
-9. OFF gunleri Pzt/Sal'a yogunlastir (zayif gunler).
+9. OFF gunleri SADECE Pazartesi veya Sali olabilir. Cumartesi ve Pazar KESINLIKLE OFF OLAMAZ! Herkes Cumartesi ve Pazar calisir!
 10. Her vardiyada en az 1 deneyimli personel (barista/supervisor).
 11. Stajyer tek basina calisamaz.
-12. Hafta sonu (Cmt/Paz) adil dagilim.
+12. CUMARTESI VE PAZAR ZORUNLU CALISMA GUNLERIDIR. Hic kimseye Cmt veya Paz gun OFF verme! OFF sadece Pzt veya Sal gunleri verilebilir!
 
 ORNEK CIKTI (${ftEmployees.length} FT, ${ptEmployees.length} PT):
 Her FT personel icin 6 farkli gune, her PT icin 3 farkli gune vardiya ata.

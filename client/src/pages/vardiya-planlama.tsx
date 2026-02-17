@@ -1914,7 +1914,7 @@ function AIPlanModal({ open, onClose, weekStart, employees, branchId, existingSh
             AI Haftalık Plan
           </DialogTitle>
           <DialogDescription>
-            Tüm personeli haftaya otomatik olarak dağıt (maks. 5 gün/kişi)
+            Tüm personeli haftaya otomatik olarak dağıt (FT: 6 gün, PT: 3 gün)
           </DialogDescription>
         </DialogHeader>
 

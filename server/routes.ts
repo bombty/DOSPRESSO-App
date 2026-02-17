@@ -529,6 +529,14 @@ async function checkProjectAccessByPhaseId(user: any, phaseId: number): Promise<
   return { allowed: false, error: "Bu işlem için yetkiniz yok" };
 }
 
+const normalizeTimeGlobal = (timeStr: string): string => {
+  if (!timeStr) return '08:00';
+  const parts = timeStr.split(':');
+  const hh = String(parts[0] || '0').padStart(2, '0');
+  const mm = String(parts[1] || '0').padStart(2, '0');
+  return `${hh}:${mm}`;
+};
+
 export async function registerRoutes(app: Express): Promise<Server> {
 
 // Rate limiting for kiosk login attempts
@@ -17492,6 +17500,22 @@ Cevaplarınız kısa, faydalı ve türkçe olmalıdır.`;
       
       for (const shiftData of shiftsData) {
         const { employeeName, slotName, fairnessScore, ...cleanShiftData } = shiftData as any;
+        if (cleanShiftData.startTime) cleanShiftData.startTime = normalizeTimeGlobal(cleanShiftData.startTime);
+        if (cleanShiftData.endTime) cleanShiftData.endTime = normalizeTimeGlobal(cleanShiftData.endTime);
+        if (cleanShiftData.breakStartTime) cleanShiftData.breakStartTime = normalizeTimeGlobal(cleanShiftData.breakStartTime);
+        if (cleanShiftData.breakEndTime) cleanShiftData.breakEndTime = normalizeTimeGlobal(cleanShiftData.breakEndTime);
+        
+        // Validate time format before DB insert
+        const timeRegex = /^\d{2}:\d{2}$/;
+        if (cleanShiftData.startTime && !timeRegex.test(cleanShiftData.startTime)) {
+          console.error(`Invalid startTime format: ${cleanShiftData.startTime}, normalizing`);
+          cleanShiftData.startTime = normalizeTimeGlobal(cleanShiftData.startTime);
+        }
+        if (cleanShiftData.endTime && !timeRegex.test(cleanShiftData.endTime)) {
+          console.error(`Invalid endTime format: ${cleanShiftData.endTime}, normalizing`);
+          cleanShiftData.endTime = normalizeTimeGlobal(cleanShiftData.endTime);
+        }
+        
         const normalizedType = ['morning', 'evening', 'night'].includes(cleanShiftData.shiftType || '') 
           ? cleanShiftData.shiftType 
           : 'morning';
@@ -18117,6 +18141,14 @@ Cevaplarınız kısa, faydalı ve türkçe olmalıdır.`;
         }
       });
 
+      const normalizeTime = (timeStr: string): string => {
+        if (!timeStr) return '08:00';
+        const parts = timeStr.split(':');
+        const hh = String(parts[0] || '0').padStart(2, '0');
+        const mm = String(parts[1] || '0').padStart(2, '0');
+        return `${hh}:${mm}`;
+      };
+
       // Validate and sanitize AI response - ensure valid employee IDs with fallback
       const validEmployeeIds = new Set(employees.map(e => String(e.id)));
       const employeeIdArray = employees.map(e => String(e.id));
@@ -18176,10 +18208,10 @@ Cevaplarınız kısa, faydalı ve türkçe olmalıdır.`;
             assignedToId: String(shift.assignedToId),
             shiftType,
             status: 'draft',
-            startTime: shift.startTime || (shiftType === 'morning' ? '07:00:00' : shiftType === 'evening' ? '15:00:00' : '23:00:00'),
-            endTime: shift.endTime || (shiftType === 'morning' ? '15:00:00' : shiftType === 'evening' ? '23:00:00' : '07:00:00'),
-            breakStartTime: shift.breakStartTime || (shiftType === 'morning' ? '11:00:00' : '19:00:00'),
-            breakEndTime: shift.breakEndTime || (shiftType === 'morning' ? '12:00:00' : '20:00:00'),
+            startTime: normalizeTime(shift.startTime || (shiftType === 'morning' ? '07:00' : shiftType === 'evening' ? '15:00' : '23:00')),
+            endTime: normalizeTime(shift.endTime || (shiftType === 'morning' ? '15:00' : shiftType === 'evening' ? '23:00' : '07:00')),
+            breakStartTime: normalizeTime(shift.breakStartTime || (shiftType === 'morning' ? '11:00' : '19:00')),
+            breakEndTime: normalizeTime(shift.breakEndTime || (shiftType === 'morning' ? '12:00' : '20:00')),
           };
         });
 
@@ -18202,8 +18234,31 @@ Cevaplarınız kısa, faydalı ve türkçe olmalıdır.`;
         const employeeId = String(emp.id);
         const currentCount = validatedShifts.filter(s => s.assignedToId === employeeId).length;
         const targetDays = emp.employmentType === 'parttime' ? 3 : 6;
-        const missingDays = targetDays - currentCount;
 
+        if (currentCount > targetDays) {
+          console.log(`Trimming: ${emp.name} ${currentCount}/${targetDays} gun, ${currentCount - targetDays} siliniyor`);
+          let removedCount = 0;
+          for (let i = validatedShifts.length - 1; i >= 0 && removedCount < (currentCount - targetDays); i--) {
+            if (validatedShifts[i].assignedToId === employeeId) {
+              const dayOfWeek = new Date(validatedShifts[i].shiftDate).getDay();
+              if (dayOfWeek === 1 || dayOfWeek === 2) {
+                validatedShifts.splice(i, 1);
+                removedCount++;
+              }
+            }
+          }
+          for (let i = validatedShifts.length - 1; i >= 0 && removedCount < (currentCount - targetDays); i--) {
+            if (validatedShifts[i].assignedToId === employeeId) {
+              const dayOfWeek = new Date(validatedShifts[i].shiftDate).getDay();
+              if (dayOfWeek !== 0 && dayOfWeek !== 6) {
+                validatedShifts.splice(i, 1);
+                removedCount++;
+              }
+            }
+          }
+        }
+
+        const missingDays = targetDays - validatedShifts.filter(s => s.assignedToId === employeeId).length;
         if (missingDays <= 0) continue;
 
         console.log(`Filler: ${emp.name} ${currentCount}/${targetDays} gun, ${missingDays} ekleniyor`);
@@ -18228,19 +18283,19 @@ Cevaplarınız kısa, faydalı ve türkçe olmalıdır.`;
 
           let sTime: string, eTime: string, bStart: string, bEnd: string;
           if (shiftType === 'morning') {
-            sTime = `${bOpen}:00`;
+            sTime = normalizeTime(bOpen);
             const endH = bOpenHr + (isFT ? 8 : 4);
-            eTime = `${String(endH).padStart(2,'0')}:${isFT ? '30' : '00'}:00`;
+            eTime = `${String(endH).padStart(2,'0')}:${isFT ? '30' : '00'}`;
             const breakH = bOpenHr + 4;
-            bStart = `${String(breakH).padStart(2,'0')}:${String(Math.min(mCount * 15, 45)).padStart(2,'0')}:00`;
-            bEnd = `${String(breakH + 1).padStart(2,'0')}:${String(Math.min(mCount * 15, 45)).padStart(2,'0')}:00`;
+            bStart = `${String(breakH).padStart(2,'0')}:${String(Math.min(mCount * 15, 45)).padStart(2,'0')}`;
+            bEnd = `${String(breakH + 1).padStart(2,'0')}:${String(Math.min(mCount * 15, 45)).padStart(2,'0')}`;
           } else {
-            sTime = `${String(bMidHr).padStart(2,'0')}:00:00`;
+            sTime = `${String(bMidHr).padStart(2,'0')}:00`;
             const endH = Math.min(bMidHr + (isFT ? 8 : 4), bCloseHr);
-            eTime = `${String(endH).padStart(2,'0')}:${isFT ? '30' : '00'}:00`;
+            eTime = `${String(endH).padStart(2,'0')}:${isFT ? '30' : '00'}`;
             const breakH = bMidHr + 4;
-            bStart = `${String(breakH).padStart(2,'0')}:${String(Math.min(eCount * 15, 45)).padStart(2,'0')}:00`;
-            bEnd = `${String(breakH + 1).padStart(2,'0')}:${String(Math.min(eCount * 15, 45)).padStart(2,'0')}:00`;
+            bStart = `${String(breakH).padStart(2,'0')}:${String(Math.min(eCount * 15, 45)).padStart(2,'0')}`;
+            bEnd = `${String(breakH + 1).padStart(2,'0')}:${String(Math.min(eCount * 15, 45)).padStart(2,'0')}`;
           }
 
           validatedShifts.push({
@@ -18253,6 +18308,128 @@ Cevaplarınız kısa, faydalı ve türkçe olmalıdır.`;
             breakStartTime: bStart,
             breakEndTime: bEnd,
           });
+        }
+      }
+
+      const saturdayDate = weekDates.find(d => new Date(d).getDay() === 6);
+      const sundayDate = weekDates.find(d => new Date(d).getDay() === 0);
+
+      for (const emp of employees) {
+        const employeeId = String(emp.id);
+        const empShifts = validatedShifts.filter(s => s.assignedToId === employeeId);
+
+        if (saturdayDate && !empShifts.some(s => s.shiftDate === saturdayDate)) {
+          const isFT = emp.employmentType !== 'parttime';
+          const targetDays = isFT ? 6 : 3;
+
+          if (empShifts.length >= targetDays) {
+            for (let i = validatedShifts.length - 1; i >= 0; i--) {
+              if (validatedShifts[i].assignedToId === employeeId) {
+                const dow = new Date(validatedShifts[i].shiftDate).getDay();
+                if (dow === 1 || dow === 2) {
+                  console.log(`Weekend swap: ${emp.name} removing ${validatedShifts[i].shiftDate} (${dow === 1 ? 'Mon' : 'Tue'}) for Saturday`);
+                  validatedShifts.splice(i, 1);
+                  break;
+                }
+              }
+            }
+          }
+
+          // Before adding Saturday shift, check for duplicates
+          const alreadyHasShift = validatedShifts.some(s => s.assignedToId === employeeId && s.shiftDate === saturdayDate);
+          if (!alreadyHasShift) {
+            const mCount = validatedShifts.filter(s => s.shiftDate === saturdayDate && s.shiftType === 'morning').length;
+            const eCount = validatedShifts.filter(s => s.shiftDate === saturdayDate && s.shiftType === 'evening').length;
+            const shiftType = mCount <= eCount ? 'morning' : 'evening';
+
+            validatedShifts.push({
+              shiftDate: saturdayDate,
+              assignedToId: employeeId,
+              shiftType,
+              status: 'draft',
+              startTime: normalizeTime(shiftType === 'morning' ? bOpen : `${String(bMidHr).padStart(2,'0')}:00`),
+              endTime: normalizeTime(shiftType === 'morning' ? `${String(bOpenHr + (isFT ? 8 : 4)).padStart(2,'0')}:${isFT ? '30' : '00'}` : `${String(Math.min(bMidHr + (isFT ? 8 : 4), bCloseHr)).padStart(2,'0')}:${isFT ? '30' : '00'}`),
+              breakStartTime: normalizeTime(`${String((shiftType === 'morning' ? bOpenHr : bMidHr) + 4).padStart(2,'0')}:00`),
+              breakEndTime: normalizeTime(`${String((shiftType === 'morning' ? bOpenHr : bMidHr) + 5).padStart(2,'0')}:00`),
+            });
+          }
+        }
+
+        if (sundayDate && !empShifts.some(s => s.shiftDate === sundayDate)) {
+          const isFT = emp.employmentType !== 'parttime';
+          const targetDays = isFT ? 6 : 3;
+          const currentEmpShifts = validatedShifts.filter(s => s.assignedToId === employeeId);
+
+          if (currentEmpShifts.length >= targetDays) {
+            for (let i = validatedShifts.length - 1; i >= 0; i--) {
+              if (validatedShifts[i].assignedToId === employeeId) {
+                const dow = new Date(validatedShifts[i].shiftDate).getDay();
+                if (dow === 1 || dow === 2) {
+                  console.log(`Weekend swap: ${emp.name} removing ${validatedShifts[i].shiftDate} for Sunday`);
+                  validatedShifts.splice(i, 1);
+                  break;
+                }
+              }
+            }
+          }
+
+          // Before adding Sunday shift, check for duplicates
+          const alreadyHasShift = validatedShifts.some(s => s.assignedToId === employeeId && s.shiftDate === sundayDate);
+          if (!alreadyHasShift) {
+            const mCount = validatedShifts.filter(s => s.shiftDate === sundayDate && s.shiftType === 'morning').length;
+            const eCount = validatedShifts.filter(s => s.shiftDate === sundayDate && s.shiftType === 'evening').length;
+            const shiftType = mCount <= eCount ? 'morning' : 'evening';
+
+            validatedShifts.push({
+              shiftDate: sundayDate,
+              assignedToId: employeeId,
+              shiftType,
+              status: 'draft',
+              startTime: normalizeTime(shiftType === 'morning' ? bOpen : `${String(bMidHr).padStart(2,'0')}:00`),
+              endTime: normalizeTime(shiftType === 'morning' ? `${String(bOpenHr + (isFT ? 8 : 4)).padStart(2,'0')}:${isFT ? '30' : '00'}` : `${String(Math.min(bMidHr + (isFT ? 8 : 4), bCloseHr)).padStart(2,'0')}:${isFT ? '30' : '00'}`),
+              breakStartTime: normalizeTime(`${String((shiftType === 'morning' ? bOpenHr : bMidHr) + 4).padStart(2,'0')}:00`),
+              breakEndTime: normalizeTime(`${String((shiftType === 'morning' ? bOpenHr : bMidHr) + 5).padStart(2,'0')}:00`),
+            });
+          }
+        }
+      }
+
+      // FINAL VALIDATION PASS: Ensure no employee exceeds target days
+      for (const emp of employees) {
+        const employeeId = String(emp.id);
+        const targetDays = emp.employmentType === 'parttime' ? 3 : 6;
+        const empShiftCount = validatedShifts.filter(s => s.assignedToId === employeeId).length;
+        
+        if (empShiftCount > targetDays) {
+          console.log(`Final trim: ${emp.name} has ${empShiftCount}/${targetDays} shifts, removing ${empShiftCount - targetDays}`);
+          let toRemove = empShiftCount - targetDays;
+          // Remove from Mon/Tue first, then Wed/Thu, never remove Fri/Sat/Sun
+          const dayPriority = [1, 2, 3, 4]; // Mon, Tue, Wed, Thu
+          for (const dayTarget of dayPriority) {
+            if (toRemove <= 0) break;
+            for (let i = validatedShifts.length - 1; i >= 0; i--) {
+              if (toRemove <= 0) break;
+              if (validatedShifts[i].assignedToId === employeeId) {
+                const dow = new Date(validatedShifts[i].shiftDate).getDay();
+                if (dow === dayTarget) {
+                  validatedShifts.splice(i, 1);
+                  toRemove--;
+                }
+              }
+            }
+          }
+        }
+      }
+
+      // Remove any remaining duplicates (same employee, same date)
+      const seenShifts = new Set<string>();
+      for (let i = validatedShifts.length - 1; i >= 0; i--) {
+        const key = `${validatedShifts[i].assignedToId}_${validatedShifts[i].shiftDate}`;
+        if (seenShifts.has(key)) {
+          console.log(`Removing duplicate: ${key}`);
+          validatedShifts.splice(i, 1);
+        } else {
+          seenShifts.add(key);
         }
       }
 
