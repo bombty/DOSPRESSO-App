@@ -687,6 +687,7 @@ export default function MalKabul() {
                                   {availableProducts.map(product => (
                                     <SelectItem key={product.id} value={product.id.toString()}>
                                       {product.name} ({product.code})
+                                      {product.category === "arge" && <Badge variant="outline" className="ml-1 text-xs">AR-GE</Badge>}
                                     </SelectItem>
                                   ))}
                                 </SelectContent>

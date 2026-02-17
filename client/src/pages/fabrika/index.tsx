@@ -14,7 +14,8 @@ import {
   ClipboardList,
   Factory,
   Calculator,
-  Clock
+  Clock,
+  Package
 } from "lucide-react";
 
 const FabrikaKaliteKontrol = lazy(() => import("./kalite-kontrol"));
@@ -25,6 +26,7 @@ const FabrikaUretimPlanlama = lazy(() => import("./uretim-planlama"));
 const FabrikaMaliyetYonetimi = lazy(() => import("./maliyet-yonetimi"));
 const FabrikaVardiyaPlanlama = lazy(() => import("./vardiya-planlama"));
 const FabrikaStokSayim = lazy(() => import("./stok-sayim"));
+const FabrikaSiparisHazirlama = lazy(() => import("./siparis-hazirlama"));
 
 interface TabConfig {
   id: string;
@@ -104,6 +106,14 @@ const FABRIKA_TABS: TabConfig[] = [
     permissionModule: "factory_stations",
     restrictedToRoles: ['admin', 'fabrika_mudur'],
     component: FabrikaStokSayim
+  },
+  {
+    id: "siparis-hazirlama",
+    label: "Order Preparation",
+    labelTr: "Siparis Hazirlama",
+    icon: <Package className="h-4 w-4" />,
+    permissionModule: "factory_stations",
+    component: FabrikaSiparisHazirlama
   }
 ];
 

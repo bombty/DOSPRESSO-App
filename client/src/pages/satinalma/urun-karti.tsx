@@ -41,6 +41,7 @@ import {
   ShoppingCart,
   MapPin,
   Edit,
+  QrCode,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
@@ -211,6 +212,7 @@ export default function UrunKarti({ productId, onBack }: UrunKartiProps) {
   const [isAddSupplierOpen, setIsAddSupplierOpen] = useState(false);
   const [isAddQuoteOpen, setIsAddQuoteOpen] = useState(false);
   const [isReportIssueOpen, setIsReportIssueOpen] = useState(false);
+  const [showQrCode, setShowQrCode] = useState(false);
 
   const [newSupplierForm, setNewSupplierForm] = useState({
     supplierId: "",
@@ -489,6 +491,30 @@ export default function UrunKarti({ productId, onBack }: UrunKartiProps) {
                 >
                   {stockLabel}
                 </Badge>
+              </div>
+              <div className="relative">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setShowQrCode(!showQrCode)}
+                  data-testid="button-toggle-qr"
+                >
+                  <QrCode className="h-4 w-4" />
+                </Button>
+                {showQrCode && (
+                  <Card className="absolute right-0 top-full mt-2 z-50 w-[240px] shadow-lg">
+                    <CardContent className="p-3 flex flex-col items-center gap-2">
+                      <p className="text-sm font-medium text-center">{product.name}</p>
+                      <img
+                        src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(`${window.location.origin}/urun-karti/${productId}`)}`}
+                        alt="QR Kod"
+                        className="w-[180px] h-[180px] rounded"
+                        data-testid="img-product-qr"
+                      />
+                      <p className="text-xs text-muted-foreground">/urun-karti/{productId}</p>
+                    </CardContent>
+                  </Card>
+                )}
               </div>
               <Button variant="outline" data-testid="button-edit-product">
                 <Edit className="h-4 w-4 mr-2" />

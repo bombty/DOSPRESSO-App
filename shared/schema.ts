@@ -10839,7 +10839,7 @@ export type InventoryUnit = typeof inventoryUnitEnum[number];
 export const inventoryCategoryEnum = [
   "hammadde", "ambalaj", "ekipman", "sube_ekipman",
   "sube_malzeme", "konsantre", "donut", "tatli", "tuzlu",
-  "cay_grubu", "kahve", "toz_topping", "yarimamul", "mamul", "sarf_malzeme", "temizlik", "diger"
+  "cay_grubu", "kahve", "toz_topping", "yarimamul", "mamul", "sarf_malzeme", "temizlik", "diger", "arge"
 ] as const;
 export type InventoryCategory = typeof inventoryCategoryEnum[number];
 
@@ -12091,6 +12091,10 @@ export const stockCounts = pgTable("stock_counts", {
   status: varchar("status", { length: 20 }).notNull().default("in_progress"),
   startedBy: varchar("started_by", { length: 255 }).notNull(),
   approvedBy: varchar("approved_by", { length: 255 }),
+  assignedTo: varchar("assigned_to", { length: 255 }),
+  requestedBy: varchar("requested_by", { length: 255 }),
+  requestedCategory: varchar("requested_category", { length: 50 }),
+  scope: varchar("scope", { length: 30 }).notNull().default("full"),
   startedAt: timestamp("started_at").defaultNow(),
   completedAt: timestamp("completed_at"),
   notes: text("notes"),
@@ -12099,6 +12103,10 @@ export const stockCounts = pgTable("stock_counts", {
   index("sc_status_idx").on(table.status),
   index("sc_type_idx").on(table.countType),
 ]);
+
+export const insertStockCountSchema = createInsertSchema(stockCounts).omit({ id: true, createdAt: true });
+export type InsertStockCount = z.infer<typeof insertStockCountSchema>;
+export type StockCount = typeof stockCounts.$inferSelect;
 
 // ========================================
 // EVENT-TRIGGERED DYNAMIC TASKS
@@ -12182,6 +12190,10 @@ export const stockCountItems = pgTable("stock_count_items", {
 }, (table) => [
   index("sci_count_idx").on(table.stockCountId),
 ]);
+
+export const insertStockCountItemSchema = createInsertSchema(stockCountItems).omit({ id: true });
+export type InsertStockCountItem = z.infer<typeof insertStockCountItemSchema>;
+export type StockCountItem = typeof stockCountItems.$inferSelect;
 
 // ========================================
 // DASHBOARD WIDGET CONFIGURATION

@@ -123,17 +123,35 @@ export default function QRScanner() {
                   variant: "destructive",
                 });
               }
+            } else if (pathname.startsWith('/urun-karti/') || pathname.startsWith('/product/')) {
+              const inventoryId = pathname.split(/\/urun-karti\/|\/product\//)[1];
+              if (inventoryId && !isNaN(parseInt(inventoryId))) {
+                setLastQRType('inventory');
+                toast({
+                  title: "Başarılı",
+                  description: "Ürün kartı açılıyor...",
+                });
+                html5QrCode.stop().then(() => {
+                  setLocation(`/satinalma?tab=urun-karti&itemId=${inventoryId}`);
+                }).catch((err) => {
+                });
+              } else {
+                toast({
+                  title: "Hata",
+                  description: "Geçersiz ürün kartı QR kodu",
+                  variant: "destructive",
+                });
+              }
             } else if (pathname.startsWith('/inventory/')) {
-              // Inventory/stock count QR
-              const locationId = pathname.split('/inventory/')[1];
-              if (locationId) {
+              const inventoryId = pathname.split('/inventory/')[1];
+              if (inventoryId) {
                 setLastQRType('inventory');
                 toast({
                   title: "Başarılı",
                   description: "Envanter sayfasına yönlendiriliyorsunuz...",
                 });
                 html5QrCode.stop().then(() => {
-                  setLocation(`/checklistler?type=inventory&locationId=${locationId}`);
+                  setLocation(`/satinalma?tab=urun-karti&itemId=${inventoryId}`);
                 }).catch((err) => {
                 });
               } else {
