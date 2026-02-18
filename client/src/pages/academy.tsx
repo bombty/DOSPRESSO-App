@@ -480,8 +480,8 @@ export default function Academy() {
             <div className="grid grid-cols-1 gap-2">
               <HubCard
                 icon={Target}
-                title="Kariyer Yolculu\u011fum"
-                description={currentLevel ? `Mevcut: ${currentLevel.titleTr}` : "Kariyer yolculu\u011funa ba\u015fla"}
+                title="Kariyer Yolculuğum"
+                description={currentLevel ? `Mevcut: ${currentLevel.titleTr}` : "Kariyer yolculuğuna başla"}
                 color="#1e3a5f"
                 onClick={() => setActiveView("career")}
                 badge={currentLevel?.levelNumber ? `Lvl ${currentLevel.levelNumber}` : undefined}
