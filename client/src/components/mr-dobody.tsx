@@ -19,15 +19,22 @@ export function MrDobody({ size = 80, className = "", message }: MrDobodyProps) 
           <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-card border-r border-b rotate-45" />
         </div>
       )}
-      <img 
-        src={`/mascot/dobody_${characterIndex}.png`}
-        alt="Mr. Dobody"
-        width={size}
-        height={size}
-        className="object-contain"
-        style={{ imageRendering: 'auto' }}
-        data-testid="img-dobody"
-      />
+      <div 
+        className="rounded-full overflow-hidden bg-background border-2 border-border flex items-center justify-center"
+        style={{ width: size, height: size }}
+      >
+        <img 
+          src={`/mascot/dobody_${characterIndex}.png`}
+          alt="Mr. Dobody"
+          className="object-cover scale-150"
+          style={{ 
+            width: size, 
+            height: size,
+            objectPosition: 'center 30%',
+          }}
+          data-testid="img-dobody"
+        />
+      </div>
     </div>
   );
 }

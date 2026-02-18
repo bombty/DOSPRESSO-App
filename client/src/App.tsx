@@ -399,7 +399,7 @@ function Router() {
           <Route path="/banner-editor">{() => <AdminOnly><BannerEditor /></AdminOnly>}</Route>
           <Route path="/crm/*?" component={CRMMegaModule} />
           <Route path="/admin/*?" component={AdminMegaModule} />
-          <Route path="/ceo-command-center">{() => <CEOOnly><CEOCommandCenter /></CEOOnly>}</Route>
+          <Route path="/ceo-command-center">{() => <HQOnly><CEOCommandCenter /></HQOnly>}</Route>
           <Route path="/cgo-command-center">{() => <ExecutiveOnly><CGOCommandCenter /></ExecutiveOnly>}</Route>
           <Route path="/hq-dashboard/:department?">{() => <HQOnly><HQDashboard /></HQOnly>}</Route>
           <Route path="/kalite-kontrol-dashboard">{() => <HQOnly><KaliteKontrolDashboard /></HQOnly>}</Route>
