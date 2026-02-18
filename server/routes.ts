@@ -40823,6 +40823,8 @@ AI analizi su an kullanilamiyor. Detayli bilgi icin ilgili modulleri kontrol edi
   registerFactoryShiftRoutes(app);
   registerExportRoutes(app);
   registerInspectionRoutes(app);
+  registerHQDashboardRoutes(app, isAuthenticated);
+  registerCRMRoutes(app, isAuthenticated);
 
   // ========================================
   // MANAGER PERFORMANCE - Yonetici Performans API

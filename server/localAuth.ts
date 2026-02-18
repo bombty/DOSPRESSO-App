@@ -24,20 +24,17 @@ export function getSession() {
     ttl: sessionTtl,
     tableName: "sessions",
   });
-  // Replit App compatibility - auto-detect secure based on environment
-  const isProduction = process.env.NODE_ENV === 'production' || !!process.env.REPLIT;
-  
   return session({
     secret: process.env.SESSION_SECRET!,
     store: sessionStore,
     resave: false,
     saveUninitialized: false,
     name: 'connect.sid',
-    proxy: true, // Trust first proxy (Replit)
+    proxy: true,
     cookie: {
-      httpOnly: true, // Security: prevent XSS access
-      secure: 'auto', // Auto-detect HTTPS
-      sameSite: 'lax', // Allow same-site navigation
+      httpOnly: true,
+      secure: false,
+      sameSite: 'lax',
       maxAge: sessionTtl,
       path: '/',
     },
