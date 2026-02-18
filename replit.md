@@ -77,6 +77,17 @@ The frontend utilizes React 18+ with TypeScript and Vite, employing Shadcn/ui (N
 - **Branch Health Score Dashboard**: Aggregated branch health visualization combining inspection scores, product complaint stats, and category averages. Includes AI-powered summary generation per branch using OpenAI.
 - **Role Separation**: Coach handles branch inspections + guest QR ratings, Trainer handles recipes + training, Kalite Kontrol handles factory product QC + product complaints from branches.
 
+## Performance Optimization
+### P0 Index Pack (Applied 2026-02-18)
+17 composite indexes covering the top 25 highest-traffic query patterns across 12 tables. Script: `scripts/p0_indexes.sql`. Key indexes:
+- `users(branch_id, is_active)` — 92 query refs
+- `tasks(assigned_to_id, status, created_at DESC)` — "my tasks" pattern
+- `tasks(branch_id, status, created_at DESC)` — branch task listing
+- `checklist_completions(branch_id, scheduled_date DESC)` — daily checklist
+- `shifts(assigned_to_id, shift_date DESC)` — shift history
+- `leave_requests(user_id, status)` — active leave checks
+- notifications table intentionally excluded (already indexed, 1.4M+ writes)
+
 ## External Dependencies
 ### Third-Party Services
 - **OpenAI API**: Used for AI-powered vision analysis, chat completions, embeddings, and summary generation.
