@@ -88,12 +88,39 @@ app.use((req, res, next) => {
   // this serves both the API and the client.
   // It is the only port that is not firewalled.
   const port = parseInt(process.env.PORT || '5000', 10);
-  server.listen({
-    port,
-    host: "0.0.0.0",
-    reusePort: true,
-  }, async () => {
-    log(`serving on port ${port}`);
+
+  const MAX_RETRIES = 5;
+  const RETRY_DELAY_MS = 1000;
+  let attempt = 0;
+  let listening = false;
+
+  function tryListen() {
+    attempt++;
+    const onError = (err: NodeJS.ErrnoException) => {
+      if (err.code === 'EADDRINUSE' && attempt < MAX_RETRIES) {
+        log(`⚠️  Port ${port} busy, retrying in ${RETRY_DELAY_MS}ms (attempt ${attempt}/${MAX_RETRIES})...`);
+        server.close(() => {
+          setTimeout(tryListen, RETRY_DELAY_MS);
+        });
+      } else {
+        console.error(`❌ Fatal: Cannot bind to port ${port} after ${attempt} attempts:`, err.message);
+        process.exit(1);
+      }
+    };
+    server.once('error', onError);
+    server.listen({
+      port,
+      host: "0.0.0.0",
+      reusePort: true,
+    }, () => {
+      listening = true;
+      server.removeListener('error', onError);
+      log(`serving on port ${port}`);
+      onServerReady();
+    });
+  }
+
+  async function onServerReady() {
     
     // Seed system roles (idempotent)
     await seedRoles().catch((error) => {
@@ -159,7 +186,9 @@ app.use((req, res, next) => {
     }).catch(err => {
       console.error('Health check hatası:', err);
     });
-  });
+  }
+
+  tryListen();
 })();
 
 // Self-healing function to ensure admin user is always approved and active
