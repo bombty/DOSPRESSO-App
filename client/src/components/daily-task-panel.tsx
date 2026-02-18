@@ -7,6 +7,10 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle
+} from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import {
   CheckCircle2, Circle, Clock, Calendar, CalendarDays,
@@ -153,6 +157,8 @@ function TaskDetailPanel({ steps, targetUrl, onNavigate }: { steps: DetailStep[]
 export function DailyTaskPanel() {
   const [frequency, setFrequency] = useState("daily");
   const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null);
+  const [confirmTask, setConfirmTask] = useState<{type: 'template' | 'event', task: any} | null>(null);
+  const [showCompleted, setShowCompleted] = useState(false);
   const [, navigate] = useLocation();
   const { toast } = useToast();
 
@@ -216,7 +222,11 @@ export function DailyTaskPanel() {
   const activeEventTasks = eventTasks.filter(t => !t.isCompleted);
   const completedEventTasks = eventTasks.filter(t => t.isCompleted);
 
-  const templateCompleted = tasks.filter(t => t.isCompleted).length;
+  const pendingTasks = tasks.filter(t => !t.isCompleted).sort((a, b) => a.priority - b.priority);
+  const completedTemplateTasks = tasks.filter(t => t.isCompleted);
+  const allCompletedTasks = [...completedTemplateTasks, ...completedEventTasks];
+
+  const templateCompleted = completedTemplateTasks.length;
   const allCompleted = templateCompleted + completedEventTasks.length;
   const allTotal = tasks.length + eventTasks.length;
   const progressPercent = allTotal > 0 ? Math.round((allCompleted / allTotal) * 100) : 0;
@@ -226,7 +236,7 @@ export function DailyTaskPanel() {
     if (task.isCompleted) {
       uncompleteMutation.mutate(task.id);
     } else {
-      completeMutation.mutate(task.id);
+      setConfirmTask({ type: 'template', task });
     }
   };
 
@@ -235,8 +245,18 @@ export function DailyTaskPanel() {
     if (task.isCompleted) {
       eventUncompleteMutation.mutate(task.id);
     } else {
-      eventCompleteMutation.mutate(task.id);
+      setConfirmTask({ type: 'event', task });
     }
+  };
+
+  const handleConfirmComplete = () => {
+    if (!confirmTask) return;
+    if (confirmTask.type === 'template') {
+      completeMutation.mutate(confirmTask.task.id);
+    } else {
+      eventCompleteMutation.mutate(confirmTask.task.id);
+    }
+    setConfirmTask(null);
   };
 
   const handleNavigate = (url: string | null) => {
@@ -420,7 +440,7 @@ export function DailyTaskPanel() {
               </>
             )}
 
-            {tasks.length > 0 && (
+            {pendingTasks.length > 0 && (
               <>
                 {activeEventTasks.length > 0 && (
                   <div className="flex items-center gap-1.5 pt-2 pb-1">
@@ -428,7 +448,7 @@ export function DailyTaskPanel() {
                     <span className="text-xs font-semibold text-muted-foreground">Rol Gorevleri</span>
                   </div>
                 )}
-                {tasks.map((task) => {
+                {pendingTasks.map((task) => {
                   const IconComponent = (task.icon && iconMap[task.icon]) ? iconMap[task.icon] : ListTodo;
                   const taskKey = `template-${task.id}`;
                   const isExpanded = expandedTaskId === taskKey;
@@ -438,11 +458,7 @@ export function DailyTaskPanel() {
                       key={taskKey}
                       data-testid={`task-item-${task.id}`}
                       className={`rounded-md transition-colors ${
-                        task.isCompleted
-                          ? "bg-green-50 dark:bg-green-950/20"
-                          : isExpanded
-                            ? "bg-muted/30"
-                            : "hover:bg-muted/50"
+                        isExpanded ? "bg-muted/30" : "hover:bg-muted/50"
                       }`}
                     >
                       <div
@@ -456,15 +472,11 @@ export function DailyTaskPanel() {
                           className="flex-shrink-0 focus:outline-none"
                           data-testid={`task-toggle-${task.id}`}
                         >
-                          {task.isCompleted ? (
-                            <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400" />
-                          ) : (
-                            <Circle className={`h-5 w-5 ${priorityColors[task.priority] || "text-muted-foreground"}`} />
-                          )}
+                          <Circle className={`h-5 w-5 ${priorityColors[task.priority] || "text-muted-foreground"}`} />
                         </button>
 
                         <div className="flex-1 min-w-0">
-                          <div className={`text-sm font-medium leading-tight ${task.isCompleted ? "line-through text-muted-foreground" : ""}`}>
+                          <div className="text-sm font-medium leading-tight">
                             {task.title}
                           </div>
                           {task.description && !isExpanded && (
@@ -521,31 +533,48 @@ export function DailyTaskPanel() {
               </>
             )}
 
-            {completedEventTasks.length > 0 && (
+            {allCompletedTasks.length > 0 && (
               <>
-                <div className="flex items-center gap-1.5 pt-2 pb-1">
+                <div
+                  className="flex items-center gap-1.5 pt-2 pb-1 cursor-pointer select-none"
+                  onClick={() => setShowCompleted(prev => !prev)}
+                  data-testid="toggle-completed-section"
+                >
                   <CheckCircle className="h-3.5 w-3.5 text-green-500" />
-                  <span className="text-xs font-semibold text-muted-foreground">Tamamlanan Sistem Gorevleri</span>
+                  <span className="text-xs font-semibold text-muted-foreground">Tamamlanan Gorevler</span>
                   <Badge variant="secondary" className="text-[10px] px-1 py-0">
-                    {completedEventTasks.length}
+                    {allCompletedTasks.length}
                   </Badge>
+                  {showCompleted ? (
+                    <ChevronDown className="h-3.5 w-3.5 text-muted-foreground ml-auto" />
+                  ) : (
+                    <ChevronRight className="h-3.5 w-3.5 text-muted-foreground ml-auto" />
+                  )}
                 </div>
-                {completedEventTasks.slice(0, 3).map((task) => {
-                  const IconComponent = (task.icon && iconMap[task.icon]) ? iconMap[task.icon] : Zap;
+                {showCompleted && allCompletedTasks.map((task) => {
+                  const isEvent = 'sourceType' in task;
+                  const IconComponent = isEvent
+                    ? ((task as EventTask).icon && iconMap[(task as EventTask).icon!]) ? iconMap[(task as EventTask).icon!] : Zap
+                    : ((task as TaskItem).icon && iconMap[(task as TaskItem).icon!]) ? iconMap[(task as TaskItem).icon!] : ListTodo;
+                  const taskKey = isEvent ? `event-done-${task.id}` : `template-done-${task.id}`;
                   return (
                     <div
-                      key={`event-done-${task.id}`}
-                      data-testid={`event-task-done-${task.id}`}
+                      key={taskKey}
+                      data-testid={isEvent ? `event-task-done-${task.id}` : `task-item-done-${task.id}`}
                       className="flex items-center gap-2 p-2 rounded-md bg-green-50 dark:bg-green-950/20"
                     >
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          handleEventToggle(e, task);
+                          if (isEvent) {
+                            eventUncompleteMutation.mutate(task.id);
+                          } else {
+                            uncompleteMutation.mutate(task.id);
+                          }
                         }}
-                        disabled={eventUncompleteMutation.isPending}
+                        disabled={uncompleteMutation.isPending || eventUncompleteMutation.isPending}
                         className="flex-shrink-0 focus:outline-none"
-                        data-testid={`event-task-toggle-done-${task.id}`}
+                        data-testid={isEvent ? `event-task-toggle-done-${task.id}` : `task-toggle-done-${task.id}`}
                       >
                         <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400" />
                       </button>
@@ -554,10 +583,12 @@ export function DailyTaskPanel() {
                           {task.title}
                         </div>
                         <div className="flex items-center gap-1 mt-0.5 flex-wrap">
-                          <Badge variant="outline" className="text-[9px] px-1 py-0 text-muted-foreground">
-                            {sourceTypeLabels[task.sourceType] || task.sourceType}
-                          </Badge>
-                          {task.isAutoResolved && (
+                          {isEvent && (
+                            <Badge variant="outline" className="text-[9px] px-1 py-0 text-muted-foreground">
+                              {sourceTypeLabels[(task as EventTask).sourceType] || (task as EventTask).sourceType}
+                            </Badge>
+                          )}
+                          {isEvent && (task as EventTask).isAutoResolved && (
                             <span className="text-[9px] text-green-600 dark:text-green-400">Otomatik</span>
                           )}
                         </div>
@@ -566,18 +597,28 @@ export function DailyTaskPanel() {
                     </div>
                   );
                 })}
-                {completedEventTasks.length > 3 && (
-                  <div className="text-center">
-                    <span className="text-[10px] text-muted-foreground">
-                      +{completedEventTasks.length - 3} tamamlanan gorev daha
-                    </span>
-                  </div>
-                )}
               </>
             )}
           </div>
         )}
       </CardContent>
+
+      <AlertDialog open={!!confirmTask} onOpenChange={(open) => { if (!open) setConfirmTask(null); }}>
+        <AlertDialogContent data-testid="task-confirm-dialog">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Gorevi tamamladiniz mi?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {confirmTask?.task?.title}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="task-confirm-cancel">Iptal</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmComplete} data-testid="task-confirm-action">
+              Evet, Tamamlandi
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 }

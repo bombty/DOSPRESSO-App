@@ -2,10 +2,810 @@
 import { Express } from "express";
 import { storage } from "./storage";
 import { db } from "./db";
-import { branches, users, equipmentFaults, checklistCompletions, customerFeedback, leaveRequests, overtimeRequests, monthlyPayrolls } from "@shared/schema";
-import { eq, and, inArray, sql } from "drizzle-orm";
+import { branches, users, equipmentFaults, checklistCompletions, customerFeedback, leaveRequests, overtimeRequests, monthlyPayrolls, inventory, purchaseOrders, suppliers, productComplaints, productionBatches, equipment, auditInstances, tasks, guestComplaints, franchiseProjects, factoryProducts } from "@shared/schema";
+import { eq, and, inArray, sql, or } from "drizzle-orm";
+
+const HQ_ROLES_LIST = ['ceo', 'cgo', 'admin', 'satinalma', 'kalite_kontrol', 'muhasebe', 'muhasebe_ik', 'coach', 'trainer', 'teknik', 'fabrika', 'fabrika_mudur', 'fabrika_sorumlu', 'destek', 'operasyon', 'marketing', 'ik'];
+
+function buildFallbackCommandCenter(roleName: string) {
+  return {
+    urgentAlerts: [],
+    departments: [{
+      label: `${roleName} Genel Durum`,
+      source: roleName,
+      status: 'healthy' as const,
+      mainMetric: 'Veriler yukleniyor',
+      details: [],
+      alert: null,
+    }],
+    bottomManagers: [],
+    kpiSummary: undefined,
+    lastUpdated: new Date().toISOString(),
+  };
+}
 
 export function registerHQDashboardRoutes(app: Express, isAuthenticated: any) {
+
+  // ======= GENERALIZED HQ COMMAND CENTER =======
+  app.get("/api/hq/command-center", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      if (!HQ_ROLES_LIST.includes(user.role)) {
+        return res.status(403).json({ message: "Bu sayfaya erisim yetkiniz yok" });
+      }
+
+      const role = user.role;
+
+      if (['ceo', 'cgo', 'admin'].includes(role)) {
+        return await buildCeoCommandCenter(res);
+      }
+      if (role === 'satinalma') {
+        return await buildSatinalmaCommandCenter(res);
+      }
+      if (role === 'kalite_kontrol') {
+        return await buildKaliteKontrolCommandCenter(res);
+      }
+      if (['muhasebe', 'muhasebe_ik'].includes(role)) {
+        return await buildMuhasebeCommandCenter(res);
+      }
+      if (role === 'coach') {
+        return await buildCoachCommandCenter(res);
+      }
+      if (role === 'trainer') {
+        return await buildTrainerCommandCenter(res);
+      }
+      if (role === 'teknik') {
+        return await buildTeknikCommandCenter(res);
+      }
+      if (['fabrika', 'fabrika_mudur'].includes(role)) {
+        return await buildFabrikaCommandCenter(res);
+      }
+      if (role === 'destek') {
+        return await buildDestekCommandCenter(res);
+      }
+
+      return await buildGenericCommandCenter(res, role);
+    } catch (error: any) {
+      console.error("Error in HQ command center:", error);
+      res.status(500).json({ message: "Veriler alinamadi", error: error.message });
+    }
+  });
+
+  async function buildCeoCommandCenter(res: any) {
+    try {
+    const [
+      allBranches, allUsers, allFaults, allAudits, allEquipment,
+      allChecklistCompletions, allProductComplaints, allLeaveReqs, allProjects
+    ] = await Promise.all([
+      db.select().from(branches),
+      db.select().from(users),
+      db.select().from(equipmentFaults),
+      db.select().from(auditInstances),
+      db.select().from(equipment),
+      db.select().from(checklistCompletions),
+      db.select().from(productComplaints),
+      db.select().from(leaveRequests),
+      db.select().from(franchiseProjects)
+    ]);
+
+    const urgentAlerts: Array<{ type: string; severity: 'critical' | 'warning'; message: string; count?: number }> = [];
+    const openFaults = allFaults.filter((f: any) => f.status === 'open' || f.status === 'in_progress');
+    const criticalFaults = openFaults.filter((f: any) => f.priority === 'critical');
+    if (criticalFaults.length > 0) {
+      urgentAlerts.push({ type: 'fault', severity: 'critical', message: `${criticalFaults.length} kritik ariza cozum bekliyor`, count: criticalFaults.length });
+    }
+    const brokenEquipment = allEquipment.filter((e: any) => e.status === 'broken' || e.status === 'maintenance');
+    if (brokenEquipment.length > 0) {
+      urgentAlerts.push({ type: 'equipment', severity: brokenEquipment.filter((e: any) => e.status === 'broken').length > 0 ? 'critical' : 'warning', message: `${brokenEquipment.length} ekipman calismıyor veya bakimda`, count: brokenEquipment.length });
+    }
+    const pendingLeaves = allLeaveReqs.filter((l: any) => l.status === 'pending');
+    if (pendingLeaves.length >= 3) {
+      urgentAlerts.push({ type: 'leave', severity: 'warning', message: `${pendingLeaves.length} izin talebi onay bekliyor`, count: pendingLeaves.length });
+    }
+    const openComplaints = allProductComplaints.filter((c: any) => c.status === 'open' || c.status === 'investigating');
+    if (openComplaints.length > 0) {
+      urgentAlerts.push({ type: 'complaint', severity: openComplaints.some((c: any) => c.severity === 'critical') ? 'critical' : 'warning', message: `${openComplaints.length} urun sikayeti acik`, count: openComplaints.length });
+    }
+
+    const branchScores = allBranches.map(b => {
+      const branchFaults = allFaults.filter(f => f.branchId === b.id);
+      const openBF = branchFaults.filter((f: any) => f.status === 'open' || f.status === 'in_progress');
+      const completedAudits = allAudits.filter((a: any) => a.branchId === b.id && a.status === 'completed');
+      const faultPenalty = Math.min(openBF.length * 8, 40);
+      const auditBonus = completedAudits.length > 0 ? 10 : 0;
+      return { id: b.id, name: b.name, score: Math.max(30, 100 - faultPenalty + auditBonus), openFaults: openBF.length };
+    });
+    const avgBranchScore = branchScores.length > 0 ? Math.round(branchScores.reduce((s, b) => s + b.score, 0) / branchScores.length) : 0;
+    const healthyCount = branchScores.filter(b => b.score >= 80).length;
+    const warningCount = branchScores.filter(b => b.score >= 60 && b.score < 80).length;
+    const criticalCount = branchScores.filter(b => b.score < 60).length;
+    const worstBranches = [...branchScores].sort((a, b) => a.score - b.score).slice(0, 2);
+
+    const activeEmployees = allUsers.filter(u => u.isActive);
+
+    const cgoSummary = {
+      label: 'Sube Sagligi',
+      source: 'CGO',
+      status: avgBranchScore >= 80 ? 'healthy' as const : avgBranchScore >= 60 ? 'warning' as const : 'critical' as const,
+      mainMetric: `Ort. Skor: ${avgBranchScore}/100 (${allBranches.length} sube)`,
+      details: [
+        { key: 'Saglıklı', value: `${healthyCount} sube` },
+        { key: 'Uyarı', value: `${warningCount} sube` },
+        { key: 'Kritik', value: `${criticalCount} sube` },
+        { key: 'En Dusuk', value: worstBranches.map(b => `${b.name} (${b.score})`).join(', ') || 'N/A' }
+      ],
+      alert: criticalCount > 0 ? `${criticalCount} subede kritik durum!` : null
+    };
+
+    const muhasebeIkSummary = {
+      label: 'IK & Izin',
+      source: 'Muhasebe & IK',
+      status: pendingLeaves.length > 5 ? 'warning' as const : 'healthy' as const,
+      mainMetric: `${activeEmployees.length} aktif personel`,
+      details: [
+        { key: 'Bekleyen Izin', value: `${pendingLeaves.length}` },
+        { key: 'Aktif Personel', value: `${activeEmployees.length}` },
+      ],
+      alert: pendingLeaves.length > 5 ? `${pendingLeaves.length} izin talebi bekliyor` : null
+    };
+
+    const fabrikaSummary = {
+      label: 'Fabrika',
+      source: 'Fabrika Muduru',
+      status: 'healthy' as const,
+      mainMetric: `Ekipman durumu normal`,
+      details: [
+        { key: 'Toplam Ekipman', value: `${allEquipment.length}` },
+        { key: 'Arızalı', value: `${brokenEquipment.length}` },
+      ],
+      alert: brokenEquipment.length > 3 ? 'Birden fazla ekipman arızalı!' : null
+    };
+
+    const totalCompletions = allChecklistCompletions.length;
+    const completedCompletions = allChecklistCompletions.filter((c: any) => c.status === 'completed');
+    const checklistRate = totalCompletions > 0 ? Math.round((completedCompletions.length / totalCompletions) * 100) : 0;
+
+    const coachSummary = {
+      label: 'Sube Performans',
+      source: 'Coach',
+      status: checklistRate >= 80 ? 'healthy' as const : checklistRate >= 60 ? 'warning' as const : 'critical' as const,
+      mainMetric: `Checklist tamamlama: %${checklistRate}`,
+      details: [
+        { key: 'Toplam', value: `${totalCompletions}` },
+        { key: 'Tamamlanan', value: `${completedCompletions.length}` },
+      ],
+      alert: checklistRate < 60 ? 'Checklist tamamlama orani dusuk!' : null
+    };
+
+    const resolutionRate = openComplaints.length > 0 && allProductComplaints.length > 0
+      ? Math.round(((allProductComplaints.length - openComplaints.length) / allProductComplaints.length) * 100)
+      : 100;
+
+    const kaliteSummary = {
+      label: 'Kalite & Sikayet',
+      source: 'Kalite Kontrol',
+      status: openComplaints.length > 5 ? 'critical' as const : openComplaints.length > 0 ? 'warning' as const : 'healthy' as const,
+      mainMetric: `${openComplaints.length} acik sikayet`,
+      details: [
+        { key: 'Toplam Sikayet', value: `${allProductComplaints.length}` },
+        { key: 'Acik', value: `${openComplaints.length}` },
+        { key: 'Cozum Orani', value: `%${resolutionRate}` }
+      ],
+      alert: openComplaints.some((c: any) => c.severity === 'critical') ? 'Kritik oncelikli sikayet var!' : null
+    };
+
+    const egitimSummary = {
+      label: 'Egitim & Checklist',
+      source: 'Trainer',
+      status: checklistRate >= 80 ? 'healthy' as const : checklistRate >= 60 ? 'warning' as const : 'critical' as const,
+      mainMetric: `Checklist tamamlama: %${checklistRate}`,
+      details: [
+        { key: 'Toplam Gorev', value: `${totalCompletions}` },
+        { key: 'Tamamlanan', value: `${completedCompletions.length}` },
+        { key: 'Tamamlama Orani', value: `%${checklistRate}` }
+      ],
+      alert: checklistRate < 60 ? 'Checklist tamamlama orani cok dusuk!' : null
+    };
+
+    const runningEquipment = allEquipment.filter((e: any) => e.isActive);
+    const uptimeRate = allEquipment.length > 0 ? Math.round((runningEquipment.length / allEquipment.length) * 100) : 100;
+
+    const allTasks = await db.select().from(tasks);
+    const hqRoleSet = new Set(['muhasebe_ik', 'muhasebe', 'satinalma', 'coach', 'marketing', 'trainer', 'kalite_kontrol', 'fabrika_mudur', 'teknik', 'ik']);
+    const roleDeptMap: Record<string, string> = {
+      'muhasebe_ik': 'Muhasebe & IK', 'muhasebe': 'Muhasebe', 'satinalma': 'Satinalma',
+      'coach': 'Coach', 'marketing': 'Pazarlama', 'trainer': 'Egitim',
+      'kalite_kontrol': 'Kalite Kontrol', 'fabrika_mudur': 'Fabrika', 'teknik': 'Teknik', 'ik': 'IK'
+    };
+    const seenNames = new Set<string>();
+    const hqManagers = allUsers.filter(u => {
+      if (!hqRoleSet.has(u.role) || !u.isActive) return false;
+      const name = ((u.firstName || '') + ' ' + (u.lastName || '')).trim();
+      if (!name || seenNames.has(name.toLowerCase())) return false;
+      seenNames.add(name.toLowerCase());
+      if (u.username && /^(test|e2e|api[-_])/i.test(u.username)) return false;
+      if (/^(Test |E2E |API |Admin )/i.test(name)) return false;
+      return true;
+    });
+    const managersWithScores = hqManagers.map(m => {
+      const userFaults = allFaults.filter((f: any) => f.assignedToId === m.id);
+      const resolvedFaults = userFaults.filter((f: any) => f.status === 'resolved' || f.status === 'closed');
+      const faultRate = userFaults.length > 0 ? Math.round((resolvedFaults.length / userFaults.length) * 100) : 80;
+      const userTasks = allTasks.filter((t: any) => t.assignedToId === m.id);
+      const completedUserTasks = userTasks.filter((t: any) => t.status === 'onaylandi' || t.status === 'completed');
+      const taskRate = userTasks.length > 0 ? Math.round((completedUserTasks.length / userTasks.length) * 100) : 80;
+      const score = Math.round((faultRate * 0.5 + taskRate * 0.5));
+      return { id: m.id, name: ((m.firstName || '') + ' ' + (m.lastName || '')).trim(), department: roleDeptMap[m.role] || m.role, score };
+    }).sort((a, b) => a.score - b.score);
+    const bottomManagers = managersWithScores.slice(0, 3);
+
+    res.json({
+      urgentAlerts,
+      departments: [cgoSummary, muhasebeIkSummary, fabrikaSummary, coachSummary, kaliteSummary, egitimSummary],
+      bottomManagers,
+      kpiSummary: {
+        totalBranches: allBranches.length,
+        totalEmployees: activeEmployees.length,
+        activeFaults: openFaults.length,
+        equipmentUptime: uptimeRate,
+        branchAvgScore: avgBranchScore,
+      },
+      lastUpdated: new Date().toISOString()
+    });
+    } catch (error) {
+      console.error("Error building CEO command center:", error);
+      res.json(buildFallbackCommandCenter("CEO"));
+    }
+  }
+
+  async function buildSatinalmaCommandCenter(res: any) {
+    try {
+    const [allInventory, allPurchaseOrders, allSuppliers] = await Promise.all([
+      db.select().from(inventory).where(eq(inventory.isActive, true)),
+      db.select().from(purchaseOrders),
+      db.select().from(suppliers)
+    ]);
+
+    const urgentAlerts: Array<{ type: string; severity: 'critical' | 'warning'; message: string; count?: number }> = [];
+    const criticalStock = allInventory.filter((i: any) => parseFloat(i.currentStock || '0') < parseFloat(i.minimumStock || '0'));
+    if (criticalStock.length > 0) {
+      urgentAlerts.push({ type: 'stock', severity: 'critical', message: `${criticalStock.length} urun kritik stok seviyesinde`, count: criticalStock.length });
+    }
+    const pendingOrders = allPurchaseOrders.filter((o: any) => o.status === 'taslak' || o.status === 'beklemede' || o.status === 'pending');
+    if (pendingOrders.length > 0) {
+      urgentAlerts.push({ type: 'order', severity: 'warning', message: `${pendingOrders.length} siparis onay bekliyor`, count: pendingOrders.length });
+    }
+
+    const activeSuppliers = allSuppliers.filter((s: any) => s.isActive !== false);
+    const supplierSummary = {
+      label: 'Tedarikci Durumu',
+      source: 'Satinalma',
+      status: 'healthy' as const,
+      mainMetric: `${activeSuppliers.length} aktif tedarikci`,
+      details: [
+        { key: 'Toplam Tedarikci', value: `${allSuppliers.length}` },
+        { key: 'Aktif', value: `${activeSuppliers.length}` },
+      ],
+      alert: null
+    };
+
+    const stockSummary = {
+      label: 'Stok Durumu',
+      source: 'Satinalma',
+      status: criticalStock.length > 5 ? 'critical' as const : criticalStock.length > 0 ? 'warning' as const : 'healthy' as const,
+      mainMetric: `${criticalStock.length} kritik urun`,
+      details: [
+        { key: 'Toplam Urun', value: `${allInventory.length}` },
+        { key: 'Kritik Stok', value: `${criticalStock.length}` },
+        { key: 'Bekleyen Siparis', value: `${pendingOrders.length}` },
+      ],
+      alert: criticalStock.length > 0 ? `${criticalStock.length} urun minimum stok altinda!` : null
+    };
+
+    res.json({
+      urgentAlerts,
+      departments: [supplierSummary, stockSummary],
+      bottomManagers: [],
+      kpiSummary: {
+        totalBranches: allSuppliers.length,
+        totalEmployees: pendingOrders.length,
+        activeFaults: criticalStock.length,
+        equipmentUptime: 0,
+        branchAvgScore: 0,
+      },
+      lastUpdated: new Date().toISOString()
+    });
+    } catch (error) {
+      console.error("Error building satinalma command center:", error);
+      res.json(buildFallbackCommandCenter("Satinalma"));
+    }
+  }
+
+  async function buildKaliteKontrolCommandCenter(res: any) {
+    try {
+    const [allComplaints, allBatches, allFeedback] = await Promise.all([
+      db.select().from(productComplaints),
+      db.select().from(productionBatches),
+      db.select().from(customerFeedback)
+    ]);
+
+    const urgentAlerts: Array<{ type: string; severity: 'critical' | 'warning'; message: string; count?: number }> = [];
+    const openComplaints = allComplaints.filter((c: any) => c.status === 'open' || c.status === 'investigating');
+    const highSeverity = openComplaints.filter((c: any) => c.severity === 'critical' || c.severity === 'high');
+    if (highSeverity.length > 0) {
+      urgentAlerts.push({ type: 'complaint', severity: 'critical', message: `${highSeverity.length} yuksek oncelikli sikayet acik`, count: highSeverity.length });
+    }
+    const lowQualityBatches = allBatches.filter((b: any) => b.qualityScore !== null && b.qualityScore < 70);
+    if (lowQualityBatches.length > 0) {
+      urgentAlerts.push({ type: 'quality', severity: 'warning', message: `${lowQualityBatches.length} parti dusuk kalite skoru`, count: lowQualityBatches.length });
+    }
+
+    const resolved = allComplaints.filter((c: any) => c.status === 'resolved' || c.status === 'closed');
+    const complaintSummary = {
+      label: 'Sikayet Durumu',
+      source: 'Kalite Kontrol',
+      status: openComplaints.length > 5 ? 'critical' as const : openComplaints.length > 0 ? 'warning' as const : 'healthy' as const,
+      mainMetric: `${openComplaints.length} acik sikayet`,
+      details: [
+        { key: 'Toplam', value: `${allComplaints.length}` },
+        { key: 'Cozulmus', value: `${resolved.length}` },
+        { key: 'Acik', value: `${openComplaints.length}` },
+      ],
+      alert: highSeverity.length > 0 ? 'Kritik sikayet var!' : null
+    };
+
+    const avgRating = allFeedback.length > 0
+      ? (allFeedback.reduce((sum: number, f: any) => sum + (f.overallRating || 0), 0) / allFeedback.length).toFixed(1)
+      : '0';
+
+    const qualityMetrics = {
+      label: 'Kalite Metrikleri',
+      source: 'Kalite Kontrol',
+      status: 'healthy' as const,
+      mainMetric: `Musteri puani: ${avgRating}/5`,
+      details: [
+        { key: 'Toplam Geri Bildirim', value: `${allFeedback.length}` },
+        { key: 'Ort. Puan', value: `${avgRating}/5` },
+        { key: 'Dusuk Kalite Parti', value: `${lowQualityBatches.length}` },
+      ],
+      alert: null
+    };
+
+    res.json({
+      urgentAlerts,
+      departments: [complaintSummary, qualityMetrics],
+      bottomManagers: [],
+      kpiSummary: {
+        totalBranches: allComplaints.length,
+        totalEmployees: resolved.length,
+        activeFaults: openComplaints.length,
+        equipmentUptime: 0,
+        branchAvgScore: parseFloat(avgRating),
+      },
+      lastUpdated: new Date().toISOString()
+    });
+    } catch (error) {
+      console.error("Error building kalite kontrol command center:", error);
+      res.json(buildFallbackCommandCenter("Kalite Kontrol"));
+    }
+  }
+
+  async function buildMuhasebeCommandCenter(res: any) {
+    try {
+    const [allUsers, allLeaveReqs, allOvertimeReqs] = await Promise.all([
+      db.select().from(users),
+      db.select().from(leaveRequests),
+      db.select().from(overtimeRequests)
+    ]);
+
+    const activeEmployees = allUsers.filter(u => u.isActive);
+    const urgentAlerts: Array<{ type: string; severity: 'critical' | 'warning'; message: string; count?: number }> = [];
+    const pendingLeaves = allLeaveReqs.filter((l: any) => l.status === 'pending' || l.status === 'beklemede');
+    if (pendingLeaves.length > 0) {
+      urgentAlerts.push({ type: 'leave', severity: pendingLeaves.length > 5 ? 'critical' : 'warning', message: `${pendingLeaves.length} izin talebi onay bekliyor`, count: pendingLeaves.length });
+    }
+    const pendingOvertimes = allOvertimeReqs.filter((o: any) => o.status === 'pending' || o.status === 'beklemede');
+    if (pendingOvertimes.length > 0) {
+      urgentAlerts.push({ type: 'overtime', severity: 'warning', message: `${pendingOvertimes.length} mesai talebi bekliyor`, count: pendingOvertimes.length });
+    }
+
+    const personnelSummary = {
+      label: 'Personel Durumu',
+      source: 'Muhasebe & IK',
+      status: 'healthy' as const,
+      mainMetric: `${activeEmployees.length} aktif personel`,
+      details: [
+        { key: 'Toplam Kayitli', value: `${allUsers.length}` },
+        { key: 'Aktif', value: `${activeEmployees.length}` },
+        { key: 'Pasif', value: `${allUsers.length - activeEmployees.length}` },
+      ],
+      alert: null
+    };
+
+    const leaveSummary = {
+      label: 'Izin & Mesai',
+      source: 'Muhasebe & IK',
+      status: pendingLeaves.length > 5 ? 'warning' as const : 'healthy' as const,
+      mainMetric: `${pendingLeaves.length} bekleyen izin`,
+      details: [
+        { key: 'Bekleyen Izin', value: `${pendingLeaves.length}` },
+        { key: 'Bekleyen Mesai', value: `${pendingOvertimes.length}` },
+        { key: 'Toplam Izin Talebi', value: `${allLeaveReqs.length}` },
+      ],
+      alert: pendingLeaves.length > 10 ? 'Cok fazla izin talebi bekliyor!' : null
+    };
+
+    res.json({
+      urgentAlerts,
+      departments: [personnelSummary, leaveSummary],
+      bottomManagers: [],
+      kpiSummary: {
+        totalBranches: activeEmployees.length,
+        totalEmployees: pendingLeaves.length,
+        activeFaults: pendingOvertimes.length,
+        equipmentUptime: 0,
+        branchAvgScore: 0,
+      },
+      lastUpdated: new Date().toISOString()
+    });
+    } catch (error) {
+      console.error("Error building muhasebe command center:", error);
+      res.json(buildFallbackCommandCenter("Muhasebe"));
+    }
+  }
+
+  async function buildCoachCommandCenter(res: any) {
+    try {
+    const [allBranches, allAudits, allChecklistComp, allFaults] = await Promise.all([
+      db.select().from(branches),
+      db.select().from(auditInstances),
+      db.select().from(checklistCompletions),
+      db.select().from(equipmentFaults)
+    ]);
+
+    const urgentAlerts: Array<{ type: string; severity: 'critical' | 'warning'; message: string; count?: number }> = [];
+
+    const branchScores = allBranches.map(b => {
+      const branchFaults = allFaults.filter(f => f.branchId === b.id);
+      const openBF = branchFaults.filter((f: any) => f.status === 'open' || f.status === 'in_progress');
+      const completedAudits = allAudits.filter((a: any) => a.branchId === b.id && a.status === 'completed');
+      const faultPenalty = Math.min(openBF.length * 8, 40);
+      const auditBonus = completedAudits.length > 0 ? 10 : 0;
+      return { id: b.id, name: b.name, score: Math.max(30, 100 - faultPenalty + auditBonus), openFaults: openBF.length };
+    });
+    const lowScoreBranches = branchScores.filter(b => b.score < 60);
+    if (lowScoreBranches.length > 0) {
+      urgentAlerts.push({ type: 'branch', severity: 'critical', message: `${lowScoreBranches.length} sube dusuk performansta`, count: lowScoreBranches.length });
+    }
+
+    const avgScore = branchScores.length > 0 ? Math.round(branchScores.reduce((s, b) => s + b.score, 0) / branchScores.length) : 0;
+    const totalCompletions = allChecklistComp.length;
+    const completed = allChecklistComp.filter((c: any) => c.status === 'completed');
+    const completionRate = totalCompletions > 0 ? Math.round((completed.length / totalCompletions) * 100) : 0;
+
+    if (completionRate < 70) {
+      urgentAlerts.push({ type: 'checklist', severity: 'warning', message: `Checklist tamamlama orani %${completionRate}`, count: completionRate });
+    }
+
+    const branchPerf = {
+      label: 'Sube Performansi',
+      source: 'Coach',
+      status: avgScore >= 80 ? 'healthy' as const : avgScore >= 60 ? 'warning' as const : 'critical' as const,
+      mainMetric: `Ort. Skor: ${avgScore}/100`,
+      details: [
+        { key: 'Toplam Sube', value: `${allBranches.length}` },
+        { key: 'Saglıklı (80+)', value: `${branchScores.filter(b => b.score >= 80).length}` },
+        { key: 'Kritik (<60)', value: `${lowScoreBranches.length}` },
+      ],
+      alert: lowScoreBranches.length > 0 ? `${lowScoreBranches.map(b => b.name).slice(0, 2).join(', ')} dikkat gerektiriyor` : null
+    };
+
+    const trainingGaps = {
+      label: 'Egitim & Checklist',
+      source: 'Coach',
+      status: completionRate >= 80 ? 'healthy' as const : completionRate >= 60 ? 'warning' as const : 'critical' as const,
+      mainMetric: `Tamamlama orani: %${completionRate}`,
+      details: [
+        { key: 'Toplam Checklist', value: `${totalCompletions}` },
+        { key: 'Tamamlanan', value: `${completed.length}` },
+      ],
+      alert: completionRate < 60 ? 'Checklist tamamlama orani cok dusuk!' : null
+    };
+
+    res.json({
+      urgentAlerts,
+      departments: [branchPerf, trainingGaps],
+      bottomManagers: [],
+      kpiSummary: {
+        totalBranches: allBranches.length,
+        totalEmployees: 0,
+        activeFaults: lowScoreBranches.length,
+        equipmentUptime: completionRate,
+        branchAvgScore: avgScore,
+      },
+      lastUpdated: new Date().toISOString()
+    });
+    } catch (error) {
+      console.error("Error building coach command center:", error);
+      res.json(buildFallbackCommandCenter("Coach"));
+    }
+  }
+
+  async function buildTrainerCommandCenter(res: any) {
+    try {
+    const [allUsers, allChecklistComp] = await Promise.all([
+      db.select().from(users).where(eq(users.isActive, true)),
+      db.select().from(checklistCompletions)
+    ]);
+
+    const urgentAlerts: Array<{ type: string; severity: 'critical' | 'warning'; message: string; count?: number }> = [];
+    const totalCompletions = allChecklistComp.length;
+    const completed = allChecklistComp.filter((c: any) => c.status === 'completed');
+    const completionRate = totalCompletions > 0 ? Math.round((completed.length / totalCompletions) * 100) : 0;
+
+    if (completionRate < 70) {
+      urgentAlerts.push({ type: 'training', severity: 'warning', message: `Egitim tamamlama orani %${completionRate}`, count: completionRate });
+    }
+
+    const trainingOverview = {
+      label: 'Egitim Durumu',
+      source: 'Trainer',
+      status: completionRate >= 80 ? 'healthy' as const : completionRate >= 60 ? 'warning' as const : 'critical' as const,
+      mainMetric: `Tamamlama orani: %${completionRate}`,
+      details: [
+        { key: 'Toplam Gorev', value: `${totalCompletions}` },
+        { key: 'Tamamlanan', value: `${completed.length}` },
+        { key: 'Aktif Ogrenci', value: `${allUsers.length}` },
+      ],
+      alert: completionRate < 60 ? 'Egitim tamamlama orani cok dusuk!' : null
+    };
+
+    res.json({
+      urgentAlerts,
+      departments: [trainingOverview],
+      bottomManagers: [],
+      kpiSummary: {
+        totalBranches: totalCompletions,
+        totalEmployees: completed.length,
+        activeFaults: 0,
+        equipmentUptime: completionRate,
+        branchAvgScore: 0,
+      },
+      lastUpdated: new Date().toISOString()
+    });
+    } catch (error) {
+      console.error("Error building trainer command center:", error);
+      res.json(buildFallbackCommandCenter("Trainer"));
+    }
+  }
+
+  async function buildTeknikCommandCenter(res: any) {
+    try {
+    const [allEquip, allFaults] = await Promise.all([
+      db.select().from(equipment),
+      db.select().from(equipmentFaults)
+    ]);
+
+    const urgentAlerts: Array<{ type: string; severity: 'critical' | 'warning'; message: string; count?: number }> = [];
+    const openFaults = allFaults.filter((f: any) => f.status === 'open' || f.status === 'in_progress');
+    const criticalFaults = openFaults.filter((f: any) => f.priority === 'critical');
+    if (criticalFaults.length > 0) {
+      urgentAlerts.push({ type: 'fault', severity: 'critical', message: `${criticalFaults.length} kritik ariza cozum bekliyor`, count: criticalFaults.length });
+    }
+    const brokenEquipment = allEquip.filter((e: any) => e.status === 'broken');
+    if (brokenEquipment.length > 0) {
+      urgentAlerts.push({ type: 'equipment', severity: 'critical', message: `${brokenEquipment.length} ekipman calismıyor`, count: brokenEquipment.length });
+    }
+
+    const faultOverview = {
+      label: 'Arıza Durumu',
+      source: 'Teknik',
+      status: criticalFaults.length > 0 ? 'critical' as const : openFaults.length > 5 ? 'warning' as const : 'healthy' as const,
+      mainMetric: `${openFaults.length} acik ariza`,
+      details: [
+        { key: 'Toplam Ariza', value: `${allFaults.length}` },
+        { key: 'Acik', value: `${openFaults.length}` },
+        { key: 'Kritik', value: `${criticalFaults.length}` },
+        { key: 'Cozulmus', value: `${allFaults.filter((f: any) => f.status === 'resolved' || f.status === 'closed').length}` },
+      ],
+      alert: criticalFaults.length > 0 ? `${criticalFaults.length} kritik ariza acil mudahale bekliyor!` : null
+    };
+
+    const activeEquip = allEquip.filter((e: any) => e.isActive);
+    const uptimeRate = allEquip.length > 0 ? Math.round((activeEquip.length / allEquip.length) * 100) : 100;
+    const equipmentHealth = {
+      label: 'Ekipman Sagligi',
+      source: 'Teknik',
+      status: uptimeRate >= 90 ? 'healthy' as const : uptimeRate >= 70 ? 'warning' as const : 'critical' as const,
+      mainMetric: `Uptime: %${uptimeRate}`,
+      details: [
+        { key: 'Toplam Ekipman', value: `${allEquip.length}` },
+        { key: 'Aktif', value: `${activeEquip.length}` },
+        { key: 'Arızalı', value: `${brokenEquipment.length}` },
+      ],
+      alert: brokenEquipment.length > 3 ? 'Birden fazla ekipman arızalı!' : null
+    };
+
+    res.json({
+      urgentAlerts,
+      departments: [faultOverview, equipmentHealth],
+      bottomManagers: [],
+      kpiSummary: {
+        totalBranches: allEquip.length,
+        totalEmployees: openFaults.length,
+        activeFaults: criticalFaults.length,
+        equipmentUptime: uptimeRate,
+        branchAvgScore: 0,
+      },
+      lastUpdated: new Date().toISOString()
+    });
+    } catch (error) {
+      console.error("Error building teknik command center:", error);
+      res.json(buildFallbackCommandCenter("Teknik"));
+    }
+  }
+
+  async function buildFabrikaCommandCenter(res: any) {
+    try {
+    const [allBatches, allEquip, allFaults] = await Promise.all([
+      db.select().from(productionBatches),
+      db.select().from(equipment),
+      db.select().from(equipmentFaults)
+    ]);
+
+    const urgentAlerts: Array<{ type: string; severity: 'critical' | 'warning'; message: string; count?: number }> = [];
+    const activeBatches = allBatches.filter((b: any) => b.status === 'in_progress' || b.status === 'planned');
+    const rejectedBatches = allBatches.filter((b: any) => b.status === 'rejected');
+    if (rejectedBatches.length > 0) {
+      urgentAlerts.push({ type: 'production', severity: 'critical', message: `${rejectedBatches.length} parti reddedildi`, count: rejectedBatches.length });
+    }
+    const brokenEquipment = allEquip.filter((e: any) => e.status === 'broken' || e.status === 'maintenance');
+    if (brokenEquipment.length > 0) {
+      urgentAlerts.push({ type: 'equipment', severity: 'warning', message: `${brokenEquipment.length} ekipman bakimda/arızalı`, count: brokenEquipment.length });
+    }
+
+    const openFaults = allFaults.filter((f: any) => f.status === 'open' || f.status === 'in_progress');
+    const productionSummary = {
+      label: 'Uretim Durumu',
+      source: 'Fabrika',
+      status: rejectedBatches.length > 0 ? 'warning' as const : 'healthy' as const,
+      mainMetric: `${activeBatches.length} aktif parti`,
+      details: [
+        { key: 'Toplam Parti', value: `${allBatches.length}` },
+        { key: 'Aktif', value: `${activeBatches.length}` },
+        { key: 'Tamamlanan', value: `${allBatches.filter((b: any) => b.status === 'completed' || b.status === 'approved').length}` },
+        { key: 'Reddedilen', value: `${rejectedBatches.length}` },
+      ],
+      alert: rejectedBatches.length > 0 ? 'Reddedilen parti var!' : null
+    };
+
+    const qualityMetrics = {
+      label: 'Kalite Metrikleri',
+      source: 'Fabrika',
+      status: 'healthy' as const,
+      mainMetric: `Ariza: ${openFaults.length}`,
+      details: [
+        { key: 'Toplam Ekipman', value: `${allEquip.length}` },
+        { key: 'Acik Ariza', value: `${openFaults.length}` },
+        { key: 'Arızalı Ekipman', value: `${brokenEquipment.length}` },
+      ],
+      alert: null
+    };
+
+    res.json({
+      urgentAlerts,
+      departments: [productionSummary, qualityMetrics],
+      bottomManagers: [],
+      kpiSummary: {
+        totalBranches: activeBatches.length,
+        totalEmployees: allBatches.length,
+        activeFaults: openFaults.length,
+        equipmentUptime: 0,
+        branchAvgScore: 0,
+      },
+      lastUpdated: new Date().toISOString()
+    });
+    } catch (error) {
+      console.error("Error building fabrika command center:", error);
+      res.json(buildFallbackCommandCenter("Fabrika"));
+    }
+  }
+
+  async function buildDestekCommandCenter(res: any) {
+    try {
+    const [allFaults] = await Promise.all([
+      db.select().from(equipmentFaults)
+    ]);
+
+    const urgentAlerts: Array<{ type: string; severity: 'critical' | 'warning'; message: string; count?: number }> = [];
+    const openFaults = allFaults.filter((f: any) => f.status === 'open' || f.status === 'in_progress');
+    const criticalFaults = openFaults.filter((f: any) => f.priority === 'critical');
+    if (criticalFaults.length > 0) {
+      urgentAlerts.push({ type: 'fault', severity: 'critical', message: `${criticalFaults.length} kritik destek talebi`, count: criticalFaults.length });
+    }
+    if (openFaults.length > 10) {
+      urgentAlerts.push({ type: 'fault', severity: 'warning', message: `${openFaults.length} cozulmemis ariza/talep var`, count: openFaults.length });
+    }
+
+    const resolved = allFaults.filter((f: any) => f.status === 'resolved' || f.status === 'closed');
+    const ticketStatus = {
+      label: 'Destek Talepleri',
+      source: 'Destek',
+      status: criticalFaults.length > 0 ? 'critical' as const : openFaults.length > 5 ? 'warning' as const : 'healthy' as const,
+      mainMetric: `${openFaults.length} acik talep`,
+      details: [
+        { key: 'Toplam', value: `${allFaults.length}` },
+        { key: 'Acik', value: `${openFaults.length}` },
+        { key: 'Cozulmus', value: `${resolved.length}` },
+        { key: 'Kritik', value: `${criticalFaults.length}` },
+      ],
+      alert: criticalFaults.length > 0 ? 'Kritik destek talebi var!' : null
+    };
+
+    res.json({
+      urgentAlerts,
+      departments: [ticketStatus],
+      bottomManagers: [],
+      kpiSummary: {
+        totalBranches: openFaults.length,
+        totalEmployees: resolved.length,
+        activeFaults: criticalFaults.length,
+        equipmentUptime: 0,
+        branchAvgScore: 0,
+      },
+      lastUpdated: new Date().toISOString()
+    });
+    } catch (error) {
+      console.error("Error building destek command center:", error);
+      res.json(buildFallbackCommandCenter("Destek"));
+    }
+  }
+
+  async function buildGenericCommandCenter(res: any, role: string) {
+    try {
+    const [allBranches, allUsers, allFaults] = await Promise.all([
+      db.select().from(branches),
+      db.select().from(users).where(eq(users.isActive, true)),
+      db.select().from(equipmentFaults)
+    ]);
+
+    const openFaults = allFaults.filter((f: any) => f.status === 'open' || f.status === 'in_progress');
+    const urgentAlerts: Array<{ type: string; severity: 'critical' | 'warning'; message: string; count?: number }> = [];
+    if (openFaults.length > 5) {
+      urgentAlerts.push({ type: 'fault', severity: 'warning', message: `${openFaults.length} acik ariza var`, count: openFaults.length });
+    }
+
+    const overview = {
+      label: 'Genel Durum',
+      source: role,
+      status: 'healthy' as const,
+      mainMetric: `${allBranches.length} sube, ${allUsers.length} personel`,
+      details: [
+        { key: 'Toplam Sube', value: `${allBranches.length}` },
+        { key: 'Aktif Personel', value: `${allUsers.length}` },
+        { key: 'Acik Ariza', value: `${openFaults.length}` },
+      ],
+      alert: null
+    };
+
+    res.json({
+      urgentAlerts,
+      departments: [overview],
+      bottomManagers: [],
+      kpiSummary: {
+        totalBranches: allBranches.length,
+        totalEmployees: allUsers.length,
+        activeFaults: openFaults.length,
+        equipmentUptime: 0,
+        branchAvgScore: 0,
+      },
+      lastUpdated: new Date().toISOString()
+    });
+    } catch (error) {
+      console.error("Error building generic command center:", error);
+      res.json(buildFallbackCommandCenter(role));
+    }
+  }
   
   // HQ Dashboard - CGO overview
   app.get("/api/hq-dashboard/cgo", isAuthenticated, async (req: any, res) => {

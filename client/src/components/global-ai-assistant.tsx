@@ -78,6 +78,9 @@ const roleBasedQueries: Record<string, QuickQuery[]> = {
     { text: "Üretim durumu nasıl?" },
     { text: "Açık arızalar var mı?" },
     { text: "Ekipman bakımları güncel mi?" },
+    { text: "Aktif üretim partileri?" },
+    { text: "Bakım bekleyen ekipmanlar?" },
+    { text: "Bugünkü üretim hedefi?" },
   ],
   fabrika_operator: [
     { text: "Bugünkü üretim planı ne?" },
@@ -87,6 +90,8 @@ const roleBasedQueries: Record<string, QuickQuery[]> = {
   muhasebe: [
     { text: "Bekleyen izin talepleri var mı?" },
     { text: "Personel sayısı ve dağılımı?" },
+    { text: "İzin kullanan personel sayısı?" },
+    { text: "Şube bazlı personel sayısı?" },
   ],
   teknik: [
     { text: "Açık arıza talepleri neler?" },
@@ -104,14 +109,27 @@ const roleBasedQueries: Record<string, QuickQuery[]> = {
     { text: "Performansı düşen personeller?" },
     { text: "Hangi şubede en çok arıza var?" },
     { text: "Denetim sonuçları nasıl?" },
+    { text: "Hangi şube en düşük denetim skoru aldı?" },
+    { text: "Eğitim tamamlama oranları?" },
+    { text: "Müşteri memnuniyeti en düşük şube?" },
   ],
   kalite_kontrol: [
     { text: "Açık ürün şikayetleri neler?" },
     { text: "Kalite durumu nasıl?" },
+    { text: "Açık şikayetler hangi şubelerden?" },
+    { text: "Kritik kalite sorunları?" },
+    { text: "Son üretim parti durumu?" },
   ],
   destek: [
     { text: "Açık destek talepleri neler?" },
     { text: "Çözüm bekleyen sorunlar?" },
+    { text: "En çok hangi konuda talep geliyor?" },
+    { text: "Kritik talepler?" },
+  ],
+  operasyon: [
+    { text: "Şube operasyon durumları?" },
+    { text: "Kritik arızalar?" },
+    { text: "Tamamlanmamış görevler?" },
   ],
   default: [
     { text: "Bugün ne yapmalıyım?" },

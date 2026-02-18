@@ -81,14 +81,39 @@ interface CEODashboardData {
   lastUpdated: string;
 }
 
+const HQ_ROLES_LIST = ['ceo', 'cgo', 'admin', 'satinalma', 'kalite_kontrol', 'muhasebe', 'muhasebe_ik', 'coach', 'trainer', 'teknik', 'fabrika', 'fabrika_mudur', 'fabrika_sorumlu', 'destek', 'operasyon', 'marketing', 'ik'];
+
+const roleTitles: Record<string, string> = {
+  ceo: "CEO Komuta Merkezi",
+  cgo: "CGO Komuta Merkezi",
+  admin: "Admin Komuta Merkezi",
+  satinalma: "Satinalma Komuta Merkezi",
+  kalite_kontrol: "Kalite Kontrol Komuta Merkezi",
+  muhasebe: "Muhasebe Komuta Merkezi",
+  muhasebe_ik: "Muhasebe & IK Komuta Merkezi",
+  coach: "Coach Komuta Merkezi",
+  trainer: "Trainer Komuta Merkezi",
+  teknik: "Teknik Komuta Merkezi",
+  fabrika: "Fabrika Komuta Merkezi",
+  fabrika_mudur: "Fabrika Muduru Komuta Merkezi",
+  destek: "Destek Komuta Merkezi",
+  operasyon: "Operasyon Komuta Merkezi",
+  marketing: "Pazarlama Komuta Merkezi",
+  ik: "IK Komuta Merkezi",
+};
+
 function getDeptIcon(source: string) {
   switch (source) {
     case 'CGO': return <Building2 className="w-4 h-4" />;
     case 'Muhasebe & IK': return <Users className="w-4 h-4" />;
     case 'Fabrika Muduru': return <Factory className="w-4 h-4" />;
+    case 'Fabrika': return <Factory className="w-4 h-4" />;
     case 'Coach': return <ClipboardCheck className="w-4 h-4" />;
     case 'Kalite Kontrol': return <ShieldCheck className="w-4 h-4" />;
     case 'Trainer': return <GraduationCap className="w-4 h-4" />;
+    case 'Satinalma': return <Store className="w-4 h-4" />;
+    case 'Teknik': return <Wrench className="w-4 h-4" />;
+    case 'Destek': return <AlertCircle className="w-4 h-4" />;
     default: return <Eye className="w-4 h-4" />;
   }
 }
@@ -212,12 +237,16 @@ export default function CEOCommandCenter() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
 
+  const isHQRole = user?.role ? HQ_ROLES_LIST.includes(user.role) : false;
   const isCeoOrCgo = user?.role === 'ceo' || user?.role === 'cgo';
+  const showFinancialCard = ['ceo', 'cgo', 'admin', 'muhasebe'].includes(user?.role || '');
+
+  const pageTitle = roleTitles[user?.role || ''] || "Komuta Merkezi";
 
   const { data: dashboardData, isLoading, isRefetching, refetch, isError } = useQuery<CEODashboardData>({
-    queryKey: ["/api/ceo/command-center"],
+    queryKey: ["/api/hq/command-center"],
     refetchInterval: 60000,
-    enabled: isCeoOrCgo,
+    enabled: isHQRole,
     retry: 3,
     retryDelay: (attemptIndex) => Math.min(1000 * (attemptIndex + 1), 5000),
   });
@@ -237,7 +266,7 @@ export default function CEOCommandCenter() {
     enabled: isCeoOrCgo,
   });
 
-  if (user && !isCeoOrCgo) {
+  if (user && !isHQRole) {
     setLocation('/');
     return null;
   }
@@ -279,7 +308,7 @@ export default function CEOCommandCenter() {
         <div className="flex items-center gap-3">
           <MrDobody size={48} />
           <div>
-            <h1 className="text-xl font-bold" data-testid="heading-ceo-dashboard">CEO Komuta Merkezi</h1>
+            <h1 className="text-xl font-bold" data-testid="heading-ceo-dashboard">{pageTitle}</h1>
             <p className="text-xs text-muted-foreground">
               Son guncelleme: {new Date(dashboardData.lastUpdated).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}
             </p>
@@ -437,9 +466,9 @@ export default function CEOCommandCenter() {
             ))}
           </div>
 
-          <CEOFinancialCard />
+          {showFinancialCard && <CEOFinancialCard />}
 
-          {abuseReport && abuseReport.alerts.length > 0 && (
+          {isCeoOrCgo && abuseReport && abuseReport.alerts.length > 0 && (
             <Card data-testid="card-abuse-alerts" className="border-red-200 dark:border-red-900/50">
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm flex items-center gap-2">
@@ -476,7 +505,7 @@ export default function CEOCommandCenter() {
             </Card>
           )}
 
-          {evalCoverage && (
+          {isCeoOrCgo && evalCoverage && (
             <Card data-testid="card-eval-coverage">
               <CardHeader className="flex flex-row items-center justify-between gap-2 flex-wrap pb-2">
                 <div>
@@ -515,7 +544,7 @@ export default function CEOCommandCenter() {
             </Card>
           )}
 
-          {dashboardData.bottomManagers.length > 0 && (
+          {isCeoOrCgo && dashboardData.bottomManagers.length > 0 && (
             <Card data-testid="card-bottom-managers">
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm flex items-center gap-2">

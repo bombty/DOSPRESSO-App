@@ -4,7 +4,8 @@ import {
   leaveRequests, quizzes, checklistCompletions, productComplaints,
   employeePerformanceScores, branchAuditScores, shifts, recipes,
   trainingCompletions, auditInstances, productionBatches, purchaseOrders,
-  dashboardAlerts, notifications
+  dashboardAlerts, notifications,
+  inventory, suppliers, goodsReceipts, supplierQuotes
 } from "@shared/schema";
 import { eq, desc, sql, and, or, count, avg, gte, lte } from "drizzle-orm";
 
@@ -196,15 +197,24 @@ ${Object.entries(roleDistribution).sort(([,a], [,b]) => b - a).slice(0, 8).map((
       accessibleData = "Tum sirket verileri, tum subeler, personel performanslari, finansal ozet, ariza takibi, kalite metrikleri";
 
     } else if (role === "coach") {
-      const [branchesData, usersData, faultsData, perfData, inspectionsData, complaintsData, feedbackData] = await Promise.all([
+      const [branchesData, usersData, faultsData, perfData, complaintsData] = await Promise.all([
         db.select().from(branches),
         db.select().from(users),
         db.select().from(equipmentFaults),
         db.select().from(employeePerformanceScores),
-        db.select().from(auditInstances),
         db.select().from(productComplaints),
-        db.select().from(customerFeedback),
       ]);
+
+      let inspectionsData: any[] = [];
+      let feedbackData: any[] = [];
+      let trainingData: any[] = [];
+      try {
+        [inspectionsData, feedbackData, trainingData] = await Promise.all([
+          db.select().from(auditInstances),
+          db.select().from(customerFeedback),
+          db.select().from(trainingCompletions),
+        ]);
+      } catch (e) { console.log("Coach extra context error:", e); }
 
       const activeUsers = usersData.filter(u => u.isActive);
 
@@ -248,16 +258,73 @@ ${Object.entries(roleDistribution).sort(([,a], [,b]) => b - a).slice(0, 8).map((
         return `${u?.firstName || ""} ${u?.lastName || ""} (${br?.name || "?"}) - Skor: ${Number(p.weeklyTotalScore).toFixed(0)}`;
       });
 
+      const recentInspections = inspectionsData.filter((ins: any) => {
+        const d = ins.completedAt || ins.createdAt;
+        return d && new Date(d) >= thirtyDaysAgo;
+      });
+      const inspectionsByBranch: Record<number, { name: string; scores: number[] }> = {};
+      for (const ins of recentInspections) {
+        const bid = (ins as any).branchId;
+        const score = (ins as any).totalScore || (ins as any).score;
+        if (bid && score !== null && score !== undefined) {
+          if (!inspectionsByBranch[bid]) {
+            const br = branchesData.find(b => b.id === bid);
+            inspectionsByBranch[bid] = { name: br?.name || `Sube #${bid}`, scores: [] };
+          }
+          inspectionsByBranch[bid].scores.push(Number(score));
+        }
+      }
+      const branchInspectionAvgs = Object.values(inspectionsByBranch)
+        .map(b => ({ name: b.name, avg: (b.scores.reduce((s, v) => s + v, 0) / b.scores.length).toFixed(0), count: b.scores.length }))
+        .sort((a, b) => Number(a.avg) - Number(b.avg));
+
+      const branchTrainingRates = branchesData.map(branch => {
+        const branchUsers = activeUsers.filter(u => u.branchId === branch.id);
+        const branchTrainings = trainingData.filter(t => branchUsers.some(u => u.id === t.userId));
+        const rate = branchUsers.length > 0 ? ((branchTrainings.length / branchUsers.length) * 100).toFixed(0) : "0";
+        return { name: branch.name, rate, count: branchTrainings.length, users: branchUsers.length };
+      }).sort((a, b) => Number(a.rate) - Number(b.rate));
+
+      const feedbackByBranch: Record<number, { name: string; ratings: number[] }> = {};
+      for (const fb of feedbackData) {
+        const bid = (fb as any).branchId;
+        if (bid && fb.rating) {
+          if (!feedbackByBranch[bid]) {
+            const br = branchesData.find(b => b.id === bid);
+            feedbackByBranch[bid] = { name: br?.name || `Sube #${bid}`, ratings: [] };
+          }
+          feedbackByBranch[bid].ratings.push(fb.rating);
+        }
+      }
+      const branchFeedbackAvgs = Object.values(feedbackByBranch)
+        .map(b => ({ name: b.name, avg: (b.ratings.reduce((s, v) => s + v, 0) / b.ratings.length).toFixed(1), count: b.ratings.length }))
+        .sort((a, b) => Number(a.avg) - Number(b.avg));
+
+      const lowScoreBranches = branchStats.filter(b => b.avgScore !== "-" && Number(b.avgScore) < 50);
+
       roleDescription = "DOSPRESSO Coach - Sube denetimi ve personel gelistirme";
       roleContext = `COACH DASHBOARD:
 - Toplam Sube: ${branchesData.length}
 - Aktif Personel: ${activeUsers.length}
 - Toplam Acik Ariza: ${openFaults.length}
-- Toplam Denetim: ${inspectionsData.length}
+- Toplam Denetim: ${inspectionsData.length} (Son 30 Gun: ${recentInspections.length})
 - Acik Urun Sikayeti: ${complaintsData.filter((c: any) => c.status !== "resolved" && c.status !== "cozuldu").length}
+- Musteri Geri Bildirimi: ${feedbackData.length}
 
 SUBE PERFORMANS OZETI:
 ${branchStats.slice(0, 10).map((b, i) => `${i+1}. ${b.name} | Personel: ${b.personnel} | Acik Ariza: ${b.openFaults} | Ort. Skor: ${b.avgScore}`).join("\n")}
+
+SON DENETIM SKORLARI (Sube Bazli - Son 30 Gun):
+${branchInspectionAvgs.length > 0 ? branchInspectionAvgs.slice(0, 8).map((b, i) => `${i+1}. ${b.name}: Ort. ${b.avg}/100 (${b.count} denetim)`).join("\n") : "- Denetim verisi yok"}
+
+SUBE BAZLI EGITIM TAMAMLAMA ORANLARI:
+${branchTrainingRates.slice(0, 8).map((b, i) => `${i+1}. ${b.name}: %${b.rate} (${b.count}/${b.users})`).join("\n")}
+
+MUSTERI GERI BILDIRIM ORTALAMALARI (Sube Bazli):
+${branchFeedbackAvgs.length > 0 ? branchFeedbackAvgs.slice(0, 5).map((b, i) => `${i+1}. ${b.name}: ${b.avg}/5 (${b.count} degerlendirme)`).join("\n") : "- Geri bildirim verisi yok"}
+
+DIKKAT GEREKTIREN SUBELER (Dusuk Performans):
+${lowScoreBranches.length > 0 ? lowScoreBranches.map((b, i) => `${i+1}. ${b.name} - Ort. Skor: ${b.avgScore} | Ariza: ${b.openFaults}`).join("\n") : "- Dusuk performansli sube yok"}
 
 PERFORMANSI DUSUK PERSONEL:
 ${lowPerfDetails.length > 0 ? lowPerfDetails.map((d, i) => `${i+1}. ${d}`).join("\n") : "- Veri yok"}
@@ -265,31 +332,71 @@ ${lowPerfDetails.length > 0 ? lowPerfDetails.map((d, i) => `${i+1}. ${d}`).join(
 EN COK ARIZA OLAN SUBELER:
 ${Object.values(faultsByBranch).sort((a, b) => b.count - a.count).slice(0, 5).map((b, i) => `${i+1}. ${b.name}: ${b.count} ariza`).join("\n") || "- Ariza yok"}`;
 
-      accessibleData = "Tum sube verileri, personel performanslari, denetim kayitlari, ariza takibi, mentorluk notlari";
+      accessibleData = "Tum sube verileri, personel performanslari, denetim kayitlari, ariza takibi, egitim ilerlemeleri, musteri geri bildirimleri";
 
     } else if (role === "trainer") {
-      const [usersData, quizData, trainingData, branchesData] = await Promise.all([
+      const [usersData, quizData, branchesData] = await Promise.all([
         db.select().from(users).where(eq(users.isActive, true)),
         db.select().from(quizzes),
-        db.select().from(trainingCompletions),
         db.select().from(branches),
       ]);
+
+      let trainingData: any[] = [];
+      try {
+        trainingData = await db.select().from(trainingCompletions);
+      } catch (e) { console.log("Trainer training context error:", e); }
 
       const branchTrainingStats = branchesData.map(branch => {
         const branchUsers = usersData.filter(u => u.branchId === branch.id);
         const branchTrainings = trainingData.filter(t => branchUsers.some(u => u.id === t.userId));
-        return { name: branch.name, users: branchUsers.length, completions: branchTrainings.length };
+        const rate = branchUsers.length > 0 ? ((branchTrainings.length / branchUsers.length) * 100).toFixed(0) : "0";
+        return { name: branch.name, users: branchUsers.length, completions: branchTrainings.length, rate };
       }).sort((a, b) => b.completions - a.completions);
+
+      const passedQuizzes = trainingData.filter((t: any) => t.passed === true || t.score >= 70 || t.status === "completed");
+      const failedQuizzes = trainingData.filter((t: any) => t.passed === false || (t.score !== null && t.score !== undefined && t.score < 70));
+      const passRate = (passedQuizzes.length + failedQuizzes.length) > 0
+        ? ((passedQuizzes.length / (passedQuizzes.length + failedQuizzes.length)) * 100).toFixed(0)
+        : "-";
+
+      const usersWithTraining = new Set(trainingData.map(t => t.userId));
+      const usersWithoutTraining = usersData.filter(u => !usersWithTraining.has(u.id));
+      const incompleteTrainingUsers = usersWithoutTraining.slice(0, 10).map(u => {
+        const br = u.branchId ? branchesData.find(b => b.id === u.branchId) : null;
+        return `- ${u.firstName} ${u.lastName} (${br?.name || "HQ"}) - ${u.role}`;
+      });
+
+      const moduleCounts: Record<string, number> = {};
+      for (const t of trainingData) {
+        const mod = (t as any).moduleId || (t as any).trainingModuleId || (t as any).moduleName || "bilinmiyor";
+        moduleCounts[String(mod)] = (moduleCounts[String(mod)] || 0) + 1;
+      }
+      const sortedModules = Object.entries(moduleCounts).sort(([, a], [, b]) => b - a);
+      const topModules = sortedModules.slice(0, 5);
+      const leastModules = sortedModules.slice(-3);
 
       roleDescription = "DOSPRESSO Egitmen - Egitim ve gelisim yonetimi";
       roleContext = `EGITIM DURUMU:
 - Aktif Personel: ${usersData.length}
 - Mevcut Quiz Sayisi: ${quizData.length}
 - Toplam Egitim Tamamlama: ${trainingData.length}
+- Egitim Almamis Personel: ${usersWithoutTraining.length}
 
-SUBE BAZLI EGITIM PERFORMANSI:
-${branchTrainingStats.slice(0, 8).map((b, i) => `${i+1}. ${b.name}: ${b.users} kisi, ${b.completions} tamamlama`).join("\n")}`;
-      accessibleData = "Egitim modulleri, quiz yonetimi, personel egitim ilerlemeleri, sertifikalar";
+QUIZ BASARI ORANLARI:
+- Gecen: ${passedQuizzes.length} | Kalan: ${failedQuizzes.length} | Basari Orani: %${passRate}
+
+SUBE BAZLI EGITIM TAMAMLAMA ORANLARI:
+${branchTrainingStats.slice(0, 10).map((b, i) => `${i+1}. ${b.name}: %${b.rate} (${b.completions} tamamlama / ${b.users} kisi)`).join("\n")}
+
+EGITIM ALMAMIS PERSONEL (Ilk 10):
+${incompleteTrainingUsers.length > 0 ? incompleteTrainingUsers.join("\n") : "- Tum personel egitim almis"}
+
+EN POPULER EGITIM MODULLERI:
+${topModules.length > 0 ? topModules.map(([mod, cnt], i) => `${i+1}. Modul #${mod}: ${cnt} tamamlama`).join("\n") : "- Modul verisi yok"}
+
+EN AZ TERCIH EDILEN MODULLER:
+${leastModules.length > 0 ? leastModules.map(([mod, cnt], i) => `${i+1}. Modul #${mod}: ${cnt} tamamlama`).join("\n") : "- Modul verisi yok"}`;
+      accessibleData = "Egitim modulleri, quiz yonetimi, personel egitim ilerlemeleri, sertifikalar, tamamlama oranlari";
 
     } else if (role === "teknik" || role === "ekipman_teknik") {
       const [equipmentData, faultsData, branchesData] = await Promise.all([
@@ -334,14 +441,63 @@ ${Object.values(faultsByBranch).sort((a, b) => b.count - a.count).slice(0, 5).ma
         db.select().from(productComplaints),
       ]);
 
-      const pendingOrders = ordersData.filter((o: any) => o.status === "pending" || o.status === "beklemede" || o.status === "draft");
+      let inventoryData: any[] = [];
+      let suppliersData: any[] = [];
+      let goodsReceiptsData: any[] = [];
+      let quotesData: any[] = [];
+      try {
+        [inventoryData, suppliersData, goodsReceiptsData, quotesData] = await Promise.all([
+          db.select().from(inventory).where(eq(inventory.isActive, true)),
+          db.select().from(suppliers),
+          db.select().from(goodsReceipts),
+          db.select().from(supplierQuotes),
+        ]);
+      } catch (e) { console.log("Satinalma extra context error:", e); }
+
+      const pendingOrders = ordersData.filter((o: any) => o.status === "taslak" || o.status === "onay_bekliyor" || o.status === "pending" || o.status === "beklemede" || o.status === "draft");
+      const pendingOrdersTotal = pendingOrders.reduce((sum: number, o: any) => sum + Number(o.totalAmount || 0), 0);
+
+      const criticalStock = inventoryData.filter((item: any) => {
+        const current = Number(item.currentStock || 0);
+        const minimum = Number(item.minimumStock || 0);
+        return minimum > 0 && current < minimum;
+      }).sort((a: any, b: any) => {
+        const ratioA = Number(a.currentStock || 0) / Math.max(Number(a.minimumStock || 1), 1);
+        const ratioB = Number(b.currentStock || 0) / Math.max(Number(b.minimumStock || 1), 1);
+        return ratioA - ratioB;
+      }).slice(0, 10);
+
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+      const recentReceipts = goodsReceiptsData.filter((r: any) => r.receiptDate && new Date(r.receiptDate) >= sevenDaysAgo);
+
+      const pendingQuotes = quotesData.filter((q: any) => q.status === "aktif" || q.status === "beklemede");
+      const staleQuotes = quotesData.filter((q: any) => q.validUntil && new Date(q.validUntil) < new Date());
+
+      const activeSuppliersData = suppliersData.filter((s: any) => s.status === "aktif");
+      const topSuppliers = activeSuppliersData
+        .sort((a: any, b: any) => Number(b.totalOrders || 0) - Number(a.totalOrders || 0))
+        .slice(0, 5);
 
       roleDescription = "Satinalma Uzmani";
       roleContext = `SATINALMA DURUMU:
 - Toplam Sube: ${branchesData.length}
 - Toplam Siparis: ${ordersData.length} (Bekleyen: ${pendingOrders.length})
-- Urun Sikayetleri: ${complaintsData.length}`;
-      accessibleData = "Stok yonetimi, tedarikci bilgileri, siparis takibi, mal kabul";
+- Bekleyen Siparis Toplam Tutar: ${pendingOrdersTotal.toLocaleString("tr-TR")} TL
+- Urun Sikayetleri: ${complaintsData.length}
+- Aktif Tedarikci: ${activeSuppliersData.length}
+- Son 7 Gun Mal Kabul: ${recentReceipts.length}
+
+KRITIK STOK DURUMLARI (Minimum Altinda):
+${criticalStock.length > 0 ? criticalStock.map((item: any, i: number) => `${i+1}. ${item.name} (${item.code}) | Mevcut: ${Number(item.currentStock).toLocaleString("tr-TR")} ${item.unit} | Min: ${Number(item.minimumStock).toLocaleString("tr-TR")} ${item.unit}`).join("\n") : "- Kritik stok yok"}
+
+TEDARIKCI TEKLIFLERI:
+- Aktif/Bekleyen Teklifler: ${pendingQuotes.length}
+- Suresi Gecmis Teklifler: ${staleQuotes.length}
+
+EN YOĞUN 5 TEDARIKCI:
+${topSuppliers.length > 0 ? topSuppliers.map((s: any, i: number) => `${i+1}. ${s.name} | Siparis: ${s.totalOrders || 0} | Toplam: ${Number(s.totalOrderValue || 0).toLocaleString("tr-TR")} TL | Performans: ${Number(s.performanceScore || 0).toFixed(1)}/5`).join("\n") : "- Tedarikci verisi yok"}`;
+      accessibleData = "Stok yonetimi, tedarikci bilgileri, siparis takibi, mal kabul, tedarikci teklifleri";
 
     } else if (role === "kalite_kontrol") {
       const [complaintsData, branchesData, faultsData] = await Promise.all([
@@ -350,29 +506,108 @@ ${Object.values(faultsByBranch).sort((a, b) => b.count - a.count).slice(0, 5).ma
         db.select().from(equipmentFaults),
       ]);
 
+      let batchesData: any[] = [];
+      try {
+        batchesData = await db.select().from(productionBatches);
+      } catch (e) { console.log("Kalite kontrol batches context error:", e); }
+
       const openComplaints = complaintsData.filter((c: any) => c.status !== "resolved" && c.status !== "cozuldu" && c.status !== "closed");
+
+      const severityBreakdown: Record<string, number> = {};
+      for (const c of openComplaints) {
+        const sev = (c as any).severity || (c as any).priority || "belirtilmemis";
+        severityBreakdown[sev] = (severityBreakdown[sev] || 0) + 1;
+      }
+
+      const complaintsByBranch: Record<number, { name: string; count: number }> = {};
+      for (const c of openComplaints) {
+        const bid = (c as any).branchId;
+        if (bid) {
+          if (!complaintsByBranch[bid]) {
+            const br = branchesData.find(b => b.id === bid);
+            complaintsByBranch[bid] = { name: br?.name || `Sube #${bid}`, count: 0 };
+          }
+          complaintsByBranch[bid].count++;
+        }
+      }
+      const topComplaintBranches = Object.values(complaintsByBranch).sort((a, b) => b.count - a.count).slice(0, 5);
+
+      const recentBatches = batchesData.filter((b: any) => {
+        const d = b.productionDate ? new Date(b.productionDate) : null;
+        return d && d >= thirtyDaysAgo;
+      });
+      const qualityIssueBatches = recentBatches.filter((b: any) => b.status === "rejected" || (b.qualityScore !== null && Number(b.qualityScore) < 70));
+      const pendingQCBatches = recentBatches.filter((b: any) => b.status === "quality_check");
+
+      const pendingResolutions = openComplaints.filter((c: any) => c.status === "pending" || c.status === "beklemede" || c.status === "investigation" || c.status === "inceleniyor");
 
       roleDescription = "Kalite Kontrol Uzmani";
       roleContext = `KALITE KONTROL DURUMU:
 - Toplam Urun Sikayeti: ${complaintsData.length} (Acik: ${openComplaints.length})
-- Sube Sayisi: ${branchesData.length}`;
-      accessibleData = "Kalite denetimleri, urun sikayetleri, standart uyumluluk, recete yonetimi";
+- Sube Sayisi: ${branchesData.length}
+- Cozum Bekleyen Sikayetler: ${pendingResolutions.length}
+
+ACIK SIKAYETLER CIDDIYET DAGILIMI:
+${Object.entries(severityBreakdown).length > 0 ? Object.entries(severityBreakdown).map(([sev, cnt]) => `- ${sev}: ${cnt}`).join("\n") : "- Acik sikayet yok"}
+
+EN COK SIKAYET ALAN SUBELER:
+${topComplaintBranches.length > 0 ? topComplaintBranches.map((b, i) => `${i+1}. ${b.name}: ${b.count} acik sikayet`).join("\n") : "- Sube bazli sikayet yok"}
+
+URETIM PARTI KALITE DURUMU (Son 30 Gun):
+- Toplam Parti: ${recentBatches.length}
+- Kalite Kontrol Bekleyen: ${pendingQCBatches.length}
+- Kalite Sorunu Olan (Skor<70 veya Reddedilen): ${qualityIssueBatches.length}`;
+      accessibleData = "Kalite denetimleri, urun sikayetleri, standart uyumluluk, recete yonetimi, uretim parti kalitesi";
 
     } else if (role === "muhasebe" || role === "muhasebe_ik") {
-      const [branchesData, usersData, leavesData] = await Promise.all([
+      const [branchesData, usersData, leavesData, allUsersData] = await Promise.all([
         db.select().from(branches),
         db.select().from(users).where(eq(users.isActive, true)),
         db.select().from(leaveRequests),
+        db.select().from(users),
       ]);
 
       const pendingLeaves = leavesData.filter((l: any) => l.status === "pending" || l.status === "beklemede");
+      const approvedLeaves = leavesData.filter((l: any) => {
+        const isApproved = l.status === "approved" || l.status === "onaylandi";
+        const startDate = l.startDate ? new Date(l.startDate) : null;
+        const endDate = l.endDate ? new Date(l.endDate) : null;
+        const now = new Date();
+        return isApproved && startDate && endDate && startDate <= now && endDate >= now;
+      });
+
+      const branchUserCounts: Record<number, { name: string; total: number }> = {};
+      for (const u of usersData) {
+        if (u.branchId) {
+          if (!branchUserCounts[u.branchId]) {
+            const br = branchesData.find(b => b.id === u.branchId);
+            branchUserCounts[u.branchId] = { name: br?.name || `Sube #${u.branchId}`, total: 0 };
+          }
+          branchUserCounts[u.branchId].total++;
+        }
+      }
+      const hqCount = usersData.filter(u => !u.branchId).length;
+
+      const pendingLeaveDetails = pendingLeaves.slice(0, 5).map((l: any) => {
+        const u = allUsersData.find((us: any) => us.id === l.userId);
+        const br = u?.branchId ? branchesData.find(b => b.id === u.branchId) : null;
+        return `- ${u?.firstName || ""} ${u?.lastName || ""} (${br?.name || "HQ"}) | ${l.leaveType || l.type || "Izin"} | ${l.startDate ? new Date(l.startDate).toLocaleDateString("tr-TR") : "?"} - ${l.endDate ? new Date(l.endDate).toLocaleDateString("tr-TR") : "?"}`;
+      });
 
       roleDescription = role === "muhasebe" ? "Muhasebe Uzmani" : "Muhasebe ve IK Uzmani";
-      roleContext = `MUHASEBE DURUMU:
+      roleContext = `MUHASEBE / IK DURUMU:
 - Sube Sayisi: ${branchesData.length}
-- Aktif Personel: ${usersData.length}
-- Bekleyen Izin Talepleri: ${pendingLeaves.length}`;
-      accessibleData = "Finansal raporlar, maliyet analizi, bordro, personel kayitlari";
+- Aktif Personel: ${usersData.length} (Toplam Kayitli: ${allUsersData.length})
+- Bekleyen Izin Talepleri: ${pendingLeaves.length}
+- Su An Izindeki Personel: ${approvedLeaves.length}
+
+SUBE BAZLI PERSONEL DAGILIMI:
+${Object.values(branchUserCounts).sort((a, b) => b.total - a.total).map(b => `- ${b.name}: ${b.total} kisi`).join("\n")}
+- Genel Merkez (HQ): ${hqCount} kisi
+
+BEKLEYEN IZIN TALEPLERI (Son 5):
+${pendingLeaveDetails.length > 0 ? pendingLeaveDetails.join("\n") : "- Bekleyen izin talebi yok"}`;
+      accessibleData = "Finansal raporlar, maliyet analizi, bordro, personel kayitlari, izin yonetimi";
 
     } else if (role === "destek") {
       const [faultsData, complaintsData, branchesData] = await Promise.all([
@@ -391,34 +626,99 @@ ${Object.values(faultsByBranch).sort((a, b) => b.count - a.count).slice(0, 5).ma
       accessibleData = "Destek talepleri, ariza bildirimleri, iletisim kayitlari";
 
     } else if (["fabrika", "fabrika_mudur", "fabrika_sorumlu", "fabrika_teknisyen", "fabrika_personel"].includes(role)) {
-      const [equipmentData, faultsData, batchesData] = await Promise.all([
+      const [equipmentData, faultsData] = await Promise.all([
         db.select().from(equipment),
         db.select().from(equipmentFaults),
-        db.select().from(productionBatches),
       ]);
 
+      let batchesData: any[] = [];
+      try {
+        batchesData = await db.select().from(productionBatches);
+      } catch (e) { console.log("Fabrika batches context error:", e); }
+
       const openFaults = faultsData.filter((f: any) => f.status === "acik" || f.status === "open" || f.status === "in_progress");
+      const criticalFaults = openFaults.filter((f: any) => f.priority === "kritik" || f.priority === "yuksek" || f.priority === "critical" || f.priority === "high");
+
+      const activeBatches = batchesData.filter((b: any) => b.status === "in_progress" || b.status === "planned" || b.status === "quality_check");
+      const batchStatusCounts: Record<string, number> = {};
+      for (const b of batchesData) {
+        batchStatusCounts[(b as any).status] = (batchStatusCounts[(b as any).status] || 0) + 1;
+      }
+
+      const maintenanceNeeded = equipmentData.filter((e: any) => {
+        if (e.nextMaintenanceDate) {
+          return new Date(e.nextMaintenanceDate) <= new Date();
+        }
+        return e.status === "bakim_gerekli" || e.status === "maintenance_needed";
+      });
+
+      const resolvedFaults = faultsData.filter((f: any) => {
+        const resolved = f.status === "cozuldu" || f.status === "resolved" || f.status === "closed";
+        return resolved && f.resolvedAt && new Date(f.resolvedAt) >= thirtyDaysAgo;
+      });
+      const avgResolutionTime = resolvedFaults.length > 0
+        ? (resolvedFaults.reduce((sum: number, f: any) => {
+            const created = new Date(f.createdAt || f.reportedAt);
+            const resolved = new Date(f.resolvedAt);
+            return sum + (resolved.getTime() - created.getTime()) / (1000 * 60 * 60);
+          }, 0) / resolvedFaults.length).toFixed(1)
+        : "-";
+
+      const recentBatches = batchesData.filter((b: any) => {
+        const d = b.productionDate ? new Date(b.productionDate) : null;
+        return d && d >= thirtyDaysAgo;
+      });
+      const completedBatches = recentBatches.filter((b: any) => b.status === "completed" || b.status === "approved");
+      const totalProduced = completedBatches.reduce((sum: number, b: any) => sum + Number(b.quantity || 0), 0);
 
       roleDescription = role === "fabrika_mudur" ? "Fabrika Muduru" : role === "fabrika_teknisyen" ? "Fabrika Teknisyeni" : "Fabrika Sorumlusu";
       roleContext = `FABRIKA DURUMU:
 - Toplam Ekipman: ${equipmentData.length}
-- Acik Arizalar: ${openFaults.length}
-- Uretim Partileri: ${batchesData.length}`;
-      accessibleData = "Uretim planlama, kalite kontrol, stok yonetimi, ekipman durumu";
+- Acik Arizalar: ${openFaults.length} (Kritik/Yuksek: ${criticalFaults.length})
+- Toplam Uretim Partileri: ${batchesData.length}
+- Aktif Partiler (Devam Eden/Planlanan/KK Bekleyen): ${activeBatches.length}
+
+AKTIF URETIM PARTILERI DURUM:
+${Object.entries(batchStatusCounts).map(([status, cnt]) => `- ${status}: ${cnt}`).join("\n")}
+
+BAKIM BEKLEYEN EKIPMANLAR:
+${maintenanceNeeded.length > 0 ? maintenanceNeeded.slice(0, 5).map((e: any, i: number) => `${i+1}. ${e.name} (${e.code || e.serialNumber || "-"})`).join("\n") : "- Bakim bekleyen ekipman yok"}
+
+ARIZA COZUM SURESI (Son 30 Gun):
+- Cozulen Ariza: ${resolvedFaults.length}
+- Ortalama Cozum Suresi: ${avgResolutionTime} saat
+
+URETIM CIKTISI (Son 30 Gun):
+- Tamamlanan Parti: ${completedBatches.length}
+- Toplam Uretim: ${totalProduced.toLocaleString("tr-TR")} adet`;
+      accessibleData = "Uretim planlama, kalite kontrol, stok yonetimi, ekipman durumu, ariza takibi";
 
     } else if ((role === "supervisor" || role === "supervisor_buddy" || role === "manager") && branchId) {
-      const [branchData, usersData, tasksData, faultsData, leavesData, perfData, checklistData] = await Promise.all([
+      const [branchData, usersData, tasksData, faultsData, leavesData, perfData] = await Promise.all([
         db.select().from(branches).where(eq(branches.id, branchId)),
         db.select().from(users).where(and(eq(users.branchId, branchId), eq(users.isActive, true))),
         db.select().from(tasks).where(eq(tasks.branchId, branchId)),
         db.select().from(equipmentFaults).where(eq(equipmentFaults.branchId, branchId)),
         db.select().from(leaveRequests),
         db.select().from(employeePerformanceScores),
-        db.select().from(checklistCompletions),
       ]);
+
+      let checklistData: any[] = [];
+      let shiftsData: any[] = [];
+      let equipmentData: any[] = [];
+      let feedbackData: any[] = [];
+      try {
+        [checklistData, shiftsData, equipmentData, feedbackData] = await Promise.all([
+          db.select().from(checklistCompletions),
+          db.select().from(shifts),
+          db.select().from(equipment).where(eq(equipment.branchId, branchId)),
+          db.select().from(customerFeedback),
+        ]);
+      } catch (e) { console.log("Supervisor extra context error:", e); }
 
       const branchName = branchData[0]?.name || "Bilinmiyor";
       const openFaults = faultsData.filter((f: any) => f.status === "acik" || f.status === "open" || f.status === "in_progress" || f.status === "atandi");
+      const criticalFaults = openFaults.filter((f: any) => f.priority === "kritik" || f.priority === "yuksek" || f.priority === "critical" || f.priority === "high");
       const pendingTasks = tasksData.filter((t: any) => t.status === "pending" || t.status === "beklemede");
       const branchLeaves = leavesData.filter((l: any) => usersData.some(u => u.id === l.userId));
       const pendingLeaves = branchLeaves.filter((l: any) => l.status === "pending" || l.status === "beklemede");
@@ -432,19 +732,69 @@ ${Object.values(faultsByBranch).sort((a, b) => b.count - a.count).slice(0, 5).ma
           return `${u?.firstName || ""} ${u?.lastName || ""} (${u?.role}) - Skor: ${Number(p.weeklyTotalScore).toFixed(0)}`;
         });
 
+      const todayStr = today;
+      const todayChecklists = checklistData.filter((c: any) => {
+        const cDate = c.completedAt || c.createdAt;
+        return cDate && new Date(cDate).toISOString().slice(0, 10) === todayStr;
+      });
+      const branchChecklists = todayChecklists.filter((c: any) => {
+        const cUser = usersData.find(u => u.id === (c as any).userId || u.id === (c as any).completedById);
+        return cUser !== undefined;
+      });
+
+      const todayShifts = shiftsData.filter((s: any) => {
+        const sDate = s.date || s.shiftDate;
+        return sDate && new Date(sDate).toISOString().slice(0, 10) === todayStr && s.branchId === branchId;
+      });
+      const todayShiftDetails = todayShifts.slice(0, 10).map((s: any) => {
+        const u = usersData.find(us => us.id === s.userId);
+        return `- ${u?.firstName || "?"} ${u?.lastName || ""}: ${s.startTime || "?"} - ${s.endTime || "?"}`;
+      });
+
+      const branchEquipmentHealth = equipmentData.map((e: any) => {
+        const eqFaults = openFaults.filter((f: any) => f.equipmentId === e.id);
+        const needsMaint = e.nextMaintenanceDate && new Date(e.nextMaintenanceDate) <= new Date();
+        const status = eqFaults.length > 0 ? "ARIZALI" : needsMaint ? "BAKIM GEREKLI" : (e.status === "aktif" || e.status === "active" ? "NORMAL" : (e.status || "?"));
+        return { name: e.name, status, faults: eqFaults.length };
+      });
+      const problemEquipment = branchEquipmentHealth.filter(e => e.status !== "NORMAL");
+
+      const branchFeedback = feedbackData.filter((fb: any) => fb.branchId === branchId);
+      const recentFeedback = branchFeedback.filter((fb: any) => {
+        const d = fb.createdAt ? new Date(fb.createdAt) : null;
+        return d && d >= thirtyDaysAgo;
+      });
+      const avgFeedbackRating = recentFeedback.length > 0
+        ? (recentFeedback.reduce((sum: number, fb: any) => sum + (fb.rating || 0), 0) / recentFeedback.length).toFixed(1)
+        : "-";
+
       roleDescription = `${branchName} ${role === "manager" ? "Muduru" : "Supervisoru"}`;
       roleContext = `SUBE DURUMU (${branchName}):
 - Aktif Personel: ${usersData.length}
 - Bekleyen Gorevler: ${pendingTasks.length}
-- Acik Arizalar: ${openFaults.length}
+- Acik Arizalar: ${openFaults.length} (Kritik/Yuksek: ${criticalFaults.length})
 - Bekleyen Izin Talepleri: ${pendingLeaves.length}
+
+BUGUNUN CHECKLIST DURUMU:
+- Tamamlanan Checklist: ${branchChecklists.length}
+
+BUGUNUN VARDIYA PROGRAMI:
+${todayShiftDetails.length > 0 ? todayShiftDetails.join("\n") : "- Bugun icin vardiya planlanmamis veya veri yok"}
+
+EKIPMAN DURUMU:
+- Toplam Ekipman: ${equipmentData.length}
+${problemEquipment.length > 0 ? `- Sorunlu Ekipman:\n${problemEquipment.map(e => `  * ${e.name}: ${e.status} (${e.faults} acik ariza)`).join("\n")}` : "- Tum ekipmanlar normal"}
+
+MUSTERI GERI BILDIRIMI (Son 30 Gun):
+- Degerlendirme Sayisi: ${recentFeedback.length}
+- Ortalama Puan: ${avgFeedbackRating}/5
 
 PERSONEL PERFORMANSLARI:
 ${perfDetails.length > 0 ? perfDetails.join("\n") : "- Performans verisi henuz yok"}
 
 PERSONEL LISTESI:
 ${usersData.map(u => `- ${u.firstName} ${u.lastName} (${u.role})`).join("\n")}`;
-      accessibleData = "Sube personeli, gorevler, checklistler, arizalar, vardiyalar, izin talepleri";
+      accessibleData = "Sube personeli, gorevler, checklistler, arizalar, vardiyalar, izin talepleri, ekipman durumu, musteri geri bildirimleri";
 
     } else if ((role === "barista" || role === "bar_buddy" || role === "stajyer") && branchId) {
       const [branchData, tasksData] = await Promise.all([
