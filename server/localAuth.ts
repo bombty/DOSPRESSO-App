@@ -33,7 +33,7 @@ export function getSession() {
     proxy: true,
     cookie: {
       httpOnly: true,
-      secure: false,
+      secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
       maxAge: sessionTtl,
       path: '/',
@@ -95,10 +95,13 @@ export async function setupAuth(app: Express, authLimiter?: any) {
   passport.deserializeUser(async (id: string, cb) => {
     try {
       const user = await storage.getUserById(id);
+      if (!user) {
+        return cb(null, false);
+      }
       cb(null, user);
     } catch (error) {
-      console.error("[Auth] Deserialize error:", error);
-      cb(error);
+      console.warn("[Auth] Deserialize error (session invalidated):", (error as Error).message || error);
+      cb(null, false);
     }
   });
 
