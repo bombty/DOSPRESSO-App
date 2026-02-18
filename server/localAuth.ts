@@ -1,7 +1,7 @@
 import passport from "passport";
 import { Strategy as LocalStrategy } from "passport-local";
 import session from "express-session";
-import type { Express, RequestHandler } from "express";
+import type { Express, Request, RequestHandler } from "express";
 import connectPg from "connect-pg-simple";
 import bcrypt from "bcrypt";
 import { z } from "zod";
@@ -169,7 +169,7 @@ export async function setupAuth(app: Express, authLimiter?: any) {
     const { username, password } = validationResult.data;
 
     // İlk önce normal kullanıcı girişini dene
-    passport.authenticate("local", async (err: unknown, user: unknown, info: any) => {
+    passport.authenticate("local", async (err: unknown, user: Express.User | false | null, info: any) => {
       if (err) {
         console.error(`[Auth] Passport error for '${username}':`, err);
         return res.status(500).json({ error: "Sunucu hatası" });
@@ -243,15 +243,15 @@ export async function setupAuth(app: Express, authLimiter?: any) {
   });
 
   // Logout handler (shared logic)
-  const logoutHandler = (req: unknown, res: any) => {
-    req.logout((err: any) => {
+  const logoutHandler = (req: Request, res: any) => {
+    (req as any).logout((err: any) => {
       if (err) {
         console.error("[Auth] Logout error:", err);
         return res.status(500).json({ error: "Logout failed" });
       }
       
       // Destroy session and clear cookie
-      req.session.destroy((destroyErr: any) => {
+      (req as any).session.destroy((destroyErr: any) => {
         if (destroyErr) {
           console.error("[Auth] Session destroy error:", destroyErr);
           return res.status(500).json({ error: "Session destroy failed" });

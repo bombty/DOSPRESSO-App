@@ -10,6 +10,7 @@ import { seedAdminMenu } from "./seed-admin-menu";
 import { seedServiceRequests } from "./seed-service-requests";
 import { seedDospressoRecipes } from "./seed-dospresso-recipes";
 import { seedDefaultAuditTemplate } from "./seed-audit-template";
+import { seedRoles } from "./seed-roles";
 import { startWeeklyBackupScheduler, performHealthCheck } from "./backup";
 import { startTrackingCleanup } from "./tracking";
 
@@ -93,6 +94,11 @@ app.use((req, res, next) => {
     reusePort: true,
   }, async () => {
     log(`serving on port ${port}`);
+    
+    // Seed system roles (idempotent)
+    await seedRoles().catch((error) => {
+      console.error("Error seeding roles:", error);
+    });
     
     // Seed permission modules (idempotent)
     await seedPermissionModules().catch((error) => {
