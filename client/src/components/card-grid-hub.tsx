@@ -888,10 +888,7 @@ export function CardGridHub() {
   if (isCEO) {
     return (
       <div className="p-3 pb-24 space-y-3">
-        <div className="flex items-center gap-3">
-          <MrDobody size={40} />
-          <div className="flex-1"><UnifiedHero /></div>
-        </div>
+        <UnifiedHero />
 
         <DailyTaskPanel />
 

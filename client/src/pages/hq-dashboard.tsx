@@ -1663,15 +1663,7 @@ export default function HQDashboard() {
 
   return (
     <div className="container mx-auto p-3 max-w-7xl space-y-3">
-      <div className="flex items-center gap-3">
-        <Avatar className="h-10 w-10" data-testid="avatar-user-profile">
-          <AvatarImage src={user?.profileImageUrl || undefined} alt={user?.firstName || ''} />
-          <AvatarFallback className="bg-primary/10 text-primary text-sm font-semibold">
-            {(user?.firstName?.[0] || '').toUpperCase()}{(user?.lastName?.[0] || '').toUpperCase()}
-          </AvatarFallback>
-        </Avatar>
         <UnifiedHero />
-      </div>
       <DailyTaskPanel />
       {!isCGO && <CriticalAlerts />}
       <DepartmentComponent />

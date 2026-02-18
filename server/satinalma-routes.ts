@@ -1241,85 +1241,114 @@ export function registerSatinalmaRoutes(app: Express, isAuthenticated: AuthMiddl
         return res.status(404).json({ error: "Ürün bulunamadı" });
       }
 
-      const productSuppliersData = await db.select({
-        id: productSuppliers.id,
-        supplierId: productSuppliers.supplierId,
-        unitPrice: productSuppliers.unitPrice,
-        leadTimeDays: productSuppliers.leadTimeDays,
-        isPrimary: productSuppliers.isPrimary,
-        preferenceOrder: productSuppliers.preferenceOrder,
-        supplierName: suppliers.name,
-        supplierCode: suppliers.code,
-        supplierStatus: suppliers.status,
-        paymentTerms: suppliers.paymentTermDays,
-        qualityScore: suppliers.qualityScore,
-        deliveryRate: suppliers.onTimeDeliveryRate,
-        contactPerson: suppliers.contactPerson,
-        phone: suppliers.phone,
-        email: suppliers.email,
-      })
-        .from(productSuppliers)
-        .leftJoin(suppliers, eq(productSuppliers.supplierId, suppliers.id))
-        .where(eq(productSuppliers.inventoryId, id))
-        .orderBy(asc(productSuppliers.preferenceOrder));
-
-      let priceHistory: any[] = [];
-      if (product.category === "hammadde" || product.category === "raw_material") {
-        const rawMat = await db.select()
-          .from(rawMaterials)
-          .where(eq(rawMaterials.inventoryId, id))
-          .limit(1);
-
-        if (rawMat.length > 0) {
-          priceHistory = await db.select()
-            .from(rawMaterialPriceHistory)
-            .where(eq(rawMaterialPriceHistory.rawMaterialId, rawMat[0].id))
-            .orderBy(desc(rawMaterialPriceHistory.createdAt))
-            .limit(50);
-        }
+      let productSuppliersData: any[] = [];
+      try {
+        productSuppliersData = await db.select({
+          id: productSuppliers.id,
+          supplierId: productSuppliers.supplierId,
+          unitPrice: productSuppliers.unitPrice,
+          leadTimeDays: productSuppliers.leadTimeDays,
+          isPrimary: productSuppliers.isPrimary,
+          preferenceOrder: productSuppliers.preferenceOrder,
+          supplierName: suppliers.name,
+          supplierCode: suppliers.code,
+          supplierStatus: suppliers.status,
+          paymentTerms: suppliers.paymentTermDays,
+          qualityScore: suppliers.qualityScore,
+          deliveryRate: suppliers.onTimeDeliveryRate,
+          contactPerson: suppliers.contactPerson,
+          phone: suppliers.phone,
+          email: suppliers.email,
+        })
+          .from(productSuppliers)
+          .leftJoin(suppliers, eq(productSuppliers.supplierId, suppliers.id))
+          .where(eq(productSuppliers.inventoryId, id))
+          .orderBy(asc(productSuppliers.preferenceOrder));
+      } catch (e) {
+        console.warn("Product suppliers query failed:", e);
       }
 
-      const quotes = await db.select()
-        .from(supplierQuotes)
-        .where(eq(supplierQuotes.inventoryId, id))
-        .orderBy(desc(supplierQuotes.createdAt));
+      let priceHistory: any[] = [];
+      try {
+        if (product.category === "hammadde" || product.category === "raw_material") {
+          const rawMat = await db.select()
+            .from(rawMaterials)
+            .where(eq(rawMaterials.inventoryId, id))
+            .limit(1);
 
-      const issues = await db.select()
-        .from(supplierIssues)
-        .where(eq(supplierIssues.inventoryId, id))
-        .orderBy(desc(supplierIssues.createdAt));
+          if (rawMat.length > 0) {
+            priceHistory = await db.select()
+              .from(rawMaterialPriceHistory)
+              .where(eq(rawMaterialPriceHistory.rawMaterialId, rawMat[0].id))
+              .orderBy(desc(rawMaterialPriceHistory.createdAt))
+              .limit(50);
+          }
+        }
+      } catch (e) {
+        console.warn("Price history query failed:", e);
+      }
 
-      const ninetyDaysAgo = new Date();
-      ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
+      let quotes: any[] = [];
+      try {
+        quotes = await db.select()
+          .from(supplierQuotes)
+          .where(eq(supplierQuotes.inventoryId, id))
+          .orderBy(desc(supplierQuotes.createdAt));
+      } catch (e) {
+        console.warn("Supplier quotes query failed:", e);
+      }
 
-      const movementSummary = await db.select({
-        movementType: inventoryMovements.movementType,
-        count: sql<number>`count(*)::int`,
-        totalQuantity: sql<string>`sum(${inventoryMovements.quantity}::numeric)::text`,
-      })
-        .from(inventoryMovements)
-        .where(and(
-          eq(inventoryMovements.inventoryId, id),
-          gte(inventoryMovements.createdAt, ninetyDaysAgo)
-        ))
-        .groupBy(inventoryMovements.movementType);
+      let issues: any[] = [];
+      try {
+        issues = await db.select()
+          .from(supplierIssues)
+          .where(eq(supplierIssues.inventoryId, id))
+          .orderBy(desc(supplierIssues.createdAt));
+      } catch (e) {
+        console.warn("Supplier issues query failed:", e);
+      }
 
-      const poHistory = await db.select({
-        poItemId: purchaseOrderItems.id,
-        quantity: purchaseOrderItems.quantity,
-        unitPrice: purchaseOrderItems.unitPrice,
-        lineTotal: purchaseOrderItems.lineTotal,
-        orderId: purchaseOrders.id,
-        orderNumber: purchaseOrders.orderNumber,
-        orderDate: purchaseOrders.orderDate,
-        orderStatus: purchaseOrders.status,
-        supplierId: purchaseOrders.supplierId,
-      })
-        .from(purchaseOrderItems)
-        .leftJoin(purchaseOrders, eq(purchaseOrderItems.purchaseOrderId, purchaseOrders.id))
-        .where(eq(purchaseOrderItems.inventoryId, id))
-        .orderBy(desc(purchaseOrders.orderDate))
-        .limit(10);
+      let movementSummary: any[] = [];
+      try {
+        const ninetyDaysAgo = new Date();
+        ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
+
+        movementSummary = await db.select({
+          movementType: inventoryMovements.movementType,
+          count: sql<number>`count(*)::int`,
+          totalQuantity: sql<string>`sum(${inventoryMovements.quantity}::numeric)::text`,
+        })
+          .from(inventoryMovements)
+          .where(and(
+            eq(inventoryMovements.inventoryId, id),
+            gte(inventoryMovements.createdAt, ninetyDaysAgo)
+          ))
+          .groupBy(inventoryMovements.movementType);
+      } catch (e) {
+        console.warn("Movement summary query failed:", e);
+      }
+
+      let poHistory: any[] = [];
+      try {
+        poHistory = await db.select({
+          poItemId: purchaseOrderItems.id,
+          quantity: purchaseOrderItems.quantity,
+          unitPrice: purchaseOrderItems.unitPrice,
+          lineTotal: purchaseOrderItems.lineTotal,
+          orderId: purchaseOrders.id,
+          orderNumber: purchaseOrders.orderNumber,
+          orderDate: purchaseOrders.orderDate,
+          orderStatus: purchaseOrders.status,
+          supplierId: purchaseOrders.supplierId,
+        })
+          .from(purchaseOrderItems)
+          .leftJoin(purchaseOrders, eq(purchaseOrderItems.purchaseOrderId, purchaseOrders.id))
+          .where(eq(purchaseOrderItems.inventoryId, id))
+          .orderBy(desc(purchaseOrders.orderDate))
+          .limit(10);
+      } catch (e) {
+        console.warn("Purchase order history query failed:", e);
+      }
 
       res.json({
         product,

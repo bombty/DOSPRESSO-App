@@ -112,6 +112,36 @@ const TYPE_OPTIONS = [
   { value: "info", label: "Bilgi" },
 ];
 
+const SYSTEM_PAGES = [
+  { value: "/gorevler", label: "Görevler" },
+  { value: "/checklistler", label: "Checklistler" },
+  { value: "/akademi", label: "Akademi / Eğitim" },
+  { value: "/ekipman/ariza", label: "Arızalar" },
+  { value: "/raporlar", label: "Raporlar" },
+  { value: "/vardiyalar", label: "Vardiyalar" },
+  { value: "/satinalma", label: "Satınalma" },
+  { value: "/muhasebe", label: "Muhasebe" },
+  { value: "/performans", label: "Performans" },
+  { value: "/receteler", label: "Reçeteler" },
+  { value: "/bilgi-bankasi", label: "Bilgi Bankası" },
+  { value: "/operasyon", label: "Operasyon" },
+  { value: "/crm", label: "CRM" },
+  { value: "/kayip-esya", label: "Kayıp Eşya" },
+  { value: "/destek", label: "Destek" },
+  { value: "/subeler", label: "Şubeler" },
+  { value: "/denetimler", label: "Denetimler" },
+  { value: "/devam-takibi", label: "Devam Takibi" },
+  { value: "/mesaj", label: "Mesajlar" },
+  { value: "/ceo-command-center", label: "Komuta Merkezi" },
+  { value: "/franchise-acilis", label: "Franchise Açılış" },
+  { value: "/fabrika", label: "Fabrika" },
+  { value: "/kalite-kontrol-dashboard", label: "Kalite Kontrol" },
+  { value: "/ayin-elemani", label: "Ayın Elemanı" },
+  { value: "/kampanya-yonetimi", label: "Kampanya Yönetimi" },
+  { value: "/sikayetler", label: "Şikayetler" },
+  { value: "/mali-yonetim", label: "Mali Yönetim" },
+];
+
 interface WidgetFormData {
   title: string;
   subtitle: string;
@@ -452,14 +482,40 @@ export default function WidgetEditor() {
             </div>
 
             <div>
-              <Label htmlFor="hw-url">URL</Label>
-              <Input
-                id="hw-url"
-                value={formData.url}
-                onChange={(e) => setFormData(prev => ({ ...prev, url: e.target.value }))}
-                placeholder="/gorevler"
-                data-testid="input-hero-widget-url"
-              />
+              <Label>URL / Sayfa</Label>
+              <Select
+                value={SYSTEM_PAGES.some(p => p.value === formData.url) ? formData.url : "__custom__"}
+                onValueChange={(value) => {
+                  if (value === "__custom__") {
+                    setFormData(prev => ({ ...prev, url: "" }));
+                  } else {
+                    setFormData(prev => ({ ...prev, url: value }));
+                  }
+                }}
+              >
+                <SelectTrigger data-testid="select-trigger-hero-widget-url">
+                  <SelectValue placeholder="Sayfa seçin" />
+                </SelectTrigger>
+                <SelectContent>
+                  {SYSTEM_PAGES.map(page => (
+                    <SelectItem key={page.value} value={page.value} data-testid={`select-item-hw-page-${page.value.replace(/\//g, '-')}`}>
+                      {page.label}
+                    </SelectItem>
+                  ))}
+                  <SelectItem value="__custom__" data-testid="select-item-hw-page-custom">
+                    Özel URL
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+              {!SYSTEM_PAGES.some(p => p.value === formData.url) && (
+                <Input
+                  className="mt-2"
+                  value={formData.url}
+                  onChange={(e) => setFormData(prev => ({ ...prev, url: e.target.value }))}
+                  placeholder="/ozel-sayfa-yolu"
+                  data-testid="input-hero-widget-custom-url"
+                />
+              )}
             </div>
 
             <div>
@@ -536,6 +592,7 @@ export default function WidgetEditor() {
 
       <ConfirmDeleteDialog
         open={deleteState.open}
+        onOpenChange={(open) => { if (!open) cancelDelete(); }}
         title="Widget Sil"
         description={`"${deleteState.itemName}" widget'ını silmek istediğinize emin misiniz?`}
         onConfirm={() => {
@@ -544,7 +601,6 @@ export default function WidgetEditor() {
           }
           confirmDelete();
         }}
-        onCancel={cancelDelete}
       />
     </div>
   );

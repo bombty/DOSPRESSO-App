@@ -181,8 +181,8 @@ export function DashboardWidgets() {
 
   if (isLoading) {
     return (
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4" data-testid="dashboard-widgets-loading">
-        {[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-32" />)}
+      <div className="w-full grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3" data-testid="dashboard-widgets-loading">
+        {[1, 2, 3].map(i => <Skeleton key={i} className="h-32" />)}
       </div>
     );
   }
@@ -194,8 +194,8 @@ export function DashboardWidgets() {
   const sortedWidgets = [...widgets].sort((a, b) => a.sortOrder - b.sortOrder);
 
   return (
-    <div className="space-y-3" data-testid="dashboard-widgets-container">
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+    <div className="w-full space-y-3" data-testid="dashboard-widgets-container">
+      <div className="w-full grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
         {sortedWidgets.map((widget) => {
           const sizeClass =
             widget.size === "small" ? "col-span-1" :
