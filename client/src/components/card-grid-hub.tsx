@@ -886,24 +886,60 @@ export function CardGridHub() {
   const isAdmin = userRole === 'admin';
 
   if (isCEO) {
+    const ceoQuickLinks = [
+      { label: "AI Control Tower", path: "/ceo-command-center", icon: BarChart3, color: "bg-primary/10", iconColor: "text-primary", testId: "ceo-ai-control-tower-btn" },
+      { label: "Şubeler", path: "/subeler", icon: Building2, color: "bg-indigo-500/10", iconColor: "text-indigo-500", testId: "ceo-branches-btn" },
+      { label: "Arızalar", path: "/ariza", icon: AlertTriangle, color: "bg-orange-500/10", iconColor: "text-orange-500", testId: "ceo-faults-btn", badge: openFaults },
+      { label: "Tasklar", path: "/gorevler", icon: ClipboardList, color: "bg-green-500/10", iconColor: "text-green-500", testId: "ceo-tasks-btn", badge: pendingTasks },
+      { label: "Vardiya", path: "/vardiyalar", icon: Calendar, color: "bg-purple-500/10", iconColor: "text-purple-500", testId: "ceo-shifts-btn" },
+      { label: "İK", path: "/ik", icon: Users, color: "bg-pink-500/10", iconColor: "text-pink-500", testId: "ceo-hr-btn" },
+      { label: "Checklistler", path: "/yonetim/checklistler", icon: CheckSquare, color: "bg-teal-500/10", iconColor: "text-teal-500", testId: "ceo-checklists-btn" },
+      { label: "Akademi", path: "/yonetim/akademi", icon: GraduationCap, color: "bg-blue-500/10", iconColor: "text-blue-500", testId: "ceo-academy-btn" },
+      { label: "Ekipman", path: "/ekipman", icon: Coffee, color: "bg-amber-600/10", iconColor: "text-amber-600", testId: "ceo-equipment-btn" },
+      { label: "Muhasebe", path: "/muhasebe", icon: Calculator, color: "bg-emerald-600/10", iconColor: "text-emerald-600", testId: "ceo-muhasebe-btn" },
+      { label: "Satınalma", path: "/satinalma", icon: ShoppingCart, color: "bg-cyan-500/10", iconColor: "text-cyan-500", testId: "ceo-satinalma-btn" },
+      { label: "Raporlar", path: "/e2e-raporlar", icon: BarChart3, color: "bg-cyan-500/10", iconColor: "text-cyan-600", testId: "ceo-reports-btn" },
+      { label: "Kalite", path: "/kalite-denetimi", icon: Star, color: "bg-amber-500/10", iconColor: "text-amber-500", testId: "ceo-quality-btn" },
+      { label: "Projeler", path: "/projeler", icon: FolderKanban, color: "bg-violet-600/10", iconColor: "text-violet-600", testId: "ceo-projects-btn" },
+      { label: "Destek", path: "/hq-destek", icon: MessageSquare, color: "bg-rose-500/10", iconColor: "text-rose-500", testId: "ceo-support-btn" },
+      { label: "Duyurular", path: "/duyurular", icon: Megaphone, color: "bg-red-500/10", iconColor: "text-red-500", testId: "ceo-announcements-btn" },
+      { label: "Lost&Found", path: "/kayip-esya-hq", icon: Briefcase, color: "bg-yellow-600/10", iconColor: "text-yellow-600", testId: "ceo-lostfound-btn" },
+      { label: "Bilgi Bankası", path: "/bilgi-bankasi", icon: BookOpen, color: "bg-emerald-500/10", iconColor: "text-emerald-500", testId: "ceo-knowledge-btn" },
+      { label: "CRM", path: "/crm", icon: Headphones, color: "bg-rose-500/10", iconColor: "text-rose-600", testId: "ceo-crm-btn" },
+      { label: "Canlı Takip", path: "/canli-takip", icon: MapPin, color: "bg-emerald-500/10", iconColor: "text-emerald-600", testId: "ceo-tracking-btn" },
+      { label: "AI Asistan", path: "/ai-asistan", icon: Bot, color: "bg-violet-500/10", iconColor: "text-violet-500", testId: "ceo-ai-assistant-btn" },
+      { label: "Kullanıcılar", path: "/yonetim/kullanicilar", icon: Users, color: "bg-sky-500/10", iconColor: "text-sky-500", testId: "ceo-users-btn" },
+      { label: "Admin Panel", path: "/admin", icon: Shield, color: "bg-red-600/10", iconColor: "text-red-600", testId: "ceo-admin-btn" },
+      { label: "Toplu Veri", path: "/admin/toplu-veri-yonetimi", icon: Database, color: "bg-indigo-600/10", iconColor: "text-indigo-600", testId: "ceo-bulk-data-btn" },
+      { label: "Yönetim", path: "/yonetim/ayarlar", icon: Settings, color: "bg-slate-600/10", iconColor: "text-slate-600 dark:text-slate-400", testId: "ceo-settings-btn" },
+    ];
+
     return (
       <div className="p-3 pb-24 space-y-3">
         <UnifiedHero />
 
         <DailyTaskPanel />
 
-        <Card className="hover-elevate cursor-pointer" onClick={() => setLocation("/ceo-command-center")} data-testid="ceo-ai-control-tower-btn">
-          <CardContent className="p-3 flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-              <BarChart3 className="w-5 h-5 text-primary" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold">AI Control Tower</p>
-              <p className="text-xs text-muted-foreground">Franchise analitik ve yapay zeka merkezi</p>
-            </div>
-            <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
-          </CardContent>
-        </Card>
+        <CriticalAlerts />
+
+        <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+          {ceoQuickLinks.map((link) => {
+            const Icon = link.icon;
+            return (
+              <Card key={link.path} className="hover-elevate cursor-pointer" onClick={() => setLocation(link.path)} data-testid={link.testId}>
+                <CardContent className="p-2.5 flex flex-col items-center gap-1.5 text-center">
+                  <div className={`w-9 h-9 rounded-lg ${link.color} flex items-center justify-center relative`}>
+                    <Icon className={`w-4.5 h-4.5 ${link.iconColor}`} />
+                    {link.badge && link.badge > 0 ? (
+                      <Badge variant="destructive" className="absolute -top-1.5 -right-1.5 text-[9px] h-4 min-w-4 px-1 flex items-center justify-center">{link.badge}</Badge>
+                    ) : null}
+                  </div>
+                  <span className="text-[11px] font-medium leading-tight">{link.label}</span>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
 
         <Card className="hover-elevate cursor-pointer" onClick={() => setLocation("/kullanim-kilavuzu")} data-testid="link-usage-guide-ceo">
           <CardContent className="p-3 flex items-center gap-3">
@@ -919,6 +955,8 @@ export function CardGridHub() {
         </Card>
 
         {bannerCarouselEnabled && <AnnouncementBannerCarousel />}
+
+        <EmployeeOfMonthWidget />
       </div>
     );
   }
