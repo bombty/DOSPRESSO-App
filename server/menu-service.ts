@@ -348,6 +348,14 @@ const MENU_BLUEPRINT: SidebarMenuSection[] = [
         scope: "hq",
       },
       {
+        id: "food-safety",
+        titleTr: "Gıda Güvenliği",
+        path: "/gida-guvenligi-dashboard",
+        icon: "ShieldCheck",
+        moduleKey: "food_safety",
+        scope: "hq",
+      },
+      {
         id: "branch-health",
         titleTr: "Şube Sağlık Skoru",
         path: "/sube-saglik-skoru",

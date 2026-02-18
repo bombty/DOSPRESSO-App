@@ -83,6 +83,7 @@ const roleLabels: Record<string, string> = {
   marketing: "Marketing",
   trainer: "Trainer (Eğitmen)",
   kalite_kontrol: "Kalite Kontrol",
+  gida_muhendisi: "Gıda Mühendisi",
   fabrika_mudur: "Fabrika Müdürü",
   muhasebe: "Muhasebe",
   teknik: "Teknik",

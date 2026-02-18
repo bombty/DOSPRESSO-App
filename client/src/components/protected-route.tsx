@@ -21,6 +21,7 @@ const ROLE_MAPPING: Record<string, RoleGroup[]> = {
   marketing: ['hq'],
   trainer: ['hq'],
   kalite_kontrol: ['hq'],
+  gida_muhendisi: ['hq'],
   yatirimci_hq: ['hq'],
   fabrika: ['fabrika', 'hq'],
   fabrika_mudur: ['fabrika', 'hq'],

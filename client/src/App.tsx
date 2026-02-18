@@ -159,6 +159,7 @@ import AdminFabrikaFireSebepleri from "@/pages/admin/fabrika-fire-sebepleri";
 import AdminFabrikaPinYonetimi from "@/pages/admin/fabrika-pin-yonetimi";
 import AdminFabrikaKaliteKriterleri from "@/pages/admin/fabrika-kalite-kriterleri";
 import KaliteKontrolDashboard from "@/pages/kalite-kontrol-dashboard";
+import GidaGuvenligiDashboard from "@/pages/gida-guvenligi-dashboard";
 import Setup from "@/pages/setup";
 import MisafirGeriBildirimPublic from "@/pages/misafir-geri-bildirim";
 import MisafirMemnuniyeti from "@/pages/misafir-memnuniyeti";
@@ -403,6 +404,7 @@ function Router() {
           <Route path="/cgo-command-center">{() => <ExecutiveOnly><CGOCommandCenter /></ExecutiveOnly>}</Route>
           <Route path="/hq-dashboard/:department?">{() => <HQOnly><HQDashboard /></HQOnly>}</Route>
           <Route path="/kalite-kontrol-dashboard">{() => <HQOnly><KaliteKontrolDashboard /></HQOnly>}</Route>
+          <Route path="/gida-guvenligi-dashboard">{() => <HQOnly><GidaGuvenligiDashboard /></HQOnly>}</Route>
           <Route path="/satinalma/:tab?" component={SatinalmaMega} />
           <Route path="/urun-sikayet" component={UrunSikayet} />
           <Route path="/sube-saglik-skoru" component={SubeSaglikSkoru} />

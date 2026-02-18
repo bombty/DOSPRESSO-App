@@ -61,6 +61,7 @@ export const UserRole = {
   MARKETING: "marketing", // Pazarlama & grafik tasarım - Diana
   TRAINER: "trainer", // Eğitim ve reçete sorumlusu - Ece
   KALITE_KONTROL: "kalite_kontrol", // Fabrika kalite ve feedback - Ümran
+  GIDA_MUHENDISI: "gida_muhendisi", // Gıda güvenliği ve kalite - Sema
   FABRIKA_MUDUR: "fabrika_mudur", // Fabrika üretim ve stok - Eren
   // Eski HQ rolleri (geriye dönük uyumluluk)
   MUHASEBE: "muhasebe",
@@ -96,6 +97,7 @@ export const HQ_ROLES: ReadonlySet<UserRoleType> = new Set([
   UserRole.MARKETING,
   UserRole.TRAINER,
   UserRole.KALITE_KONTROL,
+  UserRole.GIDA_MUHENDISI,
   UserRole.FABRIKA_MUDUR,
   UserRole.TEKNIK,
   UserRole.DESTEK,
@@ -119,6 +121,7 @@ export const HQ_DEPARTMENT_ROLES: ReadonlySet<UserRoleType> = new Set([
   UserRole.MARKETING,
   UserRole.TRAINER,
   UserRole.KALITE_KONTROL,
+  UserRole.GIDA_MUHENDISI,
   UserRole.FABRIKA_MUDUR,
 ]);
 
@@ -132,6 +135,7 @@ export const DEPARTMENT_DASHBOARD_ROUTES: Record<string, string> = {
   [UserRole.MARKETING]: '/hq-dashboard/marketing',
   [UserRole.TRAINER]: '/hq-dashboard/trainer',
   [UserRole.KALITE_KONTROL]: '/hq-dashboard/kalite',
+  [UserRole.GIDA_MUHENDISI]: '/gida-guvenligi-dashboard',
   [UserRole.FABRIKA_MUDUR]: '/hq-dashboard/fabrika',
 };
 
@@ -293,7 +297,9 @@ export type PermissionModule =
   | 'cost_management'
   // Branch inspection & product complaints
   | 'branch_inspection'
-  | 'product_complaints';
+  | 'product_complaints'
+  // Food safety
+  | 'food_safety';
 
 // Path to Permission Module mapping - Merkezi tanım
 // Dashboard modülleri için URL path'lerini permission modüllerine eşleştirir
@@ -382,6 +388,7 @@ export const PATH_TO_PERMISSION_MAP: Record<string, PermissionModule> = {
   '/coach-sube-denetim': 'branch_inspection',
   '/sube-saglik-skoru': 'branch_inspection',
   '/urun-sikayet': 'product_complaints',
+  '/gida-guvenligi-dashboard': 'food_safety',
   '/maliyet-yonetimi': 'cost_management',
 };
 
@@ -440,6 +447,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     cost_management: ['view', 'create', 'edit', 'delete'],
     branch_inspection: ['view', 'create', 'edit', 'delete', 'approve'],
     product_complaints: ['view', 'create', 'edit', 'delete', 'approve'],
+    food_safety: ['view', 'create', 'edit', 'delete', 'approve'],
     // Academy modules - Admin full access
     academy: ['view', 'create', 'edit', 'delete'],
     academy_admin: ['view', 'create', 'edit', 'delete'],
@@ -530,6 +538,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     cost_management: ['view'],
     branch_inspection: [],
     product_complaints: [],
+    food_safety: [],
   },
   satinalma: {
     dashboard: ['view'],
@@ -602,6 +611,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     cost_management: ['view', 'create', 'edit', 'delete'],
     branch_inspection: [],
     product_complaints: [],
+    food_safety: [],
   },
   coach: {
     dashboard: ['view'],
@@ -674,6 +684,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     purchase_orders: [],
     goods_receipt: [],
     cost_management: [],
+    food_safety: [],
   },
   teknik: {
     dashboard: ['view'],
@@ -727,6 +738,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     cost_management: [],
     branch_inspection: [],
     product_complaints: [],
+    food_safety: [],
     // Academy modules - HQ access
     academy: ['view'],
     academy_admin: ['view'],
@@ -798,6 +810,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     cost_management: [],
     branch_inspection: [],
     product_complaints: [],
+    food_safety: [],
     // Academy modules - destek access
     academy: ['view'],
     academy_admin: ['view'],
@@ -869,6 +882,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     cost_management: [],
     branch_inspection: [],
     product_complaints: [],
+    food_safety: [],
 
     // Academy modules - HQ access
     academy: ['view', 'create', 'edit'],
@@ -941,6 +955,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     cost_management: [],
     branch_inspection: [],
     product_complaints: [],
+    food_safety: [],
     // Academy modules - HQ read access
     academy: ['view'],
     academy_admin: [],
@@ -989,6 +1004,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     customer_satisfaction: ['view', 'create', 'edit'],
     branch_inspection: ['view'],
     product_complaints: ['view', 'create'],
+    food_safety: [],
     // New modules
     lost_found: ['view', 'create', 'edit'],
     lost_found_hq: [],
@@ -1085,6 +1101,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     cost_management: [],
     branch_inspection: [],
     product_complaints: [],
+    food_safety: [],
     // Academy modules
     academy: ['view'],
     academy_admin: [],
@@ -1174,6 +1191,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     cost_management: [],
     branch_inspection: [],
     product_complaints: [],
+    food_safety: [],
   },
   bar_buddy: {
     dashboard: ['view'],
@@ -1245,6 +1263,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     cost_management: [],
     branch_inspection: [],
     product_complaints: [],
+    food_safety: [],
   },
   stajyer: {
     dashboard: ['view'],
@@ -1316,6 +1335,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     cost_management: [],
     branch_inspection: [],
     product_complaints: [],
+    food_safety: [],
   },
   mudur: {
     dashboard: ['view'],
@@ -1345,6 +1365,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     customer_satisfaction: ['view', 'create', 'edit'],
     branch_inspection: ['view'],
     product_complaints: ['view', 'create', 'edit'],
+    food_safety: [],
     lost_found: ['view', 'create', 'edit', 'delete'],
     lost_found_hq: [],
     projects: [],
@@ -1452,6 +1473,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     cost_management: [],
     branch_inspection: [],
     product_complaints: [],
+    food_safety: [],
   },
   // CEO - Full read access
   ceo: {
@@ -1521,6 +1543,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     cost_management: ['view'],
     branch_inspection: ['view'],
     product_complaints: ['view'],
+    food_safety: ['view'],
   },
   // CGO - Chief Growth Officer
   cgo: {
@@ -1590,6 +1613,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     cost_management: ['view'],
     branch_inspection: ['view'],
     product_complaints: ['view'],
+    food_safety: [],
   },
   // MUHASEBE_IK - Muhasebe & İK
   muhasebe_ik: {
@@ -1659,6 +1683,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     cost_management: ['view', 'create', 'edit'],
     branch_inspection: [],
     product_complaints: [],
+    food_safety: [],
   },
   // MARKETING - Pazarlama
   marketing: {
@@ -1728,6 +1753,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     cost_management: [],
     branch_inspection: [],
     product_complaints: [],
+    food_safety: [],
   },
   // TRAINER - Eğitim Sorumlusu
   trainer: {
@@ -1797,6 +1823,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     cost_management: [],
     branch_inspection: [],
     product_complaints: [],
+    food_safety: [],
   },
   // KALITE_KONTROL - Kalite Kontrol
   kalite_kontrol: {
@@ -1866,6 +1893,77 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     purchase_orders: [],
     goods_receipt: ['view'],
     cost_management: ['view'],
+    food_safety: ['view'],
+  },
+  // GIDA_MUHENDISI - Gıda Mühendisi (Gıda Güvenliği & Kalite)
+  gida_muhendisi: {
+    dashboard: ['view'],
+    tasks: ['view', 'create', 'edit'],
+    checklists: ['view', 'create', 'edit'],
+    equipment: ['view'],
+    equipment_faults: ['view'],
+    faults: ['view'],
+    knowledge_base: ['view', 'create', 'edit'],
+    ai_assistant: ['view'],
+    performance: ['view'],
+    attendance: [],
+    branches: ['view'],
+    users: [],
+    employees: ['view'],
+    hr: [],
+    training: ['view', 'create', 'edit'],
+    schedules: [],
+    messages: ['view', 'create'],
+    announcements: ['view', 'create'],
+    complaints: ['view', 'create', 'edit'],
+    leave_requests: [],
+    overtime_requests: [],
+    admin_settings: [],
+    bulk_data: [],
+    accounting: [],
+    customer_satisfaction: ['view', 'edit'],
+    branch_inspection: ['view', 'create', 'edit'],
+    product_complaints: ['view', 'create', 'edit', 'approve'],
+    lost_found: [],
+    lost_found_hq: [],
+    projects: ['view'],
+    reports: ['view'],
+    support: ['view'],
+    notifications: ['view'],
+    quality_audit: ['view', 'create', 'edit', 'approve'],
+    shifts: [],
+    settings: [],
+    factory_kiosk: ['view'],
+    factory_dashboard: ['view'],
+    factory_quality: ['view', 'create', 'edit', 'approve'],
+    factory_analytics: ['view'],
+    factory_stations: ['view'],
+    factory_compliance: ['view', 'create', 'edit'],
+    branch_shift_tracking: [],
+    academy: ['view'],
+    academy_admin: [],
+    badges: ['view'],
+    certificates: ['view'],
+    leaderboard: ['view'],
+    achievements: ['view'],
+    team_competitions: ['view'],
+    streak_tracker: ['view'],
+    academy_analytics: ['view'],
+    progress_overview: ['view'],
+    cohort_analytics: [],
+    branch_analytics: [],
+    learning_paths: ['view'],
+    adaptive_engine: [],
+    social_groups: ['view'],
+    academy_supervisor: [],
+    academy_ai: ['view'],
+    satinalma: [],
+    inventory: ['view'],
+    suppliers: ['view'],
+    purchase_orders: [],
+    goods_receipt: ['view'],
+    cost_management: ['view'],
+    food_safety: ['view', 'create', 'edit', 'approve'],
   },
   // FABRIKA_MUDUR - Fabrika Müdürü
   fabrika_mudur: {
@@ -1935,6 +2033,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     cost_management: ['view', 'create', 'edit'],
     branch_inspection: [],
     product_complaints: [],
+    food_safety: [],
   },
   // FABRIKA_OPERATOR - Fabrika Operatör
   fabrika_operator: {
@@ -2004,6 +2103,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     cost_management: ['view'],
     branch_inspection: [],
     product_complaints: [],
+    food_safety: [],
   },
   fabrika_sorumlu: {
     dashboard: ['view'],
@@ -2072,6 +2172,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     cost_management: ['view'],
     branch_inspection: [],
     product_complaints: [],
+    food_safety: [],
   },
   fabrika_personel: {
     dashboard: ['view'],
@@ -2140,6 +2241,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     cost_management: ['view'],
     branch_inspection: [],
     product_complaints: [],
+    food_safety: [],
   },
 };
 
@@ -12900,3 +13002,165 @@ export const insertPurchaseOrderPaymentSchema = createInsertSchema(purchaseOrder
 });
 export type InsertPurchaseOrderPayment = z.infer<typeof insertPurchaseOrderPaymentSchema>;
 export type PurchaseOrderPayment = typeof purchaseOrderPayments.$inferSelect;
+
+// ==========================================
+// FOOD SAFETY (GIDA GÜVENLİĞİ) TABLES
+// ==========================================
+
+export const haccpControlPoints = pgTable("haccp_control_points", {
+  id: serial("id").primaryKey(),
+  branchId: integer("branch_id").references(() => branches.id, { onDelete: "cascade" }),
+  controlPointName: varchar("control_point_name", { length: 200 }).notNull(),
+  category: varchar("category", { length: 50 }).notNull(),
+  hazardType: varchar("hazard_type", { length: 50 }).notNull(),
+  criticalLimit: varchar("critical_limit", { length: 200 }).notNull(),
+  monitoringMethod: varchar("monitoring_method", { length: 200 }).notNull(),
+  frequency: varchar("frequency", { length: 50 }).notNull(),
+  correctiveAction: text("corrective_action").notNull(),
+  responsibleRole: varchar("responsible_role", { length: 50 }),
+  isActive: boolean("is_active").default(true),
+  createdById: varchar("created_by_id").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("haccp_cp_branch_idx").on(table.branchId),
+  index("haccp_cp_category_idx").on(table.category),
+]);
+
+export const insertHaccpControlPointSchema = createInsertSchema(haccpControlPoints).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertHaccpControlPoint = z.infer<typeof insertHaccpControlPointSchema>;
+export type HaccpControlPoint = typeof haccpControlPoints.$inferSelect;
+
+export const haccpRecords = pgTable("haccp_records", {
+  id: serial("id").primaryKey(),
+  controlPointId: integer("control_point_id").references(() => haccpControlPoints.id, { onDelete: "cascade" }).notNull(),
+  branchId: integer("branch_id").references(() => branches.id, { onDelete: "cascade" }).notNull(),
+  recordedById: varchar("recorded_by_id").references(() => users.id).notNull(),
+  measuredValue: varchar("measured_value", { length: 100 }).notNull(),
+  isWithinLimits: boolean("is_within_limits").notNull(),
+  deviationNote: text("deviation_note"),
+  correctiveActionTaken: text("corrective_action_taken"),
+  photoUrl: text("photo_url"),
+  recordedAt: timestamp("recorded_at").defaultNow(),
+}, (table) => [
+  index("haccp_rec_cp_idx").on(table.controlPointId),
+  index("haccp_rec_branch_idx").on(table.branchId),
+  index("haccp_rec_date_idx").on(table.recordedAt),
+]);
+
+export const insertHaccpRecordSchema = createInsertSchema(haccpRecords).omit({ id: true, recordedAt: true });
+export type InsertHaccpRecord = z.infer<typeof insertHaccpRecordSchema>;
+export type HaccpRecord = typeof haccpRecords.$inferSelect;
+
+export const hygieneAudits = pgTable("hygiene_audits", {
+  id: serial("id").primaryKey(),
+  branchId: integer("branch_id").references(() => branches.id, { onDelete: "cascade" }).notNull(),
+  auditorId: varchar("auditor_id").references(() => users.id).notNull(),
+  auditDate: timestamp("audit_date").notNull(),
+  overallScore: integer("overall_score").notNull().default(0),
+  handHygieneScore: integer("hand_hygiene_score").default(0),
+  surfaceCleanlinessScore: integer("surface_cleanliness_score").default(0),
+  equipmentHygieneScore: integer("equipment_hygiene_score").default(0),
+  personalHygieneScore: integer("personal_hygiene_score").default(0),
+  wasteManagementScore: integer("waste_management_score").default(0),
+  pestControlScore: integer("pest_control_score").default(0),
+  storageConditionsScore: integer("storage_conditions_score").default(0),
+  findings: text("findings"),
+  recommendations: text("recommendations"),
+  photoUrls: text("photo_urls").array(),
+  status: varchar("status", { length: 20 }).default("completed").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("hygiene_audit_branch_idx").on(table.branchId),
+  index("hygiene_audit_date_idx").on(table.auditDate),
+]);
+
+export const insertHygieneAuditSchema = createInsertSchema(hygieneAudits, {
+  auditDate: z.union([z.date(), z.string().transform((str) => new Date(str))]),
+}).omit({ id: true, createdAt: true, auditorId: true });
+export type InsertHygieneAudit = z.infer<typeof insertHygieneAuditSchema>;
+export type HygieneAudit = typeof hygieneAudits.$inferSelect;
+
+export const supplierCertifications = pgTable("supplier_certifications", {
+  id: serial("id").primaryKey(),
+  supplierId: integer("supplier_id").references(() => suppliers.id, { onDelete: "cascade" }).notNull(),
+  certificationType: varchar("certification_type", { length: 100 }).notNull(),
+  certificateNumber: varchar("certificate_number", { length: 100 }),
+  issuedBy: varchar("issued_by", { length: 200 }),
+  issuedDate: timestamp("issued_date"),
+  expiryDate: timestamp("expiry_date").notNull(),
+  status: varchar("status", { length: 30 }).default("active").notNull(),
+  documentUrl: text("document_url"),
+  verifiedById: varchar("verified_by_id").references(() => users.id),
+  verifiedAt: timestamp("verified_at"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("supp_cert_supplier_idx").on(table.supplierId),
+  index("supp_cert_expiry_idx").on(table.expiryDate),
+  index("supp_cert_status_idx").on(table.status),
+]);
+
+export const insertSupplierCertificationSchema = createInsertSchema(supplierCertifications, {
+  issuedDate: z.union([z.date(), z.string().transform((str) => new Date(str))]).optional(),
+  expiryDate: z.union([z.date(), z.string().transform((str) => new Date(str))]),
+}).omit({ id: true, createdAt: true });
+export type InsertSupplierCertification = z.infer<typeof insertSupplierCertificationSchema>;
+export type SupplierCertification = typeof supplierCertifications.$inferSelect;
+
+export const foodSafetyTrainings = pgTable("food_safety_trainings", {
+  id: serial("id").primaryKey(),
+  branchId: integer("branch_id").references(() => branches.id, { onDelete: "cascade" }),
+  trainerId: varchar("trainer_id").references(() => users.id),
+  title: varchar("title", { length: 200 }).notNull(),
+  category: varchar("category", { length: 50 }).notNull(),
+  targetRole: varchar("target_role", { length: 50 }),
+  scheduledDate: timestamp("scheduled_date").notNull(),
+  completedDate: timestamp("completed_date"),
+  duration: integer("duration"),
+  attendeeCount: integer("attendee_count").default(0),
+  maxAttendees: integer("max_attendees"),
+  status: varchar("status", { length: 30 }).default("scheduled").notNull(),
+  materials: text("materials"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("fst_branch_idx").on(table.branchId),
+  index("fst_status_idx").on(table.status),
+  index("fst_date_idx").on(table.scheduledDate),
+]);
+
+export const insertFoodSafetyTrainingSchema = createInsertSchema(foodSafetyTrainings, {
+  scheduledDate: z.union([z.date(), z.string().transform((str) => new Date(str))]),
+  completedDate: z.union([z.date(), z.string().transform((str) => new Date(str))]).optional(),
+}).omit({ id: true, createdAt: true });
+export type InsertFoodSafetyTraining = z.infer<typeof insertFoodSafetyTrainingSchema>;
+export type FoodSafetyTraining = typeof foodSafetyTrainings.$inferSelect;
+
+export const foodSafetyDocuments = pgTable("food_safety_documents", {
+  id: serial("id").primaryKey(),
+  title: varchar("title", { length: 300 }).notNull(),
+  category: varchar("category", { length: 50 }).notNull(),
+  documentType: varchar("document_type", { length: 50 }).notNull(),
+  version: varchar("version", { length: 20 }).default("1.0"),
+  fileUrl: text("file_url"),
+  description: text("description"),
+  isActive: boolean("is_active").default(true),
+  createdById: varchar("created_by_id").references(() => users.id),
+  approvedById: varchar("approved_by_id").references(() => users.id),
+  approvedAt: timestamp("approved_at"),
+  effectiveDate: timestamp("effective_date"),
+  reviewDate: timestamp("review_date"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("fsd_category_idx").on(table.category),
+  index("fsd_type_idx").on(table.documentType),
+]);
+
+export const insertFoodSafetyDocumentSchema = createInsertSchema(foodSafetyDocuments, {
+  effectiveDate: z.union([z.date(), z.string().transform((str) => new Date(str))]).optional(),
+  reviewDate: z.union([z.date(), z.string().transform((str) => new Date(str))]).optional(),
+}).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertFoodSafetyDocument = z.infer<typeof insertFoodSafetyDocumentSchema>;
+export type FoodSafetyDocument = typeof foodSafetyDocuments.$inferSelect;

@@ -2,10 +2,10 @@
 import { Express } from "express";
 import { storage } from "./storage";
 import { db } from "./db";
-import { branches, users, equipmentFaults, checklistCompletions, customerFeedback, leaveRequests, overtimeRequests, monthlyPayrolls, inventory, purchaseOrders, suppliers, productComplaints, productionBatches, equipment, auditInstances, tasks, guestComplaints, franchiseProjects, factoryProducts } from "@shared/schema";
+import { branches, users, equipmentFaults, checklistCompletions, customerFeedback, leaveRequests, overtimeRequests, monthlyPayrolls, inventory, purchaseOrders, suppliers, productComplaints, productionBatches, equipment, auditInstances, tasks, guestComplaints, franchiseProjects, factoryProducts, haccpControlPoints, haccpRecords, hygieneAudits, supplierCertifications, foodSafetyTrainings, foodSafetyDocuments } from "@shared/schema";
 import { eq, and, inArray, sql, or } from "drizzle-orm";
 
-const HQ_ROLES_LIST = ['ceo', 'cgo', 'admin', 'satinalma', 'kalite_kontrol', 'muhasebe', 'muhasebe_ik', 'coach', 'trainer', 'teknik', 'fabrika', 'fabrika_mudur', 'fabrika_sorumlu', 'destek', 'operasyon', 'marketing', 'ik'];
+const HQ_ROLES_LIST = ['ceo', 'cgo', 'admin', 'satinalma', 'kalite_kontrol', 'gida_muhendisi', 'muhasebe', 'muhasebe_ik', 'coach', 'trainer', 'teknik', 'fabrika', 'fabrika_mudur', 'fabrika_sorumlu', 'destek', 'operasyon', 'marketing', 'ik'];
 
 function buildFallbackCommandCenter(roleName: string) {
   return {
@@ -62,6 +62,9 @@ export function registerHQDashboardRoutes(app: Express, isAuthenticated: any) {
       }
       if (role === 'destek') {
         return await buildDestekCommandCenter(res);
+      }
+      if (role === 'gida_muhendisi') {
+        return await buildGidaMuhendisiCommandCenter(res);
       }
 
       return await buildGenericCommandCenter(res, role);
@@ -1187,6 +1190,387 @@ export function registerHQDashboardRoutes(app: Express, isAuthenticated: any) {
     } catch (error: any) {
       console.error("Error in Kalite dashboard:", error);
       res.status(500).json({ message: "Veri alinamadi", error: error.message });
+    }
+  });
+
+  async function buildGidaMuhendisiCommandCenter(res: any) {
+    try {
+      const [allBranches, allHaccpCPs, allHaccpRecords, allHygieneAudits, allSupplierCerts, allTrainings, allDocs] = await Promise.all([
+        db.select().from(branches),
+        db.select().from(haccpControlPoints),
+        db.select().from(haccpRecords),
+        db.select().from(hygieneAudits),
+        db.select().from(supplierCertifications),
+        db.select().from(foodSafetyTrainings),
+        db.select().from(foodSafetyDocuments),
+      ]);
+
+      const now = new Date();
+      const activeCPs = allHaccpCPs.filter((cp: any) => cp.isActive);
+      const recentRecords = allHaccpRecords.filter((r: any) => {
+        const d = new Date(r.recordedAt);
+        return (now.getTime() - d.getTime()) < 7 * 24 * 60 * 60 * 1000;
+      });
+      const deviations = recentRecords.filter((r: any) => !r.isWithinLimits);
+      const avgHygieneScore = allHygieneAudits.length > 0
+        ? Math.round(allHygieneAudits.reduce((s: number, a: any) => s + (a.overallScore || 0), 0) / allHygieneAudits.length)
+        : 0;
+      const expiringSoon = allSupplierCerts.filter((c: any) => {
+        const exp = new Date(c.expiryDate);
+        return exp.getTime() - now.getTime() < 30 * 24 * 60 * 60 * 1000 && exp.getTime() > now.getTime();
+      });
+      const expiredCerts = allSupplierCerts.filter((c: any) => new Date(c.expiryDate).getTime() < now.getTime());
+      const upcomingTrainings = allTrainings.filter((t: any) => t.status === 'scheduled');
+      const activeDocs = allDocs.filter((d: any) => d.isActive);
+
+      const urgentAlerts: any[] = [];
+      if (deviations.length > 0) urgentAlerts.push({ message: `${deviations.length} HACCP sapma tespit edildi (son 7 gun)`, severity: 'critical' });
+      if (expiredCerts.length > 0) urgentAlerts.push({ message: `${expiredCerts.length} tedarikci sertifikasi suresi dolmus`, severity: 'critical' });
+      if (expiringSoon.length > 0) urgentAlerts.push({ message: `${expiringSoon.length} sertifika 30 gun icinde sona erecek`, severity: 'warning' });
+
+      res.json({
+        urgentAlerts,
+        departments: [
+          {
+            label: 'HACCP Kontrol Noktalari',
+            source: 'haccp',
+            status: deviations.length > 2 ? 'critical' : deviations.length > 0 ? 'warning' : 'healthy',
+            mainMetric: `${activeCPs.length} aktif kontrol noktasi`,
+            details: [
+              `Son 7 gun: ${recentRecords.length} kayit`,
+              `Sapma: ${deviations.length} adet`,
+              `Uygunluk: ${recentRecords.length > 0 ? Math.round(((recentRecords.length - deviations.length) / recentRecords.length) * 100) : 100}%`
+            ],
+            alert: deviations.length > 0 ? `${deviations.length} sapma tespit edildi` : null,
+          },
+          {
+            label: 'Hijyen Denetimleri',
+            source: 'hygiene',
+            status: avgHygieneScore >= 80 ? 'healthy' : avgHygieneScore >= 60 ? 'warning' : 'critical',
+            mainMetric: `Ortalama Skor: ${avgHygieneScore}/100`,
+            details: [
+              `Toplam denetim: ${allHygieneAudits.length}`,
+              `Denetlenen sube: ${new Set(allHygieneAudits.map((a: any) => a.branchId)).size}/${allBranches.length}`
+            ],
+            alert: avgHygieneScore < 70 ? 'Hijyen skorlari dusuk!' : null,
+          },
+          {
+            label: 'Tedarikci Sertifikalari',
+            source: 'certifications',
+            status: expiredCerts.length > 0 ? 'critical' : expiringSoon.length > 0 ? 'warning' : 'healthy',
+            mainMetric: `${allSupplierCerts.length} sertifika`,
+            details: [
+              `Aktif: ${allSupplierCerts.filter((c: any) => c.status === 'active').length}`,
+              `Suresi dolmus: ${expiredCerts.length}`,
+              `Yakinda dolacak: ${expiringSoon.length}`
+            ],
+            alert: expiredCerts.length > 0 ? `${expiredCerts.length} sertifika suresi doldu!` : null,
+          },
+          {
+            label: 'Egitim Durumu',
+            source: 'training',
+            status: 'healthy',
+            mainMetric: `${upcomingTrainings.length} planli egitim`,
+            details: [
+              `Toplam: ${allTrainings.length}`,
+              `Tamamlanan: ${allTrainings.filter((t: any) => t.status === 'completed').length}`,
+              `Planli: ${upcomingTrainings.length}`
+            ],
+            alert: null,
+          },
+          {
+            label: 'Dokuman Yonetimi',
+            source: 'documents',
+            status: 'healthy',
+            mainMetric: `${activeDocs.length} aktif dokuman`,
+            details: [
+              `Toplam: ${allDocs.length}`,
+              `Aktif: ${activeDocs.length}`
+            ],
+            alert: null,
+          }
+        ],
+        bottomManagers: [],
+        kpiSummary: {
+          haccpCompliance: recentRecords.length > 0 ? Math.round(((recentRecords.length - deviations.length) / recentRecords.length) * 100) : 100,
+          hygieneScore: avgHygieneScore,
+          certificationStatus: expiredCerts.length === 0 ? 'Tamam' : `${expiredCerts.length} suresi dolmus`,
+          trainingCompletion: allTrainings.length > 0 ? Math.round((allTrainings.filter((t: any) => t.status === 'completed').length / allTrainings.length) * 100) : 0,
+        },
+        lastUpdated: new Date().toISOString(),
+      });
+    } catch (error: any) {
+      console.error("Error in Gida Muhendisi command center:", error);
+      res.json(buildFallbackCommandCenter('Gida Muhendisi'));
+    }
+  }
+
+  // ======= FOOD SAFETY API ENDPOINTS =======
+
+  // HACCP Control Points CRUD
+  app.get("/api/food-safety/haccp-control-points", isAuthenticated, async (req: any, res) => {
+    try {
+      const allowedRoles = ['gida_muhendisi', 'ceo', 'admin', 'cgo', 'kalite_kontrol'];
+      if (!allowedRoles.includes(req.user.role)) {
+        return res.status(403).json({ message: "Bu isleme yetkiniz yok" });
+      }
+      const data = await db.select().from(haccpControlPoints).orderBy(haccpControlPoints.category);
+      res.json(data);
+    } catch (error: any) {
+      res.status(500).json({ message: "HACCP kontrol noktalari alinamadi", error: error.message });
+    }
+  });
+
+  app.post("/api/food-safety/haccp-control-points", isAuthenticated, async (req: any, res) => {
+    try {
+      const allowedRoles = ['gida_muhendisi', 'ceo', 'admin'];
+      if (!allowedRoles.includes(req.user.role)) {
+        return res.status(403).json({ message: "Bu isleme yetkiniz yok" });
+      }
+      const [cp] = await db.insert(haccpControlPoints).values({ ...req.body, createdById: req.user.id }).returning();
+      res.json(cp);
+    } catch (error: any) {
+      res.status(500).json({ message: "HACCP kontrol noktasi olusturulamadi", error: error.message });
+    }
+  });
+
+  // HACCP Records
+  app.get("/api/food-safety/haccp-records", isAuthenticated, async (req: any, res) => {
+    try {
+      const allowedRoles = ['gida_muhendisi', 'ceo', 'admin', 'cgo', 'kalite_kontrol'];
+      if (!allowedRoles.includes(req.user.role)) {
+        return res.status(403).json({ message: "Bu isleme yetkiniz yok" });
+      }
+      const data = await db.select().from(haccpRecords).orderBy(sql`${haccpRecords.recordedAt} DESC`);
+      res.json(data);
+    } catch (error: any) {
+      res.status(500).json({ message: "HACCP kayitlari alinamadi", error: error.message });
+    }
+  });
+
+  app.post("/api/food-safety/haccp-records", isAuthenticated, async (req: any, res) => {
+    try {
+      const allowedRoles = ['gida_muhendisi', 'ceo', 'admin'];
+      if (!allowedRoles.includes(req.user.role)) {
+        return res.status(403).json({ message: "Bu isleme yetkiniz yok" });
+      }
+      const [record] = await db.insert(haccpRecords).values({ ...req.body, recordedById: req.user.id }).returning();
+      res.json(record);
+    } catch (error: any) {
+      res.status(500).json({ message: "HACCP kaydi olusturulamadi", error: error.message });
+    }
+  });
+
+  // Hygiene Audits
+  app.get("/api/food-safety/hygiene-audits", isAuthenticated, async (req: any, res) => {
+    try {
+      const allowedRoles = ['gida_muhendisi', 'ceo', 'admin', 'cgo', 'kalite_kontrol'];
+      if (!allowedRoles.includes(req.user.role)) {
+        return res.status(403).json({ message: "Bu isleme yetkiniz yok" });
+      }
+      const data = await db.select().from(hygieneAudits).orderBy(sql`${hygieneAudits.auditDate} DESC`);
+      res.json(data);
+    } catch (error: any) {
+      res.status(500).json({ message: "Hijyen denetimleri alinamadi", error: error.message });
+    }
+  });
+
+  app.post("/api/food-safety/hygiene-audits", isAuthenticated, async (req: any, res) => {
+    try {
+      const allowedRoles = ['gida_muhendisi', 'ceo', 'admin'];
+      if (!allowedRoles.includes(req.user.role)) {
+        return res.status(403).json({ message: "Bu isleme yetkiniz yok" });
+      }
+      const [audit] = await db.insert(hygieneAudits).values({ ...req.body, auditorId: req.user.id }).returning();
+      res.json(audit);
+    } catch (error: any) {
+      res.status(500).json({ message: "Hijyen denetimi olusturulamadi", error: error.message });
+    }
+  });
+
+  // Supplier Certifications
+  app.get("/api/food-safety/supplier-certifications", isAuthenticated, async (req: any, res) => {
+    try {
+      const allowedRoles = ['gida_muhendisi', 'ceo', 'admin', 'cgo', 'kalite_kontrol'];
+      if (!allowedRoles.includes(req.user.role)) {
+        return res.status(403).json({ message: "Bu isleme yetkiniz yok" });
+      }
+      const data = await db.select().from(supplierCertifications).orderBy(supplierCertifications.expiryDate);
+      res.json(data);
+    } catch (error: any) {
+      res.status(500).json({ message: "Tedarikci sertifikalari alinamadi", error: error.message });
+    }
+  });
+
+  app.post("/api/food-safety/supplier-certifications", isAuthenticated, async (req: any, res) => {
+    try {
+      const allowedRoles = ['gida_muhendisi', 'ceo', 'admin'];
+      if (!allowedRoles.includes(req.user.role)) {
+        return res.status(403).json({ message: "Bu isleme yetkiniz yok" });
+      }
+      const [cert] = await db.insert(supplierCertifications).values({ ...req.body, verifiedById: req.user.id }).returning();
+      res.json(cert);
+    } catch (error: any) {
+      res.status(500).json({ message: "Sertifika olusturulamadi", error: error.message });
+    }
+  });
+
+  app.patch("/api/food-safety/supplier-certifications/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const allowedRoles = ['gida_muhendisi', 'ceo', 'admin'];
+      if (!allowedRoles.includes(req.user.role)) {
+        return res.status(403).json({ message: "Bu isleme yetkiniz yok" });
+      }
+      const [cert] = await db.update(supplierCertifications).set(req.body).where(eq(supplierCertifications.id, parseInt(req.params.id))).returning();
+      res.json(cert);
+    } catch (error: any) {
+      res.status(500).json({ message: "Sertifika guncellenemedi", error: error.message });
+    }
+  });
+
+  // Food Safety Trainings
+  app.get("/api/food-safety/trainings", isAuthenticated, async (req: any, res) => {
+    try {
+      const allowedRoles = ['gida_muhendisi', 'ceo', 'admin', 'cgo', 'kalite_kontrol'];
+      if (!allowedRoles.includes(req.user.role)) {
+        return res.status(403).json({ message: "Bu isleme yetkiniz yok" });
+      }
+      const data = await db.select().from(foodSafetyTrainings).orderBy(sql`${foodSafetyTrainings.scheduledDate} DESC`);
+      res.json(data);
+    } catch (error: any) {
+      res.status(500).json({ message: "Egitimler alinamadi", error: error.message });
+    }
+  });
+
+  app.post("/api/food-safety/trainings", isAuthenticated, async (req: any, res) => {
+    try {
+      const allowedRoles = ['gida_muhendisi', 'ceo', 'admin'];
+      if (!allowedRoles.includes(req.user.role)) {
+        return res.status(403).json({ message: "Bu isleme yetkiniz yok" });
+      }
+      const [training] = await db.insert(foodSafetyTrainings).values({ ...req.body, trainerId: req.user.id }).returning();
+      res.json(training);
+    } catch (error: any) {
+      res.status(500).json({ message: "Egitim olusturulamadi", error: error.message });
+    }
+  });
+
+  // Food Safety Documents
+  app.get("/api/food-safety/documents", isAuthenticated, async (req: any, res) => {
+    try {
+      const allowedRoles = ['gida_muhendisi', 'ceo', 'admin', 'cgo', 'kalite_kontrol'];
+      if (!allowedRoles.includes(req.user.role)) {
+        return res.status(403).json({ message: "Bu isleme yetkiniz yok" });
+      }
+      const data = await db.select().from(foodSafetyDocuments).orderBy(sql`${foodSafetyDocuments.createdAt} DESC`);
+      res.json(data);
+    } catch (error: any) {
+      res.status(500).json({ message: "Dokumanlar alinamadi", error: error.message });
+    }
+  });
+
+  app.post("/api/food-safety/documents", isAuthenticated, async (req: any, res) => {
+    try {
+      const allowedRoles = ['gida_muhendisi', 'ceo', 'admin'];
+      if (!allowedRoles.includes(req.user.role)) {
+        return res.status(403).json({ message: "Bu isleme yetkiniz yok" });
+      }
+      const [doc] = await db.insert(foodSafetyDocuments).values({ ...req.body, createdById: req.user.id }).returning();
+      res.json(doc);
+    } catch (error: any) {
+      res.status(500).json({ message: "Dokuman olusturulamadi", error: error.message });
+    }
+  });
+
+  // Food Safety Dashboard Summary
+  app.get("/api/food-safety/dashboard-summary", isAuthenticated, async (req: any, res) => {
+    try {
+      const allowedRoles = ['gida_muhendisi', 'ceo', 'admin', 'cgo', 'kalite_kontrol'];
+      if (!allowedRoles.includes(req.user.role)) {
+        return res.status(403).json({ message: "Bu isleme yetkiniz yok" });
+      }
+      const [allHaccpCPs, allHaccpRecs, allHygieneAuds, allCerts, allTrains, allDocuments, allBranch, allSupplier] = await Promise.all([
+        db.select().from(haccpControlPoints),
+        db.select().from(haccpRecords),
+        db.select().from(hygieneAudits),
+        db.select().from(supplierCertifications),
+        db.select().from(foodSafetyTrainings),
+        db.select().from(foodSafetyDocuments),
+        db.select().from(branches),
+        db.select().from(suppliers),
+      ]);
+
+      const now = new Date();
+      const last7Days = allHaccpRecs.filter((r: any) => (now.getTime() - new Date(r.recordedAt).getTime()) < 7 * 24 * 60 * 60 * 1000);
+      const deviations7d = last7Days.filter((r: any) => !r.isWithinLimits);
+      const complianceRate = last7Days.length > 0 ? Math.round(((last7Days.length - deviations7d.length) / last7Days.length) * 100) : 100;
+
+      const avgHygiene = allHygieneAuds.length > 0 ? Math.round(allHygieneAuds.reduce((s: number, a: any) => s + (a.overallScore || 0), 0) / allHygieneAuds.length) : 0;
+
+      const expiredCerts = allCerts.filter((c: any) => new Date(c.expiryDate).getTime() < now.getTime());
+      const expiringCerts = allCerts.filter((c: any) => {
+        const exp = new Date(c.expiryDate);
+        return exp.getTime() - now.getTime() < 30 * 24 * 60 * 60 * 1000 && exp.getTime() > now.getTime();
+      });
+
+      const completedTrainings = allTrains.filter((t: any) => t.status === 'completed').length;
+      const scheduledTrainings = allTrains.filter((t: any) => t.status === 'scheduled').length;
+
+      // Branch hygiene scores
+      const branchScores = allBranch.map((b: any) => {
+        const audits = allHygieneAuds.filter((a: any) => a.branchId === b.id);
+        const avgScore = audits.length > 0 ? Math.round(audits.reduce((s: number, a: any) => s + (a.overallScore || 0), 0) / audits.length) : 0;
+        return { branchId: b.id, branchName: b.name, score: avgScore, auditCount: audits.length };
+      }).sort((a: any, b: any) => b.score - a.score);
+
+      // HACCP by category
+      const categoryStats: Record<string, { total: number, deviations: number }> = {};
+      allHaccpCPs.forEach((cp: any) => {
+        if (!categoryStats[cp.category]) categoryStats[cp.category] = { total: 0, deviations: 0 };
+        categoryStats[cp.category].total++;
+      });
+      deviations7d.forEach((d: any) => {
+        const cp = allHaccpCPs.find((cp: any) => cp.id === d.controlPointId);
+        if (cp && categoryStats[cp.category]) categoryStats[cp.category].deviations++;
+      });
+
+      res.json({
+        overview: {
+          haccpControlPoints: allHaccpCPs.filter((cp: any) => cp.isActive).length,
+          haccpComplianceRate: complianceRate,
+          recentDeviations: deviations7d.length,
+          avgHygieneScore: avgHygiene,
+          totalAudits: allHygieneAuds.length,
+          activeCertifications: allCerts.filter((c: any) => c.status === 'active').length,
+          expiredCertifications: expiredCerts.length,
+          expiringCertifications: expiringCerts.length,
+          completedTrainings,
+          scheduledTrainings,
+          activeDocuments: allDocuments.filter((d: any) => d.isActive).length,
+          totalBranches: allBranch.length,
+          totalSuppliers: allSupplier.length,
+        },
+        branchScores,
+        categoryStats,
+        recentDeviations: deviations7d.map((d: any) => {
+          const cp = allHaccpCPs.find((cp: any) => cp.id === d.controlPointId);
+          const branch = allBranch.find((b: any) => b.id === d.branchId);
+          return {
+            ...d,
+            controlPointName: cp?.controlPointName || 'Bilinmiyor',
+            category: cp?.category || 'Bilinmiyor',
+            branchName: branch?.name || 'Bilinmiyor',
+          };
+        }),
+        expiringCertifications: expiringCerts.map((c: any) => {
+          const supplier = allSupplier.find((s: any) => s.id === c.supplierId);
+          return { ...c, supplierName: supplier?.name || 'Bilinmiyor' };
+        }),
+        upcomingTrainings: allTrains.filter((t: any) => t.status === 'scheduled').slice(0, 10),
+      });
+    } catch (error: any) {
+      console.error("Error in food safety dashboard summary:", error);
+      res.status(500).json({ message: "Gida guvenligi ozeti alinamadi", error: error.message });
     }
   });
 }

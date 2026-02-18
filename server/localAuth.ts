@@ -54,16 +54,19 @@ export async function setupAuth(app: Express, authLimiter?: any) {
         const user = await storage.getUserByUsername(username);
         
         if (!user) {
+          console.log(`[Auth] Login failed: user '${username}' not found`);
           return done(null, false, { message: "Kullanıcı adı veya şifre hatalı" });
         }
 
         if (!user.hashedPassword) {
+          console.log(`[Auth] Login failed: user '${username}' has no password hash`);
           return done(null, false, { message: "Kullanıcı adı veya şifre hatalı" });
         }
 
         const isValidPassword = await bcrypt.compare(password, user.hashedPassword);
         
         if (!isValidPassword) {
+          console.log(`[Auth] Login failed: invalid password for '${username}' (hash prefix: ${user.hashedPassword.substring(0, 10)})`);
           return done(null, false, { message: "Kullanıcı adı veya şifre hatalı" });
         }
 
@@ -163,10 +166,13 @@ export async function setupAuth(app: Express, authLimiter?: any) {
 
   // Login endpoint with validation (supports both user and branch login)
   app.post("/api/login", authLimiter, async (req, res, next) => {
+    console.log(`[Auth] Login attempt - body keys: ${Object.keys(req.body || {}).join(',')}, username: ${req.body?.username}`);
+    
     // Validate request body
     const validationResult = loginSchema.safeParse(req.body);
     
     if (!validationResult.success) {
+      console.log(`[Auth] Login validation failed:`, validationResult.error.errors);
       return res.status(400).json({ 
         error: "Geçersiz giriş bilgileri",
         details: validationResult.error.errors 
@@ -178,6 +184,7 @@ export async function setupAuth(app: Express, authLimiter?: any) {
     // İlk önce normal kullanıcı girişini dene
     passport.authenticate("local", async (err: unknown, user: unknown, info: any) => {
       if (err) {
+        console.error(`[Auth] Passport error for '${username}':`, err);
         return res.status(500).json({ error: "Sunucu hatası" });
       }
       
