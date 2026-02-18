@@ -1752,6 +1752,319 @@ export function registerSatinalmaRoutes(app: Express, isAuthenticated: AuthMiddl
     }
   });
 
+  // ========================================
+  // AI HATIRATMALAR - Stale Quotes & Critical Stock
+  // ========================================
+
+  app.get("/api/satinalma/stale-quotes", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const result = await db.execute(sql`
+        SELECT 
+          i.id, i.name, i.code, i.category, i.unit_cost as "unitCost", i.unit,
+          MAX(sq.created_at) as "lastQuoteDate",
+          EXTRACT(DAY FROM NOW() - MAX(sq.created_at))::int as "daysSinceQuote"
+        FROM inventory i
+        LEFT JOIN supplier_quotes sq ON sq.inventory_id = i.id
+        WHERE i.is_active = true
+        GROUP BY i.id
+        HAVING MAX(sq.created_at) IS NULL 
+           OR MAX(sq.created_at) < NOW() - INTERVAL '60 days'
+        ORDER BY MAX(sq.created_at) ASC NULLS FIRST
+      `);
+
+      const items = (result as any).rows || result;
+
+      const enriched = [];
+      for (const item of items) {
+        const itemSuppliers = await db.select({
+          supplierName: suppliers.name,
+          unitPrice: productSuppliers.unitPrice,
+        })
+          .from(productSuppliers)
+          .leftJoin(suppliers, eq(productSuppliers.supplierId, suppliers.id))
+          .where(and(
+            eq(productSuppliers.inventoryId, item.id),
+            eq(productSuppliers.isActive, true)
+          ));
+
+        enriched.push({
+          ...item,
+          daysSinceQuote: item.daysSinceQuote || null,
+          suppliers: itemSuppliers,
+        });
+      }
+
+      res.json(enriched);
+    } catch (error) {
+      console.error("Error fetching stale quotes:", error);
+      res.status(500).json({ error: "Eski teklif verileri alınamadı" });
+    }
+  });
+
+  app.get("/api/satinalma/critical-stock", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const items = await db.select()
+        .from(inventory)
+        .where(eq(inventory.isActive, true));
+
+      const criticalItems = items.filter(item =>
+        parseFloat(item.currentStock) <= parseFloat(item.minimumStock)
+      );
+
+      res.json(criticalItems);
+    } catch (error) {
+      console.error("Error fetching critical stock:", error);
+      res.status(500).json({ error: "Kritik stok verileri alınamadı" });
+    }
+  });
+
+  app.post("/api/satinalma/update-prices-from-quotes", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const user = (req as any).user;
+      if (!['admin', 'ceo', 'satinalma'].includes(user?.role)) {
+        return res.status(403).json({ error: 'Bu işlem için yetkiniz yok' });
+      }
+
+      const activeItems = await db.select()
+        .from(inventory)
+        .where(eq(inventory.isActive, true));
+
+      let updatedCount = 0;
+
+      for (const item of activeItems) {
+        const [latestQuote] = await db.select()
+          .from(supplierQuotes)
+          .where(and(
+            eq(supplierQuotes.inventoryId, item.id),
+            eq(supplierQuotes.status, "aktif")
+          ))
+          .orderBy(desc(supplierQuotes.createdAt))
+          .limit(1);
+
+        if (latestQuote && latestQuote.unitPrice !== item.unitCost) {
+          await db.update(inventory)
+            .set({
+              unitCost: latestQuote.unitPrice,
+              updatedAt: new Date(),
+            })
+            .where(eq(inventory.id, item.id));
+          updatedCount++;
+        }
+      }
+
+      res.json({ updatedCount, message: `${updatedCount} urun fiyati guncellendi` });
+    } catch (error) {
+      console.error("Error updating prices from quotes:", error);
+      res.status(500).json({ error: "Fiyat guncellemesi yapilamadi" });
+    }
+  });
+
+  // ========================================
+  // TEDARİKÇİ PERFORMANS - Supplier Performance Report
+  // ========================================
+
+  app.get("/api/satinalma/supplier-performance", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const ninetyDaysAgo = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
+
+      const supplierList = await db.select().from(suppliers).where(eq(suppliers.status, "active")).orderBy(asc(suppliers.name));
+
+      const results = [];
+      for (const s of supplierList) {
+        const orderStats = await db.execute(sql`
+          SELECT
+            COUNT(*)::int as order_count,
+            COALESCE(SUM(CAST(total_amount AS DECIMAL)), 0) as total_value,
+            AVG(CASE WHEN delivered_at IS NOT NULL AND order_date IS NOT NULL
+              THEN EXTRACT(DAY FROM delivered_at - order_date) END)::numeric(5,1) as avg_delivery_days
+          FROM purchase_orders
+          WHERE supplier_id = ${s.id} AND order_date >= ${ninetyDaysAgo}
+        `);
+
+        const activeProducts = await db.select({ count: sql<number>`count(*)::int` })
+          .from(productSuppliers)
+          .where(and(eq(productSuppliers.supplierId, s.id), eq(productSuppliers.isActive, true)));
+
+        const recentIssues = await db.select({ count: sql<number>`count(*)::int` })
+          .from(supplierIssues)
+          .where(and(eq(supplierIssues.supplierId, s.id), gte(supplierIssues.createdAt, ninetyDaysAgo)));
+
+        const stats = (orderStats.rows[0] as any) || {};
+        results.push({
+          id: s.id,
+          name: s.name,
+          code: s.code,
+          qualityScore: parseFloat(s.qualityScore || "0"),
+          deliveryRate: parseFloat(s.deliveryRate || "0"),
+          orderCount: stats.order_count || 0,
+          totalValue: parseFloat(stats.total_value || "0"),
+          avgDeliveryDays: parseFloat(stats.avg_delivery_days || "0"),
+          activeProductCount: activeProducts[0]?.count || 0,
+          recentIssuesCount: recentIssues[0]?.count || 0,
+        });
+      }
+
+      const totalOrders = results.reduce((s, r) => s + r.orderCount, 0);
+      const totalValue = results.reduce((s, r) => s + r.totalValue, 0);
+      const avgQuality = results.length > 0 ? results.reduce((s, r) => s + r.qualityScore, 0) / results.length : 0;
+      const totalIssues = results.reduce((s, r) => s + r.recentIssuesCount, 0);
+
+      res.json({
+        suppliers: results,
+        summary: { totalSuppliers: results.length, totalOrders, totalValue, avgQuality, totalIssues },
+      });
+    } catch (error) {
+      console.error("Error fetching supplier performance:", error);
+      res.status(500).json({ error: "Tedarikçi performans verileri alınamadı" });
+    }
+  });
+
+  // ========================================
+  // STOK HAREKET RAPORU - Stock Movement Report
+  // ========================================
+
+  app.get("/api/satinalma/stock-movement-report", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const sixMonthsAgo = new Date(Date.now() - 180 * 24 * 60 * 60 * 1000);
+
+      const monthlyMovements = await db.execute(sql`
+        SELECT
+          TO_CHAR(created_at, 'YYYY-MM') as month,
+          movement_type,
+          COUNT(*)::int as count,
+          COALESCE(SUM(CAST(quantity AS DECIMAL)), 0) as total_quantity
+        FROM inventory_movements
+        WHERE created_at >= ${sixMonthsAgo}
+        GROUP BY TO_CHAR(created_at, 'YYYY-MM'), movement_type
+        ORDER BY month ASC
+      `);
+
+      const topMovingItems = await db.execute(sql`
+        SELECT
+          i.name as product_name,
+          i.category,
+          COUNT(*)::int as movement_count,
+          COALESCE(SUM(CAST(im.quantity AS DECIMAL)), 0) as total_quantity
+        FROM inventory_movements im
+        JOIN inventory i ON im.inventory_id = i.id
+        WHERE im.created_at >= ${sixMonthsAgo}
+        GROUP BY i.name, i.category
+        ORDER BY movement_count DESC
+        LIMIT 15
+      `);
+
+      const categoryBreakdown = await db.execute(sql`
+        SELECT
+          i.category,
+          im.movement_type,
+          COUNT(*)::int as count,
+          COALESCE(SUM(CAST(im.quantity AS DECIMAL)), 0) as total_quantity
+        FROM inventory_movements im
+        JOIN inventory i ON im.inventory_id = i.id
+        WHERE im.created_at >= ${sixMonthsAgo}
+        GROUP BY i.category, im.movement_type
+        ORDER BY i.category
+      `);
+
+      const incomingTypes = ["giris", "uretim_giris", "iade", "mal_kabul"];
+      const outgoingTypes = ["cikis", "uretim_cikis", "fire"];
+      const allRows = monthlyMovements.rows as any[];
+      const totalIn = allRows.filter(r => incomingTypes.includes(r.movement_type)).reduce((s, r) => s + parseFloat(r.total_quantity || "0"), 0);
+      const totalOut = allRows.filter(r => outgoingTypes.includes(r.movement_type)).reduce((s, r) => s + parseFloat(r.total_quantity || "0"), 0);
+      const totalMovements = allRows.reduce((s, r) => s + r.count, 0);
+
+      res.json({
+        monthlyMovements: monthlyMovements.rows,
+        topMovingItems: topMovingItems.rows,
+        categoryBreakdown: categoryBreakdown.rows,
+        summary: { totalMovements, totalIn, totalOut },
+      });
+    } catch (error) {
+      console.error("Error fetching stock movement report:", error);
+      res.status(500).json({ error: "Stok hareket raporu alınamadı" });
+    }
+  });
+
+  // ========================================
+  // MALİYET ANALİZİ - Cost Analysis Report
+  // ========================================
+
+  app.get("/api/satinalma/cost-analysis", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const twelveMonthsAgo = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000);
+
+      const monthlySpending = await db.execute(sql`
+        SELECT
+          TO_CHAR(order_date, 'YYYY-MM') as month,
+          COALESCE(SUM(CAST(total_amount AS DECIMAL)), 0) as total_spending,
+          COUNT(*)::int as order_count
+        FROM purchase_orders
+        WHERE order_date >= ${twelveMonthsAgo}
+        GROUP BY TO_CHAR(order_date, 'YYYY-MM')
+        ORDER BY month ASC
+      `);
+
+      const topCostItems = await db.execute(sql`
+        SELECT
+          i.name as product_name,
+          i.category,
+          SUM(CAST(poi.line_total AS DECIMAL)) as total_cost,
+          SUM(CAST(poi.quantity AS DECIMAL)) as total_quantity,
+          AVG(CAST(poi.unit_price AS DECIMAL))::numeric(10,2) as avg_unit_price
+        FROM purchase_order_items poi
+        JOIN inventory i ON poi.inventory_id = i.id
+        JOIN purchase_orders po ON poi.purchase_order_id = po.id
+        WHERE po.order_date >= ${twelveMonthsAgo}
+        GROUP BY i.name, i.category
+        ORDER BY total_cost DESC
+        LIMIT 15
+      `);
+
+      const categorySpending = await db.execute(sql`
+        SELECT
+          i.category,
+          COALESCE(SUM(CAST(poi.line_total AS DECIMAL)), 0) as total_cost,
+          COUNT(DISTINCT poi.inventory_id)::int as product_count
+        FROM purchase_order_items poi
+        JOIN inventory i ON poi.inventory_id = i.id
+        JOIN purchase_orders po ON poi.purchase_order_id = po.id
+        WHERE po.order_date >= ${twelveMonthsAgo}
+        GROUP BY i.category
+        ORDER BY total_cost DESC
+      `);
+
+      const sixMonthsAgo = new Date(Date.now() - 180 * 24 * 60 * 60 * 1000);
+      const yearAgo = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000);
+
+      const currentPeriod = await db.execute(sql`
+        SELECT COALESCE(SUM(CAST(total_amount AS DECIMAL)), 0) as total
+        FROM purchase_orders WHERE order_date >= ${sixMonthsAgo}
+      `);
+      const previousPeriod = await db.execute(sql`
+        SELECT COALESCE(SUM(CAST(total_amount AS DECIMAL)), 0) as total
+        FROM purchase_orders WHERE order_date >= ${yearAgo} AND order_date < ${sixMonthsAgo}
+      `);
+
+      const currentTotal = parseFloat((currentPeriod.rows[0] as any)?.total || "0");
+      const previousTotal = parseFloat((previousPeriod.rows[0] as any)?.total || "0");
+      const changePercent = previousTotal > 0 ? ((currentTotal - previousTotal) / previousTotal * 100) : 0;
+
+      const totalSpending = (monthlySpending.rows as any[]).reduce((s, r) => s + parseFloat(r.total_spending || "0"), 0);
+      const totalOrders = (monthlySpending.rows as any[]).reduce((s, r) => s + r.order_count, 0);
+      const avgMonthly = monthlySpending.rows.length > 0 ? totalSpending / monthlySpending.rows.length : 0;
+
+      res.json({
+        monthlySpending: monthlySpending.rows,
+        topCostItems: topCostItems.rows,
+        categorySpending: categorySpending.rows,
+        summary: { totalSpending, totalOrders, avgMonthlySpending: avgMonthly, changePercent: parseFloat(changePercent.toFixed(1)) },
+      });
+    } catch (error) {
+      console.error("Error fetching cost analysis:", error);
+      res.status(500).json({ error: "Maliyet analizi verileri alınamadı" });
+    }
+  });
+
   app.delete("/api/product-suppliers/:id", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const id = parseInt(req.params.id);

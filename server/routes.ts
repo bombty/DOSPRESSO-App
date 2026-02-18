@@ -108,6 +108,8 @@ import {
   PATH_TO_PERMISSION_MAP,
   isHQRole,
   isBranchRole,
+  isFactoryFloorRole,
+  FACTORY_FLOOR_ROLES,
   type UpdateUser,
   type UserRoleType,
   type InsertAuditTemplateItem,
@@ -345,7 +347,7 @@ import { updateEmployeeLocation, getActiveBranchEmployees, getEmployeeLocation, 
 import { compressChecklistPhotoBase64 } from "./photo-utils";
 import { gatherAIAssistantContext } from "./ai-assistant-context";
 import { sendNotificationEmail, sendEmployeeOfMonthEmail } from "./email";
-import { startReminderSystem, startStockAlertSystem, startOnboardingCompletionSystem, notifyTeknikNewFault, notifySatinalmaLowStock } from "./reminders";
+import { startReminderSystem, startStockAlertSystem, startOnboardingCompletionSystem, startStaleQuoteReminderSystem, notifyTeknikNewFault, notifySatinalmaLowStock } from "./reminders";
 import bcrypt from "bcrypt";
 import { z } from "zod";
 import { resolvePermissionScope, applyScopeFilter, getUserPermissions, getAllActionsGroupedByModule, getRoleGrants, upsertPermissionGrant, deletePermissionGrant, getRoleAccessibleModules } from "./permission-service";
@@ -13750,7 +13752,29 @@ Her modül şu formatta olmalı (JSON array):
       const isSupervisorOrAbove = user.role === 'supervisor' || user.role === 'supervisor_buddy' || user.role === 'mudur' || isHQRole(user.role);
       if (!isSupervisorOrAbove) {
         conditions.push(eq(leaveRequests.userId, user.id));
-      } else if (!isHQRole(user.role) && user.branchId) {
+      } else if (user.role === 'muhasebe' || user.role === 'muhasebe_ik') {
+        // Muhasebe can see factory floor + Işıklar branch leave requests, plus their own
+        const isiklarBranches = await db.select({ id: branches.id }).from(branches).where(
+          or(
+            sql`${branches.name} ILIKE '%Işıklar%'`,
+            sql`${branches.name} ILIKE '%Isiklar%'`
+          )
+        );
+        const isiklarBranchIds = isiklarBranches.map(b => b.id);
+
+        const factoryRoles = Array.from(FACTORY_FLOOR_ROLES);
+        const factoryCondition = inArray(users.role, factoryRoles);
+        const isiklarCondition = isiklarBranchIds.length > 0 ? inArray(users.branchId, isiklarBranchIds) : sql`false`;
+        const ownCondition = eq(leaveRequests.userId, user.id);
+
+        conditions.push(or(factoryCondition, isiklarCondition, ownCondition));
+      } else if (user.role === 'ceo' || user.role === 'admin') {
+        // CEO and admin see all
+      } else if (isHQRole(user.role)) {
+        // Other HQ roles see only their own
+        conditions.push(eq(leaveRequests.userId, user.id));
+      } else if (user.branchId) {
+        // Branch supervisors/managers see their own branch
         conditions.push(eq(users.branchId, user.branchId));
       }
 
@@ -13855,6 +13879,98 @@ Her modül şu formatta olmalı (JSON array):
         status: 'pending',
       }).returning();
 
+      // --- Leave Request Routing & Notification Logic ---
+      try {
+        const [targetUser] = await db.select({
+          id: users.id,
+          role: users.role,
+          branchId: users.branchId,
+          fullName: users.fullName,
+          username: users.username,
+        }).from(users).where(eq(users.id, targetUserId));
+
+        if (targetUser) {
+          const targetRole = targetUser.role as UserRoleType;
+          const targetBranchId = targetUser.branchId;
+
+          let branchName: string | null = null;
+          if (targetBranchId) {
+            const [branch] = await db.select({ name: branches.name }).from(branches).where(eq(branches.id, targetBranchId));
+            branchName = branch?.name || null;
+          }
+
+          const isIsiklarBranch = branchName ? (branchName.includes('Işıklar') || branchName.includes('Isiklar') || branchName.includes('ışıklar') || branchName.includes('isiklar')) : false;
+          const isFactory = isFactoryFloorRole(targetRole);
+          const isHQ = isHQRole(targetRole);
+          const displayName = targetUser.fullName || targetUser.username || 'Personel';
+
+          if (isHQ) {
+            // HQ staff → notify CEO
+            const ceoUsers = await db.select({ id: users.id }).from(users).where(eq(users.role, 'ceo'));
+            for (const ceo of ceoUsers) {
+              await storage.createNotification({
+                userId: ceo.id,
+                title: 'Yeni İzin Talebi (Genel Merkez)',
+                message: `${displayName} (${targetRole}) ${startDate} - ${endDate} tarihleri için izin talep etti. Onayınız bekleniyor.`,
+                type: 'leave_request',
+                relatedId: created.id,
+                relatedType: 'leave_request',
+              });
+            }
+          } else if (isFactory || isIsiklarBranch) {
+            // Factory + Işıklar → notify muhasebe (Mahmut) + CEO
+            const muhasebeUsers = await db.select({ id: users.id }).from(users).where(
+              or(eq(users.role, 'muhasebe'), eq(users.role, 'muhasebe_ik'))
+            );
+            for (const muh of muhasebeUsers) {
+              await storage.createNotification({
+                userId: muh.id,
+                title: `Yeni İzin Talebi (${isFactory ? 'Fabrika' : 'Işıklar'})`,
+                message: `${displayName} ${startDate} - ${endDate} tarihleri için izin talep etti. CEO onayı bekleniyor.`,
+                type: 'leave_request',
+                relatedId: created.id,
+                relatedType: 'leave_request',
+              });
+            }
+            const ceoUsers = await db.select({ id: users.id }).from(users).where(eq(users.role, 'ceo'));
+            for (const ceo of ceoUsers) {
+              await storage.createNotification({
+                userId: ceo.id,
+                title: `Yeni İzin Talebi (${isFactory ? 'Fabrika' : 'Işıklar'})`,
+                message: `${displayName} ${startDate} - ${endDate} tarihleri için izin talep etti. Onayınız bekleniyor.`,
+                type: 'leave_request',
+                relatedId: created.id,
+                relatedType: 'leave_request',
+              });
+            }
+          } else {
+            // Other branches → notify branch supervisor/manager
+            if (targetBranchId) {
+              const branchManagers = await db.select({ id: users.id }).from(users).where(
+                and(
+                  eq(users.branchId, targetBranchId),
+                  or(eq(users.role, 'mudur'), eq(users.role, 'supervisor')),
+                  ne(users.id, targetUserId)
+                )
+              );
+              for (const mgr of branchManagers) {
+                await storage.createNotification({
+                  userId: mgr.id,
+                  title: 'Yeni İzin Talebi',
+                  message: `${displayName} ${startDate} - ${endDate} tarihleri için izin talep etti. Onayınız bekleniyor.`,
+                  type: 'leave_request',
+                  relatedId: created.id,
+                  relatedType: 'leave_request',
+                  branchId: targetBranchId,
+                });
+              }
+            }
+          }
+        }
+      } catch (notifError: any) {
+        console.error("Error sending leave request notifications:", notifError);
+      }
+
       res.status(201).json(created);
     } catch (error: any) {
       console.error("Error creating leave request:", error);
@@ -13862,14 +13978,14 @@ Her modül şu formatta olmalı (JSON array):
     }
   });
 
-  // PATCH /api/leave-requests/:id/approve - Supervisor approves a leave request
+  // PATCH /api/leave-requests/:id/approve - Approve a leave request (CEO-only for HQ/factory/Işıklar)
   app.patch('/api/leave-requests/:id/approve', isAuthenticated, async (req: any, res) => {
     try {
       const user = req.user!;
       const requestId = parseInt(req.params.id);
 
-      const canApprove = user.role === 'supervisor' || user.role === 'supervisor_buddy' || user.role === 'mudur' || isHQRole(user.role);
-      if (!canApprove) {
+      const canApproveGeneral = user.role === 'supervisor' || user.role === 'supervisor_buddy' || user.role === 'mudur' || isHQRole(user.role);
+      if (!canApproveGeneral) {
         return res.status(403).json({ message: "İzin taleplerini onaylama yetkiniz yok" });
       }
 
@@ -13880,6 +13996,32 @@ Her modül şu formatta olmalı (JSON array):
 
       if (existing.status !== 'pending') {
         return res.status(400).json({ message: "Bu talep zaten işlenmiş" });
+      }
+
+      // Check if this leave request requires CEO-only approval
+      const [requestOwner] = await db.select({
+        role: users.role,
+        branchId: users.branchId,
+      }).from(users).where(eq(users.id, existing.userId));
+
+      if (requestOwner) {
+        const ownerRole = requestOwner.role as UserRoleType;
+        const ownerBranchId = requestOwner.branchId;
+
+        let ownerBranchName: string | null = null;
+        if (ownerBranchId) {
+          const [branch] = await db.select({ name: branches.name }).from(branches).where(eq(branches.id, ownerBranchId));
+          ownerBranchName = branch?.name || null;
+        }
+
+        const isOwnerIsiklarBranch = ownerBranchName ? (ownerBranchName.includes('Işıklar') || ownerBranchName.includes('Isiklar') || ownerBranchName.includes('ışıklar') || ownerBranchName.includes('isiklar')) : false;
+        const isOwnerFactory = isFactoryFloorRole(ownerRole);
+        const isOwnerHQ = isHQRole(ownerRole);
+
+        // HQ, factory, and Işıklar requests can only be approved by CEO or admin
+        if ((isOwnerHQ || isOwnerFactory || isOwnerIsiklarBranch) && user.role !== 'ceo' && user.role !== 'admin') {
+          return res.status(403).json({ message: "Bu izin talebi sadece CEO tarafından onaylanabilir" });
+        }
       }
 
       const [updated] = await db.update(leaveRequests)
@@ -13909,15 +14051,15 @@ Her modül şu formatta olmalı (JSON array):
     }
   });
 
-  // PATCH /api/leave-requests/:id/reject - Supervisor rejects a leave request
+  // PATCH /api/leave-requests/:id/reject - Reject a leave request (CEO-only for HQ/factory/Işıklar)
   app.patch('/api/leave-requests/:id/reject', isAuthenticated, async (req: any, res) => {
     try {
       const user = req.user!;
       const requestId = parseInt(req.params.id);
       const { rejectionReason } = req.body;
 
-      const canReject = user.role === 'supervisor' || user.role === 'supervisor_buddy' || user.role === 'mudur' || isHQRole(user.role);
-      if (!canReject) {
+      const canRejectGeneral = user.role === 'supervisor' || user.role === 'supervisor_buddy' || user.role === 'mudur' || isHQRole(user.role);
+      if (!canRejectGeneral) {
         return res.status(403).json({ message: "İzin taleplerini reddetme yetkiniz yok" });
       }
 
@@ -13928,6 +14070,31 @@ Her modül şu formatta olmalı (JSON array):
 
       if (existing.status !== 'pending') {
         return res.status(400).json({ message: "Bu talep zaten işlenmiş" });
+      }
+
+      // Check if this leave request requires CEO-only rejection
+      const [requestOwner] = await db.select({
+        role: users.role,
+        branchId: users.branchId,
+      }).from(users).where(eq(users.id, existing.userId));
+
+      if (requestOwner) {
+        const ownerRole = requestOwner.role as UserRoleType;
+        const ownerBranchId = requestOwner.branchId;
+
+        let ownerBranchName: string | null = null;
+        if (ownerBranchId) {
+          const [branch] = await db.select({ name: branches.name }).from(branches).where(eq(branches.id, ownerBranchId));
+          ownerBranchName = branch?.name || null;
+        }
+
+        const isOwnerIsiklarBranch = ownerBranchName ? (ownerBranchName.includes('Işıklar') || ownerBranchName.includes('Isiklar') || ownerBranchName.includes('ışıklar') || ownerBranchName.includes('isiklar')) : false;
+        const isOwnerFactory = isFactoryFloorRole(ownerRole);
+        const isOwnerHQ = isHQRole(ownerRole);
+
+        if ((isOwnerHQ || isOwnerFactory || isOwnerIsiklarBranch) && user.role !== 'ceo' && user.role !== 'admin') {
+          return res.status(403).json({ message: "Bu izin talebi sadece CEO tarafından reddedilebilir" });
+        }
       }
 
       const [updated] = await db.update(leaveRequests)
@@ -15889,6 +16056,7 @@ Her modül şu formatta olmalı (JSON array):
 
   startStockAlertSystem();
   startOnboardingCompletionSystem();
+  startStaleQuoteReminderSystem();
 
   // System health and backup endpoints
   app.get('/api/system/health', isAuthenticated, async (req: any, res) => {

@@ -48,8 +48,10 @@ import {
   ShieldCheck,
   BarChart3,
   Building2,
-  Award
+  Award,
+  Package
 } from "lucide-react";
+import UrunKarti from "./satinalma/urun-karti";
 
 interface SalaryScale {
   id: number;
@@ -210,6 +212,154 @@ const MONTHS = [
   { value: 11, label: "Kasım" },
   { value: 12, label: "Aralık" },
 ];
+
+function StokTab() {
+  const [search, setSearch] = useState("");
+  const [selectedProductId, setSelectedProductId] = useState<number | null>(null);
+  const [category, setCategory] = useState("all");
+
+  const { data: inventoryItems = [], isLoading, isError, refetch } = useQuery<any[]>({
+    queryKey: ['/api/inventory'],
+  });
+
+  if (selectedProductId) {
+    return (
+      <UrunKarti
+        productId={selectedProductId}
+        onBack={() => setSelectedProductId(null)}
+      />
+    );
+  }
+
+  if (isError) {
+    return (
+      <div className="space-y-4">
+        <Card className="border-red-500/30 bg-red-50 dark:bg-red-900/20">
+          <CardContent className="pt-6 pb-6 px-4">
+            <div className="flex items-center gap-3">
+              <AlertCircle className="h-5 w-5 text-red-600 dark:text-red-400 flex-shrink-0" />
+              <div className="flex-1">
+                <p className="font-medium text-red-900 dark:text-red-300">Stok verileri yüklenemedi</p>
+                <p className="text-sm text-red-700 dark:text-red-400 mt-1">Veriler yüklenirken bir hata oluştu. Lütfen tekrar deneyin.</p>
+              </div>
+              <Button
+                onClick={() => refetch()}
+                size="sm"
+                variant="outline"
+                data-testid="button-stok-retry"
+              >
+                Tekrar Dene
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  const stokCategories = [
+    { value: "all", label: "Tümü" },
+    { value: "hammadde", label: "Hammadde" },
+    { value: "yarimamul", label: "Yarı Mamul" },
+    { value: "mamul", label: "Mamül Ürün" },
+    { value: "ambalaj", label: "Ambalaj" },
+    { value: "ekipman", label: "Ekipman" },
+    { value: "sube_ekipman", label: "Şube Ekipman" },
+    { value: "sube_malzeme", label: "Şube Malzeme" },
+    { value: "konsantre", label: "Konsantre" },
+    { value: "diger", label: "Diğer" },
+  ];
+
+  const filtered = inventoryItems.filter((item: any) => {
+    const matchesSearch = item.name?.toLowerCase().includes(search.toLowerCase()) ||
+      item.code?.toLowerCase().includes(search.toLowerCase());
+    const matchesCategory = category === "all" || item.category === category;
+    return matchesSearch && matchesCategory;
+  });
+
+  if (isLoading) {
+    return <Skeleton className="h-64 w-full" />;
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="relative flex-1 min-w-[200px]">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Ürün ara..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-9"
+            data-testid="input-stok-search"
+          />
+        </div>
+        <Select value={category} onValueChange={setCategory}>
+          <SelectTrigger className="w-[150px]" data-testid="select-stok-category">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {stokCategories.map(c => (
+              <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <Card>
+        <CardContent className="p-0 overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="bg-muted">
+              <tr>
+                <th className="px-4 py-2 text-left font-medium">Kod</th>
+                <th className="px-4 py-2 text-left font-medium">Ürün Adı</th>
+                <th className="px-4 py-2 text-left font-medium">Kategori</th>
+                <th className="px-4 py-2 text-right font-medium">Stok</th>
+                <th className="px-4 py-2 text-right font-medium">Birim Fiyat</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y">
+              {filtered.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="px-4 py-8 text-center text-muted-foreground">
+                    Ürün bulunamadı
+                  </td>
+                </tr>
+              ) : (
+                filtered.map((item: any) => {
+                  const isLow = parseFloat(item.currentStock || '0') <= parseFloat(item.minimumStock || '0');
+                  return (
+                    <tr
+                      key={item.id}
+                      className="cursor-pointer hover-elevate"
+                      onClick={() => setSelectedProductId(item.id)}
+                      data-testid={`row-stok-${item.id}`}
+                    >
+                      <td className="px-4 py-2 font-mono text-xs">{item.code}</td>
+                      <td className="px-4 py-2 font-medium">{item.name}</td>
+                      <td className="px-4 py-2">
+                        <Badge variant="secondary">{stokCategories.find(c => c.value === item.category)?.label || item.category}</Badge>
+                      </td>
+                      <td className="px-4 py-2 text-right">
+                        <span className={isLow ? 'text-red-500 font-medium' : ''}>
+                          {parseFloat(item.currentStock || '0').toLocaleString('tr-TR')} {item.unit}
+                        </span>
+                        {isLow && <AlertCircle className="h-3 w-3 inline ml-1 text-red-500" />}
+                      </td>
+                      <td className="px-4 py-2 text-right">
+                        ₺{parseFloat(item.unitCost || '0').toLocaleString('tr-TR')}
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
 
 export default function Muhasebe() {
   const { user } = useAuth();
@@ -547,6 +697,10 @@ export default function Muhasebe() {
             <TabsTrigger value="calculator" data-testid="tab-calculator" className="flex-1 min-w-[80px] text-xs sm:text-sm px-2 py-1.5">
               <Calculator className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2 flex-shrink-0" />
               <span className="truncate">Hesaplama</span>
+            </TabsTrigger>
+            <TabsTrigger value="stok" data-testid="tab-stok" className="flex-1 min-w-[80px] text-xs sm:text-sm px-2 py-1.5">
+              <Package className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2 flex-shrink-0" />
+              <span className="truncate">Stok</span>
             </TabsTrigger>
             <TabsTrigger value="reports" data-testid="tab-reports" className="flex-1 min-w-[80px] text-xs sm:text-sm px-2 py-1.5">
               <TrendingUp className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2 flex-shrink-0" />
@@ -1218,6 +1372,10 @@ export default function Muhasebe() {
             </Card>
           </TabsContent>
 
+          <TabsContent value="stok" className="space-y-4 mt-4">
+            <StokTab />
+          </TabsContent>
+
           <TabsContent value="reports" className="space-y-4 mt-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <Card>
@@ -1839,7 +1997,7 @@ function SalarySettingsSection({ employees, canEdit }: { employees: Employee[]; 
                   <th className="px-4 py-2 text-right font-medium">Temel Maaş</th>
                   {showCashRegister && <th className="px-4 py-2 text-right font-medium">Kasa Primi</th>}
                   <th className="px-4 py-2 text-right font-medium">Performans Primi</th>
-                  <th className="px-4 py-2 text-center font-medium">Prim Hesaplama</th>
+                  <th className="px-4 py-2 text-center font-medium">Yemek Parası</th>
                   <th className="px-4 py-2 text-right font-medium">Toplam</th>
                   {canEdit && <th className="px-4 py-2 text-center font-medium">İşlem</th>}
                 </tr>
@@ -1903,18 +2061,18 @@ function SalarySettingsSection({ employees, canEdit }: { employees: Employee[]; 
                         </td>
                         <td className="px-4 py-2 text-center">
                           {isEditing ? (
-                            <Select value={scaleEditValues.bonusCalculationType} onValueChange={(v) => setScaleEditValues({ ...scaleEditValues, bonusCalculationType: v })}>
-                              <SelectTrigger className="w-40 mx-auto" data-testid={`select-scale-bonus-type-${scale.id}`}>
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="per_day">Gün Bazlı</SelectItem>
-                                <SelectItem value="full">Tam Prim</SelectItem>
-                              </SelectContent>
-                            </Select>
+                            <Input
+                              type="number"
+                              step="0.01"
+                              value={scaleEditValues.bonusCalculationType}
+                              onChange={(e) => setScaleEditValues({ ...scaleEditValues, bonusCalculationType: e.target.value })}
+                              className="w-28 text-right mx-auto"
+                              placeholder="300"
+                              data-testid={`input-scale-meal-${scale.id}`}
+                            />
                           ) : (
-                            <Badge variant="secondary" data-testid={`badge-scale-bonus-type-${scale.id}`}>
-                              {scale.bonusCalculationType === 'per_day' ? 'Gün Bazlı (x gün)' : 'Tam Prim'}
+                            <Badge variant="secondary" data-testid={`badge-scale-meal-${scale.id}`}>
+                              Günlük 300 ₺
                             </Badge>
                           )}
                         </td>

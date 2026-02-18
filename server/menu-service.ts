@@ -391,6 +391,66 @@ const MENU_BLUEPRINT: SidebarMenuSection[] = [
         moduleKey: "accounting",
         scope: "both",
       },
+      {
+        id: "financial-reports",
+        titleTr: "Raporlama",
+        path: "/muhasebe-raporlama",
+        icon: "FileText",
+        moduleKey: "accounting",
+        scope: "both",
+      },
+    ],
+  },
+
+  // ========================================
+  // 10.5. SATINALMA (Procurement)
+  // ========================================
+  {
+    id: "procurement",
+    titleTr: "Satınalma",
+    icon: "ShoppingCart",
+    scope: "hq",
+    items: [
+      {
+        id: "procurement-dashboard",
+        titleTr: "Satınalma Paneli",
+        path: "/satinalma",
+        icon: "ShoppingCart",
+        moduleKey: "satinalma",
+        scope: "hq",
+      },
+      {
+        id: "stock-management",
+        titleTr: "Stok Yönetimi",
+        path: "/satinalma/stok-yonetimi",
+        icon: "Package",
+        moduleKey: "inventory",
+        scope: "hq",
+      },
+      {
+        id: "supplier-management",
+        titleTr: "Tedarikçi Yönetimi",
+        path: "/satinalma/tedarikci-yonetimi",
+        icon: "Truck",
+        moduleKey: "suppliers",
+        scope: "hq",
+      },
+      {
+        id: "order-management",
+        titleTr: "Sipariş Yönetimi",
+        path: "/satinalma/siparis-yonetimi",
+        icon: "FileText",
+        moduleKey: "purchase_orders",
+        scope: "hq",
+      },
+      {
+        id: "goods-receipt",
+        titleTr: "Mal Kabul",
+        path: "/satinalma/mal-kabul",
+        icon: "ClipboardCheck",
+        moduleKey: "goods_receipt",
+        scope: "hq",
+      },
     ],
   },
 

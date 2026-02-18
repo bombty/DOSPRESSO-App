@@ -30,6 +30,7 @@ import {
   Building2,
   Package,
   MapPin,
+  RefreshCw,
 } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
 import { tr } from "date-fns/locale";
@@ -156,7 +157,7 @@ export default function Notifications() {
   
   const pollingInterval = useAdaptivePolling();
   
-  const { data: notifications, isLoading } = useQuery<Notification[]>({
+  const { data: notifications, isLoading, isError, refetch } = useQuery<Notification[]>({
     queryKey: ['/api/notifications', viewAll ? 'all' : 'personal', branchFilter !== 'all' ? branchFilter : undefined],
     queryFn: async () => {
       const params = new URLSearchParams();
@@ -168,10 +169,15 @@ export default function Notifications() {
         }
       }
       const res = await fetch(`/api/notifications?${params.toString()}`, { credentials: 'include' });
-      if (!res.ok) throw new Error('Failed to fetch');
-      return res.json();
+      if (!res.ok) {
+        const errorText = await res.text().catch(() => res.statusText);
+        throw new Error(`${res.status}: ${errorText}`);
+      }
+      return await res.json();
     },
     refetchInterval: pollingInterval,
+    retry: 2,
+    retryDelay: 1000,
   });
 
   const { data: unreadData } = useQuery<{ count: number }>({
@@ -454,6 +460,15 @@ export default function Notifications() {
 
           {isLoading ? (
             <ListSkeleton count={6} variant="card" />
+          ) : isError ? (
+            <div className="flex flex-col items-center justify-center py-12 space-y-3">
+              <AlertTriangle className="w-10 h-10 text-destructive" />
+              <p className="text-sm text-muted-foreground">Bildirimler yüklenirken bir hata oluştu.</p>
+              <Button variant="outline" size="sm" onClick={() => refetch()} data-testid="button-retry-notifications">
+                <RefreshCw className="w-3.5 h-3.5 mr-1.5" />
+                Tekrar Dene
+              </Button>
+            </div>
           ) : filteredNotifications.length > 0 ? (
             <div className="space-y-4">
               {unreadNotifications.length > 0 && (

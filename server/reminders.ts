@@ -2,7 +2,7 @@ import { storage } from "./storage";
 import type { Task, Equipment, User } from "@shared/schema";
 import { sendNotificationEmail } from "./email";
 import { db } from "./db";
-import { correctiveActions, users, auditInstances, branches, factoryProducts, employeeOnboardingAssignments, onboardingTemplates, notifications, staffEvaluations, employeeOnboarding, hqSupportTickets, hqSupportMessages, HQ_SUPPORT_STATUS } from "@shared/schema";
+import { correctiveActions, users, auditInstances, branches, factoryProducts, employeeOnboardingAssignments, onboardingTemplates, notifications, staffEvaluations, employeeOnboarding, hqSupportTickets, hqSupportMessages, HQ_SUPPORT_STATUS, inventory, supplierQuotes } from "@shared/schema";
 import { eq, lt, and, ne, lte, or, inArray, gt, gte, count, max, sql } from "drizzle-orm";
 import { ObjectStorageService } from "./objectStorage";
 
@@ -1130,6 +1130,89 @@ export async function checkOnboardingCompletions() {
     }
   } catch (error) {
     console.error("Onboarding completion check error:", error);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// STALE QUOTE REMINDERS - Güncel Olmayan Teklif Hatırlatmaları
+// ═══════════════════════════════════════════════════════════════
+
+const STALE_QUOTE_CHECK_INTERVAL = 24 * 60 * 60 * 1000; // 24 hours
+let staleQuoteInterval: NodeJS.Timeout | null = null;
+
+export async function checkStaleQuoteReminders() {
+  try {
+    const now = new Date();
+    const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+
+    const recentStaleNotifs = await db.select({
+      userId: notifications.userId,
+    }).from(notifications)
+      .where(and(
+        eq(notifications.type, 'stale_quote_reminder'),
+        gt(notifications.createdAt, oneDayAgo)
+      ));
+
+    if (recentStaleNotifs.length > 0) {
+      console.log("Stale quote reminder already sent today, skipping");
+      return;
+    }
+
+    const result = await db.execute(sql`
+      SELECT COUNT(*) as count
+      FROM inventory i
+      LEFT JOIN supplier_quotes sq ON sq.inventory_id = i.id
+      WHERE i.is_active = true
+      GROUP BY i.id
+      HAVING MAX(sq.created_at) IS NULL 
+         OR MAX(sq.created_at) < NOW() - INTERVAL '60 days'
+    `);
+
+    const rows = (result as any).rows || result;
+    const staleCount = rows.length;
+
+    if (staleCount === 0) {
+      console.log("No stale quotes found, skipping notification");
+      return;
+    }
+
+    const satinalmaUsers = await db
+      .select()
+      .from(users)
+      .where(or(
+        eq(users.role, 'satinalma'),
+        eq(users.role, 'admin')
+      ));
+
+    for (const user of satinalmaUsers) {
+      await storage.createNotification({
+        userId: user.id,
+        type: 'stale_quote_reminder',
+        title: 'Guncel Teklif Hatirlatmasi',
+        message: `${staleCount} urun 2 aydan fazla suredir guncel teklif almamis. Lutfen kontrol edin.`,
+        link: '/satinalma',
+      });
+    }
+
+    console.log(`Stale quote reminder sent to ${satinalmaUsers.length} users for ${staleCount} products`);
+  } catch (error) {
+    console.error("Stale quote reminder check error:", error);
+  }
+}
+
+export function startStaleQuoteReminderSystem() {
+  console.log("Teklif hatirlatma sistemi baslatildi - Her 24 saatte bir kontrol edilecek");
+  
+  setTimeout(checkStaleQuoteReminders, 60000);
+  
+  staleQuoteInterval = setInterval(checkStaleQuoteReminders, STALE_QUOTE_CHECK_INTERVAL);
+}
+
+export function stopStaleQuoteReminderSystem() {
+  if (staleQuoteInterval) {
+    clearInterval(staleQuoteInterval);
+    staleQuoteInterval = null;
+    console.log("Teklif hatirlatma sistemi durduruldu");
   }
 }
 

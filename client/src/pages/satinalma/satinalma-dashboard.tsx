@@ -1,6 +1,8 @@
-import { useQuery } from "@tanstack/react-query";
+import { useState, useRef, useEffect } from "react";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { 
   Package, 
   Users, 
@@ -11,7 +13,14 @@ import {
   ArrowUpDown,
   Star,
   Clock,
-  Truck
+  Truck,
+  RefreshCw,
+  FileWarning,
+  PackageX,
+  QrCode,
+  X,
+  CheckCircle2,
+  Loader2
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { 
@@ -22,6 +31,15 @@ import {
   TableHeader, 
   TableRow 
 } from "@/components/ui/table";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
+import { Html5Qrcode } from "html5-qrcode";
 
 interface DashboardData {
   totalSuppliers: number;
@@ -60,6 +78,28 @@ interface SupplierPerformance {
   status: string;
 }
 
+interface StaleQuoteItem {
+  id: number;
+  name: string;
+  code: string;
+  category: string;
+  unitCost: string;
+  unit: string;
+  lastQuoteDate: string | null;
+  daysSinceQuote: number | null;
+  suppliers: { supplierName: string; unitPrice: string }[];
+}
+
+interface CriticalStockItem {
+  id: number;
+  name: string;
+  code: string;
+  currentStock: string;
+  minimumStock: string;
+  unit: string;
+  category: string;
+}
+
 const categoryLabels: Record<string, string> = {
   hammadde: "Hammadde",
   yarimamul: "Yari Mamul",
@@ -80,7 +120,138 @@ const categoryLabels: Record<string, string> = {
   diger: "Diger",
 };
 
+interface QRFoundProduct {
+  id: number;
+  code: string;
+  name: string;
+  category: string;
+  unit: string;
+  current_stock: string;
+}
+
 export default function SatinalmaDashboard() {
+  const [staleDialogOpen, setStaleDialogOpen] = useState(false);
+  const [qrDialogOpen, setQrDialogOpen] = useState(false);
+  const [qrScanning, setQrScanning] = useState(false);
+  const [qrProcessing, setQrProcessing] = useState(false);
+  const [qrFoundProduct, setQrFoundProduct] = useState<QRFoundProduct | null>(null);
+  const qrScannerRef = useRef<Html5Qrcode | null>(null);
+  const qrProcessedRef = useRef(false);
+  const { toast } = useToast();
+
+  useEffect(() => {
+    return () => {
+      if (qrScannerRef.current) {
+        qrScannerRef.current.stop().catch(() => {});
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!qrDialogOpen) {
+      stopQrScanner();
+      qrProcessedRef.current = false;
+      setQrProcessing(false);
+      setQrFoundProduct(null);
+    }
+  }, [qrDialogOpen]);
+
+  const stopQrScanner = async () => {
+    try {
+      if (qrScannerRef.current) {
+        await qrScannerRef.current.stop();
+        qrScannerRef.current = null;
+      }
+    } catch {}
+    setQrScanning(false);
+  };
+
+  const startQrScanner = async () => {
+    try {
+      qrProcessedRef.current = false;
+      setQrFoundProduct(null);
+      setQrScanning(true);
+      await new Promise(resolve => setTimeout(resolve, 100));
+      const html5QrCode = new Html5Qrcode("satinalma-qr-reader");
+      qrScannerRef.current = html5QrCode;
+
+      await html5QrCode.start(
+        { facingMode: "environment" },
+        { fps: 10, qrbox: { width: 250, height: 250 } },
+        async (decodedText) => {
+          if (qrProcessedRef.current) return;
+          qrProcessedRef.current = true;
+          setQrProcessing(true);
+          await stopQrScanner();
+          await handleQrResult(decodedText);
+        },
+        () => {}
+      );
+    } catch {
+      toast({
+        title: "Kamera Hatasi",
+        description: "Kameraya erisilemedi. Lutfen izinleri kontrol edin.",
+        variant: "destructive",
+      });
+      setQrScanning(false);
+    }
+  };
+
+  const handleQrResult = async (qrData: string) => {
+    try {
+      const trimmed = qrData.trim();
+      let qrCode = trimmed;
+      if (trimmed.startsWith("INV-")) {
+        qrCode = trimmed;
+      } else if (trimmed.match(/\/inventory\/(\d+)/i) || trimmed.match(/\/envanter\/(\d+)/i) || trimmed.match(/\/stok\/(\d+)/i)) {
+        const match = trimmed.match(/\/(?:inventory|envanter|stok)\/(\d+)/i);
+        if (match) qrCode = match[1];
+      } else if (trimmed.match(/\/urun-karti\/(\d+)/i)) {
+        const match = trimmed.match(/\/urun-karti\/(\d+)/i);
+        if (match) {
+          const productId = parseInt(match[1]);
+          setQrProcessing(false);
+          setQrDialogOpen(false);
+          window.location.href = `/satinalma/stok-yonetimi?productId=${productId}`;
+          return;
+        }
+      }
+
+      const res = await fetch(`/api/inventory/qr/${encodeURIComponent(qrCode)}`);
+      if (!res.ok) {
+        toast({
+          title: "Urun Bulunamadi",
+          description: "Bu QR koda ait urun bulunamadi.",
+          variant: "destructive",
+        });
+        qrProcessedRef.current = false;
+        setQrProcessing(false);
+        return;
+      }
+
+      const product = await res.json();
+      setQrFoundProduct(product);
+      setQrProcessing(false);
+      toast({
+        title: "Urun Bulundu",
+        description: `${product.name} (${product.code})`,
+      });
+    } catch {
+      toast({
+        title: "Hata",
+        description: "QR kod isleme sirasinda hata olustu.",
+        variant: "destructive",
+      });
+      qrProcessedRef.current = false;
+      setQrProcessing(false);
+    }
+  };
+
+  const navigateToProduct = (productId: number) => {
+    setQrDialogOpen(false);
+    window.location.href = `/satinalma/stok-yonetimi?productId=${productId}`;
+  };
+
   const { data, isLoading } = useQuery<DashboardData>({
     queryKey: ["/api/satinalma/dashboard"],
   });
@@ -115,6 +286,36 @@ export default function SatinalmaDashboard() {
           parseFloat(b.performanceScore || '0') - parseFloat(a.performanceScore || '0')
         )
         .slice(0, 5);
+    },
+  });
+
+  const { data: staleQuotes } = useQuery<StaleQuoteItem[]>({
+    queryKey: ['/api/satinalma/stale-quotes'],
+  });
+
+  const { data: criticalStock } = useQuery<CriticalStockItem[]>({
+    queryKey: ['/api/satinalma/critical-stock'],
+  });
+
+  const updatePricesMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest('POST', '/api/satinalma/update-prices-from-quotes');
+      return res.json();
+    },
+    onSuccess: (data: { updatedCount: number; message: string }) => {
+      toast({
+        title: "Fiyatlar Guncellendi",
+        description: data.message,
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/satinalma/dashboard'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/satinalma/stale-quotes'] });
+    },
+    onError: () => {
+      toast({
+        title: "Hata",
+        description: "Fiyat guncellemesi sirasinda bir hata olustu",
+        variant: "destructive",
+      });
     },
   });
 
@@ -206,6 +407,244 @@ export default function SatinalmaDashboard() {
           </Card>
         ))}
       </div>
+
+      <Card className="border-primary/30" data-testid="card-qr-scanner">
+        <CardContent className="flex items-center justify-between gap-3 py-3 px-3 flex-wrap">
+          <div className="flex items-center gap-2">
+            <div className="p-2 rounded-lg bg-primary/10">
+              <QrCode className="h-4 w-4 text-primary" />
+            </div>
+            <div>
+              <p className="text-sm font-medium">QR ile Urun Tara</p>
+              <p className="text-xs text-muted-foreground">QR kod tarayarak urun kartina ulasin</p>
+            </div>
+          </div>
+          <Button
+            onClick={() => setQrDialogOpen(true)}
+            data-testid="button-qr-scan-product"
+          >
+            <QrCode className="h-4 w-4 mr-2" />
+            QR Tara
+          </Button>
+        </CardContent>
+      </Card>
+
+      <Dialog open={qrDialogOpen} onOpenChange={setQrDialogOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2" data-testid="title-qr-product-scanner">
+              <QrCode className="h-5 w-5" />
+              QR ile Urun Tara
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-3">
+            {qrProcessing && (
+              <div className="flex items-center gap-2 p-3 rounded-lg bg-primary/10 border border-primary/30">
+                <Loader2 className="h-4 w-4 text-primary animate-spin" />
+                <span className="text-sm font-medium">QR kod isleniyor...</span>
+              </div>
+            )}
+
+            {qrFoundProduct && (
+              <div className="space-y-3">
+                <div className="flex items-center gap-2 p-3 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800">
+                  <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400 flex-shrink-0" />
+                  <div>
+                    <p className="text-sm font-medium text-green-700 dark:text-green-300">Urun Bulundu</p>
+                    <p className="text-xs text-green-600 dark:text-green-400">{qrFoundProduct.name}</p>
+                  </div>
+                </div>
+                <Card>
+                  <CardContent className="pt-3 pb-3 px-3 space-y-2">
+                    <div className="flex items-center justify-between gap-2 flex-wrap">
+                      <span className="text-xs text-muted-foreground">Urun Adi</span>
+                      <span className="text-sm font-medium" data-testid="text-qr-product-name">{qrFoundProduct.name}</span>
+                    </div>
+                    <div className="flex items-center justify-between gap-2 flex-wrap">
+                      <span className="text-xs text-muted-foreground">Kod</span>
+                      <span className="text-sm font-mono" data-testid="text-qr-product-code">{qrFoundProduct.code}</span>
+                    </div>
+                    <div className="flex items-center justify-between gap-2 flex-wrap">
+                      <span className="text-xs text-muted-foreground">Kategori</span>
+                      <Badge variant="outline" className="text-xs" data-testid="text-qr-product-category">
+                        {categoryLabels[qrFoundProduct.category] || qrFoundProduct.category}
+                      </Badge>
+                    </div>
+                    <div className="flex items-center justify-between gap-2 flex-wrap">
+                      <span className="text-xs text-muted-foreground">Mevcut Stok</span>
+                      <span className="text-sm font-mono" data-testid="text-qr-product-stock">
+                        {parseFloat(qrFoundProduct.current_stock || "0").toFixed(1)} {qrFoundProduct.unit}
+                      </span>
+                    </div>
+                  </CardContent>
+                </Card>
+                <Button
+                  className="w-full"
+                  onClick={() => navigateToProduct(qrFoundProduct.id)}
+                  data-testid="button-go-to-product-card"
+                >
+                  <Package className="h-4 w-4 mr-2" />
+                  Urun Kartina Git
+                </Button>
+              </div>
+            )}
+
+            {!qrFoundProduct && (
+              <>
+                <div
+                  id="satinalma-qr-reader"
+                  className="w-full rounded-lg overflow-hidden bg-muted"
+                  style={{ minHeight: "300px" }}
+                />
+
+                <div className="flex gap-2">
+                  {!qrScanning ? (
+                    <Button onClick={startQrScanner} className="flex-1" data-testid="button-qr-start-scan" disabled={qrProcessing}>
+                      <QrCode className="h-4 w-4 mr-2" />
+                      Taramaya Basla
+                    </Button>
+                  ) : (
+                    <Button
+                      onClick={stopQrScanner}
+                      variant="destructive"
+                      className="flex-1"
+                      data-testid="button-qr-stop-scan"
+                      disabled={qrProcessing}
+                    >
+                      <X className="h-4 w-4 mr-2" />
+                      Durdur
+                    </Button>
+                  )}
+                  <Button
+                    onClick={() => setQrDialogOpen(false)}
+                    variant="outline"
+                    data-testid="button-qr-close"
+                  >
+                    Kapat
+                  </Button>
+                </div>
+              </>
+            )}
+
+            {qrFoundProduct && (
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={() => {
+                  setQrFoundProduct(null);
+                  qrProcessedRef.current = false;
+                }}
+                data-testid="button-qr-scan-again"
+              >
+                <QrCode className="h-4 w-4 mr-2" />
+                Baska Urun Tara
+              </Button>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {((staleQuotes && staleQuotes.length > 0) || (criticalStock && criticalStock.length > 0)) && (
+        <Card className="border-amber-500/30" data-testid="card-ai-reminders">
+          <CardHeader className="flex flex-row items-center justify-between pb-2 pt-3 px-3 gap-2">
+            <CardTitle className="text-xs flex items-center gap-2">
+              <AlertTriangle className="h-3.5 w-3.5 text-amber-500" />
+              AI Hatirlatmalar
+            </CardTitle>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => updatePricesMutation.mutate()}
+              disabled={updatePricesMutation.isPending}
+              data-testid="button-update-prices"
+            >
+              <RefreshCw className={`h-3.5 w-3.5 mr-1 ${updatePricesMutation.isPending ? "animate-spin" : ""}`} />
+              Fiyatlari Guncelle
+            </Button>
+          </CardHeader>
+          <CardContent className="px-3 pb-3">
+            <div className="space-y-2">
+              {staleQuotes && staleQuotes.length > 0 && (
+                <div className="flex items-center justify-between gap-2 text-sm flex-wrap">
+                  <span className="flex items-center gap-1.5">
+                    <FileWarning className="h-3.5 w-3.5 text-amber-500" />
+                    {staleQuotes.length} urun 2+ aydir teklif almamis
+                  </span>
+                  <Button size="sm" variant="outline" onClick={() => setStaleDialogOpen(true)} data-testid="button-stale-detail">
+                    Detay
+                  </Button>
+                </div>
+              )}
+              {criticalStock && criticalStock.length > 0 && (
+                <div className="flex items-center justify-between gap-2 text-sm flex-wrap">
+                  <span className="flex items-center gap-1.5 text-red-500 dark:text-red-400">
+                    <PackageX className="h-3.5 w-3.5" />
+                    {criticalStock.length} urun kritik stok seviyesinde
+                  </span>
+                  <Button size="sm" variant="outline" onClick={() => window.location.href = '/satinalma/stok-yonetimi'} data-testid="button-critical-stock-view">
+                    Goruntule
+                  </Button>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      <Dialog open={staleDialogOpen} onOpenChange={setStaleDialogOpen}>
+        <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileWarning className="h-4 w-4 text-amber-500" />
+              Guncel Teklif Almamis Urunler
+            </DialogTitle>
+          </DialogHeader>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Urun</TableHead>
+                <TableHead>Kategori</TableHead>
+                <TableHead>Son Teklif</TableHead>
+                <TableHead className="text-right">Gun</TableHead>
+                <TableHead className="text-right">Mevcut Fiyat</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {staleQuotes?.map((item) => (
+                <TableRow key={item.id} data-testid={`stale-quote-row-${item.id}`}>
+                  <TableCell>
+                    <div className="font-medium" data-testid={`stale-name-${item.id}`}>{item.name}</div>
+                    <div className="text-xs text-muted-foreground">{item.code}</div>
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant="outline" className="text-xs" data-testid={`stale-category-${item.id}`}>
+                      {categoryLabels[item.category] || item.category}
+                    </Badge>
+                  </TableCell>
+                  <TableCell data-testid={`stale-date-${item.id}`}>
+                    {item.lastQuoteDate
+                      ? new Date(item.lastQuoteDate).toLocaleDateString("tr-TR")
+                      : <span className="text-muted-foreground">Hic teklif yok</span>}
+                  </TableCell>
+                  <TableCell className="text-right" data-testid={`stale-days-${item.id}`}>
+                    {item.daysSinceQuote != null ? (
+                      <Badge variant={item.daysSinceQuote > 120 ? "destructive" : "secondary"} className="text-xs">
+                        {item.daysSinceQuote} gun
+                      </Badge>
+                    ) : (
+                      <Badge variant="destructive" className="text-xs">N/A</Badge>
+                    )}
+                  </TableCell>
+                  <TableCell className="text-right font-mono" data-testid={`stale-price-${item.id}`}>
+                    {item.unitCost ? `${parseFloat(item.unitCost).toLocaleString("tr-TR", { minimumFractionDigits: 2 })} TL` : "-"}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </DialogContent>
+      </Dialog>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
         <Card>

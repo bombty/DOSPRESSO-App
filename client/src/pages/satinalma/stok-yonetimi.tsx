@@ -111,7 +111,11 @@ export default function StokYonetimi() {
   const [isMovementDialogOpen, setIsMovementDialogOpen] = useState(false);
   const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null);
-  const [selectedProductId, setSelectedProductId] = useState<number | null>(null);
+  const [selectedProductId, setSelectedProductId] = useState<number | null>(() => {
+    const params = new URLSearchParams(window.location.search);
+    const pid = params.get("productId");
+    return pid ? parseInt(pid) : null;
+  });
   
   const [newCategory, setNewCategory] = useState("");
   const [newUnit, setNewUnit] = useState("");

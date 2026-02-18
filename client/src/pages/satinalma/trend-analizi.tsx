@@ -1,7 +1,9 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Table,
   TableBody,
@@ -15,6 +17,15 @@ import {
   ShoppingCart,
   TrendingUp,
   Percent,
+  Users,
+  Star,
+  AlertTriangle,
+  Package,
+  ArrowUpDown,
+  ArrowDownRight,
+  ArrowUpRight,
+  BarChart3,
+  PieChartIcon,
 } from "lucide-react";
 import {
   BarChart,
@@ -66,6 +77,80 @@ interface TrendData {
     orderCount: number;
     avgOrderAmount: number;
     priceIncreaseRate: number;
+  };
+}
+
+interface SupplierPerformanceData {
+  suppliers: Array<{
+    id: number;
+    name: string;
+    code: string;
+    qualityScore: number;
+    deliveryRate: number;
+    orderCount: number;
+    totalValue: number;
+    avgDeliveryDays: number;
+    activeProductCount: number;
+    recentIssuesCount: number;
+  }>;
+  summary: {
+    totalSuppliers: number;
+    totalOrders: number;
+    totalValue: number;
+    avgQuality: number;
+    totalIssues: number;
+  };
+}
+
+interface StockMovementReportData {
+  monthlyMovements: Array<{
+    month: string;
+    movement_type: string;
+    count: number;
+    total_quantity: string;
+  }>;
+  topMovingItems: Array<{
+    product_name: string;
+    category: string;
+    movement_count: number;
+    total_quantity: string;
+  }>;
+  categoryBreakdown: Array<{
+    category: string;
+    movement_type: string;
+    count: number;
+    total_quantity: string;
+  }>;
+  summary: {
+    totalMovements: number;
+    totalIn: number;
+    totalOut: number;
+  };
+}
+
+interface CostAnalysisData {
+  monthlySpending: Array<{
+    month: string;
+    total_spending: string;
+    order_count: number;
+  }>;
+  topCostItems: Array<{
+    product_name: string;
+    category: string;
+    total_cost: string;
+    total_quantity: string;
+    avg_unit_price: string;
+  }>;
+  categorySpending: Array<{
+    category: string;
+    total_cost: string;
+    product_count: number;
+  }>;
+  summary: {
+    totalSpending: number;
+    totalOrders: number;
+    avgMonthlySpending: number;
+    changePercent: number;
   };
 }
 
@@ -129,6 +214,13 @@ const PIE_COLORS = [
   "hsl(320, 60%, 50%)",
 ];
 
+const TOOLTIP_STYLE = {
+  backgroundColor: "hsl(var(--card))",
+  border: "1px solid hsl(var(--border))",
+  borderRadius: "6px",
+  color: "hsl(var(--foreground))",
+};
+
 function formatCurrency(value: number): string {
   return value.toLocaleString("tr-TR", {
     minimumFractionDigits: 2,
@@ -144,42 +236,65 @@ function formatMonthLabel(monthStr: string): string {
   return monthStr;
 }
 
-export default function TrendAnalizi() {
-  const { data, isLoading } = useQuery<TrendData>({
-    queryKey: ["/api/satinalma/trends"],
-  });
-
-  if (isLoading) {
-    return (
-      <div className="space-y-4" data-testid="trend-loading">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          {[...Array(4)].map((_, i) => (
-            <Card key={i}>
-              <CardHeader className="pb-1 pt-3 px-3">
-                <Skeleton className="h-4 w-28" />
-              </CardHeader>
-              <CardContent className="px-3 pb-3">
-                <Skeleton className="h-7 w-20" />
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-          {[...Array(4)].map((_, i) => (
-            <Card key={i}>
-              <CardHeader className="pb-1 pt-3 px-3">
-                <Skeleton className="h-4 w-36" />
-              </CardHeader>
-              <CardContent className="px-3 pb-3">
-                <Skeleton className="h-64 w-full" />
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+function LoadingSkeleton() {
+  return (
+    <div className="space-y-4" data-testid="trend-loading">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        {[...Array(4)].map((_, i) => (
+          <Card key={i}>
+            <CardHeader className="pb-1 pt-3 px-3">
+              <Skeleton className="h-4 w-28" />
+            </CardHeader>
+            <CardContent className="px-3 pb-3">
+              <Skeleton className="h-7 w-20" />
+            </CardContent>
+          </Card>
+        ))}
       </div>
-    );
-  }
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+        {[...Array(4)].map((_, i) => (
+          <Card key={i}>
+            <CardHeader className="pb-1 pt-3 px-3">
+              <Skeleton className="h-4 w-36" />
+            </CardHeader>
+            <CardContent className="px-3 pb-3">
+              <Skeleton className="h-64 w-full" />
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    </div>
+  );
+}
 
+function SummaryCard({ title, value, icon: Icon, color, bgColor, testId }: {
+  title: string;
+  value: string;
+  icon: any;
+  color: string;
+  bgColor: string;
+  testId: string;
+}) {
+  return (
+    <Card data-testid={testId}>
+      <CardHeader className="flex flex-row items-center justify-between pb-1 pt-3 px-3 gap-2">
+        <CardTitle className="text-xs font-medium text-muted-foreground">
+          {title}
+        </CardTitle>
+        <div className={`p-2 rounded-lg ${bgColor}`}>
+          <Icon className={`h-3.5 w-3.5 ${color}`} />
+        </div>
+      </CardHeader>
+      <CardContent className="px-3 pb-3">
+        <div className="text-lg font-bold" data-testid={`${testId}-value`}>
+          {value}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function GenelTrendTab({ data }: { data: TrendData | undefined }) {
   const summary = data?.summary || {
     totalSpending: 0,
     orderCount: 0,
@@ -279,27 +394,18 @@ export default function TrendAnalizi() {
   ];
 
   return (
-    <div className="space-y-4" data-testid="trend-analizi-container">
+    <div className="space-y-4">
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         {summaryCards.map((card, index) => (
-          <Card key={index} data-testid={`trend-summary-card-${index}`}>
-            <CardHeader className="flex flex-row items-center justify-between pb-1 pt-3 px-3 gap-2">
-              <CardTitle className="text-xs font-medium text-muted-foreground">
-                {card.title}
-              </CardTitle>
-              <div className={`p-2 rounded-lg ${card.bgColor}`}>
-                <card.icon className={`h-3.5 w-3.5 ${card.color}`} />
-              </div>
-            </CardHeader>
-            <CardContent className="px-3 pb-3">
-              <div
-                className="text-lg font-bold"
-                data-testid={`trend-summary-value-${index}`}
-              >
-                {card.value}
-              </div>
-            </CardContent>
-          </Card>
+          <SummaryCard
+            key={index}
+            title={card.title}
+            value={card.value}
+            icon={card.icon}
+            color={card.color}
+            bgColor={card.bgColor}
+            testId={`trend-summary-card-${index}`}
+          />
         ))}
       </div>
 
@@ -331,12 +437,7 @@ export default function TrendAnalizi() {
                       value.toLocaleString("tr-TR"),
                       "Miktar",
                     ]}
-                    contentStyle={{
-                      backgroundColor: "hsl(var(--card))",
-                      border: "1px solid hsl(var(--border))",
-                      borderRadius: "6px",
-                      color: "hsl(var(--foreground))",
-                    }}
+                    contentStyle={TOOLTIP_STYLE}
                   />
                   <Bar
                     dataKey="quantity"
@@ -377,12 +478,7 @@ export default function TrendAnalizi() {
                       formatCurrency(value) + " TL",
                       "Harcama",
                     ]}
-                    contentStyle={{
-                      backgroundColor: "hsl(var(--card))",
-                      border: "1px solid hsl(var(--border))",
-                      borderRadius: "6px",
-                      color: "hsl(var(--foreground))",
-                    }}
+                    contentStyle={TOOLTIP_STYLE}
                   />
                   <Line
                     type="monotone"
@@ -417,12 +513,7 @@ export default function TrendAnalizi() {
                   <XAxis dataKey="date" tick={{ fontSize: 10 }} />
                   <YAxis tick={{ fontSize: 11 }} />
                   <Tooltip
-                    contentStyle={{
-                      backgroundColor: "hsl(var(--card))",
-                      border: "1px solid hsl(var(--border))",
-                      borderRadius: "6px",
-                      color: "hsl(var(--foreground))",
-                    }}
+                    contentStyle={TOOLTIP_STYLE}
                     formatter={(value: number, name: string) => [
                       value,
                       MOVEMENT_TYPE_LABELS[name] || name,
@@ -486,12 +577,7 @@ export default function TrendAnalizi() {
                       formatCurrency(value) + " TL",
                       "Tutar",
                     ]}
-                    contentStyle={{
-                      backgroundColor: "hsl(var(--card))",
-                      border: "1px solid hsl(var(--border))",
-                      borderRadius: "6px",
-                      color: "hsl(var(--foreground))",
-                    }}
+                    contentStyle={TOOLTIP_STYLE}
                   />
                   <Legend />
                 </PieChart>
@@ -595,6 +681,532 @@ export default function TrendAnalizi() {
           )}
         </CardContent>
       </Card>
+    </div>
+  );
+}
+
+function TedarikciPerformansTab() {
+  const { data, isLoading } = useQuery<SupplierPerformanceData>({
+    queryKey: ["/api/satinalma/supplier-performance"],
+  });
+
+  if (isLoading) return <LoadingSkeleton />;
+
+  const summary = data?.summary || { totalSuppliers: 0, totalOrders: 0, totalValue: 0, avgQuality: 0, totalIssues: 0 };
+  const suppliersList = data?.suppliers || [];
+
+  const qualityChartData = suppliersList
+    .filter(s => s.orderCount > 0)
+    .slice(0, 10)
+    .map(s => ({
+      name: s.name.length > 20 ? s.name.substring(0, 20) + "..." : s.name,
+      kalite: s.qualityScore,
+      teslimat: s.deliveryRate,
+    }));
+
+  const valueChartData = suppliersList
+    .filter(s => s.totalValue > 0)
+    .sort((a, b) => b.totalValue - a.totalValue)
+    .slice(0, 8)
+    .map(s => ({
+      name: s.name.length > 15 ? s.name.substring(0, 15) + "..." : s.name,
+      value: s.totalValue,
+    }));
+
+  return (
+    <div className="space-y-4" data-testid="supplier-performance-container">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        <SummaryCard title="Aktif Tedarikci" value={summary.totalSuppliers.toString()} icon={Users} color="text-blue-500" bgColor="bg-blue-500/10" testId="sp-card-suppliers" />
+        <SummaryCard title="Toplam Siparis (90 Gun)" value={summary.totalOrders.toString()} icon={ShoppingCart} color="text-green-500" bgColor="bg-green-500/10" testId="sp-card-orders" />
+        <SummaryCard title="Toplam Tutar" value={formatCurrency(summary.totalValue) + " TL"} icon={DollarSign} color="text-purple-500" bgColor="bg-purple-500/10" testId="sp-card-value" />
+        <SummaryCard title="Ort. Kalite Puani" value={summary.avgQuality.toFixed(1)} icon={Star} color="text-yellow-500" bgColor="bg-yellow-500/10" testId="sp-card-quality" />
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+        <Card data-testid="chart-supplier-quality">
+          <CardHeader className="pb-1 pt-3 px-3">
+            <CardTitle className="text-xs">Kalite ve Teslimat Puanlari</CardTitle>
+          </CardHeader>
+          <CardContent className="px-3 pb-3">
+            {qualityChartData.length > 0 ? (
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={qualityChartData} margin={{ top: 5, right: 30, left: 10, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
+                  <XAxis dataKey="name" tick={{ fontSize: 9 }} angle={-30} textAnchor="end" height={60} />
+                  <YAxis tick={{ fontSize: 11 }} domain={[0, 100]} />
+                  <Tooltip contentStyle={TOOLTIP_STYLE} />
+                  <Legend />
+                  <Bar dataKey="kalite" name="Kalite Puani" fill="hsl(210, 70%, 50%)" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="teslimat" name="Teslimat Orani" fill="hsl(150, 60%, 45%)" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex items-center justify-center h-64 text-muted-foreground text-sm">
+                Tedarikci verisi bulunamadi
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card data-testid="chart-supplier-value">
+          <CardHeader className="pb-1 pt-3 px-3">
+            <CardTitle className="text-xs">Tedarikci Bazli Harcama Dagilimi</CardTitle>
+          </CardHeader>
+          <CardContent className="px-3 pb-3">
+            {valueChartData.length > 0 ? (
+              <ResponsiveContainer width="100%" height={300}>
+                <PieChart>
+                  <Pie data={valueChartData} cx="50%" cy="50%" innerRadius={60} outerRadius={100} dataKey="value" label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`} labelLine={false}>
+                    {valueChartData.map((_, index) => (
+                      <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip formatter={(value: number) => [formatCurrency(value) + " TL", "Tutar"]} contentStyle={TOOLTIP_STYLE} />
+                  <Legend />
+                </PieChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex items-center justify-center h-64 text-muted-foreground text-sm">
+                Harcama verisi bulunamadi
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      <Card data-testid="table-supplier-performance">
+        <CardHeader className="flex flex-row items-center justify-between pb-1 pt-3 px-3 gap-2">
+          <CardTitle className="text-xs">Tedarikci Performans Detayi</CardTitle>
+          <Badge variant="secondary" className="text-[10px]">Son 90 Gun</Badge>
+        </CardHeader>
+        <CardContent className="px-3 pb-3">
+          {suppliersList.length > 0 ? (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Tedarikci</TableHead>
+                    <TableHead className="text-right">Kalite</TableHead>
+                    <TableHead className="text-right">Teslimat</TableHead>
+                    <TableHead className="text-right">Siparis</TableHead>
+                    <TableHead className="text-right">Toplam Tutar</TableHead>
+                    <TableHead className="text-right">Ort. Teslim (Gun)</TableHead>
+                    <TableHead className="text-right">Urun Sayisi</TableHead>
+                    <TableHead className="text-right">Sorunlar</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {suppliersList.map((s) => (
+                    <TableRow key={s.id} data-testid={`sp-row-${s.id}`}>
+                      <TableCell className="font-medium" data-testid={`sp-name-${s.id}`}>
+                        <div>{s.name}</div>
+                        <div className="text-xs text-muted-foreground">{s.code}</div>
+                      </TableCell>
+                      <TableCell className="text-right" data-testid={`sp-quality-${s.id}`}>
+                        <Badge variant={s.qualityScore >= 80 ? "outline" : s.qualityScore >= 50 ? "secondary" : "destructive"} className={s.qualityScore >= 80 ? "bg-green-500/10 text-green-700 dark:text-green-400" : ""}>
+                          {s.qualityScore}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right" data-testid={`sp-delivery-${s.id}`}>
+                        <Badge variant={s.deliveryRate >= 80 ? "outline" : s.deliveryRate >= 50 ? "secondary" : "destructive"} className={s.deliveryRate >= 80 ? "bg-green-500/10 text-green-700 dark:text-green-400" : ""}>
+                          %{s.deliveryRate}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right font-mono text-sm" data-testid={`sp-orders-${s.id}`}>{s.orderCount}</TableCell>
+                      <TableCell className="text-right font-mono text-sm" data-testid={`sp-value-${s.id}`}>{formatCurrency(s.totalValue)} TL</TableCell>
+                      <TableCell className="text-right font-mono text-sm">{s.avgDeliveryDays > 0 ? s.avgDeliveryDays.toFixed(1) : "-"}</TableCell>
+                      <TableCell className="text-right font-mono text-sm">{s.activeProductCount}</TableCell>
+                      <TableCell className="text-right" data-testid={`sp-issues-${s.id}`}>
+                        {s.recentIssuesCount > 0 ? (
+                          <Badge variant="destructive">{s.recentIssuesCount}</Badge>
+                        ) : (
+                          <span className="text-muted-foreground text-sm">0</span>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          ) : (
+            <div className="text-center py-8 text-muted-foreground text-sm">
+              Tedarikci verisi bulunamadi
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+function StokHareketleriTab() {
+  const { data, isLoading } = useQuery<StockMovementReportData>({
+    queryKey: ["/api/satinalma/stock-movement-report"],
+  });
+
+  if (isLoading) return <LoadingSkeleton />;
+
+  const summary = data?.summary || { totalMovements: 0, totalIn: 0, totalOut: 0 };
+  const topItems = data?.topMovingItems || [];
+
+  const monthlyMap = new Map<string, Record<string, number>>();
+  (data?.monthlyMovements || []).forEach((m) => {
+    const label = formatMonthLabel(m.month);
+    if (!monthlyMap.has(label)) monthlyMap.set(label, {});
+    const entry = monthlyMap.get(label)!;
+    const mType = m.movement_type;
+    entry[mType] = (entry[mType] || 0) + parseFloat(m.total_quantity);
+  });
+
+  const monthlyChartData = Array.from(monthlyMap.entries()).map(([month, types]) => {
+    const inTypes = ["giris", "uretim_giris", "iade", "mal_kabul"];
+    const outTypes = ["cikis", "uretim_cikis", "fire"];
+    let totalIn = 0;
+    let totalOut = 0;
+    for (const [k, v] of Object.entries(types)) {
+      if (inTypes.includes(k)) totalIn += v;
+      if (outTypes.includes(k)) totalOut += v;
+    }
+    return { month, giris: totalIn, cikis: totalOut };
+  });
+
+  const categoryMap = new Map<string, { giris: number; cikis: number }>();
+  (data?.categoryBreakdown || []).forEach((c) => {
+    const cat = CATEGORY_LABELS[c.category] || c.category;
+    if (!categoryMap.has(cat)) categoryMap.set(cat, { giris: 0, cikis: 0 });
+    const entry = categoryMap.get(cat)!;
+    const inTypes = ["giris", "uretim_giris", "iade", "mal_kabul"];
+    const qty = parseFloat(c.total_quantity);
+    if (inTypes.includes(c.movement_type)) {
+      entry.giris += qty;
+    } else {
+      entry.cikis += qty;
+    }
+  });
+
+  const categoryChartData = Array.from(categoryMap.entries())
+    .map(([name, vals]) => ({ name: name.length > 12 ? name.substring(0, 12) + "..." : name, ...vals }))
+    .sort((a, b) => (b.giris + b.cikis) - (a.giris + a.cikis))
+    .slice(0, 8);
+
+  return (
+    <div className="space-y-4" data-testid="stock-movement-container">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        <SummaryCard title="Toplam Hareket" value={summary.totalMovements.toLocaleString("tr-TR")} icon={ArrowUpDown} color="text-blue-500" bgColor="bg-blue-500/10" testId="sm-card-total" />
+        <SummaryCard title="Toplam Giris Miktari" value={formatCurrency(summary.totalIn)} icon={ArrowDownRight} color="text-green-500" bgColor="bg-green-500/10" testId="sm-card-in" />
+        <SummaryCard title="Toplam Cikis Miktari" value={formatCurrency(summary.totalOut)} icon={ArrowUpRight} color="text-red-500" bgColor="bg-red-500/10" testId="sm-card-out" />
+        <SummaryCard title="Net Fark" value={formatCurrency(summary.totalIn - summary.totalOut)} icon={Package} color="text-purple-500" bgColor="bg-purple-500/10" testId="sm-card-net" />
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+        <Card data-testid="chart-monthly-movements">
+          <CardHeader className="pb-1 pt-3 px-3">
+            <CardTitle className="text-xs">Aylik Giris / Cikis Karsilastirmasi</CardTitle>
+          </CardHeader>
+          <CardContent className="px-3 pb-3">
+            {monthlyChartData.length > 0 ? (
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={monthlyChartData} margin={{ top: 5, right: 30, left: 10, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
+                  <XAxis dataKey="month" tick={{ fontSize: 11 }} />
+                  <YAxis tick={{ fontSize: 11 }} />
+                  <Tooltip contentStyle={TOOLTIP_STYLE} formatter={(value: number, name: string) => [formatCurrency(value), name === "giris" ? "Giris" : "Cikis"]} />
+                  <Legend formatter={(value: string) => value === "giris" ? "Giris" : "Cikis"} />
+                  <Bar dataKey="giris" name="giris" fill="hsl(150, 60%, 45%)" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="cikis" name="cikis" fill="hsl(0, 70%, 55%)" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex items-center justify-center h-64 text-muted-foreground text-sm">
+                Hareket verisi bulunamadi
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card data-testid="chart-category-movements">
+          <CardHeader className="pb-1 pt-3 px-3">
+            <CardTitle className="text-xs">Kategori Bazli Stok Hareketleri</CardTitle>
+          </CardHeader>
+          <CardContent className="px-3 pb-3">
+            {categoryChartData.length > 0 ? (
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={categoryChartData} layout="vertical" margin={{ top: 5, right: 30, left: 10, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
+                  <XAxis type="number" tick={{ fontSize: 11 }} />
+                  <YAxis type="category" dataKey="name" width={100} tick={{ fontSize: 10 }} />
+                  <Tooltip contentStyle={TOOLTIP_STYLE} formatter={(value: number, name: string) => [formatCurrency(value), name === "giris" ? "Giris" : "Cikis"]} />
+                  <Legend formatter={(value: string) => value === "giris" ? "Giris" : "Cikis"} />
+                  <Bar dataKey="giris" name="giris" fill="hsl(150, 60%, 45%)" radius={[0, 4, 4, 0]} stackId="stack" />
+                  <Bar dataKey="cikis" name="cikis" fill="hsl(0, 70%, 55%)" radius={[0, 4, 4, 0]} stackId="stack" />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex items-center justify-center h-64 text-muted-foreground text-sm">
+                Kategori verisi bulunamadi
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      <Card data-testid="table-top-moving">
+        <CardHeader className="flex flex-row items-center justify-between pb-1 pt-3 px-3 gap-2">
+          <CardTitle className="text-xs">En Cok Hareket Goren Urunler</CardTitle>
+          <Badge variant="secondary" className="text-[10px]">Son 6 Ay</Badge>
+        </CardHeader>
+        <CardContent className="px-3 pb-3">
+          {topItems.length > 0 ? (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Urun</TableHead>
+                  <TableHead>Kategori</TableHead>
+                  <TableHead className="text-right">Hareket Sayisi</TableHead>
+                  <TableHead className="text-right">Toplam Miktar</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {topItems.map((item, index) => (
+                  <TableRow key={index} data-testid={`sm-row-${index}`}>
+                    <TableCell className="font-medium" data-testid={`sm-product-${index}`}>{item.product_name}</TableCell>
+                    <TableCell>
+                      <Badge variant="secondary" className="text-[10px]">
+                        {CATEGORY_LABELS[item.category] || item.category}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-right font-mono text-sm" data-testid={`sm-count-${index}`}>{item.movement_count}</TableCell>
+                    <TableCell className="text-right font-mono text-sm" data-testid={`sm-qty-${index}`}>{formatCurrency(parseFloat(item.total_quantity))}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          ) : (
+            <div className="text-center py-8 text-muted-foreground text-sm">
+              Stok hareket verisi bulunamadi
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+function MaliyetAnaliziTab() {
+  const { data, isLoading } = useQuery<CostAnalysisData>({
+    queryKey: ["/api/satinalma/cost-analysis"],
+  });
+
+  if (isLoading) return <LoadingSkeleton />;
+
+  const summary = data?.summary || { totalSpending: 0, totalOrders: 0, avgMonthlySpending: 0, changePercent: 0 };
+  const topItems = data?.topCostItems || [];
+
+  const monthlyData = (data?.monthlySpending || []).map((m) => ({
+    month: formatMonthLabel(m.month),
+    spending: parseFloat(m.total_spending),
+    orders: m.order_count,
+  }));
+
+  const categoryData = (data?.categorySpending || [])
+    .filter(c => parseFloat(c.total_cost) > 0)
+    .map(c => ({
+      name: CATEGORY_LABELS[c.category] || c.category,
+      value: parseFloat(c.total_cost),
+      count: c.product_count,
+    }));
+
+  const topItemsChart = topItems
+    .slice(0, 10)
+    .map(i => ({
+      name: i.product_name.length > 20 ? i.product_name.substring(0, 20) + "..." : i.product_name,
+      cost: parseFloat(i.total_cost),
+    }));
+
+  return (
+    <div className="space-y-4" data-testid="cost-analysis-container">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        <SummaryCard title="Toplam Harcama (12 Ay)" value={formatCurrency(summary.totalSpending) + " TL"} icon={DollarSign} color="text-green-500" bgColor="bg-green-500/10" testId="ca-card-total" />
+        <SummaryCard title="Toplam Siparis" value={summary.totalOrders.toString()} icon={ShoppingCart} color="text-blue-500" bgColor="bg-blue-500/10" testId="ca-card-orders" />
+        <SummaryCard title="Ort. Aylik Harcama" value={formatCurrency(summary.avgMonthlySpending) + " TL"} icon={BarChart3} color="text-purple-500" bgColor="bg-purple-500/10" testId="ca-card-monthly" />
+        <SummaryCard
+          title="6 Aylik Degisim"
+          value={(summary.changePercent >= 0 ? "+" : "") + summary.changePercent.toFixed(1) + "%"}
+          icon={summary.changePercent >= 0 ? TrendingUp : ArrowDownRight}
+          color={summary.changePercent > 0 ? "text-red-500" : "text-green-500"}
+          bgColor={summary.changePercent > 0 ? "bg-red-500/10" : "bg-green-500/10"}
+          testId="ca-card-change"
+        />
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+        <Card data-testid="chart-cost-trend">
+          <CardHeader className="pb-1 pt-3 px-3">
+            <CardTitle className="text-xs">Aylik Maliyet Trendi</CardTitle>
+          </CardHeader>
+          <CardContent className="px-3 pb-3">
+            {monthlyData.length > 0 ? (
+              <ResponsiveContainer width="100%" height={300}>
+                <AreaChart data={monthlyData} margin={{ top: 5, right: 30, left: 10, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
+                  <XAxis dataKey="month" tick={{ fontSize: 11 }} />
+                  <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => (v / 1000).toLocaleString("tr-TR") + "K"} />
+                  <Tooltip formatter={(value: number, name: string) => [name === "spending" ? formatCurrency(value) + " TL" : value, name === "spending" ? "Harcama" : "Siparis"]} contentStyle={TOOLTIP_STYLE} />
+                  <Area type="monotone" dataKey="spending" stroke="hsl(var(--primary))" fill="hsl(var(--primary))" fillOpacity={0.15} strokeWidth={2} />
+                </AreaChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex items-center justify-center h-64 text-muted-foreground text-sm">
+                Maliyet verisi bulunamadi
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card data-testid="chart-cost-category">
+          <CardHeader className="pb-1 pt-3 px-3">
+            <CardTitle className="text-xs">Kategori Bazli Maliyet Dagilimi</CardTitle>
+          </CardHeader>
+          <CardContent className="px-3 pb-3">
+            {categoryData.length > 0 ? (
+              <ResponsiveContainer width="100%" height={300}>
+                <PieChart>
+                  <Pie data={categoryData} cx="50%" cy="50%" innerRadius={60} outerRadius={100} dataKey="value" label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`} labelLine={false}>
+                    {categoryData.map((_, index) => (
+                      <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip formatter={(value: number) => [formatCurrency(value) + " TL", "Tutar"]} contentStyle={TOOLTIP_STYLE} />
+                  <Legend />
+                </PieChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex items-center justify-center h-64 text-muted-foreground text-sm">
+                Kategori verisi bulunamadi
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card className="lg:col-span-2" data-testid="chart-top-cost-items">
+          <CardHeader className="pb-1 pt-3 px-3">
+            <CardTitle className="text-xs">En Yuksek Maliyetli Urunler</CardTitle>
+          </CardHeader>
+          <CardContent className="px-3 pb-3">
+            {topItemsChart.length > 0 ? (
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={topItemsChart} layout="vertical" margin={{ top: 5, right: 30, left: 10, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
+                  <XAxis type="number" tick={{ fontSize: 11 }} tickFormatter={(v) => (v / 1000).toLocaleString("tr-TR") + "K"} />
+                  <YAxis type="category" dataKey="name" width={130} tick={{ fontSize: 10 }} />
+                  <Tooltip formatter={(value: number) => [formatCurrency(value) + " TL", "Toplam Maliyet"]} contentStyle={TOOLTIP_STYLE} />
+                  <Bar dataKey="cost" fill="hsl(var(--primary))" radius={[0, 4, 4, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex items-center justify-center h-64 text-muted-foreground text-sm">
+                Maliyet verisi bulunamadi
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      <Card data-testid="table-cost-items">
+        <CardHeader className="flex flex-row items-center justify-between pb-1 pt-3 px-3 gap-2">
+          <CardTitle className="text-xs">Maliyet Detay Tablosu</CardTitle>
+          <Badge variant="secondary" className="text-[10px]">Son 12 Ay</Badge>
+        </CardHeader>
+        <CardContent className="px-3 pb-3">
+          {topItems.length > 0 ? (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Urun</TableHead>
+                    <TableHead>Kategori</TableHead>
+                    <TableHead className="text-right">Toplam Maliyet</TableHead>
+                    <TableHead className="text-right">Toplam Miktar</TableHead>
+                    <TableHead className="text-right">Ort. Birim Fiyat</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {topItems.map((item, index) => (
+                    <TableRow key={index} data-testid={`ca-row-${index}`}>
+                      <TableCell className="font-medium" data-testid={`ca-product-${index}`}>{item.product_name}</TableCell>
+                      <TableCell>
+                        <Badge variant="secondary" className="text-[10px]">
+                          {CATEGORY_LABELS[item.category] || item.category}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right font-mono text-sm" data-testid={`ca-cost-${index}`}>{formatCurrency(parseFloat(item.total_cost))} TL</TableCell>
+                      <TableCell className="text-right font-mono text-sm">{formatCurrency(parseFloat(item.total_quantity))}</TableCell>
+                      <TableCell className="text-right font-mono text-sm">{formatCurrency(parseFloat(item.avg_unit_price))} TL</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          ) : (
+            <div className="text-center py-8 text-muted-foreground text-sm">
+              Maliyet verisi bulunamadi
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+export default function TrendAnalizi() {
+  const [activeTab, setActiveTab] = useState("genel");
+
+  const { data: trendData, isLoading: trendLoading } = useQuery<TrendData>({
+    queryKey: ["/api/satinalma/trends"],
+  });
+
+  if (trendLoading && activeTab === "genel") {
+    return <LoadingSkeleton />;
+  }
+
+  return (
+    <div className="space-y-4" data-testid="trend-analizi-container">
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <TabsList data-testid="tabs-trend-analizi" className="flex-wrap gap-1">
+          <TabsTrigger value="genel" data-testid="tab-genel" className="gap-1.5">
+            <TrendingUp className="h-3.5 w-3.5" />
+            Genel Trend
+          </TabsTrigger>
+          <TabsTrigger value="tedarikci" data-testid="tab-tedarikci" className="gap-1.5">
+            <Users className="h-3.5 w-3.5" />
+            Tedarikci Performans
+          </TabsTrigger>
+          <TabsTrigger value="stok" data-testid="tab-stok" className="gap-1.5">
+            <Package className="h-3.5 w-3.5" />
+            Stok Hareketleri
+          </TabsTrigger>
+          <TabsTrigger value="maliyet" data-testid="tab-maliyet" className="gap-1.5">
+            <PieChartIcon className="h-3.5 w-3.5" />
+            Maliyet Analizi
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="genel" className="mt-4">
+          <GenelTrendTab data={trendData} />
+        </TabsContent>
+
+        <TabsContent value="tedarikci" className="mt-4">
+          <TedarikciPerformansTab />
+        </TabsContent>
+
+        <TabsContent value="stok" className="mt-4">
+          <StokHareketleriTab />
+        </TabsContent>
+
+        <TabsContent value="maliyet" className="mt-4">
+          <MaliyetAnaliziTab />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
