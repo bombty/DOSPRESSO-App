@@ -66,7 +66,7 @@ export async function setupAuth(app: Express, authLimiter?: any) {
         const isValidPassword = await bcrypt.compare(password, user.hashedPassword);
         
         if (!isValidPassword) {
-          console.log(`[Auth] Login failed: invalid password for '${username}' (hash prefix: ${user.hashedPassword.substring(0, 10)})`);
+          console.log(`[Auth] Login failed: invalid password for '${username}'`);
           return done(null, false, { message: "Kullanıcı adı veya şifre hatalı" });
         }
 
@@ -133,29 +133,16 @@ export async function setupAuth(app: Express, authLimiter?: any) {
       if (!branch) return null;
       if (!branch.kioskPassword) return null;
       
-      // Şifre kontrolü - bcrypt hash veya düz metin (geriye dönük uyumluluk)
       const storedPassword = branch.kioskPassword;
       const isBcryptHash = storedPassword.startsWith('$2a$') || storedPassword.startsWith('$2b$') || storedPassword.startsWith('$2y$');
       
-      if (isBcryptHash) {
-        // Hash ile karşılaştır
-        const isValid = await bcrypt.compare(password, storedPassword);
-        if (!isValid) return null;
-      } else {
-        // Düz metin karşılaştırma (eski kayıtlar için)
-        if (storedPassword !== password) return null;
-        
-        // AUTO-REHASH: Başarılı giriş sonrası şifreyi hash'le ve güncelle
-        try {
-          const hashedPassword = await bcrypt.hash(password, 10);
-          await db.update(branches)
-            .set({ kioskPassword: hashedPassword })
-            .where(eq(branches.id, branch.id));
-          console.log(`[Auth] Auto-migrated kiosk password to bcrypt for branch ${branch.id}`);
-        } catch (hashError) {
-          console.error(`[Auth] Failed to auto-migrate kiosk password for branch ${branch.id}:`, hashError);
-        }
+      if (!isBcryptHash) {
+        console.warn(`[Auth] Branch ${branch.id} has unhashed kiosk password — login rejected for security`);
+        return null;
       }
+
+      const isValid = await bcrypt.compare(password, storedPassword);
+      if (!isValid) return null;
       
       return branch;
     } catch (error) {

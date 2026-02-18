@@ -1,4 +1,5 @@
 import { useState, useEffect, type ReactNode } from "react";
+import { ErrorBoundary } from "@/components/error-boundary";
 import { Switch, Route, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider, useQuery } from "@tanstack/react-query";
@@ -533,8 +534,8 @@ function AppContent() {
 }
 
 export default function App() {
-  try {
-    return (
+  return (
+    <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
         <ThemeProvider>
           <TooltipProvider>
@@ -545,9 +546,6 @@ export default function App() {
           </TooltipProvider>
         </ThemeProvider>
       </QueryClientProvider>
-    );
-  } catch (e) {
-    console.error("App error:", e);
-    return <div style={{ padding: "20px", color: "red" }}>Hata: {String(e)}</div>;
-  }
+    </ErrorBoundary>
+  );
 }

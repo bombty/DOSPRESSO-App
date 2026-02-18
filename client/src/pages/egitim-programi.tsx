@@ -51,6 +51,25 @@ interface QuizQuestion {
   correctAnswer: number;
 }
 
+function renderBoldText(text: string, parentKey: number): (string | JSX.Element)[] {
+  const parts: (string | JSX.Element)[] = [];
+  const regex = /\*\*(.*?)\*\*/g;
+  let lastIndex = 0;
+  let match;
+  let subKey = 0;
+  while ((match = regex.exec(text)) !== null) {
+    if (match.index > lastIndex) {
+      parts.push(text.slice(lastIndex, match.index));
+    }
+    parts.push(<strong key={`${parentKey}-b-${subKey++}`}>{match[1]}</strong>);
+    lastIndex = regex.lastIndex;
+  }
+  if (lastIndex < text.length) {
+    parts.push(text.slice(lastIndex));
+  }
+  return parts;
+}
+
 function renderMarkdown(content: string) {
   const lines = content.split("\n");
   const elements: JSX.Element[] = [];
@@ -63,27 +82,30 @@ function renderMarkdown(content: string) {
     } else if (line.startsWith("### ")) {
       elements.push(<h3 key={key++} className="text-base font-semibold mt-3 mb-1">{line.replace("### ", "")}</h3>);
     } else if (line.startsWith("- ")) {
+      const k = key++;
       elements.push(
-        <div key={key++} className="flex gap-2 ml-4 my-0.5">
+        <div key={k} className="flex gap-2 ml-4 my-0.5">
           <span className="text-muted-foreground mt-1 shrink-0">&#8226;</span>
-          <span dangerouslySetInnerHTML={{ __html: line.replace("- ", "").replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>") }} />
+          <span>{renderBoldText(line.replace("- ", ""), k)}</span>
         </div>
       );
     } else if (/^\d+\.\s/.test(line)) {
       const match = line.match(/^(\d+)\.\s(.*)$/);
       if (match) {
+        const k = key++;
         elements.push(
-          <div key={key++} className="flex gap-2 ml-4 my-0.5">
+          <div key={k} className="flex gap-2 ml-4 my-0.5">
             <span className="text-muted-foreground font-medium shrink-0">{match[1]}.</span>
-            <span dangerouslySetInnerHTML={{ __html: match[2].replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>") }} />
+            <span>{renderBoldText(match[2], k)}</span>
           </div>
         );
       }
     } else if (line.trim() === "") {
       elements.push(<div key={key++} className="h-2" />);
     } else {
+      const k = key++;
       elements.push(
-        <p key={key++} className="my-1" dangerouslySetInnerHTML={{ __html: line.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>") }} />
+        <p key={k} className="my-1">{renderBoldText(line, k)}</p>
       );
     }
   }

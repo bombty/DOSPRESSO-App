@@ -7,6 +7,7 @@ import { registerCRMRoutes } from "./crm-routes";
 import { registerSatinalmaRoutes } from "./satinalma-routes";
 import type { Express } from "express";
 import rateLimit from 'express-rate-limit';
+import helmet from 'helmet';
 import { registerMaliyetRoutes } from "./maliyet-routes";
 import { registerInspectionRoutes } from "./inspection-routes";
 import { registerExportRoutes } from "./export-routes";
@@ -561,6 +562,11 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
 }
 
 function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.delete(identifier); }
+
+  app.use(helmet({
+    contentSecurityPolicy: false,
+    crossOriginEmbedderPolicy: false,
+  }));
 
   // General API rate limit: 200 requests per minute per IP
   const generalLimiter = rateLimit({
