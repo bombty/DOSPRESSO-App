@@ -334,6 +334,7 @@ import {
   insertFactoryManagementScoreSchema,
   dashboardWidgetItems,
   insertDashboardWidgetItemSchema,
+  certificateDesignSettings,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, asc, sql, and, or, isNull, isNotNull, inArray, lte, gte, ne, not, count, sum, avg, max } from "drizzle-orm";
@@ -7882,7 +7883,13 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
       const user = req.user!;
       const canEditTraining = hasPermission(user.role as any, 'training', 'edit');
       
-      const modules = await storage.getTrainingModules(canEditTraining ? undefined : true);
+      let scope: string | undefined;
+      if (!canEditTraining) {
+        const { isFactoryFloorRole } = await import('@shared/schema');
+        scope = isFactoryFloorRole(user.role as any) ? 'factory' : 'branch';
+      }
+      
+      const modules = await storage.getTrainingModules(canEditTraining ? undefined : true, scope);
       res.json(modules);
     } catch (error: any) {
       console.error("Error fetching training modules:", error);
@@ -8585,6 +8592,198 @@ JSON formatında yanıt ver:
       res.status(500).json({ message: "Senaryolar oluşturulamadı" });
     }
   });
+
+  // POST /api/academy/ai-generate-onboarding - AI ile onboarding şablonu oluştur
+  app.post('/api/academy/ai-generate-onboarding', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      if (!isHQRole(user.role as any)) {
+        return res.status(403).json({ message: "Bu işlem için yetkiniz yok" });
+      }
+
+      const { targetRole, scope, durationDays } = req.body;
+      if (!targetRole || !scope) {
+        return res.status(400).json({ message: "targetRole ve scope zorunludur" });
+      }
+
+      const roleLabels: Record<string, string> = {
+        stajyer: "Stajyer",
+        bar_buddy: "Bar Buddy",
+        barista: "Barista",
+        supervisor_buddy: "Supervisor Buddy",
+        supervisor: "Supervisor",
+        fabrika_personel: "Fabrika Personeli",
+        fabrika_sorumlo: "Fabrika Sorumlusu",
+        uretim_sorumlusu: "Üretim Sorumlusu",
+        kalite_kontrol: "Kalite Kontrol",
+        depocu: "Depocu",
+      };
+
+      const scopeLabel = scope === 'factory' ? 'Fabrika üretim alanı' : 'Şube (kahve dükkanı)';
+      const roleLabel = roleLabels[targetRole] || targetRole;
+      const duration = durationDays || 60;
+
+      const OpenAI = (await import('openai')).default;
+      const openai = new OpenAI();
+      if (!openai) {
+        return res.status(503).json({ message: "AI servisi kullanılamıyor" });
+      }
+
+      const completion = await openai.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages: [
+          {
+            role: "system",
+            content: `Sen DOSPRESSO franchise kahve zinciri için onboarding eğitim programı tasarlayan bir HR uzmanısın. Türkçe yanıt ver.`
+          },
+          {
+            role: "user",
+            content: `${scopeLabel} ortamında yeni başlayan bir ${roleLabel} için ${duration} günlük onboarding şablonu oluştur.
+
+Şablon adımları şu formatta olmalı (JSON array):
+[
+  {
+    "stepOrder": 1,
+    "title": "Adım başlığı",
+    "description": "Detaylı açıklama",
+    "startDay": 1,
+    "endDay": 3,
+    "mentorRoleType": "barista",
+    "requiredCompletion": true
+  }
+]
+
+${scope === 'factory' ? 'Fabrika ortamı için: İSG eğitimi, makine kullanımı, üretim süreçleri, HACCP, kalite kontrol, depo yönetimi dahil et.' : 'Şube ortamı için: Oryantasyon, bar eğitimi, müşteri hizmetleri, reçeteler, kasa kullanımı, hijyen standartları dahil et.'}
+
+Mentör rolleri: ${scope === 'factory' ? 'uretim_sorumlusu, kalite_kontrol, fabrika_sorumlo' : 'barista, supervisor_buddy, supervisor'}
+
+En az 6, en fazla 12 adım oluştur. Sadece JSON array döndür, başka açıklama ekleme.`
+          }
+        ],
+        temperature: 0.7,
+        max_tokens: 2000,
+      });
+
+      const content = completion.choices[0]?.message?.content || '[]';
+      let steps;
+      try {
+        const jsonMatch = content.match(/\[[\s\S]*\]/);
+        steps = jsonMatch ? JSON.parse(jsonMatch[0]) : [];
+      } catch {
+        steps = [];
+      }
+
+      const templateName = `${roleLabel} - ${scope === 'factory' ? 'Fabrika' : 'Şube'} Onboarding`;
+      
+      res.json({
+        name: templateName,
+        description: `${roleLabel} pozisyonu için ${duration} günlük ${scope === 'factory' ? 'fabrika' : 'şube'} onboarding programı (AI tarafından oluşturuldu)`,
+        targetRole,
+        scope,
+        durationDays: duration,
+        steps,
+      });
+    } catch (error: any) {
+      console.error("Error generating onboarding template:", error);
+      res.status(500).json({ message: "AI onboarding şablonu oluşturulamadı" });
+    }
+  });
+
+  // POST /api/academy/ai-generate-program - AI ile eğitim programı oluştur
+  app.post('/api/academy/ai-generate-program', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      if (!isHQRole(user.role as any)) {
+        return res.status(403).json({ message: "Bu işlem için yetkiniz yok" });
+      }
+
+      const { targetRole, scope, programType } = req.body;
+      // programType: "role_training" | "machine_training" | "skill_upgrade"
+      if (!targetRole || !scope) {
+        return res.status(400).json({ message: "targetRole ve scope zorunludur" });
+      }
+
+      const roleLabels: Record<string, string> = {
+        stajyer: "Stajyer", bar_buddy: "Bar Buddy", barista: "Barista",
+        supervisor_buddy: "Supervisor Buddy", supervisor: "Supervisor",
+        fabrika_personel: "Fabrika Personeli", uretim_sorumlusu: "Üretim Sorumlusu",
+        kalite_kontrol: "Kalite Kontrol", depocu: "Depocu",
+      };
+      
+      const roleLabel = roleLabels[targetRole] || targetRole;
+      const scopeLabel = scope === 'factory' ? 'fabrika' : 'şube';
+
+      let typePrompt = '';
+      if (programType === 'machine_training') {
+        typePrompt = 'Fabrika makinelerinin (espresso makinesi, öğütücü, paketleme makinesi, fırın, dondurma makinesi vb.) kullanım eğitimi modülleri oluştur.';
+      } else if (programType === 'skill_upgrade') {
+        typePrompt = `${roleLabel} pozisyonundan bir üst seviyeye geçiş için gerekli yetkinlik geliştirme modülleri oluştur.`;
+      } else {
+        typePrompt = `${roleLabel} pozisyonu için ${scopeLabel} ortamında temel eğitim modülleri oluştur.`;
+      }
+
+      const OpenAI = (await import('openai')).default;
+      const openai = new OpenAI();
+      if (!openai) {
+        return res.status(503).json({ message: "AI servisi kullanılamıyor" });
+      }
+
+      const completion = await openai.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages: [
+          {
+            role: "system",
+            content: `Sen DOSPRESSO franchise kahve zinciri için eğitim programı tasarlayan bir eğitim uzmanısın. Türkçe yanıt ver.`
+          },
+          {
+            role: "user",
+            content: `${typePrompt}
+
+Her modül şu formatta olmalı (JSON array):
+[
+  {
+    "title": "Modül başlığı",
+    "description": "Detaylı açıklama",
+    "category": "hygiene|barista|customer_service|machine|production|quality|safety",
+    "level": "beginner|intermediate|advanced",
+    "estimatedDuration": 30,
+    "requiredForRole": ["${targetRole}"],
+    "scope": "${scope}",
+    "learningObjectives": ["Hedef 1", "Hedef 2"],
+    "steps": [
+      {"stepNumber": 1, "title": "Adım başlığı", "content": "İçerik"}
+    ]
+  }
+]
+
+3-6 modül oluştur. Sadece JSON array döndür.`
+          }
+        ],
+        temperature: 0.7,
+        max_tokens: 3000,
+      });
+
+      const content = completion.choices[0]?.message?.content || '[]';
+      let modules;
+      try {
+        const jsonMatch = content.match(/\[[\s\S]*\]/);
+        modules = jsonMatch ? JSON.parse(jsonMatch[0]) : [];
+      } catch {
+        modules = [];
+      }
+
+      res.json({
+        programName: `${roleLabel} ${programType === 'machine_training' ? 'Makine Eğitimi' : programType === 'skill_upgrade' ? 'Yetkinlik Geliştirme' : 'Temel Eğitim'} Programı`,
+        targetRole,
+        scope,
+        modules,
+      });
+    } catch (error: any) {
+      console.error("Error generating training program:", error);
+      res.status(500).json({ message: "AI eğitim programı oluşturulamadı" });
+    }
+  });
+
   // Add video to module (admin/coach/trainer only)
   app.post('/api/training/modules/:id/videos', isAuthenticated, async (req, res) => {
     try {
@@ -8799,6 +8998,78 @@ JSON formatında yanıt ver:
       }
       console.error("Error creating module quiz:", error);
       res.status(500).json({ message: "Failed to create module quiz" });
+    }
+  });
+
+  // ========================================
+  // CERTIFICATE DESIGN SETTINGS ROUTES
+  // ========================================
+
+  app.get('/api/certificate-designs', isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user!;
+      if (!isHQRole(user.role as any)) {
+        return res.status(403).json({ message: "Bu işlem için yetkiniz yok" });
+      }
+      const designs = await db.select().from(certificateDesignSettings).orderBy(certificateDesignSettings.transitionFrom);
+      res.json(designs);
+    } catch (error: any) {
+      console.error("Error fetching certificate designs:", error);
+      res.status(500).json({ message: "Failed to fetch certificate designs" });
+    }
+  });
+
+  app.post('/api/certificate-designs', isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user!;
+      if (!isHQRole(user.role as any)) {
+        return res.status(403).json({ message: "Bu işlem için yetkiniz yok" });
+      }
+      const data = {
+        ...req.body,
+        createdBy: user.id,
+      };
+      const [design] = await db.insert(certificateDesignSettings).values(data).returning();
+      res.json(design);
+    } catch (error: any) {
+      console.error("Error creating certificate design:", error);
+      res.status(500).json({ message: "Failed to create certificate design" });
+    }
+  });
+
+  app.put('/api/certificate-designs/:id', isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user!;
+      if (!isHQRole(user.role as any)) {
+        return res.status(403).json({ message: "Bu işlem için yetkiniz yok" });
+      }
+      const id = parseInt(req.params.id);
+      const [updated] = await db.update(certificateDesignSettings)
+        .set({ ...req.body, updatedAt: new Date() })
+        .where(eq(certificateDesignSettings.id, id))
+        .returning();
+      if (!updated) {
+        return res.status(404).json({ message: "Design not found" });
+      }
+      res.json(updated);
+    } catch (error: any) {
+      console.error("Error updating certificate design:", error);
+      res.status(500).json({ message: "Failed to update certificate design" });
+    }
+  });
+
+  app.delete('/api/certificate-designs/:id', isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user!;
+      if (!isHQRole(user.role as any)) {
+        return res.status(403).json({ message: "Bu işlem için yetkiniz yok" });
+      }
+      const id = parseInt(req.params.id);
+      await db.delete(certificateDesignSettings).where(eq(certificateDesignSettings.id, id));
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("Error deleting certificate design:", error);
+      res.status(500).json({ message: "Failed to delete certificate design" });
     }
   });
 

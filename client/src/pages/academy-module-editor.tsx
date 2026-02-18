@@ -480,6 +480,7 @@ const CATEGORIES = [
   { value: "misafir", label: "Misafir Ağırlama" },
   { value: "magaza", label: "Mağaza Düzeni" },
   { value: "davranis", label: "Davranış Kodeksleri" },
+  { value: "machine", label: "Makine Kullanımı" },
   { value: "genel", label: "Genel" },
 ];
 
@@ -556,6 +557,7 @@ export default function AcademyModuleEditor() {
   const [description, setDescription] = useState("");
   const [level, setLevel] = useState<string>("beginner");
   const [category, setCategory] = useState("");
+  const [scope, setScope] = useState("branch");
   const [estimatedDuration, setEstimatedDuration] = useState(30);
   const [moduleType, setModuleType] = useState("skill");
   const [requiredForRole, setRequiredForRole] = useState<string[]>([]);
@@ -589,6 +591,7 @@ export default function AcademyModuleEditor() {
       setDescription(existingModule.description || "");
       setLevel(existingModule.level || "beginner");
       setCategory(existingModule.category || "");
+      setScope(existingModule.scope || "branch");
       setEstimatedDuration(existingModule.estimatedDuration || 30);
       setModuleType(existingModule.moduleType || "skill");
       setRequiredForRole(existingModule.requiredForRole || []);
@@ -650,6 +653,7 @@ export default function AcademyModuleEditor() {
     heroImageUrl,
     level,
     category,
+    scope,
     estimatedDuration,
     moduleType,
     requiredForRole,
@@ -950,6 +954,20 @@ export default function AcademyModuleEditor() {
                         {CATEGORIES.map((c) => (
                           <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
                         ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div>
+                    <Label>Kapsam</Label>
+                    <Select value={scope} onValueChange={setScope}>
+                      <SelectTrigger data-testid="select-editor-scope">
+                        <SelectValue placeholder="Kapsam seçin" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="branch">Şube Eğitimi</SelectItem>
+                        <SelectItem value="factory">Fabrika Eğitimi</SelectItem>
+                        <SelectItem value="both">Her İkisi</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>

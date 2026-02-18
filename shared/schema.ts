@@ -3214,6 +3214,7 @@ export const trainingModules = pgTable("training_modules", {
   slug: varchar("slug", { length: 100 }), // URL-friendly slug
   category: varchar("category", { length: 100 }), // "barista", "supervisor", "hygiene", etc.
   moduleType: varchar("module_type", { length: 50 }).default("skill"), // skill, recipe, onboarding, general
+  scope: varchar("scope", { length: 20 }).default("branch"), // branch, factory, both
   recipeCategoryId: integer("recipe_category_id"), // Link to recipe_categories for recipe modules
   level: varchar("level", { length: 50 }).default("beginner"), // beginner, intermediate, advanced
   estimatedDuration: integer("estimated_duration").default(30), // minutes
@@ -6065,6 +6066,7 @@ export const onboardingTemplates = pgTable("onboarding_templates", {
   name: varchar("name", { length: 200 }).notNull(), // "Yeni Barista Onboarding", "Stajyer Programı"
   description: text("description"),
   targetRole: varchar("target_role", { length: 50 }).notNull().default("barista"), // barista, stajyer, supervisor_buddy
+  scope: varchar("scope", { length: 20 }).notNull().default("branch"), // branch, factory
   durationDays: integer("duration_days").notNull().default(60), // Toplam süre (örn: 60 gün = 2 ay deneme süresi)
   isActive: boolean("is_active").notNull().default(true),
   createdById: varchar("created_by_id").notNull(), // Coach user ID
@@ -6171,6 +6173,40 @@ export const insertEmployeeOnboardingProgressSchema = createInsertSchema(employe
 
 export type InsertEmployeeOnboardingProgress = z.infer<typeof insertEmployeeOnboardingProgressSchema>;
 export type EmployeeOnboardingProgress = typeof employeeOnboardingProgress.$inferSelect;
+
+// ========================================
+// CERTIFICATE DESIGN SETTINGS
+// ========================================
+
+export const certificateDesignSettings = pgTable("certificate_design_settings", {
+  id: serial("id").primaryKey(),
+  transitionFrom: varchar("transition_from", { length: 50 }).notNull(), // e.g., "stajyer"
+  transitionTo: varchar("transition_to", { length: 50 }).notNull(), // e.g., "bar_buddy"
+  certificateTitle: varchar("certificate_title", { length: 255 }).notNull().default("Başarı Sertifikası"),
+  subtitle: varchar("subtitle", { length: 255 }),
+  primaryColor: varchar("primary_color", { length: 20 }).default("#1e3a5f"),
+  secondaryColor: varchar("secondary_color", { length: 20 }).default("#c9a96e"),
+  logoUrl: text("logo_url"),
+  signatureLabel: varchar("signature_label", { length: 200 }).default("DOSPRESSO Eğitim Müdürü"),
+  signatureImageUrl: text("signature_image_url"),
+  templateLayout: varchar("template_layout", { length: 50 }).default("classic"), // classic, modern, minimal
+  footerText: text("footer_text"),
+  isActive: boolean("is_active").default(true),
+  createdBy: varchar("created_by").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("cert_design_transition_idx").on(table.transitionFrom, table.transitionTo),
+]);
+
+export const insertCertificateDesignSettingSchema = createInsertSchema(certificateDesignSettings).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertCertificateDesignSetting = z.infer<typeof insertCertificateDesignSettingSchema>;
+export type CertificateDesignSetting = typeof certificateDesignSettings.$inferSelect;
 
 // ========================================
 // PERMISSION MODULES - Yetki Modülleri Tanımları

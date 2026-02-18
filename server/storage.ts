@@ -496,7 +496,7 @@ export interface IStorage {
   createPerformanceMetric(metric: InsertPerformanceMetric): Promise<PerformanceMetric>;
   
   // Training Module operations
-  getTrainingModules(isPublished?: boolean): Promise<TrainingModule[]>;
+  getTrainingModules(isPublished?: boolean, scope?: string): Promise<TrainingModule[]>;
   getTrainingModule(id: number): Promise<TrainingModule | undefined>;
   createTrainingModule(module: InsertTrainingModule): Promise<TrainingModule>;
   updateTrainingModule(id: number, updates: Partial<InsertTrainingModule>): Promise<TrainingModule | undefined>;
@@ -2540,9 +2540,18 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Training Module operations
-  async getTrainingModules(isPublished?: boolean): Promise<TrainingModule[]> {
+  async getTrainingModules(isPublished?: boolean, scope?: string): Promise<TrainingModule[]> {
+    const conditions = [];
     if (isPublished !== undefined) {
-      return db.select().from(trainingModules).where(eq(trainingModules.isPublished, isPublished)).orderBy(desc(trainingModules.createdAt));
+      conditions.push(eq(trainingModules.isPublished, isPublished));
+    }
+    if (scope) {
+      conditions.push(
+        or(eq(trainingModules.scope, scope), eq(trainingModules.scope, 'both'))
+      );
+    }
+    if (conditions.length > 0) {
+      return db.select().from(trainingModules).where(and(...conditions)).orderBy(desc(trainingModules.createdAt));
     }
     return db.select().from(trainingModules).orderBy(desc(trainingModules.createdAt));
   }

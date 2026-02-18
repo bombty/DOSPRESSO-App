@@ -14,7 +14,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { ArrowLeft, CheckCircle, XCircle, Clock, BookOpen, Users, Trash2, Plus, GraduationCap, Upload, FileText, Image, Edit2, BarChart3, TrendingUp, Award, Activity } from "lucide-react";
+import { ArrowLeft, CheckCircle, XCircle, Clock, BookOpen, Users, Trash2, Plus, GraduationCap, Upload, FileText, Image, Edit2, BarChart3, TrendingUp, Award, Activity, Sparkles, Brain, Pencil } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ConfirmDeleteDialog, useConfirmDelete } from "@/components/confirm-delete-dialog";
@@ -47,6 +47,7 @@ const trainingModuleSchema = z.object({
   description: z.string().optional(),
   category: z.string().optional(),
   level: z.enum(["beginner", "intermediate", "advanced"]),
+  scope: z.enum(["branch", "factory", "both"]).default("branch"),
   estimatedDuration: z.number().min(1),
   isPublished: z.boolean().default(false),
   requiredForRole: z.array(z.string()).default([]),
@@ -119,6 +120,10 @@ function RoleDashboardSection({
   trainingModules,
   pendingExams,
   isLoading,
+  onCertSettings,
+  certDesigns,
+  onEditCert,
+  onDeleteCert,
 }: {
   role: string;
   branchAnalytics: BranchAnalytics[];
@@ -126,6 +131,10 @@ function RoleDashboardSection({
   trainingModules: TrainingModule[];
   pendingExams: any[];
   isLoading: boolean;
+  onCertSettings?: () => void;
+  certDesigns?: any[];
+  onEditCert?: (cert: any) => void;
+  onDeleteCert?: (id: number) => void;
 }) {
   if (isLoading) {
     return (
@@ -349,6 +358,62 @@ function RoleDashboardSection({
             </CardContent>
           </Card>
         )}
+
+        <Card data-testid="coach-quick-actions">
+          <CardHeader className="pb-2 pt-3 px-3">
+            <CardTitle className="text-sm flex items-center gap-2">
+              <Activity className="w-4 h-4" />
+              Hızlı İşlemler
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="px-3 pb-3">
+            <div className="grid grid-cols-2 gap-2">
+              <Button size="sm" variant="outline" className="justify-start gap-2" data-testid="btn-create-onboarding" onClick={() => setIsAiOnboardingOpen(true)}>
+                <Plus className="w-3 h-3" /> Onboarding Şablonu
+              </Button>
+              <Button size="sm" variant="outline" className="justify-start gap-2" data-testid="btn-view-reports">
+                <BarChart3 className="w-3 h-3" /> Eğitim Raporu
+              </Button>
+              <Button size="sm" variant="outline" className="justify-start gap-2" data-testid="btn-cert-settings" onClick={() => onCertSettings?.()}>
+                <Award className="w-3 h-3" /> Sertifika Ayarları
+              </Button>
+              <Button size="sm" variant="outline" className="justify-start gap-2" data-testid="btn-ai-generate" onClick={() => setIsAiProgramOpen(true)}>
+                <GraduationCap className="w-3 h-3" /> AI Modül Üret
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        {certDesigns && certDesigns.length > 0 && (
+          <Card data-testid="cert-designs-list">
+            <CardHeader className="pb-2 pt-3 px-3">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <Award className="w-4 h-4" />
+                Sertifika Tasarımları
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="px-3 pb-3">
+              <div className="space-y-2">
+                {certDesigns.map((cert: any) => (
+                  <div key={cert.id} className="flex items-center justify-between gap-2 p-2 rounded border text-xs">
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 rounded" style={{ background: cert.primaryColor }} />
+                      <span>{cert.transitionFrom} → {cert.transitionTo}</span>
+                    </div>
+                    <div className="flex gap-1">
+                      <Button size="icon" variant="ghost" onClick={() => onEditCert?.(cert)} data-testid={`btn-edit-cert-${cert.id}`}>
+                        <Pencil className="w-3 h-3" />
+                      </Button>
+                      <Button size="icon" variant="ghost" onClick={() => onDeleteCert?.(cert.id)} data-testid={`btn-delete-cert-${cert.id}`}>
+                        <Trash2 className="w-3 h-3" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </div>
     );
   }
@@ -431,6 +496,62 @@ function RoleDashboardSection({
             </CardContent>
           </Card>
         )}
+
+        <Card data-testid="trainer-quick-actions">
+          <CardHeader className="pb-2 pt-3 px-3">
+            <CardTitle className="text-sm flex items-center gap-2">
+              <Activity className="w-4 h-4" />
+              Hızlı İşlemler
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="px-3 pb-3">
+            <div className="grid grid-cols-2 gap-2">
+              <Button size="sm" variant="outline" className="justify-start gap-2" data-testid="btn-trainer-create-module" onClick={() => setIsAiOnboardingOpen(true)}>
+                <Plus className="w-3 h-3" /> Onboarding Şablonu
+              </Button>
+              <Button size="sm" variant="outline" className="justify-start gap-2" data-testid="btn-trainer-view-reports">
+                <BarChart3 className="w-3 h-3" /> Eğitim Raporu
+              </Button>
+              <Button size="sm" variant="outline" className="justify-start gap-2" data-testid="btn-trainer-cert-settings" onClick={() => onCertSettings?.()}>
+                <Award className="w-3 h-3" /> Sertifika Ayarları
+              </Button>
+              <Button size="sm" variant="outline" className="justify-start gap-2" data-testid="btn-trainer-ai-generate" onClick={() => setIsAiProgramOpen(true)}>
+                <GraduationCap className="w-3 h-3" /> AI Modül Üret
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        {certDesigns && certDesigns.length > 0 && (
+          <Card data-testid="cert-designs-list-trainer">
+            <CardHeader className="pb-2 pt-3 px-3">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <Award className="w-4 h-4" />
+                Sertifika Tasarımları
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="px-3 pb-3">
+              <div className="space-y-2">
+                {certDesigns.map((cert: any) => (
+                  <div key={cert.id} className="flex items-center justify-between gap-2 p-2 rounded border text-xs">
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 rounded" style={{ background: cert.primaryColor }} />
+                      <span>{cert.transitionFrom} → {cert.transitionTo}</span>
+                    </div>
+                    <div className="flex gap-1">
+                      <Button size="icon" variant="ghost" onClick={() => onEditCert?.(cert)} data-testid={`btn-edit-cert-trainer-${cert.id}`}>
+                        <Pencil className="w-3 h-3" />
+                      </Button>
+                      <Button size="icon" variant="ghost" onClick={() => onDeleteCert?.(cert.id)} data-testid={`btn-delete-cert-trainer-${cert.id}`}>
+                        <Trash2 className="w-3 h-3" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </div>
     );
   }
@@ -484,6 +605,33 @@ export default function AcademyHQ() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isExtractingText, setIsExtractingText] = useState(false);
   const [editingGalleryImages, setEditingGalleryImages] = useState<any[]>([]);
+  const [scopeFilter, setScopeFilter] = useState<string>("all");
+
+  const [isAiOnboardingOpen, setIsAiOnboardingOpen] = useState(false);
+  const [aiOnboardingRole, setAiOnboardingRole] = useState("stajyer");
+  const [aiOnboardingScope, setAiOnboardingScope] = useState("branch");
+  const [aiOnboardingDuration, setAiOnboardingDuration] = useState(60);
+  const [aiOnboardingResult, setAiOnboardingResult] = useState<any>(null);
+
+  const [isAiProgramOpen, setIsAiProgramOpen] = useState(false);
+  const [aiProgramRole, setAiProgramRole] = useState("stajyer");
+  const [aiProgramScope, setAiProgramScope] = useState("branch");
+  const [aiProgramType, setAiProgramType] = useState("role_training");
+  const [aiProgramResult, setAiProgramResult] = useState<any>(null);
+
+  const [isCertDialogOpen, setIsCertDialogOpen] = useState(false);
+  const [editingCert, setEditingCert] = useState<any>(null);
+  const [certForm, setCertForm] = useState({
+    transitionFrom: 'stajyer',
+    transitionTo: 'bar_buddy',
+    certificateTitle: 'Başarı Sertifikası',
+    subtitle: '',
+    primaryColor: '#1e3a5f',
+    secondaryColor: '#c9a96e',
+    templateLayout: 'classic',
+    signatureLabel: 'DOSPRESSO Eğitim Müdürü',
+    footerText: '',
+  });
 
   if (!user || !canManageTraining) {
     return <div className="p-6 text-center text-destructive">Erişim Reddedildi</div>;
@@ -496,12 +644,12 @@ export default function AcademyHQ() {
 
   const trainingForm = useForm<z.infer<typeof trainingModuleSchema>>({
     resolver: zodResolver(trainingModuleSchema),
-    defaultValues: { title: "", description: "", category: "", level: "beginner" as const, estimatedDuration: 30, isPublished: false, requiredForRole: [] },
+    defaultValues: { title: "", description: "", category: "", level: "beginner" as const, scope: "branch" as const, estimatedDuration: 30, isPublished: false, requiredForRole: [] },
   });
 
   const editTrainingForm = useForm<z.infer<typeof trainingModuleSchema>>({
     resolver: zodResolver(trainingModuleSchema),
-    defaultValues: { title: "", description: "", category: "", level: "beginner" as const, estimatedDuration: 30, isPublished: false, requiredForRole: [] },
+    defaultValues: { title: "", description: "", category: "", level: "beginner" as const, scope: "branch" as const, estimatedDuration: 30, isPublished: false, requiredForRole: [] },
   });
 
   const assignForm = useForm({
@@ -529,6 +677,41 @@ export default function AcademyHQ() {
       const res = await fetch(`/api/academy/exam-requests?status=approved`, { credentials: "include" });
       if (!res.ok) return [];
       return res.json();
+    },
+  });
+
+  const { data: certDesigns = [] } = useQuery<any[]>({
+    queryKey: ['/api/certificate-designs'],
+    enabled: !!user && isHQRole(user.role as any),
+  });
+
+  const saveCertDesignMutation = useMutation({
+    mutationFn: async (data: any) => {
+      if (editingCert) {
+        const res = await apiRequest("PUT", `/api/certificate-designs/${editingCert.id}`, data);
+        return res.json();
+      }
+      const res = await apiRequest("POST", "/api/certificate-designs", data);
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: editingCert ? "Sertifika tasarımı güncellendi" : "Sertifika tasarımı oluşturuldu" });
+      setIsCertDialogOpen(false);
+      setEditingCert(null);
+      queryClient.invalidateQueries({ queryKey: ['/api/certificate-designs'] });
+    },
+    onError: () => {
+      toast({ title: "Hata", description: "Kayıt başarısız", variant: "destructive" });
+    },
+  });
+
+  const deleteCertDesignMutation = useMutation({
+    mutationFn: async (id: number) => {
+      await apiRequest("DELETE", `/api/certificate-designs/${id}`);
+    },
+    onSuccess: () => {
+      toast({ title: "Sertifika tasarımı silindi" });
+      queryClient.invalidateQueries({ queryKey: ['/api/certificate-designs'] });
     },
   });
 
@@ -768,6 +951,103 @@ export default function AcademyHQ() {
     }
   };
 
+  const generateOnboardingMutation = useMutation({
+    mutationFn: async (data: { targetRole: string; scope: string; durationDays: number }) => {
+      const res = await apiRequest("POST", "/api/academy/ai-generate-onboarding", data);
+      return res.json();
+    },
+    onSuccess: (data) => {
+      setAiOnboardingResult(data);
+      toast({ title: "Onboarding şablonu oluşturuldu" });
+    },
+    onError: () => {
+      toast({ title: "Hata", description: "Şablon oluşturulamadı", variant: "destructive" });
+    },
+  });
+
+  const saveOnboardingMutation = useMutation({
+    mutationFn: async (data: any) => {
+      const templateRes = await apiRequest("POST", "/api/onboarding-templates", {
+        name: data.name,
+        description: data.description,
+        targetRole: data.targetRole,
+        scope: data.scope,
+        durationDays: data.durationDays,
+        isActive: true,
+        createdById: user?.id,
+      });
+      const template = await templateRes.json();
+      
+      for (const step of data.steps || []) {
+        await apiRequest("POST", `/api/onboarding-templates/${template.id}/steps`, {
+          templateId: template.id,
+          ...step,
+        });
+      }
+      return template;
+    },
+    onSuccess: () => {
+      toast({ title: "Onboarding şablonu kaydedildi" });
+      setIsAiOnboardingOpen(false);
+      setAiOnboardingResult(null);
+      queryClient.invalidateQueries({ queryKey: ['/api/onboarding-templates'] });
+    },
+    onError: () => {
+      toast({ title: "Hata", description: "Şablon kaydedilemedi", variant: "destructive" });
+    },
+  });
+
+  const generateProgramMutation = useMutation({
+    mutationFn: async (data: { targetRole: string; scope: string; programType: string }) => {
+      const res = await apiRequest("POST", "/api/academy/ai-generate-program", data);
+      return res.json();
+    },
+    onSuccess: (data) => {
+      setAiProgramResult(data);
+      toast({ title: "Eğitim programı oluşturuldu" });
+    },
+    onError: () => {
+      toast({ title: "Hata", description: "Program oluşturulamadı", variant: "destructive" });
+    },
+  });
+
+  const saveProgramModulesMutation = useMutation({
+    mutationFn: async (modules: any[]) => {
+      const results = [];
+      for (const mod of modules) {
+        const res = await apiRequest("POST", "/api/training/modules", {
+          title: mod.title,
+          description: mod.description,
+          category: mod.category,
+          level: mod.level || "beginner",
+          estimatedDuration: mod.estimatedDuration || 30,
+          requiredForRole: mod.requiredForRole || [],
+          scope: mod.scope || "branch",
+          learningObjectives: mod.learningObjectives || [],
+          steps: (mod.steps || []).map((s: any, i: number) => ({
+            stepNumber: s.stepNumber || i + 1,
+            title: s.title,
+            content: s.content,
+          })),
+          isPublished: false,
+          generatedByAi: true,
+          createdBy: user?.id,
+        });
+        results.push(await res.json());
+      }
+      return results;
+    },
+    onSuccess: () => {
+      toast({ title: "Modüller başarıyla kaydedildi" });
+      setIsAiProgramOpen(false);
+      setAiProgramResult(null);
+      queryClient.invalidateQueries({ queryKey: ['/api/training/modules'] });
+    },
+    onError: () => {
+      toast({ title: "Hata", description: "Modüller kaydedilemedi", variant: "destructive" });
+    },
+  });
+
   const { data: allUsers = [] } = useQuery({
     queryKey: ["/api/users"],
     queryFn: async () => {
@@ -825,6 +1105,24 @@ export default function AcademyHQ() {
         trainingModules={trainingModules}
         pendingExams={pendingExams}
         isLoading={branchAnalyticsLoading || trainingStatsLoading}
+        onCertSettings={() => setIsCertDialogOpen(true)}
+        certDesigns={certDesigns}
+        onEditCert={(cert) => {
+          setEditingCert(cert);
+          setCertForm({
+            transitionFrom: cert.transitionFrom,
+            transitionTo: cert.transitionTo,
+            certificateTitle: cert.certificateTitle || 'Başarı Sertifikası',
+            subtitle: cert.subtitle || '',
+            primaryColor: cert.primaryColor || '#1e3a5f',
+            secondaryColor: cert.secondaryColor || '#c9a96e',
+            templateLayout: cert.templateLayout || 'classic',
+            signatureLabel: cert.signatureLabel || 'DOSPRESSO Eğitim Müdürü',
+            footerText: cert.footerText || '',
+          });
+          setIsCertDialogOpen(true);
+        }}
+        onDeleteCert={(id) => deleteCertDesignMutation.mutate(id)}
       />
 
       <Tabs defaultValue="training" className="w-full">
@@ -1527,17 +1825,38 @@ export default function AcademyHQ() {
                       />
                       <FormField
                         control={editTrainingForm.control}
-                        name="estimatedDuration"
+                        name="scope"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Tahmini Süre (dk)</FormLabel>
-                            <FormControl>
-                              <Input type="number" {...field} onChange={(e) => field.onChange(parseInt(e.target.value))} />
-                            </FormControl>
+                            <FormLabel>Kapsam</FormLabel>
+                            <Select onValueChange={field.onChange} value={field.value || "branch"}>
+                              <FormControl>
+                                <SelectTrigger data-testid="select-module-scope-edit">
+                                  <SelectValue placeholder="Kapsam seçin" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                <SelectItem value="branch">Şube Eğitimi</SelectItem>
+                                <SelectItem value="factory">Fabrika Eğitimi</SelectItem>
+                                <SelectItem value="both">Her İkisi</SelectItem>
+                              </SelectContent>
+                            </Select>
                           </FormItem>
                         )}
                       />
                     </div>
+                    <FormField
+                      control={editTrainingForm.control}
+                      name="estimatedDuration"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Tahmini Süre (dk)</FormLabel>
+                          <FormControl>
+                            <Input type="number" {...field} onChange={(e) => field.onChange(parseInt(e.target.value))} />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
                     {editingModule.id && (
                       <ModuleGallery
                         moduleId={editingModule.id}
@@ -1555,8 +1874,26 @@ export default function AcademyHQ() {
             </DialogContent>
           </Dialog>
 
+          <div className="flex gap-1 flex-wrap mb-3">
+            {[
+              { value: "all", label: "Tümü" },
+              { value: "branch", label: "Şube" },
+              { value: "factory", label: "Fabrika" },
+            ].map(f => (
+              <Button
+                key={f.value}
+                size="sm"
+                variant={scopeFilter === f.value ? "default" : "outline"}
+                onClick={() => setScopeFilter(f.value)}
+                data-testid={`filter-scope-${f.value}`}
+              >
+                {f.label}
+              </Button>
+            ))}
+          </div>
+
           <div className="flex flex-col gap-3 sm:gap-4">
-            {trainingModules.map((module: TrainingModule) => (
+            {trainingModules.filter((m: any) => scopeFilter === "all" || m.scope === scopeFilter || m.scope === 'both').map((module: TrainingModule) => (
               <div 
                 key={module.id}
                 onClick={() => {
@@ -1610,6 +1947,9 @@ export default function AcademyHQ() {
                     <div className="flex gap-1 flex-wrap">
                       {module.isPublished && <Badge variant="default" className="text-xs px-1.5 py-0">Yayında</Badge>}
                       {!module.isPublished && <Badge variant="secondary" className="text-xs px-1.5 py-0">Taslak</Badge>}
+                      <Badge variant={(module as any).scope === 'factory' ? 'destructive' : (module as any).scope === 'both' ? 'outline' : 'secondary'} className="text-xs px-1.5 py-0">
+                        {(module as any).scope === 'factory' ? 'Fabrika' : (module as any).scope === 'both' ? 'Tümü' : 'Şube'}
+                      </Badge>
                       <Badge variant="outline" className="text-xs px-1.5 py-0">{module.estimatedDuration} dk</Badge>
                     </div>
                     {module.requiredForRole && module.requiredForRole.length > 0 && (
@@ -1648,6 +1988,308 @@ export default function AcademyHQ() {
         title="Silmek istediğinize emin misiniz?"
         description={`"${deleteState.itemName || ''}" modülü silinecektir. Bu işlem geri alınamaz.`}
       />
+
+      <Dialog open={isAiOnboardingOpen} onOpenChange={setIsAiOnboardingOpen}>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Sparkles className="w-5 h-5 text-primary" />
+              AI Onboarding Şablon Üretici
+            </DialogTitle>
+          </DialogHeader>
+          
+          {!aiOnboardingResult ? (
+            <div className="space-y-4">
+              <div>
+                <label className="text-sm font-medium mb-1 block">Hedef Pozisyon</label>
+                <Select value={aiOnboardingRole} onValueChange={setAiOnboardingRole}>
+                  <SelectTrigger data-testid="select-onboarding-role">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="stajyer">Stajyer</SelectItem>
+                    <SelectItem value="bar_buddy">Bar Buddy</SelectItem>
+                    <SelectItem value="barista">Barista</SelectItem>
+                    <SelectItem value="supervisor_buddy">Supervisor Buddy</SelectItem>
+                    <SelectItem value="fabrika_personel">Fabrika Personeli</SelectItem>
+                    <SelectItem value="uretim_sorumlusu">Üretim Sorumlusu</SelectItem>
+                    <SelectItem value="kalite_kontrol">Kalite Kontrol</SelectItem>
+                    <SelectItem value="depocu">Depocu</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <label className="text-sm font-medium mb-1 block">Kapsam</label>
+                <Select value={aiOnboardingScope} onValueChange={setAiOnboardingScope}>
+                  <SelectTrigger data-testid="select-onboarding-scope">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="branch">Şube</SelectItem>
+                    <SelectItem value="factory">Fabrika</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <label className="text-sm font-medium mb-1 block">Süre (gün)</label>
+                <Input 
+                  type="number" 
+                  value={aiOnboardingDuration} 
+                  onChange={(e) => setAiOnboardingDuration(parseInt(e.target.value) || 60)}
+                  data-testid="input-onboarding-duration"
+                />
+              </div>
+              <Button 
+                onClick={() => generateOnboardingMutation.mutate({ targetRole: aiOnboardingRole, scope: aiOnboardingScope, durationDays: aiOnboardingDuration })}
+                disabled={generateOnboardingMutation.isPending}
+                className="w-full"
+                data-testid="btn-generate-onboarding"
+              >
+                {generateOnboardingMutation.isPending ? "Oluşturuluyor..." : "AI ile Şablon Oluştur"}
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div className="p-3 rounded-md border">
+                <p className="font-medium text-sm">{aiOnboardingResult.name}</p>
+                <p className="text-xs text-muted-foreground mt-1">{aiOnboardingResult.description}</p>
+              </div>
+              
+              <div className="space-y-2">
+                <p className="text-sm font-medium">Adımlar ({aiOnboardingResult.steps?.length || 0})</p>
+                {(aiOnboardingResult.steps || []).map((step: any, idx: number) => (
+                  <div key={idx} className="p-2 rounded border text-xs">
+                    <div className="flex items-center justify-between gap-2 flex-wrap">
+                      <span className="font-medium">{step.stepOrder || idx + 1}. {step.title}</span>
+                      <Badge variant="outline" className="text-[10px]">Gün {step.startDay}-{step.endDay}</Badge>
+                    </div>
+                    <p className="text-muted-foreground mt-1">{step.description}</p>
+                    <p className="mt-1">Mentör: <Badge variant="secondary" className="text-[10px]">{step.mentorRoleType}</Badge></p>
+                  </div>
+                ))}
+              </div>
+              
+              <div className="flex gap-2">
+                <Button 
+                  variant="outline" 
+                  onClick={() => setAiOnboardingResult(null)} 
+                  className="flex-1"
+                  data-testid="btn-regenerate-onboarding"
+                >
+                  Yeniden Oluştur
+                </Button>
+                <Button 
+                  onClick={() => saveOnboardingMutation.mutate(aiOnboardingResult)}
+                  disabled={saveOnboardingMutation.isPending}
+                  className="flex-1"
+                  data-testid="btn-save-onboarding"
+                >
+                  {saveOnboardingMutation.isPending ? "Kaydediliyor..." : "Şablonu Kaydet"}
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isAiProgramOpen} onOpenChange={setIsAiProgramOpen}>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Brain className="w-5 h-5 text-primary" />
+              AI Eğitim Programı Üretici
+            </DialogTitle>
+          </DialogHeader>
+          
+          {!aiProgramResult ? (
+            <div className="space-y-4">
+              <div>
+                <label className="text-sm font-medium mb-1 block">Hedef Pozisyon</label>
+                <Select value={aiProgramRole} onValueChange={setAiProgramRole}>
+                  <SelectTrigger data-testid="select-program-role">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="stajyer">Stajyer</SelectItem>
+                    <SelectItem value="bar_buddy">Bar Buddy</SelectItem>
+                    <SelectItem value="barista">Barista</SelectItem>
+                    <SelectItem value="supervisor_buddy">Supervisor Buddy</SelectItem>
+                    <SelectItem value="fabrika_personel">Fabrika Personeli</SelectItem>
+                    <SelectItem value="uretim_sorumlusu">Üretim Sorumlusu</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <label className="text-sm font-medium mb-1 block">Kapsam</label>
+                <Select value={aiProgramScope} onValueChange={setAiProgramScope}>
+                  <SelectTrigger data-testid="select-program-scope">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="branch">Şube</SelectItem>
+                    <SelectItem value="factory">Fabrika</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <label className="text-sm font-medium mb-1 block">Program Türü</label>
+                <Select value={aiProgramType} onValueChange={setAiProgramType}>
+                  <SelectTrigger data-testid="select-program-type">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="role_training">Temel Eğitim Programı</SelectItem>
+                    <SelectItem value="machine_training">Makine Kullanım Eğitimi</SelectItem>
+                    <SelectItem value="skill_upgrade">Yetkinlik Geliştirme</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <Button 
+                onClick={() => generateProgramMutation.mutate({ targetRole: aiProgramRole, scope: aiProgramScope, programType: aiProgramType })}
+                disabled={generateProgramMutation.isPending}
+                className="w-full"
+                data-testid="btn-generate-program"
+              >
+                {generateProgramMutation.isPending ? "Oluşturuluyor..." : "AI ile Program Oluştur"}
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div className="p-3 rounded-md border">
+                <p className="font-medium text-sm">{aiProgramResult.programName}</p>
+                <p className="text-xs text-muted-foreground">{aiProgramResult.modules?.length || 0} modül oluşturuldu</p>
+              </div>
+              
+              <div className="space-y-2">
+                {(aiProgramResult.modules || []).map((mod: any, idx: number) => (
+                  <div key={idx} className="p-2 rounded border text-xs">
+                    <div className="flex items-center justify-between gap-2 flex-wrap">
+                      <span className="font-medium">{mod.title}</span>
+                      <div className="flex gap-1">
+                        <Badge variant="secondary" className="text-[10px]">{mod.level || 'beginner'}</Badge>
+                        <Badge variant="outline" className="text-[10px]">{mod.estimatedDuration || 30} dk</Badge>
+                      </div>
+                    </div>
+                    <p className="text-muted-foreground mt-1">{mod.description}</p>
+                    {mod.learningObjectives?.length > 0 && (
+                      <div className="mt-1">
+                        <span className="text-muted-foreground">Hedefler: </span>
+                        {mod.learningObjectives.slice(0, 3).join(', ')}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+              
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={() => setAiProgramResult(null)} className="flex-1" data-testid="btn-regenerate-program">
+                  Yeniden Oluştur
+                </Button>
+                <Button 
+                  onClick={() => saveProgramModulesMutation.mutate(aiProgramResult.modules || [])}
+                  disabled={saveProgramModulesMutation.isPending}
+                  className="flex-1"
+                  data-testid="btn-save-program"
+                >
+                  {saveProgramModulesMutation.isPending ? "Kaydediliyor..." : "Tüm Modülleri Kaydet"}
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isCertDialogOpen} onOpenChange={(open) => { setIsCertDialogOpen(open); if (!open) setEditingCert(null); }}>
+        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Award className="w-5 h-5" />
+              {editingCert ? 'Sertifika Tasarımını Düzenle' : 'Yeni Sertifika Tasarımı'}
+            </DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-3">
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="text-xs font-medium mb-1 block">Geçiş: Mevcut Statü</label>
+                <Select value={certForm.transitionFrom} onValueChange={(v) => setCertForm(p => ({...p, transitionFrom: v}))}>
+                  <SelectTrigger data-testid="select-cert-from"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="stajyer">Stajyer</SelectItem>
+                    <SelectItem value="bar_buddy">Bar Buddy</SelectItem>
+                    <SelectItem value="barista">Barista</SelectItem>
+                    <SelectItem value="supervisor_buddy">Supervisor Buddy</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <label className="text-xs font-medium mb-1 block">Yeni Statü</label>
+                <Select value={certForm.transitionTo} onValueChange={(v) => setCertForm(p => ({...p, transitionTo: v}))}>
+                  <SelectTrigger data-testid="select-cert-to"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="bar_buddy">Bar Buddy</SelectItem>
+                    <SelectItem value="barista">Barista</SelectItem>
+                    <SelectItem value="supervisor_buddy">Supervisor Buddy</SelectItem>
+                    <SelectItem value="supervisor">Supervisor</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div>
+              <label className="text-xs font-medium mb-1 block">Sertifika Başlığı</label>
+              <Input value={certForm.certificateTitle} onChange={(e) => setCertForm(p => ({...p, certificateTitle: e.target.value}))} data-testid="input-cert-title" />
+            </div>
+            <div>
+              <label className="text-xs font-medium mb-1 block">Alt Başlık</label>
+              <Input value={certForm.subtitle} onChange={(e) => setCertForm(p => ({...p, subtitle: e.target.value}))} data-testid="input-cert-subtitle" />
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="text-xs font-medium mb-1 block">Ana Renk</label>
+                <div className="flex gap-1 items-center">
+                  <input type="color" value={certForm.primaryColor} onChange={(e) => setCertForm(p => ({...p, primaryColor: e.target.value}))} className="w-8 h-8 rounded border cursor-pointer" />
+                  <Input value={certForm.primaryColor} onChange={(e) => setCertForm(p => ({...p, primaryColor: e.target.value}))} className="flex-1" />
+                </div>
+              </div>
+              <div>
+                <label className="text-xs font-medium mb-1 block">İkincil Renk</label>
+                <div className="flex gap-1 items-center">
+                  <input type="color" value={certForm.secondaryColor} onChange={(e) => setCertForm(p => ({...p, secondaryColor: e.target.value}))} className="w-8 h-8 rounded border cursor-pointer" />
+                  <Input value={certForm.secondaryColor} onChange={(e) => setCertForm(p => ({...p, secondaryColor: e.target.value}))} className="flex-1" />
+                </div>
+              </div>
+            </div>
+            <div>
+              <label className="text-xs font-medium mb-1 block">Şablon Düzeni</label>
+              <Select value={certForm.templateLayout} onValueChange={(v) => setCertForm(p => ({...p, templateLayout: v}))}>
+                <SelectTrigger data-testid="select-cert-layout"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="classic">Klasik</SelectItem>
+                  <SelectItem value="modern">Modern</SelectItem>
+                  <SelectItem value="minimal">Minimal</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <label className="text-xs font-medium mb-1 block">İmza Etiketi</label>
+              <Input value={certForm.signatureLabel} onChange={(e) => setCertForm(p => ({...p, signatureLabel: e.target.value}))} data-testid="input-cert-signature" />
+            </div>
+            <div>
+              <label className="text-xs font-medium mb-1 block">Alt Bilgi Metni</label>
+              <Input value={certForm.footerText} onChange={(e) => setCertForm(p => ({...p, footerText: e.target.value}))} data-testid="input-cert-footer" />
+            </div>
+
+            <Button 
+              className="w-full" 
+              onClick={() => saveCertDesignMutation.mutate(certForm)}
+              disabled={saveCertDesignMutation.isPending}
+              data-testid="btn-save-cert-design"
+            >
+              {saveCertDesignMutation.isPending ? "Kaydediliyor..." : (editingCert ? "Güncelle" : "Oluştur")}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
