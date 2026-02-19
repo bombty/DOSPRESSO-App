@@ -21,7 +21,7 @@ The frontend utilizes React 18+ with TypeScript and Vite, employing Shadcn/ui (N
 - **Notifications**: In-app and email async notifications.
 
 ### Feature Specifications
-- **Authentication & RBAC**: A 14-role system with dual-layer granular permissions (module-level view/edit toggles + action-level scope control) and branch-level data filtering.
+- **Authentication & RBAC**: A 14-role system with dual-layer granular permissions and branch-level data filtering.
 - **Equipment Management**: Comprehensive lifecycle management, health monitoring, maintenance scheduling.
 - **Unified Fault System**: Creation, assignment, workflow, escalation, photo documentation, cost tracking, QR-integrated reporting, and professional PDF export.
 - **SLA Monitoring**: Real-time tracking with automated breach alerts.
@@ -31,22 +31,27 @@ The frontend utilizes React 18+ with TypeScript and Vite, employing Shadcn/ui (N
 - **AI Integration**: AI photo verification for tasks, RAG-enabled knowledge base search, AI Academy Chat Assistant, Adaptive Learning Engine, and AI-powered smart recommendations.
 - **HR & Shift Management**: Personnel management, leave requests, overtime, attendance, AI-powered fair shift planning.
 - **Enhanced Analytics Dashboard**: Tabbed interface showing daily/weekly/monthly metrics with AI-generated summaries.
-- **DOSPRESSO Academy (LMS)**: Comprehensive training system including career progression, quiz system, gamification, certification, AI learning paths, and advanced analytics. Features scope-based module separation (branch/factory/both), AI-powered onboarding template generation, AI training program generation (role_training/machine_training/skill_upgrade), certificate design settings per career transition, and machine operation training category for factory.
-- **Daily Task Guidance (Bugünün Görevleri)**: Role-based task templates (daily/weekly/monthly) with personalized task lists, completion tracking, AI-powered recommendations, and progress visualization. Includes event-driven dynamic task system.
-- **Advanced Task Workflow**: Enhanced task lifecycle with assignee-assigner approval flow (onay_bekliyor), question-answer system (cevap_bekliyor), deadline extension requests (sure_uzatma_talebi), scheduled delivery (zamanlanmis), HQ bulk assignment with role/branch filtering, and leave-day task hiding.
-- **Checklist Management System**: Time-windowed tasks with HQ/Supervisor editable time slots, photo validation, manager notifications, performance weighting, and daily reminders. Supports scope-based assignment (branch/factory). Checklist-shift integration via /api/checklists/my-daily endpoint with leave-day awareness.
+- **DOSPRESSO Academy (LMS)**: Comprehensive training system including career progression, quiz system, gamification, certification, AI learning paths, and advanced analytics.
+- **Daily Task Guidance (Bugünün Görevleri)**: Role-based task templates with personalized task lists, completion tracking, AI-powered recommendations, and progress visualization.
+- **Advanced Task Workflow**: Enhanced task lifecycle with assignee-assigner approval flow, question-answer system, deadline extension requests, scheduled delivery, HQ bulk assignment, and leave-day task hiding.
+- **Checklist Management System**: Time-windowed tasks with HQ/Supervisor editable time slots, photo validation, manager notifications, performance weighting, and daily reminders.
 - **AI Checklist Verification**: AI-powered photo verification system for checklist tasks with reference photo upload, tolerance slider, multiple AI verification types, similarity scoring.
-- **Recipe Management System**: 10 DOSPRESSO categories (Classic Coffee, Special Latte, Freshess, Frappe Shake, Frozen Yogurt, Gourmet Shakes, Herbal Tea, Donutlar, Tatlılar, Tuzlular) with 145+ actual product recipes. Classic Coffee and Special Latte have both HOT and ICED variants with different preparation steps. Each beverage recipe includes Massivo (300-400ml) and Long Diva (550-650ml) size variants with step-by-step Turkish instructions. Automatic version tracking with trainer update notification system that sends notifications to all branch staff when recipes are modified. Includes AI Recipe Creation via photo or text parsing.
+- **Recipe Management System**: 10 DOSPRESSO categories with 145+ product recipes, including HOT/ICED variants and size variations. Features automatic version tracking with trainer update notification, and AI Recipe Creation.
 - **Quiz System**: MCQ and True/False questions, dynamic options, points, explanations, cooldowns, and attempt tracking.
 - **New Shop Opening Management System**: A 7-phase workflow tracking for franchise openings with hierarchical tasks, RACI assignments, and procurement/bidding.
-- **Admin Features**: Email settings (SMTP), banner management, AI settings, project task detail pages, and milestone management. Streamlined admin sidebar with 5 key entry points.
-- **AI Usage Guide (Kullanım Kılavuzu)**: Role-based interactive system guide with AI Q&A. Each role gets personalized Turkish guidance showing available modules, quick tips, common tasks, and restrictions. AI-powered question answering about system usage.
-- **Content Studio (İçerik Stüdyosu)**: Unified content management consolidating banner creation and announcement publishing, featuring drafts, published items, and carousel management.
+- **Admin Features**: Email settings (SMTP), banner management, AI settings, project task detail pages, and milestone management.
+- **AI Usage Guide (Kullanım Kılavuzu)**: Role-based interactive system guide with AI Q&A.
+- **Content Studio (İçerik Stüdyosu)**: Unified content management consolidating banner creation and announcement publishing.
 - **Global Search & Calendar View**: Functionality for finding information across the platform and visualizing tasks/milestones.
 - **Unified Dashboard Alert System**: Real-time alerts for both branch and factory dashboards supporting 12 trigger types with severity levels.
-- **Procurement Management System (Satınalma)**: Complete procurement module with Dashboard, Stok Yönetimi (inventory), Tedarikçi Yönetimi (supplier management), Sipariş Yönetimi (purchase orders), and Mal Kabul (goods receipt).
-- **Cost Management System (Maliyet Yönetimi)**: Comprehensive product cost calculation module integrated with procurement. Features raw material management, factory fixed cost tracking, profit margin templates, and automatic cost calculations. Includes product recipes, keyblend security for formulations, raw material price history, and production-inventory integration with AI forecasting.
+- **Procurement Management System (Satınalma)**: Complete procurement module with Dashboard, Inventory, Supplier Management, Purchase Orders, and Goods Receipt.
+- **Cost Management System (Maliyet Yönetimi)**: Comprehensive product cost calculation module integrated with procurement. Features raw material management, factory fixed cost tracking, profit margin templates, and automatic cost calculations.
 - **Factory Shift & Production Planning**: Complete shift planning system with batch tracking, performance monitoring, worker assignments, and supervisor verification workflows.
+- **Employee of Month System**: Multi-criteria scoring, manager evaluation, branch-specific visibility.
+- **Branch Inspection System (Coach)**: 8-category branch audit system with weighted scoring, checkbox-based item evaluation, notes, and photo documentation.
+- **Product Complaint System**: Branch-to-factory product complaint workflow with severity levels, status tracking, and resolution documentation.
+- **Branch Health Score Dashboard**: Aggregated branch health visualization combining inspection scores, product complaint stats, and category averages, with AI-powered summary generation.
+- **Role Separation**: Distinct roles for Coach, Trainer, and Kalite Kontrol with specific responsibilities.
 
 ### System Design Choices
 - **Health Score Calculation**: Real-time scores based on recent faults and compliance.
@@ -54,42 +59,25 @@ The frontend utilizes React 18+ with TypeScript and Vite, employing Shadcn/ui (N
 - **Notifications**: Automatic in-app alerts and email notifications; manager notifications on critical events.
 - **State Management**: TanStack Query for server state and localStorage for theme persistence.
 - **Photo Upload**: Persistent storage on AWS S3 via an ObjectUploader component.
-- **Backup System**: Daily automatic backups to object storage with 53+ critical tables, restore pipeline (restoreFromBackup), and time machine (getAvailableRestorePoints) for point-in-time recovery. Admin-only restore API endpoints.
-- **API Security**: Rate limiting (200 req/min general, 20 req/min auth) via express-rate-limit. Factory RBAC: isFactoryUser middleware for data access, isSupervisorUser for verification operations.
-- **Transaction Safety**: Factory batch completion, verification, and machine self-selection wrapped in Drizzle transactions for atomic operations.
+- **Backup System**: Daily automatic backups to object storage with a restore pipeline and time machine for point-in-time recovery.
+- **API Security**: Rate limiting via express-rate-limit. Factory RBAC for data access and verification operations.
+- **Transaction Safety**: Atomic operations for factory batch completion, verification, and machine self-selection using Drizzle transactions.
 - **Live Tracking**: Real-time employee location tracking with in-memory cache for supervisors.
 - **RAG Knowledge Base**: Vector-based semantic search using OpenAI embeddings.
 - **Gamification**: Integrated badges, career progression, leaderboards, team competitions, adaptive difficulty, certificates, and daily learning streak tracker.
 - **Layout System**: Responsive flex-based layouts with standardized gaps.
 - **Dashboard Hub**: `CardGridHub` displays 9 mega-module cards with role-based visibility.
-- **Mega-Module Architecture**: Each major section uses a tabbed mega-module wrapper that lazy-loads page components, with URL synchronization for deep linking.
+- **Mega-Module Architecture**: Each major section uses a tabbed mega-module wrapper that lazy-loads page components, with URL synchronization.
 - **Shift Scheduling**: Fair algorithm ensuring full-time employees work minimum 6 days/week at 45 hours, part-time 3 days/25 hours.
 - **Analytics Architecture**: Three-period tabbed interface with real-time metric aggregation, AI-powered summaries, and conditional alerts.
-- **Checklist Scoring**: 40% weight in compositeScore, max score 4/5 if not on-time, scored by supervisor, daily reminders active.
+- **Checklist Scoring**: 40% weight in compositeScore, scored by supervisor, daily reminders active.
 - **Performance Score Data Flows**: Task ratings and checklist completions automatically update employee performance scores.
-- **Evaluation Anti-Abuse System**: 24-hour cooldown between evaluations of same employee, monthly max 2 evaluations per evaluator-employee pair, frontend limit display with button disabling. Evaluation coverage tracked per branch with CEO dashboard visibility.
-- **Reminder System**: 5-minute interval checks for task reminders, overdue notifications, maintenance alerts, checklist completion reminders, and evaluation reminders (after 20th of month for supervisors with unevaluated employees).
+- **Evaluation Anti-Abuse System**: 24-hour cooldown between evaluations of same employee, monthly max 2 evaluations per evaluator-employee pair.
+- **Reminder System**: 5-minute interval checks for task reminders, overdue notifications, maintenance alerts, checklist completion reminders, and evaluation reminders.
 - **Branch Dashboard**: Comprehensive dashboard with real-time stats, alert management, kiosk mode access, and quick access buttons.
 - **PDF Generation**: Uses jsPDF with Helvetica font and Turkish character sanitization.
-- **Employee of Month System**: Complete implementation with multi-criteria scoring, manager evaluation, branch-specific visibility, and dedicated dashboards/reports.
-- **Branch Inspection System (Coach)**: 8-category branch audit system (dış mekan, bina görünüş, bar düzeni, depo, ürün sunumu, personel davranış, dress code, temizlik) with weighted scoring, checkbox-based item evaluation, per-category notes, and photo documentation. Coach-only creation permission.
-- **Product Complaint System**: Branch-to-factory product complaint workflow. Branch staff report quality issues (taste, appearance, packaging, freshness, etc.), complaints auto-route to kalite_kontrol role. Includes severity levels, status tracking, and resolution documentation.
-- **Branch Health Score Dashboard**: Aggregated branch health visualization combining inspection scores, product complaint stats, and category averages. Includes AI-powered summary generation per branch using OpenAI.
-- **Role Separation**: Coach handles branch inspections + guest QR ratings, Trainer handles recipes + training, Kalite Kontrol handles factory product QC + product complaints from branches.
-
-## Performance Optimization
-### P0 Index Pack (Applied 2026-02-18)
-17 composite indexes covering the top 25 highest-traffic query patterns across 12 tables. Script: `scripts/p0_indexes.sql`. Key indexes:
-- `users(branch_id, is_active)` — 92 query refs
-- `tasks(assigned_to_id, status, created_at DESC)` — "my tasks" pattern
-- `tasks(branch_id, status, created_at DESC)` — branch task listing
-- `checklist_completions(branch_id, scheduled_date DESC)` — daily checklist
-- `shifts(assigned_to_id, shift_date DESC)` — shift history
-- `leave_requests(user_id, status)` — active leave checks
-- notifications table intentionally excluded (already indexed, 1.4M+ writes)
 
 ## External Dependencies
-### Third-Party Services
 - **OpenAI API**: Used for AI-powered vision analysis, chat completions, embeddings, and summary generation.
 - **Replit Auth**: Utilized for user authentication via OpenID Connect.
 - **AWS S3**: Provides cloud storage for photo uploads, backups, and persistent storage.
