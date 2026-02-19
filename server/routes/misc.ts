@@ -9058,7 +9058,7 @@ Dusuk puanli alanlara odaklan ve pozitif, motive edici ol. JSON dizisi olarak ya
       
       const userRole = user.role as any;
       const isAdmin = userRole === 'admin' || userRole === 'ceo';
-      const wantsAll = viewAll === 'true' && isAdmin;
+      const wantsAll = (viewAll === 'true' || viewAll === '1') && isAdmin;
       
       const conditions: any[] = [];
       
@@ -9076,21 +9076,11 @@ Dusuk puanli alanlara odaklan ve pozitif, motive edici ol. JSON dizisi olarak ya
       
       const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
       
-      console.log("[DEBUG-GET-NOTIF] req.user.id:", user.id, "type:", typeof user.id, "wantsAll:", wantsAll);
-      
       const results = await db.select().from(notifications)
         .where(whereClause)
         .orderBy(desc(notifications.createdAt))
         .limit(pag.limit)
         .offset(pag.offset);
-      
-      console.log("[DEBUG-GET-NOTIF] results.length:", results.length);
-      if (results.length === 0 && !wantsAll) {
-        const [cntRow] = await db.select({ cnt: count() }).from(notifications).where(eq(notifications.userId, user.id));
-        console.log("[DEBUG-GET-NOTIF] COUNT for this userId:", cntRow?.cnt);
-        const recent = await db.select({ id: notifications.id, userId: notifications.userId, createdAt: notifications.createdAt }).from(notifications).orderBy(desc(notifications.createdAt)).limit(5);
-        console.log("[DEBUG-GET-NOTIF] last 5 notifications (id, userId, createdAt):", JSON.stringify(recent));
-      }
 
       if (pag.wantsPagination) {
         const [totalResult] = await db.select({ count: count() }).from(notifications).where(whereClause);

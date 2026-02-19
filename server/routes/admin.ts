@@ -2,7 +2,7 @@ import { Router } from "express";
 import { storage } from "../storage";
 import { isAuthenticated } from "../localAuth";
 import { db } from "../db";
-import { eq, desc, asc, sql, and, or } from "drizzle-orm";
+import { eq, desc, asc, sql, and, or, count } from "drizzle-orm";
 import { z } from "zod";
 import bcrypt from "bcrypt";
 import {
@@ -33,6 +33,7 @@ import {
   shiftAttendance,
   employeeLeaves,
   publicHolidays,
+  notifications,
 } from "@shared/schema";
 import { getAllActionsGroupedByModule, getRoleGrants, upsertPermissionGrant, deletePermissionGrant } from "../permission-service";
 import { generateArticleEmbeddings } from "../ai";
@@ -2665,19 +2666,28 @@ const router = Router();
         return res.status(403).json({ message: "Yetkiniz yok" });
       }
 
-      console.log("[DEBUG-TEST-NOTIF] req.user.id:", user.id, "type:", typeof user.id);
+      const userId = String(user.id);
+      console.log("[TEST-NOTIF] inserting for userId:", userId);
+
       const created = await storage.createNotification({
-        userId: user.id,
+        userId,
         branchId: user.branchId || null,
         type: "system",
         title: "Test Bildirimi",
         message: "Bu bir test bildirimidir.",
         isRead: false,
-        data: null,
       });
-      console.log("[DEBUG-TEST-NOTIF] inserted notification id:", created.id, "userId:", created.userId);
 
-      res.json({ success: true });
+      const [row] = await db.select({ cnt: count() }).from(notifications).where(eq(notifications.userId, userId));
+      const countForUser = row?.cnt ?? 0;
+      console.log("[TEST-NOTIF] insertedId:", created.id, "countForUser:", countForUser);
+
+      if (countForUser === 0) {
+        console.error("[TEST-NOTIF] COUNT is 0 after insert! userId:", userId, "insertedId:", created.id);
+        return res.status(500).json({ ok: false, error: "Insert succeeded but count is 0", userId, insertedId: created.id, countForUser });
+      }
+
+      res.json({ ok: true, userId, insertedId: created.id, countForUser });
     } catch (err: any) {
       console.error("Test notification error:", err);
       res.status(500).json({ error: "Failed to create test notification" });
