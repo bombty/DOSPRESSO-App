@@ -46,6 +46,10 @@ interface BackupStatusData {
     backupType: string;
     durationMs: number;
     errorMessage: string | null;
+    skippedTables: string[];
+    failedTables: string[];
+    errorSummary: string | null;
+    tablesExported: number;
   } | null;
   minutesAgo: number | null;
   schedule: string;
@@ -57,6 +61,8 @@ interface BackupStatusData {
     success: boolean;
     backupType: string;
     durationMs: number;
+    skippedCount: number;
+    failedCount: number;
   }>;
 }
 
@@ -213,8 +219,23 @@ export default function AdminYedekleme() {
               <Badge variant={backupStatusData.lastBackup?.success ? "secondary" : "destructive"} data-testid="badge-backup-status">
                 {backupStatusData.lastBackup?.success ? 'Başarılı' : 'Başarısız'}
               </Badge>
+              {(backupStatusData.lastBackup?.skippedTables?.length ?? 0) > 0 && (
+                <Badge variant="outline" data-testid="badge-skipped-tables">
+                  {backupStatusData.lastBackup!.skippedTables.length} tablo atlandı
+                </Badge>
+              )}
+              {(backupStatusData.lastBackup?.tablesExported ?? 0) > 0 && (
+                <span className="text-xs text-muted-foreground" data-testid="text-tables-exported">
+                  {backupStatusData.lastBackup!.tablesExported} tablo
+                </span>
+              )}
             </div>
           </div>
+          {backupStatusData.lastBackup?.errorSummary && (
+            <div className="mt-2 text-xs text-muted-foreground bg-muted/50 rounded p-2" data-testid="text-error-summary">
+              {backupStatusData.lastBackup.errorSummary}
+            </div>
+          )}
           <div className="mt-3 pt-3 border-t flex items-center justify-between gap-2 flex-wrap text-xs text-muted-foreground">
             <span>Zamanlama: Saatlik (RPO ≤ 1 saat)</span>
             <span>Saklama: {backupStatusData.retention.hourly} saatlik / {backupStatusData.retention.daily} günlük</span>

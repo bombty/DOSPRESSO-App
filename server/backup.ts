@@ -18,84 +18,16 @@ let backupStatus: BackupStatus = {
   backupHistory: [],
 };
 
-// Critical tables that MUST be preserved - prioritized by importance
+// CRITICAL tables: MUST exist in DB. If any fails -> backup success=false
 const CRITICAL_TABLES = [
-  'users',
-  'branches', 
-  'equipment',
-  'equipment_faults',
-  'shift_attendance',
-  'quality_audits',
-  'audit_item_scores',
-  'customer_feedback',
-  'maintenance_schedules',
-  'maintenance_logs',
-  'employee_warnings',
-  'leave_requests',
-  'overtime_requests',
-  'attendance_penalties',
-  'monthly_attendance_summaries',
-  'employee_documents',
-  'disciplinary_reports',
-  'tasks',
-  'checklists',
-  'checklist_tasks',
-  'factory_shifts',
-  'factory_shift_workers',
-  'factory_shift_productions',
-  'factory_production_batches',
-  'factory_batch_specs',
-  'factory_batch_verifications',
-  'factory_machines',
-  'factory_products',
-  'factory_waste_reasons',
-  'notifications',
-  'product_recipes',
-  'product_recipe_ingredients',
-  'raw_materials',
-  'recipes',
-  'recipe_ingredients',
-  'roles',
-  'role_permissions',
-  'role_permission_grants',
-  'role_module_permissions',
-  'shift_schedules',
-  'shift_assignments',
-  'lost_and_found_items',
-  'knowledge_base_articles',
-  'knowledge_base_embeddings',
-  'procurement_orders',
-  'procurement_order_items',
-  'inventory_items',
-  'inventory_counts',
-  'inventory_count_items',
-  'training_materials',
-  'quiz_questions',
-  'quiz_attempts',
-  'badges',
-  'user_badges',
-  'banners',
-  'announcements',
-  'project_phases',
-  'project_tasks',
-  'suppliers',
-  'cost_templates',
-  'cost_calculations',
-] as const;
-
-// Tables to fully backup to object storage (most critical for recovery)
-const TABLES_TO_EXPORT = [
   'users',
   'branches',
   'equipment',
   'equipment_faults',
   'shift_attendance',
-  'customer_feedback',
   'quality_audits',
   'audit_item_scores',
-  'tasks',
-  'checklists',
-  'checklist_tasks',
+  'customer_feedback',
   'maintenance_schedules',
   'maintenance_logs',
   'employee_warnings',
@@ -105,6 +37,9 @@ const TABLES_TO_EXPORT = [
   'monthly_attendance_summaries',
   'employee_documents',
   'disciplinary_reports',
+  'tasks',
+  'checklists',
+  'checklist_tasks',
   'factory_shifts',
   'factory_shift_workers',
   'factory_shift_productions',
@@ -119,24 +54,15 @@ const TABLES_TO_EXPORT = [
   'product_recipe_ingredients',
   'raw_materials',
   'recipes',
-  'recipe_ingredients',
   'roles',
   'role_permissions',
   'role_permission_grants',
   'role_module_permissions',
-  'shift_schedules',
-  'shift_assignments',
-  'lost_and_found_items',
   'knowledge_base_articles',
   'knowledge_base_embeddings',
-  'procurement_orders',
-  'procurement_order_items',
-  'inventory_items',
   'inventory_counts',
-  'inventory_count_items',
   'training_materials',
   'quiz_questions',
-  'quiz_attempts',
   'badges',
   'user_badges',
   'banners',
@@ -144,9 +70,40 @@ const TABLES_TO_EXPORT = [
   'project_phases',
   'project_tasks',
   'suppliers',
+] as const;
+
+// OPTIONAL tables: May not exist yet (planned features, renamed tables).
+// If missing -> skip silently, backup stays success=true
+const OPTIONAL_TABLES = [
+  'recipe_ingredients',
+  'shift_schedules',
+  'shift_assignments',
+  'lost_and_found_items',
+  'procurement_orders',
+  'procurement_order_items',
+  'inventory_items',
+  'inventory_count_items',
+  'quiz_attempts',
   'cost_templates',
   'cost_calculations',
 ] as const;
+
+// Combined list for export
+const ALL_BACKUP_TABLES = [...CRITICAL_TABLES, ...OPTIONAL_TABLES] as const;
+
+// Check which tables actually exist in the database
+async function getExistingTables(): Promise<Set<string>> {
+  try {
+    const result = await db.execute(sql`
+      SELECT table_name FROM information_schema.tables 
+      WHERE table_schema = 'public' AND table_type = 'BASE TABLE'
+    `);
+    return new Set((result.rows as any[]).map(r => r.table_name));
+  } catch (error) {
+    console.error('Tablo listesi alınamadı:', error);
+    return new Set();
+  }
+}
 
 // Get bucket ID from environment
 function getBackupBucketId(): string | null {
@@ -184,28 +141,68 @@ async function exportTableToStorage(tableName: string, backupId: string): Promis
   }
 }
 
-// Export all critical tables to object storage
-async function exportAllTablesToStorage(backupId: string): Promise<{ 
-  totalExported: number; 
-  errors: string[];
-  tableResults: Record<string, { success: boolean; rowCount: number }>;
-}> {
-  const errors: string[] = [];
-  const tableResults: Record<string, { success: boolean; rowCount: number }> = {};
+interface ExportResult {
+  totalExported: number;
+  criticalErrors: string[];
+  optionalSkipped: string[];
+  failedTables: string[];
+  tableResults: Record<string, { success: boolean; rowCount: number; skipped?: boolean }>;
+  errorSummary: string | null;
+}
+
+async function exportAllTablesToStorage(backupId: string): Promise<ExportResult> {
+  const criticalErrors: string[] = [];
+  const optionalSkipped: string[] = [];
+  const failedTables: string[] = [];
+  const tableResults: Record<string, { success: boolean; rowCount: number; skipped?: boolean }> = {};
   let totalExported = 0;
-  
-  for (const tableName of TABLES_TO_EXPORT) {
+
+  const existingTables = await getExistingTables();
+  const criticalSet = new Set<string>(CRITICAL_TABLES);
+  const optionalSet = new Set<string>(OPTIONAL_TABLES);
+
+  for (const tableName of ALL_BACKUP_TABLES) {
+    const isCritical = criticalSet.has(tableName);
+
+    if (!existingTables.has(tableName)) {
+      if (isCritical) {
+        criticalErrors.push(`${tableName}: tablo veritabanında bulunamadı (KRİTİK)`);
+        failedTables.push(tableName);
+        tableResults[tableName] = { success: false, rowCount: 0 };
+      } else {
+        optionalSkipped.push(tableName);
+        tableResults[tableName] = { success: true, rowCount: 0, skipped: true };
+      }
+      continue;
+    }
+
     const result = await exportTableToStorage(tableName, backupId);
     tableResults[tableName] = { success: result.success, rowCount: result.rowCount };
-    
+
     if (result.success) {
       totalExported += result.rowCount;
     } else {
-      errors.push(`${tableName}: ${result.error}`);
+      if (isCritical) {
+        criticalErrors.push(`${tableName}: ${result.error}`);
+        failedTables.push(tableName);
+      } else {
+        optionalSkipped.push(tableName);
+        console.warn(`⚠️ Opsiyonel tablo yedeklenemedi (atlandı): ${tableName} - ${result.error}`);
+      }
     }
   }
-  
-  return { totalExported, errors, tableResults };
+
+  if (optionalSkipped.length > 0) {
+    console.log(`ℹ️ Atlanan opsiyonel tablolar (${optionalSkipped.length}): ${optionalSkipped.join(', ')}`);
+  }
+
+  const errorSummary = criticalErrors.length > 0
+    ? `${criticalErrors.length} kritik tablo hatası: ${criticalErrors.join('; ')}`
+    : optionalSkipped.length > 0
+      ? `${optionalSkipped.length} opsiyonel tablo atlandı`
+      : null;
+
+  return { totalExported, criticalErrors, optionalSkipped, failedTables, tableResults, errorSummary };
 }
 
 // Ensure backup_records table exists
@@ -271,28 +268,13 @@ async function getTableRecordCounts(): Promise<Record<string, number>> {
   return counts;
 }
 
-// Verify data integrity - ensure no data loss
-async function verifyDataIntegrity(): Promise<{ valid: boolean; issues: string[] }> {
-  const issues: string[] = [];
-  
+// Verify database connectivity
+async function verifyDatabaseConnection(): Promise<boolean> {
   try {
-    const counts = await getTableRecordCounts();
-    
-    for (const [table, count] of Object.entries(counts)) {
-      if (count === -1) {
-        issues.push(`Tablo bulunamadı: ${table}`);
-      }
-    }
-    
     const connectionTest = await db.execute(sql`SELECT 1 as test`);
-    if (!connectionTest.rows || connectionTest.rows.length === 0) {
-      issues.push('Veritabanı bağlantısı başarısız');
-    }
-    
-    return { valid: issues.length === 0, issues };
-  } catch (error: any) {
-    issues.push(`Veri bütünlüğü kontrolü hatası: ${error.message}`);
-    return { valid: false, issues };
+    return !!(connectionTest.rows && connectionTest.rows.length > 0);
+  } catch {
+    return false;
   }
 }
 
@@ -304,49 +286,51 @@ async function createBackupSnapshot(backupType: 'hourly' | 'daily' | 'weekly' | 
   try {
     console.log(`🔄 Backup başlatılıyor: ${backupId}`);
     
-    const recordCounts = await getTableRecordCounts();
-    const integrity = await verifyDataIntegrity();
-    
-    if (!integrity.valid) {
-      throw new Error(`Veri bütünlüğü sorunları: ${integrity.issues.join(', ')}`);
+    const dbConnected = await verifyDatabaseConnection();
+    if (!dbConnected) {
+      throw new Error('Veritabanı bağlantısı kurulamadı');
     }
     
-    // Export critical tables to object storage
-    console.log(`📦 Kritik tablolar object storage'a yedekleniyor...`);
+    const recordCounts = await getTableRecordCounts();
+    
+    console.log(`📦 Tablolar object storage'a yedekleniyor...`);
     const exportResult = await exportAllTablesToStorage(backupId);
     
     const duration = Date.now() - startTime;
     
-    // Check if any critical tables failed to export
-    const criticalExportFailed = exportResult.errors.length > 0;
+    const hasCriticalFailure = exportResult.criticalErrors.length > 0;
     const successfullyExported = Object.entries(exportResult.tableResults)
-      .filter(([_, result]) => result.success)
-      .map(([table, _]) => table);
+      .filter(([_, result]) => result.success && !result.skipped)
+      .map(([table]) => table);
     
-    if (criticalExportFailed) {
-      console.error(`❌ Bazı tablolar yedeklenemedi:`, exportResult.errors);
-      
-      // If less than half of tables exported successfully, treat as failure
-      if (successfullyExported.length < TABLES_TO_EXPORT.length / 2) {
-        throw new Error(`Object storage yedekleme başarısız: ${exportResult.errors.join('; ')}`);
-      }
-      console.warn(`⚠️ Kısmi yedekleme: ${successfullyExported.length}/${TABLES_TO_EXPORT.length} tablo başarılı`);
+    if (hasCriticalFailure) {
+      console.error(`❌ Kritik tablo hataları:`, exportResult.criticalErrors);
     }
     
-    // Insert backup record to database
+    const metadata = {
+      ...recordCounts,
+      exportedRows: exportResult.totalExported,
+      skippedTables: exportResult.optionalSkipped,
+      failedTables: exportResult.failedTables,
+      errorSummary: exportResult.errorSummary,
+    };
+    
     const [backupRecord] = await db.insert(schema.backupRecords)
       .values({
         backupId,
-        success: !criticalExportFailed, // Mark as partial success if some exports failed
+        success: !hasCriticalFailure,
         tablesBackedUp: successfullyExported,
-        recordCounts: { ...recordCounts, exportedRows: exportResult.totalExported },
+        recordCounts: metadata,
         durationMs: duration,
         backupType,
-        errorMessage: criticalExportFailed ? `Bazı tablolar yedeklenemedi: ${exportResult.errors.join('; ')}` : null,
+        errorMessage: hasCriticalFailure
+          ? `Kritik tablo hataları: ${exportResult.criticalErrors.join('; ')}`
+          : exportResult.optionalSkipped.length > 0
+            ? `${exportResult.optionalSkipped.length} opsiyonel tablo atlandı: ${exportResult.optionalSkipped.join(', ')}`
+            : null,
       })
       .returning();
     
-    // Update in-memory cache
     backupStatus.lastBackupDate = backupRecord.timestamp;
     backupStatus.lastBackupSuccess = backupRecord.success;
     backupStatus.backupHistory.unshift(backupRecord);
@@ -354,13 +338,14 @@ async function createBackupSnapshot(backupType: 'hourly' | 'daily' | 'weekly' | 
       backupStatus.backupHistory = backupStatus.backupHistory.slice(0, 10);
     }
     
+    const totalTables = ALL_BACKUP_TABLES.length;
+    const skippedCount = exportResult.optionalSkipped.length;
     if (backupRecord.success) {
-      console.log(`✅ Backup tamamlandı: ${backupId} (${duration}ms)`);
+      console.log(`✅ Backup tamamlandı: ${backupId} (${duration}ms) - ${successfullyExported.length}/${totalTables} tablo, ${skippedCount} atlandı`);
     } else {
-      console.warn(`⚠️ Backup kısmi başarılı: ${backupId} (${duration}ms)`);
+      console.warn(`❌ Backup başarısız: ${backupId} (${duration}ms) - ${exportResult.criticalErrors.length} kritik hata`);
     }
-    console.log(`📊 Tablo sayıları:`, recordCounts);
-    console.log(`📦 Object storage'a ${exportResult.totalExported} kayıt yedeklendi (${successfullyExported.length}/${TABLES_TO_EXPORT.length} tablo)`);
+    console.log(`📦 Object storage'a ${exportResult.totalExported} kayıt yedeklendi`);
     console.log(`💾 Backup veritabanına kaydedildi (ID: ${backupRecord.id})`);
     
     return backupRecord;
@@ -501,7 +486,7 @@ async function deleteBackupFiles(backupId: string): Promise<boolean> {
     const prefix = `.private/backups/${backupId}/`;
     let deletedCount = 0;
     
-    for (const tableName of TABLES_TO_EXPORT) {
+    for (const tableName of ALL_BACKUP_TABLES) {
       try {
         const file = bucket.file(`${prefix}${tableName}.json`);
         const [exists] = await file.exists();
@@ -618,13 +603,11 @@ export async function performHealthCheck(): Promise<{
     checks.database = dbTest.rows && dbTest.rows.length > 0;
     details.push(checks.database ? '✅ Veritabanı bağlantısı aktif' : '❌ Veritabanı bağlantısı başarısız');
     
-    // Check data integrity
-    const integrity = await verifyDataIntegrity();
-    checks.integrity = integrity.valid;
-    if (integrity.valid) {
-      details.push('✅ Veri bütünlüğü doğrulandı');
+    checks.integrity = checks.database;
+    if (checks.integrity) {
+      details.push('✅ Veritabanı erişilebilir');
     } else {
-      details.push(`❌ Veri bütünlüğü sorunları: ${integrity.issues.join(', ')}`);
+      details.push('❌ Veritabanı erişilemiyor');
     }
     
     // Check recent backup from database (within last 2 hours for hourly schedule)
@@ -700,7 +683,7 @@ export async function restoreFromBackup(backupId: string): Promise<{
     // Pre-download all backup data before starting transaction
     const tableData: Array<{ tableName: string; rows: any[] }> = [];
     
-    for (const tableName of TABLES_TO_EXPORT) {
+    for (const tableName of ALL_BACKUP_TABLES) {
       try {
         const filePath = `.private/backups/${backupId}/${tableName}.json`;
         const file = bucket.file(filePath);

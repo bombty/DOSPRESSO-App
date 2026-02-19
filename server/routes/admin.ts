@@ -1227,6 +1227,8 @@ const router = Router();
       const lastBackup = history.length > 0 ? history[0] : null;
       const minutesAgo = lastBackup ? Math.round((Date.now() - new Date(lastBackup.timestamp).getTime()) / 60000) : null;
       
+      const metadata = lastBackup?.recordCounts as any || {};
+      
       res.json({
         lastBackup: lastBackup ? {
           id: lastBackup.id,
@@ -1236,18 +1238,27 @@ const router = Router();
           backupType: lastBackup.backupType,
           durationMs: lastBackup.durationMs,
           errorMessage: lastBackup.errorMessage,
+          skippedTables: metadata.skippedTables || [],
+          failedTables: metadata.failedTables || [],
+          errorSummary: metadata.errorSummary || null,
+          tablesExported: lastBackup.tablesBackedUp?.length || 0,
         } : null,
         minutesAgo,
         schedule: 'hourly',
         retention: { hourly: 48, daily: 30, manual: 'unlimited' },
-        recentHistory: history.map(h => ({
-          id: h.id,
-          backupId: h.backupId,
-          timestamp: h.timestamp,
-          success: h.success,
-          backupType: h.backupType,
-          durationMs: h.durationMs,
-        })),
+        recentHistory: history.map(h => {
+          const hMeta = h.recordCounts as any || {};
+          return {
+            id: h.id,
+            backupId: h.backupId,
+            timestamp: h.timestamp,
+            success: h.success,
+            backupType: h.backupType,
+            durationMs: h.durationMs,
+            skippedCount: (hMeta.skippedTables || []).length,
+            failedCount: (hMeta.failedTables || []).length,
+          };
+        }),
       });
     } catch (error: any) {
       console.error("Error fetching backup status:", error);
