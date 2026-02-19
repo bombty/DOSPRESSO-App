@@ -2665,7 +2665,8 @@ const router = Router();
         return res.status(403).json({ message: "Yetkiniz yok" });
       }
 
-      await storage.createNotification({
+      console.log("[DEBUG-TEST-NOTIF] req.user.id:", user.id, "type:", typeof user.id);
+      const created = await storage.createNotification({
         userId: user.id,
         branchId: user.branchId || null,
         type: "system",
@@ -2674,6 +2675,7 @@ const router = Router();
         isRead: false,
         data: null,
       });
+      console.log("[DEBUG-TEST-NOTIF] inserted notification id:", created.id, "userId:", created.userId);
 
       res.json({ success: true });
     } catch (err: any) {
