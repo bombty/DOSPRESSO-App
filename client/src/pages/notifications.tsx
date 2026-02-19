@@ -31,6 +31,7 @@ import {
   Package,
   MapPin,
   RefreshCw,
+  Plus,
 } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
 import { tr } from "date-fns/locale";
@@ -242,6 +243,27 @@ export default function Notifications() {
     },
   });
 
+  const testNotificationMutation = useMutation({
+    mutationFn: async () => {
+      await apiRequest('POST', '/api/admin/test-notification');
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/notifications'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/notifications/unread-count'] });
+      toast({
+        title: "Başarılı",
+        description: "Test bildirimi oluşturuldu",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Hata",
+        description: "Test bildirimi oluşturulamadı",
+        variant: "destructive",
+      });
+    },
+  });
+
   const filteredNotifications = (notifications || []).filter(n => {
     if (categoryFilter === "all") return true;
     const category = NOTIFICATION_CATEGORIES[categoryFilter];
@@ -378,6 +400,18 @@ export default function Notifications() {
             </Select>
           )}
           
+          {isAdmin && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => testNotificationMutation.mutate()}
+              disabled={testNotificationMutation.isPending}
+              data-testid="button-test-notification"
+            >
+              <Plus className="w-3.5 h-3.5 mr-1.5" />
+              {testNotificationMutation.isPending ? "Gönderiliyor..." : "Test Bildirimi Gönder"}
+            </Button>
+          )}
           {unreadCount > 0 && activeTab === "notifications" && (
             <AlertDialog>
               <AlertDialogTrigger asChild>
