@@ -37,6 +37,29 @@ interface RestorePoint {
   type: string;
 }
 
+interface BackupStatusData {
+  lastBackup: {
+    id: number;
+    backupId: string;
+    timestamp: string;
+    success: boolean;
+    backupType: string;
+    durationMs: number;
+    errorMessage: string | null;
+  } | null;
+  minutesAgo: number | null;
+  schedule: string;
+  retention: { hourly: number; daily: number; manual: string };
+  recentHistory: Array<{
+    id: number;
+    backupId: string;
+    timestamp: string;
+    success: boolean;
+    backupType: string;
+    durationMs: number;
+  }>;
+}
+
 export default function AdminYedekleme() {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -46,6 +69,11 @@ export default function AdminYedekleme() {
   if (user?.role !== "admin") {
     return <Redirect to="/" />;
   }
+
+  const { data: backupStatusData } = useQuery<BackupStatusData>({
+    queryKey: ["/api/system/backup-status"],
+    refetchInterval: 60000,
+  });
 
   const { data: restorePoints, isLoading: isLoadingPoints } = useQuery<RestorePoint[]>({
     queryKey: ["/api/system/restore-points"],
@@ -59,6 +87,7 @@ export default function AdminYedekleme() {
     onSuccess: (data: any) => {
       toast({ title: "Yedekleme Tamamlandı", description: data.message || "Yedek başarıyla oluşturuldu" });
       queryClient.invalidateQueries({ queryKey: ["/api/system/restore-points"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/system/backup-status"] });
     },
     onError: (error: any) => {
       toast({ title: "Hata", description: error.message || "Yedekleme sırasında hata oluştu", variant: "destructive" });
@@ -132,34 +161,69 @@ export default function AdminYedekleme() {
         </Button>
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
-        <Card>
-          <CardContent className="p-4">
+      <Card data-testid="card-backup-status">
+        <CardContent className="p-4">
+          {!backupStatusData ? (
             <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-green-500/10">
-                <CheckCircle className="h-5 w-5 text-green-600" />
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Sistem Durumu</p>
-                <p className="font-semibold text-green-600">Güvenli</p>
+              <Skeleton className="h-10 w-10 rounded-lg" />
+              <div className="space-y-2">
+                <Skeleton className="h-4 w-32" />
+                <Skeleton className="h-3 w-48" />
               </div>
             </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
+          ) : (
+          <>
+          <div className="flex items-center justify-between gap-3 flex-wrap">
             <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-blue-500/10">
-                <Server className="h-5 w-5 text-blue-600" />
+              <div className={`p-2 rounded-lg ${backupStatusData.lastBackup?.success ? 'bg-green-500/10' : 'bg-red-500/10'}`}>
+                {backupStatusData.lastBackup?.success ? (
+                  <CheckCircle className="h-5 w-5 text-green-600" data-testid="icon-backup-success" />
+                ) : (
+                  <AlertTriangle className="h-5 w-5 text-red-600" data-testid="icon-backup-fail" />
+                )}
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Yedek Noktası</p>
-                <p className="font-semibold">{restorePoints?.length || 0} adet</p>
+                <p className="text-sm text-muted-foreground">Son Yedekleme</p>
+                {backupStatusData.lastBackup ? (
+                  <div>
+                    <p className="font-semibold" data-testid="text-backup-ago">
+                      {backupStatusData.minutesAgo !== null
+                        ? backupStatusData.minutesAgo < 60
+                          ? `${backupStatusData.minutesAgo} dk önce`
+                          : `${Math.round(backupStatusData.minutesAgo / 60)} saat önce`
+                        : '—'}
+                    </p>
+                    <p className="text-xs text-muted-foreground" data-testid="text-backup-time">
+                      {format(new Date(backupStatusData.lastBackup.timestamp), "dd MMM yyyy HH:mm:ss", { locale: tr })}
+                    </p>
+                  </div>
+                ) : (
+                  <p className="font-semibold text-muted-foreground">Henüz yedek yok</p>
+                )}
               </div>
             </div>
-          </CardContent>
-        </Card>
-      </div>
+            <div className="flex items-center gap-2 flex-wrap">
+              {backupStatusData.lastBackup && (
+                <Badge variant="secondary" data-testid="badge-backup-type">
+                  {backupStatusData.lastBackup.backupType === 'hourly' ? 'Saatlik' :
+                   backupStatusData.lastBackup.backupType === 'daily' ? 'Günlük' :
+                   backupStatusData.lastBackup.backupType === 'manual' ? 'Manuel' : backupStatusData.lastBackup.backupType}
+                </Badge>
+              )}
+              <Badge variant={backupStatusData.lastBackup?.success ? "secondary" : "destructive"} data-testid="badge-backup-status">
+                {backupStatusData.lastBackup?.success ? 'Başarılı' : 'Başarısız'}
+              </Badge>
+            </div>
+          </div>
+          <div className="mt-3 pt-3 border-t flex items-center justify-between gap-2 flex-wrap text-xs text-muted-foreground">
+            <span>Zamanlama: Saatlik (RPO ≤ 1 saat)</span>
+            <span>Saklama: {backupStatusData.retention.hourly} saatlik / {backupStatusData.retention.daily} günlük</span>
+            <span>{restorePoints?.length || 0} geri yükleme noktası</span>
+          </div>
+          </>
+          )}
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader className="py-3">

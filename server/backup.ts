@@ -297,7 +297,7 @@ async function verifyDataIntegrity(): Promise<{ valid: boolean; issues: string[]
 }
 
 // Create a backup snapshot and persist to database + object storage
-async function createBackupSnapshot(backupType: 'daily' | 'weekly' | 'manual' = 'daily'): Promise<schema.BackupRecord> {
+async function createBackupSnapshot(backupType: 'hourly' | 'daily' | 'weekly' | 'manual' = 'hourly'): Promise<schema.BackupRecord> {
   const startTime = Date.now();
   const backupId = `backup_${Date.now()}_${Math.random().toString(36).substring(7)}`;
   
@@ -439,8 +439,18 @@ async function notifyAdminsAboutBackup(backupRecord: schema.BackupRecord): Promi
   }
 }
 
-// Daily backup scheduler - runs every day at midnight (00:00 Turkey time)
+// Hourly backup scheduler with mutex lock to prevent overlapping runs
 let backupSchedulerRunning = false;
+let backupJobRunning = false;
+let hourlyIntervalHandle: ReturnType<typeof setInterval> | null = null;
+
+const RETENTION_LIMITS = {
+  hourly: 48,
+  daily: 30,
+  manual: Infinity,
+} as const;
+
+const HOURLY_INTERVAL_MS = 60 * 60 * 1000;
 
 export async function startWeeklyBackupScheduler(): Promise<void> {
   if (backupSchedulerRunning) {
@@ -448,7 +458,6 @@ export async function startWeeklyBackupScheduler(): Promise<void> {
     return;
   }
   
-  // Skip backup scheduler if object storage not configured
   const bucketId = process.env.DEFAULT_OBJECT_STORAGE_BUCKET_ID;
   if (!bucketId) {
     console.log('⚠️ Object storage bucket yapılandırılmadı, backup scheduler başlatılmadı');
@@ -456,45 +465,102 @@ export async function startWeeklyBackupScheduler(): Promise<void> {
   }
   
   backupSchedulerRunning = true;
-  console.log('📅 Günlük backup scheduler başlatıldı');
+  console.log('📅 Saatlik backup scheduler başlatıldı (RPO ≤ 1 saat)');
   
-  // Load backup history from database
   await loadBackupHistory();
   
-  // Skip initial backup on startup - only schedule for midnight
-  // This prevents Object Storage initialization errors on startup
-  console.log('⏳ İlk backup atlandı - gece yarısı çalıştırılacak');
+  console.log('⏳ İlk backup atlandı - 1 saat sonra ilk saatlik backup çalışacak');
   
-  // Calculate time until next midnight (Turkey time, UTC+3)
-  const scheduleNextBackup = () => {
-    const now = new Date();
-    const turkeyOffset = 3 * 60 * 60 * 1000;
-    const nowTurkey = new Date(now.getTime() + turkeyOffset);
-    
-    const nextMidnight = new Date(nowTurkey);
-    nextMidnight.setUTCDate(nextMidnight.getUTCDate() + 1);
-    nextMidnight.setUTCHours(0, 0, 0, 0);
-    
-    const nextBackupTime = new Date(nextMidnight.getTime() - turkeyOffset);
-    const msUntilBackup = nextBackupTime.getTime() - now.getTime();
-    
-    console.log(`⏰ Sonraki backup: ${nextBackupTime.toISOString()} (${Math.round(msUntilBackup / 1000 / 60 / 60)} saat sonra)`);
-    
-    setTimeout(async () => {
-      await runBackupWithNotification();
-      scheduleNextBackup();
-    }, msUntilBackup);
-  };
+  hourlyIntervalHandle = setInterval(async () => {
+    await runHourlyBackupWithRetention();
+  }, HOURLY_INTERVAL_MS);
   
-  scheduleNextBackup();
+  console.log(`⏰ Saatlik backup aktif: her ${HOURLY_INTERVAL_MS / 1000 / 60} dakikada bir çalışacak`);
 }
 
-// Run backup and send notifications
-async function runBackupWithNotification(): Promise<schema.BackupRecord | null> {
+async function runHourlyBackupWithRetention(): Promise<void> {
+  if (backupJobRunning) {
+    console.log('⏳ Önceki backup hala çalışıyor, bu tur atlanıyor (mutex)');
+    return;
+  }
+  backupJobRunning = true;
   try {
-    console.log('🔄 Günlük backup çalıştırılıyor...');
-    const backupRecord = await createBackupSnapshot('daily');
-    await notifyAdminsAboutBackup(backupRecord);
+    await runBackupWithNotification('hourly');
+    await enforceRetentionPolicy();
+  } finally {
+    backupJobRunning = false;
+  }
+}
+
+async function deleteBackupFiles(backupId: string): Promise<boolean> {
+  try {
+    const bucketId = getBackupBucketId();
+    if (!bucketId) return true;
+    
+    const bucket = objectStorageClient.bucket(bucketId);
+    const prefix = `.private/backups/${backupId}/`;
+    let deletedCount = 0;
+    
+    for (const tableName of TABLES_TO_EXPORT) {
+      try {
+        const file = bucket.file(`${prefix}${tableName}.json`);
+        const [exists] = await file.exists();
+        if (exists) {
+          await file.delete();
+          deletedCount++;
+        }
+      } catch {
+      }
+    }
+    console.log(`🗑️ Object storage dosyaları silindi: ${backupId} (${deletedCount} dosya)`);
+    return true;
+  } catch (error: any) {
+    console.error(`⚠️ Object storage dosyaları silinemedi (${backupId}):`, error?.message);
+    return false;
+  }
+}
+
+async function enforceRetentionPolicy(): Promise<void> {
+  try {
+    for (const backupType of ['hourly', 'daily'] as const) {
+      const limit = RETENTION_LIMITS[backupType];
+      
+      const allRecords = await db.select()
+        .from(schema.backupRecords)
+        .where(eq(schema.backupRecords.backupType, backupType))
+        .orderBy(desc(schema.backupRecords.timestamp));
+      
+      if (allRecords.length <= limit) continue;
+      
+      const toDelete = allRecords.slice(limit);
+      console.log(`🗑️ Retention: ${backupType} backuplarından ${toDelete.length} eski kayıt siliniyor (limit: ${limit})`);
+      
+      for (const record of toDelete) {
+        const filesDeleted = await deleteBackupFiles(record.backupId);
+        if (filesDeleted) {
+          await db.delete(schema.backupRecords)
+            .where(eq(schema.backupRecords.id, record.id));
+        } else {
+          console.warn(`⚠️ Object storage dosyaları silinemedi, DB kaydı korunuyor: ${record.backupId}`);
+        }
+      }
+      
+      console.log(`✅ Retention tamamlandı: ${backupType} (${allRecords.length} → ${limit})`);
+    }
+  } catch (error: any) {
+    console.error('⚠️ Retention politikası uygulanırken hata:', error?.message);
+  }
+}
+
+
+// Run backup and send notifications
+async function runBackupWithNotification(type: 'hourly' | 'daily' | 'manual' = 'hourly'): Promise<schema.BackupRecord | null> {
+  try {
+    console.log(`🔄 ${type} backup çalıştırılıyor...`);
+    const backupRecord = await createBackupSnapshot(type);
+    if (!backupRecord.success || type === 'manual') {
+      await notifyAdminsAboutBackup(backupRecord);
+    }
     return backupRecord;
   } catch (error: any) {
     console.error('❌ Backup sırasında hata oluştu:', error?.message || error);
@@ -561,7 +627,7 @@ export async function performHealthCheck(): Promise<{
       details.push(`❌ Veri bütünlüğü sorunları: ${integrity.issues.join(', ')}`);
     }
     
-    // Check recent backup from database (within last 8 days)
+    // Check recent backup from database (within last 2 hours for hourly schedule)
     try {
       const recentBackups = await db.select()
         .from(schema.backupRecords)
@@ -571,11 +637,11 @@ export async function performHealthCheck(): Promise<{
       
       if (recentBackups.length > 0) {
         const lastBackup = recentBackups[0];
-        const daysSinceBackup = (Date.now() - new Date(lastBackup.timestamp).getTime()) / (1000 * 60 * 60 * 24);
-        checks.recentBackup = daysSinceBackup <= 8;
+        const hoursSinceBackup = (Date.now() - new Date(lastBackup.timestamp).getTime()) / (1000 * 60 * 60);
+        checks.recentBackup = hoursSinceBackup <= 2;
         details.push(checks.recentBackup 
-          ? `✅ Son başarılı backup: ${new Date(lastBackup.timestamp).toLocaleString('tr-TR')}`
-          : `⚠️ Son backup ${Math.round(daysSinceBackup)} gün önce alındı`);
+          ? `✅ Son başarılı backup: ${new Date(lastBackup.timestamp).toLocaleString('tr-TR')} (${Math.round(hoursSinceBackup * 60)} dk önce)`
+          : `⚠️ Son backup ${Math.round(hoursSinceBackup)} saat önce alındı`);
       } else {
         details.push('⚠️ Henüz backup alınmadı');
       }

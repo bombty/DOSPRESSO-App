@@ -1214,11 +1214,51 @@ const router = Router();
     }
   });
 
+  router.get('/api/system/backup-status', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      if (user.role !== 'admin' && user.role !== 'genel_mudur') {
+        return res.status(403).json({ message: 'Yetkiniz yok' });
+      }
+      
+      const { getBackupHistory } = await import('../backup');
+      const history = await getBackupHistory(5);
+      
+      const lastBackup = history.length > 0 ? history[0] : null;
+      const minutesAgo = lastBackup ? Math.round((Date.now() - new Date(lastBackup.timestamp).getTime()) / 60000) : null;
+      
+      res.json({
+        lastBackup: lastBackup ? {
+          id: lastBackup.id,
+          backupId: lastBackup.backupId,
+          timestamp: lastBackup.timestamp,
+          success: lastBackup.success,
+          backupType: lastBackup.backupType,
+          durationMs: lastBackup.durationMs,
+          errorMessage: lastBackup.errorMessage,
+        } : null,
+        minutesAgo,
+        schedule: 'hourly',
+        retention: { hourly: 48, daily: 30, manual: 'unlimited' },
+        recentHistory: history.map(h => ({
+          id: h.id,
+          backupId: h.backupId,
+          timestamp: h.timestamp,
+          success: h.success,
+          backupType: h.backupType,
+          durationMs: h.durationMs,
+        })),
+      });
+    } catch (error: any) {
+      console.error("Error fetching backup status:", error);
+      res.status(500).json({ message: "Backup durumu alınırken hata oluştu" });
+    }
+  });
+
   router.post('/api/system/backup', isAuthenticated, async (req: any, res) => {
     try {
       const user = req.user!;
       
-      // Only admin can trigger manual backup
       if (user.role !== 'admin') {
         return res.status(403).json({ message: 'Bu işlem yalnızca admin rolü tarafından yapılabilir' });
       }
@@ -1239,6 +1279,7 @@ const router = Router();
       res.status(500).json({ message: "Backup tetiklenirken hata oluştu" });
     }
   });
+
 
   router.post('/api/system/restore', isAuthenticated, async (req: any, res) => {
     try {
