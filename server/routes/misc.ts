@@ -3,6 +3,7 @@ import { db } from "../db";
 import { storage } from "../storage";
 import { isAuthenticated } from "../localAuth";
 import { hasPermission, type UserRoleType, getUserPermissions, getRoleAccessibleModules } from "../permission-service";
+import { parsePagination, wrapPaginatedResponse } from "./helpers";
 import { eq, desc, asc, and, or, gte, lte, sql, inArray, isNull, not, ne, count, sum, avg, max } from "drizzle-orm";
 import { sanitizeUser, sanitizeUsers, sanitizeUserForRole, sanitizeUsersForRole } from "../security";
 import { buildMenuForUser } from "../menu-service";
@@ -9052,10 +9053,9 @@ Dusuk puanli alanlara odaklan ve pozitif, motive edici ol. JSON dizisi olarak ya
   router.get('/api/notifications', isAuthenticated, async (req: any, res) => {
     try {
       const user = req.user!;
-      const { type, branchId, limit: limitParam, offset: offsetParam, viewAll } = req.query;
+      const { type, branchId, viewAll } = req.query;
+      const pag = parsePagination(req.query);
       
-      const limitVal = Math.min(parseInt(limitParam as string) || 100, 200);
-      const offsetVal = parseInt(offsetParam as string) || 0;
       const userRole = user.role as any;
       const isAdmin = userRole === 'admin' || userRole === 'ceo';
       const wantsAll = viewAll === 'true' && isAdmin;
@@ -9074,13 +9074,21 @@ Dusuk puanli alanlara odaklan ve pozitif, motive edici ol. JSON dizisi olarak ya
         conditions.push(eq(notifications.type, type as string));
       }
       
-      const results = await db.select().from(notifications)
-        .where(conditions.length > 0 ? and(...conditions) : undefined)
-        .orderBy(desc(notifications.createdAt))
-        .limit(limitVal)
-        .offset(offsetVal);
+      const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
       
-      res.json(results);
+      const results = await db.select().from(notifications)
+        .where(whereClause)
+        .orderBy(desc(notifications.createdAt))
+        .limit(pag.limit)
+        .offset(pag.offset);
+      
+      if (pag.wantsPagination) {
+        const [totalResult] = await db.select({ count: count() }).from(notifications).where(whereClause);
+        const total = totalResult?.count ?? 0;
+        res.json(wrapPaginatedResponse(results, total, pag));
+      } else {
+        res.json(results);
+      }
     } catch (error: any) {
       console.error("Error fetching notifications:", error);
       res.status(500).json({ message: "Bildirimler alınamadı" });

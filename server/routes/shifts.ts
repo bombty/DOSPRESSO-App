@@ -3,6 +3,7 @@ import { db } from "../db";
 import { storage } from "../storage";
 import { isAuthenticated } from "../localAuth";
 import { isHQRole, isBranchRole, type UserRoleType } from "@shared/schema";
+import { parsePagination, wrapPaginatedResponse } from "./helpers";
 import {
   shifts,
   shiftCorrections,
@@ -1216,6 +1217,7 @@ router.get('/api/shifts', isAuthenticated, async (req: any, res) => {
   try {
     const user = req.user!;
     const role = user.role as UserRoleType;
+    const pag = parsePagination(req.query);
     
     let branchId: number | undefined = req.query.branchId ? parseInt(req.query.branchId as string) : undefined;
     
@@ -1228,7 +1230,14 @@ router.get('/api/shifts', isAuthenticated, async (req: any, res) => {
     const assignedToId = req.query.assignedToId as string | undefined;
     
     const allShifts = await storage.getShifts(branchId, assignedToId, dateFrom, dateTo);
-    res.json(allShifts);
+    
+    if (pag.wantsPagination) {
+      const total = allShifts.length;
+      const sliced = allShifts.slice(pag.offset, pag.offset + pag.limit);
+      res.json(wrapPaginatedResponse(sliced, total, pag));
+    } else {
+      res.json(allShifts);
+    }
   } catch (error: any) {
     console.error("Error fetching shifts:", error);
     res.status(500).json({ message: "Vardiyalar yüklenirken hata oluştu" });

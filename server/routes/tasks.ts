@@ -3,6 +3,7 @@ import { db } from "../db";
 import { storage } from "../storage";
 import { isAuthenticated } from "../localAuth";
 import { eq, desc, asc, and, or, gte, lte, sql, inArray, isNull, not, ne, between, like, ilike, count, sum, avg, max, min } from "drizzle-orm";
+import { parsePagination, wrapPaginatedResponse, sliceForPagination } from "./helpers";
 import {
   hasPermission,
   isHQRole,
@@ -43,6 +44,7 @@ const router = Router();
       const user = req.user!;
       const requestedBranchId = req.query.branchId ? parseInt(req.query.branchId as string) : undefined;
       const requestedAssignedToId = req.query.assignedToId as string | undefined;
+      const pag = parsePagination(req.query as Record<string, any>);
       
       ensurePermission(user, 'tasks', 'view');
       
@@ -55,46 +57,36 @@ const router = Router();
         }
         
         const isSupervisorRole = user.role === 'supervisor' || user.role === 'supervisor_buddy';
-        if (isSupervisorRole) {
-          let allTasks = await storage.getTasks(user.branchId);
-          let deliveredTasks = allTasks.filter((t: any) => t.isDelivered !== false);
+        const branchTasks = isSupervisorRole
+          ? await storage.getTasks(user.branchId)
+          : await storage.getTasks(user.branchId, user.id);
+        let deliveredTasks = branchTasks.filter((t: any) => t.isDelivered !== false);
 
-          const today = new Date().toISOString().split('T')[0];
-          const activeLeaves = await db.select().from(leaveRequests)
-            .where(and(
-              eq(leaveRequests.userId, user.id),
-              eq(leaveRequests.status, 'approved'),
-              lte(leaveRequests.startDate, today),
-              gte(leaveRequests.endDate, today)
-            ));
-          if (activeLeaves.length > 0) {
-            const hideStatuses = ['beklemede', 'goruldu', 'devam_ediyor', 'cevap_bekliyor', 'sure_uzatma_talebi'];
-            deliveredTasks = deliveredTasks.filter((t: any) => !hideStatuses.includes(t.status));
-          }
-
-          return res.json(deliveredTasks);
-        } else {
-          let allTasks = await storage.getTasks(user.branchId, user.id);
-          let deliveredTasks = allTasks.filter((t: any) => t.isDelivered !== false);
-
-          const today = new Date().toISOString().split('T')[0];
-          const activeLeaves = await db.select().from(leaveRequests)
-            .where(and(
-              eq(leaveRequests.userId, user.id),
-              eq(leaveRequests.status, 'approved'),
-              lte(leaveRequests.startDate, today),
-              gte(leaveRequests.endDate, today)
-            ));
-          if (activeLeaves.length > 0) {
-            const hideStatuses = ['beklemede', 'goruldu', 'devam_ediyor', 'cevap_bekliyor', 'sure_uzatma_talebi'];
-            deliveredTasks = deliveredTasks.filter((t: any) => !hideStatuses.includes(t.status));
-          }
-
-          return res.json(deliveredTasks);
+        const today = new Date().toISOString().split('T')[0];
+        const activeLeaves = await db.select().from(leaveRequests)
+          .where(and(
+            eq(leaveRequests.userId, user.id),
+            eq(leaveRequests.status, 'approved'),
+            lte(leaveRequests.startDate, today),
+            gte(leaveRequests.endDate, today)
+          ));
+        if (activeLeaves.length > 0) {
+          const hideStatuses = ['beklemede', 'goruldu', 'devam_ediyor', 'cevap_bekliyor', 'sure_uzatma_talebi'];
+          deliveredTasks = deliveredTasks.filter((t: any) => !hideStatuses.includes(t.status));
         }
+
+        if (pag.wantsPagination) {
+          const { sliced, total } = sliceForPagination(deliveredTasks, pag);
+          return res.json(wrapPaginatedResponse(sliced, total, pag));
+        }
+        return res.json(deliveredTasks);
       }
       
       const tasks = await storage.getTasks(requestedBranchId, requestedAssignedToId);
+      if (pag.wantsPagination) {
+        const { sliced, total } = sliceForPagination(tasks, pag);
+        return res.json(wrapPaginatedResponse(sliced, total, pag));
+      }
       res.json(tasks);
     } catch (error: any) {
       console.error("Error fetching tasks:", error);
