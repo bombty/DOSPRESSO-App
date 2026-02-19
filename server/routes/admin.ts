@@ -2658,4 +2658,28 @@ const router = Router();
     }
   });
 
+  router.post("/api/admin/test-notification", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      if (!user.role || !isHQRole(user.role as UserRoleType)) {
+        return res.status(403).json({ message: "Yetkiniz yok" });
+      }
+
+      await storage.createNotification({
+        userId: user.id,
+        branchId: user.branchId || null,
+        type: "system",
+        title: "Test Bildirimi",
+        message: "Bu bir test bildirimidir.",
+        isRead: false,
+        data: null,
+      });
+
+      res.json({ success: true });
+    } catch (err: any) {
+      console.error("Test notification error:", err);
+      res.status(500).json({ error: "Failed to create test notification" });
+    }
+  });
+
 export default router;
