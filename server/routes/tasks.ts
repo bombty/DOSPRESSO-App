@@ -15,6 +15,7 @@ import {
   leaveRequests,
 } from "@shared/schema";
 import { sendNotificationEmail } from "../email";
+import { auditLog } from "../audit";
 import { onTaskAssigned, onTaskCompleted, resolveEventTask } from "../event-task-generator";
 
 class AuthorizationError extends Error {
@@ -544,6 +545,8 @@ const router = Router();
         console.error("Error in HQ admin notification:", hqAdminError);
       }
       
+      auditLog(req, { eventType: "task.created", action: "created", resource: "tasks", resourceId: String(task.id), after: { description: validatedData.description, assignedToId: validatedData.assignedToId || userId, branchId: taskBranchId } });
+
       if (assigneeId && assigneeId !== userId) {
         const assigner = await storage.getUser(userId);
         const assignerName2 = assigner?.firstName && assigner?.lastName 
@@ -584,7 +587,9 @@ const router = Router();
       }
       
       const task = await storage.updateTask(id, { status: "onaylandi" });
-      
+
+      auditLog(req, { eventType: "task.status_changed", action: "verified", resource: "tasks", resourceId: String(id), before: { status: existingTask.status }, after: { status: "onaylandi" } });
+
       if (existingTask.assignedToId && existingTask.assignedToId !== user.id) {
         try {
           const verifier = await storage.getUser(user.id);
@@ -654,7 +659,9 @@ const router = Router();
       }
       
       const task = await storage.updateTask(id, updates);
-      
+
+      auditLog(req, { eventType: "task.status_changed", action: "rejected", resource: "tasks", resourceId: String(id), before: { status: existingTask.status }, after: { status: "reddedildi" }, details: { reason } });
+
       if (existingTask.assignedToId && existingTask.assignedToId !== user.id) {
         try {
           const rejector = await storage.getUser(user.id);
@@ -1111,7 +1118,9 @@ const router = Router();
       }
       
       const updatedTask = await storage.updateTask(taskId, updates);
-      
+
+      auditLog(req, { eventType: "task.status_changed", action: "status_changed", resource: "tasks", resourceId: String(taskId), before: { status: currentStatus }, after: { status }, details: { note } });
+
       try {
         await storage.addNoteToTask(taskId, note || transitionMessage, user.id);
       } catch (historyError) {

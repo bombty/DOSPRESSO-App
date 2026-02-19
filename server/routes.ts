@@ -14,6 +14,7 @@ import { registerExportRoutes } from "./export-routes";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated, createKioskSession, isKioskAuthenticated, deleteKioskSession, updateKioskStation } from "./localAuth";
+import { auditMiddleware } from "./audit";
 import * as XLSX from "xlsx";
 import QRCode from "qrcode";
 import { sanitizeUser, sanitizeUsers, sanitizeUserForRole, sanitizeUsersForRole } from "./security";
@@ -598,6 +599,8 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
 
   // Apply general rate limit to all API routes
   app.use('/api/', generalLimiter);
+
+  app.use(auditMiddleware());
 
   await setupAuth(app, authLimiter);
 

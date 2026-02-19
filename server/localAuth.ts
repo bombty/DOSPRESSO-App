@@ -9,6 +9,7 @@ import { storage } from "./storage";
 import { db } from "./db";
 import { branches } from "@shared/schema";
 import { eq } from "drizzle-orm";
+import { auditLog } from "./audit";
 
 const loginSchema = z.object({
   username: z.string().min(1, "Kullanıcı adı zorunludur"),
@@ -189,6 +190,14 @@ export async function setupAuth(app: Express, authLimiter?: any) {
               return res.status(500).json({ error: "Oturum kaydedilemedi" });
             }
             
+            auditLog(req, {
+              eventType: "auth.login_success",
+              action: "login",
+              resource: "auth",
+              resourceId: (user as any).id,
+              details: { username: (user as any).username, authType: "user" },
+            });
+
             return res.json({ 
               success: true,
               authType: 'user',
@@ -237,13 +246,29 @@ export async function setupAuth(app: Express, authLimiter?: any) {
         return;
       }
       
-      // Her iki giriş de başarısız
+      auditLog(req, {
+        eventType: "auth.login_failed",
+        action: "login_failed",
+        resource: "auth",
+        details: { username, reason: info?.message || "Invalid credentials" },
+      });
+
       return res.status(401).json({ error: info?.message || "Kullanıcı adı veya şifre hatalı" });
     })(req, res, next);
   });
 
-  // Logout handler (shared logic)
   const logoutHandler = (req: Request, res: any) => {
+    const logoutUser = req.user as any;
+    if (logoutUser) {
+      auditLog(req, {
+        eventType: "auth.logout",
+        action: "logout",
+        resource: "auth",
+        resourceId: logoutUser.id,
+        details: { username: logoutUser.username },
+      });
+    }
+
     (req as any).logout((err: any) => {
       if (err) {
         console.error("[Auth] Logout error:", err);

@@ -3,6 +3,7 @@ import { storage } from "./storage";
 import { sql, desc, eq } from "drizzle-orm";
 import * as schema from "@shared/schema";
 import { objectStorageClient } from "./objectStorage";
+import { auditLogSystem } from "./audit";
 
 // Backup status tracking (cached from database)
 interface BackupStatus {
@@ -553,11 +554,28 @@ async function runBackupWithNotification(type: 'hourly' | 'daily' | 'manual' = '
   }
 }
 
-// Manual backup trigger (for API endpoint)
 export async function triggerManualBackup(): Promise<schema.BackupRecord> {
   console.log('🔄 Manuel backup tetiklendi');
+  auditLogSystem({
+    eventType: "backup.manual_triggered",
+    action: "manual_triggered",
+    resource: "backup",
+  });
   const backupRecord = await createBackupSnapshot('manual');
   await notifyAdminsAboutBackup(backupRecord);
+
+  auditLogSystem({
+    eventType: backupRecord.success ? "backup.completed" : "backup.failed",
+    action: backupRecord.success ? "completed" : "failed",
+    resource: "backup",
+    resourceId: String(backupRecord.id),
+    details: {
+      backupId: backupRecord.backupId,
+      tablesBackedUp: backupRecord.tablesBackedUp?.length,
+      success: backupRecord.success,
+    },
+  });
+
   return backupRecord;
 }
 

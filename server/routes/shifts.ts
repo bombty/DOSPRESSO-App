@@ -13,6 +13,7 @@ import {
 } from "@shared/schema";
 import { eq, desc, and, sql } from "drizzle-orm";
 import { analyzeDressCodePhoto } from "../ai";
+import { auditLog } from "../audit";
 
 const router = Router();
 
@@ -1326,6 +1327,8 @@ router.post('/api/shifts', isAuthenticated, async (req: any, res) => {
       }
     }
     
+    auditLog(req, { eventType: "shift.created", action: "created", resource: "shifts", resourceId: String(shift.id), after: { shiftDate: validated.shiftDate, startTime: validated.startTime, endTime: validated.endTime, branchId: validated.branchId, assignedToId: validated.assignedToId } });
+
     res.status(201).json(shift);
   } catch (error: any) {
     console.error("Error creating shift:", error);
@@ -1534,6 +1537,8 @@ router.patch('/api/shifts/:id', isAuthenticated, async (req: any, res) => {
       }
     }
     
+    auditLog(req, { eventType: "shift.updated", action: "updated", resource: "shifts", resourceId: String(id), before: { shiftDate: shift.shiftDate, startTime: shift.startTime, endTime: shift.endTime, assignedToId: shift.assignedToId }, after: validated });
+
     res.json(updated);
   } catch (error: any) {
     console.error("Error updating shift:", error);
@@ -1642,6 +1647,7 @@ router.delete('/api/shifts/:id', isAuthenticated, async (req: any, res) => {
     }
     
     await storage.deleteShift(id);
+    auditLog(req, { eventType: "shift.deleted", action: "deleted", resource: "shifts", resourceId: String(id), before: { shiftDate: shift.shiftDate, startTime: shift.startTime, endTime: shift.endTime, assignedToId: shift.assignedToId, branchId: shift.branchId } });
     res.json({ message: "Vardiya silindi" });
   } catch (error: any) {
     console.error("Error deleting shift:", error);

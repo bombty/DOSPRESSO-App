@@ -22,6 +22,7 @@ import {
   insertEquipmentCatalogSchema,
 } from "@shared/schema";
 import { generateEquipmentKnowledgeFromManual, researchEquipmentTroubleshooting } from "../ai";
+import { auditLog } from "../audit";
 
 class AuthorizationError extends Error {
   constructor(message?: string) {
@@ -203,6 +204,7 @@ const router = Router();
       invalidateCache('equipment');
       invalidateCache('critical-equipment');
       
+      auditLog(req, { eventType: "equipment.created", action: "created", resource: "equipment", resourceId: String(equipmentItem.id), after: { name: validatedData.name, branchId: equipmentBranchId } });
       res.json({ ...equipmentItem, qrCodeUrl });
     } catch (error: any) {
       console.error("Error creating equipment:", error);
@@ -241,6 +243,7 @@ const router = Router();
       invalidateCache('equipment');
       invalidateCache('critical-equipment');
       
+      auditLog(req, { eventType: "equipment.updated", action: "updated", resource: "equipment", resourceId: String(id), before: { name: existingEquipment.name, status: existingEquipment.status }, after: validatedData });
       res.json(equipmentItem);
     } catch (error: any) {
       console.error("Error updating equipment:", error);
@@ -407,6 +410,7 @@ const router = Router();
         equipmentId: id,
         createdById: userId,
       });
+      auditLog(req, { eventType: "equipment.fault_created", action: "created", resource: "service_requests", resourceId: String(serviceRequest.id), after: { equipmentId: id, type: validatedData.requestType } });
       res.json(serviceRequest);
     } catch (error: any) {
       console.error("Error creating service request:", error);
@@ -538,6 +542,7 @@ const router = Router();
       }
       
       const updated = await storage.updateServiceRequestStatus(id, newStatus, userId, notes);
+      auditLog(req, { eventType: newStatus === "resolved" ? "equipment.fault_resolved" : "equipment.fault_created", action: newStatus === "resolved" ? "resolved" : "status_changed", resource: "service_requests", resourceId: String(id), before: { status: serviceRequest.status }, after: { status: newStatus }, details: { equipmentId: serviceRequest.equipmentId, notes } });
       res.json(updated);
     } catch (error: any) {
       console.error("Error updating service request status:", error);

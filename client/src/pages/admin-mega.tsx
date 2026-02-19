@@ -200,8 +200,8 @@ const ADMIN_TABS: TabConfig[] = [
   },
   {
     id: "aktivite-loglari",
-    label: "Activity Logs",
-    labelTr: "Aktivite Logları",
+    label: "Audit Logs",
+    labelTr: "Denetim Gunlugu",
     icon: <Activity className="h-4 w-4" />,
     permissionModule: "activity_logs",
     group: "sistem",

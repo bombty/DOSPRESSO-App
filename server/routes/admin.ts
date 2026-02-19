@@ -34,10 +34,12 @@ import {
   employeeLeaves,
   publicHolidays,
   notifications,
+  auditLogs,
 } from "@shared/schema";
 import { getAllActionsGroupedByModule, getRoleGrants, upsertPermissionGrant, deletePermissionGrant } from "../permission-service";
 import { generateArticleEmbeddings } from "../ai";
 import { sanitizeUser, sanitizeUsers } from "../security";
+import { auditLog } from "../audit";
 
 class AuthorizationError extends Error {
   constructor(message: string) {
@@ -533,11 +535,14 @@ const router = Router();
       });
 
       const validatedData = updateSchema.parse(req.body);
+      const existingUser = await storage.getUser(id);
       const updated = await storage.updateUser(id, validatedData);
 
       if (!updated) {
         return res.status(404).json({ message: "Kullanıcı bulunamadı" });
       }
+
+      auditLog(req, { eventType: "user.updated", action: "updated", resource: "users", resourceId: id, before: existingUser ? { role: existingUser.role, branchId: existingUser.branchId } : undefined, after: validatedData });
 
       res.json(updated);
     } catch (error: any) {
@@ -574,6 +579,8 @@ const router = Router();
       if (!updated) {
         return res.status(404).json({ message: "Kullanıcı bulunamadı" });
       }
+
+      auditLog(req, { eventType: validatedData.isActive ? "user.restored" : "user.deactivated", action: validatedData.isActive ? "restored" : "deactivated", resource: "users", resourceId: id, after: { isActive: validatedData.isActive } });
 
       res.json({ 
         message: validatedData.isActive ? "Kullanıcı aktif edildi" : "Kullanıcı deaktif edildi",
@@ -673,6 +680,8 @@ const router = Router();
         await sendWelcomeEmail(targetUser.email, targetUser.username!, tempPassword);
       }
 
+      auditLog(req, { eventType: "user.updated", action: "approved", resource: "users", resourceId: id, before: { accountStatus: targetUser.accountStatus }, after: { accountStatus: "approved" }, details: { action: "approved" } });
+
       res.json({ message: "Kullanıcı onaylandı", user: updated });
     } catch (error: any) {
       console.error("Error approving user:", error);
@@ -723,6 +732,8 @@ const router = Router();
       if (targetUser.email) {
         await sendRejectionEmail(targetUser.email, reason);
       }
+
+      auditLog(req, { eventType: "user.updated", action: "rejected", resource: "users", resourceId: id, before: { accountStatus: targetUser.accountStatus }, after: { accountStatus: "rejected" }, details: { action: "rejected", reason } });
 
       res.json({ message: "Kullanıcı reddedildi" });
     } catch (error: any) {
@@ -813,7 +824,9 @@ const router = Router();
         return res.status(400).json({ message: "Kendi hesabınızı silemezsiniz" });
       }
 
+      const deletedUser = await storage.getUser(id);
       await storage.deleteUser(id);
+      auditLog(req, { eventType: "user.deleted", action: "deleted", resource: "users", resourceId: id, before: deletedUser ? { email: deletedUser.email, role: deletedUser.role } : undefined });
       res.json({ message: "Kullanıcı silindi" });
     } catch (error: any) {
       console.error("Error deleting user:", error);
@@ -866,6 +879,8 @@ const router = Router();
         accountStatus: 'approved', // Admin-created users are auto-approved
         isActive: true,
       });
+
+      auditLog(req, { eventType: "user.created", action: "created", resource: "users", resourceId: newUser.id, after: { email: data.email, role: data.role, branchId: data.branchId } });
 
       res.json(newUser);
     } catch (error: any) {
@@ -934,7 +949,9 @@ const router = Router();
       });
       
       const setting = await storage.createSiteSetting(validatedData);
-      
+
+      auditLog(req, { eventType: "settings.changed", action: "created", resource: "settings", resourceId: validatedData.key, after: validatedData });
+
       res.status(201).json(setting);
     } catch (error: any) {
       console.error("Error creating site setting:", error);
@@ -961,8 +978,11 @@ const router = Router();
         return res.status(400).json({ message: "Değer gerekli" });
       }
       
+      const existingSetting = await storage.getSiteSetting(key);
       const setting = await storage.updateSiteSetting(key, value, user.id);
-      
+
+      auditLog(req, { eventType: "settings.changed", action: "updated", resource: "settings", resourceId: key, before: existingSetting ? { value: existingSetting.value } : undefined, after: { value } });
+
       res.json(setting);
     } catch (error: any) {
       console.error("Error updating site setting:", error);
@@ -981,7 +1001,9 @@ const router = Router();
 
       const { key } = req.params;
       await storage.deleteSiteSetting(key);
-      
+
+      auditLog(req, { eventType: "settings.changed", action: "deleted", resource: "settings", resourceId: key });
+
       res.json({ message: "Ayar silindi" });
     } catch (error: any) {
       console.error("Error deleting site setting:", error);
@@ -1157,7 +1179,9 @@ const router = Router();
       const updates = updatesSchema.parse(req.body);
       
       await storage.bulkUpdateRolePermissions(updates);
-      
+
+      auditLog(req, { eventType: "role.permission_changed", action: "updated", resource: "role_permissions", details: { updates } });
+
       res.json({ message: "Rol yetkileri güncellendi" });
     } catch (error: any) {
       console.error("Error updating role permissions:", error);
@@ -1445,6 +1469,8 @@ const router = Router();
         await db.insert(emailSettings).values(data);
       }
       
+      auditLog(req, { eventType: "settings.changed", action: "updated", resource: "email_settings" });
+
       res.json({ message: "Ayarlar kaydedildi" });
     } catch (error: any) {
       console.error("Save email settings error:", error);
@@ -1517,6 +1543,8 @@ const router = Router();
         await db.insert(serviceEmailSettings).values(data);
       }
       
+      auditLog(req, { eventType: "settings.changed", action: "updated", resource: "service_email_settings" });
+
       res.json({ message: "Servis mail ayarları kaydedildi" });
     } catch (error: any) {
       console.error("Save service email settings error:", error);
@@ -1770,6 +1798,8 @@ const router = Router();
         [result] = await db.insert(aiSettings).values(updateData).returning();
       }
       
+      auditLog(req, { eventType: "settings.changed", action: "updated", resource: "ai_settings", details: { provider: data.provider } });
+
       res.json({ success: true, id: result.id });
     } catch (error: any) {
       console.error("Save AI settings error:", error);
@@ -2743,6 +2773,235 @@ const router = Router();
     } catch (err: any) {
       console.error("Test notification error:", err);
       res.status(500).json({ error: "Failed to create test notification" });
+    }
+  });
+
+  // ===============================================
+  // AUDIT LOGS - Denetim Günlüğü API
+  // ===============================================
+
+  router.get('/api/audit-logs', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      if (user.role !== 'admin' && user.role !== 'genel_mudur') {
+        return res.status(403).json({ error: 'Yetkiniz yok' });
+      }
+
+      const page = parseInt(req.query.page as string) || 1;
+      const limit = Math.min(parseInt(req.query.limit as string) || 50, 200);
+      const offset = (page - 1) * limit;
+
+      const conditions: any[] = [];
+
+      if (req.query.eventType) {
+        conditions.push(sql`${auditLogs.eventType} = ${req.query.eventType}`);
+      }
+      if (req.query.userId) {
+        conditions.push(eq(auditLogs.userId, req.query.userId as string));
+      }
+      if (req.query.resource) {
+        conditions.push(eq(auditLogs.resource, req.query.resource as string));
+      }
+      if (req.query.branchId) {
+        conditions.push(eq(auditLogs.scopeBranchId, parseInt(req.query.branchId as string)));
+      }
+      if (req.query.startDate) {
+        conditions.push(sql`${auditLogs.createdAt} >= ${req.query.startDate}`);
+      }
+      if (req.query.endDate) {
+        conditions.push(sql`${auditLogs.createdAt} <= ${req.query.endDate}`);
+      }
+      if (req.query.search) {
+        const searchTerm = `%${req.query.search}%`;
+        conditions.push(sql`(${auditLogs.eventType} ILIKE ${searchTerm} OR ${auditLogs.action} ILIKE ${searchTerm} OR ${auditLogs.resource} ILIKE ${searchTerm})`);
+      }
+
+      const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+
+      const [countResult] = await db.select({ cnt: count() })
+        .from(auditLogs)
+        .where(whereClause);
+
+      const logs = await db.select({
+        id: auditLogs.id,
+        eventType: auditLogs.eventType,
+        userId: auditLogs.userId,
+        actorRole: auditLogs.actorRole,
+        scopeBranchId: auditLogs.scopeBranchId,
+        action: auditLogs.action,
+        resource: auditLogs.resource,
+        resourceId: auditLogs.resourceId,
+        targetResource: auditLogs.targetResource,
+        targetResourceId: auditLogs.targetResourceId,
+        before: auditLogs.before,
+        after: auditLogs.after,
+        details: auditLogs.details,
+        requestId: auditLogs.requestId,
+        ipAddress: auditLogs.ipAddress,
+        userAgent: auditLogs.userAgent,
+        createdAt: auditLogs.createdAt,
+        actorName: sql<string>`(SELECT COALESCE(u."firstName" || ' ' || u."lastName", u."username") FROM users u WHERE u.id = ${auditLogs.userId} LIMIT 1)`.as('actor_name'),
+        branchName: sql<string>`(SELECT b.name FROM branches b WHERE b.id = ${auditLogs.scopeBranchId} LIMIT 1)`.as('branch_name'),
+      })
+        .from(auditLogs)
+        .where(whereClause)
+        .orderBy(desc(auditLogs.createdAt))
+        .limit(limit)
+        .offset(offset);
+
+      res.json({
+        logs,
+        pagination: {
+          page,
+          limit,
+          total: countResult?.cnt ?? 0,
+          totalPages: Math.ceil((countResult?.cnt ?? 0) / limit),
+        },
+      });
+    } catch (error: any) {
+      console.error('[AuditLog] List error:', error);
+      res.status(500).json({ error: 'Denetim günlüğü yüklenemedi' });
+    }
+  });
+
+  router.get('/api/audit-logs/export', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      if (user.role !== 'admin' && user.role !== 'genel_mudur') {
+        return res.status(403).json({ error: 'Yetkiniz yok' });
+      }
+
+      const conditions: any[] = [];
+      if (req.query.eventType) {
+        conditions.push(sql`${auditLogs.eventType} = ${req.query.eventType}`);
+      }
+      if (req.query.userId) {
+        conditions.push(eq(auditLogs.userId, req.query.userId as string));
+      }
+      if (req.query.resource) {
+        conditions.push(eq(auditLogs.resource, req.query.resource as string));
+      }
+      if (req.query.branchId) {
+        conditions.push(eq(auditLogs.scopeBranchId, parseInt(req.query.branchId as string)));
+      }
+      if (req.query.startDate) {
+        conditions.push(sql`${auditLogs.createdAt} >= ${req.query.startDate}`);
+      }
+      if (req.query.endDate) {
+        conditions.push(sql`${auditLogs.createdAt} <= ${req.query.endDate}`);
+      }
+
+      const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+
+      const logs = await db.select({
+        id: auditLogs.id,
+        eventType: auditLogs.eventType,
+        userId: auditLogs.userId,
+        actorRole: auditLogs.actorRole,
+        scopeBranchId: auditLogs.scopeBranchId,
+        action: auditLogs.action,
+        resource: auditLogs.resource,
+        resourceId: auditLogs.resourceId,
+        details: auditLogs.details,
+        requestId: auditLogs.requestId,
+        ipAddress: auditLogs.ipAddress,
+        createdAt: auditLogs.createdAt,
+        actorName: sql<string>`(SELECT COALESCE(u."firstName" || ' ' || u."lastName", u."username") FROM users u WHERE u.id = ${auditLogs.userId} LIMIT 1)`.as('actor_name'),
+        branchName: sql<string>`(SELECT b.name FROM branches b WHERE b.id = ${auditLogs.scopeBranchId} LIMIT 1)`.as('branch_name'),
+      })
+        .from(auditLogs)
+        .where(whereClause)
+        .orderBy(desc(auditLogs.createdAt))
+        .limit(5000);
+
+      const csvHeader = "ID,Tarih,Kullanici,Rol,Sube,Olay,Islem,Kaynak,KaynakID,IP,RequestID\n";
+      const csvRows = logs.map(log => {
+        const date = log.createdAt ? new Date(log.createdAt).toISOString() : '';
+        return [
+          log.id,
+          date,
+          (log.actorName || log.userId || '').replace(/,/g, ' '),
+          log.actorRole || '',
+          (log.branchName || log.scopeBranchId || '').toString().replace(/,/g, ' '),
+          log.eventType,
+          log.action,
+          log.resource,
+          log.resourceId || '',
+          log.ipAddress || '',
+          log.requestId || '',
+        ].join(',');
+      }).join('\n');
+
+      res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+      res.setHeader('Content-Disposition', `attachment; filename=denetim-gunlugu-${new Date().toISOString().split('T')[0]}.csv`);
+      res.send('\ufeff' + csvHeader + csvRows);
+    } catch (error: any) {
+      console.error('[AuditLog] Export error:', error);
+      res.status(500).json({ error: 'CSV export başarısız' });
+    }
+  });
+
+  router.get('/api/audit-logs/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      if (user.role !== 'admin' && user.role !== 'genel_mudur') {
+        return res.status(403).json({ error: 'Yetkiniz yok' });
+      }
+
+      const logId = parseInt(req.params.id);
+      const [log] = await db.select({
+        id: auditLogs.id,
+        eventType: auditLogs.eventType,
+        userId: auditLogs.userId,
+        actorRole: auditLogs.actorRole,
+        scopeBranchId: auditLogs.scopeBranchId,
+        action: auditLogs.action,
+        resource: auditLogs.resource,
+        resourceId: auditLogs.resourceId,
+        targetResource: auditLogs.targetResource,
+        targetResourceId: auditLogs.targetResourceId,
+        before: auditLogs.before,
+        after: auditLogs.after,
+        details: auditLogs.details,
+        requestId: auditLogs.requestId,
+        ipAddress: auditLogs.ipAddress,
+        userAgent: auditLogs.userAgent,
+        createdAt: auditLogs.createdAt,
+        actorName: sql<string>`(SELECT COALESCE(u."firstName" || ' ' || u."lastName", u."username") FROM users u WHERE u.id = ${auditLogs.userId} LIMIT 1)`.as('actor_name'),
+        branchName: sql<string>`(SELECT b.name FROM branches b WHERE b.id = ${auditLogs.scopeBranchId} LIMIT 1)`.as('branch_name'),
+      })
+        .from(auditLogs)
+        .where(eq(auditLogs.id, logId));
+
+      if (!log) {
+        return res.status(404).json({ error: 'Kayıt bulunamadı' });
+      }
+
+      res.json(log);
+    } catch (error: any) {
+      console.error('[AuditLog] Detail error:', error);
+      res.status(500).json({ error: 'Denetim kaydı yüklenemedi' });
+    }
+  });
+
+  router.get('/api/audit-logs/stats/event-types', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      if (user.role !== 'admin' && user.role !== 'genel_mudur') {
+        return res.status(403).json({ error: 'Yetkiniz yok' });
+      }
+
+      const result = await db.select({
+        eventType: auditLogs.eventType,
+        cnt: count(),
+      })
+        .from(auditLogs)
+        .groupBy(auditLogs.eventType)
+        .orderBy(desc(count()));
+
+      res.json(result);
+    } catch (error: any) {
+      res.status(500).json({ error: 'İstatistik yüklenemedi' });
     }
   });
 

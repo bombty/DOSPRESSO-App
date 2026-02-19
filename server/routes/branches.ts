@@ -5,6 +5,7 @@ import { isAuthenticated } from "../localAuth";
 import { isHQRole, isBranchRole, hasPermission, type UserRoleType } from "@shared/schema";
 import { eq, desc, asc, and, or, gte, lte, sql, inArray, isNull, isNotNull, ne, not, count, sum, avg, max, min } from "drizzle-orm";
 import { sanitizeUsersForRole } from "../security";
+import { auditLog } from "../audit";
 import bcrypt from "bcrypt";
 import { z } from "zod";
 import QRCode from "qrcode";
@@ -249,6 +250,7 @@ router.post('/api/branches', isAuthenticated, async (req, res) => {
       qrCodeToken: undefined,
     };
     const branch = await storage.createBranch(branchData);
+    auditLog(req, { eventType: "branch.created", action: "created", resource: "branches", resourceId: String(branch.id), after: { name: branchData.name, city: branchData.city } });
     res.json(branch);
   } catch (error: any) {
     console.error("Error creating branch:", error);
@@ -269,10 +271,12 @@ router.patch('/api/branches/:id', isAuthenticated, async (req, res) => {
     }
     
     const validatedData = insertBranchSchema.partial().parse(req.body);
+    const existingBranch = await storage.getBranch(id);
     const branch = await storage.updateBranch(id, validatedData);
     if (!branch) {
       return res.status(404).json({ message: "Branch not found" });
     }
+    auditLog(req, { eventType: "branch.updated", action: "updated", resource: "branches", resourceId: String(id), before: existingBranch ? { name: existingBranch.name } : undefined, after: validatedData });
     res.json(branch);
   } catch (error: any) {
     console.error("Error updating branch:", error);
@@ -337,7 +341,9 @@ router.delete('/api/branches/:id', isAuthenticated, async (req, res) => {
       return res.status(403).json({ message: "Bu işlem için yetkiniz yok" });
     }
     
+    const deletedBranch = await storage.getBranch(id);
     await storage.deleteBranch(id);
+    auditLog(req, { eventType: "branch.deleted", action: "deleted", resource: "branches", resourceId: String(id), before: deletedBranch ? { name: deletedBranch.name } : undefined });
     res.json({ message: "Branch deleted successfully" });
   } catch (error: any) {
     console.error("Error deleting branch:", error);

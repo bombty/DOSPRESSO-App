@@ -5566,19 +5566,30 @@ export type PasswordResetToken = typeof passwordResetTokens.$inferSelect;
 
 export const auditLogs = pgTable("audit_logs", {
   id: serial("id").primaryKey(),
+  eventType: varchar("event_type", { length: 100 }).notNull(),
   userId: varchar("user_id").references(() => users.id, { onDelete: "set null" }),
-  action: varchar("action", { length: 100 }).notNull(), // user.created, role.updated, setting.changed
-  resource: varchar("resource", { length: 100 }).notNull(), // users, roles, settings, etc.
-  resourceId: varchar("resource_id", { length: 100 }), // ID of the affected resource
-  details: jsonb("details"), // Additional context (old value, new value, etc.)
+  actorRole: varchar("actor_role", { length: 50 }),
+  scopeBranchId: integer("scope_branch_id"),
+  action: varchar("action", { length: 100 }).notNull(),
+  resource: varchar("resource", { length: 100 }).notNull(),
+  resourceId: varchar("resource_id", { length: 100 }),
+  targetResource: varchar("target_resource", { length: 100 }),
+  targetResourceId: varchar("target_resource_id", { length: 100 }),
+  before: jsonb("before"),
+  after: jsonb("after"),
+  details: jsonb("details"),
+  requestId: varchar("request_id", { length: 64 }),
   ipAddress: varchar("ip_address", { length: 50 }),
   userAgent: text("user_agent"),
   createdAt: timestamp("created_at").defaultNow(),
 }, (table) => [
   index("audit_logs_user_idx").on(table.userId),
   index("audit_logs_action_idx").on(table.action),
+  index("audit_logs_event_type_idx").on(table.eventType),
   index("audit_logs_resource_idx").on(table.resource),
+  index("audit_logs_branch_idx").on(table.scopeBranchId),
   index("audit_logs_created_idx").on(table.createdAt),
+  index("audit_logs_request_idx").on(table.requestId),
 ]);
 
 export const insertAuditLogSchema = createInsertSchema(auditLogs).omit({
