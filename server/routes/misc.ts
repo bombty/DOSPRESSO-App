@@ -43,6 +43,7 @@ import {
   insertInventoryCountEntrySchema,
   insertDashboardWidgetSchema,
   insertDashboardModuleVisibilitySchema,
+  PATH_TO_PERMISSION_MAP,
   announcements,
   announcementReadStatus,
   branches,
