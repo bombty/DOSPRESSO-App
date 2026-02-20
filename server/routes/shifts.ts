@@ -3,7 +3,7 @@ import { db } from "../db";
 import { storage } from "../storage";
 import { isAuthenticated } from "../localAuth";
 import { isHQRole, isBranchRole, type UserRoleType } from "@shared/schema";
-import { parsePagination, wrapPaginatedResponse } from "./helpers";
+import { parsePagination, wrapPaginatedResponse, handleApiError } from "./helpers";
 import {
   shifts,
   shiftCorrections,
@@ -1462,12 +1462,10 @@ router.post('/api/shifts/bulk-create', isAuthenticated, async (req: any, res) =>
       notifiedCount: notifiedEmployees.size
     });
   } catch (error: any) {
-    console.error("Error creating bulk shifts:", error?.message || error);
-    if (error?.stack) console.error("Stack:", error.stack);
     if (error?.name === 'ZodError') {
       return res.status(400).json({ message: "Geçersiz veri formatı", errors: error.errors });
     }
-    res.status(500).json({ message: error?.message || "Vardiyalar oluşturulamadı" });
+    handleApiError(res, error, "CreateBulkShifts");
   }
 });
 

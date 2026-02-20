@@ -3,7 +3,7 @@ import { db } from "../db";
 import { storage } from "../storage";
 import { isAuthenticated } from "../localAuth";
 import { hasPermission, type UserRoleType, getUserPermissions, getRoleAccessibleModules } from "../permission-service";
-import { parsePagination, wrapPaginatedResponse } from "./helpers";
+import { parsePagination, wrapPaginatedResponse, handleApiError } from "./helpers";
 import { eq, desc, asc, and, or, gte, lte, sql, inArray, isNull, not, ne, count, sum, avg, max } from "drizzle-orm";
 import { sanitizeUser, sanitizeUsers, sanitizeUserForRole, sanitizeUsersForRole } from "../security";
 import { buildMenuForUser } from "../menu-service";
@@ -195,6 +195,7 @@ async function generateBranchSummary(ctx: SummaryContext): Promise<string> {
   }
 }
 
+const CACHE_MAX_SIZE = 1000;
 const responseCache = new Map<string, { data: any; expiresAt: number }>();
 const getCachedResponse = (key: string) => {
   const cached = responseCache.get(key);
@@ -205,6 +206,16 @@ const getCachedResponse = (key: string) => {
   return null;
 };
 const setCachedResponse = (key: string, data: unknown, ttlSeconds: number = 60) => {
+  if (responseCache.size >= CACHE_MAX_SIZE) {
+    const now = Date.now();
+    for (const [k, v] of responseCache) {
+      if (v.expiresAt <= now) responseCache.delete(k);
+    }
+    if (responseCache.size >= CACHE_MAX_SIZE) {
+      const oldest = responseCache.keys().next().value;
+      if (oldest) responseCache.delete(oldest);
+    }
+  }
   responseCache.set(key, { data, expiresAt: Date.now() + ttlSeconds * 1000 });
 };
 const invalidateCache = (pattern: string) => {
@@ -725,7 +736,7 @@ const normalizeTimeGlobal = (timeStr: string): string => {
       
       if (!ok) {
         console.error("Object Storage upload failed:", error);
-        return res.status(500).json({ message: "Upload failed", error });
+        return res.status(500).json({ message: "Internal server error" });
       }
       
       // Store access token mapping (in-memory for now, use Redis/DB for production)
@@ -783,7 +794,7 @@ const normalizeTimeGlobal = (timeStr: string): string => {
       
       if (!ok) {
         console.error("Object Storage upload failed:", error);
-        return res.status(500).json({ message: "Yükleme başarısız", error });
+        return res.status(500).json({ message: "Internal server error" });
       }
       
       // Store access token mapping
@@ -803,8 +814,7 @@ const normalizeTimeGlobal = (timeStr: string): string => {
       
       res.json({ url, path, size: file.buffer.length, filename });
     } catch (error: any) {
-      console.error("Error uploading file:", error);
-      res.status(500).json({ message: "Yükleme başarısız", error: error.message });
+      handleApiError(res, error, "UploadFile");
     }
   });
 
@@ -1473,8 +1483,7 @@ const normalizeTimeGlobal = (timeStr: string): string => {
       
       res.json(response);
     } catch (error: any) {
-      console.error("Error answering question:", error);
-      res.status(500).json({ message: (error as Error).message || "Soru cevaplanamadı" });
+      handleApiError(res, error, "AnswerQuestion");
     }
   });
 
@@ -3988,8 +3997,7 @@ const normalizeTimeGlobal = (timeStr: string): string => {
       const scores = await storage.calculateCompositeCareerScore(userId);
       res.json(scores);
     } catch (error: any) {
-      console.error("Composite score error:", error);
-      res.status(500).json({ message: error.message });
+      handleApiError(res, error, "FetchCompositeScore");
     }
   });
 
@@ -4001,8 +4009,7 @@ const normalizeTimeGlobal = (timeStr: string): string => {
       const updated = await storage.updateUserCareerScores(userId, scores);
       res.json(updated);
     } catch (error: any) {
-      console.error("Update scores error:", error);
-      res.status(500).json({ message: error.message });
+      handleApiError(res, error, "UpdateCareerScores");
     }
   });
 
@@ -4013,8 +4020,7 @@ const normalizeTimeGlobal = (timeStr: string): string => {
       const result = await storage.checkAndProcessDangerZone(userId);
       res.json(result);
     } catch (error: any) {
-      console.error("Danger zone check error:", error);
-      res.status(500).json({ message: error.message });
+      handleApiError(res, error, "CheckDangerZone");
     }
   });
 
@@ -4035,8 +4041,7 @@ const normalizeTimeGlobal = (timeStr: string): string => {
       const evaluations = await storage.getManagerEvaluations(filters);
       res.json(evaluations);
     } catch (error: any) {
-      console.error("Manager evaluations error:", error);
-      res.status(500).json({ message: error.message });
+      handleApiError(res, error, "FetchManagerEvaluations");
     }
   });
 
@@ -4083,8 +4088,7 @@ const normalizeTimeGlobal = (timeStr: string): string => {
       await storage.updateUserCareerScores(data.employeeId, scores);
       res.json(evaluation);
     } catch (error: any) {
-      console.error("Create evaluation error:", error);
-      res.status(500).json({ message: error.message });
+      handleApiError(res, error, "CreateManagerEvaluation");
     }
   });
 
@@ -4096,8 +4100,7 @@ const normalizeTimeGlobal = (timeStr: string): string => {
       const history = await storage.getCareerScoreHistory(userId, limit);
       res.json(history);
     } catch (error: any) {
-      console.error("Score history error:", error);
-      res.status(500).json({ message: error.message });
+      handleApiError(res, error, "FetchScoreHistory");
     }
   });
   // ========================================
@@ -4160,8 +4163,7 @@ const normalizeTimeGlobal = (timeStr: string): string => {
       const finalResults = Array.from(groupedResults.values()).slice(0, limit);
       res.json(finalResults);
     } catch (error: any) {
-      console.error("Error searching knowledge base:", error);
-      res.status(500).json({ message: error.message || "Arama yapılırken hata oluştu" });
+      handleApiError(res, error, "SearchKnowledgeBase");
     }
   });
 
@@ -4301,7 +4303,7 @@ const normalizeTimeGlobal = (timeStr: string): string => {
       
       res.json(enrichedItems);
     } catch (error: any) {
-      res.status(500).json({ message: error.message });
+      handleApiError(res, error, "FetchLostFoundItems");
     }
   });
 
@@ -4342,7 +4344,7 @@ const normalizeTimeGlobal = (timeStr: string): string => {
       
       res.json(enrichedItems);
     } catch (error: any) {
-      res.status(500).json({ message: error.message });
+      handleApiError(res, error, "FetchAllLostFoundItems");
     }
   });
 
@@ -4395,7 +4397,7 @@ const normalizeTimeGlobal = (timeStr: string): string => {
       
       res.status(201).json(item);
     } catch (error: any) {
-      res.status(500).json({ message: error.message });
+      handleApiError(res, error, "CreateLostFoundItem");
     }
   });
 
@@ -4430,7 +4432,7 @@ const normalizeTimeGlobal = (timeStr: string): string => {
       
       res.json(updated);
     } catch (error: any) {
-      res.status(500).json({ message: error.message });
+      handleApiError(res, error, "HandoverLostFoundItem");
     }
   });
 
@@ -5633,8 +5635,7 @@ const normalizeTimeGlobal = (timeStr: string): string => {
       
       res.json({ message: "Servis talebi e-postası gönderildi" });
     } catch (error: any) {
-      console.error("Send service request email error:", error);
-      res.status(500).json({ message: "Servis talebi gönderilemedi: " + (error as Error).message });
+      handleApiError(res, error, "SendServiceRequestEmail");
     }
   });
 
@@ -6070,8 +6071,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`;
 
       res.status(201).json(result[0]);
     } catch (error: any) {
-      console.error("Error creating termination:", error);
-      res.status(500).json({ message: error?.message || "Ayrılış kaydı oluşturulurken hata oluştu" });
+      handleApiError(res, error, "CreateTermination");
     }
   });
 
@@ -6351,8 +6351,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`;
         }
       });
     } catch (error: any) {
-      console.error("Error seeding test data:", error);
-      res.status(500).json({ message: "Test verileri oluşturulurken hata oluştu", error: error.message });
+      handleApiError(res, error, "SeedTestData");
     }
   });
 
@@ -7204,8 +7203,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`;
       
       res.json(newAnnouncement);
     } catch (error: any) {
-      console.error("Create banner announcement error:", error);
-      res.status(500).json({ message: "Duyuru oluşturulamadı: " + error.message });
+      handleApiError(res, error, "CreateAnnouncement");
     }
   });
 
@@ -7246,7 +7244,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`;
       if (!response.ok) {
         const error = await response.json();
         console.error("DALL-E error:", error);
-        return res.status(500).json({ message: "Görsel oluşturulamadı", error: error.error?.message });
+        return res.status(500).json({ message: "Internal server error" });
       }
 
       const data = await response.json();
@@ -7303,8 +7301,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`;
 
       res.json({ imageUrl: publicUrl });
     } catch (error: any) {
-      console.error("AI image generation error:", error);
-      res.status(500).json({ message: "AI görsel oluşturma başarısız", error: String(error) });
+      handleApiError(res, error, "AIImageGeneration");
     }
   });
 
@@ -7418,8 +7415,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`;
         myTasks,
       });
     } catch (error: any) {
-      console.error("Error fetching employee dashboard:", error);
-      res.status(500).json({ message: "Personel dashboard verisi alınamadı", error: error.message });
+      handleApiError(res, error, "FetchEmployeeDashboard");
     }
   });
 
@@ -7617,8 +7613,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`;
         criticalIssues,
       });
     } catch (error: any) {
-      console.error("Error fetching HQ dashboard summary:", error);
-      res.status(500).json({ message: "Merkez dashboard verisi alınamadı", error: error.message });
+      handleApiError(res, error, "FetchHQDashboard");
     }
   });
 
@@ -7649,37 +7644,108 @@ DOSPRESSO İnsan Kaynakları Ekibi`;
   router.get('/api/messages', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user!.id;
-      const userThreads = await db.select({ threadId: threadParticipants.threadId, joinedAt: threadParticipants.joinedAt, lastReadAt: threadParticipants.lastReadAt }).from(threadParticipants).where(eq(threadParticipants.userId, userId));
+      const userThreads = await db.select({ threadId: threadParticipants.threadId }).from(threadParticipants).where(eq(threadParticipants.userId, userId));
       if (userThreads.length === 0) { return res.json([]); }
+
+      const threadIds = userThreads.map(ut => ut.threadId);
+
+      const [allLastMessages, allFirstMessages, allParticipants, allUnread] = await Promise.all([
+        db.select({
+          threadId: messages.threadId,
+          body: messages.body,
+          createdAt: messages.createdAt,
+          rn: sql<number>`ROW_NUMBER() OVER (PARTITION BY ${messages.threadId} ORDER BY ${messages.createdAt} DESC)`,
+        }).from(messages).where(inArray(messages.threadId, threadIds)),
+
+        db.select({
+          threadId: messages.threadId,
+          subject: messages.subject,
+          rn: sql<number>`ROW_NUMBER() OVER (PARTITION BY ${messages.threadId} ORDER BY ${messages.createdAt} ASC)`,
+        }).from(messages).where(inArray(messages.threadId, threadIds)),
+
+        db.select({
+          threadId: threadParticipants.threadId,
+          id: users.id,
+          firstName: users.firstName,
+          lastName: users.lastName,
+          profileImageUrl: users.profileImageUrl,
+        }).from(threadParticipants).innerJoin(users, eq(users.id, threadParticipants.userId)).where(inArray(threadParticipants.threadId, threadIds)),
+
+        db.select({
+          threadId: messages.threadId,
+          count: sql<number>`count(*)::int`,
+        }).from(messages)
+          .innerJoin(threadParticipants, and(
+            eq(threadParticipants.threadId, messages.threadId),
+            eq(threadParticipants.userId, sql`${userId}`)
+          ))
+          .where(and(
+            inArray(messages.threadId, threadIds),
+            sql`${messages.senderId} != ${userId}`,
+            sql`(${threadParticipants.lastReadAt} IS NULL OR ${messages.createdAt} > ${threadParticipants.lastReadAt})`
+          ))
+          .groupBy(messages.threadId),
+      ]);
+
+      const lastMsgMap = new Map<string, { body: string; createdAt: Date }>();
+      for (const m of allLastMessages) {
+        if (m.rn === 1) lastMsgMap.set(m.threadId, { body: m.body, createdAt: m.createdAt });
+      }
+      const firstSubjectMap = new Map<string, string>();
+      for (const m of allFirstMessages) {
+        if (m.rn === 1) firstSubjectMap.set(m.threadId, m.subject || 'Mesaj');
+      }
+      const participantMap = new Map<string, { id: string; firstName: string; lastName: string; profileImageUrl: string | null }[]>();
+      for (const p of allParticipants) {
+        if (!participantMap.has(p.threadId)) participantMap.set(p.threadId, []);
+        participantMap.get(p.threadId)!.push({ id: p.id, firstName: p.firstName, lastName: p.lastName, profileImageUrl: p.profileImageUrl });
+      }
+      const unreadMap = new Map<string, number>();
+      for (const u of allUnread) {
+        unreadMap.set(u.threadId, u.count);
+      }
+
       const threadSummaries = [];
-      for (const ut of userThreads) {
-        const [lastMessage] = await db.select().from(messages).where(eq(messages.threadId, ut.threadId)).orderBy(desc(messages.createdAt)).limit(1);
-        if (!lastMessage) continue;
-        const [firstMessage] = await db.select({ subject: messages.subject }).from(messages).where(eq(messages.threadId, ut.threadId)).orderBy(asc(messages.createdAt)).limit(1);
-        const participants = await db.select({ id: users.id, firstName: users.firstName, lastName: users.lastName, profileImageUrl: users.profileImageUrl }).from(threadParticipants).innerJoin(users, eq(users.id, threadParticipants.userId)).where(eq(threadParticipants.threadId, ut.threadId));
-        const unreadResult = await db.select({ count: sql<number>`count(*)::int` }).from(messages).where(and(eq(messages.threadId, ut.threadId), ut.lastReadAt ? sql`${messages.createdAt} > ${ut.lastReadAt}` : sql`1=1`, sql`${messages.senderId} != ${userId}`));
-        threadSummaries.push({ threadId: ut.threadId, subject: firstMessage?.subject || 'Mesaj', participants, lastMessageBody: lastMessage.body, lastMessageAt: lastMessage.createdAt, unreadCount: unreadResult[0]?.count || 0 });
+      for (const tid of threadIds) {
+        const last = lastMsgMap.get(tid);
+        if (!last) continue;
+        threadSummaries.push({
+          threadId: tid,
+          subject: firstSubjectMap.get(tid) || 'Mesaj',
+          participants: participantMap.get(tid) || [],
+          lastMessageBody: last.body,
+          lastMessageAt: last.createdAt,
+          unreadCount: unreadMap.get(tid) || 0,
+        });
       }
       threadSummaries.sort((a, b) => new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime());
       res.json(threadSummaries);
     } catch (error: any) {
-      console.error("Error fetching message threads:", error);
-      res.status(500).json({ message: "Mesaj dizileri alınamadı", error: error.message });
+      handleApiError(res, error, "FetchMessageThreads");
     }
   });
   router.get('/api/messages/unread-count', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user!.id;
-      const userThreads = await db.select({ threadId: threadParticipants.threadId, lastReadAt: threadParticipants.lastReadAt }).from(threadParticipants).where(eq(threadParticipants.userId, userId));
-      let totalUnread = 0;
-      for (const ut of userThreads) {
-        const unreadResult = await db.select({ count: sql<number>`count(*)::int` }).from(messages).where(and(eq(messages.threadId, ut.threadId), ut.lastReadAt ? sql`${messages.createdAt} > ${ut.lastReadAt}` : sql`1=1`, sql`${messages.senderId} != ${userId}`));
-        totalUnread += unreadResult[0]?.count || 0;
-      }
-      res.json({ unreadCount: totalUnread });
+      const userThreads = await db.select({ threadId: threadParticipants.threadId }).from(threadParticipants).where(eq(threadParticipants.userId, userId));
+      if (userThreads.length === 0) { return res.json({ unreadCount: 0 }); }
+
+      const threadIds = userThreads.map(ut => ut.threadId);
+      const [result] = await db.select({
+        count: sql<number>`count(*)::int`,
+      }).from(messages)
+        .innerJoin(threadParticipants, and(
+          eq(threadParticipants.threadId, messages.threadId),
+          eq(threadParticipants.userId, sql`${userId}`)
+        ))
+        .where(and(
+          inArray(messages.threadId, threadIds),
+          sql`${messages.senderId} != ${userId}`,
+          sql`(${threadParticipants.lastReadAt} IS NULL OR ${messages.createdAt} > ${threadParticipants.lastReadAt})`
+        ));
+      res.json({ unreadCount: result?.count || 0 });
     } catch (error: any) {
-      console.error("Error getting unread count:", error);
-      res.status(500).json({ message: "Okunmamış mesaj sayısı alınamadı" });
+      handleApiError(res, error, "FetchUnreadCount");
     }
   });
   router.get('/api/messages/:threadId', isAuthenticated, async (req: any, res) => {
@@ -7692,8 +7758,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`;
       const participants = await db.select({ id: users.id, firstName: users.firstName, lastName: users.lastName, profileImageUrl: users.profileImageUrl, role: users.role }).from(threadParticipants).innerJoin(users, eq(users.id, threadParticipants.userId)).where(eq(threadParticipants.threadId, threadId));
       res.json({ messages: threadMessages, participants });
     } catch (error: any) {
-      console.error("Error fetching thread messages:", error);
-      res.status(500).json({ message: "Mesajlar alınamadı", error: error.message });
+      handleApiError(res, error, "FetchThreadMessages");
     }
   });
   router.post('/api/messages', isAuthenticated, async (req: any, res) => {
@@ -7715,8 +7780,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`;
       await db.update(threadParticipants).set({ lastReadAt: new Date() }).where(and(eq(threadParticipants.threadId, targetThreadId), eq(threadParticipants.userId, userId)));
       res.json(newMessage);
     } catch (error: any) {
-      console.error("Error creating message:", error);
-      res.status(500).json({ message: "Mesaj gönderilemedi", error: error.message });
+      handleApiError(res, error, "CreateMessage");
     }
   });
   router.post('/api/messages/:threadId/read', isAuthenticated, async (req: any, res) => {
@@ -8994,8 +9058,7 @@ Dusuk puanli alanlara odaklan ve pozitif, motive edici ol. JSON dizisi olarak ya
 
       res.json({ answer });
     } catch (error: any) {
-      console.error("Error in CEO AI assistant:", error);
-      res.status(500).json({ message: "AI yanit veremedi", error: error.message });
+      handleApiError(res, error, "CEOAIAssistant");
     }
   });
 
@@ -9050,8 +9113,7 @@ Dusuk puanli alanlara odaklan ve pozitif, motive edici ol. JSON dizisi olarak ya
 
       res.json({ answer });
     } catch (error: any) {
-      console.error("Error in AI chat:", error);
-      res.status(500).json({ message: "AI yanit veremedi", error: error.message });
+      handleApiError(res, error, "AIChat");
     }
   });
     // ============ NOTIFICATION ENDPOINTS ============
@@ -10783,8 +10845,7 @@ Bu verilere dayanarak performans analizi ve iyileştirme önerileri oluştur.`
         lastUpdated: new Date().toISOString()
       });
     } catch (error: any) {
-      console.error('Error in CGO command center:', error);
-      res.status(500).json({ message: 'Veri alinamadi', error: error.message });
+      handleApiError(res, error, "CGOCommandCenter");
     }
   });
 

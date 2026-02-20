@@ -7,6 +7,7 @@ import { createAuditEntry, getAuditContext } from "../audit";
 import { eq, desc, asc, and, or, gte, lte, sql, inArray, isNull, isNotNull, ne, max, min } from "drizzle-orm";
 import { sendNotificationEmail, sendEmployeeOfMonthEmail } from "../email";
 import { sanitizeUser, sanitizeUsers, sanitizeUserForRole, sanitizeUsersForRole } from "../security";
+import { handleApiError } from "./helpers";
 import bcrypt from "bcrypt";
 import multer from "multer";
 import { z } from "zod";
@@ -1023,8 +1024,7 @@ const router = Router();
         optimizedSize: optimized.length,
       });
     } catch (error: any) {
-      console.error("Academy image upload error:", error);
-      res.status(500).json({ message: error.message || "Resim yüklenemedi" });
+      handleApiError(res, error, "UploadAcademyImage");
     }
   });
 
@@ -1072,8 +1072,7 @@ const router = Router();
         size: optimized.length
       });
     } catch (error: any) {
-      console.error("Image upload error:", error);
-      res.status(500).json({ message: error.message || "Resim yüklenemedi" });
+      handleApiError(res, error, "UploadModuleImage");
     }
   });
 
@@ -1106,7 +1105,7 @@ const router = Router();
 
       res.json({ success: true });
     } catch (error: any) {
-      res.status(500).json({ message: error.message || "Resim silinemedi" });
+      handleApiError(res, error, "DeleteModuleImage");
     }
   });
 
@@ -1706,8 +1705,7 @@ JSON formatında yanıt ver:
 
       res.json(updated);
     } catch (error: any) {
-      console.error("Error approving quiz attempt:", error);
-      res.status(500).json({ message: error instanceof Error ? error.message : "Failed to approve quiz attempt" });
+      handleApiError(res, error, "ApproveQuizAttempt");
     }
   });
 
@@ -1901,7 +1899,7 @@ JSON formatında yanıt ver:
       if (error instanceof AuthorizationError) {
         return res.status(403).json({ message: error.message });
       }
-      res.status(500).json({ message: error.message || "AI değerlendirmesi oluşturulurken hata oluştu" });
+      handleApiError(res, error, "GenerateBranchEvaluation");
     }
   });
 
@@ -3415,7 +3413,7 @@ JSON formatında yanıt ver:
       const materials = await storage.getTrainingMaterials(status || 'published');
       res.json(materials);
     } catch (error: any) {
-      res.status(500).json({ message: error.message || "Eğitim materyalleri yüklenemedi" });
+      handleApiError(res, error, "FetchTrainingMaterials");
     }
   });
 
@@ -3426,7 +3424,7 @@ JSON formatında yanıt ver:
       const assignments = await storage.getTrainingAssignments({ userId });
       res.json(assignments);
     } catch (error: any) {
-      res.status(500).json({ message: error.message || "Atamalar yüklenemedi" });
+      handleApiError(res, error, "FetchTrainingAssignments");
     }
   });
 
@@ -3516,7 +3514,7 @@ JSON formatında yanıt ver:
           : 0,
       });
     } catch (error: any) {
-      res.status(500).json({ message: error.message || "İlerleme yüklenemedi" });
+      handleApiError(res, error, "FetchTrainingProgress");
     }
   });
 
@@ -3556,7 +3554,7 @@ JSON formatında yanıt ver:
 
       res.json(stats);
     } catch (error: any) {
-      res.status(500).json({ message: error.message || "İstatistik yüklenemedi" });
+      handleApiError(res, error, "FetchTrainingStats");
     }
   });
 
@@ -3710,7 +3708,7 @@ JSON formatında yanıt ver:
         badges: userBadgeList,
       });
     } catch (error: any) {
-      res.status(500).json({ message: error.message });
+      handleApiError(res, error, "FetchModuleProgress");
     }
   });
 
@@ -5229,8 +5227,7 @@ MUTLAKA aşağıdaki JSON formatında yanıt ver:
         checkedAt: new Date().toISOString(),
       });
     } catch (error: any) {
-      console.error("AI regulation check error:", error);
-      res.status(500).json({ message: "AI mevzuat kontrolü başarısız: " + (error.message || "Bilinmeyen hata") });
+      handleApiError(res, error, "AIRegulationCheck");
     }
   });
 
@@ -5316,8 +5313,7 @@ MUTLAKA aşağıdaki JSON formatında yanıt ver:
         updatedParams: transformPayrollParams(result.rows[0]),
       });
     } catch (error: any) {
-      console.error("Apply AI suggestions error:", error);
-      res.status(500).json({ message: "AI önerileri uygulanamadı: " + (error.message || "Bilinmeyen hata") });
+      handleApiError(res, error, "ApplyAISuggestions");
     }
   });
 

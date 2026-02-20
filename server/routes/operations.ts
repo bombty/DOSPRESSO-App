@@ -50,6 +50,7 @@ import * as XLSX from "xlsx";
 import { z } from "zod";
 import { computeAuditScore, getCAPAPriority, shouldCreateCAPA, isValidCAPATransition, calculateSLADeadline, getSLAStatus } from "../audit-scoring";
 import { createAuditEntry, getAuditContext } from "../audit";
+import { handleApiError } from "./helpers";
 
 const router = Router();
 
@@ -668,8 +669,7 @@ function ensurePermission(user: unknown, module: string, action: string, errorMe
         verification: verificationResult,
       });
     } catch (error: any) {
-      console.error('Error verifying task photo:', error);
-      res.status(500).json({ message: 'Fotoğraf doğrulanamadı: ' + error.message });
+      handleApiError(res, error, "VerifyTaskPhoto");
     }
   });
 
@@ -829,8 +829,7 @@ function ensurePermission(user: unknown, module: string, action: string, errorMe
       
       res.json({ success: true, message: "Görev sırası güncellendi" });
     } catch (error: any) {
-      console.error("Error reordering checklist tasks:", error);
-      res.status(500).json({ message: "Görev sırası güncellenemedi: " + error.message });
+      handleApiError(res, error, "ReorderChecklistTasks");
     }
   });
 
@@ -1123,8 +1122,7 @@ function ensurePermission(user: unknown, module: string, action: string, errorMe
       const diagnosis = await diagnoseFault(equipmentType, faultDescription, user.id);
       res.json(diagnosis);
     } catch (error: any) {
-      console.error("Error diagnosing fault:", error);
-      res.status(500).json({ message: error.message || "Arıza analiz edilemedi" });
+      handleApiError(res, error, "DiagnoseFault");
     }
   });
 
@@ -3540,8 +3538,7 @@ function ensurePermission(user: unknown, module: string, action: string, errorMe
         rowCount: data.length
       });
     } catch (error: any) {
-      console.error("Parse Excel error:", error);
-      res.status(500).json({ message: "Dosya okunamadı: " + error.message });
+      handleApiError(res, error, "ParseExcelFile");
     }
   });
   // ========================================

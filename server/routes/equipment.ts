@@ -23,6 +23,7 @@ import {
 } from "@shared/schema";
 import { generateEquipmentKnowledgeFromManual, researchEquipmentTroubleshooting } from "../ai";
 import { auditLog } from "../audit";
+import { handleApiError } from "./helpers";
 
 class AuthorizationError extends Error {
   constructor(message?: string) {
@@ -921,8 +922,7 @@ const router = Router();
       
       res.json(filtered);
     } catch (error: any) {
-      console.error("Error fetching equipment knowledge by type:", error);
-      res.status(500).json({ message: error.message || "Bilgiler alınamadı" });
+      handleApiError(res, error, "FetchEquipmentKnowledgeByType");
     }
   });
 
@@ -937,8 +937,7 @@ const router = Router();
       const items = await storage.getEquipmentKnowledge();
       res.json(items);
     } catch (error: any) {
-      console.error("Error fetching equipment knowledge:", error);
-      res.status(500).json({ message: error.message || "Bilgiler alınamadı" });
+      handleApiError(res, error, "FetchEquipmentKnowledge");
     }
   });
 
@@ -967,8 +966,7 @@ const router = Router();
       });
       res.json(item);
     } catch (error: any) {
-      console.error("Error creating equipment knowledge:", error);
-      res.status(500).json({ message: error.message || "Bilgi eklenemedi" });
+      handleApiError(res, error, "CreateEquipmentKnowledge");
     }
   });
 
@@ -987,8 +985,7 @@ const router = Router();
       }
       res.json(item);
     } catch (error: any) {
-      console.error("Error updating equipment knowledge:", error);
-      res.status(500).json({ message: error.message || "Bilgi güncellenemedi" });
+      handleApiError(res, error, "UpdateEquipmentKnowledge");
     }
   });
 
@@ -1002,8 +999,7 @@ const router = Router();
       await storage.deleteEquipmentKnowledge(id);
       res.json({ success: true });
     } catch (error: any) {
-      console.error("Error deleting equipment knowledge:", error);
-      res.status(500).json({ message: error.message || "Bilgi silinemedi" });
+      handleApiError(res, error, "DeleteEquipmentKnowledge");
     }
   });
 
@@ -1035,8 +1031,7 @@ const router = Router();
       
       res.json(result);
     } catch (error: any) {
-      console.error("Error generating equipment knowledge:", error);
-      res.status(500).json({ message: error.message || "Bilgi oluşturulamadı" });
+      handleApiError(res, error, "GenerateEquipmentKnowledge");
     }
   });
 
@@ -1071,8 +1066,7 @@ const router = Router();
       
       res.json(result);
     } catch (error: any) {
-      console.error("Error researching equipment:", error);
-      res.status(500).json({ message: error.message || "Ekipman araştırması yapılamadı" });
+      handleApiError(res, error, "ResearchEquipment");
     }
   });
 
@@ -1139,8 +1133,7 @@ const router = Router();
         groups: Object.values(groupedMissing)
       });
     } catch (error: any) {
-      console.error("Error checking missing knowledge:", error);
-      res.status(500).json({ message: error.message || "Kontrol yapılamadı" });
+      handleApiError(res, error, "CheckMissingKnowledge");
     }
   });
 

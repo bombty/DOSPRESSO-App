@@ -40,6 +40,7 @@ import { getAllActionsGroupedByModule, getRoleGrants, upsertPermissionGrant, del
 import { generateArticleEmbeddings } from "../ai";
 import { sanitizeUser, sanitizeUsers } from "../security";
 import { auditLog, createAuditEntry, getAuditContext } from "../audit";
+import { handleApiError } from "./helpers";
 
 class AuthorizationError extends Error {
   constructor(message: string) {
@@ -1919,8 +1920,7 @@ const router = Router();
           : `${processed}/${articles.length} makale işlendi, ${failed} başarısız`,
       });
     } catch (error: any) {
-      console.error("Re-embed all error:", error);
-      res.status(500).json({ success: false, message: "Vektör yenileme işlemi başarısız: " + error.message });
+      handleApiError(res, error, "ReEmbedArticles");
     }
   });
 
@@ -2129,8 +2129,7 @@ const router = Router();
         checks,
       });
     } catch (error: any) {
-      console.error("Error in system health check:", error);
-      res.status(500).json({ message: "Sistem kontrol hatası", error: error.message });
+      handleApiError(res, error, "SystemHealthCheck");
     }
   });
 

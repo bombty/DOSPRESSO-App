@@ -32,6 +32,7 @@ import { eq, desc, asc, and, or, gte, lte, sql, inArray, isNull, not, ne, count,
 import { z } from "zod";
 import { generateQuizQuestionsFromLesson } from "../ai";
 import { createAuditEntry, getAuditContext } from "../audit";
+import { handleApiError } from "./helpers";
 
 const router = Router();
 
@@ -231,8 +232,7 @@ router.get('/api/academy/career-levels', isAuthenticated, async (req: any, res) 
     const levels = await storage.getCareerLevels();
     res.json(levels);
   } catch (error: any) {
-    console.error("Career levels error:", error);
-    res.status(500).json({ message: error.message });
+    handleApiError(res, error, "FetchCareerLevels");
   }
 });
 
@@ -246,8 +246,7 @@ router.get('/api/academy/career-progress/:userId', isAuthenticated, async (req: 
     }
     res.json(progress);
   } catch (error: any) {
-    console.error("Career progress error:", error);
-    res.status(500).json({ message: error.message });
+    handleApiError(res, error, "FetchCareerProgress");
   }
 });
 
@@ -289,8 +288,7 @@ router.get('/api/academy/user-dashboard', isAuthenticated, async (req: any, res)
       totalBadgesEarned: userBadgesList?.length || 0
     });
   } catch (error: any) {
-    console.error("Dashboard error:", error);
-    res.status(500).json({ message: error.message });
+    handleApiError(res, error, "FetchUserDashboard");
   }
 });
 
@@ -304,8 +302,7 @@ router.get('/api/academy/exam-requests', isAuthenticated, async (req: any, res) 
     });
     res.json(requests);
   } catch (error: any) {
-    console.error("Exam requests error:", error);
-    res.status(500).json({ message: error.message });
+    handleApiError(res, error, "FetchExamRequests");
   }
 });
 
@@ -332,8 +329,7 @@ router.get('/api/academy/team-members', isAuthenticated, async (req: any, res) =
 
     res.json(teamMembers);
   } catch (error: any) {
-    console.error("Team members error:", error);
-    res.status(500).json({ message: error.message });
+    handleApiError(res, error, "FetchTeamMembers");
   }
 });
 
@@ -381,8 +377,7 @@ router.patch('/api/academy/exam-request/:id/approve', isAuthenticated, async (re
 
     res.json(updatedRequest);
   } catch (error: any) {
-    console.error("Exam approval error:", error);
-    res.status(500).json({ message: error.message });
+    handleApiError(res, error, "ApproveExamRequest");
   }
 });
 
@@ -399,8 +394,7 @@ router.patch('/api/academy/exam-request/:id/reject', isAuthenticated, async (req
 
     res.json(request);
   } catch (error: any) {
-    console.error("Exam rejection error:", error);
-    res.status(500).json({ message: error.message });
+    handleApiError(res, error, "RejectExamRequest");
   }
 });
 
@@ -424,8 +418,7 @@ router.post('/api/academy/exam-request', isAuthenticated, async (req: any, res) 
 
     res.json(request);
   } catch (error: any) {
-    console.error("Exam request error:", error);
-    res.status(500).json({ message: error.message });
+    handleApiError(res, error, "CreateExamRequest");
   }
 });
 
@@ -436,7 +429,7 @@ router.get('/api/academy/module-content/:materialId', isAuthenticated, async (re
     if (!material) return res.status(404).json({ message: "Bulunamadı" });
     res.json(material);
   } catch (error: any) {
-    res.status(500).json({ message: error.message });
+    handleApiError(res, error, "FetchModuleContent");
   }
 });
 
@@ -452,7 +445,7 @@ router.get('/api/academy/stats', isAuthenticated, async (req: any, res) => {
     };
     res.json(stats);
   } catch (error: any) {
-    res.status(500).json({ message: error.message });
+    handleApiError(res, error, "FetchAcademyStats");
   }
 });
 
@@ -489,8 +482,7 @@ router.post('/api/academy/quiz-result', isAuthenticated, async (req: any, res) =
 
     res.json({ success: true, result, unlockedBadges });
   } catch (error: any) {
-    console.error("Quiz result error:", error);
-    res.status(500).json({ message: error.message });
+    handleApiError(res, error, "SubmitQuizResult");
   }
 });
 
@@ -500,7 +492,7 @@ router.get('/api/academy/badges', isAuthenticated, async (req: any, res) => {
     const badgesList = await storage.getBadges();
     res.json(badgesList);
   } catch (error: any) {
-    res.status(500).json({ message: error.message });
+    handleApiError(res, error, "FetchBadges");
   }
 });
 
@@ -510,7 +502,7 @@ router.get('/api/academy/user-badges', isAuthenticated, async (req: any, res) =>
     const userBadgesList = await storage.getUserBadges(req.user.id);
     res.json(userBadgesList);
   } catch (error: any) {
-    res.status(500).json({ message: error.message });
+    handleApiError(res, error, "FetchUserBadges");
   }
 });
 
@@ -595,9 +587,7 @@ Cevaplarınız kısa, faydalı ve türkçe olmalıdır.`;
 
     res.json({ response: assistantMessage });
   } catch (error: any) {
-    console.error("AI Assistant error:", error);
-    const errorMessage = error.message || "Academy AI Asistanı hatası";
-    res.status(500).json({ message: `Academy AI hatası: ${errorMessage}` });
+    handleApiError(res, error, "AcademyAIAssistant");
   }
 });
 
@@ -607,8 +597,7 @@ router.get('/api/academy/quiz/:quizId/questions', isAuthenticated, async (req: a
     const questions = await storage.getQuizQuestions(req.params.quizId);
     res.json(questions);
   } catch (error: any) {
-    console.error("Quiz questions error:", error);
-    res.status(500).json({ message: error?.message || "Quiz sorgusu başarısız" });
+    handleApiError(res, error, "FetchQuizQuestions");
   }
 });
 
@@ -650,8 +639,7 @@ router.get('/api/academy/quiz/:quizId/attempts', isAuthenticated, async (req: an
       maxAttempts: 3
     });
   } catch (error: any) {
-    console.error("Quiz attempts error:", error);
-    res.status(500).json({ message: error?.message || "Deneme bilgisi alınamadı" });
+    handleApiError(res, error, "FetchQuizAttempts");
   }
 });
 
@@ -663,7 +651,7 @@ router.post('/api/academy/question', isAuthenticated, async (req: any, res) => {
     const question = await storage.createQuizQuestion(req.body);
     res.json(question);
   } catch (error: any) {
-    res.status(500).json({ message: error.message });
+    handleApiError(res, error, "CreateQuestion");
   }
 });
 
@@ -676,7 +664,7 @@ router.delete('/api/academy/question/:id', isAuthenticated, async (req: any, res
     await db.delete(quizQuestions).where(eq(quizQuestions.id, parseInt(id)));
     res.json({ success: true });
   } catch (error: any) {
-    res.status(500).json({ message: error.message });
+    handleApiError(res, error, "DeleteQuestion");
   }
 });
 
@@ -696,7 +684,7 @@ router.get('/api/academy/quiz-stats/:userId', isAuthenticated, async (req: any, 
       }))
     });
   } catch (error: any) {
-    res.status(500).json({ message: error.message });
+    handleApiError(res, error, "FetchQuizStats");
   }
 });
 
@@ -721,7 +709,7 @@ router.get('/api/academy/exam-leaderboard', isAuthenticated, async (req: any, re
 
     res.json(topPerformers);
   } catch (error: any) {
-    res.status(500).json({ message: error.message });
+    handleApiError(res, error, "FetchExamLeaderboard");
   }
 });
 
@@ -755,8 +743,7 @@ router.post('/api/academy/generate-quiz', isAuthenticated, async (req: any, res)
       questions: savedQuestions,
     });
   } catch (error: any) {
-    console.error('Quiz generation error:', error);
-    res.status(500).json({ message: error.message });
+    handleApiError(res, error, "GenerateQuiz");
   }
 });
 

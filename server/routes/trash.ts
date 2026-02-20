@@ -4,6 +4,7 @@ import { users, branches, tasks, equipment, checklists, recipes, trainingModules
 import { eq, isNotNull, desc, sql, and, like, ilike } from "drizzle-orm";
 import { isAuthenticated } from "../localAuth";
 import { createAuditEntry, getAuditContext } from "../audit";
+import { handleApiError } from "./helpers";
 
 const router = Router();
 
@@ -37,7 +38,7 @@ router.get("/api/trash/tables", isAuthenticated, async (req: Request, res: Respo
     }
     res.json(counts);
   } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    handleApiError(res, err, "FetchTrashTables");
   }
 });
 
@@ -57,7 +58,7 @@ router.get("/api/trash/:tableName", isAuthenticated, async (req: Request, res: R
       .limit(100);
     res.json(rows);
   } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    handleApiError(res, err, "FetchTrashItems");
   }
 });
 
@@ -89,7 +90,7 @@ router.patch("/api/trash/:tableName/:id/restore", isAuthenticated, async (req: R
 
     res.json({ success: true, message: "Kayıt geri yüklendi" });
   } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    handleApiError(res, err, "RestoreTrashItem");
   }
 });
 
@@ -122,7 +123,7 @@ router.delete("/api/trash/:tableName/:id", isAuthenticated, async (req: Request,
 
     res.json({ success: true, message: "Kayıt kalıcı olarak silindi" });
   } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    handleApiError(res, err, "DeleteTrashItem");
   }
 });
 

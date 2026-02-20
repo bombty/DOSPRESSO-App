@@ -6,6 +6,7 @@ import { isHQRole, isBranchRole, hasPermission, type UserRoleType } from "@share
 import { eq, desc, asc, and, or, gte, lte, sql, inArray, isNull, isNotNull, ne, not, count, sum, avg, max, min } from "drizzle-orm";
 import { sanitizeUsersForRole } from "../security";
 import { auditLog, createAuditEntry, getAuditContext } from "../audit";
+import { handleApiError } from "./helpers";
 import bcrypt from "bcrypt";
 import { z } from "zod";
 import QRCode from "qrcode";
@@ -3746,8 +3747,7 @@ router.get('/api/branch-dashboard/:branchId', async (req, res) => {
     const todayChecklistItems = await db.select({ id: checklistCompletions.id, checklistId: checklistCompletions.checklistId, userId: checklistCompletions.userId, status: checklistCompletions.status, scheduledDate: checklistCompletions.scheduledDate, score: checklistCompletions.score }).from(checklistCompletions).where(and(eq(checklistCompletions.branchId, branchId), eq(checklistCompletions.scheduledDate, today))).limit(50);
     res.json({ branch, stats: { activeStaff, totalShifts, completedTasks, pendingTasks, completedChecklists, pendingChecklists, activeAlerts, criticalAlerts }, alerts: alertsResult, todayShifts, todayTasks, todayChecklists: todayChecklistItems });
   } catch (error: any) {
-    console.error("Error fetching branch dashboard:", error);
-    res.status(500).json({ message: "Dashboard verisi alınamadı", error: error.message });
+    handleApiError(res, error, "FetchBranchDashboard");
   }
 });
 
@@ -3846,8 +3846,7 @@ router.get('/api/branch-dashboard-v2/:branchId', async (req, res) => {
       alerts: alertsResult,
     });
   } catch (error: any) {
-    console.error("Error fetching branch dashboard v2:", error);
-    res.status(500).json({ message: "Dashboard verisi alınamadı", error: error.message });
+    handleApiError(res, error, "FetchBranchDashboardV2");
   }
 });
 

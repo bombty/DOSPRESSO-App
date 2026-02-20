@@ -1,3 +1,13 @@
+import type { Response } from "express";
+
+export function handleApiError(res: Response, error: unknown, context: string): void {
+  const message = error instanceof Error ? error.message : String(error);
+  console.error(`[${context}]`, message);
+  if (!res.headersSent) {
+    res.status(500).json({ message: "Internal server error" });
+  }
+}
+
 export interface PaginationParams {
   page: number;
   limit: number;
