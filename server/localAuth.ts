@@ -297,16 +297,6 @@ export async function setupAuth(app: Express, authLimiter?: any) {
   app.post("/api/logout", logoutHandler);
   app.post("/api/auth/logout", logoutHandler);
 
-  // Debug endpoint to check session status
-  app.get("/api/debug/session", (req, res) => {
-    res.json({
-      isAuthenticated: req.isAuthenticated(),
-      sessionID: req.sessionID,
-      session: req.session,
-      user: req.user || null,
-      cookies: req.headers.cookie || null,
-    });
-  });
 }
 
 export const isAuthenticated: RequestHandler = async (req, res, next) => {

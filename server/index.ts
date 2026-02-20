@@ -71,7 +71,7 @@ app.use((req, res, next) => {
     const message = (err as any).message || "Internal Server Error";
 
     res.status(status).json({ message });
-    throw err;
+    console.error("[GlobalErrorHandler]", err);
   });
 
   // importantly only setup vite in development and after

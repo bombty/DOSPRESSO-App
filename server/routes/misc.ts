@@ -7347,9 +7347,14 @@ DOSPRESSO İnsan Kaynakları Ekibi`;
 
 
   // ===== EMPLOYEE DASHBOARD =====
-  router.get('/api/employee-dashboard/:userId', async (req, res) => {
+  router.get('/api/employee-dashboard/:userId', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.params.userId;
+      const currentUser = req.user;
+      const isOwnDashboard = currentUser.id === userId;
+      if (!isOwnDashboard && !isHQRole(currentUser.role as SchemaUserRoleType)) {
+        return res.status(403).json({ message: "Bu panele erişim yetkiniz yok" });
+      }
       const todayStr = new Date().toISOString().split('T')[0];
       
       const [userData] = await db.select({
@@ -7419,7 +7424,11 @@ DOSPRESSO İnsan Kaynakları Ekibi`;
   });
 
   // ===== HQ DASHBOARD SUMMARY =====
-  router.get('/api/hq-dashboard-summary', async (req, res) => {
+  router.get('/api/hq-dashboard-summary', isAuthenticated, async (req: any, res) => {
+    const currentUser = req.user;
+    if (!isHQRole(currentUser.role as SchemaUserRoleType)) {
+      return res.status(403).json({ message: "Bu panele erişim yetkiniz yok" });
+    }
     try {
       const todayStr = new Date().toISOString().split('T')[0];
       
