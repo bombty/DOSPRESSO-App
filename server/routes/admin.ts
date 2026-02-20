@@ -2780,6 +2780,163 @@ const router = Router();
   // AUDIT LOGS - Denetim Günlüğü API
   // ===============================================
 
+  // IMPORTANT: /export and /stats routes MUST come before /:id to avoid Express matching them as :id param
+  router.get('/api/audit-logs/export', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      if (user.role !== 'admin' && user.role !== 'genel_mudur') {
+        return res.status(403).json({ error: 'Yetkiniz yok' });
+      }
+
+      const conditions: any[] = [];
+      if (req.query.eventType) {
+        conditions.push(sql`${auditLogs.eventType} = ${req.query.eventType}`);
+      }
+      if (req.query.userId) {
+        conditions.push(eq(auditLogs.userId, req.query.userId as string));
+      }
+      if (req.query.resource) {
+        conditions.push(eq(auditLogs.resource, req.query.resource as string));
+      }
+      if (req.query.branchId) {
+        conditions.push(eq(auditLogs.scopeBranchId, parseInt(req.query.branchId as string)));
+      }
+      if (req.query.startDate) {
+        const sd = req.query.startDate as string;
+        conditions.push(sql`${auditLogs.createdAt} >= ${sd}::timestamp`);
+      }
+      if (req.query.endDate) {
+        const ed = req.query.endDate as string;
+        conditions.push(sql`${auditLogs.createdAt} <= (${ed}::date + interval '1 day')`);
+      }
+
+      const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+
+      const logs = await db.select({
+        id: auditLogs.id,
+        eventType: auditLogs.eventType,
+        userId: auditLogs.userId,
+        actorRole: auditLogs.actorRole,
+        scopeBranchId: auditLogs.scopeBranchId,
+        action: auditLogs.action,
+        resource: auditLogs.resource,
+        resourceId: auditLogs.resourceId,
+        details: auditLogs.details,
+        requestId: auditLogs.requestId,
+        ipAddress: auditLogs.ipAddress,
+        createdAt: auditLogs.createdAt,
+        actorName: sql<string>`(SELECT COALESCE(u.first_name || ' ' || u.last_name, u.username) FROM users u WHERE u.id = ${auditLogs.userId} LIMIT 1)`.as('actor_name'),
+        branchName: sql<string>`(SELECT b.name FROM branches b WHERE b.id = ${auditLogs.scopeBranchId} LIMIT 1)`.as('branch_name'),
+      })
+        .from(auditLogs)
+        .where(whereClause)
+        .orderBy(desc(auditLogs.createdAt))
+        .limit(5000);
+
+      const escapeCsv = (val: string) => {
+        if (val.includes(',') || val.includes('"') || val.includes('\n')) {
+          return `"${val.replace(/"/g, '""')}"`;
+        }
+        return val;
+      };
+
+      const csvHeader = "ID,Tarih,Kullanici,Rol,Sube,Olay,Islem,Kaynak,KaynakID,IP,RequestID\n";
+      const csvRows = logs.map(log => {
+        const date = log.createdAt ? new Date(log.createdAt).toISOString() : '';
+        return [
+          String(log.id),
+          date,
+          escapeCsv(log.actorName || log.userId || ''),
+          escapeCsv(log.actorRole || ''),
+          escapeCsv((log.branchName || log.scopeBranchId || '').toString()),
+          escapeCsv(log.eventType),
+          escapeCsv(log.action),
+          escapeCsv(log.resource),
+          escapeCsv(log.resourceId || ''),
+          escapeCsv(log.ipAddress || ''),
+          escapeCsv(log.requestId || ''),
+        ].join(',');
+      }).join('\n');
+
+      res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+      res.setHeader('Content-Disposition', `attachment; filename=denetim-gunlugu-${new Date().toISOString().split('T')[0]}.csv`);
+      res.send('\ufeff' + csvHeader + csvRows);
+    } catch (error: any) {
+      console.error('[AuditLog] Export error:', error);
+      res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+      res.setHeader('Content-Disposition', `attachment; filename=denetim-gunlugu-hata.csv`);
+      res.send('\ufeffID,Hata\n1,Export sirasinda hata olustu');
+    }
+  });
+
+  router.get('/api/audit-logs/stats/event-types', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      if (user.role !== 'admin' && user.role !== 'genel_mudur') {
+        return res.status(403).json({ error: 'Yetkiniz yok' });
+      }
+
+      const result = await db.select({
+        eventType: auditLogs.eventType,
+        cnt: count(),
+      })
+        .from(auditLogs)
+        .groupBy(auditLogs.eventType)
+        .orderBy(desc(count()));
+
+      res.json(result);
+    } catch (error: any) {
+      res.status(500).json({ error: 'İstatistik yüklenemedi' });
+    }
+  });
+
+  router.get('/api/audit-logs/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      if (user.role !== 'admin' && user.role !== 'genel_mudur') {
+        return res.status(403).json({ error: 'Yetkiniz yok' });
+      }
+
+      const logId = parseInt(req.params.id);
+      if (isNaN(logId)) {
+        return res.status(400).json({ error: 'Gecersiz ID' });
+      }
+
+      const [log] = await db.select({
+        id: auditLogs.id,
+        eventType: auditLogs.eventType,
+        userId: auditLogs.userId,
+        actorRole: auditLogs.actorRole,
+        scopeBranchId: auditLogs.scopeBranchId,
+        action: auditLogs.action,
+        resource: auditLogs.resource,
+        resourceId: auditLogs.resourceId,
+        targetResource: auditLogs.targetResource,
+        targetResourceId: auditLogs.targetResourceId,
+        before: auditLogs.before,
+        after: auditLogs.after,
+        details: auditLogs.details,
+        requestId: auditLogs.requestId,
+        ipAddress: auditLogs.ipAddress,
+        userAgent: auditLogs.userAgent,
+        createdAt: auditLogs.createdAt,
+        actorName: sql<string>`(SELECT COALESCE(u.first_name || ' ' || u.last_name, u.username) FROM users u WHERE u.id = ${auditLogs.userId} LIMIT 1)`.as('actor_name'),
+        branchName: sql<string>`(SELECT b.name FROM branches b WHERE b.id = ${auditLogs.scopeBranchId} LIMIT 1)`.as('branch_name'),
+      })
+        .from(auditLogs)
+        .where(eq(auditLogs.id, logId));
+
+      if (!log) {
+        return res.status(404).json({ error: 'Kayıt bulunamadı' });
+      }
+
+      res.json(log);
+    } catch (error: any) {
+      console.error('[AuditLog] Detail error:', error);
+      res.status(500).json({ error: 'Denetim kaydı yüklenemedi' });
+    }
+  });
+
   router.get('/api/audit-logs', isAuthenticated, async (req: any, res) => {
     try {
       const user = req.user;
@@ -2806,10 +2963,12 @@ const router = Router();
         conditions.push(eq(auditLogs.scopeBranchId, parseInt(req.query.branchId as string)));
       }
       if (req.query.startDate) {
-        conditions.push(sql`${auditLogs.createdAt} >= ${req.query.startDate}`);
+        const sd = req.query.startDate as string;
+        conditions.push(sql`${auditLogs.createdAt} >= ${sd}::timestamp`);
       }
       if (req.query.endDate) {
-        conditions.push(sql`${auditLogs.createdAt} <= ${req.query.endDate}`);
+        const ed = req.query.endDate as string;
+        conditions.push(sql`${auditLogs.createdAt} <= (${ed}::date + interval '1 day')`);
       }
       if (req.query.search) {
         const searchTerm = `%${req.query.search}%`;
@@ -2840,7 +2999,7 @@ const router = Router();
         ipAddress: auditLogs.ipAddress,
         userAgent: auditLogs.userAgent,
         createdAt: auditLogs.createdAt,
-        actorName: sql<string>`(SELECT COALESCE(u."firstName" || ' ' || u."lastName", u."username") FROM users u WHERE u.id = ${auditLogs.userId} LIMIT 1)`.as('actor_name'),
+        actorName: sql<string>`(SELECT COALESCE(u.first_name || ' ' || u.last_name, u.username) FROM users u WHERE u.id = ${auditLogs.userId} LIMIT 1)`.as('actor_name'),
         branchName: sql<string>`(SELECT b.name FROM branches b WHERE b.id = ${auditLogs.scopeBranchId} LIMIT 1)`.as('branch_name'),
       })
         .from(auditLogs)
@@ -2861,147 +3020,6 @@ const router = Router();
     } catch (error: any) {
       console.error('[AuditLog] List error:', error);
       res.status(500).json({ error: 'Denetim günlüğü yüklenemedi' });
-    }
-  });
-
-  router.get('/api/audit-logs/export', isAuthenticated, async (req: any, res) => {
-    try {
-      const user = req.user;
-      if (user.role !== 'admin' && user.role !== 'genel_mudur') {
-        return res.status(403).json({ error: 'Yetkiniz yok' });
-      }
-
-      const conditions: any[] = [];
-      if (req.query.eventType) {
-        conditions.push(sql`${auditLogs.eventType} = ${req.query.eventType}`);
-      }
-      if (req.query.userId) {
-        conditions.push(eq(auditLogs.userId, req.query.userId as string));
-      }
-      if (req.query.resource) {
-        conditions.push(eq(auditLogs.resource, req.query.resource as string));
-      }
-      if (req.query.branchId) {
-        conditions.push(eq(auditLogs.scopeBranchId, parseInt(req.query.branchId as string)));
-      }
-      if (req.query.startDate) {
-        conditions.push(sql`${auditLogs.createdAt} >= ${req.query.startDate}`);
-      }
-      if (req.query.endDate) {
-        conditions.push(sql`${auditLogs.createdAt} <= ${req.query.endDate}`);
-      }
-
-      const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
-
-      const logs = await db.select({
-        id: auditLogs.id,
-        eventType: auditLogs.eventType,
-        userId: auditLogs.userId,
-        actorRole: auditLogs.actorRole,
-        scopeBranchId: auditLogs.scopeBranchId,
-        action: auditLogs.action,
-        resource: auditLogs.resource,
-        resourceId: auditLogs.resourceId,
-        details: auditLogs.details,
-        requestId: auditLogs.requestId,
-        ipAddress: auditLogs.ipAddress,
-        createdAt: auditLogs.createdAt,
-        actorName: sql<string>`(SELECT COALESCE(u."firstName" || ' ' || u."lastName", u."username") FROM users u WHERE u.id = ${auditLogs.userId} LIMIT 1)`.as('actor_name'),
-        branchName: sql<string>`(SELECT b.name FROM branches b WHERE b.id = ${auditLogs.scopeBranchId} LIMIT 1)`.as('branch_name'),
-      })
-        .from(auditLogs)
-        .where(whereClause)
-        .orderBy(desc(auditLogs.createdAt))
-        .limit(5000);
-
-      const csvHeader = "ID,Tarih,Kullanici,Rol,Sube,Olay,Islem,Kaynak,KaynakID,IP,RequestID\n";
-      const csvRows = logs.map(log => {
-        const date = log.createdAt ? new Date(log.createdAt).toISOString() : '';
-        return [
-          log.id,
-          date,
-          (log.actorName || log.userId || '').replace(/,/g, ' '),
-          log.actorRole || '',
-          (log.branchName || log.scopeBranchId || '').toString().replace(/,/g, ' '),
-          log.eventType,
-          log.action,
-          log.resource,
-          log.resourceId || '',
-          log.ipAddress || '',
-          log.requestId || '',
-        ].join(',');
-      }).join('\n');
-
-      res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-      res.setHeader('Content-Disposition', `attachment; filename=denetim-gunlugu-${new Date().toISOString().split('T')[0]}.csv`);
-      res.send('\ufeff' + csvHeader + csvRows);
-    } catch (error: any) {
-      console.error('[AuditLog] Export error:', error);
-      res.status(500).json({ error: 'CSV export başarısız' });
-    }
-  });
-
-  router.get('/api/audit-logs/:id', isAuthenticated, async (req: any, res) => {
-    try {
-      const user = req.user;
-      if (user.role !== 'admin' && user.role !== 'genel_mudur') {
-        return res.status(403).json({ error: 'Yetkiniz yok' });
-      }
-
-      const logId = parseInt(req.params.id);
-      const [log] = await db.select({
-        id: auditLogs.id,
-        eventType: auditLogs.eventType,
-        userId: auditLogs.userId,
-        actorRole: auditLogs.actorRole,
-        scopeBranchId: auditLogs.scopeBranchId,
-        action: auditLogs.action,
-        resource: auditLogs.resource,
-        resourceId: auditLogs.resourceId,
-        targetResource: auditLogs.targetResource,
-        targetResourceId: auditLogs.targetResourceId,
-        before: auditLogs.before,
-        after: auditLogs.after,
-        details: auditLogs.details,
-        requestId: auditLogs.requestId,
-        ipAddress: auditLogs.ipAddress,
-        userAgent: auditLogs.userAgent,
-        createdAt: auditLogs.createdAt,
-        actorName: sql<string>`(SELECT COALESCE(u."firstName" || ' ' || u."lastName", u."username") FROM users u WHERE u.id = ${auditLogs.userId} LIMIT 1)`.as('actor_name'),
-        branchName: sql<string>`(SELECT b.name FROM branches b WHERE b.id = ${auditLogs.scopeBranchId} LIMIT 1)`.as('branch_name'),
-      })
-        .from(auditLogs)
-        .where(eq(auditLogs.id, logId));
-
-      if (!log) {
-        return res.status(404).json({ error: 'Kayıt bulunamadı' });
-      }
-
-      res.json(log);
-    } catch (error: any) {
-      console.error('[AuditLog] Detail error:', error);
-      res.status(500).json({ error: 'Denetim kaydı yüklenemedi' });
-    }
-  });
-
-  router.get('/api/audit-logs/stats/event-types', isAuthenticated, async (req: any, res) => {
-    try {
-      const user = req.user;
-      if (user.role !== 'admin' && user.role !== 'genel_mudur') {
-        return res.status(403).json({ error: 'Yetkiniz yok' });
-      }
-
-      const result = await db.select({
-        eventType: auditLogs.eventType,
-        cnt: count(),
-      })
-        .from(auditLogs)
-        .groupBy(auditLogs.eventType)
-        .orderBy(desc(count()));
-
-      res.json(result);
-    } catch (error: any) {
-      res.status(500).json({ error: 'İstatistik yüklenemedi' });
     }
   });
 
