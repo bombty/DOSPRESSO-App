@@ -13183,3 +13183,41 @@ export const insertFoodSafetyDocumentSchema = createInsertSchema(foodSafetyDocum
 }).omit({ id: true, createdAt: true, updatedAt: true });
 export type InsertFoodSafetyDocument = z.infer<typeof insertFoodSafetyDocumentSchema>;
 export type FoodSafetyDocument = typeof foodSafetyDocuments.$inferSelect;
+
+export const importBatches = pgTable("import_batches", {
+  id: serial("id").primaryKey(),
+  createdByUserId: varchar("created_by_user_id").notNull().references(() => users.id),
+  mode: varchar("mode", { length: 20 }).notNull().default("append"),
+  scope: varchar("scope", { length: 30 }),
+  fileName: varchar("file_name", { length: 500 }),
+  status: varchar("status", { length: 20 }).notNull().default("pending"),
+  totalRows: integer("total_rows").default(0),
+  createdCount: integer("created_count").default(0),
+  updatedCount: integer("updated_count").default(0),
+  skippedCount: integer("skipped_count").default(0),
+  errorCount: integer("error_count").default(0),
+  summaryJson: text("summary_json"),
+  rolledBackAt: timestamp("rolled_back_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("import_batch_user_idx").on(table.createdByUserId),
+  index("import_batch_status_idx").on(table.status),
+]);
+
+export type ImportBatch = typeof importBatches.$inferSelect;
+
+export const importResults = pgTable("import_results", {
+  id: serial("id").primaryKey(),
+  batchId: integer("batch_id").notNull().references(() => importBatches.id, { onDelete: "cascade" }),
+  rowNumber: integer("row_number").notNull(),
+  status: varchar("status", { length: 20 }).notNull(),
+  employeeId: varchar("employee_id"),
+  message: text("message"),
+  beforeJson: text("before_json"),
+  afterJson: text("after_json"),
+}, (table) => [
+  index("import_result_batch_idx").on(table.batchId),
+  index("import_result_employee_idx").on(table.employeeId),
+]);
+
+export type ImportResult = typeof importResults.$inferSelect;

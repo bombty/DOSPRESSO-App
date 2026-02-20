@@ -364,6 +364,7 @@ import shiftsRouter from "./routes/shifts";
 import operationsRouter from "./routes/operations";
 import miscRouter from "./routes/misc";
 import trashRouter from "./routes/trash";
+import hrImportExportRouter from "./routes/hr-import-export";
 
 // Multer configuration for file uploads (memory storage)
 const uploadStorage = multer.memoryStorage();
@@ -611,6 +612,7 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
   app.use(equipmentRouter);
   app.use(tasksRouter);
   app.use(hrRouter);
+  app.use(hrImportExportRouter);
   app.use(branchesRouter);
   app.use(shiftsRouter);
   app.use(operationsRouter);

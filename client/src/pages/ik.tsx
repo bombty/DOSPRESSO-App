@@ -87,6 +87,13 @@ import {
   FolderOpen,
   Clock,
   Download,
+  Upload,
+  FileSpreadsheet,
+  CheckCircle,
+  XCircle,
+  SkipForward,
+  AlertCircle,
+  RotateCcw,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
@@ -192,6 +199,8 @@ export default function IKPage() {
 
   // Dialogs
   const [addDialogOpen, setAddDialogOpen] = useState(false);
+  const [exportDialogOpen, setExportDialogOpen] = useState(false);
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [warningsDialogOpen, setWarningsDialogOpen] = useState(false);
   const [addWarningDialogOpen, setAddWarningDialogOpen] = useState(false);
@@ -613,12 +622,26 @@ export default function IKPage() {
             <h1 className="text-2xl sm:text-3xl font-bold" data-testid="text-page-title">İK Yönetimi</h1>
             <p className="text-sm text-muted-foreground">Personel yönetimi ve deneme süresi takibi</p>
           </div>
-          {canCreate && (
-            <Button onClick={() => setAddDialogOpen(true)} data-testid="button-add-employee">
-              <UserPlus className="mr-2 h-4 w-4" />
-              Yeni Personel Ekle
-            </Button>
-          )}
+          <div className="flex gap-2 flex-wrap">
+            {(isHQRole(user?.role as any) || user?.role === 'admin') && (
+              <>
+                <Button variant="outline" onClick={() => setExportDialogOpen(true)} data-testid="button-export-employees">
+                  <Download className="mr-2 h-4 w-4" />
+                  Excel Dışa Aktar
+                </Button>
+                <Button variant="outline" onClick={() => setImportDialogOpen(true)} data-testid="button-import-employees">
+                  <Upload className="mr-2 h-4 w-4" />
+                  Excel İçe Aktar
+                </Button>
+              </>
+            )}
+            {canCreate && (
+              <Button onClick={() => setAddDialogOpen(true)} data-testid="button-add-employee">
+                <UserPlus className="mr-2 h-4 w-4" />
+                Yeni Personel Ekle
+              </Button>
+            )}
+          </div>
         </div>
 
       {/* Main Tabs Navigation */}
@@ -1625,6 +1648,19 @@ export default function IKPage() {
         )}
       </Tabs>
 
+      {/* Export Dialog */}
+      <ExportEmployeesDialog
+        open={exportDialogOpen}
+        onOpenChange={setExportDialogOpen}
+        branches={branches}
+      />
+
+      {/* Import Dialog */}
+      <ImportEmployeesDialog
+        open={importDialogOpen}
+        onOpenChange={setImportDialogOpen}
+      />
+
       {/* Add Employee Dialog */}
       {canCreate && (
         <AddEmployeeDialog
@@ -1720,7 +1756,7 @@ function AddEmployeeDialog({
     firstName: string;
     lastName: string;
     role: string;
-    branchId?: number;
+    branchId?: number | null;
     hireDate: string;
     probationEndDate: string;
     birthDate: string;
@@ -1732,6 +1768,20 @@ function AddEmployeeDialog({
     weeklyHours: number;
   };
 
+  const isSupervisor = userRole === "supervisor";
+  const defaultCategory = isSupervisor ? "branch" : "hq";
+  const [personnelCategory, setPersonnelCategory] = useState<"hq" | "factory" | "branch">(defaultCategory);
+
+  const availableRoles = useMemo(() => {
+    if (personnelCategory === "hq") return hqRoles;
+    if (personnelCategory === "factory") return factoryRoles;
+    return branchRoles;
+  }, [personnelCategory]);
+
+  const regularBranches = useMemo(() => {
+    return branches.filter(b => b.id !== HQ_BRANCH_ID && b.id !== FACTORY_BRANCH_ID);
+  }, [branches]);
+
   const form = useForm<CreateEmployeeForm>({
     resolver: zodResolver(createEmployeeSchema),
     defaultValues: {
@@ -1740,8 +1790,8 @@ function AddEmployeeDialog({
       email: "",
       firstName: "",
       lastName: "",
-      role: "barista",
-      branchId: userRole === "supervisor" ? userBranchId : undefined,
+      role: isSupervisor ? "barista" : hqRoles[0] || "barista",
+      branchId: isSupervisor ? userBranchId : undefined,
       hireDate: "",
       probationEndDate: "",
       birthDate: "",
@@ -1756,7 +1806,13 @@ function AddEmployeeDialog({
 
   const createMutation = useMutation({
     mutationFn: async (data: CreateEmployeeForm) => {
-      return apiRequest("POST", "/api/employees", data);
+      const payload = { ...data };
+      if (personnelCategory === "hq") {
+        payload.branchId = HQ_BRANCH_ID;
+      } else if (personnelCategory === "factory") {
+        payload.branchId = FACTORY_BRANCH_ID;
+      }
+      return apiRequest("POST", "/api/employees", payload);
     },
     onSuccess: () => {
       toast({
@@ -1776,8 +1832,16 @@ function AddEmployeeDialog({
     },
   });
 
-  const selectedBranchId = form.watch("branchId");
-  const availableRoles = getRolesForBranch(selectedBranchId);
+  const handleCategoryChange = (cat: "hq" | "factory" | "branch") => {
+    setPersonnelCategory(cat);
+    const roles = cat === "hq" ? hqRoles : cat === "factory" ? factoryRoles : branchRoles;
+    form.setValue("role", roles[0] || "barista");
+    if (cat === "branch") {
+      form.setValue("branchId", regularBranches[0]?.id || undefined);
+    } else {
+      form.setValue("branchId", undefined);
+    }
+  };
 
   const onSubmit = (data: CreateEmployeeForm) => {
     createMutation.mutate(data);
@@ -1869,14 +1933,52 @@ function AddEmployeeDialog({
               )}
             />
 
-            <div className="grid grid-cols-2 gap-2 sm:gap-3">
+            {!isSupervisor && (
+              <div>
+                <FormLabel>Personel Kategorisi *</FormLabel>
+                <div className="flex gap-2 mt-1">
+                  <Button
+                    type="button"
+                    variant={personnelCategory === "hq" ? "default" : "outline"}
+                    className="flex-1"
+                    onClick={() => handleCategoryChange("hq")}
+                    data-testid="button-category-hq"
+                  >
+                    <Building2 className="w-4 h-4 mr-1" />
+                    Merkez (HQ)
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={personnelCategory === "factory" ? "default" : "outline"}
+                    className="flex-1"
+                    onClick={() => handleCategoryChange("factory")}
+                    data-testid="button-category-factory"
+                  >
+                    <Building2 className="w-4 h-4 mr-1" />
+                    Fabrika
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={personnelCategory === "branch" ? "default" : "outline"}
+                    className="flex-1"
+                    onClick={() => handleCategoryChange("branch")}
+                    data-testid="button-category-branch"
+                  >
+                    <MapPin className="w-4 h-4 mr-1" />
+                    Şube
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            <div className={`grid gap-2 sm:gap-3 ${personnelCategory === "branch" && !isSupervisor ? "grid-cols-2" : "grid-cols-1"}`}>
               <FormField
                 control={form.control}
                 name="role"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Rol *</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
                         <SelectTrigger data-testid="select-role">
                           <SelectValue />
@@ -1897,42 +1999,39 @@ function AddEmployeeDialog({
                 )}
               />
 
-              <FormField
-                control={form.control}
-                name="branchId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Şube {userRole === "supervisor" && "(otomatik)"}</FormLabel>
-                    <Select
-                      onValueChange={(value) => {
-                        const newBranchId = parseInt(value);
-                        field.onChange(newBranchId);
-                        const newRoles = getRolesForBranch(newBranchId);
-                        const currentRole = form.getValues("role");
-                        if (!newRoles.includes(currentRole)) {
-                          form.setValue("role", newRoles[0] || "");
-                        }
-                      }}
-                      value={field.value ? field.value.toString() : ""}
-                      disabled={userRole === "supervisor"}
-                    >
-                      <FormControl>
-                        <SelectTrigger data-testid="select-branch">
-                          <SelectValue placeholder="Şube seçin" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {branches.map((branch) => (
-                          <SelectItem key={branch.id} value={branch.id.toString()}>
-                            {branch.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              {personnelCategory === "branch" && !isSupervisor && (
+                <FormField
+                  control={form.control}
+                  name="branchId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Şube *</FormLabel>
+                      <Select
+                        onValueChange={(value) => field.onChange(parseInt(value))}
+                        value={field.value ? field.value.toString() : ""}
+                      >
+                        <FormControl>
+                          <SelectTrigger data-testid="select-branch">
+                            <SelectValue placeholder="Şube seçin" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {regularBranches.map((branch) => (
+                            <SelectItem key={branch.id} value={branch.id.toString()}>
+                              {branch.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
+
+              {isSupervisor && (
+                <input type="hidden" value={userBranchId || ""} />
+              )}
             </div>
 
             <div className="grid grid-cols-3 gap-2 sm:gap-3">
@@ -5258,6 +5357,487 @@ function SalaryEditDialog({
             {isPending ? "Kaydediliyor..." : "Yan Hakları Kaydet"}
           </Button>
         </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function ExportEmployeesDialog({
+  open,
+  onOpenChange,
+  branches,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  branches: { id: number; name: string }[];
+}) {
+  const { toast } = useToast();
+  const [scope, setScope] = useState("all");
+  const [selectedBranches, setSelectedBranches] = useState<number[]>([]);
+  const [roleFilter, setRoleFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
+  const [exportType, setExportType] = useState("list");
+  const [isExporting, setIsExporting] = useState(false);
+
+  const regularBranches = branches.filter(b => b.id !== 23 && b.id !== 24);
+
+  const handleExport = async () => {
+    setIsExporting(true);
+    try {
+      const response = await fetch("/api/hr/employees/export", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          scope,
+          branchIds: scope === "branch" ? selectedBranches : undefined,
+          roleFilter: roleFilter || undefined,
+          statusFilter: statusFilter || undefined,
+          exportType,
+        }),
+      });
+
+      if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.message || "Export hatası");
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `dospresso_personel_${new Date().toISOString().split("T")[0]}.xlsx`;
+      a.click();
+      window.URL.revokeObjectURL(url);
+
+      toast({ title: "Başarılı", description: "Excel dosyası indirildi" });
+      onOpenChange(false);
+    } catch (error: any) {
+      toast({ title: "Hata", description: error.message, variant: "destructive" });
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <FileSpreadsheet className="h-5 w-5" />
+            Excel Dışa Aktar
+          </DialogTitle>
+          <DialogDescription>Personel verilerini Excel olarak indirin</DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4">
+          <div>
+            <label className="text-sm font-medium">Kapsam</label>
+            <Select value={scope} onValueChange={setScope}>
+              <SelectTrigger data-testid="select-export-scope">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tümü</SelectItem>
+                <SelectItem value="hq">Merkez (HQ)</SelectItem>
+                <SelectItem value="factory">Fabrika</SelectItem>
+                <SelectItem value="branch">Şubeler</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {scope === "branch" && (
+            <div>
+              <label className="text-sm font-medium">Şubeler</label>
+              <div className="max-h-32 overflow-y-auto border rounded-md p-2 space-y-1 mt-1">
+                {regularBranches.map((branch) => (
+                  <label key={branch.id} className="flex items-center gap-2 text-sm cursor-pointer">
+                    <Checkbox
+                      checked={selectedBranches.includes(branch.id)}
+                      onCheckedChange={(checked) => {
+                        setSelectedBranches(prev =>
+                          checked ? [...prev, branch.id] : prev.filter(id => id !== branch.id)
+                        );
+                      }}
+                    />
+                    {branch.name}
+                  </label>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-sm font-medium">Rol Filtre</label>
+              <Select value={roleFilter} onValueChange={setRoleFilter}>
+                <SelectTrigger data-testid="select-export-role">
+                  <SelectValue placeholder="Tümü" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all_roles">Tümü</SelectItem>
+                  {Object.entries(roleLabels).map(([key, label]) => (
+                    <SelectItem key={key} value={key}>{label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <label className="text-sm font-medium">Durum</label>
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger data-testid="select-export-status">
+                  <SelectValue placeholder="Tümü" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all_statuses">Tümü</SelectItem>
+                  <SelectItem value="active">Aktif</SelectItem>
+                  <SelectItem value="inactive">Pasif</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div>
+            <label className="text-sm font-medium">Export Tipi</label>
+            <Select value={exportType} onValueChange={setExportType}>
+              <SelectTrigger data-testid="select-export-type">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="list">Liste Export (tek sayfa)</SelectItem>
+                <SelectItem value="detailed">Tam Detay (çoklu sayfa)</SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground mt-1">
+              {exportType === "detailed" ? "Personel, izinler, disiplin ve ayrılışlar ayrı sayfalarda" : "Tüm personel bilgileri tek sayfada"}
+            </p>
+          </div>
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>İptal</Button>
+          <Button onClick={handleExport} disabled={isExporting} data-testid="button-do-export">
+            {isExporting ? "İndiriliyor..." : "Excel İndir"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function ImportEmployeesDialog({
+  open,
+  onOpenChange,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}) {
+  const { toast } = useToast();
+  const [step, setStep] = useState<"upload" | "config" | "dryrun" | "result">("upload");
+  const [file, setFile] = useState<File | null>(null);
+  const [mode, setMode] = useState("append");
+  const [matchKey, setMatchKey] = useState("username");
+  const [dryRunResult, setDryRunResult] = useState<any>(null);
+  const [applyResult, setApplyResult] = useState<any>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
+
+  const resetState = () => {
+    setStep("upload");
+    setFile(null);
+    setMode("append");
+    setMatchKey("username");
+    setDryRunResult(null);
+    setApplyResult(null);
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    if (f) {
+      setFile(f);
+      setStep("config");
+    }
+  };
+
+  const handleDryRun = async () => {
+    if (!file) return;
+    setIsProcessing(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("mode", mode);
+      formData.append("matchKey", matchKey);
+
+      const response = await fetch("/api/hr/employees/import/dry-run", {
+        method: "POST",
+        credentials: "include",
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.message || "Simülasyon hatası");
+      }
+
+      const result = await response.json();
+      setDryRunResult(result);
+      setStep("dryrun");
+    } catch (error: any) {
+      toast({ title: "Hata", description: error.message, variant: "destructive" });
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleApply = async () => {
+    if (!file) return;
+    setIsProcessing(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("mode", mode);
+      formData.append("matchKey", matchKey);
+
+      const response = await fetch("/api/hr/employees/import/apply", {
+        method: "POST",
+        credentials: "include",
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.message || "Import hatası");
+      }
+
+      const result = await response.json();
+      setApplyResult(result);
+      setStep("result");
+      queryClient.invalidateQueries({ queryKey: ["/api/employees"] });
+    } catch (error: any) {
+      toast({ title: "Hata", description: error.message, variant: "destructive" });
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleDownloadTemplate = async () => {
+    try {
+      const response = await fetch("/api/hr/employees/import/template", {
+        credentials: "include",
+      });
+      if (!response.ok) throw new Error("Şablon indirilemedi");
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "dospresso_import_sablonu.xlsx";
+      a.click();
+      window.URL.revokeObjectURL(url);
+    } catch (error: any) {
+      toast({ title: "Hata", description: error.message, variant: "destructive" });
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => { if (!v) resetState(); onOpenChange(v); }}>
+      <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Upload className="h-5 w-5" />
+            Excel İçe Aktar
+          </DialogTitle>
+          <DialogDescription>
+            {step === "upload" && "Excel dosyası seçin veya şablon indirin"}
+            {step === "config" && "Import ayarlarını yapılandırın"}
+            {step === "dryrun" && "Simülasyon sonuçlarını inceleyin"}
+            {step === "result" && "Import tamamlandı"}
+          </DialogDescription>
+        </DialogHeader>
+
+        {step === "upload" && (
+          <div className="space-y-4">
+            <div className="border-2 border-dashed rounded-lg p-8 text-center">
+              <FileSpreadsheet className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
+              <p className="text-sm text-muted-foreground mb-3">Excel dosyanızı (.xlsx) seçin</p>
+              <Input
+                type="file"
+                accept=".xlsx"
+                onChange={handleFileChange}
+                className="max-w-xs mx-auto"
+                data-testid="input-import-file"
+              />
+            </div>
+            <Button variant="outline" onClick={handleDownloadTemplate} className="w-full" data-testid="button-download-template">
+              <Download className="mr-2 h-4 w-4" />
+              Import Şablonu İndir
+            </Button>
+          </div>
+        )}
+
+        {step === "config" && (
+          <div className="space-y-4">
+            <div className="flex items-center gap-2 p-3 bg-muted/50 rounded-md">
+              <FileSpreadsheet className="h-5 w-5 text-muted-foreground" />
+              <span className="text-sm font-medium">{file?.name}</span>
+              <Badge variant="secondary">{(file?.size || 0 / 1024).toFixed(0)} KB</Badge>
+            </div>
+
+            <div>
+              <label className="text-sm font-medium">Import Modu</label>
+              <Select value={mode} onValueChange={setMode}>
+                <SelectTrigger data-testid="select-import-mode">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="append">Append (Sadece ekle)</SelectItem>
+                  <SelectItem value="upsert">Upsert (Ekle + güncelle)</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground mt-1">
+                {mode === "append" ? "Sadece yeni personel ekler, mevcut olanları atlar" : "Yeni ekler, mevcut olanları günceller"}
+              </p>
+            </div>
+
+            <div>
+              <label className="text-sm font-medium">Eşleştirme Anahtarı</label>
+              <Select value={matchKey} onValueChange={setMatchKey}>
+                <SelectTrigger data-testid="select-match-key">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="username">Kullanıcı Adı</SelectItem>
+                  <SelectItem value="email">E-posta</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-md">
+              <div className="flex items-start gap-2">
+                <AlertCircle className="h-4 w-4 text-yellow-600 mt-0.5 flex-shrink-0" />
+                <div className="text-xs text-muted-foreground">
+                  <p className="font-medium text-foreground">Admin koruması aktif</p>
+                  <p>Admin kullanıcılar import ile asla değiştirilemez veya silinemez.</p>
+                </div>
+              </div>
+            </div>
+
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setStep("upload")}>Geri</Button>
+              <Button onClick={handleDryRun} disabled={isProcessing} data-testid="button-dry-run">
+                {isProcessing ? "Simüle ediliyor..." : "Simülasyon Çalıştır"}
+              </Button>
+            </DialogFooter>
+          </div>
+        )}
+
+        {step === "dryrun" && dryRunResult && (
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <Card>
+                <CardContent className="p-3 text-center">
+                  <CheckCircle className="h-5 w-5 mx-auto text-green-500 mb-1" />
+                  <div className="text-lg font-bold">{dryRunResult.toCreate}</div>
+                  <div className="text-xs text-muted-foreground">Eklenecek</div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-3 text-center">
+                  <Edit className="h-5 w-5 mx-auto text-blue-500 mb-1" />
+                  <div className="text-lg font-bold">{dryRunResult.toUpdate}</div>
+                  <div className="text-xs text-muted-foreground">Güncellenecek</div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-3 text-center">
+                  <SkipForward className="h-5 w-5 mx-auto text-yellow-500 mb-1" />
+                  <div className="text-lg font-bold">{dryRunResult.toSkip}</div>
+                  <div className="text-xs text-muted-foreground">Atlanacak</div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-3 text-center">
+                  <XCircle className="h-5 w-5 mx-auto text-red-500 mb-1" />
+                  <div className="text-lg font-bold">{dryRunResult.toError}</div>
+                  <div className="text-xs text-muted-foreground">Hatalı</div>
+                </CardContent>
+              </Card>
+            </div>
+
+            <div className="max-h-48 overflow-y-auto border rounded-md">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-16">Satır</TableHead>
+                    <TableHead className="w-20">Durum</TableHead>
+                    <TableHead>Açıklama</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {dryRunResult.results?.map((r: any, i: number) => (
+                    <TableRow key={i}>
+                      <TableCell className="text-xs">{r.rowNumber}</TableCell>
+                      <TableCell>
+                        <Badge variant={r.status === "create" ? "default" : r.status === "update" ? "secondary" : r.status === "error" ? "destructive" : "outline"}>
+                          {r.status === "create" ? "Ekle" : r.status === "update" ? "Güncelle" : r.status === "skip" ? "Atla" : "Hata"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-xs">{r.message}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setStep("config")}>Geri</Button>
+              <Button
+                onClick={handleApply}
+                disabled={isProcessing || (dryRunResult.toCreate === 0 && dryRunResult.toUpdate === 0)}
+                data-testid="button-apply-import"
+              >
+                {isProcessing ? "Uygulanıyor..." : "Onayla ve Uygula"}
+              </Button>
+            </DialogFooter>
+          </div>
+        )}
+
+        {step === "result" && applyResult && (
+          <div className="space-y-4">
+            <div className="text-center p-4">
+              <CheckCircle className="h-12 w-12 mx-auto text-green-500 mb-3" />
+              <h3 className="text-lg font-semibold">Import Tamamlandı</h3>
+              <p className="text-sm text-muted-foreground">Batch ID: {applyResult.batchId}</p>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div className="text-center p-2 bg-green-500/10 rounded-md">
+                <div className="text-lg font-bold text-green-600">{applyResult.createdCount}</div>
+                <div className="text-xs text-muted-foreground">Eklendi</div>
+              </div>
+              <div className="text-center p-2 bg-blue-500/10 rounded-md">
+                <div className="text-lg font-bold text-blue-600">{applyResult.updatedCount}</div>
+                <div className="text-xs text-muted-foreground">Güncellendi</div>
+              </div>
+              <div className="text-center p-2 bg-yellow-500/10 rounded-md">
+                <div className="text-lg font-bold text-yellow-600">{applyResult.skippedCount}</div>
+                <div className="text-xs text-muted-foreground">Atlandı</div>
+              </div>
+              <div className="text-center p-2 bg-red-500/10 rounded-md">
+                <div className="text-lg font-bold text-red-600">{applyResult.errorCount}</div>
+                <div className="text-xs text-muted-foreground">Hata</div>
+              </div>
+            </div>
+
+            <p className="text-xs text-muted-foreground text-center">
+              Bu importu 7 gün içinde geri alabilirsiniz.
+            </p>
+
+            <DialogFooter>
+              <Button onClick={() => { resetState(); onOpenChange(false); }} data-testid="button-close-import">
+                Kapat
+              </Button>
+            </DialogFooter>
+          </div>
+        )}
       </DialogContent>
     </Dialog>
   );
