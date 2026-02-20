@@ -3885,7 +3885,7 @@ const normalizeTimeGlobal = (timeStr: string): string => {
             firstName: users.firstName,
             lastName: users.lastName,
             role: users.role,
-            profilePhotoUrl: users.profilePhotoUrl,
+            profileImageUrl: users.profileImageUrl,
           }).from(users).where(inArray(users.id, userIds))
         : [];
       
@@ -4588,7 +4588,7 @@ const normalizeTimeGlobal = (timeStr: string): string => {
         return { 
           id: emp.id, 
           name: `${emp.firstName || ''} ${emp.lastName || ''}`.trim() || emp.username, 
-          avatar: emp.profilePhoto,
+          avatar: emp.profileImageUrl,
           score: Math.max(0, Math.round(score)), 
           completionRate: Math.round(completionRate),
           absences, 
@@ -4692,7 +4692,7 @@ const normalizeTimeGlobal = (timeStr: string): string => {
         return { 
           id: emp.id, 
           name: `${emp.firstName || ''} ${emp.lastName || ''}`.trim() || emp.username, 
-          avatar: emp.profilePhoto,
+          avatar: emp.profileImageUrl,
           score: Math.max(0, Math.round(score)), 
           completionRate: Math.round(completionRate),
           absences, 
@@ -5127,7 +5127,7 @@ const normalizeTimeGlobal = (timeStr: string): string => {
           username: users.username,
           role: users.role,
           branchId: users.branchId,
-          profilePhoto: users.profilePhoto,
+          profileImageUrl: users.profileImageUrl,
         }).from(users)
           .where(sql`${users.role} NOT IN ('admin', 'owner')`)
           .limit(50);
@@ -5157,7 +5157,7 @@ const normalizeTimeGlobal = (timeStr: string): string => {
         const result: any = {
           id: emp.id,
           name: ((emp.firstName || '') + ' ' + (emp.lastName || '')).trim() || emp.username,
-          avatar: emp.profilePhoto,
+          avatar: emp.profileImageUrl,
           role: emp.role,
           status: randomStatus,
           checkInTime: randomStatus === 'active' || randomStatus === 'on_shift' ? '08:' + Math.floor(Math.random() * 60).toString().padStart(2, '0') : undefined
@@ -5930,12 +5930,17 @@ DOSPRESSO İnsan Kaynakları Ekibi`;
         documents: employeeTerminations.documents,
         createdAt: employeeTerminations.createdAt,
         updatedAt: employeeTerminations.updatedAt,
-        userName: users.fullName,
+        userFirstName: users.firstName,
+        userLastName: users.lastName,
       })
         .from(employeeTerminations)
         .leftJoin(users, eq(employeeTerminations.userId, users.id))
         .orderBy(desc(employeeTerminations.terminationDate));
-      res.json(result);
+      const enriched = result.map(r => ({
+        ...r,
+        userName: ((r.userFirstName || '') + ' ' + (r.userLastName || '')).trim() || null,
+      }));
+      res.json(enriched);
     } catch (error: any) {
       console.error("Error fetching terminations:", error);
       res.status(500).json({ message: "Ayrılış kayıtları yüklenirken hata oluştu" });
@@ -9607,9 +9612,8 @@ Dusuk puanli alanlara odaklan ve pozitif, motive edici ol. JSON dizisi olarak ya
         id: users.id,
         firstName: users.firstName,
         lastName: users.lastName,
-        fullName: users.fullName,
         role: users.role,
-        profilePhoto: users.profilePhoto,
+        profileImageUrl: users.profileImageUrl,
       }).from(users)
         .where(and(
           eq(users.branchId, branchId),
@@ -9738,7 +9742,8 @@ Dusuk puanli alanlara odaklan ve pozitif, motive edici ol. JSON dizisi olarak ya
         notes: staffEvaluations.notes,
         evaluationType: staffEvaluations.evaluationType,
         createdAt: staffEvaluations.createdAt,
-        evaluatorName: users.fullName,
+        evaluatorFirstName: users.firstName,
+        evaluatorLastName: users.lastName,
       })
         .from(staffEvaluations)
         .leftJoin(users, eq(staffEvaluations.evaluatorId, users.id))
@@ -9751,8 +9756,12 @@ Dusuk puanli alanlara odaklan ve pozitif, motive edici ol. JSON dizisi olarak ya
       }).from(staffEvaluations)
         .where(eq(staffEvaluations.employeeId, employeeId));
 
+      const enrichedEvals = evaluations.map(e => ({
+        ...e,
+        evaluatorName: ((e.evaluatorFirstName || '') + ' ' + (e.evaluatorLastName || '')).trim() || null,
+      }));
       res.json({
-        evaluations,
+        evaluations: enrichedEvals,
         averageScore: avgResult[0]?.avgScore ? Number(avgResult[0].avgScore) : 0,
         totalCount: Number(avgResult[0]?.totalCount || 0),
       });

@@ -2417,7 +2417,6 @@ router.get('/api/shift-corrections', isAuthenticated, async (req: any, res) => {
         id: users.id,
         firstName: users.firstName,
         lastName: users.lastName,
-        fullName: users.fullName,
       },
     })
     .from(shiftCorrections)

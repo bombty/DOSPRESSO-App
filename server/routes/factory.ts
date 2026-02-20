@@ -2076,7 +2076,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
           id: users.id,
           firstName: users.firstName,
           lastName: users.lastName,
-          profilePhotoUrl: users.profilePhotoUrl,
+          profileImageUrl: users.profileImageUrl,
         }
       })
       .from(factoryShiftCompliance)

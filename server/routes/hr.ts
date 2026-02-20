@@ -1996,7 +1996,8 @@ JSON formatında yanıt ver:
         rejectionReason: leaveRequests.rejectionReason,
         createdAt: leaveRequests.createdAt,
         updatedAt: leaveRequests.updatedAt,
-        userName: users.fullName,
+        userFirstName: users.firstName,
+        userLastName: users.lastName,
         userRole: users.role,
       }).from(leaveRequests)
         .leftJoin(users, eq(leaveRequests.userId, users.id));
@@ -2042,7 +2043,11 @@ JSON formatında yanıt ver:
         ? await query.where(and(...conditions)).orderBy(desc(leaveRequests.createdAt))
         : await query.orderBy(desc(leaveRequests.createdAt));
 
-      res.json(results);
+      const enriched = results.map((r: any) => ({
+        ...r,
+        userName: ((r.userFirstName || '') + ' ' + (r.userLastName || '')).trim() || null,
+      }));
+      res.json(enriched);
     } catch (error: any) {
       console.error("Error fetching leave requests:", error);
       res.status(500).json({ message: "İzin talepleri yüklenirken hata oluştu" });
@@ -2139,7 +2144,8 @@ JSON formatında yanıt ver:
           id: users.id,
           role: users.role,
           branchId: users.branchId,
-          fullName: users.fullName,
+          firstName: users.firstName,
+          lastName: users.lastName,
           username: users.username,
         }).from(users).where(eq(users.id, targetUserId));
 
@@ -2156,7 +2162,7 @@ JSON formatında yanıt ver:
           const isIsiklarBranch = branchName ? (branchName.includes('Işıklar') || branchName.includes('Isiklar') || branchName.includes('ışıklar') || branchName.includes('isiklar')) : false;
           const isFactory = isFactoryFloorRole(targetRole);
           const isHQ = isHQRole(targetRole);
-          const displayName = targetUser.fullName || targetUser.username || 'Personel';
+          const displayName = ((targetUser.firstName || '') + ' ' + (targetUser.lastName || '')).trim() || targetUser.username || 'Personel';
 
           if (isHQ) {
             // HQ staff → notify CEO
