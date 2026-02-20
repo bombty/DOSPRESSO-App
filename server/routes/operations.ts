@@ -42,13 +42,14 @@ import {
   insertCustomerFeedbackSchema,
   type InsertAuditTemplateItem,
 } from "@shared/schema";
-import { eq, desc, sql, and, or, inArray, lte, gte, type SQL } from "drizzle-orm";
+import { eq, desc, sql, and, or, inArray, lte, gte, isNull, type SQL } from "drizzle-orm";
 import { compressChecklistPhotoBase64 } from "../photo-utils";
 import { verifyChecklistPhoto, analyzeFaultPhoto, diagnoseFault } from "../ai";
 import { onChecklistAssigned, onFaultReported } from "../event-task-generator";
 import * as XLSX from "xlsx";
 import { z } from "zod";
 import { computeAuditScore, getCAPAPriority, shouldCreateCAPA, isValidCAPATransition, calculateSLADeadline, getSLAStatus } from "../audit-scoring";
+import { createAuditEntry, getAuditContext } from "../audit";
 
 const router = Router();
 
@@ -774,7 +775,15 @@ function ensurePermission(user: unknown, module: string, action: string, errorMe
       const user = req.user!;
       ensurePermission(user, 'checklists', 'delete');
       const id = parseInt(req.params.id);
-      await storage.deleteChecklist(id);
+      await db.update(checklists).set({ deletedAt: new Date() }).where(eq(checklists.id, id));
+      const ctx = getAuditContext(req);
+      await createAuditEntry(ctx, {
+        eventType: "data.soft_delete",
+        action: "soft_delete",
+        resource: "checklists",
+        resourceId: String(id),
+        details: { softDelete: true },
+      });
       res.json({ message: "Checklist silindi" });
     } catch (error: any) {
       console.error("Error deleting checklist:", error);

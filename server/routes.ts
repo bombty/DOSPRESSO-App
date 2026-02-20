@@ -363,6 +363,7 @@ import branchesRouter from "./routes/branches";
 import shiftsRouter from "./routes/shifts";
 import operationsRouter from "./routes/operations";
 import miscRouter from "./routes/misc";
+import trashRouter from "./routes/trash";
 
 // Multer configuration for file uploads (memory storage)
 const uploadStorage = multer.memoryStorage();
@@ -614,6 +615,7 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
   app.use(shiftsRouter);
   app.use(operationsRouter);
   app.use(miscRouter);
+  app.use(trashRouter);
 
   // GET /api/health - Public health check for Docker/load balancer
   app.get('/api/health', async (req, res) => {

@@ -11,9 +11,9 @@ import {
   insertShiftAttendanceSchema,
   users,
 } from "@shared/schema";
-import { eq, desc, and, sql } from "drizzle-orm";
+import { eq, desc, and, sql, isNull } from "drizzle-orm";
 import { analyzeDressCodePhoto } from "../ai";
-import { auditLog } from "../audit";
+import { auditLog, createAuditEntry, getAuditContext } from "../audit";
 
 const router = Router();
 
@@ -1646,8 +1646,15 @@ router.delete('/api/shifts/:id', isAuthenticated, async (req: any, res) => {
       return res.status(403).json({ message: "Bu vardiyayı silme yetkiniz yok" });
     }
     
-    await storage.deleteShift(id);
-    auditLog(req, { eventType: "shift.deleted", action: "deleted", resource: "shifts", resourceId: String(id), before: { shiftDate: shift.shiftDate, startTime: shift.startTime, endTime: shift.endTime, assignedToId: shift.assignedToId, branchId: shift.branchId } });
+    await db.update(shifts).set({ deletedAt: new Date() }).where(eq(shifts.id, id));
+    const ctx = getAuditContext(req);
+    await createAuditEntry(ctx, {
+      eventType: "data.soft_delete",
+      action: "soft_delete",
+      resource: "shifts",
+      resourceId: String(id),
+      details: { softDelete: true },
+    });
     res.json({ message: "Vardiya silindi" });
   } catch (error: any) {
     console.error("Error deleting shift:", error);

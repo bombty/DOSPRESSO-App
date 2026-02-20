@@ -1,5 +1,5 @@
 import { db } from "./db";
-import { eq, desc, asc, and, or, sql, inArray, gte, lte, isNotNull, type SQL } from "drizzle-orm";
+import { eq, desc, asc, and, or, sql, inArray, gte, lte, isNotNull, isNull, type SQL } from "drizzle-orm";
 import { randomBytes } from "crypto";
 import type {
   User,
@@ -1065,9 +1065,9 @@ export class DatabaseStorage implements IStorage {
 
   async getAllEmployees(branchId?: number): Promise<User[]> {
     if (branchId !== undefined) {
-      return db.select().from(users).where(and(eq(users.branchId, branchId), eq(users.isActive, true))) as Promise<User[]>;
+      return db.select().from(users).where(and(eq(users.branchId, branchId), eq(users.isActive, true), isNull(users.deletedAt))) as Promise<User[]>;
     }
-    return db.select().from(users).where(eq(users.isActive, true)) as Promise<User[]>;
+    return db.select().from(users).where(and(eq(users.isActive, true), isNull(users.deletedAt))) as Promise<User[]>;
   }
 
   async getTerminatedEmployees(branchId?: number): Promise<User[]> {
@@ -1078,7 +1078,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getAllUsersWithFilters(filters: { role?: string; branchId?: number; search?: string; accountStatus?: string }): Promise<User[]> {
-    const conditions: SQL<any>[] = [];
+    const conditions: SQL<any>[] = [isNull(users.deletedAt)];
     
     if (filters.role) {
       conditions.push(eq(users.role, filters.role));
@@ -1096,10 +1096,7 @@ export class DatabaseStorage implements IStorage {
       );
     }
     
-    if (conditions.length > 0) {
-      return db.select().from(users).where(and(...conditions)).orderBy(users.firstName, users.lastName) as Promise<User[]>;
-    }
-    return db.select().from(users).orderBy(users.firstName, users.lastName) as Promise<User[]>;
+    return db.select().from(users).where(and(...conditions)).orderBy(users.firstName, users.lastName) as Promise<User[]>;
   }
 
   async bulkImportUsers(insertUsers: UpsertUser[]): Promise<User[]> {
@@ -1127,7 +1124,7 @@ export class DatabaseStorage implements IStorage {
 
   // Branch operations
   async getBranches(): Promise<Branch[]> {
-    return db.select().from(branches).orderBy(branches.name);
+    return db.select().from(branches).where(isNull(branches.deletedAt)).orderBy(branches.name);
   }
 
   async getBranch(id: number): Promise<Branch | undefined> {
@@ -1156,7 +1153,7 @@ export class DatabaseStorage implements IStorage {
 
   // Task operations
   async getTasks(branchId?: number, assignedToId?: string, status?: string): Promise<Task[]> {
-    const conditions = [];
+    const conditions: any[] = [isNull(tasks.deletedAt)];
     if (branchId !== undefined) {
       conditions.push(eq(tasks.branchId, branchId));
     }
@@ -1167,10 +1164,7 @@ export class DatabaseStorage implements IStorage {
       conditions.push(eq(tasks.status, status));
     }
     
-    if (conditions.length > 0) {
-      return db.select().from(tasks).where(and(...conditions)).orderBy(desc(tasks.createdAt));
-    }
-    return db.select().from(tasks).orderBy(desc(tasks.createdAt));
+    return db.select().from(tasks).where(and(...conditions)).orderBy(desc(tasks.createdAt));
   }
 
   async getTask(id: number): Promise<Task | undefined> {
@@ -1300,7 +1294,7 @@ export class DatabaseStorage implements IStorage {
 
   // Checklist operations
   async getChecklists(): Promise<Checklist[]> {
-    return db.select().from(checklists).orderBy(desc(checklists.createdAt));
+    return db.select().from(checklists).where(isNull(checklists.deletedAt)).orderBy(desc(checklists.createdAt));
   }
 
   async getChecklist(id: number): Promise<Checklist | undefined> {
@@ -2253,8 +2247,8 @@ export class DatabaseStorage implements IStorage {
   // Equipment operations
   async getEquipment(branchId?: number): Promise<(Equipment & { healthScore: number })[]> {
     const equipmentList = branchId
-      ? await db.select().from(equipment).where(eq(equipment.branchId, branchId)).orderBy(equipment.equipmentType)
-      : await db.select().from(equipment).orderBy(equipment.equipmentType);
+      ? await db.select().from(equipment).where(and(eq(equipment.branchId, branchId), isNull(equipment.deletedAt))).orderBy(equipment.equipmentType)
+      : await db.select().from(equipment).where(isNull(equipment.deletedAt)).orderBy(equipment.equipmentType);
 
     return Promise.all(
       equipmentList.map(async (item) => ({
@@ -2541,7 +2535,7 @@ export class DatabaseStorage implements IStorage {
 
   // Training Module operations
   async getTrainingModules(isPublished?: boolean, scope?: string): Promise<TrainingModule[]> {
-    const conditions = [];
+    const conditions: any[] = [isNull(trainingModules.deletedAt)];
     if (isPublished !== undefined) {
       conditions.push(eq(trainingModules.isPublished, isPublished));
     }
@@ -2550,10 +2544,7 @@ export class DatabaseStorage implements IStorage {
         or(eq(trainingModules.scope, scope), eq(trainingModules.scope, 'both'))
       );
     }
-    if (conditions.length > 0) {
-      return db.select().from(trainingModules).where(and(...conditions)).orderBy(desc(trainingModules.createdAt));
-    }
-    return db.select().from(trainingModules).orderBy(desc(trainingModules.createdAt));
+    return db.select().from(trainingModules).where(and(...conditions)).orderBy(desc(trainingModules.createdAt));
   }
 
   async getTrainingModule(id: number): Promise<TrainingModule | undefined> {
@@ -3781,7 +3772,7 @@ export class DatabaseStorage implements IStorage {
 
   // Shift operations
   async getShifts(branchId?: number, assignedToId?: string, dateFrom?: string, dateTo?: string): Promise<any[]> {
-    const conditions = [];
+    const conditions: any[] = [isNull(shifts.deletedAt)];
     if (branchId !== undefined) {
       conditions.push(eq(shifts.branchId, branchId));
     }

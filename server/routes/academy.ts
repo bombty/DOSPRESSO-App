@@ -31,6 +31,7 @@ import {
 import { eq, desc, asc, and, or, gte, lte, sql, inArray, isNull, not, ne, count, sum, avg, max, min } from "drizzle-orm";
 import { z } from "zod";
 import { generateQuizQuestionsFromLesson } from "../ai";
+import { createAuditEntry, getAuditContext } from "../audit";
 
 const router = Router();
 
@@ -1393,7 +1394,9 @@ router.get('/api/academy/recipes', isAuthenticated, async (req: any, res) => {
     let query = db.select().from(recipes);
     
     if (categoryId) {
-      query = query.where(eq(recipes.categoryId, parseInt(categoryId as string)));
+      query = query.where(and(eq(recipes.categoryId, parseInt(categoryId as string)), isNull(recipes.deletedAt))) as any;
+    } else {
+      query = query.where(isNull(recipes.deletedAt)) as any;
     }
     
     const allRecipes = await query.orderBy(recipes.displayOrder);
@@ -1800,8 +1803,15 @@ router.delete('/api/academy/recipes/:id', isAuthenticated, async (req: any, res)
     
     const { id } = req.params;
     
-    await db.delete(recipes).where(eq(recipes.id, parseInt(id)));
-    
+    await db.update(recipes).set({ deletedAt: new Date() }).where(eq(recipes.id, parseInt(id)));
+    const ctx = getAuditContext(req);
+    await createAuditEntry(ctx, {
+      eventType: "data.soft_delete",
+      action: "soft_delete",
+      resource: "recipes",
+      resourceId: String(id),
+      details: { softDelete: true },
+    });
     res.json({ success: true, message: "Reçete silindi" });
   } catch (error: any) {
     console.error("Delete recipe error:", error);

@@ -3,6 +3,7 @@ import { db } from "../db";
 import { storage } from "../storage";
 import { isAuthenticated } from "../localAuth";
 import { hasPermission, type UserRoleType } from "../permission-service";
+import { createAuditEntry, getAuditContext } from "../audit";
 import { eq, desc, asc, and, or, gte, lte, sql, inArray, isNull, isNotNull, ne, max, min } from "drizzle-orm";
 import { sendNotificationEmail, sendEmployeeOfMonthEmail } from "../email";
 import { sanitizeUser, sanitizeUsers, sanitizeUserForRole, sanitizeUsersForRole } from "../security";
@@ -549,8 +550,15 @@ const router = Router();
       // Coach can delete employees from any branch (no branch restriction)
       // Admin can delete anyone
 
-      // Delete employee (cascades to warnings via foreign key)
-      await storage.deleteUser(employeeId);
+      await db.update(users).set({ deletedAt: new Date() }).where(eq(users.id, employeeId));
+      const ctx = getAuditContext(req);
+      await createAuditEntry(ctx, {
+        eventType: "data.soft_delete",
+        action: "soft_delete",
+        resource: "users",
+        resourceId: String(employeeId),
+        details: { softDelete: true },
+      });
       res.json({ message: "Çalışan silindi", deletedId: employeeId });
     } catch (error: any) {
       console.error("Error deleting employee:", error);
@@ -792,8 +800,15 @@ const router = Router();
       }
 
       const moduleId = parseInt(req.params.id);
-      await storage.deleteTrainingModule(moduleId);
-      
+      await db.update(trainingModules).set({ deletedAt: new Date() }).where(eq(trainingModules.id, moduleId));
+      const ctx = getAuditContext(req);
+      await createAuditEntry(ctx, {
+        eventType: "data.soft_delete",
+        action: "soft_delete",
+        resource: "training_modules",
+        resourceId: String(moduleId),
+        details: { softDelete: true },
+      });
       res.status(204).send();
     } catch (error: any) {
       console.error("Error deleting training module:", error);

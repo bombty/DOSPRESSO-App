@@ -5,7 +5,7 @@ import { isAuthenticated } from "../localAuth";
 import { isHQRole, isBranchRole, hasPermission, type UserRoleType } from "@shared/schema";
 import { eq, desc, asc, and, or, gte, lte, sql, inArray, isNull, isNotNull, ne, not, count, sum, avg, max, min } from "drizzle-orm";
 import { sanitizeUsersForRole } from "../security";
-import { auditLog } from "../audit";
+import { auditLog, createAuditEntry, getAuditContext } from "../audit";
 import bcrypt from "bcrypt";
 import { z } from "zod";
 import QRCode from "qrcode";
@@ -342,8 +342,15 @@ router.delete('/api/branches/:id', isAuthenticated, async (req, res) => {
     }
     
     const deletedBranch = await storage.getBranch(id);
-    await storage.deleteBranch(id);
-    auditLog(req, { eventType: "branch.deleted", action: "deleted", resource: "branches", resourceId: String(id), before: deletedBranch ? { name: deletedBranch.name } : undefined });
+    await db.update(branches).set({ deletedAt: new Date() }).where(eq(branches.id, id));
+    const ctx = getAuditContext(req);
+    await createAuditEntry(ctx, {
+      eventType: "data.soft_delete",
+      action: "soft_delete",
+      resource: "branches",
+      resourceId: String(id),
+      details: { softDelete: true },
+    });
     res.json({ message: "Branch deleted successfully" });
   } catch (error: any) {
     console.error("Error deleting branch:", error);

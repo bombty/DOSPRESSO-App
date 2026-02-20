@@ -30,7 +30,8 @@ import {
   Cog,
   BookOpen,
   ListTodo,
-  LayoutGrid
+  LayoutGrid,
+  Trash2
 } from "lucide-react";
 
 const AdminDashboard = lazy(() => import("./admin/index"));
@@ -40,6 +41,7 @@ const Settings2 = lazy(() => import("./yonetim/ayarlar"));
 const AdminEmailAyarlari = lazy(() => import("./admin/email-ayarlari"));
 const AdminYedekleme = lazy(() => import("./admin/yedekleme"));
 const AdminAktiviteLoglar = lazy(() => import("./admin/aktivite-loglari"));
+const AdminCopKutusu = lazy(() => import("./admin/cop-kutusu"));
 const AdminContentManagement = lazy(() => import("./yonetim/icerik"));
 const AdminDuyurular = lazy(() => import("./admin/duyurular"));
 const AdminBannerlar = lazy(() => import("./admin/bannerlar"));
@@ -206,6 +208,15 @@ const ADMIN_TABS: TabConfig[] = [
     permissionModule: "activity_logs",
     group: "sistem",
     component: AdminAktiviteLoglar
+  },
+  {
+    id: "cop-kutusu",
+    label: "Trash",
+    labelTr: "Cop Kutusu",
+    icon: <Trash2 className="h-4 w-4" />,
+    permissionModule: "backup",
+    group: "sistem",
+    component: AdminCopKutusu
   },
   {
     id: "seed",
@@ -398,6 +409,7 @@ const TAB_URL_MAP: Record<string, string> = {
   "gorunum-ayarlari": "/admin/gorunum-ayarlari",
   "veri-disa-aktarma": "/admin/veri-disa-aktarma",
   "aktivite-loglari": "/admin/aktivite-loglari",
+  "cop-kutusu": "/admin/cop-kutusu",
   "seed": "/admin/seed",
   "icerik-yonetimi": "/admin/icerik-yonetimi",
   "icerik-studyosu": "/admin/icerik-studyosu",

@@ -2287,6 +2287,7 @@ export const branches = pgTable("branches", {
   // Kiosk Authentication
   kioskUsername: varchar("kiosk_username", { length: 50 }), // Şube kiosk giriş kullanıcı adı
   kioskPassword: varchar("kiosk_password", { length: 100 }), // Şube kiosk şifresi (plain text veya hash)
+  deletedAt: timestamp("deleted_at"),
 });
 
 export const insertBranchSchema = createInsertSchema(branches).omit({
@@ -2355,6 +2356,7 @@ export const users = pgTable("users", {
   bonusPercentage: numeric("bonus_percentage").default("0"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
+  deletedAt: timestamp("deleted_at"),
 });
 
 export const insertUserSchema = createInsertSchema(users).omit({
@@ -2419,6 +2421,7 @@ export const checklists = pgTable("checklists", {
   timeWindowEnd: time("time_window_end", { precision: 0 }),
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at").defaultNow(),
+  deletedAt: timestamp("deleted_at"),
 });
 
 export const insertChecklistSchema = createInsertSchema(checklists).omit({
@@ -2701,6 +2704,7 @@ export const tasks = pgTable("tasks", {
   approverNote: text("approver_note"), // Note from assigner when approving
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
+  deletedAt: timestamp("deleted_at"),
 }, (table) => ({
   branchStatusIdx: index("tasks_branch_status_idx").on(table.branchId, table.status),
   assignedToIdx: index("tasks_assigned_to_idx").on(table.assignedToId),
@@ -3032,6 +3036,7 @@ export const equipment = pgTable("equipment", {
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
+  deletedAt: timestamp("deleted_at"),
 });
 
 export const insertEquipmentSchema = createInsertSchema(equipment).omit({
@@ -3370,6 +3375,7 @@ export const trainingModules = pgTable("training_modules", {
   createdBy: varchar("created_by").references(() => users.id), // VARCHAR - users.id is UUID
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
+  deletedAt: timestamp("deleted_at"),
 });
 
 // Module Media (Images, videos, documents)
@@ -4127,6 +4133,7 @@ export const shifts = pgTable("shifts", {
   notes: text("notes"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
+  deletedAt: timestamp("deleted_at"),
 }, (table) => ({
   branchDateIdx: index("shifts_branch_date_idx").on(table.branchId, table.shiftDate),
   assignedToIdx: index("shifts_assigned_to_idx").on(table.assignedToId),
@@ -6999,6 +7006,7 @@ export const recipes = pgTable("recipes", {
   createdById: varchar("created_by_id").references(() => users.id),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
+  deletedAt: timestamp("deleted_at"),
 }, (table) => [
   index("recipes_category_idx").on(table.categoryId),
   index("recipes_code_idx").on(table.code),

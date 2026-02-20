@@ -2,7 +2,7 @@ import { Router } from "express";
 import { storage } from "../storage";
 import { isAuthenticated } from "../localAuth";
 import { db } from "../db";
-import { eq, desc, asc, sql, and, or, count } from "drizzle-orm";
+import { eq, desc, asc, sql, and, or, count, isNull } from "drizzle-orm";
 import { z } from "zod";
 import bcrypt from "bcrypt";
 import {
@@ -39,7 +39,7 @@ import {
 import { getAllActionsGroupedByModule, getRoleGrants, upsertPermissionGrant, deletePermissionGrant } from "../permission-service";
 import { generateArticleEmbeddings } from "../ai";
 import { sanitizeUser, sanitizeUsers } from "../security";
-import { auditLog } from "../audit";
+import { auditLog, createAuditEntry, getAuditContext } from "../audit";
 
 class AuthorizationError extends Error {
   constructor(message: string) {
@@ -825,8 +825,15 @@ const router = Router();
       }
 
       const deletedUser = await storage.getUser(id);
-      await storage.deleteUser(id);
-      auditLog(req, { eventType: "user.deleted", action: "deleted", resource: "users", resourceId: id, before: deletedUser ? { email: deletedUser.email, role: deletedUser.role } : undefined });
+      await db.update(users).set({ deletedAt: new Date() }).where(eq(users.id, id));
+      const ctx = getAuditContext(req);
+      await createAuditEntry(ctx, {
+        eventType: "data.soft_delete",
+        action: "soft_delete",
+        resource: "users",
+        resourceId: String(id),
+        details: { softDelete: true },
+      });
       res.json({ message: "Kullanıcı silindi" });
     } catch (error: any) {
       console.error("Error deleting user:", error);
