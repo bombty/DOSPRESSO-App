@@ -7653,14 +7653,15 @@ DOSPRESSO İnsan Kaynakları Ekibi`;
         db.select({
           threadId: messages.threadId,
           body: messages.body,
+          senderId: messages.senderId,
           createdAt: messages.createdAt,
-          rn: sql<number>`ROW_NUMBER() OVER (PARTITION BY ${messages.threadId} ORDER BY ${messages.createdAt} DESC)`,
+          rn: sql<number>`(ROW_NUMBER() OVER (PARTITION BY ${messages.threadId} ORDER BY ${messages.createdAt} DESC))::int`,
         }).from(messages).where(inArray(messages.threadId, threadIds)),
 
         db.select({
           threadId: messages.threadId,
           subject: messages.subject,
-          rn: sql<number>`ROW_NUMBER() OVER (PARTITION BY ${messages.threadId} ORDER BY ${messages.createdAt} ASC)`,
+          rn: sql<number>`(ROW_NUMBER() OVER (PARTITION BY ${messages.threadId} ORDER BY ${messages.createdAt} ASC))::int`,
         }).from(messages).where(inArray(messages.threadId, threadIds)),
 
         db.select({
@@ -7687,13 +7688,13 @@ DOSPRESSO İnsan Kaynakları Ekibi`;
           .groupBy(messages.threadId),
       ]);
 
-      const lastMsgMap = new Map<string, { body: string; createdAt: Date }>();
+      const lastMsgMap = new Map<string, { body: string; createdAt: Date; senderId: string }>();
       for (const m of allLastMessages) {
-        if (m.rn === 1) lastMsgMap.set(m.threadId, { body: m.body, createdAt: m.createdAt });
+        if (Number(m.rn) === 1) lastMsgMap.set(m.threadId, { body: m.body, createdAt: m.createdAt, senderId: m.senderId });
       }
       const firstSubjectMap = new Map<string, string>();
       for (const m of allFirstMessages) {
-        if (m.rn === 1) firstSubjectMap.set(m.threadId, m.subject || 'Mesaj');
+        if (Number(m.rn) === 1) firstSubjectMap.set(m.threadId, m.subject || 'Mesaj');
       }
       const participantMap = new Map<string, { id: string; firstName: string; lastName: string; profileImageUrl: string | null }[]>();
       for (const p of allParticipants) {
@@ -7703,6 +7704,11 @@ DOSPRESSO İnsan Kaynakları Ekibi`;
       const unreadMap = new Map<string, number>();
       for (const u of allUnread) {
         unreadMap.set(u.threadId, u.count);
+      }
+
+      const sentByMeSet = new Set<string>();
+      for (const m of allLastMessages) {
+        if (m.senderId === userId) sentByMeSet.add(m.threadId);
       }
 
       const threadSummaries = [];
@@ -7716,6 +7722,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`;
           lastMessageBody: last.body,
           lastMessageAt: last.createdAt,
           unreadCount: unreadMap.get(tid) || 0,
+          sentByMe: sentByMeSet.has(tid),
         });
       }
       threadSummaries.sort((a, b) => new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime());
