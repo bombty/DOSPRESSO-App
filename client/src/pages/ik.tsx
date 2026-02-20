@@ -133,7 +133,20 @@ const warningTypeLabels: Record<string, string> = {
   final: "Son Uyarı",
 };
 
-const branchRoles = ["supervisor", "supervisor_buddy", "barista", "bar_buddy", "stajyer"];
+const branchRoles = ["mudur", "supervisor", "supervisor_buddy", "barista", "bar_buddy", "stajyer"];
+
+const hqRoles = ["ceo", "cgo", "muhasebe_ik", "muhasebe", "satinalma", "coach", "marketing", "trainer", "kalite_kontrol", "gida_muhendisi", "fabrika_mudur", "teknik", "destek", "yatirimci_hq"];
+
+const factoryRoles = ["fabrika_operator", "fabrika_sorumlu", "fabrika_personel"];
+
+const HQ_BRANCH_ID = 23;
+const FACTORY_BRANCH_ID = 24;
+
+function getRolesForBranch(branchId: number | undefined): string[] {
+  if (branchId === HQ_BRANCH_ID) return hqRoles;
+  if (branchId === FACTORY_BRANCH_ID) return factoryRoles;
+  return branchRoles;
+}
 
 export default function IKPage() {
   const { user } = useAuth();
@@ -1763,6 +1776,9 @@ function AddEmployeeDialog({
     },
   });
 
+  const selectedBranchId = form.watch("branchId");
+  const availableRoles = getRolesForBranch(selectedBranchId);
+
   const onSubmit = (data: CreateEmployeeForm) => {
     createMutation.mutate(data);
   };
@@ -1868,7 +1884,7 @@ function AddEmployeeDialog({
                       </FormControl>
                       <SelectContent>
                         {Object.entries(roleLabels)
-                          .filter(([key]) => branchRoles.includes(key))
+                          .filter(([key]) => availableRoles.includes(key))
                           .map(([key, label]) => (
                             <SelectItem key={key} value={key}>
                               {label}
@@ -1888,7 +1904,15 @@ function AddEmployeeDialog({
                   <FormItem>
                     <FormLabel>Şube {userRole === "supervisor" && "(otomatik)"}</FormLabel>
                     <Select
-                      onValueChange={(value) => field.onChange(parseInt(value))}
+                      onValueChange={(value) => {
+                        const newBranchId = parseInt(value);
+                        field.onChange(newBranchId);
+                        const newRoles = getRolesForBranch(newBranchId);
+                        const currentRole = form.getValues("role");
+                        if (!newRoles.includes(currentRole)) {
+                          form.setValue("role", newRoles[0] || "");
+                        }
+                      }}
                       value={field.value ? field.value.toString() : ""}
                       disabled={userRole === "supervisor"}
                     >
@@ -2198,7 +2222,7 @@ function EditEmployeeDialog({
                           </FormControl>
                           <SelectContent>
                             {Object.entries(roleLabels)
-                              .filter(([key]) => branchRoles.includes(key))
+                              .filter(([key]) => key !== "admin")
                               .map(([key, label]) => (
                                 <SelectItem key={key} value={key}>
                                   {label}

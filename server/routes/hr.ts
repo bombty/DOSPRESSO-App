@@ -14,6 +14,8 @@ import { z } from "zod";
 import { generateTrainingModule, processUploadedFile, evaluateBranchPerformance } from "../ai";
 import {
   isHQRole,
+  isBranchRole,
+  isFactoryFloorRole,
   FACTORY_FLOOR_ROLES,
   users,
   branches,
@@ -515,8 +517,28 @@ const router = Router();
       let employeeData = parsed.data;
       if (role && isBranchRole(role as UserRoleType)) {
         const branchId = assertBranchScope(user);
-        // Override branchId to user's branch (prevent creating employee in other branches)
         employeeData = { ...parsed.data, branchId };
+      }
+
+      // Validate role-branch compatibility
+      const HQ_BRANCH_ID = 23;
+      const FACTORY_BRANCH_ID = 24;
+      const newEmployeeRole = employeeData.role as string;
+      const targetBranchId = employeeData.branchId;
+
+      if (targetBranchId === HQ_BRANCH_ID && isBranchRole(newEmployeeRole as UserRoleType)) {
+        return res.status(400).json({ message: "Merkez Ofis (HQ) için şube rolü atanamaz. Lütfen HQ uyumlu bir rol seçin (Coach, Trainer, Muhasebe vb.)" });
+      }
+      if (targetBranchId === FACTORY_BRANCH_ID && !isFactoryFloorRole(newEmployeeRole as UserRoleType) && !isHQRole(newEmployeeRole as UserRoleType)) {
+        return res.status(400).json({ message: "Fabrika için uygun bir rol seçin (Fabrika Operatör, Fabrika Sorumlu, Fabrika Personel)" });
+      }
+      if (targetBranchId && targetBranchId !== HQ_BRANCH_ID && targetBranchId !== FACTORY_BRANCH_ID && !isBranchRole(newEmployeeRole as UserRoleType)) {
+        return res.status(400).json({ message: "Şube personeli için şube rolü seçilmelidir (Barista, Supervisor vb.)" });
+      }
+
+      // HQ roles don't need branchId, set to null if creating HQ personnel
+      if (isHQRole(newEmployeeRole as UserRoleType) && targetBranchId === HQ_BRANCH_ID) {
+        employeeData = { ...employeeData, branchId: null as any };
       }
 
       // Create employee (storage layer handles password hashing if provided)
