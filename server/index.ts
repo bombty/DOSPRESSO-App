@@ -13,6 +13,10 @@ import { seedDefaultAuditTemplate } from "./seed-audit-template";
 import { seedRoles } from "./seed-roles";
 import { startWeeklyBackupScheduler, performHealthCheck } from "./backup";
 import { startTrackingCleanup } from "./tracking";
+import bcrypt from "bcrypt";
+import { db } from "./db";
+import { users } from "@shared/schema";
+import { eq, sql, count } from "drizzle-orm";
 
 const app = express();
 
@@ -162,6 +166,10 @@ app.use((req, res, next) => {
       console.error("Error seeding audit template:", error);
     });
     
+    // DB diagnostics + admin bootstrap (critical for production)
+    await logDbDiagnostics();
+    await bootstrapAdminUser();
+    
     // Ensure admin user is always approved and active (self-healing)
     await ensureAdminUserApproved();
     
@@ -192,6 +200,50 @@ app.use((req, res, next) => {
 })();
 
 // Self-healing function to ensure admin user is always approved and active
+async function logDbDiagnostics() {
+  try {
+    const result = await db.select({ total: count() }).from(users);
+    const userCount = result[0]?.total || 0;
+
+    log(`🔌 DB diagnostics: connected=true, NODE_ENV=${process.env.NODE_ENV || 'undefined'}, users=${userCount}`);
+    return userCount;
+  } catch (error) {
+    console.error("❌ DB diagnostics failed:", error);
+    return -1;
+  }
+}
+
+async function bootstrapAdminUser() {
+  try {
+    const existingAdmin = await storage.getUserByUsername('admin');
+    if (existingAdmin) {
+      log(`✅ Admin user already exists (id=${existingAdmin.id}), bootstrap skipped`);
+      return;
+    }
+
+    const password = process.env.ADMIN_BOOTSTRAP_PASSWORD || '0000';
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const [newAdmin] = await db.insert(users).values({
+      username: 'admin',
+      hashedPassword,
+      email: 'admin@dospresso.com',
+      firstName: 'Admin',
+      lastName: 'Yönetici',
+      role: 'admin',
+      branchId: null,
+      phoneNumber: '0312 500 5000',
+      hireDate: new Date(2023, 0, 1).toISOString().split('T')[0],
+      isActive: true,
+      accountStatus: 'approved',
+    }).returning({ id: users.id });
+
+    log(`🔐 Admin user bootstrapped successfully (id=${newAdmin.id}). Password source: ${process.env.ADMIN_BOOTSTRAP_PASSWORD ? 'ADMIN_BOOTSTRAP_PASSWORD env' : 'default'}`);
+  } catch (error) {
+    console.error("❌ Admin bootstrap failed:", error);
+  }
+}
+
 async function ensureAdminUserApproved() {
   try {
     const adminUser = await storage.getUserByUsername('admin');

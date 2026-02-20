@@ -617,14 +617,16 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
   app.use(miscRouter);
   app.use(trashRouter);
 
-  // GET /api/health - Public health check for Docker/load balancer
   app.get('/api/health', async (req, res) => {
     try {
-      // Simple database ping
       await db.execute(sql`SELECT 1`);
-      res.json({ status: 'ok', timestamp: new Date().toISOString() });
+      res.json({
+        status: 'ok',
+        timestamp: new Date().toISOString(),
+        dbConnected: true,
+      });
     } catch (error: any) {
-      res.status(503).json({ status: 'error', message: 'Database connection failed' });
+      res.status(503).json({ status: 'error', dbConnected: false });
     }
   });
 
