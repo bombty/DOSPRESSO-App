@@ -126,6 +126,11 @@ app.use((req, res, next) => {
 
   async function onServerReady() {
     
+    // CRITICAL: Admin bootstrap FIRST, before any seeds (production login depends on this)
+    await logDbDiagnostics();
+    await bootstrapAdminUser();
+    await ensureAdminUserApproved();
+    
     // Seed system roles (idempotent)
     await seedRoles().catch((error) => {
       console.error("Error seeding roles:", error);
@@ -165,13 +170,6 @@ app.use((req, res, next) => {
     await seedDefaultAuditTemplate().catch((error) => {
       console.error("Error seeding audit template:", error);
     });
-    
-    // DB diagnostics + admin bootstrap (critical for production)
-    await logDbDiagnostics();
-    await bootstrapAdminUser();
-    
-    // Ensure admin user is always approved and active (self-healing)
-    await ensureAdminUserApproved();
     
     // Start shift reminder job (runs every 10 minutes)
     startShiftReminderJob();
@@ -215,14 +213,20 @@ async function logDbDiagnostics() {
 
 async function bootstrapAdminUser() {
   try {
+    const password = process.env.ADMIN_BOOTSTRAP_PASSWORD || '0000';
+    if (!process.env.ADMIN_BOOTSTRAP_PASSWORD) {
+      log(`⚠️  ADMIN_BOOTSTRAP_PASSWORD env not set, using default '0000'. Set this env var for production!`);
+    }
+    const hashedPassword = await bcrypt.hash(password, 10);
+
     const existingAdmin = await storage.getUserByUsername('admin');
     if (existingAdmin) {
-      log(`✅ Admin user already exists (id=${existingAdmin.id}), bootstrap skipped`);
+      await db.update(users)
+        .set({ hashedPassword, accountStatus: 'approved', isActive: true })
+        .where(eq(users.id, existingAdmin.id));
+      log(`🔐 Admin user exists (id=${existingAdmin.id}), password synced from ${process.env.ADMIN_BOOTSTRAP_PASSWORD ? 'ADMIN_BOOTSTRAP_PASSWORD env' : 'default'}`);
       return;
     }
-
-    const password = process.env.ADMIN_BOOTSTRAP_PASSWORD || '0000';
-    const hashedPassword = await bcrypt.hash(password, 10);
 
     const [newAdmin] = await db.insert(users).values({
       username: 'admin',
@@ -238,7 +242,7 @@ async function bootstrapAdminUser() {
       accountStatus: 'approved',
     }).returning({ id: users.id });
 
-    log(`🔐 Admin user bootstrapped successfully (id=${newAdmin.id}). Password source: ${process.env.ADMIN_BOOTSTRAP_PASSWORD ? 'ADMIN_BOOTSTRAP_PASSWORD env' : 'default'}`);
+    log(`🔐 Admin user created (id=${newAdmin.id}). Password source: ${process.env.ADMIN_BOOTSTRAP_PASSWORD ? 'ADMIN_BOOTSTRAP_PASSWORD env' : 'default'}`);
   } catch (error) {
     console.error("❌ Admin bootstrap failed:", error);
   }
