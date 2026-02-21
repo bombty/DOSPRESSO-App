@@ -1136,6 +1136,272 @@ router.get("/api/hr/employees/import/batches/:batchId/error-report", isAuthentic
   }
 });
 
+// ─── PRE-IMPORT VALIDATION ──────────────────────────────
+
+const VALID_ROLES = Object.values({
+  admin: "admin", ceo: "ceo", cgo: "cgo",
+  muhasebe_ik: "muhasebe_ik", satinalma: "satinalma", coach: "coach",
+  marketing: "marketing", trainer: "trainer", kalite_kontrol: "kalite_kontrol",
+  gida_muhendisi: "gida_muhendisi", fabrika_mudur: "fabrika_mudur",
+  muhasebe: "muhasebe", teknik: "teknik", destek: "destek",
+  fabrika: "fabrika", yatirimci_hq: "yatirimci_hq",
+  stajyer: "stajyer", bar_buddy: "bar_buddy", barista: "barista",
+  supervisor_buddy: "supervisor_buddy", supervisor: "supervisor",
+  mudur: "mudur", yatirimci_branch: "yatirimci_branch",
+  fabrika_operator: "fabrika_operator", fabrika_sorumlu: "fabrika_sorumlu",
+  fabrika_personel: "fabrika_personel",
+});
+
+function validateRowDetailed(row: Record<string, any>, rowNum: number): { errors: string[]; warnings: string[] } {
+  const errors: string[] = [];
+  const warnings: string[] = [];
+
+  if (!row.firstName?.toString().trim()) errors.push("Ad zorunludur");
+  if (!row.lastName?.toString().trim()) errors.push("Soyad zorunludur");
+  if (!row.username?.toString().trim()) {
+    errors.push("Kullanıcı adı zorunludur");
+  } else {
+    const uname = row.username.toString().trim();
+    if (!/^[a-zA-Z0-9._-]+$/.test(uname)) {
+      errors.push("Kullanıcı adı sadece harf, rakam, nokta, tire ve alt çizgi içerebilir");
+    }
+    if (uname.length < 3) errors.push("Kullanıcı adı en az 3 karakter olmalıdır");
+  }
+
+  if (row.email) {
+    const email = row.email.toString().trim();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      errors.push("Geçersiz e-posta formatı");
+    }
+  }
+
+  if (row.phoneNumber) {
+    const phone = row.phoneNumber.toString().replace(/[\s\-\(\)]/g, "");
+    if (!/^(\+?90|0)?[0-9]{10}$/.test(phone) && !/^[0-9]{10,15}$/.test(phone)) {
+      warnings.push("Telefon formatı doğrulanamadı");
+    }
+  }
+
+  if (row.tckn) {
+    const tckn = row.tckn.toString().trim();
+    if (!/^\d{11}$/.test(tckn)) {
+      errors.push("TC Kimlik No 11 haneli olmalıdır");
+    }
+  }
+
+  if (row.role) {
+    const role = row.role.toString().trim().toLowerCase();
+    if (!VALID_ROLES.includes(role)) {
+      errors.push(`Geçersiz rol: "${row.role}"`);
+    }
+  }
+
+  if (row.netSalary && isNaN(Number(row.netSalary))) {
+    errors.push("Net maaş sayısal olmalıdır");
+  }
+  if (row.weeklyHours && isNaN(Number(row.weeklyHours))) {
+    errors.push("Haftalık saat sayısal olmalıdır");
+  }
+
+  const dateFields = ["hireDate", "probationEndDate", "birthDate"];
+  for (const df of dateFields) {
+    if (row[df]) {
+      const parsed = parseExcelDate(row[df]);
+      if (!parsed) {
+        warnings.push(`${df} tarih formatı tanınamadı`);
+      }
+    }
+  }
+
+  return { errors, warnings };
+}
+
+router.post("/api/hr/employees/import/validate", isAuthenticated, upload.single("file"), async (req: any, res) => {
+  try {
+    const user = req.user!;
+    if (!isHQRole(user.role as UserRoleTypeSchema) && user.role !== "admin") {
+      return res.status(403).json({ message: "Import yetkisi yok" });
+    }
+
+    if (!req.file) {
+      return res.status(400).json({ message: "Dosya yüklenmedi" });
+    }
+
+    let customMapping: Record<string, string> | null = null;
+    try {
+      if (req.body.columnMapping) {
+        customMapping = JSON.parse(req.body.columnMapping);
+      }
+    } catch {}
+
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.load(req.file.buffer);
+
+    const sheet = workbook.worksheets[0];
+    if (!sheet || sheet.rowCount < 2) {
+      return res.status(400).json({ message: "Excel dosyası boş veya başlık satırı eksik" });
+    }
+
+    const headerRow = sheet.getRow(1);
+    const colMap: Record<number, string> = {};
+    headerRow.eachCell((cell, colNumber) => {
+      const header = cell.value?.toString().trim() || "";
+      if (customMapping && customMapping[header]) {
+        const mapped = customMapping[header];
+        if (mapped !== "__skip__") colMap[colNumber] = mapped;
+      } else {
+        colMap[colNumber] = IMPORT_FIELD_MAP[header] || header;
+      }
+    });
+
+    const allRows: { rowNumber: number; data: Record<string, any> }[] = [];
+    sheet.eachRow((row, rowNumber) => {
+      if (rowNumber === 1) return;
+      const data: Record<string, any> = {};
+      row.eachCell((cell, colNumber) => {
+        const field = colMap[colNumber];
+        if (field) data[field] = cell.value;
+      });
+      if (Object.keys(data).length > 0) {
+        allRows.push({ rowNumber, data });
+      }
+    });
+
+    const existingUsers = await db.select().from(users).where(isNull(users.deletedAt));
+    const usernameSet = new Map(existingUsers.filter(u => u.username).map(u => [u.username!.toLowerCase(), u]));
+    const emailSet = new Map(existingUsers.filter(u => u.email).map(u => [u.email!.toLowerCase(), u]));
+    const tcknSet = new Map(existingUsers.filter(u => (u as any).tckn).map(u => [(u as any).tckn?.toString(), u]));
+
+    const existingBranches = await db.select({ id: branches.id }).from(branches);
+    const branchIds = new Set(existingBranches.map(b => b.id));
+
+    const inFileUsernames = new Map<string, number[]>();
+    const inFileEmails = new Map<string, number[]>();
+    const inFilePhones = new Map<string, number[]>();
+
+    for (const { rowNumber, data } of allRows) {
+      if (data.username) {
+        const key = data.username.toString().trim().toLowerCase();
+        if (!inFileUsernames.has(key)) inFileUsernames.set(key, []);
+        inFileUsernames.get(key)!.push(rowNumber);
+      }
+      if (data.email) {
+        const key = data.email.toString().trim().toLowerCase();
+        if (!inFileEmails.has(key)) inFileEmails.set(key, []);
+        inFileEmails.get(key)!.push(rowNumber);
+      }
+      if (data.phoneNumber) {
+        const key = data.phoneNumber.toString().replace(/[\s\-\(\)]/g, "");
+        if (!inFilePhones.has(key)) inFilePhones.set(key, []);
+        inFilePhones.get(key)!.push(rowNumber);
+      }
+    }
+
+    type RowResult = {
+      rowNumber: number;
+      data: Record<string, any>;
+      status: "valid" | "error" | "warning" | "duplicate" | "conflict";
+      errors: string[];
+      warnings: string[];
+      duplicateInfo?: string;
+      conflictInfo?: string;
+    };
+
+    const results: RowResult[] = [];
+    let totalValid = 0, totalErrors = 0, totalWarnings = 0, totalDuplicates = 0, totalConflicts = 0;
+
+    for (const { rowNumber, data } of allRows) {
+      const { errors, warnings } = validateRowDetailed(data, rowNumber);
+
+      const duplicateMessages: string[] = [];
+      if (data.username) {
+        const key = data.username.toString().trim().toLowerCase();
+        const rows = inFileUsernames.get(key);
+        if (rows && rows.length > 1) {
+          duplicateMessages.push(`Kullanıcı adı "${data.username}" satır ${rows.filter(r => r !== rowNumber).join(", ")} ile tekrar`);
+        }
+      }
+      if (data.email) {
+        const key = data.email.toString().trim().toLowerCase();
+        const rows = inFileEmails.get(key);
+        if (rows && rows.length > 1) {
+          duplicateMessages.push(`E-posta "${data.email}" satır ${rows.filter(r => r !== rowNumber).join(", ")} ile tekrar`);
+        }
+      }
+
+      if (data.phoneNumber) {
+        const key = data.phoneNumber.toString().replace(/[\s\-\(\)]/g, "");
+        const rows = inFilePhones.get(key);
+        if (rows && rows.length > 1) {
+          duplicateMessages.push(`Telefon "${data.phoneNumber}" satır ${rows.filter(r => r !== rowNumber).join(", ")} ile tekrar`);
+        }
+      }
+
+      const conflictMessages: string[] = [];
+      if (data.username) {
+        const existing = usernameSet.get(data.username.toString().trim().toLowerCase());
+        if (existing) {
+          conflictMessages.push(`Kullanıcı adı "${data.username}" mevcut (${existing.firstName || ""} ${existing.lastName || ""})`);
+        }
+      }
+      if (data.email) {
+        const existing = emailSet.get(data.email.toString().trim().toLowerCase());
+        if (existing) {
+          conflictMessages.push(`E-posta "${data.email}" mevcut (${existing.username || ""})`);
+        }
+      }
+      if (data.tckn) {
+        const existing = tcknSet.get(data.tckn.toString());
+        if (existing) {
+          conflictMessages.push(`TC No "${data.tckn}" mevcut (${existing.username || ""})`);
+        }
+      }
+
+      if (data.branchId) {
+        const bid = Number(data.branchId);
+        if (!isNaN(bid) && !branchIds.has(bid)) {
+          errors.push(`Şube ID ${data.branchId} bulunamadı`);
+        }
+      }
+
+      let status: RowResult["status"] = "valid";
+      if (errors.length > 0) { status = "error"; totalErrors++; }
+      else if (duplicateMessages.length > 0) { status = "duplicate"; totalDuplicates++; }
+      else if (conflictMessages.length > 0) { status = "conflict"; totalConflicts++; }
+      else if (warnings.length > 0) { status = "warning"; totalWarnings++; }
+      else { totalValid++; }
+
+      results.push({
+        rowNumber,
+        data,
+        status,
+        errors,
+        warnings,
+        duplicateInfo: duplicateMessages.length > 0 ? duplicateMessages.join("; ") : undefined,
+        conflictInfo: conflictMessages.length > 0 ? conflictMessages.join("; ") : undefined,
+      });
+    }
+
+    const previewRows = results.slice(0, 20);
+
+    res.json({
+      totalRows: allRows.length,
+      summary: {
+        valid: totalValid,
+        errors: totalErrors,
+        warnings: totalWarnings,
+        duplicates: totalDuplicates,
+        conflicts: totalConflicts,
+      },
+      previewRows,
+      hasBlockingErrors: totalErrors > 0,
+    });
+  } catch (error: any) {
+    console.error("Validate error:", error);
+    res.status(500).json({ message: "Doğrulama sırasında hata oluştu" });
+  }
+});
+
 // ─── FILE PREVIEW (column mapping) ──────────────────────
 
 router.post("/api/hr/employees/import/preview", isAuthenticated, upload.single("file"), async (req: any, res) => {

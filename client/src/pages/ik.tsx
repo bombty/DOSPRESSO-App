@@ -123,6 +123,7 @@ import {
   Info,
   Undo2,
   FileDown,
+  Copy,
 } from "lucide-react";
 import { format, differenceInDays } from "date-fns";
 import { useLocation } from "wouter";
@@ -6141,7 +6142,7 @@ function ImportEmployeesDialog({
 }) {
   const { user: authUser } = useAuth();
   const { toast } = useToast();
-  const [step, setStep] = useState<"upload" | "preview" | "config" | "dryrun" | "result">("upload");
+  const [step, setStep] = useState<"upload" | "preview" | "review" | "config" | "dryrun" | "result">("upload");
   const [file, setFile] = useState<File | null>(null);
   const [mode, setMode] = useState("upsert");
   const [matchKey, setMatchKey] = useState("username");
@@ -6152,6 +6153,9 @@ function ImportEmployeesDialog({
   const [deactivateConfirmation, setDeactivateConfirmation] = useState("");
   const [continueWithValid, setContinueWithValid] = useState(false);
   const [columnMapping, setColumnMapping] = useState<Record<string, string>>({});
+  const [validationResult, setValidationResult] = useState<any>(null);
+  const [reviewFilter, setReviewFilter] = useState<"all" | "error" | "warning" | "duplicate" | "conflict">("all");
+  const [skipInvalid, setSkipInvalid] = useState(false);
 
   const SYSTEM_FIELD_LABELS: Record<string, string> = {
     username: "Kullanıcı Adı",
@@ -6222,6 +6226,9 @@ function ImportEmployeesDialog({
     setDeactivateConfirmation("");
     setContinueWithValid(false);
     setColumnMapping({});
+    setValidationResult(null);
+    setReviewFilter("all");
+    setSkipInvalid(false);
   };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -6387,6 +6394,7 @@ function ImportEmployeesDialog({
           <DialogDescription>
             {step === "upload" && "Excel dosyası seçin veya şablon indirin"}
             {step === "preview" && "Dosya önizleme ve kolon eşleştirme"}
+            {step === "review" && "Veri doğrulama sonuçlarını inceleyin"}
             {step === "config" && "Import ayarlarını yapılandırın"}
             {step === "dryrun" && "Simülasyon sonuçlarını inceleyin"}
             {step === "result" && "Import tamamlandı"}
@@ -6531,12 +6539,233 @@ function ImportEmployeesDialog({
 
             <DialogFooter>
               <Button variant="outline" onClick={() => { setStep("upload"); setPreviewData(null); setFile(null); }}>Geri</Button>
-              <Button onClick={() => setStep("config")} data-testid="button-continue-to-config">
-                Devam
+              <Button
+                onClick={async () => {
+                  if (!file) return;
+                  setIsProcessing(true);
+                  try {
+                    const formData = new FormData();
+                    formData.append("file", file);
+                    if (Object.keys(columnMapping).length > 0) {
+                      formData.append("columnMapping", JSON.stringify(toBackendMapping(columnMapping)));
+                    }
+                    const response = await fetch("/api/hr/employees/import/validate", {
+                      method: "POST",
+                      credentials: "include",
+                      body: formData,
+                    });
+                    if (!response.ok) {
+                      const errBody = await response.json().catch(() => ({}));
+                      const fakeErr = { status: response.status, message: errBody.message || "Doğrulama hatası" };
+                      const errType = classifyError(fakeErr);
+                      if (errType === "unauthorized") {
+                        toast({ title: "Oturum Süresi Doldu", description: "Lütfen tekrar giriş yapın.", variant: "destructive" });
+                        window.location.href = "/login";
+                        return;
+                      }
+                      if (errType === "forbidden") {
+                        toast({ title: "Yetki Hatası", description: fakeErr.message, variant: "destructive" });
+                        return;
+                      }
+                      throw new Error(fakeErr.message);
+                    }
+                    const data = await response.json();
+                    setValidationResult(data);
+                    setReviewFilter("all");
+                    setSkipInvalid(false);
+                    setStep("review");
+                  } catch (error: any) {
+                    const errType = classifyError(error);
+                    if (errType === "network") {
+                      toast({ title: "Bağlantı Hatası", description: "Sunucuya ulaşılamıyor. İnternet bağlantınızı kontrol edin.", variant: "destructive" });
+                    } else {
+                      toast({ title: "Hata", description: error.message || "Doğrulama sırasında hata oluştu", variant: "destructive" });
+                    }
+                  } finally {
+                    setIsProcessing(false);
+                  }
+                }}
+                disabled={isProcessing || hasRequiredFieldIssue}
+                data-testid="button-validate-preview"
+              >
+                {isProcessing ? "Doğrulanıyor..." : "Doğrula ve Devam"}
               </Button>
             </DialogFooter>
           </div>
         )}
+
+        {step === "review" && validationResult && (() => {
+          const s = validationResult.summary;
+          const filteredRows = reviewFilter === "all"
+            ? validationResult.previewRows
+            : validationResult.previewRows?.filter((r: any) => r.status === reviewFilter);
+          const canProceed = !validationResult.hasBlockingErrors || skipInvalid;
+          const STATUS_LABELS: Record<string, { label: string; className: string }> = {
+            valid: { label: "Geçerli", className: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400" },
+            error: { label: "Hata", className: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400" },
+            warning: { label: "Uyarı", className: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400" },
+            duplicate: { label: "Tekrar", className: "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400" },
+            conflict: { label: "Çakışma", className: "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400" },
+          };
+          return (
+            <div className="space-y-4">
+              <div className="grid grid-cols-3 sm:grid-cols-6 gap-2" data-testid="review-summary-grid">
+                <Card data-testid="card-review-total">
+                  <CardContent className="p-2 text-center">
+                    <div className="text-lg font-bold" data-testid="text-review-total">{validationResult.totalRows}</div>
+                    <div className="text-[10px] text-muted-foreground">Toplam</div>
+                  </CardContent>
+                </Card>
+                <Card data-testid="card-review-valid">
+                  <CardContent className="p-2 text-center">
+                    <CheckCircle className="h-4 w-4 mx-auto text-green-500 mb-0.5" />
+                    <div className="text-lg font-bold text-green-600" data-testid="text-review-valid">{s.valid}</div>
+                    <div className="text-[10px] text-muted-foreground">Geçerli</div>
+                  </CardContent>
+                </Card>
+                <Card data-testid="card-review-errors">
+                  <CardContent className="p-2 text-center">
+                    <XCircle className="h-4 w-4 mx-auto text-red-500 mb-0.5" />
+                    <div className="text-lg font-bold text-red-600" data-testid="text-review-errors">{s.errors}</div>
+                    <div className="text-[10px] text-muted-foreground">Hata</div>
+                  </CardContent>
+                </Card>
+                <Card data-testid="card-review-warnings">
+                  <CardContent className="p-2 text-center">
+                    <AlertTriangle className="h-4 w-4 mx-auto text-yellow-500 mb-0.5" />
+                    <div className="text-lg font-bold text-yellow-600" data-testid="text-review-warnings">{s.warnings}</div>
+                    <div className="text-[10px] text-muted-foreground">Uyarı</div>
+                  </CardContent>
+                </Card>
+                <Card data-testid="card-review-duplicates">
+                  <CardContent className="p-2 text-center">
+                    <Copy className="h-4 w-4 mx-auto text-orange-500 mb-0.5" />
+                    <div className="text-lg font-bold text-orange-600" data-testid="text-review-duplicates">{s.duplicates}</div>
+                    <div className="text-[10px] text-muted-foreground">Tekrar</div>
+                  </CardContent>
+                </Card>
+                <Card data-testid="card-review-conflicts">
+                  <CardContent className="p-2 text-center">
+                    <AlertCircle className="h-4 w-4 mx-auto text-purple-500 mb-0.5" />
+                    <div className="text-lg font-bold text-purple-600" data-testid="text-review-conflicts">{s.conflicts}</div>
+                    <div className="text-[10px] text-muted-foreground">Çakışma</div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {validationResult.hasBlockingErrors && (
+                <div className="flex items-start gap-2 p-3 bg-destructive/10 border border-destructive/30 rounded-md">
+                  <XCircle className="h-4 w-4 text-destructive flex-shrink-0 mt-0.5" />
+                  <div className="text-xs">
+                    <p className="font-medium text-destructive">{s.errors} satırda hata tespit edildi</p>
+                    <p className="text-muted-foreground mt-0.5">Hatalı satırlar düzeltilmeden import yapılamaz. "Hatalı satırları atla" seçeneği ile geçerli satırlarla devam edebilirsiniz.</p>
+                  </div>
+                </div>
+              )}
+
+              <div className="flex flex-wrap gap-1">
+                {([
+                  ["all", `Tümü (${validationResult.previewRows?.length || 0})`],
+                  ["error", `Hatalar (${s.errors})`],
+                  ["warning", `Uyarılar (${s.warnings})`],
+                  ["duplicate", `Tekrarlar (${s.duplicates})`],
+                  ["conflict", `Çakışmalar (${s.conflicts})`],
+                ] as [string, string][]).map(([key, label]) => (
+                  <Button
+                    key={key}
+                    size="sm"
+                    variant={reviewFilter === key ? "default" : "outline"}
+                    onClick={() => setReviewFilter(key as any)}
+                    data-testid={`button-review-filter-${key}`}
+                  >
+                    {label}
+                  </Button>
+                ))}
+              </div>
+
+              <div className="max-h-52 overflow-auto border rounded-md">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="text-xs w-12">Satır</TableHead>
+                      <TableHead className="text-xs w-16">Durum</TableHead>
+                      <TableHead className="text-xs">Kullanıcı Adı</TableHead>
+                      <TableHead className="text-xs">Ad Soyad</TableHead>
+                      <TableHead className="text-xs">Detay</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredRows?.length > 0 ? filteredRows.map((row: any, i: number) => {
+                      const st = STATUS_LABELS[row.status] || STATUS_LABELS.valid;
+                      const detail = [
+                        ...(row.errors || []),
+                        ...(row.warnings || []),
+                        row.duplicateInfo,
+                        row.conflictInfo,
+                      ].filter(Boolean).join("; ");
+                      return (
+                        <TableRow key={i} data-testid={`row-review-${row.rowNumber}`}>
+                          <TableCell className="text-xs py-1">{row.rowNumber}</TableCell>
+                          <TableCell className="text-xs py-1">
+                            <span className={`inline-flex px-1.5 py-0.5 rounded text-[10px] font-medium ${st.className}`} data-testid={`badge-status-${row.rowNumber}`}>
+                              {st.label}
+                            </span>
+                          </TableCell>
+                          <TableCell className="text-xs py-1" data-testid={`text-username-${row.rowNumber}`}>{row.data?.username || "-"}</TableCell>
+                          <TableCell className="text-xs py-1">
+                            {[row.data?.firstName, row.data?.lastName].filter(Boolean).join(" ") || "-"}
+                          </TableCell>
+                          <TableCell className="text-xs py-1 max-w-[200px] truncate" title={detail} data-testid={`text-detail-${row.rowNumber}`}>
+                            {detail || "-"}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    }) : (
+                      <TableRow>
+                        <TableCell colSpan={5} className="text-xs text-center text-muted-foreground py-4">
+                          Bu filtrede gösterilecek satır yok
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+              {validationResult.totalRows > 20 && (
+                <p className="text-[10px] text-muted-foreground text-center">İlk 20 satır gösteriliyor (toplam {validationResult.totalRows})</p>
+              )}
+
+              {validationResult.hasBlockingErrors && (
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="skipInvalidRows"
+                    checked={skipInvalid}
+                    onChange={(e) => setSkipInvalid(e.target.checked)}
+                    className="h-4 w-4 rounded border-input"
+                    data-testid="checkbox-skip-invalid"
+                  />
+                  <label htmlFor="skipInvalidRows" className="text-sm">
+                    Hatalı satırları atlayarak geçerli satırlarla devam et
+                  </label>
+                </div>
+              )}
+
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setStep("preview")} data-testid="button-review-back">Geri</Button>
+                <Button
+                  onClick={() => {
+                    if (skipInvalid) setContinueWithValid(true);
+                    setStep("config");
+                  }}
+                  disabled={!canProceed}
+                  data-testid="button-review-continue"
+                >
+                  Ayarlara Devam
+                </Button>
+              </DialogFooter>
+            </div>
+          );
+        })()}
 
         {step === "config" && (
           <div className="space-y-4">
@@ -6631,7 +6860,7 @@ function ImportEmployeesDialog({
             </div>
 
             <DialogFooter>
-              <Button variant="outline" onClick={() => setStep("preview")}>Geri</Button>
+              <Button variant="outline" onClick={() => setStep("review")}>Geri</Button>
               <Button
                 onClick={handleDryRun}
                 disabled={isProcessing || hasRequiredFieldIssue || (mode === "deactivate_missing" && deactivateConfirmation !== "DEACTIVATE")}
