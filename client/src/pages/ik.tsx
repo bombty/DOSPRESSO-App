@@ -88,6 +88,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { EmptyState, EmptyStatePreset } from "@/components/empty-state";
 import { ListSkeleton } from "@/components/list-skeleton";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   UserPlus,
@@ -5607,6 +5608,42 @@ function ExportEmployeesDialog({
   );
 }
 
+function classifyError(err: any): "unauthorized" | "forbidden" | "network" | "generic" {
+  const msg = err?.message || "";
+  const status = err?.status || err?.statusCode;
+  if (status === 401 || msg.includes("401")) return "unauthorized";
+  if (status === 403 || msg.includes("403")) return "forbidden";
+  if (msg.includes("Failed to fetch") || msg.includes("NetworkError") || msg.includes("ERR_")) return "network";
+  return "generic";
+}
+
+function BatchDetailSkeleton() {
+  return (
+    <div className="space-y-4 mt-4" data-testid="skeleton-batch-detail">
+      <div className="grid grid-cols-2 gap-3">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <div key={i} className="space-y-1">
+            <Skeleton className="h-3 w-16" />
+            <Skeleton className="h-5 w-24" />
+          </div>
+        ))}
+      </div>
+      <div className="grid grid-cols-4 gap-2">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div key={i} className="p-2 border rounded-md text-center space-y-1">
+            <Skeleton className="h-6 w-10 mx-auto" />
+            <Skeleton className="h-3 w-14 mx-auto" />
+          </div>
+        ))}
+      </div>
+      <div className="space-y-2">
+        <Skeleton className="h-4 w-20" />
+        <Skeleton className="h-8 w-40" />
+      </div>
+    </div>
+  );
+}
+
 function BatchDetailSheet({
   batchId,
   open,
@@ -5617,16 +5654,27 @@ function BatchDetailSheet({
   batchId: number | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onDownloadErrorReport: (batchId: number) => void;
+  onDownloadErrorReport: (batchId: number) => void | Promise<void>;
   userRole?: string;
 }) {
   const { toast } = useToast();
+  const [, setLocation] = useLocation();
   const [showRollbackConfirm, setShowRollbackConfirm] = useState(false);
 
   const { data: detail, isLoading, error } = useQuery<{ batch: any; results: any[] }>({
     queryKey: ["/api/hr/employees/import/batches", batchId],
     enabled: open && batchId !== null,
   });
+
+  useEffect(() => {
+    if (error) {
+      const errType = classifyError(error);
+      if (errType === "unauthorized") {
+        toast({ title: "Oturum Süresi Doldu", description: "Lütfen tekrar giriş yapın.", variant: "destructive" });
+        setLocation("/login");
+      }
+    }
+  }, [error]);
 
   const rollbackMutation = useMutation({
     mutationFn: async (id: number) => {
@@ -5641,27 +5689,49 @@ function BatchDetailSheet({
       setShowRollbackConfirm(false);
     },
     onError: (err: any) => {
-      toast({ title: "Hata", description: err.message || "Rollback sırasında hata oluştu", variant: "destructive" });
+      const errType = classifyError(err);
+      if (errType === "unauthorized") {
+        toast({ title: "Oturum Süresi Doldu", description: "Lütfen tekrar giriş yapın.", variant: "destructive" });
+        setLocation("/login");
+      } else if (errType === "forbidden") {
+        toast({ title: "Yetkisiz İşlem", description: "Geri alma yetkiniz yok.", variant: "destructive" });
+      } else if (errType === "network") {
+        toast({ title: "Bağlantı Hatası", description: "Sunucuya ulaşılamadı. İnternet bağlantınızı kontrol edin.", variant: "destructive" });
+      } else {
+        toast({ title: "Hata", description: err.message || "Geri alma sırasında hata oluştu.", variant: "destructive" });
+      }
       setShowRollbackConfirm(false);
     },
   });
 
   const handleDownloadSkipped = async () => {
-    if (!detail?.results) return;
-    const skipped = detail.results.filter((r: any) => r.status === "skip");
-    if (skipped.length === 0) {
-      toast({ title: "Bilgi", description: "Atlanan satır bulunamadı." });
-      return;
+    try {
+      if (!detail?.results) return;
+      const skipped = detail.results.filter((r: any) => r.status === "skip");
+      if (skipped.length === 0) {
+        toast({ title: "Bilgi", description: "Atlanan satır bulunamadı." });
+        return;
+      }
+      const csvHeader = "Satır No;Personel ID;Mesaj\n";
+      const csvRows = skipped.map((r: any) => `${r.rowNumber};"${r.employeeId || ""}";"${(r.message || "").replace(/"/g, '""')}"`).join("\n");
+      const blob = new Blob(["\uFEFF" + csvHeader + csvRows], { type: "text/csv;charset=utf-8;" });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `atlanan_satirlar_batch_${batchId}.csv`;
+      a.click();
+      window.URL.revokeObjectURL(url);
+    } catch {
+      toast({ title: "İndirme Hatası", description: "Atlanan satırlar dosyası oluşturulurken hata oluştu.", variant: "destructive" });
     }
-    const csvHeader = "Satır No;Personel ID;Mesaj\n";
-    const csvRows = skipped.map((r: any) => `${r.rowNumber};"${r.employeeId || ""}";"${(r.message || "").replace(/"/g, '""')}"`).join("\n");
-    const blob = new Blob(["\uFEFF" + csvHeader + csvRows], { type: "text/csv;charset=utf-8;" });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `atlanan_satirlar_batch_${batchId}.csv`;
-    a.click();
-    window.URL.revokeObjectURL(url);
+  };
+
+  const handleDownloadErrorReport = async (id: number) => {
+    try {
+      await onDownloadErrorReport(id);
+    } catch {
+      toast({ title: "İndirme Hatası", description: "Hata raporu indirilemedi.", variant: "destructive" });
+    }
   };
 
   const batch = detail?.batch;
@@ -5678,6 +5748,7 @@ function BatchDetailSheet({
     if (status === "completed") return { text: "Tamamlandı", variant: "default" as const };
     if (status === "failed") return { text: "Hata", variant: "destructive" as const };
     if (status === "rolled_back") return { text: "Geri Alındı", variant: "outline" as const };
+    if (status === "reverted") return { text: "Geri Alındı", variant: "outline" as const };
     if (status === "processing") return { text: "İşleniyor", variant: "secondary" as const };
     return { text: status, variant: "secondary" as const };
   };
@@ -5688,6 +5759,23 @@ function BatchDetailSheet({
 
   const daysLeft = batch ? 7 - differenceInDays(new Date(), new Date(batch.createdAt)) : 0;
 
+  const errorBanner = (() => {
+    if (!error) return null;
+    const errType = classifyError(error);
+    if (errType === "unauthorized") return null;
+    const msg = errType === "forbidden"
+      ? "Bu batch detayını görüntüleme yetkiniz yok."
+      : errType === "network"
+        ? "Sunucuya ulaşılamadı. İnternet bağlantınızı kontrol edin."
+        : "Detay yüklenirken hata oluştu. Lütfen tekrar deneyin.";
+    return (
+      <div className="flex items-center gap-2 p-3 mt-4 rounded-md bg-destructive/10 text-destructive text-sm" data-testid="batch-detail-error">
+        <AlertCircle className="h-4 w-4 flex-shrink-0" />
+        <span>{msg}</span>
+      </div>
+    );
+  })();
+
   return (
     <>
       <Sheet open={open} onOpenChange={onOpenChange}>
@@ -5695,22 +5783,14 @@ function BatchDetailSheet({
           <SheetHeader>
             <SheetTitle className="flex items-center gap-2">
               <Info className="h-4 w-4" />
-              Batch Detay #{batchId}
+              Import Detayı #{batchId}
             </SheetTitle>
             <SheetDescription>Import işlemi detayları ve aksiyon seçenekleri</SheetDescription>
           </SheetHeader>
 
-          {isLoading && <p className="text-sm text-muted-foreground py-4">Yükleniyor...</p>}
+          {isLoading && <BatchDetailSkeleton />}
 
-          {error && (
-            <div className="flex items-center gap-2 p-3 mt-4 rounded-md bg-destructive/10 text-destructive text-sm" data-testid="batch-detail-error">
-              <AlertCircle className="h-4 w-4 flex-shrink-0" />
-              <span>{(error as any)?.message?.includes("403") || (error as any)?.status === 403
-                ? "Bu detayı görüntüleme yetkiniz yok."
-                : "Batch detayı yüklenirken hata oluştu. Lütfen tekrar deneyin."}
-              </span>
-            </div>
-          )}
+          {errorBanner}
 
           {batch && (
             <div className="space-y-4 mt-4">
@@ -5739,14 +5819,12 @@ function BatchDetailSheet({
                 </div>
                 <div className="space-y-1">
                   <p className="text-[11px] text-muted-foreground">Dosya</p>
-                  <p className="text-sm truncate" title={batch.fileName || "-"}>{batch.fileName || "-"}</p>
+                  <p className="text-sm truncate" title={batch.fileName || "-"} data-testid="text-batch-filename">{batch.fileName || "-"}</p>
                 </div>
-                {batch.createdByName && (
-                  <div className="space-y-1 col-span-2">
-                    <p className="text-[11px] text-muted-foreground">İşlemi Yapan</p>
-                    <p className="text-sm">{batch.createdByName}</p>
-                  </div>
-                )}
+                <div className="space-y-1 col-span-2">
+                  <p className="text-[11px] text-muted-foreground">İşlemi Yapan</p>
+                  <p className="text-sm" data-testid="text-batch-createdby">{batch.createdByName || "-"}</p>
+                </div>
               </div>
 
               <div className="grid grid-cols-4 gap-2">
@@ -5768,6 +5846,13 @@ function BatchDetailSheet({
                 </Card>
               </div>
 
+              {(batch.deactivatedCount ?? 0) > 0 && (
+                <Card className="p-2 text-center">
+                  <p className="text-lg font-bold text-orange-600" data-testid="stat-deactivated">{batch.deactivatedCount}</p>
+                  <p className="text-[10px] text-muted-foreground">Deaktif Edilen</p>
+                </Card>
+              )}
+
               <div className="space-y-2">
                 <p className="text-sm font-medium">Raporlar</p>
                 <div className="flex flex-wrap gap-2">
@@ -5775,7 +5860,7 @@ function BatchDetailSheet({
                     <Button
                       size="sm"
                       variant="outline"
-                      onClick={() => onDownloadErrorReport(batch.id)}
+                      onClick={() => handleDownloadErrorReport(batch.id)}
                       data-testid="button-download-error-report"
                     >
                       <FileDown className="mr-1 h-3 w-3" />
@@ -5823,7 +5908,7 @@ function BatchDetailSheet({
                                 {r.status === "error" ? "Hata" : r.status === "create" ? "Yeni" : r.status === "update" ? "Güncellendi" : r.status === "skip" ? "Atlandı" : r.status === "deactivate" ? "Deaktif" : r.status}
                               </Badge>
                             </TableCell>
-                            <TableCell className="text-xs py-1 text-muted-foreground max-w-[200px] truncate" title={r.message}>{r.message}</TableCell>
+                            <TableCell className="text-xs py-1 text-muted-foreground max-w-[200px] truncate" title={r.message}>{r.message || "-"}</TableCell>
                           </TableRow>
                         ))}
                       </TableBody>
@@ -5850,7 +5935,7 @@ function BatchDetailSheet({
                 </div>
               )}
 
-              {batch.status === "rolled_back" && (
+              {(batch.status === "rolled_back" || batch.status === "reverted") && (
                 <div className="flex items-center gap-2 p-3 rounded-md bg-muted text-sm text-muted-foreground">
                   <RotateCcw className="h-4 w-4 flex-shrink-0" />
                   <span>Bu import {batch.rolledBackAt ? format(new Date(batch.rolledBackAt), "dd.MM.yyyy HH:mm") + " tarihinde" : ""} geri alınmıştır.</span>
@@ -5888,13 +5973,46 @@ function BatchDetailSheet({
   );
 }
 
-function ImportBatchHistory({ onDownloadErrorReport, userRole }: { onDownloadErrorReport: (batchId: number) => void; userRole?: string }) {
+function BatchListSkeleton() {
+  return (
+    <div className="space-y-1 py-1" data-testid="skeleton-batch-list">
+      {Array.from({ length: 4 }).map((_, i) => (
+        <div key={i} className="flex items-center gap-2 py-2 px-1">
+          <Skeleton className="h-4 w-16" />
+          <Skeleton className="h-5 w-14 rounded-full" />
+          <Skeleton className="h-4 w-12" />
+          <Skeleton className="h-4 w-6" />
+          <Skeleton className="h-4 w-6" />
+          <Skeleton className="h-4 w-6" />
+          <Skeleton className="h-4 w-6" />
+          <Skeleton className="h-5 w-16 rounded-full" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function ImportBatchHistory({ onDownloadErrorReport, userRole }: { onDownloadErrorReport: (batchId: number) => void | Promise<void>; userRole?: string }) {
+  const { toast } = useToast();
+  const [, setLocation] = useLocation();
   const [expanded, setExpanded] = useState(false);
   const [selectedBatchId, setSelectedBatchId] = useState<number | null>(null);
   const { data: batches, isLoading, error: fetchError } = useQuery<any[]>({
     queryKey: ["/api/hr/employees/import/batches"],
     enabled: expanded,
   });
+
+  useEffect(() => {
+    if (fetchError) {
+      const errType = classifyError(fetchError);
+      if (errType === "unauthorized") {
+        toast({ title: "Oturum Süresi Doldu", description: "Lütfen tekrar giriş yapın.", variant: "destructive" });
+        setLocation("/login");
+      } else if (errType === "network") {
+        toast({ title: "Bağlantı Hatası", description: "Sunucuya ulaşılamadı.", variant: "destructive" });
+      }
+    }
+  }, [fetchError]);
 
   const modeLabels: Record<string, string> = {
     upsert: "Upsert",
@@ -5906,9 +6024,26 @@ function ImportBatchHistory({ onDownloadErrorReport, userRole }: { onDownloadErr
   const statusBadge = (status: string) => {
     if (status === "completed") return <Badge variant="default" className="text-[10px]">Tamamlandı</Badge>;
     if (status === "failed") return <Badge variant="destructive" className="text-[10px]">Hata</Badge>;
-    if (status === "rolled_back") return <Badge variant="outline" className="text-[10px]">Geri Alındı</Badge>;
+    if (status === "rolled_back" || status === "reverted") return <Badge variant="outline" className="text-[10px]">Geri Alındı</Badge>;
     return <Badge variant="secondary" className="text-[10px]">{status}</Badge>;
   };
+
+  const fetchErrorBanner = (() => {
+    if (!fetchError) return null;
+    const errType = classifyError(fetchError);
+    if (errType === "unauthorized") return null;
+    const msg = errType === "forbidden"
+      ? "Import geçmişini görüntüleme yetkiniz yok."
+      : errType === "network"
+        ? "Sunucuya ulaşılamadı. İnternet bağlantınızı kontrol edin."
+        : "Geçmiş yüklenirken hata oluştu.";
+    return (
+      <div className="flex items-center gap-2 p-2 rounded-md bg-destructive/10 text-destructive text-xs" data-testid="batch-list-error">
+        <AlertCircle className="h-3 w-3 flex-shrink-0" />
+        <span>{msg}</span>
+      </div>
+    );
+  })();
 
   return (
     <div className="border rounded-md">
@@ -5927,12 +6062,9 @@ function ImportBatchHistory({ onDownloadErrorReport, userRole }: { onDownloadErr
       {expanded && (
         <div className="px-3 pb-3">
           {isLoading ? (
-            <p className="text-xs text-muted-foreground py-2">Yükleniyor...</p>
-          ) : fetchError ? (
-            <div className="flex items-center gap-2 p-2 rounded-md bg-destructive/10 text-destructive text-xs" data-testid="batch-list-error">
-              <AlertCircle className="h-3 w-3 flex-shrink-0" />
-              <span>Geçmiş yüklenirken hata oluştu.</span>
-            </div>
+            <BatchListSkeleton />
+          ) : fetchErrorBanner ? (
+            fetchErrorBanner
           ) : !batches || batches.length === 0 ? (
             <p className="text-xs text-muted-foreground py-2" data-testid="text-no-batch-history">Henüz import geçmişi yok.</p>
           ) : (
