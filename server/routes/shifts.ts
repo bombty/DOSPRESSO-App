@@ -14,6 +14,7 @@ import {
 import { eq, desc, and, sql, isNull } from "drizzle-orm";
 import { analyzeDressCodePhoto } from "../ai";
 import { auditLog, createAuditEntry, getAuditContext } from "../audit";
+import { evaluateShiftBlockRules } from "../services/rules-engine";
 
 const router = Router();
 
@@ -1291,6 +1292,51 @@ router.post('/api/shifts', isAuthenticated, async (req: any, res) => {
     
     if (isBranchRole(role) && validated.branchId !== user.branchId) {
       return res.status(403).json({ message: "Sadece kendi şubeniz için vardiya oluşturabilirsiniz" });
+    }
+    
+    if (validated.assignedToId) {
+      try {
+        const existingShifts = await db.select({
+          id: shifts.id,
+          shiftDate: shifts.shiftDate,
+          startTime: shifts.startTime,
+          endTime: shifts.endTime,
+          assignedToId: shifts.assignedToId,
+          userRole: users.role,
+          userName: sql<string>`COALESCE(${users.firstName} || ' ' || ${users.lastName}, ${users.username})`,
+        })
+        .from(shifts)
+        .leftJoin(users, eq(shifts.assignedToId, users.id))
+        .where(and(
+          eq(shifts.branchId, validated.branchId),
+          eq(shifts.shiftDate, validated.shiftDate),
+          isNull(shifts.deletedAt)
+        ));
+
+        const assignedUser = await storage.getUser(validated.assignedToId);
+        const proposedShift = {
+          id: 0,
+          shiftDate: validated.shiftDate,
+          startTime: validated.startTime,
+          endTime: validated.endTime,
+          assignedToId: validated.assignedToId,
+          userRole: assignedUser?.role || null,
+          userName: assignedUser ? `${assignedUser.firstName || ''} ${assignedUser.lastName || ''}`.trim() || assignedUser.username : 'Unknown',
+        };
+        const allShifts = [...existingShifts, proposedShift];
+
+        const blockIssues = await evaluateShiftBlockRules(validated.branchId, allShifts);
+        if (blockIssues.length > 0) {
+          auditLog(req, { eventType: "ops_rule.blocked", action: "block", resource: "shifts", resourceId: "new", details: { issues: blockIssues.map(i => ({ ruleId: i.ruleId, message: i.message })) } });
+          return res.status(422).json({
+            message: blockIssues[0].message,
+            blocked: true,
+            issues: blockIssues,
+          });
+        }
+      } catch (blockErr: any) {
+        console.error("[RulesEngine] Block check error:", blockErr.message);
+      }
     }
     
     const shift = await storage.createShift({

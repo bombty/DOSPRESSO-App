@@ -14,6 +14,7 @@ import { AnnouncementBannerCarousel } from "@/components/AnnouncementBannerCarou
 import { EmployeeOfMonthWidget } from "@/components/employee-of-month-widget";
 import { DailyTaskPanel } from "@/components/daily-task-panel";
 import { ActionCardsWidget } from "@/components/action-cards-widget";
+import { WarningsPanel } from "@/components/warnings-panel";
 import { RecentActivities } from "@/components/recent-activities";
 import { BranchScorecard } from "@/components/branch-scorecard";
 import { PersonnelStatusPanel } from "@/components/personnel-status-panel";
@@ -923,6 +924,8 @@ export function CardGridHub() {
 
         <ActionCardsWidget />
 
+        <WarningsPanel />
+
         <CriticalAlerts />
 
         <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
@@ -971,6 +974,8 @@ export function CardGridHub() {
       <DailyTaskPanel />
 
       <ActionCardsWidget />
+
+      <WarningsPanel />
 
       {canSeeWidget(userRole, 'branch-scorecard') && isBranch && (
         <BranchScorecard />

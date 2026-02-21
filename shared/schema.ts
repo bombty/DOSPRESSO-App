@@ -13297,3 +13297,28 @@ export const insertTaskTriggerSchema = createInsertSchema(taskTriggers).omit({
 
 export type InsertTaskTrigger = z.infer<typeof insertTaskTriggerSchema>;
 export type TaskTrigger = typeof taskTriggers.$inferSelect;
+
+export const opsRules = pgTable("ops_rules", {
+  id: serial("id").primaryKey(),
+  name: varchar("name", { length: 200 }).notNull(),
+  scope: varchar("scope", { length: 20 }).notNull(),
+  isActive: boolean("is_active").default(true).notNull(),
+  severity: varchar("severity", { length: 10 }).notNull(),
+  entityType: varchar("entity_type", { length: 30 }).notNull(),
+  conditionJson: text("condition_json").notNull(),
+  messageJson: text("message_json").notNull(),
+  createdBy: varchar("created_by", { length: 255 }),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("ops_rules_scope_idx").on(table.scope),
+  index("ops_rules_active_idx").on(table.isActive),
+  index("ops_rules_entity_idx").on(table.entityType),
+]);
+
+export const insertOpsRuleSchema = createInsertSchema(opsRules).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertOpsRule = z.infer<typeof insertOpsRuleSchema>;
+export type OpsRule = typeof opsRules.$inferSelect;
