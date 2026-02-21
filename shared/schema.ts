@@ -1629,7 +1629,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     attendance: ['view', 'edit'],
     branches: ['view'],
     users: ['view'],
-    employees: ['view', 'edit'],
+    employees: ['view', 'create', 'edit'],
     hr: ['view', 'create', 'edit'],
     training: ['view'],
     schedules: ['view'],
