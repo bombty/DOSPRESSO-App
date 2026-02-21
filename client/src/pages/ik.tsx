@@ -43,6 +43,23 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
+import {
   Form,
   FormControl,
   FormDescription,
@@ -102,6 +119,9 @@ import {
   Building2,
   MapPin,
   UserX,
+  Info,
+  Undo2,
+  FileDown,
 } from "lucide-react";
 import { format, differenceInDays } from "date-fns";
 import { useLocation } from "wouter";
@@ -5587,9 +5607,291 @@ function ExportEmployeesDialog({
   );
 }
 
-function ImportBatchHistory({ onDownloadErrorReport }: { onDownloadErrorReport: (batchId: number) => void }) {
+function BatchDetailSheet({
+  batchId,
+  open,
+  onOpenChange,
+  onDownloadErrorReport,
+  userRole,
+}: {
+  batchId: number | null;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onDownloadErrorReport: (batchId: number) => void;
+  userRole?: string;
+}) {
+  const { toast } = useToast();
+  const [showRollbackConfirm, setShowRollbackConfirm] = useState(false);
+
+  const { data: detail, isLoading, error } = useQuery<{ batch: any; results: any[] }>({
+    queryKey: ["/api/hr/employees/import/batches", batchId],
+    enabled: open && batchId !== null,
+  });
+
+  const rollbackMutation = useMutation({
+    mutationFn: async (id: number) => {
+      const res = await apiRequest("POST", `/api/hr/employees/import/${id}/rollback`);
+      return res.json();
+    },
+    onSuccess: (data) => {
+      toast({ title: "Geri Alındı", description: data.message || `${data.rolledBack} kayıt geri alındı.` });
+      queryClient.invalidateQueries({ queryKey: ["/api/hr/employees/import/batches"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/hr/employees/import/batches", batchId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/employees"] });
+      setShowRollbackConfirm(false);
+    },
+    onError: (err: any) => {
+      toast({ title: "Hata", description: err.message || "Rollback sırasında hata oluştu", variant: "destructive" });
+      setShowRollbackConfirm(false);
+    },
+  });
+
+  const handleDownloadSkipped = async () => {
+    if (!detail?.results) return;
+    const skipped = detail.results.filter((r: any) => r.status === "skip");
+    if (skipped.length === 0) {
+      toast({ title: "Bilgi", description: "Atlanan satır bulunamadı." });
+      return;
+    }
+    const csvHeader = "Satır No;Personel ID;Mesaj\n";
+    const csvRows = skipped.map((r: any) => `${r.rowNumber};"${r.employeeId || ""}";"${(r.message || "").replace(/"/g, '""')}"`).join("\n");
+    const blob = new Blob(["\uFEFF" + csvHeader + csvRows], { type: "text/csv;charset=utf-8;" });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `atlanan_satirlar_batch_${batchId}.csv`;
+    a.click();
+    window.URL.revokeObjectURL(url);
+  };
+
+  const batch = detail?.batch;
+  const results = detail?.results || [];
+
+  const modeLabels: Record<string, string> = {
+    upsert: "Upsert",
+    append: "AddOnly",
+    update: "UpdateOnly",
+    deactivate_missing: "DeactivateMissing",
+  };
+
+  const statusLabel = (status: string) => {
+    if (status === "completed") return { text: "Tamamlandı", variant: "default" as const };
+    if (status === "failed") return { text: "Hata", variant: "destructive" as const };
+    if (status === "rolled_back") return { text: "Geri Alındı", variant: "outline" as const };
+    if (status === "processing") return { text: "İşleniyor", variant: "secondary" as const };
+    return { text: status, variant: "secondary" as const };
+  };
+
+  const canRollback = batch && batch.status === "completed" && !batch.rolledBackAt
+    && (userRole === "admin" || isHQRole(userRole as any))
+    && differenceInDays(new Date(), new Date(batch.createdAt)) <= 7;
+
+  const daysLeft = batch ? 7 - differenceInDays(new Date(), new Date(batch.createdAt)) : 0;
+
+  return (
+    <>
+      <Sheet open={open} onOpenChange={onOpenChange}>
+        <SheetContent className="w-full sm:max-w-lg overflow-y-auto" data-testid="sheet-batch-detail">
+          <SheetHeader>
+            <SheetTitle className="flex items-center gap-2">
+              <Info className="h-4 w-4" />
+              Batch Detay #{batchId}
+            </SheetTitle>
+            <SheetDescription>Import işlemi detayları ve aksiyon seçenekleri</SheetDescription>
+          </SheetHeader>
+
+          {isLoading && <p className="text-sm text-muted-foreground py-4">Yükleniyor...</p>}
+
+          {error && (
+            <div className="flex items-center gap-2 p-3 mt-4 rounded-md bg-destructive/10 text-destructive text-sm" data-testid="batch-detail-error">
+              <AlertCircle className="h-4 w-4 flex-shrink-0" />
+              <span>{(error as any)?.message?.includes("403") || (error as any)?.status === 403
+                ? "Bu detayı görüntüleme yetkiniz yok."
+                : "Batch detayı yüklenirken hata oluştu. Lütfen tekrar deneyin."}
+              </span>
+            </div>
+          )}
+
+          {batch && (
+            <div className="space-y-4 mt-4">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <p className="text-[11px] text-muted-foreground">Batch ID</p>
+                  <p className="text-sm font-medium" data-testid="text-batch-id">{batch.id}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-[11px] text-muted-foreground">Tarih</p>
+                  <p className="text-sm" data-testid="text-batch-date">
+                    {batch.createdAt ? format(new Date(batch.createdAt), "dd.MM.yyyy HH:mm") : "-"}
+                  </p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-[11px] text-muted-foreground">Mod</p>
+                  <Badge variant="outline" className="text-[10px]" data-testid="text-batch-mode">{modeLabels[batch.mode] || batch.mode}</Badge>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-[11px] text-muted-foreground">Eşleştirme Anahtarı</p>
+                  <p className="text-sm" data-testid="text-batch-matchkey">{batch.matchKey || "username"}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-[11px] text-muted-foreground">Durum</p>
+                  <Badge variant={statusLabel(batch.status).variant} data-testid="text-batch-status">{statusLabel(batch.status).text}</Badge>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-[11px] text-muted-foreground">Dosya</p>
+                  <p className="text-sm truncate" title={batch.fileName || "-"}>{batch.fileName || "-"}</p>
+                </div>
+                {batch.createdByName && (
+                  <div className="space-y-1 col-span-2">
+                    <p className="text-[11px] text-muted-foreground">İşlemi Yapan</p>
+                    <p className="text-sm">{batch.createdByName}</p>
+                  </div>
+                )}
+              </div>
+
+              <div className="grid grid-cols-4 gap-2">
+                <Card className="p-2 text-center">
+                  <p className="text-lg font-bold text-green-600" data-testid="stat-created">{batch.createdCount ?? 0}</p>
+                  <p className="text-[10px] text-muted-foreground">Oluşturulan</p>
+                </Card>
+                <Card className="p-2 text-center">
+                  <p className="text-lg font-bold text-blue-600" data-testid="stat-updated">{batch.updatedCount ?? 0}</p>
+                  <p className="text-[10px] text-muted-foreground">Güncellenen</p>
+                </Card>
+                <Card className="p-2 text-center">
+                  <p className="text-lg font-bold text-muted-foreground" data-testid="stat-skipped">{batch.skippedCount ?? 0}</p>
+                  <p className="text-[10px] text-muted-foreground">Atlanan</p>
+                </Card>
+                <Card className="p-2 text-center">
+                  <p className={`text-lg font-bold ${(batch.errorCount ?? 0) > 0 ? "text-red-600" : "text-muted-foreground"}`} data-testid="stat-errors">{batch.errorCount ?? 0}</p>
+                  <p className="text-[10px] text-muted-foreground">Hata</p>
+                </Card>
+              </div>
+
+              <div className="space-y-2">
+                <p className="text-sm font-medium">Raporlar</p>
+                <div className="flex flex-wrap gap-2">
+                  {(batch.errorCount ?? 0) > 0 && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => onDownloadErrorReport(batch.id)}
+                      data-testid="button-download-error-report"
+                    >
+                      <FileDown className="mr-1 h-3 w-3" />
+                      Hata Raporu İndir
+                    </Button>
+                  )}
+                  {(batch.skippedCount ?? 0) > 0 && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={handleDownloadSkipped}
+                      data-testid="button-download-skipped"
+                    >
+                      <FileDown className="mr-1 h-3 w-3" />
+                      Atlanan Satırlar İndir
+                    </Button>
+                  )}
+                  {(batch.errorCount ?? 0) === 0 && (batch.skippedCount ?? 0) === 0 && (
+                    <p className="text-xs text-muted-foreground">İndirilecek rapor yok.</p>
+                  )}
+                </div>
+              </div>
+
+              {results.length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-sm font-medium">İşlem Detayları ({results.length} satır)</p>
+                  <div className="max-h-52 overflow-y-auto border rounded-md">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="text-[11px] w-14">Satır</TableHead>
+                          <TableHead className="text-[11px]">Durum</TableHead>
+                          <TableHead className="text-[11px]">Mesaj</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {results.map((r: any, idx: number) => (
+                          <TableRow key={idx}>
+                            <TableCell className="text-xs py-1">{r.rowNumber}</TableCell>
+                            <TableCell className="text-xs py-1">
+                              <Badge
+                                variant={r.status === "error" ? "destructive" : r.status === "create" ? "default" : r.status === "update" ? "secondary" : "outline"}
+                                className="text-[10px]"
+                              >
+                                {r.status === "error" ? "Hata" : r.status === "create" ? "Yeni" : r.status === "update" ? "Güncellendi" : r.status === "skip" ? "Atlandı" : r.status === "deactivate" ? "Deaktif" : r.status}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="text-xs py-1 text-muted-foreground max-w-[200px] truncate" title={r.message}>{r.message}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </div>
+              )}
+
+              {canRollback && (
+                <div className="border-t pt-3 space-y-2">
+                  <p className="text-xs text-muted-foreground">
+                    Bu importu geri almak için <strong>{daysLeft} gün</strong> kaldı.
+                  </p>
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={() => setShowRollbackConfirm(true)}
+                    disabled={rollbackMutation.isPending}
+                    data-testid="button-rollback-batch"
+                  >
+                    <Undo2 className="mr-1 h-3 w-3" />
+                    Bu İmportu Geri Al
+                  </Button>
+                </div>
+              )}
+
+              {batch.status === "rolled_back" && (
+                <div className="flex items-center gap-2 p-3 rounded-md bg-muted text-sm text-muted-foreground">
+                  <RotateCcw className="h-4 w-4 flex-shrink-0" />
+                  <span>Bu import {batch.rolledBackAt ? format(new Date(batch.rolledBackAt), "dd.MM.yyyy HH:mm") + " tarihinde" : ""} geri alınmıştır.</span>
+                </div>
+              )}
+            </div>
+          )}
+        </SheetContent>
+      </Sheet>
+
+      <AlertDialog open={showRollbackConfirm} onOpenChange={setShowRollbackConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>İmportu Geri Al</AlertDialogTitle>
+            <AlertDialogDescription>
+              Bu işlem, batch #{batchId} ile yapılan tüm değişiklikleri geri alacaktır:
+              oluşturulan kayıtlar silinecek, güncellenen kayıtlar önceki haline döndürülecek.
+              Bu işlem geri alınamaz. Devam etmek istiyor musunuz?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={rollbackMutation.isPending} data-testid="button-rollback-cancel">İptal</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => batchId && rollbackMutation.mutate(batchId)}
+              disabled={rollbackMutation.isPending}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              data-testid="button-rollback-confirm"
+            >
+              {rollbackMutation.isPending ? "Geri alınıyor..." : "Evet, Geri Al"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
+  );
+}
+
+function ImportBatchHistory({ onDownloadErrorReport, userRole }: { onDownloadErrorReport: (batchId: number) => void; userRole?: string }) {
   const [expanded, setExpanded] = useState(false);
-  const { data: batches, isLoading } = useQuery<any[]>({
+  const [selectedBatchId, setSelectedBatchId] = useState<number | null>(null);
+  const { data: batches, isLoading, error: fetchError } = useQuery<any[]>({
     queryKey: ["/api/hr/employees/import/batches"],
     enabled: expanded,
   });
@@ -5626,8 +5928,13 @@ function ImportBatchHistory({ onDownloadErrorReport }: { onDownloadErrorReport: 
         <div className="px-3 pb-3">
           {isLoading ? (
             <p className="text-xs text-muted-foreground py-2">Yükleniyor...</p>
+          ) : fetchError ? (
+            <div className="flex items-center gap-2 p-2 rounded-md bg-destructive/10 text-destructive text-xs" data-testid="batch-list-error">
+              <AlertCircle className="h-3 w-3 flex-shrink-0" />
+              <span>Geçmiş yüklenirken hata oluştu.</span>
+            </div>
           ) : !batches || batches.length === 0 ? (
-            <p className="text-xs text-muted-foreground py-2">Henüz import geçmişi yok.</p>
+            <p className="text-xs text-muted-foreground py-2" data-testid="text-no-batch-history">Henüz import geçmişi yok.</p>
           ) : (
             <div className="max-h-48 overflow-y-auto">
               <Table>
@@ -5641,12 +5948,16 @@ function ImportBatchHistory({ onDownloadErrorReport }: { onDownloadErrorReport: 
                     <TableHead className="text-xs text-center">Skipped</TableHead>
                     <TableHead className="text-xs text-center">Errors</TableHead>
                     <TableHead className="text-xs">Status</TableHead>
-                    <TableHead className="text-xs"></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {batches.map((b: any) => (
-                    <TableRow key={b.id}>
+                    <TableRow
+                      key={b.id}
+                      className="cursor-pointer hover-elevate"
+                      onClick={() => setSelectedBatchId(b.id)}
+                      data-testid={`row-batch-${b.id}`}
+                    >
                       <TableCell className="text-xs py-1 whitespace-nowrap">
                         {b.createdAt ? new Date(b.createdAt).toLocaleDateString("tr-TR", { day: "2-digit", month: "2-digit", year: "2-digit" }) : "-"}
                       </TableCell>
@@ -5669,19 +5980,6 @@ function ImportBatchHistory({ onDownloadErrorReport }: { onDownloadErrorReport: 
                         <span className={b.errorCount > 0 ? "text-red-600 font-medium" : "text-muted-foreground"}>{b.errorCount ?? "-"}</span>
                       </TableCell>
                       <TableCell className="text-xs py-1">{statusBadge(b.status)}</TableCell>
-                      <TableCell className="text-xs py-1">
-                        {(b.status === "completed" || b.status === "failed") && b.errorCount > 0 && (
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="h-6 text-xs px-2"
-                            onClick={() => onDownloadErrorReport(b.id)}
-                            data-testid={`button-download-error-${b.id}`}
-                          >
-                            <Download className="h-3 w-3" />
-                          </Button>
-                        )}
-                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -5690,6 +5988,14 @@ function ImportBatchHistory({ onDownloadErrorReport }: { onDownloadErrorReport: 
           )}
         </div>
       )}
+
+      <BatchDetailSheet
+        batchId={selectedBatchId}
+        open={selectedBatchId !== null}
+        onOpenChange={(open) => { if (!open) setSelectedBatchId(null); }}
+        onDownloadErrorReport={onDownloadErrorReport}
+        userRole={userRole}
+      />
     </div>
   );
 }
@@ -5701,6 +6007,7 @@ function ImportEmployeesDialog({
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
+  const { user: authUser } = useAuth();
   const { toast } = useToast();
   const [step, setStep] = useState<"upload" | "preview" | "config" | "dryrun" | "result">("upload");
   const [file, setFile] = useState<File | null>(null);
@@ -5973,7 +6280,7 @@ function ImportEmployeesDialog({
               <Download className="mr-2 h-4 w-4" />
               Import Şablonu İndir
             </Button>
-            <ImportBatchHistory onDownloadErrorReport={handleDownloadErrorReport} />
+            <ImportBatchHistory onDownloadErrorReport={handleDownloadErrorReport} userRole={authUser?.role} />
           </div>
         )}
 

@@ -1049,13 +1049,24 @@ router.get("/api/hr/employees/import/batches/:batchId", isAuthenticated, async (
     const [batch] = await db.select().from(importBatches).where(eq(importBatches.id, batchId));
     if (!batch) return res.status(404).json({ message: "Batch bulunamadı" });
 
+    const [creator] = await db
+      .select({ firstName: users.firstName, lastName: users.lastName })
+      .from(users)
+      .where(eq(users.id, batch.createdByUserId));
+
     const results = await db
       .select()
       .from(importResults)
       .where(eq(importResults.batchId, batchId))
       .limit(500);
 
-    res.json({ batch, results });
+    res.json({
+      batch: {
+        ...batch,
+        createdByName: creator ? `${creator.firstName || ""} ${creator.lastName || ""}`.trim() : "Bilinmeyen",
+      },
+      results,
+    });
   } catch (error: any) {
     console.error("Batch detail error:", error);
     res.status(500).json({ message: "Batch detayı yüklenirken hata oluştu" });
