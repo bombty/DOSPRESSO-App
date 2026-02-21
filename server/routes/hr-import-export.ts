@@ -3,13 +3,14 @@ import { db } from "../db";
 import { isAuthenticated } from "../localAuth";
 import { hasPermission } from "../permission-service";
 import { createAuditEntry, getAuditContext } from "../audit";
-import { eq, and, inArray, isNull, desc } from "drizzle-orm";
+import { eq, and, inArray, isNull, desc, gte, lte } from "drizzle-orm";
 import {
   isHQRole,
   isBranchRole,
   isFactoryFloorRole,
   users,
   branches,
+  titles,
   importBatches,
   importResults,
   leaveRequests,
@@ -77,6 +78,9 @@ const EXPORT_COLUMNS = [
   { header: "Yemek Yardımı", key: "mealAllowance", width: 12 },
   { header: "Ulaşım Yardımı", key: "transportAllowance", width: 12 },
   { header: "Prim Matrah", key: "bonusBase", width: 12 },
+  { header: "Ünvan", key: "titleName", width: 18 },
+  { header: "Ünvan ID", key: "titleId", width: 10 },
+  { header: "Kategori", key: "category", width: 12 },
   { header: "Durum", key: "isActive", width: 8 },
   { header: "Hesap Durum", key: "accountStatus", width: 12 },
   { header: "Notlar", key: "notes", width: 30 },
@@ -122,6 +126,12 @@ const IMPORT_FIELD_MAP: Record<string, string> = {
   "Notlar": "notes",
   "Şifre": "password",
   "ID": "id",
+  "Ünvan": "titleName",
+  "Ünvan ID": "titleId",
+  "Title": "titleName",
+  "Title ID": "titleId",
+  "Kategori": "category",
+  "Category": "category",
 };
 
 function isAdminUser(u: any): boolean {
@@ -161,6 +171,21 @@ function parseExcelDate(val: any): string | null {
 
 // ─── EXPORT ──────────────────────────────────────────────
 
+function getEmployeeCategory(emp: any): string {
+  if (!emp.branchId || emp.branchId === HQ_BRANCH_ID) return "HQ";
+  if (emp.branchId === FACTORY_BRANCH_ID) return "Fabrika";
+  return "Şube";
+}
+
+function styleHeaderRow(sheet: ExcelJS.Worksheet) {
+  sheet.getRow(1).font = { bold: true, color: { argb: "FFFFFFFF" } };
+  sheet.getRow(1).fill = {
+    type: "pattern",
+    pattern: "solid",
+    fgColor: { argb: "FF4472C4" },
+  };
+}
+
 router.post("/api/hr/employees/export", isAuthenticated, async (req: any, res) => {
   try {
     const user = req.user!;
@@ -168,7 +193,7 @@ router.post("/api/hr/employees/export", isAuthenticated, async (req: any, res) =
       return res.status(403).json({ message: "Export yetkisi yok" });
     }
 
-    const { scope, branchIds, roleFilter, statusFilter, hireDateFrom, hireDateTo, exportType } = req.body;
+    const { scope, branchIds, roleFilter, statusFilter, hireDateFrom, hireDateTo, exportType, titleFilter } = req.body;
 
     let conditions: any[] = [isNull(users.deletedAt)];
 
@@ -180,7 +205,7 @@ router.post("/api/hr/employees/export", isAuthenticated, async (req: any, res) =
       conditions.push(inArray(users.branchId, branchIds.map(Number)));
     }
 
-    if (roleFilter) {
+    if (roleFilter && roleFilter !== "all_roles") {
       conditions.push(eq(users.role, roleFilter));
     }
     if (statusFilter === "active") {
@@ -188,9 +213,21 @@ router.post("/api/hr/employees/export", isAuthenticated, async (req: any, res) =
     } else if (statusFilter === "inactive") {
       conditions.push(eq(users.isActive, false));
     }
+    if (titleFilter && titleFilter !== "all_titles") {
+      conditions.push(eq(users.titleId, parseInt(titleFilter)));
+    }
+    if (hireDateFrom) {
+      conditions.push(gte(users.hireDate, hireDateFrom));
+    }
+    if (hireDateTo) {
+      conditions.push(lte(users.hireDate, hireDateTo));
+    }
 
     const allBranches = await db.select({ id: branches.id, name: branches.name }).from(branches);
     const branchMap = new Map(allBranches.map(b => [b.id, b.name]));
+
+    const allTitles = await db.select({ id: titles.id, name: titles.name }).from(titles);
+    const titleMap = new Map(allTitles.map(t => [t.id, t.name]));
 
     const employees = await db
       .select()
@@ -204,19 +241,14 @@ router.post("/api/hr/employees/export", isAuthenticated, async (req: any, res) =
 
     const mainSheet = workbook.addWorksheet("Personeller");
     mainSheet.columns = EXPORT_COLUMNS;
-
-    mainSheet.getRow(1).font = { bold: true };
-    mainSheet.getRow(1).fill = {
-      type: "pattern",
-      pattern: "solid",
-      fgColor: { argb: "FF4472C4" },
-    };
-    mainSheet.getRow(1).font = { bold: true, color: { argb: "FFFFFFFF" } };
+    styleHeaderRow(mainSheet);
 
     for (const emp of employees) {
       mainSheet.addRow({
         ...emp,
         branchName: emp.branchId ? branchMap.get(emp.branchId) || "" : "HQ",
+        titleName: emp.titleId ? titleMap.get(emp.titleId) || "" : "",
+        category: getEmployeeCategory(emp),
         isActive: emp.isActive ? "Aktif" : "Pasif",
       });
     }
@@ -224,7 +256,38 @@ router.post("/api/hr/employees/export", isAuthenticated, async (req: any, res) =
     if (exportType === "detailed") {
       const empIds = employees.map(e => e.id);
 
+      // B) Employment Sheet
+      const empSheet = workbook.addWorksheet("İstihdam");
+      empSheet.columns = [
+        { header: "Personel ID", key: "id", width: 36 },
+        { header: "Ad Soyad", key: "fullName", width: 20 },
+        { header: "İşe Giriş", key: "hireDate", width: 12 },
+        { header: "Deneme Bitiş", key: "probationEndDate", width: 12 },
+        { header: "Çalışma Tipi", key: "employmentType", width: 12 },
+        { header: "Haftalık Saat", key: "weeklyHours", width: 10 },
+        { header: "Sözleşme Tipi", key: "contractType", width: 12 },
+        { header: "Durum", key: "isActive", width: 8 },
+        { header: "Ayrılış Tarihi", key: "leaveStartDate", width: 12 },
+        { header: "Ayrılış Nedeni", key: "leaveReason", width: 25 },
+      ];
+      styleHeaderRow(empSheet);
+      for (const emp of employees) {
+        empSheet.addRow({
+          id: emp.id,
+          fullName: `${emp.firstName || ""} ${emp.lastName || ""}`.trim(),
+          hireDate: emp.hireDate,
+          probationEndDate: emp.probationEndDate,
+          employmentType: emp.employmentType || "",
+          weeklyHours: emp.weeklyHours || "",
+          contractType: emp.contractType || "",
+          isActive: emp.isActive ? "Aktif" : "Pasif",
+          leaveStartDate: emp.leaveStartDate || "",
+          leaveReason: emp.leaveReason || "",
+        });
+      }
+
       if (empIds.length > 0) {
+        // C) Leave Sheet
         const leavesSheet = workbook.addWorksheet("İzinler");
         leavesSheet.columns = [
           { header: "Personel ID", key: "userId", width: 36 },
@@ -235,7 +298,7 @@ router.post("/api/hr/employees/export", isAuthenticated, async (req: any, res) =
           { header: "Durum", key: "status", width: 10 },
           { header: "Açıklama", key: "reason", width: 30 },
         ];
-        leavesSheet.getRow(1).font = { bold: true };
+        styleHeaderRow(leavesSheet);
 
         const leaves = await db
           .select()
@@ -247,6 +310,37 @@ router.post("/api/hr/employees/export", isAuthenticated, async (req: any, res) =
           leavesSheet.addRow(l);
         }
 
+        // D) Payroll Sheet
+        const payrollSheet = workbook.addWorksheet("Maaş");
+        payrollSheet.columns = [
+          { header: "Personel ID", key: "id", width: 36 },
+          { header: "Ad Soyad", key: "fullName", width: 20 },
+          { header: "Rol", key: "role", width: 15 },
+          { header: "Şube", key: "branchName", width: 18 },
+          { header: "Net Maaş", key: "netSalary", width: 12 },
+          { header: "Yemek Yardımı", key: "mealAllowance", width: 12 },
+          { header: "Ulaşım Yardımı", key: "transportAllowance", width: 12 },
+          { header: "Prim Matrah", key: "bonusBase", width: 12 },
+          { header: "Prim Tipi", key: "bonusType", width: 12 },
+          { header: "Prim Oranı (%)", key: "bonusPercentage", width: 12 },
+        ];
+        styleHeaderRow(payrollSheet);
+        for (const emp of employees) {
+          payrollSheet.addRow({
+            id: emp.id,
+            fullName: `${emp.firstName || ""} ${emp.lastName || ""}`.trim(),
+            role: emp.role,
+            branchName: emp.branchId ? branchMap.get(emp.branchId) || "" : "HQ",
+            netSalary: emp.netSalary || "",
+            mealAllowance: emp.mealAllowance || "",
+            transportAllowance: emp.transportAllowance || "",
+            bonusBase: emp.bonusBase || "",
+            bonusType: emp.bonusType || "",
+            bonusPercentage: emp.bonusPercentage || "",
+          });
+        }
+
+        // E) Discipline Sheet
         const warningsSheet = workbook.addWorksheet("Disiplin");
         warningsSheet.columns = [
           { header: "Personel ID", key: "employeeId", width: 36 },
@@ -254,7 +348,7 @@ router.post("/api/hr/employees/export", isAuthenticated, async (req: any, res) =
           { header: "Açıklama", key: "description", width: 40 },
           { header: "Tarih", key: "date", width: 12 },
         ];
-        warningsSheet.getRow(1).font = { bold: true };
+        styleHeaderRow(warningsSheet);
 
         const warnings = await db
           .select()
@@ -266,6 +360,47 @@ router.post("/api/hr/employees/export", isAuthenticated, async (req: any, res) =
           warningsSheet.addRow(w);
         }
 
+        // F) Documents/Özlük Sheet (metadata placeholders)
+        const docsSheet = workbook.addWorksheet("Özlük Belgeleri");
+        docsSheet.columns = [
+          { header: "Personel ID", key: "employeeId", width: 36 },
+          { header: "Ad Soyad", key: "fullName", width: 20 },
+          { header: "TC Kimlik No", key: "tckn", width: 14 },
+          { header: "Doğum Tarihi", key: "birthDate", width: 12 },
+          { header: "Cinsiyet", key: "gender", width: 10 },
+          { header: "Medeni Hal", key: "maritalStatus", width: 12 },
+          { header: "Çocuk Sayısı", key: "numChildren", width: 10 },
+          { header: "Eğitim Seviye", key: "educationLevel", width: 15 },
+          { header: "Eğitim Kurum", key: "educationInstitution", width: 20 },
+          { header: "Askerlik", key: "militaryStatus", width: 12 },
+          { header: "Engel Durumu", key: "disabilityLevel", width: 12 },
+          { header: "Adres", key: "address", width: 30 },
+          { header: "Şehir", key: "city", width: 12 },
+          { header: "Belge Türü", key: "docType", width: 15 },
+          { header: "Belge URL", key: "docUrl", width: 30 },
+        ];
+        styleHeaderRow(docsSheet);
+        for (const emp of employees) {
+          docsSheet.addRow({
+            employeeId: emp.id,
+            fullName: `${emp.firstName || ""} ${emp.lastName || ""}`.trim(),
+            tckn: emp.tckn || "",
+            birthDate: emp.birthDate || "",
+            gender: emp.gender || "",
+            maritalStatus: emp.maritalStatus || "",
+            numChildren: emp.numChildren ?? "",
+            educationLevel: emp.educationLevel || "",
+            educationInstitution: emp.educationInstitution || "",
+            militaryStatus: emp.militaryStatus || "",
+            disabilityLevel: emp.disabilityLevel || "",
+            address: emp.address || "",
+            city: emp.city || "",
+            docType: "",
+            docUrl: "",
+          });
+        }
+
+        // Terminations Sheet
         const termSheet = workbook.addWorksheet("Ayrılışlar");
         termSheet.columns = [
           { header: "Personel ID", key: "employeeId", width: 36 },
@@ -273,7 +408,7 @@ router.post("/api/hr/employees/export", isAuthenticated, async (req: any, res) =
           { header: "Ayrılış Tipi", key: "terminationType", width: 15 },
           { header: "Sebep", key: "reason", width: 30 },
         ];
-        termSheet.getRow(1).font = { bold: true };
+        styleHeaderRow(termSheet);
 
         const terms = await db
           .select()
@@ -298,7 +433,7 @@ router.post("/api/hr/employees/export", isAuthenticated, async (req: any, res) =
       eventType: "data.export",
       action: "export",
       resource: "employees",
-      details: { scope, count: employees.length, exportType },
+      details: { scope, count: employees.length, exportType, titleFilter, hireDateFrom, hireDateTo },
     });
   } catch (error: any) {
     console.error("Export error:", error);
@@ -370,10 +505,14 @@ router.post("/api/hr/employees/import/dry-run", isAuthenticated, upload.single("
       }
 
       let existing: any = null;
-      if (data.id && idMap.has(data.id)) {
+      if (matchKey === "employeeId" && data.id) {
+        existing = idMap.get(data.id);
+      } else if (data.id && idMap.has(data.id)) {
         existing = idMap.get(data.id);
       } else if (matchKey === "email" && data.email) {
         existing = emailMap.get(data.email.toString().toLowerCase());
+      } else if (matchKey === "username" && data.username) {
+        existing = usernameMap.get(data.username.toString().toLowerCase());
       } else if (data.username) {
         existing = usernameMap.get(data.username.toString().toLowerCase());
       }
@@ -398,7 +537,7 @@ router.post("/api/hr/employees/import/dry-run", isAuthenticated, upload.single("
             employeeId: existing.id,
           });
           toSkip++;
-        } else {
+        } else if (mode === "update" || mode === "upsert") {
           results.push({
             rowNumber,
             status: "update",
@@ -408,6 +547,15 @@ router.post("/api/hr/employees/import/dry-run", isAuthenticated, upload.single("
           toUpdate++;
         }
       } else {
+        if (mode === "update") {
+          results.push({
+            rowNumber,
+            status: "skip",
+            message: `Mevcut kullanıcı bulunamadı (${data.username || data.email || "?"}). Update modda yeni kayıt eklenmez.`,
+          });
+          toSkip++;
+          continue;
+        }
         if (!data.password && !data.hashedPassword) {
           results.push({ rowNumber, status: "error", message: "Yeni kullanıcı için şifre zorunlu (Şifre kolonu)" });
           toError++;
@@ -422,6 +570,12 @@ router.post("/api/hr/employees/import/dry-run", isAuthenticated, upload.single("
       }
     }
 
+    const columnMapping = Object.entries(colMap).map(([colNum, field]) => ({
+      column: parseInt(colNum),
+      header: headerRow.getCell(parseInt(colNum)).value?.toString() || "",
+      mappedTo: field,
+    }));
+
     res.json({
       totalRows: rows.length,
       toCreate,
@@ -431,6 +585,8 @@ router.post("/api/hr/employees/import/dry-run", isAuthenticated, upload.single("
       results,
       mode,
       matchKey,
+      columnMapping,
+      preview: rows.slice(0, 5).map(r => r.data),
     });
   } catch (error: any) {
     console.error("Import dry-run error:", error);
@@ -507,10 +663,14 @@ router.post("/api/hr/employees/import/apply", isAuthenticated, upload.single("fi
         }
 
         let existing: any = null;
-        if (data.id && idMap.has(data.id)) {
+        if (matchKey === "employeeId" && data.id) {
+          existing = idMap.get(data.id);
+        } else if (data.id && idMap.has(data.id)) {
           existing = idMap.get(data.id);
         } else if (matchKey === "email" && data.email) {
           existing = emailMap.get(data.email.toString().toLowerCase());
+        } else if (matchKey === "username" && data.username) {
+          existing = usernameMap.get(data.username.toString().toLowerCase());
         } else if (data.username) {
           existing = usernameMap.get(data.username.toString().toLowerCase());
         }
@@ -570,6 +730,15 @@ router.post("/api/hr/employees/import/apply", isAuthenticated, upload.single("fi
           });
           updatedCount++;
         } else {
+          if (mode === "update") {
+            resultRows.push({
+              rowNumber,
+              status: "skip",
+              message: `Mevcut kullanıcı bulunamadı. Update modda yeni kayıt eklenmez.`,
+            });
+            skippedCount++;
+            continue;
+          }
           if (!data.password) {
             resultRows.push({ rowNumber, status: "error", message: "Yeni kullanıcı için şifre zorunlu" });
             errorCount++;
@@ -769,6 +938,131 @@ router.get("/api/hr/employees/import/batches/:batchId", isAuthenticated, async (
   } catch (error: any) {
     console.error("Batch detail error:", error);
     res.status(500).json({ message: "Batch detayı yüklenirken hata oluştu" });
+  }
+});
+
+// ─── ERROR REPORT DOWNLOAD ──────────────────────────────
+
+router.get("/api/hr/employees/import/batches/:batchId/error-report", isAuthenticated, async (req: any, res) => {
+  try {
+    const user = req.user!;
+    if (!isHQRole(user.role as UserRoleTypeSchema) && user.role !== "admin") {
+      return res.status(403).json({ message: "Yetki yok" });
+    }
+
+    const batchId = parseInt(req.params.batchId);
+    const [batch] = await db.select().from(importBatches).where(eq(importBatches.id, batchId));
+    if (!batch) return res.status(404).json({ message: "Batch bulunamadı" });
+
+    const results = await db
+      .select()
+      .from(importResults)
+      .where(eq(importResults.batchId, batchId))
+      .limit(10000);
+
+    const workbook = new ExcelJS.Workbook();
+    workbook.creator = "DOSPRESSO";
+
+    const sheet = workbook.addWorksheet("Import Sonuçları");
+    sheet.columns = [
+      { header: "Satır No", key: "rowNumber", width: 10 },
+      { header: "Durum", key: "status", width: 12 },
+      { header: "Personel ID", key: "employeeId", width: 36 },
+      { header: "Mesaj", key: "message", width: 60 },
+    ];
+    styleHeaderRow(sheet);
+
+    for (const r of results) {
+      const row = sheet.addRow({
+        rowNumber: r.rowNumber,
+        status: r.status === "error" ? "HATA" : r.status === "skip" ? "ATLANDI" : r.status === "create" ? "OLUŞTURULDU" : r.status === "update" ? "GÜNCELLENDİ" : r.status,
+        employeeId: r.employeeId || "",
+        message: r.message,
+      });
+      if (r.status === "error") {
+        row.getCell("status").font = { bold: true, color: { argb: "FFFF0000" } };
+      }
+    }
+
+    const errorsOnly = workbook.addWorksheet("Sadece Hatalar");
+    errorsOnly.columns = [
+      { header: "Satır No", key: "rowNumber", width: 10 },
+      { header: "Hata Mesajı", key: "message", width: 80 },
+    ];
+    styleHeaderRow(errorsOnly);
+    for (const r of results.filter(r => r.status === "error")) {
+      errorsOnly.addRow({ rowNumber: r.rowNumber, message: r.message });
+    }
+
+    res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+    res.setHeader("Content-Disposition", `attachment; filename=import_hata_raporu_${batchId}.xlsx`);
+    await workbook.xlsx.write(res);
+    res.end();
+  } catch (error: any) {
+    console.error("Error report error:", error);
+    res.status(500).json({ message: "Hata raporu oluşturulurken hata oluştu" });
+  }
+});
+
+// ─── FILE PREVIEW (column mapping) ──────────────────────
+
+router.post("/api/hr/employees/import/preview", isAuthenticated, upload.single("file"), async (req: any, res) => {
+  try {
+    const user = req.user!;
+    if (!isHQRole(user.role as UserRoleTypeSchema) && user.role !== "admin") {
+      return res.status(403).json({ message: "Import yetkisi yok" });
+    }
+    if (!req.file) {
+      return res.status(400).json({ message: "Dosya yüklenmedi" });
+    }
+
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.load(req.file.buffer);
+
+    const sheet = workbook.worksheets[0];
+    if (!sheet || sheet.rowCount < 2) {
+      return res.status(400).json({ message: "Excel dosyası boş veya başlık satırı eksik" });
+    }
+
+    const headerRow = sheet.getRow(1);
+    const headers: { column: number; header: string; mappedTo: string }[] = [];
+    headerRow.eachCell((cell, colNumber) => {
+      const header = cell.value?.toString().trim() || "";
+      headers.push({
+        column: colNumber,
+        header,
+        mappedTo: IMPORT_FIELD_MAP[header] || header,
+      });
+    });
+
+    const previewRows: Record<string, any>[] = [];
+    let count = 0;
+    sheet.eachRow((row, rowNumber) => {
+      if (rowNumber === 1) return;
+      if (count >= 5) return;
+      const data: Record<string, any> = {};
+      row.eachCell((cell, colNumber) => {
+        const h = headers.find(h => h.column === colNumber);
+        if (h) {
+          data[h.header] = cell.value;
+        }
+      });
+      previewRows.push(data);
+      count++;
+    });
+
+    const validFields = Object.values(IMPORT_FIELD_MAP);
+    const systemFields = [...new Set(validFields)];
+
+    res.json({
+      totalRows: sheet.rowCount - 1,
+      headers,
+      previewRows,
+      systemFields,
+    });
+  } catch (error: any) {
+    console.error("Preview error:", error);
+    res.status(500).json({ message: "Dosya önizleme sırasında hata oluştu" });
   }
 });
 

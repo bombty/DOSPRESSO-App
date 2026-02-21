@@ -5376,10 +5376,17 @@ function ExportEmployeesDialog({
   const [selectedBranches, setSelectedBranches] = useState<number[]>([]);
   const [roleFilter, setRoleFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
+  const [titleFilter, setTitleFilter] = useState("");
+  const [hireDateFrom, setHireDateFrom] = useState("");
+  const [hireDateTo, setHireDateTo] = useState("");
   const [exportType, setExportType] = useState("list");
   const [isExporting, setIsExporting] = useState(false);
 
   const regularBranches = branches.filter(b => b.id !== 23 && b.id !== 24);
+
+  const { data: titlesData } = useQuery<{ id: number; name: string }[]>({
+    queryKey: ["/api/admin/titles"],
+  });
 
   const handleExport = async () => {
     setIsExporting(true);
@@ -5393,6 +5400,9 @@ function ExportEmployeesDialog({
           branchIds: scope === "branch" ? selectedBranches : undefined,
           roleFilter: roleFilter || undefined,
           statusFilter: statusFilter || undefined,
+          titleFilter: titleFilter || undefined,
+          hireDateFrom: hireDateFrom || undefined,
+          hireDateTo: hireDateTo || undefined,
           exportType,
         }),
       });
@@ -5498,6 +5508,42 @@ function ExportEmployeesDialog({
           </div>
 
           <div>
+            <label className="text-sm font-medium">Unvan Filtre</label>
+            <Select value={titleFilter} onValueChange={setTitleFilter}>
+              <SelectTrigger data-testid="select-export-title">
+                <SelectValue placeholder="Tümü" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all_titles">Tümü</SelectItem>
+                {titlesData?.map((t) => (
+                  <SelectItem key={t.id} value={t.id.toString()}>{t.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-sm font-medium">İşe Giriş Başlangıç</label>
+              <Input
+                type="date"
+                value={hireDateFrom}
+                onChange={(e) => setHireDateFrom(e.target.value)}
+                data-testid="input-hire-date-from"
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium">İşe Giriş Bitiş</label>
+              <Input
+                type="date"
+                value={hireDateTo}
+                onChange={(e) => setHireDateTo(e.target.value)}
+                data-testid="input-hire-date-to"
+              />
+            </div>
+          </div>
+
+          <div>
             <label className="text-sm font-medium">Export Tipi</label>
             <Select value={exportType} onValueChange={setExportType}>
               <SelectTrigger data-testid="select-export-type">
@@ -5505,11 +5551,11 @@ function ExportEmployeesDialog({
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="list">Liste Export (tek sayfa)</SelectItem>
-                <SelectItem value="detailed">Tam Detay (çoklu sayfa)</SelectItem>
+                <SelectItem value="detailed">Tam Detay (7 sayfa)</SelectItem>
               </SelectContent>
             </Select>
             <p className="text-xs text-muted-foreground mt-1">
-              {exportType === "detailed" ? "Personel, izinler, disiplin ve ayrılışlar ayrı sayfalarda" : "Tüm personel bilgileri tek sayfada"}
+              {exportType === "detailed" ? "Personel, istihdam, izinler, maaş, disiplin, özlük belgeleri ve ayrılışlar ayrı sayfalarda" : "Tüm personel bilgileri tek sayfada"}
             </p>
           </div>
         </div>
@@ -5533,12 +5579,13 @@ function ImportEmployeesDialog({
   onOpenChange: (open: boolean) => void;
 }) {
   const { toast } = useToast();
-  const [step, setStep] = useState<"upload" | "config" | "dryrun" | "result">("upload");
+  const [step, setStep] = useState<"upload" | "preview" | "config" | "dryrun" | "result">("upload");
   const [file, setFile] = useState<File | null>(null);
   const [mode, setMode] = useState("append");
   const [matchKey, setMatchKey] = useState("username");
   const [dryRunResult, setDryRunResult] = useState<any>(null);
   const [applyResult, setApplyResult] = useState<any>(null);
+  const [previewData, setPreviewData] = useState<any>(null);
   const [isProcessing, setIsProcessing] = useState(false);
 
   const resetState = () => {
@@ -5548,13 +5595,33 @@ function ImportEmployeesDialog({
     setMatchKey("username");
     setDryRunResult(null);
     setApplyResult(null);
+    setPreviewData(null);
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
-    if (f) {
-      setFile(f);
-      setStep("config");
+    if (!f) return;
+    setFile(f);
+    setIsProcessing(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", f);
+      const response = await fetch("/api/hr/employees/import/preview", {
+        method: "POST",
+        credentials: "include",
+        body: formData,
+      });
+      if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.message || "Dosya okunamadı");
+      }
+      const data = await response.json();
+      setPreviewData(data);
+      setStep("preview");
+    } catch (error: any) {
+      toast({ title: "Hata", description: error.message, variant: "destructive" });
+    } finally {
+      setIsProcessing(false);
     }
   };
 
@@ -5637,6 +5704,24 @@ function ImportEmployeesDialog({
     }
   };
 
+  const handleDownloadErrorReport = async (batchId: number) => {
+    try {
+      const response = await fetch(`/api/hr/employees/import/batches/${batchId}/error-report`, {
+        credentials: "include",
+      });
+      if (!response.ok) throw new Error("Rapor indirilemedi");
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `import_hata_raporu_${batchId}.xlsx`;
+      a.click();
+      window.URL.revokeObjectURL(url);
+    } catch (error: any) {
+      toast({ title: "Hata", description: error.message, variant: "destructive" });
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) resetState(); onOpenChange(v); }}>
       <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
@@ -5647,6 +5732,7 @@ function ImportEmployeesDialog({
           </DialogTitle>
           <DialogDescription>
             {step === "upload" && "Excel dosyası seçin veya şablon indirin"}
+            {step === "preview" && "Dosya önizleme ve kolon eşleştirme"}
             {step === "config" && "Import ayarlarını yapılandırın"}
             {step === "dryrun" && "Simülasyon sonuçlarını inceleyin"}
             {step === "result" && "Import tamamlandı"}
@@ -5664,7 +5750,9 @@ function ImportEmployeesDialog({
                 onChange={handleFileChange}
                 className="max-w-xs mx-auto"
                 data-testid="input-import-file"
+                disabled={isProcessing}
               />
+              {isProcessing && <p className="text-xs text-muted-foreground mt-2">Dosya okunuyor...</p>}
             </div>
             <Button variant="outline" onClick={handleDownloadTemplate} className="w-full" data-testid="button-download-template">
               <Download className="mr-2 h-4 w-4" />
@@ -5673,12 +5761,83 @@ function ImportEmployeesDialog({
           </div>
         )}
 
+        {step === "preview" && previewData && (
+          <div className="space-y-4">
+            <div className="flex items-center gap-2 p-3 bg-muted/50 rounded-md">
+              <FileSpreadsheet className="h-5 w-5 text-muted-foreground" />
+              <span className="text-sm font-medium">{file?.name}</span>
+              <Badge variant="secondary">{previewData.totalRows} satır</Badge>
+            </div>
+
+            <div>
+              <label className="text-sm font-medium">Kolon Eşleştirme</label>
+              <div className="max-h-40 overflow-y-auto border rounded-md mt-1">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="text-xs">Excel Kolonu</TableHead>
+                      <TableHead className="text-xs">Sistem Alanı</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {previewData.headers?.map((h: any, i: number) => (
+                      <TableRow key={i}>
+                        <TableCell className="text-xs py-1">{h.header}</TableCell>
+                        <TableCell className="text-xs py-1">
+                          <Badge variant={h.header !== h.mappedTo ? "default" : "secondary"}>
+                            {h.mappedTo}
+                          </Badge>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </div>
+
+            {previewData.previewRows?.length > 0 && (
+              <div>
+                <label className="text-sm font-medium">Veri Önizleme (ilk 5 satır)</label>
+                <div className="max-h-32 overflow-auto border rounded-md mt-1">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        {previewData.headers?.map((h: any, i: number) => (
+                          <TableHead key={i} className="text-xs whitespace-nowrap">{h.header}</TableHead>
+                        ))}
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {previewData.previewRows.map((row: any, ri: number) => (
+                        <TableRow key={ri}>
+                          {previewData.headers?.map((h: any, ci: number) => (
+                            <TableCell key={ci} className="text-xs py-1 whitespace-nowrap max-w-[120px] truncate">
+                              {row[h.header]?.toString() || ""}
+                            </TableCell>
+                          ))}
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </div>
+            )}
+
+            <DialogFooter>
+              <Button variant="outline" onClick={() => { setStep("upload"); setPreviewData(null); setFile(null); }}>Geri</Button>
+              <Button onClick={() => setStep("config")} data-testid="button-continue-to-config">
+                Devam
+              </Button>
+            </DialogFooter>
+          </div>
+        )}
+
         {step === "config" && (
           <div className="space-y-4">
             <div className="flex items-center gap-2 p-3 bg-muted/50 rounded-md">
               <FileSpreadsheet className="h-5 w-5 text-muted-foreground" />
               <span className="text-sm font-medium">{file?.name}</span>
-              <Badge variant="secondary">{(file?.size || 0 / 1024).toFixed(0)} KB</Badge>
+              {previewData && <Badge variant="secondary">{previewData.totalRows} satır</Badge>}
             </div>
 
             <div>
@@ -5688,12 +5847,13 @@ function ImportEmployeesDialog({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="append">Append (Sadece ekle)</SelectItem>
-                  <SelectItem value="upsert">Upsert (Ekle + güncelle)</SelectItem>
+                  <SelectItem value="append">Sadece Ekle (Append)</SelectItem>
+                  <SelectItem value="update">Sadece Güncelle (Update)</SelectItem>
+                  <SelectItem value="upsert">Ekle + Güncelle (Upsert)</SelectItem>
                 </SelectContent>
               </Select>
               <p className="text-xs text-muted-foreground mt-1">
-                {mode === "append" ? "Sadece yeni personel ekler, mevcut olanları atlar" : "Yeni ekler, mevcut olanları günceller"}
+                {mode === "append" ? "Sadece yeni personel ekler, mevcut olanları atlar" : mode === "update" ? "Sadece mevcut personelleri günceller, yeni kayıt eklemez" : "Yeni ekler, mevcut olanları günceller"}
               </p>
             </div>
 
@@ -5706,8 +5866,12 @@ function ImportEmployeesDialog({
                 <SelectContent>
                   <SelectItem value="username">Kullanıcı Adı</SelectItem>
                   <SelectItem value="email">E-posta</SelectItem>
+                  <SelectItem value="employeeId">Personel ID</SelectItem>
                 </SelectContent>
               </Select>
+              <p className="text-xs text-muted-foreground mt-1">
+                Mevcut kullanıcıların hangi alana göre eşleştirileceğini belirler
+              </p>
             </div>
 
             <div className="p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-md">
@@ -5721,7 +5885,7 @@ function ImportEmployeesDialog({
             </div>
 
             <DialogFooter>
-              <Button variant="outline" onClick={() => setStep("upload")}>Geri</Button>
+              <Button variant="outline" onClick={() => setStep("preview")}>Geri</Button>
               <Button onClick={handleDryRun} disabled={isProcessing} data-testid="button-dry-run">
                 {isProcessing ? "Simüle ediliyor..." : "Simülasyon Çalıştır"}
               </Button>
@@ -5762,6 +5926,19 @@ function ImportEmployeesDialog({
               </Card>
             </div>
 
+            {dryRunResult.columnMapping?.length > 0 && (
+              <details className="border rounded-md">
+                <summary className="p-2 text-sm font-medium cursor-pointer">Kolon Eşleştirme Detayı</summary>
+                <div className="px-3 pb-3">
+                  <div className="flex flex-wrap gap-1">
+                    {dryRunResult.columnMapping.map((cm: any, i: number) => (
+                      <Badge key={i} variant="secondary" className="text-xs">{cm.header} → {cm.mappedTo}</Badge>
+                    ))}
+                  </div>
+                </div>
+              </details>
+            )}
+
             <div className="max-h-48 overflow-y-auto border rounded-md">
               <Table>
                 <TableHeader>
@@ -5787,7 +5964,7 @@ function ImportEmployeesDialog({
               </Table>
             </div>
 
-            <DialogFooter>
+            <DialogFooter className="flex-wrap gap-2">
               <Button variant="outline" onClick={() => setStep("config")}>Geri</Button>
               <Button
                 onClick={handleApply}
@@ -5826,6 +6003,18 @@ function ImportEmployeesDialog({
                 <div className="text-xs text-muted-foreground">Hata</div>
               </div>
             </div>
+
+            {applyResult.errorCount > 0 && (
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={() => handleDownloadErrorReport(applyResult.batchId)}
+                data-testid="button-download-error-report"
+              >
+                <Download className="mr-2 h-4 w-4" />
+                Hata Raporu İndir (Excel)
+              </Button>
+            )}
 
             <p className="text-xs text-muted-foreground text-center">
               Bu importu 7 gün içinde geri alabilirsiniz.
