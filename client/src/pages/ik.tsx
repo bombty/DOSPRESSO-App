@@ -68,6 +68,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { EmptyState, EmptyStatePreset } from "@/components/empty-state";
 import { ListSkeleton } from "@/components/list-skeleton";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -636,11 +637,25 @@ export default function IKPage() {
                 </Button>
               </>
             )}
-            {canCreate && (
+            {canCreate ? (
               <Button onClick={() => setAddDialogOpen(true)} data-testid="button-add-employee">
                 <UserPlus className="mr-2 h-4 w-4" />
                 Yeni Personel Ekle
               </Button>
+            ) : (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span tabIndex={0}>
+                    <Button disabled data-testid="button-add-employee-disabled">
+                      <UserPlus className="mr-2 h-4 w-4" />
+                      Yeni Personel Ekle
+                    </Button>
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Yetkiniz yok</p>
+                </TooltipContent>
+              </Tooltip>
             )}
           </div>
         </div>

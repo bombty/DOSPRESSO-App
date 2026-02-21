@@ -222,6 +222,22 @@ export function AppHeader({ notificationCount = 0, user, branchName, onQRClick }
           </DropdownMenu>
         </div>
 
+        {/* Environment Badge */}
+        {(() => {
+          const host = window.location.hostname;
+          const isProduction = host.endsWith('.replit.app');
+          const label = isProduction ? 'Production' : 'Preview';
+          return (
+            <Badge
+              variant="outline"
+              className={`text-[9px] px-1.5 py-0 flex-shrink-0 border ${isProduction ? 'border-green-400/50 text-green-300' : 'border-yellow-400/50 text-yellow-300'}`}
+              data-testid="badge-environment"
+            >
+              {label}
+            </Badge>
+          );
+        })()}
+
         {/* Center: Logo - Absolutely centered */}
         <div className="absolute left-1/2 transform -translate-x-1/2">
           <img 
