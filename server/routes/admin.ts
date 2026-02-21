@@ -35,6 +35,10 @@ import {
   publicHolidays,
   notifications,
   auditLogs,
+  titles,
+  insertTitleSchema,
+  roleTemplates,
+  insertRoleTemplateSchema,
 } from "@shared/schema";
 import { getAllActionsGroupedByModule, getRoleGrants, upsertPermissionGrant, deletePermissionGrant } from "../permission-service";
 import { generateArticleEmbeddings } from "../ai";
@@ -3026,6 +3030,171 @@ const router = Router();
     } catch (error: any) {
       console.error('[AuditLog] List error:', error);
       res.status(500).json({ error: 'Denetim günlüğü yüklenemedi' });
+    }
+  });
+
+  // ========================================
+  // TITLES CRUD - Ünvan Yönetimi
+  // ========================================
+
+  router.get('/api/admin/titles', isAuthenticated, async (req: any, res) => {
+    try {
+      if (req.user.role !== 'admin') {
+        return res.status(403).json({ message: "Admin yetkisi gerekli" });
+      }
+      const allTitles = await db.select().from(titles).orderBy(asc(titles.name));
+      res.json(allTitles);
+    } catch (error: any) {
+      console.error("Get titles error:", error);
+      res.status(500).json({ message: "Ünvanlar yüklenemedi" });
+    }
+  });
+
+  router.post('/api/admin/titles', isAuthenticated, async (req: any, res) => {
+    try {
+      if (req.user.role !== 'admin') {
+        return res.status(403).json({ message: "Admin yetkisi gerekli" });
+      }
+      const parsed = insertTitleSchema.parse(req.body);
+      const [created] = await db.insert(titles).values(parsed).returning();
+      res.json(created);
+    } catch (error: any) {
+      console.error("Create title error:", error);
+      if (error.code === '23505') {
+        return res.status(400).json({ message: "Bu ünvan adı zaten mevcut" });
+      }
+      res.status(500).json({ message: "Ünvan oluşturulamadı" });
+    }
+  });
+
+  router.patch('/api/admin/titles/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      if (req.user.role !== 'admin') {
+        return res.status(403).json({ message: "Admin yetkisi gerekli" });
+      }
+      const id = parseInt(req.params.id);
+      const existing = await db.select().from(titles).where(eq(titles.id, id)).limit(1);
+      if (!existing.length) return res.status(404).json({ message: "Ünvan bulunamadı" });
+      if (existing[0].isSystem) {
+        const { name, scope, isSystem, isDeletable, ...safeUpdates } = req.body;
+        const [updated] = await db.update(titles).set({ ...safeUpdates, updatedAt: new Date() }).where(eq(titles.id, id)).returning();
+        return res.json(updated);
+      }
+      const [updated] = await db.update(titles).set({ ...req.body, updatedAt: new Date() }).where(eq(titles.id, id)).returning();
+      res.json(updated);
+    } catch (error: any) {
+      console.error("Update title error:", error);
+      res.status(500).json({ message: "Ünvan güncellenemedi" });
+    }
+  });
+
+  router.delete('/api/admin/titles/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      if (req.user.role !== 'admin') {
+        return res.status(403).json({ message: "Admin yetkisi gerekli" });
+      }
+      const id = parseInt(req.params.id);
+      const existing = await db.select().from(titles).where(eq(titles.id, id)).limit(1);
+      if (!existing.length) return res.status(404).json({ message: "Ünvan bulunamadı" });
+      if (!existing[0].isDeletable) {
+        return res.status(400).json({ message: "Bu ünvan silinemez (sistem ünvanı)" });
+      }
+      await db.update(users).set({ titleId: null }).where(eq(users.titleId, id));
+      await db.delete(titles).where(eq(titles.id, id));
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("Delete title error:", error);
+      res.status(500).json({ message: "Ünvan silinemedi" });
+    }
+  });
+
+  // ========================================
+  // ROLE TEMPLATES EXTENDED - Admin koruma
+  // ========================================
+
+  router.patch('/api/admin/role-templates/:id/permissions', isAuthenticated, async (req: any, res) => {
+    try {
+      if (req.user.role !== 'admin') {
+        return res.status(403).json({ message: "Admin yetkisi gerekli" });
+      }
+      const id = parseInt(req.params.id);
+      const existing = await db.select().from(roleTemplates).where(eq(roleTemplates.id, id)).limit(1);
+      if (!existing.length) return res.status(404).json({ message: "Rol şablonu bulunamadı" });
+      const { permissions } = req.body;
+      if (!permissions || typeof permissions !== 'object') {
+        return res.status(400).json({ message: "Geçersiz izin formatı" });
+      }
+      const [updated] = await db.update(roleTemplates).set({ permissions, updatedAt: new Date() }).where(eq(roleTemplates.id, id)).returning();
+      res.json(updated);
+    } catch (error: any) {
+      console.error("Update role template permissions error:", error);
+      res.status(500).json({ message: "Rol izinleri güncellenemedi" });
+    }
+  });
+
+  router.delete('/api/admin/role-templates/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      if (req.user.role !== 'admin') {
+        return res.status(403).json({ message: "Admin yetkisi gerekli" });
+      }
+      const id = parseInt(req.params.id);
+      const existing = await db.select().from(roleTemplates).where(eq(roleTemplates.id, id)).limit(1);
+      if (!existing.length) return res.status(404).json({ message: "Rol şablonu bulunamadı" });
+      if (!existing[0].isDeletable) {
+        return res.status(400).json({ message: "Bu rol silinemez (sistem rolü)" });
+      }
+      await db.delete(roleTemplates).where(eq(roleTemplates.id, id));
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("Delete role template error:", error);
+      res.status(500).json({ message: "Rol şablonu silinemedi" });
+    }
+  });
+
+  // ========================================
+  // USER TITLE & ROLE ASSIGNMENT
+  // ========================================
+
+  router.patch('/api/admin/users/:id/title', isAuthenticated, async (req: any, res) => {
+    try {
+      if (req.user.role !== 'admin') {
+        return res.status(403).json({ message: "Admin yetkisi gerekli" });
+      }
+      const userId = req.params.id;
+      const { titleId } = req.body;
+      const [updated] = await db.update(users).set({ titleId: titleId || null, updatedAt: new Date() }).where(eq(users.id, userId)).returning();
+      if (!updated) return res.status(404).json({ message: "Kullanıcı bulunamadı" });
+      res.json({ success: true, titleId: updated.titleId });
+    } catch (error: any) {
+      console.error("Assign user title error:", error);
+      res.status(500).json({ message: "Ünvan atanamadı" });
+    }
+  });
+
+  router.patch('/api/admin/users/:id/role', isAuthenticated, async (req: any, res) => {
+    try {
+      if (req.user.role !== 'admin') {
+        return res.status(403).json({ message: "Admin yetkisi gerekli" });
+      }
+      const userId = req.params.id;
+      const { role } = req.body;
+      if (!role) return res.status(400).json({ message: "Rol belirtilmedi" });
+
+      const [targetUser] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+      if (!targetUser) return res.status(404).json({ message: "Kullanıcı bulunamadı" });
+
+      if (targetUser.role === 'admin' && role !== 'admin') {
+        const adminCount = await db.select({ cnt: count() }).from(users).where(and(eq(users.role, 'admin'), isNull(users.deletedAt)));
+        if (adminCount[0]?.cnt <= 1) {
+          return res.status(400).json({ message: "Son admin kullanıcısının rolü değiştirilemez" });
+        }
+      }
+
+      const [updated] = await db.update(users).set({ role, updatedAt: new Date() }).where(eq(users.id, userId)).returning();
+      res.json({ success: true, role: updated.role });
+    } catch (error: any) {
+      console.error("Assign user role error:", error);
+      res.status(500).json({ message: "Rol atanamadı" });
     }
   });
 

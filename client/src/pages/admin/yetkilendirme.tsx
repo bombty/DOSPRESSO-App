@@ -578,6 +578,394 @@ function DroppableMegaModule({
   );
 }
 
+type RoleTemplate = {
+  id: number;
+  name: string;
+  displayName: string;
+  description: string | null;
+  domain: string;
+  baseRole: string;
+  permissions: Record<string, string[]>;
+  isDefault: boolean;
+  isSystem: boolean;
+  isDeletable: boolean;
+  isActive: boolean;
+};
+
+type TitleItem = {
+  id: number;
+  name: string;
+  scope: string;
+  isSystem: boolean;
+  isDeletable: boolean;
+  isActive: boolean;
+};
+
+function RoleTemplatesTab() {
+  const { toast } = useToast();
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editForm, setEditForm] = useState({ displayName: "", description: "", domain: "hq", baseRole: "" });
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [createForm, setCreateForm] = useState({ name: "", displayName: "", description: "", domain: "hq", baseRole: "", permissions: {} as Record<string, string[]> });
+
+  const { data: templates = [], isLoading } = useQuery<RoleTemplate[]>({
+    queryKey: ["/api/role-templates"],
+  });
+
+  const createMutation = useMutation({
+    mutationFn: (data: typeof createForm) => apiRequest("POST", "/api/role-templates", data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/role-templates"] });
+      setIsCreateOpen(false);
+      setCreateForm({ name: "", displayName: "", description: "", domain: "hq", baseRole: "", permissions: {} });
+      toast({ title: "Rol şablonu oluşturuldu" });
+    },
+    onError: (e: Error) => toast({ title: "Hata", description: e.message, variant: "destructive" }),
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: ({ id, ...data }: { id: number; displayName: string; description: string; domain: string }) =>
+      apiRequest("PATCH", `/api/role-templates/${id}`, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/role-templates"] });
+      setEditingId(null);
+      toast({ title: "Rol şablonu güncellendi" });
+    },
+    onError: (e: Error) => toast({ title: "Hata", description: e.message, variant: "destructive" }),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: number) => apiRequest("DELETE", `/api/role-templates/${id}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/role-templates"] });
+      toast({ title: "Rol şablonu silindi" });
+    },
+    onError: (e: Error) => toast({ title: "Hata", description: e.message, variant: "destructive" }),
+  });
+
+  const startEdit = (t: RoleTemplate) => {
+    setEditingId(t.id);
+    setEditForm({ displayName: t.displayName, description: t.description || "", domain: t.domain, baseRole: t.baseRole });
+  };
+
+  const domainLabels: Record<string, string> = { hq: "Merkez", branch: "Şube", factory: "Fabrika" };
+
+  if (isLoading) return <div className="flex-1 flex items-center justify-center"><p className="text-muted-foreground">Yükleniyor...</p></div>;
+
+  return (
+    <div className="flex-1 overflow-auto p-4">
+      <div className="mb-4 flex items-center justify-between gap-2 flex-wrap">
+        <div>
+          <h2 className="text-lg font-semibold">Rol Şablonları</h2>
+          <p className="text-sm text-muted-foreground">Sistem ve özel rolleri yönetin</p>
+        </div>
+        <Button onClick={() => setIsCreateOpen(true)} data-testid="button-create-role-template">
+          <Plus className="h-4 w-4 mr-1" />
+          Yeni Rol Ekle
+        </Button>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+        {templates.map((t) => (
+          <Card key={t.id} data-testid={`card-role-template-${t.id}`}>
+            <CardHeader className="pb-2">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2 min-w-0">
+                  <Shield className="h-4 w-4 flex-shrink-0" />
+                  <CardTitle className="text-sm truncate">{t.displayName}</CardTitle>
+                </div>
+                <div className="flex items-center gap-1 flex-shrink-0">
+                  <Badge variant="secondary" className="text-[10px]">{domainLabels[t.domain] || t.domain}</Badge>
+                  {t.isSystem && <Badge variant="outline" className="text-[10px]"><Lock className="h-2.5 w-2.5 mr-0.5" />Sistem</Badge>}
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="pt-0 pb-3">
+              {editingId === t.id ? (
+                <div className="space-y-2">
+                  <Input
+                    value={editForm.displayName}
+                    onChange={(e) => setEditForm(p => ({ ...p, displayName: e.target.value }))}
+                    placeholder="Görünen ad"
+                    data-testid={`input-edit-role-name-${t.id}`}
+                  />
+                  <Input
+                    value={editForm.description}
+                    onChange={(e) => setEditForm(p => ({ ...p, description: e.target.value }))}
+                    placeholder="Açıklama"
+                    data-testid={`input-edit-role-desc-${t.id}`}
+                  />
+                  <Select value={editForm.domain} onValueChange={(v) => setEditForm(p => ({ ...p, domain: v }))}>
+                    <SelectTrigger data-testid={`select-edit-domain-${t.id}`}><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="hq">Merkez</SelectItem>
+                      <SelectItem value="branch">Şube</SelectItem>
+                      <SelectItem value="factory">Fabrika</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <div className="flex gap-1 justify-end">
+                    <Button size="sm" variant="outline" onClick={() => setEditingId(null)}>İptal</Button>
+                    <Button size="sm" onClick={() => updateMutation.mutate({ id: t.id, displayName: editForm.displayName, description: editForm.description, domain: editForm.domain })} disabled={updateMutation.isPending} data-testid={`button-save-role-${t.id}`}>
+                      Kaydet
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <p className="text-xs text-muted-foreground mb-2 line-clamp-2">{t.description || "Açıklama yok"}</p>
+                  <div className="flex items-center gap-1 flex-wrap mb-2">
+                    {Object.keys(t.permissions || {}).slice(0, 4).map(mod => (
+                      <Badge key={mod} variant="secondary" className="text-[10px]">{mod}</Badge>
+                    ))}
+                    {Object.keys(t.permissions || {}).length > 4 && (
+                      <Badge variant="secondary" className="text-[10px]">+{Object.keys(t.permissions).length - 4}</Badge>
+                    )}
+                  </div>
+                  <div className="flex gap-1 justify-end">
+                    <Button size="sm" variant="ghost" onClick={() => startEdit(t)} data-testid={`button-edit-role-${t.id}`}>
+                      <Pencil className="h-3 w-3 mr-1" />
+                      Düzenle
+                    </Button>
+                    {t.isDeletable && !t.isSystem && (
+                      <Button size="sm" variant="ghost" className="text-destructive" onClick={() => deleteMutation.mutate(t.id)} data-testid={`button-delete-role-${t.id}`}>
+                        <X className="h-3 w-3 mr-1" />
+                        Sil
+                      </Button>
+                    )}
+                  </div>
+                </>
+              )}
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Yeni Rol Şablonu</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <div>
+              <Label>Rol Adı (Sistem) *</Label>
+              <Input value={createForm.name} onChange={(e) => setCreateForm(p => ({ ...p, name: e.target.value }))} placeholder="ornek_rol" data-testid="input-create-role-name" />
+            </div>
+            <div>
+              <Label>Görünen Ad *</Label>
+              <Input value={createForm.displayName} onChange={(e) => setCreateForm(p => ({ ...p, displayName: e.target.value }))} placeholder="Örnek Rol" data-testid="input-create-role-display" />
+            </div>
+            <div>
+              <Label>Açıklama</Label>
+              <Input value={createForm.description} onChange={(e) => setCreateForm(p => ({ ...p, description: e.target.value }))} placeholder="Rol açıklaması" data-testid="input-create-role-desc" />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Alan</Label>
+                <Select value={createForm.domain} onValueChange={(v) => setCreateForm(p => ({ ...p, domain: v }))}>
+                  <SelectTrigger data-testid="select-create-domain"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="hq">Merkez</SelectItem>
+                    <SelectItem value="branch">Şube</SelectItem>
+                    <SelectItem value="factory">Fabrika</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Temel Rol</Label>
+                <Input value={createForm.baseRole} onChange={(e) => setCreateForm(p => ({ ...p, baseRole: e.target.value }))} placeholder="admin, supervisor..." data-testid="input-create-base-role" />
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsCreateOpen(false)}>İptal</Button>
+            <Button onClick={() => createMutation.mutate(createForm)} disabled={createMutation.isPending} data-testid="button-submit-create-role">
+              {createMutation.isPending ? "Oluşturuluyor..." : "Oluştur"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+function TitlesTab() {
+  const { toast } = useToast();
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editScope, setEditScope] = useState("all");
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [createName, setCreateName] = useState("");
+  const [createScope, setCreateScope] = useState("all");
+  const [filterScope, setFilterScope] = useState<string>("all_filter");
+
+  const { data: titlesData = [], isLoading } = useQuery<TitleItem[]>({
+    queryKey: ["/api/admin/titles"],
+  });
+
+  const createMutation = useMutation({
+    mutationFn: (data: { name: string; scope: string }) => apiRequest("POST", "/api/admin/titles", data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/titles"] });
+      setIsCreateOpen(false);
+      setCreateName("");
+      setCreateScope("all");
+      toast({ title: "Ünvan oluşturuldu" });
+    },
+    onError: (e: Error) => toast({ title: "Hata", description: e.message, variant: "destructive" }),
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: ({ id, ...data }: { id: number; name: string; scope: string }) =>
+      apiRequest("PATCH", `/api/admin/titles/${id}`, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/titles"] });
+      setEditingId(null);
+      toast({ title: "Ünvan güncellendi" });
+    },
+    onError: (e: Error) => toast({ title: "Hata", description: e.message, variant: "destructive" }),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: number) => apiRequest("DELETE", `/api/admin/titles/${id}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/titles"] });
+      toast({ title: "Ünvan silindi" });
+    },
+    onError: (e: Error) => toast({ title: "Hata", description: e.message, variant: "destructive" }),
+  });
+
+  const scopeLabels: Record<string, string> = { hq: "Merkez", branch: "Şube", factory: "Fabrika", all: "Tümü" };
+  const scopeColors: Record<string, string> = { hq: "bg-blue-500/10 text-blue-600", branch: "bg-green-500/10 text-green-600", factory: "bg-orange-500/10 text-orange-600", all: "bg-purple-500/10 text-purple-600" };
+
+  const filteredTitles = filterScope === "all_filter" ? titlesData : titlesData.filter(t => t.scope === filterScope);
+
+  if (isLoading) return <div className="flex-1 flex items-center justify-center"><p className="text-muted-foreground">Yükleniyor...</p></div>;
+
+  return (
+    <div className="flex-1 overflow-auto p-4">
+      <div className="mb-4 flex items-center justify-between gap-2 flex-wrap">
+        <div>
+          <h2 className="text-lg font-semibold">Ünvan Yönetimi</h2>
+          <p className="text-sm text-muted-foreground">Personel ünvanlarını ekleyin ve düzenleyin</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Select value={filterScope} onValueChange={setFilterScope}>
+            <SelectTrigger className="w-[130px]" data-testid="select-filter-scope">
+              <SelectValue placeholder="Filtrele" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all_filter">Tüm Kapsamlar</SelectItem>
+              <SelectItem value="hq">Merkez</SelectItem>
+              <SelectItem value="branch">Şube</SelectItem>
+              <SelectItem value="factory">Fabrika</SelectItem>
+              <SelectItem value="all">Genel</SelectItem>
+            </SelectContent>
+          </Select>
+          <Button onClick={() => setIsCreateOpen(true)} data-testid="button-create-title">
+            <Plus className="h-4 w-4 mr-1" />
+            Yeni Ünvan
+          </Button>
+        </div>
+      </div>
+
+      <div className="space-y-1">
+        {Object.entries(scopeLabels).map(([scope, label]) => {
+          const scopeTitles = filteredTitles.filter(t => t.scope === scope);
+          if (scopeTitles.length === 0) return null;
+          return (
+            <div key={scope} className="mb-4">
+              <div className="flex items-center gap-2 mb-2">
+                <Badge variant="secondary" className={`text-xs ${scopeColors[scope] || ""}`}>{label}</Badge>
+                <span className="text-xs text-muted-foreground">{scopeTitles.length} ünvan</span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
+                {scopeTitles.map(t => (
+                  <Card key={t.id} data-testid={`card-title-${t.id}`}>
+                    <CardContent className="p-3">
+                      {editingId === t.id ? (
+                        <div className="space-y-2">
+                          <Input value={editName} onChange={(e) => setEditName(e.target.value)} data-testid={`input-edit-title-${t.id}`} />
+                          <Select value={editScope} onValueChange={setEditScope}>
+                            <SelectTrigger data-testid={`select-edit-scope-${t.id}`}><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="hq">Merkez</SelectItem>
+                              <SelectItem value="branch">Şube</SelectItem>
+                              <SelectItem value="factory">Fabrika</SelectItem>
+                              <SelectItem value="all">Genel</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <div className="flex gap-1 justify-end">
+                            <Button size="sm" variant="outline" onClick={() => setEditingId(null)}>İptal</Button>
+                            <Button size="sm" onClick={() => updateMutation.mutate({ id: t.id, name: editName, scope: editScope })} disabled={updateMutation.isPending} data-testid={`button-save-title-${t.id}`}>
+                              Kaydet
+                            </Button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <Star className="h-3.5 w-3.5 flex-shrink-0 text-muted-foreground" />
+                            <span className="text-sm truncate">{t.name}</span>
+                            {t.isSystem && <Lock className="h-3 w-3 flex-shrink-0 text-muted-foreground" />}
+                          </div>
+                          <div className="flex items-center gap-0.5 flex-shrink-0">
+                            <Button size="icon" variant="ghost" onClick={() => { setEditingId(t.id); setEditName(t.name); setEditScope(t.scope); }} data-testid={`button-edit-title-${t.id}`}>
+                              <Pencil className="h-3 w-3" />
+                            </Button>
+                            {t.isDeletable && !t.isSystem && (
+                              <Button size="icon" variant="ghost" className="text-destructive" onClick={() => deleteMutation.mutate(t.id)} data-testid={`button-delete-title-${t.id}`}>
+                                <X className="h-3 w-3" />
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </div>
+          );
+        })}
+        {filteredTitles.length === 0 && (
+          <div className="text-center py-12 text-muted-foreground">
+            <Star className="h-12 w-12 mx-auto mb-4 opacity-30" />
+            <p>Bu kapsamda ünvan bulunamadı</p>
+          </div>
+        )}
+      </div>
+
+      <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Yeni Ünvan</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <div>
+              <Label>Ünvan Adı *</Label>
+              <Input value={createName} onChange={(e) => setCreateName(e.target.value)} placeholder="Örn: Kıdemli Barista" data-testid="input-create-title-name" />
+            </div>
+            <div>
+              <Label>Kapsam</Label>
+              <Select value={createScope} onValueChange={setCreateScope}>
+                <SelectTrigger data-testid="select-create-title-scope"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="hq">Merkez</SelectItem>
+                  <SelectItem value="branch">Şube</SelectItem>
+                  <SelectItem value="factory">Fabrika</SelectItem>
+                  <SelectItem value="all">Genel</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsCreateOpen(false)}>İptal</Button>
+            <Button onClick={() => createMutation.mutate({ name: createName, scope: createScope })} disabled={createMutation.isPending || !createName.trim()} data-testid="button-submit-create-title">
+              {createMutation.isPending ? "Oluşturuluyor..." : "Oluştur"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
 type PermissionState = Record<string, { view: boolean; edit: boolean }>;
 
 export default function AdminYetkilendirme() {
@@ -1172,6 +1560,14 @@ export default function AdminYetkilendirme() {
               <LayoutDashboard className="h-4 w-4 mr-1.5" />
               Modül Düzenleme
             </TabsTrigger>
+            <TabsTrigger value="role-templates" data-testid="tab-role-templates">
+              <Users className="h-4 w-4 mr-1.5" />
+              Roller
+            </TabsTrigger>
+            <TabsTrigger value="titles" data-testid="tab-titles">
+              <Star className="h-4 w-4 mr-1.5" />
+              Ünvanlar
+            </TabsTrigger>
           </TabsList>
         </Tabs>
       </div>
@@ -1502,6 +1898,16 @@ export default function AdminYetkilendirme() {
             </DragOverlay>
           </DndContext>
         </div>
+      )}
+
+      {/* Role Templates Tab Content */}
+      {activeTab === "role-templates" && (
+        <RoleTemplatesTab />
+      )}
+
+      {/* Titles Tab Content */}
+      {activeTab === "titles" && (
+        <TitlesTab />
       )}
 
       {/* Rol Ekle Modal */}

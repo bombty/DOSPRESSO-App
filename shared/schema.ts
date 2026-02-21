@@ -2355,6 +2355,7 @@ export const users = pgTable("users", {
   bonusType: varchar("bonus_type", { length: 30 }).default("normal"),
   bonusPercentage: numeric("bonus_percentage").default("0"),
   language: varchar("language", { length: 5 }).default("tr"),
+  titleId: integer("title_id"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
   deletedAt: timestamp("deleted_at"),
@@ -9030,6 +9031,41 @@ export type InsertTaskStep = z.infer<typeof insertTaskStepSchema>;
 export type TaskStep = typeof taskSteps.$inferSelect;
 
 // ========================================
+// JOB TITLES - Ünvan Yönetimi
+// ========================================
+
+export const TitleScope = {
+  HQ: "hq",
+  FACTORY: "factory",
+  BRANCH: "branch",
+  ALL: "all",
+} as const;
+
+export type TitleScopeType = typeof TitleScope[keyof typeof TitleScope];
+
+export const titles = pgTable("titles", {
+  id: serial("id").primaryKey(),
+  name: varchar("name", { length: 100 }).notNull().unique(),
+  scope: varchar("scope", { length: 20 }).notNull().default("all"),
+  isSystem: boolean("is_system").notNull().default(false),
+  isDeletable: boolean("is_deletable").notNull().default(true),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("titles_scope_idx").on(table.scope),
+]);
+
+export const insertTitleSchema = createInsertSchema(titles).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertTitle = z.infer<typeof insertTitleSchema>;
+export type Title = typeof titles.$inferSelect;
+
+// ========================================
 // ROLE TEMPLATES - Rol Şablonları
 // ========================================
 
@@ -9045,6 +9081,8 @@ export const roleTemplates = pgTable("role_templates", {
   permissions: jsonb("permissions").notNull().default({}), // { moduleKey: ['view', 'edit'] }
   
   isDefault: boolean("is_default").default(false),
+  isSystem: boolean("is_system").notNull().default(false),
+  isDeletable: boolean("is_deletable").notNull().default(true),
   isActive: boolean("is_active").default(true),
   
   createdById: varchar("created_by_id").references(() => users.id, { onDelete: "set null" }),
