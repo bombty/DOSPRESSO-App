@@ -8,6 +8,7 @@ import { z } from "zod";
 import { storage } from "./storage";
 import { db } from "./db";
 import { branches } from "@shared/schema";
+import { generateTasksForUser } from "./services/task-trigger-service";
 import { eq } from "drizzle-orm";
 import { auditLog } from "./audit";
 
@@ -197,6 +198,10 @@ export async function setupAuth(app: Express, authLimiter?: any) {
               resourceId: (user as any).id,
               details: { username: (user as any).username, authType: "user" },
             });
+
+            generateTasksForUser((user as any).id).catch((err: any) => 
+              console.error("[TaskTrigger] Login hook error:", err.message)
+            );
 
             return res.json({ 
               success: true,

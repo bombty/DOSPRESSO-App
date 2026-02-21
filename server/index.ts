@@ -174,6 +174,7 @@ app.use((req, res, next) => {
     // Start shift reminder job (runs every 10 minutes)
     startShiftReminderJob();
     startDangerZoneCheckJob();
+    startDailyTaskTriggerJob();
     
     // Start SLA check system (runs every 15 minutes)
     startSLACheckSystem();
@@ -308,4 +309,25 @@ function startDangerZoneCheckJob() {
   }, 60 * 60 * 1000); // Check every hour
   
   log("Danger zone check job initialized (runs monthly on 1st)");
+}
+
+function startDailyTaskTriggerJob() {
+  const checkIfMorning = () => {
+    const nowTR = new Date(new Date().toLocaleString("en-US", { timeZone: "Europe/Istanbul" }));
+    return nowTR.getHours() === 8 && nowTR.getMinutes() < 5;
+  };
+
+  setInterval(async () => {
+    if (checkIfMorning()) {
+      try {
+        const { generateTasksForAllActiveUsers } = await import("./services/task-trigger-service");
+        const result = await generateTasksForAllActiveUsers();
+        log(`[TaskTrigger] Daily generation: ${result.usersProcessed} users, ${result.totalCreated} created, ${result.totalSkipped} skipped`);
+      } catch (error) {
+        console.error("[TaskTrigger] Daily generation error:", error);
+      }
+    }
+  }, 5 * 60 * 1000);
+
+  log("Task trigger daily scheduler started (08:00 Europe/Istanbul)");
 }
