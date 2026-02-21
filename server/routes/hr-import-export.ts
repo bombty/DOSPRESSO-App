@@ -457,6 +457,13 @@ router.post("/api/hr/employees/import/dry-run", isAuthenticated, upload.single("
     const mode = req.body.mode || "upsert";
     const matchKey = req.body.matchKey || "username";
 
+    let customMapping: Record<string, string> | null = null;
+    try {
+      if (req.body.columnMapping) {
+        customMapping = JSON.parse(req.body.columnMapping);
+      }
+    } catch {}
+
     const workbook = new ExcelJS.Workbook();
     await workbook.xlsx.load(req.file.buffer);
 
@@ -469,8 +476,12 @@ router.post("/api/hr/employees/import/dry-run", isAuthenticated, upload.single("
     const colMap: Record<number, string> = {};
     headerRow.eachCell((cell, colNumber) => {
       const header = cell.value?.toString().trim() || "";
-      const mapped = IMPORT_FIELD_MAP[header] || header;
-      colMap[colNumber] = mapped;
+      if (customMapping && customMapping[header]) {
+        const mapped = customMapping[header];
+        if (mapped !== "__skip__") colMap[colNumber] = mapped;
+      } else {
+        colMap[colNumber] = IMPORT_FIELD_MAP[header] || header;
+      }
     });
 
     const rows: { rowNumber: number; data: Record<string, any> }[] = [];
@@ -646,11 +657,23 @@ router.post("/api/hr/employees/import/apply", isAuthenticated, upload.single("fi
       return res.status(400).json({ message: "Excel dosyası boş" });
     }
 
+    let customMapping: Record<string, string> | null = null;
+    try {
+      if (req.body.columnMapping) {
+        customMapping = JSON.parse(req.body.columnMapping);
+      }
+    } catch {}
+
     const headerRow = sheet.getRow(1);
     const colMap: Record<number, string> = {};
     headerRow.eachCell((cell, colNumber) => {
       const header = cell.value?.toString().trim() || "";
-      colMap[colNumber] = IMPORT_FIELD_MAP[header] || header;
+      if (customMapping && customMapping[header]) {
+        const mapped = customMapping[header];
+        if (mapped !== "__skip__") colMap[colNumber] = mapped;
+      } else {
+        colMap[colNumber] = IMPORT_FIELD_MAP[header] || header;
+      }
     });
 
     const rows: { rowNumber: number; data: Record<string, any> }[] = [];

@@ -5572,6 +5572,110 @@ function ExportEmployeesDialog({
   );
 }
 
+function ImportBatchHistory({ onDownloadErrorReport }: { onDownloadErrorReport: (batchId: number) => void }) {
+  const [expanded, setExpanded] = useState(false);
+  const { data: batches, isLoading } = useQuery<any[]>({
+    queryKey: ["/api/hr/employees/import/batches"],
+    enabled: expanded,
+  });
+
+  const modeLabels: Record<string, string> = {
+    upsert: "Upsert",
+    append: "Sadece Ekle",
+    update: "Sadece Güncelle",
+    deactivate_missing: "Eksikleri Deaktif Et",
+  };
+
+  const statusBadge = (status: string) => {
+    if (status === "completed") return <Badge variant="default" className="text-[10px]">Tamamlandı</Badge>;
+    if (status === "failed") return <Badge variant="destructive" className="text-[10px]">Hata</Badge>;
+    if (status === "rolled_back") return <Badge variant="outline" className="text-[10px]">Geri Alındı</Badge>;
+    return <Badge variant="secondary" className="text-[10px]">{status}</Badge>;
+  };
+
+  return (
+    <div className="border rounded-md">
+      <button
+        type="button"
+        className="flex items-center justify-between gap-2 w-full p-3 text-sm font-medium text-left hover-elevate rounded-md"
+        onClick={() => setExpanded(!expanded)}
+        data-testid="button-toggle-batch-history"
+      >
+        <span className="flex items-center gap-2">
+          <Clock className="h-4 w-4 text-muted-foreground" />
+          Import Geçmişi
+        </span>
+        <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${expanded ? "rotate-180" : ""}`} />
+      </button>
+      {expanded && (
+        <div className="px-3 pb-3">
+          {isLoading ? (
+            <p className="text-xs text-muted-foreground py-2">Yükleniyor...</p>
+          ) : !batches || batches.length === 0 ? (
+            <p className="text-xs text-muted-foreground py-2">Henüz import geçmişi yok.</p>
+          ) : (
+            <div className="max-h-48 overflow-y-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="text-xs">Tarih</TableHead>
+                    <TableHead className="text-xs">Mod</TableHead>
+                    <TableHead className="text-xs">Eşleşme</TableHead>
+                    <TableHead className="text-xs">Durum</TableHead>
+                    <TableHead className="text-xs">Satır</TableHead>
+                    <TableHead className="text-xs">Sonuç</TableHead>
+                    <TableHead className="text-xs"></TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {batches.map((b: any) => {
+                    let summary: any = {};
+                    try { summary = b.summaryJson ? (typeof b.summaryJson === "string" ? JSON.parse(b.summaryJson) : b.summaryJson) : {}; } catch {}
+                    return (
+                      <TableRow key={b.id}>
+                        <TableCell className="text-xs py-1 whitespace-nowrap">
+                          {b.createdAt ? new Date(b.createdAt).toLocaleDateString("tr-TR", { day: "2-digit", month: "2-digit", year: "2-digit" }) : "-"}
+                        </TableCell>
+                        <TableCell className="text-xs py-1">
+                          <Badge variant="outline" className="text-[10px]">{modeLabels[b.mode] || b.mode}</Badge>
+                        </TableCell>
+                        <TableCell className="text-xs py-1">
+                          <span className="text-[10px] text-muted-foreground">{b.matchKey || "username"}</span>
+                        </TableCell>
+                        <TableCell className="text-xs py-1">{statusBadge(b.status)}</TableCell>
+                        <TableCell className="text-xs py-1">{b.totalRows || "-"}</TableCell>
+                        <TableCell className="text-xs py-1 whitespace-nowrap">
+                          {summary.created != null && <span className="text-green-600 mr-1">+{summary.created}</span>}
+                          {summary.updated != null && <span className="text-blue-600 mr-1">~{summary.updated}</span>}
+                          {summary.errors != null && summary.errors > 0 && <span className="text-red-600">!{summary.errors}</span>}
+                          {b.deactivatedCount > 0 && <span className="text-orange-600 ml-1">-{b.deactivatedCount}</span>}
+                        </TableCell>
+                        <TableCell className="text-xs py-1">
+                          {(b.status === "completed" || b.status === "failed") && summary.errors > 0 && (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-6 text-xs px-2"
+                              onClick={() => onDownloadErrorReport(b.id)}
+                              data-testid={`button-download-error-${b.id}`}
+                            >
+                              <Download className="h-3 w-3" />
+                            </Button>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function ImportEmployeesDialog({
   open,
   onOpenChange,
@@ -5590,6 +5694,7 @@ function ImportEmployeesDialog({
   const [isProcessing, setIsProcessing] = useState(false);
   const [deactivateConfirmation, setDeactivateConfirmation] = useState("");
   const [continueWithValid, setContinueWithValid] = useState(false);
+  const [columnMapping, setColumnMapping] = useState<Record<string, string>>({});
 
   const resetState = () => {
     setStep("upload");
@@ -5601,6 +5706,7 @@ function ImportEmployeesDialog({
     setPreviewData(null);
     setDeactivateConfirmation("");
     setContinueWithValid(false);
+    setColumnMapping({});
   };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -5622,6 +5728,11 @@ function ImportEmployeesDialog({
       }
       const data = await response.json();
       setPreviewData(data);
+      const initialMapping: Record<string, string> = {};
+      data.headers?.forEach((h: any) => {
+        initialMapping[h.header] = h.mappedTo;
+      });
+      setColumnMapping(initialMapping);
       setStep("preview");
     } catch (error: any) {
       toast({ title: "Hata", description: error.message, variant: "destructive" });
@@ -5638,6 +5749,9 @@ function ImportEmployeesDialog({
       formData.append("file", file);
       formData.append("mode", mode);
       formData.append("matchKey", matchKey);
+      if (Object.keys(columnMapping).length > 0) {
+        formData.append("columnMapping", JSON.stringify(columnMapping));
+      }
 
       const response = await fetch("/api/hr/employees/import/dry-run", {
         method: "POST",
@@ -5669,6 +5783,9 @@ function ImportEmployeesDialog({
       formData.append("mode", mode);
       formData.append("matchKey", matchKey);
       formData.append("continueWithValid", String(continueWithValid));
+      if (Object.keys(columnMapping).length > 0) {
+        formData.append("columnMapping", JSON.stringify(columnMapping));
+      }
       if (mode === "deactivate_missing") {
         formData.append("deactivateConfirmation", deactivateConfirmation);
       }
@@ -5778,6 +5895,7 @@ function ImportEmployeesDialog({
               <Download className="mr-2 h-4 w-4" />
               Import Şablonu İndir
             </Button>
+            <ImportBatchHistory onDownloadErrorReport={handleDownloadErrorReport} />
           </div>
         )}
 
@@ -5791,7 +5909,8 @@ function ImportEmployeesDialog({
 
             <div>
               <label className="text-sm font-medium">Kolon Eşleştirme</label>
-              <div className="max-h-40 overflow-y-auto border rounded-md mt-1">
+              <p className="text-xs text-muted-foreground mb-1">Otomatik eşleşme yanlışsa, listeden doğru alanı seçebilirsiniz.</p>
+              <div className="max-h-48 overflow-y-auto border rounded-md mt-1">
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -5800,16 +5919,38 @@ function ImportEmployeesDialog({
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {previewData.headers?.map((h: any, i: number) => (
-                      <TableRow key={i}>
-                        <TableCell className="text-xs py-1">{h.header}</TableCell>
-                        <TableCell className="text-xs py-1">
-                          <Badge variant={h.header !== h.mappedTo ? "default" : "secondary"}>
-                            {h.mappedTo}
-                          </Badge>
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                    {previewData.headers?.map((h: any, i: number) => {
+                      const currentValue = columnMapping[h.header] || h.mappedTo;
+                      const isAutoMapped = previewData.systemFields?.includes(currentValue);
+                      return (
+                        <TableRow key={i}>
+                          <TableCell className="text-xs py-1">{h.header}</TableCell>
+                          <TableCell className="text-xs py-1">
+                            <Select
+                              value={currentValue}
+                              onValueChange={(val) => {
+                                setColumnMapping(prev => ({ ...prev, [h.header]: val }));
+                              }}
+                            >
+                              <SelectTrigger className="h-7 text-xs" data-testid={`select-column-map-${i}`}>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="__skip__">
+                                  <span className="text-muted-foreground">Atla (import etme)</span>
+                                </SelectItem>
+                                {previewData.systemFields?.map((sf: string) => (
+                                  <SelectItem key={sf} value={sf}>{sf}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            {!isAutoMapped && currentValue !== "__skip__" && (
+                              <Badge variant="outline" className="ml-1 text-[10px]">manuel</Badge>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
                   </TableBody>
                 </Table>
               </div>
