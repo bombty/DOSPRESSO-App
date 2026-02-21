@@ -612,6 +612,18 @@ function RoleTemplatesTab() {
     queryKey: ["/api/role-templates"],
   });
 
+  const handleCreate = () => {
+    if (!createForm.name.trim()) {
+      toast({ title: "Hata", description: "Rol adı gerekli", variant: "destructive" });
+      return;
+    }
+    if (!createForm.displayName.trim()) {
+      toast({ title: "Hata", description: "Görünen ad gerekli", variant: "destructive" });
+      return;
+    }
+    createMutation.mutate(createForm);
+  };
+
   const createMutation = useMutation({
     mutationFn: (data: typeof createForm) => apiRequest("POST", "/api/role-templates", data),
     onSuccess: () => {
@@ -672,7 +684,7 @@ function RoleTemplatesTab() {
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2 min-w-0">
                   <Shield className="h-4 w-4 flex-shrink-0" />
-                  <CardTitle className="text-sm truncate">{t.displayName}</CardTitle>
+                  <CardTitle className="text-sm truncate" data-testid={`text-role-name-${t.id}`}>{t.displayName}</CardTitle>
                 </div>
                 <div className="flex items-center gap-1 flex-shrink-0">
                   <Badge variant="secondary" className="text-[10px]">{domainLabels[t.domain] || t.domain}</Badge>
@@ -705,7 +717,7 @@ function RoleTemplatesTab() {
                   </Select>
                   <div className="flex gap-1 justify-end">
                     <Button size="sm" variant="outline" onClick={() => setEditingId(null)}>İptal</Button>
-                    <Button size="sm" onClick={() => updateMutation.mutate({ id: t.id, displayName: editForm.displayName, description: editForm.description, domain: editForm.domain })} disabled={updateMutation.isPending} data-testid={`button-save-role-${t.id}`}>
+                    <Button size="sm" onClick={() => { if (!editForm.displayName.trim()) { toast({ title: "Hata", description: "Görünen ad gerekli", variant: "destructive" }); return; } updateMutation.mutate({ id: t.id, displayName: editForm.displayName, description: editForm.description, domain: editForm.domain }); }} disabled={updateMutation.isPending || !editForm.displayName.trim()} data-testid={`button-save-role-${t.id}`}>
                       Kaydet
                     </Button>
                   </div>
@@ -776,7 +788,7 @@ function RoleTemplatesTab() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsCreateOpen(false)}>İptal</Button>
-            <Button onClick={() => createMutation.mutate(createForm)} disabled={createMutation.isPending} data-testid="button-submit-create-role">
+            <Button onClick={handleCreate} disabled={createMutation.isPending || !createForm.name.trim() || !createForm.displayName.trim()} data-testid="button-submit-create-role">
               {createMutation.isPending ? "Oluşturuluyor..." : "Oluştur"}
             </Button>
           </DialogFooter>
@@ -894,7 +906,7 @@ function TitlesTab() {
                           </Select>
                           <div className="flex gap-1 justify-end">
                             <Button size="sm" variant="outline" onClick={() => setEditingId(null)}>İptal</Button>
-                            <Button size="sm" onClick={() => updateMutation.mutate({ id: t.id, name: editName, scope: editScope })} disabled={updateMutation.isPending} data-testid={`button-save-title-${t.id}`}>
+                            <Button size="sm" onClick={() => updateMutation.mutate({ id: t.id, name: editName, scope: editScope })} disabled={updateMutation.isPending || !editName.trim()} data-testid={`button-save-title-${t.id}`}>
                               Kaydet
                             </Button>
                           </div>
@@ -903,7 +915,7 @@ function TitlesTab() {
                         <div className="flex items-center justify-between gap-2">
                           <div className="flex items-center gap-2 min-w-0">
                             <Star className="h-3.5 w-3.5 flex-shrink-0 text-muted-foreground" />
-                            <span className="text-sm truncate">{t.name}</span>
+                            <span className="text-sm truncate" data-testid={`text-title-name-${t.id}`}>{t.name}</span>
                             {t.isSystem && <Lock className="h-3 w-3 flex-shrink-0 text-muted-foreground" />}
                           </div>
                           <div className="flex items-center gap-0.5 flex-shrink-0">
