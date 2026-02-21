@@ -11,8 +11,9 @@ Preferred communication style: Simple, everyday language. Turkish language commu
 The frontend utilizes React 18+ with TypeScript and Vite, employing Shadcn/ui (New York variant, Radix UI-based) and Material Design 3 principles. Styling is managed with Tailwind CSS, including dark mode and Turkish localization. The design prioritizes a mobile-first, responsive approach with compact, touch-friendly interactions optimized for vertical screens. All cards utilize semantic tokens for consistent theming. The application consistently uses responsive grid patterns for item and stat cards.
 
 ### Technical Implementations
-- **Frontend**: React 18, Vite, Wouter (routing), TanStack Query (state management), React Hook Form, Shadcn/ui.
+- **Frontend**: React 18, Vite, Wouter (routing), TanStack Query (state management), React Hook Form, Shadcn/ui, i18next + react-i18next (i18n).
 - **Backend**: Node.js, Express.js, TypeScript, with Replit Auth (OpenID) and Passport.js for authentication.
+- **i18n**: i18next with lazy-loaded translation files (i18next-http-backend), browser language detection (i18next-browser-languagedetector). Supports TR (default), EN, AR (RTL), DE. Translation files at `/client/public/locales/{tr,en,ar,de}/{common,auth,dashboard}.json`. Namespaces: common, auth, dashboard. User preference persisted in DB (users.language field) via `GET/PATCH /api/me/settings`. RTL auto-applied for Arabic. Missing key warnings in dev mode.
 - **Database**: PostgreSQL (Neon serverless) via Drizzle ORM (type-safe) and pgvector for embeddings.
 - **Charts**: Recharts for data visualization.
 - **File Upload**: Uppy integrated with AWS S3.

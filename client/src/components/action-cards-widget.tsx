@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -31,12 +32,6 @@ interface ActionCard {
   completedAt: string | null;
 }
 
-const statusConfig: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
-  beklemede: { label: "Bekliyor", variant: "outline" },
-  incelemede: { label: "Gönderildi", variant: "secondary" },
-  onaylandi: { label: "Onaylandı", variant: "default" },
-};
-
 const evidenceIcons: Record<string, any> = {
   photo: Camera,
   form: FileText,
@@ -44,22 +39,29 @@ const evidenceIcons: Record<string, any> = {
   none: ClipboardCheck,
 };
 
-const evidenceLabels: Record<string, string> = {
-  photo: "Fotoğraf Yükle",
-  form: "Form Doldur",
-  approval: "Onay İste",
-  none: "Tamamla",
-};
-
 export function ActionCardsWidget() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const { t } = useTranslation("dashboard");
   const [submitDialog, setSubmitDialog] = useState<ActionCard | null>(null);
   const [notes, setNotes] = useState("");
   const [photoUrl, setPhotoUrl] = useState("");
   const [formData, setFormData] = useState("");
 
-  const { data: actionCards = [], isLoading, refetch } = useQuery<ActionCard[]>({
+  const statusConfig: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
+    beklemede: { label: t("statusPending"), variant: "outline" },
+    incelemede: { label: t("statusSubmitted"), variant: "secondary" },
+    onaylandi: { label: t("statusApproved"), variant: "default" },
+  };
+
+  const evidenceLabels: Record<string, string> = {
+    photo: t("uploadPhoto"),
+    form: t("fillForm"),
+    approval: t("requestApproval"),
+    none: t("complete"),
+  };
+
+  const { data: actionCards = [], isLoading } = useQuery<ActionCard[]>({
     queryKey: ["/api/action-cards/today"],
     enabled: !!user,
     refetchInterval: 60000,
@@ -69,10 +71,10 @@ export function ActionCardsWidget() {
     mutationFn: () => apiRequest("POST", "/api/action-cards/generate"),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/action-cards/today"] });
-      toast({ title: "Görevler oluşturuldu" });
+      toast({ title: t("tasksGenerated") });
     },
     onError: () => {
-      toast({ title: "Hata", description: "Görevler oluşturulamadı", variant: "destructive" });
+      toast({ title: t("common:error"), description: t("tasksGenerateFailed"), variant: "destructive" });
     },
   });
 
@@ -91,10 +93,10 @@ export function ActionCardsWidget() {
       setNotes("");
       setPhotoUrl("");
       setFormData("");
-      toast({ title: "Başarılı", description: "Kanıt gönderildi" });
+      toast({ title: t("common:success"), description: t("evidenceSubmitted") });
     },
     onError: () => {
-      toast({ title: "Hata", description: "Gönderilemedi", variant: "destructive" });
+      toast({ title: t("common:error"), description: t("evidenceSubmitFailed"), variant: "destructive" });
     },
   });
 
@@ -116,7 +118,7 @@ export function ActionCardsWidget() {
         <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
           <CardTitle className="flex items-center gap-2 text-base">
             <Zap className="h-5 w-5 text-yellow-500" />
-            Bugün Yapılacaklar
+            {t("todaysTasks")}
             {actionCards.length > 0 && (
               <Badge variant="secondary">{pendingCards.length}/{actionCards.length}</Badge>
             )}
@@ -169,7 +171,7 @@ export function ActionCardsWidget() {
                       <p className={`text-sm font-medium truncate ${isDone ? "line-through text-muted-foreground" : ""}`}>
                         {card.title}
                       </p>
-                      <div className="flex items-center gap-2 mt-0.5">
+                      <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                         <Badge variant={statusInfo.variant} className="text-[10px]">
                           {statusInfo.label}
                         </Badge>
@@ -193,7 +195,7 @@ export function ActionCardsWidget() {
                         data-testid={`button-submit-card-${card.id}`}
                       >
                         <Send className="h-3 w-3 mr-1" />
-                        {evidenceLabels[card.evidenceType] || "Gönder"}
+                        {evidenceLabels[card.evidenceType] || t("send")}
                       </Button>
                     )}
                   </div>
@@ -214,11 +216,11 @@ export function ActionCardsWidget() {
           <div className="space-y-4">
             {submitDialog?.evidenceType === "photo" && (
               <div>
-                <label className="text-sm font-medium">Fotoğraf URL</label>
+                <label className="text-sm font-medium">{t("photoUrl")}</label>
                 <Input
                   value={photoUrl}
                   onChange={(e) => setPhotoUrl(e.target.value)}
-                  placeholder="Fotoğraf URL'si girin veya yükleyin"
+                  placeholder={t("photoUrlPlaceholder")}
                   data-testid="input-photo-url"
                 />
               </div>
@@ -226,11 +228,11 @@ export function ActionCardsWidget() {
 
             {submitDialog?.evidenceType === "form" && (
               <div>
-                <label className="text-sm font-medium">Form Verileri</label>
+                <label className="text-sm font-medium">{t("formData")}</label>
                 <Textarea
                   value={formData}
                   onChange={(e) => setFormData(e.target.value)}
-                  placeholder="Form bilgilerinizi girin..."
+                  placeholder={t("formDataPlaceholder")}
                   rows={4}
                   data-testid="input-form-data"
                 />
@@ -241,17 +243,17 @@ export function ActionCardsWidget() {
               <div className="p-3 bg-muted/50 rounded-md">
                 <div className="flex items-start gap-2">
                   <AlertCircle className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
-                  <p className="text-sm text-muted-foreground">Bu görev için yönetici onayı istenecektir.</p>
+                  <p className="text-sm text-muted-foreground">{t("approvalNote")}</p>
                 </div>
               </div>
             )}
 
             <div>
-              <label className="text-sm font-medium">Notlar (opsiyonel)</label>
+              <label className="text-sm font-medium">{t("notesOptional")}</label>
               <Textarea
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
-                placeholder="Ek notlar..."
+                placeholder={t("notesPlaceholder")}
                 rows={2}
                 data-testid="input-notes"
               />
@@ -259,7 +261,7 @@ export function ActionCardsWidget() {
           </div>
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setSubmitDialog(null)}>İptal</Button>
+            <Button variant="outline" onClick={() => setSubmitDialog(null)}>{t("common:cancel")}</Button>
             <Button
               onClick={() => submitDialog && submitMutation.mutate({
                 id: submitDialog.id,
@@ -268,7 +270,7 @@ export function ActionCardsWidget() {
               disabled={submitMutation.isPending}
               data-testid="button-confirm-submit"
             >
-              {submitMutation.isPending ? "Gönderiliyor..." : "Gönder"}
+              {submitMutation.isPending ? t("sending") : t("send")}
             </Button>
           </DialogFooter>
         </DialogContent>

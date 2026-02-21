@@ -1,0 +1,23 @@
+{
+  "todaysTasks": "Bugün Yapılacaklar",
+  "tasksGenerated": "Görevler oluşturuldu",
+  "tasksGenerateFailed": "Görevler oluşturulamadı",
+  "evidenceSubmitted": "Kanıt gönderildi",
+  "evidenceSubmitFailed": "Gönderilemedi",
+  "uploadPhoto": "Fotoğraf Yükle",
+  "fillForm": "Form Doldur",
+  "requestApproval": "Onay İste",
+  "complete": "Tamamla",
+  "send": "Gönder",
+  "sending": "Gönderiliyor...",
+  "photoUrl": "Fotoğraf URL",
+  "photoUrlPlaceholder": "Fotoğraf URL'si girin veya yükleyin",
+  "formData": "Form Verileri",
+  "formDataPlaceholder": "Form bilgilerinizi girin...",
+  "approvalNote": "Bu görev için yönetici onayı istenecektir.",
+  "notesOptional": "Notlar (opsiyonel)",
+  "notesPlaceholder": "Ek notlar...",
+  "statusPending": "Bekliyor",
+  "statusSubmitted": "Gönderildi",
+  "statusApproved": "Onaylandı"
+}

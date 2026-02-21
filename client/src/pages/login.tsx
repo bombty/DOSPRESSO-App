@@ -4,6 +4,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useMutation } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import {
@@ -18,19 +19,21 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
+import { LanguageSwitcher } from "@/components/language-switcher";
 import logoUrl from "@assets/IMG_6637_1765138781125.png";
 
-const loginSchema = z.object({
-  username: z.string().min(1, "Kullanıcı adı zorunludur"),
-  password: z.string().min(1, "Şifre zorunludur"),
-});
-
-type LoginFormData = z.infer<typeof loginSchema>;
+type LoginFormData = { username: string; password: string };
 
 export default function Login() {
   const [, navigate] = useLocation();
   const { toast } = useToast();
+  const { t } = useTranslation("auth");
   const [error, setError] = useState<string>("");
+
+  const loginSchema = z.object({
+    username: z.string().min(1, t("usernameRequired")),
+    password: z.string().min(1, t("passwordRequired")),
+  });
 
   const form = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
@@ -48,13 +51,13 @@ export default function Login() {
     
     const target = nextFromUrl ? decodeURIComponent(nextFromUrl) : nextFromStorage;
     
-    const safeTarget = (t: string | null): string => {
-      if (!t) return "/";
-      if (t.startsWith("//")) return "/";
-      if (t.includes(":")) return "/";
-      if (!t.startsWith("/")) return "/";
-      if (!/^\/[A-Za-z0-9/_\-?=&%]*$/.test(t)) return "/";
-      return t;
+    const safeTarget = (val: string | null): string => {
+      if (!val) return "/";
+      if (val.startsWith("//")) return "/";
+      if (val.includes(":")) return "/";
+      if (!val.startsWith("/")) return "/";
+      if (!/^\/[A-Za-z0-9/_\-?=&%]*$/.test(val)) return "/";
+      return val;
     };
     return safeTarget(target);
   };
@@ -68,8 +71,8 @@ export default function Login() {
       if (data.authType === 'branch') {
         sessionStorage.setItem('branchAuth', JSON.stringify(data.branch));
         toast({
-          title: "Sube girisi basarili",
-          description: `${data.branch.name} subesine hos geldiniz!`,
+          title: t("branchLoginSuccess"),
+          description: t("branchLoginSuccessDesc", { name: data.branch.name }),
         });
         setTimeout(() => {
           navigate(data.redirectTo || '/sube/dashboard');
@@ -80,9 +83,15 @@ export default function Login() {
       await queryClient.cancelQueries();
       queryClient.clear();
 
+      if (data.user?.language) {
+        const { default: i18n } = await import("@/lib/i18n");
+        i18n.changeLanguage(data.user.language);
+        localStorage.setItem("dospresso_language", data.user.language);
+      }
+
       toast({
-        title: "Giris basarili",
-        description: "Hos geldiniz!",
+        title: t("loginSuccess"),
+        description: t("loginSuccessDesc"),
       });
 
       const userRole = data.user?.role;
@@ -136,10 +145,10 @@ export default function Login() {
       navigate(target);
     },
     onError: (error) => {
-      setError(error.message || "Giriş başarısız");
+      setError(error.message || t("loginFailed"));
       toast({
-        title: "Giriş başarısız",
-        description: error.message || "Kullanıcı adı veya şifre hatalı",
+        title: t("loginFailed"),
+        description: error.message || t("loginFailedDesc"),
         variant: "destructive",
       });
     },
@@ -161,7 +170,7 @@ export default function Login() {
             data-testid="img-logo"
           />
           <CardDescription className="text-center">
-            Franchise Yönetim Sistemi
+            {t("common:appSubtitle")}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -172,10 +181,10 @@ export default function Login() {
                 name="username"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Kullanıcı Adı</FormLabel>
+                    <FormLabel>{t("username")}</FormLabel>
                     <FormControl>
                       <Input
-                        placeholder="Kullanıcı adınızı girin"
+                        placeholder={t("usernamePlaceholder")}
                         data-testid="input-username"
                         {...field}
                       />
@@ -189,11 +198,11 @@ export default function Login() {
                 name="password"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Şifre</FormLabel>
+                    <FormLabel>{t("password")}</FormLabel>
                     <FormControl>
                       <Input
                         type="password"
-                        placeholder="Şifrenizi girin"
+                        placeholder={t("passwordPlaceholder")}
                         data-testid="input-password"
                         {...field}
                       />
@@ -216,10 +225,10 @@ export default function Login() {
                 {loginMutation.isPending ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Giriş yapılıyor...
+                    {t("loggingIn")}
                   </>
                 ) : (
-                  "Giriş Yap"
+                  t("login")
                 )}
               </Button>
 
@@ -230,7 +239,7 @@ export default function Login() {
                   onClick={() => navigate("/register")}
                   data-testid="link-register"
                 >
-                  Yeni Kayıt
+                  {t("register")}
                 </button>
                 <button
                   type="button"
@@ -238,8 +247,12 @@ export default function Login() {
                   onClick={() => navigate("/forgot-password")}
                   data-testid="link-forgot-password"
                 >
-                  Şifremi Unuttum
+                  {t("forgotPassword")}
                 </button>
+              </div>
+
+              <div className="flex justify-center pt-2">
+                <LanguageSwitcher compact />
               </div>
             </form>
           </Form>

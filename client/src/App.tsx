@@ -13,6 +13,7 @@ import { AppHeader } from "@/components/app-header";
 import { QRScannerModal } from "@/components/qr-scanner-modal";
 import { GlobalAIAssistant } from "@/components/global-ai-assistant";
 import { useAuth } from "@/hooks/useAuth";
+import { useLanguageSync } from "@/hooks/useLanguageSync";
 import { ProtectedRoute } from "@/components/protected-route";
 import logoPath from "@assets/IMG_6637_1765138781125.png";
 import FaultHub from "@/pages/ariza";
@@ -420,6 +421,7 @@ function Router() {
 
 function AppContent() {
   const { isAuthenticated, isLoading, user } = useAuth();
+  useLanguageSync();
   const [location, setLocation] = useLocation();
   const [qrModalOpen, setQrModalOpen] = useState(false);
   const { data: branches } = useQuery<any[]>({

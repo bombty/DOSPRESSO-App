@@ -601,3 +601,16 @@
   .stagger-5 { animation-delay: 0.25s; }
   .stagger-6 { animation-delay: 0.3s; }
 }
+
+/* RTL Support for Arabic language */
+[dir="rtl"] {
+  text-align: right;
+}
+[dir="rtl"] .sidebar {
+  border-right: none;
+  border-left: 1px solid hsl(var(--border));
+}
+[dir="rtl"] .ltr-only {
+  direction: ltr;
+  unicode-bidi: embed;
+}

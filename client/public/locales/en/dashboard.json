@@ -1,0 +1,23 @@
+{
+  "todaysTasks": "Today's Tasks",
+  "tasksGenerated": "Tasks generated",
+  "tasksGenerateFailed": "Failed to generate tasks",
+  "evidenceSubmitted": "Evidence submitted",
+  "evidenceSubmitFailed": "Failed to submit",
+  "uploadPhoto": "Upload Photo",
+  "fillForm": "Fill Form",
+  "requestApproval": "Request Approval",
+  "complete": "Complete",
+  "send": "Submit",
+  "sending": "Submitting...",
+  "photoUrl": "Photo URL",
+  "photoUrlPlaceholder": "Enter photo URL or upload",
+  "formData": "Form Data",
+  "formDataPlaceholder": "Enter form details...",
+  "approvalNote": "Manager approval will be requested for this task.",
+  "notesOptional": "Notes (optional)",
+  "notesPlaceholder": "Additional notes...",
+  "statusPending": "Pending",
+  "statusSubmitted": "Submitted",
+  "statusApproved": "Approved"
+}

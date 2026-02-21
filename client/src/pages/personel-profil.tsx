@@ -27,6 +27,7 @@ import { tr } from "date-fns/locale";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useBreadcrumb } from "@/components/breadcrumb-navigation";
+import { LanguageSwitcher } from "@/components/language-switcher";
 import { RadarChart, PolarGrid, PolarAngleAxis, Radar, ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts";
 
 type PersonnelProfile = {
@@ -869,6 +870,9 @@ export default function PersonelProfilPage() {
           )}
           <TabsTrigger value="akademi" data-testid="tab-academy" className="flex-1 min-w-fit">Akademi</TabsTrigger>
           <TabsTrigger value="degerlendirmeler" data-testid="tab-evaluations" className="flex-1 min-w-fit">Değerlendirmeler</TabsTrigger>
+          {isOwnProfile && (
+            <TabsTrigger value="ayarlar" data-testid="tab-settings" className="flex-1 min-w-fit">Ayarlar</TabsTrigger>
+          )}
         </TabsList>
 
         <TabsContent value="bilgiler" className="flex flex-col gap-3">
@@ -1952,6 +1956,25 @@ export default function PersonelProfilPage() {
             </CardContent>
           </Card>
         </TabsContent>
+
+        {isOwnProfile && (
+          <TabsContent value="ayarlar" className="flex flex-col gap-3">
+            <Card>
+              <CardHeader>
+                <CardTitle>Dil Ayarları</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <p className="text-sm font-medium">Arayüz Dili</p>
+                    <p className="text-xs text-muted-foreground">Uygulama dilini değiştirin</p>
+                  </div>
+                  <LanguageSwitcher />
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        )}
       </Tabs>
       </div>
     </div>

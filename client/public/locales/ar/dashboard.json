@@ -1,0 +1,23 @@
+{
+  "todaysTasks": "مهام اليوم",
+  "tasksGenerated": "تم إنشاء المهام",
+  "tasksGenerateFailed": "فشل في إنشاء المهام",
+  "evidenceSubmitted": "تم إرسال الدليل",
+  "evidenceSubmitFailed": "فشل في الإرسال",
+  "uploadPhoto": "تحميل صورة",
+  "fillForm": "ملء النموذج",
+  "requestApproval": "طلب الموافقة",
+  "complete": "إكمال",
+  "send": "إرسال",
+  "sending": "جارٍ الإرسال...",
+  "photoUrl": "رابط الصورة",
+  "photoUrlPlaceholder": "أدخل رابط الصورة أو قم بالتحميل",
+  "formData": "بيانات النموذج",
+  "formDataPlaceholder": "أدخل تفاصيل النموذج...",
+  "approvalNote": "سيتم طلب موافقة المدير لهذه المهمة.",
+  "notesOptional": "ملاحظات (اختياري)",
+  "notesPlaceholder": "ملاحظات إضافية...",
+  "statusPending": "قيد الانتظار",
+  "statusSubmitted": "تم الإرسال",
+  "statusApproved": "تمت الموافقة"
+}

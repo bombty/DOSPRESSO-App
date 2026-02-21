@@ -1921,6 +1921,37 @@ const normalizeTimeGlobal = (timeStr: string): string => {
   });
 
 
+  // ===== USER SETTINGS ENDPOINTS =====
+
+  router.get('/api/me/settings', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const [dbUser] = await db.select({ language: users.language }).from(users).where(eq(users.id, user.id));
+      res.json({ language: dbUser?.language || "tr" });
+    } catch (error: any) {
+      console.error("[Settings] GET error:", error);
+      res.status(500).json({ error: "Ayarlar yüklenemedi" });
+    }
+  });
+
+  router.patch('/api/me/settings', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const { language } = req.body;
+      const validLanguages = ["tr", "en", "ar", "de"];
+      if (language && !validLanguages.includes(language)) {
+        return res.status(400).json({ error: "Geçersiz dil seçimi" });
+      }
+      if (language) {
+        await db.update(users).set({ language, updatedAt: new Date() }).where(eq(users.id, user.id));
+      }
+      res.json({ success: true, language });
+    } catch (error: any) {
+      console.error("[Settings] PATCH error:", error);
+      res.status(500).json({ error: "Ayarlar kaydedilemedi" });
+    }
+  });
+
   // ===== USER PERSONAL DASHBOARD ENDPOINT =====
   
   // GET /api/me/dashboard-summary - Personal dashboard summary for the authenticated user

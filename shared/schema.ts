@@ -2354,6 +2354,7 @@ export const users = pgTable("users", {
   bonusBase: integer("bonus_base").default(0), // Prim matrahı
   bonusType: varchar("bonus_type", { length: 30 }).default("normal"),
   bonusPercentage: numeric("bonus_percentage").default("0"),
+  language: varchar("language", { length: 5 }).default("tr"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
   deletedAt: timestamp("deleted_at"),

@@ -1,0 +1,23 @@
+{
+  "todaysTasks": "Heutige Aufgaben",
+  "tasksGenerated": "Aufgaben erstellt",
+  "tasksGenerateFailed": "Aufgaben konnten nicht erstellt werden",
+  "evidenceSubmitted": "Nachweis eingereicht",
+  "evidenceSubmitFailed": "Einreichung fehlgeschlagen",
+  "uploadPhoto": "Foto hochladen",
+  "fillForm": "Formular ausfüllen",
+  "requestApproval": "Genehmigung anfordern",
+  "complete": "Abschließen",
+  "send": "Absenden",
+  "sending": "Wird gesendet...",
+  "photoUrl": "Foto-URL",
+  "photoUrlPlaceholder": "Foto-URL eingeben oder hochladen",
+  "formData": "Formulardaten",
+  "formDataPlaceholder": "Formulardetails eingeben...",
+  "approvalNote": "Für diese Aufgabe wird eine Genehmigung des Managers angefordert.",
+  "notesOptional": "Notizen (optional)",
+  "notesPlaceholder": "Zusätzliche Notizen...",
+  "statusPending": "Ausstehend",
+  "statusSubmitted": "Eingereicht",
+  "statusApproved": "Genehmigt"
+}
