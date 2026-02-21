@@ -3,7 +3,7 @@ import { db } from "../db";
 import { isAuthenticated } from "../localAuth";
 import { hasPermission } from "../permission-service";
 import { createAuditEntry, getAuditContext } from "../audit";
-import { eq, and, inArray, isNull, desc, gte, lte } from "drizzle-orm";
+import { eq, and, inArray, notInArray, isNull, desc, gte, lte } from "drizzle-orm";
 import {
   isHQRole,
   isBranchRole,
@@ -454,7 +454,7 @@ router.post("/api/hr/employees/import/dry-run", isAuthenticated, upload.single("
       return res.status(400).json({ message: "Dosya yüklenmedi" });
     }
 
-    const mode = req.body.mode || "append";
+    const mode = req.body.mode || "upsert";
     const matchKey = req.body.matchKey || "username";
 
     const workbook = new ExcelJS.Workbook();
@@ -570,6 +570,26 @@ router.post("/api/hr/employees/import/dry-run", isAuthenticated, upload.single("
       }
     }
 
+    let toDeactivate = 0;
+    let deactivateTargets: { id: string; username: string }[] = [];
+    if (mode === "deactivate_missing") {
+      const importedIds = new Set<string>();
+      for (const { data } of rows) {
+        let matched: any = null;
+        if (matchKey === "employeeId" && data.id) matched = idMap.get(data.id);
+        else if (matchKey === "email" && data.email) matched = emailMap.get(data.email.toString().toLowerCase());
+        else if (data.username) matched = usernameMap.get(data.username?.toString().toLowerCase());
+        if (matched) importedIds.add(matched.id);
+      }
+      for (const emp of existingUsers) {
+        if (isAdminUser(emp)) continue;
+        if (importedIds.has(emp.id)) continue;
+        if (!emp.isActive) continue;
+        deactivateTargets.push({ id: emp.id, username: emp.username || emp.id });
+        toDeactivate++;
+      }
+    }
+
     const columnMapping = Object.entries(colMap).map(([colNum, field]) => ({
       column: parseInt(colNum),
       header: headerRow.getCell(parseInt(colNum)).value?.toString() || "",
@@ -582,6 +602,8 @@ router.post("/api/hr/employees/import/dry-run", isAuthenticated, upload.single("
       toUpdate,
       toSkip,
       toError,
+      toDeactivate,
+      deactivateTargets: deactivateTargets.slice(0, 50),
       results,
       mode,
       matchKey,
@@ -607,8 +629,14 @@ router.post("/api/hr/employees/import/apply", isAuthenticated, upload.single("fi
       return res.status(400).json({ message: "Dosya yüklenmedi" });
     }
 
-    const mode = req.body.mode || "append";
+    const mode = req.body.mode || "upsert";
     const matchKey = req.body.matchKey || "username";
+    const continueWithValid = req.body.continueWithValid === "true" || req.body.continueWithValid === true;
+    const deactivateConfirmation = req.body.deactivateConfirmation || "";
+
+    if (mode === "deactivate_missing" && deactivateConfirmation !== "DEACTIVATE") {
+      return res.status(400).json({ message: "DeactivateMissing modu için 'DEACTIVATE' onay metni zorunludur." });
+    }
 
     const workbook = new ExcelJS.Workbook();
     await workbook.xlsx.load(req.file.buffer);
@@ -636,137 +664,199 @@ router.post("/api/hr/employees/import/apply", isAuthenticated, upload.single("fi
       if (Object.keys(data).length > 0) rows.push({ rowNumber, data });
     });
 
+    const existingUsers = await db.select().from(users).where(isNull(users.deletedAt));
+    const usernameMap = new Map(existingUsers.filter(u => u.username).map(u => [u.username!.toLowerCase(), u]));
+    const emailMap = new Map(existingUsers.filter(u => u.email).map(u => [u.email!.toLowerCase(), u]));
+    const idMap = new Map(existingUsers.map(u => [u.id, u]));
+
+    let createdCount = 0, updatedCount = 0, skippedCount = 0, errorCount = 0, deactivatedCount = 0;
+    const resultRows: { rowNumber: number; status: string; employeeId?: string; message: string; beforeJson?: string; afterJson?: string }[] = [];
+
+    const preValidationErrors: number[] = [];
+    for (const { rowNumber, data } of rows) {
+      const validationErrors = validateRowData(data, rowNumber);
+      if (validationErrors.length > 0) {
+        resultRows.push({ rowNumber, status: "error", message: validationErrors.join("; ") });
+        errorCount++;
+        preValidationErrors.push(rowNumber);
+      }
+    }
+
+    if (errorCount > 0 && !continueWithValid) {
+      return res.json({
+        blocked: true,
+        totalRows: rows.length,
+        errorCount,
+        message: `${errorCount} satırda hata bulundu. Geçerli satırlarla devam etmek için "Geçerli satırlarla devam et" seçeneğini işaretleyin.`,
+        results: resultRows.map(r => ({ rowNumber: r.rowNumber, status: r.status, message: r.message })),
+      });
+    }
+
     const [batch] = await db.insert(importBatches).values({
       createdByUserId: user.id,
       mode,
+      matchKey,
       scope: req.body.scope || "all",
       fileName: req.file.originalname,
       status: "processing",
       totalRows: rows.length,
     }).returning();
 
-    const existingUsers = await db.select().from(users).where(isNull(users.deletedAt));
-    const usernameMap = new Map(existingUsers.filter(u => u.username).map(u => [u.username!.toLowerCase(), u]));
-    const emailMap = new Map(existingUsers.filter(u => u.email).map(u => [u.email!.toLowerCase(), u]));
-    const idMap = new Map(existingUsers.map(u => [u.id, u]));
+    try {
+      await db.transaction(async (tx) => {
+        for (const { rowNumber, data } of rows) {
+          if (preValidationErrors.includes(rowNumber)) continue;
 
-    let createdCount = 0, updatedCount = 0, skippedCount = 0, errorCount = 0;
-    const resultRows: { rowNumber: number; status: string; employeeId?: string; message: string; beforeJson?: string; afterJson?: string }[] = [];
+          try {
+            let existing: any = null;
+            if (matchKey === "employeeId" && data.id) {
+              existing = idMap.get(data.id);
+            } else if (data.id && idMap.has(data.id)) {
+              existing = idMap.get(data.id);
+            } else if (matchKey === "email" && data.email) {
+              existing = emailMap.get(data.email.toString().toLowerCase());
+            } else if (matchKey === "username" && data.username) {
+              existing = usernameMap.get(data.username.toString().toLowerCase());
+            } else if (data.username) {
+              existing = usernameMap.get(data.username.toString().toLowerCase());
+            }
 
-    for (const { rowNumber, data } of rows) {
-      try {
-        const validationErrors = validateRowData(data, rowNumber);
-        if (validationErrors.length > 0) {
-          resultRows.push({ rowNumber, status: "error", message: validationErrors.join("; ") });
-          errorCount++;
-          continue;
-        }
+            if (existing && isAdminUser(existing)) {
+              resultRows.push({
+                rowNumber,
+                status: "skip",
+                employeeId: existing.id,
+                message: "Admin koruması: atlandı",
+              });
+              skippedCount++;
+              continue;
+            }
 
-        let existing: any = null;
-        if (matchKey === "employeeId" && data.id) {
-          existing = idMap.get(data.id);
-        } else if (data.id && idMap.has(data.id)) {
-          existing = idMap.get(data.id);
-        } else if (matchKey === "email" && data.email) {
-          existing = emailMap.get(data.email.toString().toLowerCase());
-        } else if (matchKey === "username" && data.username) {
-          existing = usernameMap.get(data.username.toString().toLowerCase());
-        } else if (data.username) {
-          existing = usernameMap.get(data.username.toString().toLowerCase());
-        }
+            const dateFields = ["hireDate", "probationEndDate", "birthDate"];
+            const numericFields = ["netSalary", "mealAllowance", "transportAllowance", "bonusBase", "weeklyHours", "numChildren", "branchId"];
 
-        if (existing && isAdminUser(existing)) {
-          resultRows.push({
-            rowNumber,
-            status: "skip",
-            employeeId: existing.id,
-            message: "Admin koruması: atlandı",
-          });
-          skippedCount++;
-          continue;
-        }
+            const cleanData: Record<string, any> = {};
+            for (const [key, val] of Object.entries(data)) {
+              if (key === "id" || key === "password" || key === "hashedPassword") continue;
+              if (dateFields.includes(key)) {
+                cleanData[key] = parseExcelDate(val);
+              } else if (numericFields.includes(key)) {
+                const n = Number(val);
+                if (!isNaN(n)) cleanData[key] = n;
+              } else if (key === "isActive") {
+                cleanData[key] = val === true || val === "Aktif" || val === "true" || val === 1;
+              } else {
+                cleanData[key] = val?.toString().trim() || null;
+              }
+            }
 
-        const dateFields = ["hireDate", "probationEndDate", "birthDate"];
-        const numericFields = ["netSalary", "mealAllowance", "transportAllowance", "bonusBase", "weeklyHours", "numChildren", "branchId"];
-        
-        const cleanData: Record<string, any> = {};
-        for (const [key, val] of Object.entries(data)) {
-          if (key === "id" || key === "password" || key === "hashedPassword") continue;
-          if (dateFields.includes(key)) {
-            cleanData[key] = parseExcelDate(val);
-          } else if (numericFields.includes(key)) {
-            const n = Number(val);
-            if (!isNaN(n)) cleanData[key] = n;
-          } else if (key === "isActive") {
-            cleanData[key] = val === true || val === "Aktif" || val === "true" || val === 1;
-          } else {
-            cleanData[key] = val?.toString().trim() || null;
-          }
-        }
+            if (existing) {
+              if (mode === "append") {
+                resultRows.push({
+                  rowNumber,
+                  status: "skip",
+                  employeeId: existing.id,
+                  message: "Append modda mevcut kullanıcı atlandı",
+                });
+                skippedCount++;
+                continue;
+              }
 
-        if (existing) {
-          if (mode === "append") {
-            resultRows.push({
-              rowNumber,
-              status: "skip",
-              employeeId: existing.id,
-              message: "Append modda mevcut kullanıcı atlandı",
-            });
-            skippedCount++;
-            continue;
-          }
+              const beforeJson = JSON.stringify(existing);
+              await tx.update(users).set({ ...cleanData, updatedAt: new Date() }).where(eq(users.id, existing.id));
+              const [updatedUser] = await tx.select().from(users).where(eq(users.id, existing.id));
 
-          const beforeJson = JSON.stringify(existing);
-          await db.update(users).set({ ...cleanData, updatedAt: new Date() }).where(eq(users.id, existing.id));
-          const [updatedUser] = await db.select().from(users).where(eq(users.id, existing.id));
+              resultRows.push({
+                rowNumber,
+                status: "update",
+                employeeId: existing.id,
+                message: `Güncellendi: ${existing.username}`,
+                beforeJson,
+                afterJson: JSON.stringify(updatedUser),
+              });
+              updatedCount++;
+            } else {
+              if (mode === "update") {
+                resultRows.push({
+                  rowNumber,
+                  status: "skip",
+                  message: `Mevcut kullanıcı bulunamadı. Update modda yeni kayıt eklenmez.`,
+                });
+                skippedCount++;
+                continue;
+              }
+              if (!data.password) {
+                resultRows.push({ rowNumber, status: "error", message: "Yeni kullanıcı için şifre zorunlu" });
+                errorCount++;
+                continue;
+              }
 
-          resultRows.push({
-            rowNumber,
-            status: "update",
-            employeeId: existing.id,
-            message: `Güncellendi: ${existing.username}`,
-            beforeJson,
-            afterJson: JSON.stringify(updatedUser),
-          });
-          updatedCount++;
-        } else {
-          if (mode === "update") {
-            resultRows.push({
-              rowNumber,
-              status: "skip",
-              message: `Mevcut kullanıcı bulunamadı. Update modda yeni kayıt eklenmez.`,
-            });
-            skippedCount++;
-            continue;
-          }
-          if (!data.password) {
-            resultRows.push({ rowNumber, status: "error", message: "Yeni kullanıcı için şifre zorunlu" });
+              const hashedPassword = await bcrypt.hash(data.password.toString(), 10);
+              const insertResult = await tx.insert(users).values({
+                ...cleanData,
+                username: data.username.toString().trim(),
+                hashedPassword,
+                accountStatus: "approved",
+                isActive: true,
+              } as any).returning();
+              const newUser = (insertResult as any[])[0];
+
+              resultRows.push({
+                rowNumber,
+                status: "create",
+                employeeId: newUser.id,
+                message: `Oluşturuldu: ${newUser.username}`,
+                afterJson: JSON.stringify(newUser),
+              });
+              createdCount++;
+            }
+          } catch (rowError: any) {
+            resultRows.push({ rowNumber, status: "error", message: rowError.message || "Bilinmeyen hata" });
             errorCount++;
-            continue;
+          }
+        }
+
+        if (mode === "deactivate_missing") {
+          const importedIds = new Set<string>();
+          for (const { data } of rows) {
+            let matched: any = null;
+            if (matchKey === "employeeId" && data.id) matched = idMap.get(data.id);
+            else if (matchKey === "email" && data.email) matched = emailMap.get(data.email.toString().toLowerCase());
+            else if (data.username) matched = usernameMap.get(data.username?.toString().toLowerCase());
+            if (matched) importedIds.add(matched.id);
           }
 
-          const hashedPassword = await bcrypt.hash(data.password.toString(), 10);
-          const [newUser] = await db.insert(users).values({
-            ...cleanData,
-            username: data.username.toString().trim(),
-            hashedPassword,
-            accountStatus: "approved",
-            isActive: true,
-          } as any).returning();
+          for (const emp of existingUsers) {
+            if (isAdminUser(emp)) continue;
+            if (importedIds.has(emp.id)) continue;
+            if (!emp.isActive) continue;
 
-          resultRows.push({
-            rowNumber,
-            status: "create",
-            employeeId: newUser.id,
-            message: `Oluşturuldu: ${newUser.username}`,
-            afterJson: JSON.stringify(newUser),
-          });
-          createdCount++;
+            const beforeJson = JSON.stringify(emp);
+            await tx.update(users).set({ isActive: false, updatedAt: new Date() }).where(eq(users.id, emp.id));
+
+            resultRows.push({
+              rowNumber: 0,
+              status: "deactivate",
+              employeeId: emp.id,
+              message: `Deaktif edildi: ${emp.username || emp.id} (dosyada bulunamadı)`,
+              beforeJson,
+            });
+            deactivatedCount++;
+          }
         }
-      } catch (rowError: any) {
-        resultRows.push({ rowNumber, status: "error", message: rowError.message || "Bilinmeyen hata" });
-        errorCount++;
-      }
+      });
+    } catch (txError: any) {
+      await db.update(importBatches).set({
+        status: "failed",
+        errorCount,
+        summaryJson: JSON.stringify({ error: txError.message }),
+      }).where(eq(importBatches.id, batch.id));
+
+      return res.status(500).json({
+        batchId: batch.id,
+        message: "İşlem sırasında hata oluştu, tüm değişiklikler geri alındı.",
+        error: txError.message,
+      });
     }
 
     await db.update(importBatches).set({
@@ -775,7 +865,8 @@ router.post("/api/hr/employees/import/apply", isAuthenticated, upload.single("fi
       updatedCount,
       skippedCount,
       errorCount,
-      summaryJson: JSON.stringify({ createdCount, updatedCount, skippedCount, errorCount }),
+      deactivatedCount,
+      summaryJson: JSON.stringify({ createdCount, updatedCount, skippedCount, errorCount, deactivatedCount, mode, matchKey }),
     }).where(eq(importBatches.id, batch.id));
 
     for (const r of resultRows) {
@@ -798,11 +889,14 @@ router.post("/api/hr/employees/import/apply", isAuthenticated, upload.single("fi
       details: {
         batchId: batch.id,
         mode,
+        matchKey,
         fileName: req.file.originalname,
         createdCount,
         updatedCount,
         skippedCount,
         errorCount,
+        deactivatedCount,
+        continueWithValid,
       },
     });
 
@@ -813,6 +907,7 @@ router.post("/api/hr/employees/import/apply", isAuthenticated, upload.single("fi
       updatedCount,
       skippedCount,
       errorCount,
+      deactivatedCount,
       results: resultRows.map(r => ({ rowNumber: r.rowNumber, status: r.status, message: r.message, employeeId: r.employeeId })),
     });
   } catch (error: any) {
@@ -859,6 +954,9 @@ router.post("/api/hr/employees/import/:batchId/rollback", isAuthenticated, async
           await db.update(users).set({ ...restoreData, updatedAt: new Date() }).where(eq(users.id, r.employeeId));
           rolledBack++;
         } catch {}
+      } else if (r.status === "deactivate" && r.employeeId) {
+        await db.update(users).set({ isActive: true, updatedAt: new Date() }).where(eq(users.id, r.employeeId));
+        rolledBack++;
       }
     }
 
@@ -1052,7 +1150,7 @@ router.post("/api/hr/employees/import/preview", isAuthenticated, upload.single("
     });
 
     const validFields = Object.values(IMPORT_FIELD_MAP);
-    const systemFields = [...new Set(validFields)];
+    const systemFields = Array.from(new Set(validFields));
 
     res.json({
       totalRows: sheet.rowCount - 1,

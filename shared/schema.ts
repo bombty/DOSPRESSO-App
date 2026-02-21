@@ -13232,7 +13232,8 @@ export type FoodSafetyDocument = typeof foodSafetyDocuments.$inferSelect;
 export const importBatches = pgTable("import_batches", {
   id: serial("id").primaryKey(),
   createdByUserId: varchar("created_by_user_id").notNull().references(() => users.id),
-  mode: varchar("mode", { length: 20 }).notNull().default("append"),
+  mode: varchar("mode", { length: 30 }).notNull().default("append"),
+  matchKey: varchar("match_key", { length: 30 }).default("username"),
   scope: varchar("scope", { length: 30 }),
   fileName: varchar("file_name", { length: 500 }),
   status: varchar("status", { length: 20 }).notNull().default("pending"),
@@ -13241,6 +13242,7 @@ export const importBatches = pgTable("import_batches", {
   updatedCount: integer("updated_count").default(0),
   skippedCount: integer("skipped_count").default(0),
   errorCount: integer("error_count").default(0),
+  deactivatedCount: integer("deactivated_count").default(0),
   summaryJson: text("summary_json"),
   rolledBackAt: timestamp("rolled_back_at"),
   createdAt: timestamp("created_at").defaultNow(),

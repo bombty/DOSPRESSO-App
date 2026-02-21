@@ -100,6 +100,7 @@ import {
   Star,
   Building2,
   MapPin,
+  UserX,
 } from "lucide-react";
 import { format, differenceInDays } from "date-fns";
 import { useLocation } from "wouter";
@@ -5581,21 +5582,25 @@ function ImportEmployeesDialog({
   const { toast } = useToast();
   const [step, setStep] = useState<"upload" | "preview" | "config" | "dryrun" | "result">("upload");
   const [file, setFile] = useState<File | null>(null);
-  const [mode, setMode] = useState("append");
+  const [mode, setMode] = useState("upsert");
   const [matchKey, setMatchKey] = useState("username");
   const [dryRunResult, setDryRunResult] = useState<any>(null);
   const [applyResult, setApplyResult] = useState<any>(null);
   const [previewData, setPreviewData] = useState<any>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [deactivateConfirmation, setDeactivateConfirmation] = useState("");
+  const [continueWithValid, setContinueWithValid] = useState(false);
 
   const resetState = () => {
     setStep("upload");
     setFile(null);
-    setMode("append");
+    setMode("upsert");
     setMatchKey("username");
     setDryRunResult(null);
     setApplyResult(null);
     setPreviewData(null);
+    setDeactivateConfirmation("");
+    setContinueWithValid(false);
   };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -5663,6 +5668,10 @@ function ImportEmployeesDialog({
       formData.append("file", file);
       formData.append("mode", mode);
       formData.append("matchKey", matchKey);
+      formData.append("continueWithValid", String(continueWithValid));
+      if (mode === "deactivate_missing") {
+        formData.append("deactivateConfirmation", deactivateConfirmation);
+      }
 
       const response = await fetch("/api/hr/employees/import/apply", {
         method: "POST",
@@ -5676,6 +5685,17 @@ function ImportEmployeesDialog({
       }
 
       const result = await response.json();
+
+      if (result.blocked) {
+        toast({
+          title: "Hatalı Satırlar",
+          description: result.message,
+          variant: "destructive",
+        });
+        setIsProcessing(false);
+        return;
+      }
+
       setApplyResult(result);
       setStep("result");
       queryClient.invalidateQueries({ queryKey: ["/api/employees"] });
@@ -5842,20 +5862,46 @@ function ImportEmployeesDialog({
 
             <div>
               <label className="text-sm font-medium">Import Modu</label>
-              <Select value={mode} onValueChange={setMode}>
+              <Select value={mode} onValueChange={(v) => { setMode(v); if (v !== "deactivate_missing") setDeactivateConfirmation(""); }}>
                 <SelectTrigger data-testid="select-import-mode">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="upsert">Ekle + Güncelle (Upsert) - Varsayılan</SelectItem>
                   <SelectItem value="append">Sadece Ekle (Append)</SelectItem>
                   <SelectItem value="update">Sadece Güncelle (Update)</SelectItem>
-                  <SelectItem value="upsert">Ekle + Güncelle (Upsert)</SelectItem>
+                  <SelectItem value="deactivate_missing">Eksikleri Deaktif Et (YÜKSEK RİSK)</SelectItem>
                 </SelectContent>
               </Select>
               <p className="text-xs text-muted-foreground mt-1">
-                {mode === "append" ? "Sadece yeni personel ekler, mevcut olanları atlar" : mode === "update" ? "Sadece mevcut personelleri günceller, yeni kayıt eklemez" : "Yeni ekler, mevcut olanları günceller"}
+                {mode === "append" && "Sadece yeni personel ekler, mevcut olanları atlar"}
+                {mode === "update" && "Sadece mevcut personelleri günceller, yeni kayıt eklemez"}
+                {mode === "upsert" && "Yeni ekler, mevcut olanları günceller (varsayılan)"}
+                {mode === "deactivate_missing" && "Dosyada bulunmayan tüm aktif personelleri deaktif eder + upsert uygular"}
               </p>
             </div>
+
+            {mode === "deactivate_missing" && (
+              <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-md space-y-2">
+                <div className="flex items-start gap-2">
+                  <AlertCircle className="h-4 w-4 text-red-600 mt-0.5 flex-shrink-0" />
+                  <div className="text-xs">
+                    <p className="font-medium text-red-600">YÜKSEK RİSKLİ İŞLEM</p>
+                    <p className="text-muted-foreground">Dosyada yer almayan tüm aktif personeller deaktif edilecektir. Admin kullanıcılar korunur.</p>
+                  </div>
+                </div>
+                <div>
+                  <label className="text-xs font-medium">Onaylamak için "DEACTIVATE" yazın:</label>
+                  <Input
+                    value={deactivateConfirmation}
+                    onChange={(e) => setDeactivateConfirmation(e.target.value)}
+                    placeholder="DEACTIVATE"
+                    className="mt-1"
+                    data-testid="input-deactivate-confirmation"
+                  />
+                </div>
+              </div>
+            )}
 
             <div>
               <label className="text-sm font-medium">Eşleştirme Anahtarı</label>
@@ -5874,6 +5920,20 @@ function ImportEmployeesDialog({
               </p>
             </div>
 
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="continueWithValid"
+                checked={continueWithValid}
+                onChange={(e) => setContinueWithValid(e.target.checked)}
+                className="h-4 w-4 rounded border-input"
+                data-testid="checkbox-continue-with-valid"
+              />
+              <label htmlFor="continueWithValid" className="text-sm">
+                Hatalı satırları atlayarak geçerli satırlarla devam et
+              </label>
+            </div>
+
             <div className="p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-md">
               <div className="flex items-start gap-2">
                 <AlertCircle className="h-4 w-4 text-yellow-600 mt-0.5 flex-shrink-0" />
@@ -5886,7 +5946,11 @@ function ImportEmployeesDialog({
 
             <DialogFooter>
               <Button variant="outline" onClick={() => setStep("preview")}>Geri</Button>
-              <Button onClick={handleDryRun} disabled={isProcessing} data-testid="button-dry-run">
+              <Button
+                onClick={handleDryRun}
+                disabled={isProcessing || (mode === "deactivate_missing" && deactivateConfirmation !== "DEACTIVATE")}
+                data-testid="button-dry-run"
+              >
                 {isProcessing ? "Simüle ediliyor..." : "Simülasyon Çalıştır"}
               </Button>
             </DialogFooter>
@@ -5895,7 +5959,7 @@ function ImportEmployeesDialog({
 
         {step === "dryrun" && dryRunResult && (
           <div className="space-y-4">
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className={`grid grid-cols-2 ${dryRunResult.toDeactivate > 0 ? "sm:grid-cols-5" : "sm:grid-cols-4"} gap-3`}>
               <Card>
                 <CardContent className="p-3 text-center">
                   <CheckCircle className="h-5 w-5 mx-auto text-green-500 mb-1" />
@@ -5924,7 +5988,30 @@ function ImportEmployeesDialog({
                   <div className="text-xs text-muted-foreground">Hatalı</div>
                 </CardContent>
               </Card>
+              {dryRunResult.toDeactivate > 0 && (
+                <Card>
+                  <CardContent className="p-3 text-center">
+                    <UserX className="h-5 w-5 mx-auto text-orange-500 mb-1" />
+                    <div className="text-lg font-bold text-orange-600">{dryRunResult.toDeactivate}</div>
+                    <div className="text-xs text-muted-foreground">Deaktif</div>
+                  </CardContent>
+                </Card>
+              )}
             </div>
+
+            {dryRunResult.toDeactivate > 0 && dryRunResult.deactivateTargets?.length > 0 && (
+              <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-md">
+                <p className="text-xs font-medium text-red-600 mb-1">Deaktif Edilecek Personeller ({dryRunResult.toDeactivate} kişi):</p>
+                <div className="flex flex-wrap gap-1 max-h-20 overflow-y-auto">
+                  {dryRunResult.deactivateTargets.map((t: any, i: number) => (
+                    <Badge key={i} variant="outline" className="text-xs">{t.username}</Badge>
+                  ))}
+                  {dryRunResult.toDeactivate > 50 && (
+                    <Badge variant="secondary" className="text-xs">+{dryRunResult.toDeactivate - 50} daha</Badge>
+                  )}
+                </div>
+              </div>
+            )}
 
             {dryRunResult.columnMapping?.length > 0 && (
               <details className="border rounded-md">
@@ -5954,7 +6041,7 @@ function ImportEmployeesDialog({
                       <TableCell className="text-xs">{r.rowNumber}</TableCell>
                       <TableCell>
                         <Badge variant={r.status === "create" ? "default" : r.status === "update" ? "secondary" : r.status === "error" ? "destructive" : "outline"}>
-                          {r.status === "create" ? "Ekle" : r.status === "update" ? "Güncelle" : r.status === "skip" ? "Atla" : "Hata"}
+                          {r.status === "create" ? "Ekle" : r.status === "update" ? "Güncelle" : r.status === "skip" ? "Atla" : r.status === "deactivate" ? "Deaktif" : "Hata"}
                         </Badge>
                       </TableCell>
                       <TableCell className="text-xs">{r.message}</TableCell>
@@ -5968,10 +6055,11 @@ function ImportEmployeesDialog({
               <Button variant="outline" onClick={() => setStep("config")}>Geri</Button>
               <Button
                 onClick={handleApply}
-                disabled={isProcessing || (dryRunResult.toCreate === 0 && dryRunResult.toUpdate === 0)}
+                disabled={isProcessing || (dryRunResult.toCreate === 0 && dryRunResult.toUpdate === 0 && dryRunResult.toDeactivate === 0)}
+                variant={dryRunResult.toDeactivate > 0 ? "destructive" : "default"}
                 data-testid="button-apply-import"
               >
-                {isProcessing ? "Uygulanıyor..." : "Onayla ve Uygula"}
+                {isProcessing ? "Uygulanıyor..." : dryRunResult.toDeactivate > 0 ? "Deaktif Et ve Uygula" : "Onayla ve Uygula"}
               </Button>
             </DialogFooter>
           </div>
@@ -5985,7 +6073,7 @@ function ImportEmployeesDialog({
               <p className="text-sm text-muted-foreground">Batch ID: {applyResult.batchId}</p>
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className={`grid grid-cols-2 ${applyResult.deactivatedCount > 0 ? "sm:grid-cols-5" : "sm:grid-cols-4"} gap-3`}>
               <div className="text-center p-2 bg-green-500/10 rounded-md">
                 <div className="text-lg font-bold text-green-600">{applyResult.createdCount}</div>
                 <div className="text-xs text-muted-foreground">Eklendi</div>
@@ -6002,6 +6090,12 @@ function ImportEmployeesDialog({
                 <div className="text-lg font-bold text-red-600">{applyResult.errorCount}</div>
                 <div className="text-xs text-muted-foreground">Hata</div>
               </div>
+              {applyResult.deactivatedCount > 0 && (
+                <div className="text-center p-2 bg-orange-500/10 rounded-md">
+                  <div className="text-lg font-bold text-orange-600">{applyResult.deactivatedCount}</div>
+                  <div className="text-xs text-muted-foreground">Deaktif</div>
+                </div>
+              )}
             </div>
 
             {applyResult.errorCount > 0 && (
