@@ -5581,9 +5581,9 @@ function ImportBatchHistory({ onDownloadErrorReport }: { onDownloadErrorReport: 
 
   const modeLabels: Record<string, string> = {
     upsert: "Upsert",
-    append: "Sadece Ekle",
-    update: "Sadece Güncelle",
-    deactivate_missing: "Eksikleri Deaktif Et",
+    append: "AddOnly",
+    update: "UpdateOnly",
+    deactivate_missing: "DeactivateMissing",
   };
 
   const statusBadge = (status: string) => {
@@ -5603,7 +5603,7 @@ function ImportBatchHistory({ onDownloadErrorReport }: { onDownloadErrorReport: 
       >
         <span className="flex items-center gap-2">
           <Clock className="h-4 w-4 text-muted-foreground" />
-          Import Geçmişi
+          Geçmiş Importlar
         </span>
         <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${expanded ? "rotate-180" : ""}`} />
       </button>
@@ -5620,52 +5620,55 @@ function ImportBatchHistory({ onDownloadErrorReport }: { onDownloadErrorReport: 
                   <TableRow>
                     <TableHead className="text-xs">Tarih</TableHead>
                     <TableHead className="text-xs">Mod</TableHead>
-                    <TableHead className="text-xs">Eşleşme</TableHead>
-                    <TableHead className="text-xs">Durum</TableHead>
-                    <TableHead className="text-xs">Satır</TableHead>
-                    <TableHead className="text-xs">Sonuç</TableHead>
+                    <TableHead className="text-xs">MatchKey</TableHead>
+                    <TableHead className="text-xs text-center">Created</TableHead>
+                    <TableHead className="text-xs text-center">Updated</TableHead>
+                    <TableHead className="text-xs text-center">Skipped</TableHead>
+                    <TableHead className="text-xs text-center">Errors</TableHead>
+                    <TableHead className="text-xs">Status</TableHead>
                     <TableHead className="text-xs"></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {batches.map((b: any) => {
-                    let summary: any = {};
-                    try { summary = b.summaryJson ? (typeof b.summaryJson === "string" ? JSON.parse(b.summaryJson) : b.summaryJson) : {}; } catch {}
-                    return (
-                      <TableRow key={b.id}>
-                        <TableCell className="text-xs py-1 whitespace-nowrap">
-                          {b.createdAt ? new Date(b.createdAt).toLocaleDateString("tr-TR", { day: "2-digit", month: "2-digit", year: "2-digit" }) : "-"}
-                        </TableCell>
-                        <TableCell className="text-xs py-1">
-                          <Badge variant="outline" className="text-[10px]">{modeLabels[b.mode] || b.mode}</Badge>
-                        </TableCell>
-                        <TableCell className="text-xs py-1">
-                          <span className="text-[10px] text-muted-foreground">{b.matchKey || "username"}</span>
-                        </TableCell>
-                        <TableCell className="text-xs py-1">{statusBadge(b.status)}</TableCell>
-                        <TableCell className="text-xs py-1">{b.totalRows || "-"}</TableCell>
-                        <TableCell className="text-xs py-1 whitespace-nowrap">
-                          {summary.created != null && <span className="text-green-600 mr-1">+{summary.created}</span>}
-                          {summary.updated != null && <span className="text-blue-600 mr-1">~{summary.updated}</span>}
-                          {summary.errors != null && summary.errors > 0 && <span className="text-red-600">!{summary.errors}</span>}
-                          {b.deactivatedCount > 0 && <span className="text-orange-600 ml-1">-{b.deactivatedCount}</span>}
-                        </TableCell>
-                        <TableCell className="text-xs py-1">
-                          {(b.status === "completed" || b.status === "failed") && summary.errors > 0 && (
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className="h-6 text-xs px-2"
-                              onClick={() => onDownloadErrorReport(b.id)}
-                              data-testid={`button-download-error-${b.id}`}
-                            >
-                              <Download className="h-3 w-3" />
-                            </Button>
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
+                  {batches.map((b: any) => (
+                    <TableRow key={b.id}>
+                      <TableCell className="text-xs py-1 whitespace-nowrap">
+                        {b.createdAt ? new Date(b.createdAt).toLocaleDateString("tr-TR", { day: "2-digit", month: "2-digit", year: "2-digit" }) : "-"}
+                      </TableCell>
+                      <TableCell className="text-xs py-1">
+                        <Badge variant="outline" className="text-[10px]">{modeLabels[b.mode] || b.mode}</Badge>
+                      </TableCell>
+                      <TableCell className="text-xs py-1">
+                        <span className="text-[10px] text-muted-foreground">{b.matchKey || "username"}</span>
+                      </TableCell>
+                      <TableCell className="text-xs py-1 text-center">
+                        <span className="text-green-600">{b.createdCount ?? "-"}</span>
+                      </TableCell>
+                      <TableCell className="text-xs py-1 text-center">
+                        <span className="text-blue-600">{b.updatedCount ?? "-"}</span>
+                      </TableCell>
+                      <TableCell className="text-xs py-1 text-center">
+                        <span className="text-muted-foreground">{b.skippedCount ?? "-"}</span>
+                      </TableCell>
+                      <TableCell className="text-xs py-1 text-center">
+                        <span className={b.errorCount > 0 ? "text-red-600 font-medium" : "text-muted-foreground"}>{b.errorCount ?? "-"}</span>
+                      </TableCell>
+                      <TableCell className="text-xs py-1">{statusBadge(b.status)}</TableCell>
+                      <TableCell className="text-xs py-1">
+                        {(b.status === "completed" || b.status === "failed") && b.errorCount > 0 && (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-6 text-xs px-2"
+                            onClick={() => onDownloadErrorReport(b.id)}
+                            data-testid={`button-download-error-${b.id}`}
+                          >
+                            <Download className="h-3 w-3" />
+                          </Button>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))}
                 </TableBody>
               </Table>
             </div>
@@ -5695,6 +5698,64 @@ function ImportEmployeesDialog({
   const [deactivateConfirmation, setDeactivateConfirmation] = useState("");
   const [continueWithValid, setContinueWithValid] = useState(false);
   const [columnMapping, setColumnMapping] = useState<Record<string, string>>({});
+
+  const SYSTEM_FIELD_LABELS: Record<string, string> = {
+    username: "Kullanıcı Adı",
+    firstName: "Ad",
+    lastName: "Soyad",
+    email: "E-posta",
+    role: "Rol",
+    branchId: "Şube ID",
+    tckn: "TC Kimlik No",
+    gender: "Cinsiyet",
+    maritalStatus: "Medeni Hal",
+    hireDate: "İşe Giriş",
+    probationEndDate: "Deneme Bitiş",
+    birthDate: "Doğum Tarihi",
+    phoneNumber: "Telefon",
+    homePhone: "Ev Telefon",
+    emergencyContactName: "Acil Kişi",
+    emergencyContactPhone: "Acil Telefon",
+    address: "Adres",
+    city: "Şehir",
+    department: "Departman",
+    employmentType: "Çalışma Tipi",
+    weeklyHours: "Haftalık Saat",
+    educationLevel: "Eğitim Seviye",
+    educationStatus: "Eğitim Durum",
+    educationInstitution: "Eğitim Kurum",
+    militaryStatus: "Askerlik",
+    contractType: "Sözleşme Tipi",
+    numChildren: "Çocuk Sayısı",
+    disabilityLevel: "Engel Durumu",
+    netSalary: "Net Maaş",
+    mealAllowance: "Yemek Yardımı",
+    transportAllowance: "Ulaşım Yardımı",
+    bonusBase: "Prim Matrah",
+    notes: "Notlar",
+    password: "Şifre",
+    titleName: "Ünvan",
+    titleId: "Ünvan ID",
+    category: "Kategori",
+  };
+  const REQUIRED_IMPORT_FIELDS = ["username", "firstName", "lastName"];
+
+  const toBackendMapping = (mapping: Record<string, string>): Record<string, string> => {
+    const result: Record<string, string> = {};
+    for (const [sysField, excelHeader] of Object.entries(mapping)) {
+      if (excelHeader === "__skip__") {
+        const headers = previewData?.headers || [];
+        const autoH = headers.find((h: any) => h.mappedTo === sysField);
+        if (autoH) result[autoH.header] = "__skip__";
+      } else {
+        result[excelHeader] = sysField;
+      }
+    }
+    return result;
+  };
+
+  const unmappedRequiredFields = REQUIRED_IMPORT_FIELDS.filter(f => columnMapping[f] === "__skip__");
+  const hasRequiredFieldIssue = unmappedRequiredFields.length > 0;
 
   const resetState = () => {
     setStep("upload");
@@ -5730,7 +5791,9 @@ function ImportEmployeesDialog({
       setPreviewData(data);
       const initialMapping: Record<string, string> = {};
       data.headers?.forEach((h: any) => {
-        initialMapping[h.header] = h.mappedTo;
+        if (h.mappedTo && data.systemFields?.includes(h.mappedTo)) {
+          initialMapping[h.mappedTo] = h.header;
+        }
       });
       setColumnMapping(initialMapping);
       setStep("preview");
@@ -5750,7 +5813,7 @@ function ImportEmployeesDialog({
       formData.append("mode", mode);
       formData.append("matchKey", matchKey);
       if (Object.keys(columnMapping).length > 0) {
-        formData.append("columnMapping", JSON.stringify(columnMapping));
+        formData.append("columnMapping", JSON.stringify(toBackendMapping(columnMapping)));
       }
 
       const response = await fetch("/api/hr/employees/import/dry-run", {
@@ -5784,7 +5847,7 @@ function ImportEmployeesDialog({
       formData.append("matchKey", matchKey);
       formData.append("continueWithValid", String(continueWithValid));
       if (Object.keys(columnMapping).length > 0) {
-        formData.append("columnMapping", JSON.stringify(columnMapping));
+        formData.append("columnMapping", JSON.stringify(toBackendMapping(columnMapping)));
       }
       if (mode === "deactivate_missing") {
         formData.append("deactivateConfirmation", deactivateConfirmation);
@@ -5909,44 +5972,72 @@ function ImportEmployeesDialog({
 
             <div>
               <label className="text-sm font-medium">Kolon Eşleştirme</label>
-              <p className="text-xs text-muted-foreground mb-1">Otomatik eşleşme yanlışsa, listeden doğru alanı seçebilirsiniz.</p>
+              <p className="text-xs text-muted-foreground mb-1">Her alan için hangi Excel kolonunun eşleşeceğini seçin. İstemediğiniz alanları atlayabilirsiniz.</p>
+              {hasRequiredFieldIssue && (
+                <div className="flex items-center gap-2 p-2 bg-destructive/10 border border-destructive/30 rounded-md mt-1 mb-1" data-testid="text-required-field-warning">
+                  <AlertTriangle className="h-4 w-4 text-destructive flex-shrink-0" />
+                  <span className="text-xs text-destructive">
+                    Zorunlu alanlar atlanamaz: {unmappedRequiredFields.map(f => SYSTEM_FIELD_LABELS[f] || f).join(", ")}
+                  </span>
+                </div>
+              )}
               <div className="max-h-48 overflow-y-auto border rounded-md mt-1">
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="text-xs">Excel Kolonu</TableHead>
                       <TableHead className="text-xs">Sistem Alanı</TableHead>
+                      <TableHead className="text-xs">Excel Kolonu</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {previewData.headers?.map((h: any, i: number) => {
-                      const currentValue = columnMapping[h.header] || h.mappedTo;
-                      const isAutoMapped = previewData.systemFields?.includes(currentValue);
+                    {previewData.systemFields?.map((sf: string, i: number) => {
+                      const currentExcelCol = columnMapping[sf] || "";
+                      const isRequired = REQUIRED_IMPORT_FIELDS.includes(sf);
+                      const autoHeader = previewData.headers?.find((h: any) => h.mappedTo === sf);
+                      const isAutoMapped = autoHeader && currentExcelCol === autoHeader.header;
                       return (
                         <TableRow key={i}>
-                          <TableCell className="text-xs py-1">{h.header}</TableCell>
+                          <TableCell className="text-xs py-1 whitespace-nowrap">
+                            <span className="flex items-center gap-1">
+                              {SYSTEM_FIELD_LABELS[sf] || sf}
+                              {isRequired && <span className="text-destructive">*</span>}
+                            </span>
+                          </TableCell>
                           <TableCell className="text-xs py-1">
-                            <Select
-                              value={currentValue}
-                              onValueChange={(val) => {
-                                setColumnMapping(prev => ({ ...prev, [h.header]: val }));
-                              }}
-                            >
-                              <SelectTrigger className="h-7 text-xs" data-testid={`select-column-map-${i}`}>
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="__skip__">
-                                  <span className="text-muted-foreground">Atla (import etme)</span>
-                                </SelectItem>
-                                {previewData.systemFields?.map((sf: string) => (
-                                  <SelectItem key={sf} value={sf}>{sf}</SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                            {!isAutoMapped && currentValue !== "__skip__" && (
-                              <Badge variant="outline" className="ml-1 text-[10px]">manuel</Badge>
-                            )}
+                            <div className="flex items-center gap-1">
+                              <Select
+                                value={currentExcelCol || "__none__"}
+                                onValueChange={(val) => {
+                                  setColumnMapping(prev => {
+                                    const next = { ...prev };
+                                    if (val === "__none__") {
+                                      delete next[sf];
+                                    } else {
+                                      next[sf] = val;
+                                    }
+                                    return next;
+                                  });
+                                }}
+                              >
+                                <SelectTrigger className="h-7 text-xs" data-testid={`select-column-map-${i}`}>
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="__skip__">
+                                    <span className="text-muted-foreground">Atla (import etme)</span>
+                                  </SelectItem>
+                                  <SelectItem value="__none__">
+                                    <span className="text-muted-foreground">— Eşleşme yok —</span>
+                                  </SelectItem>
+                                  {previewData.headers?.map((h: any) => (
+                                    <SelectItem key={h.header} value={h.header}>{h.header}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              {!isAutoMapped && currentExcelCol && currentExcelCol !== "__skip__" && currentExcelCol !== "__none__" && (
+                                <Badge variant="outline" className="text-[10px]">manuel</Badge>
+                              )}
+                            </div>
                           </TableCell>
                         </TableRow>
                       );
@@ -6089,7 +6180,7 @@ function ImportEmployeesDialog({
               <Button variant="outline" onClick={() => setStep("preview")}>Geri</Button>
               <Button
                 onClick={handleDryRun}
-                disabled={isProcessing || (mode === "deactivate_missing" && deactivateConfirmation !== "DEACTIVATE")}
+                disabled={isProcessing || hasRequiredFieldIssue || (mode === "deactivate_missing" && deactivateConfirmation !== "DEACTIVATE")}
                 data-testid="button-dry-run"
               >
                 {isProcessing ? "Simüle ediliyor..." : "Simülasyon Çalıştır"}
