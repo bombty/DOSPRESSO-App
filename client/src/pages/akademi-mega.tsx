@@ -54,16 +54,14 @@ const CoachGateManagement = lazy(() => import("./coach-gate-management"));
 const CoachKpiSignals = lazy(() => import("./coach-kpi-signals"));
 const CoachTeamProgress = lazy(() => import("./coach-team-progress"));
 
-type RoleVisibility = 'coach' | 'employee' | 'all';
+import {
+  type AcademyViewMode,
+  type AcademyTabVisibility,
+  getAcademyViewMode,
+  getAcademyDefaultTab,
+} from "@shared/permissions";
 
-const COACH_ROLES = new Set(['admin', 'coach', 'trainer', 'kalite_kontrol']);
-const EMPLOYEE_ROLES = new Set(['stajyer', 'bar_buddy', 'barista', 'supervisor_buddy', 'supervisor', 'mudur', 'yatirimci_branch']);
-
-function getUserViewMode(role: string | undefined): 'coach' | 'employee' {
-  if (!role) return 'employee';
-  if (COACH_ROLES.has(role)) return 'coach';
-  return 'employee';
-}
+type RoleVisibility = AcademyTabVisibility;
 
 interface TabConfig {
   id: string;
@@ -88,6 +86,7 @@ const TAB_GROUPS: TabGroup[] = [
   { id: "kariyer", label: "Career Path", labelTr: "Kariyer Yolu", icon: <Target className="h-4 w-4" />, roleVisibility: "employee" },
   { id: "egitim", label: "Training", labelTr: "Eğitimlerim", icon: <BookOpen className="h-4 w-4" />, roleVisibility: "employee" },
   { id: "gamification", label: "Gamification", labelTr: "Başarılarım", icon: <Trophy className="h-4 w-4" />, roleVisibility: "employee" },
+  { id: "supervisor-takip", label: "Team Tracking", labelTr: "Ekip Takibi", icon: <Eye className="h-4 w-4" />, roleVisibility: "supervisor" },
   { id: "coach-yonetim", label: "Management", labelTr: "Yönetim", icon: <UserCog className="h-4 w-4" />, roleVisibility: "coach" },
   { id: "coach-icerik", label: "Content", labelTr: "İçerik & Atama", icon: <Library className="h-4 w-4" />, roleVisibility: "coach" },
   { id: "coach-takip", label: "Tracking", labelTr: "Takip & Analitik", icon: <BarChart3 className="h-4 w-4" />, roleVisibility: "coach" },
@@ -308,11 +307,11 @@ const AKADEMI_TABS: TabConfig[] = [
   {
     id: "supervisor",
     label: "Supervisor View",
-    labelTr: "Supervisor Görünümü",
-    icon: <Settings2 className="h-4 w-4" />,
+    labelTr: "Ekip Takibi",
+    icon: <Eye className="h-4 w-4" />,
     permissionModule: "academy_supervisor",
-    group: "advanced",
-    roleVisibility: "all",
+    group: "supervisor-takip",
+    roleVisibility: "supervisor",
     component: AcademySupervisor
   },
 ];
@@ -355,13 +354,9 @@ const TAB_URL_MAP: Record<string, string> = {
   "supervisor": "/akademi/supervisor",
 };
 
-function getDefaultTab(viewMode: 'coach' | 'employee'): string {
-  return viewMode === 'coach' ? 'coach-gate-yonetim' : 'benim-yolum';
-}
-
-function getTabFromUrl(pathname: string, viewMode: 'coach' | 'employee'): string | null {
-  if (pathname === "/akademi" || pathname === "/akademi/") return getDefaultTab(viewMode);
-  const defaultTab = getDefaultTab(viewMode);
+function getTabFromUrl(pathname: string, viewMode: AcademyViewMode): string | null {
+  const defaultTab = getAcademyDefaultTab(viewMode === 'coach' ? 'coach' : viewMode === 'supervisor' ? 'supervisor' : 'barista');
+  if (pathname === "/akademi" || pathname === "/akademi/") return defaultTab;
   const sortedEntries = Object.entries(TAB_URL_MAP)
     .filter(([tabId]) => tabId !== defaultTab)
     .sort((a, b) => b[1].length - a[1].length);
@@ -378,11 +373,19 @@ export default function AkademiMegaModule() {
   const { canAccess } = useDynamicPermissions();
   const [location, setLocation] = useLocation();
 
-  const viewMode = getUserViewMode(user?.role);
+  const viewMode = getAcademyViewMode(user?.role);
 
   const visibleTabs = AKADEMI_TABS.filter(tab => {
-    if (tab.roleVisibility !== 'all' && tab.roleVisibility !== viewMode) {
-      if (user?.role !== 'admin') return false;
+    if (user?.role === 'admin') {
+      // admin sees everything
+    } else if (tab.roleVisibility !== 'all') {
+      if (tab.roleVisibility === 'coach' && viewMode !== 'coach') return false;
+      if (tab.roleVisibility === 'employee') {
+        if (viewMode === 'coach') return false;
+      }
+      if (tab.roleVisibility === 'supervisor') {
+        if (viewMode !== 'supervisor' && viewMode !== 'coach') return false;
+      }
     }
     if (!tab.permissionModule) return true;
     if (!user?.role) return false;
@@ -391,8 +394,14 @@ export default function AkademiMegaModule() {
   });
 
   const visibleGroups = TAB_GROUPS.filter(group => {
-    if (group.roleVisibility !== 'all' && group.roleVisibility !== viewMode) {
-      if (user?.role !== 'admin') return false;
+    if (user?.role === 'admin') {
+      // admin sees all groups
+    } else if (group.roleVisibility !== 'all') {
+      if (group.roleVisibility === 'coach' && viewMode !== 'coach') return false;
+      if (group.roleVisibility === 'employee' && viewMode === 'coach') return false;
+      if (group.roleVisibility === 'supervisor') {
+        if (viewMode !== 'supervisor' && viewMode !== 'coach') return false;
+      }
     }
     return visibleTabs.some(tab => tab.group === group.id);
   });
@@ -491,7 +500,7 @@ export default function AkademiMegaModule() {
             <div>
               <h1 className="text-xl font-semibold">DOSPRESSO Akademi</h1>
               <p className="text-sm text-muted-foreground">
-                {viewMode === 'coach' ? 'Eğitim Yönetim Paneli' : 'Eğitim ve Gelişim Platformu'}
+                {viewMode === 'coach' ? 'Eğitim Yönetim Paneli' : viewMode === 'supervisor' ? 'Ekip Eğitim Takibi' : 'Eğitim ve Gelişim Platformu'}
               </p>
             </div>
           </div>

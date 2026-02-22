@@ -30,8 +30,23 @@ import {
 import { eq, desc, asc, and, or, gte, lte, sql, inArray, isNull, not, ne, count } from "drizzle-orm";
 import { z } from "zod";
 import { handleApiError } from "./helpers";
+import { ACADEMY_COACH_ROLES, ACADEMY_SUPERVISOR_ROLES } from "@shared/permissions";
 
 const router = Router();
+
+function requireAcademyCoach(req: any, res: any, next: any) {
+  const role = req.user?.role;
+  if (!role) return res.status(401).json({ message: "Giriş yapılmamış" });
+  if (role === 'admin' || ACADEMY_COACH_ROLES.has(role)) return next();
+  return res.status(403).json({ message: "Bu işlem için yönetici yetkisi gereklidir" });
+}
+
+function requireAcademyCoachOrSupervisor(req: any, res: any, next: any) {
+  const role = req.user?.role;
+  if (!role) return res.status(401).json({ message: "Giriş yapılmamış" });
+  if (role === 'admin' || ACADEMY_COACH_ROLES.has(role) || ACADEMY_SUPERVISOR_ROLES.has(role)) return next();
+  return res.status(403).json({ message: "Bu işlem için yetkiniz yoktur" });
+}
 
 // ========================================
 // GATE SYSTEM ENDPOINTS
@@ -71,12 +86,8 @@ router.get('/api/academy/gates/:id', isAuthenticated, async (req: any, res) => {
   }
 });
 
-router.post('/api/academy/gates', isAuthenticated, async (req: any, res) => {
+router.post('/api/academy/gates', isAuthenticated, requireAcademyCoach, async (req: any, res) => {
   try {
-    const user = req.user!;
-    if (!isHQRole(user.role as any) && user.role !== 'admin') {
-      return res.status(403).json({ message: "Bu işlem için yetkiniz yok" });
-    }
     const parsed = insertCareerGateSchema.parse(req.body);
     const [gate] = await db.insert(careerGates).values(parsed).returning();
     res.status(201).json(gate);
@@ -85,12 +96,8 @@ router.post('/api/academy/gates', isAuthenticated, async (req: any, res) => {
   }
 });
 
-router.patch('/api/academy/gates/:id', isAuthenticated, async (req: any, res) => {
+router.patch('/api/academy/gates/:id', isAuthenticated, requireAcademyCoach, async (req: any, res) => {
   try {
-    const user = req.user!;
-    if (!isHQRole(user.role as any) && user.role !== 'admin') {
-      return res.status(403).json({ message: "Bu işlem için yetkiniz yok" });
-    }
     const gateId = parseInt(req.params.id);
     const [updated] = await db.update(careerGates)
       .set({ ...req.body, updatedAt: new Date() })
@@ -307,7 +314,7 @@ router.patch('/api/academy/gate-attempts/:attemptId', isAuthenticated, async (re
   }
 });
 
-router.post('/api/academy/gates/:id/approve', isAuthenticated, async (req: any, res) => {
+router.post('/api/academy/gates/:id/approve', isAuthenticated, requireAcademyCoach, async (req: any, res) => {
   try {
     const user = req.user!;
     const gateId = parseInt(req.params.id);
@@ -855,14 +862,9 @@ router.post('/api/academy/my-path/complete-item', isAuthenticated, async (req: a
 // TEAM PROGRESS (Coach/Trainer/Supervisor)
 // ========================================
 
-router.get('/api/academy/team-progress', isAuthenticated, async (req: any, res) => {
+router.get('/api/academy/team-progress', isAuthenticated, requireAcademyCoachOrSupervisor, async (req: any, res) => {
   try {
     const user = req.user!;
-
-    if (!isHQRole(user.role as any) && user.role !== 'supervisor' && user.role !== 'mudur') {
-      return res.status(403).json({ message: "Bu işlem için yetkiniz yok" });
-    }
-
     const branchFilter = req.query.branchId ? parseInt(req.query.branchId as string) : null;
 
     let teamQuery = db.select({
@@ -954,7 +956,7 @@ router.post('/api/academy/my-path/complete-item', isAuthenticated, async (req: a
 // KPI SIGNAL RULES (Admin/Coach)
 // ========================================
 
-router.get('/api/academy/kpi-signals', isAuthenticated, async (req: any, res) => {
+router.get('/api/academy/kpi-signals', isAuthenticated, requireAcademyCoach, async (req: any, res) => {
   try {
     const signals = await db.select().from(kpiSignalRules)
       .where(eq(kpiSignalRules.isActive, true))
@@ -969,7 +971,7 @@ router.get('/api/academy/kpi-signals', isAuthenticated, async (req: any, res) =>
 // CONTENT PACKS (Admin/Coach)
 // ========================================
 
-router.get('/api/academy/content-packs', isAuthenticated, async (req: any, res) => {
+router.get('/api/academy/content-packs', isAuthenticated, requireAcademyCoach, async (req: any, res) => {
   try {
     const packs = await db.select({
       id: contentPacks.id,

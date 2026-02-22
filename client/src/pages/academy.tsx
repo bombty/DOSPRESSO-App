@@ -14,6 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { insertExamRequestSchema, type ExamRequest, isHQRole } from "@shared/schema";
+import { isAcademyCoach } from "@shared/permissions";
 import { 
   BookOpen, Plus, Lightbulb, Trophy, BarChart3, Award, TrendingUp, Zap, Target, 
   CheckCircle, Flame, Sparkles, Coffee, GraduationCap, Brain, ChevronRight,
@@ -893,7 +894,7 @@ export default function Academy() {
                               </div>
                             </div>
                           )}
-                          {isHQRole(user?.role as any) || user?.role === 'admin' ? (
+                          {isAcademyCoach(user?.role) ? (
                             <div className="flex gap-2">
                               <Link 
                                 to={`/akademi-modul/${module.id}`}
