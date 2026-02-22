@@ -7083,7 +7083,7 @@ export class DatabaseStorage implements IStorage {
     const userTasks = await db.select()
       .from(tasks)
       .where(and(
-        eq(tasks.assignedTo, userId),
+        eq(tasks.assignedToId, userId),
         gte(tasks.createdAt, startOfMonth)
       ));
     const completedOnTime = userTasks.filter((t: any) => 

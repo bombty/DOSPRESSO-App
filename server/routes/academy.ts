@@ -976,9 +976,9 @@ router.get('/api/academy/learning-path-detail/:pathId', isAuthenticated, async (
     const { pathId } = req.params;
     const userId = req.user.id;
 
-    const quizzesList = await storage.getQuizzes?.() || [];
-    const userResults = await storage.getQuizResults?.() || [];
-    const userQuizzes = userResults.filter((r: any) => r.userId === userId);
+    const quizzesList = await db.select().from(quizzes);
+    const userResultsList = await db.select().from(quizResults).where(eq(quizResults.userId, userId));
+    const userQuizzes = userResultsList;
 
     const recommendedQuizzes = quizzesList.map((q: any, idx: number) => ({
       id: q.id,
@@ -1930,16 +1930,15 @@ router.patch('/api/academy/recipe-notifications/mark-all-read', isAuthenticated,
   }
 });
 
-// GET /api/academy/recommended-quizzes - Kullanıcı için önerilen quizler
 router.get('/api/academy/recommended-quizzes', isAuthenticated, async (req: any, res) => {
   try {
-    const quizzesList = await storage.getQuizzes();
-    const recommended = quizzesList.slice(0, 5).map(q => ({
+    const quizzesList = await db.select().from(quizzes).limit(5);
+    const recommended = quizzesList.map(q => ({
       id: q.id,
       title_tr: q.titleTr,
       description_tr: q.descriptionTr || '',
-      difficulty: 'medium',
-      estimated_minutes: 5
+      difficulty: q.difficulty || 'medium',
+      estimated_minutes: q.estimatedMinutes || 5
     }));
     res.json(recommended);
   } catch (error: any) {

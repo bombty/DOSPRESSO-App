@@ -126,6 +126,7 @@ import {
   franchiseProjectTasks,
   franchiseCollaborators,
   franchiseProjectComments,
+  trainingCompletions,
   guideDocs,
   insertGuideDocSchema,
   onboardingPrograms,
