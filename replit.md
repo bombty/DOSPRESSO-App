@@ -34,7 +34,7 @@ The frontend utilizes React 18+ with TypeScript and Vite, employing Shadcn/ui (N
 - **Enhanced Analytics Dashboard**: Tabbed interface showing daily/weekly/monthly metrics with AI-generated summaries.
 - **DOSPRESSO Academy (LMS)**: Comprehensive training system including career progression, quiz system, gamification, certification, AI learning paths, and advanced analytics.
 - **Daily Task Guidance (Bugünün Görevleri)**: Role-based task templates with personalized task lists, completion tracking, AI-powered recommendations, and progress visualization.
-- **Advanced Task Workflow**: Enhanced task lifecycle with assignee-assigner approval flow, question-answer system, deadline extension requests, scheduled delivery, HQ bulk assignment, and leave-day task hiding.
+- **Advanced Task Workflow**: Enhanced task lifecycle with assignee-assigner approval flow, question-answer system, deadline extension requests, scheduled delivery, HQ bulk assignment, leave-day task hiding, cowork-style subtask management (claim/unclaim steps), and expanded checker/verifier system with group chat integration.
 - **Checklist Management System**: Time-windowed tasks with HQ/Supervisor editable time slots, photo validation, manager notifications, performance weighting, and daily reminders.
 - **AI Checklist Verification**: AI-powered photo verification system for checklist tasks with reference photo upload, tolerance slider, multiple AI verification types, similarity scoring.
 - **Recipe Management System**: 10 DOSPRESSO categories with 145+ product recipes, including HOT/ICED variants and size variations. Features automatic version tracking with trainer update notification, and AI Recipe Creation.
