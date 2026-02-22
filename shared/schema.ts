@@ -13864,3 +13864,30 @@ export const userPackProgress = pgTable("user_pack_progress", {
   index("user_pack_progress_item_idx").on(table.packItemId),
   index("user_pack_progress_status_idx").on(table.status),
 ]);
+
+export const aiAgentLogs = pgTable("ai_agent_logs", {
+  id: serial("id").primaryKey(),
+  runType: varchar("run_type", { length: 50 }).notNull(),
+  triggeredByUserId: varchar("triggered_by_user_id", { length: 255 }),
+  targetRoleScope: varchar("target_role_scope", { length: 30 }).notNull(),
+  targetUserId: varchar("target_user_id", { length: 255 }),
+  branchId: integer("branch_id"),
+  inputSummary: text("input_summary"),
+  outputSummary: text("output_summary"),
+  actionCount: integer("action_count").default(0),
+  status: varchar("status", { length: 20 }).default("success"),
+  executionTimeMs: integer("execution_time_ms"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("ai_agent_logs_type_idx").on(table.runType),
+  index("ai_agent_logs_scope_idx").on(table.targetRoleScope),
+  index("ai_agent_logs_created_idx").on(table.createdAt),
+]);
+
+export const insertAiAgentLogSchema = createInsertSchema(aiAgentLogs).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertAiAgentLog = z.infer<typeof insertAiAgentLogSchema>;
+export type AiAgentLog = typeof aiAgentLogs.$inferSelect;

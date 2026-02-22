@@ -78,6 +78,7 @@ export const ACADEMY_ROUTE_PERMISSIONS: AcademyRoutePermission[] = [
   { path: '/akademi/sosyal-gruplar', requiredModule: 'social_groups', requiredAction: 'view', visibility: 'all', labelTr: 'Sosyal Gruplar' },
   { path: '/akademi/supervisor', requiredModule: 'academy_supervisor', requiredAction: 'view', visibility: 'supervisor', labelTr: 'Supervisor Görünümü' },
   { path: '/akademi/supervisor-onboarding', requiredModule: 'academy_supervisor', requiredAction: 'view', visibility: 'supervisor', labelTr: 'Onboarding Onayları' },
+  { path: '/akademi/ai-kanit', requiredModule: 'academy', requiredAction: 'view', visibility: 'all', labelTr: 'AI Kanıt' },
 ];
 
 export function canAccessAcademyRoute(role: UserRoleType, path: string): boolean {

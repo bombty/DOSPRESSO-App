@@ -55,6 +55,7 @@ const CoachContentLibrary = lazy(() => import("./coach-content-library"));
 const CoachGateManagement = lazy(() => import("./coach-gate-management"));
 const CoachKpiSignals = lazy(() => import("./coach-kpi-signals"));
 const CoachTeamProgress = lazy(() => import("./coach-team-progress"));
+const AcademyAiPanel = lazy(() => import("./academy-ai-panel"));
 
 import {
   type AcademyViewMode,
@@ -92,6 +93,7 @@ const TAB_GROUPS: TabGroup[] = [
   { id: "coach-yonetim", label: "Management", labelTr: "Yönetim", icon: <UserCog className="h-4 w-4" />, roleVisibility: "coach" },
   { id: "coach-icerik", label: "Content", labelTr: "İçerik & Atama", icon: <Library className="h-4 w-4" />, roleVisibility: "coach" },
   { id: "coach-takip", label: "Tracking", labelTr: "Takip & Analitik", icon: <BarChart3 className="h-4 w-4" />, roleVisibility: "coach" },
+  { id: "ai-kanit", label: "AI Evidence", labelTr: "AI Kanıt", icon: <Brain className="h-4 w-4" />, roleVisibility: "all" },
   { id: "advanced", label: "Advanced", labelTr: "Gelişmiş", icon: <Zap className="h-4 w-4" />, roleVisibility: "all" },
 ];
 
@@ -297,6 +299,16 @@ const AKADEMI_TABS: TabConfig[] = [
     component: AcademyTeamCompetitions
   },
   {
+    id: "ai-kanit",
+    label: "AI Evidence",
+    labelTr: "AI Kanıt",
+    icon: <Brain className="h-4 w-4" />,
+    permissionModule: "academy",
+    group: "ai-kanit",
+    roleVisibility: "all",
+    component: AcademyAiPanel
+  },
+  {
     id: "sosyal-gruplar",
     label: "Social Groups",
     labelTr: "Sosyal Gruplar",
@@ -365,6 +377,7 @@ const TAB_URL_MAP: Record<string, string> = {
   "sosyal-gruplar": "/akademi/sosyal-gruplar",
   "supervisor": "/akademi/supervisor",
   "supervisor-onboarding": "/akademi/supervisor-onboarding",
+  "ai-kanit": "/akademi/ai-kanit",
 };
 
 function getTabFromUrl(pathname: string, viewMode: AcademyViewMode): string | null {

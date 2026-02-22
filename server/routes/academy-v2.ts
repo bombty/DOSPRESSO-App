@@ -11,6 +11,8 @@ import {
   contentPacks,
   contentPackItems,
   userPackProgress,
+  aiAgentLogs,
+  insertAiAgentLogSchema,
   careerLevels,
   userCareerProgress,
   trainingModules,
@@ -35,7 +37,7 @@ import {
 import { eq, desc, asc, and, or, gte, lte, sql, inArray, isNull, not, ne, count } from "drizzle-orm";
 import { z } from "zod";
 import { handleApiError } from "./helpers";
-import { ACADEMY_COACH_ROLES, ACADEMY_SUPERVISOR_ROLES } from "@shared/permissions";
+import { ACADEMY_COACH_ROLES, ACADEMY_SUPERVISOR_ROLES, getAcademyViewMode } from "@shared/permissions";
 
 const router = Router();
 
@@ -1586,6 +1588,338 @@ router.get('/api/academy/onboarding/available-users', isAuthenticated, requireAc
     res.json(availableUsers);
   } catch (error: any) {
     handleApiError(res, error, "Kullanıcılar alınamadı");
+  }
+});
+
+// ========================================
+// AI AGENT PANEL ENDPOINTS
+// ========================================
+
+router.get('/api/academy/ai-panel', isAuthenticated, async (req: any, res) => {
+  try {
+    const startTime = Date.now();
+    const userId = req.user.id;
+    const role = req.user.role;
+    const viewMode = getAcademyViewMode(role);
+
+    if (viewMode === 'employee') {
+      const progress = await db.select().from(userCareerProgress).where(eq(userCareerProgress.userId, userId)).limit(1);
+      const cp = progress[0];
+
+      const onboardingAssign = await db.select().from(employeeOnboardingAssignments)
+        .where(and(eq(employeeOnboardingAssignments.userId, userId), eq(employeeOnboardingAssignments.status, 'active')))
+        .limit(1);
+
+      const activeAttempt = await db.select().from(gateAttempts)
+        .where(and(eq(gateAttempts.userId, userId), eq(gateAttempts.status, 'in_progress')))
+        .limit(1);
+
+      const kpiRules = await db.select().from(kpiSignalRules)
+        .where(and(eq(kpiSignalRules.isActive, true), sql`${role} = ANY(${kpiSignalRules.targetRoles})`))
+        .limit(5);
+
+      const actions: any[] = [];
+
+      if (cp) {
+        const scores = [
+          { key: 'training', value: Number(cp.trainingScore) || 0, label: 'Eğitim Skoru' },
+          { key: 'practical', value: Number(cp.practicalScore) || 0, label: 'Pratik Skoru' },
+          { key: 'attendance', value: Number(cp.attendanceScore) || 0, label: 'Devam Skoru' },
+          { key: 'manager', value: Number(cp.managerScore) || 0, label: 'Yönetici Skoru' },
+        ];
+        const lowest = scores.reduce((a, b) => a.value < b.value ? a : b);
+        if (lowest.value < 60) {
+          actions.push({
+            type: 'score_improvement',
+            title: `${lowest.label} Geliştirme`,
+            reason: `${lowest.label} (${Math.round(lowest.value)}) ortalamanın altında. Bu alanı geliştirmeniz kompozit skorunuzu artıracaktır.`,
+            signal: 'score_low',
+            severity: lowest.value < 30 ? 'high' : 'medium',
+            estimatedMinutes: 20,
+          });
+        }
+      }
+
+      if (onboardingAssign[0]) {
+        const assign = onboardingAssign[0];
+        const startDate = new Date(assign.startDate);
+        const now = new Date();
+        const currentDay = Math.max(1, Math.ceil((now.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1);
+
+        const overdueSteps = await db.select().from(employeeOnboardingProgress)
+          .where(and(
+            eq(employeeOnboardingProgress.assignmentId, assign.id),
+            eq(employeeOnboardingProgress.status, 'not_started'),
+            lte(employeeOnboardingProgress.dayNumber, currentDay)
+          ));
+
+        if (overdueSteps.length > 0) {
+          actions.push({
+            type: 'onboarding_task',
+            title: `${overdueSteps.length} Onboarding Adımı Bekliyor`,
+            reason: `Bugün veya önceki günlere ait ${overdueSteps.length} tamamlanmamış onboarding adımınız var.`,
+            signal: 'onboarding_due',
+            severity: overdueSteps.length > 2 ? 'high' : 'medium',
+            estimatedMinutes: overdueSteps.length * 10,
+          });
+        }
+      }
+
+      if (activeAttempt[0]) {
+        actions.push({
+          type: 'gate_exam',
+          title: 'Gate Sınavı Aktif',
+          reason: 'Aktif bir gate sınavınız bulunmakta. Quiz ve pratik bölümlerini tamamlayarak bir üst seviyeye geçebilirsiniz.',
+          signal: 'gate_close',
+          severity: 'medium',
+          estimatedMinutes: 30,
+        });
+      } else if (cp) {
+        const nextGate = await db.select().from(careerGates)
+          .where(and(eq(careerGates.fromLevelId, cp.currentLevelId || 0), eq(careerGates.isActive, true)))
+          .limit(1);
+        if (nextGate[0] && (Number(cp.compositeScore) || 0) >= (nextGate[0].compositeScoreRequired || 0) * 0.8) {
+          actions.push({
+            type: 'gate_proximity',
+            title: 'Gate Sınavına Yakınsınız',
+            reason: `Kompozit skorunuz gate gereksiniminin %80'ine ulaştı. Eksik modüllerinizi tamamlayarak sınava girebilirsiniz.`,
+            signal: 'gate_close',
+            severity: 'low',
+            estimatedMinutes: 15,
+          });
+        }
+      }
+
+      for (const rule of kpiRules) {
+        if (actions.length >= 3) break;
+        actions.push({
+          type: 'kpi_signal',
+          title: rule.titleTr || 'KPI Sinyali',
+          reason: rule.descriptionTr || 'Bu KPI sinyali rolünüz için tanımlanmıştır.',
+          signal: 'kpi_warning',
+          severity: rule.severity === 'critical' ? 'high' : rule.severity === 'warning' ? 'medium' : 'low',
+          estimatedMinutes: 10,
+        });
+      }
+
+      const topActions = actions.slice(0, 3);
+      const executionTimeMs = Date.now() - startTime;
+
+      await db.insert(aiAgentLogs).values({
+        runType: 'employee_nba',
+        triggeredByUserId: userId,
+        targetRoleScope: 'employee',
+        targetUserId: userId,
+        branchId: req.user.branchId || null,
+        inputSummary: JSON.stringify({ userId, role }),
+        outputSummary: JSON.stringify(topActions),
+        actionCount: topActions.length,
+        status: 'success',
+        executionTimeMs,
+      });
+
+      return res.json({
+        viewMode: 'employee',
+        actions: topActions,
+        analyzedAt: new Date().toISOString(),
+      });
+    }
+
+    if (viewMode === 'supervisor') {
+      const branchId = req.user.branchId;
+      let teamConditions: any[] = [eq(users.isActive, true)];
+      if (branchId) teamConditions.push(eq(users.branchId, branchId));
+
+      const teamMembers = await db.select({
+        id: users.id,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        role: users.role,
+      }).from(users).where(and(...teamConditions));
+
+      const riskSignals: any[] = [];
+      let totalScore = 0;
+      let scoreCount = 0;
+
+      for (const member of teamMembers) {
+        const cp = await db.select().from(userCareerProgress).where(eq(userCareerProgress.userId, member.id)).limit(1);
+        const memberProgress = cp[0];
+
+        if (!memberProgress) continue;
+
+        const compositeScore = Number(memberProgress.compositeScore) || 0;
+        const trainingScore = Number(memberProgress.trainingScore) || 0;
+        totalScore += compositeScore;
+        scoreCount++;
+
+        if (compositeScore < 50) {
+          riskSignals.push({
+            userId: member.id,
+            name: `${member.firstName} ${member.lastName}`,
+            role: member.role,
+            riskType: 'low_composite',
+            currentScore: Math.round(compositeScore),
+            threshold: 50,
+            suggestedAction: 'Genel performansı düşük. Birebir görüşme ve eğitim planı önerilir.',
+          });
+        } else if (trainingScore < 40) {
+          riskSignals.push({
+            userId: member.id,
+            name: `${member.firstName} ${member.lastName}`,
+            role: member.role,
+            riskType: 'low_training',
+            currentScore: Math.round(trainingScore),
+            threshold: 40,
+            suggestedAction: 'Eğitim skoru kritik seviyede. Modül tamamlama takibi yapılmalı.',
+          });
+        }
+
+        const onboarding = await db.select().from(employeeOnboardingAssignments)
+          .where(and(eq(employeeOnboardingAssignments.userId, member.id), eq(employeeOnboardingAssignments.status, 'active')))
+          .limit(1);
+        if (onboarding[0]) {
+          const startDate = new Date(onboarding[0].startDate);
+          const now = new Date();
+          const expectedEnd = onboarding[0].expectedEndDate ? new Date(onboarding[0].expectedEndDate) : null;
+          if (expectedEnd && now > expectedEnd) {
+            riskSignals.push({
+              userId: member.id,
+              name: `${member.firstName} ${member.lastName}`,
+              role: member.role,
+              riskType: 'onboarding_overdue',
+              currentScore: 0,
+              threshold: 0,
+              suggestedAction: 'Onboarding süresi dolmuş. Durumu kontrol edin ve gerekirse süreyi uzatın.',
+            });
+          }
+        }
+      }
+
+      const executionTimeMs = Date.now() - startTime;
+
+      await db.insert(aiAgentLogs).values({
+        runType: 'supervisor_risk',
+        triggeredByUserId: userId,
+        targetRoleScope: 'supervisor',
+        branchId: branchId || null,
+        inputSummary: JSON.stringify({ branchId, teamSize: teamMembers.length }),
+        outputSummary: JSON.stringify({ riskCount: riskSignals.length }),
+        actionCount: riskSignals.length,
+        status: 'success',
+        executionTimeMs,
+      });
+
+      return res.json({
+        viewMode: 'supervisor',
+        riskSignals,
+        teamStats: {
+          totalMembers: teamMembers.length,
+          atRiskCount: riskSignals.length,
+          avgScore: scoreCount > 0 ? Math.round(totalScore / scoreCount) : 0,
+        },
+        analyzedAt: new Date().toISOString(),
+      });
+    }
+
+    if (viewMode === 'coach') {
+      const recentLogs = await db.select().from(aiAgentLogs)
+        .orderBy(desc(aiAgentLogs.createdAt))
+        .limit(20);
+
+      const todayStart = new Date();
+      todayStart.setHours(0, 0, 0, 0);
+
+      const [totalResult] = await db.select({ count: count() }).from(aiAgentLogs);
+      const [todayResult] = await db.select({ count: count() }).from(aiAgentLogs)
+        .where(gte(aiAgentLogs.createdAt, todayStart));
+
+      const [avgResult] = await db.select({ avg: sql<number>`COALESCE(AVG(action_count), 0)` }).from(aiAgentLogs);
+
+      const [employeeCount] = await db.select({ count: count() }).from(aiAgentLogs)
+        .where(eq(aiAgentLogs.targetRoleScope, 'employee'));
+      const [supervisorCount] = await db.select({ count: count() }).from(aiAgentLogs)
+        .where(eq(aiAgentLogs.targetRoleScope, 'supervisor'));
+      const [coachCount] = await db.select({ count: count() }).from(aiAgentLogs)
+        .where(eq(aiAgentLogs.targetRoleScope, 'coach'));
+
+      const executionTimeMs = Date.now() - startTime;
+
+      await db.insert(aiAgentLogs).values({
+        runType: 'coach_summary',
+        triggeredByUserId: userId,
+        targetRoleScope: 'coach',
+        inputSummary: JSON.stringify({ requestedBy: userId }),
+        outputSummary: JSON.stringify({ totalRuns: totalResult.count }),
+        actionCount: 0,
+        status: 'success',
+        executionTimeMs,
+      });
+
+      return res.json({
+        viewMode: 'coach',
+        recentLogs,
+        systemStats: {
+          totalRuns: totalResult.count,
+          todayRuns: todayResult.count,
+          avgActionsGenerated: Math.round(Number(avgResult.avg) || 0),
+          lastRunAt: recentLogs[0]?.createdAt || null,
+        },
+        triggerSummary: {
+          employeeRuns: employeeCount.count,
+          supervisorRuns: supervisorCount.count,
+          coachRuns: coachCount.count,
+        },
+      });
+    }
+
+    res.status(400).json({ message: 'Invalid view mode' });
+  } catch (error: any) {
+    handleApiError(res, error, "AI panel verisi alınamadı");
+  }
+});
+
+router.get('/api/academy/ai-logs', isAuthenticated, requireAcademyCoach, async (req: any, res) => {
+  try {
+    const limit = Math.min(parseInt(req.query.limit as string) || 50, 200);
+    const offset = parseInt(req.query.offset as string) || 0;
+    const runType = req.query.runType as string | undefined;
+    const targetRoleScope = req.query.targetRoleScope as string | undefined;
+
+    let conditions: any[] = [];
+    if (runType) conditions.push(eq(aiAgentLogs.runType, runType));
+    if (targetRoleScope) conditions.push(eq(aiAgentLogs.targetRoleScope, targetRoleScope));
+
+    const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+
+    const logs = await db.select().from(aiAgentLogs)
+      .where(whereClause)
+      .orderBy(desc(aiAgentLogs.createdAt))
+      .limit(limit)
+      .offset(offset);
+
+    const [totalResult] = await db.select({ count: count() }).from(aiAgentLogs).where(whereClause);
+
+    res.json({
+      data: logs,
+      pagination: {
+        total: totalResult.count,
+        limit,
+        offset,
+        hasMore: offset + limit < Number(totalResult.count),
+      },
+    });
+  } catch (error: any) {
+    handleApiError(res, error, "AI logları alınamadı");
+  }
+});
+
+router.post('/api/academy/ai-logs', isAuthenticated, requireAcademyCoach, async (req: any, res) => {
+  try {
+    const parsed = insertAiAgentLogSchema.parse(req.body);
+    const [inserted] = await db.insert(aiAgentLogs).values(parsed).returning();
+    res.status(201).json(inserted);
+  } catch (error: any) {
+    handleApiError(res, error, "AI log kaydı oluşturulamadı");
   }
 });
 
