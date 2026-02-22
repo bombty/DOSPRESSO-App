@@ -77,7 +77,7 @@ The frontend utilizes React 18+ with TypeScript and Vite, employing Shadcn/ui (N
 - **Reminder System**: 5-minute interval checks for task reminders, overdue notifications, maintenance alerts, checklist completion reminders, and evaluation reminders.
 - **Branch Dashboard**: Comprehensive dashboard with real-time stats, alert management, kiosk mode access, and quick access buttons.
 - **PDF Generation**: Uses jsPDF with Helvetica font and Turkish character sanitization.
-- **Academy V2 Spec Framework**: 4-file specification at `docs/` — `00-definitions.md` (gate model, career levels, evaluation layers), `01-user-flows.md` (onboarding flows, NBA engine rules, screen states), `02-data-permissions.md` (data model, permission matrix, KPI signal mapping), `prd-academy-v2.md` (MVP backlog, acceptance criteria, phase plan).
+- **Academy V2 Spec Framework**: 7-file specification at `docs/` — `00-definitions.md` (gate model, career levels, evaluation layers), `01-user-flows.md` (onboarding flows, NBA engine rules, screen states), `02-data-permissions.md` (data model, permission matrix, KPI signal mapping), `prd-academy-v2.md` (MVP backlog, acceptance criteria, phase plan), `coach-console-spec.md` (Coach Console separation rules, menu structure), `onboarding-studio-spec.md` (template editor, assignment, preview screens), `agent-visibility-spec.md` (Agent Center, Action Log, inline suggestions).
 
 ## External Dependencies
 - **OpenAI API**: Used for AI-powered vision analysis, chat completions, embeddings, and summary generation.

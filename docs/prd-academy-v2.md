@@ -331,4 +331,7 @@ Phase 4 (Advanced)
 | `docs/01-user-flows.md` | Kullanıcı akışları, NBA motor kuralları, ekran durumları |
 | `docs/02-data-permissions.md` | Veri modeli, yetki matrisi, KPI sinyal kuralları |
 | `docs/prd-academy-v2.md` | Bu dosya — MVP backlog, acceptance criteria, phase planı |
+| `docs/coach-console-spec.md` | Coach Console yönetim konsolu kuralları, menü yapısı |
+| `docs/onboarding-studio-spec.md` | Onboarding Studio ekranları, template editor, preview |
+| `docs/agent-visibility-spec.md` | Agent Center, Action Log, inline suggestions |
 | `shared/schema.ts` | Mevcut DB şeması (career_levels, training_modules, quizzes vb.) |
