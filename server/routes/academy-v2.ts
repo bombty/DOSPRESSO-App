@@ -21,11 +21,16 @@ import {
   employeeOnboardingAssignments,
   employeeOnboardingProgress,
   onboardingTemplateSteps,
+  onboardingTemplates,
   examRequests,
   insertCareerGateSchema,
   insertGateAttemptSchema,
   insertContentPackSchema,
   insertContentPackItemSchema,
+  insertOnboardingTemplateSchema,
+  insertOnboardingTemplateStepSchema,
+  insertEmployeeOnboardingAssignmentSchema,
+  branches,
 } from "@shared/schema";
 import { eq, desc, asc, and, or, gte, lte, sql, inArray, isNull, not, ne, count } from "drizzle-orm";
 import { z } from "zod";
@@ -988,6 +993,599 @@ router.get('/api/academy/content-packs', isAuthenticated, requireAcademyCoach, a
     res.json(packs);
   } catch (error: any) {
     handleApiError(res, error, "İçerik paketleri alınamadı");
+  }
+});
+
+// ========================================
+// ONBOARDING STUDIO - Templates (Coach)
+// ========================================
+
+router.get('/api/academy/onboarding/templates', isAuthenticated, requireAcademyCoach, async (req: any, res) => {
+  try {
+    const templates = await db.select({
+      id: onboardingTemplates.id,
+      name: onboardingTemplates.name,
+      description: onboardingTemplates.description,
+      targetRole: onboardingTemplates.targetRole,
+      scope: onboardingTemplates.scope,
+      durationDays: onboardingTemplates.durationDays,
+      isActive: onboardingTemplates.isActive,
+      createdById: onboardingTemplates.createdById,
+      createdAt: onboardingTemplates.createdAt,
+      updatedAt: onboardingTemplates.updatedAt,
+      stepCount: sql<number>`(SELECT COUNT(*) FROM onboarding_template_steps WHERE template_id = ${onboardingTemplates.id})::int`,
+      assignmentCount: sql<number>`(SELECT COUNT(*) FROM employee_onboarding_assignments WHERE template_id = ${onboardingTemplates.id})::int`,
+    }).from(onboardingTemplates)
+      .orderBy(desc(onboardingTemplates.updatedAt));
+    res.json(templates);
+  } catch (error: any) {
+    handleApiError(res, error, "Onboarding şablonları alınamadı");
+  }
+});
+
+router.get('/api/academy/onboarding/templates/:id', isAuthenticated, requireAcademyCoach, async (req: any, res) => {
+  try {
+    const templateId = parseInt(req.params.id);
+    const [template] = await db.select().from(onboardingTemplates)
+      .where(eq(onboardingTemplates.id, templateId));
+    if (!template) return res.status(404).json({ message: "Şablon bulunamadı" });
+
+    const steps = await db.select().from(onboardingTemplateSteps)
+      .where(eq(onboardingTemplateSteps.templateId, templateId))
+      .orderBy(asc(onboardingTemplateSteps.startDay), asc(onboardingTemplateSteps.stepOrder));
+
+    res.json({ ...template, steps });
+  } catch (error: any) {
+    handleApiError(res, error, "Şablon detayı alınamadı");
+  }
+});
+
+router.post('/api/academy/onboarding/templates', isAuthenticated, requireAcademyCoach, async (req: any, res) => {
+  try {
+    const parsed = insertOnboardingTemplateSchema.parse({
+      ...req.body,
+      createdById: req.user!.id,
+    });
+    const [template] = await db.insert(onboardingTemplates).values(parsed).returning();
+    res.status(201).json(template);
+  } catch (error: any) {
+    handleApiError(res, error, "Şablon oluşturulamadı");
+  }
+});
+
+router.patch('/api/academy/onboarding/templates/:id', isAuthenticated, requireAcademyCoach, async (req: any, res) => {
+  try {
+    const templateId = parseInt(req.params.id);
+    const [updated] = await db.update(onboardingTemplates)
+      .set({ ...req.body, updatedAt: new Date() })
+      .where(eq(onboardingTemplates.id, templateId))
+      .returning();
+    if (!updated) return res.status(404).json({ message: "Şablon bulunamadı" });
+    res.json(updated);
+  } catch (error: any) {
+    handleApiError(res, error, "Şablon güncellenemedi");
+  }
+});
+
+router.delete('/api/academy/onboarding/templates/:id', isAuthenticated, requireAcademyCoach, async (req: any, res) => {
+  try {
+    const templateId = parseInt(req.params.id);
+    const activeAssignments = await db.select({ count: count() }).from(employeeOnboardingAssignments)
+      .where(and(
+        eq(employeeOnboardingAssignments.templateId, templateId),
+        eq(employeeOnboardingAssignments.status, 'in_progress')
+      ));
+    if (activeAssignments[0]?.count > 0) {
+      return res.status(400).json({ message: "Aktif atamaları olan şablon silinemez" });
+    }
+    await db.delete(onboardingTemplates).where(eq(onboardingTemplates.id, templateId));
+    res.json({ success: true });
+  } catch (error: any) {
+    handleApiError(res, error, "Şablon silinemedi");
+  }
+});
+
+// ========================================
+// ONBOARDING STUDIO - Steps (Coach)
+// ========================================
+
+router.post('/api/academy/onboarding/templates/:id/steps', isAuthenticated, requireAcademyCoach, async (req: any, res) => {
+  try {
+    const templateId = parseInt(req.params.id);
+    const parsed = insertOnboardingTemplateStepSchema.parse({
+      ...req.body,
+      templateId,
+    });
+    const [step] = await db.insert(onboardingTemplateSteps).values(parsed).returning();
+    await db.update(onboardingTemplates).set({ updatedAt: new Date() }).where(eq(onboardingTemplates.id, templateId));
+    res.status(201).json(step);
+  } catch (error: any) {
+    handleApiError(res, error, "Adım oluşturulamadı");
+  }
+});
+
+router.patch('/api/academy/onboarding/steps/:id', isAuthenticated, requireAcademyCoach, async (req: any, res) => {
+  try {
+    const stepId = parseInt(req.params.id);
+    const [updated] = await db.update(onboardingTemplateSteps)
+      .set({ ...req.body, updatedAt: new Date() })
+      .where(eq(onboardingTemplateSteps.id, stepId))
+      .returning();
+    if (!updated) return res.status(404).json({ message: "Adım bulunamadı" });
+    res.json(updated);
+  } catch (error: any) {
+    handleApiError(res, error, "Adım güncellenemedi");
+  }
+});
+
+router.delete('/api/academy/onboarding/steps/:id', isAuthenticated, requireAcademyCoach, async (req: any, res) => {
+  try {
+    const stepId = parseInt(req.params.id);
+    await db.delete(onboardingTemplateSteps).where(eq(onboardingTemplateSteps.id, stepId));
+    res.json({ success: true });
+  } catch (error: any) {
+    handleApiError(res, error, "Adım silinemedi");
+  }
+});
+
+router.post('/api/academy/onboarding/templates/:id/steps/reorder', isAuthenticated, requireAcademyCoach, async (req: any, res) => {
+  try {
+    const { stepOrders } = req.body;
+    if (!Array.isArray(stepOrders)) return res.status(400).json({ message: "stepOrders dizisi gerekli" });
+    for (const item of stepOrders) {
+      await db.update(onboardingTemplateSteps)
+        .set({ stepOrder: item.order, updatedAt: new Date() })
+        .where(eq(onboardingTemplateSteps.id, item.id));
+    }
+    res.json({ success: true });
+  } catch (error: any) {
+    handleApiError(res, error, "Sıralama güncellenemedi");
+  }
+});
+
+// ========================================
+// ONBOARDING ASSIGNMENTS (Coach)
+// ========================================
+
+router.get('/api/academy/onboarding/assignments', isAuthenticated, requireAcademyCoachOrSupervisor, async (req: any, res) => {
+  try {
+    const user = req.user!;
+    let query = db.select({
+      assignment: employeeOnboardingAssignments,
+      userName: users.firstName,
+      userLastName: users.lastName,
+      userRole: users.role,
+      templateName: onboardingTemplates.name,
+      templateDuration: onboardingTemplates.durationDays,
+    })
+    .from(employeeOnboardingAssignments)
+    .leftJoin(users, eq(employeeOnboardingAssignments.userId, users.id))
+    .leftJoin(onboardingTemplates, eq(employeeOnboardingAssignments.templateId, onboardingTemplates.id))
+    .orderBy(desc(employeeOnboardingAssignments.createdAt));
+
+    const results = await query;
+
+    const mapped = results.map(r => ({
+      ...r.assignment,
+      userName: `${r.userName || ''} ${r.userLastName || ''}`.trim(),
+      userRole: r.userRole,
+      templateName: r.templateName,
+      templateDuration: r.templateDuration,
+    }));
+
+    if (ACADEMY_SUPERVISOR_ROLES.has(user.role)) {
+      const filtered = mapped.filter(a => a.branchId === user.branchId);
+      return res.json(filtered);
+    }
+    res.json(mapped);
+  } catch (error: any) {
+    handleApiError(res, error, "Atamalar alınamadı");
+  }
+});
+
+router.post('/api/academy/onboarding/assignments', isAuthenticated, requireAcademyCoach, async (req: any, res) => {
+  try {
+    const { userId, branchId, templateId, mentorId, startDate } = req.body;
+    if (!userId || !branchId || !templateId) {
+      return res.status(400).json({ message: "userId, branchId ve templateId zorunludur" });
+    }
+
+    const [template] = await db.select().from(onboardingTemplates)
+      .where(eq(onboardingTemplates.id, templateId));
+    if (!template) return res.status(404).json({ message: "Şablon bulunamadı" });
+
+    const existingActive = await db.select().from(employeeOnboardingAssignments)
+      .where(and(
+        eq(employeeOnboardingAssignments.userId, userId),
+        eq(employeeOnboardingAssignments.status, 'in_progress')
+      ));
+    if (existingActive.length > 0) {
+      return res.status(400).json({ message: "Bu personelin zaten aktif bir onboarding ataması var" });
+    }
+
+    const start = startDate ? new Date(startDate) : new Date();
+    const expectedEnd = new Date(start);
+    expectedEnd.setDate(expectedEnd.getDate() + template.durationDays);
+
+    const [assignment] = await db.insert(employeeOnboardingAssignments).values({
+      userId,
+      branchId,
+      templateId,
+      mentorId: mentorId || null,
+      startDate: start,
+      expectedEndDate: expectedEnd,
+      status: 'in_progress',
+      overallProgress: 0,
+    }).returning();
+
+    const steps = await db.select().from(onboardingTemplateSteps)
+      .where(eq(onboardingTemplateSteps.templateId, templateId))
+      .orderBy(asc(onboardingTemplateSteps.startDay), asc(onboardingTemplateSteps.stepOrder));
+
+    if (steps.length > 0) {
+      const progressRows = steps.map(step => ({
+        assignmentId: assignment.id,
+        stepId: step.id,
+        mentorId: mentorId || null,
+        status: 'pending' as const,
+        approvalStatus: (step.approverType !== 'auto' ? 'pending' : 'not_required') as string,
+      }));
+      await db.insert(employeeOnboardingProgress).values(progressRows);
+    }
+
+    res.status(201).json(assignment);
+  } catch (error: any) {
+    handleApiError(res, error, "Atama oluşturulamadı");
+  }
+});
+
+router.patch('/api/academy/onboarding/assignments/:id', isAuthenticated, requireAcademyCoachOrSupervisor, async (req: any, res) => {
+  try {
+    const assignmentId = parseInt(req.params.id);
+    const [updated] = await db.update(employeeOnboardingAssignments)
+      .set({ ...req.body, updatedAt: new Date() })
+      .where(eq(employeeOnboardingAssignments.id, assignmentId))
+      .returning();
+    if (!updated) return res.status(404).json({ message: "Atama bulunamadı" });
+    res.json(updated);
+  } catch (error: any) {
+    handleApiError(res, error, "Atama güncellenemedi");
+  }
+});
+
+// ========================================
+// EMPLOYEE ONBOARDING (Self)
+// ========================================
+
+router.get('/api/academy/onboarding/my-assignment', isAuthenticated, async (req: any, res) => {
+  try {
+    const userId = req.user!.id;
+    const [assignment] = await db.select({
+      assignment: employeeOnboardingAssignments,
+      templateName: onboardingTemplates.name,
+      templateDuration: onboardingTemplates.durationDays,
+    })
+    .from(employeeOnboardingAssignments)
+    .leftJoin(onboardingTemplates, eq(employeeOnboardingAssignments.templateId, onboardingTemplates.id))
+    .where(and(
+      eq(employeeOnboardingAssignments.userId, userId),
+      eq(employeeOnboardingAssignments.status, 'in_progress')
+    ))
+    .orderBy(desc(employeeOnboardingAssignments.createdAt))
+    .limit(1);
+
+    if (!assignment) return res.json(null);
+
+    const progress = await db.select({
+      progress: employeeOnboardingProgress,
+      step: onboardingTemplateSteps,
+    })
+    .from(employeeOnboardingProgress)
+    .leftJoin(onboardingTemplateSteps, eq(employeeOnboardingProgress.stepId, onboardingTemplateSteps.id))
+    .where(eq(employeeOnboardingProgress.assignmentId, assignment.assignment.id))
+    .orderBy(asc(onboardingTemplateSteps.startDay), asc(onboardingTemplateSteps.stepOrder));
+
+    const startDate = assignment.assignment.startDate ? new Date(assignment.assignment.startDate) : new Date();
+    const dayNumber = Math.max(1, Math.ceil((Date.now() - startDate.getTime()) / (1000 * 60 * 60 * 24)));
+
+    const totalSteps = progress.length;
+    const completedSteps = progress.filter(p => p.progress.status === 'completed').length;
+    const overallProgress = totalSteps > 0 ? Math.round((completedSteps / totalSteps) * 100) : 0;
+
+    const stepsByDay: Record<number, any[]> = {};
+    for (const p of progress) {
+      const day = p.step?.startDay || 1;
+      if (!stepsByDay[day]) stepsByDay[day] = [];
+      stepsByDay[day].push({
+        progressId: p.progress.id,
+        stepId: p.step?.id,
+        title: p.step?.title,
+        description: p.step?.description,
+        contentType: p.step?.contentType || 'module',
+        estimatedMinutes: p.step?.estimatedMinutes || 15,
+        approverType: p.step?.approverType || 'auto',
+        requiredCompletion: p.step?.requiredCompletion ?? true,
+        status: p.progress.status,
+        approvalStatus: p.progress.approvalStatus || 'not_required',
+        completedAt: p.progress.completedAt,
+        mentorNotes: p.progress.mentorNotes,
+        rating: p.progress.rating,
+        startDay: p.step?.startDay || 1,
+        endDay: p.step?.endDay || 1,
+      });
+    }
+
+    res.json({
+      id: assignment.assignment.id,
+      templateName: assignment.templateName,
+      templateDuration: assignment.templateDuration || 14,
+      startDate: assignment.assignment.startDate,
+      expectedEndDate: assignment.assignment.expectedEndDate,
+      dayNumber: Math.min(dayNumber, assignment.templateDuration || 14),
+      totalDays: assignment.templateDuration || 14,
+      overallProgress,
+      totalSteps,
+      completedSteps,
+      mentorId: assignment.assignment.mentorId,
+      stepsByDay,
+    });
+  } catch (error: any) {
+    handleApiError(res, error, "Onboarding bilgisi alınamadı");
+  }
+});
+
+router.post('/api/academy/onboarding/progress/:id/complete', isAuthenticated, async (req: any, res) => {
+  try {
+    const progressId = parseInt(req.params.id);
+    const [prog] = await db.select({
+      progress: employeeOnboardingProgress,
+      step: onboardingTemplateSteps,
+    })
+    .from(employeeOnboardingProgress)
+    .leftJoin(onboardingTemplateSteps, eq(employeeOnboardingProgress.stepId, onboardingTemplateSteps.id))
+    .where(eq(employeeOnboardingProgress.id, progressId));
+
+    if (!prog) return res.status(404).json({ message: "İlerleme kaydı bulunamadı" });
+
+    const [assignment] = await db.select().from(employeeOnboardingAssignments)
+      .where(eq(employeeOnboardingAssignments.id, prog.progress.assignmentId));
+    if (!assignment || assignment.userId !== req.user!.id) {
+      return res.status(403).json({ message: "Bu adım size ait değil" });
+    }
+
+    const approverType = prog.step?.approverType || 'auto';
+    if (approverType !== 'auto') {
+      const [updated] = await db.update(employeeOnboardingProgress)
+        .set({
+          status: 'completed',
+          completedAt: new Date(),
+          approvalStatus: 'waiting_approval',
+          updatedAt: new Date(),
+        })
+        .where(eq(employeeOnboardingProgress.id, progressId))
+        .returning();
+      return res.json(updated);
+    }
+
+    const [updated] = await db.update(employeeOnboardingProgress)
+      .set({
+        status: 'completed',
+        completedAt: new Date(),
+        approvalStatus: 'not_required',
+        updatedAt: new Date(),
+      })
+      .where(eq(employeeOnboardingProgress.id, progressId))
+      .returning();
+
+    const allProgress = await db.select().from(employeeOnboardingProgress)
+      .where(eq(employeeOnboardingProgress.assignmentId, assignment.id));
+    const totalSteps = allProgress.length;
+    const completedSteps = allProgress.filter(p => p.status === 'completed').length + (prog.progress.status !== 'completed' ? 1 : 0);
+    const overallProgress = totalSteps > 0 ? Math.round((completedSteps / totalSteps) * 100) : 0;
+    await db.update(employeeOnboardingAssignments)
+      .set({ overallProgress, updatedAt: new Date() })
+      .where(eq(employeeOnboardingAssignments.id, assignment.id));
+
+    if (overallProgress >= 100) {
+      await db.update(employeeOnboardingAssignments)
+        .set({ status: 'completed', actualEndDate: new Date(), updatedAt: new Date() })
+        .where(eq(employeeOnboardingAssignments.id, assignment.id));
+    }
+
+    res.json(updated);
+  } catch (error: any) {
+    handleApiError(res, error, "Adım tamamlanamadı");
+  }
+});
+
+// ========================================
+// SUPERVISOR ONBOARDING APPROVAL
+// ========================================
+
+router.get('/api/academy/onboarding/team-progress', isAuthenticated, requireAcademyCoachOrSupervisor, async (req: any, res) => {
+  try {
+    const user = req.user!;
+    const branchFilter = req.query.branchId ? parseInt(req.query.branchId as string) : null;
+
+    let assignmentsQuery = db.select({
+      assignment: employeeOnboardingAssignments,
+      userName: users.firstName,
+      userLastName: users.lastName,
+      userRole: users.role,
+      templateName: onboardingTemplates.name,
+      templateDuration: onboardingTemplates.durationDays,
+    })
+    .from(employeeOnboardingAssignments)
+    .leftJoin(users, eq(employeeOnboardingAssignments.userId, users.id))
+    .leftJoin(onboardingTemplates, eq(employeeOnboardingAssignments.templateId, onboardingTemplates.id))
+    .orderBy(desc(employeeOnboardingAssignments.createdAt));
+
+    let results = await assignmentsQuery;
+
+    if (ACADEMY_SUPERVISOR_ROLES.has(user.role) && user.branchId) {
+      results = results.filter(r => r.assignment.branchId === user.branchId);
+    } else if (branchFilter) {
+      results = results.filter(r => r.assignment.branchId === branchFilter);
+    }
+
+    const enrichedResults = await Promise.all(results.map(async (r) => {
+      const progress = await db.select({
+        id: employeeOnboardingProgress.id,
+        status: employeeOnboardingProgress.status,
+        approvalStatus: employeeOnboardingProgress.approvalStatus,
+      })
+      .from(employeeOnboardingProgress)
+      .where(eq(employeeOnboardingProgress.assignmentId, r.assignment.id));
+
+      const totalSteps = progress.length;
+      const completedSteps = progress.filter(p => p.status === 'completed').length;
+      const pendingApprovals = progress.filter(p => p.approvalStatus === 'waiting_approval').length;
+
+      const startDate = r.assignment.startDate ? new Date(r.assignment.startDate) : new Date();
+      const dayNumber = Math.max(1, Math.ceil((Date.now() - startDate.getTime()) / (1000 * 60 * 60 * 24)));
+
+      return {
+        id: r.assignment.id,
+        userId: r.assignment.userId,
+        userName: `${r.userName || ''} ${r.userLastName || ''}`.trim(),
+        userRole: r.userRole,
+        templateName: r.templateName,
+        branchId: r.assignment.branchId,
+        status: r.assignment.status,
+        startDate: r.assignment.startDate,
+        expectedEndDate: r.assignment.expectedEndDate,
+        dayNumber: Math.min(dayNumber, r.templateDuration || 14),
+        totalDays: r.templateDuration || 14,
+        overallProgress: r.assignment.overallProgress,
+        totalSteps,
+        completedSteps,
+        pendingApprovals,
+      };
+    }));
+
+    res.json(enrichedResults);
+  } catch (error: any) {
+    handleApiError(res, error, "Ekip onboarding ilerlemesi alınamadı");
+  }
+});
+
+router.get('/api/academy/onboarding/pending-approvals', isAuthenticated, requireAcademyCoachOrSupervisor, async (req: any, res) => {
+  try {
+    const user = req.user!;
+
+    const pendingItems = await db.select({
+      progress: employeeOnboardingProgress,
+      step: onboardingTemplateSteps,
+      assignment: employeeOnboardingAssignments,
+      userName: users.firstName,
+      userLastName: users.lastName,
+    })
+    .from(employeeOnboardingProgress)
+    .leftJoin(onboardingTemplateSteps, eq(employeeOnboardingProgress.stepId, onboardingTemplateSteps.id))
+    .leftJoin(employeeOnboardingAssignments, eq(employeeOnboardingProgress.assignmentId, employeeOnboardingAssignments.id))
+    .leftJoin(users, eq(employeeOnboardingAssignments.userId, users.id))
+    .where(eq(employeeOnboardingProgress.approvalStatus, 'waiting_approval'))
+    .orderBy(desc(employeeOnboardingProgress.completedAt));
+
+    let filtered = pendingItems;
+    if (ACADEMY_SUPERVISOR_ROLES.has(user.role) && user.branchId) {
+      filtered = pendingItems.filter(p => p.assignment?.branchId === user.branchId);
+    }
+
+    const mapped = filtered.map(p => ({
+      progressId: p.progress.id,
+      assignmentId: p.progress.assignmentId,
+      stepTitle: p.step?.title || '',
+      contentType: p.step?.contentType || 'practical',
+      userName: `${p.userName || ''} ${p.userLastName || ''}`.trim(),
+      userId: p.assignment?.userId,
+      branchId: p.assignment?.branchId,
+      completedAt: p.progress.completedAt,
+    }));
+
+    res.json(mapped);
+  } catch (error: any) {
+    handleApiError(res, error, "Onay bekleyen adımlar alınamadı");
+  }
+});
+
+router.post('/api/academy/onboarding/progress/:id/approve', isAuthenticated, requireAcademyCoachOrSupervisor, async (req: any, res) => {
+  try {
+    const progressId = parseInt(req.params.id);
+    const { approved, notes, rating } = req.body;
+
+    const updateData: any = {
+      approvedById: req.user!.id,
+      approvedAt: new Date(),
+      updatedAt: new Date(),
+    };
+
+    if (approved) {
+      updateData.approvalStatus = 'approved';
+      updateData.status = 'completed';
+    } else {
+      updateData.approvalStatus = 'rejected';
+      updateData.status = 'pending';
+      updateData.completedAt = null;
+    }
+    if (notes) updateData.mentorNotes = notes;
+    if (rating) updateData.rating = rating;
+
+    const [updated] = await db.update(employeeOnboardingProgress)
+      .set(updateData)
+      .where(eq(employeeOnboardingProgress.id, progressId))
+      .returning();
+
+    if (!updated) return res.status(404).json({ message: "İlerleme kaydı bulunamadı" });
+
+    const allProgress = await db.select().from(employeeOnboardingProgress)
+      .where(eq(employeeOnboardingProgress.assignmentId, updated.assignmentId));
+    const totalSteps = allProgress.length;
+    const completedSteps = allProgress.filter(p => p.status === 'completed').length;
+    const overallProgress = totalSteps > 0 ? Math.round((completedSteps / totalSteps) * 100) : 0;
+    await db.update(employeeOnboardingAssignments)
+      .set({ overallProgress, updatedAt: new Date() })
+      .where(eq(employeeOnboardingAssignments.id, updated.assignmentId));
+
+    if (overallProgress >= 100) {
+      await db.update(employeeOnboardingAssignments)
+        .set({ status: 'completed', actualEndDate: new Date(), updatedAt: new Date() })
+        .where(eq(employeeOnboardingAssignments.id, updated.assignmentId));
+    }
+
+    res.json(updated);
+  } catch (error: any) {
+    handleApiError(res, error, "Onay işlemi başarısız");
+  }
+});
+
+// ========================================
+// HELPER: Available branches + users for assignment
+// ========================================
+
+router.get('/api/academy/onboarding/available-users', isAuthenticated, requireAcademyCoach, async (req: any, res) => {
+  try {
+    const branchId = req.query.branchId ? parseInt(req.query.branchId as string) : null;
+    const role = req.query.role as string | undefined;
+
+    let conditions: any[] = [eq(users.isActive, true)];
+    if (branchId) conditions.push(eq(users.branchId, branchId));
+    if (role) conditions.push(eq(users.role, role));
+
+    const availableUsers = await db.select({
+      id: users.id,
+      firstName: users.firstName,
+      lastName: users.lastName,
+      role: users.role,
+      branchId: users.branchId,
+    })
+    .from(users)
+    .where(and(...conditions))
+    .orderBy(asc(users.firstName));
+
+    res.json(availableUsers);
+  } catch (error: any) {
+    handleApiError(res, error, "Kullanıcılar alınamadı");
   }
 });
 

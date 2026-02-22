@@ -35,6 +35,8 @@ const AcademyMyPath = lazy(() => import("./academy-my-path"));
 const Academy = lazy(() => import("./academy"));
 const AcademyHQ = lazy(() => import("./academy-hq"));
 const AcademySupervisor = lazy(() => import("./academy-supervisor"));
+const CoachOnboardingStudio = lazy(() => import("./coach-onboarding-studio"));
+const SupervisorOnboarding = lazy(() => import("./supervisor-onboarding"));
 const KnowledgeBase = lazy(() => import("./knowledge-base"));
 const AcademyAnalytics = lazy(() => import("./academy-analytics"));
 const AcademyBadges = lazy(() => import("./academy-badges"));
@@ -192,7 +194,7 @@ const AKADEMI_TABS: TabConfig[] = [
     permissionModule: "academy_admin",
     group: "coach-icerik",
     roleVisibility: "coach",
-    component: AcademyHQ
+    component: CoachOnboardingStudio
   },
   {
     id: "coach-gate-yonetim",
@@ -314,6 +316,16 @@ const AKADEMI_TABS: TabConfig[] = [
     roleVisibility: "supervisor",
     component: AcademySupervisor
   },
+  {
+    id: "supervisor-onboarding",
+    label: "Onboarding Approvals",
+    labelTr: "Onboarding Onayları",
+    icon: <ClipboardList className="h-4 w-4" />,
+    permissionModule: "academy_supervisor",
+    group: "supervisor-takip",
+    roleVisibility: "supervisor",
+    component: SupervisorOnboarding
+  },
 ];
 
 function TabSkeleton() {
@@ -352,6 +364,7 @@ const TAB_URL_MAP: Record<string, string> = {
   "uyarlanabilir-motor": "/akademi/uyarlanabilir-motor",
   "sosyal-gruplar": "/akademi/sosyal-gruplar",
   "supervisor": "/akademi/supervisor",
+  "supervisor-onboarding": "/akademi/supervisor-onboarding",
 };
 
 function getTabFromUrl(pathname: string, viewMode: AcademyViewMode): string | null {

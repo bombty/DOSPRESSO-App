@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -15,6 +16,7 @@ import {
   AlertTriangle,
   Lock,
   ChevronRight,
+  ChevronDown,
   Target,
   TrendingUp,
   Award,
@@ -23,6 +25,11 @@ import {
   ClipboardCheck,
   Star,
   ShieldCheck,
+  Calendar,
+  FileQuestion,
+  Wrench,
+  ChefHat,
+  Loader2,
 } from "lucide-react";
 
 interface MyPathData {
@@ -225,6 +232,293 @@ function GateExamBanner({ gate }: { gate: MyPathData["activeGate"] }) {
   );
 }
 
+interface OnboardingStep {
+  id: number;
+  stepId: number;
+  dayNumber: number;
+  orderIndex: number;
+  title: string;
+  description: string | null;
+  contentType: string;
+  estimatedMinutes: number | null;
+  approverType: string;
+  status: string;
+  completedAt: string | null;
+  approvalStatus: string | null;
+  approvedById: string | null;
+  approvedAt: string | null;
+  approvalNotes: string | null;
+  rating: number | null;
+}
+
+interface OnboardingAssignment {
+  assignment: {
+    id: number;
+    templateId: number;
+    userId: string;
+    startDate: string;
+    expectedEndDate: string;
+    status: string;
+    templateName: string;
+  };
+  progress: OnboardingStep[];
+  stats: {
+    total: number;
+    completed: number;
+    pending: number;
+    approved: number;
+    rejected: number;
+    overallPercent: number;
+  };
+}
+
+const CONTENT_TYPE_ICONS: Record<string, any> = {
+  module: BookOpen,
+  quiz: FileQuestion,
+  practical: Wrench,
+  recipe: ChefHat,
+  gate_exam: Award,
+};
+
+const CONTENT_TYPE_LABELS: Record<string, string> = {
+  module: "Modül",
+  quiz: "Quiz",
+  practical: "Pratik",
+  recipe: "Reçete",
+  gate_exam: "Gate Sınavı",
+};
+
+const STATUS_LABELS: Record<string, { label: string; variant: string }> = {
+  not_started: { label: "Başlanmadı", variant: "secondary" },
+  in_progress: { label: "Devam Ediyor", variant: "default" },
+  completed: { label: "Tamamlandı", variant: "default" },
+};
+
+const APPROVAL_LABELS: Record<string, { label: string; variant: string }> = {
+  pending: { label: "Onay Bekliyor", variant: "secondary" },
+  waiting_approval: { label: "Onay Bekliyor", variant: "secondary" },
+  approved: { label: "Onaylandı", variant: "default" },
+  rejected: { label: "Reddedildi", variant: "destructive" },
+  not_required: { label: "Otomatik", variant: "secondary" },
+};
+
+function OnboardingDetailSection({ assignmentData }: { assignmentData: OnboardingAssignment }) {
+  const [expandedDay, setExpandedDay] = useState<number | null>(null);
+  const { toast } = useToast();
+
+  const dayGroups = assignmentData.progress.reduce<Record<number, OnboardingStep[]>>((acc, step) => {
+    if (!acc[step.dayNumber]) acc[step.dayNumber] = [];
+    acc[step.dayNumber].push(step);
+    return acc;
+  }, {});
+
+  const sortedDays = Object.keys(dayGroups).map(Number).sort((a, b) => a - b);
+
+  const completeSelfMutation = useMutation({
+    mutationFn: async (progressId: number) => {
+      const res = await apiRequest('POST', `/api/academy/onboarding/progress/${progressId}/complete`);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/academy/onboarding/my-assignment'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/academy/my-path'] });
+      toast({ title: "Adım tamamlandı" });
+    },
+    onError: (err: Error) => {
+      toast({ title: "Hata", description: err.message, variant: "destructive" });
+    },
+  });
+
+  const currentDay = (() => {
+    const start = new Date(assignmentData.assignment.startDate);
+    const now = new Date();
+    return Math.max(1, Math.ceil((now.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1);
+  })();
+
+  return (
+    <div className="space-y-2" data-testid="onboarding-detail-section">
+      <div className="flex items-center gap-2 mb-2">
+        <Calendar className="h-4 w-4 text-blue-500" />
+        <h3 className="text-sm font-semibold">Onboarding Programı</h3>
+        <Badge variant="secondary">
+          %{assignmentData.stats.overallPercent}
+        </Badge>
+      </div>
+
+      <Progress value={assignmentData.stats.overallPercent} className="h-2 mb-3" />
+
+      <div className="grid grid-cols-3 gap-2 text-center text-xs mb-3">
+        <div className="p-2 rounded-md bg-muted/50">
+          <div className="font-semibold text-green-600 dark:text-green-400">{assignmentData.stats.completed}</div>
+          <div className="text-muted-foreground">Tamamlanan</div>
+        </div>
+        <div className="p-2 rounded-md bg-muted/50">
+          <div className="font-semibold text-amber-600 dark:text-amber-400">{assignmentData.stats.pending}</div>
+          <div className="text-muted-foreground">Bekleyen</div>
+        </div>
+        <div className="p-2 rounded-md bg-muted/50">
+          <div className="font-semibold">{assignmentData.stats.total}</div>
+          <div className="text-muted-foreground">Toplam</div>
+        </div>
+      </div>
+
+      {sortedDays.map((day) => {
+        const steps = dayGroups[day].sort((a, b) => a.orderIndex - b.orderIndex);
+        const allCompleted = steps.every(s => s.status === 'completed');
+        const isToday = day === currentDay;
+        const isPast = day < currentDay;
+        const isExpanded = expandedDay === day;
+
+        return (
+          <Card
+            key={day}
+            className={`${isToday ? 'border-blue-300 dark:border-blue-700' : ''}`}
+            data-testid={`onboarding-day-${day}`}
+          >
+            <CardContent className="p-0">
+              <button
+                className="w-full flex items-center justify-between gap-2 p-3 text-left"
+                onClick={() => setExpandedDay(isExpanded ? null : day)}
+                data-testid={`toggle-day-${day}`}
+              >
+                <div className="flex items-center gap-2">
+                  {allCompleted ? (
+                    <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0" />
+                  ) : isToday ? (
+                    <PlayCircle className="h-4 w-4 text-blue-500 shrink-0" />
+                  ) : isPast ? (
+                    <AlertTriangle className="h-4 w-4 text-amber-500 shrink-0" />
+                  ) : (
+                    <Lock className="h-4 w-4 text-muted-foreground shrink-0" />
+                  )}
+                  <span className="text-sm font-medium">
+                    Gün {day}
+                  </span>
+                  {isToday && <Badge variant="default">Bugün</Badge>}
+                  <span className="text-xs text-muted-foreground">
+                    {steps.filter(s => s.status === 'completed').length}/{steps.length} adım
+                  </span>
+                </div>
+                {isExpanded ? (
+                  <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />
+                ) : (
+                  <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
+                )}
+              </button>
+
+              {isExpanded && (
+                <div className="px-3 pb-3 space-y-2 border-t">
+                  {steps.map((step) => {
+                    const StepIcon = CONTENT_TYPE_ICONS[step.contentType] || BookOpen;
+                    const isStepCompleted = step.status === 'completed';
+                    const needsApproval = step.approverType !== 'auto' && step.approvalStatus !== 'approved';
+                    const isRejected = step.approvalStatus === 'rejected';
+
+                    return (
+                      <div
+                        key={step.id}
+                        className={`flex items-start gap-2 p-2 rounded-md ${
+                          isStepCompleted && !isRejected ? 'bg-green-50/50 dark:bg-green-950/20' :
+                          isRejected ? 'bg-red-50/50 dark:bg-red-950/20' :
+                          'bg-muted/30'
+                        }`}
+                        data-testid={`onboarding-step-${step.id}`}
+                      >
+                        <div className="mt-0.5">
+                          {isStepCompleted && !isRejected ? (
+                            <CheckCircle2 className="h-4 w-4 text-green-500" />
+                          ) : isRejected ? (
+                            <AlertTriangle className="h-4 w-4 text-red-500" />
+                          ) : (
+                            <StepIcon className="h-4 w-4 text-muted-foreground" />
+                          )}
+                        </div>
+
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className={`text-xs font-medium ${isStepCompleted && !isRejected ? 'line-through text-muted-foreground' : ''}`}>
+                              {step.title}
+                            </span>
+                            <Badge variant="secondary">
+                              {CONTENT_TYPE_LABELS[step.contentType] || step.contentType}
+                            </Badge>
+                          </div>
+
+                          {step.description && (
+                            <p className="text-xs text-muted-foreground mt-0.5">{step.description}</p>
+                          )}
+
+                          <div className="flex items-center gap-2 mt-1 flex-wrap">
+                            {step.estimatedMinutes && (
+                              <span className="text-xs text-muted-foreground flex items-center gap-0.5">
+                                <Clock className="h-3 w-3" />
+                                {step.estimatedMinutes} dk
+                              </span>
+                            )}
+                            {needsApproval && step.approvalStatus && (
+                              <Badge variant={APPROVAL_LABELS[step.approvalStatus]?.variant as any || "secondary"}>
+                                {APPROVAL_LABELS[step.approvalStatus]?.label || step.approvalStatus}
+                              </Badge>
+                            )}
+                            {step.rating && (
+                              <span className="text-xs text-amber-600 dark:text-amber-400 flex items-center gap-0.5">
+                                <Star className="h-3 w-3" />
+                                {step.rating}/5
+                              </span>
+                            )}
+                          </div>
+
+                          {isRejected && step.approvalNotes && (
+                            <p className="text-xs text-red-600 dark:text-red-400 mt-1">
+                              Ret nedeni: {step.approvalNotes}
+                            </p>
+                          )}
+                        </div>
+
+                        {!isStepCompleted && (day <= currentDay) && (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => completeSelfMutation.mutate(step.id)}
+                            disabled={completeSelfMutation.isPending}
+                            data-testid={`complete-step-${step.id}`}
+                          >
+                            {completeSelfMutation.isPending ? (
+                              <Loader2 className="h-3 w-3 animate-spin" />
+                            ) : (
+                              <CheckCircle2 className="h-3 w-3" />
+                            )}
+                          </Button>
+                        )}
+
+                        {isRejected && (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => completeSelfMutation.mutate(step.id)}
+                            disabled={completeSelfMutation.isPending}
+                            data-testid={`retry-step-${step.id}`}
+                          >
+                            {completeSelfMutation.isPending ? (
+                              <Loader2 className="h-3 w-3 animate-spin" />
+                            ) : (
+                              <PlayCircle className="h-3 w-3" />
+                            )}
+                          </Button>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        );
+      })}
+    </div>
+  );
+}
+
 function ActionCard({ action, onComplete }: { action: ActionItem; onComplete: (item: ActionItem) => void }) {
   const Icon = TYPE_ICONS[action.type] || BookOpen;
   const priorityCfg = PRIORITY_CONFIG[action.priority] || PRIORITY_CONFIG[4];
@@ -291,6 +585,11 @@ export default function AcademyMyPath() {
     queryKey: ['/api/academy/my-path'],
   });
 
+  const { data: onboardingData } = useQuery<OnboardingAssignment>({
+    queryKey: ['/api/academy/onboarding/my-assignment'],
+    enabled: !!data?.onboarding,
+  });
+
   const completeMutation = useMutation({
     mutationFn: async (item: ActionItem) => {
       if (item.progressId) {
@@ -354,6 +653,8 @@ export default function AcademyMyPath() {
   return (
     <div className="space-y-4 p-4 max-w-2xl mx-auto" data-testid="my-path-container">
       {data.onboarding && <OnboardingBanner onboarding={data.onboarding} />}
+
+      {onboardingData && <OnboardingDetailSection assignmentData={onboardingData} />}
 
       <LevelBanner data={data} />
 

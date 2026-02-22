@@ -6248,14 +6248,18 @@ export type OnboardingTemplate = typeof onboardingTemplates.$inferSelect;
 export const onboardingTemplateSteps = pgTable("onboarding_template_steps", {
   id: serial("id").primaryKey(),
   templateId: integer("template_id").notNull().references(() => onboardingTemplates.id, { onDelete: "cascade" }),
-  stepOrder: integer("step_order").notNull().default(1), // Sıra numarası
-  title: varchar("title", { length: 200 }).notNull(), // "Apron & Temel Eğitim", "Bar Eğitimi"
+  stepOrder: integer("step_order").notNull().default(1),
+  title: varchar("title", { length: 200 }).notNull(),
   description: text("description"),
-  startDay: integer("start_day").notNull().default(1), // Kaçıncı gün başlar (1 = ilk gün)
-  endDay: integer("end_day").notNull().default(3), // Kaçıncı gün biter
-  mentorRoleType: varchar("mentor_role_type", { length: 50 }).notNull().default("barista"), // Sorumlu rolü: barista, supervisor, supervisor_buddy
-  trainingModuleId: integer("training_module_id"), // İlişkili eğitim modülü (opsiyonel)
-  requiredCompletion: boolean("required_completion").notNull().default(true), // Zorunlu mu?
+  startDay: integer("start_day").notNull().default(1),
+  endDay: integer("end_day").notNull().default(3),
+  contentType: varchar("content_type", { length: 30 }).notNull().default("module"),
+  contentId: integer("content_id"),
+  estimatedMinutes: integer("estimated_minutes").default(15),
+  approverType: varchar("approver_type", { length: 30 }).notNull().default("auto"),
+  mentorRoleType: varchar("mentor_role_type", { length: 50 }).notNull().default("barista"),
+  trainingModuleId: integer("training_module_id"),
+  requiredCompletion: boolean("required_completion").notNull().default(true),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => [
@@ -6309,12 +6313,15 @@ export const employeeOnboardingProgress = pgTable("employee_onboarding_progress"
   id: serial("id").primaryKey(),
   assignmentId: integer("assignment_id").notNull().references(() => employeeOnboardingAssignments.id, { onDelete: "cascade" }),
   stepId: integer("step_id").notNull().references(() => onboardingTemplateSteps.id),
-  mentorId: varchar("mentor_id"), // Atanan mentor (şubedeki kişi)
-  status: varchar("status", { length: 30 }).notNull().default("pending"), // pending, in_progress, completed
+  mentorId: varchar("mentor_id"),
+  status: varchar("status", { length: 30 }).notNull().default("pending"),
+  approvalStatus: varchar("approval_status", { length: 30 }).default("not_required"),
+  approvedById: varchar("approved_by_id"),
+  approvedAt: timestamp("approved_at"),
   startedAt: timestamp("started_at"),
   completedAt: timestamp("completed_at"),
-  mentorNotes: text("mentor_notes"), // Mentor değerlendirmesi
-  rating: integer("rating"), // 1-5 puan
+  mentorNotes: text("mentor_notes"),
+  rating: integer("rating"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => [
