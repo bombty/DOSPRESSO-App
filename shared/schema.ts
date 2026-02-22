@@ -13379,3 +13379,168 @@ export const insertTaskEvidenceSchema = createInsertSchema(taskEvidence).omit({
 
 export type InsertTaskEvidence = z.infer<typeof insertTaskEvidenceSchema>;
 export type TaskEvidence = typeof taskEvidence.$inferSelect;
+
+// ========================================
+// WASTE / ZAI-FIRE MANAGEMENT
+// ========================================
+
+export const wasteCategories = pgTable("waste_categories", {
+  id: serial("id").primaryKey(),
+  code: varchar("code", { length: 50 }).notNull().unique(),
+  nameTr: varchar("name_tr", { length: 150 }).notNull(),
+  nameEn: varchar("name_en", { length: 150 }),
+  sortOrder: integer("sort_order").default(0),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertWasteCategorySchema = createInsertSchema(wasteCategories).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertWasteCategory = z.infer<typeof insertWasteCategorySchema>;
+export type WasteCategory = typeof wasteCategories.$inferSelect;
+
+export const wasteReasons = pgTable("waste_reasons", {
+  id: serial("id").primaryKey(),
+  categoryId: integer("category_id").notNull().references(() => wasteCategories.id, { onDelete: "cascade" }),
+  code: varchar("code", { length: 80 }).notNull(),
+  nameTr: varchar("name_tr", { length: 200 }).notNull(),
+  nameEn: varchar("name_en", { length: 200 }),
+  isActive: boolean("is_active").default(true),
+  sortOrder: integer("sort_order").default(0),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("waste_reasons_category_idx").on(table.categoryId),
+]);
+
+export const insertWasteReasonSchema = createInsertSchema(wasteReasons).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertWasteReason = z.infer<typeof insertWasteReasonSchema>;
+export type WasteReason = typeof wasteReasons.$inferSelect;
+
+export const WasteResponsibilityScope = {
+  DEMAND: "demand",
+  MERCHANDISING: "merchandising",
+  MARKETING: "marketing",
+  RECIPE_QUALITY: "recipe_quality",
+  PRODUCTION_DEFECT: "production_defect",
+  PREP_ERROR: "prep_error",
+  LOGISTICS_COLD_CHAIN: "logistics_cold_chain",
+  STORAGE: "storage",
+  EXPIRY: "expiry",
+  UNKNOWN: "unknown",
+} as const;
+
+export type WasteResponsibilityScopeType = typeof WasteResponsibilityScope[keyof typeof WasteResponsibilityScope];
+
+export const WasteEventStatus = {
+  OPEN: "open",
+  CONFIRMED: "confirmed",
+  RESOLVED: "resolved",
+} as const;
+
+export type WasteEventStatusType = typeof WasteEventStatus[keyof typeof WasteEventStatus];
+
+export const wasteEvents = pgTable("waste_events", {
+  id: serial("id").primaryKey(),
+  branchId: integer("branch_id").notNull().references(() => branches.id, { onDelete: "cascade" }),
+  createdByUserId: varchar("created_by_user_id", { length: 255 }).notNull().references(() => users.id, { onDelete: "cascade" }),
+  eventTs: timestamp("event_ts").notNull().defaultNow(),
+  productId: integer("product_id"),
+  productGroup: varchar("product_group", { length: 100 }),
+  recipeRef: varchar("recipe_ref", { length: 100 }),
+  quantity: numeric("quantity", { precision: 10, scale: 2 }).notNull(),
+  unit: varchar("unit", { length: 20 }).notNull().default("adet"),
+  estimatedCost: numeric("estimated_cost", { precision: 10, scale: 2 }),
+  categoryId: integer("category_id").notNull().references(() => wasteCategories.id),
+  reasonId: integer("reason_id").notNull().references(() => wasteReasons.id),
+  responsibilityScope: varchar("responsibility_scope", { length: 30 }).default("unknown"),
+  notes: text("notes"),
+  evidencePhotos: jsonb("evidence_photos").default([]),
+  lotId: varchar("lot_id", { length: 100 }),
+  supplierBatch: varchar("supplier_batch", { length: 100 }),
+  status: varchar("status", { length: 20 }).notNull().default("open"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("waste_events_branch_idx").on(table.branchId),
+  index("waste_events_category_idx").on(table.categoryId),
+  index("waste_events_reason_idx").on(table.reasonId),
+  index("waste_events_status_idx").on(table.status),
+  index("waste_events_event_ts_idx").on(table.eventTs),
+  index("waste_events_lot_idx").on(table.lotId),
+  index("waste_events_created_by_idx").on(table.createdByUserId),
+]);
+
+export const insertWasteEventSchema = createInsertSchema(wasteEvents).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertWasteEvent = z.infer<typeof insertWasteEventSchema>;
+export type WasteEvent = typeof wasteEvents.$inferSelect;
+
+export const WasteLotQcStatus = {
+  PENDING: "pending",
+  PASSED: "passed",
+  FAILED: "failed",
+  UNDER_REVIEW: "under_review",
+} as const;
+
+export type WasteLotQcStatusType = typeof WasteLotQcStatus[keyof typeof WasteLotQcStatus];
+
+export const wasteLots = pgTable("waste_lots", {
+  id: serial("id").primaryKey(),
+  lotId: varchar("lot_id", { length: 100 }).notNull(),
+  productId: integer("product_id"),
+  productName: varchar("product_name", { length: 200 }),
+  productionDate: timestamp("production_date"),
+  expiryDate: timestamp("expiry_date"),
+  qcStatus: varchar("qc_status", { length: 20 }).notNull().default("pending"),
+  qcNotes: text("qc_notes"),
+  evidencePhotos: jsonb("evidence_photos").default([]),
+  createdByUserId: varchar("created_by_user_id", { length: 255 }).notNull().references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("waste_lots_lot_id_idx").on(table.lotId),
+  index("waste_lots_qc_status_idx").on(table.qcStatus),
+  index("waste_lots_product_idx").on(table.productId),
+]);
+
+export const insertWasteLotSchema = createInsertSchema(wasteLots).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertWasteLot = z.infer<typeof insertWasteLotSchema>;
+export type WasteLot = typeof wasteLots.$inferSelect;
+
+export const wasteActionLinks = pgTable("waste_action_links", {
+  id: serial("id").primaryKey(),
+  wasteEventId: integer("waste_event_id").notNull().references(() => wasteEvents.id, { onDelete: "cascade" }),
+  taskId: integer("task_id").references(() => tasks.id, { onDelete: "set null" }),
+  auditLogId: integer("audit_log_id").references(() => auditLogs.id, { onDelete: "set null" }),
+  linkType: varchar("link_type", { length: 30 }).notNull().default("task"),
+  notes: text("notes"),
+  createdByUserId: varchar("created_by_user_id", { length: 255 }).references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("waste_action_links_event_idx").on(table.wasteEventId),
+  index("waste_action_links_task_idx").on(table.taskId),
+])
+
+export const insertWasteActionLinkSchema = createInsertSchema(wasteActionLinks).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertWasteActionLink = z.infer<typeof insertWasteActionLinkSchema>;
+export type WasteActionLink = typeof wasteActionLinks.$inferSelect;
