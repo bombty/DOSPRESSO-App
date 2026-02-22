@@ -246,7 +246,7 @@ export function CardGridHub() {
     { 
       id: "tasks", 
       icon: ClipboardList, 
-      label: "Tasklar", 
+      label: "Görevler", 
       path: "/gorevler",
       color: "bg-green-500",
       badge: pendingTasks,
@@ -290,7 +290,7 @@ export function CardGridHub() {
     { 
       id: "lost-found", 
       icon: Briefcase, 
-      label: "Lost&Found", 
+      label: "Kayıp Eşya", 
       path: "/kayip-esya",
       color: "bg-yellow-600",
       description: "Bulunan eşyalar"
@@ -361,11 +361,11 @@ export function CardGridHub() {
     { 
       id: "tasks-hq", 
       icon: ClipboardList, 
-      label: "Tasklar", 
+      label: "Görevler", 
       path: "/gorevler",
       color: "bg-green-500",
       badge: pendingTasks,
-      description: "Task yönetimi"
+      description: "Görev yönetimi"
     },
     { 
       id: "academy-hq", 
@@ -444,7 +444,7 @@ export function CardGridHub() {
     { 
       id: "lost-found", 
       icon: Briefcase, 
-      label: "Lost&Found", 
+      label: "Kayıp Eşya", 
       path: "/kayip-esya-hq",
       color: "bg-yellow-600",
       description: "Bulunan eşyalar"
@@ -893,7 +893,7 @@ export function CardGridHub() {
       { label: "AI Control Tower", path: "/ceo-command-center", icon: BarChart3, color: "bg-primary/10", iconColor: "text-primary", testId: "ceo-ai-control-tower-btn" },
       { label: "Şubeler", path: "/subeler", icon: Building2, color: "bg-indigo-500/10", iconColor: "text-indigo-500", testId: "ceo-branches-btn" },
       { label: "Arızalar", path: "/ariza", icon: AlertTriangle, color: "bg-orange-500/10", iconColor: "text-orange-500", testId: "ceo-faults-btn", badge: openFaults },
-      { label: "Tasklar", path: "/gorevler", icon: ClipboardList, color: "bg-green-500/10", iconColor: "text-green-500", testId: "ceo-tasks-btn", badge: pendingTasks },
+      { label: "Görevler", path: "/gorevler", icon: ClipboardList, color: "bg-green-500/10", iconColor: "text-green-500", testId: "ceo-tasks-btn", badge: pendingTasks },
       { label: "Vardiya", path: "/vardiyalar", icon: Calendar, color: "bg-purple-500/10", iconColor: "text-purple-500", testId: "ceo-shifts-btn" },
       { label: "İK", path: "/ik", icon: Users, color: "bg-pink-500/10", iconColor: "text-pink-500", testId: "ceo-hr-btn" },
       { label: "Checklistler", path: "/yonetim/checklistler", icon: CheckSquare, color: "bg-teal-500/10", iconColor: "text-teal-500", testId: "ceo-checklists-btn" },
@@ -906,7 +906,7 @@ export function CardGridHub() {
       { label: "Projeler", path: "/projeler", icon: FolderKanban, color: "bg-violet-600/10", iconColor: "text-violet-600", testId: "ceo-projects-btn" },
       { label: "Destek", path: "/hq-destek", icon: MessageSquare, color: "bg-rose-500/10", iconColor: "text-rose-500", testId: "ceo-support-btn" },
       { label: "Duyurular", path: "/duyurular", icon: Megaphone, color: "bg-red-500/10", iconColor: "text-red-500", testId: "ceo-announcements-btn" },
-      { label: "Lost&Found", path: "/kayip-esya-hq", icon: Briefcase, color: "bg-yellow-600/10", iconColor: "text-yellow-600", testId: "ceo-lostfound-btn" },
+      { label: "Kayıp Eşya", path: "/kayip-esya-hq", icon: Briefcase, color: "bg-yellow-600/10", iconColor: "text-yellow-600", testId: "ceo-lostfound-btn" },
       { label: "Bilgi Bankası", path: "/bilgi-bankasi", icon: BookOpen, color: "bg-emerald-500/10", iconColor: "text-emerald-500", testId: "ceo-knowledge-btn" },
       { label: "CRM", path: "/crm", icon: Headphones, color: "bg-rose-500/10", iconColor: "text-rose-600", testId: "ceo-crm-btn" },
       { label: "Canlı Takip", path: "/canli-takip", icon: MapPin, color: "bg-emerald-500/10", iconColor: "text-emerald-600", testId: "ceo-tracking-btn" },
@@ -956,7 +956,7 @@ export function CardGridHub() {
               <BookOpen className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold">Guide</p>
+              <p className="text-sm font-semibold">Kılavuz</p>
               <p className="text-xs text-muted-foreground">Sistem rehberi ve yardım</p>
             </div>
             <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
@@ -1113,7 +1113,7 @@ export function CardGridHub() {
               <BookOpen className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold">Guide</p>
+              <p className="text-sm font-semibold">Kılavuz</p>
               <p className="text-xs text-muted-foreground">Sistem rehberi ve yardım</p>
             </div>
             <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />

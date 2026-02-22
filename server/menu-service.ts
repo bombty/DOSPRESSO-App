@@ -2,6 +2,7 @@ import {
   SidebarMenuSection, 
   SidebarMenuResponse, 
   SidebarMenuScope,
+  SidebarMenuGroup,
   UserRoleType,
   isHQRole,
   isBranchRole,
@@ -13,18 +14,22 @@ import {
 // ========================================
 // STATIC MENU BLUEPRINT
 // Single source of truth for all menu items
-// Konsolide edilmiş 10 ana kategori yapısı
+// 3 functional groups: operations / management / settings
+// Consolidated from 13 → 9 sections
 // ========================================
 
 const MENU_BLUEPRINT: SidebarMenuSection[] = [
   // ========================================
-  // 1. KONTROL PANELİ (Dashboard)
+  // GROUP: OPERATIONS — Günlük operasyonel işlemler
   // ========================================
+
+  // 1. Dashboard (HQ)
   {
     id: "dashboard-hq",
     titleTr: "Kontrol Paneli",
     icon: "LayoutDashboard",
     scope: "hq",
+    group: "operations",
     items: [
       {
         id: "dashboard",
@@ -36,11 +41,13 @@ const MENU_BLUEPRINT: SidebarMenuSection[] = [
       },
     ],
   },
+  // 1b. Dashboard (Branch)
   {
     id: "dashboard-branch",
     titleTr: "",
     icon: "Home",
     scope: "branch",
+    group: "operations",
     items: [
       {
         id: "branch-dashboard",
@@ -53,14 +60,124 @@ const MENU_BLUEPRINT: SidebarMenuSection[] = [
     ],
   },
 
-  // ========================================
-  // 2. FABRİKA OPERASYONLARİ (Tek grup altında)
-  // ========================================
+  // 2. Operasyon (Görevler + Checklistler + Kayıp Eşya + Ekipman + Arıza + QR)
+  {
+    id: "operations",
+    titleTr: "Operasyon",
+    icon: "CheckSquare",
+    scope: "both",
+    group: "operations",
+    items: [
+      {
+        id: "tasks-list",
+        titleTr: "Görevler",
+        path: "/gorevler",
+        icon: "CheckSquare",
+        moduleKey: "tasks",
+        scope: "both",
+      },
+      {
+        id: "checklists",
+        titleTr: "Kontrol Listeleri",
+        path: "/checklistler",
+        icon: "ClipboardList",
+        moduleKey: "checklists",
+        scope: "both",
+      },
+      {
+        id: "equipment",
+        titleTr: "Ekipman",
+        path: "/ekipman",
+        icon: "Wrench",
+        moduleKey: "equipment",
+        scope: "both",
+      },
+      {
+        id: "faults",
+        titleTr: "Arızalar",
+        path: "/ariza",
+        icon: "AlertTriangle",
+        moduleKey: "faults",
+        scope: "both",
+        badge: "faults",
+      },
+      {
+        id: "qr-scan",
+        titleTr: "QR Tara",
+        path: "/qr-tara",
+        icon: "QrCode",
+        moduleKey: "equipment",
+        scope: "both",
+      },
+      {
+        id: "lost-found",
+        titleTr: "Kayıp Eşya",
+        path: "/kayip-esya",
+        icon: "Briefcase",
+        moduleKey: "lost_found",
+        scope: "branch",
+      },
+      {
+        id: "lost-found-hq",
+        titleTr: "Kayıp Eşya",
+        path: "/kayip-esya-hq",
+        icon: "Briefcase",
+        moduleKey: "lost_found_hq",
+        scope: "hq",
+      },
+    ],
+  },
+
+  // 3. İK & Vardiya
+  {
+    id: "hr-shifts",
+    titleTr: "İK & Vardiya",
+    icon: "Users",
+    scope: "both",
+    group: "operations",
+    items: [
+      {
+        id: "hr",
+        titleTr: "Personel",
+        path: "/ik",
+        icon: "Users",
+        moduleKey: "hr",
+        scope: "both",
+      },
+      {
+        id: "shifts",
+        titleTr: "Vardiyalar",
+        path: "/vardiyalar",
+        icon: "Calendar",
+        moduleKey: "shifts",
+        scope: "both",
+      },
+      {
+        id: "branch-shift-tracking",
+        titleTr: "Puantaj",
+        path: "/sube-vardiya-takibi",
+        icon: "Timer",
+        moduleKey: "branch_shift_tracking",
+        scope: "both",
+      },
+      {
+        id: "attendance",
+        titleTr: "Devam Takibi",
+        path: "/devam-takibi",
+        icon: "UserCheck",
+        moduleKey: "attendance",
+        scope: "both",
+      },
+    ],
+  },
+
+  // 4. Fabrika
   {
     id: "fabrika",
-    titleTr: "Fabrika Operasyonları",
+    titleTr: "Fabrika",
     icon: "Factory",
     scope: "both",
+    group: "operations",
     items: [
       {
         id: "factory-dashboard",
@@ -96,7 +213,7 @@ const MENU_BLUEPRINT: SidebarMenuSection[] = [
       },
       {
         id: "factory-analytics",
-        titleTr: "Performans Analitik",
+        titleTr: "Performans",
         path: "/fabrika/performans",
         icon: "BarChart3",
         moduleKey: "factory_analytics",
@@ -114,162 +231,20 @@ const MENU_BLUEPRINT: SidebarMenuSection[] = [
   },
 
   // ========================================
-  // 3. EKİPMAN & BAKIM (Ekipman + Arıza + Bakım birleşik)
+  // GROUP: MANAGEMENT — Yönetim, denetim, eğitim, finans
   // ========================================
-  {
-    id: "equipment-maintenance",
-    titleTr: "Ekipman & Bakım",
-    icon: "Wrench",
-    scope: "both",
-    items: [
-      {
-        id: "equipment",
-        titleTr: "Ekipman Listesi",
-        path: "/ekipman",
-        icon: "Wrench",
-        moduleKey: "equipment",
-        scope: "both",
-      },
-      {
-        id: "faults",
-        titleTr: "Arıza Yönetimi",
-        path: "/ariza",
-        icon: "AlertTriangle",
-        moduleKey: "faults",
-        scope: "both",
-        badge: "faults",
-      },
-      {
-        id: "qr-scan",
-        titleTr: "QR Tara",
-        path: "/qr-tara",
-        icon: "QrCode",
-        moduleKey: "equipment",
-        scope: "both",
-      },
-    ],
-  },
 
-  // ========================================
-  // 4. ŞUBE YÖNETİMİ
-  // ========================================
-  {
-    id: "branch-management",
-    titleTr: "Şube Yönetimi",
-    icon: "Building2",
-    scope: "hq",
-    items: [
-      {
-        id: "branches-list",
-        titleTr: "Şubeler",
-        path: "/subeler",
-        icon: "Building2",
-        moduleKey: "branches",
-        scope: "hq",
-      },
-    ],
-  },
-
-  // ========================================
-  // 5. OPERASYON YÖNETİMİ (Görevler, Checklistler, Lost&Found)
-  // ========================================
-  {
-    id: "operations",
-    titleTr: "Operasyon Yönetimi",
-    icon: "CheckSquare",
-    scope: "both",
-    items: [
-      {
-        id: "tasks-list",
-        titleTr: "Görevler",
-        path: "/gorevler",
-        icon: "CheckSquare",
-        moduleKey: "tasks",
-        scope: "both",
-      },
-      {
-        id: "checklists",
-        titleTr: "Checklistler",
-        path: "/checklistler",
-        icon: "ClipboardList",
-        moduleKey: "checklists",
-        scope: "both",
-      },
-      {
-        id: "lost-found",
-        titleTr: "Kayıp Eşya",
-        path: "/kayip-esya",
-        icon: "Briefcase",
-        moduleKey: "lost_found",
-        scope: "branch",
-      },
-      {
-        id: "lost-found-hq",
-        titleTr: "Kayıp Eşya (Tüm Şubeler)",
-        path: "/kayip-esya-hq",
-        icon: "Briefcase",
-        moduleKey: "lost_found_hq",
-        scope: "hq",
-      },
-    ],
-  },
-
-  // ========================================
-  // 6. İK & VARDİYA (HR, Vardiya, Puantaj birleşik)
-  // ========================================
-  {
-    id: "hr-shifts",
-    titleTr: "İK & Vardiya",
-    icon: "Users",
-    scope: "both",
-    items: [
-      {
-        id: "hr",
-        titleTr: "İK Yönetimi",
-        path: "/ik",
-        icon: "Users",
-        moduleKey: "hr",
-        scope: "both",
-      },
-      {
-        id: "shifts",
-        titleTr: "Vardiya Planlama",
-        path: "/vardiyalar",
-        icon: "Calendar",
-        moduleKey: "shifts",
-        scope: "both",
-      },
-      {
-        id: "branch-shift-tracking",
-        titleTr: "Şube Puantaj",
-        path: "/sube-vardiya-takibi",
-        icon: "Timer",
-        moduleKey: "branch_shift_tracking",
-        scope: "both",
-      },
-      {
-        id: "attendance",
-        titleTr: "Devam Takibi",
-        path: "/devam-takibi",
-        icon: "UserCheck",
-        moduleKey: "attendance",
-        scope: "both",
-      },
-    ],
-  },
-
-  // ========================================
-  // 7. EĞİTİM & AKADEMİ
-  // ========================================
+  // 5. Eğitim
   {
     id: "training-academy-section",
-    titleTr: "Eğitim & Akademi",
+    titleTr: "Eğitim",
     icon: "GraduationCap",
     scope: "both",
+    group: "management",
     items: [
       {
         id: "training-academy",
-        titleTr: "Eğitim Akademisi",
+        titleTr: "Akademi",
         path: "/egitim",
         icon: "GraduationCap",
         moduleKey: "training",
@@ -286,14 +261,13 @@ const MENU_BLUEPRINT: SidebarMenuSection[] = [
     ],
   },
 
-  // ========================================
-  // 8. ANALİTİK & RAPORLAR
-  // ========================================
+  // 6. Denetim & Analitik (Quality + Analytics merged)
   {
-    id: "analytics-reports",
-    titleTr: "Analitik & Raporlar",
-    icon: "BarChart3",
+    id: "audit-analytics",
+    titleTr: "Denetim & Analitik",
+    icon: "Star",
     scope: "both",
+    group: "management",
     items: [
       {
         id: "performance-dashboard",
@@ -311,21 +285,9 @@ const MENU_BLUEPRINT: SidebarMenuSection[] = [
         moduleKey: "reports",
         scope: "both",
       },
-    ],
-  },
-
-  // ========================================
-  // 9. KALİTE & MÜŞTERİ DENEYİMİ
-  // ========================================
-  {
-    id: "quality-customer",
-    titleTr: "Kalite & Misafir",
-    icon: "Star",
-    scope: "hq",
-    items: [
       {
         id: "quality-control",
-        titleTr: "Kalite Kontrol",
+        titleTr: "Kalite Denetimi",
         path: "/kalite-denetimi",
         icon: "Star",
         moduleKey: "quality_audit",
@@ -374,14 +336,13 @@ const MENU_BLUEPRINT: SidebarMenuSection[] = [
     ],
   },
 
-  // ========================================
-  // 10. FİNANS & MUHASEBE
-  // ========================================
+  // 7. Finans & Tedarik (Finance + Procurement merged)
   {
-    id: "finance",
-    titleTr: "Finans & Muhasebe",
+    id: "finance-procurement",
+    titleTr: "Finans & Tedarik",
     icon: "Calculator",
     scope: "both",
+    group: "management",
     items: [
       {
         id: "accounting-main",
@@ -401,27 +362,15 @@ const MENU_BLUEPRINT: SidebarMenuSection[] = [
       },
       {
         id: "financial-reports",
-        titleTr: "Raporlama",
+        titleTr: "Mali Raporlar",
         path: "/muhasebe-raporlama",
         icon: "FileText",
         moduleKey: "accounting",
         scope: "both",
       },
-    ],
-  },
-
-  // ========================================
-  // 10.5. SATINALMA (Procurement)
-  // ========================================
-  {
-    id: "procurement",
-    titleTr: "Satınalma",
-    icon: "ShoppingCart",
-    scope: "hq",
-    items: [
       {
         id: "procurement-dashboard",
-        titleTr: "Satınalma Paneli",
+        titleTr: "Satınalma",
         path: "/satinalma",
         icon: "ShoppingCart",
         moduleKey: "satinalma",
@@ -429,7 +378,7 @@ const MENU_BLUEPRINT: SidebarMenuSection[] = [
       },
       {
         id: "stock-management",
-        titleTr: "Stok Yönetimi",
+        titleTr: "Stok",
         path: "/satinalma/stok-yonetimi",
         icon: "Package",
         moduleKey: "inventory",
@@ -437,7 +386,7 @@ const MENU_BLUEPRINT: SidebarMenuSection[] = [
       },
       {
         id: "supplier-management",
-        titleTr: "Tedarikçi Yönetimi",
+        titleTr: "Tedarikçiler",
         path: "/satinalma/tedarikci-yonetimi",
         icon: "Truck",
         moduleKey: "suppliers",
@@ -445,7 +394,7 @@ const MENU_BLUEPRINT: SidebarMenuSection[] = [
       },
       {
         id: "order-management",
-        titleTr: "Sipariş Yönetimi",
+        titleTr: "Siparişler",
         path: "/satinalma/siparis-yonetimi",
         icon: "FileText",
         moduleKey: "purchase_orders",
@@ -463,37 +412,20 @@ const MENU_BLUEPRINT: SidebarMenuSection[] = [
   },
 
   // ========================================
-  // 11. PROJELER
+  // GROUP: SETTINGS — Sistem ayarları, iletişim, yönetim
   // ========================================
-  {
-    id: "projects",
-    titleTr: "Projeler",
-    icon: "FolderKanban",
-    scope: "hq",
-    items: [
-      {
-        id: "project-list",
-        titleTr: "Yeni Açılışlar",
-        path: "/projeler",
-        icon: "FolderKanban",
-        moduleKey: "projects",
-        scope: "hq",
-      },
-    ],
-  },
 
-  // ========================================
-  // 12. DESTEK & BİLDİRİMLER
-  // ========================================
+  // 8. İletişim
   {
     id: "communication",
-    titleTr: "Destek & İletişim",
+    titleTr: "İletişim",
     icon: "MessageSquare",
     scope: "both",
+    group: "settings",
     items: [
       {
         id: "hq-support",
-        titleTr: "HQ Destek",
+        titleTr: "Merkez Destek",
         path: "/hq-destek",
         icon: "Headphones",
         moduleKey: "support",
@@ -519,7 +451,7 @@ const MENU_BLUEPRINT: SidebarMenuSection[] = [
       },
       {
         id: "usage-guide",
-        titleTr: "Guide",
+        titleTr: "Kılavuz",
         path: "/kullanim-kilavuzu",
         icon: "BookOpen",
         moduleKey: "support",
@@ -529,14 +461,13 @@ const MENU_BLUEPRINT: SidebarMenuSection[] = [
     ],
   },
 
-  // ========================================
-  // 13. YÖNETİM & AYARLAR (Admin only - Key entry points to admin-mega module)
-  // ========================================
+  // 9. Yönetim (Admin + Branches + Projects merged)
   {
     id: "management",
-    titleTr: "Yönetim & Ayarlar",
+    titleTr: "Yönetim",
     icon: "Settings",
     scope: "hq",
+    group: "settings",
     items: [
       {
         id: "admin-panel",
@@ -548,10 +479,26 @@ const MENU_BLUEPRINT: SidebarMenuSection[] = [
       },
       {
         id: "users",
-        titleTr: "Kullanıcı ve Yetki Yönetimi",
+        titleTr: "Kullanıcılar",
         path: "/admin/kullanicilar",
         icon: "Users",
         moduleKey: "users",
+        scope: "hq",
+      },
+      {
+        id: "branches-list",
+        titleTr: "Şubeler",
+        path: "/subeler",
+        icon: "Building2",
+        moduleKey: "branches",
+        scope: "hq",
+      },
+      {
+        id: "project-list",
+        titleTr: "Projeler",
+        path: "/projeler",
+        icon: "FolderKanban",
+        moduleKey: "projects",
         scope: "hq",
       },
       {
@@ -564,7 +511,7 @@ const MENU_BLUEPRINT: SidebarMenuSection[] = [
       },
       {
         id: "settings",
-        titleTr: "Sistem Ayarları",
+        titleTr: "Ayarlar",
         path: "/admin/ayarlar",
         icon: "Settings",
         moduleKey: "settings",
@@ -572,7 +519,7 @@ const MENU_BLUEPRINT: SidebarMenuSection[] = [
       },
       {
         id: "backup-security",
-        titleTr: "Yedekleme & Güvenlik",
+        titleTr: "Yedekleme",
         path: "/admin/yedekleme",
         icon: "HardDrive",
         moduleKey: "admin_settings",

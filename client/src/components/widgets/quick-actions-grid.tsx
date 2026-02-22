@@ -44,7 +44,7 @@ const allActions: QuickAction[] = [
   },
   { 
     id: "checklist", 
-    label: "Checklist", 
+    label: "Kontrol Listesi", 
     icon: ClipboardList, 
     path: "/checklistler",
     color: "text-emerald-600 dark:text-emerald-400",

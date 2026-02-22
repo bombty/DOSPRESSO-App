@@ -21,7 +21,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { queryClient } from "@/lib/queryClient";
-import { type SidebarMenuResponse, type SidebarMenuSection, type SidebarMenuItem as SidebarMenuItemType } from "@shared/schema";
+import { type SidebarMenuResponse, type SidebarMenuSection, type SidebarMenuItem as SidebarMenuItemType, type SidebarMenuGroup } from "@shared/schema";
 import dospressoLogo from "@assets/IMG_6637_1765138781125.png";
 import { useQuery } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -66,6 +66,20 @@ const lucideIconMap: Record<string, any> = {
   "Circle": LucideIcons.Circle,
   "AlertTriangle": LucideIcons.AlertTriangle,
   "Briefcase": LucideIcons.Briefcase,
+  "Factory": LucideIcons.Factory,
+  "Grid": LucideIcons.Grid2x2,
+  "Tablet": LucideIcons.Tablet,
+  "Shield": LucideIcons.Shield,
+  "Timer": LucideIcons.Timer,
+  "UserCheck": LucideIcons.UserCheck,
+  "Headphones": LucideIcons.Headphones,
+  "Calculator": LucideIcons.Calculator,
+  "FolderKanban": LucideIcons.FolderKanban,
+  "Truck": LucideIcons.Truck,
+  "HardDrive": LucideIcons.HardDrive,
+  "LayoutGrid": LucideIcons.LayoutGrid,
+  "ShieldCheck": LucideIcons.ShieldCheck,
+  "MessageSquareHeart": LucideIcons.MessageCircleHeart,
 };
 
 const getIconComponent = (iconName: string | null | undefined) => {
@@ -150,10 +164,17 @@ export function AppSidebar() {
     }
   };
 
-  // Group sections by scope for visual organization
-  const branchSections = sections.filter(s => s.scope === 'branch');
-  const hqSections = sections.filter(s => s.scope === 'hq');
-  const bothSections = sections.filter(s => s.scope === 'both');
+  const GROUP_LABELS: Record<SidebarMenuGroup, string> = {
+    operations: "Operasyon",
+    management: "Yönetim & Denetim",
+    settings: "Ayarlar & Destek",
+  };
+  const GROUP_ORDER: SidebarMenuGroup[] = ["operations", "management", "settings"];
+  const sectionsByGroup = GROUP_ORDER.map(g => ({
+    group: g,
+    label: GROUP_LABELS[g],
+    items: sections.filter(s => s.group === g),
+  })).filter(g => g.items.length > 0);
 
   const renderMenuSection = (section: SidebarMenuSection) => {
     const IconComponent = getIconComponent(section.icon);
@@ -252,67 +273,16 @@ export function AppSidebar() {
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {/* Branch-scoped sections */}
-              {branchSections.length > 0 && (
-                <>
+              {sectionsByGroup.map((grp, gi) => (
+                <div key={grp.group}>
+                  {gi > 0 && <div className="my-2 border-t" />}
                   <div className="mt-2 mb-2 px-3 py-1 text-xs font-bold uppercase tracking-wide text-muted-foreground">
-                    Şube İşlemleri
+                    {grp.label}
                   </div>
-                  {branchSections.map(renderMenuSection)}
-                </>
-              )}
+                  {grp.items.map(renderMenuSection)}
+                </div>
+              ))}
               
-              {/* HQ-scoped sections */}
-              {hqSections.length > 0 && (
-                <>
-                  {branchSections.length > 0 && <div className="my-2 border-t" />}
-                  <div className="mt-2 mb-2 px-3 py-1 text-xs font-bold uppercase tracking-wide text-muted-foreground">
-                    Merkez (HQ)
-                  </div>
-                  {hqSections.map(renderMenuSection)}
-                </>
-              )}
-              
-              {/* Both-scoped sections (shared) */}
-              {bothSections.length > 0 && (
-                <>
-                  {(branchSections.length > 0 || hqSections.length > 0) && <div className="my-2 border-t" />}
-                  <div className="mt-2 mb-2 px-3 py-1 text-xs font-bold uppercase tracking-wide text-muted-foreground">
-                    Genel İşlemler
-                  </div>
-                  {bothSections.map(renderMenuSection)}
-                </>
-              )}
-              
-              {/* Academy Link - Hidden for muhasebe, satinalma */}
-              {user?.role !== "muhasebe" && user?.role !== "muhasebe_ik" && user?.role !== "satinalma" && (
-                <>
-                  {(branchSections.length > 0 || hqSections.length > 0 || bothSections.length > 0) && <div className="my-2 border-t" />}
-                  <div className="mt-2 mb-2 px-3 py-1 text-xs font-bold uppercase tracking-wide text-muted-foreground">
-                    Eğitim
-                  </div>
-                  <SidebarMenuItem>
-                    <SidebarMenuButton asChild isActive={location === "/akademi"} data-testid="link-academy">
-                      <Link href="/akademi">
-                        <LucideIcons.Trophy className="h-4 w-4" />
-                        <span>Akademi</span>
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                  {user?.role === "admin" && (
-                    <SidebarMenuItem>
-                      <SidebarMenuButton asChild isActive={location === "/akademi-hq"} data-testid="link-academy-hq">
-                        <Link href="/akademi-hq">
-                          <LucideIcons.Settings className="h-4 w-4" />
-                          <span>Akademi Yönetimi</span>
-                        </Link>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                  )}
-                </>
-              )}
-              
-              {/* Error state */}
               {isError && sections.length === 0 && (
                 <div className="p-4 text-sm text-muted-foreground text-center">
                   Menü yüklenemedi
@@ -324,12 +294,6 @@ export function AppSidebar() {
       </SidebarContent>
 
       <SidebarFooter className="border-t p-2">
-        <Link href="/kullanim-kilavuzu">
-          <SidebarMenuButton isActive={location === "/kullanim-kilavuzu"} data-testid="link-usage-guide-footer">
-            <LucideIcons.BookOpen className="h-4 w-4" />
-            <span>Guide</span>
-          </SidebarMenuButton>
-        </Link>
         <div className="flex items-center gap-3 pt-2">
           <Avatar className="h-10 w-10">
             <AvatarImage src={user?.profileImageUrl || undefined} />
