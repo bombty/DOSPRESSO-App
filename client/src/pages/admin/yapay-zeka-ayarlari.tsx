@@ -27,7 +27,10 @@ import {
   Brain,
   RefreshCw,
   AlertTriangle,
-  Database
+  Database,
+  Clock,
+  Activity,
+  Info
 } from "lucide-react";
 
 const AI_PROVIDERS = [
@@ -36,22 +39,42 @@ const AI_PROVIDERS = [
   { value: "anthropic", label: "Anthropic Claude", icon: Brain, color: "text-purple-500" },
 ];
 
-const OPENAI_MODELS = {
-  chat: ["gpt-4o-mini", "gpt-4o", "gpt-4-turbo", "gpt-3.5-turbo"],
-  embedding: ["text-embedding-3-small", "text-embedding-3-large", "text-embedding-ada-002"],
-  vision: ["gpt-4o", "gpt-4o-mini", "gpt-4-turbo"],
+const FALLBACK_MODELS: Record<string, { chat: string[], vision: string[], embedding: string[] }> = {
+  openai: {
+    chat: ["gpt-4o", "gpt-4o-mini", "gpt-4.1", "gpt-4.1-mini", "gpt-4.1-nano", "gpt-4-turbo", "gpt-3.5-turbo", "o3-mini"],
+    vision: ["gpt-4o", "gpt-4o-mini", "gpt-4.1", "gpt-4.1-mini", "gpt-4-turbo"],
+    embedding: ["text-embedding-3-small", "text-embedding-3-large", "text-embedding-ada-002"],
+  },
+  gemini: {
+    chat: ["gemini-2.5-pro-preview-06-05", "gemini-2.5-flash-preview-05-20", "gemini-2.0-flash", "gemini-2.0-flash-lite", "gemini-1.5-pro", "gemini-1.5-flash"],
+    vision: ["gemini-2.5-pro-preview-06-05", "gemini-2.5-flash-preview-05-20", "gemini-2.0-flash", "gemini-1.5-pro", "gemini-1.5-flash"],
+    embedding: ["text-embedding-004"],
+  },
+  anthropic: {
+    chat: ["claude-sonnet-4-20250514", "claude-3-7-sonnet-20250219", "claude-3-5-sonnet-20241022", "claude-3-5-haiku-20241022", "claude-3-opus-20240229"],
+    vision: ["claude-sonnet-4-20250514", "claude-3-7-sonnet-20250219", "claude-3-5-sonnet-20241022", "claude-3-opus-20240229"],
+    embedding: [],
+  },
 };
 
-const GEMINI_MODELS = {
-  chat: ["gemini-1.5-pro", "gemini-1.5-flash", "gemini-pro"],
-  embedding: ["text-embedding-004", "embedding-001"],
-  vision: ["gemini-1.5-pro", "gemini-1.5-flash", "gemini-pro-vision"],
-};
+interface ModelsResponse {
+  provider: string;
+  source: string;
+  models: { chat: string[]; vision: string[]; embedding: string[] };
+  availableCount?: number;
+  lastUpdated?: string;
+}
 
-const ANTHROPIC_MODELS = {
-  chat: ["claude-3-5-sonnet-20241022", "claude-3-opus-20240229", "claude-3-haiku-20240307"],
-  vision: ["claude-3-5-sonnet-20241022", "claude-3-opus-20240229", "claude-3-haiku-20240307"],
-};
+interface TestConnectionResult {
+  ok: boolean;
+  provider: string;
+  requestedModel?: string;
+  actualModel?: string;
+  latencyMs?: number;
+  message?: string;
+  error?: string;
+  hint?: string;
+}
 
 interface AISettings {
   id: number;
@@ -80,7 +103,7 @@ export default function AdminYapayZekaAyarlari() {
   const { toast } = useToast();
   const [showApiKey, setShowApiKey] = useState<Record<string, boolean>>({});
   const [isTesting, setIsTesting] = useState(false);
-  const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
+  const [testResult, setTestResult] = useState<TestConnectionResult | null>(null);
   const [isReEmbedding, setIsReEmbedding] = useState(false);
   const [reEmbedResult, setReEmbedResult] = useState<{ success: boolean; message: string; processed?: number; failed?: number; total?: number } | null>(null);
   const [savedProvider, setSavedProvider] = useState<string | null>(null);
@@ -111,6 +134,24 @@ export default function AdminYapayZekaAyarlari() {
   const { data: settings, isLoading } = useQuery<AISettings>({
     queryKey: ["/api/admin/ai-settings"],
   });
+
+  const { data: dynamicModels } = useQuery<ModelsResponse>({
+    queryKey: ["/api/admin/ai/models", formData.provider],
+    queryFn: async () => {
+      const resp = await fetch(`/api/admin/ai/models?provider=${formData.provider}`);
+      if (!resp.ok) return null;
+      return resp.json();
+    },
+    enabled: !!formData.provider,
+    staleTime: 6 * 60 * 60 * 1000,
+  });
+
+  const getModels = (provider: string, type: "chat" | "vision" | "embedding"): string[] => {
+    if (dynamicModels?.provider === provider && dynamicModels.models?.[type]?.length) {
+      return dynamicModels.models[type];
+    }
+    return FALLBACK_MODELS[provider]?.[type] || [];
+  };
 
   useEffect(() => {
     if (settings) {
@@ -144,9 +185,9 @@ export default function AdminYapayZekaAyarlari() {
         provider: formData.provider,
       });
       const result = await response.json();
-      setTestResult({ success: result.success, message: result.message });
+      setTestResult(result);
     } catch (error) {
-      setTestResult({ success: false, message: "Bağlantı testi başarısız" });
+      setTestResult({ ok: false, provider: formData.provider || "unknown", error: "Bağlantı testi başarısız" });
     } finally {
       setIsTesting(false);
     }
@@ -337,7 +378,7 @@ export default function AdminYapayZekaAyarlari() {
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          {OPENAI_MODELS.chat.map(model => (
+                          {getModels("openai", "chat").map(model => (
                             <SelectItem key={model} value={model}>{model}</SelectItem>
                           ))}
                         </SelectContent>
@@ -353,7 +394,7 @@ export default function AdminYapayZekaAyarlari() {
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          {OPENAI_MODELS.embedding.map(model => (
+                          {getModels("openai", "embedding").map(model => (
                             <SelectItem key={model} value={model}>{model}</SelectItem>
                           ))}
                         </SelectContent>
@@ -369,13 +410,22 @@ export default function AdminYapayZekaAyarlari() {
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          {OPENAI_MODELS.vision.map(model => (
+                          {getModels("openai", "vision").map(model => (
                             <SelectItem key={model} value={model}>{model}</SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
                     </div>
                   </div>
+                  {dynamicModels?.source === "live_api" && dynamicModels.provider === "openai" && (
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground pt-2">
+                      <Activity className="h-3 w-3" />
+                      <span>API&apos;den {dynamicModels.availableCount} model bulundu, filtrelendi</span>
+                      {dynamicModels.lastUpdated && (
+                        <span>({new Date(dynamicModels.lastUpdated).toLocaleTimeString("tr-TR")})</span>
+                      )}
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </TabsContent>
@@ -402,7 +452,7 @@ export default function AdminYapayZekaAyarlari() {
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          {GEMINI_MODELS.chat.map(model => (
+                          {getModels("gemini", "chat").map(model => (
                             <SelectItem key={model} value={model}>{model}</SelectItem>
                           ))}
                         </SelectContent>
@@ -418,7 +468,7 @@ export default function AdminYapayZekaAyarlari() {
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          {GEMINI_MODELS.embedding.map(model => (
+                          {getModels("gemini", "embedding").map(model => (
                             <SelectItem key={model} value={model}>{model}</SelectItem>
                           ))}
                         </SelectContent>
@@ -434,7 +484,7 @@ export default function AdminYapayZekaAyarlari() {
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          {GEMINI_MODELS.vision.map(model => (
+                          {getModels("gemini", "vision").map(model => (
                             <SelectItem key={model} value={model}>{model}</SelectItem>
                           ))}
                         </SelectContent>
@@ -470,7 +520,7 @@ export default function AdminYapayZekaAyarlari() {
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          {ANTHROPIC_MODELS.chat.map(model => (
+                          {getModels("anthropic", "chat").map(model => (
                             <SelectItem key={model} value={model}>{model}</SelectItem>
                           ))}
                         </SelectContent>
@@ -486,7 +536,7 @@ export default function AdminYapayZekaAyarlari() {
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          {ANTHROPIC_MODELS.vision.map(model => (
+                          {getModels("anthropic", "vision").map(model => (
                             <SelectItem key={model} value={model}>{model}</SelectItem>
                           ))}
                         </SelectContent>
@@ -573,13 +623,39 @@ export default function AdminYapayZekaAyarlari() {
                 </Button>
 
                 {testResult && (
-                  <div className={`flex items-center gap-2 ${testResult.success ? "text-green-600" : "text-destructive"}`}>
-                    {testResult.success ? (
-                      <Check className="h-4 w-4" />
-                    ) : (
-                      <AlertCircle className="h-4 w-4" />
+                  <div className="space-y-2 flex-1">
+                    <div className={`flex items-center gap-2 ${testResult.ok ? "text-green-600" : "text-destructive"}`}>
+                      {testResult.ok ? (
+                        <Check className="h-4 w-4" />
+                      ) : (
+                        <AlertCircle className="h-4 w-4" />
+                      )}
+                      <span className="text-sm font-medium">
+                        {testResult.ok ? `${AI_PROVIDERS.find(p => p.value === testResult.provider)?.label || testResult.provider} bağlantısı başarılı` : (testResult.error || "Bağlantı başarısız")}
+                      </span>
+                    </div>
+                    {testResult.ok && (
+                      <div className="flex flex-wrap gap-2">
+                        {testResult.latencyMs && (
+                          <Badge variant="secondary" className="gap-1">
+                            <Clock className="h-3 w-3" />
+                            {testResult.latencyMs}ms
+                          </Badge>
+                        )}
+                        {testResult.actualModel && (
+                          <Badge variant="secondary" className="gap-1">
+                            <Bot className="h-3 w-3" />
+                            {testResult.actualModel}
+                          </Badge>
+                        )}
+                      </div>
                     )}
-                    <span className="text-sm">{testResult.message}</span>
+                    {testResult.hint && (
+                      <div className="flex items-center gap-1 text-xs text-amber-600">
+                        <Info className="h-3 w-3" />
+                        <span>{testResult.hint}</span>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

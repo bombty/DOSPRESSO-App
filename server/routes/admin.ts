@@ -5,6 +5,7 @@ import { db } from "../db";
 import { eq, desc, asc, sql, and, or, count, isNull } from "drizzle-orm";
 import { z } from "zod";
 import bcrypt from "bcrypt";
+import { clearAIConfigCache, getAIConfig, getActiveProvider } from "../ai";
 import {
   hasPermission,
   isHQRole,
@@ -1812,6 +1813,8 @@ const router = Router();
       
       auditLog(req, { eventType: "settings.changed", action: "updated", resource: "ai_settings", details: { provider: data.provider } });
 
+      clearAIConfigCache();
+
       res.json({ success: true, id: result.id });
     } catch (error: any) {
       console.error("Save AI settings error:", error);
@@ -1828,44 +1831,212 @@ const router = Router();
       
       const { provider } = req.body;
       const [settings] = await db.query.aiSettings.findMany({ limit: 1 });
+      const OpenAI = (await import('openai')).default;
       
-      // Simple test - try to make a basic API call
+      const testPrompt = "Merhaba, bu bir bağlantı testidir. Sadece 'OK' yanıtı ver.";
+
       if (provider === 'openai') {
-        const apiKey = settings?.openaiApiKey || process.env.OPENAI_API_KEY;
+        const apiKey = settings?.openaiApiKey || process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY;
         if (!apiKey) {
-          return res.json({ success: false, message: "OpenAI API anahtarı bulunamadı" });
+          return res.json({ ok: false, provider: "openai", error: "OpenAI API anahtarı bulunamadı", hint: "API anahtarı ayarlardan girilmeli" });
         }
-        
         try {
-          const OpenAI = (await import('openai')).default;
-          const openai = new OpenAI({ apiKey });
-          await openai.models.list();
-          return res.json({ success: true, message: "OpenAI bağlantısı başarılı" });
+          const client = new OpenAI({ 
+            apiKey,
+            baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL || undefined
+          });
+          const model = settings?.openaiChatModel || "gpt-4o-mini";
+          const start = Date.now();
+          const resp = await client.chat.completions.create({
+            model, messages: [{ role: "user", content: testPrompt }], max_tokens: 50,
+          });
+          const latencyMs = Date.now() - start;
+          return res.json({ 
+            ok: true, provider: "openai", requestedModel: model, 
+            actualModel: resp.model || model, latencyMs,
+            message: `OpenAI bağlantısı başarılı (${latencyMs}ms)` 
+          });
         } catch (e: any) {
-          return res.json({ success: false, message: `OpenAI hatası: ${e.message}` });
+          const hint = e.status === 401 ? "API anahtarı geçersiz" : e.status === 429 ? "Rate limit / kota aşıldı" : "Bağlantı hatası";
+          return res.json({ ok: false, provider: "openai", error: e.message, hint });
         }
       }
       
       if (provider === 'gemini') {
         const apiKey = settings?.geminiApiKey;
         if (!apiKey) {
-          return res.json({ success: false, message: "Gemini API anahtarı bulunamadı" });
+          return res.json({ ok: false, provider: "gemini", error: "Gemini API anahtarı bulunamadı", hint: "Google AI Studio'dan API anahtarı alınmalı" });
         }
-        return res.json({ success: true, message: "Gemini yapılandırıldı (test bağlantısı eklenmedi)" });
+        try {
+          const client = new OpenAI({
+            apiKey,
+            baseURL: "https://generativelanguage.googleapis.com/v1beta/openai/",
+          });
+          const model = settings?.geminiChatModel || "gemini-2.0-flash";
+          const start = Date.now();
+          const resp = await client.chat.completions.create({
+            model, messages: [{ role: "user", content: testPrompt }], max_tokens: 50,
+          });
+          const latencyMs = Date.now() - start;
+          return res.json({
+            ok: true, provider: "gemini", requestedModel: model,
+            actualModel: resp.model || model, latencyMs,
+            message: `Gemini bağlantısı başarılı (${latencyMs}ms)`
+          });
+        } catch (e: any) {
+          const hint = e.status === 401 || e.status === 403 ? "API anahtarı geçersiz" : e.status === 429 ? "Kota aşıldı" : "Bağlantı hatası";
+          return res.json({ ok: false, provider: "gemini", error: e.message, hint });
+        }
       }
       
       if (provider === 'anthropic') {
         const apiKey = settings?.anthropicApiKey;
         if (!apiKey) {
-          return res.json({ success: false, message: "Anthropic API anahtarı bulunamadı" });
+          return res.json({ ok: false, provider: "anthropic", error: "Anthropic API anahtarı bulunamadı", hint: "Anthropic Console'dan API anahtarı alınmalı" });
         }
-        return res.json({ success: true, message: "Anthropic yapılandırıldı (test bağlantısı eklenmedi)" });
+        try {
+          const model = settings?.anthropicChatModel || "claude-sonnet-4-20250514";
+          const start = Date.now();
+          const resp = await fetch("https://api.anthropic.com/v1/messages", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "x-api-key": apiKey,
+              "anthropic-version": "2023-06-01",
+            },
+            body: JSON.stringify({
+              model, max_tokens: 50,
+              messages: [{ role: "user", content: testPrompt }],
+            }),
+          });
+          const latencyMs = Date.now() - start;
+          const data = await resp.json() as any;
+          if (!resp.ok) {
+            const hint = resp.status === 401 ? "API anahtarı geçersiz" : resp.status === 429 ? "Rate limit aşıldı" : data?.error?.message || "Bağlantı hatası";
+            return res.json({ ok: false, provider: "anthropic", error: data?.error?.message || "API hatası", hint });
+          }
+          return res.json({
+            ok: true, provider: "anthropic", requestedModel: model,
+            actualModel: data?.model || model, latencyMs,
+            message: `Anthropic bağlantısı başarılı (${latencyMs}ms)`
+          });
+        } catch (e: any) {
+          return res.json({ ok: false, provider: "anthropic", error: e.message, hint: "Ağ bağlantısı hatası" });
+        }
       }
       
-      res.json({ success: false, message: "Bilinmeyen sağlayıcı" });
+      res.json({ ok: false, provider: "unknown", error: "Bilinmeyen sağlayıcı" });
     } catch (error: any) {
       console.error("Test AI connection error:", error);
       res.status(500).json({ success: false, message: "Bağlantı testi başarısız" });
+    }
+  });
+
+  const MODEL_ALLOWLIST: Record<string, { chat: string[], vision: string[], embedding: string[] }> = {
+    openai: {
+      chat: ["gpt-4o", "gpt-4o-mini", "gpt-4.1", "gpt-4.1-mini", "gpt-4.1-nano", "gpt-4-turbo", "gpt-3.5-turbo", "o3-mini"],
+      vision: ["gpt-4o", "gpt-4o-mini", "gpt-4.1", "gpt-4.1-mini", "gpt-4-turbo"],
+      embedding: ["text-embedding-3-small", "text-embedding-3-large", "text-embedding-ada-002"],
+    },
+    gemini: {
+      chat: ["gemini-2.5-pro-preview-06-05", "gemini-2.5-flash-preview-05-20", "gemini-2.0-flash", "gemini-2.0-flash-lite", "gemini-1.5-pro", "gemini-1.5-flash"],
+      vision: ["gemini-2.5-pro-preview-06-05", "gemini-2.5-flash-preview-05-20", "gemini-2.0-flash", "gemini-1.5-pro", "gemini-1.5-flash"],
+      embedding: ["text-embedding-004"],
+    },
+    anthropic: {
+      chat: ["claude-sonnet-4-20250514", "claude-3-7-sonnet-20250219", "claude-3-5-sonnet-20241022", "claude-3-5-haiku-20241022", "claude-3-opus-20240229"],
+      vision: ["claude-sonnet-4-20250514", "claude-3-7-sonnet-20250219", "claude-3-5-sonnet-20241022", "claude-3-opus-20240229"],
+      embedding: [],
+    },
+  };
+  let _modelsCache: Record<string, any> = {};
+  let _modelsCacheTime: Record<string, number> = {};
+  const MODELS_CACHE_TTL = 6 * 60 * 60 * 1000;
+
+  router.get('/api/admin/ai/models', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      if (user.role !== 'admin') {
+        return res.status(403).json({ message: "Admin yetkisi gerekli" });
+      }
+
+      const provider = (req.query.provider as string) || "openai";
+      const allowlist = MODEL_ALLOWLIST[provider];
+      if (!allowlist) {
+        return res.json({ provider, models: { chat: [], vision: [], embedding: [] }, source: "unknown_provider" });
+      }
+
+      const now = Date.now();
+      if (_modelsCache[provider] && _modelsCacheTime[provider] && now - _modelsCacheTime[provider] < MODELS_CACHE_TTL) {
+        return res.json(_modelsCache[provider]);
+      }
+
+      const [settings] = await db.query.aiSettings.findMany({ limit: 1 });
+      let liveModels: string[] = [];
+      let source = "allowlist";
+
+      try {
+        const OpenAI = (await import('openai')).default;
+
+        if (provider === "openai") {
+          const apiKey = settings?.openaiApiKey || process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY;
+          if (apiKey) {
+            const client = new OpenAI({ apiKey });
+            const list = await client.models.list();
+            liveModels = [];
+            for await (const m of list) {
+              liveModels.push(m.id);
+            }
+            source = "live_api";
+          }
+        } else if (provider === "gemini") {
+          const apiKey = settings?.geminiApiKey;
+          if (apiKey) {
+            const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`);
+            if (resp.ok) {
+              const data = await resp.json() as any;
+              liveModels = (data.models || []).map((m: any) => m.name?.replace("models/", "") || m.name);
+              source = "live_api";
+            }
+          }
+        } else if (provider === "anthropic") {
+          source = "allowlist";
+        }
+      } catch (e) {
+        console.warn(`Failed to fetch live models for ${provider}, using allowlist`);
+        source = "allowlist";
+      }
+
+      let result: any;
+      if (liveModels.length > 0) {
+        const liveSet = new Set(liveModels);
+        result = {
+          provider,
+          source,
+          models: {
+            chat: allowlist.chat.filter(m => liveSet.has(m) || source === "allowlist"),
+            vision: allowlist.vision.filter(m => liveSet.has(m) || source === "allowlist"),
+            embedding: allowlist.embedding.filter(m => liveSet.has(m) || source === "allowlist"),
+          },
+          availableCount: liveModels.length,
+          lastUpdated: new Date().toISOString(),
+        };
+      } else {
+        result = {
+          provider,
+          source,
+          models: allowlist,
+          lastUpdated: new Date().toISOString(),
+        };
+      }
+
+      _modelsCache[provider] = result;
+      _modelsCacheTime[provider] = now;
+
+      res.json(result);
+    } catch (error: any) {
+      console.error("Get AI models error:", error);
+      res.status(500).json({ message: "Model listesi alınamadı" });
     }
   });
 

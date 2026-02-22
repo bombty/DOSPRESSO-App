@@ -6,22 +6,140 @@ import { cache, generateCacheKey, aiRateLimiter } from "./cache";
 import { storage } from "./storage";
 import type { SummaryCategoryType, AISummaryResponse, Task, EquipmentFault } from "@shared/schema";
 
-const openai = new OpenAI({
+let openai = new OpenAI({
   baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
   apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY
 });
 
-// Separate client for embeddings (Replit proxy doesn't support embeddings endpoint)
-const embeddingsClient = new OpenAI({
+let embeddingsClient = new OpenAI({
   apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
 });
 
-// Cost-optimized model selection
-// gpt-4o is 60% cheaper than gpt-4-turbo for vision tasks
-const VISION_MODEL = "gpt-4o"; // For photo analysis (task, fault, cleanliness, dress code)
-const CHAT_MODEL = "gpt-4o"; // For RAG Q&A
-const SUMMARY_MODEL = "gpt-4o-mini"; // For dashboard summaries (most cost-efficient)
-const EMBEDDING_MODEL = "text-embedding-3-small"; // Already optimal
+let VISION_MODEL = "gpt-4o";
+let CHAT_MODEL = "gpt-4o";
+let SUMMARY_MODEL = "gpt-4o-mini";
+let EMBEDDING_MODEL = "text-embedding-3-small";
+
+let _aiConfigCache: any = null;
+let _aiConfigCacheTime = 0;
+const AI_CONFIG_CACHE_TTL = 5 * 60 * 1000;
+let _activeProvider = "openai";
+
+export async function getAIConfig() {
+  const now = Date.now();
+  if (_aiConfigCache && now - _aiConfigCacheTime < AI_CONFIG_CACHE_TTL) {
+    return _aiConfigCache;
+  }
+  try {
+    const { db } = await import("./db");
+    const { aiSettings } = await import("@shared/schema");
+    const [settings] = await db.query.aiSettings.findMany({ limit: 1 });
+    if (settings) {
+      _aiConfigCache = settings;
+      _aiConfigCacheTime = now;
+      return settings;
+    }
+  } catch (e) {
+    console.warn("Failed to load AI settings from DB, using defaults");
+  }
+  return {
+    provider: "openai",
+    openaiApiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY,
+    openaiChatModel: "gpt-4o",
+    openaiVisionModel: "gpt-4o",
+    openaiEmbeddingModel: "text-embedding-3-small",
+    geminiApiKey: null,
+    geminiChatModel: "gemini-2.0-flash",
+    geminiVisionModel: "gemini-2.0-flash",
+    geminiEmbeddingModel: "text-embedding-004",
+    anthropicApiKey: null,
+    anthropicChatModel: "claude-sonnet-4-20250514",
+    anthropicVisionModel: "claude-sonnet-4-20250514",
+    temperature: 0.7,
+    maxTokens: 2000,
+  };
+}
+
+export function clearAIConfigCache() {
+  _aiConfigCache = null;
+  _aiConfigCacheTime = 0;
+}
+
+async function refreshAIConfig() {
+  const config = await getAIConfig();
+  const provider = config.provider || "openai";
+
+  if (_activeProvider === provider && _aiConfigCacheTime > 0) {
+    return;
+  }
+
+  _activeProvider = provider;
+
+  switch (provider) {
+    case "gemini": {
+      const apiKey = config.geminiApiKey;
+      if (apiKey) {
+        openai = new OpenAI({
+          apiKey,
+          baseURL: "https://generativelanguage.googleapis.com/v1beta/openai/",
+        });
+        embeddingsClient = new OpenAI({
+          apiKey,
+          baseURL: "https://generativelanguage.googleapis.com/v1beta/openai/",
+        });
+      }
+      VISION_MODEL = config.geminiVisionModel || "gemini-2.0-flash";
+      CHAT_MODEL = config.geminiChatModel || "gemini-2.0-flash";
+      SUMMARY_MODEL = config.geminiChatModel || "gemini-2.0-flash";
+      EMBEDDING_MODEL = config.geminiEmbeddingModel || "text-embedding-004";
+      break;
+    }
+    case "anthropic": {
+      const apiKey = config.anthropicApiKey;
+      if (apiKey) {
+        openai = new OpenAI({
+          apiKey,
+          baseURL: "https://api.anthropic.com/v1/",
+          defaultHeaders: { "anthropic-version": "2023-06-01" },
+        });
+      }
+      VISION_MODEL = config.anthropicVisionModel || "claude-sonnet-4-20250514";
+      CHAT_MODEL = config.anthropicChatModel || "claude-sonnet-4-20250514";
+      SUMMARY_MODEL = config.anthropicChatModel || "claude-sonnet-4-20250514";
+      EMBEDDING_MODEL = "text-embedding-3-small";
+      break;
+    }
+    case "openai":
+    default: {
+      const apiKey = config.openaiApiKey || process.env.AI_INTEGRATIONS_OPENAI_API_KEY;
+      openai = new OpenAI({
+        baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
+        apiKey,
+      });
+      embeddingsClient = new OpenAI({ apiKey });
+      VISION_MODEL = config.openaiVisionModel || "gpt-4o";
+      CHAT_MODEL = config.openaiChatModel || "gpt-4o";
+      SUMMARY_MODEL = "gpt-4o-mini";
+      EMBEDDING_MODEL = config.openaiEmbeddingModel || "text-embedding-3-small";
+      break;
+    }
+  }
+  console.log(`🤖 AI provider: ${provider}, chat: ${CHAT_MODEL}, vision: ${VISION_MODEL}`);
+}
+
+async function aiChatCall(params: any) {
+  await refreshAIConfig();
+  return openai.chat.completions.create(params);
+}
+
+async function aiEmbeddingCall(params: any) {
+  await refreshAIConfig();
+  return embeddingsClient.embeddings.create(params);
+}
+
+export function getActiveProvider() {
+  return _activeProvider;
+}
 
 // Pricing map (per 1K tokens) - Updated as of 2024
 const PRICING = {
@@ -476,8 +594,8 @@ export async function analyzeTaskPhoto(
     }
     
     const startTime = Date.now();
-    const response = await openai.chat.completions.create({
-      model: VISION_MODEL, // gpt-4o: 60% cheaper than gpt-4-turbo
+    const response = await aiChatCall({
+      model: VISION_MODEL,
       messages: [
         {
           role: "user",
@@ -597,7 +715,7 @@ export async function analyzeFaultPhoto(
   }
 
   try {
-    const response = await openai.chat.completions.create({
+    const response = await aiChatCall({
       model: VISION_MODEL, // gpt-4o: cost-optimized
       messages: [
         {
@@ -677,7 +795,7 @@ export async function analyzeCleanlinessPhoto(
   locationDescription: string = "cafe alanı"
 ): Promise<CleanlinessAnalysis> {
   try {
-    const response = await openai.chat.completions.create({
+    const response = await aiChatCall({
       model: VISION_MODEL,
       messages: [
         {
@@ -773,7 +891,7 @@ export async function analyzeDressCodePhoto(
   }
 
   try {
-    const response = await openai.chat.completions.create({
+    const response = await aiChatCall({
       model: VISION_MODEL,
       messages: [
         {
@@ -884,8 +1002,8 @@ function chunkText(text: string, maxChunkSize: number = 1000): string[] {
 // Generate embedding for a text chunk
 export async function generateEmbedding(text: string): Promise<number[]> {
   try {
-    const response = await embeddingsClient.embeddings.create({
-      model: "text-embedding-3-small",
+    const response = await aiEmbeddingCall({
+      model: EMBEDDING_MODEL,
       input: text,
       encoding_format: "float",
     });
@@ -949,7 +1067,7 @@ export async function answerQuestionWithRAG(
       .map((chunk, i) => `[${i + 1}] ${chunk.chunkText}`)
       .join("\n\n");
 
-    const response = await openai.chat.completions.create({
+    const response = await aiChatCall({
       model: CHAT_MODEL, // gpt-4o for text generation
       messages: [
         {
@@ -1088,7 +1206,7 @@ export async function answerTechnicalQuestion(
   try {
     const systemPrompt = buildDospressoSystemPrompt(equipmentContext);
 
-    const response = await openai.chat.completions.create({
+    const response = await aiChatCall({
       model: CHAT_MODEL,
       messages: [
         { role: "system", content: systemPrompt },
@@ -1189,7 +1307,7 @@ export async function generateShiftPlan(
     const ptEmployees = employees.filter(e => e.employmentType === 'parttime');
     const expectedShiftCount = (ftEmployees.length * 6) + (ptEmployees.length * 3);
 
-    const response = await openai.chat.completions.create({
+    const response = await aiChatCall({
       model: CHAT_MODEL,
       messages: [
         {
@@ -1569,7 +1687,7 @@ export async function generateAISummary(
     const prompt = await buildSummaryPrompt(category, user);
 
     // Call OpenAI with GPT-4o-mini (cost-efficient)
-    const response = await openai.chat.completions.create({
+    const response = await aiChatCall({
       model: SUMMARY_MODEL,
       messages: [
         {
@@ -1723,7 +1841,7 @@ export async function generateDashboardInsights(
     const prompt = await buildDashboardPrompt(role, branchId);
 
     // Call OpenAI with GPT-4o-mini (cost-efficient)
-    const response = await openai.chat.completions.create({
+    const response = await aiChatCall({
       model: SUMMARY_MODEL,
       messages: [
         {
@@ -1833,7 +1951,7 @@ ${lessonContent}
   ]
 }`;
 
-    const response = await openai.chat.completions.create({
+    const response = await aiChatCall({
       model: SUMMARY_MODEL, // gpt-4o-mini for cost optimization
       messages: [
         {
@@ -1914,7 +2032,7 @@ ${lessonContent}
   ]
 }`;
 
-    const response = await openai.chat.completions.create({
+    const response = await aiChatCall({
       model: SUMMARY_MODEL, // gpt-4o-mini for cost optimization
       messages: [
         {
@@ -1978,7 +2096,7 @@ export async function evaluateBranchPerformance(
   }
 
   try {
-    const response = await openai.chat.completions.create({
+    const response = await aiChatCall({
       model: SUMMARY_MODEL, // gpt-4o-mini for cost optimization
       messages: [
         {
@@ -2100,7 +2218,7 @@ JSON formatında yanıt ver: {
   "recommendedAction": "Önerilen eylem (onarım/değişim/teknik destek)"
 }`;
 
-    const response = await openai.chat.completions.create({
+    const response = await aiChatCall({
       model: CHAT_MODEL,
       messages: [
         { role: "system", content: systemPrompt },
@@ -2253,7 +2371,7 @@ ZORUNLU KURALLAR:
 - Ekipman bahsedilirse: kalibrasyon/ayar/bakım bilgilerini resmi kaynaklardan yansıt`;
 
   try {
-    const response = await openai.chat.completions.create({
+    const response = await aiChatCall({
       model: CHAT_MODEL,
       messages: [
         { role: "system", content: systemPrompt },
@@ -2348,7 +2466,7 @@ export async function extractTextFromImage(
   }
 
   try {
-    const response = await openai.chat.completions.create({
+    const response = await aiChatCall({
       model: VISION_MODEL,
       messages: [
         {
@@ -2541,7 +2659,7 @@ Veriler: ${data.activeFaults} aktif arıza, ${data.pendingTasks} bekleyen görev
 Önce kısa durum özeti ver, sonra 1-2 somut aksiyon önerisi ekle (örn: "Öneri: Geciken checklistleri tamamlayın" veya "Öneri: Kritik ekipmanları öncelikli olarak kontrol edin"). Maksimum 4 satır, düz metin.`;
     }
 
-    const response = await openai.chat.completions.create({
+    const response = await aiChatCall({
       model: SUMMARY_MODEL,
       messages: [
         { role: "system", content: systemPrompt },
@@ -2581,7 +2699,7 @@ export async function generatePersonalSummaryReport(
   }
 
   try {
-    const response = await openai.chat.completions.create({
+    const response = await aiChatCall({
       model: SUMMARY_MODEL,
       messages: [
         {
@@ -2639,7 +2757,7 @@ export async function generateArticleDraft(
   const prompt = categoryPrompts[category] || categoryPrompts.procedure;
 
   try {
-    const response = await openai.chat.completions.create({
+    const response = await aiChatCall({
       model: SUMMARY_MODEL, // gpt-4o-mini: cost-efficient for text generation
       messages: [
         {
@@ -2745,7 +2863,7 @@ export async function verifyChecklistPhoto(
   const verificationPrompt = AI_VERIFICATION_PROMPTS[verificationType] || AI_VERIFICATION_PROMPTS.general;
 
   try {
-    const response = await openai.chat.completions.create({
+    const response = await aiChatCall({
       model: VISION_MODEL, // gpt-4o for vision tasks
       messages: [
         {
@@ -2853,7 +2971,7 @@ export async function verifyPhotoQuality(
   }
 
   try {
-    const response = await openai.chat.completions.create({
+    const response = await aiChatCall({
       model: VISION_MODEL,
       messages: [
         {
@@ -2963,8 +3081,8 @@ Kılavuz/Troubleshooting Metni:
 ${manualText.substring(0, 8000)}`;
 
   try {
-    const response = await openai.chat.completions.create({
-      model: "gpt-4o",
+    const response = await aiChatCall({
+      model: CHAT_MODEL,
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: userPrompt }
@@ -3064,8 +3182,8 @@ Bu ekipman bir DOSPRESSO kahve franchise şubesinde kullanılmaktadır. Barista 
 En az 4 farklı kategori için içerik oluştur (bakım, arıza giderme, kullanım, güvenlik).`;
 
   try {
-    const response = await openai.chat.completions.create({
-      model: "gpt-4o",
+    const response = await aiChatCall({
+      model: CHAT_MODEL,
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: userPrompt }
