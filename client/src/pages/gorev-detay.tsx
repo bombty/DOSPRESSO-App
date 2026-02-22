@@ -1354,55 +1354,78 @@ export default function GorevDetay() {
               </div>
             )}
 
-            {taskHistory && taskHistory.map((entry: any, idx: number) => {
-              const isStatusChange = entry.previousStatus && entry.previousStatus !== entry.newStatus;
-              const isSystemMessage = isStatusChange && !entry.note;
-              const isCurrentUser = entry.changedById === user?.id;
-              const senderName = entry.changedByName || 'Sistem';
+            {(() => {
+              const senderColors = ['text-blue-600 dark:text-blue-400', 'text-emerald-600 dark:text-emerald-400', 'text-orange-600 dark:text-orange-400', 'text-purple-600 dark:text-purple-400', 'text-rose-600 dark:text-rose-400', 'text-cyan-600 dark:text-cyan-400'];
+              const senderColorMap: Record<string, string> = {};
+              let colorIdx = 0;
+              const getSenderColor = (senderId: string) => {
+                if (!senderColorMap[senderId]) {
+                  senderColorMap[senderId] = senderColors[colorIdx % senderColors.length];
+                  colorIdx++;
+                }
+                return senderColorMap[senderId];
+              };
+              const isGroupTask = (task as any).assignees && (task as any).assignees.length > 1;
 
-              if (isSystemMessage) {
+              return taskHistory && taskHistory.map((entry: any, idx: number) => {
+                const isStatusChange = entry.previousStatus && entry.previousStatus !== entry.newStatus;
+                const isSystemMessage = isStatusChange && !entry.note;
+                const isCurrentUser = entry.changedById === currentUser?.id;
+                const senderName = entry.changedByName || 'Sistem';
+
+                if (isSystemMessage) {
+                  return (
+                    <div key={entry.id || idx} className="flex items-center justify-center" data-testid={`thread-event-${entry.id}`}>
+                      <span className="text-xs text-muted-foreground bg-muted px-3 py-1 rounded-full">
+                        {senderName}: {statusLabels[entry.newStatus] || entry.newStatus} - {entry.createdAt ? new Date(entry.createdAt).toLocaleDateString("tr-TR", {day:'numeric',month:'short'}) + ' ' + new Date(entry.createdAt).toLocaleTimeString("tr-TR", {hour:'2-digit',minute:'2-digit'}) : ""}
+                      </span>
+                    </div>
+                  );
+                }
+
+                const senderInitials = senderName.split(' ').map((n: string) => n[0]).join('').substring(0, 2);
+                const assigneeData = isGroupTask ? (task as any).assignees?.find((a: any) => a.userId === entry.changedById) : null;
+
                 return (
-                  <div key={entry.id || idx} className="flex items-center justify-center" data-testid={`thread-event-${entry.id}`}>
-                    <span className="text-xs text-muted-foreground bg-muted px-3 py-1 rounded-full">
-                      {senderName}: {statusLabels[entry.newStatus] || entry.newStatus} - {entry.createdAt ? new Date(entry.createdAt).toLocaleDateString("tr-TR", {day:'numeric',month:'short'}) + ' ' + new Date(entry.createdAt).toLocaleTimeString("tr-TR", {hour:'2-digit',minute:'2-digit'}) : ""}
-                    </span>
+                  <div
+                    key={entry.id || idx}
+                    className={`flex ${isCurrentUser ? 'justify-end' : 'justify-start'} gap-2`}
+                    data-testid={`thread-message-${entry.id}`}
+                  >
+                    {!isCurrentUser && isGroupTask && (
+                      <Avatar className="h-6 w-6 mt-1 shrink-0">
+                        <AvatarImage src={assigneeData?.userProfileImage} />
+                        <AvatarFallback className="text-[8px]">{senderInitials}</AvatarFallback>
+                      </Avatar>
+                    )}
+                    <div className={`max-w-[80%] rounded-lg p-3 ${
+                      isCurrentUser 
+                        ? 'bg-primary text-primary-foreground rounded-br-sm' 
+                        : 'bg-muted rounded-bl-sm'
+                    }`}>
+                      {!isCurrentUser && (
+                        <div className="flex items-center gap-2 mb-1 flex-wrap">
+                          <span className={`text-xs font-semibold ${isGroupTask ? getSenderColor(entry.changedById || '') : 'text-foreground'}`}>
+                            {senderName}
+                          </span>
+                        </div>
+                      )}
+                      {isStatusChange && (
+                        <p className={`text-xs mb-1 ${isCurrentUser ? 'text-primary-foreground/70' : 'text-muted-foreground'}`}>
+                          {statusLabels[entry.newStatus] || entry.newStatus}
+                        </p>
+                      )}
+                      {entry.note && (
+                        <p className="text-sm break-words">{entry.note}</p>
+                      )}
+                      <p className={`text-[10px] mt-1 ${isCurrentUser ? 'text-primary-foreground/60' : 'text-muted-foreground'}`}>
+                        {entry.createdAt ? new Date(entry.createdAt).toLocaleDateString("tr-TR", {day:'numeric',month:'short'}) + ' ' + new Date(entry.createdAt).toLocaleTimeString("tr-TR", {hour:'2-digit',minute:'2-digit'}) : ""}
+                      </p>
+                    </div>
                   </div>
                 );
-              }
-
-              return (
-                <div
-                  key={entry.id || idx}
-                  className={`flex ${isCurrentUser ? 'justify-end' : 'justify-start'}`}
-                  data-testid={`thread-message-${entry.id}`}
-                >
-                  <div className={`max-w-[80%] rounded-lg p-3 ${
-                    isCurrentUser 
-                      ? 'bg-primary text-primary-foreground rounded-br-sm' 
-                      : 'bg-muted rounded-bl-sm'
-                  }`}>
-                    {!isCurrentUser && (
-                      <div className="flex items-center gap-2 mb-1 flex-wrap">
-                        <span className={`text-xs font-semibold ${isCurrentUser ? 'text-primary-foreground/80' : 'text-foreground'}`}>
-                          {senderName}
-                        </span>
-                      </div>
-                    )}
-                    {isStatusChange && (
-                      <p className={`text-xs mb-1 ${isCurrentUser ? 'text-primary-foreground/70' : 'text-muted-foreground'}`}>
-                        {statusLabels[entry.newStatus] || entry.newStatus}
-                      </p>
-                    )}
-                    {entry.note && (
-                      <p className="text-sm break-words">{entry.note}</p>
-                    )}
-                    <p className={`text-[10px] mt-1 ${isCurrentUser ? 'text-primary-foreground/60' : 'text-muted-foreground'}`}>
-                      {entry.createdAt ? new Date(entry.createdAt).toLocaleDateString("tr-TR", {day:'numeric',month:'short'}) + ' ' + new Date(entry.createdAt).toLocaleTimeString("tr-TR", {hour:'2-digit',minute:'2-digit'}) : ""}
-                    </p>
-                  </div>
-                </div>
-              );
-            })}
+              });
+            })()}
 
             {task.status === "onaylandi" && (
               <div className="flex items-center justify-center">

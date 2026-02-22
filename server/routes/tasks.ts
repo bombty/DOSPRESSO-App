@@ -1289,7 +1289,12 @@ const router = Router();
       const isHQ = !isBranchRole(user.role as UserRoleType);
       
       if (!isAssigner && !isAssignee && !isHQ) {
-        return res.status(403).json({ message: "Bu göreve not ekleyemezsiniz" });
+        const isAdditionalAssignee = await db.select().from(taskAssignees)
+          .where(and(eq(taskAssignees.taskId, taskId), eq(taskAssignees.userId, user.id)))
+          .then(rows => rows.length > 0);
+        if (!isAdditionalAssignee) {
+          return res.status(403).json({ message: "Bu göreve not ekleyemezsiniz" });
+        }
       }
       
       await storage.addNoteToTask(taskId, note.trim(), user.id);
@@ -1325,7 +1330,12 @@ const router = Router();
       const isHQ = isHQRole(user.role as UserRoleType);
 
       if (!isAssignee && !isAssigner && !isHQ) {
-        return res.status(403).json({ message: "Bu göreve fotoğraf yükleyemezsiniz" });
+        const isAdditionalAssignee = await db.select().from(taskAssignees)
+          .where(and(eq(taskAssignees.taskId, taskId), eq(taskAssignees.userId, user.id)))
+          .then(rows => rows.length > 0);
+        if (!isAdditionalAssignee) {
+          return res.status(403).json({ message: "Bu göreve fotoğraf yükleyemezsiniz" });
+        }
       }
 
       const updatedTask = await storage.updateTask(taskId, {
@@ -1814,7 +1824,12 @@ const router = Router();
         
         const isSupervisor = user.role === 'supervisor' || user.role === 'supervisor_buddy';
         if (!isSupervisor && task.assignedToId !== user.id && task.assignedById !== user.id) {
-          return res.status(403).json({ message: "Bu göreve erişim yetkiniz yok" });
+          const isAdditionalAssignee = await db.select().from(taskAssignees)
+            .where(and(eq(taskAssignees.taskId, taskId), eq(taskAssignees.userId, user.id)))
+            .then(rows => rows.length > 0);
+          if (!isAdditionalAssignee) {
+            return res.status(403).json({ message: "Bu göreve erişim yetkiniz yok" });
+          }
         }
       }
       
