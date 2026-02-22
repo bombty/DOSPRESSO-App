@@ -32,7 +32,7 @@ The frontend utilizes React 18+ with TypeScript and Vite, employing Shadcn/ui (N
 - **AI Integration**: AI photo verification for tasks, RAG-enabled knowledge base search, AI Academy Chat Assistant, Adaptive Learning Engine, and AI-powered smart recommendations.
 - **HR & Shift Management**: Personnel management, leave requests, overtime, attendance, AI-powered fair shift planning.
 - **Enhanced Analytics Dashboard**: Tabbed interface showing daily/weekly/monthly metrics with AI-generated summaries.
-- **DOSPRESSO Academy (LMS)**: Comprehensive training system including career progression, quiz system, gamification, certification, AI learning paths, and advanced analytics.
+- **DOSPRESSO Academy (LMS)**: Comprehensive training system including career progression, quiz system, gamification, certification, AI learning paths, and advanced analytics. Academy V2 spec docs at `docs/` define self-guiding learning with 14-day onboarding, 5-level gate-based career progression (Gate-0 through Gate-4), Next Best Action engine, and KPI-driven training recommendations.
 - **Daily Task Guidance (Bugünün Görevleri)**: Role-based task templates with personalized task lists, completion tracking, AI-powered recommendations, and progress visualization.
 - **Advanced Task Workflow**: Enhanced task lifecycle with assignee-assigner approval flow, question-answer system, deadline extension requests, scheduled delivery, HQ bulk assignment, leave-day task hiding, cowork-style subtask management (claim/unclaim steps), and expanded checker/verifier system with group chat integration.
 - **Checklist Management System**: Time-windowed tasks with HQ/Supervisor editable time slots, photo validation, manager notifications, performance weighting, and daily reminders.
@@ -77,6 +77,7 @@ The frontend utilizes React 18+ with TypeScript and Vite, employing Shadcn/ui (N
 - **Reminder System**: 5-minute interval checks for task reminders, overdue notifications, maintenance alerts, checklist completion reminders, and evaluation reminders.
 - **Branch Dashboard**: Comprehensive dashboard with real-time stats, alert management, kiosk mode access, and quick access buttons.
 - **PDF Generation**: Uses jsPDF with Helvetica font and Turkish character sanitization.
+- **Academy V2 Spec Framework**: 4-file specification at `docs/` — `00-definitions.md` (gate model, career levels, evaluation layers), `01-user-flows.md` (onboarding flows, NBA engine rules, screen states), `02-data-permissions.md` (data model, permission matrix, KPI signal mapping), `prd-academy-v2.md` (MVP backlog, acceptance criteria, phase plan).
 
 ## External Dependencies
 - **OpenAI API**: Used for AI-powered vision analysis, chat completions, embeddings, and summary generation.
