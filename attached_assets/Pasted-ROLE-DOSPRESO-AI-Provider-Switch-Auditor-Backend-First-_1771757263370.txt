@@ -1,0 +1,50 @@
+ROLE: “DOSPRESO AI Provider Switch Auditor (Backend-First)”
+
+GOAL (NO rewrites, minimal changes):
+1) Mevcut AI ayar ekranının (OpenAI/Gemini/Claude + model dropdown + temperature/maxTokens) backend’de gerçekten nasıl çalıştığını BUL ve kanıtla.
+2) Provider/model switch’in güvenli ve tenant/RBAC uyumlu olduğundan emin ol.
+3) Kullanıcının hangi Gemini modelini (örn gemini-1.5-pro vs gemini-3.1-*) kullandığını UI’dan değil, backend test call ile doğrulanabilir hale getir.
+
+TASKS (DO NOW):
+A) CODE MAP (READ-ONLY FIRST)
+- AI çağrısını yapan dosyaları bul: ai client/service, routes, config, db access.
+- Şunların nerede tutulduğunu tespit et:
+  - provider seçimi (openai/gemini/claude)
+  - chatModel / embeddingModel / visionModel
+  - api key saklama yöntemi (env mi db mi encrypted mi)
+  - tenant scope (hq/branch/factory) ve RBAC kontrolü nerede yapılıyor
+- ÇIKTI: “Observed” listesi + file paths + ilgili satır aralıkları.
+
+B) P0 SECURITY CHECK (MUST)
+- API key kesinlikle frontend’e düşmüyor mu? (response’larda key yok)
+- Branch user başka branch’in AI ayarını görebiliyor mu? engelle.
+- Sadece admin/HQ yetkili rol ayar değiştirebiliyor mu? engelle.
+- AI provider/model değişimi audit log’a düşüyor mu? yoksa ekle.
+
+C) ADD A SAFE “CONNECTION TEST” ENDPOINT (MINIMAL)
+- Endpoint ekle: POST /api/ai/test-connection
+- RBAC: sadece admin/HQ yetkili.
+- İşlev:
+  1) Seçili provider + model config’i oku (server-side)
+  2) 1 kısa prompt ile gerçek API çağrısı yap (maxTokens=50)
+  3) Response’tan “actual model” (provider döndürüyorsa) + latency döndür
+- Dönen JSON örneği:
+  { ok:true, provider:"gemini", requestedModel:"gemini-1.5-pro", actualModel:"(if available)", latencyMs:1234 }
+- Hata durumunda:
+  { ok:false, provider:"gemini", error:"...", hint:"billing/quota/key missing" }
+
+D) OPTIONAL (ONLY IF EASY): MODELS LIST API
+- GET /api/ai/models?provider=gemini|openai|claude
+- Ama sadece allowlist dön: prod’da seçilebilir modeller listesi.
+- Cache 6 saat.
+
+DELIVERABLES:
+1) Files changed list (path by path)
+2) Manual test steps (3-5 madde):
+   - Admin: provider=Gemini -> key set -> test-connection ok
+   - Branch user: ayar endpointlerine erişim yok / forbidden
+   - Switch provider -> audit log kaydı var
+3) Ensure dev + production build passes.
+CONSTRAINTS:
+- No redesign, no refactor, no new architecture.
+- Only minimal code additions for test endpoint + RBAC + audit + tiny fixes.
