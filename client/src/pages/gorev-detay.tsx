@@ -42,7 +42,7 @@ import { ConfirmDeleteDialog, useConfirmDelete } from "@/components/confirm-dele
 import { ObjectUploader } from "@/components/ObjectUploader";
 import { StarRating } from "@/components/star-rating";
 import type { Task, User as UserType, TaskStatusHistory, TaskRating, TaskStep } from "@shared/schema";
-import { ListChecks, Plus, Trash2, Users } from "lucide-react";
+import { ListChecks, Plus, Trash2, Users, UserPlus } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -160,7 +160,10 @@ export default function GorevDetay() {
   });
 
   const myParticipantStatus = participantStatuses.find((p: any) => p.userId === currentUser?.id);
-  const isAdditionalAssignee = !!myParticipantStatus;
+  const taskAssigneesList = (task as any)?.assignees || [];
+  const isInAssigneesList = taskAssigneesList.some((a: any) => a.userId === currentUser?.id);
+  const isPrimaryAssigneeEarly = currentUser?.id === task?.assignedToId;
+  const isAdditionalAssignee = !isPrimaryAssigneeEarly && (!!myParticipantStatus || isInAssigneesList);
   const myStarted = !!myParticipantStatus?.startedAt;
 
   // Task Steps Mutations
@@ -780,35 +783,54 @@ export default function GorevDetay() {
       {/* Preview & Action Section */}
       {isAssignee && task.status !== "onaylandi" && task.status !== "basarisiz" && (
         <>
-          {/* Gördüm / Başladım Buttons */}
+          {/* Katıl / Başla Button for participants */}
           {(canAcknowledge || canStartProgress) && (
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-base flex items-center gap-2">
-                  <PlayCircle className="h-4 w-4" />
-                  Ön İzleme
+                  {isPrimaryAssignee ? (
+                    <><PlayCircle className="h-4 w-4" /> Görevi Başlat</>
+                  ) : (
+                    <><UserPlus className="h-4 w-4" /> Göreve Katıl</>
+                  )}
                 </CardTitle>
+                {!isPrimaryAssignee && (
+                  <p className="text-xs text-muted-foreground">
+                    Bu göreve ek katılımcı olarak atandınız. Katıl butonuna basarak çalışmaya başlayabilirsiniz.
+                  </p>
+                )}
               </CardHeader>
               <CardContent className="flex flex-wrap gap-2">
                 {canStartProgress && (
                   <Button
-                    variant="outline"
                     onClick={async () => {
                       try {
                         await apiRequest("POST", `/api/tasks/${id}/start`);
                         queryClient.invalidateQueries({ queryKey: ["/api/tasks", id] });
                         queryClient.invalidateQueries({ queryKey: ["/api/tasks", id, "participant-statuses"] });
-                        toast({ title: "Başarılı", description: "Göreve başladınız" });
+                        toast({ 
+                          title: "Başarılı", 
+                          description: isPrimaryAssignee ? "Göreve başladınız" : "Göreve katıldınız, çalışmaya başlayabilirsiniz"
+                        });
                       } catch (error: any) {
-                        toast({ title: "Hata", description: error.message || "Görev başlatılamadı", variant: "destructive" });
+                        toast({ title: "Hata", description: error.message || "İşlem başarısız", variant: "destructive" });
                       }
                     }}
                     disabled={updateStatusMutation.isPending}
                     data-testid="button-start-progress"
                   >
-                    <PlayCircle className="h-4 w-4 mr-2" />
-                    Başla
+                    {isPrimaryAssignee ? (
+                      <><PlayCircle className="h-4 w-4 mr-2" /> Başla</>
+                    ) : (
+                      <><UserPlus className="h-4 w-4 mr-2" /> Katıl</>
+                    )}
                   </Button>
+                )}
+                {isAdditionalAssignee && myStarted && (
+                  <Badge variant="secondary" className="gap-1">
+                    <div className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
+                    Çalışıyorsunuz
+                  </Badge>
                 )}
               </CardContent>
             </Card>
@@ -1267,104 +1289,79 @@ export default function GorevDetay() {
             </div>
           </div>
 
-          {/* Group Participants - Assignees + Checker */}
+          {/* Group Participants - Assignees + Checker with active status */}
           {((task as any).assignees && (task as any).assignees.length > 1) || hasChecker ? (
             <div className="mt-3 pt-3 border-t">
               <p className="text-xs text-muted-foreground mb-2 flex items-center gap-1">
                 <Users className="h-3 w-3" />
                 Katılımcılar
-              </p>
-              <div className="flex flex-wrap gap-1">
-                {(task as any).assignees?.map((a: any) => (
-                  <Link key={a.userId} href={`/personel-detay/${a.userId}`}>
-                    <Badge variant="secondary" className="gap-1 cursor-pointer" data-testid={`badge-assignee-${a.userId}`}>
-                      <Avatar className="h-4 w-4">
-                        <AvatarImage src={a.userProfileImage} />
-                        <AvatarFallback className="text-[6px]">
-                          {a.userName?.split(' ').map((n: string) => n[0]).join('') || '?'}
-                        </AvatarFallback>
-                      </Avatar>
-                      {a.userName}
-                    </Badge>
-                  </Link>
-                ))}
-                {hasChecker && checkerUser && (
-                  <Link href={`/personel-detay/${taskExt.checkerId}`}>
-                    <Badge variant="outline" className="gap-1 cursor-pointer border-amber-500/50 text-amber-700 dark:text-amber-400" data-testid={`badge-checker-${taskExt.checkerId}`}>
-                      <Shield className="h-3 w-3" />
-                      <Avatar className="h-4 w-4">
-                        <AvatarImage src={checkerUser.profileImageUrl || (checkerUser as any).profilePhoto} />
-                        <AvatarFallback className="text-[6px]">
-                          {(checkerUser.firstName?.[0] || '') + (checkerUser.lastName?.[0] || checkerUser.username?.[0] || '')}
-                        </AvatarFallback>
-                      </Avatar>
-                      {checkerUser.firstName ? `${checkerUser.firstName} ${checkerUser.lastName || ''}` : checkerUser.username}
-                      <span className="text-[10px] opacity-70">Denetçi</span>
-                    </Badge>
-                  </Link>
+                {participantStatuses.filter((p: any) => p.startedAt).length > 0 && (
+                  <Badge variant="secondary" className="text-[10px] h-4 px-1.5 ml-1">
+                    {participantStatuses.filter((p: any) => p.startedAt).length}/{participantStatuses.length} aktif
+                  </Badge>
                 )}
-              </div>
-            </div>
-          ) : null}
-
-          {/* Participant Progress Timeline */}
-          {participantStatuses.length > 1 && (
-            <div className="mt-3 pt-3 border-t">
-              <p className="text-xs text-muted-foreground mb-2 flex items-center gap-1">
-                <Clock className="h-3 w-3" />
-                Katılımcı Durumu
               </p>
-              <div className="space-y-2">
-                {participantStatuses.map((p: any) => {
-                  const statusLabel = p.status === 'devam_ediyor' ? 'Devam Ediyor' 
-                    : p.status === 'tamamlandi' ? 'Tamamlandı' 
-                    : p.status === 'iptal_edildi' ? 'İptal' 
-                    : 'Bekliyor';
-                  const statusColor = p.status === 'devam_ediyor' ? 'text-blue-600 dark:text-blue-400' 
-                    : p.status === 'tamamlandi' ? 'text-green-600 dark:text-green-400' 
-                    : p.status === 'iptal_edildi' ? 'text-red-600 dark:text-red-400' 
-                    : 'text-muted-foreground';
-                  const progressPct = p.status === 'tamamlandi' ? 100
-                    : p.startedAt && task.dueDate 
-                      ? Math.min(90, Math.round((Date.now() - new Date(p.startedAt).getTime()) / (new Date(task.dueDate).getTime() - new Date(p.startedAt).getTime()) * 100))
-                      : p.startedAt ? 30 : 0;
-                  
+              <div className="space-y-1.5">
+                {(task as any).assignees?.map((a: any) => {
+                  const pStatus = participantStatuses.find((p: any) => p.userId === a.userId);
+                  const isActive = !!pStatus?.startedAt;
+                  const isPrimary = a.userId === task.assignedToId;
                   return (
-                    <div key={p.userId} className="flex items-center gap-2" data-testid={`participant-status-${p.userId}`}>
-                      <Avatar className="h-5 w-5 shrink-0">
-                        <AvatarImage src={p.userProfilePhoto} />
-                        <AvatarFallback className="text-[7px]">
-                          {p.userName?.split(' ').map((n: string) => n[0]).join('').substring(0, 2) || '?'}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between gap-1">
-                          <span className="text-xs truncate">{p.userName}</span>
-                          <span className={`text-[10px] font-medium ${statusColor}`}>{statusLabel}</span>
+                    <div key={a.userId} className="flex items-center gap-2" data-testid={`participant-row-${a.userId}`}>
+                      <Link href={`/personel-detay/${a.userId}`} className="flex items-center gap-2 flex-1 min-w-0">
+                        <div className="relative shrink-0">
+                          <Avatar className="h-6 w-6">
+                            <AvatarImage src={a.userProfileImage} />
+                            <AvatarFallback className="text-[8px]">
+                              {a.userName?.split(' ').map((n: string) => n[0]).join('').substring(0, 2) || '?'}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className={`absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-card ${
+                            isActive ? 'bg-green-500' : 'bg-muted-foreground/40'
+                          }`} />
                         </div>
-                        <div className="w-full bg-muted rounded-full h-1 mt-0.5">
-                          <div 
-                            className={`rounded-full h-1 transition-all duration-500 ${
-                              p.status === 'tamamlandi' ? 'bg-green-500' 
-                              : p.status === 'devam_ediyor' ? 'bg-blue-500' 
-                              : p.status === 'iptal_edildi' ? 'bg-red-500'
-                              : 'bg-muted-foreground/30'
-                            }`}
-                            style={{ width: `${progressPct}%` }}
-                          />
-                        </div>
+                        <span className="text-xs truncate">{a.userName}</span>
+                      </Link>
+                      <div className="flex items-center gap-1 shrink-0">
+                        {isPrimary && (
+                          <Badge variant="outline" className="text-[9px] h-4 px-1">Sorumlu</Badge>
+                        )}
+                        {isActive ? (
+                          <Badge variant="secondary" className="text-[9px] h-4 px-1 gap-0.5">
+                            <div className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
+                            Çalışıyor
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline" className="text-[9px] h-4 px-1 text-muted-foreground">
+                            Bekliyor
+                          </Badge>
+                        )}
                       </div>
                     </div>
                   );
                 })}
+                {hasChecker && checkerUser && (
+                  <div className="flex items-center gap-2">
+                    <Link href={`/personel-detay/${taskExt.checkerId}`} className="flex items-center gap-2 flex-1 min-w-0">
+                      <Avatar className="h-6 w-6">
+                        <AvatarImage src={checkerUser.profileImageUrl || (checkerUser as any).profilePhoto} />
+                        <AvatarFallback className="text-[8px]">
+                          {(checkerUser.firstName?.[0] || '') + (checkerUser.lastName?.[0] || checkerUser.username?.[0] || '')}
+                        </AvatarFallback>
+                      </Avatar>
+                      <span className="text-xs truncate">
+                        {checkerUser.firstName ? `${checkerUser.firstName} ${checkerUser.lastName || ''}` : checkerUser.username}
+                      </span>
+                    </Link>
+                    <Badge variant="outline" className="text-[9px] h-4 px-1 gap-0.5 border-amber-500/50 text-amber-700 dark:text-amber-400">
+                      <Shield className="h-2.5 w-2.5" />
+                      Denetçi
+                    </Badge>
+                  </div>
+                )}
               </div>
-              {task.dueDate && (
-                <p className="text-[10px] text-muted-foreground mt-1 text-right">
-                  Son Tarih: {new Date(task.dueDate).toLocaleDateString("tr-TR")}
-                </p>
-              )}
             </div>
-          )}
+          ) : null}
         </CardContent>
       </Card>
 

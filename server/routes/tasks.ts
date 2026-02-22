@@ -1128,16 +1128,39 @@ const router = Router();
             ? `${starter.firstName} ${starter.lastName}` 
             : 'Atanan kişi';
           
+          const isJoining = !isPrimaryAssignee;
           await storage.createNotification({
             userId: task.assignedById,
             type: 'task_started',
-            title: 'Görev Başlatıldı',
-            message: `${starterName} göreve başladı: "${task.description?.substring(0, 50)}${(task.description?.length || 0) > 50 ? '...' : ''}"`,
+            title: isJoining ? 'Göreve Katılım' : 'Görev Başlatıldı',
+            message: isJoining 
+              ? `${starterName} göreve katıldı: "${task.description?.substring(0, 50)}${(task.description?.length || 0) > 50 ? '...' : ''}"` 
+              : `${starterName} göreve başladı: "${task.description?.substring(0, 50)}${(task.description?.length || 0) > 50 ? '...' : ''}"`,
             link: `/gorev-detay/${task.id}`,
             branchId: task.branchId,
           });
         } catch (notifError) {
           console.error("Error sending task start notification:", notifError);
+        }
+      }
+      
+      if (!isPrimaryAssignee && task.assignedToId && task.assignedToId !== user.id) {
+        try {
+          const joiner = await storage.getUser(user.id);
+          const joinerName = joiner?.firstName && joiner?.lastName 
+            ? `${joiner.firstName} ${joiner.lastName}` 
+            : 'Bir katılımcı';
+          
+          await storage.createNotification({
+            userId: task.assignedToId,
+            type: 'task_started',
+            title: 'Göreve Katılım',
+            message: `${joinerName} göreve katıldı`,
+            link: `/gorev-detay/${task.id}`,
+            branchId: task.branchId,
+          });
+        } catch (notifError) {
+          console.error("Error sending join notification to primary:", notifError);
         }
       }
       
