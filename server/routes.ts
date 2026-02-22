@@ -367,6 +367,7 @@ import trashRouter from "./routes/trash";
 import hrImportExportRouter from "./routes/hr-import-export";
 import actionCardsRouter from "./routes/action-cards";
 import opsRulesRouter from "./routes/ops-rules";
+import { wasteRouter } from "./routes/waste";
 
 // Multer configuration for file uploads (memory storage)
 const uploadStorage = multer.memoryStorage();
@@ -622,6 +623,7 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
   app.use(operationsRouter);
   app.use(miscRouter);
   app.use(trashRouter);
+  app.use(wasteRouter);
 
   app.get('/api/health', async (req, res) => {
     try {

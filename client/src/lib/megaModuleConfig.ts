@@ -106,6 +106,10 @@ export const DEFAULT_MENU_SECTION_MAPPING: Record<string, string[]> = {
     "production", "production-section", "quality-control", "waste-management",
     "uretim"
   ],
+  "waste": [
+    "waste", "waste-management", "zai-fire", "zai", "fire",
+    "waste-entry", "waste-coach", "waste-trainer", "waste-qc", "waste-executive"
+  ],
   "reports": [
     "analytics-reports", "quality-customer", "customer-satisfaction",
     "reports", "reports-section", "analytics", "analytics-section",

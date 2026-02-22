@@ -185,6 +185,7 @@ import HqVardiyaGoruntuleme from "@/pages/hq-vardiya-goruntuleme";
 import HQPersonelIstatistikleri from "@/pages/hq-personel-istatistikleri";
 import MuhasebeRaporlama from "@/pages/muhasebe-raporlama";
 import KullanimKilavuzu from "@/pages/kullanim-kilavuzu";
+import WasteMegaModule from "@/pages/waste-mega";
 
 const PUBLIC_PATH_PREFIXES = [
   "/login", 
@@ -398,6 +399,7 @@ function Router() {
           <Route path="/kayip-esya-hq" component={KayipEsyaHQ} />
           <Route path="/destek" component={Destek} />
           <Route path="/operasyon/:tab?" component={OperasyonMegaModule} />
+          <Route path="/waste/:tab?" component={WasteMegaModule} />
           <Route path="/yeni-sube/:tab?" component={YeniSubeMegaModule} />
           <Route path="/banner-editor">{() => <AdminOnly><BannerEditor /></AdminOnly>}</Route>
           <Route path="/crm/*?" component={CRMMegaModule} />
