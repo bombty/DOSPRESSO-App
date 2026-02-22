@@ -68,6 +68,7 @@ import GorevDetay from "@/pages/gorev-detay";
 import SubeGorevler from "@/pages/sube-gorevler";
 import IK from "@/pages/ik";
 import PersonelOnboarding from "@/pages/personel-onboarding";
+import OnboardingProgramlar from "@/pages/onboarding-programlar";
 import LeaveRequests from "@/pages/leave-requests";
 import OvertimeRequests from "@/pages/overtime-requests";
 import Attendance from "@/pages/attendance";
@@ -294,6 +295,7 @@ function Router() {
           <Route path="/performansim" component={MyPerformancePage} />
           <Route path="/personel-duzenle/:id" component={PersonelDuzenle} />
           <Route path="/personel-onboarding" component={PersonelOnboarding} />
+          <Route path="/onboarding-programlar" component={OnboardingProgramlar} />
           <Route path="/vardiyalar" component={Vardiyalar} />
           <Route path="/vardiya-planlama" component={VardiyaPlanlama} />
           <Route path="/vardiyalarim" component={Vardiyalarim} />

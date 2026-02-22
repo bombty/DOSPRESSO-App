@@ -11936,7 +11936,7 @@ AI analizi su an kullanilamiyor. Detayli bilgi icin ilgili modulleri kontrol edi
 
   router.get('/api/me/usage-guide', isAuthenticated, async (req: any, res) => {
     try {
-      const { getRoleGuideContent } = await import('./usage-guide-content');
+      const { getRoleGuideContent } = await import('../usage-guide-content');
       const role = req.user?.role || 'stajyer';
       const content = getRoleGuideContent(role);
       res.json(content);
@@ -11966,7 +11966,7 @@ AI analizi su an kullanilamiyor. Detayli bilgi icin ilgili modulleri kontrol edi
       }
       usageGuideRateLimit.set(userId, now);
 
-      const { getRoleGuideContent } = await import('./usage-guide-content');
+      const { getRoleGuideContent } = await import('../usage-guide-content');
       const role = req.user?.role || 'stajyer';
       const guideContent = getRoleGuideContent(role);
 
@@ -12053,7 +12053,7 @@ Kurallar:
 
   router.post('/api/admin/guide-docs', isAuthenticated, async (req: any, res) => {
     try {
-      if (!['admin', 'genel_mudur'].includes(req.user.role)) {
+      if (!['admin', 'ceo', 'cgo'].includes(req.user.role)) {
         return res.status(403).json({ message: "Yetkiniz yok" });
       }
       const body = insertGuideDocSchema.parse({ ...req.body, createdBy: req.user.id });
@@ -12067,7 +12067,7 @@ Kurallar:
 
   router.put('/api/admin/guide-docs/:id', isAuthenticated, async (req: any, res) => {
     try {
-      if (!['admin', 'genel_mudur'].includes(req.user.role)) {
+      if (!['admin', 'ceo', 'cgo'].includes(req.user.role)) {
         return res.status(403).json({ message: "Yetkiniz yok" });
       }
       const [doc] = await db.update(guideDocs)
@@ -12083,7 +12083,7 @@ Kurallar:
 
   router.delete('/api/admin/guide-docs/:id', isAuthenticated, async (req: any, res) => {
     try {
-      if (!['admin', 'genel_mudur'].includes(req.user.role)) {
+      if (!['admin', 'ceo', 'cgo'].includes(req.user.role)) {
         return res.status(403).json({ message: "Yetkiniz yok" });
       }
       await db.delete(guideDocs).where(eq(guideDocs.id, parseInt(req.params.id)));
@@ -12121,7 +12121,7 @@ Kurallar:
 
   router.post('/api/onboarding-programs', isAuthenticated, async (req: any, res) => {
     try {
-      const allowedRoles = ['admin', 'genel_mudur', 'bolge_muduru', 'coach'];
+      const allowedRoles = ['admin', 'ceo', 'cgo', 'coach', 'trainer'];
       if (!allowedRoles.includes(req.user.role)) {
         return res.status(403).json({ message: "Yetkiniz yok" });
       }
@@ -12135,7 +12135,7 @@ Kurallar:
 
   router.put('/api/onboarding-programs/:id', isAuthenticated, async (req: any, res) => {
     try {
-      const allowedRoles = ['admin', 'genel_mudur', 'bolge_muduru', 'coach'];
+      const allowedRoles = ['admin', 'ceo', 'cgo', 'coach', 'trainer'];
       if (!allowedRoles.includes(req.user.role)) {
         return res.status(403).json({ message: "Yetkiniz yok" });
       }
@@ -12152,7 +12152,7 @@ Kurallar:
 
   router.post('/api/onboarding-programs/:id/weeks', isAuthenticated, async (req: any, res) => {
     try {
-      const allowedRoles = ['admin', 'genel_mudur', 'bolge_muduru', 'coach'];
+      const allowedRoles = ['admin', 'ceo', 'cgo', 'coach', 'trainer'];
       if (!allowedRoles.includes(req.user.role)) {
         return res.status(403).json({ message: "Yetkiniz yok" });
       }
@@ -12171,9 +12171,9 @@ Kurallar:
     try {
       const user = req.user;
       let conditions: any[] = [];
-      if (['stajyer', 'barista', 'kasap'].includes(user.role)) {
+      if (['stajyer', 'bar_buddy', 'barista', 'fabrika_personel', 'fabrika_operator'].includes(user.role)) {
         conditions.push(eq(onboardingInstances.traineeId, user.id));
-      } else if (['supervisor', 'mudur_yardimcisi', 'sube_muduru'].includes(user.role)) {
+      } else if (['supervisor', 'supervisor_buddy', 'mudur'].includes(user.role)) {
         conditions.push(eq(onboardingInstances.mentorId, user.id));
       }
       const instances = conditions.length > 0
@@ -12195,7 +12195,7 @@ Kurallar:
 
   router.post('/api/onboarding-instances', isAuthenticated, async (req: any, res) => {
     try {
-      const allowedRoles = ['admin', 'genel_mudur', 'bolge_muduru', 'coach', 'sube_muduru'];
+      const allowedRoles = ['admin', 'ceo', 'cgo', 'coach', 'trainer', 'mudur', 'fabrika_mudur'];
       if (!allowedRoles.includes(req.user.role)) {
         return res.status(403).json({ message: "Yetkiniz yok" });
       }
@@ -12232,7 +12232,7 @@ Kurallar:
 
   router.post('/api/onboarding-instances/:id/checkins', isAuthenticated, async (req: any, res) => {
     try {
-      const allowedRoles = ['admin', 'genel_mudur', 'bolge_muduru', 'coach', 'sube_muduru', 'supervisor', 'mudur_yardimcisi', 'egitimci'];
+      const allowedRoles = ['admin', 'ceo', 'cgo', 'coach', 'trainer', 'mudur', 'supervisor', 'fabrika_mudur'];
       if (!allowedRoles.includes(req.user.role)) {
         return res.status(403).json({ message: "Yetkiniz yok" });
       }
@@ -12250,7 +12250,7 @@ Kurallar:
 
   router.patch('/api/onboarding-instances/:id/complete', isAuthenticated, async (req: any, res) => {
     try {
-      const allowedRoles = ['admin', 'genel_mudur', 'bolge_muduru', 'coach', 'sube_muduru'];
+      const allowedRoles = ['admin', 'ceo', 'cgo', 'coach', 'trainer', 'mudur', 'fabrika_mudur'];
       if (!allowedRoles.includes(req.user.role)) {
         return res.status(403).json({ message: "Yetkiniz yok" });
       }

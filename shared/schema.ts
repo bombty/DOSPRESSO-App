@@ -330,6 +330,7 @@ export const PATH_TO_PERMISSION_MAP: Record<string, PermissionModule> = {
   '/mesai': 'overtime_requests',
   '/puantaj': 'attendance',
   '/performans': 'performance',
+  '/onboarding-programlar': 'hr',
   
   // Training / Academy
   '/akademi': 'academy',

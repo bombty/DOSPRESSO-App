@@ -168,6 +168,14 @@ const MENU_BLUEPRINT: SidebarMenuSection[] = [
         moduleKey: "attendance",
         scope: "both",
       },
+      {
+        id: "onboarding-programs",
+        titleTr: "Onboarding Programları",
+        path: "/onboarding-programlar",
+        icon: "GraduationCap",
+        moduleKey: "hr",
+        scope: "both",
+      },
     ],
   },
 
