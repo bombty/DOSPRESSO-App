@@ -39,7 +39,8 @@ import { ConfirmDeleteDialog, useConfirmDelete } from "@/components/confirm-dele
 import { ObjectUploader } from "@/components/ObjectUploader";
 import { StarRating } from "@/components/star-rating";
 import type { Task, User as UserType, TaskStatusHistory, TaskRating, TaskStep } from "@shared/schema";
-import { ListChecks, Plus, Trash2 } from "lucide-react";
+import { ListChecks, Plus, Trash2, Users } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 
@@ -1192,6 +1193,31 @@ export default function GorevDetay() {
               )}
             </div>
           </div>
+
+          {/* Group Assignees */}
+          {(task as any).assignees && (task as any).assignees.length > 1 && (
+            <div className="mt-3 pt-3 border-t">
+              <p className="text-xs text-muted-foreground mb-2 flex items-center gap-1">
+                <Users className="h-3 w-3" />
+                Grup Katılımcıları ({(task as any).assignees.length})
+              </p>
+              <div className="flex flex-wrap gap-1">
+                {(task as any).assignees.map((a: any) => (
+                  <Link key={a.userId} href={`/personel-detay/${a.userId}`}>
+                    <Badge variant="secondary" className="gap-1 cursor-pointer" data-testid={`badge-assignee-${a.userId}`}>
+                      <Avatar className="h-4 w-4">
+                        <AvatarImage src={a.userProfileImage} />
+                        <AvatarFallback className="text-[6px]">
+                          {a.userName?.split(' ').map((n: string) => n[0]).join('') || '?'}
+                        </AvatarFallback>
+                      </Avatar>
+                      {a.userName}
+                    </Badge>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -1315,7 +1341,7 @@ export default function GorevDetay() {
           <div className="space-y-3 max-h-[400px] overflow-y-auto">
             <div className="flex items-center justify-center">
               <span className="text-xs text-muted-foreground bg-muted px-3 py-1 rounded-full">
-                Görev oluşturuldu - {task.createdAt ? new Date(task.createdAt).toLocaleDateString("tr-TR", {day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}) : "-"}
+                Görev oluşturuldu - {task.createdAt ? new Date(task.createdAt).toLocaleDateString("tr-TR", {day:'numeric',month:'short'}) + ' ' + new Date(task.createdAt).toLocaleTimeString("tr-TR", {hour:'2-digit',minute:'2-digit'}) : "-"}
               </span>
             </div>
 
@@ -1323,22 +1349,22 @@ export default function GorevDetay() {
               <div className="flex items-center justify-center">
                 <span className="text-xs text-muted-foreground bg-muted px-3 py-1 rounded-full">
                   <Eye className="h-3 w-3 inline mr-1" />
-                  Görüldü - {new Date(task.acknowledgedAt).toLocaleDateString("tr-TR", {day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}
+                  Görüldü - {new Date(task.acknowledgedAt).toLocaleDateString("tr-TR", {day:'numeric',month:'short'}) + ' ' + new Date(task.acknowledgedAt).toLocaleTimeString("tr-TR", {hour:'2-digit',minute:'2-digit'})}
                 </span>
               </div>
             )}
 
-            {taskHistory && taskHistory.map((entry, idx) => {
+            {taskHistory && taskHistory.map((entry: any, idx: number) => {
               const isStatusChange = entry.previousStatus && entry.previousStatus !== entry.newStatus;
               const isSystemMessage = isStatusChange && !entry.note;
-              const senderIsAssigner = entry.changedById === task.assignedById;
-              const senderIsAssignee = entry.changedById === task.assignedToId;
+              const isCurrentUser = entry.changedById === user?.id;
+              const senderName = entry.changedByName || 'Sistem';
 
               if (isSystemMessage) {
                 return (
                   <div key={entry.id || idx} className="flex items-center justify-center" data-testid={`thread-event-${entry.id}`}>
                     <span className="text-xs text-muted-foreground bg-muted px-3 py-1 rounded-full">
-                      {statusLabels[entry.newStatus] || entry.newStatus} - {entry.createdAt ? new Date(entry.createdAt).toLocaleDateString("tr-TR", {day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}) : ""}
+                      {senderName}: {statusLabels[entry.newStatus] || entry.newStatus} - {entry.createdAt ? new Date(entry.createdAt).toLocaleDateString("tr-TR", {day:'numeric',month:'short'}) + ' ' + new Date(entry.createdAt).toLocaleTimeString("tr-TR", {hour:'2-digit',minute:'2-digit'}) : ""}
                     </span>
                   </div>
                 );
@@ -1347,30 +1373,31 @@ export default function GorevDetay() {
               return (
                 <div
                   key={entry.id || idx}
-                  className={`flex ${senderIsAssigner ? 'justify-start' : 'justify-end'}`}
+                  className={`flex ${isCurrentUser ? 'justify-end' : 'justify-start'}`}
                   data-testid={`thread-message-${entry.id}`}
                 >
-                  <div className={`max-w-[80%] ${senderIsAssigner ? 'bg-muted' : 'bg-primary/10'} rounded-lg p-3`}>
-                    <div className="flex items-center gap-2 mb-1 flex-wrap">
-                      <span className="text-xs font-medium">
-                        {senderIsAssigner
-                          ? `${assignedByUser?.firstName || ''} ${assignedByUser?.lastName || ''}`.trim() || 'Bilinmiyor'
-                          : senderIsAssignee
-                          ? `${assignedUser?.firstName || ''} ${assignedUser?.lastName || ''}`.trim() || 'Bilinmiyor'
-                          : 'Sistem'
-                        }
-                      </span>
-                    </div>
+                  <div className={`max-w-[80%] rounded-lg p-3 ${
+                    isCurrentUser 
+                      ? 'bg-primary text-primary-foreground rounded-br-sm' 
+                      : 'bg-muted rounded-bl-sm'
+                  }`}>
+                    {!isCurrentUser && (
+                      <div className="flex items-center gap-2 mb-1 flex-wrap">
+                        <span className={`text-xs font-semibold ${isCurrentUser ? 'text-primary-foreground/80' : 'text-foreground'}`}>
+                          {senderName}
+                        </span>
+                      </div>
+                    )}
                     {isStatusChange && (
-                      <p className="text-xs text-muted-foreground mb-1">
-                        Durum: {statusLabels[entry.newStatus] || entry.newStatus}
+                      <p className={`text-xs mb-1 ${isCurrentUser ? 'text-primary-foreground/70' : 'text-muted-foreground'}`}>
+                        {statusLabels[entry.newStatus] || entry.newStatus}
                       </p>
                     )}
                     {entry.note && (
                       <p className="text-sm break-words">{entry.note}</p>
                     )}
-                    <p className="text-[10px] text-muted-foreground mt-1">
-                      {entry.createdAt ? new Date(entry.createdAt).toLocaleDateString("tr-TR", {day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}) : ""}
+                    <p className={`text-[10px] mt-1 ${isCurrentUser ? 'text-primary-foreground/60' : 'text-muted-foreground'}`}>
+                      {entry.createdAt ? new Date(entry.createdAt).toLocaleDateString("tr-TR", {day:'numeric',month:'short'}) + ' ' + new Date(entry.createdAt).toLocaleTimeString("tr-TR", {hour:'2-digit',minute:'2-digit'}) : ""}
                     </p>
                   </div>
                 </div>
@@ -1381,7 +1408,7 @@ export default function GorevDetay() {
               <div className="flex items-center justify-center">
                 <span className="text-xs text-success bg-success/10 px-3 py-1 rounded-full flex items-center gap-1">
                   <CheckCircle className="h-3 w-3" />
-                  Görev Tamamlandı {task.completedAt ? `- ${new Date(task.completedAt).toLocaleDateString("tr-TR")}` : ""}
+                  Görev Tamamlandı {task.completedAt ? `- ${new Date(task.completedAt).toLocaleDateString("tr-TR", {day:'numeric',month:'short'})} ${new Date(task.completedAt).toLocaleTimeString("tr-TR", {hour:'2-digit',minute:'2-digit'})}` : ""}
                 </span>
               </div>
             )}

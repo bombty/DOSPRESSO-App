@@ -13,7 +13,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Plus, Building2, Store, Camera, UserCheck, GraduationCap } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Plus, Building2, Store, Camera, UserCheck, GraduationCap, Users, X } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ObjectUploader } from "@/components/ObjectUploader";
 
@@ -80,6 +81,7 @@ export function QuickTaskModal({ trigger }: QuickTaskModalProps) {
   const [assignmentCategory, setAssignmentCategory] = useState<"hq" | "branch" | "">("");
   const [selectedBranchId, setSelectedBranchId] = useState<string>("");
   const [photoUrl, setPhotoUrl] = useState<string>("");
+  const [additionalAssignees, setAdditionalAssignees] = useState<string[]>([]);
   const { user } = useAuth();
   const { toast } = useToast();
 
@@ -186,6 +188,7 @@ export function QuickTaskModal({ trigger }: QuickTaskModalProps) {
         photoUrl: data.photoUrl || null,
         isOnboarding: data.isOnboarding || false,
         checkerId: data.checkerId || null,
+        additionalAssignees: additionalAssignees,
       });
     },
     onSuccess: () => {
@@ -199,7 +202,7 @@ export function QuickTaskModal({ trigger }: QuickTaskModalProps) {
       setAssignmentCategory("");
       setSelectedBranchId("");
       setPhotoUrl("");
-      // Modal'ı state update'ten sonra kapat
+      setAdditionalAssignees([]);
       setTimeout(() => setOpen(false), 0);
     },
     onError: (error: Error) => {
@@ -236,6 +239,7 @@ export function QuickTaskModal({ trigger }: QuickTaskModalProps) {
         setAssignmentCategory("");
         setSelectedBranchId("");
         setPhotoUrl("");
+        setAdditionalAssignees([]);
         form.reset();
       }
     }}>
@@ -383,6 +387,71 @@ export function QuickTaskModal({ trigger }: QuickTaskModalProps) {
                   </FormItem>
                 )}
               />
+            )}
+
+            {/* Additional assignees - multi-select */}
+            {canAssignTasks && form.watch("assignedToId") && assignableEmployees.length > 1 && (
+              <FormItem>
+                <FormLabel className="flex items-center gap-1">
+                  <Users className="h-4 w-4" />
+                  Ek Atananlar (İsteğe Bağlı)
+                </FormLabel>
+                {additionalAssignees.length > 0 && (
+                  <div className="flex flex-wrap gap-1 mb-2">
+                    {additionalAssignees.map((aId) => {
+                      const emp = assignableEmployees.find(e => e.id === aId);
+                      if (!emp) return null;
+                      return (
+                        <Badge key={aId} variant="secondary" className="gap-1">
+                          {emp.firstName && emp.lastName ? `${emp.firstName} ${emp.lastName}` : emp.username}
+                          <button
+                            type="button"
+                            onClick={() => setAdditionalAssignees(prev => prev.filter(id => id !== aId))}
+                            className="ml-1"
+                            data-testid={`button-remove-assignee-${aId}`}
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </Badge>
+                      );
+                    })}
+                  </div>
+                )}
+                <Select
+                  value=""
+                  onValueChange={(val) => {
+                    if (val && !additionalAssignees.includes(val)) {
+                      setAdditionalAssignees(prev => [...prev, val]);
+                    }
+                  }}
+                >
+                  <FormControl>
+                    <SelectTrigger data-testid="select-additional-assignee">
+                      <SelectValue placeholder="Ek kişi ekle..." />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {assignableEmployees
+                      .filter(emp => emp.id !== form.watch("assignedToId") && !additionalAssignees.includes(emp.id))
+                      .map((emp) => (
+                        <SelectItem key={emp.id} value={emp.id} data-testid={`option-extra-assignee-${emp.id}`}>
+                          <div className="flex items-center gap-2">
+                            <Avatar className="h-5 w-5">
+                              <AvatarImage src={emp.profilePhoto} />
+                              <AvatarFallback className="text-[8px]">
+                                {(emp.firstName?.[0] || '') + (emp.lastName?.[0] || emp.username[0])}
+                              </AvatarFallback>
+                            </Avatar>
+                            <span>
+                              {emp.firstName && emp.lastName ? `${emp.firstName} ${emp.lastName}` : emp.username}
+                            </span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">Göreve birden fazla kişi atayabilirsiniz</p>
+              </FormItem>
             )}
 
             {/* Show message when no employees available after selection */}

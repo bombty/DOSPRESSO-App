@@ -2813,6 +2813,32 @@ export type InsertTaskStatusHistory = z.infer<typeof insertTaskStatusHistorySche
 export type TaskStatusHistory = typeof taskStatusHistory.$inferSelect;
 
 // ========================================
+// TASK ASSIGNEES TABLE (Multiple assignees per task)
+// ========================================
+
+export const taskAssignees = pgTable("task_assignees", {
+  id: serial("id").primaryKey(),
+  taskId: integer("task_id").notNull().references(() => tasks.id, { onDelete: "cascade" }),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  status: varchar("status", { length: 50 }).notNull().default("beklemede"),
+  acknowledgedAt: timestamp("acknowledged_at"),
+  completedAt: timestamp("completed_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => ({
+  taskUserIdx: uniqueIndex("task_assignees_task_user_idx").on(table.taskId, table.userId),
+  taskIdx: index("task_assignees_task_idx").on(table.taskId),
+  userIdx: index("task_assignees_user_idx").on(table.userId),
+}));
+
+export const insertTaskAssigneeSchema = createInsertSchema(taskAssignees).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertTaskAssignee = z.infer<typeof insertTaskAssigneeSchema>;
+export type TaskAssignee = typeof taskAssignees.$inferSelect;
+
+// ========================================
 // TASK RATINGS TABLE (Manual rating by assigner)
 // ========================================
 

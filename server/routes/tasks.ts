@@ -13,6 +13,7 @@ import {
   tasks,
   users,
   leaveRequests,
+  taskAssignees,
 } from "@shared/schema";
 import { sendNotificationEmail } from "../email";
 import { auditLog } from "../audit";
@@ -58,9 +59,23 @@ const router = Router();
         }
         
         const isSupervisorRole = user.role === 'supervisor' || user.role === 'supervisor_buddy';
-        const branchTasks = isSupervisorRole
+        let branchTasks = isSupervisorRole
           ? await storage.getTasks(user.branchId)
           : await storage.getTasks(user.branchId, user.id);
+
+        if (!isSupervisorRole) {
+          const myAssigneeRows = await db.select().from(taskAssignees).where(eq(taskAssignees.userId, user.id));
+          if (myAssigneeRows.length > 0) {
+            const existingIds = new Set(branchTasks.map((t: any) => t.id));
+            const additionalTaskIds = myAssigneeRows.map(r => r.taskId).filter(tid => !existingIds.has(tid));
+            if (additionalTaskIds.length > 0) {
+              const allBranchTasks = await storage.getTasks(user.branchId);
+              const extraTasks = allBranchTasks.filter((t: any) => additionalTaskIds.includes(t.id));
+              branchTasks = [...branchTasks, ...extraTasks];
+            }
+          }
+        }
+
         let deliveredTasks = branchTasks.filter((t: any) => t.isDelivered !== false);
 
         const today = new Date().toISOString().split('T')[0];
@@ -101,9 +116,21 @@ const router = Router();
   router.get('/api/tasks/my', isAuthenticated, async (req: any, res) => {
     try {
       const user = req.user!;
+      ensurePermission(user, 'tasks', 'view');
       const allTasks = await storage.getTasks();
-      const myTasks = allTasks.filter((task: any) => task.assignedToId === user.id);
-      res.json(myTasks);
+      const myDirectTasks = allTasks.filter((task: any) => task.assignedToId === user.id);
+
+      const myAssigneeRows = await db.select().from(taskAssignees).where(eq(taskAssignees.userId, user.id));
+      const additionalTaskIds = myAssigneeRows
+        .map(r => r.taskId)
+        .filter(tid => !myDirectTasks.some((t: any) => t.id === tid));
+
+      let additionalTasks: any[] = [];
+      if (additionalTaskIds.length > 0) {
+        additionalTasks = allTasks.filter((task: any) => additionalTaskIds.includes(task.id));
+      }
+
+      res.json([...myDirectTasks, ...additionalTasks]);
     } catch (error: any) {
       console.error('Error getting my tasks:', error);
       res.status(500).json({ message: 'Görevler alınamadı' });
@@ -260,7 +287,12 @@ const router = Router();
         
         const isSupervisor = user.role === 'supervisor' || user.role === 'supervisor_buddy';
         if (!isSupervisor && task.assignedToId !== user.id) {
-          return res.status(403).json({ message: "Bu göreve erişim yetkiniz yok" });
+          const isAdditionalAssignee = await db.select().from(taskAssignees)
+            .where(and(eq(taskAssignees.taskId, taskId), eq(taskAssignees.userId, user.id)))
+            .then(rows => rows.length > 0);
+          if (!isAdditionalAssignee) {
+            return res.status(403).json({ message: "Bu göreve erişim yetkiniz yok" });
+          }
         }
       }
       
@@ -269,6 +301,11 @@ const router = Router();
       if (task.assignedToId) userIdsToFetch.push(task.assignedToId);
       if (task.assignedById) userIdsToFetch.push(task.assignedById);
       if ((task as any).checkerId) userIdsToFetch.push((task as any).checkerId);
+
+      const taskAssigneeRows = await db.select().from(taskAssignees).where(eq(taskAssignees.taskId, taskId));
+      for (const ta of taskAssigneeRows) {
+        if (!userIdsToFetch.includes(ta.userId)) userIdsToFetch.push(ta.userId);
+      }
 
       if (userIdsToFetch.length > 0) {
         const usersMap = await storage.getUsersByIds(userIdsToFetch);
@@ -284,6 +321,17 @@ const router = Router();
           const u = usersMap.get((task as any).checkerId);
           enrichedTask.checkerName = u ? `${u.firstName || ''} ${u.lastName || ''}`.trim() : null;
         }
+        enrichedTask.assignees = taskAssigneeRows.map(ta => {
+          const u = usersMap.get(ta.userId);
+          return {
+            ...ta,
+            userName: u ? `${u.firstName || ''} ${u.lastName || ''}`.trim() : 'Bilinmiyor',
+            userRole: u?.role || null,
+            userProfileImage: u?.profileImageUrl || null,
+          };
+        });
+      } else {
+        enrichedTask.assignees = [];
       }
 
       res.json(enrichedTask);
@@ -545,6 +593,41 @@ const router = Router();
         console.error("Error in HQ admin notification:", hqAdminError);
       }
       
+      const additionalAssigneeIds: string[] = req.body.additionalAssignees || [];
+      if (additionalAssigneeIds.length > 0 || assigneeId) {
+        const allAssigneeIds = [assigneeId, ...additionalAssigneeIds].filter((id, idx, arr) => id && arr.indexOf(id) === idx) as string[];
+        for (const aId of allAssigneeIds) {
+          try {
+            await db.insert(taskAssignees).values({
+              taskId: task.id,
+              userId: aId,
+              status: 'beklemede',
+            }).onConflictDoNothing();
+          } catch (e) {
+            console.error("Error inserting task assignee:", e);
+          }
+        }
+
+        for (const extraId of additionalAssigneeIds) {
+          if (extraId === userId || extraId === assigneeId) continue;
+          try {
+            const assigner = await storage.getUser(userId);
+            const assignerName3 = assigner?.firstName && assigner?.lastName
+              ? `${assigner.firstName} ${assigner.lastName}` : 'Bir yönetici';
+            await storage.createNotification({
+              userId: extraId,
+              type: 'task_assigned',
+              title: 'Yeni Görev Atandı',
+              message: `${assignerName3} size yeni bir görev atadı: "${task.description?.substring(0, 50)}${(task.description?.length || 0) > 50 ? '...' : ''}"`,
+              link: `/gorevler?taskId=${task.id}`,
+              branchId: taskBranchId,
+            });
+          } catch (notifError) {
+            console.error("Error sending additional assignee notification:", notifError);
+          }
+        }
+      }
+
       auditLog(req, { eventType: "task.created", action: "created", resource: "tasks", resourceId: String(task.id), after: { description: validatedData.description, assignedToId: validatedData.assignedToId || userId, branchId: taskBranchId } });
 
       if (assigneeId && assigneeId !== userId) {
@@ -553,7 +636,7 @@ const router = Router();
           ? `${assigner.firstName} ${assigner.lastName}` : 'Yonetici';
         onTaskAssigned(task.id, task.description || 'Gorev', assigneeId, assignerName2);
       }
-      res.json(task);
+      res.json({ ...task, additionalAssignees: additionalAssigneeIds });
     } catch (error: any) {
       console.error("Error starting task:", error);
       if (error instanceof AuthorizationError) {
@@ -1736,7 +1819,30 @@ const router = Router();
       }
       
       const history = await storage.getTaskStatusHistory(taskId);
-      res.json(history);
+      
+      const userIds = [...new Set(history.map(h => h.changedById).filter(Boolean))];
+      const userMap: Record<string, { firstName: string; lastName: string }> = {};
+      
+      if (userIds.length > 0) {
+        const usersData = await db.select({
+          id: users.id,
+          firstName: users.firstName,
+          lastName: users.lastName,
+        }).from(users).where(inArray(users.id, userIds));
+        
+        for (const u of usersData) {
+          userMap[u.id] = { firstName: u.firstName || '', lastName: u.lastName || '' };
+        }
+      }
+      
+      const enrichedHistory = history.map(h => ({
+        ...h,
+        changedByName: userMap[h.changedById] 
+          ? `${userMap[h.changedById].firstName} ${userMap[h.changedById].lastName}`.trim() || 'Sistem'
+          : 'Sistem',
+      }));
+      
+      res.json(enrichedHistory);
     } catch (error: any) {
       console.error("Error fetching task history:", error);
       res.status(500).json({ message: "Görev geçmişi alınamadı" });
