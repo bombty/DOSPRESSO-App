@@ -1,0 +1,47 @@
+Goal: Consolidate navigation + role UX + i18n adoption with minimal refactor.
+
+Context:
+- Sidebar/menu labels are duplicated across sidebar, header/footer, dashboard quick actions, card grid hub, bottom nav.
+- i18next exists but adoption is low; many labels are hardcoded Turkish/English mixed.
+- We support multiple scopes (branch/hq/factory) and many roles; navigation must be consistent and deterministic.
+
+Requirements (STRICT, minimal changes):
+1) Create a single Nav Registry (client-side) as source of truth:
+   - File: client/src/nav/nav-registry.ts (or similar).
+   - Export NavItem[] with fields:
+     id, route, icon, group, order,
+     labelKey, defaultLabelTR, defaultLabelEN,
+     scopes: ("branch"|"hq"|"factory")[],
+     roles: string[] (role ids),
+     featureFlag? (optional).
+2) Create one visibility function:
+   - File: client/src/nav/canSeeNavItem.ts
+   - canSeeNavItem(user, item): checks role + scope + branch isolation if needed.
+   - All UI navigation consumers must use this.
+3) Update ALL navigation sources to render from registry (no duplicates):
+   - Sidebar
+   - Header/footer links if any
+   - Dashboard quick-actions
+   - Card-grid-hub modules
+   - Bottom nav (mobile)
+   Remove any hardcoded label arrays once migrated.
+4) i18n adoption (minimal):
+   - Add nav labels + 3 group headers to locale files:
+     locales/tr/common.json and locales/en/common.json (or existing namespaces).
+   - Use t(item.labelKey, { defaultValue: item.defaultLabelTR/EN }) so missing keys don’t break UI.
+   - Do NOT translate entire app; only navigation + top 20 common UI labels used in these components.
+5) Dev safety checks:
+   - Add a dev-only warning if two visible nav items point to same route with different labels (route dedup guard).
+6) Deliverables:
+   - List changed files
+   - Manual tests:
+     a) Login as branch supervisor/stajyer/admin -> menus differ correctly
+     b) Switch language TR/EN -> nav labels change
+     c) No duplicate routes in sidebar/quick-actions
+     d) Build passes
+
+Constraints:
+- No backend changes unless absolutely necessary.
+- Keep existing routing; do not rename routes.
+- Keep styling intact; focus on structure + labels + dedup.
+Proceed to implement, then run tests and ensure build passes.
