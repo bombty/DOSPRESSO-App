@@ -6278,6 +6278,7 @@ export const employeeOnboardingAssignments = pgTable("employee_onboarding_assign
   userId: varchar("user_id").notNull(), // Yeni personel
   branchId: integer("branch_id").notNull(),
   templateId: integer("template_id").notNull().references(() => onboardingTemplates.id),
+  mentorId: varchar("mentor_id"),
   startDate: timestamp("start_date").notNull().defaultNow(),
   expectedEndDate: timestamp("expected_end_date"), // Beklenen bitiş (startDate + durationDays)
   actualEndDate: timestamp("actual_end_date"), // Gerçek bitiş
@@ -6285,7 +6286,7 @@ export const employeeOnboardingAssignments = pgTable("employee_onboarding_assign
   overallProgress: integer("overall_progress").notNull().default(0), // 0-100 yüzde
   managerNotified: boolean("manager_notified").notNull().default(false), // Tamamlandığında bildirim gönderildi mi?
   evaluationStatus: varchar("evaluation_status", { length: 30 }), // pending, passed, failed (deneme süreci değerlendirmesi)
-  evaluationNotes: text("evaluation_notes"),
+  evaluationNotes: text("notes"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => [
@@ -13668,3 +13669,191 @@ export const insertOnboardingCheckinSchema = createInsertSchema(onboardingChecki
 
 export type InsertOnboardingCheckin = z.infer<typeof insertOnboardingCheckinSchema>;
 export type OnboardingCheckin = typeof onboardingCheckins.$inferSelect;
+
+// ========================================
+// ACADEMY V2 - GATE SYSTEM & CONTENT PACKS
+// ========================================
+
+export const careerGates = pgTable("career_gates", {
+  id: serial("id").primaryKey(),
+  gateNumber: integer("gate_number").notNull(),
+  fromLevelId: integer("from_level_id").references(() => careerLevels.id),
+  toLevelId: integer("to_level_id").references(() => careerLevels.id),
+  titleTr: varchar("title_tr", { length: 200 }).notNull(),
+  descriptionTr: text("description_tr"),
+  quizId: integer("quiz_id").references(() => quizzes.id),
+  quizPassingScore: integer("quiz_passing_score").default(80),
+  practicalChecklist: jsonb("practical_checklist").$type<Array<{item: string; weight: number}>>().default([]),
+  practicalApprover: varchar("practical_approver", { length: 50 }).default("supervisor"),
+  kpiRules: jsonb("kpi_rules").$type<Array<{metric: string; max: number; period_days: number}>>().default([]),
+  minAttendanceRate: integer("min_attendance_rate").default(90),
+  attendancePeriodDays: integer("attendance_period_days").default(30),
+  minDaysInLevel: integer("min_days_in_level").default(30),
+  retryCooldownDays: integer("retry_cooldown_days").default(7),
+  maxRetries: integer("max_retries").default(3),
+  requiresSupervisor: boolean("requires_supervisor").default(true),
+  requiresCoach: boolean("requires_coach").default(true),
+  requiresCgo: boolean("requires_cgo").default(false),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("career_gates_gate_number_idx").on(table.gateNumber),
+  index("career_gates_active_idx").on(table.isActive),
+]);
+
+export const insertCareerGateSchema = createInsertSchema(careerGates).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertCareerGate = z.infer<typeof insertCareerGateSchema>;
+export type CareerGate = typeof careerGates.$inferSelect;
+
+export const gateAttempts = pgTable("gate_attempts", {
+  id: serial("id").primaryKey(),
+  gateId: integer("gate_id").notNull().references(() => careerGates.id),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  attemptNumber: integer("attempt_number").notNull().default(1),
+  quizScore: integer("quiz_score"),
+  quizPassed: boolean("quiz_passed"),
+  practicalScore: integer("practical_score"),
+  practicalPassed: boolean("practical_passed"),
+  practicalApprovedBy: varchar("practical_approved_by").references(() => users.id),
+  kpiScore: integer("kpi_score"),
+  kpiPassed: boolean("kpi_passed"),
+  kpiDetails: jsonb("kpi_details").$type<Record<string, number>>(),
+  attendanceRate: integer("attendance_rate"),
+  attendancePassed: boolean("attendance_passed"),
+  overallPassed: boolean("overall_passed").notNull().default(false),
+  overallScore: integer("overall_score"),
+  status: varchar("status", { length: 20 }).default("in_progress"),
+  startedAt: timestamp("started_at").defaultNow(),
+  completedAt: timestamp("completed_at"),
+  failureReason: text("failure_reason"),
+  nextRetryAt: timestamp("next_retry_at"),
+  supervisorApproved: boolean("supervisor_approved").default(false),
+  coachApproved: boolean("coach_approved").default(false),
+  cgoApproved: boolean("cgo_approved").default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("gate_attempts_gate_idx").on(table.gateId),
+  index("gate_attempts_user_idx").on(table.userId),
+  index("gate_attempts_status_idx").on(table.status),
+]);
+
+export const insertGateAttemptSchema = createInsertSchema(gateAttempts).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertGateAttempt = z.infer<typeof insertGateAttemptSchema>;
+export type GateAttempt = typeof gateAttempts.$inferSelect;
+
+export const kpiSignalRules = pgTable("kpi_signal_rules", {
+  id: serial("id").primaryKey(),
+  signalKey: varchar("signal_key", { length: 50 }).notNull().unique(),
+  titleTr: varchar("title_tr", { length: 200 }).notNull(),
+  descriptionTr: text("description_tr"),
+  metricSource: varchar("metric_source", { length: 50 }).notNull(),
+  metricTable: varchar("metric_table", { length: 100 }),
+  thresholdType: varchar("threshold_type", { length: 20 }).default("above"),
+  thresholdValue: real("threshold_value").notNull(),
+  evaluationPeriodDays: integer("evaluation_period_days").default(30),
+  recommendedModuleId: integer("recommended_module_id").references(() => trainingModules.id),
+  recommendedAction: varchar("recommended_action", { length: 100 }),
+  targetRoles: text("target_roles").array().default(sql`ARRAY['barista', 'bar_buddy', 'stajyer']::text[]`),
+  notifyRoles: text("notify_roles").array().default(sql`ARRAY['coach']::text[]`),
+  severity: varchar("severity", { length: 20 }).default("warning"),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("kpi_signal_rules_key_idx").on(table.signalKey),
+  index("kpi_signal_rules_active_idx").on(table.isActive),
+]);
+
+export const insertKpiSignalRuleSchema = createInsertSchema(kpiSignalRules).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertKpiSignalRule = z.infer<typeof insertKpiSignalRuleSchema>;
+export type KpiSignalRule = typeof kpiSignalRules.$inferSelect;
+
+export const contentPacks = pgTable("content_packs", {
+  id: serial("id").primaryKey(),
+  name: varchar("name", { length: 200 }).notNull(),
+  descriptionTr: text("description_tr"),
+  targetRole: varchar("target_role", { length: 50 }).notNull(),
+  packType: varchar("pack_type", { length: 30 }).default("onboarding"),
+  durationDays: integer("duration_days"),
+  isMandatory: boolean("is_mandatory").default(true),
+  createdBy: varchar("created_by").references(() => users.id),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("content_packs_role_idx").on(table.targetRole),
+  index("content_packs_type_idx").on(table.packType),
+  index("content_packs_active_idx").on(table.isActive),
+]);
+
+export const insertContentPackSchema = createInsertSchema(contentPacks).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertContentPack = z.infer<typeof insertContentPackSchema>;
+export type ContentPack = typeof contentPacks.$inferSelect;
+
+export const contentPackItems = pgTable("content_pack_items", {
+  id: serial("id").primaryKey(),
+  packId: integer("pack_id").notNull().references(() => contentPacks.id, { onDelete: "cascade" }),
+  dayNumber: integer("day_number"),
+  sortOrder: integer("sort_order").notNull().default(1),
+  contentType: varchar("content_type", { length: 30 }).notNull(),
+  trainingModuleId: integer("training_module_id").references(() => trainingModules.id),
+  quizId: integer("quiz_id").references(() => quizzes.id),
+  recipeId: integer("recipe_id"),
+  titleOverride: varchar("title_override", { length: 200 }),
+  isRequired: boolean("is_required").default(true),
+  estimatedMinutes: integer("estimated_minutes").default(15),
+  passingScore: integer("passing_score").default(70),
+  requiresApproval: boolean("requires_approval").default(false),
+  approverRole: varchar("approver_role", { length: 50 }),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("content_pack_items_pack_idx").on(table.packId),
+  index("content_pack_items_day_idx").on(table.dayNumber),
+  index("content_pack_items_order_idx").on(table.sortOrder),
+]);
+
+export const insertContentPackItemSchema = createInsertSchema(contentPackItems).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertContentPackItem = z.infer<typeof insertContentPackItemSchema>;
+export type ContentPackItem = typeof contentPackItems.$inferSelect;
+
+export const userPackProgress = pgTable("user_pack_progress", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  packId: integer("pack_id").notNull().references(() => contentPacks.id),
+  packItemId: integer("pack_item_id").notNull().references(() => contentPackItems.id),
+  status: varchar("status", { length: 20 }).default("pending"),
+  startedAt: timestamp("started_at"),
+  completedAt: timestamp("completed_at"),
+  score: integer("score"),
+  approvedBy: varchar("approved_by").references(() => users.id),
+  approvedAt: timestamp("approved_at"),
+  approvalNotes: text("approval_notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("user_pack_progress_user_idx").on(table.userId),
+  index("user_pack_progress_pack_idx").on(table.packId),
+  index("user_pack_progress_item_idx").on(table.packItemId),
+  index("user_pack_progress_status_idx").on(table.status),
+]);

@@ -356,6 +356,7 @@ import { resolvePermissionScope, applyScopeFilter, getUserPermissions, getAllAct
 import adminRouter from "./routes/admin";
 import factoryRouter from "./routes/factory";
 import academyRouter from "./routes/academy";
+import academyV2Router from "./routes/academy-v2";
 import equipmentRouter from "./routes/equipment";
 import tasksRouter from "./routes/tasks";
 import hrRouter from "./routes/hr";
@@ -612,6 +613,7 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
   app.use(adminRouter);
   app.use(factoryRouter);
   app.use(academyRouter);
+  app.use(academyV2Router);
   app.use(equipmentRouter);
   app.use(tasksRouter);
   app.use(hrRouter);

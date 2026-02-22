@@ -25,6 +25,7 @@ import {
   Settings2
 } from "lucide-react";
 
+const AcademyMyPath = lazy(() => import("./academy-my-path"));
 const Academy = lazy(() => import("./academy"));
 const AcademyHQ = lazy(() => import("./academy-hq"));
 const AcademySupervisor = lazy(() => import("./academy-supervisor"));
@@ -61,6 +62,7 @@ interface TabGroup {
 }
 
 const TAB_GROUPS: TabGroup[] = [
+  { id: "kariyer", label: "Career Path", labelTr: "Kariyer Yolu", icon: <Target className="h-4 w-4" /> },
   { id: "egitim", label: "Training", labelTr: "Eğitim", icon: <BookOpen className="h-4 w-4" /> },
   { id: "gamification", label: "Gamification", labelTr: "Oyunlaştırma", icon: <Trophy className="h-4 w-4" /> },
   { id: "analytics", label: "Analytics", labelTr: "Analitik", icon: <BarChart3 className="h-4 w-4" /> },
@@ -68,6 +70,15 @@ const TAB_GROUPS: TabGroup[] = [
 ];
 
 const AKADEMI_TABS: TabConfig[] = [
+  {
+    id: "benim-yolum",
+    label: "My Path",
+    labelTr: "Benim Yolum",
+    icon: <Target className="h-4 w-4" />,
+    permissionModule: "academy",
+    group: "kariyer",
+    component: AcademyMyPath
+  },
   {
     id: "genel-egitimler",
     label: "General Training",
@@ -237,7 +248,8 @@ function TabSkeleton() {
 }
 
 const TAB_URL_MAP: Record<string, string> = {
-  "genel-egitimler": "/akademi",
+  "benim-yolum": "/akademi",
+  "genel-egitimler": "/akademi/genel-egitimler",
   "hq-yonetim": "/akademi/hq-yonetim",
   "bilgi-bankasi": "/akademi/bilgi-bankasi",
   "rozetler": "/akademi/rozetler",
@@ -257,9 +269,9 @@ const TAB_URL_MAP: Record<string, string> = {
 };
 
 function getTabFromUrl(pathname: string): string | null {
-  if (pathname === "/akademi" || pathname === "/akademi/") return "genel-egitimler";
+  if (pathname === "/akademi" || pathname === "/akademi/") return "benim-yolum";
   const sortedEntries = Object.entries(TAB_URL_MAP)
-    .filter(([tabId]) => tabId !== "genel-egitimler")
+    .filter(([tabId]) => tabId !== "benim-yolum")
     .sort((a, b) => b[1].length - a[1].length);
   for (const [tabId, url] of sortedEntries) {
     if (pathname === url || pathname.startsWith(url + "/")) {
