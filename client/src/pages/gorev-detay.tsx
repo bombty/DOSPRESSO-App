@@ -751,7 +751,7 @@ export default function GorevDetay() {
                     data-testid="button-start-progress"
                   >
                     <PlayCircle className="h-4 w-4 mr-2" />
-                    Başladım
+                    Başla
                   </Button>
                 )}
               </CardContent>
