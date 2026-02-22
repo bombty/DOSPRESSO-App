@@ -248,7 +248,12 @@ function AssignTaskDialog({ open, onOpenChange }: { open: boolean; onOpenChange:
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) resetForm(); onOpenChange(v); }}>
-      <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto" data-testid="dialog-assign-task">
+      <DialogContent
+        className="sm:max-w-md max-h-[90vh] overflow-y-auto"
+        data-testid="dialog-assign-task"
+        onInteractOutside={(e) => e.preventDefault()}
+        onPointerDownOutside={(e) => e.preventDefault()}
+      >
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2" data-testid="dialog-title-assign-task">
             <UserPlus className="w-5 h-5" />

@@ -247,7 +247,11 @@ export function QuickTaskModal({ trigger }: QuickTaskModalProps) {
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent className="max-w-md max-h-[90vh] flex flex-col">
+      <DialogContent
+        className="max-w-md max-h-[90vh] flex flex-col"
+        onInteractOutside={(e) => e.preventDefault()}
+        onPointerDownOutside={(e) => e.preventDefault()}
+      >
         <DialogHeader>
           <DialogTitle>Hızlı Görev Oluştur</DialogTitle>
         </DialogHeader>
