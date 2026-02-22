@@ -6,6 +6,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAdaptivePolling } from "@/hooks/useAdaptivePolling";
 import { useLocation } from "wouter";
 import type { Notification, Branch } from "@shared/schema";
+import { hasPermission, type UserRoleType } from "@shared/schema";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -396,6 +397,7 @@ export default function Notifications() {
   const [assignTaskOpen, setAssignTaskOpen] = useState(false);
   
   const isAdmin = user?.role === 'admin' || user?.role === 'ceo';
+  const canAssignTasks = user?.role ? hasPermission(user.role as UserRoleType, 'tasks', 'create') : false;
   const [viewAll, setViewAll] = useState(false);
   
   const pollingInterval = useAdaptivePolling();
@@ -614,15 +616,17 @@ export default function Notifications() {
         </div>
         
         <div className="flex items-center gap-2 flex-wrap">
-          <Button
-            variant="default"
-            size="sm"
-            onClick={() => setAssignTaskOpen(true)}
-            data-testid="button-assign-task"
-          >
-            <UserPlus className="w-3.5 h-3.5 mr-1.5" />
-            Görev Ata
-          </Button>
+          {canAssignTasks && (
+            <Button
+              variant="default"
+              size="sm"
+              onClick={() => setAssignTaskOpen(true)}
+              data-testid="button-assign-task"
+            >
+              <UserPlus className="w-3.5 h-3.5 mr-1.5" />
+              Görev Ata
+            </Button>
+          )}
           {isAdmin && (
             <Button
               variant={viewAll ? "default" : "outline"}

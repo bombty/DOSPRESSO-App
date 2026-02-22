@@ -20,7 +20,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { QuickTaskModal } from "@/components/quick-task-modal";
-import { type Task, type Branch, type User, isHQRole as checkIsHQRole, type TaskStatus, type TaskPriority } from "@shared/schema";
+import { type Task, type Branch, type User, isHQRole as checkIsHQRole, type TaskStatus, type TaskPriority, hasPermission, type UserRoleType } from "@shared/schema";
 import { Check, Clock, AlertCircle, CheckCircle2, PlayCircle, Search, X, Calendar, ChevronDown, Filter, XCircle, ArrowUp, ArrowDown, Eye, EyeOff, Building2, Send, Star, BarChart3 } from "lucide-react";
 import { format } from "date-fns";
 
@@ -66,6 +66,7 @@ export default function Tasks() {
   });
 
   const isHQ = user?.role && checkIsHQRole(user.role as any);
+  const canAssignTasks = user?.role ? hasPermission(user.role as UserRoleType, 'tasks', 'create') : false;
 
   const filteredTasksForStats = useMemo(() => {
     if (!tasks) return [];
@@ -290,14 +291,16 @@ export default function Tasks() {
               Dağılım Raporu
             </Button>
           )}
-          {isHQ && (
+          {isHQ && canAssignTasks && (
             <Button size="sm" variant="outline" onClick={() => setShowBulkDialog(true)} data-testid="button-bulk-assign">
               <Send className="h-4 w-4 mr-2" />
               Toplu Atama
             </Button>
           )}
         </div>
-        <QuickTaskModal trigger={<Button size="sm" data-testid="button-add-task">Yeni Görev Ekle</Button>} />
+        {canAssignTasks && (
+          <QuickTaskModal trigger={<Button size="sm" data-testid="button-add-task">Yeni Görev Ekle</Button>} />
+        )}
       </div>
 
       {/* Assignment Direction Filter + Branch Selector */}
@@ -313,17 +316,19 @@ export default function Tasks() {
         >
           Bana Atanan
         </Button>
-        <Button
-          variant={assignmentFilter === "atadiklarim" ? "default" : "outline"}
-          size="sm"
-          onClick={() => {
-            setAssignmentFilter(assignmentFilter === "atadiklarim" ? null : "atadiklarim");
-            setFilterBranchId(null);
-          }}
-          data-testid="button-filter-assigned-by-me"
-        >
-          Atadıklarım
-        </Button>
+        {canAssignTasks && (
+          <Button
+            variant={assignmentFilter === "atadiklarim" ? "default" : "outline"}
+            size="sm"
+            onClick={() => {
+              setAssignmentFilter(assignmentFilter === "atadiklarim" ? null : "atadiklarim");
+              setFilterBranchId(null);
+            }}
+            data-testid="button-filter-assigned-by-me"
+          >
+            Atadıklarım
+          </Button>
+        )}
         
         {isHQ && branches && branches.length > 0 && (
           <Popover open={branchPopoverOpen} onOpenChange={setBranchPopoverOpen}>
