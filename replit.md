@@ -79,6 +79,17 @@ The frontend utilizes React 18+ with TypeScript and Vite, employing Shadcn/ui (N
 - **PDF Generation**: Uses jsPDF with Helvetica font and Turkish character sanitization.
 - **Academy V2 Implementation**: Includes Gate system, Content Pack management, My Path NBA engine, and Onboarding Studio for creating and assigning day-by-day learning paths with approval workflows. Role-based UI separation ensures coaches, supervisors, and employees have tailored views and access to Academy features. Centralized Academy RBAC enforces role-based access to APIs and frontend components.
 
+## Workflow Rules
+- **No feature build without DoD + acceptance criteria + manual test steps.**
+- Governance docs are in `docs/` — read before starting any sprint:
+  - `docs/00-north-star.md` — Mission + 6 non-negotiable rules
+  - `docs/01-scope-lock.md` — Weekly scope limit (max 3–5 items)
+  - `docs/02-definition-of-done.md` — Merge/build checklist (RBAC, i18n, tests, backward compat)
+  - `docs/03-rbac-policy.md` — Role→permissions matrix, deny-by-default, how to add routes
+  - `docs/04-ai-surface-rules.md` — AI visibility patterns, human approval, deterministic-first
+- Every change must pass the DoD checklist before completion.
+- Only P0 production-breaking bugs may bypass the weekly scope lock.
+
 ## External Dependencies
 - **OpenAI API**: Used for AI-powered vision analysis, chat completions, embeddings, and summary generation.
 - **Replit Auth**: Utilized for user authentication via OpenID Connect.
