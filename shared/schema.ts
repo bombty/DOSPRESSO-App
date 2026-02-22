@@ -9029,13 +9029,15 @@ export const taskSteps = pgTable("task_steps", {
   id: serial("id").primaryKey(),
   taskId: integer("task_id").notNull().references(() => tasks.id, { onDelete: "cascade" }),
   authorId: varchar("author_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  assignedToId: varchar("assigned_to_id").references(() => users.id, { onDelete: "set null" }),
   
   title: varchar("title", { length: 255 }).notNull(),
   description: text("description"),
-  status: varchar("status", { length: 30 }).notNull().default("pending"), // pending, in_progress, completed
+  status: varchar("status", { length: 30 }).notNull().default("pending"),
   
   order: integer("order").notNull().default(0),
   
+  claimedAt: timestamp("claimed_at"),
   startedAt: timestamp("started_at"),
   completedAt: timestamp("completed_at"),
   

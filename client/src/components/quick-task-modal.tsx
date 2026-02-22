@@ -14,7 +14,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Building2, Store, Camera, UserCheck, GraduationCap, Users, X } from "lucide-react";
+import { Plus, Building2, Store, Camera, UserCheck, GraduationCap, Users, X, ListChecks, Trash2 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ObjectUploader } from "@/components/ObjectUploader";
 
@@ -82,6 +82,8 @@ export function QuickTaskModal({ trigger }: QuickTaskModalProps) {
   const [selectedBranchId, setSelectedBranchId] = useState<string>("");
   const [photoUrl, setPhotoUrl] = useState<string>("");
   const [additionalAssignees, setAdditionalAssignees] = useState<string[]>([]);
+  const [subTasks, setSubTasks] = useState<string[]>([]);
+  const [newSubTask, setNewSubTask] = useState("");
   const { user } = useAuth();
   const { toast } = useToast();
 
@@ -145,28 +147,33 @@ export function QuickTaskModal({ trigger }: QuickTaskModalProps) {
     },
   });
 
-  // Get supervisors/supervisor_buddies for checker selection
   const availableCheckers = useMemo(() => {
     if (!employees.length) return [];
     
-    // If assignee is selected, get checkers from same branch (supervisors)
     const assigneeId = form.watch("assignedToId");
-    const assignee = employees.find(e => e.id === assigneeId);
     
-    if (assignee?.branchId) {
-      // Return supervisors from same branch
+    if (isHQUser) {
       return employees.filter(e => 
-        (e.role === 'supervisor' || e.role === 'supervisor_buddy') && 
-        e.branchId === assignee.branchId &&
-        e.id !== assigneeId
+        e.id !== assigneeId && 
+        !additionalAssignees.includes(e.id) &&
+        e.id !== user?.id
       );
     }
     
-    // For HQ tasks, return all supervisors
+    const assignee = employees.find(e => e.id === assigneeId);
+    if (assignee?.branchId) {
+      return employees.filter(e => 
+        e.branchId === assignee.branchId &&
+        e.id !== assigneeId &&
+        !additionalAssignees.includes(e.id)
+      );
+    }
+    
     return employees.filter(e => 
-      (e.role === 'supervisor' || e.role === 'supervisor_buddy')
+      e.id !== assigneeId && 
+      !additionalAssignees.includes(e.id)
     );
-  }, [employees, form.watch("assignedToId")]);
+  }, [employees, form.watch("assignedToId"), isHQUser, additionalAssignees, user?.id]);
 
   const createMutation = useMutation({
     mutationFn: async (data: QuickTaskFormData) => {
@@ -178,7 +185,7 @@ export function QuickTaskModal({ trigger }: QuickTaskModalProps) {
         taskBranchId = null;
       }
 
-      await apiRequest("POST", "/api/tasks", {
+      const res = await apiRequest("POST", "/api/tasks", {
         description: data.description,
         priority: data.priority,
         status: "beklemede",
@@ -190,11 +197,27 @@ export function QuickTaskModal({ trigger }: QuickTaskModalProps) {
         checkerId: data.checkerId || null,
         additionalAssignees: additionalAssignees,
       });
+      
+      const taskData = await res.json();
+      if (subTasks.length > 0 && taskData?.id) {
+        for (let i = 0; i < subTasks.length; i++) {
+          try {
+            await apiRequest("POST", `/api/tasks/${taskData.id}/steps`, {
+              title: subTasks[i],
+              order: i,
+            });
+          } catch (e) {
+            console.error("Step creation error:", e);
+          }
+        }
+      }
     },
     onSuccess: () => {
       toast({
         title: "Görev Oluşturuldu",
-        description: "Yeni görev başarıyla oluşturuldu",
+        description: subTasks.length > 0 
+          ? `Görev ${subTasks.length} alt görev ile oluşturuldu`
+          : "Yeni görev başarıyla oluşturuldu",
       });
       queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
       queryClient.invalidateQueries({ queryKey: ["/api/analytics"] });
@@ -203,6 +226,8 @@ export function QuickTaskModal({ trigger }: QuickTaskModalProps) {
       setSelectedBranchId("");
       setPhotoUrl("");
       setAdditionalAssignees([]);
+      setSubTasks([]);
+      setNewSubTask("");
       setTimeout(() => setOpen(false), 0);
     },
     onError: (error: Error) => {
@@ -581,6 +606,68 @@ export function QuickTaskModal({ trigger }: QuickTaskModalProps) {
                 )}
               />
             )}
+
+            <div>
+              <FormLabel className="mb-2 flex items-center gap-1">
+                <ListChecks className="h-3.5 w-3.5" />
+                Alt Görevler (İsteğe Bağlı)
+              </FormLabel>
+              {subTasks.length > 0 && (
+                <div className="space-y-1 mb-2">
+                  {subTasks.map((st, idx) => (
+                    <div key={idx} className="flex items-center gap-2 p-1.5 rounded border bg-muted/50" data-testid={`subtask-item-${idx}`}>
+                      <span className="text-xs text-muted-foreground w-5">{idx + 1}.</span>
+                      <span className="text-sm flex-1 truncate">{st}</span>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-5 w-5 text-muted-foreground hover:text-destructive"
+                        onClick={() => setSubTasks(prev => prev.filter((_, i) => i !== idx))}
+                        data-testid={`button-remove-subtask-${idx}`}
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <div className="flex gap-2">
+                <Input
+                  placeholder="Alt görev ekle..."
+                  value={newSubTask}
+                  onChange={(e) => setNewSubTask(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && newSubTask.trim()) {
+                      e.preventDefault();
+                      setSubTasks(prev => [...prev, newSubTask.trim()]);
+                      setNewSubTask("");
+                    }
+                  }}
+                  className="flex-1 h-8 text-sm"
+                  data-testid="input-new-subtask"
+                />
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    if (newSubTask.trim()) {
+                      setSubTasks(prev => [...prev, newSubTask.trim()]);
+                      setNewSubTask("");
+                    }
+                  }}
+                  disabled={!newSubTask.trim()}
+                  data-testid="button-add-subtask"
+                >
+                  <Plus className="h-3 w-3 mr-1" />
+                  Ekle
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                Grup üyeleri bu alt görevleri sahiplenebilir
+              </p>
+            </div>
 
             <FormField
               control={form.control}

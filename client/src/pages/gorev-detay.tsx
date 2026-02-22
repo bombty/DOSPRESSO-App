@@ -31,7 +31,10 @@ import {
   Star,
   UserCheck,
   GraduationCap,
-  ClipboardCheck
+  ClipboardCheck,
+  Hand,
+  Undo2,
+  Shield
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -55,6 +58,7 @@ export default function GorevDetay() {
   const [showFailureDialog, setShowFailureDialog] = useState(false);
   const [showCompleteDialog, setShowCompleteDialog] = useState(false);
   const [newNote, setNewNote] = useState("");
+  const [checkerNote, setCheckerNote] = useState("");
   const [ratingValue, setRatingValue] = useState(0);
   const [ratingFeedback, setRatingFeedback] = useState("");
   const [showRatingDialog, setShowRatingDialog] = useState(false);
@@ -189,6 +193,32 @@ export default function GorevDetay() {
     },
     onError: (error: any) => {
       toast({ title: "Hata", description: error.message || "Adım silinemedi", variant: "destructive" });
+    },
+  });
+
+  const claimStepMutation = useMutation({
+    mutationFn: async (stepId: number) => {
+      return apiRequest("POST", `/api/tasks/${id}/steps/${stepId}/claim`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/tasks", id, "steps"] });
+      toast({ title: "Başarılı", description: "Adım sahiplenildi" });
+    },
+    onError: (error: any) => {
+      toast({ title: "Hata", description: error.message || "Adım alınamadı", variant: "destructive" });
+    },
+  });
+
+  const unclaimStepMutation = useMutation({
+    mutationFn: async (stepId: number) => {
+      return apiRequest("POST", `/api/tasks/${id}/steps/${stepId}/unclaim`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/tasks", id, "steps"] });
+      toast({ title: "Başarılı", description: "Adım bırakıldı" });
+    },
+    onError: (error: any) => {
+      toast({ title: "Hata", description: error.message || "Adım bırakılamadı", variant: "destructive" });
     },
   });
 
@@ -944,34 +974,46 @@ export default function GorevDetay() {
 
       {/* Checker Verification Section - Shows for checker when task is awaiting check */}
       {(canCheckerVerify || canCheckerReject) && (
-        <Card className="border-blue-500/50 bg-blue-50/50 dark:bg-blue-900/10">
+        <Card className="border-amber-500/50 bg-amber-50/50 dark:bg-amber-900/10">
           <CardHeader className="pb-2">
             <CardTitle className="text-base flex items-center gap-2">
-              <UserCheck className="h-4 w-4 text-blue-500" />
+              <Shield className="h-4 w-4 text-amber-500" />
               Kontrol Bekliyor
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground mb-3">
-              {isOnboarding ? "Onboarding görevi" : "Görev"} kontrol edilmenizi bekliyor.
-              {checkerUser && ` Atanan: ${assignedUser?.firstName} ${assignedUser?.lastName}`}
+          <CardContent className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              {assignedUser ? `${assignedUser.firstName} ${assignedUser.lastName}` : 'Atanan kişi'} tarafından gönderilen {isOnboarding ? "onboarding görevi" : "görev"} kontrolünüzü bekliyor.
             </p>
+            <Textarea
+              placeholder="Kontrol notu ekleyin (opsiyonel)..."
+              value={checkerNote}
+              onChange={(e) => setCheckerNote(e.target.value)}
+              className="min-h-[60px] max-h-[100px] resize-none text-sm"
+              data-testid="input-checker-note"
+            />
             <div className="flex flex-wrap gap-2">
               {canCheckerVerify && (
                 <Button
-                  onClick={() => checkerVerifyMutation.mutate()}
+                  onClick={() => {
+                    checkerVerifyMutation.mutate(checkerNote || undefined);
+                    setCheckerNote("");
+                  }}
                   disabled={checkerVerifyMutation.isPending}
                   data-testid="button-checker-verify"
                 >
                   <CheckCircle className="h-4 w-4 mr-2" />
-                  Kontrol Edildi - Onayla
+                  Onayla
                 </Button>
               )}
               {canCheckerReject && (
                 <Button
                   variant="destructive"
-                  onClick={() => checkerRejectMutation.mutate("Düzeltme gerekli")}
-                  disabled={checkerRejectMutation.isPending}
+                  onClick={() => {
+                    checkerRejectMutation.mutate(checkerNote || "Düzeltme gerekli");
+                    setCheckerNote("");
+                  }}
+                  disabled={checkerRejectMutation.isPending || !checkerNote.trim()}
                   data-testid="button-checker-reject"
                 >
                   <XCircle className="h-4 w-4 mr-2" />
@@ -979,6 +1021,11 @@ export default function GorevDetay() {
                 </Button>
               )}
             </div>
+            {canCheckerReject && !checkerNote.trim() && (
+              <p className="text-xs text-muted-foreground">
+                Düzeltme istemek için not girilmelidir
+              </p>
+            )}
           </CardContent>
         </Card>
       )}
@@ -1194,15 +1241,15 @@ export default function GorevDetay() {
             </div>
           </div>
 
-          {/* Group Assignees */}
-          {(task as any).assignees && (task as any).assignees.length > 1 && (
+          {/* Group Participants - Assignees + Checker */}
+          {((task as any).assignees && (task as any).assignees.length > 1) || hasChecker ? (
             <div className="mt-3 pt-3 border-t">
               <p className="text-xs text-muted-foreground mb-2 flex items-center gap-1">
                 <Users className="h-3 w-3" />
-                Grup Katılımcıları ({(task as any).assignees.length})
+                Katılımcılar
               </p>
               <div className="flex flex-wrap gap-1">
-                {(task as any).assignees.map((a: any) => (
+                {(task as any).assignees?.map((a: any) => (
                   <Link key={a.userId} href={`/personel-detay/${a.userId}`}>
                     <Badge variant="secondary" className="gap-1 cursor-pointer" data-testid={`badge-assignee-${a.userId}`}>
                       <Avatar className="h-4 w-4">
@@ -1215,71 +1262,160 @@ export default function GorevDetay() {
                     </Badge>
                   </Link>
                 ))}
+                {hasChecker && checkerUser && (
+                  <Link href={`/personel-detay/${taskExt.checkerId}`}>
+                    <Badge variant="outline" className="gap-1 cursor-pointer border-amber-500/50 text-amber-700 dark:text-amber-400" data-testid={`badge-checker-${taskExt.checkerId}`}>
+                      <Shield className="h-3 w-3" />
+                      <Avatar className="h-4 w-4">
+                        <AvatarImage src={checkerUser.profileImageUrl || (checkerUser as any).profilePhoto} />
+                        <AvatarFallback className="text-[6px]">
+                          {(checkerUser.firstName?.[0] || '') + (checkerUser.lastName?.[0] || checkerUser.username?.[0] || '')}
+                        </AvatarFallback>
+                      </Avatar>
+                      {checkerUser.firstName ? `${checkerUser.firstName} ${checkerUser.lastName || ''}` : checkerUser.username}
+                      <span className="text-[10px] opacity-70">Denetçi</span>
+                    </Badge>
+                  </Link>
+                )}
               </div>
             </div>
-          )}
+          ) : null}
         </CardContent>
       </Card>
 
-      {/* Task Steps - Inline Stepper */}
+      {/* Task Steps - Cowork Style */}
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
             <ListChecks className="h-4 w-4" />
-            Görev Adımları
+            Alt Görevler
             {taskSteps.length > 0 && (
               <Badge variant="secondary" className="ml-auto text-xs">
                 {taskSteps.filter(s => s.status === "completed").length}/{taskSteps.length}
               </Badge>
             )}
           </CardTitle>
+          {taskSteps.length > 0 && (
+            <div className="w-full bg-muted rounded-full h-1.5 mt-2">
+              <div 
+                className="bg-primary rounded-full h-1.5 transition-all duration-300"
+                style={{ width: `${(taskSteps.filter(s => s.status === "completed").length / taskSteps.length) * 100}%` }}
+              />
+            </div>
+          )}
         </CardHeader>
         <CardContent className="space-y-3">
-          {/* Step List */}
           {taskSteps.length > 0 ? (
             <div className="space-y-2">
-              {taskSteps.map((step, idx) => (
-                <div 
-                  key={step.id} 
-                  className="flex items-center gap-3 p-2 rounded-lg border bg-card hover-elevate"
-                  data-testid={`task-step-${step.id}`}
-                >
-                  <div className="flex items-center gap-2 flex-1 min-w-0">
-                    <span className="text-xs text-muted-foreground w-5">{idx + 1}.</span>
-                    <Checkbox
-                      checked={step.status === "completed"}
-                      onCheckedChange={(checked) => 
-                        toggleStepMutation.mutate({ stepId: step.id, completed: !!checked })
-                      }
-                      disabled={toggleStepMutation.isPending || task.status === "onaylandi" || task.status === "basarisiz"}
-                      data-testid={`checkbox-step-${step.id}`}
-                    />
-                    <span className={`text-sm flex-1 truncate ${step.status === "completed" ? "line-through text-muted-foreground" : ""}`}>
-                      {step.title}
-                    </span>
+              {taskSteps.map((step: any, idx: number) => {
+                const stepClaimedByMe = step.assignedToId === currentUser?.id;
+                const stepClaimed = !!step.assignedToId;
+                const isTaskCompleted = task.status === "onaylandi" || task.status === "basarisiz";
+                const canClaim = isAssignee && !stepClaimed && step.status !== "completed" && !isTaskCompleted;
+                const canUnclaim = stepClaimedByMe && step.status !== "completed" && !isTaskCompleted;
+                const canComplete = (stepClaimedByMe || isAssignee) && step.status !== "completed" && !isTaskCompleted;
+
+                return (
+                  <div 
+                    key={step.id} 
+                    className={`flex items-start gap-3 p-3 rounded-lg border transition-colors ${
+                      step.status === "completed" 
+                        ? "bg-muted/40 border-muted" 
+                        : stepClaimedByMe 
+                          ? "bg-primary/5 border-primary/30" 
+                          : "bg-card"
+                    }`}
+                    data-testid={`task-step-${step.id}`}
+                  >
+                    <div className="pt-0.5">
+                      <Checkbox
+                        checked={step.status === "completed"}
+                        onCheckedChange={(checked) => 
+                          toggleStepMutation.mutate({ stepId: step.id, completed: !!checked })
+                        }
+                        disabled={!canComplete || toggleStepMutation.isPending}
+                        data-testid={`checkbox-step-${step.id}`}
+                      />
+                    </div>
+                    <div className="flex-1 min-w-0 space-y-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className={`text-sm ${step.status === "completed" ? "line-through text-muted-foreground" : ""}`}>
+                          {step.title}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        {stepClaimed && step.assignedUser && (
+                          <div className="flex items-center gap-1">
+                            <Avatar className="h-4 w-4">
+                              <AvatarImage src={step.assignedUser?.profilePhoto} />
+                              <AvatarFallback className="text-[7px]">
+                                {(step.assignedUser?.firstName?.[0] || '') + (step.assignedUser?.lastName?.[0] || step.assignedUser?.username?.[0] || '')}
+                              </AvatarFallback>
+                            </Avatar>
+                            <span className="text-xs text-muted-foreground">
+                              {step.assignedUser?.firstName 
+                                ? `${step.assignedUser.firstName} ${step.assignedUser.lastName || ''}`
+                                : step.assignedUser?.username}
+                            </span>
+                          </div>
+                        )}
+                        {step.completedAt && (
+                          <span className="text-xs text-muted-foreground">
+                            {new Date(step.completedAt).toLocaleDateString("tr-TR")}
+                          </span>
+                        )}
+                        {step.claimedAt && step.status !== "completed" && (
+                          <Badge variant="outline" className="text-[10px] h-4 px-1">
+                            <Clock className="h-2.5 w-2.5 mr-0.5" />
+                            {new Date(step.claimedAt).toLocaleDateString("tr-TR")}
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1 shrink-0">
+                      {canClaim && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => claimStepMutation.mutate(step.id)}
+                          disabled={claimStepMutation.isPending}
+                          data-testid={`button-claim-step-${step.id}`}
+                        >
+                          <Hand className="h-3 w-3 mr-1" />
+                          Al
+                        </Button>
+                      )}
+                      {canUnclaim && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => unclaimStepMutation.mutate(step.id)}
+                          disabled={unclaimStepMutation.isPending}
+                          data-testid={`button-unclaim-step-${step.id}`}
+                        >
+                          <Undo2 className="h-3 w-3 mr-1" />
+                          Bırak
+                        </Button>
+                      )}
+                      {isAssignee && !isTaskCompleted && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="text-muted-foreground"
+                          onClick={() => requestDelete(step.id, step.title || "Adım")}
+                          data-testid={`button-delete-step-${step.id}`}
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      )}
+                    </div>
                   </div>
-                  {step.completedAt && (
-                    <span className="text-xs text-muted-foreground">
-                      {new Date(step.completedAt).toLocaleDateString("tr-TR")}
-                    </span>
-                  )}
-                  {isAssignee && task.status !== "onaylandi" && task.status !== "basarisiz" && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-6 w-6 text-muted-foreground hover:text-destructive"
-                      onClick={() => requestDelete(step.id, step.title || "Adım")}
-                      data-testid={`button-delete-step-${step.id}`}
-                    >
-                      <Trash2 className="h-3 w-3" />
-                    </Button>
-                  )}
-                </div>
-              ))}
+                );
+              })}
             </div>
           ) : (
             <p className="text-sm text-muted-foreground text-center py-2">
-              Henüz adım eklenmedi
+              Henüz alt görev eklenmedi
             </p>
           )}
 
@@ -1365,7 +1501,7 @@ export default function GorevDetay() {
                 }
                 return senderColorMap[senderId];
               };
-              const isGroupTask = (task as any).assignees && (task as any).assignees.length > 1;
+              const isGroupTask = ((task as any).assignees && (task as any).assignees.length > 1) || hasChecker;
 
               return taskHistory && taskHistory.map((entry: any, idx: number) => {
                 const isStatusChange = entry.previousStatus && entry.previousStatus !== entry.newStatus;
@@ -1384,7 +1520,12 @@ export default function GorevDetay() {
                 }
 
                 const senderInitials = senderName.split(' ').map((n: string) => n[0]).join('').substring(0, 2);
-                const assigneeData = isGroupTask ? (task as any).assignees?.find((a: any) => a.userId === entry.changedById) : null;
+                const isCheckerSender = entry.changedById === taskExt.checkerId;
+                const assigneeData = isGroupTask 
+                  ? (isCheckerSender && checkerUser 
+                      ? { userId: checkerUser.id, userProfileImage: checkerUser.profileImageUrl || (checkerUser as any).profilePhoto }
+                      : (task as any).assignees?.find((a: any) => a.userId === entry.changedById))
+                  : null;
 
                 return (
                   <div

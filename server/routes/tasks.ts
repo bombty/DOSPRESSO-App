@@ -481,6 +481,24 @@ const router = Router();
         }
       }
       
+      if (user.role && isBranchRole(user.role as UserRoleType)) {
+        const userBranchId = assertBranchScope(user);
+        if (validatedData.checkerId) {
+          const checker = await storage.getUser(validatedData.checkerId);
+          if (checker && checker.branchId !== userBranchId) {
+            return res.status(403).json({ message: "Denetçi aynı şubeden seçilmelidir" });
+          }
+        }
+        if (req.body.additionalAssignees && Array.isArray(req.body.additionalAssignees)) {
+          for (const assigneeId of req.body.additionalAssignees) {
+            const assignee = await storage.getUser(assigneeId);
+            if (assignee && assignee.branchId !== userBranchId) {
+              return res.status(403).json({ message: "Ek atanan kişiler aynı şubeden olmalıdır" });
+            }
+          }
+        }
+      }
+
       const task = await storage.createTask({
         ...validatedData,
         branchId: taskBranchId!,
@@ -1287,8 +1305,9 @@ const router = Router();
       const isAssigner = task.assignedById === user.id;
       const isAssignee = task.assignedToId === user.id;
       const isHQ = !isBranchRole(user.role as UserRoleType);
+      const isCheckerUser = (task as any).checkerId === user.id;
       
-      if (!isAssigner && !isAssignee && !isHQ) {
+      if (!isAssigner && !isAssignee && !isHQ && !isCheckerUser) {
         const isAdditionalAssignee = await db.select().from(taskAssignees)
           .where(and(eq(taskAssignees.taskId, taskId), eq(taskAssignees.userId, user.id)))
           .then(rows => rows.length > 0);
@@ -1980,7 +1999,30 @@ const router = Router();
     try {
       const taskId = parseInt(req.params.taskId);
       const steps = await storage.getTaskSteps(taskId);
-      res.json(steps);
+      
+      const userIds = [...new Set(steps.map((s: any) => s.assignedToId).filter(Boolean))];
+      let usersMap = new Map<string, any>();
+      if (userIds.length > 0) {
+        usersMap = await storage.getUsersByIds(userIds as string[]);
+      }
+      
+      const enrichedSteps = steps.map((s: any) => {
+        const assignee = s.assignedToId ? usersMap.get(s.assignedToId) : null;
+        return {
+          ...s,
+          assignedToName: assignee ? `${assignee.firstName || ''} ${assignee.lastName || ''}`.trim() : null,
+          assignedToProfileImage: assignee?.profileImageUrl || null,
+          assignedUser: assignee ? {
+            id: assignee.id,
+            username: assignee.username,
+            firstName: assignee.firstName,
+            lastName: assignee.lastName,
+            profilePhoto: assignee.profileImageUrl || assignee.profilePhoto,
+          } : null,
+        };
+      });
+      
+      res.json(enrichedSteps);
     } catch (error: any) {
       console.error("Get task steps error:", error);
       res.status(500).json({ message: "Adımlar getirilemedi" });
@@ -1995,6 +2037,67 @@ const router = Router();
     } catch (error: any) {
       console.error("Create task step error:", error);
       res.status(500).json({ message: "Adım oluşturulamadı" });
+    }
+  });
+
+  router.post('/api/tasks/:taskId/steps/:stepId/claim', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const taskId = parseInt(req.params.taskId);
+      const stepId = parseInt(req.params.stepId);
+      
+      const task = await storage.getTask(taskId);
+      if (!task) return res.status(404).json({ message: "Görev bulunamadı" });
+      
+      const isAssignee = task.assignedToId === user.id;
+      const isHQ = isHQRole(user.role as UserRoleType);
+      const isCheckerForTask = (task as any).checkerId === user.id;
+      const isAdditionalAssignee = await db.select().from(taskAssignees)
+        .where(and(eq(taskAssignees.taskId, taskId), eq(taskAssignees.userId, user.id)))
+        .then(rows => rows.length > 0);
+      
+      if (!isAssignee && !isAdditionalAssignee && !isHQ && !isCheckerForTask) {
+        return res.status(403).json({ message: "Bu adımı alma yetkiniz yok" });
+      }
+      
+      const step = await storage.updateTaskStep(stepId, { 
+        assignedToId: user.id, 
+        claimedAt: new Date(),
+        status: 'in_progress',
+        startedAt: new Date(),
+      });
+      
+      res.json(step);
+    } catch (error: any) {
+      console.error("Claim step error:", error);
+      res.status(500).json({ message: "Adım alınamadı" });
+    }
+  });
+
+  router.post('/api/tasks/:taskId/steps/:stepId/unclaim', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const stepId = parseInt(req.params.stepId);
+      
+      const steps = await storage.getTaskSteps(parseInt(req.params.taskId));
+      const step = steps.find((s: any) => s.id === stepId);
+      if (!step) return res.status(404).json({ message: "Adım bulunamadı" });
+      
+      if (step.assignedToId !== user.id && !isHQRole(user.role as UserRoleType)) {
+        return res.status(403).json({ message: "Bu adımı bırakma yetkiniz yok" });
+      }
+      
+      const updated = await storage.updateTaskStep(stepId, { 
+        assignedToId: null, 
+        claimedAt: null,
+        status: 'pending',
+        startedAt: null,
+      });
+      
+      res.json(updated);
+    } catch (error: any) {
+      console.error("Unclaim step error:", error);
+      res.status(500).json({ message: "Adım bırakılamadı" });
     }
   });
 
