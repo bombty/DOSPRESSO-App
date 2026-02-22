@@ -13544,3 +13544,126 @@ export const insertWasteActionLinkSchema = createInsertSchema(wasteActionLinks).
 
 export type InsertWasteActionLink = z.infer<typeof insertWasteActionLinkSchema>;
 export type WasteActionLink = typeof wasteActionLinks.$inferSelect;
+
+// =============================================
+// GUIDE DOCS (Kılavuz Dokümanları)
+// =============================================
+export const guideDocs = pgTable("guide_docs", {
+  id: serial("id").primaryKey(),
+  title: varchar("title", { length: 255 }).notNull(),
+  slug: varchar("slug", { length: 255 }).notNull(),
+  content: text("content").notNull(),
+  category: varchar("category", { length: 100 }).notNull(),
+  targetRoles: text("target_roles").array().default([]),
+  scope: varchar("scope", { length: 50 }).default("all"),
+  sortOrder: integer("sort_order").default(0),
+  isPublished: boolean("is_published").default(true),
+  createdBy: integer("created_by"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("guide_docs_slug_idx").on(table.slug),
+  index("guide_docs_category_idx").on(table.category),
+]);
+
+export const insertGuideDocSchema = createInsertSchema(guideDocs).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertGuideDoc = z.infer<typeof insertGuideDocSchema>;
+export type GuideDoc = typeof guideDocs.$inferSelect;
+
+// =============================================
+// ONBOARDING V2: Programs + Weeks + Instances + Checkins
+// =============================================
+export const onboardingPrograms = pgTable("onboarding_programs", {
+  id: serial("id").primaryKey(),
+  name: varchar("name", { length: 255 }).notNull(),
+  description: text("description"),
+  targetRole: varchar("target_role", { length: 50 }).notNull(),
+  durationWeeks: integer("duration_weeks").notNull().default(4),
+  isActive: boolean("is_active").default(true),
+  createdBy: integer("created_by"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertOnboardingProgramSchema = createInsertSchema(onboardingPrograms).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertOnboardingProgram = z.infer<typeof insertOnboardingProgramSchema>;
+export type OnboardingProgram = typeof onboardingPrograms.$inferSelect;
+
+export const onboardingWeeks = pgTable("onboarding_weeks", {
+  id: serial("id").primaryKey(),
+  programId: integer("program_id").notNull(),
+  weekNumber: integer("week_number").notNull(),
+  title: varchar("title", { length: 255 }).notNull(),
+  description: text("description"),
+  goals: text("goals").array().default([]),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("onboarding_weeks_program_idx").on(table.programId),
+]);
+
+export const insertOnboardingWeekSchema = createInsertSchema(onboardingWeeks).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertOnboardingWeek = z.infer<typeof insertOnboardingWeekSchema>;
+export type OnboardingWeek = typeof onboardingWeeks.$inferSelect;
+
+export const onboardingInstances = pgTable("onboarding_instances", {
+  id: serial("id").primaryKey(),
+  programId: integer("program_id").notNull(),
+  traineeId: integer("trainee_id").notNull(),
+  mentorId: integer("mentor_id"),
+  branchId: integer("branch_id"),
+  status: varchar("status", { length: 30 }).default("active"),
+  startDate: timestamp("start_date").defaultNow(),
+  completedAt: timestamp("completed_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("onboarding_instances_trainee_idx").on(table.traineeId),
+  index("onboarding_instances_mentor_idx").on(table.mentorId),
+  index("onboarding_instances_program_idx").on(table.programId),
+]);
+
+export const insertOnboardingInstanceSchema = createInsertSchema(onboardingInstances).omit({
+  id: true,
+  completedAt: true,
+  createdAt: true,
+});
+
+export type InsertOnboardingInstance = z.infer<typeof insertOnboardingInstanceSchema>;
+export type OnboardingInstance = typeof onboardingInstances.$inferSelect;
+
+export const onboardingCheckins = pgTable("onboarding_checkins", {
+  id: serial("id").primaryKey(),
+  instanceId: integer("instance_id").notNull(),
+  weekNumber: integer("week_number").notNull(),
+  mentorId: integer("mentor_id").notNull(),
+  rating: integer("rating"),
+  notes: text("notes"),
+  strengths: text("strengths"),
+  areasToImprove: text("areas_to_improve"),
+  checkinDate: timestamp("checkin_date").defaultNow(),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("onboarding_checkins_instance_idx").on(table.instanceId),
+  index("onboarding_checkins_week_idx").on(table.weekNumber),
+]);
+
+export const insertOnboardingCheckinSchema = createInsertSchema(onboardingCheckins).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertOnboardingCheckin = z.infer<typeof insertOnboardingCheckinSchema>;
+export type OnboardingCheckin = typeof onboardingCheckins.$inferSelect;
