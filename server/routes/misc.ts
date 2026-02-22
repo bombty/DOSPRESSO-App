@@ -126,6 +126,16 @@ import {
   franchiseProjectTasks,
   franchiseCollaborators,
   franchiseProjectComments,
+  guideDocs,
+  insertGuideDocSchema,
+  onboardingPrograms,
+  onboardingWeeks,
+  onboardingInstances,
+  onboardingCheckins,
+  insertOnboardingProgramSchema,
+  insertOnboardingWeekSchema,
+  insertOnboardingInstanceSchema,
+  insertOnboardingCheckinSchema,
   hasPermission as schemaHasPermission,
   isHQRole,
   isBranchRole,
@@ -12000,6 +12010,258 @@ Kurallar:
     } catch (error: any) {
       console.error("Usage guide AI error:", error);
       res.status(500).json({ message: "AI yanıt üretemedi, lütfen tekrar deneyin" });
+    }
+  });
+
+  // ========================================
+  // GUIDE DOCS (Kılavuz Dokümanları) CRUD
+  // ========================================
+
+  router.get('/api/guide-docs', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      const { search, category } = req.query;
+      let conditions: any[] = [eq(guideDocs.isPublished, true)];
+      if (category) {
+        conditions.push(eq(guideDocs.category, category as string));
+      }
+      const docs = await db.select().from(guideDocs).where(and(...conditions)).orderBy(asc(guideDocs.sortOrder), desc(guideDocs.createdAt));
+      const filtered = docs.filter((d: any) => {
+        if (!d.targetRoles || d.targetRoles.length === 0) return true;
+        return d.targetRoles.includes(user.role);
+      }).filter((d: any) => {
+        if (!search) return true;
+        const q = (search as string).toLowerCase();
+        return d.title.toLowerCase().includes(q) || d.content.toLowerCase().includes(q);
+      });
+      res.json(filtered);
+    } catch (error: any) {
+      console.error("Guide docs list error:", error);
+      res.status(500).json({ message: "Kılavuz dokümanları yüklenemedi" });
+    }
+  });
+
+  router.get('/api/guide-docs/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const [doc] = await db.select().from(guideDocs).where(eq(guideDocs.id, parseInt(req.params.id)));
+      if (!doc) return res.status(404).json({ message: "Doküman bulunamadı" });
+      res.json(doc);
+    } catch (error: any) {
+      res.status(500).json({ message: "Doküman yüklenemedi" });
+    }
+  });
+
+  router.post('/api/admin/guide-docs', isAuthenticated, async (req: any, res) => {
+    try {
+      if (!['admin', 'genel_mudur'].includes(req.user.role)) {
+        return res.status(403).json({ message: "Yetkiniz yok" });
+      }
+      const body = insertGuideDocSchema.parse({ ...req.body, createdBy: req.user.id });
+      const [doc] = await db.insert(guideDocs).values(body).returning();
+      res.status(201).json(doc);
+    } catch (error: any) {
+      console.error("Guide doc create error:", error);
+      res.status(400).json({ message: error.message || "Doküman oluşturulamadı" });
+    }
+  });
+
+  router.put('/api/admin/guide-docs/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      if (!['admin', 'genel_mudur'].includes(req.user.role)) {
+        return res.status(403).json({ message: "Yetkiniz yok" });
+      }
+      const [doc] = await db.update(guideDocs)
+        .set({ ...req.body, updatedAt: new Date() })
+        .where(eq(guideDocs.id, parseInt(req.params.id)))
+        .returning();
+      if (!doc) return res.status(404).json({ message: "Doküman bulunamadı" });
+      res.json(doc);
+    } catch (error: any) {
+      res.status(400).json({ message: error.message || "Güncelleme başarısız" });
+    }
+  });
+
+  router.delete('/api/admin/guide-docs/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      if (!['admin', 'genel_mudur'].includes(req.user.role)) {
+        return res.status(403).json({ message: "Yetkiniz yok" });
+      }
+      await db.delete(guideDocs).where(eq(guideDocs.id, parseInt(req.params.id)));
+      res.json({ message: "Doküman silindi" });
+    } catch (error: any) {
+      res.status(500).json({ message: "Silme başarısız" });
+    }
+  });
+
+  // ========================================
+  // ONBOARDING V2: Programs + Instances + Checkins
+  // ========================================
+
+  router.get('/api/onboarding-programs', isAuthenticated, async (req: any, res) => {
+    try {
+      const programs = await db.select().from(onboardingPrograms).orderBy(desc(onboardingPrograms.createdAt));
+      res.json(programs);
+    } catch (error: any) {
+      res.status(500).json({ message: "Programlar yüklenemedi" });
+    }
+  });
+
+  router.get('/api/onboarding-programs/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const [program] = await db.select().from(onboardingPrograms).where(eq(onboardingPrograms.id, parseInt(req.params.id)));
+      if (!program) return res.status(404).json({ message: "Program bulunamadı" });
+      const weeks = await db.select().from(onboardingWeeks)
+        .where(eq(onboardingWeeks.programId, program.id))
+        .orderBy(asc(onboardingWeeks.weekNumber));
+      res.json({ ...program, weeks });
+    } catch (error: any) {
+      res.status(500).json({ message: "Program detayı yüklenemedi" });
+    }
+  });
+
+  router.post('/api/onboarding-programs', isAuthenticated, async (req: any, res) => {
+    try {
+      const allowedRoles = ['admin', 'genel_mudur', 'bolge_muduru', 'coach'];
+      if (!allowedRoles.includes(req.user.role)) {
+        return res.status(403).json({ message: "Yetkiniz yok" });
+      }
+      const body = insertOnboardingProgramSchema.parse({ ...req.body, createdBy: req.user.id });
+      const [program] = await db.insert(onboardingPrograms).values(body).returning();
+      res.status(201).json(program);
+    } catch (error: any) {
+      res.status(400).json({ message: error.message || "Program oluşturulamadı" });
+    }
+  });
+
+  router.put('/api/onboarding-programs/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const allowedRoles = ['admin', 'genel_mudur', 'bolge_muduru', 'coach'];
+      if (!allowedRoles.includes(req.user.role)) {
+        return res.status(403).json({ message: "Yetkiniz yok" });
+      }
+      const [program] = await db.update(onboardingPrograms)
+        .set({ ...req.body, updatedAt: new Date() })
+        .where(eq(onboardingPrograms.id, parseInt(req.params.id)))
+        .returning();
+      if (!program) return res.status(404).json({ message: "Program bulunamadı" });
+      res.json(program);
+    } catch (error: any) {
+      res.status(400).json({ message: error.message || "Güncelleme başarısız" });
+    }
+  });
+
+  router.post('/api/onboarding-programs/:id/weeks', isAuthenticated, async (req: any, res) => {
+    try {
+      const allowedRoles = ['admin', 'genel_mudur', 'bolge_muduru', 'coach'];
+      if (!allowedRoles.includes(req.user.role)) {
+        return res.status(403).json({ message: "Yetkiniz yok" });
+      }
+      const body = insertOnboardingWeekSchema.parse({
+        ...req.body,
+        programId: parseInt(req.params.id),
+      });
+      const [week] = await db.insert(onboardingWeeks).values(body).returning();
+      res.status(201).json(week);
+    } catch (error: any) {
+      res.status(400).json({ message: error.message || "Hafta oluşturulamadı" });
+    }
+  });
+
+  router.get('/api/onboarding-instances', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      let conditions: any[] = [];
+      if (['stajyer', 'barista', 'kasap'].includes(user.role)) {
+        conditions.push(eq(onboardingInstances.traineeId, user.id));
+      } else if (['supervisor', 'mudur_yardimcisi', 'sube_muduru'].includes(user.role)) {
+        conditions.push(eq(onboardingInstances.mentorId, user.id));
+      }
+      const instances = conditions.length > 0
+        ? await db.select().from(onboardingInstances).where(and(...conditions)).orderBy(desc(onboardingInstances.createdAt))
+        : await db.select().from(onboardingInstances).orderBy(desc(onboardingInstances.createdAt));
+      
+      const enriched = await Promise.all(instances.map(async (inst: any) => {
+        const [program] = await db.select().from(onboardingPrograms).where(eq(onboardingPrograms.id, inst.programId));
+        const [trainee] = await db.select({ id: users.id, firstName: users.firstName, lastName: users.lastName }).from(users).where(eq(users.id, inst.traineeId));
+        const checkins = await db.select().from(onboardingCheckins).where(eq(onboardingCheckins.instanceId, inst.id));
+        return { ...inst, program, trainee, checkinsCount: checkins.length };
+      }));
+      res.json(enriched);
+    } catch (error: any) {
+      console.error("Onboarding instances error:", error);
+      res.status(500).json({ message: "Onboarding listesi yüklenemedi" });
+    }
+  });
+
+  router.post('/api/onboarding-instances', isAuthenticated, async (req: any, res) => {
+    try {
+      const allowedRoles = ['admin', 'genel_mudur', 'bolge_muduru', 'coach', 'sube_muduru'];
+      if (!allowedRoles.includes(req.user.role)) {
+        return res.status(403).json({ message: "Yetkiniz yok" });
+      }
+      const body = insertOnboardingInstanceSchema.parse(req.body);
+      const [instance] = await db.insert(onboardingInstances).values(body).returning();
+      res.status(201).json(instance);
+    } catch (error: any) {
+      res.status(400).json({ message: error.message || "Atama oluşturulamadı" });
+    }
+  });
+
+  router.get('/api/onboarding-instances/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const [instance] = await db.select().from(onboardingInstances).where(eq(onboardingInstances.id, parseInt(req.params.id)));
+      if (!instance) return res.status(404).json({ message: "Onboarding bulunamadı" });
+      const [program] = await db.select().from(onboardingPrograms).where(eq(onboardingPrograms.id, instance.programId));
+      const weeks = await db.select().from(onboardingWeeks)
+        .where(eq(onboardingWeeks.programId, instance.programId))
+        .orderBy(asc(onboardingWeeks.weekNumber));
+      const checkins = await db.select().from(onboardingCheckins)
+        .where(eq(onboardingCheckins.instanceId, instance.id))
+        .orderBy(asc(onboardingCheckins.weekNumber));
+      const [trainee] = await db.select({ id: users.id, firstName: users.firstName, lastName: users.lastName, role: users.role }).from(users).where(eq(users.id, instance.traineeId));
+      let mentor = null;
+      if (instance.mentorId) {
+        const [m] = await db.select({ id: users.id, firstName: users.firstName, lastName: users.lastName }).from(users).where(eq(users.id, instance.mentorId));
+        mentor = m || null;
+      }
+      res.json({ ...instance, program, weeks, checkins, trainee, mentor });
+    } catch (error: any) {
+      res.status(500).json({ message: "Onboarding detayı yüklenemedi" });
+    }
+  });
+
+  router.post('/api/onboarding-instances/:id/checkins', isAuthenticated, async (req: any, res) => {
+    try {
+      const allowedRoles = ['admin', 'genel_mudur', 'bolge_muduru', 'coach', 'sube_muduru', 'supervisor', 'mudur_yardimcisi', 'egitimci'];
+      if (!allowedRoles.includes(req.user.role)) {
+        return res.status(403).json({ message: "Yetkiniz yok" });
+      }
+      const body = insertOnboardingCheckinSchema.parse({
+        ...req.body,
+        instanceId: parseInt(req.params.id),
+        mentorId: req.user.id,
+      });
+      const [checkin] = await db.insert(onboardingCheckins).values(body).returning();
+      res.status(201).json(checkin);
+    } catch (error: any) {
+      res.status(400).json({ message: error.message || "Check-in oluşturulamadı" });
+    }
+  });
+
+  router.patch('/api/onboarding-instances/:id/complete', isAuthenticated, async (req: any, res) => {
+    try {
+      const allowedRoles = ['admin', 'genel_mudur', 'bolge_muduru', 'coach', 'sube_muduru'];
+      if (!allowedRoles.includes(req.user.role)) {
+        return res.status(403).json({ message: "Yetkiniz yok" });
+      }
+      const [instance] = await db.update(onboardingInstances)
+        .set({ status: 'completed', completedAt: new Date() })
+        .where(eq(onboardingInstances.id, parseInt(req.params.id)))
+        .returning();
+      if (!instance) return res.status(404).json({ message: "Onboarding bulunamadı" });
+      res.json(instance);
+    } catch (error: any) {
+      res.status(500).json({ message: "Tamamlama başarısız" });
     }
   });
 
