@@ -37,6 +37,7 @@ import {
 import { eq, desc, asc, and, or, gte, lte, sql, inArray, isNull, not, ne, count } from "drizzle-orm";
 import { z } from "zod";
 import { handleApiError } from "./helpers";
+import { redactPII } from "../services/pii-redactor";
 import { ACADEMY_COACH_ROLES, ACADEMY_SUPERVISOR_ROLES, getAcademyViewMode } from "@shared/permissions";
 
 const router = Router();
@@ -1711,8 +1712,8 @@ router.get('/api/academy/ai-panel', isAuthenticated, async (req: any, res) => {
         targetRoleScope: 'employee',
         targetUserId: userId,
         branchId: req.user.branchId || null,
-        inputSummary: JSON.stringify({ userId, role }),
-        outputSummary: JSON.stringify(topActions),
+        inputSummary: redactPII(JSON.stringify({ userId, role })),
+        outputSummary: redactPII(JSON.stringify(topActions)),
         actionCount: topActions.length,
         status: 'success',
         executionTimeMs,
@@ -1802,8 +1803,8 @@ router.get('/api/academy/ai-panel', isAuthenticated, async (req: any, res) => {
         triggeredByUserId: userId,
         targetRoleScope: 'supervisor',
         branchId: branchId || null,
-        inputSummary: JSON.stringify({ branchId, teamSize: teamMembers.length }),
-        outputSummary: JSON.stringify({ riskCount: riskSignals.length }),
+        inputSummary: redactPII(JSON.stringify({ branchId, teamSize: teamMembers.length })),
+        outputSummary: redactPII(JSON.stringify({ riskCount: riskSignals.length })),
         actionCount: riskSignals.length,
         status: 'success',
         executionTimeMs,
@@ -1848,8 +1849,8 @@ router.get('/api/academy/ai-panel', isAuthenticated, async (req: any, res) => {
         runType: 'coach_summary',
         triggeredByUserId: userId,
         targetRoleScope: 'coach',
-        inputSummary: JSON.stringify({ requestedBy: userId }),
-        outputSummary: JSON.stringify({ totalRuns: totalResult.count }),
+        inputSummary: redactPII(JSON.stringify({ requestedBy: userId })),
+        outputSummary: redactPII(JSON.stringify({ totalRuns: totalResult.count })),
         actionCount: 0,
         status: 'success',
         executionTimeMs,
@@ -1916,11 +1917,78 @@ router.get('/api/academy/ai-logs', isAuthenticated, requireAcademyCoach, async (
 router.post('/api/academy/ai-logs', isAuthenticated, requireAcademyCoach, async (req: any, res) => {
   try {
     const parsed = insertAiAgentLogSchema.parse(req.body);
+    if (parsed.inputSummary) parsed.inputSummary = redactPII(parsed.inputSummary);
+    if (parsed.outputSummary) parsed.outputSummary = redactPII(parsed.outputSummary);
     const [inserted] = await db.insert(aiAgentLogs).values(parsed).returning();
     res.status(201).json(inserted);
   } catch (error: any) {
     handleApiError(res, error, "AI log kaydı oluşturulamadı");
   }
 });
+
+const AI_LOG_RETENTION_DAYS = 30;
+
+async function cleanupOldAiLogs(dryRun: boolean = false): Promise<{ deletedCount: number; cutoffDate: Date }> {
+  const cutoffDate = new Date();
+  cutoffDate.setDate(cutoffDate.getDate() - AI_LOG_RETENTION_DAYS);
+  
+  if (dryRun) {
+    const [result] = await db.select({ count: count() }).from(aiAgentLogs)
+      .where(lte(aiAgentLogs.createdAt, cutoffDate));
+    return { deletedCount: Number(result.count), cutoffDate };
+  }
+  
+  const deleted = await db.delete(aiAgentLogs)
+    .where(lte(aiAgentLogs.createdAt, cutoffDate))
+    .returning({ id: aiAgentLogs.id });
+  
+  return { deletedCount: deleted.length, cutoffDate };
+}
+
+router.post('/api/admin/ai/logs/cleanup', isAuthenticated, async (req: any, res) => {
+  try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ message: "Bu işlem için admin yetkisi gereklidir" });
+    }
+    
+    const dryRun = req.query.dryRun === '1' || req.query.dryRun === 'true';
+    const result = await cleanupOldAiLogs(dryRun);
+    
+    if (!dryRun) {
+      console.log(`[AI Log Cleanup] Admin ${req.user.id} triggered cleanup: ${result.deletedCount} rows deleted (cutoff: ${result.cutoffDate.toISOString()})`);
+    }
+    
+    res.json({
+      dryRun,
+      deletedCount: result.deletedCount,
+      cutoffDate: result.cutoffDate.toISOString(),
+      retentionDays: AI_LOG_RETENTION_DAYS,
+    });
+  } catch (error: any) {
+    handleApiError(res, error, "AI log temizliği yapılamadı");
+  }
+});
+
+function startAiLogCleanupJob() {
+  const checkAndCleanup = async () => {
+    const now = new Date();
+    const istanbulHour = new Date(now.toLocaleString('en-US', { timeZone: 'Europe/Istanbul' })).getHours();
+    const istanbulMinute = new Date(now.toLocaleString('en-US', { timeZone: 'Europe/Istanbul' })).getMinutes();
+    
+    if (istanbulHour === 3 && istanbulMinute >= 25 && istanbulMinute <= 35) {
+      try {
+        const result = await cleanupOldAiLogs(false);
+        console.log(`[AI Log Cleanup] Scheduled cleanup: ${result.deletedCount} rows deleted (cutoff: ${result.cutoffDate.toISOString()})`);
+      } catch (error) {
+        console.error('[AI Log Cleanup] Scheduled cleanup error:', error);
+      }
+    }
+  };
+  
+  setInterval(checkAndCleanup, 10 * 60 * 1000);
+  console.log('🧹 AI log cleanup job started (daily at 03:30 Europe/Istanbul)');
+}
+
+startAiLogCleanupJob();
 
 export default router;
