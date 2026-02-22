@@ -8039,18 +8039,18 @@ export const aiSettings = pgTable("ai_settings", {
   isActive: boolean("is_active").default(true),
   // OpenAI ayarları
   openaiApiKey: text("openai_api_key"), // Şifreli
-  openaiChatModel: varchar("openai_chat_model", { length: 100 }).default("gpt-4o-mini"),
+  openaiChatModel: varchar("openai_chat_model", { length: 100 }).default("gpt-4o"),
   openaiEmbeddingModel: varchar("openai_embedding_model", { length: 100 }).default("text-embedding-3-small"),
   openaiVisionModel: varchar("openai_vision_model", { length: 100 }).default("gpt-4o"),
   // Gemini ayarları
   geminiApiKey: text("gemini_api_key"), // Şifreli
-  geminiChatModel: varchar("gemini_chat_model", { length: 100 }).default("gemini-1.5-pro"),
+  geminiChatModel: varchar("gemini_chat_model", { length: 100 }).default("gemini-2.0-flash"),
   geminiEmbeddingModel: varchar("gemini_embedding_model", { length: 100 }).default("text-embedding-004"),
-  geminiVisionModel: varchar("gemini_vision_model", { length: 100 }).default("gemini-1.5-pro"),
+  geminiVisionModel: varchar("gemini_vision_model", { length: 100 }).default("gemini-2.0-flash"),
   // Anthropic (Claude) ayarları
   anthropicApiKey: text("anthropic_api_key"), // Şifreli
-  anthropicChatModel: varchar("anthropic_chat_model", { length: 100 }).default("claude-3-5-sonnet-20241022"),
-  anthropicVisionModel: varchar("anthropic_vision_model", { length: 100 }).default("claude-3-5-sonnet-20241022"),
+  anthropicChatModel: varchar("anthropic_chat_model", { length: 100 }).default("claude-sonnet-4-20250514"),
+  anthropicVisionModel: varchar("anthropic_vision_model", { length: 100 }).default("claude-sonnet-4-20250514"),
   // Genel ayarlar
   temperature: real("temperature").default(0.7),
   maxTokens: integer("max_tokens").default(2000),

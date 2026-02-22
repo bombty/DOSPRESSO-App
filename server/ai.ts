@@ -24,6 +24,96 @@ let _aiConfigCache: any = null;
 let _aiConfigCacheTime = 0;
 const AI_CONFIG_CACHE_TTL = 5 * 60 * 1000;
 let _activeProvider = "openai";
+let _anthropicApiKey: string | null = null;
+let _configFingerprint = "";
+
+async function anthropicFetchChat(params: {
+  model: string;
+  messages: Array<{ role: string; content: any }>;
+  max_tokens?: number;
+  temperature?: number;
+  [key: string]: any;
+}): Promise<any> {
+  if (!_anthropicApiKey) {
+    throw new Error("Anthropic API anahtarı yapılandırılmamış");
+  }
+
+  const systemMessages = params.messages.filter((m: any) => m.role === "system");
+  const nonSystemMessages = params.messages.filter((m: any) => m.role !== "system");
+
+  const anthropicMessages = nonSystemMessages.map((m: any) => {
+    if (typeof m.content === "string") {
+      return { role: m.role === "assistant" ? "assistant" : "user", content: m.content };
+    }
+    if (Array.isArray(m.content)) {
+      const parts = m.content.map((part: any) => {
+        if (part.type === "text") return { type: "text", text: part.text };
+        if (part.type === "image_url" && part.image_url?.url) {
+          const url = part.image_url.url;
+          if (url.startsWith("data:")) {
+            const match = url.match(/^data:(image\/[^;]+);base64,(.+)$/);
+            if (match) {
+              return { type: "image", source: { type: "base64", media_type: match[1], data: match[2] } };
+            }
+          }
+          return { type: "text", text: `[Image: ${url}]` };
+        }
+        return { type: "text", text: JSON.stringify(part) };
+      });
+      return { role: m.role === "assistant" ? "assistant" : "user", content: parts };
+    }
+    return { role: m.role === "assistant" ? "assistant" : "user", content: String(m.content) };
+  });
+
+  const body: any = {
+    model: params.model,
+    messages: anthropicMessages,
+    max_tokens: params.max_tokens || 2000,
+  };
+  if (systemMessages.length > 0) {
+    body.system = systemMessages.map((m: any) => typeof m.content === "string" ? m.content : JSON.stringify(m.content)).join("\n\n");
+  }
+  if (params.temperature !== undefined) {
+    body.temperature = params.temperature;
+  }
+
+  const resp = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-api-key": _anthropicApiKey,
+      "anthropic-version": "2023-06-01",
+    },
+    body: JSON.stringify(body),
+  });
+
+  const data = await resp.json() as any;
+  if (!resp.ok) {
+    const err = new Error(data?.error?.message || `Anthropic API error ${resp.status}`) as any;
+    err.status = resp.status;
+    throw err;
+  }
+
+  const textContent = (data.content || [])
+    .filter((c: any) => c.type === "text")
+    .map((c: any) => c.text)
+    .join("");
+
+  return {
+    id: data.id,
+    model: data.model,
+    choices: [{
+      index: 0,
+      message: { role: "assistant", content: textContent },
+      finish_reason: data.stop_reason === "end_turn" ? "stop" : (data.stop_reason || "stop"),
+    }],
+    usage: {
+      prompt_tokens: data.usage?.input_tokens || 0,
+      completion_tokens: data.usage?.output_tokens || 0,
+      total_tokens: (data.usage?.input_tokens || 0) + (data.usage?.output_tokens || 0),
+    },
+  };
+}
 
 export async function getAIConfig() {
   const now = Date.now();
@@ -63,15 +153,18 @@ export async function getAIConfig() {
 export function clearAIConfigCache() {
   _aiConfigCache = null;
   _aiConfigCacheTime = 0;
+  _configFingerprint = "";
 }
 
 async function refreshAIConfig() {
   const config = await getAIConfig();
   const provider = config.provider || "openai";
 
-  if (_activeProvider === provider && _aiConfigCacheTime > 0) {
+  const fp = `${provider}|${config.openaiApiKey || ""}|${config.geminiApiKey || ""}|${config.anthropicApiKey || ""}|${config.openaiChatModel || ""}|${config.geminiChatModel || ""}|${config.anthropicChatModel || ""}|${config.openaiVisionModel || ""}|${config.geminiVisionModel || ""}|${config.anthropicVisionModel || ""}|${config.openaiEmbeddingModel || ""}|${config.geminiEmbeddingModel || ""}|${config.temperature || ""}|${config.maxTokens || ""}`;
+  if (_configFingerprint === fp && _aiConfigCacheTime > 0) {
     return;
   }
+  _configFingerprint = fp;
 
   _activeProvider = provider;
 
@@ -95,18 +188,17 @@ async function refreshAIConfig() {
       break;
     }
     case "anthropic": {
-      const apiKey = config.anthropicApiKey;
-      if (apiKey) {
-        openai = new OpenAI({
-          apiKey,
-          baseURL: "https://api.anthropic.com/v1/",
-          defaultHeaders: { "anthropic-version": "2023-06-01" },
-        });
-      }
+      _anthropicApiKey = config.anthropicApiKey || null;
       VISION_MODEL = config.anthropicVisionModel || "claude-sonnet-4-20250514";
       CHAT_MODEL = config.anthropicChatModel || "claude-sonnet-4-20250514";
       SUMMARY_MODEL = config.anthropicChatModel || "claude-sonnet-4-20250514";
       EMBEDDING_MODEL = "text-embedding-3-small";
+      const embeddingKey = config.openaiApiKey || process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY;
+      if (embeddingKey) {
+        embeddingsClient = new OpenAI({ apiKey: embeddingKey });
+      } else {
+        embeddingsClient = new OpenAI({ apiKey: "MISSING_KEY_ANTHROPIC_NO_EMBEDDINGS" });
+      }
       break;
     }
     case "openai":
@@ -129,11 +221,21 @@ async function refreshAIConfig() {
 
 async function aiChatCall(params: any) {
   await refreshAIConfig();
+  if (_activeProvider === "anthropic") {
+    return anthropicFetchChat(params);
+  }
   return openai.chat.completions.create(params);
 }
 
 async function aiEmbeddingCall(params: any) {
   await refreshAIConfig();
+  if (_activeProvider === "anthropic") {
+    const config = await getAIConfig();
+    const embeddingKey = config.openaiApiKey || process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY;
+    if (!embeddingKey) {
+      throw new Error("Claude embeddings desteklememektedir. Embedding için OpenAI API anahtarı gereklidir. Ayarlardan OpenAI anahtarını girin.");
+    }
+  }
   return embeddingsClient.embeddings.create(params);
 }
 
