@@ -13322,3 +13322,29 @@ export const insertOpsRuleSchema = createInsertSchema(opsRules).omit({
 
 export type InsertOpsRule = z.infer<typeof insertOpsRuleSchema>;
 export type OpsRule = typeof opsRules.$inferSelect;
+
+export const taskEvidence = pgTable("task_evidence", {
+  id: serial("id").primaryKey(),
+  taskId: integer("task_id").notNull().references(() => tasks.id, { onDelete: "cascade" }),
+  submittedByUserId: varchar("submitted_by_user_id", { length: 255 }).notNull().references(() => users.id, { onDelete: "cascade" }),
+  type: varchar("type", { length: 30 }).notNull(),
+  payloadJson: text("payload_json"),
+  fileUrl: text("file_url"),
+  status: varchar("status", { length: 20 }).notNull().default("submitted"),
+  reviewedByUserId: varchar("reviewed_by_user_id", { length: 255 }).references(() => users.id, { onDelete: "set null" }),
+  reviewedAt: timestamp("reviewed_at"),
+  reviewNote: text("review_note"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("task_evidence_task_idx").on(table.taskId),
+  index("task_evidence_status_idx").on(table.status),
+  index("task_evidence_submitted_by_idx").on(table.submittedByUserId),
+]);
+
+export const insertTaskEvidenceSchema = createInsertSchema(taskEvidence).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertTaskEvidence = z.infer<typeof insertTaskEvidenceSchema>;
+export type TaskEvidence = typeof taskEvidence.$inferSelect;

@@ -52,6 +52,7 @@ export function ActionCardsWidget() {
     beklemede: { label: t("statusPending"), variant: "outline" },
     incelemede: { label: t("statusSubmitted"), variant: "secondary" },
     onaylandi: { label: t("statusApproved"), variant: "default" },
+    reddedildi: { label: "Reddedildi", variant: "destructive" },
   };
 
   const evidenceLabels: Record<string, string> = {
@@ -153,19 +154,21 @@ export function ActionCardsWidget() {
             <div className="space-y-2">
               {actionCards.map((card) => {
                 const EvidenceIcon = evidenceIcons[card.evidenceType] || ClipboardCheck;
-                const isDone = card.status !== "beklemede";
+                const isRejected = card.status === "reddedildi";
+                const isDone = card.status !== "beklemede" && !isRejected;
+                const canSubmit = card.status === "beklemede" || isRejected;
                 const statusInfo = statusConfig[card.status] || statusConfig.beklemede;
 
                 return (
                   <div
                     key={card.id}
                     className={`flex items-center gap-3 p-3 rounded-md border transition-colors ${
-                      isDone ? "bg-muted/30 opacity-70" : "hover-elevate"
+                      isDone ? "bg-muted/30 opacity-70" : isRejected ? "border-destructive/30" : "hover-elevate"
                     }`}
                     data-testid={`action-card-${card.id}`}
                   >
-                    <div className={`flex-shrink-0 p-2 rounded-md ${isDone ? "bg-green-500/10" : "bg-primary/10"}`}>
-                      <EvidenceIcon className={`h-4 w-4 ${isDone ? "text-green-600" : "text-primary"}`} />
+                    <div className={`flex-shrink-0 p-2 rounded-md ${isDone ? "bg-green-500/10" : isRejected ? "bg-red-500/10" : "bg-primary/10"}`}>
+                      <EvidenceIcon className={`h-4 w-4 ${isDone ? "text-green-600" : isRejected ? "text-red-600" : "text-primary"}`} />
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className={`text-sm font-medium truncate ${isDone ? "line-through text-muted-foreground" : ""}`}>
@@ -188,14 +191,15 @@ export function ActionCardsWidget() {
                         ))}
                       </div>
                     </div>
-                    {!isDone && (
+                    {canSubmit && (
                       <Button
                         size="sm"
+                        variant={isRejected ? "destructive" : "default"}
                         onClick={() => setSubmitDialog(card)}
                         data-testid={`button-submit-card-${card.id}`}
                       >
                         <Send className="h-3 w-3 mr-1" />
-                        {evidenceLabels[card.evidenceType] || t("send")}
+                        {isRejected ? "Tekrar Gönder" : (evidenceLabels[card.evidenceType] || t("send"))}
                       </Button>
                     )}
                   </div>

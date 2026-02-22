@@ -1,10 +1,12 @@
 import { Router } from "express";
 import { db } from "../db";
 import { isAuthenticated } from "../localAuth";
-import { eq, and, sql, desc, gte, lte, isNull } from "drizzle-orm";
-import { tasks, taskTriggers } from "@shared/schema";
+import { eq, and, sql, desc, gte, lte, isNull, inArray } from "drizzle-orm";
+import { tasks, taskTriggers, taskEvidence, users, isHQRole } from "@shared/schema";
 import { generateTasksForUser } from "../services/task-trigger-service";
 import { createAuditEntry, getAuditContext } from "../audit";
+
+const APPROVER_ROLES = ["supervisor", "mudur", "bolge_mudur", "ceo", "coo", "cgo", "fabrika_mudur", "kalite_kontrol"];
 
 const router = Router();
 
@@ -47,6 +49,20 @@ router.get("/api/action-cards/today", isAuthenticated, async (req, res) => {
       ))
       .orderBy(desc(tasks.createdAt));
 
+    const taskIds = todayCards.map(c => c.id);
+    let evidenceMap: Record<number, any[]> = {};
+    if (taskIds.length > 0) {
+      const evidenceRows = await db
+        .select()
+        .from(taskEvidence)
+        .where(inArray(taskEvidence.taskId, taskIds))
+        .orderBy(desc(taskEvidence.createdAt));
+      for (const ev of evidenceRows) {
+        if (!evidenceMap[ev.taskId]) evidenceMap[ev.taskId] = [];
+        evidenceMap[ev.taskId].push(ev);
+      }
+    }
+
     const enriched = todayCards.map((card) => {
       let template: any = {};
       try {
@@ -56,6 +72,7 @@ router.get("/api/action-cards/today", isAuthenticated, async (req, res) => {
         ...card,
         title: template.title || card.triggerName || card.description,
         tags: template.tags || [],
+        evidence: evidenceMap[card.id] || [],
       };
     });
 
@@ -89,23 +106,46 @@ router.post("/api/action-cards/:id/submit", isAuthenticated, async (req, res) =>
 
     const { evidenceType: submitType, evidenceData, photoUrl, notes } = req.body;
 
+    let payloadJson: any = { notes };
+    let fileUrl: string | null = null;
+    let newStatus = "incelemede";
+
+    if (submitType === "photo") {
+      fileUrl = photoUrl || null;
+      payloadJson = { type: "photo", url: photoUrl, notes };
+    } else if (submitType === "form") {
+      payloadJson = { type: "form", data: evidenceData, notes };
+    } else if (submitType === "approval") {
+      payloadJson = { type: "approval_request", notes };
+    } else if (submitType === "none") {
+      payloadJson = { type: "none", notes };
+      newStatus = "onaylandi";
+    }
+
+    const evidenceStatus = newStatus === "onaylandi" ? "approved" : "submitted";
+
+    await db.insert(taskEvidence).values({
+      taskId,
+      submittedByUserId: userId,
+      type: submitType || "none",
+      payloadJson: JSON.stringify(payloadJson),
+      fileUrl,
+      status: evidenceStatus,
+    });
+
     const updateData: any = {
-      status: "incelemede",
+      status: newStatus,
       updatedAt: new Date(),
-      completedAt: new Date(),
     };
+
+    if (newStatus === "onaylandi") {
+      updateData.completedAt = new Date();
+    }
 
     if (submitType === "photo" && photoUrl) {
       updateData.photoUrl = photoUrl;
-      updateData.evidenceData = JSON.stringify({ type: "photo", url: photoUrl, notes });
-    } else if (submitType === "form" && evidenceData) {
-      updateData.evidenceData = JSON.stringify({ type: "form", data: evidenceData, notes });
-    } else if (submitType === "approval") {
-      updateData.evidenceData = JSON.stringify({ type: "approval", notes });
-      updateData.status = "onaylandi";
-    } else if (submitType === "none") {
-      updateData.status = "onaylandi";
     }
+    updateData.evidenceData = JSON.stringify(payloadJson);
 
     await db
       .update(tasks)
@@ -114,11 +154,11 @@ router.post("/api/action-cards/:id/submit", isAuthenticated, async (req, res) =>
 
     try {
       await createAuditEntry(getAuditContext(req), {
-        eventType: "task.action_card_submitted",
+        eventType: "task.evidence_submitted",
         action: "submit",
-        resource: "action_card",
+        resource: "task_evidence",
         resourceId: String(taskId),
-        details: { evidenceType: submitType, triggerId: task.triggerId },
+        details: { evidenceType: submitType, triggerId: task.triggerId, branchId: task.branchId },
       });
     } catch {}
 
@@ -126,6 +166,190 @@ router.post("/api/action-cards/:id/submit", isAuthenticated, async (req, res) =>
   } catch (error: any) {
     console.error("[ActionCards] Error submitting:", error);
     return res.status(500).json({ error: "Gönderilemedi" });
+  }
+});
+
+router.post("/api/action-cards/:id/approve", isAuthenticated, async (req, res) => {
+  try {
+    const reviewer = req.user as any;
+    if (!reviewer?.id) return res.status(401).json({ error: "Unauthorized" });
+
+    if (!APPROVER_ROLES.includes(reviewer.role)) {
+      return res.status(403).json({ error: "Onay yetkiniz yok" });
+    }
+
+    const taskId = parseInt(req.params.id);
+    if (isNaN(taskId)) return res.status(400).json({ error: "Geçersiz görev ID" });
+
+    const [task] = await db
+      .select()
+      .from(tasks)
+      .where(and(eq(tasks.id, taskId), eq(tasks.autoGenerated, true), isNull(tasks.deletedAt)))
+      .limit(1);
+
+    if (!task) return res.status(404).json({ error: "Görev bulunamadı" });
+
+    if (!isHQRole(reviewer.role) && task.branchId && reviewer.branchId !== task.branchId) {
+      return res.status(403).json({ error: "Farklı şube görevini onaylayamazsınız" });
+    }
+
+    const { note } = req.body;
+
+    await db
+      .update(taskEvidence)
+      .set({ status: "approved", reviewedByUserId: reviewer.id, reviewedAt: new Date(), reviewNote: note || null })
+      .where(and(eq(taskEvidence.taskId, taskId), eq(taskEvidence.status, "submitted")));
+
+    await db
+      .update(tasks)
+      .set({ status: "onaylandi", updatedAt: new Date(), completedAt: new Date(), approvedByAssignerId: reviewer.id, approvedAt: new Date(), approverNote: note || null })
+      .where(eq(tasks.id, taskId));
+
+    try {
+      await createAuditEntry(getAuditContext(req), {
+        eventType: "task.evidence_approved",
+        action: "approve",
+        resource: "task_evidence",
+        resourceId: String(taskId),
+        details: { reviewerId: reviewer.id, triggerId: task.triggerId, branchId: task.branchId },
+      });
+    } catch {}
+
+    return res.json({ success: true, message: "Görev onaylandı" });
+  } catch (error: any) {
+    console.error("[ActionCards] Error approving:", error);
+    return res.status(500).json({ error: "Onaylanamadı" });
+  }
+});
+
+router.post("/api/action-cards/:id/reject", isAuthenticated, async (req, res) => {
+  try {
+    const reviewer = req.user as any;
+    if (!reviewer?.id) return res.status(401).json({ error: "Unauthorized" });
+
+    if (!APPROVER_ROLES.includes(reviewer.role)) {
+      return res.status(403).json({ error: "Reddetme yetkiniz yok" });
+    }
+
+    const taskId = parseInt(req.params.id);
+    if (isNaN(taskId)) return res.status(400).json({ error: "Geçersiz görev ID" });
+
+    const [task] = await db
+      .select()
+      .from(tasks)
+      .where(and(eq(tasks.id, taskId), eq(tasks.autoGenerated, true), isNull(tasks.deletedAt)))
+      .limit(1);
+
+    if (!task) return res.status(404).json({ error: "Görev bulunamadı" });
+
+    if (!isHQRole(reviewer.role) && task.branchId && reviewer.branchId !== task.branchId) {
+      return res.status(403).json({ error: "Farklı şube görevini reddedemezsiniz" });
+    }
+
+    const { note } = req.body;
+
+    await db
+      .update(taskEvidence)
+      .set({ status: "rejected", reviewedByUserId: reviewer.id, reviewedAt: new Date(), reviewNote: note || null })
+      .where(and(eq(taskEvidence.taskId, taskId), eq(taskEvidence.status, "submitted")));
+
+    await db
+      .update(tasks)
+      .set({ status: "reddedildi", updatedAt: new Date() })
+      .where(eq(tasks.id, taskId));
+
+    try {
+      await createAuditEntry(getAuditContext(req), {
+        eventType: "task.evidence_rejected",
+        action: "reject",
+        resource: "task_evidence",
+        resourceId: String(taskId),
+        details: { reviewerId: reviewer.id, triggerId: task.triggerId, branchId: task.branchId, note },
+      });
+    } catch {}
+
+    return res.json({ success: true, message: "Görev reddedildi" });
+  } catch (error: any) {
+    console.error("[ActionCards] Error rejecting:", error);
+    return res.status(500).json({ error: "Reddedilemedi" });
+  }
+});
+
+router.get("/api/action-cards/pending-approvals", isAuthenticated, async (req, res) => {
+  try {
+    const reviewer = req.user as any;
+    if (!reviewer?.id) return res.status(401).json({ error: "Unauthorized" });
+
+    if (!APPROVER_ROLES.includes(reviewer.role)) {
+      return res.json([]);
+    }
+
+    const conditions = [
+      eq(tasks.autoGenerated, true),
+      eq(tasks.status, "incelemede"),
+      isNull(tasks.deletedAt),
+    ];
+
+    if (!isHQRole(reviewer.role) && reviewer.branchId) {
+      conditions.push(eq(tasks.branchId, reviewer.branchId));
+    }
+
+    const pending = await db
+      .select({
+        id: tasks.id,
+        description: tasks.description,
+        status: tasks.status,
+        branchId: tasks.branchId,
+        assignedToId: tasks.assignedToId,
+        dueDate: tasks.dueDate,
+        evidenceType: tasks.evidenceType,
+        evidenceData: tasks.evidenceData,
+        photoUrl: tasks.photoUrl,
+        triggerId: tasks.triggerId,
+        createdAt: tasks.createdAt,
+        completedAt: tasks.completedAt,
+        triggerName: taskTriggers.name,
+        triggerTemplate: taskTriggers.template,
+        assigneeName: users.fullName,
+      })
+      .from(tasks)
+      .leftJoin(taskTriggers, eq(tasks.triggerId, taskTriggers.id))
+      .leftJoin(users, eq(tasks.assignedToId, users.id))
+      .where(and(...conditions))
+      .orderBy(desc(tasks.completedAt))
+      .limit(50);
+
+    const taskIds = pending.map(p => p.id);
+    let evidenceMap: Record<number, any[]> = {};
+    if (taskIds.length > 0) {
+      const evidenceRows = await db
+        .select()
+        .from(taskEvidence)
+        .where(inArray(taskEvidence.taskId, taskIds))
+        .orderBy(desc(taskEvidence.createdAt));
+      for (const ev of evidenceRows) {
+        if (!evidenceMap[ev.taskId]) evidenceMap[ev.taskId] = [];
+        evidenceMap[ev.taskId].push(ev);
+      }
+    }
+
+    const enriched = pending.map((card) => {
+      let template: any = {};
+      try {
+        template = card.triggerTemplate ? JSON.parse(card.triggerTemplate) : {};
+      } catch {}
+      return {
+        ...card,
+        title: template.title || card.triggerName || card.description,
+        tags: template.tags || [],
+        evidence: evidenceMap[card.id] || [],
+      };
+    });
+
+    return res.json(enriched);
+  } catch (error: any) {
+    console.error("[ActionCards] Error fetching pending approvals:", error);
+    return res.status(500).json({ error: "Onay bekleyenler yüklenemedi" });
   }
 });
 
