@@ -25,6 +25,8 @@ import { type SidebarMenuResponse, type SidebarMenuSection, type SidebarMenuItem
 import dospressoLogo from "@assets/IMG_6637_1765138781125.png";
 import { useQuery } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useTranslation } from "react-i18next";
+import { NAV_GROUPS } from "@/lib/nav-registry";
 
 // Icon mapping dictionary
 const lucideIconMap: Record<string, any> = {
@@ -87,38 +89,48 @@ const getIconComponent = (iconName: string | null | undefined) => {
   return lucideIconMap[iconName] || LucideIcons.Circle;
 };
 
-const roleLabels: Record<string, string> = {
-  admin: "Admin",
-  ceo: "CEO",
-  cgo: "CGO",
-  muhasebe_ik: "Muhasebe & İK",
-  satinalma: "Satın Alma",
-  coach: "Coach",
-  marketing: "Marketing",
-  trainer: "Trainer (Eğitmen)",
-  kalite_kontrol: "Kalite Kontrol",
-  gida_muhendisi: "Gıda Mühendisi",
-  fabrika_mudur: "Fabrika Müdürü",
-  muhasebe: "Muhasebe",
-  teknik: "Teknik",
-  destek: "Destek",
-  fabrika: "Fabrika",
-  yatirimci_hq: "Yatırımcı HQ",
-  stajyer: "Stajyer",
-  bar_buddy: "Bar Buddy",
-  barista: "Barista",
-  supervisor_buddy: "Supervisor Buddy",
-  supervisor: "Supervisor",
-  mudur: "Müdür",
-  yatirimci_branch: "Yatırımcı",
-  fabrika_operator: "Fabrika Operatör",
-  fabrika_sorumlu: "Fabrika Sorumlu",
-  fabrika_personel: "Fabrika Personel",
+const ROLE_LABEL_KEYS: Record<string, { key: string; tr: string; en: string }> = {
+  admin: { key: "role.admin", tr: "Admin", en: "Admin" },
+  ceo: { key: "role.ceo", tr: "CEO", en: "CEO" },
+  cgo: { key: "role.cgo", tr: "CGO", en: "CGO" },
+  muhasebe_ik: { key: "role.muhasebe_ik", tr: "Muhasebe & İK", en: "Accounting & HR" },
+  satinalma: { key: "role.satinalma", tr: "Satın Alma", en: "Procurement" },
+  coach: { key: "role.coach", tr: "Coach", en: "Coach" },
+  marketing: { key: "role.marketing", tr: "Marketing", en: "Marketing" },
+  trainer: { key: "role.trainer", tr: "Trainer (Eğitmen)", en: "Trainer" },
+  kalite_kontrol: { key: "role.kalite_kontrol", tr: "Kalite Kontrol", en: "Quality Control" },
+  gida_muhendisi: { key: "role.gida_muhendisi", tr: "Gıda Mühendisi", en: "Food Engineer" },
+  fabrika_mudur: { key: "role.fabrika_mudur", tr: "Fabrika Müdürü", en: "Factory Manager" },
+  muhasebe: { key: "role.muhasebe", tr: "Muhasebe", en: "Accounting" },
+  teknik: { key: "role.teknik", tr: "Teknik", en: "Technical" },
+  destek: { key: "role.destek", tr: "Destek", en: "Support" },
+  fabrika: { key: "role.fabrika", tr: "Fabrika", en: "Factory" },
+  yatirimci_hq: { key: "role.yatirimci_hq", tr: "Yatırımcı HQ", en: "Investor HQ" },
+  stajyer: { key: "role.stajyer", tr: "Stajyer", en: "Intern" },
+  bar_buddy: { key: "role.bar_buddy", tr: "Bar Buddy", en: "Bar Buddy" },
+  barista: { key: "role.barista", tr: "Barista", en: "Barista" },
+  supervisor_buddy: { key: "role.supervisor_buddy", tr: "Supervisor Buddy", en: "Supervisor Buddy" },
+  supervisor: { key: "role.supervisor", tr: "Supervisor", en: "Supervisor" },
+  mudur: { key: "role.mudur", tr: "Müdür", en: "Manager" },
+  yatirimci_branch: { key: "role.yatirimci_branch", tr: "Yatırımcı", en: "Investor" },
+  fabrika_operator: { key: "role.fabrika_operator", tr: "Fabrika Operatör", en: "Factory Operator" },
+  fabrika_sorumlu: { key: "role.fabrika_sorumlu", tr: "Fabrika Sorumlu", en: "Factory Supervisor" },
+  fabrika_personel: { key: "role.fabrika_personel", tr: "Fabrika Personel", en: "Factory Personnel" },
+  ik: { key: "role.ik", tr: "İK", en: "HR" },
+  pazarlama: { key: "role.pazarlama", tr: "Pazarlama", en: "Marketing" },
+  ekipman_teknik: { key: "role.ekipman_teknik", tr: "Ekipman Teknik", en: "Equipment Technical" },
 };
 
 export function AppSidebar() {
   const [location, navigate] = useLocation();
   const { user } = useAuth();
+  const { t, i18n } = useTranslation("common");
+
+  const getRoleLabel = (role: string): string => {
+    const def = ROLE_LABEL_KEYS[role];
+    if (!def) return role;
+    return t(def.key, { defaultValue: i18n.language === "en" ? def.en : def.tr });
+  };
 
   // Fetch menu from server (v2 API - pre-filtered by role)
   // Short staleTime + refetchInterval ensures permission changes reflect quickly
@@ -164,17 +176,15 @@ export function AppSidebar() {
     }
   };
 
-  const GROUP_LABELS: Record<SidebarMenuGroup, string> = {
-    operations: "Operasyon",
-    management: "Yönetim & Denetim",
-    settings: "Ayarlar & Destek",
-  };
   const GROUP_ORDER: SidebarMenuGroup[] = ["operations", "management", "settings"];
-  const sectionsByGroup = GROUP_ORDER.map(g => ({
-    group: g,
-    label: GROUP_LABELS[g],
-    items: sections.filter(s => s.group === g),
-  })).filter(g => g.items.length > 0);
+  const sectionsByGroup = GROUP_ORDER.map(g => {
+    const grpDef = NAV_GROUPS.find(ng => ng.id === g);
+    return {
+      group: g,
+      label: grpDef ? t(grpDef.labelKey, { defaultValue: grpDef.defaultLabelTR }) : g,
+      items: sections.filter(s => s.group === g),
+    };
+  }).filter(g => g.items.length > 0);
 
   const renderMenuSection = (section: SidebarMenuSection) => {
     const IconComponent = getIconComponent(section.icon);
@@ -285,7 +295,7 @@ export function AppSidebar() {
               
               {isError && sections.length === 0 && (
                 <div className="p-4 text-sm text-muted-foreground text-center">
-                  Menü yüklenemedi
+                  {t("menuLoadError", { defaultValue: "Menü yüklenemedi" })}
                 </div>
               )}
             </SidebarMenu>
@@ -303,10 +313,10 @@ export function AppSidebar() {
             <p className="truncate text-sm font-medium" data-testid="text-user-name">
               {user?.firstName && user?.lastName 
                 ? `${user.firstName} ${user.lastName}`
-                : user?.username || 'Kullanıcı'}
+                : user?.username || t("user", { defaultValue: "Kullanıcı" })}
             </p>
             <p className="truncate text-xs text-muted-foreground" data-testid="text-user-role">
-              {user?.role ? roleLabels[user.role] || user.role : ''}
+              {user?.role ? getRoleLabel(user.role) : ''}
             </p>
           </div>
           <Button
@@ -314,7 +324,7 @@ export function AppSidebar() {
             size="icon"
             onClick={handleLogout}
             data-testid="button-logout"
-            title="Çıkış Yap"
+            title={t("logout", { defaultValue: "Çıkış Yap" })}
           >
             <LogOut className="h-4 w-4" />
           </Button>

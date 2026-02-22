@@ -1,6 +1,7 @@
 import { motion } from "framer-motion";
 import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
+import { useTranslation } from "react-i18next";
 import { getQuickActionsForRole } from "@/lib/role-visibility";
 import {
   Plus,
@@ -26,7 +27,9 @@ import {
 
 interface QuickAction {
   id: string;
-  label: string;
+  labelKey: string;
+  defaultLabelTR: string;
+  defaultLabelEN: string;
   icon: any;
   path: string;
   color: string;
@@ -36,7 +39,9 @@ interface QuickAction {
 const allActions: QuickAction[] = [
   { 
     id: "new-task", 
-    label: "Yeni Görev", 
+    labelKey: "nav.newTask",
+    defaultLabelTR: "Yeni Görev",
+    defaultLabelEN: "New Task",
     icon: Plus, 
     path: "/gorevler?new=true",
     color: "text-blue-600 dark:text-blue-400",
@@ -44,7 +49,9 @@ const allActions: QuickAction[] = [
   },
   { 
     id: "checklist", 
-    label: "Kontrol Listesi", 
+    labelKey: "nav.checklists",
+    defaultLabelTR: "Kontrol Listesi",
+    defaultLabelEN: "Checklist",
     icon: ClipboardList, 
     path: "/checklistler",
     color: "text-emerald-600 dark:text-emerald-400",
@@ -52,7 +59,9 @@ const allActions: QuickAction[] = [
   },
   { 
     id: "academy", 
-    label: "Eğitimler", 
+    labelKey: "nav.academy",
+    defaultLabelTR: "Eğitimler",
+    defaultLabelEN: "Training",
     icon: GraduationCap, 
     path: "/akademi",
     color: "text-indigo-600 dark:text-indigo-400",
@@ -60,7 +69,9 @@ const allActions: QuickAction[] = [
   },
   { 
     id: "shifts", 
-    label: "Vardiyalar", 
+    labelKey: "nav.shifts",
+    defaultLabelTR: "Vardiyalar",
+    defaultLabelEN: "Shifts",
     icon: Calendar, 
     path: "/vardiyalar",
     color: "text-cyan-600 dark:text-cyan-400",
@@ -68,7 +79,9 @@ const allActions: QuickAction[] = [
   },
   { 
     id: "leaves", 
-    label: "İzin Talebi", 
+    labelKey: "nav.leaves",
+    defaultLabelTR: "İzin Talebi",
+    defaultLabelEN: "Leave Request",
     icon: CalendarDays, 
     path: "/izin-talepleri",
     color: "text-teal-600 dark:text-teal-400",
@@ -76,7 +89,9 @@ const allActions: QuickAction[] = [
   },
   { 
     id: "reports", 
-    label: "Raporlar", 
+    labelKey: "nav.reports",
+    defaultLabelTR: "Raporlar",
+    defaultLabelEN: "Reports",
     icon: FileText, 
     path: "/raporlar",
     color: "text-slate-600 dark:text-slate-400",
@@ -84,7 +99,9 @@ const allActions: QuickAction[] = [
   },
   { 
     id: "personnel", 
-    label: "Personel", 
+    labelKey: "nav.hr",
+    defaultLabelTR: "Personel",
+    defaultLabelEN: "Personnel",
     icon: Users, 
     path: "/ik",
     color: "text-pink-600 dark:text-pink-400",
@@ -92,7 +109,9 @@ const allActions: QuickAction[] = [
   },
   { 
     id: "stock", 
-    label: "Stok", 
+    labelKey: "nav.stock",
+    defaultLabelTR: "Stok",
+    defaultLabelEN: "Stock",
     icon: Package, 
     path: "/satinalma",
     color: "text-amber-600 dark:text-amber-400",
@@ -100,7 +119,9 @@ const allActions: QuickAction[] = [
   },
   { 
     id: "production", 
-    label: "Üretim", 
+    labelKey: "nav.factory",
+    defaultLabelTR: "Üretim",
+    defaultLabelEN: "Production",
     icon: Factory, 
     path: "/fabrika",
     color: "text-orange-600 dark:text-orange-400",
@@ -108,7 +129,9 @@ const allActions: QuickAction[] = [
   },
   { 
     id: "announcements", 
-    label: "Duyurular", 
+    labelKey: "nav.announcements",
+    defaultLabelTR: "Duyurular",
+    defaultLabelEN: "Announcements",
     icon: Megaphone, 
     path: "/admin/icerik-yonetimi",
     color: "text-rose-600 dark:text-rose-400",
@@ -116,7 +139,9 @@ const allActions: QuickAction[] = [
   },
   { 
     id: "settings", 
-    label: "Ayarlar", 
+    labelKey: "nav.settings",
+    defaultLabelTR: "Ayarlar",
+    defaultLabelEN: "Settings",
     icon: Settings, 
     path: "/admin",
     color: "text-gray-600 dark:text-gray-400",
@@ -124,7 +149,9 @@ const allActions: QuickAction[] = [
   },
   { 
     id: "users", 
-    label: "Kullanıcılar", 
+    labelKey: "nav.users",
+    defaultLabelTR: "Kullanıcılar",
+    defaultLabelEN: "Users",
     icon: Users, 
     path: "/admin/kullanicilar",
     color: "text-violet-600 dark:text-violet-400",
@@ -132,7 +159,9 @@ const allActions: QuickAction[] = [
   },
   { 
     id: "system", 
-    label: "Sistem", 
+    labelKey: "nav.system",
+    defaultLabelTR: "Sistem",
+    defaultLabelEN: "System",
     icon: ShieldCheck, 
     path: "/admin/ayarlar",
     color: "text-red-600 dark:text-red-400",
@@ -140,7 +169,9 @@ const allActions: QuickAction[] = [
   },
   { 
     id: "faults", 
-    label: "Arızalar", 
+    labelKey: "nav.faults",
+    defaultLabelTR: "Arızalar",
+    defaultLabelEN: "Faults",
     icon: Wrench, 
     path: "/ekipman/ariza",
     color: "text-orange-600 dark:text-orange-400",
@@ -148,7 +179,9 @@ const allActions: QuickAction[] = [
   },
   { 
     id: "equipment", 
-    label: "Ekipman", 
+    labelKey: "nav.equipment",
+    defaultLabelTR: "Ekipman",
+    defaultLabelEN: "Equipment",
     icon: Wrench, 
     path: "/ekipman",
     color: "text-slate-600 dark:text-slate-400",
@@ -156,7 +189,9 @@ const allActions: QuickAction[] = [
   },
   { 
     id: "maintenance", 
-    label: "Bakım", 
+    labelKey: "nav.maintenance",
+    defaultLabelTR: "Bakım",
+    defaultLabelEN: "Maintenance",
     icon: Wrench, 
     path: "/ekipman",
     color: "text-yellow-600 dark:text-yellow-400",
@@ -164,7 +199,9 @@ const allActions: QuickAction[] = [
   },
   { 
     id: "orders", 
-    label: "Siparişler", 
+    labelKey: "nav.orders",
+    defaultLabelTR: "Siparişler",
+    defaultLabelEN: "Orders",
     icon: ShoppingCart, 
     path: "/satinalma",
     color: "text-green-600 dark:text-green-400",
@@ -172,7 +209,9 @@ const allActions: QuickAction[] = [
   },
   { 
     id: "suppliers", 
-    label: "Tedarikçiler", 
+    labelKey: "nav.suppliers",
+    defaultLabelTR: "Tedarikçiler",
+    defaultLabelEN: "Suppliers",
     icon: Store, 
     path: "/satinalma",
     color: "text-teal-600 dark:text-teal-400",
@@ -180,7 +219,9 @@ const allActions: QuickAction[] = [
   },
   { 
     id: "campaigns", 
-    label: "Kampanyalar", 
+    labelKey: "nav.campaigns",
+    defaultLabelTR: "Kampanyalar",
+    defaultLabelEN: "Campaigns",
     icon: Megaphone, 
     path: "/admin",
     color: "text-fuchsia-600 dark:text-fuchsia-400",
@@ -188,7 +229,9 @@ const allActions: QuickAction[] = [
   },
   { 
     id: "courses", 
-    label: "Kurslar", 
+    labelKey: "nav.courses",
+    defaultLabelTR: "Kurslar",
+    defaultLabelEN: "Courses",
     icon: GraduationCap, 
     path: "/akademi",
     color: "text-indigo-600 dark:text-indigo-400",
@@ -196,7 +239,9 @@ const allActions: QuickAction[] = [
   },
   { 
     id: "branches", 
-    label: "Şubeler", 
+    labelKey: "nav.branches",
+    defaultLabelTR: "Şubeler",
+    defaultLabelEN: "Branches",
     icon: Building2, 
     path: "/operasyon",
     color: "text-sky-600 dark:text-sky-400",
@@ -204,7 +249,9 @@ const allActions: QuickAction[] = [
   },
   { 
     id: "tasks", 
-    label: "Görevler", 
+    labelKey: "nav.tasks",
+    defaultLabelTR: "Görevler",
+    defaultLabelEN: "Tasks",
     icon: ClipboardList, 
     path: "/gorevler",
     color: "text-blue-600 dark:text-blue-400",
@@ -212,7 +259,9 @@ const allActions: QuickAction[] = [
   },
   { 
     id: "ai-dashboard", 
-    label: "AI Panel", 
+    labelKey: "nav.aiAssistant",
+    defaultLabelTR: "AI Panel",
+    defaultLabelEN: "AI Panel",
     icon: Bot, 
     path: "/raporlar/ai-asistan",
     color: "text-purple-600 dark:text-purple-400",
@@ -220,7 +269,9 @@ const allActions: QuickAction[] = [
   },
   { 
     id: "support", 
-    label: "Destek", 
+    labelKey: "nav.support",
+    defaultLabelTR: "Destek",
+    defaultLabelEN: "Support",
     icon: Briefcase, 
     path: "/destek",
     color: "text-lime-600 dark:text-lime-400",
@@ -228,7 +279,9 @@ const allActions: QuickAction[] = [
   },
   { 
     id: "quality", 
-    label: "Kalite", 
+    labelKey: "nav.quality",
+    defaultLabelTR: "Kalite",
+    defaultLabelEN: "Quality",
     icon: ShieldCheck, 
     path: "/fabrika",
     color: "text-emerald-600 dark:text-emerald-400",
@@ -236,7 +289,9 @@ const allActions: QuickAction[] = [
   },
   { 
     id: "audits", 
-    label: "Denetim", 
+    labelKey: "nav.audits",
+    defaultLabelTR: "Denetim",
+    defaultLabelEN: "Audits",
     icon: ClipboardList, 
     path: "/raporlar/denetimler",
     color: "text-amber-600 dark:text-amber-400",
@@ -244,7 +299,9 @@ const allActions: QuickAction[] = [
   },
   { 
     id: "invoices", 
-    label: "Faturalar", 
+    labelKey: "nav.invoices",
+    defaultLabelTR: "Faturalar",
+    defaultLabelEN: "Invoices",
     icon: FileText, 
     path: "/raporlar",
     color: "text-cyan-600 dark:text-cyan-400",
@@ -252,7 +309,9 @@ const allActions: QuickAction[] = [
   },
   { 
     id: "attendance", 
-    label: "Devam", 
+    labelKey: "nav.attendance",
+    defaultLabelTR: "Devam",
+    defaultLabelEN: "Attendance",
     icon: Users, 
     path: "/ik",
     color: "text-rose-600 dark:text-rose-400",
@@ -263,6 +322,7 @@ const allActions: QuickAction[] = [
 export function QuickActionsGrid() {
   const [, setLocation] = useLocation();
   const { user } = useAuth();
+  const { t, i18n } = useTranslation("common");
   const userRole = user?.role;
 
   const allowedActionIds = getQuickActionsForRole(userRole);
@@ -276,12 +336,17 @@ export function QuickActionsGrid() {
     return null;
   }
 
-  // Maksimum 6 aksiyon göster, 3x2 grid
   const displayActions = filteredActions.slice(0, 6);
+
+  const resolveLabel = (action: QuickAction) => {
+    return t(action.labelKey, { defaultValue: i18n.language === "en" ? action.defaultLabelEN : action.defaultLabelTR });
+  };
 
   return (
     <div className="space-y-1.5">
-      <h3 className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Hızlı İşlemler</h3>
+      <h3 className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">
+        {t("quickActions", { defaultValue: "Hızlı İşlemler" })}
+      </h3>
       
       <div className="grid grid-cols-3 gap-1.5">
         {displayActions.map((action, index) => {
@@ -301,7 +366,7 @@ export function QuickActionsGrid() {
                 <Icon className={`w-3.5 h-3.5 ${action.color}`} />
               </div>
               <span className="text-[10px] font-medium text-foreground truncate">
-                {action.label}
+                {resolveLabel(action)}
               </span>
             </motion.button>
           );

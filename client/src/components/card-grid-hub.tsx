@@ -3,6 +3,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { useQuery } from "@tanstack/react-query";
 import { isHQRole, isBranchRole } from "@shared/schema";
 import { canSeeWidget } from "@/lib/role-visibility";
+import { useTranslation } from "react-i18next";
+import { getNavItemById, resolveNavLabel, resolveNavDescription } from "@/lib/nav-registry";
 import { motion } from "framer-motion";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -94,6 +96,18 @@ interface ModuleCard {
 export function CardGridHub() {
   const [, setLocation] = useLocation();
   const { user } = useAuth();
+  const { t, i18n } = useTranslation("common");
+  
+  const navLabel = (navId: string, fallback: string) => {
+    const item = getNavItemById(navId);
+    if (item) return t(item.labelKey, { defaultValue: i18n.language === "en" ? item.defaultLabelEN : item.defaultLabelTR });
+    return fallback;
+  };
+  const navDesc = (navId: string, fallback: string) => {
+    const item = getNavItemById(navId);
+    if (item) return resolveNavDescription(item, t, i18n.language);
+    return fallback;
+  };
   
   const isHQ = user && isHQRole(user.role as any);
   const isBranch = user && isBranchRole(user.role as any);
@@ -238,113 +252,112 @@ export function CardGridHub() {
     { 
       id: "academy", 
       icon: GraduationCap, 
-      label: "Akademi", 
+      label: navLabel("academy", "Akademi"), 
       path: "/akademi",
       color: "bg-blue-500",
-      description: "Eğitim & Gelişim"
+      description: navDesc("academy", "Eğitim & Gelişim")
     },
     { 
       id: "tasks", 
       icon: ClipboardList, 
-      label: "Görevler", 
+      label: navLabel("tasks", "Görevler"), 
       path: "/gorevler",
       color: "bg-green-500",
       badge: pendingTasks,
-      description: "Günlük işler"
+      description: navDesc("tasks", "Günlük işler")
     },
     { 
       id: "pending-checks", 
       icon: UserCheck, 
-      label: "Bekleyen Kontroller", 
+      label: navLabel("pending-checks", "Bekleyen Kontroller"), 
       path: "/gorevler?status=kontrol_bekliyor",
       color: "bg-amber-500",
       badge: pendingChecksCount,
-      description: "Kontrol bekleyen görevler",
+      description: navDesc("pending-checks", "Kontrol bekleyen görevler"),
       roles: ["supervisor", "supervisor_buddy"]
     },
     { 
       id: "faults", 
       icon: Wrench, 
-      label: "Arıza", 
+      label: navLabel("faults", "Arızalar"), 
       path: "/ariza",
       color: "bg-orange-500",
       badge: openFaults,
-      description: "Ekipman sorunları"
+      description: navDesc("faults", "Ekipman sorunları")
     },
     { 
       id: "shifts", 
       icon: Calendar, 
-      label: "Vardiya", 
+      label: navLabel("shifts", "Vardiyalar"), 
       path: "/vardiyalar",
       color: "bg-purple-500",
-      description: "Çalışma saatleri"
+      description: navDesc("shifts", "Çalışma saatleri")
     },
     { 
       id: "checklists", 
-      icon: ClipboardList, 
-      label: "Checklistler", 
+      icon: ClipboardCheck, 
+      label: navLabel("checklists", "Kontrol Listeleri"), 
       path: "/checklistler",
       color: "bg-teal-500",
-      description: "Günlük kontroller"
+      description: navDesc("checklists", "Günlük kontroller")
     },
     { 
       id: "lost-found", 
       icon: Briefcase, 
-      label: "Kayıp Eşya", 
+      label: navLabel("lost-found", "Kayıp Eşya"), 
       path: "/kayip-esya",
       color: "bg-yellow-600",
-      description: "Bulunan eşyalar"
+      description: navDesc("lost-found", "Bulunan eşyalar")
     },
     { 
       id: "equipment", 
       icon: Coffee, 
-      label: "Ekipman", 
+      label: navLabel("equipment", "Ekipman"), 
       path: "/ekipman",
       color: "bg-amber-600",
-      description: "Ekipman yönetimi"
+      description: navDesc("equipment", "Ekipman yönetimi")
     },
     { 
       id: "support", 
       icon: MessageSquare, 
-      label: "Merkez Destek", 
+      label: navLabel("support", "Merkez Destek"), 
       path: "/hq-destek",
       color: "bg-blue-500",
-      description: "HQ'ya talep gönder"
+      description: navDesc("support", "HQ'ya talep gönder")
     },
-    // Yeni eklenen modüller
     { 
       id: "hr", 
       icon: Users, 
-      label: "İK Yönetimi", 
+      label: navLabel("hr", "İK"), 
       path: "/ik",
       color: "bg-pink-500",
-      description: "Personel yönetimi",
+      description: navDesc("hr", "Personel yönetimi"),
       roles: ["supervisor", "supervisor_buddy", "yatirimci_branch", "admin"]
     },
     { 
       id: "knowledge", 
       icon: BookOpen, 
-      label: "Bilgi Bankası", 
+      label: navLabel("knowledge", "Bilgi Bankası"), 
       path: "/bilgi-bankasi",
       color: "bg-emerald-500",
-      description: "Dokümanlar & rehberler"
+      description: navDesc("knowledge", "Dokümanlar & rehberler")
     },
     { 
       id: "performance", 
       icon: BarChart3, 
-      label: "Performans", 
+      label: navLabel("performance", "Performans"), 
       path: "/performans",
       color: "bg-cyan-500",
-      description: "Performans metrikleri",
+      description: navDesc("performance", "Performans metrikleri"),
       roles: ["supervisor", "supervisor_buddy", "yatirimci_branch", "admin"]
     },
     { 
       id: "live-tracking", 
       icon: MapPin, 
-      label: "Canlı Takip", 
+      label: navLabel("live-tracking", "Canlı Takip"), 
       path: "/canli-takip",
       color: "bg-emerald-500",
-      description: "Personel konum takibi",
+      description: navDesc("live-tracking", "Personel konum takibi"),
       roles: ["supervisor", "manager"]
     },
   ];
@@ -353,191 +366,190 @@ export function CardGridHub() {
     { 
       id: "announcements", 
       icon: Megaphone, 
-      label: "Duyurular", 
+      label: navLabel("announcements", "Duyurular"), 
       path: "/admin/duyurular",
       color: "bg-red-500",
-      description: "Duyuru yönetimi"
+      description: navDesc("announcements", "Duyuru yönetimi")
     },
     { 
       id: "tasks-hq", 
       icon: ClipboardList, 
-      label: "Görevler", 
+      label: navLabel("tasks", "Görevler"), 
       path: "/gorevler",
       color: "bg-green-500",
       badge: pendingTasks,
-      description: "Görev yönetimi"
+      description: navDesc("tasks", "Görev yönetimi")
     },
     { 
       id: "academy-hq", 
       icon: GraduationCap, 
-      label: "Akademi Yönetimi", 
+      label: navLabel("academy-hq", "Akademi Yönetimi"), 
       path: "/yonetim/akademi",
       color: "bg-blue-500",
-      description: "Eğitim yönetimi"
+      description: navDesc("academy-hq", "Eğitim yönetimi")
     },
     { 
       id: "branches", 
       icon: Building2, 
-      label: "Şubeler", 
+      label: navLabel("branches", "Şubeler"), 
       path: "/subeler",
       color: "bg-indigo-500",
-      description: "Şube yönetimi"
+      description: navDesc("branches", "Şube yönetimi")
     },
     { 
       id: "checklists-hq", 
       icon: CheckSquare, 
-      label: "Checklistler", 
+      label: navLabel("checklists-hq", "Checklistler"), 
       path: "/yonetim/checklistler",
       color: "bg-teal-500",
-      description: "Checklist yönetimi"
+      description: navDesc("checklists-hq", "Checklist yönetimi")
     },
     { 
       id: "shifts-hq", 
       icon: Calendar, 
-      label: "Vardiya Planlama", 
+      label: navLabel("shifts", "Vardiyalar"), 
       path: "/vardiyalar",
       color: "bg-purple-500",
-      description: "Vardiya planlaması"
+      description: navDesc("shifts", "Vardiya planlaması")
     },
     { 
       id: "faults", 
       icon: AlertTriangle, 
-      label: "Arızalar", 
+      label: navLabel("faults", "Arızalar"), 
       path: "/ariza",
       color: "bg-orange-500",
       badge: openFaults,
-      description: "Tüm arızalar"
+      description: navDesc("faults", "Tüm arızalar")
     },
     { 
       id: "hr", 
       icon: Users, 
-      label: "İK", 
+      label: navLabel("hr", "İK"), 
       path: "/ik",
       color: "bg-pink-500",
-      description: "Personel yönetimi"
+      description: navDesc("hr", "Personel yönetimi")
     },
     { 
       id: "muhasebe", 
       icon: Calculator, 
-      label: "Muhasebe", 
+      label: navLabel("muhasebe", "Muhasebe"), 
       path: "/muhasebe",
       color: "bg-emerald-600",
-      description: "Bordro & Maaş Yönetimi",
+      description: navDesc("muhasebe", "Bordro & Maaş Yönetimi"),
       roles: ["admin", "muhasebe", "muhasebe_ik"]
     },
     { 
       id: "reports", 
       icon: BarChart3, 
-      label: "Raporlar", 
+      label: navLabel("reports", "Raporlar"), 
       path: "/e2e-raporlar",
       color: "bg-cyan-500",
-      description: "Analitik & PDF export"
+      description: navDesc("reports", "Analitik & PDF export")
     },
     { 
       id: "equipment", 
       icon: Coffee, 
-      label: "Ekipman", 
+      label: navLabel("equipment", "Ekipman"), 
       path: "/ekipman",
       color: "bg-amber-600",
-      description: "Ekipman listesi"
+      description: navDesc("equipment", "Ekipman listesi")
     },
     { 
       id: "lost-found", 
       icon: Briefcase, 
-      label: "Kayıp Eşya", 
+      label: navLabel("lost-found", "Kayıp Eşya"), 
       path: "/kayip-esya-hq",
       color: "bg-yellow-600",
-      description: "Bulunan eşyalar"
+      description: navDesc("lost-found", "Bulunan eşyalar")
     },
     { 
       id: "projects", 
       icon: FolderKanban, 
-      label: "Projeler", 
+      label: navLabel("projects", "Projeler"), 
       path: "/projeler",
       color: "bg-violet-600",
-      description: "HQ Proje Yönetimi"
+      description: navDesc("projects", "HQ Proje Yönetimi")
     },
     { 
       id: "support", 
       icon: MessageSquare, 
-      label: "Destek", 
+      label: navLabel("support", "Destek"), 
       path: "/hq-destek",
       color: "bg-rose-500",
-      description: "Destek talepleri"
+      description: navDesc("support", "Destek talepleri")
     },
     { 
       id: "live-tracking-hq", 
       icon: MapPin, 
-      label: "Canlı Takip", 
+      label: navLabel("live-tracking", "Canlı Takip"), 
       path: "/canli-takip",
       color: "bg-emerald-500",
-      description: "Personel konum takibi"
+      description: navDesc("live-tracking", "Personel konum takibi")
     },
     { 
       id: "settings", 
       icon: Settings, 
-      label: "Yönetim", 
+      label: navLabel("admin-settings", "Yönetim"), 
       path: "/yonetim/ayarlar",
       color: "bg-slate-600",
-      description: "Sistem ayarları"
+      description: navDesc("admin-settings", "Sistem ayarları")
     },
     { 
       id: "admin", 
       icon: Shield, 
-      label: "Admin Panel", 
+      label: navLabel("admin-panel", "Admin Panel"), 
       path: "/admin",
       color: "bg-red-600",
-      description: "Sistem yönetimi",
+      description: navDesc("admin-panel", "Sistem yönetimi"),
       roles: ["admin"]
     },
-    // Yeni eklenen modüller
     { 
       id: "knowledge", 
       icon: BookOpen, 
-      label: "Bilgi Bankası", 
+      label: navLabel("knowledge", "Bilgi Bankası"), 
       path: "/bilgi-bankasi",
       color: "bg-emerald-500",
-      description: "Dokümanlar & rehberler"
+      description: navDesc("knowledge", "Dokümanlar & rehberler")
     },
     { 
       id: "ai-assistant", 
       icon: Bot, 
-      label: "AI Asistan", 
+      label: navLabel("ai-assistant", "AI Asistan"), 
       path: "/ai-asistan",
       color: "bg-violet-500",
-      description: "Yapay zeka asistanı"
+      description: navDesc("ai-assistant", "Yapay zeka asistanı")
     },
     { 
       id: "quality", 
       icon: Star, 
-      label: "Kalite Kontrol", 
+      label: navLabel("quality", "Kalite Kontrol"), 
       path: "/kalite-denetimi",
       color: "bg-amber-500",
-      description: "Kalite & denetim"
+      description: navDesc("quality", "Kalite & denetim")
     },
     { 
       id: "users", 
       icon: Users, 
-      label: "Kullanıcılar", 
+      label: navLabel("users", "Kullanıcılar"), 
       path: "/yonetim/kullanicilar",
       color: "bg-sky-500",
-      description: "Kullanıcı yönetimi"
+      description: navDesc("users", "Kullanıcı yönetimi")
     },
     { 
       id: "bulk-data", 
       icon: Database, 
-      label: "Toplu Veri Yönetimi", 
+      label: navLabel("bulk-data", "Toplu Veri Yönetimi"), 
       path: "/admin/toplu-veri-yonetimi",
       color: "bg-indigo-600",
-      description: "Excel ile veri aktarımı"
+      description: navDesc("bulk-data", "Excel ile veri aktarımı")
     },
     { 
       id: "crm", 
       icon: Headphones, 
-      label: "CRM", 
+      label: navLabel("crm", "CRM"), 
       path: "/crm",
       color: "bg-rose-500",
-      description: "Franchise Destek Merkezi"
+      description: navDesc("crm", "Franchise Destek Merkezi")
     },
   ];
 

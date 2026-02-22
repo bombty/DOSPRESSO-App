@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useLocation, Link } from "wouter";
 import { Home, GraduationCap, Wrench, User, Brain, BarChart3, Factory, Settings, Building2, Users, Bell, CalendarDays, ClipboardCheck, Package, ShoppingCart, Clock, FileText, Megaphone, Search, Shield } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { useTranslation } from "react-i18next";
 import { NAV_ITEMS_BY_ROLE, UserRole } from "@/lib/role-visibility";
 import { GlobalSearchModal } from "@/components/global-search-modal";
 
@@ -13,10 +14,21 @@ interface NavItem {
   isSearch?: boolean;
 }
 
-const NAV_ITEM_CONFIG: Record<string, { icon: any; label: string; getPath: (user: any) => string; isSearch?: boolean }> = {
+interface NavItemConfig {
+  icon: any;
+  labelKey: string;
+  defaultLabelTR: string;
+  defaultLabelEN: string;
+  getPath: (user: any) => string;
+  isSearch?: boolean;
+}
+
+const NAV_ITEM_CONFIG: Record<string, NavItemConfig> = {
   home: {
     icon: Home,
-    label: "Ana Sayfa",
+    labelKey: "nav.home",
+    defaultLabelTR: "Ana Sayfa",
+    defaultLabelEN: "Home",
     getPath: (user) => {
       if (user?.role === 'ceo') return '/ceo-command-center';
       if (user?.role === 'cgo') return '/cgo-command-center';
@@ -25,7 +37,9 @@ const NAV_ITEM_CONFIG: Record<string, { icon: any; label: string; getPath: (user
   },
   academy: {
     icon: GraduationCap,
-    label: "Akademi",
+    labelKey: "nav.academy",
+    defaultLabelTR: "Akademi",
+    defaultLabelEN: "Academy",
     getPath: (user) => {
       const hqRoles = ['ceo', 'cgo', 'admin', 'muhasebe', 'muhasebe_ik', 'satinalma', 'marketing', 'pazarlama', 'teknik', 'destek', 'trainer', 'coach', 'kalite_kontrol', 'fabrika_mudur', 'fabrika', 'yatirimci_hq', 'ekipman_teknik', 'ik'];
       return hqRoles.includes(user?.role) ? "/akademi-hq" : "/akademi";
@@ -33,12 +47,16 @@ const NAV_ITEM_CONFIG: Record<string, { icon: any; label: string; getPath: (user
   },
   reports: {
     icon: BarChart3,
-    label: "Raporlar",
+    labelKey: "nav.reports",
+    defaultLabelTR: "Raporlar",
+    defaultLabelEN: "Reports",
     getPath: () => "/raporlar",
   },
   ai: {
     icon: Brain,
-    label: "AI Asistan",
+    labelKey: "nav.aiAssistant",
+    defaultLabelTR: "AI Asistan",
+    defaultLabelEN: "AI Assistant",
     getPath: (user) => {
       if (user?.role === 'ceo') return '/ceo-command-center';
       if (user?.role === 'cgo') return '/cgo-command-center';
@@ -47,77 +65,107 @@ const NAV_ITEM_CONFIG: Record<string, { icon: any; label: string; getPath: (user
   },
   admin: {
     icon: Settings,
-    label: "Yönetim",
+    labelKey: "nav.admin",
+    defaultLabelTR: "Yönetim",
+    defaultLabelEN: "Admin",
     getPath: () => "/admin",
   },
   equipment: {
     icon: Wrench,
-    label: "Ekipman",
+    labelKey: "nav.equipment",
+    defaultLabelTR: "Ekipman",
+    defaultLabelEN: "Equipment",
     getPath: () => "/ekipman",
   },
   factory: {
     icon: Factory,
-    label: "Fabrika",
+    labelKey: "nav.factory",
+    defaultLabelTR: "Fabrika",
+    defaultLabelEN: "Factory",
     getPath: () => "/fabrika",
   },
   operations: {
     icon: Building2,
-    label: "Operasyon",
+    labelKey: "nav.operations",
+    defaultLabelTR: "Operasyon",
+    defaultLabelEN: "Operations",
     getPath: () => "/operasyon",
   },
   hr: {
     icon: Users,
-    label: "İK",
+    labelKey: "nav.hr",
+    defaultLabelTR: "İK",
+    defaultLabelEN: "HR",
     getPath: () => "/ik",
   },
   fault: {
     icon: Wrench,
-    label: "Arıza",
+    labelKey: "nav.faults",
+    defaultLabelTR: "Arıza",
+    defaultLabelEN: "Faults",
     getPath: () => "/ariza",
   },
   notifications: {
     icon: Bell,
-    label: "Bildirimler",
+    labelKey: "nav.notifications",
+    defaultLabelTR: "Bildirimler",
+    defaultLabelEN: "Notifications",
     getPath: () => "/bildirimler",
   },
   tasks: {
     icon: ClipboardCheck,
-    label: "Görevler",
+    labelKey: "nav.tasks",
+    defaultLabelTR: "Görevler",
+    defaultLabelEN: "Tasks",
     getPath: () => "/gorevler",
   },
   shifts: {
     icon: Clock,
-    label: "Vardiyalar",
+    labelKey: "nav.shifts",
+    defaultLabelTR: "Vardiyalar",
+    defaultLabelEN: "Shifts",
     getPath: () => "/vardiyalar",
   },
   myshifts: {
     icon: Clock,
-    label: "Vardiyam",
+    labelKey: "nav.myShifts",
+    defaultLabelTR: "Vardiyam",
+    defaultLabelEN: "My Shifts",
     getPath: () => "/vardiyalarim",
   },
   checklists: {
     icon: ClipboardCheck,
-    label: "Checklist",
+    labelKey: "nav.checklists",
+    defaultLabelTR: "Kontrol Listesi",
+    defaultLabelEN: "Checklist",
     getPath: () => "/checklistler",
   },
   stock: {
     icon: Package,
-    label: "Stok",
+    labelKey: "nav.stock",
+    defaultLabelTR: "Stok",
+    defaultLabelEN: "Stock",
     getPath: () => "/satinalma?tab=stok-yonetimi",
   },
   orders: {
     icon: ShoppingCart,
-    label: "Siparişler",
+    labelKey: "nav.orders",
+    defaultLabelTR: "Siparişler",
+    defaultLabelEN: "Orders",
     getPath: () => "/satinalma?tab=siparisler",
   },
   calendar: {
     icon: CalendarDays,
-    label: "Takvim",
+    labelKey: "nav.calendar",
+    defaultLabelTR: "Takvim",
+    defaultLabelEN: "Calendar",
     getPath: () => "/vardiya-planlama",
   },
   crm: {
     icon: FileText,
-    label: "CRM",
+    labelKey: "nav.crm",
+    defaultLabelTR: "CRM",
+    defaultLabelEN: "CRM",
     getPath: (user) => {
       if (!user) return "/crm";
       switch (user.role) {
@@ -134,28 +182,38 @@ const NAV_ITEM_CONFIG: Record<string, { icon: any; label: string; getPath: (user
   },
   quality: {
     icon: Shield,
-    label: "Kalite",
+    labelKey: "nav.quality",
+    defaultLabelTR: "Kalite",
+    defaultLabelEN: "Quality",
     getPath: () => "/kalite-denetimi",
   },
   announcements: {
     icon: Megaphone,
-    label: "Duyurular",
+    labelKey: "nav.announcements",
+    defaultLabelTR: "Duyurular",
+    defaultLabelEN: "Announcements",
     getPath: () => "/duyurular",
   },
   search: {
     icon: Search,
-    label: "Ara",
+    labelKey: "nav.search",
+    defaultLabelTR: "Ara",
+    defaultLabelEN: "Search",
     getPath: () => "#search",
     isSearch: true,
   },
   branches: {
     icon: Building2,
-    label: "Şubeler",
+    labelKey: "nav.branches",
+    defaultLabelTR: "Şubeler",
+    defaultLabelEN: "Branches",
     getPath: () => "/subeler",
   },
   profile: {
     icon: User,
-    label: "Profil",
+    labelKey: "nav.profile",
+    defaultLabelTR: "Profil",
+    defaultLabelEN: "Profile",
     getPath: (user) => user ? `/personel/${user.id}` : "/login",
   },
 };
@@ -163,10 +221,15 @@ const NAV_ITEM_CONFIG: Record<string, { icon: any; label: string; getPath: (user
 export function BottomNav() {
   const [location] = useLocation();
   const { user } = useAuth();
+  const { t, i18n } = useTranslation("common");
   const [searchOpen, setSearchOpen] = useState(false);
 
   const userRole = user?.role as UserRole | undefined;
   const navKeys = userRole ? (NAV_ITEMS_BY_ROLE[userRole] || ['home', 'profile']) : ['home', 'profile'];
+
+  const resolveLabel = (config: NavItemConfig) => {
+    return t(config.labelKey, { defaultValue: i18n.language === "en" ? config.defaultLabelEN : config.defaultLabelTR });
+  };
 
   const navItems: NavItem[] = navKeys
     .filter(key => NAV_ITEM_CONFIG[key])
@@ -175,7 +238,7 @@ export function BottomNav() {
       const config = NAV_ITEM_CONFIG[key];
       return {
         icon: config.icon,
-        label: config.label,
+        label: resolveLabel(config),
         path: config.getPath(user),
         isSearch: config.isSearch,
       };
