@@ -181,6 +181,7 @@ export function isFactoryFloorRole(role: UserRoleType): boolean {
 // ========================================
 
 export type SidebarMenuScope = 'branch' | 'hq' | 'both';
+export type SidebarMenuGroup = 'operations' | 'management' | 'settings';
 
 export interface SidebarMenuItem {
   id: string;
@@ -198,6 +199,7 @@ export interface SidebarMenuSection {
   titleTr: string;
   icon: string;
   scope: SidebarMenuScope;
+  group: SidebarMenuGroup;
   items: SidebarMenuItem[];
 }
 
