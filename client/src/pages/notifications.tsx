@@ -12,6 +12,10 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 import { ListSkeleton } from "@/components/list-skeleton";
 import { EmptyState } from "@/components/empty-state";
 import { 
@@ -32,6 +36,10 @@ import {
   MapPin,
   RefreshCw,
   Plus,
+  Send,
+  CalendarIcon,
+  UserPlus,
+  Loader2,
 } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
 import { tr } from "date-fns/locale";
@@ -145,6 +153,239 @@ interface TaskSummary {
   assignedById: string | null;
 }
 
+interface SimpleUser {
+  id: string;
+  firstName: string | null;
+  lastName: string | null;
+  email: string | null;
+  role: string | null;
+  branchId: number | null;
+}
+
+function AssignTaskDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const [description, setDescription] = useState("");
+  const [assigneeId, setAssigneeId] = useState("");
+  const [priority, setPriority] = useState("orta");
+  const [dueDate, setDueDate] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const { data: allUsers } = useQuery<SimpleUser[]>({
+    queryKey: ['/api/users'],
+    enabled: open,
+  });
+
+  const filteredUsers = (allUsers || []).filter(u => {
+    if (!u.id || u.id === user?.id) return false;
+    const fullName = `${u.firstName || ''} ${u.lastName || ''}`.toLowerCase();
+    const email = (u.email || '').toLowerCase();
+    const q = searchQuery.toLowerCase();
+    return !q || fullName.includes(q) || email.includes(q);
+  });
+
+  const selectedUser = (allUsers || []).find(u => u.id === assigneeId);
+
+  const createTaskMutation = useMutation({
+    mutationFn: async (data: { description: string; assignedToId: string; priority: string; dueDate?: string }) => {
+      const body: any = {
+        description: data.description,
+        assignedToId: data.assignedToId,
+        priority: data.priority,
+      };
+      if (data.dueDate) {
+        body.dueDate = new Date(data.dueDate).toISOString();
+      }
+      await apiRequest('POST', '/api/tasks', body);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/tasks'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/notifications'] });
+      toast({ title: "Görev atandı", description: "Görev başarıyla oluşturuldu ve atandı." });
+      resetForm();
+      onOpenChange(false);
+    },
+    onError: (error: any) => {
+      toast({ title: "Hata", description: error?.message || "Görev oluşturulamadı", variant: "destructive" });
+    },
+  });
+
+  const resetForm = () => {
+    setDescription("");
+    setAssigneeId("");
+    setPriority("orta");
+    setDueDate("");
+    setSearchQuery("");
+  };
+
+  const handleSubmit = () => {
+    if (!description.trim()) {
+      toast({ title: "Hata", description: "Görev açıklaması gerekli", variant: "destructive" });
+      return;
+    }
+    if (!assigneeId) {
+      toast({ title: "Hata", description: "Bir kişi seçmelisiniz", variant: "destructive" });
+      return;
+    }
+    createTaskMutation.mutate({
+      description: description.trim(),
+      assignedToId: assigneeId,
+      priority,
+      dueDate: dueDate || undefined,
+    });
+  };
+
+  const getRoleLabel = (role: string | null) => {
+    const labels: Record<string, string> = {
+      admin: "Admin", barista: "Barista", supervisor: "Supervisor", mudur: "Müdür",
+      bolge_mudur: "Bölge Müdürü", ceo: "CEO", coo: "COO", cgo: "CGO",
+      trainer: "Eğitmen", kalite_kontrol: "Kalite Kontrol", coach: "Coach",
+      fabrika_mudur: "Fabrika Müdürü", fabrika_personel: "Fabrika Personel", employee: "Çalışan",
+    };
+    return labels[role || ''] || role || '';
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => { if (!v) resetForm(); onOpenChange(v); }}>
+      <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto" data-testid="dialog-assign-task">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2" data-testid="dialog-title-assign-task">
+            <UserPlus className="w-5 h-5" />
+            Görev Ata
+          </DialogTitle>
+          <DialogDescription>
+            Bir kişiye yeni görev atayın. Atanan kişiye bildirim gönderilecektir.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4 py-2">
+          <div className="space-y-2">
+            <Label htmlFor="task-description">Görev Açıklaması *</Label>
+            <Textarea
+              id="task-description"
+              placeholder="Görev detayını yazın..."
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              className="resize-none min-h-[80px]"
+              data-testid="input-task-description"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label>Atanan Kişi *</Label>
+            {selectedUser ? (
+              <div className="flex items-center justify-between gap-2 p-2 rounded-md bg-muted">
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium truncate" data-testid="text-selected-assignee">
+                    {selectedUser.firstName} {selectedUser.lastName}
+                  </p>
+                  <p className="text-xs text-muted-foreground truncate">
+                    {getRoleLabel(selectedUser.role)}
+                  </p>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setAssigneeId("")}
+                  data-testid="button-clear-assignee"
+                >
+                  Değiştir
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <Input
+                  placeholder="İsim veya e-posta ile arayın..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  data-testid="input-search-assignee"
+                />
+                <div className="max-h-[160px] overflow-y-auto rounded-md border">
+                  {filteredUsers.length > 0 ? (
+                    filteredUsers.slice(0, 20).map(u => (
+                      <Button
+                        key={u.id}
+                        variant="ghost"
+                        className="w-full justify-start gap-2 h-auto py-2"
+                        onClick={() => { setAssigneeId(u.id); setSearchQuery(""); }}
+                        data-testid={`user-option-${u.id}`}
+                      >
+                        <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center text-xs font-medium flex-shrink-0">
+                          {(u.firstName || '?')[0]}{(u.lastName || '?')[0]}
+                        </div>
+                        <div className="flex-1 min-w-0 text-left">
+                          <p className="text-sm font-medium truncate" data-testid={`text-user-name-${u.id}`}>{u.firstName} {u.lastName}</p>
+                          <p className="text-[11px] text-muted-foreground truncate" data-testid={`text-user-role-${u.id}`}>
+                            {getRoleLabel(u.role)}
+                          </p>
+                        </div>
+                      </Button>
+                    ))
+                  ) : (
+                    <p className="text-sm text-muted-foreground text-center py-3">
+                      {searchQuery ? "Kullanıcı bulunamadı" : "Kişi aramak için yazın"}
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-2">
+              <Label>Öncelik</Label>
+              <Select value={priority} onValueChange={setPriority}>
+                <SelectTrigger data-testid="select-priority">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="düşük">Düşük</SelectItem>
+                  <SelectItem value="orta">Orta</SelectItem>
+                  <SelectItem value="yüksek">Yüksek</SelectItem>
+                  <SelectItem value="acil">Acil</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="task-due-date">Bitiş Tarihi</Label>
+              <Input
+                id="task-due-date"
+                type="date"
+                value={dueDate}
+                onChange={(e) => setDueDate(e.target.value)}
+                min={format(new Date(), "yyyy-MM-dd")}
+                data-testid="input-due-date"
+              />
+            </div>
+          </div>
+        </div>
+
+        <DialogFooter className="gap-2">
+          <Button
+            variant="outline"
+            onClick={() => { resetForm(); onOpenChange(false); }}
+            data-testid="button-cancel-task"
+          >
+            Vazgeç
+          </Button>
+          <Button
+            onClick={handleSubmit}
+            disabled={createTaskMutation.isPending || !description.trim() || !assigneeId}
+            data-testid="button-submit-task"
+          >
+            {createTaskMutation.isPending ? (
+              <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />
+            ) : (
+              <Send className="w-4 h-4 mr-1.5" />
+            )}
+            Görev Ata
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export default function Notifications() {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -152,6 +393,7 @@ export default function Notifications() {
   const [activeTab, setActiveTab] = useState("notifications");
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [branchFilter, setBranchFilter] = useState("all");
+  const [assignTaskOpen, setAssignTaskOpen] = useState(false);
   
   const isAdmin = user?.role === 'admin' || user?.role === 'ceo';
   const [viewAll, setViewAll] = useState(false);
@@ -372,6 +614,15 @@ export default function Notifications() {
         </div>
         
         <div className="flex items-center gap-2 flex-wrap">
+          <Button
+            variant="default"
+            size="sm"
+            onClick={() => setAssignTaskOpen(true)}
+            data-testid="button-assign-task"
+          >
+            <UserPlus className="w-3.5 h-3.5 mr-1.5" />
+            Görev Ata
+          </Button>
           {isAdmin && (
             <Button
               variant={viewAll ? "default" : "outline"}
@@ -689,6 +940,8 @@ export default function Notifications() {
           )}
         </TabsContent>
       </Tabs>
+
+      <AssignTaskDialog open={assignTaskOpen} onOpenChange={setAssignTaskOpen} />
     </div>
   );
 }
