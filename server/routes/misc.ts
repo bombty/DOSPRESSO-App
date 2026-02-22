@@ -1668,7 +1668,7 @@ const normalizeTimeGlobal = (timeStr: string): string => {
   // Get presigned upload URL for object storage
   router.post('/api/objects/upload', isAuthenticated, async (req, res) => {
     try {
-      const { ObjectStorageService } = await import('./objectStorage');
+      const { ObjectStorageService } = await import('../objectStorage');
       const objectStorageService = new ObjectStorageService();
       const uploadURL = await objectStorageService.getObjectEntityUploadURL();
       res.json({ method: "PUT", url: uploadURL });
@@ -1681,7 +1681,7 @@ const normalizeTimeGlobal = (timeStr: string): string => {
   // Finalize uploaded object - normalize URL and set ACL policy
   router.post('/api/objects/finalize', isAuthenticated, async (req, res) => {
     try {
-      const { ObjectStorageService } = await import('./objectStorage');
+      const { ObjectStorageService } = await import('../objectStorage');
       const objectStorageService = new ObjectStorageService();
       const user = req.user!;
       
@@ -1712,7 +1712,7 @@ const normalizeTimeGlobal = (timeStr: string): string => {
   // Serve private objects with ACL check (for uploaded files)
   router.get("/objects/:objectPath(*)", isAuthenticated, async (req, res) => {
     try {
-      const { ObjectStorageService } = await import('./objectStorage');
+      const { ObjectStorageService } = await import('../objectStorage');
       const objectStorageService = new ObjectStorageService();
       const userId = req.user?.claims?.sub || req.user?.id;
       
@@ -7308,7 +7308,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`;
         return res.json({ imageUrl: tempImageUrl, warning: "Object Storage yapılandırılmamış, görsel geçici" });
       }
 
-      const { objectStorageClient } = await import('./objectStorage');
+      const { objectStorageClient } = await import('../objectStorage');
       const bucket = objectStorageClient.bucket(bucketId);
       
       // Benzersiz dosya adı oluştur
