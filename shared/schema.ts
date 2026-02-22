@@ -2822,6 +2822,7 @@ export const taskAssignees = pgTable("task_assignees", {
   userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   status: varchar("status", { length: 50 }).notNull().default("beklemede"),
   acknowledgedAt: timestamp("acknowledged_at"),
+  startedAt: timestamp("started_at"),
   completedAt: timestamp("completed_at"),
   createdAt: timestamp("created_at").defaultNow(),
 }, (table) => ({

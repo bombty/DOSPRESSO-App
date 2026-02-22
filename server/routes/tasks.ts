@@ -1076,27 +1076,42 @@ const router = Router();
         return res.status(404).json({ message: "Görev bulunamadı" });
       }
       
-      if (task.assignedToId !== user.id) {
+      const isPrimaryAssignee = task.assignedToId === user.id;
+      const isAdditionalAssignee = await db.select().from(taskAssignees)
+        .where(and(eq(taskAssignees.taskId, taskId), eq(taskAssignees.userId, user.id)))
+        .then(rows => rows.length > 0);
+      
+      if (!isPrimaryAssignee && !isAdditionalAssignee) {
         return res.status(403).json({ message: "Bu görevi başlatma yetkiniz yok" });
       }
       
-      const allowedStatuses = ['beklemede', 'goruldu', 'reddedildi', 'ek_bilgi_bekleniyor'];
+      const allowedStatuses = ['beklemede', 'goruldu', 'reddedildi', 'ek_bilgi_bekleniyor', 'devam_ediyor'];
       if (!allowedStatuses.includes(task.status || 'beklemede')) {
         return res.status(400).json({ 
           message: `Bu görev '${task.status}' durumunda, başlatılamaz` 
         });
       }
       
-      const updates: any = { 
-        status: 'devam_ediyor',
-        startedAt: new Date()
-      };
+      await db.update(taskAssignees)
+        .set({ 
+          status: 'devam_ediyor', 
+          startedAt: new Date(),
+          acknowledgedAt: new Date(),
+        })
+        .where(and(eq(taskAssignees.taskId, taskId), eq(taskAssignees.userId, user.id)));
       
-      if (!task.acknowledgedAt) {
-        updates.acknowledgedAt = new Date();
+      if (task.status === 'beklemede' || task.status === 'goruldu' || task.status === 'ek_bilgi_bekleniyor') {
+        const updates: any = { 
+          status: 'devam_ediyor',
+          startedAt: task.startedAt || new Date()
+        };
+        
+        if (!task.acknowledgedAt) {
+          updates.acknowledgedAt = new Date();
+        }
+        
+        await storage.updateTask(taskId, updates);
       }
-      
-      const updatedTask = await storage.updateTask(taskId, updates);
       
       if (notes) {
         try {
@@ -1126,10 +1141,48 @@ const router = Router();
         }
       }
       
+      const updatedTask = await storage.getTask(taskId);
       res.json(updatedTask);
     } catch (error: any) {
       console.error("Error starting task:", error);
       res.status(500).json({ message: "Görev başlatılamadı" });
+    }
+  });
+
+  router.get('/api/tasks/:id/participant-statuses', isAuthenticated, async (req: any, res) => {
+    try {
+      const taskId = parseInt(req.params.id);
+      const user = req.user!;
+      if (isNaN(taskId)) return res.status(400).json({ message: "Geçersiz görev ID'si" });
+
+      const task = await storage.getTask(taskId);
+      if (!task) return res.status(404).json({ message: "Görev bulunamadı" });
+
+      const userIsHQ = isHQRole(user.role as UserRoleType);
+      if (!userIsHQ && task.branchId && user.branchId && task.branchId !== user.branchId) {
+        return res.status(403).json({ message: "Bu göreve erişim yetkiniz yok" });
+      }
+
+      const statuses = await db
+        .select({
+          id: taskAssignees.id,
+          userId: taskAssignees.userId,
+          status: taskAssignees.status,
+          acknowledgedAt: taskAssignees.acknowledgedAt,
+          startedAt: taskAssignees.startedAt,
+          completedAt: taskAssignees.completedAt,
+          userName: sql<string>`COALESCE(${users.firstName} || ' ' || ${users.lastName}, ${users.username})`,
+          userRole: users.role,
+          userProfilePhoto: users.profilePhoto,
+        })
+        .from(taskAssignees)
+        .leftJoin(users, eq(taskAssignees.userId, users.id))
+        .where(eq(taskAssignees.taskId, taskId));
+
+      res.json(statuses);
+    } catch (error: any) {
+      console.error("Error fetching participant statuses:", error);
+      res.status(500).json({ message: "Katılımcı durumları yüklenemedi" });
     }
   });
 

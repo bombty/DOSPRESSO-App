@@ -148,6 +148,21 @@ export default function GorevDetay() {
     enabled: !!id,
   });
 
+  // Participant Statuses Query
+  const { data: participantStatuses = [] } = useQuery<any[]>({
+    queryKey: ["/api/tasks", id, "participant-statuses"],
+    queryFn: async () => {
+      const response = await fetch(`/api/tasks/${id}/participant-statuses`);
+      if (!response.ok) return [];
+      return response.json();
+    },
+    enabled: !!id,
+  });
+
+  const myParticipantStatus = participantStatuses.find((p: any) => p.userId === currentUser?.id);
+  const isAdditionalAssignee = !!myParticipantStatus;
+  const myStarted = !!myParticipantStatus?.startedAt;
+
   // Task Steps Mutations
   const addStepMutation = useMutation({
     mutationFn: async (title: string) => {
@@ -526,14 +541,16 @@ export default function GorevDetay() {
     kritik: "Kritik",
   };
 
-  const isAssignee = currentUser?.id === task.assignedToId;
+  const isPrimaryAssignee = currentUser?.id === task.assignedToId;
+  const isAssignee = isPrimaryAssignee || isAdditionalAssignee;
   const isAssigner = currentUser?.id === task.assignedById;
   const isHQ = currentUser?.role && !['barista', 'senior_barista', 'supervisor', 'supervisor_buddy'].includes(currentUser.role);
   
   const canAcknowledge = isAssignee && !task.acknowledgedAt && task.status !== "onaylandi" && task.status !== "basarisiz";
-  const canStartProgress = isAssignee && (task.status === "beklemede" || task.status === "goruldu" || task.status === "ek_bilgi_bekleniyor");
-  const canMarkFailed = isAssignee && task.status !== "onaylandi" && task.status !== "basarisiz";
-  const canComplete = isAssignee && (task.status === "devam_ediyor" || task.status === "beklemede");
+  const myNeedsStart = isAdditionalAssignee && !myStarted && task.status !== "onaylandi" && task.status !== "basarisiz";
+  const canStartProgress = (isPrimaryAssignee && (task.status === "beklemede" || task.status === "goruldu" || task.status === "ek_bilgi_bekleniyor")) || myNeedsStart;
+  const canMarkFailed = isPrimaryAssignee && task.status !== "onaylandi" && task.status !== "basarisiz";
+  const canComplete = isPrimaryAssignee && (task.status === "devam_ediyor" || task.status === "beklemede");
   
   // Assigner/HQ can approve, reject, or request additional info
   const canApprove = (isAssigner || isHQ) && (task.status === "tamamlandi" || task.status === "incelemede");
@@ -776,7 +793,16 @@ export default function GorevDetay() {
                 {canStartProgress && (
                   <Button
                     variant="outline"
-                    onClick={() => updateStatusMutation.mutate({ status: "devam_ediyor" })}
+                    onClick={async () => {
+                      try {
+                        await apiRequest("POST", `/api/tasks/${id}/start`);
+                        queryClient.invalidateQueries({ queryKey: ["/api/tasks", id] });
+                        queryClient.invalidateQueries({ queryKey: ["/api/tasks", id, "participant-statuses"] });
+                        toast({ title: "Başarılı", description: "Göreve başladınız" });
+                      } catch (error: any) {
+                        toast({ title: "Hata", description: error.message || "Görev başlatılamadı", variant: "destructive" });
+                      }
+                    }}
                     disabled={updateStatusMutation.isPending}
                     data-testid="button-start-progress"
                   >
@@ -1280,6 +1306,65 @@ export default function GorevDetay() {
               </div>
             </div>
           ) : null}
+
+          {/* Participant Progress Timeline */}
+          {participantStatuses.length > 1 && (
+            <div className="mt-3 pt-3 border-t">
+              <p className="text-xs text-muted-foreground mb-2 flex items-center gap-1">
+                <Clock className="h-3 w-3" />
+                Katılımcı Durumu
+              </p>
+              <div className="space-y-2">
+                {participantStatuses.map((p: any) => {
+                  const statusLabel = p.status === 'devam_ediyor' ? 'Devam Ediyor' 
+                    : p.status === 'tamamlandi' ? 'Tamamlandı' 
+                    : p.status === 'iptal_edildi' ? 'İptal' 
+                    : 'Bekliyor';
+                  const statusColor = p.status === 'devam_ediyor' ? 'text-blue-600 dark:text-blue-400' 
+                    : p.status === 'tamamlandi' ? 'text-green-600 dark:text-green-400' 
+                    : p.status === 'iptal_edildi' ? 'text-red-600 dark:text-red-400' 
+                    : 'text-muted-foreground';
+                  const progressPct = p.status === 'tamamlandi' ? 100
+                    : p.startedAt && task.dueDate 
+                      ? Math.min(90, Math.round((Date.now() - new Date(p.startedAt).getTime()) / (new Date(task.dueDate).getTime() - new Date(p.startedAt).getTime()) * 100))
+                      : p.startedAt ? 30 : 0;
+                  
+                  return (
+                    <div key={p.userId} className="flex items-center gap-2" data-testid={`participant-status-${p.userId}`}>
+                      <Avatar className="h-5 w-5 shrink-0">
+                        <AvatarImage src={p.userProfilePhoto} />
+                        <AvatarFallback className="text-[7px]">
+                          {p.userName?.split(' ').map((n: string) => n[0]).join('').substring(0, 2) || '?'}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between gap-1">
+                          <span className="text-xs truncate">{p.userName}</span>
+                          <span className={`text-[10px] font-medium ${statusColor}`}>{statusLabel}</span>
+                        </div>
+                        <div className="w-full bg-muted rounded-full h-1 mt-0.5">
+                          <div 
+                            className={`rounded-full h-1 transition-all duration-500 ${
+                              p.status === 'tamamlandi' ? 'bg-green-500' 
+                              : p.status === 'devam_ediyor' ? 'bg-blue-500' 
+                              : p.status === 'iptal_edildi' ? 'bg-red-500'
+                              : 'bg-muted-foreground/30'
+                            }`}
+                            style={{ width: `${progressPct}%` }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              {task.dueDate && (
+                <p className="text-[10px] text-muted-foreground mt-1 text-right">
+                  Son Tarih: {new Date(task.dueDate).toLocaleDateString("tr-TR")}
+                </p>
+              )}
+            </div>
+          )}
         </CardContent>
       </Card>
 

@@ -607,22 +607,28 @@ export function QuickTaskModal({ trigger }: QuickTaskModalProps) {
               />
             )}
 
-            <div>
-              <FormLabel className="mb-2 flex items-center gap-1">
-                <ListChecks className="h-3.5 w-3.5" />
-                Alt Görevler (İsteğe Bağlı)
-              </FormLabel>
+            <div className="border rounded-lg p-3 bg-muted/20">
+              <div className="flex items-center justify-between mb-2">
+                <FormLabel className="flex items-center gap-1.5 text-sm font-medium">
+                  <ListChecks className="h-4 w-4" />
+                  Alt Görevler
+                  {subTasks.length > 0 && (
+                    <Badge variant="secondary" className="text-[10px] h-4 px-1.5">{subTasks.length}</Badge>
+                  )}
+                </FormLabel>
+                <span className="text-[10px] text-muted-foreground">İsteğe Bağlı</span>
+              </div>
               {subTasks.length > 0 && (
                 <div className="space-y-1 mb-2">
                   {subTasks.map((st, idx) => (
-                    <div key={idx} className="flex items-center gap-2 p-1.5 rounded border bg-muted/50" data-testid={`subtask-item-${idx}`}>
+                    <div key={idx} className="flex items-center gap-2 p-1.5 rounded border bg-card" data-testid={`subtask-item-${idx}`}>
                       <span className="text-xs text-muted-foreground w-5">{idx + 1}.</span>
                       <span className="text-sm flex-1 truncate">{st}</span>
                       <Button
                         type="button"
                         variant="ghost"
                         size="icon"
-                        className="h-5 w-5 text-muted-foreground hover:text-destructive"
+                        className="h-5 w-5 text-muted-foreground"
                         onClick={() => setSubTasks(prev => prev.filter((_, i) => i !== idx))}
                         data-testid={`button-remove-subtask-${idx}`}
                       >
@@ -665,7 +671,7 @@ export function QuickTaskModal({ trigger }: QuickTaskModalProps) {
                 </Button>
               </div>
               <p className="text-xs text-muted-foreground mt-1">
-                Grup üyeleri bu alt görevleri sahiplenebilir
+                Tüm katılımcılar bu alt görevleri sahiplenebilir
               </p>
             </div>
 
