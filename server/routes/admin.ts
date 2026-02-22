@@ -1830,7 +1830,11 @@ const router = Router();
       }
       
       const { provider } = req.body;
-      const [settings] = await db.query.aiSettings.findMany({ limit: 1 });
+      if (!provider) {
+        return res.json({ ok: false, provider: "unknown", error: "Sağlayıcı belirtilmedi" });
+      }
+      const settingsResult = await db.select().from(aiSettings).limit(1);
+      const settings = settingsResult[0] || null;
       const OpenAI = (await import('openai')).default;
       
       const testPrompt = "Merhaba, bu bir bağlantı testidir. Sadece 'OK' yanıtı ver.";
