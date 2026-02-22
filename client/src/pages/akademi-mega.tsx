@@ -22,7 +22,13 @@ import {
   Target,
   TrendingUp,
   Flame,
-  Settings2
+  Settings2,
+  Library,
+  ClipboardList,
+  ShieldCheck,
+  Signal,
+  UserCog,
+  Eye,
 } from "lucide-react";
 
 const AcademyMyPath = lazy(() => import("./academy-my-path"));
@@ -43,6 +49,21 @@ const AcademyProgressOverview = lazy(() => import("./academy-progress-overview")
 const AcademyCohortAnalytics = lazy(() => import("./academy-cohort-analytics"));
 const AcademyBranchAnalytics = lazy(() => import("./academy-branch-analytics"));
 const AcademyStreakTracker = lazy(() => import("./academy-streak-tracker"));
+const CoachContentLibrary = lazy(() => import("./coach-content-library"));
+const CoachGateManagement = lazy(() => import("./coach-gate-management"));
+const CoachKpiSignals = lazy(() => import("./coach-kpi-signals"));
+const CoachTeamProgress = lazy(() => import("./coach-team-progress"));
+
+type RoleVisibility = 'coach' | 'employee' | 'all';
+
+const COACH_ROLES = new Set(['admin', 'coach', 'trainer', 'kalite_kontrol']);
+const EMPLOYEE_ROLES = new Set(['stajyer', 'bar_buddy', 'barista', 'supervisor_buddy', 'supervisor', 'mudur', 'yatirimci_branch']);
+
+function getUserViewMode(role: string | undefined): 'coach' | 'employee' {
+  if (!role) return 'employee';
+  if (COACH_ROLES.has(role)) return 'coach';
+  return 'employee';
+}
 
 interface TabConfig {
   id: string;
@@ -51,6 +72,7 @@ interface TabConfig {
   icon: React.ReactNode;
   permissionModule?: string;
   group: string;
+  roleVisibility: RoleVisibility;
   component: React.LazyExoticComponent<React.ComponentType<any>>;
 }
 
@@ -59,14 +81,17 @@ interface TabGroup {
   label: string;
   labelTr: string;
   icon: React.ReactNode;
+  roleVisibility: RoleVisibility;
 }
 
 const TAB_GROUPS: TabGroup[] = [
-  { id: "kariyer", label: "Career Path", labelTr: "Kariyer Yolu", icon: <Target className="h-4 w-4" /> },
-  { id: "egitim", label: "Training", labelTr: "Eğitim", icon: <BookOpen className="h-4 w-4" /> },
-  { id: "gamification", label: "Gamification", labelTr: "Oyunlaştırma", icon: <Trophy className="h-4 w-4" /> },
-  { id: "analytics", label: "Analytics", labelTr: "Analitik", icon: <BarChart3 className="h-4 w-4" /> },
-  { id: "advanced", label: "Advanced", labelTr: "Gelişmiş", icon: <Zap className="h-4 w-4" /> }
+  { id: "kariyer", label: "Career Path", labelTr: "Kariyer Yolu", icon: <Target className="h-4 w-4" />, roleVisibility: "employee" },
+  { id: "egitim", label: "Training", labelTr: "Eğitimlerim", icon: <BookOpen className="h-4 w-4" />, roleVisibility: "employee" },
+  { id: "gamification", label: "Gamification", labelTr: "Başarılarım", icon: <Trophy className="h-4 w-4" />, roleVisibility: "employee" },
+  { id: "coach-yonetim", label: "Management", labelTr: "Yönetim", icon: <UserCog className="h-4 w-4" />, roleVisibility: "coach" },
+  { id: "coach-icerik", label: "Content", labelTr: "İçerik & Atama", icon: <Library className="h-4 w-4" />, roleVisibility: "coach" },
+  { id: "coach-takip", label: "Tracking", labelTr: "Takip & Analitik", icon: <BarChart3 className="h-4 w-4" />, roleVisibility: "coach" },
+  { id: "advanced", label: "Advanced", labelTr: "Gelişmiş", icon: <Zap className="h-4 w-4" />, roleVisibility: "all" },
 ];
 
 const AKADEMI_TABS: TabConfig[] = [
@@ -77,25 +102,18 @@ const AKADEMI_TABS: TabConfig[] = [
     icon: <Target className="h-4 w-4" />,
     permissionModule: "academy",
     group: "kariyer",
+    roleVisibility: "employee",
     component: AcademyMyPath
   },
   {
     id: "genel-egitimler",
-    label: "General Training",
-    labelTr: "Genel Eğitimler",
+    label: "My Modules",
+    labelTr: "Modüllerim",
     icon: <GraduationCap className="h-4 w-4" />,
     permissionModule: "academy",
     group: "egitim",
+    roleVisibility: "employee",
     component: Academy
-  },
-  {
-    id: "hq-yonetim",
-    label: "HQ Management",
-    labelTr: "HQ Yönetim Paneli",
-    icon: <Settings2 className="h-4 w-4" />,
-    permissionModule: "academy_admin",
-    group: "egitim",
-    component: AcademyHQ
   },
   {
     id: "bilgi-bankasi",
@@ -104,24 +122,27 @@ const AKADEMI_TABS: TabConfig[] = [
     icon: <BookOpen className="h-4 w-4" />,
     permissionModule: "knowledge_base",
     group: "egitim",
+    roleVisibility: "employee",
     component: KnowledgeBase
   },
   {
     id: "rozetler",
     label: "Badges",
-    labelTr: "Rozetler & Başarılar",
+    labelTr: "Rozetlerim",
     icon: <Award className="h-4 w-4" />,
     permissionModule: "badges",
     group: "gamification",
+    roleVisibility: "employee",
     component: AcademyBadges
   },
   {
     id: "sertifikalar",
     label: "Certificates",
-    labelTr: "Sertifikalar",
+    labelTr: "Sertifikalarım",
     icon: <Medal className="h-4 w-4" />,
     permissionModule: "certificates",
     group: "gamification",
+    roleVisibility: "employee",
     component: AcademyCertificates
   },
   {
@@ -131,25 +152,18 @@ const AKADEMI_TABS: TabConfig[] = [
     icon: <Trophy className="h-4 w-4" />,
     permissionModule: "leaderboard",
     group: "gamification",
+    roleVisibility: "employee",
     component: AcademyLeaderboard
   },
   {
     id: "basarilar",
     label: "Achievements",
-    labelTr: "Başarılar",
+    labelTr: "Başarılarım",
     icon: <Star className="h-4 w-4" />,
     permissionModule: "achievements",
     group: "gamification",
+    roleVisibility: "employee",
     component: AcademyAchievements
-  },
-  {
-    id: "takim-yarismalar",
-    label: "Team Competitions",
-    labelTr: "Takım Yarışmaları",
-    icon: <Users className="h-4 w-4" />,
-    permissionModule: "team_competitions",
-    group: "gamification",
-    component: AcademyTeamCompetitions
   },
   {
     id: "seri-takibi",
@@ -158,7 +172,58 @@ const AKADEMI_TABS: TabConfig[] = [
     icon: <Flame className="h-4 w-4" />,
     permissionModule: "streak_tracker",
     group: "gamification",
+    roleVisibility: "employee",
     component: AcademyStreakTracker
+  },
+  {
+    id: "coach-icerik-kutuphanesi",
+    label: "Content Library",
+    labelTr: "İçerik Kütüphanesi",
+    icon: <Library className="h-4 w-4" />,
+    permissionModule: "academy",
+    group: "coach-icerik",
+    roleVisibility: "coach",
+    component: CoachContentLibrary
+  },
+  {
+    id: "hq-yonetim",
+    label: "Onboarding Studio",
+    labelTr: "Onboarding Studio",
+    icon: <ClipboardList className="h-4 w-4" />,
+    permissionModule: "academy_admin",
+    group: "coach-icerik",
+    roleVisibility: "coach",
+    component: AcademyHQ
+  },
+  {
+    id: "coach-gate-yonetim",
+    label: "Gate Management",
+    labelTr: "Gate Yönetimi",
+    icon: <ShieldCheck className="h-4 w-4" />,
+    permissionModule: "academy",
+    group: "coach-yonetim",
+    roleVisibility: "coach",
+    component: CoachGateManagement
+  },
+  {
+    id: "coach-kpi-sinyalleri",
+    label: "KPI Signals",
+    labelTr: "KPI Sinyalleri",
+    icon: <Signal className="h-4 w-4" />,
+    permissionModule: "academy",
+    group: "coach-yonetim",
+    roleVisibility: "coach",
+    component: CoachKpiSignals
+  },
+  {
+    id: "coach-takim-ilerleme",
+    label: "Team Progress",
+    labelTr: "Takım İlerlemesi",
+    icon: <Users className="h-4 w-4" />,
+    permissionModule: "academy",
+    group: "coach-takip",
+    roleVisibility: "coach",
+    component: CoachTeamProgress
   },
   {
     id: "analitik",
@@ -166,7 +231,8 @@ const AKADEMI_TABS: TabConfig[] = [
     labelTr: "Analitik & Raporlar",
     icon: <BarChart3 className="h-4 w-4" />,
     permissionModule: "academy_analytics",
-    group: "analytics",
+    group: "coach-takip",
+    roleVisibility: "coach",
     component: AcademyAnalytics
   },
   {
@@ -175,7 +241,8 @@ const AKADEMI_TABS: TabConfig[] = [
     labelTr: "İlerleme Özeti",
     icon: <TrendingUp className="h-4 w-4" />,
     permissionModule: "progress_overview",
-    group: "analytics",
+    group: "coach-takip",
+    roleVisibility: "coach",
     component: AcademyProgressOverview
   },
   {
@@ -184,7 +251,8 @@ const AKADEMI_TABS: TabConfig[] = [
     labelTr: "Kohort Analitik",
     icon: <Target className="h-4 w-4" />,
     permissionModule: "cohort_analytics",
-    group: "analytics",
+    group: "coach-takip",
+    roleVisibility: "coach",
     component: AcademyCohortAnalytics
   },
   {
@@ -193,7 +261,8 @@ const AKADEMI_TABS: TabConfig[] = [
     labelTr: "Şube Analitik",
     icon: <BarChart3 className="h-4 w-4" />,
     permissionModule: "branch_analytics",
-    group: "analytics",
+    group: "coach-takip",
+    roleVisibility: "coach",
     component: AcademyBranchAnalytics
   },
   {
@@ -203,6 +272,7 @@ const AKADEMI_TABS: TabConfig[] = [
     icon: <Route className="h-4 w-4" />,
     permissionModule: "learning_paths",
     group: "advanced",
+    roleVisibility: "all",
     component: AcademyLearningPaths
   },
   {
@@ -212,7 +282,18 @@ const AKADEMI_TABS: TabConfig[] = [
     icon: <Brain className="h-4 w-4" />,
     permissionModule: "adaptive_engine",
     group: "advanced",
+    roleVisibility: "all",
     component: AcademyAdaptiveEngine
+  },
+  {
+    id: "takim-yarismalar",
+    label: "Team Competitions",
+    labelTr: "Takım Yarışmaları",
+    icon: <Users className="h-4 w-4" />,
+    permissionModule: "team_competitions",
+    group: "advanced",
+    roleVisibility: "all",
+    component: AcademyTeamCompetitions
   },
   {
     id: "sosyal-gruplar",
@@ -221,6 +302,7 @@ const AKADEMI_TABS: TabConfig[] = [
     icon: <Users className="h-4 w-4" />,
     permissionModule: "social_groups",
     group: "advanced",
+    roleVisibility: "all",
     component: AcademySocialGroups
   },
   {
@@ -230,6 +312,7 @@ const AKADEMI_TABS: TabConfig[] = [
     icon: <Settings2 className="h-4 w-4" />,
     permissionModule: "academy_supervisor",
     group: "advanced",
+    roleVisibility: "all",
     component: AcademySupervisor
   },
 ];
@@ -250,28 +333,37 @@ function TabSkeleton() {
 const TAB_URL_MAP: Record<string, string> = {
   "benim-yolum": "/akademi",
   "genel-egitimler": "/akademi/genel-egitimler",
-  "hq-yonetim": "/akademi/hq-yonetim",
   "bilgi-bankasi": "/akademi/bilgi-bankasi",
   "rozetler": "/akademi/rozetler",
   "sertifikalar": "/akademi/sertifikalar",
   "siralama": "/akademi/siralama",
   "basarilar": "/akademi/basarilar",
-  "takim-yarismalar": "/akademi/takim-yarismalar",
   "seri-takibi": "/akademi/seri-takibi",
+  "coach-icerik-kutuphanesi": "/akademi/icerik-kutuphanesi",
+  "hq-yonetim": "/akademi/onboarding-studio",
+  "coach-gate-yonetim": "/akademi/gate-yonetim",
+  "coach-kpi-sinyalleri": "/akademi/kpi-sinyalleri",
+  "coach-takim-ilerleme": "/akademi/takim-ilerleme",
   "analitik": "/akademi/analitik",
   "ilerleme-ozeti": "/akademi/ilerleme-ozeti",
   "kohort-analitik": "/akademi/kohort-analitik",
   "sube-analitik": "/akademi/sube-analitik",
+  "takim-yarismalar": "/akademi/takim-yarismalar",
   "ogrenme-yollari": "/akademi/ogrenme-yollari",
   "uyarlanabilir-motor": "/akademi/uyarlanabilir-motor",
   "sosyal-gruplar": "/akademi/sosyal-gruplar",
   "supervisor": "/akademi/supervisor",
 };
 
-function getTabFromUrl(pathname: string): string | null {
-  if (pathname === "/akademi" || pathname === "/akademi/") return "benim-yolum";
+function getDefaultTab(viewMode: 'coach' | 'employee'): string {
+  return viewMode === 'coach' ? 'coach-gate-yonetim' : 'benim-yolum';
+}
+
+function getTabFromUrl(pathname: string, viewMode: 'coach' | 'employee'): string | null {
+  if (pathname === "/akademi" || pathname === "/akademi/") return getDefaultTab(viewMode);
+  const defaultTab = getDefaultTab(viewMode);
   const sortedEntries = Object.entries(TAB_URL_MAP)
-    .filter(([tabId]) => tabId !== "benim-yolum")
+    .filter(([tabId]) => tabId !== defaultTab)
     .sort((a, b) => b[1].length - a[1].length);
   for (const [tabId, url] of sortedEntries) {
     if (pathname === url || pathname.startsWith(url + "/")) {
@@ -286,20 +378,28 @@ export default function AkademiMegaModule() {
   const { canAccess } = useDynamicPermissions();
   const [location, setLocation] = useLocation();
 
+  const viewMode = getUserViewMode(user?.role);
+
   const visibleTabs = AKADEMI_TABS.filter(tab => {
+    if (tab.roleVisibility !== 'all' && tab.roleVisibility !== viewMode) {
+      if (user?.role !== 'admin') return false;
+    }
     if (!tab.permissionModule) return true;
     if (!user?.role) return false;
     if (user.role === 'admin') return true;
     return canAccess(tab.permissionModule!, 'view');
   });
 
-  const visibleGroups = TAB_GROUPS.filter(group => 
-    visibleTabs.some(tab => tab.group === group.id)
-  );
+  const visibleGroups = TAB_GROUPS.filter(group => {
+    if (group.roleVisibility !== 'all' && group.roleVisibility !== viewMode) {
+      if (user?.role !== 'admin') return false;
+    }
+    return visibleTabs.some(tab => tab.group === group.id);
+  });
 
   const firstVisibleGroup = visibleGroups[0]?.id || "egitim";
   
-  const initialTab = getTabFromUrl(location);
+  const initialTab = getTabFromUrl(location, viewMode);
   const initialTabConfig = initialTab ? visibleTabs.find(t => t.id === initialTab) : null;
   const initialGroup = initialTabConfig?.group || firstVisibleGroup;
   
@@ -332,7 +432,7 @@ export default function AkademiMegaModule() {
   }, [tabsInActiveGroup, activeTab, firstTabInGroup]);
   
   useEffect(() => {
-    const tabFromUrl = getTabFromUrl(location);
+    const tabFromUrl = getTabFromUrl(location, viewMode);
     if (tabFromUrl && tabFromUrl !== activeTab) {
       const tabConfig = visibleTabs.find(t => t.id === tabFromUrl);
       if (tabConfig) {
@@ -390,7 +490,9 @@ export default function AkademiMegaModule() {
             <GraduationCap className="h-6 w-6 text-indigo-600" />
             <div>
               <h1 className="text-xl font-semibold">DOSPRESSO Akademi</h1>
-              <p className="text-sm text-muted-foreground">Eğitim ve gelişim platformu</p>
+              <p className="text-sm text-muted-foreground">
+                {viewMode === 'coach' ? 'Eğitim Yönetim Paneli' : 'Eğitim ve Gelişim Platformu'}
+              </p>
             </div>
           </div>
         </div>

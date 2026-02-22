@@ -893,14 +893,33 @@ export default function Academy() {
                               </div>
                             </div>
                           )}
-                          <Link 
-                            to={`/akademi-modul/${module.id}`}
-                            onClick={() => sessionStorage.setItem('academyReferrer', '/akademi')}
-                          >
-                            <Button className="w-full" data-testid={`button-start-module-${module.id}`}>
-                              Modülü Başlat
-                            </Button>
-                          </Link>
+                          {isHQRole(user?.role as any) || user?.role === 'admin' ? (
+                            <div className="flex gap-2">
+                              <Link 
+                                to={`/akademi-modul/${module.id}`}
+                                onClick={() => sessionStorage.setItem('academyReferrer', '/akademi')}
+                                className="flex-1"
+                              >
+                                <Button variant="outline" className="w-full" data-testid={`button-preview-module-${module.id}`}>
+                                  <Eye className="h-4 w-4 mr-1" />
+                                  Önizle
+                                </Button>
+                              </Link>
+                              <Button variant="default" className="flex-1" data-testid={`button-assign-module-${module.id}`}>
+                                <Users className="h-4 w-4 mr-1" />
+                                Ata
+                              </Button>
+                            </div>
+                          ) : (
+                            <Link 
+                              to={`/akademi-modul/${module.id}`}
+                              onClick={() => sessionStorage.setItem('academyReferrer', '/akademi')}
+                            >
+                              <Button className="w-full" data-testid={`button-start-module-${module.id}`}>
+                                Modülü Başlat
+                              </Button>
+                            </Link>
+                          )}
                         </div>
                       </DialogContent>
                     </Dialog>

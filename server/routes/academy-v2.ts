@@ -965,4 +965,28 @@ router.get('/api/academy/kpi-signals', isAuthenticated, async (req: any, res) =>
   }
 });
 
+// ========================================
+// CONTENT PACKS (Admin/Coach)
+// ========================================
+
+router.get('/api/academy/content-packs', isAuthenticated, async (req: any, res) => {
+  try {
+    const packs = await db.select({
+      id: contentPacks.id,
+      titleTr: contentPacks.name,
+      titleEn: contentPacks.name,
+      description: contentPacks.descriptionTr,
+      category: contentPacks.packType,
+      targetRoles: sql<string[]>`ARRAY[${contentPacks.targetRole}]`,
+      isActive: contentPacks.isActive,
+      createdAt: contentPacks.createdAt,
+      itemCount: sql<number>`(SELECT COUNT(*) FROM content_pack_items WHERE pack_id = ${contentPacks.id})::int`,
+    }).from(contentPacks)
+      .orderBy(asc(contentPacks.packType), asc(contentPacks.name));
+    res.json(packs);
+  } catch (error: any) {
+    handleApiError(res, error, "İçerik paketleri alınamadı");
+  }
+});
+
 export default router;
