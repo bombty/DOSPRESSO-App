@@ -395,13 +395,13 @@ export function QuickTaskModal({ trigger }: QuickTaskModalProps) {
                               <Avatar className="h-5 w-5">
                                 <AvatarImage src={emp.profilePhoto} />
                                 <AvatarFallback className="text-[8px]">
-                                  {(emp.firstName?.[0] || '') + (emp.lastName?.[0] || emp.username[0])}
+                                  {(emp.firstName?.[0] || '') + (emp.lastName?.[0] || emp.username?.[0] || '?')}
                                 </AvatarFallback>
                               </Avatar>
                               <span>
                                 {emp.firstName && emp.lastName 
                                   ? `${emp.firstName} ${emp.lastName}` 
-                                  : emp.username}
+                                  : emp.username || '?'}
                               </span>
                             </div>
                           </SelectItem>
@@ -428,7 +428,7 @@ export function QuickTaskModal({ trigger }: QuickTaskModalProps) {
                       if (!emp) return null;
                       return (
                         <Badge key={aId} variant="secondary" className="gap-1">
-                          {emp.firstName && emp.lastName ? `${emp.firstName} ${emp.lastName}` : emp.username}
+                          {emp.firstName && emp.lastName ? `${emp.firstName} ${emp.lastName}` : emp.username || '?'}
                           <button
                             type="button"
                             onClick={() => setAdditionalAssignees(prev => prev.filter(id => id !== aId))}
@@ -464,11 +464,11 @@ export function QuickTaskModal({ trigger }: QuickTaskModalProps) {
                             <Avatar className="h-5 w-5">
                               <AvatarImage src={emp.profilePhoto} />
                               <AvatarFallback className="text-[8px]">
-                                {(emp.firstName?.[0] || '') + (emp.lastName?.[0] || emp.username[0])}
+                                {(emp.firstName?.[0] || '') + (emp.lastName?.[0] || emp.username?.[0] || '?')}
                               </AvatarFallback>
                             </Avatar>
                             <span>
-                              {emp.firstName && emp.lastName ? `${emp.firstName} ${emp.lastName}` : emp.username}
+                              {emp.firstName && emp.lastName ? `${emp.firstName} ${emp.lastName}` : emp.username || '?'}
                             </span>
                           </div>
                         </SelectItem>
@@ -585,13 +585,13 @@ export function QuickTaskModal({ trigger }: QuickTaskModalProps) {
                               <Avatar className="h-5 w-5">
                                 <AvatarImage src={checker.profilePhoto} />
                                 <AvatarFallback className="text-[8px]">
-                                  {(checker.firstName?.[0] || '') + (checker.lastName?.[0] || checker.username[0])}
+                                  {(checker.firstName?.[0] || '') + (checker.lastName?.[0] || checker.username?.[0] || '?')}
                                 </AvatarFallback>
                               </Avatar>
                               <span>
                                 {checker.firstName && checker.lastName 
                                   ? `${checker.firstName} ${checker.lastName}` 
-                                  : checker.username}
+                                  : checker.username || '?'}
                               </span>
                             </div>
                           </SelectItem>
