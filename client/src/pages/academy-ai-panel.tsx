@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -21,6 +22,10 @@ import {
   Zap,
   BarChart3,
   RefreshCw,
+  ArrowRight,
+  ExternalLink,
+  Download,
+  XCircle,
 } from "lucide-react";
 
 interface AiAction {
@@ -82,6 +87,8 @@ interface CoachPanelData {
     todayRuns: number;
     avgActionsGenerated: number;
     lastRunAt: string | null;
+    errorCount: number;
+    executionTimeMs: number;
   };
   triggerSummary: {
     employeeRuns: number;
@@ -115,6 +122,14 @@ const ACTION_TYPE_ICONS: Record<string, typeof Brain> = {
   kpi_signal: BarChart3,
 };
 
+const ACTION_TYPE_LINKS: Record<string, { path: string; label: string }> = {
+  score_improvement: { path: "/akademi/benim-yolum", label: "Yoluma Git" },
+  onboarding_task: { path: "/akademi/genel-egitimler", label: "Eğitimlere Git" },
+  gate_exam: { path: "/akademi/benim-yolum", label: "Gate Sınavına Git" },
+  gate_proximity: { path: "/akademi/benim-yolum", label: "Yoluma Git" },
+  kpi_signal: { path: "/akademi/benim-yolum", label: "Detayları Gör" },
+};
+
 const RISK_TYPE_LABELS: Record<string, string> = {
   low_composite: "Düşük Genel Skor",
   low_training: "Düşük Eğitim Skoru",
@@ -134,6 +149,8 @@ const SCOPE_LABELS: Record<string, string> = {
 };
 
 function EmployeePanel({ data }: { data: EmployeePanelData }) {
+  const [, setLocation] = useLocation();
+
   return (
     <div className="space-y-4" data-testid="employee-ai-panel">
       <Card>
@@ -156,6 +173,7 @@ function EmployeePanel({ data }: { data: EmployeePanelData }) {
               const Icon = ACTION_TYPE_ICONS[action.type] || Brain;
               const severityCfg = SEVERITY_CONFIG[action.severity] || SEVERITY_CONFIG.medium;
               const signalLabel = SIGNAL_LABELS[action.signal] || action.signal;
+              const linkConfig = ACTION_TYPE_LINKS[action.type];
 
               return (
                 <Card
@@ -191,9 +209,22 @@ function EmployeePanel({ data }: { data: EmployeePanelData }) {
                         <p className="text-xs text-muted-foreground mt-1" data-testid={`action-reason-${idx}`}>
                           {action.reason}
                         </p>
-                        <div className="flex items-center gap-1 mt-2 text-xs text-muted-foreground">
-                          <Clock className="h-3 w-3" />
-                          <span>{action.estimatedMinutes} dk</span>
+                        <div className="flex items-center justify-between gap-2 mt-2 flex-wrap">
+                          <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                            <Clock className="h-3 w-3" />
+                            <span>{action.estimatedMinutes} dk</span>
+                          </div>
+                          {linkConfig && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => setLocation(linkConfig.path)}
+                              data-testid={`button-action-go-${idx}`}
+                            >
+                              {linkConfig.label}
+                              <ArrowRight className="h-3 w-3 ml-1" />
+                            </Button>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -212,6 +243,8 @@ function EmployeePanel({ data }: { data: EmployeePanelData }) {
 }
 
 function SupervisorPanel({ data }: { data: SupervisorPanelData }) {
+  const [, setLocation] = useLocation();
+
   return (
     <div className="space-y-4" data-testid="supervisor-ai-panel">
       <Card>
@@ -293,6 +326,17 @@ function SupervisorPanel({ data }: { data: SupervisorPanelData }) {
                       <p className="text-xs text-muted-foreground mt-1" data-testid={`risk-action-${idx}`}>
                         {signal.suggestedAction}
                       </p>
+                      <div className="flex items-center justify-end mt-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => setLocation(`/personel/${signal.userId}`)}
+                          data-testid={`button-view-employee-${idx}`}
+                        >
+                          <ExternalLink className="h-3 w-3 mr-1" />
+                          Görüntüle
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 </CardContent>
@@ -306,6 +350,31 @@ function SupervisorPanel({ data }: { data: SupervisorPanelData }) {
       </Card>
     </div>
   );
+}
+
+function exportLogsToCsv(logs: AiLogEntry[]) {
+  const headers = ["Timestamp", "Run Type", "Scope", "Actions", "Status", "Time (ms)"];
+  const rows = logs.map((log) => [
+    new Date(log.createdAt).toISOString(),
+    log.runType,
+    log.targetRoleScope,
+    String(log.actionCount ?? 0),
+    log.status || "unknown",
+    String(log.executionTimeMs ?? ""),
+  ]);
+
+  const csvContent = [
+    headers.join(","),
+    ...rows.map((row) => row.map((cell) => `"${cell.replace(/"/g, '""')}"`).join(",")),
+  ].join("\n");
+
+  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `ai-agent-logs-${new Date().toISOString().slice(0, 10)}.csv`;
+  link.click();
+  URL.revokeObjectURL(url);
 }
 
 function CoachPanel({ data }: { data: CoachPanelData }) {
@@ -340,16 +409,32 @@ function CoachPanel({ data }: { data: CoachPanelData }) {
               <Brain className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
               Agent Leader Console
             </CardTitle>
-            {data.systemStats.lastRunAt && (
-              <Badge variant="outline" data-testid="last-run-indicator">
-                <Activity className="h-3 w-3 mr-1" />
-                Last: {new Date(data.systemStats.lastRunAt).toLocaleString("en-US", { hour: "2-digit", minute: "2-digit" })}
+            <div className="flex items-center gap-2 flex-wrap">
+              {data.systemStats.lastRunAt && (
+                <Badge variant="outline" data-testid="last-run-indicator">
+                  <Activity className="h-3 w-3 mr-1" />
+                  Last: {new Date(data.systemStats.lastRunAt).toLocaleString("en-US", { hour: "2-digit", minute: "2-digit" })}
+                </Badge>
+              )}
+              <Badge variant="outline" data-testid="execution-time-indicator">
+                <Clock className="h-3 w-3 mr-1" />
+                {data.systemStats.executionTimeMs} ms
               </Badge>
-            )}
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => exportLogsToCsv(data.recentLogs)}
+                disabled={data.recentLogs.length === 0}
+                data-testid="button-csv-export"
+              >
+                <Download className="h-3 w-3 mr-1" />
+                CSV
+              </Button>
+            </div>
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-3 gap-3" data-testid="system-stats-row">
+          <div className="grid grid-cols-4 gap-3" data-testid="system-stats-row">
             <div className="p-3 rounded-md bg-muted/50 text-center">
               <div className="text-lg font-semibold" data-testid="stat-total-runs">
                 {data.systemStats.totalRuns}
@@ -367,6 +452,15 @@ function CoachPanel({ data }: { data: CoachPanelData }) {
                 {data.systemStats.avgActionsGenerated}
               </div>
               <div className="text-xs text-muted-foreground">Avg Actions</div>
+            </div>
+            <div className="p-3 rounded-md bg-muted/50 text-center">
+              <div className={`text-lg font-semibold ${Number(data.systemStats.errorCount) > 0 ? 'text-red-600 dark:text-red-400' : ''}`} data-testid="stat-error-count">
+                {data.systemStats.errorCount}
+              </div>
+              <div className="flex items-center justify-center gap-1 text-xs text-muted-foreground">
+                <XCircle className="h-3 w-3" />
+                Errors
+              </div>
             </div>
           </div>
 

@@ -1842,6 +1842,8 @@ router.get('/api/academy/ai-panel', isAuthenticated, async (req: any, res) => {
         .where(eq(aiAgentLogs.targetRoleScope, 'supervisor'));
       const [coachCount] = await db.select({ count: count() }).from(aiAgentLogs)
         .where(eq(aiAgentLogs.targetRoleScope, 'coach'));
+      const [errorCount] = await db.select({ count: count() }).from(aiAgentLogs)
+        .where(eq(aiAgentLogs.status, 'error'));
 
       const executionTimeMs = Date.now() - startTime;
 
@@ -1864,6 +1866,8 @@ router.get('/api/academy/ai-panel', isAuthenticated, async (req: any, res) => {
           todayRuns: todayResult.count,
           avgActionsGenerated: Math.round(Number(avgResult.avg) || 0),
           lastRunAt: recentLogs[0]?.createdAt || null,
+          errorCount: errorCount.count,
+          executionTimeMs,
         },
         triggerSummary: {
           employeeRuns: employeeCount.count,
