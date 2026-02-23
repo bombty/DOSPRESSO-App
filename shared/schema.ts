@@ -2359,6 +2359,7 @@ export const users = pgTable("users", {
   bonusPercentage: numeric("bonus_percentage").default("0"),
   language: varchar("language", { length: 5 }).default("tr"),
   titleId: integer("title_id"),
+  employeeTypeId: integer("employee_type_id"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
   deletedAt: timestamp("deleted_at"),
@@ -13891,3 +13892,65 @@ export const insertAiAgentLogSchema = createInsertSchema(aiAgentLogs).omit({
 
 export type InsertAiAgentLog = z.infer<typeof insertAiAgentLogSchema>;
 export type AiAgentLog = typeof aiAgentLogs.$inferSelect;
+
+// ==================== Employee Types & Policies (P1 Role Registry) ====================
+
+export const employeeTypes = pgTable("employee_types", {
+  id: serial("id").primaryKey(),
+  key: varchar("key", { length: 50 }).unique().notNull(),
+  name: varchar("name", { length: 100 }).notNull(),
+  description: text("description"),
+  minAge: integer("min_age"),
+  maxAge: integer("max_age"),
+  allowedGroups: jsonb("allowed_groups").$type<string[]>().default([]),
+  active: boolean("active").default(true).notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const employeeTypePolicies = pgTable("employee_type_policies", {
+  id: serial("id").primaryKey(),
+  employeeTypeId: integer("employee_type_id").references(() => employeeTypes.id, { onDelete: "cascade" }).notNull(),
+  policyKey: varchar("policy_key", { length: 100 }).notNull(),
+  policyJson: jsonb("policy_json").$type<Record<string, any>>().default({}),
+  active: boolean("active").default(true).notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("emp_type_policy_type_idx").on(table.employeeTypeId),
+]);
+
+export const orgEmployeeTypeAssignments = pgTable("org_employee_type_assignments", {
+  id: serial("id").primaryKey(),
+  orgScope: varchar("org_scope", { length: 20 }).notNull(),
+  orgId: integer("org_id").notNull(),
+  employeeTypeId: integer("employee_type_id").references(() => employeeTypes.id, { onDelete: "cascade" }).notNull(),
+  taskPackKey: varchar("task_pack_key", { length: 100 }),
+  active: boolean("active").default(true).notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("org_emp_assign_scope_idx").on(table.orgScope, table.orgId),
+  index("org_emp_assign_type_idx").on(table.employeeTypeId),
+]);
+
+export const insertEmployeeTypeSchema = createInsertSchema(employeeTypes).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertEmployeeTypePolicySchema = createInsertSchema(employeeTypePolicies).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertOrgEmployeeTypeAssignmentSchema = createInsertSchema(orgEmployeeTypeAssignments).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertEmployeeType = z.infer<typeof insertEmployeeTypeSchema>;
+export type EmployeeType = typeof employeeTypes.$inferSelect;
+export type InsertEmployeeTypePolicy = z.infer<typeof insertEmployeeTypePolicySchema>;
+export type EmployeeTypePolicy = typeof employeeTypePolicies.$inferSelect;
+export type InsertOrgEmployeeTypeAssignment = z.infer<typeof insertOrgEmployeeTypeAssignmentSchema>;
+export type OrgEmployeeTypeAssignment = typeof orgEmployeeTypeAssignments.$inferSelect;

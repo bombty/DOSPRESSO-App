@@ -21,6 +21,8 @@ import type { AlertTemplate, ActionTemplate, RoleGroup } from "@shared/ai-nba-co
 import { eq, and, ne, gte, lte, count } from "drizzle-orm";
 import { handleApiError } from "./helpers";
 import { redactPII } from "../services/pii-redactor";
+import { evaluateEmployeePolicies } from "../services/employee-policy-engine";
+import type { EmployeePolicyResult } from "../services/employee-policy-engine";
 
 const router = Router();
 
@@ -195,20 +197,41 @@ router.get('/api/ai/dashboard-nba', isAuthenticated, async (req: any, res) => {
       }
     });
 
-    const results = await Promise.allSettled([...alertPromises, ...actionPromises]);
+    const [results, policyResult] = await Promise.all([
+      Promise.allSettled([...alertPromises, ...actionPromises]),
+      evaluateEmployeePolicies(userId).catch(() => null as EmployeePolicyResult | null),
+    ]);
 
     const alertResults = results.slice(0, config.alerts.length);
     const actionResults = results.slice(config.alerts.length);
 
-    const alerts = alertResults
+    let alerts = alertResults
       .filter((r): r is PromiseFulfilledResult<any> => r.status === 'fulfilled' && r.value !== null)
       .map(r => r.value)
       .slice(0, 3);
 
-    const actions = actionResults
+    let actions = actionResults
       .filter((r): r is PromiseFulfilledResult<any> => r.status === 'fulfilled' && r.value !== null)
       .map(r => r.value)
       .slice(0, 3);
+
+    let employeeTypeKey: string | null = null;
+    if (policyResult && policyResult.employeeTypeKey) {
+      employeeTypeKey = policyResult.employeeTypeKey;
+      const hiddenBuckets = policyResult.restrictions.hiddenBuckets;
+      if (hiddenBuckets.length > 0) {
+        actions = actions.filter((a: any) => {
+          const tpl = config.actions.find((t: ActionTemplate) => t.type === a.type);
+          return !tpl || !hiddenBuckets.includes(tpl.bucket);
+        });
+      }
+      if (policyResult.complianceAlerts.length > 0) {
+        alerts = [...alerts, ...policyResult.complianceAlerts].slice(0, 5);
+      }
+      if (policyResult.additionalActions.length > 0) {
+        actions = [...actions, ...policyResult.additionalActions].slice(0, 5);
+      }
+    }
 
     try {
       await db.insert(aiAgentLogs).values({
@@ -217,7 +240,7 @@ router.get('/api/ai/dashboard-nba', isAuthenticated, async (req: any, res) => {
         targetRoleScope: role,
         targetUserId: userId,
         branchId: branchId ? Number(branchId) : null,
-        inputSummary: redactPII(`NBA request for role=${role}`),
+        inputSummary: redactPII(`NBA request for role=${role}${employeeTypeKey ? `, empType=${employeeTypeKey}` : ''}`),
         outputSummary: redactPII(`alerts=${alerts.length}, actions=${actions.length}`),
         actionCount: actions.length,
         status: 'success',
@@ -228,6 +251,7 @@ router.get('/api/ai/dashboard-nba', isAuthenticated, async (req: any, res) => {
     res.json({
       role,
       group: config.group,
+      employeeType: employeeTypeKey,
       alerts,
       actions,
       analyzedAt: new Date().toISOString(),
