@@ -4,7 +4,7 @@ export type UserRole =
   | 'ceo' | 'cgo' | 'admin'
   // HQ Department Roles
   | 'muhasebe' | 'muhasebe_ik' | 'satinalma' | 'marketing' | 'pazarlama'
-  | 'teknik' | 'destek' | 'trainer' | 'coach' | 'kalite_kontrol'
+  | 'teknik' | 'destek' | 'trainer' | 'coach' | 'kalite_kontrol' | 'gida_muhendisi'
   | 'fabrika_mudur' | 'fabrika' | 'yatirimci_hq' | 'ekipman_teknik' | 'ik'
   // Branch Roles
   | 'mudur' | 'supervisor' | 'supervisor_buddy' | 'barista' | 'bar_buddy' | 'stajyer' | 'yatirimci_branch'
@@ -15,7 +15,7 @@ export type UserRole =
 const HQ_ROLES: UserRole[] = [
   'ceo', 'cgo', 'admin', 
   'muhasebe', 'muhasebe_ik', 'satinalma', 'marketing', 'pazarlama',
-  'teknik', 'destek', 'trainer', 'coach', 'kalite_kontrol',
+  'teknik', 'destek', 'trainer', 'coach', 'kalite_kontrol', 'gida_muhendisi',
   'fabrika_mudur', 'fabrika', 'yatirimci_hq', 'ekipman_teknik', 'ik'
 ];
 
@@ -23,7 +23,7 @@ const HQ_ROLES: UserRole[] = [
 const HQ_MODULE_CARD_ROLES: UserRole[] = [
   'ceo', 'cgo', 'admin',
   'muhasebe', 'muhasebe_ik', 'satinalma', 'marketing', 'pazarlama',
-  'teknik', 'destek', 'trainer', 'coach', 'kalite_kontrol',
+  'teknik', 'destek', 'trainer', 'coach', 'kalite_kontrol', 'gida_muhendisi',
   'fabrika_mudur', 'fabrika', 'yatirimci_hq', 'ekipman_teknik', 'ik'
 ];
 
@@ -53,6 +53,7 @@ export const QUICK_ACTIONS_BY_ROLE: Record<UserRole, string[]> = {
   trainer: ['courses', 'new-task'],
   coach: ['new-task', 'personnel', 'tasks'],
   kalite_kontrol: ['audits', 'branches'],
+  gida_muhendisi: ['audits', 'quality'],
   ekipman_teknik: ['maintenance', 'sla'],
   fabrika: ['production', 'quality', 'shifts'],
   yatirimci_hq: ['announcements', 'performance'],
@@ -91,6 +92,7 @@ export const MODULES_BY_ROLE: Record<UserRole, string[]> = {
   trainer: ['training', 'reports'],
   coach: ['operations', 'training', 'reports', 'hr'],
   kalite_kontrol: ['factory', 'reports'],
+  gida_muhendisi: ['factory', 'reports', 'operations'],
   ekipman_teknik: ['equipment'],
   fabrika: ['factory', 'reports'],
   yatirimci_hq: ['reports'],
@@ -127,6 +129,7 @@ export const STATS_BY_ROLE: Record<UserRole, string[]> = {
   trainer: ['courses', 'students', 'completions', 'ratings'],
   coach: ['branches', 'performance', 'tasks', 'faults'],
   kalite_kontrol: ['audits', 'quality', 'compliance'],
+  gida_muhendisi: ['quality', 'audits', 'compliance', 'faults'],
   ekipman_teknik: ['faults', 'equipment', 'sla'],
   fabrika: ['production', 'quality', 'stock'],
   yatirimci_hq: ['branches', 'revenue', 'performance'],
@@ -167,6 +170,7 @@ export const NAV_ITEMS_BY_ROLE: Record<UserRole, string[]> = {
   trainer: ['home', 'tasks', 'notifications', 'search', 'profile'],
   coach: ['home', 'branches', 'crm', 'notifications', 'profile'],
   kalite_kontrol: ['home', 'quality', 'notifications', 'search', 'profile'],
+  gida_muhendisi: ['home', 'quality', 'notifications', 'search', 'profile'],
   ekipman_teknik: ['home', 'fault', 'crm', 'notifications', 'profile'],
   fabrika: ['home', 'stock', 'notifications', 'search', 'profile'],
   yatirimci_hq: ['home', 'branches', 'notifications', 'search', 'profile'],
@@ -210,6 +214,9 @@ export const WIDGET_VISIBILITY: Record<string, UserRole[]> = {
   
   // Modül kartları: Tüm HQ (CEO dahil), müdürler ve supervisor'lar
   'module-cards': [...HQ_MODULE_CARD_ROLES, 'mudur', 'supervisor', 'supervisor_buddy', 'fabrika_mudur'],
+  
+  // AI NBA önerileri: TÜM roller görmeli
+  'ai-nba-card': [...HQ_ROLES, ...BRANCH_ROLES, ...FACTORY_ROLES],
   
   // Aktivite zaman çizelgesi: HQ ve supervisor'lar
   'activity-timeline': [...HQ_ROLES, 'supervisor', 'supervisor_buddy'],

@@ -15,6 +15,7 @@ import { PersonalSummaryCard } from "@/components/personal-summary-card";
 import { AnnouncementBannerCarousel } from "@/components/AnnouncementBannerCarousel";
 import { EmployeeOfMonthWidget } from "@/components/employee-of-month-widget";
 import { DailyTaskPanel } from "@/components/daily-task-panel";
+import { AiNbaCard } from "@/components/ai-nba-card";
 import { ActionCardsWidget } from "@/components/action-cards-widget";
 import { WarningsPanel } from "@/components/warnings-panel";
 import { PendingApprovalsPanel } from "@/components/pending-approvals-panel";
@@ -987,6 +988,8 @@ export function CardGridHub() {
       {canSeeWidget(userRole, 'unified-hero') && <UnifiedHero />}
 
       <DailyTaskPanel />
+
+      {canSeeWidget(userRole, 'ai-nba-card') && <AiNbaCard />}
 
       <ActionCardsWidget />
 
