@@ -52,7 +52,7 @@ The frontend utilizes React 18+ with TypeScript and Vite, employing Shadcn/ui (N
 - **Branch Inspection System (Coach)**: 8-category branch audit system with weighted scoring, checkbox-based item evaluation, notes, and photo documentation.
 - **Product Complaint System**: Branch-to-factory product complaint workflow with severity levels, status tracking, and resolution documentation.
 - **Employee Type Registry (P1)**: Admin-manageable employee types (Cleaning, MESEM, Tam Zamanli) with policy-based restrictions, branch/factory task pack assignments, and deterministic NBA filtering. No UserRole enum changes; backward compatible (null employeeType = full access).
-- **Branch Health Score Dashboard**: Aggregated branch health visualization combining inspection scores, product complaint stats, and category averages, with AI-powered summary generation.
+- **Branch Health Score Dashboard**: 5-component deterministic scoring system (Inspections 25%, Complaints 25%, Equipment 20%, Training 15%, Ops Hygiene 15%) with role-based scoping, time-range filters (7d/30d/90d), trend indicators, risk flags, and expandable branch detail views. API: GET /api/reports/branch-health. Routes: /raporlar/sube-saglik, /sube-saglik-skoru.
 - **Role Separation**: Distinct roles for Coach, Trainer, and Kalite Kontrol with specific responsibilities.
 
 ### System Design Choices
