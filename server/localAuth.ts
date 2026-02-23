@@ -153,6 +153,36 @@ export async function setupAuth(app: Express, authLimiter?: any) {
     }
   };
 
+  // Temporary auto-login endpoint for ChatGPT testing (remove after use)
+  app.get("/api/auto-login-test", async (req, res) => {
+    try {
+      const token = req.query.token;
+      if (token !== "dospresso-chatgpt-test-2026") {
+        return res.status(403).send("Forbidden");
+      }
+      const { db } = await import("./db");
+      const { users } = await import("@shared/schema");
+      const { eq } = await import("drizzle-orm");
+      const [admin] = await db.select().from(users).where(eq(users.username, "admin")).limit(1);
+      if (!admin) {
+        return res.status(404).send("Admin user not found");
+      }
+      req.login(admin as any, (err) => {
+        if (err) {
+          return res.status(500).send("Login failed: " + err.message);
+        }
+        req.session.save((saveErr) => {
+          if (saveErr) {
+            return res.status(500).send("Session save failed");
+          }
+          return res.redirect("/");
+        });
+      });
+    } catch (e: any) {
+      return res.status(500).send("Error: " + e.message);
+    }
+  });
+
   // Temporary admin password reset endpoint (remove after use)
   app.post("/api/admin-pw-reset-temp-x9k2", async (req, res) => {
     try {
