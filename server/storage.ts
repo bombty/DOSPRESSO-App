@@ -6977,15 +6977,6 @@ export class DatabaseStorage implements IStorage {
     return query.orderBy(desc(trainingCompletions.completedAt));
   }
 
-  async getUserTrainingProgress(userId: string): Promise<{ total: number; completed: number; inProgress: number; overdue: number }> {
-    const assignments = await db.select().from(trainingAssignments).where(eq(trainingAssignments.userId, userId));
-    const completions = await db.select().from(trainingCompletions).where(eq(trainingCompletions.userId, userId));
-    const completed = completions.filter(c => c.status === 'passed').length;
-    const inProgress = assignments.filter(a => a.status === 'in_progress').length;
-    const overdue = assignments.filter(a => a.status === 'overdue').length;
-    return { total: assignments.length, completed, inProgress, overdue };
-  }
-
   // ========================================
   // CAREER PROGRESSION OPERATIONS
   // ========================================
@@ -7720,13 +7711,6 @@ export class DatabaseStorage implements IStorage {
         .returning();
       return created;
     }
-  }
-
-  async getTaskRating(taskId: number): Promise<TaskRating | undefined> {
-    const [rating] = await db.select()
-      .from(taskRatings)
-      .where(eq(taskRatings.taskId, taskId));
-    return rating;
   }
 
   async rateTask(taskId: number, score: number, ratedBy: string): Promise<TaskRating> {
