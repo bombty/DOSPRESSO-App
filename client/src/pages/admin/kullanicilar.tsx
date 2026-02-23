@@ -26,7 +26,8 @@ import {
   Shield,
   Factory,
   Store,
-  Briefcase
+  Briefcase,
+  Tag
 } from "lucide-react";
 import { Link } from "wouter";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -100,6 +101,10 @@ export default function AdminKullanicilar() {
     queryKey: ["/api/branches"],
   });
 
+  const { data: employeeTypes = [] } = useQuery<any[]>({
+    queryKey: ["/api/employee-types/active"],
+  });
+
   const resetPasswordMutation = useMutation({
     mutationFn: (userId: string) =>
       apiRequest("POST", `/api/admin/users/${userId}/reset-password`, {}),
@@ -123,10 +128,28 @@ export default function AdminKullanicilar() {
     },
   });
 
+  const updateEmployeeTypeMutation = useMutation({
+    mutationFn: ({ userId, employeeTypeId }: { userId: string; employeeTypeId: number | null }) =>
+      apiRequest("PATCH", `/api/admin/users/${userId}/employee-type`, { employeeTypeId }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+      toast({ title: "Personel tipi guncellendi" });
+    },
+    onError: () => {
+      toast({ title: "Hata", description: "Personel tipi guncellenemedi", variant: "destructive" });
+    },
+  });
+
   const getBranchName = (branchId: number | null) => {
     if (!branchId) return "HQ";
     const branch = branches.find(b => b.id === branchId);
     return branch?.name || "Bilinmiyor";
+  };
+
+  const getEmployeeTypeName = (typeId: number | null | undefined) => {
+    if (!typeId) return null;
+    const et = employeeTypes.find((t: any) => t.id === typeId);
+    return et?.name || null;
   };
 
   const getUserCategory = (userRole: string): CategoryFilter => {
@@ -253,6 +276,11 @@ export default function AdminKullanicilar() {
                         >
                           {ROLE_LABELS[userItem.role] || userItem.role}
                         </Badge>
+                        {getEmployeeTypeName(userItem.employeeTypeId) && (
+                          <Badge variant="outline" className="text-xs bg-teal-500/10 text-teal-600 dark:text-teal-400" data-testid={`badge-emptype-${userItem.id}`}>
+                            {getEmployeeTypeName(userItem.employeeTypeId)}
+                          </Badge>
+                        )}
                         {userItem.isActive === false && (
                           <Badge variant="destructive" className="text-xs">Pasif</Badge>
                         )}
@@ -349,6 +377,33 @@ export default function AdminKullanicilar() {
                   ) : (
                     <Badge variant="outline" className="text-xs bg-green-500/10 text-green-600">Aktif</Badge>
                   )}
+                </div>
+                <div className="flex items-center gap-2 text-sm">
+                  <Tag className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-muted-foreground">Personel Tipi:</span>
+                  <Select
+                    value={selectedUser?.employeeTypeId ? String(selectedUser.employeeTypeId) : "none"}
+                    onValueChange={(val) => {
+                      const newTypeId = val === "none" ? null : Number(val);
+                      updateEmployeeTypeMutation.mutate({
+                        userId: selectedUser?.id,
+                        employeeTypeId: newTypeId,
+                      });
+                      setSelectedUser((prev: any) => prev ? { ...prev, employeeTypeId: newTypeId } : prev);
+                    }}
+                  >
+                    <SelectTrigger className="h-8 w-[160px]" data-testid="select-employee-type">
+                      <SelectValue placeholder="Secin" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none" data-testid="option-emptype-none">Yok</SelectItem>
+                      {employeeTypes.map((et: any) => (
+                        <SelectItem key={et.id} value={String(et.id)} data-testid={`option-emptype-${et.key}`}>
+                          {et.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
             </DialogDescription>

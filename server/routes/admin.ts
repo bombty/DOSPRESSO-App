@@ -538,6 +538,7 @@ const router = Router();
       const updateSchema = z.object({
         role: z.string().optional(),
         branchId: z.number().nullable().optional(),
+        employeeTypeId: z.number().nullable().optional(),
       });
 
       const validatedData = updateSchema.parse(req.body);
