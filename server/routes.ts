@@ -11,6 +11,7 @@ import helmet from 'helmet';
 import { registerMaliyetRoutes } from "./maliyet-routes";
 import { registerInspectionRoutes } from "./inspection-routes";
 import { registerExportRoutes } from "./export-routes";
+import { registerBranchHealthRoutes } from "./routes/branch-health";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated, createKioskSession, isKioskAuthenticated, deleteKioskSession, updateKioskStation } from "./localAuth";
@@ -933,6 +934,7 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
   registerInspectionRoutes(app);
   registerHQDashboardRoutes(app, isAuthenticated);
   registerCRMRoutes(app, isAuthenticated);
+  registerBranchHealthRoutes(app);
   async function seedDashboardWidgetItems() {
     try {
       const existingWidgets = await db.select().from(dashboardWidgetItems);

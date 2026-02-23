@@ -1,430 +1,482 @@
 import { useState } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
-import { useToast } from "@/hooks/use-toast";
-import { useAuth } from "@/hooks/useAuth";
+import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-} from "@/components/ui/dialog";
-import {
-  AlertTriangle,
-  ClipboardCheck,
-  Sparkles,
-  MapPin,
-  Calendar,
   TrendingUp,
-  Loader2,
+  TrendingDown,
+  Minus,
+  AlertTriangle,
+  Shield,
+  CheckCircle,
+  Activity,
+  Package,
+  GraduationCap,
+  Wrench,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  Cell,
-} from "recharts";
-import { format } from "date-fns";
-import { tr } from "date-fns/locale";
 
-interface BranchHealthSummary {
+interface BranchComponent {
+  key: string;
+  label: string;
+  score: number;
+  weight: number;
+  notes: string[];
+  evidenceCount: number;
+  insufficientData?: boolean;
+}
+
+interface RiskFlag {
+  key: string;
+  label: string;
+  severity: string;
+}
+
+interface BranchHealth {
   branchId: number;
   branchName: string;
-  inspectionScore: number | null;
-  totalInspections: number;
-  openComplaints: number;
-  totalComplaints: number;
+  totalScore: number;
+  level: string;
+  components: BranchComponent[];
+  trend: { direction: string; delta: number };
+  riskFlags: RiskFlag[];
+  deepLinks: { details: string };
 }
 
-interface BranchHealthDetail {
-  branch: { id: number; name: string };
-  audits: Array<{
-    id: number;
-    auditDate: string;
-    overallScore: number;
-    cleanlinessScore: number;
-    staffBehaviorScore: number;
-    productPresentationScore: number;
-    [key: string]: any;
-  }>;
-  complaints: Array<{
-    id: number;
-    productName: string;
-    complaintType: string;
-    severity: string;
-    status: string;
-    createdAt: string;
-    reporterName: string;
-  }>;
-  categoryAverages: Record<string, number>;
+interface BranchHealthReport {
+  range: string;
+  generatedAt: string;
+  branches: BranchHealth[];
 }
 
-const CATEGORY_LABELS: Record<string, string> = {
-  exteriorScore: "Dış Mekan",
-  buildingAppearanceScore: "Bina Görünüş",
-  barLayoutScore: "Bar Düzeni",
-  storageScore: "Depo",
-  productPresentationScore: "Ürün Sunumu",
-  staffBehaviorScore: "Personel Davranış",
-  dressCodeScore: "Kıyafet",
-  cleanlinessScore: "Temizlik",
+type RangeOption = "7d" | "30d" | "90d";
+
+const RANGE_LABELS: Record<RangeOption, string> = {
+  "7d": "7 Gun",
+  "30d": "30 Gun",
+  "90d": "90 Gun",
 };
 
-function getScoreColor(score: number | null) {
-  if (score === null) return "text-muted-foreground";
-  if (score >= 80) return "text-green-600 dark:text-green-400";
-  if (score >= 60) return "text-yellow-600 dark:text-yellow-400";
-  if (score >= 40) return "text-orange-600 dark:text-orange-400";
-  return "text-red-600 dark:text-red-400";
+const COMPONENT_ICONS: Record<string, typeof Activity> = {
+  inspections: CheckCircle,
+  complaints: AlertTriangle,
+  equipment: Wrench,
+  training: GraduationCap,
+  opsHygiene: Shield,
+};
+
+function getScoreBadgeClasses(score: number): string {
+  if (score >= 75) return "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400";
+  if (score >= 50) return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400";
+  return "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400";
 }
 
-function getProgressColor(score: number | null) {
-  if (score === null) return "bg-muted";
-  if (score >= 80) return "[&>div]:bg-green-500";
-  if (score >= 60) return "[&>div]:bg-yellow-500";
-  if (score >= 40) return "[&>div]:bg-orange-500";
-  return "[&>div]:bg-red-500";
+function getLevelBadgeClasses(level: string): string {
+  if (level === "green") return "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400";
+  if (level === "yellow") return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400";
+  return "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400";
 }
 
-function getBarColor(value: number) {
-  if (value >= 80) return "hsl(142, 71%, 45%)";
-  if (value >= 60) return "hsl(48, 96%, 53%)";
-  if (value >= 40) return "hsl(25, 95%, 53%)";
-  return "hsl(0, 84%, 60%)";
+function getSeverityClasses(severity: string): string {
+  if (severity === "high") return "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400";
+  if (severity === "med") return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400";
+  return "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400";
 }
 
-function getSeverityLabel(severity: string) {
-  switch (severity) {
-    case "critical": return "Kritik";
-    case "high": return "Yüksek";
-    case "medium": return "Orta";
-    case "low": return "Düşük";
-    default: return severity;
+function TrendIndicator({ direction, delta }: { direction: string; delta: number }) {
+  if (direction === "up") {
+    return (
+      <span className="inline-flex items-center gap-1 text-green-600 dark:text-green-400" data-testid="trend-up">
+        <TrendingUp className="h-4 w-4" />
+        <span className="text-xs font-medium">+{delta}</span>
+      </span>
+    );
   }
+  if (direction === "down") {
+    return (
+      <span className="inline-flex items-center gap-1 text-red-600 dark:text-red-400" data-testid="trend-down">
+        <TrendingDown className="h-4 w-4" />
+        <span className="text-xs font-medium">{delta}</span>
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-1 text-muted-foreground" data-testid="trend-flat">
+      <Minus className="h-4 w-4" />
+      <span className="text-xs font-medium">0</span>
+    </span>
+  );
 }
 
-function getStatusLabel(status: string) {
-  switch (status) {
-    case "new": return "Yeni";
-    case "investigating": return "İnceleniyor";
-    case "resolved": return "Çözüldü";
-    case "rejected": return "Reddedildi";
-    default: return status;
-  }
+function ComponentScoreBadge({ component }: { component: BranchComponent }) {
+  const Icon = COMPONENT_ICONS[component.key] || Activity;
+  return (
+    <div className="flex items-center gap-1.5" data-testid={`component-${component.key}`}>
+      <Icon className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+      <div className="flex items-center gap-1">
+        <span className="text-xs text-muted-foreground truncate max-w-[80px]" title={component.label}>
+          {component.label.split(" ")[0]}
+        </span>
+        <Badge
+          variant="secondary"
+          className={`text-xs no-default-hover-elevate no-default-active-elevate ${component.insufficientData ? "opacity-50" : getScoreBadgeClasses(component.score)}`}
+        >
+          {component.score}
+        </Badge>
+      </div>
+    </div>
+  );
+}
+
+function BranchDetailView({ branch }: { branch: BranchHealth }) {
+  return (
+    <div className="space-y-4" data-testid={`detail-branch-${branch.branchId}`}>
+      <div>
+        <h4 className="text-sm font-semibold mb-2">Bilesen Detaylari</h4>
+        <div className="space-y-3">
+          {branch.components.map((comp) => {
+            const Icon = COMPONENT_ICONS[comp.key] || Activity;
+            return (
+              <div key={comp.key} className="rounded-md bg-muted/50 p-3 space-y-1.5">
+                <div className="flex items-center justify-between gap-2 flex-wrap">
+                  <div className="flex items-center gap-2">
+                    <Icon className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-sm font-medium">{comp.label}</span>
+                    {comp.insufficientData && (
+                      <Badge variant="outline" className="text-xs">Yetersiz Veri</Badge>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground">Agirlik: %{comp.weight}</span>
+                    <Badge
+                      variant="secondary"
+                      className={`no-default-hover-elevate no-default-active-elevate ${getScoreBadgeClasses(comp.score)}`}
+                    >
+                      {comp.score}/100
+                    </Badge>
+                  </div>
+                </div>
+                <div className="w-full bg-muted rounded-full h-1.5">
+                  <div
+                    className={`h-1.5 rounded-full ${comp.score >= 75 ? "bg-green-500" : comp.score >= 50 ? "bg-yellow-500" : "bg-red-500"}`}
+                    style={{ width: `${comp.score}%` }}
+                  />
+                </div>
+                {comp.notes.length > 0 && (
+                  <ul className="text-xs text-muted-foreground space-y-0.5 pl-6 list-disc">
+                    {comp.notes.map((note, i) => (
+                      <li key={i}>{note}</li>
+                    ))}
+                  </ul>
+                )}
+                <div className="text-xs text-muted-foreground">
+                  Kanit sayisi: {comp.evidenceCount}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {branch.riskFlags.length > 0 && (
+        <div>
+          <h4 className="text-sm font-semibold mb-2">Risk Bayraklari</h4>
+          <div className="space-y-1.5">
+            {branch.riskFlags.map((flag, i) => (
+              <div key={i} className="flex items-center gap-2 rounded-md bg-muted/50 p-2">
+                <AlertTriangle className="h-4 w-4 text-orange-500 flex-shrink-0" />
+                <span className="text-sm flex-1">{flag.label}</span>
+                <Badge
+                  variant="secondary"
+                  className={`text-xs no-default-hover-elevate no-default-active-elevate ${getSeverityClasses(flag.severity)}`}
+                >
+                  {flag.severity === "high" ? "Yuksek" : flag.severity === "med" ? "Orta" : "Dusuk"}
+                </Badge>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function SingleBranchView({ branch }: { branch: BranchHealth }) {
+  return (
+    <Card data-testid="card-single-branch">
+      <CardHeader className="flex flex-row items-center justify-between gap-2 flex-wrap">
+        <CardTitle className="text-lg">{branch.branchName}</CardTitle>
+        <div className="flex items-center gap-2">
+          <Badge
+            variant="secondary"
+            className={`text-sm no-default-hover-elevate no-default-active-elevate ${getLevelBadgeClasses(branch.level)}`}
+            data-testid="badge-total-score"
+          >
+            {branch.totalScore}/100
+          </Badge>
+          <TrendIndicator direction={branch.trend.direction} delta={branch.trend.delta} />
+        </div>
+      </CardHeader>
+      <CardContent>
+        <BranchDetailView branch={branch} />
+      </CardContent>
+    </Card>
+  );
 }
 
 export default function SubeSaglikSkoru() {
-  const { user } = useAuth();
-  const { toast } = useToast();
-  const [selectedBranchId, setSelectedBranchId] = useState<number | null>(null);
-  const [aiSummary, setAiSummary] = useState<string | null>(null);
+  const [range, setRange] = useState<RangeOption>("30d");
+  const [expandedRows, setExpandedRows] = useState<Set<number>>(new Set());
+  const [sortField, setSortField] = useState<"name" | "score">("score");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
 
-  const { data: healthScores, isLoading } = useQuery<BranchHealthSummary[]>({
-    queryKey: ["/api/branch-health-scores"],
-  });
-
-  const { data: branchDetail, isLoading: detailLoading } = useQuery<BranchHealthDetail>({
-    queryKey: ["/api/branch-health-scores", selectedBranchId],
-    enabled: !!selectedBranchId,
-  });
-
-  const aiMutation = useMutation({
-    mutationFn: async (branchId: number) => {
-      const res = await apiRequest("POST", "/api/branch-health-ai-summary", {
-        branchId,
-      });
+  const { data, isLoading } = useQuery<BranchHealthReport>({
+    queryKey: ["/api/reports/branch-health", range],
+    queryFn: async () => {
+      const res = await fetch(`/api/reports/branch-health?range=${range}`);
+      if (!res.ok) throw new Error("Failed to fetch");
       return res.json();
     },
-    onSuccess: (data: { summary: string }) => {
-      setAiSummary(data.summary);
-    },
-    onError: () => {
-      toast({
-        title: "Hata",
-        description: "AI özeti oluşturulurken hata oluştu",
-        variant: "destructive",
-      });
-    },
   });
 
-  function handleBranchClick(branchId: number) {
-    setSelectedBranchId(branchId);
-    setAiSummary(null);
-  }
+  const toggleRow = (branchId: number) => {
+    setExpandedRows((prev) => {
+      const next = new Set(prev);
+      if (next.has(branchId)) next.delete(branchId);
+      else next.add(branchId);
+      return next;
+    });
+  };
 
-  function handleDialogClose(open: boolean) {
-    if (!open) {
-      setSelectedBranchId(null);
-      setAiSummary(null);
+  const handleSort = (field: "name" | "score") => {
+    if (sortField === field) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortField(field);
+      setSortDir(field === "score" ? "desc" : "asc");
     }
-  }
+  };
 
-  const chartData = branchDetail
-    ? Object.entries(branchDetail.categoryAverages).map(([key, value]) => ({
-        name: CATEGORY_LABELS[key] || key,
-        value,
-      }))
-    : [];
+  const branches = data?.branches || [];
+
+  const sortedBranches = [...branches].sort((a, b) => {
+    const mul = sortDir === "asc" ? 1 : -1;
+    if (sortField === "name") return mul * a.branchName.localeCompare(b.branchName, "tr");
+    return mul * (a.totalScore - b.totalScore);
+  });
+
+  const avgScore = branches.length > 0
+    ? Math.round(branches.reduce((s, b) => s + b.totalScore, 0) / branches.length)
+    : 0;
+  const atRiskCount = branches.filter((b) => b.level === "red").length;
+  const totalRiskFlags = branches.reduce((s, b) => s + b.riskFlags.length, 0);
 
   return (
-    <div className="p-4 md:p-6 space-y-6 max-w-6xl mx-auto">
-      <div>
-        <h1 className="text-2xl font-bold" data-testid="text-page-title">
-          Şube Sağlık Skorları
-        </h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          Tüm şubelerin denetim sonuçları ve şikayet durumları
-        </p>
+    <div className="p-4 md:p-6 space-y-6 max-w-7xl mx-auto" data-testid="page-sube-saglik">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold" data-testid="text-page-title">
+            Sube Saglik Skoru
+          </h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            Sube bazli performans ve risk analizi
+          </p>
+        </div>
+        <div className="flex items-center gap-1" data-testid="range-selector">
+          {(["7d", "30d", "90d"] as RangeOption[]).map((r) => (
+            <Button
+              key={r}
+              variant={range === r ? "default" : "outline"}
+              size="sm"
+              onClick={() => setRange(r)}
+              data-testid={`button-range-${r}`}
+            >
+              {RANGE_LABELS[r]}
+            </Button>
+          ))}
+        </div>
       </div>
 
       {isLoading ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {[1, 2, 3, 4, 5, 6].map((i) => (
-            <Skeleton key={i} className="h-48 w-full" />
-          ))}
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            {[1, 2, 3].map((i) => (
+              <Skeleton key={i} className="h-24 w-full" />
+            ))}
+          </div>
+          <Skeleton className="h-64 w-full" />
         </div>
-      ) : !healthScores?.length ? (
+      ) : branches.length === 0 ? (
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-12">
-            <TrendingUp className="h-12 w-12 text-muted-foreground mb-4" />
-            <p className="text-lg font-medium text-muted-foreground">
-              Henüz şube verisi bulunmuyor
+            <Activity className="h-12 w-12 text-muted-foreground mb-4" />
+            <p className="text-lg font-medium text-muted-foreground" data-testid="text-empty-state">
+              Henuz sube verisi bulunmuyor
+            </p>
+            <p className="text-sm text-muted-foreground mt-1">
+              Secilen donemde veri mevcut degil
             </p>
           </CardContent>
         </Card>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {healthScores.map((branch) => (
-            <Card
-              key={branch.branchId}
-              className="cursor-pointer hover-elevate transition-all"
-              onClick={() => handleBranchClick(branch.branchId)}
-              data-testid={`card-branch-${branch.branchId}`}
-            >
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base flex items-center gap-2">
-                  <MapPin className="h-4 w-4 text-muted-foreground" />
-                  {branch.branchName}
+        <>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <Card data-testid="card-avg-score">
+              <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  Ortalama Skor
                 </CardTitle>
+                <Activity className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm text-muted-foreground">Denetim Skoru</span>
-                    <span
-                      className={`text-lg font-bold ${getScoreColor(branch.inspectionScore)}`}
-                      data-testid={`text-score-${branch.branchId}`}
-                    >
-                      {branch.inspectionScore !== null
-                        ? `${branch.inspectionScore}/100`
-                        : "N/A"}
-                    </span>
-                  </div>
-                  <Progress
-                    value={branch.inspectionScore ?? 0}
-                    className={`h-2 ${getProgressColor(branch.inspectionScore)}`}
-                    data-testid={`progress-score-${branch.branchId}`}
-                  />
-                </div>
-
-                <div className="flex items-center justify-between text-sm">
-                  <div className="flex items-center gap-2">
-                    {branch.openComplaints > 0 && (
-                      <AlertTriangle className="h-4 w-4 text-orange-500" />
-                    )}
-                    <span className="text-muted-foreground">Açık Şikayet</span>
-                  </div>
+              <CardContent>
+                <div className="flex items-center gap-2">
+                  <span className="text-2xl font-bold" data-testid="text-avg-score">{avgScore}</span>
                   <Badge
-                    variant={branch.openComplaints > 0 ? "destructive" : "secondary"}
-                    className="text-xs"
-                    data-testid={`badge-complaints-${branch.branchId}`}
+                    variant="secondary"
+                    className={`no-default-hover-elevate no-default-active-elevate ${getScoreBadgeClasses(avgScore)}`}
                   >
-                    {branch.openComplaints}
+                    /100
                   </Badge>
-                </div>
-
-                <div className="flex items-center justify-between text-sm">
-                  <div className="flex items-center gap-2">
-                    <ClipboardCheck className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-muted-foreground">Toplam Denetim</span>
-                  </div>
-                  <span className="font-medium">{branch.totalInspections}</span>
                 </div>
               </CardContent>
             </Card>
-          ))}
-        </div>
-      )}
 
-      <Dialog open={!!selectedBranchId} onOpenChange={handleDialogClose}>
-        <DialogContent className="sm:max-w-[700px] max-h-[85vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <MapPin className="h-5 w-5" />
-              {branchDetail?.branch.name || "Şube Detayı"}
-            </DialogTitle>
-            <DialogDescription>
-              Şubenin denetim performansı ve şikayet detayları
-            </DialogDescription>
-          </DialogHeader>
-
-          {detailLoading ? (
-            <div className="space-y-4 py-4">
-              <Skeleton className="h-48 w-full" />
-              <Skeleton className="h-32 w-full" />
-            </div>
-          ) : branchDetail ? (
-            <div className="space-y-6 py-4">
-              {chartData.length > 0 && (
-                <div>
-                  <h3 className="text-sm font-semibold mb-3">Kategori Ortalamaları</h3>
-                  <div className="h-64 w-full">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart
-                        data={chartData}
-                        margin={{ top: 5, right: 10, left: 0, bottom: 60 }}
-                      >
-                        <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-                        <XAxis
-                          dataKey="name"
-                          tick={{ fontSize: 11 }}
-                          angle={-45}
-                          textAnchor="end"
-                          interval={0}
-                        />
-                        <YAxis domain={[0, 100]} tick={{ fontSize: 11 }} />
-                        <Tooltip
-                          formatter={(value: number) => [`${value}/100`, "Skor"]}
-                        />
-                        <Bar dataKey="value" radius={[4, 4, 0, 0]}>
-                          {chartData.map((entry, index) => (
-                            <Cell
-                              key={`cell-${index}`}
-                              fill={getBarColor(entry.value)}
-                            />
-                          ))}
-                        </Bar>
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
+            <Card data-testid="card-at-risk">
+              <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  Riskli Subeler
+                </CardTitle>
+                <AlertTriangle className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center gap-2">
+                  <span className="text-2xl font-bold" data-testid="text-at-risk-count">{atRiskCount}</span>
+                  <span className="text-sm text-muted-foreground">/ {branches.length}</span>
                 </div>
-              )}
+              </CardContent>
+            </Card>
 
-              {branchDetail.audits.length > 0 && (
-                <div>
-                  <h3 className="text-sm font-semibold mb-3">Son Denetimler</h3>
-                  <div className="space-y-2">
-                    {branchDetail.audits.slice(0, 5).map((audit) => (
-                      <div
-                        key={audit.id}
-                        className="flex items-center justify-between p-3 rounded-md bg-muted/50"
-                        data-testid={`item-audit-${audit.id}`}
-                      >
-                        <div className="flex items-center gap-2 text-sm">
-                          <Calendar className="h-4 w-4 text-muted-foreground" />
-                          <span>
-                            {audit.auditDate
-                              ? format(new Date(audit.auditDate), "dd MMM yyyy", {
-                                  locale: tr,
-                                })
-                              : "-"}
-                          </span>
-                        </div>
-                        <span
-                          className={`font-bold ${getScoreColor(audit.overallScore)}`}
+            <Card data-testid="card-risk-flags">
+              <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  Risk Bayraklari
+                </CardTitle>
+                <Shield className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <span className="text-2xl font-bold" data-testid="text-risk-flags-count">{totalRiskFlags}</span>
+              </CardContent>
+            </Card>
+          </div>
+
+          {branches.length === 1 ? (
+            <SingleBranchView branch={branches[0]} />
+          ) : (
+            <Card data-testid="card-branch-table">
+              <CardHeader>
+                <CardTitle className="text-base">Sube Listesi</CardTitle>
+              </CardHeader>
+              <CardContent className="p-0">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm" data-testid="table-branches">
+                    <thead>
+                      <tr className="border-b bg-muted/50">
+                        <th
+                          className="text-left p-3 font-medium cursor-pointer select-none"
+                          onClick={() => handleSort("name")}
+                          data-testid="th-branch-name"
                         >
-                          {audit.overallScore}/100
-                        </span>
-                      </div>
-                    ))}
-                  </div>
+                          <span className="inline-flex items-center gap-1">
+                            Sube
+                            {sortField === "name" && (sortDir === "asc" ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />)}
+                          </span>
+                        </th>
+                        <th
+                          className="text-center p-3 font-medium cursor-pointer select-none"
+                          onClick={() => handleSort("score")}
+                          data-testid="th-score"
+                        >
+                          <span className="inline-flex items-center gap-1">
+                            Skor
+                            {sortField === "score" && (sortDir === "asc" ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />)}
+                          </span>
+                        </th>
+                        <th className="text-center p-3 font-medium hidden lg:table-cell">Bilesenler</th>
+                        <th className="text-center p-3 font-medium">Trend</th>
+                        <th className="text-center p-3 font-medium">Risk</th>
+                        <th className="p-3 w-10"></th>
+                      </tr>
+                    </thead>
+                    {sortedBranches.map((branch) => {
+                      const isExpanded = expandedRows.has(branch.branchId);
+                      return (
+                        <tbody key={branch.branchId}>
+                          <tr
+                            className="border-b cursor-pointer hover-elevate"
+                            onClick={() => toggleRow(branch.branchId)}
+                            data-testid={`row-branch-${branch.branchId}`}
+                          >
+                            <td className="p-3 font-medium">{branch.branchName}</td>
+                            <td className="p-3 text-center">
+                              <Badge
+                                variant="secondary"
+                                className={`no-default-hover-elevate no-default-active-elevate ${getLevelBadgeClasses(branch.level)}`}
+                                data-testid={`badge-score-${branch.branchId}`}
+                              >
+                                {branch.totalScore}
+                              </Badge>
+                            </td>
+                            <td className="p-3 hidden lg:table-cell">
+                              <div className="flex items-center justify-center gap-2 flex-wrap">
+                                {branch.components.map((comp) => (
+                                  <ComponentScoreBadge key={comp.key} component={comp} />
+                                ))}
+                              </div>
+                            </td>
+                            <td className="p-3 text-center">
+                              <TrendIndicator direction={branch.trend.direction} delta={branch.trend.delta} />
+                            </td>
+                            <td className="p-3 text-center">
+                              {branch.riskFlags.length > 0 ? (
+                                <Badge
+                                  variant="secondary"
+                                  className="no-default-hover-elevate no-default-active-elevate bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400"
+                                  data-testid={`badge-risk-${branch.branchId}`}
+                                >
+                                  {branch.riskFlags.length}
+                                </Badge>
+                              ) : (
+                                <span className="text-muted-foreground">-</span>
+                              )}
+                            </td>
+                            <td className="p-3">
+                              {isExpanded ? (
+                                <ChevronUp className="h-4 w-4 text-muted-foreground" />
+                              ) : (
+                                <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                              )}
+                            </td>
+                          </tr>
+                          {isExpanded && (
+                            <tr data-testid={`row-detail-${branch.branchId}`}>
+                              <td colSpan={6} className="p-4 bg-muted/30">
+                                <BranchDetailView branch={branch} />
+                              </td>
+                            </tr>
+                          )}
+                        </tbody>
+                      );
+                    })}
+                  </table>
                 </div>
-              )}
-
-              {branchDetail.complaints.length > 0 && (
-                <div>
-                  <h3 className="text-sm font-semibold mb-3">Ürün Şikayetleri</h3>
-                  <div className="space-y-2">
-                    {branchDetail.complaints.slice(0, 5).map((complaint) => (
-                      <div
-                        key={complaint.id}
-                        className="flex flex-wrap items-center justify-between gap-2 p-3 rounded-md bg-muted/50"
-                        data-testid={`item-complaint-${complaint.id}`}
-                      >
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium truncate">
-                            {complaint.productName}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            {complaint.reporterName} -{" "}
-                            {complaint.createdAt
-                              ? format(new Date(complaint.createdAt), "dd MMM yyyy", {
-                                  locale: tr,
-                                })
-                              : "-"}
-                          </p>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <Badge variant="outline" className="text-xs">
-                            {getSeverityLabel(complaint.severity)}
-                          </Badge>
-                          <Badge variant="secondary" className="text-xs">
-                            {getStatusLabel(complaint.status)}
-                          </Badge>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              <div className="border-t pt-4">
-                <Button
-                  onClick={() => aiMutation.mutate(selectedBranchId!)}
-                  disabled={aiMutation.isPending}
-                  data-testid="button-ai-summary"
-                >
-                  {aiMutation.isPending ? (
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  ) : (
-                    <Sparkles className="h-4 w-4 mr-2" />
-                  )}
-                  {aiMutation.isPending ? "Analiz ediliyor..." : "AI Analiz"}
-                </Button>
-
-                {aiSummary && (
-                  <Card className="mt-4">
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-sm flex items-center gap-2">
-                        <Sparkles className="h-4 w-4 text-primary" />
-                        AI Analiz Sonucu
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <p
-                        className="text-sm whitespace-pre-wrap"
-                        data-testid="text-ai-summary"
-                      >
-                        {aiSummary}
-                      </p>
-                    </CardContent>
-                  </Card>
-                )}
-              </div>
-            </div>
-          ) : null}
-        </DialogContent>
-      </Dialog>
+              </CardContent>
+            </Card>
+          )}
+        </>
+      )}
     </div>
   );
 }

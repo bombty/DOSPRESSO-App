@@ -413,6 +413,7 @@ function Router() {
           <Route path="/gida-guvenligi-dashboard">{() => <HQOnly><GidaGuvenligiDashboard /></HQOnly>}</Route>
           <Route path="/satinalma/:tab?" component={SatinalmaMega} />
           <Route path="/urun-sikayet" component={UrunSikayet} />
+          <Route path="/raporlar/sube-saglik" component={SubeSaglikSkoru} />
           <Route path="/sube-saglik-skoru" component={SubeSaglikSkoru} />
           <Route path="/kullanim-kilavuzu" component={KullanimKilavuzu} />
         </>
