@@ -1,0 +1,60 @@
+You are the Release QA + Build Engineer for this repo. Goal: run an automated smoke-check for the just-landed “Academy V2 AI Panel — Phase 1” changes and produce a PASS/FAIL report with evidence.
+
+Scope: DO NOT implement new product features. Only verify and fix issues required for the smoke-check to pass. Keep code changes minimal and localized.
+
+What changed (must verify):
+- shared/ai-nba-config.ts
+- server/routes/ai-nba.ts
+- client/src/components/ai-nba-card.tsx
+- client/src/components/card-grid-hub.tsx
+- client/src/lib/role-visibility.ts
+
+Acceptance criteria (must be proven with commands/output):
+A) Static checks
+1) TypeScript typecheck passes (no new TS errors introduced by these changes).
+2) Lint passes (or report pre-existing lint errors; do not “fix everything”, only fix issues introduced by these changes).
+3) Build passes.
+
+B) Runtime checks
+4) Server boots cleanly (no runtime crash).
+5) GET /api/ai/dashboard-nba returns:
+   - 401 when unauthenticated (prove with curl).
+   - 200 when authenticated, returning JSON with keys: role, alerts[], actions[], analyzedAt.
+   - actions deepLink must be a valid route path string (starts with '/').
+   - Should never throw if some tables are empty.
+
+C) UI checks (smoke)
+6) Dashboard renders AiNbaCard for at least 3 distinct roles (one branch role e.g. barista, one HQ role e.g. coach or muhasebe_ik, one factory role e.g. fabrika_operator).
+   - If full UI auth automation is not possible, do a code-level route/render validation + verify that WIDGET_VISIBILITY and role-visibility maps include these roles and include ai-nba-card.
+   - Prove by: (i) minimal runtime test (preferred) OR (ii) deterministic code inspection with exact references.
+
+D) Role coverage checks
+7) Verify NBA_CONFIG covers all ACTIVE roles in shared/schema.ts UserRole (including mudur and gida_muhendisi).
+8) Verify gida_muhendisi appears in NAV_ITEMS_BY_ROLE and MODULES_BY_ROLE (no empty fallthrough).
+
+How to run:
+- First, print a checklist and execute in this order:
+  1) show git diff summary (files changed + high-level changes)
+  2) run typecheck
+  3) run lint
+  4) run unit tests (if present)
+  5) run build
+  6) start dev server, then run curl tests (401 + authenticated 200)
+  7) run minimal UI smoke (best-effort)
+- If any step fails, fix only what is required to pass, then rerun.
+
+Auth guidance:
+- This app uses a custom/local auth. Find the established way to get an authenticated session/cookie for local testing (localAuth helper, seed user, dev login route, or existing “login as role” dev tooling).
+- If you cannot programmatically authenticate, provide a fallback plan: manual steps to login, then how to capture cookie and rerun curl.
+
+Output format:
+- Final report must be:
+  - PASS/FAIL
+  - Evidence: exact command outputs (trim to relevant lines)
+  - If FAIL: list failures + minimal patch notes + rerun results.
+  - “Next actions” (max 5 bullets).
+
+Hard constraints:
+- Do not add new DB tables.
+- Do not refactor unrelated modules.
+- Do not change product scope; only QA/fixes for this release.
