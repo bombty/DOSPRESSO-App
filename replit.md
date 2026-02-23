@@ -51,6 +51,7 @@ The frontend utilizes React 18+ with TypeScript and Vite, employing Shadcn/ui (N
 - **Employee of Month System**: Multi-criteria scoring, manager evaluation, branch-specific visibility.
 - **Branch Inspection System (Coach)**: 8-category branch audit system with weighted scoring, checkbox-based item evaluation, notes, and photo documentation.
 - **Product Complaint System**: Branch-to-factory product complaint workflow with severity levels, status tracking, and resolution documentation.
+- **Employee Type Registry (P1)**: Admin-manageable employee types (Cleaning, MESEM, Tam Zamanli) with policy-based restrictions, branch/factory task pack assignments, and deterministic NBA filtering. No UserRole enum changes; backward compatible (null employeeType = full access).
 - **Branch Health Score Dashboard**: Aggregated branch health visualization combining inspection scores, product complaint stats, and category averages, with AI-powered summary generation.
 - **Role Separation**: Distinct roles for Coach, Trainer, and Kalite Kontrol with specific responsibilities.
 
