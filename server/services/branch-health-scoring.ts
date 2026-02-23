@@ -158,7 +158,7 @@ async function scoreComplaints(branchId: number, rangeDays: number): Promise<Com
     const totalComplaints = prodTotal + guestTotal;
 
     if (totalComplaints === 0) {
-      return { key, label, score: 100, weight, notes: ["Dönem içinde şikayet kaydı yok"], evidenceCount: 0 };
+      return neutralComponent(key, label, weight);
     }
 
     const unresolved = Number(prodRows?.unresolved ?? 0) + Number(guestRows?.unresolved ?? 0);
@@ -208,7 +208,7 @@ async function scoreEquipment(branchId: number, rangeDays: number): Promise<Comp
 
     const total = Number(rows?.total ?? 0);
     if (total === 0) {
-      return { key, label, score: 95, weight, notes: ["Dönem içinde arıza kaydı yok"], evidenceCount: 0 };
+      return neutralComponent(key, label, weight);
     }
 
     const openCount = Number(rows?.openCount ?? 0);
@@ -523,7 +523,7 @@ async function scoreComplaintsPrev(branchId: number, rangeDays: number): Promise
       );
 
     const totalComplaints = Number(prodRows?.total ?? 0) + Number(guestRows?.total ?? 0);
-    if (totalComplaints === 0) return { key, label, score: 100, weight, notes: [], evidenceCount: 0 };
+    if (totalComplaints === 0) return neutralComponent(key, label, weight);
 
     const unresolved = Number(prodRows?.unresolved ?? 0) + Number(guestRows?.unresolved ?? 0);
     const highSev = Number(prodRows?.highSeverity ?? 0) + Number(guestRows?.highPriority ?? 0);
@@ -561,7 +561,7 @@ async function scoreEquipmentPrev(branchId: number, rangeDays: number): Promise<
       );
 
     const total = Number(rows?.total ?? 0);
-    if (total === 0) return { key, label, score: 95, weight, notes: [], evidenceCount: 0 };
+    if (total === 0) return neutralComponent(key, label, weight);
 
     const openCount = Number(rows?.openCount ?? 0);
     const redCount = Number(rows?.redCount ?? 0);

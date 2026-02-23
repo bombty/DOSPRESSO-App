@@ -150,7 +150,7 @@ function BranchDetailView({ branch }: { branch: BranchHealth }) {
                     )}
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="text-xs text-muted-foreground">Agirlik: %{comp.weight}</span>
+                    <span className="text-xs text-muted-foreground">Agirlik: %{Math.round(comp.weight * 100)}</span>
                     <Badge
                       variant="secondary"
                       className={`no-default-hover-elevate no-default-active-elevate ${getScoreBadgeClasses(comp.score)}`}

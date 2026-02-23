@@ -44,9 +44,9 @@ router.get("/api/reports/branch-health", isAuthenticated, async (req, res) => {
       }
       branchIds = [user.branchId];
     } else {
-      if (user.branchId) {
-        branchIds = [user.branchId];
-      }
+      return res.status(403).json({
+        message: "Bu rapora erişim yetkiniz bulunmamaktadır",
+      });
     }
 
     const report = await computeBranchHealthScores({
