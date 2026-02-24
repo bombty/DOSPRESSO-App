@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { Link } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -17,6 +18,9 @@ import {
   Wrench,
   ChevronDown,
   ChevronUp,
+  Bot,
+  Zap,
+  ExternalLink,
 } from "lucide-react";
 
 interface BranchComponent {
@@ -52,6 +56,28 @@ interface BranchHealthReport {
   branches: BranchHealth[];
 }
 
+interface CopilotRisk {
+  label: string;
+  neden: string;
+  severity: "low" | "med" | "high";
+}
+
+interface CopilotAksiyon {
+  label: string;
+  deepLink: string;
+  oncelik: "yuksek" | "orta" | "dusuk";
+}
+
+interface CopilotResponse {
+  durum_ozeti: string;
+  ilk_3_risk: CopilotRisk[];
+  ilk_3_aksiyon: CopilotAksiyon[];
+  fallback_used: boolean;
+  generatedAt: string;
+  schemaVersion: string;
+  rangeUsed: string;
+}
+
 type RangeOption = "7d" | "30d" | "90d";
 
 const RANGE_LABELS: Record<RangeOption, string> = {
@@ -84,6 +110,133 @@ function getSeverityClasses(severity: string): string {
   if (severity === "high") return "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400";
   if (severity === "med") return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400";
   return "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400";
+}
+
+const SEVERITY_LABELS: Record<string, string> = {
+  high: "Yuksek",
+  med: "Orta",
+  low: "Dusuk",
+};
+
+const SEVERITY_CLASSES: Record<string, string> = {
+  high: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400",
+  med: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400",
+  low: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400",
+};
+
+function AiCopilotCard({ range }: { range: RangeOption }) {
+  const { data, isLoading, isError } = useQuery<CopilotResponse>({
+    queryKey: ["/api/ai/ops-copilot/summary", range],
+    queryFn: async () => {
+      const res = await fetch(`/api/ai/ops-copilot/summary?range=${range}`);
+      if (!res.ok) throw new Error("Failed");
+      return res.json();
+    },
+    retry: 1,
+    staleTime: 1000 * 60 * 5,
+  });
+
+  if (isLoading) {
+    return (
+      <Card data-testid="card-ai-copilot-loading">
+        <CardHeader className="flex flex-row items-center gap-2 space-y-0 pb-2 flex-wrap justify-between">
+          <div className="flex items-center gap-2">
+            <Bot className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium text-muted-foreground">AI Gunluk Ozet</CardTitle>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <Skeleton className="h-5 w-full" />
+          <Skeleton className="h-4 w-3/4" />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <Skeleton className="h-24 w-full" />
+            <Skeleton className="h-24 w-full" />
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (isError || !data) return null;
+
+  return (
+    <Card data-testid="card-ai-copilot">
+      <CardHeader className="flex flex-row items-center gap-2 space-y-0 pb-2 flex-wrap justify-between">
+        <div className="flex items-center gap-2">
+          <Bot className="h-4 w-4 text-muted-foreground" />
+          <CardTitle className="text-sm font-medium text-muted-foreground">AI Gunluk Ozet</CardTitle>
+          {data.fallback_used && (
+            <Badge variant="outline" className="text-xs no-default-hover-elevate no-default-active-elevate">
+              <Zap className="h-3 w-3 mr-1" />
+              Deterministik mod
+            </Badge>
+          )}
+        </div>
+        <span className="text-xs text-muted-foreground">{data.rangeUsed}</span>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <p className="text-sm" data-testid="text-durum-ozeti">{data.durum_ozeti}</p>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {data.ilk_3_risk.length > 0 && (
+            <div>
+              <p className="text-xs font-semibold text-muted-foreground mb-2">Risk Alanlari</p>
+              <div className="space-y-1.5" data-testid="list-riskler">
+                {data.ilk_3_risk.map((risk, i) => (
+                  <div key={i} className="flex items-start gap-2 rounded-md bg-muted/50 p-2">
+                    <AlertTriangle className="h-3.5 w-3.5 text-orange-500 mt-0.5 flex-shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-medium truncate">{risk.label}</p>
+                      {risk.neden !== risk.label && (
+                        <p className="text-xs text-muted-foreground">{risk.neden}</p>
+                      )}
+                    </div>
+                    <Badge
+                      variant="secondary"
+                      className={`text-xs no-default-hover-elevate no-default-active-elevate flex-shrink-0 ${SEVERITY_CLASSES[risk.severity] ?? ""}`}
+                    >
+                      {SEVERITY_LABELS[risk.severity] ?? risk.severity}
+                    </Badge>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {data.ilk_3_aksiyon.length > 0 && (
+            <div>
+              <p className="text-xs font-semibold text-muted-foreground mb-2">Aksiyon Onerileri</p>
+              <div className="space-y-1.5" data-testid="list-aksiyonlar">
+                {data.ilk_3_aksiyon.map((aksiyon, i) => (
+                  <Link key={i} href={aksiyon.deepLink}>
+                    <div
+                      className="flex items-center gap-2 rounded-md bg-muted/50 p-2 hover-elevate cursor-pointer"
+                      data-testid={`link-aksiyon-${i}`}
+                    >
+                      <ExternalLink className="h-3.5 w-3.5 text-blue-500 flex-shrink-0" />
+                      <span className="text-xs flex-1">{aksiyon.label}</span>
+                      <Badge
+                        variant="secondary"
+                        className={`text-xs no-default-hover-elevate no-default-active-elevate flex-shrink-0 ${
+                          aksiyon.oncelik === "yuksek"
+                            ? "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400"
+                            : aksiyon.oncelik === "orta"
+                            ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400"
+                            : "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400"
+                        }`}
+                      >
+                        {aksiyon.oncelik === "yuksek" ? "Yuksek" : aksiyon.oncelik === "orta" ? "Orta" : "Dusuk"}
+                      </Badge>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
 }
 
 function TrendIndicator({ direction, delta }: { direction: string; delta: number }) {
@@ -323,6 +476,8 @@ export default function SubeSaglikSkoru() {
         </Card>
       ) : (
         <>
+          <AiCopilotCard range={range} />
+
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <Card data-testid="card-avg-score">
               <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
