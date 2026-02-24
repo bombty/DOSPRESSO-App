@@ -9,6 +9,15 @@ import {
 } from "@shared/schema";
 import { eq, desc, sql, and, or, count, avg, gte, lte } from "drizzle-orm";
 
+function redactName(firstName?: string | null, lastName?: string | null): string {
+  const f = firstName?.trim();
+  const l = lastName?.trim();
+  if (!f && !l) return "Personel";
+  const fInitial = f ? f[0] + "." : "";
+  const lInitial = l ? l[0] + "." : "";
+  return `${fInitial}${lInitial}`.trim() || "Personel";
+}
+
 const NAV_LINKS: Record<string, { label: string; path: string }> = {
   dashboard: { label: "Ana Sayfa", path: "/" },
   branches: { label: "Subeler", path: "/subeler" },
@@ -152,7 +161,7 @@ export async function gatherAIAssistantContext(user: any) {
       const lowPerfDetails = lowPerfUsers.map(p => {
         const u = usersData.find(us => us.id === p.userId);
         const br = u?.branchId ? branchesData.find(b => b.id === u.branchId) : null;
-        return `${u?.firstName || ""} ${u?.lastName || ""} (${br?.name || "HQ"}) - Skor: ${Number(p.weeklyTotalScore).toFixed(0)}`;
+        return `${redactName(u?.firstName, u?.lastName)} (${u?.role || "?"}, ${br?.name || "HQ"}) - Skor: ${Number(p.weeklyTotalScore).toFixed(0)}`;
       });
 
       const topPerfUsers = perfData
@@ -163,7 +172,7 @@ export async function gatherAIAssistantContext(user: any) {
       const topPerfDetails = topPerfUsers.map(p => {
         const u = usersData.find(us => us.id === p.userId);
         const br = u?.branchId ? branchesData.find(b => b.id === u.branchId) : null;
-        return `${u?.firstName || ""} ${u?.lastName || ""} (${br?.name || "HQ"}) - Skor: ${Number(p.weeklyTotalScore).toFixed(0)}`;
+        return `${redactName(u?.firstName, u?.lastName)} (${u?.role || "?"}, ${br?.name || "HQ"}) - Skor: ${Number(p.weeklyTotalScore).toFixed(0)}`;
       });
 
       if (role === "ceo") roleDescription = "DOSPRESSO CEO'su - Tum sirket verilerine tam erisim";
@@ -255,7 +264,7 @@ ${Object.entries(roleDistribution).sort(([,a], [,b]) => b - a).slice(0, 8).map((
       const lowPerfDetails = lowPerfBranchUsers.map(p => {
         const u = usersData.find(us => us.id === p.userId);
         const br = u?.branchId ? branchesData.find(b => b.id === u.branchId) : null;
-        return `${u?.firstName || ""} ${u?.lastName || ""} (${br?.name || "?"}) - Skor: ${Number(p.weeklyTotalScore).toFixed(0)}`;
+        return `${redactName(u?.firstName, u?.lastName)} (${u?.role || "?"}, ${br?.name || "?"}) - Skor: ${Number(p.weeklyTotalScore).toFixed(0)}`;
       });
 
       const recentInspections = inspectionsData.filter((ins: any) => {
@@ -363,7 +372,7 @@ ${Object.values(faultsByBranch).sort((a, b) => b.count - a.count).slice(0, 5).ma
       const usersWithoutTraining = usersData.filter(u => !usersWithTraining.has(u.id));
       const incompleteTrainingUsers = usersWithoutTraining.slice(0, 10).map(u => {
         const br = u.branchId ? branchesData.find(b => b.id === u.branchId) : null;
-        return `- ${u.firstName} ${u.lastName} (${br?.name || "HQ"}) - ${u.role}`;
+        return `- ${redactName(u.firstName, u.lastName)} (${br?.name || "HQ"}) - ${u.role}`;
       });
 
       const moduleCounts: Record<string, number> = {};
@@ -591,7 +600,7 @@ URETIM PARTI KALITE DURUMU (Son 30 Gun):
       const pendingLeaveDetails = pendingLeaves.slice(0, 5).map((l: any) => {
         const u = allUsersData.find((us: any) => us.id === l.userId);
         const br = u?.branchId ? branchesData.find(b => b.id === u.branchId) : null;
-        return `- ${u?.firstName || ""} ${u?.lastName || ""} (${br?.name || "HQ"}) | ${l.leaveType || l.type || "Izin"} | ${l.startDate ? new Date(l.startDate).toLocaleDateString("tr-TR") : "?"} - ${l.endDate ? new Date(l.endDate).toLocaleDateString("tr-TR") : "?"}`;
+        return `- ${redactName(u?.firstName, u?.lastName)} (${u?.role || "?"}, ${br?.name || "HQ"}) | ${l.leaveType || l.type || "Izin"} | ${l.startDate ? new Date(l.startDate).toLocaleDateString("tr-TR") : "?"} - ${l.endDate ? new Date(l.endDate).toLocaleDateString("tr-TR") : "?"}`;
       });
 
       roleDescription = role === "muhasebe" ? "Muhasebe Uzmani" : "Muhasebe ve IK Uzmani";
@@ -729,7 +738,7 @@ URETIM CIKTISI (Son 30 Gun):
         .sort((a, b) => Number(a.weeklyTotalScore) - Number(b.weeklyTotalScore))
         .map(p => {
           const u = usersData.find(us => us.id === p.userId);
-          return `${u?.firstName || ""} ${u?.lastName || ""} (${u?.role}) - Skor: ${Number(p.weeklyTotalScore).toFixed(0)}`;
+          return `${redactName(u?.firstName, u?.lastName)} (${u?.role}) - Skor: ${Number(p.weeklyTotalScore).toFixed(0)}`;
         });
 
       const todayStr = today;
@@ -748,7 +757,7 @@ URETIM CIKTISI (Son 30 Gun):
       });
       const todayShiftDetails = todayShifts.slice(0, 10).map((s: any) => {
         const u = usersData.find(us => us.id === s.userId);
-        return `- ${u?.firstName || "?"} ${u?.lastName || ""}: ${s.startTime || "?"} - ${s.endTime || "?"}`;
+        return `- ${redactName(u?.firstName, u?.lastName)} (${u?.role || "?"}): ${s.startTime || "?"} - ${s.endTime || "?"}`;
       });
 
       const branchEquipmentHealth = equipmentData.map((e: any) => {
@@ -793,7 +802,7 @@ PERSONEL PERFORMANSLARI:
 ${perfDetails.length > 0 ? perfDetails.join("\n") : "- Performans verisi henuz yok"}
 
 PERSONEL LISTESI:
-${usersData.map(u => `- ${u.firstName} ${u.lastName} (${u.role})`).join("\n")}`;
+${usersData.map(u => `- ${redactName(u.firstName, u.lastName)} (${u.role})`).join("\n")}`;
       accessibleData = "Sube personeli, gorevler, checklistler, arizalar, vardiyalar, izin talepleri, ekipman durumu, musteri geri bildirimleri";
 
     } else if ((role === "barista" || role === "bar_buddy" || role === "stajyer") && branchId) {
@@ -915,7 +924,7 @@ KISISEL ILETISIM KURALLARI (COK ONEMLI):
 - Kendini tanitirken: "Ben Mr. Dobody, senin ozel asistaninim!" de.
 
 KULLANICI BILGISI:
-- Ad: ${user.firstName || ""} ${user.lastName || ""}
+- Ad: ${user.firstName || "Kullanici"}
 - Rol: ${roleDescription}
 - Erisebilecegi Veriler: ${accessibleData}
 
@@ -942,6 +951,10 @@ YANITLAMA KURALLARI:
 9. Musteri bir urun hakkinda soru sordugunda, recete bilgilerinden yararlanarak detayli bilgi ver ve upselling onerilerinde bulun.
 
 KISITLAMALAR:
+- ASLA baska personelin telefon, e-posta, TC kimlik, adres gibi kisisel bilgilerini PAYLASMAYACAKSIN.
+- Satin alma fiyatlari, tedarikci sozlesme detaylari ve finansal veriler sadece yetkili rollere (ceo, cgo, admin, satinalma, muhasebe) verilebilir.
+- Fabrika uretim batch detaylari, recete maliyet bilgileri sube personeline VERILMEZ.
+- Kullanicinin yetkisi disindaki veriler hakkinda "${firstName}, bu bilgiye erisim yetkin bulunmuyor" de.
 ${role === "stajyer" ? "- Stajyer: SADECE egitim ve checklist bilgisi ver. Personel/sube/finans bilgisi VERME." : ""}
 ${role === "barista" || role === "bar_buddy" ? "- Barista/Bar Buddy: Sadece kendi gorevleri, egitim ve izin haklari. Diger personel bilgisi verme." : ""}
 ${["yatirimci_hq", "yatirimci_branch"].includes(role) ? "- Yatirimci: Sadece performans raporlari. Operasyonel detay ve personel bilgisi VERME." : ""}`;

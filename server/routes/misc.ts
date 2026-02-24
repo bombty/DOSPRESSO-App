@@ -9080,11 +9080,16 @@ Dusuk puanli alanlara odaklan ve pozitif, motive edici ol. JSON dizisi olarak ya
 
       const systemPrompt = 'Sen DOSPRESSO kahve zincirinin CEO\'su icin ozel bir AI danismanisin. CEO\'nun sorularina sirket verileri ve ic gorulere dayanarak cevap veriyorsun.\n\nGuncel Sirket Durumu:\n' + contextSummary + '\n\nYanitlarini su sekilde ver:\n1. Net ve ozlu ol\n2. Somut sayilar ve oneriler sun\n3. Riskleri ve firsatlari acikca belirt\n4. Aksiyon onerileri sun\n5. Turkce yaz';
 
+      const ceoApiKey = process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY;
+      if (!ceoApiKey) {
+        return res.status(500).json({ message: "OpenAI API key yapilandirilmamis" });
+      }
+
       const response = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': 'Bearer ' + process.env.OPENAI_API_KEY
+          'Authorization': 'Bearer ' + ceoApiKey
         },
         body: JSON.stringify({
           model: 'gpt-4o',

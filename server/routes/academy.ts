@@ -509,10 +509,11 @@ router.get('/api/academy/user-badges', isAuthenticated, async (req: any, res) =>
 // POST /api/academy/ai-assistant - Academy AI Assistant for chat
 router.post('/api/academy/ai-assistant', isAuthenticated, async (req: any, res) => {
   try {
-    const { message, userId, conversationHistory } = req.body;
+    const { message, conversationHistory } = req.body;
+    const userId = req.user!.id;
 
-    if (!message || !userId) {
-      return res.status(400).json({ message: "Mesaj ve userId gereklidir" });
+    if (!message) {
+      return res.status(400).json({ message: "Mesaj gereklidir" });
     }
 
     let userProgress = null;
