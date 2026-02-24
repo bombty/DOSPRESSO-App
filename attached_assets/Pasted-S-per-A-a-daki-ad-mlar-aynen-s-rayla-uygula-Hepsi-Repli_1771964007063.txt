@@ -1,0 +1,80 @@
+Süper. Aşağıdaki adımları aynen sırayla uygula. (Hepsi Replit içinde, sen + Replit Agent.)
+
+⸻
+
+0) Ön koşul kontrol (2 dk)
+	1.	Replit’te projen aç → Secrets / Environment Variables kısmına gir.
+	2.	Şunlar var mı kontrol et:
+	•	OPENAI_API_KEY (veya projede kullanılan mevcut anahtar adı)
+	•	Prod/Dev DB zaten bağlı (sendeki ekranda “Production database connected” görünüyor)
+	3.	Yoksa ekle, varsa dokunma.
+
+⸻
+
+1) Replit Agent’a “tek parça” prompt yapıştır (en kritik adım)
+	1.	Replit sol panelde Agent chat kutusunu aç.
+	2.	Benim önceki mesajdaki uzun “Build: Operation Copilot …” promptunu tek parça olarak yapıştır.
+	3.	Agent “Plan” çıkartınca:
+	•	Revise plan deme (şimdilik)
+	•	Plan mantıklıysa Start building de.
+
+⸻
+
+2) Build sırasında senin yapacağın 3 kontrol
+
+Agent kod yazarken arada şu 3 şeyi özellikle takip et:
+
+A) “Write yok” kırmızı çizgisi
+	•	Yeni endpoint sadece read yapsın.
+	•	DB’ye yazacaksa sadece ai_agent_logs gibi log tablosuna (PII yok).
+
+B) Rol scoping net olsun
+	•	HQ: tüm şubeler / branchId param opsiyonel
+	•	Branch (müdür): sadece kendi branch’ı
+	•	Diğer roller: 403
+
+C) Circuit breaker / fallback
+	•	LLM JSON’u bozar/timeout olursa response yine 200 dönsün ama fallback_used: true ile deterministik özet dönsün.
+
+⸻
+
+3) Agent bitince: “Manual smoke test” (sen yap)
+
+Agent “QA PASS” dese bile sen 5 dakikalık hızlı test yap:
+	1.	UI sayfasını aç: Branch Health dashboard (sende /raporlar/sube-saglik var)
+	2.	Range değiştir: 7/30/90
+	•	AI kartı değişiyor mu (veya yeniden yükleniyor mu)?
+	3.	Network’te şu çağrıyı gör:
+	•	/api/ai/ops-copilot/summary?range=30d (veya 7d/90d)
+	4.	Response JSON’da bunlar var mı kontrol et:
+	•	durum_ozeti
+	•	ilk_3_risk (liste)
+	•	ilk_3_aksiyon (label + deeplink)
+	•	fallback_used
+	5.	Bir deeplink’e tıkla → ilgili sayfa açılıyor mu?
+
+⸻
+
+4) Eğer bir şey ters giderse (en sık 3 sorun)
+	1.	401 / auth: endpoint auth middleware’i doğru bağlı mı? UI cookie gönderiyor mu?
+	2.	JSON yerine HTML geliyor: yanlış route / SPA fallback. Endpoint server routes’a doğru register edilmemiş olabilir.
+	3.	Branch user tüm şubeleri görüyor: scoping param override edilmiyor → branchId’yi server tarafında “session branchId” ile zorla.
+
+Bu 3’ünden biri olursa Replit Agent’a sadece şunu yaz:
+	•	“Şu testte şu hata var. Şu endpoint şu status dönüyor. Bunu fixle ve QA’yı yeniden çalıştır.”
+
+⸻
+
+5) Son adım: tek commit + republish
+
+Agent QA PASS + senin smoke test OK ise:
+	1.	Agent’ın önerdiği commit mesajıyla tek commit
+	2.	Push/Sync
+	3.	Republish
+
+⸻
+
+Şimdi senden tek şey istiyorum (burada soru sormadan ilerlemek için):
+
+Replit Agent “Plan” çıkardıktan sonra, plan ekranının screenshot’ını at.
+Ben 30 saniyede “devam / düzelt” diye net yönlendireyim.
