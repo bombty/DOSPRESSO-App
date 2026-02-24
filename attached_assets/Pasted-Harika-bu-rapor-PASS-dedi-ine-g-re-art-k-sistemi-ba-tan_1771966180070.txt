@@ -1,0 +1,78 @@
+Harika — bu rapor “PASS” dediğine göre artık sistemi baştan sona değiştirmiyoruz; yaptığımız şey mevcut deterministik çekirdeğin üstüne (Branch Health + NBA V2) hafif bir AI özet katmanı eklemek. Yani yol planı “güncellendi / genişletildi”, reset yok.
+
+Şimdi senin adım adım yapman gerekenler:
+
+⸻
+
+1) Kodu gerçekten oluştu mu? (1 dk)
+
+Replit’te Git / Changes aç:
+	•	Şu dosyalar değişmiş/gözüküyor mu?
+	•	server/routes/ai-ops-copilot.ts (new)
+	•	server/routes.ts (modified)
+	•	client/src/pages/sube-saglik-skoru.tsx (modified)
+
+Eğer “Working tree clean” diyorsa Agent zaten commit’lemiş olabilir. O zaman 2. adıma geç.
+
+⸻
+
+2) Senin manuel smoke test’in (5 dk) — mutlaka yap
+
+A) UI testi
+	1.	Uygulamada /raporlar/sube-saglik sayfasını aç.
+	2.	Üstte yeni “AI Özet / Operasyon Copilot” kartı görünüyor mu?
+	3.	7d → 30d → 90d tıkla:
+	•	Kart içeriği değişiyor mu?
+	•	Kartta fallback_used bazen true olabiliyor (7d’de timeout olmuş demiş).
+
+B) API testi
+
+Tarayıcı devtools/network veya direkt URL ile:
+	•	Unauth iken: GET /api/ai/ops-copilot/summary?range=30d → 401
+	•	Login sonrası: aynı call → 200 JSON
+JSON’da şunlar var mı:
+	•	durum_ozeti
+	•	ilk_3_risk[] (deepLink’ler “/” ile başlamalı)
+	•	ilk_3_aksiyon[]
+	•	fallback_used
+	•	rangeUsed
+
+C) Role scoping testi (en kritik)
+	•	HQ user → çok şube üzerinden özet (22 branch gibi)
+	•	Şube müdürü/supervisor → tek şube üzerinden özet
+	•	Fabrika rolü → 403
+
+⸻
+
+3) Prod’a çıkmadan önce 2 güvenlik kontrolü (2 dk)
+	1.	PII yok: AI’a gönderilen payload’da kullanıcı adı, telefon, email, isim vb. yok.
+(Sadece branchId/branchName ve skor/risk gibi “iş verisi” kalsın.)
+	2.	Write yok: DB’ye sadece ai_agent_logs yazıyor mu? Başka tabloya insert/update olmasın.
+
+⸻
+
+4) Commit + Deploy (3 dk)
+
+Eğer 1–3 OK ise:
+	1.	Eğer commit atılmadıysa:
+Tek commit mesajı olarak bunu kullan:
+feat: Operasyon Copilot — AI-powered Türkçe aksiyon özeti kartı
+	2.	Push/Sync
+	3.	Republish (Production)
+
+⸻
+
+5) Yayında son kontrol (2 dk)
+
+Prod domain’de aynı sayfayı aç:
+	•	/raporlar/sube-saglik
+	•	Range değiştir
+	•	AI kartı geliyor mu?
+	•	401/403 davranışları doğru mu?
+
+⸻
+
+Şu an senden istediğim tek şey
+
+Replit’te Git / Changes ekranının ekran görüntüsünü (veya “clean / changed” durumunu) gönder.
+Ben de commit gerekiyor mu yoksa direkt republish mi net söyleyeyim.
