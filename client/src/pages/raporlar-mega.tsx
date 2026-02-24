@@ -18,7 +18,8 @@ import {
   AlertTriangle,
   FileSearch,
   CheckCircle2,
-  Target
+  Target,
+  Activity
 } from "lucide-react";
 
 const Raporlar = lazy(() => import("./raporlar"));
@@ -35,6 +36,7 @@ const DenetimSablonlari = lazy(() => import("./denetim-sablonlari"));
 const Sikayetler = lazy(() => import("./sikayetler"));
 const AdvancedReports = lazy(() => import("./advanced-reports"));
 const SubeKarsilastirma = lazy(() => import("./sube-karsilastirma"));
+const SubeSaglikSkoru = lazy(() => import("./sube-saglik-skoru"));
 
 interface TabConfig {
   id: string;
@@ -166,6 +168,15 @@ const RAPORLAR_TABS: TabConfig[] = [
     component: AdvancedReports
   },
   {
+    id: "sube-saglik",
+    label: "Branch Health",
+    labelTr: "Şube Sağlık",
+    icon: <Activity className="h-4 w-4" />,
+    permissionModule: "reports",
+    scope: "both",
+    component: SubeSaglikSkoru
+  },
+  {
     id: "sube-karsilastirma",
     label: "Branch Comparison",
     labelTr: "Şubeler",
@@ -205,6 +216,7 @@ const TAB_URL_MAP: Record<string, string> = {
   "capa-raporlari": "/raporlar/capa-raporlari",
   "sikayetler": "/raporlar/sikayetler",
   "gelismis-raporlar": "/raporlar/gelismis",
+  "sube-saglik": "/raporlar/sube-saglik",
   "sube-karsilastirma": "/raporlar/sube-karsilastirma"
 };
 
@@ -223,6 +235,7 @@ function getTabFromUrl(pathname: string): string | null {
   if (pathname.startsWith("/raporlar/capa-raporlari")) return "capa-raporlari";
   if (pathname.startsWith("/raporlar/sikayetler")) return "sikayetler";
   if (pathname.startsWith("/raporlar/gelismis")) return "gelismis-raporlar";
+  if (pathname.startsWith("/raporlar/sube-saglik")) return "sube-saglik";
   if (pathname.startsWith("/raporlar/sube-karsilastirma")) return "sube-karsilastirma";
   return null;
 }
