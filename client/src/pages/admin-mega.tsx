@@ -67,6 +67,7 @@ const AdminGorevSablonlari = lazy(() => import("./admin/gorev-sablonlari"));
 const AdminEmployeeTypes = lazy(() => import("./admin-employee-types"));
 const AdminWidgetYonetimi = lazy(() => import("./admin/widget-yonetimi"));
 const AdminHeroWidgetEditor = lazy(() => import("./admin/widget-editor"));
+const AdminAIPolitikalari = lazy(() => import("./admin/ai-politikalari"));
 
 interface TabConfig {
   id: string;
@@ -389,6 +390,14 @@ const ADMIN_TABS: TabConfig[] = [
     permissionModule: "factory_quality",
     group: "fabrika",
     component: AdminFabrikaKaliteKriterleri
+  },
+  {
+    id: "ai-politikalari",
+    label: "AI Policies",
+    labelTr: "AI Politikaları",
+    icon: <Shield className="h-4 w-4" />,
+    group: "sistem",
+    component: AdminAIPolitikalari
   }
 ];
 
@@ -438,7 +447,8 @@ const TAB_URL_MAP: Record<string, string> = {
   "fire-sebepleri": "/admin/fire-sebepleri",
   "pin-yonetimi": "/admin/pin-yonetimi",
   "kalite-kriterleri": "/admin/kalite-kriterleri",
-  "personel-tipleri": "/admin/personel-tipleri"
+  "personel-tipleri": "/admin/personel-tipleri",
+  "ai-politikalari": "/admin/ai-politikalari"
 };
 
 function getTabFromUrl(pathname: string): string | null {

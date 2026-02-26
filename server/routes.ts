@@ -373,6 +373,7 @@ import opsRulesRouter from "./routes/ops-rules";
 import { wasteRouter } from "./routes/waste";
 import aiNbaRouter from "./routes/ai-nba";
 import employeeTypesRouter from "./routes/employee-types";
+import aiPolicyAdminRouter from "./routes/ai-policy-admin";
 
 // Multer configuration for file uploads (memory storage)
 const uploadStorage = multer.memoryStorage();
@@ -632,6 +633,7 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
   app.use(wasteRouter);
   app.use(aiNbaRouter);
   app.use(employeeTypesRouter);
+  app.use(aiPolicyAdminRouter);
 
   app.get('/api/health', async (req, res) => {
     try {

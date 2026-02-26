@@ -41,6 +41,7 @@ The frontend utilizes React 18+ with TypeScript and Vite, employing Shadcn/ui (N
 - **Quiz System**: MCQ and True/False questions, dynamic options, points, explanations, cooldowns, and attempt tracking.
 - **New Shop Opening Management System**: A 7-phase workflow tracking for franchise openings with hierarchical tasks, RACI assignments, and procurement/bidding.
 - **Admin Features**: Email settings (SMTP), banner management, AI settings, project task detail pages, and milestone management.
+- **AI Policy Console**: Admin-configurable AI data access policies with 10 data domains (factory_costs, procurement_prices, supplier_contracts, recipes, equipment_faults, branch_health, personnel_performance, personnel_pii, academy, crm), role-based ALLOW/ALLOW_AGGREGATED/DENY decisions, keyword-based intent classification, server-side enforcement on /api/ai/chat, and audit logging to ai_agent_logs. Admin UI at /admin/ai-politikalari with Domains CRUD, Policy Matrix, and AI Logs tabs.
 - **AI Usage Guide (Kullanım Kılavuzu)**: Role-based interactive system guide with AI Q&A.
 - **Content Studio (İçerik Stüdyosu)**: Unified content management consolidating banner creation and announcement publishing.
 - **Global Search & Calendar View**: Functionality for finding information across the platform and visualizing tasks/milestones.

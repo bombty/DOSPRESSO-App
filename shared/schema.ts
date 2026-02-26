@@ -13893,6 +13893,49 @@ export const insertAiAgentLogSchema = createInsertSchema(aiAgentLogs).omit({
 export type InsertAiAgentLog = z.infer<typeof insertAiAgentLogSchema>;
 export type AiAgentLog = typeof aiAgentLogs.$inferSelect;
 
+// ==================== AI Data Domains & Policies ====================
+
+export const aiDataDomains = pgTable("ai_data_domains", {
+  id: serial("id").primaryKey(),
+  key: varchar("key", { length: 50 }).unique().notNull(),
+  labelTr: varchar("label_tr", { length: 100 }).notNull(),
+  labelEn: varchar("label_en", { length: 100 }).notNull(),
+  description: text("description"),
+  sensitivity: varchar("sensitivity", { length: 20 }).notNull().default("internal"),
+  isActive: boolean("is_active").default(true).notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const aiDomainPolicies = pgTable("ai_domain_policies", {
+  id: serial("id").primaryKey(),
+  domainId: integer("domain_id").references(() => aiDataDomains.id, { onDelete: "cascade" }).notNull(),
+  role: varchar("role", { length: 50 }).notNull(),
+  employeeType: varchar("employee_type", { length: 50 }),
+  decision: varchar("decision", { length: 30 }).notNull().default("DENY"),
+  scope: varchar("scope", { length: 20 }).notNull().default("org_wide"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("ai_policy_domain_idx").on(table.domainId),
+  index("ai_policy_role_idx").on(table.role),
+]);
+
+export const insertAiDataDomainSchema = createInsertSchema(aiDataDomains).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertAiDomainPolicySchema = createInsertSchema(aiDomainPolicies).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertAiDataDomain = z.infer<typeof insertAiDataDomainSchema>;
+export type AiDataDomain = typeof aiDataDomains.$inferSelect;
+export type InsertAiDomainPolicy = z.infer<typeof insertAiDomainPolicySchema>;
+export type AiDomainPolicy = typeof aiDomainPolicies.$inferSelect;
+
 // ==================== Employee Types & Policies (P1 Role Registry) ====================
 
 export const employeeTypes = pgTable("employee_types", {

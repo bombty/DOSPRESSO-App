@@ -9,6 +9,7 @@ import { sanitizeUser, sanitizeUsers, sanitizeUserForRole, sanitizeUsersForRole 
 import { buildMenuForUser } from "../menu-service";
 import { generateArticleEmbeddings, generateEmbedding, answerTechnicalQuestion, generateAISummary, generateArticleDraft, generatePersonalSummaryReport, generateBranchSummaryReport } from "../ai";
 import { gatherAIAssistantContext } from "../ai-assistant-context";
+import { checkAndEnforcePolicy } from "../services/ai-policy-engine";
 import { sendNotificationEmail, sendEmployeeOfMonthEmail } from "../email";
 import { updateEmployeeLocation, getActiveBranchEmployees, removeEmployeeLocation } from "../tracking";
 import { onFeedbackReceived } from "../event-task-generator";
@@ -9121,7 +9122,7 @@ Dusuk puanli alanlara odaklan ve pozitif, motive edici ol. JSON dizisi olarak ya
     }
   });
 
-  // Global AI Chat endpoint for all roles with role-based context
+  // Global AI Chat endpoint for all roles with role-based context + policy enforcement
   router.post("/api/ai/chat", isAuthenticated, async (req: any, res) => {
     try {
       const user = req.user;
@@ -9131,7 +9132,29 @@ Dusuk puanli alanlara odaklan ve pozitif, motive edici ol. JSON dizisi olarak ya
         return res.status(400).json({ message: "Soru gerekli" });
       }
 
+      const policyResult = await checkAndEnforcePolicy(
+        question,
+        String(user.id),
+        user.role || "barista",
+        user.employeeType || null,
+        user.branchId || null
+      );
+
+      if (policyResult.shouldBlock) {
+        return res.json({ answer: policyResult.blockMessage });
+      }
+
       const { systemPrompt } = await gatherAIAssistantContext(user);
+
+      let policyAwarePrompt = systemPrompt;
+      if (policyResult.deniedDomains.length > 0) {
+        const deniedLabels = policyResult.deniedDomains.join(", ");
+        policyAwarePrompt += `\n\nONEMLI: Kullanicinin su veri alanlarina erisimine izin verilmemektedir: ${deniedLabels}. Bu konularda bilgi paylasma. Kibarca yetki olmadığını belirt.`;
+      }
+      if (policyResult.aggregatedDomains.length > 0) {
+        const aggLabels = policyResult.aggregatedDomains.join(", ");
+        policyAwarePrompt += `\n\nONEMLI: Su veri alanlari icin yalnizca ozet/anonim bilgi paylas, bireysel detay verme: ${aggLabels}.`;
+      }
 
       const apiKey = process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY;
       if (!apiKey) {
@@ -9147,7 +9170,7 @@ Dusuk puanli alanlara odaklan ve pozitif, motive edici ol. JSON dizisi olarak ya
         body: JSON.stringify({
           model: "gpt-4o-mini",
           messages: [
-            { role: "system", content: systemPrompt },
+            { role: "system", content: policyAwarePrompt },
             { role: "user", content: question }
           ],
           temperature: 0.7,
