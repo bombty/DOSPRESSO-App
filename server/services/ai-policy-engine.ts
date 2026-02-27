@@ -324,9 +324,9 @@ export async function checkAndEnforcePolicy(
     await db.insert(aiAgentLogs).values({
       runType: "dobody_chat",
       triggeredByUserId: userId,
-      targetRoleScope: `${role}(${roleGroup})`,
+      targetRoleScope: role,
       branchId: branchId || null,
-      inputSummary: `domains:${detectedDomains.join(",")} | decisions:${policyResults.map(p => `${p.domainKey}=${p.decision}`).join(",")}${redactionApplied ? ` | redaction:${redactionModes.join(",")}` : ""} | scopes:${scopeLevels.join(",")}`,
+      inputSummary: `roleGroup:${roleGroup} | domains:${detectedDomains.join(",")} | decisions:${policyResults.map(p => `${p.domainKey}=${p.decision}`).join(",")}${redactionApplied ? ` | redaction:${redactionModes.join(",")}` : ""} | scopes:${scopeLevels.join(",")}`,
       outputSummary: allDenied ? "BLOCKED" : `allowed:${allowedDomains.join(",")};agg:${aggregatedDomains.join(",")};denied:${deniedDomains.join(",")}`,
       actionCount: detectedDomains.length,
       status: allDenied ? "denied" : "success",
