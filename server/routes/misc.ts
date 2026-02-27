@@ -9148,12 +9148,11 @@ Dusuk puanli alanlara odaklan ve pozitif, motive edici ol. JSON dizisi olarak ya
 
       let policyAwarePrompt = systemPrompt;
       if (policyResult.deniedDomains.length > 0) {
-        const deniedLabels = policyResult.deniedDomains.join(", ");
-        policyAwarePrompt += `\n\nONEMLI: Kullanicinin su veri alanlarina erisimine izin verilmemektedir: ${deniedLabels}. Bu konularda bilgi paylasma. Kibarca yetki olmadığını belirt.`;
+        const deniedLabels = policyResult.deniedDomains.map(d => policyResult.policyResults.find(p => p.domainKey === d)?.domainLabel || d).join(", ");
+        policyAwarePrompt += `\n\n=== VERI ERISIM KISITLAMALARI ===\nKESINLIKLE UYULMASI GEREKEN KURAL: Kullanicinin su veri alanlarina erisimi YOKTUR: ${deniedLabels}.\nBu konularda kesinlikle bilgi paylasma. Kibarca yetki olmadığını belirt ve erisebilecegi konulari oner.`;
       }
-      if (policyResult.aggregatedDomains.length > 0) {
-        const aggLabels = policyResult.aggregatedDomains.join(", ");
-        policyAwarePrompt += `\n\nONEMLI: Su veri alanlari icin yalnizca ozet/anonim bilgi paylas, bireysel detay verme: ${aggLabels}.`;
+      if (policyResult.aggregationPrompt) {
+        policyAwarePrompt += `\n\n=== AGREGASYON KURALLARI ===\nAsagidaki alanlarda YALNIZCA ozet/anonim/istatistiksel bilgi paylasabilirsin. KESINLIKLE bireysel isim, kimlik, mutlak tutar verme:\n${policyResult.aggregationPrompt}`;
       }
 
       const apiKey = process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY;
