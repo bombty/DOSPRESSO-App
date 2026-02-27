@@ -13913,6 +13913,7 @@ export const aiDomainPolicies = pgTable("ai_domain_policies", {
   employeeType: varchar("employee_type", { length: 50 }),
   decision: varchar("decision", { length: 30 }).notNull().default("DENY"),
   scope: varchar("scope", { length: 20 }).notNull().default("org_wide"),
+  redactionMode: varchar("redaction_mode", { length: 20 }),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => [

@@ -9154,6 +9154,9 @@ Dusuk puanli alanlara odaklan ve pozitif, motive edici ol. JSON dizisi olarak ya
       if (policyResult.aggregationPrompt) {
         policyAwarePrompt += `\n\n=== AGREGASYON KURALLARI ===\nAsagidaki alanlarda YALNIZCA ozet/anonim/istatistiksel bilgi paylasabilirsin. KESINLIKLE bireysel isim, kimlik, mutlak tutar verme:\n${policyResult.aggregationPrompt}`;
       }
+      if (policyResult.scopePrompt) {
+        policyAwarePrompt += `\n\n=== KAPSAM KISITLAMALARI ===\n${policyResult.scopePrompt}`;
+      }
 
       const apiKey = process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY;
       if (!apiKey) {

@@ -31,8 +31,13 @@ import {
 } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Pencil, Trash2, Shield, Database, ScrollText, ChevronLeft, ChevronRight } from "lucide-react";
+import { Plus, Pencil, Trash2, Shield, Database, ScrollText, ChevronLeft, ChevronRight, Info } from "lucide-react";
 
 const SENSITIVITY_COLORS: Record<string, string> = {
   public: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
@@ -60,6 +65,22 @@ const DECISION_LABELS: Record<string, string> = {
   DENY: "Engelli",
 };
 
+const SCOPE_LABELS: Record<string, string> = {
+  self: "Kendi",
+  branch: "Şube",
+  factory: "Fabrika",
+  hq: "HQ",
+  global: "Global",
+  org_wide: "Global",
+};
+
+const REDACTION_LABELS: Record<string, string> = {
+  none: "Yok",
+  no_names: "İsim Yok",
+  initials_only: "Baş Harf",
+  numeric_only: "Sadece Sayı",
+};
+
 const ALL_ROLES = [
   "ceo", "cgo", "admin", "coach", "trainer", "kalite_kontrol",
   "supervisor", "supervisor_buddy", "mudur",
@@ -68,13 +89,13 @@ const ALL_ROLES = [
   "satinalma", "muhasebe", "muhasebe_ik", "teknik", "ekipman_teknik", "destek", "operasyon", "ik"
 ];
 
-const ROLE_GROUPS: Record<string, string[]> = {
-  "HQ": ["ceo", "cgo", "admin"],
-  "Koç/Eğitmen": ["coach", "trainer", "kalite_kontrol"],
-  "Şube Yönetim": ["supervisor", "supervisor_buddy", "mudur"],
-  "Şube Personel": ["barista", "bar_buddy", "stajyer"],
-  "Fabrika": ["fabrika", "fabrika_mudur", "fabrika_sorumlu", "fabrika_operator", "fabrika_personel", "fabrika_teknisyen"],
-  "Destek": ["satinalma", "muhasebe", "muhasebe_ik", "teknik", "ekipman_teknik", "destek", "operasyon", "ik"]
+const ROLE_GROUPS: Record<string, { label: string; members: string[] }> = {
+  branch_floor: { label: "Şube Personel", members: ["stajyer", "barista", "bar_buddy", "supervisor_buddy"] },
+  branch_mgmt: { label: "Şube Yönetim", members: ["supervisor", "mudur"] },
+  hq_ops: { label: "HQ Operasyon", members: ["coach", "trainer", "kalite_kontrol", "gida_muhendisi", "marketing", "destek", "teknik", "operasyon", "ekipman_teknik"] },
+  hq_finance: { label: "HQ Finans", members: ["muhasebe", "muhasebe_ik", "satinalma", "ik"] },
+  factory: { label: "Fabrika", members: ["fabrika", "fabrika_mudur", "fabrika_sorumlu", "fabrika_operator", "fabrika_personel", "fabrika_teknisyen"] },
+  executive: { label: "Yönetim", members: ["ceo", "cgo", "admin"] },
 };
 
 interface AiDomain {
@@ -96,6 +117,7 @@ interface AiPolicy {
   employeeType: string | null;
   decision: string;
   scope: string;
+  redactionMode: string | null;
 }
 
 function DomainsTab() {
@@ -265,7 +287,7 @@ function DomainsTab() {
 
 function PolicyMatrixTab() {
   const { toast } = useToast();
-  const [selectedGroup, setSelectedGroup] = useState("HQ");
+  const [editCell, setEditCell] = useState<{ domainId: number; roleGroup: string } | null>(null);
 
   const { data: domains = [] } = useQuery<AiDomain[]>({
     queryKey: ["/api/admin/ai-domains"],
@@ -275,36 +297,54 @@ function PolicyMatrixTab() {
     queryKey: ["/api/admin/ai-policies"],
   });
 
-  const updateMutation = useMutation({
-    mutationFn: ({ id, decision }: { id: number; decision: string }) =>
-      apiRequest("PATCH", `/api/admin/ai-policies/${id}`, { decision }),
+  const saveMutation = useMutation({
+    mutationFn: (data: any) => apiRequest("POST", "/api/admin/ai-policies", data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/ai-policies"] });
       toast({ title: "Politika güncellendi" });
     },
   });
 
-  const createMutation = useMutation({
-    mutationFn: (data: any) => apiRequest("POST", "/api/admin/ai-policies", data),
+  const updateMutation = useMutation({
+    mutationFn: ({ id, ...data }: any) => apiRequest("PATCH", `/api/admin/ai-policies/${id}`, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/ai-policies"] });
-      toast({ title: "Politika oluşturuldu" });
+      toast({ title: "Politika güncellendi" });
     },
   });
 
-  const groupRoles = ROLE_GROUPS[selectedGroup] || [];
+  const getGroupPolicy = (domainId: number, roleGroupKey: string): AiPolicy | undefined => {
+    return policies.find(p => p.domainId === domainId && p.role === roleGroupKey);
+  };
 
-  const getPolicy = (domainId: number, role: string) =>
-    policies.find(p => p.domainId === domainId && p.role === role);
-
-  const handleDecisionChange = (domainId: number, role: string, decision: string) => {
-    const existing = getPolicy(domainId, role);
+  const handleDecisionChange = (domainId: number, roleGroupKey: string, decision: string) => {
+    const existing = getGroupPolicy(domainId, roleGroupKey);
     if (existing) {
       updateMutation.mutate({ id: existing.id, decision });
     } else {
-      createMutation.mutate({ domainId, role, decision, scope: "org_wide" });
+      saveMutation.mutate({ domainId, role: roleGroupKey, decision, scope: "global" });
     }
   };
+
+  const handleScopeChange = (domainId: number, roleGroupKey: string, scope: string) => {
+    const existing = getGroupPolicy(domainId, roleGroupKey);
+    if (existing) {
+      updateMutation.mutate({ id: existing.id, scope });
+    } else {
+      saveMutation.mutate({ domainId, role: roleGroupKey, decision: "DENY", scope });
+    }
+  };
+
+  const handleRedactionChange = (domainId: number, roleGroupKey: string, redactionMode: string) => {
+    const existing = getGroupPolicy(domainId, roleGroupKey);
+    if (existing) {
+      updateMutation.mutate({ id: existing.id, redactionMode: redactionMode || null });
+    } else {
+      saveMutation.mutate({ domainId, role: roleGroupKey, decision: "ALLOW_AGGREGATED", scope: "global", redactionMode });
+    }
+  };
+
+  const roleGroupKeys = Object.keys(ROLE_GROUPS);
 
   if (isLoading) return <Skeleton className="h-64 w-full" />;
 
@@ -312,20 +352,22 @@ function PolicyMatrixTab() {
     <div className="space-y-4">
       <div>
         <h3 className="text-lg font-semibold" data-testid="text-matrix-title">Politika Matrisi</h3>
-        <p className="text-sm text-muted-foreground">Her rol için veri erişim kurallarını belirleyin</p>
+        <p className="text-sm text-muted-foreground">6 rol grubu x 12 veri alanı — Karar + Kapsam + Maskeleme</p>
       </div>
 
-      <div className="flex gap-2 flex-wrap">
-        {Object.keys(ROLE_GROUPS).map(group => (
-          <Button
-            key={group}
-            variant={selectedGroup === group ? "default" : "outline"}
-            size="sm"
-            onClick={() => setSelectedGroup(group)}
-            data-testid={`button-group-${group}`}
-          >
-            {group}
-          </Button>
+      <div className="flex gap-2 flex-wrap mb-2">
+        {roleGroupKeys.map(gk => (
+          <Tooltip key={gk}>
+            <TooltipTrigger asChild>
+              <Badge variant="outline" className="no-default-hover-elevate no-default-active-elevate text-xs" data-testid={`badge-group-${gk}`}>
+                {ROLE_GROUPS[gk].label}
+                <Info className="h-3 w-3 ml-1 opacity-50" />
+              </Badge>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p className="text-xs">{ROLE_GROUPS[gk].members.join(", ")}</p>
+            </TooltipContent>
+          </Tooltip>
         ))}
       </div>
 
@@ -333,41 +375,107 @@ function PolicyMatrixTab() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="min-w-[140px]">Veri Alanı</TableHead>
-              {groupRoles.map(role => (
-                <TableHead key={role} className="min-w-[120px] text-center">{role}</TableHead>
+              <TableHead className="min-w-[140px] sticky left-0 bg-background z-10">Veri Alanı</TableHead>
+              {roleGroupKeys.map(gk => (
+                <TableHead key={gk} className="min-w-[180px] text-center">
+                  <div className="text-xs font-semibold">{ROLE_GROUPS[gk].label}</div>
+                </TableHead>
               ))}
             </TableRow>
           </TableHeader>
           <TableBody>
             {domains.filter(d => d.isActive).map(domain => (
               <TableRow key={domain.id} data-testid={`row-policy-${domain.key}`}>
-                <TableCell>
+                <TableCell className="sticky left-0 bg-background z-10">
                   <div className="flex items-center gap-2">
-                    <span className="font-medium">{domain.labelTr}</span>
+                    <span className="font-medium text-sm">{domain.labelTr}</span>
                     <Badge className={`no-default-hover-elevate no-default-active-elevate text-xs ${SENSITIVITY_COLORS[domain.sensitivity] || ""}`}>
                       {SENSITIVITY_LABELS[domain.sensitivity]?.[0] || "?"}
                     </Badge>
                   </div>
                 </TableCell>
-                {groupRoles.map(role => {
-                  const policy = getPolicy(domain.id, role);
+                {roleGroupKeys.map(gk => {
+                  const policy = getGroupPolicy(domain.id, gk);
                   const currentDecision = policy?.decision || "DENY";
+                  const currentScope = policy?.scope || "global";
+                  const currentRedaction = policy?.redactionMode || "";
+                  const isEditing = editCell?.domainId === domain.id && editCell?.roleGroup === gk;
+
                   return (
-                    <TableCell key={role} className="text-center">
-                      <Select
-                        value={currentDecision}
-                        onValueChange={v => handleDecisionChange(domain.id, role, v)}
+                    <TableCell key={gk} className="text-center p-1">
+                      <div
+                        className="space-y-1 cursor-pointer rounded p-1"
+                        onClick={() => setEditCell(isEditing ? null : { domainId: domain.id, roleGroup: gk })}
+                        data-testid={`cell-policy-${domain.key}-${gk}`}
                       >
-                        <SelectTrigger className={`text-xs ${DECISION_COLORS[currentDecision] || ""}`} data-testid={`select-policy-${domain.key}-${role}`}>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="ALLOW">Tam Erişim</SelectItem>
-                          <SelectItem value="ALLOW_AGGREGATED">Özet</SelectItem>
-                          <SelectItem value="DENY">Engelli</SelectItem>
-                        </SelectContent>
-                      </Select>
+                        <Select
+                          value={currentDecision}
+                          onValueChange={v => handleDecisionChange(domain.id, gk, v)}
+                        >
+                          <SelectTrigger
+                            className={`text-xs h-7 ${DECISION_COLORS[currentDecision] || ""}`}
+                            data-testid={`select-decision-${domain.key}-${gk}`}
+                            onClick={e => e.stopPropagation()}
+                          >
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="ALLOW">Tam Erişim</SelectItem>
+                            <SelectItem value="ALLOW_AGGREGATED">Özet</SelectItem>
+                            <SelectItem value="DENY">Engelli</SelectItem>
+                          </SelectContent>
+                        </Select>
+
+                        {isEditing && (
+                          <div className="space-y-1" onClick={e => e.stopPropagation()}>
+                            <Select
+                              value={currentScope === "org_wide" ? "global" : currentScope}
+                              onValueChange={v => handleScopeChange(domain.id, gk, v)}
+                            >
+                              <SelectTrigger className="text-xs h-7" data-testid={`select-scope-${domain.key}-${gk}`}>
+                                <SelectValue placeholder="Kapsam" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="self">Kendi</SelectItem>
+                                <SelectItem value="branch">Şube</SelectItem>
+                                <SelectItem value="factory">Fabrika</SelectItem>
+                                <SelectItem value="hq">HQ</SelectItem>
+                                <SelectItem value="global">Global</SelectItem>
+                              </SelectContent>
+                            </Select>
+
+                            {currentDecision === "ALLOW_AGGREGATED" && (
+                              <Select
+                                value={currentRedaction || "no_names"}
+                                onValueChange={v => handleRedactionChange(domain.id, gk, v)}
+                              >
+                                <SelectTrigger className="text-xs h-7" data-testid={`select-redaction-${domain.key}-${gk}`}>
+                                  <SelectValue placeholder="Maskeleme" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="none">Yok</SelectItem>
+                                  <SelectItem value="no_names">İsim Yok</SelectItem>
+                                  <SelectItem value="initials_only">Baş Harf (A.Y.)</SelectItem>
+                                  <SelectItem value="numeric_only">Sadece Sayı</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            )}
+                          </div>
+                        )}
+
+                        {!isEditing && currentDecision !== "DENY" && (
+                          <div className="flex items-center justify-center gap-1">
+                            <span className="text-[10px] text-muted-foreground">
+                              {SCOPE_LABELS[currentScope] || currentScope}
+                            </span>
+                            {currentDecision === "ALLOW_AGGREGATED" && currentRedaction && (
+                              <span className="text-[10px] text-muted-foreground">
+                                / {REDACTION_LABELS[currentRedaction] || currentRedaction}
+                              </span>
+                            )}
+                          </div>
+                        )}
+                      </div>
                     </TableCell>
                   );
                 })}
@@ -520,7 +628,7 @@ export default function AdminAIPolitikalari() {
         <h2 className="text-xl font-bold">AI Politika Konsolu</h2>
       </div>
       <p className="text-sm text-muted-foreground">
-        Mr. Dobody AI asistanın hangi rollerin hangi verilere erişebileceğini merkezi olarak yönetin
+        Mr. Dobody AI asistanın hangi rol gruplarının hangi verilere erişebileceğini merkezi olarak yönetin
       </p>
 
       <Tabs defaultValue="domains">

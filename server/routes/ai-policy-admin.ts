@@ -3,11 +3,12 @@ import { db } from "../db";
 import { aiDataDomains, aiDomainPolicies, aiAgentLogs, insertAiDataDomainSchema, insertAiDomainPolicySchema } from "@shared/schema";
 import { eq, desc, and, sql, ilike } from "drizzle-orm";
 import { isAuthenticated } from "../localAuth";
-import { invalidatePolicyCache } from "../services/ai-policy-engine";
+import { invalidatePolicyCache, ROLE_GROUP_MAP, ROLE_GROUP_LABELS, ROLE_GROUP_MEMBERS, getRoleGroup } from "../services/ai-policy-engine";
 
 const VALID_DECISIONS = ["ALLOW", "ALLOW_AGGREGATED", "DENY"];
 const VALID_SENSITIVITIES = ["public", "internal", "confidential", "restricted"];
-const VALID_SCOPES = ["branch", "org_wide"];
+const VALID_SCOPES = ["self", "branch", "factory", "hq", "global", "org_wide"];
+const VALID_REDACTION_MODES = ["none", "no_names", "initials_only", "numeric_only"];
 
 const router = Router();
 
@@ -17,6 +18,38 @@ function ensureAdmin(user: any): void {
     throw Object.assign(new Error("Admin yetkisi gerekli"), { statusCode: 403 });
   }
 }
+
+async function logAdminAction(userId: string, role: string, action: string, details: string) {
+  try {
+    await db.insert(aiAgentLogs).values({
+      runType: "policy_admin",
+      triggeredByUserId: userId,
+      targetRoleScope: role,
+      inputSummary: action,
+      outputSummary: details,
+      actionCount: 1,
+      status: "success",
+      executionTimeMs: 0,
+    });
+  } catch (e) {
+    console.error("Admin audit log error:", e);
+  }
+}
+
+router.get("/api/admin/ai-role-groups", isAuthenticated, async (req: any, res) => {
+  try {
+    ensureAdmin(req.user);
+    res.json({
+      groups: Object.entries(ROLE_GROUP_LABELS).map(([key, label]) => ({
+        key,
+        label,
+        members: ROLE_GROUP_MEMBERS[key] || [],
+      })),
+    });
+  } catch (err: any) {
+    res.status(err.statusCode || 500).json({ message: err.message });
+  }
+});
 
 router.get("/api/admin/ai-domains", isAuthenticated, async (req: any, res) => {
   try {
@@ -92,6 +125,7 @@ router.get("/api/admin/ai-policies", isAuthenticated, async (req: any, res) => {
         employeeType: aiDomainPolicies.employeeType,
         decision: aiDomainPolicies.decision,
         scope: aiDomainPolicies.scope,
+        redactionMode: aiDomainPolicies.redactionMode,
         createdAt: aiDomainPolicies.createdAt,
         updatedAt: aiDomainPolicies.updatedAt,
       })
@@ -108,27 +142,45 @@ router.get("/api/admin/ai-policies", isAuthenticated, async (req: any, res) => {
 router.post("/api/admin/ai-policies", isAuthenticated, async (req: any, res) => {
   try {
     ensureAdmin(req.user);
-    const parsed = insertAiDomainPolicySchema.parse(req.body);
-    if (!VALID_DECISIONS.includes(parsed.decision || "")) {
+    const { domainId, role, decision, scope, employeeType, redactionMode } = req.body;
+    if (!domainId || !role || !decision) {
+      return res.status(400).json({ message: "domainId, role ve decision zorunlu" });
+    }
+    if (!VALID_DECISIONS.includes(decision)) {
       return res.status(400).json({ message: "Geçersiz karar değeri. ALLOW, ALLOW_AGGREGATED veya DENY olmalı." });
     }
-    if (parsed.scope && !VALID_SCOPES.includes(parsed.scope)) {
-      return res.status(400).json({ message: "Geçersiz kapsam. branch veya org_wide olmalı." });
+    if (scope && !VALID_SCOPES.includes(scope)) {
+      return res.status(400).json({ message: "Geçersiz kapsam. self, branch, factory, hq veya global olmalı." });
+    }
+    if (redactionMode && !VALID_REDACTION_MODES.includes(redactionMode)) {
+      return res.status(400).json({ message: "Geçersiz maskeleme modu." });
     }
     const existing = await db.select().from(aiDomainPolicies).where(
       and(
-        eq(aiDomainPolicies.domainId, parsed.domainId),
-        eq(aiDomainPolicies.role, parsed.role),
-        parsed.employeeType ? eq(aiDomainPolicies.employeeType, parsed.employeeType) : sql`${aiDomainPolicies.employeeType} IS NULL`
+        eq(aiDomainPolicies.domainId, domainId),
+        eq(aiDomainPolicies.role, role),
+        employeeType ? eq(aiDomainPolicies.employeeType, employeeType) : sql`${aiDomainPolicies.employeeType} IS NULL`
       )
     );
     if (existing.length > 0) {
-      const [updated] = await db.update(aiDomainPolicies).set({ decision: parsed.decision, scope: parsed.scope, updatedAt: new Date() }).where(eq(aiDomainPolicies.id, existing[0].id)).returning();
+      const updates: any = { decision, updatedAt: new Date() };
+      if (scope) updates.scope = scope;
+      if (redactionMode !== undefined) updates.redactionMode = redactionMode || null;
+      const [updated] = await db.update(aiDomainPolicies).set(updates).where(eq(aiDomainPolicies.id, existing[0].id)).returning();
       invalidatePolicyCache();
+      await logAdminAction(String(req.user.id), req.user.role, "policy_update", `domain:${domainId} role:${role} decision:${decision} scope:${scope || 'global'} redaction:${redactionMode || 'none'}`);
       return res.json(updated);
     }
-    const [policy] = await db.insert(aiDomainPolicies).values(parsed).returning();
+    const [policy] = await db.insert(aiDomainPolicies).values({
+      domainId,
+      role,
+      decision,
+      scope: scope || "global",
+      employeeType: employeeType || null,
+      redactionMode: redactionMode || null,
+    }).returning();
     invalidatePolicyCache();
+    await logAdminAction(String(req.user.id), req.user.role, "policy_create", `domain:${domainId} role:${role} decision:${decision} scope:${scope || 'global'} redaction:${redactionMode || 'none'}`);
     res.json(policy);
   } catch (err: any) {
     res.status(err.statusCode || 400).json({ message: err.message });
@@ -139,20 +191,25 @@ router.patch("/api/admin/ai-policies/:id", isAuthenticated, async (req: any, res
   try {
     ensureAdmin(req.user);
     const id = parseInt(req.params.id);
-    const { decision, scope, employeeType } = req.body;
+    const { decision, scope, employeeType, redactionMode } = req.body;
     if (decision !== undefined && !VALID_DECISIONS.includes(decision)) {
       return res.status(400).json({ message: "Geçersiz karar değeri" });
     }
     if (scope !== undefined && !VALID_SCOPES.includes(scope)) {
       return res.status(400).json({ message: "Geçersiz kapsam değeri" });
     }
+    if (redactionMode !== undefined && redactionMode !== null && !VALID_REDACTION_MODES.includes(redactionMode)) {
+      return res.status(400).json({ message: "Geçersiz maskeleme modu" });
+    }
     const updates: any = { updatedAt: new Date() };
     if (decision !== undefined) updates.decision = decision;
     if (scope !== undefined) updates.scope = scope;
     if (employeeType !== undefined) updates.employeeType = employeeType;
+    if (redactionMode !== undefined) updates.redactionMode = redactionMode;
 
     const [updated] = await db.update(aiDomainPolicies).set(updates).where(eq(aiDomainPolicies.id, id)).returning();
     invalidatePolicyCache();
+    await logAdminAction(String(req.user.id), req.user.role, "policy_patch", `id:${id} ${JSON.stringify(updates)}`);
     res.json(updated);
   } catch (err: any) {
     res.status(err.statusCode || 400).json({ message: err.message });
@@ -165,6 +222,7 @@ router.delete("/api/admin/ai-policies/:id", isAuthenticated, async (req: any, re
     const id = parseInt(req.params.id);
     await db.delete(aiDomainPolicies).where(eq(aiDomainPolicies.id, id));
     invalidatePolicyCache();
+    await logAdminAction(String(req.user.id), req.user.role, "policy_delete", `id:${id}`);
     res.json({ success: true });
   } catch (err: any) {
     res.status(err.statusCode || 500).json({ message: err.message });
