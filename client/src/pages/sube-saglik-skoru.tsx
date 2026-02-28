@@ -527,6 +527,40 @@ export default function SubeSaglikSkoru() {
             </Card>
           </div>
 
+          {(() => {
+            const insufficientCount = branches.reduce((total, b) => {
+              return total + b.components.filter(c => c.insufficientData).length;
+            }, 0);
+            const totalComponents = branches.reduce((total, b) => total + b.components.length, 0);
+            const branchesWithInsufficient = branches.filter(b => b.components.some(c => c.insufficientData)).length;
+            const avgInsuffPerBranch = branchesWithInsufficient > 0 ? Math.round(insufficientCount / branchesWithInsufficient) : 0;
+            const reliability = avgInsuffPerBranch >= 3 ? "low" : avgInsuffPerBranch >= 1 ? "medium" : "high";
+
+            if (insufficientCount === 0) return null;
+
+            return (
+              <div
+                className={`flex items-start gap-3 rounded-md p-3 text-sm ${
+                  reliability === "low"
+                    ? "bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-300"
+                    : "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-300"
+                }`}
+                data-testid="banner-insufficient-data"
+              >
+                <AlertTriangle className="h-4 w-4 flex-shrink-0 mt-0.5" />
+                <div>
+                  <span className="font-medium">
+                    {reliability === "low" ? "Guvenilirlik: Dusuk" : "Veri Uyarisi"}
+                  </span>
+                  <span className="ml-1">
+                    — {branchesWithInsufficient} subede toplam {insufficientCount} bilesen yetersiz veri ile hesaplaniyor.
+                    {reliability === "low" && " Skorlar gercegi yansitmayabilir."}
+                  </span>
+                </div>
+              </div>
+            );
+          })()}
+
           {branches.length === 1 ? (
             <SingleBranchView branch={branches[0]} />
           ) : (

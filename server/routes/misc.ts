@@ -9,6 +9,7 @@ import { sanitizeUser, sanitizeUsers, sanitizeUserForRole, sanitizeUsersForRole 
 import { buildMenuForUser } from "../menu-service";
 import { generateArticleEmbeddings, generateEmbedding, answerTechnicalQuestion, generateAISummary, generateArticleDraft, generatePersonalSummaryReport, generateBranchSummaryReport } from "../ai";
 import { gatherAIAssistantContext } from "../ai-assistant-context";
+import { computeBranchHealthScores } from "../services/branch-health-scoring";
 import { checkAndEnforcePolicy } from "../services/ai-policy-engine";
 import { sendNotificationEmail, sendEmployeeOfMonthEmail } from "../email";
 import { updateEmployeeLocation, getActiveBranchEmployees, removeEmployeeLocation } from "../tracking";
@@ -10821,25 +10822,46 @@ Bu verilere dayanarak performans analizi ve iyileştirme önerileri oluştur.`
       const activeUsers = allUsers.filter(u => u.isActive);
       const totalBranches = allBranches.length;
 
-      const branchScores = allBranches.map(b => {
-        const branchFaults = allFaults.filter(f => f.branchId === b.id);
-        const openFaults = branchFaults.filter(f => f.status === 'open' || f.status === 'in_progress');
-        const branchAudits = allAudits.filter((a: any) => a.branchId === b.id);
-        const branchStaff = activeUsers.filter(u => u.branchId === b.id);
-        const faultPenalty = Math.min(openFaults.length * 5, 30);
-        const auditBonus = branchAudits.length > 0 ? 10 : 0;
-        const score = Math.max(30, Math.min(100, 75 - faultPenalty + auditBonus));
-        return {
-          id: b.id,
-          name: b.name || 'Sube ' + b.id,
-          score,
-          staffCount: branchStaff.length,
-          openFaults: openFaults.length,
-          totalFaults: branchFaults.length,
-          auditCount: branchAudits.length,
-          status: score >= 80 ? 'healthy' : score >= 60 ? 'warning' : 'critical'
-        };
-      });
+      let branchScores: Array<{ id: number; name: string; score: number; staffCount: number; openFaults: number; totalFaults: number; auditCount: number; status: string }>;
+      try {
+        const healthReport = await computeBranchHealthScores({ rangeDays: 30 });
+        branchScores = healthReport.branches.map(hb => {
+          const branchFaults = allFaults.filter(f => f.branchId === hb.branchId);
+          const openFaults = branchFaults.filter(f => f.status === 'open' || f.status === 'in_progress');
+          const branchAudits = allAudits.filter((a: any) => a.branchId === hb.branchId);
+          const branchStaff = activeUsers.filter(u => u.branchId === hb.branchId);
+          return {
+            id: hb.branchId,
+            name: hb.branchName,
+            score: hb.totalScore,
+            staffCount: branchStaff.length,
+            openFaults: openFaults.length,
+            totalFaults: branchFaults.length,
+            auditCount: branchAudits.length,
+            status: hb.level === 'green' ? 'healthy' : hb.level === 'yellow' ? 'warning' : 'critical'
+          };
+        });
+      } catch {
+        branchScores = allBranches.map(b => {
+          const branchFaults = allFaults.filter(f => f.branchId === b.id);
+          const openFaults = branchFaults.filter(f => f.status === 'open' || f.status === 'in_progress');
+          const branchAudits = allAudits.filter((a: any) => a.branchId === b.id);
+          const branchStaff = activeUsers.filter(u => u.branchId === b.id);
+          const faultPenalty = Math.min(openFaults.length * 5, 30);
+          const auditBonus = branchAudits.length > 0 ? 10 : 0;
+          const score = Math.max(30, Math.min(100, 75 - faultPenalty + auditBonus));
+          return {
+            id: b.id,
+            name: b.name || 'Sube ' + b.id,
+            score,
+            staffCount: branchStaff.length,
+            openFaults: openFaults.length,
+            totalFaults: branchFaults.length,
+            auditCount: branchAudits.length,
+            status: score >= 80 ? 'healthy' : score >= 60 ? 'warning' : 'critical'
+          };
+        });
+      }
 
       const avgScore = branchScores.length > 0
         ? Math.round(branchScores.reduce((s, b) => s + b.score, 0) / branchScores.length)

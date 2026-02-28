@@ -7,8 +7,10 @@ import {
   equipmentFaults,
   trainingAssignments,
   tasks,
+  userCareerProgress,
+  users,
 } from "@shared/schema";
-import { eq, and, gte, lte, sql, count, avg, inArray } from "drizzle-orm";
+import { eq, and, gte, lte, sql, count, avg, inArray, isNotNull } from "drizzle-orm";
 
 interface ComponentScore {
   key: string;
@@ -238,14 +240,47 @@ async function scoreTraining(branchId: number, rangeDays: number): Promise<Compo
   const weight = WEIGHTS.training;
 
   try {
-    const { from, to } = dateRange(rangeDays);
+    const careerRows = await db
+      .select({
+        compositeScore: userCareerProgress.compositeScore,
+        averageQuizScore: userCareerProgress.averageQuizScore,
+        totalQuizzesAttempted: userCareerProgress.totalQuizzesAttempted,
+      })
+      .from(userCareerProgress)
+      .innerJoin(users, eq(users.id, userCareerProgress.userId))
+      .where(
+        and(
+          eq(users.branchId, branchId),
+          eq(users.isActive, true)
+        )
+      );
 
+    if (careerRows.length >= 1) {
+      const avgComposite = careerRows.reduce((s, r) => s + Number(r.compositeScore ?? 0), 0) / careerRows.length;
+      const avgQuiz = careerRows.reduce((s, r) => s + Number(r.averageQuizScore ?? 0), 0) / careerRows.length;
+      const withQuizzes = careerRows.filter(r => Number(r.totalQuizzesAttempted ?? 0) > 0).length;
+      const quizParticipationRate = withQuizzes / careerRows.length;
+      const atRisk = careerRows.filter(r => Number(r.compositeScore ?? 0) < 40).length;
+      const riskPenalty = Math.min(atRisk * 10, 30);
+
+      const score = clamp(avgComposite * 0.6 + quizParticipationRate * 25 + 15 - riskPenalty);
+
+      const notes: string[] = [];
+      notes.push(`${careerRows.length} personel kariyer verisi`);
+      notes.push(`Ort. kompozit skor: ${Math.round(avgComposite)}`);
+      notes.push(`Quiz katılım: %${Math.round(quizParticipationRate * 100)}`);
+      if (avgQuiz > 0) notes.push(`Ort. quiz skoru: ${Math.round(avgQuiz)}`);
+      if (atRisk > 0) notes.push(`${atRisk} personel risk altında (< 40 puan)`);
+
+      return { key, label, score, weight, notes, evidenceCount: careerRows.length };
+    }
+
+    const { from, to } = dateRange(rangeDays);
     const [rows] = await db
       .select({
         total: count(),
         completedCount: sql<number>`COUNT(*) FILTER (WHERE ${trainingAssignments.status} = 'completed')`,
         overdueCount: sql<number>`COUNT(*) FILTER (WHERE ${trainingAssignments.status} IN ('overdue', 'expired'))`,
-        inProgressCount: sql<number>`COUNT(*) FILTER (WHERE ${trainingAssignments.status} = 'in_progress')`,
       })
       .from(trainingAssignments)
       .where(
@@ -261,10 +296,8 @@ async function scoreTraining(branchId: number, rangeDays: number): Promise<Compo
 
     const completed = Number(rows?.completedCount ?? 0);
     const overdue = Number(rows?.overdueCount ?? 0);
-
     const completionRate = total > 0 ? completed / total : 0;
     const overduePenalty = Math.min(overdue * 8, 30);
-
     const score = clamp(completionRate * 80 + 20 - overduePenalty);
 
     const notes: string[] = [];

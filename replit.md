@@ -96,6 +96,7 @@ The frontend utilizes React 18+ with TypeScript and Vite, employing Shadcn/ui (N
 - **T0.0**: Security hardening (admin password, auth audit, notification spam fix)
 - **T0.1**: Data cleanup & dashboard reliability (equipment maintenance dates, uptime fix, fault separation, EOM widget, bulk archive)
 - **T1.0**: Supervisor daily cycle validation (NBA dead link fixes, yoklama route fix, e2e tested navigation/tasks/checklists/bulk archive)
+- **T2.0**: Branch Health Score gerçekçi çalışma (Training bileşeni Academy V2 user_career_progress'e bağlandı, CGO dashboard Branch Health Score API'sine entegre edildi, yetersiz veri uyarı banner eklendi)
 
 ## External Dependencies
 - **OpenAI API**: Used for AI-powered vision analysis, chat completions, embeddings, and summary generation.
