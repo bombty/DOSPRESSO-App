@@ -122,7 +122,7 @@ export const NBA_CONFIG: Record<string, RoleNBAConfig> = {
     ],
     actions: [
       { type: 'review_performance', titleTR: 'Şube performans kontrol', reasonTR: 'Haftalık şube metrikleri', severity: 'high', deepLink: '/', estimatedMinutes: 5, bucket: 'T8', dataSource: 'user_career_progress' },
-      { type: 'check_faults', titleTR: 'Açık arıza durumu', reasonTR: 'Şubedeki aktif arızalar', severity: 'medium', deepLink: '/arizalar', estimatedMinutes: 5, bucket: 'T7', dataSource: 'equipment_faults' },
+      { type: 'check_faults', titleTR: 'Açık arıza durumu', reasonTR: 'Şubedeki aktif arızalar', severity: 'medium', deepLink: '/ariza', estimatedMinutes: 5, bucket: 'T7', dataSource: 'equipment_faults' },
       { type: 'view_reports', titleTR: 'Raporları incele', reasonTR: 'Finansal durum özeti', severity: 'low', deepLink: '/raporlar', estimatedMinutes: 10, bucket: 'T6', dataSource: 'missing' },
     ],
   },
@@ -136,7 +136,7 @@ export const NBA_CONFIG: Record<string, RoleNBAConfig> = {
       { type: 'pending_leave', titleTR: 'Bekleyen izin talebi', severity: 'warning', dataSource: 'leave_requests', bucket: 'T4' },
     ],
     actions: [
-      { type: 'review_team_scores', titleTR: 'Ekip skorlarını incele', reasonTR: 'Bir personelin composit skoru düşük', severity: 'high', deepLink: '/personel', estimatedMinutes: 10, bucket: 'T8', dataSource: 'user_career_progress' },
+      { type: 'review_team_scores', titleTR: 'Ekip skorlarını incele', reasonTR: 'Bir personelin composit skoru düşük', severity: 'high', deepLink: '/ik', estimatedMinutes: 10, bucket: 'T8', dataSource: 'user_career_progress' },
       { type: 'complete_checklist', titleTR: 'Checklist takibi yap', reasonTR: 'Tamamlanmamış checklist\'ler var', severity: 'high', deepLink: '/gorevler', estimatedMinutes: 10, bucket: 'T1', dataSource: 'checklist_completions' },
       { type: 'approve_leaves', titleTR: 'İzin taleplerini onayla', reasonTR: 'Bekleyen izin talepleri', severity: 'medium', deepLink: '/ik', estimatedMinutes: 5, bucket: 'T4', dataSource: 'leave_requests' },
     ],
@@ -151,7 +151,7 @@ export const NBA_CONFIG: Record<string, RoleNBAConfig> = {
       { type: 'stock_overdue', titleTR: 'Stok sayımı gecikmiş', severity: 'warning', dataSource: 'inventory_counts', bucket: 'T5' },
     ],
     actions: [
-      { type: 'check_faults', titleTR: 'Arıza durumunu kontrol et', reasonTR: 'SLA süresi dolan arızalar var', severity: 'high', deepLink: '/arizalar', estimatedMinutes: 10, bucket: 'T7', dataSource: 'equipment_faults' },
+      { type: 'check_faults', titleTR: 'Arıza durumunu kontrol et', reasonTR: 'SLA süresi dolan arızalar var', severity: 'high', deepLink: '/ariza', estimatedMinutes: 10, bucket: 'T7', dataSource: 'equipment_faults' },
       { type: 'approve_leaves', titleTR: 'İzin taleplerini onayla', reasonTR: 'Bekleyen onay talepleri', severity: 'medium', deepLink: '/ik', estimatedMinutes: 5, bucket: 'T4', dataSource: 'leave_requests' },
       { type: 'stock_count', titleTR: 'Stok sayımını tamamla', reasonTR: 'Haftalık stok sayımı gecikmede', severity: 'medium', deepLink: '/gorevler', estimatedMinutes: 15, bucket: 'T5', dataSource: 'inventory_counts' },
     ],
@@ -166,7 +166,7 @@ export const NBA_CONFIG: Record<string, RoleNBAConfig> = {
     ],
     actions: [
       { type: 'review_branches', titleTR: 'Şube skorlarını incele', reasonTR: 'Kritik skoru olan şubeler var', severity: 'high', deepLink: '/subeler', estimatedMinutes: 15, bucket: 'T8', dataSource: 'user_career_progress' },
-      { type: 'review_training', titleTR: 'Eğitim etkinlik raporu', reasonTR: 'Düşük eğitim skoru olan personel', severity: 'medium', deepLink: '/personel', estimatedMinutes: 10, bucket: 'T2', dataSource: 'user_career_progress' },
+      { type: 'review_training', titleTR: 'Eğitim etkinlik raporu', reasonTR: 'Düşük eğitim skoru olan personel', severity: 'medium', deepLink: '/ik', estimatedMinutes: 10, bucket: 'T2', dataSource: 'user_career_progress' },
       { type: 'review_ai_panel', titleTR: 'AI panel durumunu incele', reasonTR: 'Sistem hata ve analizleri', severity: 'low', deepLink: '/akademi/ai-kanit', estimatedMinutes: 5, bucket: 'T8', dataSource: 'ai_agent_logs' },
     ],
   },
@@ -192,7 +192,7 @@ export const NBA_CONFIG: Record<string, RoleNBAConfig> = {
       { type: 'high_reject_rate', titleTR: 'Yüksek batch red oranı', severity: 'warning', dataSource: 'factory_batch_verifications', bucket: 'T3' },
     ],
     actions: [
-      { type: 'review_complaints', titleTR: 'Şikayetleri incele', reasonTR: '48 saatten fazla açık şikayet var', severity: 'high', deepLink: '/kalite', estimatedMinutes: 15, bucket: 'T3', dataSource: 'product_complaints' },
+      { type: 'review_complaints', titleTR: 'Şikayetleri incele', reasonTR: '48 saatten fazla açık şikayet var', severity: 'high', deepLink: '/kalite-denetimi', estimatedMinutes: 15, bucket: 'T3', dataSource: 'product_complaints' },
       { type: 'review_batches', titleTR: 'Batch red oranlarını incele', reasonTR: 'Red oranı eşiğin üstünde', severity: 'medium', deepLink: '/fabrika', estimatedMinutes: 10, bucket: 'T3', dataSource: 'factory_batch_verifications' },
       { type: 'review_checklists', titleTR: 'Checklist uyumluluğu', reasonTR: 'Checklist tamamlama oranları', severity: 'low', deepLink: '/checklistler', estimatedMinutes: 10, bucket: 'T1', dataSource: 'checklist_completions' },
     ],
@@ -205,9 +205,9 @@ export const NBA_CONFIG: Record<string, RoleNBAConfig> = {
       { type: 'food_safety_violation', titleTR: 'Gıda güvenliği ihlali', severity: 'critical', dataSource: 'product_complaints', bucket: 'T3' },
     ],
     actions: [
-      { type: 'review_safety', titleTR: 'Gıda güvenliği kontrolü', reasonTR: 'Kalite kontrol formları bekliyor', severity: 'high', deepLink: '/kalite', estimatedMinutes: 15, bucket: 'T3', dataSource: 'product_complaints' },
+      { type: 'review_safety', titleTR: 'Gıda güvenliği kontrolü', reasonTR: 'Kalite kontrol formları bekliyor', severity: 'high', deepLink: '/kalite-denetimi', estimatedMinutes: 15, bucket: 'T3', dataSource: 'product_complaints' },
       { type: 'review_checklists', titleTR: 'Checklist denetimi', reasonTR: 'Gıda güvenliği checklist durumu', severity: 'medium', deepLink: '/checklistler', estimatedMinutes: 10, bucket: 'T1', dataSource: 'checklist_completions' },
-      { type: 'review_complaints', titleTR: 'Ürün şikayetleri', reasonTR: 'Gıda kalitesi şikayetleri', severity: 'low', deepLink: '/kalite', estimatedMinutes: 10, bucket: 'T3', dataSource: 'product_complaints' },
+      { type: 'review_complaints', titleTR: 'Ürün şikayetleri', reasonTR: 'Gıda kalitesi şikayetleri', severity: 'low', deepLink: '/kalite-denetimi', estimatedMinutes: 10, bucket: 'T3', dataSource: 'product_complaints' },
     ],
   },
 
@@ -231,9 +231,9 @@ export const NBA_CONFIG: Record<string, RoleNBAConfig> = {
       { type: 'open_tickets', titleTR: 'Açık destek talebi', severity: 'warning', dataSource: 'equipment_faults', bucket: 'T7' },
     ],
     actions: [
-      { type: 'respond_tickets', titleTR: 'Destek taleplerini yanıtla', reasonTR: 'Yanıt bekleyen talepler var', severity: 'high', deepLink: '/arizalar', estimatedMinutes: 15, bucket: 'T7', dataSource: 'equipment_faults' },
+      { type: 'respond_tickets', titleTR: 'Destek taleplerini yanıtla', reasonTR: 'Yanıt bekleyen talepler var', severity: 'high', deepLink: '/ariza', estimatedMinutes: 15, bucket: 'T7', dataSource: 'equipment_faults' },
       { type: 'update_kb', titleTR: 'Bilgi bankasını güncelle', reasonTR: 'Sık sorulan sorulara göre güncelleme', severity: 'medium', deepLink: '/bilgi-bankasi', estimatedMinutes: 20, bucket: 'T2', dataSource: 'missing' },
-      { type: 'track_issues', titleTR: 'Şube sorunlarını takip et', reasonTR: 'Devam eden sorunlar', severity: 'low', deepLink: '/arizalar', estimatedMinutes: 10, bucket: 'T7', dataSource: 'equipment_faults' },
+      { type: 'track_issues', titleTR: 'Şube sorunlarını takip et', reasonTR: 'Devam eden sorunlar', severity: 'low', deepLink: '/ariza', estimatedMinutes: 10, bucket: 'T7', dataSource: 'equipment_faults' },
     ],
   },
 
@@ -247,7 +247,7 @@ export const NBA_CONFIG: Record<string, RoleNBAConfig> = {
     actions: [
       { type: 'approve_leaves', titleTR: 'İzin taleplerini onayla', reasonTR: '72 saatten fazla bekleyen talepler', severity: 'high', deepLink: '/ik', estimatedMinutes: 10, bucket: 'T4', dataSource: 'leave_requests' },
       { type: 'review_overtime', titleTR: 'Mesai raporu hazırla', reasonTR: 'Haftalık mesai verisi incelenmeli', severity: 'medium', deepLink: '/ik', estimatedMinutes: 15, bucket: 'T4', dataSource: 'shift_attendance' },
-      { type: 'check_contracts', titleTR: 'Personel sözleşme kontrol', reasonTR: 'Sözleşme bitiş tarihleri yaklaşıyor', severity: 'low', deepLink: '/personel', estimatedMinutes: 10, bucket: 'T4', dataSource: 'users' },
+      { type: 'check_contracts', titleTR: 'Personel sözleşme kontrol', reasonTR: 'Sözleşme bitiş tarihleri yaklaşıyor', severity: 'low', deepLink: '/ik', estimatedMinutes: 10, bucket: 'T4', dataSource: 'users' },
     ],
   },
 

@@ -92,6 +92,11 @@ The frontend utilizes React 18+ with TypeScript and Vite, employing Shadcn/ui (N
 - Every change must pass the DoD checklist before completion.
 - Only P0 production-breaking bugs may bypass the weekly scope lock.
 
+## Completed Sprint Items
+- **T0.0**: Security hardening (admin password, auth audit, notification spam fix)
+- **T0.1**: Data cleanup & dashboard reliability (equipment maintenance dates, uptime fix, fault separation, EOM widget, bulk archive)
+- **T1.0**: Supervisor daily cycle validation (NBA dead link fixes, yoklama route fix, e2e tested navigation/tasks/checklists/bulk archive)
+
 ## External Dependencies
 - **OpenAI API**: Used for AI-powered vision analysis, chat completions, embeddings, and summary generation.
 - **Replit Auth**: Utilized for user authentication via OpenID Connect.

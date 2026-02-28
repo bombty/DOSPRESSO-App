@@ -39,7 +39,7 @@ const NAV_LINKS: Record<string, { label: string; path: string }> = {
   reports: { label: "Raporlar", path: "/raporlar" },
   inspections: { label: "Denetimler", path: "/denetimler" },
   lost_found: { label: "Kayip Esya", path: "/kayip-esya" },
-  attendance: { label: "Yoklama", path: "/yoklama" },
+  attendance: { label: "Yoklama", path: "/ik" },
   knowledge_base: { label: "Bilgi Bankasi", path: "/bilgi-bankasi" },
   factory: { label: "Fabrika", path: "/fabrika" },
   procurement: { label: "Satinalma", path: "/satinalma" },
