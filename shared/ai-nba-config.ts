@@ -165,7 +165,7 @@ export const NBA_CONFIG: Record<string, RoleNBAConfig> = {
       { type: 'low_training_score', titleTR: 'Düşük eğitim skoru', severity: 'warning', dataSource: 'user_career_progress', bucket: 'T2' },
     ],
     actions: [
-      { type: 'review_branches', titleTR: 'Şube skorlarını incele', reasonTR: 'Kritik skoru olan şubeler var', severity: 'high', deepLink: '/subeler', estimatedMinutes: 15, bucket: 'T8', dataSource: 'user_career_progress' },
+      { type: 'review_branches', titleTR: 'Şube skorlarını incele', reasonTR: 'Kritik skoru olan şubeler var', severity: 'high', deepLink: '/sube-saglik-skoru', estimatedMinutes: 15, bucket: 'T8', dataSource: 'user_career_progress' },
       { type: 'review_training', titleTR: 'Eğitim etkinlik raporu', reasonTR: 'Düşük eğitim skoru olan personel', severity: 'medium', deepLink: '/ik', estimatedMinutes: 10, bucket: 'T2', dataSource: 'user_career_progress' },
       { type: 'review_ai_panel', titleTR: 'AI panel durumunu incele', reasonTR: 'Sistem hata ve analizleri', severity: 'low', deepLink: '/akademi/ai-kanit', estimatedMinutes: 5, bucket: 'T8', dataSource: 'ai_agent_logs' },
     ],

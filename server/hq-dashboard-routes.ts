@@ -3,7 +3,8 @@ import { Express } from "express";
 import { storage } from "./storage";
 import { db } from "./db";
 import { branches, users, equipmentFaults, checklistCompletions, customerFeedback, leaveRequests, overtimeRequests, monthlyPayrolls, inventory, purchaseOrders, suppliers, productComplaints, productionBatches, equipment, auditInstances, tasks, guestComplaints, franchiseProjects, factoryProducts, haccpControlPoints, haccpRecords, hygieneAudits, supplierCertifications, foodSafetyTrainings, foodSafetyDocuments } from "@shared/schema";
-import { eq, and, inArray, sql, or } from "drizzle-orm";
+import { eq, and, inArray, sql, or, gte, count } from "drizzle-orm";
+import { computeBranchHealthScores } from "./services/branch-health-scoring";
 
 const HQ_ROLES_LIST = ['ceo', 'cgo', 'admin', 'satinalma', 'kalite_kontrol', 'gida_muhendisi', 'muhasebe', 'muhasebe_ik', 'coach', 'trainer', 'teknik', 'fabrika', 'fabrika_mudur', 'fabrika_sorumlu', 'destek', 'operasyon', 'marketing', 'ik'];
 
@@ -1061,28 +1062,94 @@ export function registerHQDashboardRoutes(app: Express, isAuthenticated: any) {
       if (!allowedRoles.includes(user.role)) {
         return res.status(403).json({ message: "Bu sayfaya erisim yetkiniz yok" });
       }
-      
-      const [branchesData, checklistsData] = await Promise.all([
-        db.select().from(branches),
-        db.select().from(checklistCompletions)
-      ]);
-      
+
+      const healthReport = await computeBranchHealthScores({ rangeDays: 30 });
+      const branchEntries = healthReport.branches;
+
+      const totalBranches = branchEntries.length;
+      const avgScore = totalBranches > 0
+        ? Math.round(branchEntries.reduce((sum, b) => sum + b.totalScore, 0) / totalBranches)
+        : 0;
+
+      const needsVisit = branchEntries.filter(b => b.totalScore < 60).length;
+
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      const [checklistStats] = await db
+        .select({
+          total: count(),
+          completed: sql<number>`COUNT(*) FILTER (WHERE ${checklistCompletions.status} = 'completed')`,
+        })
+        .from(checklistCompletions)
+        .where(gte(checklistCompletions.completedAt, thirtyDaysAgo));
+
+      const complianceRate = checklistStats.total > 0
+        ? Math.round((checklistStats.completed / checklistStats.total) * 100)
+        : 0;
+
+      const totalRiskFlags = branchEntries.reduce((sum, b) => sum + b.riskFlags.length, 0);
+
+      const avgTrend = avgScore >= 75 ? "up" : avgScore >= 50 ? "stable" : "down";
+
+      const sortedBranches = [...branchEntries].sort((a, b) => a.totalScore - b.totalScore);
+
+      const branchScores = sortedBranches.map(b => ({
+        id: b.branchId,
+        name: b.branchName,
+        score: Math.round(b.totalScore),
+        level: b.level,
+        trend: b.trend.direction === 'flat' ? 'stable' : b.trend.direction,
+        delta: b.trend.delta,
+        status: b.totalScore >= 80 ? 'healthy' : b.totalScore >= 60 ? 'warning' : 'critical',
+        riskFlags: b.riskFlags,
+      }));
+
+      const alerts: { message: string; severity: string; branchId?: number }[] = [];
+
+      for (const b of sortedBranches) {
+        if (b.totalScore < 60) {
+          alerts.push({
+            message: `${b.branchName} — skor ${Math.round(b.totalScore)}/100, acil ziyaret gerekli`,
+            severity: 'critical',
+            branchId: b.branchId,
+          });
+        }
+        if (b.trend.direction === 'down' && b.trend.delta <= -5) {
+          alerts.push({
+            message: `${b.branchName} — son dönemde ${Math.abs(b.trend.delta)} puan düşüş`,
+            severity: 'warning',
+            branchId: b.branchId,
+          });
+        }
+        for (const flag of b.riskFlags.filter(f => f.severity === 'high')) {
+          alerts.push({
+            message: `${b.branchName} — ${flag.label}`,
+            severity: 'warning',
+            branchId: b.branchId,
+          });
+        }
+      }
+
+      if (alerts.length === 0) {
+        alerts.push({ message: "Tüm şubeler normal aralıkta", severity: "healthy" });
+      }
+
       res.json({
         metrics: [
-          { title: "Ortalama Şube Puanı", value: "4.2/5", status: "healthy", trend: "up" },
-          { title: "Ziyaret Bekleyen", value: 8, status: "warning", trend: "stable" },
-          { title: "Uyumluluk Oranı", value: "91%", status: "healthy", trend: "up" },
-          { title: "İyileştirme Önerisi", value: 15, status: "healthy", trend: "stable" }
+          { title: "Ortalama Şube Puanı", value: `${avgScore}/100`, status: avgScore >= 75 ? 'healthy' : avgScore >= 50 ? 'warning' : 'critical', trend: avgTrend },
+          { title: "Ziyaret Bekleyen", value: needsVisit, status: needsVisit === 0 ? 'healthy' : needsVisit <= 3 ? 'warning' : 'critical', trend: "stable" },
+          { title: "Uyumluluk Oranı", value: `${complianceRate}%`, status: complianceRate >= 80 ? 'healthy' : complianceRate >= 60 ? 'warning' : 'critical', trend: complianceRate >= 80 ? "up" : "stable" },
+          { title: "İyileştirme Önerisi", value: totalRiskFlags, status: totalRiskFlags <= 5 ? 'healthy' : totalRiskFlags <= 15 ? 'warning' : 'critical', trend: "stable" },
         ],
-        branchScores: branchesData.slice(0, 5).map((b: any, i: number) => ({
-          name: b.name,
-          score: 85 - (i * 3) + Math.floor(Math.random() * 10),
-          trend: i % 2 === 0 ? "up" : "stable"
-        })),
-        alerts: [
-          { message: "2 subede checklist tamamlama dusuk", severity: "warning" },
-          { message: "Kadikoy subesinde acil ziyaret gerekli", severity: "critical" }
-        ]
+        branchScores,
+        alerts,
+        summary: {
+          totalBranches,
+          green: branchEntries.filter(b => b.level === 'green').length,
+          yellow: branchEntries.filter(b => b.level === 'yellow').length,
+          red: branchEntries.filter(b => b.level === 'red').length,
+          generatedAt: healthReport.generatedAt,
+        },
       });
     } catch (error: any) {
       console.error("Error in Coach dashboard:", error);

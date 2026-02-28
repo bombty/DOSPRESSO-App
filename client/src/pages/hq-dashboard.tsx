@@ -552,72 +552,41 @@ function CoachDashboard() {
     queryKey: ['/api/hq-dashboard/coach'],
   });
 
-  const fallbackMetrics: MetricCard[] = [
-    { 
-      title: "Ortalama Şube Puanı", 
-      value: "4.2/5", 
-      icon: <Star className="w-5 h-5 text-yellow-500" />, 
-      iconBgClass: "bg-yellow-500/10",
-      status: 'healthy', 
-      trend: 'up',
-      onClick: () => setLocation('/raporlar/performans')
-    },
-    { 
-      title: "Ziyaret Bekleyen", 
-      value: 8, 
-      icon: <Eye className="w-5 h-5 text-purple-500" />, 
-      iconBgClass: "bg-purple-500/10",
-      status: 'warning',
-      onClick: () => setLocation('/operasyon/subeler')
-    },
-    { 
-      title: "Uyumluluk Oranı", 
-      value: "91%", 
-      icon: <ClipboardCheck className="w-5 h-5 text-green-500" />, 
-      iconBgClass: "bg-green-500/10",
-      status: 'healthy',
-      onClick: () => setLocation('/operasyon/checklistler')
-    },
-    { 
-      title: "İyileştirme Önerisi", 
-      value: 15, 
-      icon: <Lightbulb className="w-5 h-5 text-orange-500" />, 
-      iconBgClass: "bg-orange-500/10",
-      status: 'healthy',
-      onClick: () => setLocation('/raporlar/ai-asistan')
-    },
-  ];
+  const metricConfig: Record<string, { icon: JSX.Element; iconBgClass: string; onClick: () => void }> = {
+    "Ortalama Şube Puanı": { icon: <Star className="w-5 h-5 text-yellow-500" />, iconBgClass: "bg-yellow-500/10", onClick: () => setLocation('/sube-saglik-skoru') },
+    "Ziyaret Bekleyen": { icon: <Eye className="w-5 h-5 text-purple-500" />, iconBgClass: "bg-purple-500/10", onClick: () => setLocation('/sube-saglik-skoru') },
+    "Uyumluluk Oranı": { icon: <ClipboardCheck className="w-5 h-5 text-green-500" />, iconBgClass: "bg-green-500/10", onClick: () => setLocation('/operasyon?tab=checklistler') },
+    "İyileştirme Önerisi": { icon: <Lightbulb className="w-5 h-5 text-orange-500" />, iconBgClass: "bg-orange-500/10", onClick: () => setLocation('/raporlar/ai-asistan') },
+  };
+  const defaultIcon = <Store className="w-5 h-5 text-muted-foreground" />;
 
-  const fallbackAlerts = [
-    { message: "Gaziantep İbni Sina - 3 gündür checklist eksik", severity: 'critical' as RiskStatus },
-    { message: "Merkez şube - Satış hedefinin %15 altında", severity: 'warning' as RiskStatus },
-  ];
-
-  const metrics = data?.metrics ? data.metrics.map((m: any, index: number) => {
-    const fallbackIcon = fallbackMetrics[index]?.icon || <Store className="w-5 h-5 text-muted-foreground" />;
+  const metrics: MetricCard[] = data?.metrics ? data.metrics.map((m: any) => {
+    const cfg = metricConfig[m.title];
     return {
       title: m.title,
       value: m.value,
       status: m.status,
       trend: m.trend,
-      icon: fallbackIcon,
-      iconBgClass: fallbackMetrics[index]?.iconBgClass,
-      onClick: fallbackMetrics[index]?.onClick
+      icon: cfg?.icon || defaultIcon,
+      iconBgClass: cfg?.iconBgClass,
+      onClick: cfg?.onClick,
     };
-  }) : fallbackMetrics;
-  
-  const alerts = data?.alerts || fallbackAlerts;
+  }) : Object.entries(metricConfig).map(([title, cfg]) => ({
+    title,
+    value: "—",
+    status: 'healthy' as RiskStatus,
+    icon: cfg.icon,
+    iconBgClass: cfg.iconBgClass,
+    onClick: cfg.onClick,
+  }));
+
+  const alerts = data?.alerts || [];
+  const branchScores: { id: number; name: string; score: number; level: string; trend: string; delta: number; status: string; riskFlags: any[] }[] = data?.branchScores || [];
+  const summary = data?.summary;
 
   if (isLoading) {
     return <DashboardSkeleton />;
   }
-
-  const branchScores = [
-    { name: 'Merkez', score: 4.5, status: 'healthy' },
-    { name: 'İbni Sina', score: 3.2, status: 'critical' },
-    { name: 'Forum', score: 4.3, status: 'healthy' },
-    { name: 'AVM', score: 4.1, status: 'healthy' },
-  ];
 
   return (
     <div className="space-y-3">
@@ -632,29 +601,48 @@ function CoachDashboard() {
         ))}
       </div>
 
+      {summary && (
+        <div className="flex items-center gap-2 flex-wrap text-xs text-muted-foreground">
+          <span>{summary.totalBranches} şube</span>
+          <span>·</span>
+          <Badge variant="default" className="text-[10px]">{summary.green} yeşil</Badge>
+          <Badge variant="secondary" className="text-[10px]">{summary.yellow} sarı</Badge>
+          {summary.red > 0 && <Badge variant="destructive" className="text-[10px]">{summary.red} kırmızı</Badge>}
+        </div>
+      )}
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
         <Card 
-          className="hover-elevate cursor-pointer" 
-          onClick={() => setLocation('/operasyon/subeler')}
+          className="cursor-pointer" 
+          onClick={() => setLocation('/sube-saglik-skoru')}
           data-testid="card-branch-scores"
         >
-          <CardHeader className="pb-1 pt-3 px-3">
+          <CardHeader className="pb-1 pt-3 px-3 flex flex-row items-center justify-between gap-2">
             <CardTitle className="text-xs flex items-center gap-1.5">
               <Building2 className="w-3.5 h-3.5" />
-              Şube Sağlık Skorları
+              Şube Sağlık Skorları ({branchScores.length})
             </CardTitle>
+            <span className="text-[10px] text-muted-foreground">Detay için tıkla</span>
           </CardHeader>
           <CardContent className="px-3 pb-3">
-            <div className="space-y-2">
-              {branchScores.map((branch, index) => (
-                <div key={index} className="flex items-center gap-3">
-                  <span className="text-xs w-24">{branch.name}</span>
-                  <Progress value={branch.score * 20} className="flex-1" />
-                  <Badge variant={getRiskBadgeVariant(branch.status as RiskStatus)} className="text-[10px]">
+            <div className="space-y-1.5 max-h-64 overflow-y-auto">
+              {branchScores.map((branch) => (
+                <div key={branch.id} className="flex items-center gap-2" data-testid={`row-branch-${branch.id}`}>
+                  <span className="text-xs w-28 truncate">{branch.name}</span>
+                  <Progress value={branch.score} className="flex-1" />
+                  <Badge 
+                    variant={branch.status === 'healthy' ? 'default' : branch.status === 'warning' ? 'secondary' : 'destructive'} 
+                    className="text-[10px] min-w-[3rem] justify-center"
+                  >
                     {branch.score}
                   </Badge>
+                  {branch.trend === 'down' && <span className="text-destructive text-[10px]">↓</span>}
+                  {branch.trend === 'up' && <span className="text-green-500 text-[10px]">↑</span>}
                 </div>
               ))}
+              {branchScores.length === 0 && (
+                <p className="text-xs text-muted-foreground text-center py-4">Şube verisi bulunamadı</p>
+              )}
             </div>
           </CardContent>
         </Card>

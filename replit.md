@@ -97,6 +97,7 @@ The frontend utilizes React 18+ with TypeScript and Vite, employing Shadcn/ui (N
 - **T0.1**: Data cleanup & dashboard reliability (equipment maintenance dates, uptime fix, fault separation, EOM widget, bulk archive)
 - **T1.0**: Supervisor daily cycle validation (NBA dead link fixes, yoklama route fix, e2e tested navigation/tasks/checklists/bulk archive)
 - **T2.0**: Branch Health Score gerçekçi çalışma (Training bileşeni Academy V2 user_career_progress'e bağlandı, CGO dashboard Branch Health Score API'sine entegre edildi, yetersiz veri uyarı banner eklendi)
+- **T3.0**: Coach Dashboard & Şube Drill-Down (Coach API gerçek Branch Health Score'a bağlandı, 22 şube 0-100 skalasında sıralı gösterim, drill-down /sube-saglik-skoru'ya yönlendirme, NBA deep link /subeler→/sube-saglik-skoru düzeltmesi, kötüleşen şube alert sistemi, metrik-icon eşleştirme title-based yapıldı)
 
 ## External Dependencies
 - **OpenAI API**: Used for AI-powered vision analysis, chat completions, embeddings, and summary generation.
