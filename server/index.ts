@@ -214,10 +214,12 @@ async function logDbDiagnostics() {
 
 async function bootstrapAdminUser() {
   try {
-    const password = process.env.ADMIN_BOOTSTRAP_PASSWORD || '0000';
     if (!process.env.ADMIN_BOOTSTRAP_PASSWORD) {
-      log(`⚠️  ADMIN_BOOTSTRAP_PASSWORD env not set, using default '0000'. Set this env var for production!`);
+      console.error(`❌ ADMIN_BOOTSTRAP_PASSWORD env variable is not set. Cannot start without a secure admin password.`);
+      console.error(`   Set ADMIN_BOOTSTRAP_PASSWORD in Replit Secrets before starting the application.`);
+      process.exit(1);
     }
+    const password = process.env.ADMIN_BOOTSTRAP_PASSWORD;
     const hashedPassword = await bcrypt.hash(password, 10);
 
     const existingAdmin = await storage.getUserByUsername('admin');
@@ -225,7 +227,7 @@ async function bootstrapAdminUser() {
       await db.update(users)
         .set({ hashedPassword, accountStatus: 'approved', isActive: true })
         .where(eq(users.id, existingAdmin.id));
-      log(`🔐 Admin user exists (id=${existingAdmin.id}), password synced from ${process.env.ADMIN_BOOTSTRAP_PASSWORD ? 'ADMIN_BOOTSTRAP_PASSWORD env' : 'default'}`);
+      log(`🔐 Admin user exists (id=${existingAdmin.id}), password synced from ADMIN_BOOTSTRAP_PASSWORD env`);
       return;
     }
 
@@ -243,7 +245,7 @@ async function bootstrapAdminUser() {
       accountStatus: 'approved',
     }).returning({ id: users.id });
 
-    log(`🔐 Admin user created (id=${newAdmin.id}). Password source: ${process.env.ADMIN_BOOTSTRAP_PASSWORD ? 'ADMIN_BOOTSTRAP_PASSWORD env' : 'default'}`);
+    log(`🔐 Admin user created (id=${newAdmin.id}). Password source: ADMIN_BOOTSTRAP_PASSWORD env`);
   } catch (error) {
     console.error("❌ Admin bootstrap failed:", error);
   }

@@ -76,7 +76,7 @@ The frontend utilizes React 18+ with TypeScript and Vite, employing Shadcn/ui (N
 - **Checklist Scoring**: 40% weight in compositeScore, scored by supervisor, daily reminders active.
 - **Performance Score Data Flows**: Task ratings and checklist completions automatically update employee performance scores.
 - **Evaluation Anti-Abuse System**: 24-hour cooldown between evaluations of same employee, monthly max 2 evaluations per evaluator-employee pair.
-- **Reminder System**: 5-minute interval checks for task reminders, overdue notifications, maintenance alerts, checklist completion reminders, and evaluation reminders.
+- **Reminder System**: 5-minute interval checks for task reminders, overdue notifications, maintenance alerts, checklist completion reminders, and evaluation reminders. All reminder types use DB-based deduplication (24h window) to prevent notification spam across server restarts. Admin bootstrap requires ADMIN_BOOTSTRAP_PASSWORD env variable (no default fallback).
 - **Branch Dashboard**: Comprehensive dashboard with real-time stats, alert management, kiosk mode access, and quick access buttons.
 - **PDF Generation**: Uses jsPDF with Helvetica font and Turkish character sanitization.
 - **Academy V2 Implementation**: Includes Gate system, Content Pack management, My Path NBA engine, and Onboarding Studio for creating and assigning day-by-day learning paths with approval workflows. Role-based UI separation ensures coaches, supervisors, and employees have tailored views and access to Academy features. Centralized Academy RBAC enforces role-based access to APIs and frontend components.

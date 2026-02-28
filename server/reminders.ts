@@ -630,8 +630,6 @@ async function checkMaintenanceReminders() {
   }
 }
 
-const sentEvalReminderKeys = new Set<string>();
-
 async function checkEvaluationReminders() {
   try {
     const now = new Date();
@@ -642,6 +640,16 @@ async function checkEvaluationReminders() {
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
     const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
     const daysLeft = Math.max(0, Math.ceil((monthEnd.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)));
+
+    const cutoffTime = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+    const recentEvalNotifs = await db.select({
+      userId: notifications.userId,
+    }).from(notifications)
+      .where(and(
+        eq(notifications.type, 'evaluation_reminder'),
+        gt(notifications.createdAt, cutoffTime)
+      ));
+    const alreadyNotifiedToday = new Set(recentEvalNotifs.map(n => n.userId));
 
     const supervisors = await db.select({
       id: users.id,
@@ -656,8 +664,7 @@ async function checkEvaluationReminders() {
 
     for (const sup of supervisors) {
       if (!sup.branchId) continue;
-      const dedupKey = `eval-reminder:${sup.id}:${todayKey}`;
-      if (sentEvalReminderKeys.has(dedupKey)) continue;
+      if (alreadyNotifiedToday.has(sup.id)) continue;
 
       const branchEmps = await db.select({ id: users.id })
         .from(users)
@@ -692,7 +699,6 @@ async function checkEvaluationReminders() {
           isRead: false,
           branchId: sup.branchId,
         });
-        sentEvalReminderKeys.add(dedupKey);
       }
     }
   } catch (error) {
