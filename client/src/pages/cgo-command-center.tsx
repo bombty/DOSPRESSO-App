@@ -82,6 +82,7 @@ interface CGOData {
     totalFaults: number;
     activeFaults: number;
     criticalFaults: number;
+    highFaults: number;
     resolvedFaults: number;
     equipmentTotal: number;
     equipmentActive: number;
@@ -400,7 +401,7 @@ function OperationalTab({ data }: { data: CGOData }) {
 
   const statCards = [
     { label: "Toplam Ariza", value: op.totalFaults, icon: <Wrench className="w-4 h-4 text-blue-500" />, sub: `${op.activeFaults} acik` },
-    { label: "Kritik Arizalar", value: op.criticalFaults, icon: <AlertTriangle className="w-4 h-4 text-red-500" />, sub: "yuksek oncelik" },
+    { label: "Kritik Arizalar", value: op.criticalFaults, icon: <AlertTriangle className="w-4 h-4 text-red-500" />, sub: `${op.highFaults || 0} yuksek oncelikli` },
     { label: "Cozum Orani", value: `%${resolveRate}`, icon: <CheckCircle className="w-4 h-4 text-green-500" />, sub: `${op.resolvedFaults} cozuldu` },
     { label: "Ekipman Uptime", value: `%${op.uptimeRate}`, icon: <Activity className="w-4 h-4 text-purple-500" />, sub: `${op.equipmentActive}/${op.equipmentTotal} aktif` },
   ];
@@ -854,7 +855,7 @@ export default function CGOCommandCenter() {
     branchPerformance: [],
     departmentHealth: [],
     alerts: [],
-    operational: { totalFaults: 0, activeFaults: 0, criticalFaults: 0, resolvedFaults: 0, equipmentTotal: 0, equipmentActive: 0, uptimeRate: 100, totalChecklists: 0 },
+    operational: { totalFaults: 0, activeFaults: 0, criticalFaults: 0, highFaults: 0, resolvedFaults: 0, equipmentTotal: 0, equipmentActive: 0, uptimeRate: 100, totalChecklists: 0 },
     workforce: { total: 0, hq: 0, branch: 0, roleDistribution: {} },
     lastUpdated: new Date().toISOString()
   };

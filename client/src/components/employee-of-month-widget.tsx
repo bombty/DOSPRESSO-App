@@ -45,7 +45,7 @@ export function EmployeeOfMonthWidget() {
     );
   }
 
-  if (!winner) {
+  if (!winner || winner.winnerName === "Bilinmiyor" || winner.score === 0) {
     return null;
   }
 

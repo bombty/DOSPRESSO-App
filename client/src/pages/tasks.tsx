@@ -56,6 +56,8 @@ export default function Tasks() {
   const [bulkScheduledTime, setBulkScheduledTime] = useState("");
   const [showFairnessDialog, setShowFairnessDialog] = useState(false);
   const [fairnessPeriod, setFairnessPeriod] = useState(30);
+  const [showBulkArchiveDialog, setShowBulkArchiveDialog] = useState(false);
+  const [selectedArchiveIds, setSelectedArchiveIds] = useState<number[]>([]);
 
   const { data: tasks, isLoading } = useQuery<Task[]>({
     queryKey: ["/api/tasks"],
@@ -99,6 +101,15 @@ export default function Tasks() {
     const now = new Date();
     return filteredTasksForStats.filter(t => t.dueDate && new Date(t.dueDate) < now && t.status !== 'onaylandi');
   }, [filteredTasksForStats]);
+
+  const archivableTasks = useMemo(() => {
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    const terminalStates = ['onaylandi', 'basarisiz', 'iptal_edildi'];
+    return overdueTasks.filter(t => 
+      t.dueDate && new Date(t.dueDate) < thirtyDaysAgo && !terminalStates.includes(t.status)
+    );
+  }, [overdueTasks]);
 
 
   const { data: allUsers, isLoading: isAllUsersLoading } = useQuery<User[]>({
@@ -152,6 +163,22 @@ export default function Tasks() {
   }, [searchQuery, filterBranchId, filterAssigneeId, filterStatus, filterPriority, filterDateFrom, filterDateTo]);
 
 
+
+  const bulkArchiveMutation = useMutation({
+    mutationFn: async (data: { taskIds: number[]; reason: string }) => {
+      const response = await apiRequest("POST", "/api/tasks/bulk-archive", data);
+      return response.json();
+    },
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
+      setShowBulkArchiveDialog(false);
+      setSelectedArchiveIds([]);
+      toast({ title: "Basarili", description: `${data.archivedCount} gorev arsivlendi` });
+    },
+    onError: (error: any) => {
+      toast({ title: "Hata", description: error.message || "Toplu arsivleme basarisiz", variant: "destructive" });
+    },
+  });
 
   const bulkAssignMutation = useMutation({
     mutationFn: async (data: any) => {
@@ -401,6 +428,21 @@ export default function Tasks() {
                 </div>
                 <p className="text-xs text-muted-foreground">Gecikmiş</p>
                 <p className="text-lg font-bold text-destructive">{overdueTasks.length}</p>
+                {archivableTasks.length > 0 && (user?.role === 'supervisor' || isHQRole(user?.role as any)) && (
+                  <Button
+                    size="sm"
+                    variant="destructive"
+                    data-testid="button-bulk-archive"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedArchiveIds(archivableTasks.map(t => t.id));
+                      setShowBulkArchiveDialog(true);
+                    }}
+                  >
+                    <XCircle className="h-3 w-3 mr-1" />
+                    Toplu Arsivle ({archivableTasks.length})
+                  </Button>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -989,6 +1031,42 @@ export default function Tasks() {
                 data-testid="button-cancel-rating"
               >
                 İptal
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showBulkArchiveDialog} onOpenChange={setShowBulkArchiveDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Toplu Gorev Arsivleme</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              30+ gun gecikmiş <strong>{selectedArchiveIds.length}</strong> gorev "iptal edildi" olarak isaretlenecek.
+              Bu islem geri alinamaz.
+            </p>
+            <div className="flex gap-2 justify-end">
+              <Button
+                variant="outline"
+                onClick={() => setShowBulkArchiveDialog(false)}
+                data-testid="button-cancel-archive"
+              >
+                Vazgec
+              </Button>
+              <Button
+                variant="destructive"
+                disabled={bulkArchiveMutation.isPending}
+                onClick={() => {
+                  bulkArchiveMutation.mutate({
+                    taskIds: selectedArchiveIds,
+                    reason: "Gecikmiş görev toplu temizliği",
+                  });
+                }}
+                data-testid="button-confirm-archive"
+              >
+                {bulkArchiveMutation.isPending ? "Arsivleniyor..." : `${selectedArchiveIds.length} Gorevi Arsivle`}
               </Button>
             </div>
           </div>

@@ -2177,4 +2177,74 @@ const router = Router();
     }
   });
 
+  router.post("/api/tasks/bulk-archive", isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as any;
+      const { taskIds, reason } = req.body;
+
+      if (!taskIds || !Array.isArray(taskIds) || taskIds.length === 0) {
+        return res.status(400).json({ message: "Görev ID listesi gerekli" });
+      }
+
+      if (taskIds.length > 200) {
+        return res.status(400).json({ message: "Tek seferde en fazla 200 görev arşivlenebilir" });
+      }
+
+      const isHQ = isHQRole(user.role);
+      const isSupervisor = user.role === 'supervisor';
+      if (!isHQ && !isSupervisor) {
+        return res.status(403).json({ message: "Bu işlem için yetkiniz yok" });
+      }
+
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+      const targetTasks = await db.select({
+        id: tasks.id,
+        status: tasks.status,
+        dueDate: tasks.dueDate,
+        branchId: tasks.branchId,
+      }).from(tasks)
+        .where(inArray(tasks.id, taskIds));
+
+      const terminalStates = ['onaylandi', 'basarisiz', 'iptal_edildi'];
+      const eligible = targetTasks.filter(t => {
+        if (terminalStates.includes(t.status)) return false;
+        if (!t.dueDate || new Date(t.dueDate) > thirtyDaysAgo) return false;
+        if (isSupervisor && !isHQ && t.branchId !== user.branchId) return false;
+        return true;
+      });
+
+      if (eligible.length === 0) {
+        return res.status(400).json({ message: "Arşivlenebilecek uygun görev bulunamadı" });
+      }
+
+      const eligibleIds = eligible.map(t => t.id);
+      await db.update(tasks)
+        .set({
+          status: 'iptal_edildi',
+          statusUpdatedAt: new Date(),
+          statusUpdatedById: user.id,
+        })
+        .where(inArray(tasks.id, eligibleIds));
+
+      await auditLog(req, {
+        eventType: 'task.bulk_archived',
+        action: 'bulk_archive',
+        resource: 'tasks',
+        resourceId: String(eligible.length),
+        details: { count: eligible.length, reason: reason || 'Gecikmiş görev temizliği', taskIds: eligibleIds },
+      });
+
+      res.json({
+        message: `${eligible.length} görev arşivlendi`,
+        archivedCount: eligible.length,
+        skippedCount: taskIds.length - eligible.length,
+      });
+    } catch (error: any) {
+      console.error("Bulk archive error:", error);
+      res.status(500).json({ message: "Toplu arşivleme başarısız" });
+    }
+  });
+
 export default router;

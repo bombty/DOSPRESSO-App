@@ -8915,7 +8915,7 @@ Dusuk puanli alanlara odaklan ve pozitif, motive edici ol. JSON dizisi olarak ya
       };
 
       // ======= FABRIKA =======
-      const activeEquipment = allEquipment.filter((e: any) => e.status === 'active');
+      const activeEquipment = allEquipment.filter((e: any) => e.isActive === true);
       const uptimePercent = allEquipment.length > 0 ? Math.round((activeEquipment.length / allEquipment.length) * 100) : 100;
 
       const fabrikaSummary = {
@@ -10848,8 +10848,9 @@ Bu verilere dayanarak performans analizi ve iyileştirme önerileri oluştur.`
       const hqUsers = activeUsers.filter(u => !u.branchId);
       const branchUsers = activeUsers.filter(u => u.branchId);
       const activeFaults = allFaults.filter(f => f.status === 'open' || f.status === 'in_progress');
-      const criticalFaults = activeFaults.filter(f => f.priority === 'critical' || f.priority === 'high');
-      const equipmentActive = allEquipment.filter((e: any) => e.status === 'active').length;
+      const criticalFaults = activeFaults.filter(f => f.priority === 'critical');
+      const highFaults = activeFaults.filter(f => f.priority === 'high');
+      const equipmentActive = allEquipment.filter((e: any) => e.isActive === true).length;
       const equipmentTotal = allEquipment.length;
       const uptimeRate = equipmentTotal > 0 ? Math.round((equipmentActive / equipmentTotal) * 100) : 100;
 
@@ -10918,6 +10919,7 @@ Bu verilere dayanarak performans analizi ve iyileştirme önerileri oluştur.`
           totalFaults: allFaults.length,
           activeFaults: activeFaults.length,
           criticalFaults: criticalFaults.length,
+          highFaults: highFaults.length,
           resolvedFaults: allFaults.filter(f => f.status === 'resolved' || f.status === 'closed').length,
           equipmentTotal,
           equipmentActive,
