@@ -28,6 +28,11 @@ import {
   Sparkles,
   FileText,
   Check,
+  Download,
+  GraduationCap,
+  UtensilsCrossed,
+  ClipboardList,
+  Scale,
 } from "lucide-react";
 import { ConfirmDeleteDialog, useConfirmDelete } from "@/components/confirm-delete-dialog";
 
@@ -84,6 +89,85 @@ const CATEGORIES = [
   { value: "safety", label: "Güvenlik", icon: Shield, color: "bg-red-500" },
   { value: "faq", label: "SSS", icon: HelpCircle, color: "bg-purple-500" },
 ];
+
+function useSeedMutation(endpoint: string, label: string) {
+  const { toast } = useToast();
+  return useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest(endpoint, "POST");
+      return res.json() as Promise<{ message: string; created: number; skipped: number; total: number }>;
+    },
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/knowledge-base"] });
+      toast({
+        title: label,
+        description: `${result.created} yeni makale oluşturuldu, ${result.skipped} atlandı`,
+      });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Hata", description: error.message, variant: "destructive" });
+    },
+  });
+}
+
+function ContentSeedSection() {
+  const academyMutation = useSeedMutation('/api/knowledge-base/seed-from-academy', 'Akademi Aktarımı');
+  const recipesMutation = useSeedMutation('/api/knowledge-base/seed-from-recipes', 'Reçete Aktarımı');
+  const proceduresMutation = useSeedMutation('/api/knowledge-base/seed-procedures', 'Prosedür Oluşturma');
+  const qualityMutation = useSeedMutation('/api/knowledge-base/seed-quality-specs', 'Kalite Kriterleri');
+
+  const buttons = [
+    { mutation: academyMutation, label: 'Akademi Modüllerinden Aktar', description: '43 eğitim modülünü bilgi bankasına aktar', icon: GraduationCap, testId: 'button-seed-academy' },
+    { mutation: recipesMutation, label: 'Reçetelerden Aktar', description: '10 kategorideki 145 reçeteyi aktar', icon: UtensilsCrossed, testId: 'button-seed-recipes' },
+    { mutation: proceduresMutation, label: 'Prosedürleri Oluştur', description: 'Açılış, kapanış, şikayet, kayıp eşya, hijyen', icon: ClipboardList, testId: 'button-seed-procedures' },
+    { mutation: qualityMutation, label: 'Kalite Kriterlerini Aktar', description: 'Ürün standartları ve ölçüm kriterleri', icon: Scale, testId: 'button-seed-quality' },
+  ];
+
+  const anyPending = buttons.some(b => b.mutation.isPending);
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Download className="h-5 w-5" />
+          İçerik Aktarım
+        </CardTitle>
+        <CardDescription>
+          Mevcut verilerden bilgi bankasına içerik aktarın. Aynı başlıkta makale varsa atlanır.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          {buttons.map((btn) => {
+            const Icon = btn.icon;
+            return (
+              <Button
+                key={btn.testId}
+                variant="outline"
+                className="h-auto flex-col items-start p-4 gap-2"
+                onClick={() => btn.mutation.mutate()}
+                disabled={anyPending}
+                data-testid={btn.testId}
+              >
+                <div className="flex items-center gap-2 w-full">
+                  {btn.mutation.isPending ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Icon className="h-4 w-4" />
+                  )}
+                  <span className="font-medium text-sm">{btn.label}</span>
+                </div>
+                <span className="text-xs text-muted-foreground text-left font-normal">
+                  {btn.description}
+                </span>
+              </Button>
+            );
+          })}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
 
 export default function AdminAIBilgiYonetimi() {
   const { user } = useAuth();
@@ -764,6 +848,8 @@ export default function AdminAIBilgiYonetimi() {
           </CardContent>
         </Card>
       )}
+
+      <ContentSeedSection />
 
       <Card>
         <CardHeader>

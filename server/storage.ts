@@ -473,7 +473,10 @@ export interface IStorage {
   // Knowledge Base operations
   getArticles(category?: string, equipmentTypeId?: string, isPublished?: boolean): Promise<KnowledgeBaseArticle[]>;
   getArticle(id: number): Promise<KnowledgeBaseArticle | undefined>;
+  getArticleByTitle(title: string): Promise<KnowledgeBaseArticle | undefined>;
   createArticle(article: InsertKnowledgeBaseArticle): Promise<KnowledgeBaseArticle>;
+  updateArticle(id: number, updates: Partial<InsertKnowledgeBaseArticle>): Promise<KnowledgeBaseArticle | undefined>;
+  deleteArticle(id: number): Promise<void>;
   incrementArticleViews(id: number): Promise<void>;
   
   // Knowledge Base Embedding operations
@@ -2438,9 +2441,28 @@ export class DatabaseStorage implements IStorage {
     return article;
   }
 
+  async getArticleByTitle(title: string): Promise<KnowledgeBaseArticle | undefined> {
+    const [article] = await db.select().from(knowledgeBaseArticles).where(eq(knowledgeBaseArticles.title, title));
+    return article;
+  }
+
   async createArticle(article: InsertKnowledgeBaseArticle): Promise<KnowledgeBaseArticle> {
     const [newArticle] = await db.insert(knowledgeBaseArticles).values(article).returning();
     return newArticle;
+  }
+
+  async updateArticle(id: number, updates: Partial<InsertKnowledgeBaseArticle>): Promise<KnowledgeBaseArticle | undefined> {
+    const [updated] = await db
+      .update(knowledgeBaseArticles)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(knowledgeBaseArticles.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteArticle(id: number): Promise<void> {
+    await db.delete(knowledgeBaseEmbeddings).where(eq(knowledgeBaseEmbeddings.articleId, id));
+    await db.delete(knowledgeBaseArticles).where(eq(knowledgeBaseArticles.id, id));
   }
 
   async incrementArticleViews(id: number): Promise<void> {

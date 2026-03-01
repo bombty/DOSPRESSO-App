@@ -27,7 +27,7 @@ The frontend utilizes React 18+ with TypeScript and Vite, employing Shadcn/ui (N
 - **Equipment Management**: Comprehensive lifecycle management, health monitoring, maintenance scheduling.
 - **Unified Fault System**: Creation, assignment, workflow, escalation, photo documentation, cost tracking, QR-integrated reporting, and professional PDF export.
 - **SLA Monitoring**: Real-time tracking with automated breach alerts.
-- **AI Integration**: AI photo verification for tasks, RAG-enabled knowledge base search, AI Academy Chat Assistant, Adaptive Learning Engine, and AI-powered smart recommendations.
+- **AI Integration**: AI photo verification for tasks, RAG-enabled knowledge base search (79 articles, 124 embedding chunks), AI Academy Chat Assistant, Adaptive Learning Engine, and AI-powered smart recommendations.
 - **DOSPRESSO Academy (LMS)**: Comprehensive training system including career progression, quiz system, gamification, certification, AI learning paths, advanced analytics, and KPI-driven training recommendations.
 - **Daily Task Guidance**: Role-based task templates with personalized task lists, completion tracking, and AI-powered recommendations.
 - **Advanced Task Workflow**: Enhanced task lifecycle with assignee-assigner approval, Q&A, deadline extension, scheduled delivery, bulk assignment, subtask management, and expanded checker/verifier system with group chat.
@@ -58,6 +58,7 @@ The frontend utilizes React 18+ with TypeScript and Vite, employing Shadcn/ui (N
 - **Academy V2 Implementation**: Includes Gate system, Content Pack management, My Path NBA engine, and Onboarding Studio for creating and assigning day-by-day learning paths with approval workflows. Role-based UI separation and RBAC.
 - **Bulk Equipment Knowledge**: Endpoint for generating type-level AI knowledge entries for all equipment categories.
 - **Vector Auto-Refresh**: AI settings auto-triggers vector re-embed when provider changes (with toggle switch).
+- **Knowledge Base Content Pipeline**: Seed endpoints for importing academy modules, recipes, procedures, and quality specs into AI knowledge base with incremental vector generation. Full CRUD with automatic embedding sync on create/update/delete.
 
 ## Completed UX Audit Sprints
 - **Sprint 1**: Breadcrumb Turkish locale, audit UUID→name, SMTP validation, test data cleanup, header role labels, kampanya tab hide, gate defaults, 0/0 paradox
