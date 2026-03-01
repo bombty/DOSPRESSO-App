@@ -1,17 +1,41 @@
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Progress } from "@/components/ui/progress";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   Users,
-  TrendingUp,
-  ChevronRight,
-  Eye,
   Target,
+  Shield,
+  CheckSquare,
+  BookOpen,
+  TrendingUp,
+  TrendingDown,
+  Minus,
+  GraduationCap,
 } from "lucide-react";
+
+interface GateInfo {
+  gateNumber: number;
+  gateTitleTr: string;
+  status: string;
+  passed: boolean;
+}
+
+interface ChecklistRate {
+  total: number;
+  completed: number;
+  rate: number;
+}
+
+interface MentorOnboarding {
+  id: number;
+  userId: string;
+  status: string;
+  overallProgress: number | null;
+  startDate: string | null;
+}
 
 interface TeamMember {
   userId: string;
@@ -24,6 +48,14 @@ interface TeamMember {
   compositeScore: number;
   completedModules: number;
   lastUpdated: string | null;
+  currentGate: GateInfo | null;
+  checklistRate: ChecklistRate;
+  mentorOnboarding: MentorOnboarding | null;
+}
+
+interface TeamProgressResponse {
+  team: TeamMember[];
+  mentorOnboardings: MentorOnboarding[];
 }
 
 const ROLE_LABELS: Record<string, string> = {
@@ -32,7 +64,7 @@ const ROLE_LABELS: Record<string, string> = {
   barista: "Barista",
   supervisor_buddy: "Sup. Buddy",
   supervisor: "Supervisor",
-  mudur: "Müdür",
+  mudur: "Mudur",
 };
 
 const LEVEL_COLORS: Record<number, string> = {
@@ -43,10 +75,25 @@ const LEVEL_COLORS: Record<number, string> = {
   5: "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300",
 };
 
+const GATE_COLORS: Record<string, string> = {
+  passed: "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300",
+  in_progress: "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300",
+  failed: "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300",
+};
+
+function ScoreTrend({ score }: { score: number }) {
+  if (score >= 70) return <TrendingUp className="h-3 w-3 text-green-500" />;
+  if (score >= 40) return <Minus className="h-3 w-3 text-muted-foreground" />;
+  return <TrendingDown className="h-3 w-3 text-red-500" />;
+}
+
 export default function CoachTeamProgress() {
-  const { data: team, isLoading } = useQuery<TeamMember[]>({
+  const { data: response, isLoading } = useQuery<TeamProgressResponse>({
     queryKey: ['/api/academy/team-progress'],
   });
+
+  const team = Array.isArray(response) ? response : response?.team || [];
+  const mentorOnboardings = Array.isArray(response) ? [] : response?.mentorOnboardings || [];
 
   if (isLoading) {
     return (
@@ -70,18 +117,21 @@ export default function CoachTeamProgress() {
   const avgScore = totalMembers > 0
     ? Math.round((team || []).reduce((sum, m) => sum + (m.compositeScore || 0), 0) / totalMembers)
     : 0;
+  const avgChecklist = totalMembers > 0
+    ? Math.round((team || []).reduce((sum, m) => sum + (m.checklistRate?.rate || 0), 0) / totalMembers)
+    : 0;
 
   return (
     <div className="space-y-6 p-4 max-w-4xl mx-auto" data-testid="coach-team-progress">
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <div className="flex items-center gap-2">
           <Users className="h-5 w-5 text-primary" />
-          <h2 className="text-lg font-semibold">Takım İlerlemesi</h2>
-          <Badge variant="secondary">{totalMembers} kişi</Badge>
+          <h2 className="text-lg font-semibold">Takim Ilerlemesi</h2>
+          <Badge variant="secondary">{totalMembers} kisi</Badge>
         </div>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <Card data-testid="stat-total">
           <CardContent className="p-3 text-center">
             <p className="text-2xl font-bold">{totalMembers}</p>
@@ -100,7 +150,49 @@ export default function CoachTeamProgress() {
             <p className="text-xs text-muted-foreground">Aktif Seviye</p>
           </CardContent>
         </Card>
+        <Card data-testid="stat-checklist">
+          <CardContent className="p-3 text-center">
+            <p className="text-2xl font-bold">%{avgChecklist}</p>
+            <p className="text-xs text-muted-foreground">Checklist Ort.</p>
+          </CardContent>
+        </Card>
       </div>
+
+      {mentorOnboardings.length > 0 && (
+        <Card data-testid="mentor-onboardings">
+          <CardContent className="p-3">
+            <div className="flex items-center gap-2 mb-2">
+              <BookOpen className="h-4 w-4 text-primary" />
+              <span className="text-sm font-semibold">Mentor Oldugunuz Onboarding'ler</span>
+              <Badge variant="secondary">{mentorOnboardings.length}</Badge>
+            </div>
+            <div className="space-y-2">
+              {mentorOnboardings.map(ob => {
+                const member = team.find(m => m.userId === ob.userId);
+                return (
+                  <div key={ob.id} className="flex items-center gap-3 p-2 rounded-md bg-muted/50" data-testid={`mentor-onboarding-${ob.id}`}>
+                    <Avatar className="h-6 w-6">
+                      <AvatarFallback className="text-[10px]">
+                        {(member?.firstName?.[0] || '?') + (member?.lastName?.[0] || '')}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1 min-w-0">
+                      <span className="text-xs font-medium truncate">
+                        {member ? `${member.firstName} ${member.lastName}` : ob.userId}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Progress value={ob.overallProgress || 0} className="h-1.5 w-16" />
+                      <span className="text-xs text-muted-foreground">%{ob.overallProgress || 0}</span>
+                    </div>
+                    <Badge variant="outline" className="text-[10px]">{ob.status}</Badge>
+                  </div>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {Object.entries(groupedByLevel)
         .sort(([a], [b]) => Number(a) - Number(b))
@@ -134,19 +226,45 @@ export default function CoachTeamProgress() {
                             <Badge variant="outline">
                               {ROLE_LABELS[member.role] || member.role}
                             </Badge>
+                            {member.currentGate && (
+                              <Badge variant="secondary" className={`text-[10px] ${GATE_COLORS[member.currentGate.passed ? 'passed' : member.currentGate.status] || ''}`} data-testid={`gate-badge-${member.userId}`}>
+                                <Shield className="h-2.5 w-2.5 mr-0.5" />
+                                Gate-{member.currentGate.gateNumber}
+                                {member.currentGate.passed ? ' Gecti' : member.currentGate.status === 'failed' ? ' Kaldi' : ''}
+                              </Badge>
+                            )}
                           </div>
                           <div className="flex items-center gap-3 mt-1">
                             <div className="flex-1">
                               <Progress value={Math.min(100, member.compositeScore)} className="h-1.5" />
                             </div>
-                            <span className="text-xs text-muted-foreground whitespace-nowrap">
-                              {Math.round(member.compositeScore)} puan
-                            </span>
+                            <div className="flex items-center gap-1">
+                              <ScoreTrend score={member.compositeScore} />
+                              <span className="text-xs text-muted-foreground whitespace-nowrap">
+                                {Math.round(member.compositeScore)} puan
+                              </span>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-4 mt-1.5">
+                            <div className="flex items-center gap-1 text-xs text-muted-foreground" data-testid={`modules-${member.userId}`}>
+                              <GraduationCap className="h-3 w-3" />
+                              <span>{member.completedModules} modul</span>
+                            </div>
+                            <div className="flex items-center gap-1 text-xs text-muted-foreground" data-testid={`checklist-${member.userId}`}>
+                              <CheckSquare className="h-3 w-3" />
+                              <span>%{member.checklistRate?.rate || 0} checklist</span>
+                            </div>
+                            {member.mentorOnboarding && (
+                              <div className="flex items-center gap-1 text-xs text-muted-foreground" data-testid={`onboarding-${member.userId}`}>
+                                <BookOpen className="h-3 w-3" />
+                                <span>Onboarding %{member.mentorOnboarding.overallProgress || 0}</span>
+                              </div>
+                            )}
                           </div>
                         </div>
-                        <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                        <div className="flex items-center gap-1 text-xs text-muted-foreground shrink-0">
                           <Target className="h-3 w-3" />
-                          <span>{member.completedModules} modül</span>
+                          <span>{member.completedModules}</span>
                         </div>
                       </div>
                     </CardContent>
@@ -161,7 +279,7 @@ export default function CoachTeamProgress() {
         <Card data-testid="no-team">
           <CardContent className="p-6 text-center">
             <Users className="h-10 w-10 mx-auto text-muted-foreground mb-2" />
-            <p className="font-medium">Takım üyesi bulunamadı</p>
+            <p className="font-medium">Takim uyesi bulunamadi</p>
           </CardContent>
         </Card>
       )}

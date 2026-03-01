@@ -40,6 +40,7 @@ The frontend utilizes React 18+ with TypeScript and Vite, employing Shadcn/ui (N
 - **Factory Shift & Production Planning**: Complete shift planning system with batch tracking, performance monitoring, and worker assignments. Kiosk PIN auth (bcrypt, 3-attempt lockout), 9 stations, production/waste recording with photo upload, shift compliance scoring, collaborative production scoring, and fault reporting.
 - **Factory Kiosk Security**: All kiosk endpoints protected with isKioskAuthenticated middleware. Quality review restricted to authorized roles (admin, fabrika_mudur, fabrika_sorumlu, inspector) with mandatory rejection reason. Task completion (gorev_bitis) separated from shift closure (vardiya_kapat).
 - **Branch Health Score Dashboard**: 5-component deterministic scoring system with role-based scoping, time-range filters, trend indicators, and risk flags.
+- **Coach Dashboard & Drill-Down**: Enhanced team progress with gate status badges, 7-day checklist completion rates, mentor onboarding tracking, and score trend indicators. CGO branch drill-down links to `/subeler/:id`. Branch comparison view at `/sube-karsilastirma`.
 
 ### System Design Choices
 - **Health Score Calculation**: Real-time scores based on recent faults and compliance.

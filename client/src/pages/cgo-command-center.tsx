@@ -190,7 +190,7 @@ function GrowthTab({ data }: { data: CGOData }) {
                 <div 
                   key={branch.id} 
                   className="flex items-center gap-2 cursor-pointer hover-elevate rounded-md p-1.5"
-                  onClick={() => setLocation(`/operasyon`)}
+                  onClick={() => setLocation(`/subeler/${branch.id}`)}
                   data-testid={`cgo-branch-rank-${i}`}
                 >
                   <Badge variant={i < 3 ? "default" : "secondary"} className="text-[10px] w-6 justify-center shrink-0">
@@ -210,6 +210,12 @@ function GrowthTab({ data }: { data: CGOData }) {
               ))}
               {data.branchPerformance.length === 0 && (
                 <p className="text-sm text-muted-foreground text-center py-4">Henüz şube verisi yok</p>
+              )}
+              {data.branchPerformance.length > 0 && (
+                <Button variant="outline" size="sm" className="w-full mt-2" onClick={() => setLocation('/sube-karsilastirma')} data-testid="cgo-branch-compare-link">
+                  <BarChart3 className="w-3 h-3 mr-1" />
+                  Şube Karşılaştırma
+                </Button>
               )}
             </div>
           </CardContent>

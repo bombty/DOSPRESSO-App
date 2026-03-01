@@ -33,6 +33,7 @@ import {
   insertOnboardingTemplateStepSchema,
   insertEmployeeOnboardingAssignmentSchema,
   branches,
+  checklistCompletions,
 } from "@shared/schema";
 import { eq, desc, asc, and, or, gte, lte, sql, inArray, isNull, not, ne, count } from "drizzle-orm";
 import { z } from "zod";
@@ -894,6 +895,77 @@ router.get('/api/academy/team-progress', isAuthenticated, requireAcademyCoachOrS
       ? teamResults.filter(r => r.user.branchId === branchFilter)
       : teamResults;
 
+    const userIds = filteredResults.map(r => r.user.id);
+
+    const [latestGateAttempts, checklistStats, mentorOnboardings] = await Promise.all([
+      userIds.length > 0
+        ? db.select({
+            userId: gateAttempts.userId,
+            gateId: gateAttempts.gateId,
+            gateNumber: careerGates.gateNumber,
+            gateTitleTr: careerGates.titleTr,
+            status: gateAttempts.status,
+            overallPassed: gateAttempts.overallPassed,
+          })
+          .from(gateAttempts)
+          .innerJoin(careerGates, eq(gateAttempts.gateId, careerGates.id))
+          .where(inArray(gateAttempts.userId, userIds))
+          .orderBy(desc(gateAttempts.createdAt))
+        : [],
+
+      userIds.length > 0
+        ? db.select({
+            userId: checklistCompletions.userId,
+            total: sql<number>`count(*)`.as('total'),
+            completed: sql<number>`count(*) filter (where ${checklistCompletions.status} = 'completed')`.as('completed'),
+          })
+          .from(checklistCompletions)
+          .where(and(
+            inArray(checklistCompletions.userId, userIds),
+            gte(checklistCompletions.scheduledDate, sql`(current_date - interval '7 days')::date`),
+          ))
+          .groupBy(checklistCompletions.userId)
+        : [],
+
+      user.role === 'coach' || user.role === 'admin' || user.role === 'trainer'
+        ? db.select({
+            id: employeeOnboardingAssignments.id,
+            userId: employeeOnboardingAssignments.userId,
+            status: employeeOnboardingAssignments.status,
+            overallProgress: employeeOnboardingAssignments.overallProgress,
+            startDate: employeeOnboardingAssignments.startDate,
+          })
+          .from(employeeOnboardingAssignments)
+          .where(and(
+            eq(employeeOnboardingAssignments.mentorId, user.id),
+            inArray(employeeOnboardingAssignments.status, ['active', 'in_progress']),
+          ))
+        : [],
+    ]);
+
+    const gateByUser = new Map<string, { gateNumber: number; gateTitleTr: string; status: string; passed: boolean }>();
+    for (const ga of latestGateAttempts) {
+      if (!gateByUser.has(ga.userId)) {
+        gateByUser.set(ga.userId, {
+          gateNumber: ga.gateNumber,
+          gateTitleTr: ga.gateTitleTr,
+          status: ga.status || 'in_progress',
+          passed: ga.overallPassed,
+        });
+      }
+    }
+
+    const checklistByUser = new Map<string, { total: number; completed: number; rate: number }>();
+    for (const cs of checklistStats) {
+      const rate = cs.total > 0 ? Math.round((cs.completed / cs.total) * 100) : 0;
+      checklistByUser.set(cs.userId, { total: cs.total, completed: cs.completed, rate });
+    }
+
+    const mentorOnboardingByUser = new Map<string, typeof mentorOnboardings[0]>();
+    for (const mo of mentorOnboardings) {
+      mentorOnboardingByUser.set(mo.userId, mo);
+    }
+
     const team = filteredResults.map(r => ({
       userId: r.user.id,
       firstName: r.user.firstName,
@@ -905,9 +977,12 @@ router.get('/api/academy/team-progress', isAuthenticated, requireAcademyCoachOrS
       compositeScore: r.progress?.compositeScore || 0,
       completedModules: (r.progress?.completedModuleIds || []).length,
       lastUpdated: r.progress?.lastUpdatedAt,
+      currentGate: gateByUser.get(r.user.id) || null,
+      checklistRate: checklistByUser.get(r.user.id) || { total: 0, completed: 0, rate: 0 },
+      mentorOnboarding: mentorOnboardingByUser.get(r.user.id) || null,
     }));
 
-    res.json(team);
+    res.json({ team, mentorOnboardings });
   } catch (error: any) {
     handleApiError(res, error, "Ekip ilerleme verisi alınamadı");
   }

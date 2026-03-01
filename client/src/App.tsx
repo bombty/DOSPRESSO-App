@@ -140,6 +140,7 @@ import EmployeeDashboard from "@/pages/sube/employee-dashboard";
 import MerkezDashboard from "@/pages/merkez-dashboard";
 import ChecklistExecutionPage from "@/pages/sube/checklist-execution";
 import HQFabrikaAnalitik from "@/pages/hq-fabrika-analitik";
+import SubeKarsilastirma from "@/pages/sube-karsilastirma";
 import CanliTakip from "@/pages/canli-takip";
 import AdminDashboard from "@/pages/admin/index";
 import AdminYetkilendirme from "@/pages/admin/yetkilendirme";
@@ -413,6 +414,7 @@ function Router() {
           <Route path="/urun-sikayet" component={UrunSikayet} />
           <Route path="/raporlar/sube-saglik" component={SubeSaglikSkoru} />
           <Route path="/sube-saglik-skoru" component={SubeSaglikSkoru} />
+          <Route path="/sube-karsilastirma">{() => <HQOnly><SubeKarsilastirma /></HQOnly>}</Route>
           <Route path="/kullanim-kilavuzu" component={KullanimKilavuzu} />
         </>
       )}
