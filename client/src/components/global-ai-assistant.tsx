@@ -420,6 +420,12 @@ export function GlobalAIAssistant() {
   const quickQueries = roleBasedQueries[userRole] || roleBasedQueries.default;
 
   useEffect(() => {
+    const handler = () => setIsOpen(true);
+    window.addEventListener('open-ai-assistant', handler);
+    return () => window.removeEventListener('open-ai-assistant', handler);
+  }, []);
+
+  useEffect(() => {
     if (isOpen && inputRef.current) {
       inputRef.current.focus();
     }

@@ -12,6 +12,7 @@ interface NavItem {
   path: string;
   badge?: number;
   isSearch?: boolean;
+  isOverlay?: boolean;
 }
 
 interface NavItemConfig {
@@ -21,6 +22,7 @@ interface NavItemConfig {
   defaultLabelEN: string;
   getPath: (user: any) => string;
   isSearch?: boolean;
+  isOverlay?: boolean;
 }
 
 const NAV_ITEM_CONFIG: Record<string, NavItemConfig> = {
@@ -60,8 +62,9 @@ const NAV_ITEM_CONFIG: Record<string, NavItemConfig> = {
     getPath: (user) => {
       if (user?.role === 'ceo') return '/ceo-command-center';
       if (user?.role === 'cgo') return '/cgo-command-center';
-      return '/ai-asistan';
+      return '#ai-overlay';
     },
+    isOverlay: true,
   },
   admin: {
     icon: Settings,
@@ -241,6 +244,7 @@ export function BottomNav() {
         label: resolveLabel(config),
         path: config.getPath(user),
         isSearch: config.isSearch,
+        isOverlay: config.isOverlay,
       };
     });
 
@@ -265,6 +269,26 @@ export function BottomNav() {
                   onClick={() => setSearchOpen(true)}
                   className="flex flex-col items-center justify-center flex-1 h-full gap-0.5 transition-all duration-300 relative rounded-xl text-muted-foreground hover:text-foreground"
                   data-testid="nav-ara"
+                >
+                  <div className="relative pointer-events-none">
+                    <div className="p-1.5 rounded-xl transition-all duration-300">
+                      <Icon className="w-5 h-5 transition-colors duration-300" />
+                    </div>
+                  </div>
+                  <span className="text-[10px] pointer-events-none transition-all duration-300 font-medium">
+                    {item.label}
+                  </span>
+                </button>
+              );
+            }
+
+            if (item.isOverlay && item.path === '#ai-overlay') {
+              return (
+                <button
+                  key={`${item.label}-${index}`}
+                  onClick={() => window.dispatchEvent(new Event('open-ai-assistant'))}
+                  className="flex flex-col items-center justify-center flex-1 h-full gap-0.5 transition-all duration-300 relative rounded-xl text-muted-foreground hover:text-foreground"
+                  data-testid="nav-ai-asistan"
                 >
                   <div className="relative pointer-events-none">
                     <div className="p-1.5 rounded-xl transition-all duration-300">

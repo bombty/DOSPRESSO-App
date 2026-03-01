@@ -67,6 +67,7 @@ The frontend utilizes React 18+ with TypeScript and Vite, employing Shadcn/ui (N
 - **Sprint 2**: Navigation consolidation (Ekipman Servis + Servis Talepleri merged, İçerik → İçerik Stüdyosu hub, header simplified, N+1 query fix, notification dedup per-user)
 - **Sprint 3**: Tab overflow gradient indicators, empty state CTAs, PIN lockout notifications, date-utils.ts Turkish locale, CGO dashboard Turkish chars, breadcrumb PATH_LABELS
 - **Sprint 4**: Bulk equipment knowledge generation endpoint + UI, vector auto-refresh on provider change, manual backup restore point, final validation
+- **Sprint 5 (Barista & Supervisor Audit)**: AI Assistant dead link fix (event-based overlay toggle), barista lost-found quick action, supervisor guest-feedback quick action, comprehensive RBAC/bottom-nav/API validation
 
 ## External Dependencies
 - **OpenAI API**: Used for AI-powered vision analysis, chat completions, embeddings, and summary generation.

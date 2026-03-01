@@ -22,7 +22,9 @@ import {
   Briefcase,
   ShoppingCart,
   Store,
-  BarChart3
+  BarChart3,
+  Search as SearchIcon,
+  MessageSquare
 } from "lucide-react";
 
 interface QuickAction {
@@ -316,6 +318,26 @@ const allActions: QuickAction[] = [
     path: "/ik",
     color: "text-rose-600 dark:text-rose-400",
     bgColor: "bg-rose-100 dark:bg-rose-900/40"
+  },
+  { 
+    id: "lost-found", 
+    labelKey: "nav.lostFound",
+    defaultLabelTR: "Kayıp Eşya",
+    defaultLabelEN: "Lost & Found",
+    icon: SearchIcon, 
+    path: "/kayip-esya",
+    color: "text-orange-600 dark:text-orange-400",
+    bgColor: "bg-orange-100 dark:bg-orange-900/40"
+  },
+  { 
+    id: "guest-feedback", 
+    labelKey: "nav.guestFeedback",
+    defaultLabelTR: "Misafir Geri Bildirim",
+    defaultLabelEN: "Guest Feedback",
+    icon: MessageSquare, 
+    path: "/misafir-memnuniyeti",
+    color: "text-purple-600 dark:text-purple-400",
+    bgColor: "bg-purple-100 dark:bg-purple-900/40"
   }
 ];
 

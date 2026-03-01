@@ -59,9 +59,9 @@ export const QUICK_ACTIONS_BY_ROLE: Record<UserRole, string[]> = {
   yatirimci_hq: ['announcements', 'performance'],
   // Branch Roles - Nav: checklists, academy, fault, myshifts
   mudur: ['new-task', 'shifts', 'leaves', 'personnel'],
-  supervisor: ['new-task', 'shifts', 'leaves', 'personnel'],
+  supervisor: ['new-task', 'shifts', 'leaves', 'personnel', 'guest-feedback'],
   supervisor_buddy: ['new-task', 'shifts', 'personnel'],
-  barista: ['checklist', 'leaves'],
+  barista: ['checklist', 'leaves', 'lost-found'],
   bar_buddy: ['checklist'],
   stajyer: ['leaves'],
   yatirimci_branch: ['performance'],
