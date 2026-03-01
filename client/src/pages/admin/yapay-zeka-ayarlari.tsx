@@ -107,6 +107,7 @@ export default function AdminYapayZekaAyarlari() {
   const [isReEmbedding, setIsReEmbedding] = useState(false);
   const [reEmbedResult, setReEmbedResult] = useState<{ success: boolean; message: string; processed?: number; failed?: number; total?: number } | null>(null);
   const [savedProvider, setSavedProvider] = useState<string | null>(null);
+  const [autoReEmbed, setAutoReEmbed] = useState(true);
   
   const [formData, setFormData] = useState<Partial<AISettings>>({
     provider: "openai",
@@ -169,8 +170,15 @@ export default function AdminYapayZekaAyarlari() {
     mutationFn: (data: Partial<AISettings>) =>
       apiRequest("POST", "/api/admin/ai-settings", data),
     onSuccess: () => {
+      const providerWasChanged = savedProvider !== null && formData.provider !== savedProvider;
       queryClient.invalidateQueries({ queryKey: ["/api/admin/ai-settings"] });
-      toast({ title: "AI ayarları kaydedildi" });
+      setSavedProvider(formData.provider || null);
+      if (providerWasChanged && autoReEmbed) {
+        toast({ title: "AI ayarları kaydedildi", description: "Vektörler otomatik yenileniyor..." });
+        handleReEmbed();
+      } else {
+        toast({ title: "AI ayarları kaydedildi" });
+      }
     },
     onError: () => {
       toast({ title: "Hata", description: "Ayarlar kaydedilemedi", variant: "destructive" });
@@ -280,18 +288,30 @@ export default function AdminYapayZekaAyarlari() {
             </p>
           </div>
         </div>
-        <Button 
-          onClick={handleSave} 
-          disabled={saveMutation.isPending}
-          data-testid="button-save-ai-settings"
-        >
-          {saveMutation.isPending ? (
-            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-          ) : (
-            <Save className="h-4 w-4 mr-2" />
+        <div className="flex items-center gap-3">
+          {savedProvider !== null && formData.provider !== savedProvider && (
+            <div className="flex items-center gap-2">
+              <Switch
+                checked={autoReEmbed}
+                onCheckedChange={setAutoReEmbed}
+                data-testid="switch-auto-reembed"
+              />
+              <Label className="text-xs text-muted-foreground whitespace-nowrap">Vektörleri de yenile</Label>
+            </div>
           )}
-          Kaydet
-        </Button>
+          <Button 
+            onClick={handleSave} 
+            disabled={saveMutation.isPending}
+            data-testid="button-save-ai-settings"
+          >
+            {saveMutation.isPending ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            ) : (
+              <Save className="h-4 w-4 mr-2" />
+            )}
+            Kaydet
+          </Button>
+        </div>
       </div>
 
       {isLoading ? (

@@ -250,6 +250,21 @@ export default function AdminAIBilgiYonetimi() {
     },
   });
 
+  const bulkGenerateMutation = useMutation({
+    mutationFn: async (types: string[]) => {
+      const res = await apiRequest("/api/equipment-knowledge/bulk-generate", "POST", { types });
+      return res.json() as Promise<{ message: string; generated: number; total: number; results: Array<{ type: string; itemCount: number; error?: string }> }>;
+    },
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/equipment-knowledge"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/equipment-knowledge/missing"] });
+      toast({ title: "Toplu bilgi üretimi tamamlandı", description: result.message });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Hata", description: error.message, variant: "destructive" });
+    },
+  });
+
   const resetForm = () => {
     setFormData({
       equipmentType: "",
@@ -720,9 +735,32 @@ export default function AdminAIBilgiYonetimi() {
                 <Badge variant="secondary">+{missingKnowledge.groups.length - 10} daha</Badge>
               )}
             </div>
-            <p className="text-xs text-muted-foreground mt-2">
-              Bir badge'e tıklayarak o ekipman için akıllı içerik oluşturabilirsiniz.
-            </p>
+            <div className="flex items-center gap-3 mt-3">
+              <Button
+                variant="default"
+                onClick={() => {
+                  const allMissingTypes = missingKnowledge.groups.map(g => g.type);
+                  bulkGenerateMutation.mutate(allMissingTypes);
+                }}
+                disabled={bulkGenerateMutation.isPending}
+                data-testid="button-bulk-generate"
+              >
+                {bulkGenerateMutation.isPending ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    AI Üretiyor...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="h-4 w-4 mr-2" />
+                    Toplu Bilgi Üret
+                  </>
+                )}
+              </Button>
+              <p className="text-xs text-muted-foreground">
+                Bir badge'e tıklayarak o ekipman için akıllı içerik oluşturabilirsiniz.
+              </p>
+            </div>
           </CardContent>
         </Card>
       )}

@@ -56,6 +56,14 @@ The frontend utilizes React 18+ with TypeScript and Vite, employing Shadcn/ui (N
 - **Evaluation Anti-Abuse System**: 24-hour cooldown between evaluations of same employee, monthly max 2 evaluations per evaluator-employee pair.
 - **Reminder System**: 5-minute interval checks for various task and evaluation reminders with DB-based deduplication.
 - **Academy V2 Implementation**: Includes Gate system, Content Pack management, My Path NBA engine, and Onboarding Studio for creating and assigning day-by-day learning paths with approval workflows. Role-based UI separation and RBAC.
+- **Bulk Equipment Knowledge**: Endpoint for generating type-level AI knowledge entries for all equipment categories.
+- **Vector Auto-Refresh**: AI settings auto-triggers vector re-embed when provider changes (with toggle switch).
+
+## Completed UX Audit Sprints
+- **Sprint 1**: Breadcrumb Turkish locale, audit UUID→name, SMTP validation, test data cleanup, header role labels, kampanya tab hide, gate defaults, 0/0 paradox
+- **Sprint 2**: Navigation consolidation (Ekipman Servis + Servis Talepleri merged, İçerik → İçerik Stüdyosu hub, header simplified, N+1 query fix, notification dedup per-user)
+- **Sprint 3**: Tab overflow gradient indicators, empty state CTAs, PIN lockout notifications, date-utils.ts Turkish locale, CGO dashboard Turkish chars, breadcrumb PATH_LABELS
+- **Sprint 4**: Bulk equipment knowledge generation endpoint + UI, vector auto-refresh on provider change, manual backup restore point, final validation
 
 ## External Dependencies
 - **OpenAI API**: Used for AI-powered vision analysis, chat completions, embeddings, and summary generation.

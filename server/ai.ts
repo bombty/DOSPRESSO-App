@@ -3211,6 +3211,106 @@ ${manualText.substring(0, 8000)}`;
 }
 
 // Auto-research equipment troubleshooting from AI knowledge base
+export async function generateBulkEquipmentKnowledge(
+  equipmentType: string,
+  userId?: string
+): Promise<{
+  items: Array<{
+    category: string;
+    title: string;
+    content: string;
+    keywords: string[];
+  }>;
+  summary: string;
+}> {
+  const effectiveUserId = userId || 'system';
+
+  if (!aiRateLimiter.canMakeRequest(effectiveUserId, 'knowledge_generation')) {
+    throw new Error("Çok fazla istek gönderdiniz. Lütfen biraz bekleyin.");
+  }
+
+  const equipmentLabels: Record<string, string> = {
+    'espresso_machine': 'Espresso Makinesi',
+    'grinder': 'Kahve Değirmeni',
+    'refrigerator': 'Buzdolabı',
+    'blender': 'Blender',
+    'ice_machine': 'Buz Makinesi',
+    'dishwasher': 'Bulaşık Makinesi',
+    'oven': 'Fırın',
+    'pos': 'POS Cihazı / Kiosk',
+    'water_filter': 'Su Filtresi',
+    'general': 'Genel Ekipman (Çay makinesi vb.)',
+    'mixer': 'Mikser',
+    'cash': 'Kasa / Yazar Kasa',
+    'krema': 'Krema Makinesi',
+    'tea': 'Çay Makinesi',
+    'kiosk': 'Self-Servis Kiosk',
+  };
+
+  const typeLabel = equipmentLabels[equipmentType] || equipmentType;
+
+  const systemPrompt = `Sen bir profesyonel kahve dükkanı ekipman uzmanısın. Senden ${typeLabel} kategorisindeki ekipmanlar için genel teknik bilgi ve bakım rehberi oluşturmanı istiyorum.
+
+Bu, marka/model bağımsız GENEL bir bilgi tabanıdır. Kahve dükkanlarında yaygın kullanılan ${typeLabel} ekipmanları için:
+
+1. **BAKIM (maintenance)**: Günlük, haftalık, aylık bakım prosedürleri
+2. **ARIZA GİDERME (troubleshooting)**: En sık karşılaşılan arızalar ve çözümleri
+3. **KULLANIM (usage)**: Doğru kullanım talimatları ve ipuçları
+4. **GÜVENLİK (safety)**: Güvenlik uyarıları ve koruyucu önlemler
+
+HER KATEGORİ İÇİN:
+- Genel ve uygulanabilir adımlar yaz
+- Kahve dükkanı ortamına uygun pratik bilgiler ver
+- Türkçe teknik terimler kullan
+- En az 150 kelime içerik oluştur
+
+JSON formatında yanıt ver:
+{
+  "items": [
+    {
+      "category": "maintenance|troubleshooting|usage|safety",
+      "title": "Başlık (Türkçe)",
+      "content": "Detaylı içerik - adım adım",
+      "keywords": ["anahtar", "kelimeler"]
+    }
+  ],
+  "summary": "Oluşturulan içeriğin özeti"
+}`;
+
+  const userPrompt = `${typeLabel} için genel bakım, arıza giderme, kullanım ve güvenlik bilgilerini oluştur. Bu bilgiler DOSPRESSO kahve franchise şubelerinde kullanılacaktır.`;
+
+  try {
+    const response = await aiChatCall({
+      model: CHAT_MODEL,
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt }
+      ],
+      response_format: { type: "json_object" },
+      max_tokens: 4000,
+      temperature: 0.4
+    });
+
+    const content = response.choices[0]?.message?.content;
+    if (!content) throw new Error("AI yanıt içeriği boş");
+
+    const result = JSON.parse(content);
+    aiRateLimiter.incrementRequest(effectiveUserId, 'knowledge_generation');
+
+    if (!result.items || result.items.length === 0) {
+      throw new Error("AI içerik oluşturamadı");
+    }
+
+    return {
+      items: result.items,
+      summary: result.summary || `${typeLabel} için ${result.items.length} bilgi kaydı oluşturuldu`
+    };
+  } catch (error: any) {
+    console.error("Bulk equipment knowledge generation error:", error);
+    throw new Error(error.message || "Toplu bilgi üretimi yapılamadı");
+  }
+}
+
 export async function researchEquipmentTroubleshooting(
   equipmentType: string,
   brand: string,

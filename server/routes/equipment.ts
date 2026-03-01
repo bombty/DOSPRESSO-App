@@ -21,7 +21,7 @@ import {
   insertEquipmentTroubleshootingStepSchema,
   insertEquipmentCatalogSchema,
 } from "@shared/schema";
-import { generateEquipmentKnowledgeFromManual, researchEquipmentTroubleshooting } from "../ai";
+import { generateEquipmentKnowledgeFromManual, researchEquipmentTroubleshooting, generateBulkEquipmentKnowledge } from "../ai";
 import { auditLog } from "../audit";
 import { handleApiError } from "./helpers";
 
@@ -1067,6 +1067,94 @@ const router = Router();
       res.json(result);
     } catch (error: any) {
       handleApiError(res, error, "ResearchEquipment");
+    }
+  });
+
+  router.post('/api/equipment-knowledge/bulk-generate', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      if (user.role !== 'admin') {
+        return res.status(403).json({ message: "Bu işlem sadece admin kullanıcıları içindir" });
+      }
+
+      const { types } = req.body;
+
+      if (!types || !Array.isArray(types) || types.length === 0) {
+        return res.status(400).json({ message: "En az bir ekipman tipi gereklidir" });
+      }
+
+      const knowledge = await storage.getEquipmentKnowledge();
+      const coveredTypes = new Set(knowledge.map(k => k.equipmentType));
+
+      const typeMapping: Record<string, string> = {
+        'espresso': 'espresso_machine',
+        'grinder': 'grinder',
+        'cappuccino': 'espresso_machine',
+        'water_filter': 'water_filter',
+        'kiosk': 'pos',
+        'pos': 'pos',
+        'tea': 'general',
+        'ice': 'ice_machine',
+        'ice_machine': 'ice_machine',
+        'refrigerator': 'refrigerator',
+        'dishwasher': 'dishwasher',
+        'oven': 'oven',
+        'blender': 'blender',
+        'cash': 'pos',
+        'mixer': 'blender',
+        'krema': 'espresso_machine',
+        'general': 'general',
+      };
+
+      const uniqueTypes = Array.from(new Set(types.map((t: string) => typeMapping[t] || t)));
+      const missingTypes = uniqueTypes.filter(t => !coveredTypes.has(t));
+
+      if (missingTypes.length === 0) {
+        return res.json({ 
+          message: "Tüm ekipman tipleri zaten bilgi tabanında mevcut",
+          generated: 0,
+          total: 0,
+          results: []
+        });
+      }
+
+      const results: Array<{ type: string; itemCount: number; error?: string }> = [];
+
+      for (const eqType of missingTypes) {
+        try {
+          const result = await generateBulkEquipmentKnowledge(eqType, user.id);
+
+          for (const item of result.items) {
+            await storage.createEquipmentKnowledge({
+              equipmentType: eqType,
+              brand: null,
+              model: null,
+              category: item.category,
+              title: item.title,
+              content: item.content,
+              keywords: item.keywords,
+              priority: 1,
+              isActive: true,
+            });
+          }
+
+          results.push({ type: eqType, itemCount: result.items.length });
+        } catch (error: any) {
+          console.error(`Bulk generate failed for type ${eqType}:`, error);
+          results.push({ type: eqType, itemCount: 0, error: error.message });
+        }
+      }
+
+      const totalGenerated = results.reduce((sum, r) => sum + r.itemCount, 0);
+
+      res.json({
+        message: `${totalGenerated} bilgi kaydı oluşturuldu (${results.filter(r => r.itemCount > 0).length} tip)`,
+        generated: totalGenerated,
+        total: missingTypes.length,
+        results
+      });
+    } catch (error: any) {
+      handleApiError(res, error, "BulkGenerateKnowledge");
     }
   });
 
