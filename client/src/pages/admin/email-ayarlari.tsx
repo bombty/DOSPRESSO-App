@@ -93,6 +93,23 @@ export default function AdminEmailAyarlari() {
   };
 
   const handleSave = () => {
+    const host = formData.smtpHost.trim();
+    if (!host || /^\d+$/.test(host)) {
+      toast({ title: "Hata", description: "Geçerli bir SMTP sunucu adresi girin (örn: smtp.example.com)", variant: "destructive" });
+      return;
+    }
+
+    const port = Number(formData.smtpPort);
+    if (!Number.isInteger(port) || port < 1 || port > 65535) {
+      toast({ title: "Hata", description: "SMTP portu 1-65535 arasında bir tam sayı olmalıdır", variant: "destructive" });
+      return;
+    }
+
+    if (!formData.smtpFromEmail || !formData.smtpFromEmail.includes("@")) {
+      toast({ title: "Hata", description: "Geçerli bir gönderen e-posta adresi girin (@ işareti içermelidir)", variant: "destructive" });
+      return;
+    }
+
     saveMutation.mutate(formData);
   };
 

@@ -40,6 +40,24 @@ const PATH_LABELS: Record<string, string> = {
   '/canli-takip': 'Canlı Takip',
   '/tarif': 'Tarifler',
   '/duyuru': 'Duyurular',
+  '/icerik-studyosu': 'İçerik Stüdyosu',
+  '/pin-yonetimi': 'PIN Yönetimi',
+  '/ai-bilgi-yonetimi': 'AI Bilgi Yönetimi',
+  '/gorev-sablonlari': 'Görev Şablonları',
+  '/ai-maliyetler': 'AI Maliyetleri',
+  '/email-ayarlari': 'Email Ayarları',
+  '/servis-mail-ayarlari': 'Servis Mail Ayarları',
+  '/yapay-zeka-ayarlari': 'Yapay Zeka Ayarları',
+  '/yedekleme': 'Yedekleme',
+  '/checklist-yonetimi': 'Checklist Yönetimi',
+  '/akademi-yonetimi': 'Akademi Yönetimi',
+  '/ekipman-yonetimi': 'Ekipman Yönetimi',
+  '/ekipman-servis': 'Ekipman Servis',
+  '/servis-talepleri': 'Servis Talepleri',
+  '/toplu-veri': 'Toplu Veri Yönetimi',
+  '/fabrika-istasyonlari': 'Fabrika İstasyonları',
+  '/fire-sebepleri': 'Fire Sebepleri',
+  '/kalite-kriterleri': 'Kalite Kriterleri',
 };
 
 const MAX_HISTORY = 10;
@@ -96,14 +114,16 @@ function getPathLabel(path: string, dynamicLabels: Record<string, string>): stri
   if (parts.length === 0) return 'Ana Sayfa';
 
   const basePath = '/' + parts[0];
-  const baseLabel = PATH_LABELS[basePath] || parts[0].charAt(0).toUpperCase() + parts[0].slice(1).replace(/-/g, ' ');
+  const baseLabel = PATH_LABELS[basePath] || parts[0].charAt(0).toLocaleUpperCase('tr-TR') + parts[0].slice(1).replace(/-/g, ' ');
 
   if (parts.length > 1) {
     const lastPart = parts[parts.length - 1];
     if (isDynamicSegment(lastPart)) {
       return baseLabel;
     }
-    return lastPart.charAt(0).toUpperCase() + lastPart.slice(1).replace(/-/g, ' ');
+    const segmentLabel = PATH_LABELS['/' + lastPart];
+    if (segmentLabel) return segmentLabel;
+    return lastPart.charAt(0).toLocaleUpperCase('tr-TR') + lastPart.slice(1).replace(/-/g, ' ');
   }
 
   return baseLabel;

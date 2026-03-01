@@ -19,10 +19,9 @@ interface Gate {
   fromLevelId: number;
   toLevelId: number;
   minDaysInLevel: number;
-  compositeScoreRequired: number;
   quizPassingScore: number;
   retryCooldownDays: number;
-  maxAttempts: number;
+  maxRetries: number;
   isActive: boolean;
   fromLevelTitle: string | null;
   fromLevelRole: string | null;
@@ -78,19 +77,19 @@ export default function CoachGateManagement() {
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-3">
                 <div className="text-center p-2 rounded-md bg-muted/50">
                   <p className="text-xs text-muted-foreground">Min Gün</p>
-                  <p className="font-semibold text-sm">{gate.minDaysInLevel}</p>
+                  <p className="font-semibold text-sm" data-testid={`text-min-days-${gate.gateNumber}`}>{gate.minDaysInLevel || 30}</p>
                 </div>
                 <div className="text-center p-2 rounded-md bg-muted/50">
-                  <p className="text-xs text-muted-foreground">Min Skor</p>
-                  <p className="font-semibold text-sm">{gate.compositeScoreRequired}</p>
+                  <p className="text-xs text-muted-foreground">Quiz Geçme Notu</p>
+                  <p className="font-semibold text-sm" data-testid={`text-quiz-score-${gate.gateNumber}`}>{gate.quizPassingScore || 80}%</p>
                 </div>
                 <div className="text-center p-2 rounded-md bg-muted/50">
-                  <p className="text-xs text-muted-foreground">Quiz Geçme</p>
-                  <p className="font-semibold text-sm">{gate.quizPassingScore}%</p>
+                  <p className="text-xs text-muted-foreground">Bekleme (Gün)</p>
+                  <p className="font-semibold text-sm" data-testid={`text-cooldown-${gate.gateNumber}`}>{gate.retryCooldownDays || 7}</p>
                 </div>
                 <div className="text-center p-2 rounded-md bg-muted/50">
                   <p className="text-xs text-muted-foreground">Max Deneme</p>
-                  <p className="font-semibold text-sm">{gate.maxAttempts}</p>
+                  <p className="font-semibold text-sm" data-testid={`text-max-retries-${gate.gateNumber}`}>{gate.maxRetries || 3}</p>
                 </div>
               </div>
             </CardContent>

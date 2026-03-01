@@ -97,6 +97,7 @@ export default function YeniSubeMegaModule() {
   const [location, setLocation] = useLocation();
 
   const visibleTabs = YENISUBE_TABS.filter(tab => {
+    if (tab.id === 'kampanya') return false;
     if (!tab.permissionModule) return true;
     if (!user?.role) return false;
     if (user.role === 'admin') return true;

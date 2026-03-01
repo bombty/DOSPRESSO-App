@@ -6667,6 +6667,17 @@ export class DatabaseStorage implements IStorage {
       return undefined;
     }
 
+    let auditor: { id: string; firstName: string; lastName: string } | undefined;
+    if (instance.auditorId) {
+      const [auditorUser] = await db
+        .select()
+        .from(users)
+        .where(eq(users.id, instance.auditorId));
+      if (auditorUser) {
+        auditor = { id: auditorUser.id, firstName: auditorUser.firstName, lastName: auditorUser.lastName };
+      }
+    }
+
     // Get instance items with template items
     const instanceItems = await db
       .select()
@@ -6691,6 +6702,7 @@ export class DatabaseStorage implements IStorage {
       ...instance,
       template,
       items: itemsWithTemplateInfo,
+      auditor,
     };
   }
 

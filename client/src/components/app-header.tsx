@@ -128,8 +128,8 @@ export function AppHeader({ notificationCount = 0, user, branchName, onQRClick }
       "coach": "Coach",
       "marketing": "Marketing",
       "trainer": "Eğitmen",
-      "kalite_kontrol": "Kalite K.",
-      "fabrika_mudur": "Fab. Müdür",
+      "kalite_kontrol": "Kalite Kontrol",
+      "fabrika_mudur": "Fabrika Müdür",
       "muhasebe": "Muhasebe",
       "teknik": "Teknik",
       "destek": "Destek",
@@ -138,13 +138,13 @@ export function AppHeader({ notificationCount = 0, user, branchName, onQRClick }
       "stajyer": "Stajyer",
       "bar_buddy": "Bar Buddy",
       "barista": "Barista",
-      "supervisor_buddy": "Sup. Buddy",
+      "supervisor_buddy": "Supervisor Buddy",
       "supervisor": "Supervisor",
       "mudur": "Müdür",
       "yatirimci_branch": "Yatırımcı",
-      "fabrika_operator": "Fab. Operatör",
-      "fabrika_sorumlu": "Fab. Sorumlu",
-      "fabrika_personel": "Fab. Personel",
+      "fabrika_operator": "Fabrika Operatör",
+      "fabrika_sorumlu": "Fabrika Sorumlu",
+      "fabrika_personel": "Fabrika Personel",
     };
     return role ? roleMap[role] || role : "";
   };
