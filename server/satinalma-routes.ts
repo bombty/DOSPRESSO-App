@@ -35,7 +35,7 @@ import {
   rawMaterialPriceHistory,
   users
 } from "@shared/schema";
-import { eq, desc, and, gte, lte, sql, or, like, asc } from "drizzle-orm";
+import { eq, desc, and, gte, lte, sql, or, like, asc, inArray } from "drizzle-orm";
 
 type AuthMiddleware = (req: Request, res: Response, next: () => void) => void;
 
@@ -405,7 +405,8 @@ export function registerSatinalmaRoutes(app: Express, isAuthenticated: AuthMiddl
   // Tüm siparişler
   app.get("/api/purchase-orders", isAuthenticated, async (req: Request, res: Response) => {
     try {
-      const { status, supplierId } = req.query;
+      const { status, supplierId, branchId } = req.query;
+      const user = (req as any).user;
       
       let conditions = [];
       
@@ -415,6 +416,30 @@ export function registerSatinalmaRoutes(app: Express, isAuthenticated: AuthMiddl
       
       if (supplierId) {
         conditions.push(eq(purchaseOrders.supplierId, parseInt(supplierId as string)));
+      }
+      
+      const hqRoles = ["admin", "ceo", "cgo", "satinalma", "muhasebe"];
+      const isHqRole = user && hqRoles.includes(user.role);
+
+      if (branchId && isHqRole) {
+        const parsedBranchId = parseInt(branchId as string);
+        if (!isNaN(parsedBranchId)) {
+          const branchUsers = await db.select({ id: users.id }).from(users).where(eq(users.branchId, parsedBranchId));
+          const branchUserIds = branchUsers.map(u => u.id);
+          if (branchUserIds.length > 0) {
+            conditions.push(inArray(purchaseOrders.createdById, branchUserIds));
+          } else {
+            return res.json([]);
+          }
+        }
+      } else if (!isHqRole && user?.branchId) {
+        const branchUsers = await db.select({ id: users.id }).from(users).where(eq(users.branchId, user.branchId));
+        const branchUserIds = branchUsers.map(u => u.id);
+        if (branchUserIds.length > 0) {
+          conditions.push(inArray(purchaseOrders.createdById, branchUserIds));
+        } else {
+          return res.json([]);
+        }
       }
       
       const orders = await db.select()
@@ -1593,8 +1618,8 @@ export function registerSatinalmaRoutes(app: Express, isAuthenticated: AuthMiddl
       const user = (req as any).user;
       const id = parseInt(req.params.id);
 
-      if (!user || (user.role !== "ceo" && user.role !== "admin")) {
-        return res.status(403).json({ error: "Bu işlem için yetkiniz yok. Sadece CEO/Admin onaylayabilir." });
+      if (!user || !["ceo", "cgo", "admin"].includes(user.role)) {
+        return res.status(403).json({ error: "Bu işlem için yetkiniz yok. Sadece CEO/CGO/Admin onaylayabilir." });
       }
 
       const [order] = await db.select()

@@ -402,23 +402,36 @@ export default function SiparisYonetimi() {
   const { toast } = useToast();
   const { user } = useAuth();
   const [status, setStatus] = useState("all");
+  const [branchFilter, setBranchFilter] = useState("all");
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [selectedSupplierId, setSelectedSupplierId] = useState("");
   const [paymentDialogOrder, setPaymentDialogOrder] = useState<PurchaseOrder | null>(null);
   const [detailDialogOrder, setDetailDialogOrder] = useState<PurchaseOrder | null>(null);
   const isAdminOrCeo = user?.role === "admin" || user?.role === "ceo" || user?.role === "cgo";
+  const canFilterBranch = ["admin", "ceo", "cgo", "satinalma", "muhasebe"].includes(user?.role || "");
 
   const queryParams = new URLSearchParams();
   if (status && status !== "all") queryParams.set("status", status);
+  if (branchFilter && branchFilter !== "all") queryParams.set("branchId", branchFilter);
   const queryString = queryParams.toString();
   const ordersUrl = `/api/purchase-orders${queryString ? `?${queryString}` : ""}`;
 
   const { data: orders, isLoading } = useQuery<PurchaseOrder[]>({
-    queryKey: [ordersUrl],
+    queryKey: ["/api/purchase-orders", status, branchFilter],
+    queryFn: async () => {
+      const res = await fetch(ordersUrl, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch orders");
+      return res.json();
+    },
   });
 
   const { data: suppliers } = useQuery<Supplier[]>({
     queryKey: ["/api/suppliers"],
+  });
+
+  const { data: branches } = useQuery<{ id: number; name: string }[]>({
+    queryKey: ["/api/branches"],
+    enabled: canFilterBranch,
   });
 
   const createMutation = useMutation({
@@ -531,6 +544,20 @@ export default function SiparisYonetimi() {
             ))}
           </SelectContent>
         </Select>
+
+        {canFilterBranch && branches && branches.length > 0 && (
+          <Select value={branchFilter} onValueChange={setBranchFilter}>
+            <SelectTrigger className="w-[200px]" data-testid="select-order-branch">
+              <SelectValue placeholder="Sube" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Tum Subeler</SelectItem>
+              {branches.map((b: { id: number; name: string }) => (
+                <SelectItem key={b.id} value={b.id.toString()}>{b.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
 
         <div className="flex-1" />
 
