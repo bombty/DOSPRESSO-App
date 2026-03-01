@@ -1434,7 +1434,7 @@ function HQEscalatedFaults({ faults, onNavigate }: { faults: any[]; onNavigate: 
                 {fault.branchName && <span className="text-[10px] text-muted-foreground">{fault.branchName}</span>}
                 {fault.createdAt && (
                   <span className="text-[10px] text-muted-foreground">
-                    {format(new Date(fault.createdAt), "dd.MM.yyyy HH:mm")}
+                    {format(new Date(fault.createdAt), "dd.MM.yyyy HH:mm", { locale: tr })}
                   </span>
                 )}
               </div>

@@ -31,6 +31,7 @@ import {
   branches,
   inventory,
   recipes,
+  notifications,
 } from "../../shared/schema";
 
 const router = Router();
@@ -568,7 +569,6 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
       const isValid = await bcrypt.compare(pin, pinRecord.hashedPin);
       
       if (!isValid) {
-        // Increment failed attempts
         const newAttempts = (pinRecord.pinFailedAttempts || 0) + 1;
         const lockUntil = newAttempts >= 3 ? new Date(Date.now() + 15 * 60 * 1000) : null;
         
@@ -578,6 +578,29 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
             pinLockedUntil: lockUntil
           })
           .where(eq(factoryStaffPins.id, pinRecord.id));
+
+        if (newAttempts >= 3) {
+          try {
+            const [lockedUser] = await db.select({ firstName: users.firstName, lastName: users.lastName })
+              .from(users).where(eq(users.id, userId)).limit(1);
+            const lockedName = lockedUser ? `${lockedUser.firstName} ${lockedUser.lastName}` : `Kullanıcı #${userId}`;
+            const admins = await db.select({ id: users.id })
+              .from(users)
+              .where(or(eq(users.role, 'admin'), eq(users.role, 'fabrika_mudur')));
+            if (admins.length > 0) {
+              await db.insert(notifications).values(admins.map(a => ({
+                userId: a.id,
+                type: 'pin_lockout',
+                title: 'PIN Kilitlendi',
+                message: `${lockedName} hesabı 3 başarısız PIN denemesi sonrası kilitlendi`,
+                link: '/admin/fabrika-pin-yonetimi',
+                isRead: false,
+              })));
+            }
+          } catch (notifErr) {
+            console.error("PIN lockout notification error:", notifErr);
+          }
+        }
         
         return res.status(401).json({ 
           message: "Hatalı PIN",

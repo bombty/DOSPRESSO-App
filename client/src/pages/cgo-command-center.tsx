@@ -143,8 +143,8 @@ function GrowthTab({ data }: { data: CGOData }) {
   const g = data.growth;
 
   const kpiCards = [
-    { label: "Toplam Sube", value: g.totalBranches, icon: <Store className="w-5 h-5 text-blue-500" />, color: "text-blue-500" },
-    { label: "Ort. Sube Skoru", value: g.averageBranchScore, icon: <Target className="w-5 h-5 text-emerald-500" />, color: "text-emerald-500", suffix: "/100" },
+    { label: "Toplam Şube", value: g.totalBranches, icon: <Store className="w-5 h-5 text-blue-500" />, color: "text-blue-500" },
+    { label: "Ort. Şube Skoru", value: g.averageBranchScore, icon: <Target className="w-5 h-5 text-emerald-500" />, color: "text-emerald-500", suffix: "/100" },
     { label: "Toplam Personel", value: g.totalEmployees, icon: <Users className="w-5 h-5 text-purple-500" />, color: "text-purple-500" },
     { label: "Ekipman Uptime", value: `%${g.equipmentUptime}`, icon: <Wrench className="w-5 h-5 text-orange-500" />, color: "text-orange-500" },
   ];
@@ -152,9 +152,9 @@ function GrowthTab({ data }: { data: CGOData }) {
   const quickActions = [
     { icon: Store, label: "Operasyonlar", route: "/operasyon" },
     { icon: Users, label: "Personel", route: "/ik" },
-    { icon: AlertTriangle, label: "Arizalar", route: "/ekipman/ariza" },
+    { icon: AlertTriangle, label: "Arızalar", route: "/ekipman/ariza" },
     { icon: Factory, label: "Fabrika", route: "/fabrika" },
-    { icon: ShoppingCart, label: "Satinalma", route: "/satinalma" },
+    { icon: ShoppingCart, label: "Satınalma", route: "/satinalma" },
     { icon: GraduationCap, label: "Akademi", route: "/akademi" },
   ];
 
@@ -181,7 +181,7 @@ function GrowthTab({ data }: { data: CGOData }) {
           <CardHeader className="pb-2">
             <CardTitle className="text-sm flex items-center gap-2">
               <BarChart3 className="w-4 h-4" />
-              Sube Performans Siralamasi
+              Şube Performans Sıralaması
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -209,7 +209,7 @@ function GrowthTab({ data }: { data: CGOData }) {
                 </div>
               ))}
               {data.branchPerformance.length === 0 && (
-                <p className="text-sm text-muted-foreground text-center py-4">Henuz sube verisi yok</p>
+                <p className="text-sm text-muted-foreground text-center py-4">Henüz şube verisi yok</p>
               )}
             </div>
           </CardContent>
@@ -220,7 +220,7 @@ function GrowthTab({ data }: { data: CGOData }) {
             <CardHeader className="pb-2">
               <CardTitle className="text-sm flex items-center gap-2">
                 <AlertTriangle className="w-4 h-4" />
-                Kritik Uyarilar
+                Kritik Uyarılar
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -236,7 +236,7 @@ function GrowthTab({ data }: { data: CGOData }) {
                 )) : (
                   <div className="flex items-center gap-2 p-3 rounded-md bg-green-500/10">
                     <CheckCircle className="w-4 h-4 text-green-500" />
-                    <p className="text-xs text-muted-foreground">Kritik uyari yok</p>
+                    <p className="text-xs text-muted-foreground">Kritik uyarı yok</p>
                   </div>
                 )}
               </div>
@@ -247,7 +247,7 @@ function GrowthTab({ data }: { data: CGOData }) {
             <CardHeader className="pb-2">
               <CardTitle className="text-sm flex items-center gap-2">
                 <Zap className="w-4 h-4" />
-                Hizli Erisim
+                Hızlı Erişim
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -274,7 +274,7 @@ function GrowthTab({ data }: { data: CGOData }) {
         <CardHeader className="pb-2">
           <CardTitle className="text-sm flex items-center gap-2">
             <Users className="w-4 h-4" />
-            Is Gucu Dagilimi
+            İş Gücü Dağılımı
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -289,7 +289,7 @@ function GrowthTab({ data }: { data: CGOData }) {
             </div>
             <div className="text-center" data-testid="cgo-workforce-branch">
               <p className="text-2xl font-bold">{data.workforce.branch}</p>
-              <p className="text-xs text-muted-foreground">Sube Personeli</p>
+              <p className="text-xs text-muted-foreground">Şube Personeli</p>
             </div>
           </div>
           <div className="flex flex-wrap gap-1.5">
@@ -359,7 +359,7 @@ function DepartmentTab({ data }: { data: CGOData }) {
           <CardHeader className="pb-2">
             <CardTitle className="text-sm flex items-center gap-2">
               <Building2 className="w-4 h-4" />
-              Departman Detaylari
+              Departman Detayları
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -400,9 +400,9 @@ function OperationalTab({ data }: { data: CGOData }) {
   const resolveRate = op.totalFaults > 0 ? Math.round((op.resolvedFaults / op.totalFaults) * 100) : 100;
 
   const statCards = [
-    { label: "Toplam Ariza", value: op.totalFaults, icon: <Wrench className="w-4 h-4 text-blue-500" />, sub: `${op.activeFaults} acik` },
-    { label: "Kritik Arizalar", value: op.criticalFaults, icon: <AlertTriangle className="w-4 h-4 text-red-500" />, sub: `${op.highFaults || 0} yuksek oncelikli` },
-    { label: "Cozum Orani", value: `%${resolveRate}`, icon: <CheckCircle className="w-4 h-4 text-green-500" />, sub: `${op.resolvedFaults} cozuldu` },
+    { label: "Toplam Arıza", value: op.totalFaults, icon: <Wrench className="w-4 h-4 text-blue-500" />, sub: `${op.activeFaults} açık` },
+    { label: "Kritik Arızalar", value: op.criticalFaults, icon: <AlertTriangle className="w-4 h-4 text-red-500" />, sub: `${op.highFaults || 0} yüksek öncelikli` },
+    { label: "Çözüm Oranı", value: `%${resolveRate}`, icon: <CheckCircle className="w-4 h-4 text-green-500" />, sub: `${op.resolvedFaults} çözüldü` },
     { label: "Ekipman Uptime", value: `%${op.uptimeRate}`, icon: <Activity className="w-4 h-4 text-purple-500" />, sub: `${op.equipmentActive}/${op.equipmentTotal} aktif` },
   ];
 
@@ -428,7 +428,7 @@ function OperationalTab({ data }: { data: CGOData }) {
           <CardHeader className="pb-2">
             <CardTitle className="text-sm flex items-center gap-2">
               <Store className="w-4 h-4" />
-              Sube Ariza Durumu
+              Şube Arıza Durumu
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -441,7 +441,7 @@ function OperationalTab({ data }: { data: CGOData }) {
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
                     {branch.openFaults > 0 && (
-                      <Badge variant="destructive" className="text-[10px]">{branch.openFaults} acik</Badge>
+                      <Badge variant="destructive" className="text-[10px]">{branch.openFaults} açık</Badge>
                     )}
                     <span className="text-xs text-muted-foreground">{branch.totalFaults} toplam</span>
                   </div>
@@ -462,7 +462,7 @@ function OperationalTab({ data }: { data: CGOData }) {
             <div className="space-y-3">
               <div>
                 <div className="flex items-center justify-between mb-1">
-                  <span className="text-xs text-muted-foreground">Ariza Cozum Orani</span>
+                  <span className="text-xs text-muted-foreground">Arıza Çözüm Oranı</span>
                   <span className="text-xs font-medium">%{resolveRate}</span>
                 </div>
                 <Progress value={resolveRate} className="h-2" />
@@ -479,12 +479,12 @@ function OperationalTab({ data }: { data: CGOData }) {
                   <span className="text-xs text-muted-foreground">Checklist Tamamlanma</span>
                   <span className="text-xs font-medium">{op.totalChecklists}</span>
                 </div>
-                <div className="text-xs text-muted-foreground">Toplam {op.totalChecklists} checklist tamamlandi</div>
+                <div className="text-xs text-muted-foreground">Toplam {op.totalChecklists} checklist tamamlandı</div>
               </div>
               <div className="grid grid-cols-2 gap-2 pt-2 border-t">
                 <div className="text-center">
                   <p className="text-lg font-bold">{data.growth.customerFeedbackCount}</p>
-                  <p className="text-[10px] text-muted-foreground">Musteri Geri Bildirimi</p>
+                  <p className="text-[10px] text-muted-foreground">Müşteri Geri Bildirimi</p>
                 </div>
                 <div className="text-center">
                   <p className="text-lg font-bold">{data.growth.auditCount}</p>
@@ -579,7 +579,7 @@ function ManagerCard({ manager }: { manager: ManagerData }) {
               </div>
               <div className="bg-muted/50 rounded p-1.5">
                 <p className="text-sm font-bold">{manager.metrics.resolvedFaults}/{manager.metrics.assignedFaults}</p>
-                <p className="text-[10px] text-muted-foreground">Ariza</p>
+                <p className="text-[10px] text-muted-foreground">Arıza</p>
               </div>
               <div className="bg-muted/50 rounded p-1.5">
                 <p className="text-sm font-bold">{manager.metrics.checklistsCompleted}</p>
@@ -597,13 +597,13 @@ function ManagerCard({ manager }: { manager: ManagerData }) {
                 {manager.metrics.trainingProgress !== undefined && (
                   <div className="bg-muted/50 rounded p-1.5">
                     <p className="text-sm font-bold">%{manager.metrics.trainingProgress}</p>
-                    <p className="text-[10px] text-muted-foreground">Egitim</p>
+                    <p className="text-[10px] text-muted-foreground">Eğitim</p>
                   </div>
                 )}
                 {manager.metrics.avgResponseTime && (
                   <div className="bg-muted/50 rounded p-1.5">
                     <p className="text-sm font-bold">{manager.metrics.avgResponseTime}</p>
-                    <p className="text-[10px] text-muted-foreground">Ort. Yanit</p>
+                    <p className="text-[10px] text-muted-foreground">Ort. Yanıt</p>
                   </div>
                 )}
               </div>
@@ -655,7 +655,7 @@ function ManagerPerformanceTab() {
           <CardContent className="pt-4 pb-3 px-4">
             <div className="flex items-center gap-2 mb-1">
               <Store className="w-4 h-4 text-purple-500" />
-              <span className="text-xs text-muted-foreground">Sube Yoneticileri</span>
+              <span className="text-xs text-muted-foreground">Şube Yöneticileri</span>
             </div>
             <p className="text-xl font-bold">{data.summary.totalBranch}</p>
           </CardContent>
@@ -673,7 +673,7 @@ function ManagerPerformanceTab() {
           <CardContent className="pt-4 pb-3 px-4">
             <div className="flex items-center gap-2 mb-1">
               <BarChart3 className="w-4 h-4 text-orange-500" />
-              <span className="text-xs text-muted-foreground">Sube Ort.</span>
+              <span className="text-xs text-muted-foreground">Şube Ort.</span>
             </div>
             <p className={`text-xl font-bold ${getScoreColor(data.summary.branchAverageScore)}`}>{data.summary.branchAverageScore}</p>
           </CardContent>
@@ -685,9 +685,9 @@ function ManagerPerformanceTab() {
           <Crown className="w-4 h-4 text-blue-500" />
           DOSPRESSO Merkez Kadro
         </h3>
-        <p className="text-xs text-muted-foreground mb-3">Ece Hanim ve Yavuz Bey'e bagli merkez departman yoneticileri</p>
+        <p className="text-xs text-muted-foreground mb-3">Ece Hanım ve Yavuz Bey'e bağlı merkez departman yöneticileri</p>
         {data.hqManagers.length === 0 ? (
-          <Card><CardContent className="py-6 text-center text-muted-foreground text-sm">HQ merkez personeli bulunamadi</CardContent></Card>
+          <Card><CardContent className="py-6 text-center text-muted-foreground text-sm">HQ merkez personeli bulunamadı</CardContent></Card>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {data.hqManagers.sort((a, b) => b.metrics.overallScore - a.metrics.overallScore).map(m => (
@@ -700,11 +700,11 @@ function ManagerPerformanceTab() {
       <div>
         <h3 className="text-sm font-semibold mb-2 flex items-center gap-2" data-testid="heading-branch-supervisors">
           <Store className="w-4 h-4 text-purple-500" />
-          Sube Yoneticileri (Supervisors)
+          Şube Yöneticileri (Supervisors)
         </h3>
-        <p className="text-xs text-muted-foreground mb-3">Her subenin sorumlu supervisor yoneticileri</p>
+        <p className="text-xs text-muted-foreground mb-3">Her şubenin sorumlu supervisor yöneticileri</p>
         {data.branchManagers.length === 0 ? (
-          <Card><CardContent className="py-6 text-center text-muted-foreground text-sm">Sube supervisor bulunamadi</CardContent></Card>
+          <Card><CardContent className="py-6 text-center text-muted-foreground text-sm">Şube supervisor bulunamadı</CardContent></Card>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {data.branchManagers.sort((a, b) => b.metrics.overallScore - a.metrics.overallScore).map(m => (
@@ -757,16 +757,16 @@ function AIStrategist() {
       <CardHeader className="pb-2">
         <div className="flex items-center gap-2">
           <Brain className="w-5 h-5 text-primary" />
-          <CardTitle className="text-base">AI Strateji Danismani</CardTitle>
+          <CardTitle className="text-base">AI Strateji Danışmanı</CardTitle>
         </div>
-        <p className="text-xs text-muted-foreground">Buyume stratejileri ve operasyonel verimlilik hakkinda sorun</p>
+        <p className="text-xs text-muted-foreground">Büyüme stratejileri ve operasyonel verimlilik hakkında sorun</p>
       </CardHeader>
       <CardContent className="flex-1 flex flex-col gap-3">
         <div className="flex-1 overflow-y-auto space-y-3 max-h-[400px]">
           {conversation.length === 0 && (
             <div className="text-center text-muted-foreground text-sm py-6">
               <Brain className="w-12 h-12 mx-auto mb-3 opacity-20" />
-              <p className="font-medium mb-3">Ornek Sorular</p>
+              <p className="font-medium mb-3">Örnek Sorular</p>
               <div className="space-y-2">
                 {suggestions.map((s, i) => (
                   <button
@@ -889,11 +889,11 @@ export default function CGOCommandCenter() {
         <TabsList className="w-full grid grid-cols-5">
           <TabsTrigger value="growth" className="text-xs" data-testid="tab-cgo-growth">
             <TrendingUp className="w-3.5 h-3.5 mr-1" />
-            <span className="hidden sm:inline">Buyume</span>
+            <span className="hidden sm:inline">Büyüme</span>
           </TabsTrigger>
           <TabsTrigger value="managers" className="text-xs" data-testid="tab-cgo-managers">
             <Crown className="w-3.5 h-3.5 mr-1" />
-            <span className="hidden sm:inline">Yoneticiler</span>
+            <span className="hidden sm:inline">Yöneticiler</span>
           </TabsTrigger>
           <TabsTrigger value="departments" className="text-xs" data-testid="tab-cgo-departments">
             <Building2 className="w-3.5 h-3.5 mr-1" />

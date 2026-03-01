@@ -174,22 +174,25 @@ export default function YeniSubeMegaModule() {
         className="flex-1 flex flex-col"
       >
         <div className="border-b px-4">
-          <ScrollArea className="w-full whitespace-nowrap">
-            <TabsList className="inline-flex h-auto p-1 bg-transparent gap-1">
-              {visibleTabs.map((tab) => (
-                <TabsTrigger
-                  key={tab.id}
-                  value={tab.id}
-                  className="flex items-center gap-2 px-4 py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-md"
-                  data-testid={`tab-yenisube-${tab.id}`}
-                >
-                  {tab.icon}
-                  <span className="hidden sm:inline">{tab.labelTr}</span>
-                </TabsTrigger>
-              ))}
-            </TabsList>
-            <ScrollBar orientation="horizontal" />
-          </ScrollArea>
+          <div className="relative">
+            <ScrollArea className="w-full whitespace-nowrap">
+              <TabsList className="inline-flex h-auto p-1 bg-transparent gap-1">
+                {visibleTabs.map((tab) => (
+                  <TabsTrigger
+                    key={tab.id}
+                    value={tab.id}
+                    className="flex items-center gap-2 px-4 py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-md"
+                    data-testid={`tab-yenisube-${tab.id}`}
+                  >
+                    {tab.icon}
+                    <span className="hidden sm:inline">{tab.labelTr}</span>
+                  </TabsTrigger>
+                ))}
+              </TabsList>
+              <ScrollBar orientation="horizontal" />
+            </ScrollArea>
+            <div className="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-background to-transparent pointer-events-none z-[1]" data-testid="scroll-fade-tabs" />
+          </div>
         </div>
 
         <div className="flex-1 overflow-auto">

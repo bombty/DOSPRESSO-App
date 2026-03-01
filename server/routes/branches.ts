@@ -61,6 +61,7 @@ import {
   customerFeedback,
   hqShiftSessions,
   hqShiftEvents,
+  notifications,
 } from "@shared/schema";
 
 const router = Router();
@@ -2458,6 +2459,32 @@ router.post('/api/branches/:branchId/kiosk/login', async (req, res) => {
           pinLockedUntil: lockUntil
         })
         .where(eq(branchStaffPins.id, pinRecord.id));
+
+      if (newAttempts >= 3) {
+        try {
+          const [lockedUser] = await db.select({ firstName: users.firstName, lastName: users.lastName })
+            .from(users).where(eq(users.id, userId)).limit(1);
+          const lockedName = lockedUser ? `${lockedUser.firstName} ${lockedUser.lastName}` : `Kullanıcı #${userId}`;
+          const [branchInfo] = await db.select({ name: branches.name })
+            .from(branches).where(eq(branches.id, branchId)).limit(1);
+          const branchLabel = branchInfo?.name || `Şube #${branchId}`;
+          const admins = await db.select({ id: users.id })
+            .from(users)
+            .where(or(eq(users.role, 'admin'), eq(users.role, 'bolge_muduru')));
+          if (admins.length > 0) {
+            await db.insert(notifications).values(admins.map(a => ({
+              userId: a.id,
+              type: 'pin_lockout',
+              title: 'PIN Kilitlendi',
+              message: `${lockedName} (${branchLabel}) hesabı 3 başarısız PIN denemesi sonrası kilitlendi`,
+              link: '/admin/fabrika-pin-yonetimi',
+              isRead: false,
+            })));
+          }
+        } catch (notifErr) {
+          console.error("Branch PIN lockout notification error:", notifErr);
+        }
+      }
       
       return res.status(401).json({ 
         message: "Hatalı PIN",

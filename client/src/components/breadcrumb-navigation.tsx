@@ -58,6 +58,8 @@ const PATH_LABELS: Record<string, string> = {
   '/fabrika-istasyonlari': 'Fabrika İstasyonları',
   '/fire-sebepleri': 'Fire Sebepleri',
   '/kalite-kriterleri': 'Kalite Kriterleri',
+  '/cgo-command-center': 'CGO Komuta Merkezi',
+  '/ceo-command-center': 'CEO Komuta Merkezi',
 };
 
 const MAX_HISTORY = 10;

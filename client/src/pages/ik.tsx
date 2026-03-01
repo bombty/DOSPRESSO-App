@@ -1285,8 +1285,12 @@ export default function IKPage() {
                     <TableBody>
                       {filteredEmployeeDocuments.length === 0 ? (
                         <TableRow>
-                          <TableCell colSpan={6} className="text-center text-muted-foreground">
-                            Belge bulunamadı
+                          <TableCell colSpan={6} className="text-center py-8">
+                            <div className="flex flex-col items-center gap-2">
+                              <Upload className="w-8 h-8 text-muted-foreground" />
+                              <p className="font-medium">Belge bulunamadı</p>
+                              <p className="text-sm text-muted-foreground">Personel belgelerini yükleyin ve buradan takip edin</p>
+                            </div>
                           </TableCell>
                         </TableRow>
                       ) : (

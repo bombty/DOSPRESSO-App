@@ -378,7 +378,14 @@ export default function IcerikStudyosu() {
             <EmptyState
               icon={Send}
               title="Yayınlanmış duyuru yok"
-              description="Taslakları yayınlayarak başlayın."
+              description="Taslakları yayınlayarak veya yeni bir duyuru oluşturarak başlayın."
+              actionLabel="Yeni Duyuru Yayınla"
+              onAction={() => {
+                form.reset();
+                setBannerImageUrl("");
+                setSelectedBanner(null);
+                setIsPublishDialogOpen(true);
+              }}
               data-testid="empty-state-published"
             />
           )}
@@ -435,6 +442,8 @@ export default function IcerikStudyosu() {
               icon={LayoutGrid}
               title="Carousel'da banner yok"
               description="Banner Editör ile yeni carousel banner'ı oluşturun."
+              actionLabel="Banner Editörüne Git"
+              onAction={() => setIsEditorOpen(true)}
               data-testid="empty-state-carousel"
             />
           )}

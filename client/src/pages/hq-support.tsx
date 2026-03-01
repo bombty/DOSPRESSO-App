@@ -165,8 +165,14 @@ export default function HQSupport() {
             </Card>
           ) : activeTickets.length === 0 ? (
             <Card>
-              <CardContent className="p-6">
-                <p className="text-center text-muted-foreground">Aktif talep bulunmuyor</p>
+              <CardContent className="flex flex-col items-center justify-center p-8 gap-3">
+                <MessageSquare className="w-10 h-10 text-muted-foreground" />
+                <h3 className="font-medium text-lg">Aktif talep bulunmuyor</h3>
+                <p className="text-sm text-muted-foreground text-center max-w-sm">Merkez ile iletişim taleplerini buradan yönetin</p>
+                <Button variant="outline" size="sm" onClick={() => setCreateDialogOpen(true)} data-testid="button-empty-create-ticket">
+                  <Plus className="w-4 h-4 mr-2" />
+                  Yeni Destek Talebi
+                </Button>
               </CardContent>
             </Card>
           ) : (

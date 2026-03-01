@@ -17,6 +17,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { insertPageContentSchema, type PageContent, type InsertPageContent } from "@shared/schema";
 import { Plus, Edit, Trash2, Eye } from "lucide-react";
 import { format } from "date-fns";
+import { tr } from "date-fns/locale";
 import ReactMarkdown from "react-markdown";
 import rehypeSanitize from "rehype-sanitize";
 
@@ -228,7 +229,7 @@ export default function ContentManagement() {
                         )}
                       </TableCell>
                       <TableCell data-testid={`text-updated-${content.id}`}>
-                        {format(new Date(content.updatedAt), "dd/MM/yyyy HH:mm")}
+                        {format(new Date(content.updatedAt), "dd/MM/yyyy HH:mm", { locale: tr })}
                       </TableCell>
                       <TableCell>
                         <div className="flex gap-2">
