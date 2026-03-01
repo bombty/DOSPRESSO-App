@@ -368,7 +368,7 @@ export function CardGridHub() {
       id: "announcements", 
       icon: Megaphone, 
       label: navLabel("announcements", "Duyurular"), 
-      path: "/admin/duyurular",
+      path: "/icerik-studyosu",
       color: "bg-red-500",
       description: navDesc("announcements", "Duyuru yönetimi")
     },
@@ -918,7 +918,7 @@ export function CardGridHub() {
       { label: "Kalite", path: "/kalite-denetimi", icon: Star, color: "bg-amber-500/10", iconColor: "text-amber-500", testId: "ceo-quality-btn" },
       { label: "Projeler", path: "/projeler", icon: FolderKanban, color: "bg-violet-600/10", iconColor: "text-violet-600", testId: "ceo-projects-btn" },
       { label: "Destek", path: "/hq-destek", icon: MessageSquare, color: "bg-rose-500/10", iconColor: "text-rose-500", testId: "ceo-support-btn" },
-      { label: "Duyurular", path: "/duyurular", icon: Megaphone, color: "bg-red-500/10", iconColor: "text-red-500", testId: "ceo-announcements-btn" },
+      { label: "Duyurular", path: "/icerik-studyosu", icon: Megaphone, color: "bg-red-500/10", iconColor: "text-red-500", testId: "ceo-announcements-btn" },
       { label: "Kayıp Eşya", path: "/kayip-esya-hq", icon: Briefcase, color: "bg-yellow-600/10", iconColor: "text-yellow-600", testId: "ceo-lostfound-btn" },
       { label: "Bilgi Bankası", path: "/bilgi-bankasi", icon: BookOpen, color: "bg-emerald-500/10", iconColor: "text-emerald-500", testId: "ceo-knowledge-btn" },
       { label: "CRM", path: "/crm", icon: Headphones, color: "bg-rose-500/10", iconColor: "text-rose-600", testId: "ceo-crm-btn" },

@@ -97,6 +97,8 @@ The frontend utilizes React 18+ with TypeScript and Vite, employing Shadcn/ui (N
 - **T0.1**: Data cleanup & dashboard reliability (equipment maintenance dates, uptime fix, fault separation, EOM widget, bulk archive)
 - **T1.0**: Supervisor daily cycle validation (NBA dead link fixes, yoklama route fix, e2e tested navigation/tasks/checklists/bulk archive)
 - **T2.0**: Branch Health Score gerçekçi çalışma (Training bileşeni Academy V2 user_career_progress'e bağlandı, CGO dashboard Branch Health Score API'sine entegre edildi, yetersiz veri uyarı banner eklendi)
+- **UX Sprint 1**: 8 quick fixes (breadcrumb Turkish locale, audit UUID→name, SMTP validation, test data cleanup, header role labels, kampanya tab hide, gate defaults, 0/0 paradox)
+- **UX Sprint 2**: Navigation consolidation (Ekipman Servis + Servis Talepleri merged into Ekipman Yönetimi, İçerik Yönetimi + Duyurular merged into İçerik Stüdyosu, header simplified removing search/bell, service requests N+1 query fixed with JOIN, notification dedup per-user fix)
 
 ## External Dependencies
 - **OpenAI API**: Used for AI-powered vision analysis, chat completions, embeddings, and summary generation.

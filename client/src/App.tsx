@@ -93,9 +93,7 @@ import UserCRM from "@/pages/yonetim/kullanicilar";
 import AICostDashboard from "@/pages/yonetim/ai-maliyetler";
 import AdminChecklistManagement from "@/pages/yonetim/checklistler";
 import ChecklistTrackingPage from "@/pages/yonetim/checklist-takip";
-import ServiceRequestsManagement from "@/pages/yonetim/servis-talepleri";
 import EquipmentManagement from "@/pages/yonetim/ekipman-yonetimi";
-import EkipmanServis from "@/pages/yonetim/ekipman-servis";
 import AdminAcademy from "@/pages/yonetim/akademi";
 import KaliteDenetimi from "@/pages/kalite-denetimi";
 import CoachSubeDenetim from "@/pages/coach-sube-denetim";
@@ -392,8 +390,8 @@ function Router() {
           <Route path="/yonetim/ai-maliyetler" component={AICostDashboard} />
           <Route path="/yonetim/checklistler" component={AdminChecklistManagement} />
           <Route path="/yonetim/checklist-takip" component={ChecklistTrackingPage} />
-          <Route path="/yonetim/ekipman-servis" component={EkipmanServis} />
-          <Route path="/yonetim/servis-talepleri" component={ServiceRequestsManagement} />
+          <Route path="/yonetim/ekipman-servis" component={EquipmentManagement} />
+          <Route path="/yonetim/servis-talepleri" component={EquipmentManagement} />
           <Route path="/yonetim/ekipman-yonetimi" component={EquipmentManagement} />
                     <Route path="/yonetim/akademi" component={AdminAcademy} />
           <Route path="/muhasebe-geribildirimi" component={BranchFeedback} />
@@ -432,17 +430,6 @@ function AppContent() {
   const { data: branches } = useQuery<any[]>({
     queryKey: ["/api/branches"],
     enabled: isAuthenticated && !!user,
-  });
-
-  // Get unread notifications count
-  const { data: notificationData } = useQuery({
-    queryKey: ["/api/notifications/unread-count"],
-    queryFn: async () => {
-      const res = await fetch("/api/notifications/unread-count", { credentials: "include" });
-      if (!res.ok) return { count: 0 };
-      return res.json();
-    },
-    enabled: isAuthenticated,
   });
 
   if (isLoading || !isAuthenticated) {
@@ -512,7 +499,6 @@ function AppContent() {
     <div className="flex flex-col min-h-screen bg-background">
       {/* Global Header */}
       <AppHeader 
-        notificationCount={notificationData?.count || 0}
         user={user}
         branchName={branchName}
         onQRClick={() => setQrModalOpen(true)}

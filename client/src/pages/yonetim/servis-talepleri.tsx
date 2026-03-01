@@ -615,11 +615,11 @@ export default function ServiceRequestsManagement() {
 
       {/* Service Requests List */}
       {isLoading ? (
-        <div className="flex items-center justify-center h-64">
+        <div className="flex items-center justify-center h-64 col-span-full">
           <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
         </div>
       ) : filteredRequests.length === 0 ? (
-        <Card>
+        <Card className="col-span-full">
           <CardContent className="pt-6 text-center text-muted-foreground">
             Servis talebi bulunamadı.
           </CardContent>

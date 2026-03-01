@@ -239,15 +239,6 @@ const ADMIN_TABS: TabConfig[] = [
     component: AdminSeed
   },
   {
-    id: "icerik-yonetimi",
-    label: "Content Management",
-    labelTr: "İçerik Yönetimi",
-    icon: <FileText className="h-4 w-4" />,
-    permissionModule: "content_management",
-    group: "icerik",
-    component: AdminContentManagement
-  },
-  {
     id: "icerik-studyosu",
     label: "Content Studio",
     labelTr: "İçerik Stüdyosu",
@@ -255,15 +246,6 @@ const ADMIN_TABS: TabConfig[] = [
     permissionModule: "content_studio",
     group: "icerik",
     component: IcerikStudyosu
-  },
-  {
-    id: "duyurular",
-    label: "Announcements",
-    labelTr: "Duyurular",
-    icon: <Megaphone className="h-4 w-4" />,
-    permissionModule: "announcements_admin",
-    group: "icerik",
-    component: AdminDuyurular
   },
   {
     id: "bannerlar",
@@ -300,24 +282,6 @@ const ADMIN_TABS: TabConfig[] = [
     permissionModule: "equipment_admin",
     group: "operasyon",
     component: EquipmentManagement
-  },
-  {
-    id: "ekipman-servis",
-    label: "Equipment Service",
-    labelTr: "Ekipman Servis",
-    icon: <Wrench className="h-4 w-4" />,
-    permissionModule: "equipment_service",
-    group: "operasyon",
-    component: EkipmanServis
-  },
-  {
-    id: "servis-talepleri",
-    label: "Service Requests",
-    labelTr: "Servis Talepleri",
-    icon: <FileText className="h-4 w-4" />,
-    permissionModule: "service_requests",
-    group: "operasyon",
-    component: ServiceRequestsManagement
   },
   {
     id: "toplu-veri",
@@ -430,15 +394,11 @@ const TAB_URL_MAP: Record<string, string> = {
   "aktivite-loglari": "/admin/aktivite-loglari",
   "cop-kutusu": "/admin/cop-kutusu",
   "seed": "/admin/seed",
-  "icerik-yonetimi": "/admin/icerik-yonetimi",
   "icerik-studyosu": "/admin/icerik-studyosu",
-  "duyurular": "/admin/duyurular",
   "bannerlar": "/admin/bannerlar",
   "checklistler": "/admin/checklistler",
   "akademi-yonetimi": "/admin/akademi-yonetimi",
   "ekipman-yonetimi": "/admin/ekipman-yonetimi",
-  "ekipman-servis": "/admin/ekipman-servis",
-  "servis-talepleri": "/admin/servis-talepleri",
   "toplu-veri": "/admin/toplu-veri",
   "gorev-sablonlari": "/admin/gorev-sablonlari",
   "widget-yonetimi": "/admin/widget-yonetimi",

@@ -270,7 +270,6 @@ export const MODULES: ModuleDefinition[] = [
   { moduleKey: 'authorization', moduleName: 'Rol ve Yetki Yönetimi', category: 'admin', megaModule: 'admin', description: 'Rol ve yetki yönetimi', icon: 'Shield', route: '/admin/yetkilendirme', sortOrder: 112 },
   { moduleKey: 'settings', moduleName: 'Ayarlar', category: 'admin', megaModule: 'admin', description: 'Sistem ayarları', icon: 'Settings', route: '/yonetim/ayarlar', sortOrder: 114 },
   { moduleKey: 'menu_management', moduleName: 'Menü Yönetimi', category: 'admin', megaModule: 'admin', description: 'Menü yönetimi', icon: 'Menu', route: '/yonetim/menu', sortOrder: 115 },
-  { moduleKey: 'content_management', moduleName: 'İçerik Yönetimi', category: 'admin', megaModule: 'admin', description: 'İçerik yönetimi', icon: 'FileText', route: '/yonetim/icerik', sortOrder: 116 },
   { moduleKey: 'content_studio', moduleName: 'İçerik Stüdyosu', category: 'hq', megaModule: 'admin', description: 'Banner ve duyuru oluşturma', icon: 'Palette', route: '/icerik-studyosu', sortOrder: 117 },
   { moduleKey: 'banner_management', moduleName: 'Banner Yönetimi', category: 'hq', megaModule: 'admin', description: 'Banner tasarımı ve yayınlama', icon: 'Image', route: '/admin/bannerlar', sortOrder: 118 },
   { moduleKey: 'banner_editor', moduleName: 'Banner Editörü', category: 'hq', megaModule: 'admin', description: 'Banner tasarım aracı', icon: 'Palette', route: '/banner-editor', sortOrder: 119 },
@@ -286,8 +285,6 @@ export const MODULES: ModuleDefinition[] = [
   { moduleKey: 'checklist_management', moduleName: 'Checklist Yönetimi', category: 'admin', megaModule: 'admin', description: 'Checklist şablon yönetimi', icon: 'ClipboardList', route: '/yonetim/checklistler', sortOrder: 129 },
   { moduleKey: 'checklist_tracking', moduleName: 'Checklist Takip', category: 'admin', megaModule: 'admin', description: 'Checklist tamamlanma takibi', icon: 'ClipboardCheck', route: '/yonetim/checklist-takip', sortOrder: 130 },
   { moduleKey: 'equipment_management', moduleName: 'Ekipman Yönetimi', category: 'admin', megaModule: 'admin', description: 'Ekipman tanımları', icon: 'Wrench', route: '/yonetim/ekipman-yonetimi', sortOrder: 131 },
-  { moduleKey: 'equipment_service', moduleName: 'Ekipman Servis', category: 'admin', megaModule: 'admin', description: 'Servis firma yönetimi', icon: 'Settings2', route: '/yonetim/ekipman-servis', sortOrder: 132 },
-  { moduleKey: 'service_requests', moduleName: 'Servis Talepleri', category: 'admin', megaModule: 'admin', description: 'Servis talep yönetimi', icon: 'Clipboard', route: '/yonetim/servis-talepleri', sortOrder: 133 },
   { moduleKey: 'quality_audit_templates', moduleName: 'Kalite Denetim Şablonları', category: 'admin', megaModule: 'admin', description: 'Kalite denetim şablonları', icon: 'FileSearch', route: '/admin/kalite-denetim-sablonlari', sortOrder: 134 },
 
   // ═══════════════════════════════════════════════════════════════

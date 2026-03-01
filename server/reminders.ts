@@ -1153,16 +1153,16 @@ export async function checkStaleQuoteReminders() {
 
     const recentStaleNotifs = await db.select({
       userId: notifications.userId,
+      link: notifications.link,
     }).from(notifications)
       .where(and(
         eq(notifications.type, 'stale_quote_reminder'),
         gt(notifications.createdAt, oneDayAgo)
       ));
 
-    if (recentStaleNotifs.length > 0) {
-      console.log("Stale quote reminder already sent today, skipping");
-      return;
-    }
+    const alreadyNotifiedKeys = new Set(
+      recentStaleNotifs.map(n => `${n.userId}:${n.link}`)
+    );
 
     const result = await db.execute(sql`
       SELECT COUNT(*) as count
@@ -1182,6 +1182,8 @@ export async function checkStaleQuoteReminders() {
       return;
     }
 
+    const notificationLink = '/satinalma';
+
     const satinalmaUsers = await db
       .select()
       .from(users)
@@ -1190,17 +1192,24 @@ export async function checkStaleQuoteReminders() {
         eq(users.role, 'admin')
       ));
 
+    let sentCount = 0;
     for (const user of satinalmaUsers) {
+      const dedupKey = `${user.id}:${notificationLink}`;
+      if (alreadyNotifiedKeys.has(dedupKey)) {
+        continue;
+      }
       await storage.createNotification({
         userId: user.id,
         type: 'stale_quote_reminder',
         title: 'Guncel Teklif Hatirlatmasi',
         message: `${staleCount} urun 2 aydan fazla suredir guncel teklif almamis. Lutfen kontrol edin.`,
-        link: '/satinalma',
+        link: notificationLink,
       });
+      alreadyNotifiedKeys.add(dedupKey);
+      sentCount++;
     }
 
-    console.log(`Stale quote reminder sent to ${satinalmaUsers.length} users for ${staleCount} products`);
+    console.log(`Stale quote reminder sent to ${sentCount} users (${satinalmaUsers.length - sentCount} already notified) for ${staleCount} products`);
   } catch (error) {
     console.error("Stale quote reminder check error:", error);
   }

@@ -1642,12 +1642,9 @@ function ensurePermission(user: unknown, module: string, action: string, errorMe
   router.get('/api/service-requests', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
-      const { ServiceRequestStatusType } = await import('@shared/schema');
       const requestedBranchId = req.query.branchId ? parseInt(req.query.branchId as string) : undefined;
-      const requestedStatus = req.query.status as typeof ServiceRequestStatusType | undefined;
+      const requestedStatus = req.query.status as string | undefined;
       
-      // HQ users can see all service requests or filter by branch
-      // Branch users can only see their own branch's service requests
       let branchId = requestedBranchId;
       if (user.role && isBranchRole(user.role as UserRoleType)) {
         branchId = assertBranchScope(user);
@@ -1655,40 +1652,50 @@ function ensurePermission(user: unknown, module: string, action: string, errorMe
           return res.status(403).json({ message: "Bu şubeye erişim yetkiniz yok" });
         }
       }
-      
-      // Get all equipment for the branch (or all if HQ)
-      const allEquipment = await storage.getEquipment(branchId);
-      
-      // Get service requests for each equipment with user info
-      const allRequests = [];
-      for (const equipment of allEquipment) {
-        const requests = await storage.listServiceRequests(equipment.id, requestedStatus);
-        
-        for (const r of requests) {
-          // Get creator and updater user names
-          const createdByUser = await storage.getUserById(r.createdById);
-          const updatedByUser = r.updatedById ? await storage.getUserById(r.updatedById) : null;
-          
-          allRequests.push({
-            ...r,
-            equipmentName: equipment.name,
-            equipmentType: equipment.type,
-            branchId: equipment.branchId,
-            branchName: (await storage.getBranch(equipment.branchId))?.name,
-            createdByUsername: createdByUser?.username,
-            updatedByUsername: updatedByUser?.username,
-          });
-        }
+
+      const conditions: SQL[] = [];
+      if (branchId) {
+        conditions.push(eq(equipment.branchId, branchId));
       }
+      if (requestedStatus) {
+        conditions.push(eq(equipmentServiceRequests.status, requestedStatus));
+      }
+
+      const results = await db
+        .select({
+          id: equipmentServiceRequests.id,
+          equipmentId: equipmentServiceRequests.equipmentId,
+          faultId: equipmentServiceRequests.faultId,
+          serviceDecision: equipmentServiceRequests.serviceDecision,
+          serviceProvider: equipmentServiceRequests.serviceProvider,
+          contactInfo: equipmentServiceRequests.contactInfo,
+          estimatedCost: equipmentServiceRequests.estimatedCost,
+          actualCost: equipmentServiceRequests.actualCost,
+          notes: equipmentServiceRequests.notes,
+          status: equipmentServiceRequests.status,
+          timeline: equipmentServiceRequests.timeline,
+          photo1Url: equipmentServiceRequests.photo1Url,
+          photo2Url: equipmentServiceRequests.photo2Url,
+          createdById: equipmentServiceRequests.createdById,
+          updatedById: equipmentServiceRequests.updatedById,
+          createdAt: equipmentServiceRequests.createdAt,
+          updatedAt: equipmentServiceRequests.updatedAt,
+          equipmentName: equipment.equipmentType,
+          equipmentType: equipment.equipmentType,
+          branchId: equipment.branchId,
+          branchName: branches.name,
+          createdByUsername: sql<string>`cb.username`,
+          updatedByUsername: sql<string>`ub.username`,
+        })
+        .from(equipmentServiceRequests)
+        .innerJoin(equipment, eq(equipmentServiceRequests.equipmentId, equipment.id))
+        .innerJoin(branches, eq(equipment.branchId, branches.id))
+        .innerJoin(sql`users cb`, sql`cb.id = ${equipmentServiceRequests.createdById}`)
+        .leftJoin(sql`users ub`, sql`ub.id = ${equipmentServiceRequests.updatedById}`)
+        .where(conditions.length > 0 ? and(...conditions) : undefined)
+        .orderBy(desc(equipmentServiceRequests.createdAt));
       
-      // Sort by created date (newest first)
-      allRequests.sort((a, b) => {
-        const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-        const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
-        return dateB - dateA;
-      });
-      
-      res.json(allRequests);
+      res.json(results);
     } catch (error: any) {
       console.error("Error fetching service requests:", error);
       if (error instanceof AuthorizationError) {
