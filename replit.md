@@ -37,7 +37,8 @@ The frontend utilizes React 18+ with TypeScript and Vite, employing Shadcn/ui (N
 - **AI Policy Console V2**: Admin-configurable AI data access policies with 12 data domains and 6 RoleGroup abstractions, featuring scope clamping, redaction modes, and server-side enforcement.
 - **Procurement Management System**: Complete procurement module with Dashboard, Inventory, Supplier Management, Purchase Orders, and Goods Receipt.
 - **Cost Management System**: Comprehensive product cost calculation module integrated with procurement.
-- **Factory Shift & Production Planning**: Complete shift planning system with batch tracking, performance monitoring, and worker assignments.
+- **Factory Shift & Production Planning**: Complete shift planning system with batch tracking, performance monitoring, and worker assignments. Kiosk PIN auth (bcrypt, 3-attempt lockout), 9 stations, production/waste recording with photo upload, shift compliance scoring, collaborative production scoring, and fault reporting.
+- **Factory Kiosk Security**: All kiosk endpoints protected with isKioskAuthenticated middleware. Quality review restricted to authorized roles (admin, fabrika_mudur, fabrika_sorumlu, inspector) with mandatory rejection reason. Task completion (gorev_bitis) separated from shift closure (vardiya_kapat).
 - **Branch Health Score Dashboard**: 5-component deterministic scoring system with role-based scoping, time-range filters, trend indicators, and risk flags.
 
 ### System Design Choices

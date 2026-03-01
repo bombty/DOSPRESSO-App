@@ -380,7 +380,7 @@ export default function FactoryKiosk() {
   const handleProductionSubmit = () => {
     if (!currentSession || !selectedBreakReason) return;
 
-    if (selectedBreakReason === 'gorev_bitis' || selectedBreakReason === 'vardiya_kapat') {
+    if (selectedBreakReason === 'vardiya_kapat') {
       endShiftMutation.mutate({
         sessionId: currentSession.id,
         productionRunId: currentProductionRun?.id,

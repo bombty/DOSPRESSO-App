@@ -781,10 +781,6 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
       }
 
       const now = new Date();
-      // Parse date range from query params
-      const fromDate = req.query.from ? new Date(req.query.from as string) : new Date();
-      const toDate = req.query.to ? new Date(req.query.to as string) : new Date();
-      toDate.setHours(23, 59, 59, 999); // Include full end day
 
       const today = new Date();
       today.setHours(0, 0, 0, 0);
@@ -2207,7 +2203,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
   });
 
   // Mola / Ara kaydet
-  router.post('/api/factory/kiosk/log-break', async (req, res) => {
+  router.post('/api/factory/kiosk/log-break', isKioskAuthenticated, async (req, res) => {
     try {
       const { 
         sessionId, 
@@ -2276,6 +2272,34 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
           photoUrl: photoUrl || null,
           qualityStatus: 'pending',
         });
+      }
+
+      if (breakReason === 'gorev_bitis') {
+        const [activeRun] = await db.select().from(factoryProductionRuns)
+          .where(and(
+            eq(factoryProductionRuns.sessionId, sessionId),
+            eq(factoryProductionRuns.status, 'in_progress')
+          ))
+          .limit(1);
+
+        if (activeRun) {
+          await db.update(factoryProductionRuns)
+            .set({
+              endTime: new Date(),
+              quantityProduced: parsedProduced,
+              quantityWaste: parsedWaste,
+              wasteReason: wasteNotes || null,
+              status: 'completed',
+            })
+            .where(eq(factoryProductionRuns.id, activeRun.id));
+
+          await db.update(factoryShiftSessions)
+            .set({
+              totalProduced: (session.totalProduced || 0) + parsedProduced,
+              totalWaste: (session.totalWaste || 0) + parsedWaste,
+            })
+            .where(eq(factoryShiftSessions.id, sessionId));
+        }
       }
 
       res.json({ 
@@ -2417,7 +2441,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
     }
   });
 
-  router.post('/api/factory/kiosk/report-fault', async (req, res) => {
+  router.post('/api/factory/kiosk/report-fault', isKioskAuthenticated, async (req, res) => {
     try {
       const { faultType, description, stationId, sessionId, userId } = req.body;
 
@@ -2646,12 +2670,22 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
   });
 
   // Kalite Kontrol - Onay/Red işlemi
-  router.post('/api/factory/quality/review', async (req, res) => {
+  router.post('/api/factory/quality/review', isAuthenticated, async (req: any, res) => {
     try {
+      const user = req.user as any;
+      const allowedRoles = ['admin', 'fabrika_mudur', 'fabrika_sorumlu', 'inspector'];
+      if (!allowedRoles.includes(user.role)) {
+        return res.status(403).json({ message: "Bu işlem için yetkiniz yok" });
+      }
+
       const { outputId, decision, reason } = req.body;
 
       if (!outputId || !decision || !['approved', 'rejected'].includes(decision)) {
         return res.status(400).json({ message: "Geçersiz parametreler" });
+      }
+
+      if (decision === 'rejected' && !reason?.trim()) {
+        return res.status(400).json({ message: "Red sebebi zorunludur" });
       }
 
       // Update production output status
