@@ -5,6 +5,13 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Table,
   TableBody,
   TableCell,
@@ -26,7 +33,9 @@ import {
   ArrowUpRight,
   BarChart3,
   PieChartIcon,
+  Building2,
 } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
 import {
   BarChart,
   Bar,
@@ -839,9 +848,11 @@ function TedarikciPerformansTab() {
   );
 }
 
-function StokHareketleriTab() {
+function StokHareketleriTab({ branchId }: { branchId: string }) {
+  const queryParams = branchId && branchId !== "all" ? `?branchId=${branchId}` : "";
   const { data, isLoading } = useQuery<StockMovementReportData>({
-    queryKey: ["/api/satinalma/stock-movement-report"],
+    queryKey: ["/api/satinalma/stock-movement-report", branchId],
+    queryFn: () => fetch(`/api/satinalma/stock-movement-report${queryParams}`, { credentials: "include" }).then(r => r.json()),
   });
 
   if (isLoading) return <LoadingSkeleton />;
@@ -992,9 +1003,11 @@ function StokHareketleriTab() {
   );
 }
 
-function MaliyetAnaliziTab() {
+function MaliyetAnaliziTab({ branchId }: { branchId: string }) {
+  const queryParams = branchId && branchId !== "all" ? `?branchId=${branchId}` : "";
   const { data, isLoading } = useQuery<CostAnalysisData>({
-    queryKey: ["/api/satinalma/cost-analysis"],
+    queryKey: ["/api/satinalma/cost-analysis", branchId],
+    queryFn: () => fetch(`/api/satinalma/cost-analysis${queryParams}`, { credentials: "include" }).then(r => r.json()),
   });
 
   if (isLoading) return <LoadingSkeleton />;
@@ -1160,9 +1173,22 @@ function MaliyetAnaliziTab() {
 
 export default function TrendAnalizi() {
   const [activeTab, setActiveTab] = useState("genel");
+  const [branchFilter, setBranchFilter] = useState("all");
+  const { user } = useAuth();
+
+  const canFilterBranch = ["admin", "ceo", "cgo", "satinalma", "muhasebe"].includes(user?.role || "");
+
+  const { data: branches } = useQuery<{ id: number; name: string }[]>({
+    queryKey: ["/api/branches"],
+    enabled: canFilterBranch,
+  });
+
+  const branchParam = branchFilter !== "all" ? branchFilter : "";
+  const trendQueryParams = branchParam ? `?branchId=${branchParam}` : "";
 
   const { data: trendData, isLoading: trendLoading } = useQuery<TrendData>({
-    queryKey: ["/api/satinalma/trends"],
+    queryKey: ["/api/satinalma/trends", branchFilter],
+    queryFn: () => fetch(`/api/satinalma/trends${trendQueryParams}`, { credentials: "include" }).then(r => r.json()),
   });
 
   if (trendLoading && activeTab === "genel") {
@@ -1171,6 +1197,23 @@ export default function TrendAnalizi() {
 
   return (
     <div className="space-y-4" data-testid="trend-analizi-container">
+      {canFilterBranch && branches && branches.length > 0 && (
+        <div className="flex items-center gap-2 flex-wrap">
+          <Building2 className="h-4 w-4 text-muted-foreground" />
+          <Select value={branchFilter} onValueChange={setBranchFilter}>
+            <SelectTrigger className="w-[200px]" data-testid="select-trend-branch">
+              <SelectValue placeholder="Sube" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Tum Subeler</SelectItem>
+              {branches.map((b: { id: number; name: string }) => (
+                <SelectItem key={b.id} value={b.id.toString()}>{b.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
+
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList data-testid="tabs-trend-analizi" className="flex-wrap gap-1">
           <TabsTrigger value="genel" data-testid="tab-genel" className="gap-1.5">
@@ -1200,11 +1243,11 @@ export default function TrendAnalizi() {
         </TabsContent>
 
         <TabsContent value="stok" className="mt-4">
-          <StokHareketleriTab />
+          <StokHareketleriTab branchId={branchFilter} />
         </TabsContent>
 
         <TabsContent value="maliyet" className="mt-4">
-          <MaliyetAnaliziTab />
+          <MaliyetAnaliziTab branchId={branchFilter} />
         </TabsContent>
       </Tabs>
     </div>

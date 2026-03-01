@@ -20,7 +20,8 @@ import {
   QrCode,
   X,
   CheckCircle2,
-  Loader2
+  Loader2,
+  Building2
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { 
@@ -37,8 +38,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
 import { Html5Qrcode } from "html5-qrcode";
 
 interface DashboardData {
@@ -129,15 +138,26 @@ interface QRFoundProduct {
   current_stock: string;
 }
 
+interface Branch {
+  id: number;
+  name: string;
+  isActive: boolean;
+}
+
+const HQ_ROLES = ["admin", "ceo", "cgo", "satinalma", "muhasebe"];
+
 export default function SatinalmaDashboard() {
   const [staleDialogOpen, setStaleDialogOpen] = useState(false);
   const [qrDialogOpen, setQrDialogOpen] = useState(false);
   const [qrScanning, setQrScanning] = useState(false);
   const [qrProcessing, setQrProcessing] = useState(false);
   const [qrFoundProduct, setQrFoundProduct] = useState<QRFoundProduct | null>(null);
+  const [selectedBranchId, setSelectedBranchId] = useState<string>("all");
   const qrScannerRef = useRef<Html5Qrcode | null>(null);
   const qrProcessedRef = useRef(false);
   const { toast } = useToast();
+  const { user } = useAuth();
+  const isHqRole = user && HQ_ROLES.includes(user.role);
 
   useEffect(() => {
     return () => {
@@ -252,8 +272,19 @@ export default function SatinalmaDashboard() {
     window.location.href = `/satinalma/stok-yonetimi?productId=${productId}`;
   };
 
+  const { data: branchesList } = useQuery<Branch[]>({
+    queryKey: ["/api/branches"],
+    enabled: !!isHqRole,
+  });
+
+  const dashboardQueryParam = selectedBranchId !== "all" ? `?branchId=${selectedBranchId}` : "";
   const { data, isLoading } = useQuery<DashboardData>({
-    queryKey: ["/api/satinalma/dashboard"],
+    queryKey: ["/api/satinalma/dashboard", selectedBranchId],
+    queryFn: async () => {
+      const res = await fetch(`/api/satinalma/dashboard${dashboardQueryParam}`);
+      if (!res.ok) throw new Error("Failed to fetch dashboard");
+      return res.json();
+    },
   });
 
   const { data: pendingOrders, isLoading: pendingLoading } = useQuery<PendingOrder[]>({
@@ -390,6 +421,30 @@ export default function SatinalmaDashboard() {
 
   return (
     <div className="space-y-3">
+      {isHqRole && (
+        <div className="flex items-center gap-2 flex-wrap">
+          <Building2 className="h-4 w-4 text-muted-foreground" />
+          <Select value={selectedBranchId} onValueChange={setSelectedBranchId}>
+            <SelectTrigger className="w-[220px]" data-testid="select-branch-filter">
+              <SelectValue placeholder="Sube Filtrele" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all" data-testid="select-branch-all">Tum Subeler</SelectItem>
+              {branchesList?.filter(b => b.isActive).map((branch) => (
+                <SelectItem key={branch.id} value={branch.id.toString()} data-testid={`select-branch-${branch.id}`}>
+                  {branch.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {selectedBranchId !== "all" && (
+            <Badge variant="secondary" className="text-xs" data-testid="badge-branch-active-filter">
+              {branchesList?.find(b => b.id.toString() === selectedBranchId)?.name}
+            </Badge>
+          )}
+        </div>
+      )}
+
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2">
         {metrics.map((metric, index) => (
           <Card key={index} data-testid={`metric-card-${index}`}>

@@ -91,6 +91,7 @@ const statusOptions = [
   { value: "siparis_verildi", label: "Siparis Verildi" },
   { value: "kismen_teslim", label: "Kismen Teslim" },
   { value: "tamamlandi", label: "Tamamlandi" },
+  { value: "reddedildi", label: "Reddedildi" },
   { value: "iptal", label: "Iptal" }
 ];
 
@@ -407,6 +408,8 @@ export default function SiparisYonetimi() {
   const [selectedSupplierId, setSelectedSupplierId] = useState("");
   const [paymentDialogOrder, setPaymentDialogOrder] = useState<PurchaseOrder | null>(null);
   const [detailDialogOrder, setDetailDialogOrder] = useState<PurchaseOrder | null>(null);
+  const [rejectDialogOrder, setRejectDialogOrder] = useState<PurchaseOrder | null>(null);
+  const [rejectionReason, setRejectionReason] = useState("");
   const isAdminOrCeo = user?.role === "admin" || user?.role === "ceo" || user?.role === "cgo";
   const canFilterBranch = ["admin", "ceo", "cgo", "satinalma", "muhasebe"].includes(user?.role || "");
 
@@ -481,6 +484,23 @@ export default function SiparisYonetimi() {
     }
   });
 
+  const rejectMutation = useMutation({
+    mutationFn: async ({ id, rejectionReason }: { id: number; rejectionReason: string }) => {
+      return apiRequest("PATCH", `/api/purchase-orders/${id}/reject`, { rejectionReason });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ predicate: (query) => 
+        (query.queryKey[0] as string).startsWith("/api/purchase-orders")
+      });
+      setRejectDialogOrder(null);
+      setRejectionReason("");
+      toast({ title: "Siparis reddedildi" });
+    },
+    onError: () => {
+      toast({ title: "Hata", description: "Red islemi basarisiz", variant: "destructive" });
+    }
+  });
+
   const handleCreateSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!selectedSupplierId) {
@@ -504,6 +524,7 @@ export default function SiparisYonetimi() {
       siparis_verildi: { label: "Siparis Verildi", variant: "secondary" },
       kismen_teslim: { label: "Kismen Teslim", variant: "secondary" },
       tamamlandi: { label: "Tamamlandi", variant: "default" },
+      reddedildi: { label: "Reddedildi", variant: "destructive" },
       iptal: { label: "Iptal", variant: "destructive" }
     };
     const config = statusMap[status] || { label: status, variant: "outline" as const };
@@ -672,12 +693,12 @@ export default function SiparisYonetimi() {
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => statusMutation.mutate({ id: order.id, newStatus: "onay_bekliyor", successMessage: "Siparis CEO onayina gonderildi" })}
+                            onClick={() => statusMutation.mutate({ id: order.id, newStatus: "onay_bekliyor", successMessage: "Siparis CEO/CGO onayina gonderildi" })}
                             disabled={statusMutation.isPending}
                             data-testid={`button-send-approval-${order.id}`}
                           >
                             <Send className="h-4 w-4 mr-1" />
-                            CEO Onayina Gonder
+                            Onaya Gonder
                           </Button>
                         )}
                         {order.status === "onay_bekliyor" && isAdminOrCeo && (
@@ -694,8 +715,7 @@ export default function SiparisYonetimi() {
                             <Button
                               variant="ghost"
                               size="icon"
-                              onClick={() => statusMutation.mutate({ id: order.id, newStatus: "iptal", successMessage: "Siparis reddedildi" })}
-                              disabled={statusMutation.isPending}
+                              onClick={() => setRejectDialogOrder(order)}
                               data-testid={`button-reject-order-${order.id}`}
                             >
                               <X className="h-4 w-4 text-red-500" />
@@ -745,6 +765,47 @@ export default function SiparisYonetimi() {
           onOpenChange={(open) => { if (!open) setDetailDialogOrder(null); }}
         />
       )}
+
+      <Dialog open={!!rejectDialogOrder} onOpenChange={(open) => { if (!open) { setRejectDialogOrder(null); setRejectionReason(""); } }}>
+        <DialogContent className="max-w-md" data-testid="dialog-reject-order">
+          <DialogHeader>
+            <DialogTitle>Siparis Reddet - {rejectDialogOrder?.orderNumber}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="rejectionReason">Red Nedeni</Label>
+              <Textarea
+                id="rejectionReason"
+                value={rejectionReason}
+                onChange={(e) => setRejectionReason(e.target.value)}
+                placeholder="Red nedenini yazin..."
+                data-testid="textarea-rejection-reason"
+              />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button
+                variant="outline"
+                onClick={() => { setRejectDialogOrder(null); setRejectionReason(""); }}
+                data-testid="button-cancel-reject"
+              >
+                Vazgec
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={() => {
+                  if (rejectDialogOrder && rejectionReason.trim()) {
+                    rejectMutation.mutate({ id: rejectDialogOrder.id, rejectionReason: rejectionReason.trim() });
+                  }
+                }}
+                disabled={!rejectionReason.trim() || rejectMutation.isPending}
+                data-testid="button-confirm-reject"
+              >
+                Reddet
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

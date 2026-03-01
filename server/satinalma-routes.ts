@@ -943,33 +943,59 @@ export function registerSatinalmaRoutes(app: Express, isAuthenticated: AuthMiddl
   // Satınalma dashboard özet verileri
   app.get("/api/satinalma/dashboard", isAuthenticated, async (req: Request, res: Response) => {
     try {
-      // Toplam tedarikçi sayısı
+      const user = (req as any).user;
+      const { branchId } = req.query;
+      const hqRoles = ["admin", "ceo", "cgo", "satinalma", "muhasebe"];
+      const isHqRole = user && hqRoles.includes(user.role);
+
+      let branchUserIds: number[] | null = null;
+      const effectiveBranchId = isHqRole ? (branchId ? parseInt(branchId as string) : null) : (user?.branchId || null);
+
+      if (effectiveBranchId && !isNaN(effectiveBranchId)) {
+        const branchUsers = await db.select({ id: users.id }).from(users).where(eq(users.branchId, effectiveBranchId));
+        branchUserIds = branchUsers.map(u => u.id);
+      }
+
       const allSuppliers = await db.select().from(suppliers).where(eq(suppliers.status, "aktif"));
-      
-      // Bekleyen siparişler
-      const pendingOrders = await db.select().from(purchaseOrders)
-        .where(or(
+
+      let pendingConditions: any[] = [
+        or(
           eq(purchaseOrders.status, "onay_bekliyor"),
           eq(purchaseOrders.status, "siparis_verildi")
-        ));
-      
-      // Düşük stok uyarıları
+        )
+      ];
+      if (branchUserIds !== null) {
+        if (branchUserIds.length === 0) {
+          pendingConditions.push(sql`false`);
+        } else {
+          pendingConditions.push(inArray(purchaseOrders.createdById, branchUserIds));
+        }
+      }
+      const pendingOrders = await db.select().from(purchaseOrders)
+        .where(and(...pendingConditions));
+
       const allInventory = await db.select().from(inventory).where(eq(inventory.isActive, true));
       const lowStockCount = allInventory.filter(item => 
         parseFloat(item.currentStock) <= parseFloat(item.minimumStock)
       ).length;
-      
-      // Son 30 gün mal kabul
+
       const thirtyDaysAgo = new Date();
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-      
+
+      let receiptConditions: any[] = [gte(goodsReceipts.receiptDate, thirtyDaysAgo)];
+      if (branchUserIds !== null) {
+        if (branchUserIds.length === 0) {
+          receiptConditions.push(sql`false`);
+        } else {
+          receiptConditions.push(inArray(goodsReceipts.receivedById, branchUserIds));
+        }
+      }
       const recentReceipts = await db.select().from(goodsReceipts)
-        .where(gte(goodsReceipts.receiptDate, thirtyDaysAgo));
-      
-      // Hammaddeler listesi (son 10 kalem)
+        .where(and(...receiptConditions));
+
       const allRawMaterials = await db.select().from(rawMaterials)
         .where(eq(rawMaterials.isActive, true));
-      
+
       const rawMaterialsList = await db.select({
         id: rawMaterials.id,
         name: rawMaterials.name,
@@ -981,8 +1007,7 @@ export function registerSatinalmaRoutes(app: Express, isAuthenticated: AuthMiddl
         .where(eq(rawMaterials.isActive, true))
         .orderBy(desc(rawMaterials.updatedAt))
         .limit(10);
-      
-      // Stok listesi
+
       const inventoryList = await db.select({
         id: inventory.id,
         name: inventory.name,
@@ -995,11 +1020,10 @@ export function registerSatinalmaRoutes(app: Express, isAuthenticated: AuthMiddl
         .orderBy(inventory.name)
         .limit(10);
 
-      // Muhasebe (Cari) entegrasyonu - Alacak/Borç özeti
       const allCariAccounts = await db.select().from(cariAccounts).where(eq(cariAccounts.isActive, true));
       let totalReceivables = 0;
       let totalPayables = 0;
-      
+
       for (const account of allCariAccounts) {
         const balance = parseFloat(account.currentBalance || "0");
         if (balance > 0) {
@@ -1651,6 +1675,48 @@ export function registerSatinalmaRoutes(app: Express, isAuthenticated: AuthMiddl
     }
   });
 
+  app.patch("/api/purchase-orders/:id/reject", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const user = (req as any).user;
+      const id = parseInt(req.params.id);
+      const { rejectionReason } = req.body;
+
+      if (!user || !["ceo", "cgo", "admin"].includes(user.role)) {
+        return res.status(403).json({ error: "Bu işlem için yetkiniz yok. Sadece CEO/CGO/Admin reddedebilir." });
+      }
+
+      if (!rejectionReason || rejectionReason.trim().length === 0) {
+        return res.status(400).json({ error: "Red nedeni zorunludur." });
+      }
+
+      const [order] = await db.select()
+        .from(purchaseOrders)
+        .where(eq(purchaseOrders.id, id));
+
+      if (!order) {
+        return res.status(404).json({ error: "Sipariş bulunamadı" });
+      }
+
+      if (order.status !== "onay_bekliyor") {
+        return res.status(400).json({ error: "Bu sipariş onay bekliyor durumunda değil" });
+      }
+
+      const [updated] = await db.update(purchaseOrders)
+        .set({
+          status: "reddedildi",
+          notes: `[RED] ${rejectionReason.trim()}${order.notes ? `\n\n${order.notes}` : ""}`,
+          updatedAt: new Date(),
+        })
+        .where(eq(purchaseOrders.id, id))
+        .returning();
+
+      res.json(updated);
+    } catch (error) {
+      console.error("Error rejecting purchase order:", error);
+      res.status(500).json({ error: "Sipariş reddedilemedi" });
+    }
+  });
+
   // ========================================
   // ÜRÜN TEDARİKÇİ YÖNETİMİ - Product Supplier Management
   // ========================================
@@ -1689,10 +1755,35 @@ export function registerSatinalmaRoutes(app: Express, isAuthenticated: AuthMiddl
 
   app.get("/api/satinalma/trends", isAuthenticated, async (req: Request, res: Response) => {
     try {
+      const user = (req as any).user;
+      const { branchId } = req.query;
       const now = new Date();
       const ninetyDaysAgo = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
       const sixMonthsAgo = new Date(now.getTime() - 180 * 24 * 60 * 60 * 1000);
       const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+      const hqRoles = ["admin", "ceo", "cgo", "satinalma", "muhasebe"];
+      const isHqRole = user && hqRoles.includes(user.role);
+      let branchUserIds: number[] | null = null;
+
+      if (branchId && isHqRole) {
+        const parsedBranchId = parseInt(branchId as string);
+        if (!isNaN(parsedBranchId)) {
+          const branchUsers = await db.select({ id: users.id }).from(users).where(eq(users.branchId, parsedBranchId));
+          branchUserIds = branchUsers.map(u => u.id);
+        }
+      } else if (!isHqRole && user?.branchId) {
+        const branchUsers = await db.select({ id: users.id }).from(users).where(eq(users.branchId, user.branchId));
+        branchUserIds = branchUsers.map(u => u.id);
+      }
+
+      const branchFilterPO = branchUserIds && branchUserIds.length > 0
+        ? sql` AND po.created_by_id IN (${sql.join(branchUserIds.map(id => sql`${id}`), sql`, `)})`
+        : branchUserIds !== null ? sql` AND 1=0` : sql``;
+
+      const branchFilterDirect = branchUserIds && branchUserIds.length > 0
+        ? sql` AND created_by_id IN (${sql.join(branchUserIds.map(id => sql`${id}`), sql`, `)})`
+        : branchUserIds !== null ? sql` AND 1=0` : sql``;
 
       const topOrderedProductsQuery = db.execute(sql`
         SELECT 
@@ -1702,7 +1793,7 @@ export function registerSatinalmaRoutes(app: Express, isAuthenticated: AuthMiddl
         FROM purchase_order_items poi
         JOIN inventory i ON poi.inventory_id = i.id
         JOIN purchase_orders po ON poi.purchase_order_id = po.id
-        WHERE po.order_date >= ${ninetyDaysAgo}
+        WHERE po.order_date >= ${ninetyDaysAgo}${branchFilterPO}
         GROUP BY i.name
         ORDER BY total_quantity DESC
         LIMIT 10
@@ -1728,7 +1819,7 @@ export function registerSatinalmaRoutes(app: Express, isAuthenticated: AuthMiddl
           SUM(CAST(total_amount AS DECIMAL)) as total_spending,
           COUNT(*) as order_count
         FROM purchase_orders
-        WHERE order_date >= ${sixMonthsAgo}
+        WHERE order_date >= ${sixMonthsAgo}${branchFilterDirect}
         GROUP BY TO_CHAR(order_date, 'YYYY-MM')
         ORDER BY month ASC
       `);
@@ -1739,7 +1830,7 @@ export function registerSatinalmaRoutes(app: Express, isAuthenticated: AuthMiddl
           movement_type,
           COUNT(*) as count
         FROM inventory_movements
-        WHERE created_at >= ${thirtyDaysAgo}
+        WHERE created_at >= ${thirtyDaysAgo}${branchFilterDirect}
         GROUP BY TO_CHAR(created_at, 'YYYY-MM-DD'), movement_type
         ORDER BY date ASC
       `);
@@ -1750,6 +1841,8 @@ export function registerSatinalmaRoutes(app: Express, isAuthenticated: AuthMiddl
           SUM(CAST(poi.line_total AS DECIMAL)) as total_cost
         FROM purchase_order_items poi
         JOIN inventory i ON poi.inventory_id = i.id
+        JOIN purchase_orders po ON poi.purchase_order_id = po.id
+        WHERE 1=1${branchFilterPO}
         GROUP BY i.category
         ORDER BY total_cost DESC
       `);
@@ -1759,7 +1852,7 @@ export function registerSatinalmaRoutes(app: Express, isAuthenticated: AuthMiddl
           COALESCE(SUM(CAST(total_amount AS DECIMAL)), 0) as total_spending,
           COUNT(*) as order_count
         FROM purchase_orders
-        WHERE order_date >= ${ninetyDaysAgo}
+        WHERE order_date >= ${ninetyDaysAgo}${branchFilterDirect}
       `);
 
       const [
@@ -1979,7 +2072,32 @@ export function registerSatinalmaRoutes(app: Express, isAuthenticated: AuthMiddl
 
   app.get("/api/satinalma/stock-movement-report", isAuthenticated, async (req: Request, res: Response) => {
     try {
+      const user = (req as any).user;
+      const { branchId } = req.query;
       const sixMonthsAgo = new Date(Date.now() - 180 * 24 * 60 * 60 * 1000);
+
+      const hqRoles = ["admin", "ceo", "cgo", "satinalma", "muhasebe"];
+      const isHqRole = user && hqRoles.includes(user.role);
+      let branchUserIds: number[] | null = null;
+
+      if (branchId && isHqRole) {
+        const parsedBranchId = parseInt(branchId as string);
+        if (!isNaN(parsedBranchId)) {
+          const branchUsers = await db.select({ id: users.id }).from(users).where(eq(users.branchId, parsedBranchId));
+          branchUserIds = branchUsers.map(u => u.id);
+        }
+      } else if (!isHqRole && user?.branchId) {
+        const branchUsers = await db.select({ id: users.id }).from(users).where(eq(users.branchId, user.branchId));
+        branchUserIds = branchUsers.map(u => u.id);
+      }
+
+      const branchFilterDirect = branchUserIds && branchUserIds.length > 0
+        ? sql` AND created_by_id IN (${sql.join(branchUserIds.map(id => sql`${id}`), sql`, `)})`
+        : branchUserIds !== null ? sql` AND 1=0` : sql``;
+
+      const branchFilterIM = branchUserIds && branchUserIds.length > 0
+        ? sql` AND im.created_by_id IN (${sql.join(branchUserIds.map(id => sql`${id}`), sql`, `)})`
+        : branchUserIds !== null ? sql` AND 1=0` : sql``;
 
       const monthlyMovements = await db.execute(sql`
         SELECT
@@ -1988,7 +2106,7 @@ export function registerSatinalmaRoutes(app: Express, isAuthenticated: AuthMiddl
           COUNT(*)::int as count,
           COALESCE(SUM(CAST(quantity AS DECIMAL)), 0) as total_quantity
         FROM inventory_movements
-        WHERE created_at >= ${sixMonthsAgo}
+        WHERE created_at >= ${sixMonthsAgo}${branchFilterDirect}
         GROUP BY TO_CHAR(created_at, 'YYYY-MM'), movement_type
         ORDER BY month ASC
       `);
@@ -2001,7 +2119,7 @@ export function registerSatinalmaRoutes(app: Express, isAuthenticated: AuthMiddl
           COALESCE(SUM(CAST(im.quantity AS DECIMAL)), 0) as total_quantity
         FROM inventory_movements im
         JOIN inventory i ON im.inventory_id = i.id
-        WHERE im.created_at >= ${sixMonthsAgo}
+        WHERE im.created_at >= ${sixMonthsAgo}${branchFilterIM}
         GROUP BY i.name, i.category
         ORDER BY movement_count DESC
         LIMIT 15
@@ -2015,7 +2133,7 @@ export function registerSatinalmaRoutes(app: Express, isAuthenticated: AuthMiddl
           COALESCE(SUM(CAST(im.quantity AS DECIMAL)), 0) as total_quantity
         FROM inventory_movements im
         JOIN inventory i ON im.inventory_id = i.id
-        WHERE im.created_at >= ${sixMonthsAgo}
+        WHERE im.created_at >= ${sixMonthsAgo}${branchFilterIM}
         GROUP BY i.category, im.movement_type
         ORDER BY i.category
       `);
@@ -2045,7 +2163,32 @@ export function registerSatinalmaRoutes(app: Express, isAuthenticated: AuthMiddl
 
   app.get("/api/satinalma/cost-analysis", isAuthenticated, async (req: Request, res: Response) => {
     try {
+      const user = (req as any).user;
+      const { branchId } = req.query;
       const twelveMonthsAgo = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000);
+
+      const hqRoles = ["admin", "ceo", "cgo", "satinalma", "muhasebe"];
+      const isHqRole = user && hqRoles.includes(user.role);
+      let branchUserIds: number[] | null = null;
+
+      if (branchId && isHqRole) {
+        const parsedBranchId = parseInt(branchId as string);
+        if (!isNaN(parsedBranchId)) {
+          const branchUsers = await db.select({ id: users.id }).from(users).where(eq(users.branchId, parsedBranchId));
+          branchUserIds = branchUsers.map(u => u.id);
+        }
+      } else if (!isHqRole && user?.branchId) {
+        const branchUsers = await db.select({ id: users.id }).from(users).where(eq(users.branchId, user.branchId));
+        branchUserIds = branchUsers.map(u => u.id);
+      }
+
+      const branchFilterPO = branchUserIds && branchUserIds.length > 0
+        ? sql` AND po.created_by_id IN (${sql.join(branchUserIds.map(id => sql`${id}`), sql`, `)})`
+        : branchUserIds !== null ? sql` AND 1=0` : sql``;
+
+      const branchFilterDirect = branchUserIds && branchUserIds.length > 0
+        ? sql` AND created_by_id IN (${sql.join(branchUserIds.map(id => sql`${id}`), sql`, `)})`
+        : branchUserIds !== null ? sql` AND 1=0` : sql``;
 
       const monthlySpending = await db.execute(sql`
         SELECT
@@ -2053,7 +2196,7 @@ export function registerSatinalmaRoutes(app: Express, isAuthenticated: AuthMiddl
           COALESCE(SUM(CAST(total_amount AS DECIMAL)), 0) as total_spending,
           COUNT(*)::int as order_count
         FROM purchase_orders
-        WHERE order_date >= ${twelveMonthsAgo}
+        WHERE order_date >= ${twelveMonthsAgo}${branchFilterDirect}
         GROUP BY TO_CHAR(order_date, 'YYYY-MM')
         ORDER BY month ASC
       `);
@@ -2068,7 +2211,7 @@ export function registerSatinalmaRoutes(app: Express, isAuthenticated: AuthMiddl
         FROM purchase_order_items poi
         JOIN inventory i ON poi.inventory_id = i.id
         JOIN purchase_orders po ON poi.purchase_order_id = po.id
-        WHERE po.order_date >= ${twelveMonthsAgo}
+        WHERE po.order_date >= ${twelveMonthsAgo}${branchFilterPO}
         GROUP BY i.name, i.category
         ORDER BY total_cost DESC
         LIMIT 15
@@ -2082,7 +2225,7 @@ export function registerSatinalmaRoutes(app: Express, isAuthenticated: AuthMiddl
         FROM purchase_order_items poi
         JOIN inventory i ON poi.inventory_id = i.id
         JOIN purchase_orders po ON poi.purchase_order_id = po.id
-        WHERE po.order_date >= ${twelveMonthsAgo}
+        WHERE po.order_date >= ${twelveMonthsAgo}${branchFilterPO}
         GROUP BY i.category
         ORDER BY total_cost DESC
       `);
@@ -2092,11 +2235,11 @@ export function registerSatinalmaRoutes(app: Express, isAuthenticated: AuthMiddl
 
       const currentPeriod = await db.execute(sql`
         SELECT COALESCE(SUM(CAST(total_amount AS DECIMAL)), 0) as total
-        FROM purchase_orders WHERE order_date >= ${sixMonthsAgo}
+        FROM purchase_orders WHERE order_date >= ${sixMonthsAgo}${branchFilterDirect}
       `);
       const previousPeriod = await db.execute(sql`
         SELECT COALESCE(SUM(CAST(total_amount AS DECIMAL)), 0) as total
-        FROM purchase_orders WHERE order_date >= ${yearAgo} AND order_date < ${sixMonthsAgo}
+        FROM purchase_orders WHERE order_date >= ${yearAgo} AND order_date < ${sixMonthsAgo}${branchFilterDirect}
       `);
 
       const currentTotal = parseFloat((currentPeriod.rows[0] as any)?.total || "0");
