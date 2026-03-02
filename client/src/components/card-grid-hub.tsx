@@ -516,7 +516,7 @@ export function CardGridHub() {
       id: "ai-assistant", 
       icon: Bot, 
       label: navLabel("ai-assistant", "AI Asistan"), 
-      path: "/ai-asistan",
+      path: "/bilgi-bankasi",
       color: "bg-violet-500",
       description: navDesc("ai-assistant", "Yapay zeka asistanı")
     },
@@ -923,7 +923,7 @@ export function CardGridHub() {
       { label: "Bilgi Bankası", path: "/bilgi-bankasi", icon: BookOpen, color: "bg-emerald-500/10", iconColor: "text-emerald-500", testId: "ceo-knowledge-btn" },
       { label: "CRM", path: "/crm", icon: Headphones, color: "bg-rose-500/10", iconColor: "text-rose-600", testId: "ceo-crm-btn" },
       { label: "Canlı Takip", path: "/canli-takip", icon: MapPin, color: "bg-emerald-500/10", iconColor: "text-emerald-600", testId: "ceo-tracking-btn" },
-      { label: "AI Asistan", path: "/ai-asistan", icon: Bot, color: "bg-violet-500/10", iconColor: "text-violet-500", testId: "ceo-ai-assistant-btn" },
+      { label: "AI Asistan", path: "/bilgi-bankasi", icon: Bot, color: "bg-violet-500/10", iconColor: "text-violet-500", testId: "ceo-ai-assistant-btn" },
       { label: "Kullanıcılar", path: "/yonetim/kullanicilar", icon: Users, color: "bg-sky-500/10", iconColor: "text-sky-500", testId: "ceo-users-btn" },
       { label: "Admin Panel", path: "/admin", icon: Shield, color: "bg-red-600/10", iconColor: "text-red-600", testId: "ceo-admin-btn" },
       { label: "Toplu Veri", path: "/admin/toplu-veri-yonetimi", icon: Database, color: "bg-indigo-600/10", iconColor: "text-indigo-600", testId: "ceo-bulk-data-btn" },

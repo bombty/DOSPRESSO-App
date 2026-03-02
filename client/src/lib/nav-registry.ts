@@ -530,7 +530,7 @@ export const NAV_ITEMS: NavItem[] = [
   },
   {
     id: "ai-assistant",
-    route: "/ai-asistan",
+    route: "/bilgi-bankasi",
     icon: Bot,
     group: "settings",
     order: 62,
@@ -545,7 +545,7 @@ export const NAV_ITEMS: NavItem[] = [
     getRoute: (user) => {
       if (user?.role === "ceo") return "/ceo-command-center";
       if (user?.role === "cgo") return "/cgo-command-center";
-      return "/ai-asistan";
+      return "/bilgi-bankasi";
     },
   },
   {
