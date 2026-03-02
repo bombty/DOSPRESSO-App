@@ -8,6 +8,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
+import { useLocation } from "wouter";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -70,6 +71,7 @@ interface HqEvent {
 
 export default function HqKiosk() {
   const { toast } = useToast();
+  const [, setLocation] = useLocation();
   const [step, setStep] = useState<HqKioskStep>("select-user");
   const [staffList, setStaffList] = useState<HqStaff[]>([]);
   const [loadingStaff, setLoadingStaff] = useState(true);
@@ -729,9 +731,22 @@ export default function HqKiosk() {
     </div>
   );
 
-  if (!step || step === "select-user") return renderSelectUser();
-  if (step === "enter-pin") return renderEnterPin();
-  if (step === "exit-dialog") return renderExitDialog();
-  if (step === "end-summary") return renderEndSummary();
-  return renderWorking();
+  const exitButton = (
+    <Button
+      variant="outline"
+      size="sm"
+      className="fixed top-4 right-4 z-50 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm"
+      onClick={() => setLocation("/")}
+      data-testid="button-kiosk-exit"
+    >
+      <LogOut className="h-4 w-4 mr-2" />
+      Kiosk'tan Cik
+    </Button>
+  );
+
+  if (!step || step === "select-user") return <>{renderSelectUser()}{exitButton}</>;
+  if (step === "enter-pin") return <>{renderEnterPin()}{exitButton}</>;
+  if (step === "exit-dialog") return <>{renderExitDialog()}{exitButton}</>;
+  if (step === "end-summary") return <>{renderEndSummary()}{exitButton}</>;
+  return <>{renderWorking()}{exitButton}</>;
 }

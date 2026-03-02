@@ -3416,6 +3416,7 @@ export const trainingModules = pgTable("training_modules", {
     tips: string[];
   }>>().default([]), // AI Rol Yapma Senaryoları
   
+  targetRoles: text("target_roles").array().default(sql`'{}'::text[]`),
   createdBy: varchar("created_by").references(() => users.id), // VARCHAR - users.id is UUID
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),

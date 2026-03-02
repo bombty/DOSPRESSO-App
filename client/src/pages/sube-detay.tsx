@@ -471,7 +471,7 @@ export default function SubeDetayPage() {
         )}
 
         {/* Action Buttons */}
-        <div className="flex gap-2 mt-2">
+        <div className="flex gap-2 mt-2 flex-wrap">
           {isAdmin && (
             <Link href={`/sube-gorevler/${branchId}`}>
               <Button variant="outline" size="sm" data-testid="button-task-performance">
@@ -479,6 +479,27 @@ export default function SubeDetayPage() {
                 Görev Performansı
               </Button>
             </Link>
+          )}
+          {(isAdmin || user?.role === 'mudur') && (
+            <Button
+              variant="default"
+              size="sm"
+              onClick={() => {
+                const kioskUrl = `${window.location.origin}/sube/kiosk/${branchId}`;
+                const kioskWindow = window.open(kioskUrl, '_blank');
+                if (kioskWindow) {
+                  kioskWindow.addEventListener('load', () => {
+                    try {
+                      kioskWindow.document.documentElement.requestFullscreen?.();
+                    } catch {}
+                  });
+                }
+              }}
+              data-testid="button-open-kiosk"
+            >
+              <Monitor className="w-4 h-4 mr-2" />
+              Kiosk Ac
+            </Button>
           )}
           {!showCards && (
             <Button variant="ghost" size="sm" onClick={() => setShowCards(true)} data-testid="button-show-cards">

@@ -436,6 +436,17 @@ export default function FactoryKiosk() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center p-4">
+      <Button
+        variant="outline"
+        size="sm"
+        className="fixed top-4 right-4 z-50 bg-slate-700/80 border-slate-600 text-slate-200 backdrop-blur-sm"
+        onClick={() => setLocation('/')}
+        data-testid="button-kiosk-exit"
+      >
+        <LogOut className="h-4 w-4 mr-2" />
+        Kiosk'tan Cik
+      </Button>
+
       <Card className="w-full max-w-2xl bg-slate-800/90 border-slate-700 text-white shadow-2xl">
         <CardHeader className="text-center border-b border-slate-700 pb-6">
           <div className="flex items-center justify-center gap-3 mb-2">

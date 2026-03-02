@@ -195,10 +195,22 @@ export default function FabrikaDashboard() {
             </div>
           </div>
           <div className="flex items-center gap-1.5">
-            <Button variant="default" size="sm" onClick={() => setLocation("/fabrika/kiosk")} className="gap-1.5" data-testid="button-kiosk-mode">
-              <Monitor className="h-3.5 w-3.5" />
-              Kiosk
-            </Button>
+            {isManagerOrAdmin && (
+              <Button variant="default" size="sm" onClick={() => {
+                const kioskUrl = `${window.location.origin}/fabrika/kiosk`;
+                const kioskWindow = window.open(kioskUrl, '_blank');
+                if (kioskWindow) {
+                  kioskWindow.addEventListener('load', () => {
+                    try {
+                      kioskWindow.document.documentElement.requestFullscreen?.();
+                    } catch {}
+                  });
+                }
+              }} className="gap-1.5" data-testid="button-kiosk-mode">
+                <Monitor className="h-3.5 w-3.5" />
+                Kiosk Ac
+              </Button>
+            )}
             <Button variant="outline" size="icon" onClick={() => refetch()} data-testid="button-refresh">
               <RefreshCw className="h-3.5 w-3.5" />
             </Button>

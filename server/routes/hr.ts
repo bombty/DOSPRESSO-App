@@ -728,11 +728,25 @@ const router = Router();
       let scope: string | undefined;
       if (!canEditTraining) {
         const { isFactoryFloorRole } = await import('@shared/schema');
-        scope = isFactoryFloorRole(user.role as any) ? 'factory' : 'branch';
+        const factoryManagerRoles = ['fabrika_mudur', 'fabrika_sorumlu'];
+        const isFactory = isFactoryFloorRole(user.role as any) || factoryManagerRoles.includes(user.role as string);
+        scope = isFactory ? 'factory' : 'branch';
       }
       
       const modules = await storage.getTrainingModules(canEditTraining ? undefined : true, scope);
-      res.json(modules);
+      
+      if (canEditTraining) {
+        res.json(modules);
+        return;
+      }
+      
+      const userRole = (user.role as string).toLowerCase();
+      const filtered = modules.filter((m: any) => {
+        if (!m.targetRoles || m.targetRoles.length === 0) return true;
+        return m.targetRoles.includes(userRole);
+      });
+      
+      res.json(filtered);
     } catch (error: any) {
       console.error("Error fetching training modules:", error);
       res.status(500).json({ message: "Failed to fetch training modules" });

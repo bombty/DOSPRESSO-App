@@ -1225,6 +1225,17 @@ export default function BranchKiosk() {
   return (
     <>
       {renderContent()}
+
+      <Button
+        variant="outline"
+        size="sm"
+        className="fixed top-4 right-4 z-50 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm"
+        onClick={() => setLocation('/')}
+        data-testid="button-kiosk-exit"
+      >
+        <LogOut className="h-4 w-4 mr-2" />
+        Kiosk'tan Cik
+      </Button>
       
       {/* First confirmation dialog for ending shift */}
       <AlertDialog open={showEndShiftConfirm1} onOpenChange={setShowEndShiftConfirm1}>

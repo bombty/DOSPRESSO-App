@@ -492,6 +492,28 @@ const ROLE_OPTIONS = [
   { value: "supervisor", label: "Supervisor" },
 ];
 
+const TARGET_ROLE_OPTIONS = [
+  { value: "stajyer", label: "Stajyer" },
+  { value: "bar_buddy", label: "Bar Buddy" },
+  { value: "barista", label: "Barista" },
+  { value: "supervisor_buddy", label: "Supervisor Buddy" },
+  { value: "supervisor", label: "Supervisor" },
+  { value: "mudur", label: "Mudur" },
+  { value: "coach", label: "Coach" },
+  { value: "admin", label: "Admin" },
+  { value: "ceo", label: "CEO" },
+  { value: "cgo", label: "CGO" },
+  { value: "muhasebe_ik", label: "Muhasebe/IK" },
+  { value: "satinalma", label: "Satinalma" },
+  { value: "marketing", label: "Marketing" },
+  { value: "trainer", label: "Trainer" },
+  { value: "fabrika_mudur", label: "Fabrika Mudur" },
+  { value: "fabrika_operator", label: "Fabrika Operator" },
+  { value: "inspector", label: "Inspector" },
+  { value: "kalite_kontrol", label: "Kalite Kontrol" },
+  { value: "gida_muhendisi", label: "Gida Muhendisi" },
+];
+
 interface StepItem {
   stepNumber: number;
   title: string;
@@ -561,6 +583,7 @@ export default function AcademyModuleEditor() {
   const [estimatedDuration, setEstimatedDuration] = useState(30);
   const [moduleType, setModuleType] = useState("skill");
   const [requiredForRole, setRequiredForRole] = useState<string[]>([]);
+  const [targetRoles, setTargetRoles] = useState<string[]>([]);
   const [isPublished, setIsPublished] = useState(false);
   const [isRequired, setIsRequired] = useState(false);
   const [heroImageUrl, setHeroImageUrl] = useState("");
@@ -595,6 +618,7 @@ export default function AcademyModuleEditor() {
       setEstimatedDuration(existingModule.estimatedDuration || 30);
       setModuleType(existingModule.moduleType || "skill");
       setRequiredForRole(existingModule.requiredForRole || []);
+      setTargetRoles((existingModule as any).targetRoles || []);
       setIsPublished(existingModule.isPublished || false);
       setIsRequired(existingModule.isRequired || false);
       setHeroImageUrl(existingModule.heroImageUrl || "");
@@ -657,6 +681,7 @@ export default function AcademyModuleEditor() {
     estimatedDuration,
     moduleType,
     requiredForRole,
+    targetRoles,
     isPublished: publish !== undefined ? publish : isPublished,
     isRequired,
     learningObjectives,
@@ -1013,14 +1038,35 @@ export default function AcademyModuleEditor() {
                   </div>
                 </div>
 
+                <div>
+                  <Label className="mb-2 block">Hedef Roller (Gorebilecek Roller)</Label>
+                  <p className="text-xs text-muted-foreground mb-2">Bos birakilirsa tum roller gorebilir</p>
+                  <div className="flex flex-wrap gap-3">
+                    {TARGET_ROLE_OPTIONS.map((role) => (
+                      <label key={role.value} className="flex items-center gap-2 text-sm">
+                        <Checkbox
+                          checked={targetRoles.includes(role.value)}
+                          onCheckedChange={(checked) => {
+                            setTargetRoles(prev =>
+                              checked ? [...prev, role.value] : prev.filter(r => r !== role.value)
+                            );
+                          }}
+                          data-testid={`checkbox-target-role-${role.value}`}
+                        />
+                        {role.label}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
                 <div className="flex flex-col sm:flex-row gap-4">
                   <label className="flex items-center gap-2 text-sm">
                     <Switch checked={isPublished} onCheckedChange={setIsPublished} data-testid="switch-published" />
-                    Yayında
+                    Yayinda
                   </label>
                   <label className="flex items-center gap-2 text-sm">
                     <Switch checked={isRequired} onCheckedChange={setIsRequired} data-testid="switch-required" />
-                    Zorunlu Modül
+                    Zorunlu Modul
                   </label>
                 </div>
               </div>
