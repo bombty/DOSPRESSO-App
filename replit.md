@@ -72,6 +72,10 @@ The frontend utilizes React 18+ with TypeScript and Vite, employing Shadcn/ui (N
 - **Sprint 4**: Bulk equipment knowledge generation endpoint + UI, vector auto-refresh on provider change, manual backup restore point, final validation
 - **Sprint 5 (Barista & Supervisor Audit)**: AI Assistant dead link fix (event-based overlay toggle), barista lost-found quick action, supervisor guest-feedback quick action, comprehensive RBAC/bottom-nav/API validation
 
+## IT Consultant Bug Fixes
+- **Ticket 0 (BLOCKER)**: AI assistant schema mismatch (shifts.userId→assignedToId, redactName showFull for supervisor/manager), task list completed filter toggle, admin quick-action path fix (/admin/icerik-yonetimi→/icerik-studyosu), test data cleanup (5 junk tasks soft-deleted)
+- **Ticket 1 (Data Display)**: CAPA branch name resolution via auditInstances JOIN, recipe PostgreSQL array literal parser (parsePgArray), equipment analytics fault query unwrapping + EN→TR priority normalization, CAPA pie chart case-insensitive status mapping with full label set, feedback badge count aligned with sortedFeedbacks.length
+
 ## External Dependencies
 - **OpenAI API**: Used for AI-powered vision analysis, chat completions, embeddings, and summary generation.
 - **Replit Auth**: Utilized for user authentication via OpenID Connect.

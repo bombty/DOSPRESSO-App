@@ -14,17 +14,36 @@ interface EquipmentWithHealth extends Equipment {
 export default function EquipmentAnalytics() {
   const { data: faults = [] } = useQuery<EquipmentFault[]>({
     queryKey: ["/api/faults"],
+    queryFn: async () => {
+      const res = await fetch("/api/faults", { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch faults");
+      const json = await res.json();
+      return json.data ?? json;
+    },
   });
 
   const { data: equipment = [] } = useQuery<EquipmentWithHealth[]>({
     queryKey: ["/api/equipment"],
   });
 
-  // Calculate fault trends by priority
+  const priorityMap: Record<string, string> = {
+    critical: "kritik",
+    high: "yuksek",
+    medium: "normal",
+    low: "dusuk",
+    kritik: "kritik",
+    yuksek: "yuksek",
+    normal: "normal",
+    dusuk: "dusuk",
+  };
+
+  const normalizePriority = (p: string | null | undefined) => priorityMap[(p || "").toLowerCase()] || "normal";
+
   const faultsByPriority = {
-    kritik: faults.filter(f => f.priority === "kritik").length,
-    yuksek: faults.filter(f => f.priority === "yuksek").length,
-    normal: faults.filter(f => f.priority === "normal" || !f.priority).length,
+    kritik: faults.filter(f => normalizePriority(f.priority) === "kritik").length,
+    yuksek: faults.filter(f => normalizePriority(f.priority) === "yuksek").length,
+    normal: faults.filter(f => normalizePriority(f.priority) === "normal").length,
+    dusuk: faults.filter(f => normalizePriority(f.priority) === "dusuk").length,
   };
 
   // Calculate resolution rate
@@ -139,28 +158,40 @@ export default function EquipmentAnalytics() {
             <CardDescription>Tüm arızaların öncelik seviyesine göre yüzdesi</CardDescription>
           </CardHeader>
           <CardContent className="h-80">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={[
-                    { name: "Kritik", value: faultsByPriority.kritik, fill: "#ef4444" },
-                    { name: "Yüksek", value: faultsByPriority.yuksek, fill: "#f59e0b" },
-                    { name: "Normal", value: faultsByPriority.normal, fill: "#3b82f6" },
-                  ]}
-                  cx="50%"
-                  cy="50%"
-                  labelLine={false}
-                  label={({ name, value }) => `${name}: ${value}`}
-                  outerRadius={80}
-                  dataKey="value"
-                >
-                  <Cell fill="#ef4444" />
-                  <Cell fill="#f59e0b" />
-                  <Cell fill="#3b82f6" />
-                </Pie>
-                <Tooltip />
-              </PieChart>
-            </ResponsiveContainer>
+            {totalFaults === 0 ? (
+              <div className="flex items-center justify-center h-full">
+                <p className="text-sm text-muted-foreground" data-testid="text-no-fault-data">Veri yetersiz</p>
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={[
+                      { name: "Kritik", value: faultsByPriority.kritik, fill: "#ef4444" },
+                      { name: "Yüksek", value: faultsByPriority.yuksek, fill: "#f59e0b" },
+                      { name: "Normal", value: faultsByPriority.normal, fill: "#3b82f6" },
+                      { name: "Düşük", value: faultsByPriority.dusuk, fill: "#10b981" },
+                    ].filter(item => item.value > 0)}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={false}
+                    label={({ name, value }) => `${name}: ${value}`}
+                    outerRadius={80}
+                    dataKey="value"
+                  >
+                    {[
+                      { name: "Kritik", value: faultsByPriority.kritik, color: "#ef4444" },
+                      { name: "Yüksek", value: faultsByPriority.yuksek, color: "#f59e0b" },
+                      { name: "Normal", value: faultsByPriority.normal, color: "#3b82f6" },
+                      { name: "Düşük", value: faultsByPriority.dusuk, color: "#10b981" },
+                    ].filter(item => item.value > 0).map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                </PieChart>
+              </ResponsiveContainer>
+            )}
           </CardContent>
         </Card>
 

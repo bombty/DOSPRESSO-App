@@ -261,8 +261,9 @@ export default function KaliteDenetimi() {
       'pending_review': { className: 'bg-purple-100 text-purple-700', label: 'İncelemede' },
       'closed': { className: 'bg-green-100 text-green-700', label: 'Kapatıldı' },
       'escalated': { className: 'bg-red-100 text-red-700', label: 'Eskalasyon' },
+      'overdue': { className: 'bg-orange-100 text-orange-700', label: 'Gecikmiş' },
     };
-    const style = styles[status] || styles['open'];
+    const style = styles[status.toLowerCase()] || styles['open'];
     return <Badge className={style.className}>{style.label}</Badge>;
   };
 
@@ -271,11 +272,19 @@ export default function KaliteDenetimi() {
   const avgScore = dashboardStats?.scoreStats?.avgScore || 0;
   const completedCount = dashboardStats?.statusCounts?.completed || 0;
   const inProgressCount = dashboardStats?.statusCounts?.in_progress || 0;
-  const openCapas = Object.entries(dashboardStats?.capaCounts || {}).reduce((sum, [status, count]) => status !== 'closed' ? sum + count : sum, 0);
+  const openCapas = Object.entries(dashboardStats?.capaCounts || {}).reduce((sum, [status, count]) => status.toLowerCase() !== 'closed' ? sum + count : sum, 0);
 
   // Prepare pie chart data for CAPA status
+  const capaStatusLabels: Record<string, string> = {
+    'open': 'Açık',
+    'in_progress': 'İşlemde',
+    'pending_review': 'İncelemede',
+    'closed': 'Kapatıldı',
+    'escalated': 'Eskalasyon',
+    'overdue': 'Gecikmiş',
+  };
   const capaPieData = Object.entries(dashboardStats?.capaCounts || {}).map(([status, count]) => ({
-    name: status === 'open' ? 'Açık' : status === 'in_progress' ? 'İşlemde' : status === 'pending_review' ? 'İncelemede' : status === 'closed' ? 'Kapatıldı' : 'Eskalasyon',
+    name: capaStatusLabels[status.toLowerCase()] || status,
     value: count,
   }));
 
@@ -823,7 +832,7 @@ export default function KaliteDenetimi() {
                           </p>
                           <div className="flex items-center gap-2 mt-2 text-xs text-muted-foreground">
                             <Building2 className="w-3 h-3" />
-                            <span>{capa.branch?.name || `Şube #${capa.branchId}`}</span>
+                            <span>{capa.branch?.name || 'Belirtilmemiş'}</span>
                             {capa.dueDate && (
                               <>
                                 <span>•</span>

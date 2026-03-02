@@ -154,6 +154,74 @@ type RecipeNotification = {
   versionNumber: number | null;
 };
 
+function parsePgArray(str: string): string[] | null {
+  const t = str.trim();
+  if (!t.startsWith('{') || !t.endsWith('}')) return null;
+  const inner = t.slice(1, -1);
+  if (!inner) return [];
+  const items: string[] = [];
+  let current = '';
+  let inQuote = false;
+  for (let i = 0; i < inner.length; i++) {
+    const ch = inner[i];
+    if (ch === '"' && !inQuote) { inQuote = true; continue; }
+    if (ch === '"' && inQuote) {
+      if (inner[i + 1] === '"') { current += '"'; i++; continue; }
+      inQuote = false; continue;
+    }
+    if (ch === ',' && !inQuote) { items.push(current.trim()); current = ''; continue; }
+    current += ch;
+  }
+  if (current.trim()) items.push(current.trim());
+  return items;
+}
+
+function formatJsonField(value: string | null | undefined): React.ReactNode {
+  if (!value) return null;
+  const trimmed = value.trim();
+
+  const pgArr = parsePgArray(trimmed);
+  if (pgArr !== null && pgArr.length === 0) {
+    return null;
+  }
+  if (pgArr && pgArr.length > 0) {
+    return (
+      <ul className="list-disc list-inside space-y-1">
+        {pgArr.map((item, i) => (
+          <li key={i} className="text-sm">{item}</li>
+        ))}
+      </ul>
+    );
+  }
+
+  try {
+    const parsed = JSON.parse(trimmed);
+    if (Array.isArray(parsed)) {
+      return (
+        <ul className="list-disc list-inside space-y-1">
+          {parsed.map((item, i) => (
+            <li key={i} className="text-sm">{String(item)}</li>
+          ))}
+        </ul>
+      );
+    }
+    if (typeof parsed === 'object' && parsed !== null) {
+      return (
+        <ul className="space-y-1">
+          {Object.entries(parsed).map(([key, val], i) => (
+            <li key={i} className="text-sm">
+              <span className="font-medium">{key}:</span> {String(val)}
+            </li>
+          ))}
+        </ul>
+      );
+    }
+    return <p className="text-sm whitespace-pre-wrap">{String(parsed)}</p>;
+  } catch {
+    return <p className="text-sm whitespace-pre-wrap">{trimmed}</p>;
+  }
+}
+
 const FOOD_SLUGS = new Set(["donutlar", "tatlilar", "tuzlular"]);
 
 const iconMap: Record<string, React.ReactNode> = {
@@ -1271,7 +1339,7 @@ export default function Receteler() {
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="pt-3">
-                    <p className="text-sm whitespace-pre-wrap">{selectedRecipe.salesTips}</p>
+                    {formatJsonField(selectedRecipe.salesTips)}
                   </CardContent>
                 </Card>
               )}
@@ -1284,7 +1352,7 @@ export default function Receteler() {
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="pt-3">
-                    <p className="text-sm whitespace-pre-wrap">{selectedRecipe.upsellingNotes}</p>
+                    {formatJsonField(selectedRecipe.upsellingNotes)}
                   </CardContent>
                 </Card>
               )}
@@ -1297,7 +1365,7 @@ export default function Receteler() {
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="pt-3">
-                    <p className="text-sm whitespace-pre-wrap">{selectedRecipe.presentationNotes}</p>
+                    {formatJsonField(selectedRecipe.presentationNotes)}
                   </CardContent>
                 </Card>
               )}
@@ -1310,7 +1378,7 @@ export default function Receteler() {
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="pt-3">
-                    <p className="text-sm whitespace-pre-wrap">{selectedRecipe.storageConditions}</p>
+                    {formatJsonField(selectedRecipe.storageConditions)}
                   </CardContent>
                 </Card>
               )}
@@ -1323,7 +1391,7 @@ export default function Receteler() {
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="pt-3">
-                    <p className="text-sm whitespace-pre-wrap">{selectedRecipe.importantNotes}</p>
+                    {formatJsonField(selectedRecipe.importantNotes)}
                   </CardContent>
                 </Card>
               )}

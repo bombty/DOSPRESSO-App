@@ -348,9 +348,11 @@ export default function KaliteKontrolDashboard() {
             </CardTitle>
             <CardDescription className="text-[10px]">Öncelik sırasına göre listeleniyor</CardDescription>
           </div>
-          <Badge variant="secondary" className="text-[10px]">
-            {performance.totalPending} bekleyen
-          </Badge>
+          {sortedFeedbacks.length > 0 && (
+            <Badge variant="secondary" className="text-[10px]" data-testid="badge-pending-count">
+              {sortedFeedbacks.length} bekleyen
+            </Badge>
+          )}
         </CardHeader>
         <CardContent className="px-3 pb-3">
           {sortedFeedbacks.length === 0 ? (

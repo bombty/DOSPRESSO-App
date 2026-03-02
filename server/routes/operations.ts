@@ -2461,11 +2461,44 @@ function ensurePermission(user: unknown, module: string, action: string, errorMe
         ? await db.select().from(correctiveActions).where(and(...conditions)).orderBy(desc(correctiveActions.createdAt))
         : await db.select().from(correctiveActions).orderBy(desc(correctiveActions.createdAt));
 
-      // Add SLA status to each CAPA
-      const capasWithSLA = capas.map(capa => ({
-        ...capa,
-        slaStatus: capa.dueDate ? getSLAStatus(new Date(capa.dueDate), capa.completedAt ? new Date(capa.completedAt) : undefined) : 'on_track',
-      }));
+      const auditInstanceIds = [...new Set(capas.map(c => c.auditInstanceId).filter(Boolean))];
+      const auditInstanceMap = new Map<number, { branchId: number | null }>();
+      const branchMap = new Map<number, { id: number; name: string }>();
+
+      if (auditInstanceIds.length > 0) {
+        const auditRows = await db.select({
+          id: auditInstances.id,
+          branchId: auditInstances.branchId,
+        }).from(auditInstances).where(inArray(auditInstances.id, auditInstanceIds));
+
+        for (const row of auditRows) {
+          auditInstanceMap.set(row.id, { branchId: row.branchId });
+        }
+
+        const branchIds = [...new Set(auditRows.map(r => r.branchId).filter((id): id is number => id !== null))];
+        if (branchIds.length > 0) {
+          const branchRows = await db.select({
+            id: branches.id,
+            name: branches.name,
+          }).from(branches).where(inArray(branches.id, branchIds));
+
+          for (const row of branchRows) {
+            branchMap.set(row.id, { id: row.id, name: row.name });
+          }
+        }
+      }
+
+      const capasWithSLA = capas.map(capa => {
+        const auditInfo = auditInstanceMap.get(capa.auditInstanceId);
+        const branchId = auditInfo?.branchId ?? null;
+        const branch = branchId ? branchMap.get(branchId) ?? null : null;
+        return {
+          ...capa,
+          branchId: branchId,
+          branch: branch,
+          slaStatus: capa.dueDate ? getSLAStatus(new Date(capa.dueDate), capa.completedAt ? new Date(capa.completedAt) : undefined) : 'on_track',
+        };
+      });
 
       res.json(capasWithSLA);
     } catch (error: any) {
