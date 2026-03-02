@@ -2231,7 +2231,7 @@ function SalarySettingsSection({ employees, canEdit }: { employees: Employee[]; 
                   {filteredEmployees.length === 0 ? (
                     <tr>
                       <td colSpan={8} className="px-4 py-8 text-center text-muted-foreground">
-                        {searchTerm ? "Sonuç bulunamadı" : "Personel yükleniyor..."}
+                        {searchTerm ? "Aramanızla eşleşen sonuç bulunamadı" : "Personel yükleniyor..."}
                       </td>
                     </tr>
                   ) : (

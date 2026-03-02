@@ -556,7 +556,7 @@ export default function StokYonetimi() {
               ) : (
                 <TableRow>
                   <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
-                    {search || category !== "all" ? "Sonuç bulunamadı" : "Henüz stok kalemi yok"}
+                    {search || category !== "all" ? "Aramanızla eşleşen sonuç bulunamadı" : "Henüz stok kalemi bulunmuyor"}
                   </TableCell>
                 </TableRow>
               )}

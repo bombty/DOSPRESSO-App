@@ -621,7 +621,7 @@ export default function ServiceRequestsManagement() {
       ) : filteredRequests.length === 0 ? (
         <Card className="col-span-full">
           <CardContent className="pt-6 text-center text-muted-foreground">
-            Servis talebi bulunamadı.
+            Henüz servis talebi bulunmuyor
           </CardContent>
         </Card>
       ) : (

@@ -534,7 +534,7 @@ export default function EkipmanServis() {
         {unifiedRequests.length === 0 ? (
           <Card>
             <CardContent className="pt-6 text-center text-muted-foreground">
-              Kayıt bulunamadı
+              Henüz servis kaydı bulunmuyor
             </CardContent>
           </Card>
         ) : (

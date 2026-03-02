@@ -5358,7 +5358,7 @@ const normalizeTimeGlobal = (timeStr: string): string => {
       monthStart.setDate(1);
 
       // Get all branches for HQ
-      const allBranches = isHQ ? await db.select().from(branches).limit(50) : [];
+      const allBranches = isHQ ? await db.select().from(branches).where(eq(branches.isActive, true)).limit(50) : [];
       
       // Get all tasks - conditional query based on user role
       const taskList = userBranchId 
@@ -9321,8 +9321,7 @@ Dusuk puanli alanlara odaklan ve pozitif, motive edici ol. JSON dizisi olarak ya
       .from(auditInstances)
       .where(eq(auditInstances.status, "completed"));
 
-      // Get all branches
-      const allBranches = await db.select().from(branches);
+      const allBranches = await db.select().from(branches).where(eq(branches.isActive, true));
       const branchMap = new Map(allBranches.map(b => [b.id, b.name]));
 
       // Calculate average scores per branch

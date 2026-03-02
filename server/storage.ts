@@ -1127,7 +1127,7 @@ export class DatabaseStorage implements IStorage {
 
   // Branch operations
   async getBranches(): Promise<Branch[]> {
-    return db.select().from(branches).where(isNull(branches.deletedAt)).orderBy(branches.name);
+    return db.select().from(branches).where(and(isNull(branches.deletedAt), eq(branches.isActive, true))).orderBy(branches.name);
   }
 
   async getBranch(id: number): Promise<Branch | undefined> {

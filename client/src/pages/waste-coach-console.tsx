@@ -201,7 +201,7 @@ export default function WasteCoachConsole() {
           {isLoading ? (
             <div className="space-y-2">{[1,2,3,4].map(i => <Skeleton key={i} className="h-12 w-full" />)}</div>
           ) : events.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-4">{t("waste.noEvents", { defaultValue: "Kayıt bulunamadı" })}</p>
+            <p className="text-sm text-muted-foreground text-center py-4">{t("waste.noEvents", { defaultValue: "Henüz kayıt bulunmuyor" })}</p>
           ) : (
             <div className="space-y-2">
               {events.map((ev: any) => {

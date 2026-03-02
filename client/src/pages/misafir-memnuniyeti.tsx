@@ -556,7 +556,7 @@ export default function MisafirMemnuniyeti() {
                   {isLoading ? (
                     <p className="text-center text-muted-foreground py-8">Yükleniyor...</p>
                   ) : feedbacks.length === 0 ? (
-                    <p className="text-center text-muted-foreground py-8">Geri bildirim bulunamadı</p>
+                    <p className="text-center text-muted-foreground py-8">Henüz geri bildirim bulunmuyor</p>
                   ) : (
                     feedbacks.map((fb) => {
                       const sourceInfo = sourceLabels[fb.source] || sourceLabels.qr_code;

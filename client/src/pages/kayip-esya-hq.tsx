@@ -218,7 +218,7 @@ export default function KayipEsyaHQPage() {
           ) : filteredItems.length === 0 ? (
             <div className="p-8 text-center text-muted-foreground">
               <Briefcase className="h-8 w-8 mx-auto mb-2 opacity-50" />
-              <p className="text-sm">Kayıt bulunamadı</p>
+              <p className="text-sm">Henüz kayıt bulunmuyor</p>
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">

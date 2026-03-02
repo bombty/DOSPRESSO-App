@@ -163,7 +163,7 @@ export default function WasteExecutive() {
                 </div>
               ))}
               {topReasons.length === 0 && (
-                <p className="text-sm text-muted-foreground text-center">{t("waste.noData", { defaultValue: "Veri yok" })}</p>
+                <p className="text-sm text-muted-foreground text-center">{t("waste.noData", { defaultValue: "Henüz veri bulunmuyor" })}</p>
               )}
             </div>
           </CardContent>
@@ -188,7 +188,7 @@ export default function WasteExecutive() {
                 </div>
               ))}
               {branchRanking.length === 0 && (
-                <p className="text-sm text-muted-foreground text-center">{t("waste.noData", { defaultValue: "Veri yok" })}</p>
+                <p className="text-sm text-muted-foreground text-center">{t("waste.noData", { defaultValue: "Henüz veri bulunmuyor" })}</p>
               )}
             </div>
           </CardContent>

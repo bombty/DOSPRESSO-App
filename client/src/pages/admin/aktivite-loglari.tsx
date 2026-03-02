@@ -307,7 +307,7 @@ export default function AdminAktiviteLoglar() {
                 </div>
               ) : logs.length === 0 ? (
                 <p className="text-center text-muted-foreground py-8" data-testid="text-no-logs">
-                  Kayıt bulunamadı
+                  Henüz kayıt bulunmuyor
                 </p>
               ) : (
                 logs.map((log) => {

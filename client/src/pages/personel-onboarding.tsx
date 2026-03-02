@@ -478,8 +478,8 @@ function RecordsList({
   if (records.length === 0) {
     return (
       <EmptyState
-        title="Kayıt bulunamadı"
-        description={searchText || statusFilter !== "all" ? "Seçili filtreler için kayıt bulunamadı" : "Henüz onboarding kaydı oluşturulmamış"}
+        title="Henüz kayıt bulunmuyor"
+        description={searchText || statusFilter !== "all" ? "Seçili filtreler ile eşleşen kayıt bulunmuyor" : "Henüz onboarding kaydı oluşturulmamış"}
       />
     );
   }

@@ -290,7 +290,7 @@ export default function TedarikciYonetimi() {
               ) : (
                 <TableRow>
                   <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
-                    {search || status !== "all" ? "Sonuç bulunamadı" : "Henüz tedarikçi yok"}
+                    {search || status !== "all" ? "Aramanızla eşleşen sonuç bulunamadı" : "Henüz tedarikçi bulunmuyor"}
                   </TableCell>
                 </TableRow>
               )}

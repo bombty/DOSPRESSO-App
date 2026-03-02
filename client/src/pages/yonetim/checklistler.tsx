@@ -256,7 +256,7 @@ export default function AdminChecklistManagement() {
           {isLoading ? (
             <div className="text-center py-8 text-muted-foreground">Yükleniyor...</div>
           ) : filteredChecklists?.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">Checklist bulunamadı</div>
+            <div className="text-center py-8 text-muted-foreground">Henüz checklist bulunmuyor</div>
           ) : (
             <div className="flex flex-col gap-3 sm:gap-4">
               {filteredChecklists?.map((checklist) => {

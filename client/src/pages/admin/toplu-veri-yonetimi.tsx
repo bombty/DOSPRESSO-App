@@ -373,7 +373,7 @@ export default function TopluVeriYonetimi() {
               </Table>
             ) : (
               <div className="flex items-center justify-center h-full text-muted-foreground">
-                Veri bulunamadı
+                Henüz veri bulunmuyor
               </div>
             )}
           </ScrollArea>

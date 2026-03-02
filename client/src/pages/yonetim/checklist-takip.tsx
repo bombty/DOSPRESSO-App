@@ -255,7 +255,7 @@ export default function ChecklistTrackingPage() {
       ) : filteredCompletions.length === 0 ? (
         <Card>
           <CardContent className="py-8 text-center text-muted-foreground">
-            Bu kriterlere uygun kayıt bulunamadı
+            Henüz bu kriterlere uygun kayıt bulunmuyor
           </CardContent>
         </Card>
       ) : (

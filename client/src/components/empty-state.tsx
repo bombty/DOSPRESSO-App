@@ -120,28 +120,28 @@ export const EMPTY_STATE_PRESETS = {
   },
   reports: {
     icon: BarChart3,
-    title: "Rapor verisi yok",
-    description: "Seçili dönem için rapor verisi bulunamadı.",
+    title: "Henüz rapor verisi bulunmuyor",
+    description: "Seçili dönem için rapor verisi henüz oluşturulmamış.",
   },
   search: {
     icon: Search,
-    title: "Sonuç bulunamadı",
+    title: "Aramanızla eşleşen sonuç bulunamadı",
     description: "Arama kriterlerinizi değiştirip tekrar deneyin.",
     variant: 'search' as const,
   },
   messages: {
     icon: MessageSquare,
-    title: "Mesaj yok",
+    title: "Henüz mesaj bulunmuyor",
     description: "Henüz mesaj alınmamış.",
   },
   notifications: {
     icon: Bell,
-    title: "Bildirim yok",
+    title: "Henüz bildirim bulunmuyor",
     description: "Tüm bildirimleri okudunuz!",
   },
   badges: {
     icon: Award,
-    title: "Rozet kazanılmadı",
+    title: "Henüz rozet kazanılmamış",
     description: "Eğitimleri tamamlayarak rozet kazanabilirsiniz.",
   },
   error: {
@@ -152,19 +152,19 @@ export const EMPTY_STATE_PRESETS = {
   },
   projects: {
     icon: FolderOpen,
-    title: "Proje bulunamadı",
+    title: "Henüz proje bulunmuyor",
     description: "Henüz proje oluşturulmamış.",
     actionLabel: "Proje Oluştur",
   },
   documents: {
     icon: FileX,
-    title: "Döküman bulunamadı",
+    title: "Henüz döküman bulunmuyor",
     description: "Henüz döküman yüklenmemiş.",
     actionLabel: "Döküman Yükle",
   },
   aiInsights: {
     icon: Inbox,
-    title: "AI önerisi yok",
+    title: "Henüz AI önerisi bulunmuyor",
     description: "Henüz AI tarafından oluşturulmuş içgörü bulunmuyor.",
   },
 };
