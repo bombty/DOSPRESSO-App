@@ -135,7 +135,7 @@ const allActions: QuickAction[] = [
     defaultLabelTR: "Duyurular",
     defaultLabelEN: "Announcements",
     icon: Megaphone, 
-    path: "/admin/icerik-yonetimi",
+    path: "/icerik-studyosu",
     color: "text-rose-600 dark:text-rose-400",
     bgColor: "bg-rose-100 dark:bg-rose-900/40"
   },

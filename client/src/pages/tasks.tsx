@@ -58,6 +58,7 @@ export default function Tasks() {
   const [fairnessPeriod, setFairnessPeriod] = useState(30);
   const [showBulkArchiveDialog, setShowBulkArchiveDialog] = useState(false);
   const [selectedArchiveIds, setSelectedArchiveIds] = useState<number[]>([]);
+  const [showCompleted, setShowCompleted] = useState(false);
 
   const { data: tasks, isLoading } = useQuery<Task[]>({
     queryKey: ["/api/tasks"],
@@ -280,6 +281,9 @@ export default function Tasks() {
       filtered = filtered.filter(t => t.status === "onay_bekliyor");
     } else if (activeTab === "zamanlanmis") {
       filtered = filtered.filter(t => t.status === "zamanlanmis");
+    } else if (activeTab === "all" && !showCompleted && !filterStatus) {
+      const completedStatuses = ['onaylandi', 'iptal_edildi', 'reddedildi'];
+      filtered = filtered.filter(t => !completedStatuses.includes(t.status as string));
     }
     
     // Sorting
@@ -305,7 +309,7 @@ export default function Tasks() {
     });
     
     return filtered;
-  }, [tasks, searchQuery, activeTab, user, filterBranchId, filterAssigneeId, filterStatus, filterPriority, filterDateFrom, filterDateTo, sortConfig, assignmentFilter]);
+  }, [tasks, searchQuery, activeTab, user, filterBranchId, filterAssigneeId, filterStatus, filterPriority, filterDateFrom, filterDateTo, sortConfig, assignmentFilter, showCompleted]);
 
   return (
     <div className="max-w-6xl mx-auto px-3 sm:px-4 py-3 pb-24 space-y-4">
@@ -704,7 +708,17 @@ export default function Tasks() {
             <TabsTrigger value="onay_bekleyen" data-testid="tab-pending-approval">Onay Bekleyen</TabsTrigger>
             {isHQ && <TabsTrigger value="zamanlanmis" data-testid="tab-scheduled">Zamanlanmış</TabsTrigger>}
           </TabsList>
-          
+          {activeTab === "all" && !filterStatus && (
+            <Button
+              variant={showCompleted ? "secondary" : "outline"}
+              size="sm"
+              onClick={() => setShowCompleted(!showCompleted)}
+              data-testid="button-toggle-completed"
+            >
+              {showCompleted ? <EyeOff className="h-4 w-4 mr-1" /> : <Eye className="h-4 w-4 mr-1" />}
+              {showCompleted ? "Tamamlananları Gizle" : "Tamamlananları Göster"}
+            </Button>
+          )}
         </div>
 
         {/* Dynamic filtered list header */}

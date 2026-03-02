@@ -9,10 +9,11 @@ import {
 } from "@shared/schema";
 import { eq, desc, sql, and, or, count, avg, gte, lte } from "drizzle-orm";
 
-function redactName(firstName?: string | null, lastName?: string | null): string {
+function redactName(firstName?: string | null, lastName?: string | null, showFull: boolean = false): string {
   const f = firstName?.trim();
   const l = lastName?.trim();
   if (!f && !l) return "Personel";
+  if (showFull) return `${f || ""} ${l || ""}`.trim();
   const fInitial = f ? f[0] + "." : "";
   const lInitial = l ? l[0] + "." : "";
   return `${fInitial}${lInitial}`.trim() || "Personel";
@@ -738,7 +739,7 @@ URETIM CIKTISI (Son 30 Gun):
         .sort((a, b) => Number(a.weeklyTotalScore) - Number(b.weeklyTotalScore))
         .map(p => {
           const u = usersData.find(us => us.id === p.userId);
-          return `${redactName(u?.firstName, u?.lastName)} (${u?.role}) - Skor: ${Number(p.weeklyTotalScore).toFixed(0)}`;
+          return `${redactName(u?.firstName, u?.lastName, showFullNames)} (${u?.role}) - Skor: ${Number(p.weeklyTotalScore).toFixed(0)}`;
         });
 
       const todayStr = today;
@@ -752,12 +753,13 @@ URETIM CIKTISI (Son 30 Gun):
       });
 
       const todayShifts = shiftsData.filter((s: any) => {
-        const sDate = s.date || s.shiftDate;
+        const sDate = s.shiftDate || s.date;
         return sDate && new Date(sDate).toISOString().slice(0, 10) === todayStr && s.branchId === branchId;
       });
+      const showFullNames = role === "supervisor" || role === "supervisor_buddy" || role === "manager" || role === "mudur";
       const todayShiftDetails = todayShifts.slice(0, 10).map((s: any) => {
-        const u = usersData.find(us => us.id === s.userId);
-        return `- ${redactName(u?.firstName, u?.lastName)} (${u?.role || "?"}): ${s.startTime || "?"} - ${s.endTime || "?"}`;
+        const u = usersData.find(us => us.id === s.assignedToId);
+        return `- ${redactName(u?.firstName, u?.lastName, showFullNames)} (${u?.role || "?"}): ${s.startTime || "?"} - ${s.endTime || "?"}`;
       });
 
       const branchEquipmentHealth = equipmentData.map((e: any) => {
@@ -802,7 +804,7 @@ PERSONEL PERFORMANSLARI:
 ${perfDetails.length > 0 ? perfDetails.join("\n") : "- Performans verisi henuz yok"}
 
 PERSONEL LISTESI:
-${usersData.map(u => `- ${redactName(u.firstName, u.lastName)} (${u.role})`).join("\n")}`;
+${usersData.map(u => `- ${redactName(u.firstName, u.lastName, showFullNames)} (${u.role})`).join("\n")}`;
       accessibleData = "Sube personeli, gorevler, checklistler, arizalar, vardiyalar, izin talepleri, ekipman durumu, musteri geri bildirimleri";
 
     } else if ((role === "barista" || role === "bar_buddy" || role === "stajyer") && branchId) {
