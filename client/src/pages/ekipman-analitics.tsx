@@ -201,24 +201,30 @@ export default function EquipmentAnalytics() {
             <CardDescription>Sağlık skoruna göre ekipman dağılımı</CardDescription>
           </CardHeader>
           <CardContent className="h-80">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={healthDistribution}
-                  cx="50%"
-                  cy="50%"
-                  labelLine={false}
-                  label={({ name, value }) => `${name}: ${value}`}
-                  outerRadius={80}
-                  dataKey="value"
-                >
-                  {healthDistribution.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                </Pie>
-                <Tooltip />
-              </PieChart>
-            </ResponsiveContainer>
+            {healthDistribution.filter(d => d.value > 0).length === 0 ? (
+              <div className="flex items-center justify-center h-full">
+                <p className="text-sm text-muted-foreground">Ekipman sağlık verisi bulunmuyor</p>
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={healthDistribution.filter(d => d.value > 0)}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={false}
+                    label={({ name, value }) => `${name}: ${value}`}
+                    outerRadius={80}
+                    dataKey="value"
+                  >
+                    {healthDistribution.filter(d => d.value > 0).map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                </PieChart>
+              </ResponsiveContainer>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -230,15 +236,21 @@ export default function EquipmentAnalytics() {
           <CardDescription>Açık, işleme alınan ve çözülen arızaların sayısı</CardDescription>
         </CardHeader>
         <CardContent className="h-80">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={faultStatusData}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="name" />
-              <YAxis />
-              <Tooltip />
-              <Bar dataKey="value" fill="#3b82f6" />
-            </BarChart>
-          </ResponsiveContainer>
+          {faultStatusData.every(d => d.value === 0) ? (
+            <div className="flex items-center justify-center h-full">
+              <p className="text-sm text-muted-foreground">Arıza durum verisi bulunmuyor</p>
+            </div>
+          ) : (
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={faultStatusData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="name" />
+                <YAxis />
+                <Tooltip />
+                <Bar dataKey="value" fill="#3b82f6" />
+              </BarChart>
+            </ResponsiveContainer>
+          )}
         </CardContent>
       </Card>
 

@@ -638,26 +638,32 @@ export default function E2EReportsPage() {
                   <CardTitle>Arıza Durumu Dağılımı</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <ResponsiveContainer width="100%" height={300}>
-                    <PieChart>
-                      <Pie
-                        data={faultStatusChartData}
-                        cx="50%"
-                        cy="50%"
-                        labelLine={false}
-                        label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                        outerRadius={100}
-                        fill="#8884d8"
-                        dataKey="value"
-                      >
-                        {faultStatusChartData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={entry.color} />
-                        ))}
-                      </Pie>
-                      <Tooltip />
-                      <Legend />
-                    </PieChart>
-                  </ResponsiveContainer>
+                  {faultStatusChartData.every(d => d.value === 0) ? (
+                    <div className="h-[300px] flex items-center justify-center text-muted-foreground text-sm">
+                      Arıza verisi bulunmuyor
+                    </div>
+                  ) : (
+                    <ResponsiveContainer width="100%" height={300}>
+                      <PieChart>
+                        <Pie
+                          data={faultStatusChartData.filter(d => d.value > 0)}
+                          cx="50%"
+                          cy="50%"
+                          labelLine={false}
+                          label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                          outerRadius={100}
+                          fill="#8884d8"
+                          dataKey="value"
+                        >
+                          {faultStatusChartData.filter(d => d.value > 0).map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={entry.color} />
+                          ))}
+                        </Pie>
+                        <Tooltip />
+                        <Legend />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  )}
                 </CardContent>
               </Card>
 

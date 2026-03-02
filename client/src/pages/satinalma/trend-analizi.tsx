@@ -165,13 +165,13 @@ interface CostAnalysisData {
 
 const MONTH_LABELS: Record<string, string> = {
   "01": "Oca",
-  "02": "Sub",
+  "02": "Şub",
   "03": "Mar",
   "04": "Nis",
   "05": "May",
   "06": "Haz",
   "07": "Tem",
-  "08": "Agu",
+  "08": "Ağu",
   "09": "Eyl",
   "10": "Eki",
   "11": "Kas",

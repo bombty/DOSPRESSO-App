@@ -155,21 +155,27 @@ export default function AcademyAnalytics() {
                 <CardDescription>Son sınavlarındaki performans</CardDescription>
               </CardHeader>
               <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
-                  <LineChart data={performanceData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="name" />
-                    <YAxis domain={[0, 100]} />
-                    <Tooltip formatter={(v) => `${v}%`} />
-                    <Line 
-                      type="monotone" 
-                      dataKey="score" 
-                      stroke="#3b82f6" 
-                      dot={{ fill: '#3b82f6' }}
-                      strokeWidth={2}
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
+                {!performanceData || performanceData.length === 0 ? (
+                  <div className="h-[300px] flex items-center justify-center text-muted-foreground text-sm">
+                    Henüz sınav verisi bulunmuyor
+                  </div>
+                ) : (
+                  <ResponsiveContainer width="100%" height={300}>
+                    <LineChart data={performanceData}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="name" />
+                      <YAxis domain={[0, 100]} />
+                      <Tooltip formatter={(v) => `${v}%`} />
+                      <Line 
+                        type="monotone" 
+                        dataKey="score" 
+                        stroke="#3b82f6" 
+                        dot={{ fill: '#3b82f6' }}
+                        strokeWidth={2}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                )}
               </CardContent>
             </Card>
           </TabsContent>

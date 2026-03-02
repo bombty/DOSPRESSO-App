@@ -223,18 +223,24 @@ export default function HQFabrikaAnalitik() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={dailyProduction}>
-                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                    <XAxis dataKey="day" className="text-xs" />
-                    <YAxis className="text-xs" />
-                    <Tooltip
-                      contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))' }}
-                    />
-                    <Bar dataKey="produced" fill="#22c55e" name="Üretim" radius={[4, 4, 0, 0]} />
-                    <Bar dataKey="waste" fill="#ef4444" name="Fire" radius={[4, 4, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
+                {dailyProduction.length === 0 ? (
+                  <div className="flex items-center justify-center h-[300px]">
+                    <p className="text-sm text-muted-foreground">Bu dönem için üretim verisi bulunmuyor</p>
+                  </div>
+                ) : (
+                  <ResponsiveContainer width="100%" height={300}>
+                    <BarChart data={dailyProduction}>
+                      <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                      <XAxis dataKey="day" className="text-xs" />
+                      <YAxis className="text-xs" />
+                      <Tooltip
+                        contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))' }}
+                      />
+                      <Bar dataKey="produced" fill="#22c55e" name="Üretim" radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="waste" fill="#ef4444" name="Fire" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                )}
               </CardContent>
             </Card>
 
@@ -246,17 +252,23 @@ export default function HQFabrikaAnalitik() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={stationPerformance} layout="vertical">
-                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                    <XAxis type="number" domain={[0, 100]} className="text-xs" />
-                    <YAxis dataKey="stationName" type="category" width={100} className="text-xs" />
-                    <Tooltip
-                      contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))' }}
-                    />
-                    <Bar dataKey="efficiency" fill="#3b82f6" name="Verimlilik %" radius={[0, 4, 4, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
+                {stationPerformance.length === 0 ? (
+                  <div className="flex items-center justify-center h-[300px]">
+                    <p className="text-sm text-muted-foreground">İstasyon performans verisi bulunmuyor</p>
+                  </div>
+                ) : (
+                  <ResponsiveContainer width="100%" height={300}>
+                    <BarChart data={stationPerformance} layout="vertical">
+                      <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                      <XAxis type="number" domain={[0, 100]} className="text-xs" />
+                      <YAxis dataKey="stationName" type="category" width={100} className="text-xs" />
+                      <Tooltip
+                        contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))' }}
+                      />
+                      <Bar dataKey="efficiency" fill="#3b82f6" name="Verimlilik %" radius={[0, 4, 4, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                )}
               </CardContent>
             </Card>
           </div>
@@ -302,17 +314,23 @@ export default function HQFabrikaAnalitik() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={wasteReasonData} layout="vertical">
-                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                    <XAxis type="number" className="text-xs" />
-                    <YAxis dataKey="reason" type="category" width={120} className="text-xs" />
-                    <Tooltip
-                      contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))' }}
-                    />
-                    <Bar dataKey="count" fill="#f97316" name="Adet" radius={[0, 4, 4, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
+                {wasteReasonData.length === 0 ? (
+                  <div className="flex items-center justify-center h-[300px]">
+                    <p className="text-sm text-muted-foreground">Fire nedeni verisi bulunmuyor</p>
+                  </div>
+                ) : (
+                  <ResponsiveContainer width="100%" height={300}>
+                    <BarChart data={wasteReasonData} layout="vertical">
+                      <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                      <XAxis type="number" className="text-xs" />
+                      <YAxis dataKey="reason" type="category" width={120} className="text-xs" />
+                      <Tooltip
+                        contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))' }}
+                      />
+                      <Bar dataKey="count" fill="#f97316" name="Adet" radius={[0, 4, 4, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                )}
               </CardContent>
             </Card>
           </div>
