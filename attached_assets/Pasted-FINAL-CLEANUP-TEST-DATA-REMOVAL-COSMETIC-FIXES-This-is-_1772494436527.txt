@@ -1,0 +1,67 @@
+FINAL CLEANUP — TEST DATA REMOVAL + COSMETIC FIXES
+
+This is the last cleanup ticket before the app is considered bug-free.
+
+TASK 1 — Remove or Hide Remaining Test/Dummy Data
+WHERE: Across all pages visible to real users
+PROBLEM: Test entries like "Test şubesi", "Deneme", "asdf", placeholder names may still exist in the database or UI.
+FIX:
+1. Search the database for obvious test records:
+   - Tasks/Görevler: titles containing "test", "deneme", "asdf", "xxx", "aaa", single character names
+   - Users: names like "Test User", "Admin Test"
+   - Branches: "Test Şubesi", "Deneme Şubesi"
+   - Recipes: "Test Reçete", "Deneme"
+   - Any other table with obvious fake data
+2. Soft-delete test records (set isActive=false or isDeleted=true) — do NOT hard delete
+3. Make sure soft-deleted items don't appear in any list views
+VERIFY: No obviously fake data visible when browsing the app.
+
+TASK 2 — Fix Empty State Messages Consistency
+WHERE: All list views and content areas across the app
+PROBLEM: Some empty states show different formats — some say "Veri bulunamadı", some "Henüz kayıt yok", some show nothing at all.
+FIX: Standardize empty state messages to a consistent format:
+- For lists: "Henüz [item type] bulunmuyor" (e.g., "Henüz görev bulunmuyor")
+- For charts: "[Chart name] — Henüz veri bulunmuyor"  
+- For search results: "Aramanızla eşleşen sonuç bulunamadı"
+- Always include a subtle icon (inbox, search, chart-bar) above the message
+- Never leave a section completely blank
+Check at minimum: Görevler, CAPA listesi, Bildirimler, Denetim listesi, Vardiyalar, Stok listesi
+VERIFY: Every empty list shows a clean, consistent empty state.
+
+TASK 3 — Fix Console Errors and Warnings
+WHERE: Browser developer console
+FIX:
+1. Start the app and navigate through major pages
+2. Check browser console for errors and warnings
+3. Fix common issues:
+   - Missing key prop in React lists
+   - Undefined variable warnings
+   - Failed API calls that should be handled gracefully
+   - Deprecated function warnings
+4. Do NOT fix minor style warnings or third-party library warnings
+VERIFY: No red errors in console during normal navigation.
+
+TASK 4 — Final Visual Polish
+WHERE: Across the entire app
+FIX these minor cosmetic issues if they exist:
+- Buttons with inconsistent sizing (some too small on mobile)
+- Text overflow/truncation on small screens (especially in tables and cards)
+- Loading states: every page should show a spinner or skeleton while data loads, not a blank screen
+- Toast notifications: verify they appear in Turkish and auto-dismiss after 3-5 seconds
+- Modal dialogs: verify close button works, clicking outside closes the modal
+VERIFY: App looks polished and professional on both desktop and mobile views.
+
+TASK 5 — Create a Summary of All Changes Made
+After completing tasks 1-4, create a final summary listing:
+- Total tickets completed (0-6)
+- Total files modified across all tickets
+- Total bugs fixed
+- Key improvements made
+- Any remaining known issues or recommendations for future work
+
+DO NOT BREAK:
+- Any fixes from Tickets 0-5
+- Auth system
+- Data integrity (only soft-delete, never hard delete)
+- API endpoints
+- Mobile responsiveness
