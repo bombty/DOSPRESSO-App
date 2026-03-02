@@ -18,6 +18,27 @@ import { db } from "./db";
 import { users } from "@shared/schema";
 import { eq, sql, count } from "drizzle-orm";
 
+process.on('unhandledRejection', (reason: unknown, promise: Promise<unknown>) => {
+  console.error('[UnhandledRejection] Unhandled promise rejection:', reason);
+  console.error('[UnhandledRejection] Promise:', promise);
+});
+
+let httpServer: import('http').Server | null = null;
+
+process.on('uncaughtException', (error: Error) => {
+  console.error('[UncaughtException] Uncaught exception:', error);
+  console.error('[UncaughtException] Initiating graceful shutdown...');
+  if (httpServer) {
+    httpServer.close(() => {
+      console.error('[UncaughtException] Server closed, exiting...');
+      process.exit(1);
+    });
+  }
+  setTimeout(() => {
+    process.exit(1);
+  }, 3000);
+});
+
 const app = express();
 
 // Trust proxy - required for session cookies behind reverse proxy
@@ -69,6 +90,7 @@ app.use((req, res, next) => {
 
 (async () => {
   const server = await registerRoutes(app);
+  httpServer = server;
 
   app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
     const status = (err as any).status || (err as any).statusCode || 500;

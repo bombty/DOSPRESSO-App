@@ -2335,7 +2335,7 @@ router.delete('/api/new-shop-projects/:projectId/external-users/:externalUserId'
 // ŞUBE KIOSK SİSTEMİ API'LERİ
 // ========================================
 
-router.get('/api/branches/:branchId/kiosk/settings', async (req, res) => {
+router.get('/api/branches/:branchId/kiosk/settings', isAuthenticated, async (req: any, res) => {
   try {
     const branchId = parseInt(req.params.branchId);
     
@@ -3335,7 +3335,7 @@ router.get('/api/hq/kiosk/active-sessions', isAuthenticated, async (req: any, re
 });
 
 // Şube günlük puantaj özeti
-router.get('/api/branches/:branchId/attendance/daily', async (req, res) => {
+router.get('/api/branches/:branchId/attendance/daily', isAuthenticated, async (req: any, res) => {
   try {
     const branchId = parseInt(req.params.branchId);
     const { date } = req.query;
@@ -3364,7 +3364,7 @@ router.get('/api/branches/:branchId/attendance/daily', async (req, res) => {
   }
 });
 
-router.get('/api/branches/:branchId/attendance/weekly', async (req, res) => {
+router.get('/api/branches/:branchId/attendance/weekly', isAuthenticated, async (req: any, res) => {
   try {
     const branchId = parseInt(req.params.branchId);
     const { weekStart } = req.query;
@@ -3400,7 +3400,7 @@ router.get('/api/branches/:branchId/attendance/weekly', async (req, res) => {
   }
 });
 
-router.get('/api/branches/:branchId/attendance/monthly', async (req, res) => {
+router.get('/api/branches/:branchId/attendance/monthly', isAuthenticated, async (req: any, res) => {
   try {
     const branchId = parseInt(req.params.branchId);
     const { month, year } = req.query;
@@ -3749,7 +3749,7 @@ router.post('/api/branches/:branchId/attendance/approve-monthly', isAuthenticate
 });
 
 // Branch Dashboard
-router.get('/api/branch-dashboard/:branchId', async (req, res) => {
+router.get('/api/branch-dashboard/:branchId', isAuthenticated, async (req: any, res) => {
   try {
     const branchId = parseInt(req.params.branchId);
     if (isNaN(branchId)) {
@@ -3780,7 +3780,7 @@ router.get('/api/branch-dashboard/:branchId', async (req, res) => {
   }
 });
 
-router.get('/api/branch-dashboard-v2/:branchId', async (req, res) => {
+router.get('/api/branch-dashboard-v2/:branchId', isAuthenticated, async (req: any, res) => {
   try {
     const branchId = parseInt(req.params.branchId);
     if (isNaN(branchId)) {

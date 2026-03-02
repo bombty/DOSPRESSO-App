@@ -1397,7 +1397,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
   });
 
   // Fire/Zayiat Sebepleri listesi
-  router.get('/api/factory/waste-reasons', async (req, res) => {
+  router.get('/api/factory/waste-reasons', isAuthenticated, async (req: any, res) => {
     try {
       const showAll = req.query.all === 'true';
       const reasons = await db.select().from(factoryWasteReasons)
@@ -2191,7 +2191,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
   });
 
   // Fabrika ürünleri listesi (duplicate kaldırıldı - yukarıda mevcut)
-  router.get('/api/factory/catalog/products', async (req, res) => {
+  router.get('/api/factory/catalog/products', isAuthenticated, async (req: any, res) => {
     try {
       const products = await db.select().from(factoryProducts)
         .where(eq(factoryProducts.isActive, true))
@@ -2525,7 +2525,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
   });
 
   // Aktif çalışanlar listesi (dashboard için)
-  router.get('/api/factory/active-workers', async (req, res) => {
+  router.get('/api/factory/active-workers', isAuthenticated, async (req: any, res) => {
     try {
       const activeSessions = await db.select({
         sessionId: factoryShiftSessions.id,
@@ -2551,7 +2551,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
   });
 
   // Kalite Kontrol - Bekleyen üretim çıktıları
-  router.get('/api/factory/quality/pending', async (req, res) => {
+  router.get('/api/factory/quality/pending', isAuthenticated, async (req: any, res) => {
     try {
       const outputs = await db.select({
         id: factoryProductionOutputs.id,
@@ -2583,7 +2583,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
   });
 
   // Kalite Kontrol - Onaylanan üretim çıktıları
-  router.get('/api/factory/quality/approved', async (req, res) => {
+  router.get('/api/factory/quality/approved', isAuthenticated, async (req: any, res) => {
     try {
       // Parse date range from query params
       const fromDate = req.query.from ? new Date(req.query.from as string) : new Date();
@@ -2627,7 +2627,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
   });
 
   // Kalite Kontrol - Reddedilen üretim çıktıları
-  router.get('/api/factory/quality/rejected', async (req, res) => {
+  router.get('/api/factory/quality/rejected', isAuthenticated, async (req: any, res) => {
     try {
       // Parse date range from query params
       const fromDate = req.query.from ? new Date(req.query.from as string) : new Date();
@@ -2714,7 +2714,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
   });
 
   // Fabrika Analitiği - Personel performansı
-  router.get('/api/factory/analytics/workers', async (req, res) => {
+  router.get('/api/factory/analytics/workers', isAuthenticated, async (req: any, res) => {
     try {
       const period = req.query.period as string || 'weekly';
       
@@ -2791,7 +2791,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
   });
 
   // Fabrika Analitiği - İstasyon performansı
-  router.get('/api/factory/analytics/stations', async (req, res) => {
+  router.get('/api/factory/analytics/stations', isAuthenticated, async (req: any, res) => {
     try {
       const period = req.query.period as string || 'weekly';
       
@@ -2834,7 +2834,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
   });
 
   // Fabrika Analitiği - Zaiyat analizi
-  router.get('/api/factory/analytics/waste', async (req, res) => {
+  router.get('/api/factory/analytics/waste', isAuthenticated, async (req: any, res) => {
     try {
       const period = req.query.period as string || 'weekly';
       
@@ -3765,7 +3765,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
   // ========================================
 
   // Şube kiosk ayarlarını getir veya oluştur
-  router.get('/api/branches/:branchId/kiosk/settings', async (req, res) => {
+  router.get('/api/branches/:branchId/kiosk/settings', isAuthenticated, async (req: any, res) => {
     try {
       const branchId = parseInt(req.params.branchId);
       
