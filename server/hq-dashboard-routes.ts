@@ -5,6 +5,9 @@ import { db } from "./db";
 import { branches, users, equipmentFaults, checklistCompletions, customerFeedback, leaveRequests, overtimeRequests, monthlyPayrolls, inventory, purchaseOrders, suppliers, productComplaints, productionBatches, equipment, auditInstances, tasks, guestComplaints, franchiseProjects, factoryProducts, haccpControlPoints, haccpRecords, hygieneAudits, supplierCertifications, foodSafetyTrainings, foodSafetyDocuments } from "@shared/schema";
 import { eq, and, inArray, sql, or, gte, count } from "drizzle-orm";
 import { computeBranchHealthScores } from "./services/branch-health-scoring";
+import { cache, generateCacheKey } from "./cache";
+
+const DASHBOARD_CACHE_TTL = 60_000;
 
 const HQ_ROLES_LIST = ['ceo', 'cgo', 'admin', 'satinalma', 'kalite_kontrol', 'gida_muhendisi', 'muhasebe', 'muhasebe_ik', 'coach', 'trainer', 'teknik', 'fabrika', 'fabrika_mudur', 'fabrika_sorumlu', 'destek', 'operasyon', 'marketing', 'ik'];
 
@@ -36,6 +39,17 @@ export function registerHQDashboardRoutes(app: Express, isAuthenticated: any) {
       }
 
       const role = user.role;
+      const cacheKey = generateCacheKey('cmd-center', role);
+      const cached = cache.get<any>(cacheKey);
+      if (cached) {
+        return res.json(cached);
+      }
+
+      const originalJson = res.json.bind(res);
+      res.json = (data: any) => {
+        cache.set(cacheKey, data, DASHBOARD_CACHE_TTL);
+        return originalJson(data);
+      };
 
       if (['ceo', 'cgo', 'admin'].includes(role)) {
         return await buildCeoCommandCenter(res);
@@ -1063,6 +1077,12 @@ export function registerHQDashboardRoutes(app: Express, isAuthenticated: any) {
         return res.status(403).json({ message: "Bu sayfaya erisim yetkiniz yok" });
       }
 
+      const coachCacheKey = generateCacheKey('coach-dashboard', user.role);
+      const cachedCoach = cache.get<any>(coachCacheKey);
+      if (cachedCoach) {
+        return res.json(cachedCoach);
+      }
+
       const healthReport = await computeBranchHealthScores({ rangeDays: 30 });
       const branchEntries = healthReport.branches;
 
@@ -1134,7 +1154,7 @@ export function registerHQDashboardRoutes(app: Express, isAuthenticated: any) {
         alerts.push({ message: "Tüm şubeler normal aralıkta", severity: "healthy" });
       }
 
-      res.json({
+      const coachResult = {
         metrics: [
           { title: "Ortalama Şube Puanı", value: `${avgScore}/100`, status: avgScore >= 75 ? 'healthy' : avgScore >= 50 ? 'warning' : 'critical', trend: avgTrend },
           { title: "Ziyaret Bekleyen", value: needsVisit, status: needsVisit === 0 ? 'healthy' : needsVisit <= 3 ? 'warning' : 'critical', trend: "stable" },
@@ -1150,7 +1170,9 @@ export function registerHQDashboardRoutes(app: Express, isAuthenticated: any) {
           red: branchEntries.filter(b => b.level === 'red').length,
           generatedAt: healthReport.generatedAt,
         },
-      });
+      };
+      cache.set(coachCacheKey, coachResult, DASHBOARD_CACHE_TTL);
+      res.json(coachResult);
     } catch (error: any) {
       console.error("Error in Coach dashboard:", error);
       res.status(500).json({ message: "Veri alinamadi", error: error.message });

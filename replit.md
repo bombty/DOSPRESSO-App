@@ -54,7 +54,8 @@ The frontend utilizes React 18+ with TypeScript and Vite, employing Shadcn/ui (N
 - **Transaction Safety**: Atomic operations for factory batch completion, verification, and machine self-selection using Drizzle transactions.
 - **RAG Knowledge Base**: Vector-based semantic search using OpenAI embeddings.
 - **Gamification**: Integrated badges, career progression, leaderboards, team competitions, adaptive difficulty, certificates, and daily learning streak tracker.
-- **Mega-Module Architecture**: Each major section uses a tabbed mega-module wrapper that lazy-loads page components, with URL synchronization.
+- **Mega-Module Architecture**: Each major section uses a tabbed mega-module wrapper that lazy-loads page components, with URL synchronization. App.tsx routes also use React.lazy for code splitting (main bundle ~1MB).
+- **Performance Optimization**: DB connection pool max=25, server-side in-memory cache (60s TTL) for dashboard endpoints, database indexes on high-traffic columns (equipment.branchId, equipmentFaults.status/createdAt, messages.createdAt). TanStack Query gcTime=5min explicit default.
 - **Shift Scheduling**: Fair algorithm ensuring full-time employees work minimum 6 days/week at 45 hours, part-time 3 days/25 hours.
 - **Evaluation Anti-Abuse System**: 24-hour cooldown between evaluations of same employee, monthly max 2 evaluations per evaluator-employee pair.
 - **Reminder System**: 5-minute interval checks for various task and evaluation reminders with DB-based deduplication.

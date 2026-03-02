@@ -107,7 +107,7 @@ export default function Mesajlar() {
   const { data: threadData, isLoading: threadLoading } = useQuery<ThreadData>({
     queryKey: ["/api/messages", selectedThreadId],
     enabled: !!selectedThreadId,
-    refetchInterval: selectedThreadId ? 3000 : false,
+    refetchInterval: selectedThreadId ? 5000 : false,
     refetchOnWindowFocus: true,
   });
 

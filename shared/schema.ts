@@ -3076,7 +3076,10 @@ export const equipment = pgTable("equipment", {
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
   deletedAt: timestamp("deleted_at"),
-});
+}, (table) => ({
+  branchIdx: index("equipment_branch_idx").on(table.branchId),
+  typeIdx: index("equipment_type_idx").on(table.equipmentType),
+}));
 
 export const insertEquipmentSchema = createInsertSchema(equipment).omit({
   id: true,
@@ -3166,6 +3169,8 @@ export const equipmentFaults = pgTable("equipment_faults", {
   branchStageIdx: index("equipment_faults_branch_stage_idx").on(table.branchId, table.currentStage),
   equipmentIdx: index("equipment_faults_equipment_idx").on(table.equipmentId),
   troubleshootingIdx: index("equipment_faults_troubleshooting_idx").on(table.troubleshootingCompleted),
+  statusIdx: index("equipment_faults_status_idx").on(table.status),
+  createdIdx: index("equipment_faults_created_idx").on(table.createdAt),
 }));
 
 export const insertEquipmentFaultSchema = createInsertSchema(equipmentFaults).omit({
@@ -3621,6 +3626,7 @@ export const messages = pgTable("messages", {
   recipientRoleIdx: index("messages_recipient_role_idx").on(table.recipientRole),
   senderIdx: index("messages_sender_idx").on(table.senderId),
   threadIdx: index("messages_thread_idx").on(table.threadId),
+  createdIdx: index("messages_created_idx").on(table.createdAt),
 }));
 
 export const insertMessageSchema = createInsertSchema(messages).omit({
