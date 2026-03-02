@@ -1,0 +1,1974 @@
+40:export const sessions = pgTable(
+47:  (table) => [index("IDX_session_expire").on(table.expire)],
+211:    userId: string;
+2268:export const branches = pgTable("branches", {
+2278:  createdAt: timestamp("created_at").defaultNow(),
+2298:  createdAt: true,
+2306:export const users = pgTable("users", {
+2315:  branchId: integer("branch_id").references(() => branches.id, { onDelete: "set null" }),
+2329:  accountStatus: varchar("account_status", { length: 20 }).notNull().default("approved"), // pending, approved, rejected
+2339:  maritalStatus: varchar("marital_status", { length: 30 }), // Bekar, Evli, Boşanmış, Dul
+2343:  militaryStatus: varchar("military_status", { length: 30 }), // Tamamlandı, Tecilli, Muaf, Tamamlanmadı
+2345:  educationStatus: varchar("education_status", { length: 50 }), // Mezun, Öğrenci
+2363:  createdAt: timestamp("created_at").defaultNow(),
+2370:  createdAt: true,
+2376:  createdAt: true,
+2393:export const employeeWarnings = pgTable("employee_warnings", {
+2395:  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+2402:  createdAt: timestamp("created_at").defaultNow(),
+2407:  createdAt: true,
+2417:export const checklists = pgTable("checklists", {
+2429:  createdAt: timestamp("created_at").defaultNow(),
+2435:  createdAt: true,
+2454:export const checklistTasks = pgTable("checklist_tasks", {
+2466:  createdAt: timestamp("created_at").defaultNow(),
+2471:  createdAt: true,
+2535:export const checklistAssignments = pgTable("checklist_assignments", {
+2540:  branchId: integer("branch_id").references(() => branches.id, { onDelete: "cascade" }), // For scope='branch' or 'role'
+2547:  createdAt: timestamp("created_at").defaultNow(),
+2550:  checklistIdx: index("checklist_assignments_checklist_idx").on(table.checklistId),
+2551:  userIdx: index("checklist_assignments_user_idx").on(table.assignedUserId),
+2552:  branchIdx: index("checklist_assignments_branch_idx").on(table.branchId),
+2553:  activeIdx: index("checklist_assignments_active_idx").on(table.isActive),
+2558:  createdAt: true,
+2569:// Checklist completion status enum
+2574:export const checklistCompletions = pgTable("checklist_completions", {
+2578:  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+2579:  branchId: integer("branch_id").references(() => branches.id, { onDelete: "set null" }),
+2581:  status: varchar("status", { length: 20 }).notNull().default("pending"), // pending, in_progress, completed, incomplete, late
+2596:  createdAt: timestamp("created_at").defaultNow(),
+2599:  assignmentIdx: index("checklist_completions_assignment_idx").on(table.assignmentId),
+2600:  userIdx: index("checklist_completions_user_idx").on(table.userId),
+2601:  dateIdx: index("checklist_completions_date_idx").on(table.scheduledDate),
+2602:  statusIdx: index("checklist_completions_status_idx").on(table.status),
+2607:  createdAt: true,
+2619:export const checklistTaskCompletions = pgTable("checklist_task_completions", {
+2623:  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+2636:  createdAt: timestamp("created_at").defaultNow(),
+2639:  completionIdx: index("checklist_task_completions_completion_idx").on(table.completionId),
+2640:  taskIdx: index("checklist_task_completions_task_idx").on(table.taskId),
+2641:  photoExpiresIdx: index("checklist_task_completions_photo_expires_idx").on(table.photoExpiresAt),
+2646:  createdAt: true,
+2657:// Task status enum
+2666:export const tasks = pgTable("tasks", {
+2670:  branchId: integer("branch_id").references(() => branches.id, { onDelete: "set null" }), // Nullable for HQ tasks
+2674:  status: varchar("status", { length: 50 }).notNull().default("beklemede"), // beklemede, devam_ediyor, foto_bekleniyor, incelemede, onaylandi, reddedildi, gecikmiş
+2691:  failureNote: text("failure_note"), // Required when status is "basarisiz"
+2692:  statusUpdatedAt: timestamp("status_updated_at"), // Last status change time
+2693:  statusUpdatedById: varchar("status_updated_by_id").references(() => users.id, { onDelete: "set null" }),
+2716:  createdAt: timestamp("created_at").defaultNow(),
+2720:  branchStatusIdx: index("tasks_branch_status_idx").on(table.branchId, table.status),
+2721:  assignedToIdx: index("tasks_assigned_to_idx").on(table.assignedToId),
+2722:  triggerIdempotentIdx: uniqueIndex("tasks_trigger_idempotent_idx").on(table.assignedToId, table.triggerId, table.occurrenceKey),
+2727:  createdAt: true,
+2730:  status: z.enum(taskStatusEnum).optional(),
+2732:  branchId: z.number().nullable().optional(),
+2750:  createdAt: true,
+2753:  status: z.enum(taskStatusEnum).optional(),
+2755:  branchId: z.number().nullable().optional(),
+2798:// Task Status History - tracks all status changes
+2799:export const taskStatusHistory = pgTable("task_status_history", {
+2802:  previousStatus: varchar("previous_status", { length: 50 }),
+2803:  newStatus: varchar("new_status", { length: 50 }).notNull(),
+2806:  createdAt: timestamp("created_at").defaultNow(),
+2808:  taskIdIdx: index("task_status_history_task_idx").on(table.taskId),
+2813:  createdAt: true,
+2823:export const taskAssignees = pgTable("task_assignees", {
+2826:  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+2827:  status: varchar("status", { length: 50 }).notNull().default("beklemede"),
+2831:  createdAt: timestamp("created_at").defaultNow(),
+2833:  taskUserIdx: uniqueIndex("task_assignees_task_user_idx").on(table.taskId, table.userId),
+2834:  taskIdx: index("task_assignees_task_idx").on(table.taskId),
+2835:  userIdx: index("task_assignees_user_idx").on(table.userId),
+2840:  createdAt: true,
+2850:export const taskRatings = pgTable("task_ratings", {
+2860:  createdAt: timestamp("created_at").defaultNow(),
+2862:  taskIdUniqueIdx: uniqueIndex("task_ratings_task_id_unique_idx").on(table.taskId), // One rating per task
+2863:  ratedUserIdx: index("task_ratings_rated_user_idx").on(table.ratedUserId),
+2868:  createdAt: true,
+2884:export const checklistRatings = pgTable("checklist_ratings", {
+2888:  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }), // Person being rated
+2889:  branchId: integer("branch_id").notNull().references(() => branches.id, { onDelete: "cascade" }),
+2900:  userDateIdx: index("checklist_ratings_user_date_idx").on(table.userId, table.checklistDate),
+2901:  branchDateIdx: index("checklist_ratings_branch_date_idx").on(table.branchId, table.checklistDate),
+2921:export const employeeSatisfactionScores = pgTable("employee_satisfaction_scores", {
+2923:  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+2924:  branchId: integer("branch_id").references(() => branches.id, { onDelete: "set null" }),
+2944:  userIdUniqueIdx: uniqueIndex("employee_satisfaction_scores_user_unique_idx").on(table.userId),
+2945:  branchIdx: index("employee_satisfaction_scores_branch_idx").on(table.branchId),
+2946:  compositeScoreIdx: index("employee_satisfaction_scores_composite_idx").on(table.compositeScore),
+3043:export const equipment = pgTable("equipment", {
+3045:  branchId: integer("branch_id").notNull().references(() => branches.id, { onDelete: "cascade" }),
+3076:  createdAt: timestamp("created_at").defaultNow(),
+3083:  createdAt: true,
+3113:export const equipmentFaults = pgTable("equipment_faults", {
+3115:  branchId: integer("branch_id").notNull().references(() => branches.id, { onDelete: "cascade" }),
+3124:  status: varchar("status", { length: 50 }).notNull().default("acik"), // acik, devam_ediyor, cozuldu (legacy)
+3163:  createdAt: timestamp("created_at").defaultNow(),
+3166:  branchStageIdx: index("equipment_faults_branch_stage_idx").on(table.branchId, table.currentStage),
+3167:  equipmentIdx: index("equipment_faults_equipment_idx").on(table.equipmentId),
+3168:  troubleshootingIdx: index("equipment_faults_troubleshooting_idx").on(table.troubleshootingCompleted),
+3173:  createdAt: true,
+3181:export const equipmentTroubleshootingCompletion = pgTable("equipment_troubleshooting_completion", {
+3189:  createdAt: timestamp("created_at").defaultNow(),
+3191:  index("troubleshooting_completion_fault_idx").on(table.faultId),
+3192:  index("troubleshooting_completion_step_idx").on(table.stepId),
+3199:  createdAt: true,
+3206:export const faultStageTransitions = pgTable("fault_stage_transitions", {
+3224:export const faultComments = pgTable("fault_comments", {
+3227:  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+3231:  createdAt: timestamp("created_at").defaultNow().notNull(),
+3233:  index("fault_comments_fault_idx").on(table.faultId),
+3238:  createdAt: true,
+3245:export const knowledgeBaseArticles = pgTable("knowledge_base_articles", {
+3255:  createdAt: timestamp("created_at").defaultNow(),
+3261:  createdAt: true,
+3269:export const knowledgeBaseEmbeddings = pgTable("knowledge_base_embeddings", {
+3275:  createdAt: timestamp("created_at").defaultNow(),
+3277:  index("kb_embeddings_article_idx").on(table.articleId),
+3282:  createdAt: true,
+3289:export const reminders = pgTable("reminders", {
+3292:  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+3297:  createdAt: timestamp("created_at").defaultNow(),
+3302:  createdAt: true,
+3309:export const performanceMetrics = pgTable("performance_metrics", {
+3311:  branchId: integer("branch_id").references(() => branches.id, { onDelete: "cascade" }),
+3312:  userId: varchar("user_id").references(() => users.id, { onDelete: "cascade" }),
+3325:  createdAt: timestamp("created_at").defaultNow(),
+3327:  branchDateIdx: index("performance_metrics_branch_date_idx").on(table.branchId, table.date),
+3328:  userDateIdx: index("performance_metrics_user_date_idx").on(table.userId, table.date),
+3334:  createdAt: true,
+3337:  (data) => data.branchId !== undefined || data.userId !== undefined,
+3338:  { message: "Either branchId or userId must be provided" }
+3355:export const trainingModules = pgTable("training_modules", {
+3386:  isActive: boolean("is_active").default(true), // Active/inactive status
+3415:  createdAt: timestamp("created_at").defaultNow(),
+3421:export const moduleMedia = pgTable("module_media", {
+3431:  createdAt: timestamp("created_at").defaultNow(),
+3435:export const moduleVideos = pgTable("module_videos", {
+3443:  createdAt: timestamp("created_at").defaultNow(),
+3447:export const moduleLessons = pgTable("module_lessons", {
+3457:  createdAt: timestamp("created_at").defaultNow(),
+3462:export const moduleQuizzes = pgTable("module_quizzes", {
+3471:  createdAt: timestamp("created_at").defaultNow(),
+3475:export const quizQuestions = pgTable("quiz_questions", {
+3486:  createdAt: timestamp("created_at").defaultNow(),
+3490:export const flashcards = pgTable("flashcards", {
+3498:  createdAt: timestamp("created_at").defaultNow(),
+3502:export const userTrainingProgress = pgTable("user_training_progress", {
+3504:  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }), // VARCHAR - users.id is UUID
+3506:  status: varchar("status", { length: 50 }).default("not_started"), // not_started, in_progress, completed
+3512:  createdAt: timestamp("created_at").defaultNow(),
+3515:  // Unique constraint for upsert on (userId, moduleId)
+3516:  uniqueUserModule: uniqueIndex("user_training_progress_user_module_idx").on(table.userId, table.moduleId),
+3520:export const userQuizAttempts = pgTable("user_quiz_attempts", {
+3522:  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }), // VARCHAR - users.id is UUID
+3531:  approvalStatus: varchar("approval_status", { length: 50 }).default("pending"), // pending, approved, rejected
+3539:  createdAt: true,
+3544:  createdAt: true,
+3550:  createdAt: true,
+3555:  createdAt: true,
+3561:  createdAt: true,
+3566:  createdAt: true,
+3571:  createdAt: true,
+3576:  createdAt: true,
+3605:export const messages = pgTable("messages", {
+3617:  createdAt: timestamp("created_at").defaultNow().notNull(),
+3620:  recipientIdx: index("messages_recipient_idx").on(table.recipientId),
+3621:  recipientRoleIdx: index("messages_recipient_role_idx").on(table.recipientRole),
+3622:  senderIdx: index("messages_sender_idx").on(table.senderId),
+3623:  threadIdx: index("messages_thread_idx").on(table.threadId),
+3628:  createdAt: true,
+3635:export const threadParticipants = pgTable("thread_participants", {
+3638:  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+3640:  createdAt: timestamp("created_at").defaultNow(),
+3642:  threadUserIdx: uniqueIndex("thread_participants_thread_user_idx").on(table.threadId, table.userId),
+3647:  createdAt: true,
+3653:// Message Reads - Junction table for tracking read status per user (supports broadcasts)
+3654:export const messageReads = pgTable("message_reads", {
+3657:  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+3660:  uniqueUserMessage: uniqueIndex("message_reads_user_message_idx").on(table.messageId, table.userId),
+3672:export const equipmentMaintenanceLogs = pgTable("equipment_maintenance_logs", {
+3681:  createdAt: timestamp("created_at").defaultNow(),
+3686:  createdAt: true,
+3693:export const equipmentComments = pgTable("equipment_comments", {
+3696:  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+3698:  createdAt: timestamp("created_at").defaultNow(),
+3703:  createdAt: true,
+3732:export const equipmentServiceRequests = pgTable("equipment_service_requests", {
+3742:  status: varchar("status", { length: 50 }).notNull().default(SERVICE_REQUEST_STATUS.CREATED),
+3746:    status: ServiceRequestStatusType;
+3755:  createdAt: timestamp("created_at").defaultNow(),
+3758:  equipmentIdx: index("equipment_service_requests_equipment_idx").on(table.equipmentId),
+3759:  statusIdx: index("equipment_service_requests_status_idx").on(table.status),
+3760:  faultIdx: index("equipment_service_requests_fault_idx").on(table.faultId),
+3765:  createdAt: true,
+3783:    fields: [users.branchId],
+3813:    fields: [tasks.branchId],
+3824:    fields: [equipmentFaults.branchId],
+3839:    fields: [reminders.userId],
+3846:    fields: [performanceMetrics.branchId],
+3853:    fields: [equipment.branchId],
+3913:export const hqSupportTickets = pgTable("hq_support_tickets", {
+3915:  branchId: integer("branch_id").notNull().references(() => branches.id, { onDelete: "cascade" }),
+3922:  status: varchar("status", { length: 20 }).notNull().default(HQ_SUPPORT_STATUS.AKTIF),
+3926:  createdAt: timestamp("created_at").defaultNow(),
+3929:  index("hq_support_tickets_branch_idx").on(table.branchId),
+3930:  index("hq_support_tickets_category_idx").on(table.category),
+3931:  index("hq_support_tickets_status_idx").on(table.status),
+3932:  index("hq_support_tickets_priority_idx").on(table.priority),
+3933:  index("hq_support_tickets_assigned_idx").on(table.assignedToId),
+3938:  createdAt: true,
+3946:export const hqSupportMessages = pgTable("hq_support_messages", {
+3953:  createdAt: timestamp("created_at").defaultNow(),
+3955:  ticketCreatedIdx: index("hq_support_messages_ticket_created_idx").on(table.ticketId, table.createdAt),
+3960:  createdAt: true,
+3967:export const ticketActivityLogs = pgTable("ticket_activity_logs", {
+3970:  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+3974:  createdAt: timestamp("created_at").defaultNow(),
+3976:  index("ticket_activity_logs_ticket_idx").on(table.ticketId),
+3977:  index("ticket_activity_logs_created_idx").on(table.createdAt),
+3982:  createdAt: true,
+3989:export const hqSupportCategoryAssignments = pgTable("hq_support_category_assignments", {
+3992:  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+3995:  createdAt: timestamp("created_at").defaultNow(),
+3998:  index("hq_support_cat_assign_category_idx").on(table.category),
+3999:  index("hq_support_cat_assign_user_idx").on(table.userId),
+4000:  unique("hq_support_cat_assign_unique").on(table.category, table.userId),
+4005:  createdAt: true,
+4025:export const notifications = pgTable("notifications", {
+4027:  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+4033:  branchId: integer("branch_id"),
+4034:  createdAt: timestamp("created_at").defaultNow(),
+4036:  userReadCreatedIdx: index("notifications_user_read_created_idx").on(table.userId, table.isRead, table.createdAt),
+4041:  createdAt: true,
+4058:export const announcements = pgTable("announcements", {
+4087:  createdAt: timestamp("created_at").defaultNow(),
+4090:  publishedIdx: index("announcements_published_idx").on(table.publishedAt),
+4091:  categoryIdx: index("announcements_category_idx").on(table.category),
+4092:  dashboardIdx: index("announcements_dashboard_idx").on(table.showOnDashboard),
+4097:  createdAt: true,
+4108:export const announcementReadStatus = pgTable("announcement_read_status", {
+4111:  userId: varchar("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+4114:  index("announcement_read_user_idx").on(table.userId),
+4115:  index("announcement_read_announcement_idx").on(table.announcementId),
+4116:  unique("unique_announcement_read").on(table.announcementId, table.userId),
+4128:export const dailyCashReports = pgTable("daily_cash_reports", {
+4130:  branchId: integer("branch_id").notNull().references(() => branches.id, { onDelete: "cascade" }),
+4140:  createdAt: timestamp("created_at").defaultNow(),
+4142:  branchDateIdx: index("daily_cash_reports_branch_date_idx").on(table.branchId, table.reportDate),
+4143:  uniqueBranchDate: unique("unique_branch_date").on(table.branchId, table.reportDate),
+4148:  createdAt: true,
+4155:export const shifts = pgTable("shifts", {
+4157:  branchId: integer("branch_id").notNull().references(() => branches.id, { onDelete: "cascade" }),
+4169:  status: varchar("status", { length: 20 }).notNull().default("draft"),
+4173:  createdAt: timestamp("created_at").defaultNow(),
+4177:  branchDateIdx: index("shifts_branch_date_idx").on(table.branchId, table.shiftDate),
+4178:  assignedToIdx: index("shifts_assigned_to_idx").on(table.assignedToId),
+4179:  createdByIdx: index("shifts_created_by_idx").on(table.createdById),
+4180:  checklistIdx: index("shifts_checklist_idx").on(table.checklistId),
+4185:  createdAt: true,
+4189:  status: z.enum(["draft", "pending_hq", "confirmed", "completed", "cancelled"]).default("draft"),
+4198:export const shiftChecklists = pgTable("shift_checklists", {
+4204:  createdAt: timestamp("created_at").defaultNow(),
+4207:  shiftIdx: index("shift_checklists_shift_idx").on(table.shiftId),
+4208:  checklistIdx: index("shift_checklists_checklist_idx").on(table.checklistId),
+4213:  createdAt: true,
+4222:export const shiftTasks = pgTable("shift_tasks", {
+4228:  createdAt: timestamp("created_at").defaultNow(),
+4231:  shiftIdx: index("shift_tasks_shift_idx").on(table.shiftId),
+4232:  taskIdx: index("shift_tasks_task_idx").on(table.taskId),
+4237:  createdAt: true,
+4247:  branchId: z.number().int().positive(),
+4260:export const leaveRequests = pgTable("leave_requests", {
+4262:  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+4268:  status: varchar("status", { length: 20 }).notNull().default("pending"), // pending, approved, rejected
+4272:  createdAt: timestamp("created_at").defaultNow(),
+4275:  userIdx: index("leave_requests_user_idx").on(table.userId),
+4276:  statusIdx: index("leave_requests_status_idx").on(table.status),
+4277:  dateIdx: index("leave_requests_date_idx").on(table.startDate, table.endDate),
+4282:  createdAt: true,
+4290:export const shiftAttendance = pgTable("shift_attendance", {
+4293:  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+4315:  status: varchar("status", { length: 20 }).notNull().default("scheduled"), // scheduled, checked_in, on_break, checked_out, absent, late
+4336:  aiBackgroundCheckInStatus: varchar("ai_background_check_in_status", { length: 20 }).default("pending"), // pending, verified, rejected, error
+4339:  aiBackgroundCheckOutStatus: varchar("ai_background_check_out_status", { length: 20 }).default("pending"),
+4342:  aiBackgroundBreakStartStatus: varchar("ai_background_break_start_status", { length: 20 }).default("pending"),
+4344:  aiBackgroundBreakEndStatus: varchar("ai_background_break_end_status", { length: 20 }).default("pending"),
+4349:  aiDressCodeStatus: varchar("ai_dress_code_status", { length: 20 }).default("pending"), // pending, approved, rejected, error
+4354:  analysisStatus: varchar("analysis_status", { length: 20 }).default("pending"), // pending, completed, error
+4358:  createdAt: timestamp("created_at").defaultNow(),
+4361:  uniqueShiftUser: unique("unique_shift_user_attendance").on(table.shiftId, table.userId),
+4362:  shiftIdx: index("shift_attendance_shift_idx").on(table.shiftId),
+4363:  userIdx: index("shift_attendance_user_idx").on(table.userId),
+4364:  statusIdx: index("shift_attendance_status_idx").on(table.status),
+4369:  createdAt: true,
+4377:export const shiftTradeRequests = pgTable("shift_trade_requests", {
+4383:  status: varchar("status", { length: 20 }).notNull().default("taslak"), // taslak, calisan_onayi, yonetici_onayi, reddedildi, iptal
+4389:  createdAt: timestamp("created_at").defaultNow(),
+4391:  requesterIdx: index("shift_trade_requests_requester_idx").on(table.requesterId),
+4392:  responderIdx: index("shift_trade_requests_responder_idx").on(table.responderId),
+4393:  statusIdx: index("shift_trade_requests_status_idx").on(table.status),
+4394:  uniqueOpenTrade: unique("unique_open_shift_trade").on(table.requesterShiftId, table.responderShiftId, table.status),
+4399:  createdAt: true,
+4401:  status: z.enum(["taslak", "calisan_onayi", "yonetici_onayi", "reddedildi", "iptal"]).default("taslak"),
+4413:export const menuSections = pgTable("menu_sections", {
+4430:export const menuItems = pgTable("menu_items", {
+4450:export const menuVisibilityRules = pgTable("menu_visibility_rules", {
+4455:  userId: varchar("user_id").references(() => users.id),
+4456:  branchId: integer("branch_id").references(() => branches.id),
+4486:    fields: [menuVisibilityRules.userId],
+4490:    fields: [menuVisibilityRules.branchId],
+4496:export const pageContent = pgTable("page_content", {
+4505:  createdAt: timestamp("created_at").notNull().defaultNow(),
+4508:  uniqueIndex("page_content_slug_idx").on(table.slug),
+4514:  createdAt: true,
+4558:    branchId: z.number().optional(),
+4579:export const aiUsageLogs = pgTable("ai_usage_logs", {
+4581:  createdAt: timestamp("created_at").defaultNow().notNull(),
+4590:  userId: varchar("user_id").references(() => users.id, { onDelete: "set null" }),
+4591:  branchId: integer("branch_id").references(() => branches.id, { onDelete: "set null" }),
+4595:  index("ai_usage_logs_created_at_idx").on(table.createdAt),
+4596:  index("ai_usage_logs_feature_idx").on(table.feature),
+4597:  index("ai_usage_logs_user_id_idx").on(table.userId),
+4598:  index("ai_usage_logs_branch_id_idx").on(table.branchId),
+4603:  createdAt: true,
+4614:export const branding = pgTable("branding", {
+4634:export const auditTemplates = pgTable("audit_templates", {
+4644:  createdAt: timestamp("created_at").defaultNow(),
+4647:  index("audit_templates_type_idx").on(table.auditType),
+4648:  index("audit_templates_category_idx").on(table.category),
+4653:  createdAt: true,
+4661:export const auditTemplateItems = pgTable("audit_template_items", {
+4677:  createdAt: timestamp("created_at").defaultNow(),
+4679:  index("audit_template_items_template_idx").on(table.templateId),
+4684:  createdAt: true,
+4691:export const qualityAudits = pgTable("quality_audits", {
+4693:  branchId: integer("branch_id").notNull().references(() => branches.id, { onDelete: "cascade" }),
+4708:  status: varchar("status", { length: 20 }).notNull().default("completed"),
+4711:  createdAt: timestamp("created_at").defaultNow(),
+4713:  index("quality_audits_branch_idx").on(table.branchId),
+4714:  index("quality_audits_auditor_idx").on(table.auditorId),
+4715:  index("quality_audits_date_idx").on(table.auditDate),
+4722:  createdAt: true,
+4730:export const auditItemScores = pgTable("audit_item_scores", {
+4737:  index("audit_item_scores_audit_idx").on(table.auditId),
+4760:export const branchAuditScores = pgTable("branch_audit_scores", {
+4762:  branchId: integer("branch_id").notNull().references(() => branches.id, { onDelete: "cascade" }),
+4776:  createdAt: timestamp("created_at").defaultNow(),
+4779:  index("branch_audit_scores_branch_idx").on(table.branchId),
+4780:  index("branch_audit_scores_period_idx").on(table.periodType, table.periodStart),
+4785:  createdAt: true,
+4793:export const auditInstances = pgTable("audit_instances", {
+4799:  branchId: integer("branch_id").references(() => branches.id),
+4800:  userId: varchar("user_id").references(() => users.id), // For personnel audits
+4805:  status: varchar("status", { length: 20 }).notNull().default("in_progress"), // in_progress, completed, cancelled
+4818:  createdAt: timestamp("created_at").defaultNow(),
+4821:  index("audit_instances_template_idx").on(table.templateId),
+4822:  index("audit_instances_branch_idx").on(table.branchId),
+4823:  index("audit_instances_user_idx").on(table.userId),
+4824:  index("audit_instances_auditor_idx").on(table.auditorId),
+4825:  index("audit_instances_date_idx").on(table.auditDate),
+4830:  createdAt: true,
+4838:export const auditInstanceItems = pgTable("audit_instance_items", {
+4852:  aiAnalysisStatus: varchar("ai_analysis_status", { length: 20 }), // pending, completed, failed
+4857:  createdAt: timestamp("created_at").defaultNow(),
+4860:  index("audit_instance_items_instance_idx").on(table.instanceId),
+4861:  index("audit_instance_items_template_item_idx").on(table.templateItemId),
+4866:  createdAt: true,
+4877:export const correctiveActions = pgTable("corrective_actions", {
+4882:  status: varchar("status", { length: 20 }).notNull().default("OPEN"),
+4891:  createdAt: timestamp("created_at").defaultNow(),
+4894:  index("corrective_actions_audit_instance_idx").on(table.auditInstanceId),
+4895:  index("corrective_actions_priority_idx").on(table.priority),
+4896:  index("corrective_actions_status_idx").on(table.status),
+4897:  index("corrective_actions_due_date_idx").on(table.dueDate),
+4902:  createdAt: true,
+4909:export const correctiveActionUpdates = pgTable("corrective_action_updates", {
+4912:  oldStatus: varchar("old_status", { length: 20 }),
+4913:  newStatus: varchar("new_status", { length: 20 }).notNull(),
+4917:  createdAt: timestamp("created_at").defaultNow(),
+4919:  index("corrective_action_updates_action_idx").on(table.correctiveActionId),
+4924:  createdAt: true,
+4931:export const personnelFiles = pgTable("personnel_files", {
+4933:  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }).unique(),
+4950:  createdAt: timestamp("created_at").defaultNow(),
+4953:  index("personnel_files_user_idx").on(table.userId),
+4958:  createdAt: true,
+4969:export const customerFeedback = pgTable("customer_feedback", {
+4971:  branchId: integer("branch_id").notNull().references(() => branches.id, { onDelete: "cascade" }),
+5002:  status: varchar("status", { length: 20 }).notNull().default("new"), // new, in_progress, awaiting_response, resolved, closed
+5032:  createdAt: timestamp("created_at").defaultNow(),
+5035:  index("customer_feedback_branch_idx").on(table.branchId),
+5036:  index("customer_feedback_date_idx").on(table.feedbackDate),
+5037:  index("customer_feedback_rating_idx").on(table.rating),
+5038:  index("customer_feedback_source_idx").on(table.source),
+5039:  index("customer_feedback_status_idx").on(table.status),
+5040:  index("customer_feedback_staff_idx").on(table.staffId),
+5041:  index("customer_feedback_sla_idx").on(table.responseDeadline),
+5047:  createdAt: true,
+5067:export const feedbackResponses = pgTable("feedback_responses", {
+5074:  createdAt: timestamp("created_at").defaultNow(),
+5076:  index("feedback_responses_feedback_idx").on(table.feedbackId),
+5077:  index("feedback_responses_responder_idx").on(table.responderId),
+5082:  createdAt: true,
+5092:export const feedbackFormSettings = pgTable("feedback_form_settings", {
+5094:  branchId: integer("branch_id").notNull().references(() => branches.id, { onDelete: "cascade" }),
+5137:  // Active status
+5140:  createdAt: timestamp("created_at").defaultNow(),
+5144:  index("feedback_form_settings_branch_idx").on(table.branchId),
+5149:  createdAt: true,
+5160:export const maintenanceSchedules = pgTable("maintenance_schedules", {
+5169:  createdAt: timestamp("created_at").defaultNow(),
+5172:  index("maintenance_schedules_equipment_idx").on(table.equipmentId),
+5173:  index("maintenance_schedules_next_date_idx").on(table.nextMaintenanceDate),
+5178:  createdAt: true,
+5186:export const maintenanceLogs = pgTable("maintenance_logs", {
+5199:  createdAt: timestamp("created_at").defaultNow(),
+5201:  index("maintenance_logs_equipment_idx").on(table.equipmentId),
+5202:  index("maintenance_logs_schedule_idx").on(table.scheduleId),
+5203:  index("maintenance_logs_date_idx").on(table.performedDate),
+5208:  createdAt: true,
+5218:export const equipmentCalibrations = pgTable("equipment_calibrations", {
+5235:  createdAt: timestamp("created_at").defaultNow(),
+5238:  index("equipment_calibrations_equipment_idx").on(table.equipmentId),
+5239:  index("equipment_calibrations_date_idx").on(table.calibrationDate),
+5240:  index("equipment_calibrations_next_due_idx").on(table.nextCalibrationDue),
+5241:  index("equipment_calibrations_result_idx").on(table.result),
+5246:  createdAt: true,
+5258:export const campaigns = pgTable("campaigns", {
+5269:  status: varchar("status", { length: 20 }).notNull().default("draft"), // draft, active, paused, completed
+5271:  createdAt: timestamp("created_at").defaultNow(),
+5274:  index("campaigns_status_idx").on(table.status),
+5275:  index("campaigns_start_date_idx").on(table.startDate),
+5276:  index("campaigns_end_date_idx").on(table.endDate),
+5281:  createdAt: true,
+5289:export const campaignBranches = pgTable("campaign_branches", {
+5292:  branchId: integer("branch_id").notNull().references(() => branches.id, { onDelete: "cascade" }),
+5294:  index("campaign_branches_campaign_idx").on(table.campaignId),
+5295:  index("campaign_branches_branch_idx").on(table.branchId),
+5296:  unique("unique_campaign_branch").on(table.campaignId, table.branchId),
+5307:export const campaignMetrics = pgTable("campaign_metrics", {
+5310:  branchId: integer("branch_id").notNull().references(() => branches.id, { onDelete: "cascade" }),
+5318:  index("campaign_metrics_campaign_idx").on(table.campaignId),
+5319:  index("campaign_metrics_branch_idx").on(table.branchId),
+5334:export const franchiseOnboarding = pgTable("franchise_onboarding", {
+5336:  branchId: integer("branch_id").notNull().references(() => branches.id, { onDelete: "cascade" }),
+5337:  status: varchar("status", { length: 20 }).notNull().default("planning"), // planning, in_progress, completed
+5343:  createdAt: timestamp("created_at").defaultNow(),
+5346:  index("franchise_onboarding_branch_idx").on(table.branchId),
+5347:  index("franchise_onboarding_status_idx").on(table.status),
+5352:  createdAt: true,
+5360:export const onboardingDocuments = pgTable("onboarding_documents", {
+5366:  status: varchar("status", { length: 20 }).notNull().default("pending"), // pending, uploaded, approved, rejected
+5373:  createdAt: timestamp("created_at").defaultNow(),
+5375:  index("onboarding_documents_onboarding_idx").on(table.onboardingId),
+5376:  index("onboarding_documents_status_idx").on(table.status),
+5381:  createdAt: true,
+5388:export const licenseRenewals = pgTable("license_renewals", {
+5390:  branchId: integer("branch_id").notNull().references(() => branches.id, { onDelete: "cascade" }),
+5395:  renewalStatus: varchar("renewal_status", { length: 20 }).notNull().default("active"), // active, expiring_soon, expired, renewed
+5399:  createdAt: timestamp("created_at").defaultNow(),
+5402:  index("license_renewals_branch_idx").on(table.branchId),
+5403:  index("license_renewals_expiry_idx").on(table.expiryDate),
+5404:  index("license_renewals_status_idx").on(table.renewalStatus),
+5409:  createdAt: true,
+5421:export const shiftTemplates = pgTable("shift_templates", {
+5423:  branchId: integer("branch_id").notNull().references(() => branches.id, { onDelete: "cascade" }),
+5432:  createdAt: timestamp("created_at").defaultNow(),
+5435:  index("shift_templates_branch_idx").on(table.branchId),
+5436:  index("shift_templates_active_idx").on(table.isActive),
+5441:  createdAt: true,
+5456:export const employeeAvailability = pgTable("employee_availability", {
+5458:  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+5466:  status: varchar("status", { length: 20 }).notNull().default("active"), // active, cancelled
+5467:  createdAt: timestamp("created_at").defaultNow(),
+5470:  index("employee_availability_user_idx").on(table.userId),
+5471:  index("employee_availability_date_idx").on(table.startDate, table.endDate),
+5472:  index("employee_availability_status_idx").on(table.status),
+5477:  createdAt: true,
+5481:  status: z.enum(["active", "cancelled"]).default("active"),
+5493:export const roles = pgTable("roles", {
+5499:  createdAt: timestamp("created_at").defaultNow(),
+5502:  index("roles_name_idx").on(table.name),
+5507:  createdAt: true,
+5515:export const permissions = pgTable("permissions", {
+5522:  createdAt: timestamp("created_at").defaultNow(),
+5524:  index("permissions_module_idx").on(table.module),
+5525:  index("permissions_name_idx").on(table.name),
+5530:  createdAt: true,
+5537:export const rolePermissions = pgTable("role_permissions", {
+5541:  createdAt: timestamp("created_at").defaultNow(),
+5543:  index("role_permissions_role_idx").on(table.roleId),
+5544:  index("role_permissions_permission_idx").on(table.permissionId),
+5550:  createdAt: true,
+5560:export const siteSettings = pgTable("site_settings", {
+5570:  createdAt: timestamp("created_at").defaultNow(),
+5572:  index("site_settings_key_idx").on(table.key),
+5573:  index("site_settings_category_idx").on(table.category),
+5578:  createdAt: true,
+5589:export const passwordResetTokens = pgTable("password_reset_tokens", {
+5591:  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+5595:  createdAt: timestamp("created_at").defaultNow(),
+5597:  index("password_reset_tokens_token_idx").on(table.token),
+5598:  index("password_reset_tokens_user_idx").on(table.userId),
+5603:  createdAt: true,
+5613:export const auditLogs = pgTable("audit_logs", {
+5616:  userId: varchar("user_id").references(() => users.id, { onDelete: "set null" }),
+5630:  createdAt: timestamp("created_at").defaultNow(),
+5632:  index("audit_logs_user_idx").on(table.userId),
+5633:  index("audit_logs_action_idx").on(table.action),
+5634:  index("audit_logs_event_type_idx").on(table.eventType),
+5635:  index("audit_logs_resource_idx").on(table.resource),
+5636:  index("audit_logs_branch_idx").on(table.scopeBranchId),
+5637:  index("audit_logs_created_idx").on(table.createdAt),
+5638:  index("audit_logs_request_idx").on(table.requestId),
+5643:  createdAt: true,
+5653:export const overtimeRequests = pgTable("overtime_requests", {
+5655:  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+5656:  branchId: integer("branch_id").references(() => branches.id, { onDelete: "cascade" }),
+5663:  status: varchar("status", { length: 20 }).notNull().default("pending"), // pending, approved, rejected
+5669:  createdAt: timestamp("created_at").defaultNow(),
+5672:  index("overtime_requests_user_idx").on(table.userId),
+5673:  index("overtime_requests_status_idx").on(table.status),
+5674:  index("overtime_requests_period_idx").on(table.appliedToPeriod),
+5675:  index("overtime_requests_date_idx").on(table.overtimeDate),
+5676:  index("overtime_requests_branch_idx").on(table.branchId),
+5681:  createdAt: true,
+5692:export const shiftSwapRequests = pgTable("shift_swap_requests", {
+5698:  branchId: integer("branch_id").notNull().references(() => branches.id, { onDelete: "cascade" }),
+5709:  // Overall status
+5710:  status: varchar("status", { length: 20 }).notNull().default("pending_target"), 
+5713:  createdAt: timestamp("created_at").defaultNow(),
+5716:  index("shift_swap_requester_idx").on(table.requesterId),
+5717:  index("shift_swap_target_idx").on(table.targetUserId),
+5718:  index("shift_swap_status_idx").on(table.status),
+5719:  index("shift_swap_branch_idx").on(table.branchId),
+5720:  index("shift_swap_date_idx").on(table.swapDate),
+5725:  createdAt: true,
+5736:export const attendancePenalties = pgTable("attendance_penalties", {
+5744:  createdAt: timestamp("created_at").defaultNow(),
+5746:  index("attendance_penalties_shift_idx").on(table.shiftAttendanceId),
+5747:  index("attendance_penalties_type_idx").on(table.type),
+5752:  createdAt: true,
+5762:export const monthlyAttendanceSummaries = pgTable("monthly_attendance_summaries", {
+5764:  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+5776:  unique("unique_user_period").on(table.userId, table.periodMonth),
+5777:  index("monthly_summaries_user_idx").on(table.userId),
+5778:  index("monthly_summaries_period_idx").on(table.periodMonth),
+5794:export const guestComplaints = pgTable("guest_complaints", {
+5796:  branchId: integer("branch_id").notNull().references(() => branches.id, { onDelete: "cascade" }),
+5817:  status: varchar("status", { length: 20 }).notNull().default("new"), // new, assigned, in_progress, resolved, closed
+5823:  createdAt: timestamp("created_at").defaultNow(),
+5826:  index("guest_complaints_branch_idx").on(table.branchId),
+5827:  index("guest_complaints_status_idx").on(table.status),
+5828:  index("guest_complaints_priority_idx").on(table.priority),
+5829:  index("guest_complaints_date_idx").on(table.complaintDate),
+5830:  index("guest_complaints_deadline_idx").on(table.responseDeadline),
+5836:  createdAt: true,
+5847:export const equipmentTroubleshootingSteps = pgTable("equipment_troubleshooting_steps", {
+5854:  createdAt: timestamp("created_at").defaultNow(),
+5857:  index("troubleshooting_equipment_type_idx").on(table.equipmentType),
+5858:  index("troubleshooting_order_idx").on(table.order),
+5863:  createdAt: true,
+5874:export const employeePerformanceScores = pgTable("employee_performance_scores", {
+5876:  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+5877:  branchId: integer("branch_id").notNull().references(() => branches.id, { onDelete: "cascade" }),
+5900:  createdAt: timestamp("created_at").defaultNow(),
+5903:  index("performance_scores_user_idx").on(table.userId),
+5904:  index("performance_scores_branch_idx").on(table.branchId),
+5905:  index("performance_scores_date_idx").on(table.date),
+5906:  index("performance_scores_week_idx").on(table.week),
+5907:  unique("unique_user_date_performance").on(table.userId, table.date),
+5912:  createdAt: true,
+5923:export const staffEvaluations = pgTable("staff_evaluations", {
+5928:  branchId: integer("branch_id").references(() => branches.id),
+5941:  createdAt: timestamp("created_at").defaultNow(),
+5946:  createdAt: true,
+5956:export const branchQualityAudits = pgTable("branch_quality_audits", {
+5958:  branchId: integer("branch_id").notNull().references(() => branches.id, { onDelete: "cascade" }),
+5990:  status: varchar("status", { length: 20 }).notNull().default("completed"), // draft, completed, follow_up_pending
+5992:  createdAt: timestamp("created_at").defaultNow(),
+5995:  index("branch_quality_audits_branch_idx").on(table.branchId),
+5996:  index("branch_quality_audits_date_idx").on(table.auditDate),
+5997:  index("branch_quality_audits_auditor_idx").on(table.auditorId),
+6002:  createdAt: true,
+6027:export const productComplaints = pgTable("product_complaints", {
+6029:  branchId: integer("branch_id").notNull().references(() => branches.id, { onDelete: "cascade" }),
+6040:  status: varchar("status", { length: 30 }).notNull().default("new"), // new, investigating, resolved, rejected
+6045:  createdAt: timestamp("created_at").defaultNow(),
+6048:  index("product_complaints_branch_idx").on(table.branchId),
+6049:  index("product_complaints_status_idx").on(table.status),
+6050:  index("product_complaints_assigned_idx").on(table.assignedToId),
+6051:  index("product_complaints_created_idx").on(table.createdAt),
+6056:  createdAt: true,
+6059:  status: true,
+6069:export const employeeDocuments = pgTable("employee_documents", {
+6071:  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+6083:  createdAt: timestamp("created_at").defaultNow(),
+6086:  index("employee_documents_user_idx").on(table.userId),
+6087:  index("employee_documents_type_idx").on(table.documentType),
+6088:  index("employee_documents_expiry_idx").on(table.expiryDate),
+6094:  createdAt: true,
+6105:export const disciplinaryReports = pgTable("disciplinary_reports", {
+6107:  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+6108:  branchId: integer("branch_id").notNull().references(() => branches.id, { onDelete: "cascade" }),
+6122:  status: varchar("status", { length: 20 }).notNull().default("open"), // open, under_review, resolved, closed
+6130:  createdAt: timestamp("created_at").defaultNow(),
+6133:  index("disciplinary_reports_user_idx").on(table.userId),
+6134:  index("disciplinary_reports_branch_idx").on(table.branchId),
+6135:  index("disciplinary_reports_type_idx").on(table.reportType),
+6136:  index("disciplinary_reports_status_idx").on(table.status),
+6137:  index("disciplinary_reports_date_idx").on(table.incidentDate),
+6142:  createdAt: true,
+6153:export const employeeOnboarding = pgTable("employee_onboarding", {
+6155:  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }).unique(),
+6156:  branchId: integer("branch_id").notNull().references(() => branches.id, { onDelete: "cascade" }),
+6157:  status: varchar("status", { length: 20 }).notNull().default("not_started"), // not_started, in_progress, completed
+6165:  createdAt: timestamp("created_at").defaultNow(),
+6168:  index("employee_onboarding_user_idx").on(table.userId),
+6169:  index("employee_onboarding_branch_idx").on(table.branchId),
+6170:  index("employee_onboarding_status_idx").on(table.status),
+6175:  createdAt: true,
+6186:export const employeeOnboardingTasks = pgTable("employee_onboarding_tasks", {
+6194:  status: varchar("status", { length: 20 }).notNull().default("pending"), // pending, in_progress, completed, skipped
+6201:  createdAt: timestamp("created_at").defaultNow(),
+6204:  index("onboarding_tasks_onboarding_idx").on(table.onboardingId),
+6205:  index("onboarding_tasks_status_idx").on(table.status),
+6206:  index("onboarding_tasks_due_date_idx").on(table.dueDate),
+6211:  createdAt: true,
+6223:export const onboardingTemplates = pgTable("onboarding_templates", {
+6232:  createdAt: timestamp("created_at").defaultNow(),
+6235:  index("onboarding_templates_target_role_idx").on(table.targetRole),
+6236:  index("onboarding_templates_active_idx").on(table.isActive),
+6241:  createdAt: true,
+6249:export const onboardingTemplateSteps = pgTable("onboarding_template_steps", {
+6264:  createdAt: timestamp("created_at").defaultNow(),
+6267:  index("onboarding_template_steps_template_idx").on(table.templateId),
+6268:  index("onboarding_template_steps_order_idx").on(table.stepOrder),
+6273:  createdAt: true,
+6281:export const employeeOnboardingAssignments = pgTable("employee_onboarding_assignments", {
+6283:  userId: varchar("user_id").notNull(), // Yeni personel
+6284:  branchId: integer("branch_id").notNull(),
+6290:  status: varchar("status", { length: 30 }).notNull().default("in_progress"), // in_progress, completed, cancelled
+6293:  evaluationStatus: varchar("evaluation_status", { length: 30 }), // pending, passed, failed (deneme süreci değerlendirmesi)
+6295:  createdAt: timestamp("created_at").defaultNow(),
+6298:  index("employee_onboarding_assignments_user_idx").on(table.userId),
+6299:  index("employee_onboarding_assignments_branch_idx").on(table.branchId),
+6300:  index("employee_onboarding_assignments_status_idx").on(table.status),
+6305:  createdAt: true,
+6313:export const employeeOnboardingProgress = pgTable("employee_onboarding_progress", {
+6318:  status: varchar("status", { length: 30 }).notNull().default("pending"),
+6319:  approvalStatus: varchar("approval_status", { length: 30 }).default("not_required"),
+6326:  createdAt: timestamp("created_at").defaultNow(),
+6329:  index("employee_onboarding_progress_assignment_idx").on(table.assignmentId),
+6330:  index("employee_onboarding_progress_step_idx").on(table.stepId),
+6331:  index("employee_onboarding_progress_mentor_idx").on(table.mentorId),
+6332:  index("employee_onboarding_progress_status_idx").on(table.status),
+6337:  createdAt: true,
+6348:export const certificateDesignSettings = pgTable("certificate_design_settings", {
+6363:  createdAt: timestamp("created_at").defaultNow(),
+6366:  index("cert_design_transition_idx").on(table.transitionFrom, table.transitionTo),
+6371:  createdAt: true,
+6382:export const permissionModules = pgTable("permission_modules", {
+6389:  createdAt: timestamp("created_at").defaultNow(),
+6392:  index("permission_modules_module_key_idx").on(table.moduleKey),
+6393:  index("permission_modules_category_idx").on(table.category),
+6398:  createdAt: true,
+6417:export const permissionActions = pgTable("permission_actions", {
+6424:  createdAt: timestamp("created_at").defaultNow(),
+6426:  index("permission_actions_module_key_idx").on(table.moduleKey),
+6432:  createdAt: true,
+6442:export const rolePermissionGrants = pgTable("role_permission_grants", {
+6448:  createdAt: timestamp("created_at").defaultNow(),
+6451:  index("role_permission_grants_role_idx").on(table.role),
+6452:  index("role_permission_grants_action_idx").on(table.actionId),
+6458:  createdAt: true,
+6472:export const roleModulePermissions = pgTable("role_module_permissions", {
+6477:  createdAt: timestamp("created_at").defaultNow(),
+6480:  index("role_module_permissions_role_idx").on(table.role),
+6481:  index("role_module_permissions_module_idx").on(table.module),
+6487:  createdAt: true,
+6502:export const megaModuleMappings = pgTable("mega_module_mappings", {
+6508:  createdAt: timestamp("created_at").defaultNow(),
+6511:  index("mega_module_mappings_module_idx").on(table.moduleId),
+6512:  index("mega_module_mappings_mega_idx").on(table.megaModuleId),
+6518:  createdAt: true,
+6532:export const backupRecords = pgTable("backup_records", {
+6543:  index("backup_records_timestamp_idx").on(table.timestamp),
+6544:  index("backup_records_success_idx").on(table.success),
+6560:export const trainingMaterials = pgTable("training_materials", {
+6567:  status: varchar("status", { length: 20 }).notNull().default("draft"), // draft, published, archived
+6570:  createdAt: timestamp("created_at").defaultNow(),
+6573:  index("training_materials_article_idx").on(table.articleId),
+6574:  index("training_materials_status_idx").on(table.status),
+6575:  index("training_materials_type_idx").on(table.materialType),
+6580:  createdAt: true,
+6588:export const trainingAssignments = pgTable("training_assignments", {
+6591:  userId: varchar("user_id").references(() => users.id, { onDelete: "cascade" }),
+6593:  branchId: integer("branch_id").references(() => branches.id, { onDelete: "cascade" }),
+6597:  status: varchar("status", { length: 20 }).notNull().default("assigned"), // assigned, in_progress, completed, overdue, expired
+6600:  createdAt: timestamp("created_at").defaultNow(),
+6603:  index("training_assignments_material_idx").on(table.materialId),
+6604:  index("training_assignments_user_idx").on(table.userId),
+6605:  index("training_assignments_status_idx").on(table.status),
+6606:  index("training_assignments_due_date_idx").on(table.dueDate),
+6611:  createdAt: true,
+6619:export const trainingCompletions = pgTable("training_completions", {
+6622:  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+6624:  status: varchar("status", { length: 20 }).notNull().default("in_progress"), // in_progress, passed, failed, abandoned
+6629:  createdAt: timestamp("created_at").defaultNow(),
+6632:  index("training_completions_user_idx").on(table.userId),
+6633:  index("training_completions_material_idx").on(table.materialId),
+6634:  index("training_completions_status_idx").on(table.status),
+6635:  index("training_completions_completed_idx").on(table.completedAt),
+6640:  createdAt: true,
+6652:export const careerLevels = pgTable("career_levels", {
+6661:  createdAt: timestamp("created_at").defaultNow(),
+6663:  index("career_levels_role_idx").on(table.roleId),
+6664:  index("career_levels_level_idx").on(table.levelNumber),
+6669:  createdAt: true,
+6676:export const examRequests = pgTable("exam_requests", {
+6678:  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+6682:  status: varchar("status", { length: 20 }).notNull().default("pending"), // pending, approved, rejected, exam_in_progress, passed, failed
+6689:  createdAt: timestamp("created_at").defaultNow(),
+6692:  index("exam_requests_user_idx").on(table.userId),
+6693:  index("exam_requests_status_idx").on(table.status),
+6694:  index("exam_requests_target_role_idx").on(table.targetRoleId),
+6699:  createdAt: true,
+6707:export const userCareerProgress = pgTable("user_career_progress", {
+6709:  userId: varchar("user_id").notNull().unique().references(() => users.id, { onDelete: "cascade" }),
+6725:  statusDemotedAt: timestamp("status_demoted_at"), // Düşürme tarihi
+6726:  statusDemotedFrom: integer("status_demoted_from"), // Hangi seviyeden düşürüldü
+6728:  createdAt: timestamp("created_at").defaultNow(),
+6730:  index("user_career_progress_user_idx").on(table.userId),
+6731:  index("user_career_progress_level_idx").on(table.currentCareerLevelId),
+6732:  index("user_career_progress_composite_score_idx").on(table.compositeScore),
+6738:  createdAt: true,
+6745:export const managerEvaluations = pgTable("manager_evaluations", {
+6749:  branchId: integer("branch_id").references(() => branches.id),
+6764:  createdAt: timestamp("created_at").defaultNow(),
+6767:  index("manager_evaluations_employee_idx").on(table.employeeId),
+6768:  index("manager_evaluations_month_idx").on(table.evaluationMonth),
+6769:  index("manager_evaluations_branch_idx").on(table.branchId),
+6775:  createdAt: true,
+6783:export const careerScoreHistory = pgTable("career_score_history", {
+6785:  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+6794:  createdAt: timestamp("created_at").defaultNow(),
+6796:  index("career_score_history_user_idx").on(table.userId),
+6797:  index("career_score_history_month_idx").on(table.scoreMonth),
+6802:  createdAt: true,
+6809:export const quizResults = pgTable("quiz_results", {
+6811:  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+6817:  index("quiz_results_user_idx").on(table.userId),
+6818:  index("quiz_results_score_idx").on(table.score),
+6833:export const quizzes = pgTable("quizzes", {
+6842:  createdAt: timestamp("created_at").defaultNow(),
+6844:  index("quizzes_career_level_idx").on(table.careerLevelId),
+6845:  index("quizzes_difficulty_idx").on(table.difficulty),
+6850:  createdAt: true,
+6861:export const badges = pgTable("badges", {
+6870:  createdAt: timestamp("created_at").defaultNow(),
+6872:  index("badges_category_idx").on(table.category),
+6877:  createdAt: true,
+6884:export const userBadges = pgTable("user_badges", {
+6886:  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+6891:  index("user_badges_user_idx").on(table.userId),
+6892:  index("user_badges_badge_idx").on(table.badgeId),
+6893:  unique("user_badges_unique").on(table.userId, table.badgeId),
+6908:export const branchFeedbacks = pgTable("branch_feedbacks", {
+6910:  branchId: integer("branch_id").notNull().references(() => branches.id, { onDelete: "cascade" }),
+6915:  status: varchar("status", { length: 20 }).default("yeni"), // yeni, okundu, yanıtlandı
+6918:  createdAt: timestamp("created_at").defaultNow(),
+6921:  index("branch_feedbacks_branch_idx").on(table.branchId),
+6922:  index("branch_feedbacks_status_idx").on(table.status),
+6923:  index("branch_feedbacks_created_idx").on(table.createdAt),
+6928:  createdAt: true,
+6929:  status: true,
+6943:export const lostFoundItems = pgTable("lost_found_items", {
+6945:  branchId: integer("branch_id").notNull().references(() => branches.id, { onDelete: "cascade" }),
+6953:  status: varchar("status", { length: 20 }).default("bulunan").notNull(),
+6959:  createdAt: timestamp("created_at").defaultNow(),
+6962:  index("lost_found_branch_idx").on(table.branchId),
+6963:  index("lost_found_status_idx").on(table.status),
+6964:  index("lost_found_found_date_idx").on(table.foundDate),
+6965:  index("lost_found_created_idx").on(table.createdAt),
+6970:  createdAt: true,
+6972:  status: true,
+6978:  branchId: true,
+6997:export const recipeCategories = pgTable("recipe_categories", {
+7008:  createdAt: timestamp("created_at").defaultNow(),
+7011:  index("recipe_categories_slug_idx").on(table.slug),
+7012:  index("recipe_categories_order_idx").on(table.displayOrder),
+7017:  createdAt: true,
+7025:export const recipes = pgTable("recipes", {
+7054:  createdAt: timestamp("created_at").defaultNow(),
+7058:  index("recipes_category_idx").on(table.categoryId),
+7059:  index("recipes_code_idx").on(table.code),
+7060:  index("recipes_active_idx").on(table.isActive),
+7066:  createdAt: true,
+7098:export const recipeVersions = pgTable("recipe_versions", {
+7125:  createdAt: timestamp("created_at").defaultNow(),
+7127:  index("recipe_versions_recipe_idx").on(table.recipeId),
+7128:  index("recipe_versions_version_idx").on(table.versionNumber),
+7134:  createdAt: true,
+7141:export const recipeNotifications = pgTable("recipe_notifications", {
+7145:  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+7148:  createdAt: timestamp("created_at").defaultNow(),
+7150:  index("recipe_notifications_user_idx").on(table.userId),
+7151:  index("recipe_notifications_recipe_idx").on(table.recipeId),
+7152:  unique("recipe_notifications_unique").on(table.recipeId, table.versionId, table.userId),
+7157:  createdAt: true,
+7168:export const dailyMissions = pgTable("daily_missions", {
+7179:  createdAt: timestamp("created_at").defaultNow(),
+7181:  index("daily_missions_type_idx").on(table.missionType),
+7182:  index("daily_missions_active_idx").on(table.isActive),
+7187:  createdAt: true,
+7194:export const userMissionProgress = pgTable("user_mission_progress", {
+7196:  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+7203:  createdAt: timestamp("created_at").defaultNow(),
+7205:  index("user_mission_progress_user_idx").on(table.userId),
+7206:  index("user_mission_progress_date_idx").on(table.missionDate),
+7207:  unique("user_mission_progress_unique").on(table.userId, table.missionId, table.missionDate),
+7212:  createdAt: true,
+7219:export const leaderboardSnapshots = pgTable("leaderboard_snapshots", {
+7221:  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+7229:  branchId: integer("branch_id").references(() => branches.id),
+7230:  createdAt: timestamp("created_at").defaultNow(),
+7233:  index("leaderboard_snapshots_user_idx").on(table.userId),
+7234:  index("leaderboard_snapshots_period_idx").on(table.periodType, table.periodKey),
+7235:  index("leaderboard_snapshots_rank_idx").on(table.rank),
+7236:  unique("leaderboard_snapshots_unique").on(table.userId, table.periodType, table.periodKey),
+7241:  createdAt: true,
+7249:export const userPracticeSessions = pgTable("user_practice_sessions", {
+7251:  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+7259:  createdAt: timestamp("created_at").defaultNow(),
+7262:  index("user_practice_sessions_user_idx").on(table.userId),
+7263:  index("user_practice_sessions_date_idx").on(table.sessionDate),
+7264:  unique("user_practice_sessions_unique").on(table.userId, table.sessionDate),
+7269:  createdAt: true,
+7276:export const learningStreaks = pgTable("learning_streaks", {
+7278:  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+7287:  createdAt: timestamp("created_at").defaultNow(),
+7290:  index("learning_streaks_user_idx").on(table.userId),
+7291:  unique("learning_streaks_user_unique").on(table.userId),
+7296:  createdAt: true,
+7304:export const academyHubCategories = pgTable("academy_hub_categories", {
+7314:  createdAt: timestamp("created_at").defaultNow(),
+7316:  index("academy_hub_categories_order_idx").on(table.displayOrder),
+7321:  createdAt: true,
+7337:export const projects = pgTable("projects", {
+7342:  status: varchar("status", { length: 30 }).default("planning"), // planning, in_progress, completed, on_hold, cancelled
+7345:  branchId: integer("branch_id").references(() => branches.id, { onDelete: "set null" }), // Yeni şube için oluşturulacak branch
+7362:  createdAt: timestamp("created_at").defaultNow(),
+7365:  index("projects_owner_idx").on(table.ownerId),
+7366:  index("projects_status_idx").on(table.status),
+7367:  index("projects_active_idx").on(table.isActive),
+7368:  index("projects_type_idx").on(table.projectType),
+7373:  createdAt: true,
+7383:export const projectMembers = pgTable("project_members", {
+7386:  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+7393:  index("project_members_project_idx").on(table.projectId),
+7394:  index("project_members_user_idx").on(table.userId),
+7395:  unique("project_members_unique").on(table.projectId, table.userId),
+7408:export const projectMilestones = pgTable("project_milestones", {
+7414:  status: varchar("status", { length: 30 }).default("pending"), // pending, in_progress, completed
+7418:  createdAt: timestamp("created_at").defaultNow(),
+7420:  index("project_milestones_project_idx").on(table.projectId),
+7421:  index("project_milestones_status_idx").on(table.status),
+7426:  createdAt: true,
+7434:export const projectTasks = pgTable("project_tasks", {
+7441:  status: varchar("status", { length: 30 }).default("todo"), // todo, in_progress, review, done
+7452:  createdAt: timestamp("created_at").defaultNow(),
+7455:  index("project_tasks_project_idx").on(table.projectId),
+7456:  index("project_tasks_assigned_idx").on(table.assignedToId),
+7457:  index("project_tasks_status_idx").on(table.status),
+7458:  index("project_tasks_parent_idx").on(table.parentTaskId),
+7459:  index("project_tasks_milestone_idx").on(table.milestoneId),
+7464:  createdAt: true,
+7473:export const projectTaskDependencies = pgTable("project_task_dependencies", {
+7478:  createdAt: timestamp("created_at").defaultNow(),
+7480:  index("task_dependencies_task_idx").on(table.taskId),
+7481:  index("task_dependencies_depends_on_idx").on(table.dependsOnTaskId),
+7487:  createdAt: true,
+7494:export const projectComments = pgTable("project_comments", {
+7498:  userId: varchar("user_id").notNull().references(() => users.id),
+7502:  createdAt: timestamp("created_at").defaultNow(),
+7504:  index("project_comments_project_idx").on(table.projectId),
+7505:  index("project_comments_task_idx").on(table.taskId),
+7506:  index("project_comments_user_idx").on(table.userId),
+7507:  index("project_comments_created_idx").on(table.createdAt),
+7512:  createdAt: true,
+7534:export const projectPhases = pgTable("project_phases", {
+7540:  status: varchar("status", { length: 30 }).default("not_started"), // not_started, in_progress, completed, blocked
+7550:  createdAt: timestamp("created_at").defaultNow(),
+7553:  index("project_phases_project_idx").on(table.projectId),
+7554:  index("project_phases_type_idx").on(table.phaseType),
+7555:  index("project_phases_status_idx").on(table.status),
+7560:  createdAt: true,
+7588:export const projectBudgetLines = pgTable("project_budget_lines", {
+7598:  paymentStatus: varchar("payment_status", { length: 30 }).default("pending"), // pending, partial, paid, overdue
+7606:  createdAt: timestamp("created_at").defaultNow(),
+7609:  index("project_budget_project_idx").on(table.projectId),
+7610:  index("project_budget_phase_idx").on(table.phaseId),
+7611:  index("project_budget_category_idx").on(table.category),
+7612:  index("project_budget_status_idx").on(table.paymentStatus),
+7617:  createdAt: true,
+7641:export const projectVendors = pgTable("project_vendors", {
+7651:  contractStatus: varchar("contract_status", { length: 30 }).default("pending"), // pending, signed, completed, cancelled
+7660:  createdAt: timestamp("created_at").defaultNow(),
+7663:  index("project_vendors_project_idx").on(table.projectId),
+7664:  index("project_vendors_type_idx").on(table.vendorType),
+7665:  index("project_vendors_status_idx").on(table.contractStatus),
+7670:  createdAt: true,
+7682:export const projectRisks = pgTable("project_risks", {
+7691:  status: varchar("status", { length: 30 }).default("identified"), // identified, mitigating, resolved, occurred
+7698:  createdAt: timestamp("created_at").defaultNow(),
+7701:  index("project_risks_project_idx").on(table.projectId),
+7702:  index("project_risks_phase_idx").on(table.phaseId),
+7703:  index("project_risks_severity_idx").on(table.severity),
+7704:  index("project_risks_status_idx").on(table.status),
+7709:  createdAt: true,
+7725:export const phaseAssignments = pgTable("phase_assignments", {
+7728:  userId: varchar("user_id").references(() => users.id, { onDelete: "cascade" }), // Internal user
+7736:  index("phase_assignments_phase_idx").on(table.phaseId),
+7737:  index("phase_assignments_user_idx").on(table.userId),
+7738:  index("phase_assignments_external_idx").on(table.externalUserId),
+7754:export const phaseSubTasks = pgTable("phase_sub_tasks", {
+7761:  status: varchar("status", { length: 20 }).default("not_started"),
+7769:  createdAt: timestamp("created_at").defaultNow(),
+7772:  index("phase_sub_tasks_phase_idx").on(table.phaseId),
+7773:  index("phase_sub_tasks_parent_idx").on(table.parentId),
+7774:  index("phase_sub_tasks_status_idx").on(table.status),
+7779:  createdAt: true,
+7792:export const procurementItems = pgTable("procurement_items", {
+7801:  status: varchar("status", { length: 30 }).default("draft"),
+7807:  createdAt: timestamp("created_at").defaultNow(),
+7810:  index("procurement_items_subtask_idx").on(table.subTaskId),
+7811:  index("procurement_items_status_idx").on(table.status),
+7816:  createdAt: true,
+7829:export const procurementProposals = pgTable("procurement_proposals", {
+7844:  status: varchar("status", { length: 30 }).default("submitted"),
+7849:  createdAt: timestamp("created_at").defaultNow(),
+7852:  index("procurement_proposals_item_idx").on(table.procurementItemId),
+7853:  index("procurement_proposals_vendor_idx").on(table.vendorId),
+7854:  index("procurement_proposals_status_idx").on(table.status),
+7859:  createdAt: true,
+7873:export const externalUsers = pgTable("external_users", {
+7886:  createdAt: timestamp("created_at").defaultNow(),
+7889:  index("external_users_email_idx").on(table.email),
+7890:  index("external_users_token_idx").on(table.accessToken),
+7895:  createdAt: true,
+7903:export const externalUserProjects = pgTable("external_user_projects", {
+7917:  index("external_user_projects_user_idx").on(table.externalUserId),
+7918:  index("external_user_projects_project_idx").on(table.projectId),
+7931:export const externalUserAuditLog = pgTable("external_user_audit_log", {
+7939:  createdAt: timestamp("created_at").defaultNow(),
+7941:  index("external_audit_user_idx").on(table.externalUserId),
+7942:  index("external_audit_project_idx").on(table.projectId),
+7943:  index("external_audit_created_idx").on(table.createdAt),
+7948:  createdAt: true,
+7958:export const emailSettings = pgTable("email_settings", {
+7983:export const serviceEmailSettings = pgTable("service_email_settings", {
+8008:export const banners = pgTable("banners", {
+8020:  createdAt: timestamp("created_at").defaultNow(),
+8023:  index("banners_active_idx").on(table.isActive),
+8024:  index("banners_dates_idx").on(table.startDate, table.endDate),
+8029:  createdAt: true,
+8047:export const aiSettings = pgTable("ai_settings", {
+8076:  createdAt: timestamp("created_at").defaultNow(),
+8081:  createdAt: true,
+8220:export const jobPositions = pgTable("job_positions", {
+8224:  branchId: integer("branch_id").references(() => branches.id), // Null ise HQ pozisyonu
+8233:  status: varchar("status", { length: 30 }).notNull().default("open"), // open, paused, filled, cancelled
+8242:  createdAt: timestamp("created_at").defaultNow(),
+8245:  index("job_positions_status_idx").on(table.status),
+8246:  index("job_positions_branch_idx").on(table.branchId),
+8252:  createdAt: true,
+8260:export const jobApplications = pgTable("job_applications", {
+8281:  status: varchar("status", { length: 30 }).notNull().default("new"), // ApplicationStatusType
+8288:  createdAt: timestamp("created_at").defaultNow(),
+8291:  index("job_applications_position_idx").on(table.positionId),
+8292:  index("job_applications_status_idx").on(table.status),
+8297:  createdAt: true,
+8305:export const interviews = pgTable("interviews", {
+8315:  additionalInterviewers: text("additional_interviewers"), // JSON: [userId1, userId2]
+8317:  status: varchar("status", { length: 30 }).notNull().default("scheduled"), // InterviewStatusType
+8327:  createdAt: timestamp("created_at").defaultNow(),
+8330:  index("interviews_application_idx").on(table.applicationId),
+8331:  index("interviews_date_idx").on(table.scheduledDate),
+8332:  index("interviews_interviewer_idx").on(table.interviewerId),
+8337:  createdAt: true,
+8345:export const interviewQuestions = pgTable("interview_questions", {
+8352:  createdAt: timestamp("created_at").defaultNow(),
+8358:  createdAt: true,
+8366:export const interviewResponses = pgTable("interview_responses", {
+8373:  createdAt: timestamp("created_at").defaultNow(),
+8375:  index("interview_responses_interview_idx").on(table.interviewId),
+8376:  index("interview_responses_question_idx").on(table.questionId),
+8381:  createdAt: true,
+8388:export const employeeTerminations = pgTable("employee_terminations", {
+8390:  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+8412:  createdAt: timestamp("created_at").defaultNow(),
+8415:  index("employee_terminations_user_idx").on(table.userId),
+8416:  index("employee_terminations_date_idx").on(table.terminationDate),
+8417:  index("employee_terminations_type_idx").on(table.terminationType),
+8422:  createdAt: true,
+8429:export const shiftCorrections = pgTable("shift_corrections", {
+8440:  branchId: integer("branch_id").references(() => branches.id),
+8441:  createdAt: timestamp("created_at").defaultNow(),
+8443:  index("shift_corrections_shift_idx").on(table.shiftId),
+8444:  index("shift_corrections_employee_idx").on(table.employeeId),
+8445:  index("shift_corrections_corrected_by_idx").on(table.correctedById),
+8450:  createdAt: true,
+8457:export const employeeLeaves = pgTable("employee_leaves", {
+8459:  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+8467:  createdAt: timestamp("created_at").defaultNow(),
+8470:  index("employee_leaves_user_idx").on(table.userId),
+8471:  index("employee_leaves_year_idx").on(table.year),
+8472:  index("employee_leaves_type_idx").on(table.leaveType),
+8477:  createdAt: true,
+8489:export const detailedReports = pgTable("detailed_reports", {
+8494:  branchIds: integer("branch_ids").array(),
+8501:  createdAt: timestamp("created_at").defaultNow(),
+8504:  index("reports_type_idx").on(table.reportType),
+8505:  index("reports_created_idx").on(table.createdAt),
+8510:  createdAt: true,
+8518:export const branchComparisons = pgTable("branch_comparisons", {
+8529:  createdAt: timestamp("created_at").defaultNow(),
+8531:  index("comparisons_report_idx").on(table.reportId),
+8532:  index("comparisons_metric_idx").on(table.metric),
+8537:  createdAt: true,
+8544:export const trendMetrics = pgTable("trend_metrics", {
+8547:  branchId: integer("branch_id").references(() => branches.id),
+8554:  status: varchar("status", { length: 20 }),
+8556:  createdAt: timestamp("created_at").defaultNow(),
+8558:  index("trends_report_idx").on(table.reportId),
+8559:  index("trends_branch_idx").on(table.branchId),
+8560:  index("trends_metric_idx").on(table.metricName),
+8561:  index("trends_date_idx").on(table.date),
+8566:  createdAt: true,
+8573:export const aiReportSummaries = pgTable("ai_report_summaries", {
+8582:  index("summaries_report_idx").on(table.reportId),
+8594:export const publicHolidays = pgTable("public_holidays", {
+8602:  createdAt: timestamp("created_at").defaultNow(),
+8604:  index("public_holidays_date_idx").on(table.date),
+8605:  index("public_holidays_year_idx").on(table.year),
+8610:  createdAt: true,
+8617:export const leaveRecords = pgTable("leave_records", {
+8619:  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+8624:  status: varchar("status", { length: 50 }).notNull().default("pending"), // pending, approved, rejected
+8630:  createdAt: timestamp("created_at").defaultNow(),
+8633:  index("leave_records_user_idx").on(table.userId),
+8634:  index("leave_records_date_idx").on(table.startDate),
+8635:  index("leave_records_status_idx").on(table.status),
+8640:  createdAt: true,
+8650:export const employeeSalaries = pgTable("employee_salaries", {
+8652:  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+8668:  createdAt: timestamp("created_at").defaultNow(),
+8671:  index("employee_salaries_user_idx").on(table.userId),
+8672:  index("employee_salaries_active_idx").on(table.isActive),
+8673:  index("employee_salaries_effective_idx").on(table.effectiveFrom, table.effectiveTo),
+8678:  createdAt: true,
+8686:export const salaryDeductionTypes = pgTable("salary_deduction_types", {
+8699:  createdAt: timestamp("created_at").defaultNow(),
+8701:  index("deduction_types_code_idx").on(table.code),
+8702:  index("deduction_types_active_idx").on(table.isActive),
+8707:  createdAt: true,
+8714:export const monthlyPayrolls = pgTable("monthly_payrolls", {
+8716:  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+8717:  branchId: integer("branch_id").references(() => branches.id),
+8742:  status: varchar("status", { length: 20 }).notNull().default("draft"), // draft, calculated, approved, paid
+8750:  createdAt: timestamp("created_at").defaultNow(),
+8753:  index("payrolls_user_idx").on(table.userId),
+8754:  index("payrolls_branch_idx").on(table.branchId),
+8755:  index("payrolls_period_idx").on(table.month, table.year),
+8756:  index("payrolls_status_idx").on(table.status),
+8757:  unique("payrolls_user_period_unique").on(table.userId, table.month, table.year),
+8762:  createdAt: true,
+8770:export const salaryDeductions = pgTable("salary_deductions", {
+8772:  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+8784:  status: varchar("status", { length: 20 }).notNull().default("pending"), // pending, approved, rejected
+8789:  createdAt: timestamp("created_at").defaultNow(),
+8792:  index("salary_deductions_user_idx").on(table.userId),
+8793:  index("salary_deductions_payroll_idx").on(table.payrollId),
+8794:  index("salary_deductions_type_idx").on(table.deductionTypeId),
+8795:  index("salary_deductions_date_idx").on(table.referenceDate),
+8796:  index("salary_deductions_status_idx").on(table.status),
+8801:  createdAt: true,
+8813:export const payrollParameters = pgTable("payroll_parameters", {
+8858:  createdAt: timestamp("created_at").defaultNow(),
+8861:  index("payroll_parameters_year_idx").on(table.year),
+8862:  index("payroll_parameters_active_idx").on(table.isActive),
+8868:  createdAt: true,
+8876:export const employeeTaxLedger = pgTable("employee_tax_ledger", {
+8878:  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+8899:  createdAt: timestamp("created_at").defaultNow(),
+8902:  index("employee_tax_ledger_user_idx").on(table.userId),
+8903:  index("employee_tax_ledger_year_idx").on(table.year),
+8904:  unique("employee_tax_ledger_user_year_month_unique").on(table.userId, table.year, table.month),
+8909:  createdAt: true,
+8917:export const employeeBenefits = pgTable("employee_benefits", {
+8919:  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+8943:  createdAt: timestamp("created_at").defaultNow(),
+8946:  index("employee_benefits_user_idx").on(table.userId),
+8947:  index("employee_benefits_active_idx").on(table.isActive),
+8952:  createdAt: true,
+8963:export const payrollRecords = pgTable("payroll_records", {
+8965:  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+8966:  branchId: integer("branch_id").references(() => branches.id, { onDelete: "set null" }),
+9010:  status: varchar("status", { length: 20 }).notNull().default("draft"), // draft, pending_approval, approved, paid
+9019:  createdAt: timestamp("created_at").defaultNow(),
+9022:  index("payroll_records_user_idx").on(table.userId),
+9023:  index("payroll_records_period_idx").on(table.periodYear, table.periodMonth),
+9024:  index("payroll_records_status_idx").on(table.status),
+9025:  unique("payroll_records_user_period_unique").on(table.userId, table.periodYear, table.periodMonth),
+9030:  createdAt: true,
+9041:export const taskSteps = pgTable("task_steps", {
+9049:  status: varchar("status", { length: 30 }).notNull().default("pending"),
+9057:  createdAt: timestamp("created_at").defaultNow(),
+9060:  index("task_steps_task_idx").on(table.taskId),
+9061:  index("task_steps_author_idx").on(table.authorId),
+9062:  index("task_steps_order_idx").on(table.taskId, table.order),
+9067:  createdAt: true,
+9087:export const titles = pgTable("titles", {
+9094:  createdAt: timestamp("created_at").defaultNow(),
+9097:  index("titles_scope_idx").on(table.scope),
+9102:  createdAt: true,
+9113:export const roleTemplates = pgTable("role_templates", {
+9130:  createdAt: timestamp("created_at").defaultNow(),
+9133:  index("role_templates_domain_idx").on(table.domain),
+9134:  index("role_templates_base_role_idx").on(table.baseRole),
+9139:  createdAt: true,
+9169:export const factoryProducts = pgTable("factory_products", {
+9189:  createdAt: timestamp("created_at").defaultNow(),
+9192:  index("factory_products_category_idx").on(table.category),
+9193:  index("factory_products_sku_idx").on(table.sku),
+9198:  createdAt: true,
+9206:export const productionBatches = pgTable("production_batches", {
+9217:  status: varchar("status", { length: 30 }).notNull().default("planned"), // planned, in_progress, completed, quality_check, approved, rejected
+9225:  createdAt: timestamp("created_at").defaultNow(),
+9228:  index("production_batches_product_idx").on(table.productId),
+9229:  index("production_batches_status_idx").on(table.status),
+9230:  index("production_batches_date_idx").on(table.productionDate),
+9235:  createdAt: true,
+9243:export const branchOrders = pgTable("branch_orders", {
+9246:  branchId: integer("branch_id").notNull().references(() => branches.id, { onDelete: "cascade" }),
+9248:  status: varchar("status", { length: 30 }).notNull().default("pending"), // pending, confirmed, preparing, shipped, delivered, cancelled
+9260:  createdAt: timestamp("created_at").defaultNow(),
+9263:  index("branch_orders_branch_idx").on(table.branchId),
+9264:  index("branch_orders_status_idx").on(table.status),
+9265:  index("branch_orders_date_idx").on(table.createdAt),
+9270:  createdAt: true,
+9278:export const branchOrderItems = pgTable("branch_order_items", {
+9292:  index("branch_order_items_order_idx").on(table.orderId),
+9293:  index("branch_order_items_product_idx").on(table.productId),
+9304:export const factoryInventory = pgTable("factory_inventory", {
+9315:  index("factory_inventory_product_idx").on(table.productId),
+9332:export const factoryStations = pgTable("factory_stations", {
+9342:  createdAt: timestamp("created_at").defaultNow(),
+9347:  createdAt: true,
+9354:export const factoryStaffPins = pgTable("factory_staff_pins", {
+9356:  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+9361:  createdAt: timestamp("created_at").defaultNow(),
+9364:  unique("factory_staff_pins_user_unique").on(table.userId),
+9369:  createdAt: true,
+9377:export const factoryShiftSessions = pgTable("factory_shift_sessions", {
+9379:  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+9392:  status: varchar("status", { length: 20 }).default("active").notNull(), // active, completed, abandoned
+9395:  createdAt: timestamp("created_at").defaultNow(),
+9397:  index("factory_shift_sessions_user_idx").on(table.userId),
+9398:  index("factory_shift_sessions_station_idx").on(table.stationId),
+9399:  index("factory_shift_sessions_date_idx").on(table.checkInTime),
+9404:  createdAt: true,
+9411:export const factoryProductionRuns = pgTable("factory_production_runs", {
+9414:  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+9429:  status: varchar("status", { length: 20 }).default("in_progress").notNull(), // in_progress, completed
+9431:  createdAt: timestamp("created_at").defaultNow(),
+9433:  index("factory_production_runs_session_idx").on(table.sessionId),
+9434:  index("factory_production_runs_user_idx").on(table.userId),
+9435:  index("factory_production_runs_station_idx").on(table.stationId),
+9436:  index("factory_production_runs_date_idx").on(table.startTime),
+9441:  createdAt: true,
+9448:export const factoryDailyTargets = pgTable("factory_daily_targets", {
+9456:  createdAt: timestamp("created_at").defaultNow(),
+9464:  createdAt: true,
+9476:export const factoryWasteReasons = pgTable("factory_waste_reasons", {
+9484:  createdAt: timestamp("created_at").defaultNow(),
+9489:  createdAt: true,
+9496:export const factorySessionEvents = pgTable("factory_session_events", {
+9499:  userId: text("user_id").notNull().references(() => users.id),
+9516:  createdAt: timestamp("created_at").defaultNow(),
+9518:  index("factory_session_events_session_idx").on(table.sessionId),
+9519:  index("factory_session_events_user_idx").on(table.userId),
+9520:  index("factory_session_events_type_idx").on(table.eventType),
+9521:  index("factory_session_events_date_idx").on(table.createdAt),
+9526:  createdAt: true,
+9533:export const factoryBreakLogs = pgTable("factory_break_logs", {
+9536:  userId: text("user_id").notNull().references(() => users.id),
+9549:  index("factory_break_logs_user_idx").on(table.userId),
+9550:  index("factory_break_logs_session_idx").on(table.sessionId),
+9551:  index("factory_break_logs_reason_idx").on(table.breakReason),
+9552:  index("factory_break_logs_date_idx").on(table.startedAt),
+9563:export const factoryStationTargets = pgTable("factory_station_targets", {
+9575:  createdAt: timestamp("created_at").defaultNow(),
+9578:  index("factory_station_targets_station_idx").on(table.stationId),
+9579:  index("factory_station_targets_period_idx").on(table.periodType),
+9584:  createdAt: true,
+9592:export const factoryWorkerScores = pgTable("factory_worker_scores", {
+9594:  userId: text("user_id").notNull().references(() => users.id),
+9616:  index("factory_worker_scores_user_idx").on(table.userId),
+9617:  index("factory_worker_scores_date_idx").on(table.periodDate),
+9618:  unique("factory_worker_scores_user_date_unique").on(table.userId, table.periodDate, table.periodType),
+9630:export const factoryProductionOutputs = pgTable("factory_production_outputs", {
+9634:  userId: text("user_id").notNull().references(() => users.id),
+9659:  qualityStatus: varchar("quality_status", { length: 20 }).default("pending"), // pending, approved, rejected
+9664:  createdAt: timestamp("created_at").defaultNow(),
+9666:  index("factory_production_outputs_session_idx").on(table.sessionId),
+9667:  index("factory_production_outputs_user_idx").on(table.userId),
+9668:  index("factory_production_outputs_station_idx").on(table.stationId),
+9669:  index("factory_production_outputs_quality_idx").on(table.qualityStatus),
+9670:  index("factory_production_outputs_date_idx").on(table.createdAt),
+9675:  createdAt: true,
+9686:export const factoryQualitySpecs = pgTable("factory_quality_specs", {
+9710:  createdAt: timestamp("created_at").defaultNow(),
+9713:  index("factory_quality_specs_station_idx").on(table.stationId),
+9714:  index("factory_quality_specs_product_idx").on(table.productId),
+9719:  createdAt: true,
+9727:export const factoryQualityAssignments = pgTable("factory_quality_assignments", {
+9729:  userId: text("user_id").notNull().references(() => users.id),
+9741:  index("factory_quality_assignments_user_idx").on(table.userId),
+9742:  unique("factory_quality_assignments_user_unique").on(table.userId),
+9754:export const factoryQualityChecks = pgTable("factory_quality_checks", {
+9775:  index("factory_quality_checks_output_idx").on(table.productionOutputId),
+9776:  index("factory_quality_checks_inspector_idx").on(table.inspectorId),
+9777:  index("factory_quality_checks_producer_idx").on(table.producerId),
+9778:  index("factory_quality_checks_date_idx").on(table.checkedAt),
+9790:export const factoryQualityMeasurements = pgTable("factory_quality_measurements", {
+9804:  createdAt: timestamp("created_at").defaultNow(),
+9806:  index("factory_quality_measurements_check_idx").on(table.qualityCheckId),
+9807:  index("factory_quality_measurements_spec_idx").on(table.specId),
+9812:  createdAt: true,
+9819:export const factoryQualityMedia = pgTable("factory_quality_media", {
+9830:  index("factory_quality_media_check_idx").on(table.qualityCheckId),
+9842:export const factoryAiReports = pgTable("factory_ai_reports", {
+9863:  index("factory_ai_reports_type_idx").on(table.reportType),
+9864:  index("factory_ai_reports_user_idx").on(table.targetUserId),
+9865:  index("factory_ai_reports_date_idx").on(table.generatedAt),
+9881:export const factoryProductionPlans = pgTable("factory_production_plans", {
+9894:  status: varchar("status", { length: 20 }).default("planned"), // planned, in_progress, completed, cancelled
+9898:  createdAt: timestamp("created_at").defaultNow(),
+9901:  index("factory_production_plans_date_idx").on(table.planDate),
+9902:  index("factory_production_plans_product_idx").on(table.productId),
+9903:  index("factory_production_plans_status_idx").on(table.status),
+9908:  createdAt: true,
+9920:export const factoryTeams = pgTable("factory_teams", {
+9927:  createdAt: timestamp("created_at").defaultNow(),
+9929:  index("factory_teams_station_idx").on(table.stationId),
+9934:  createdAt: true,
+9941:export const factoryTeamMembers = pgTable("factory_team_members", {
+9944:  userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+9951:  index("factory_team_members_team_idx").on(table.teamId),
+9952:  index("factory_team_members_user_idx").on(table.userId),
+9953:  unique("factory_team_members_team_user_unique").on(table.teamId, table.userId),
+9965:export const factoryTeamSessions = pgTable("factory_team_sessions", {
+9976:  status: varchar("status", { length: 20 }).default("active"), // active, completed
+9978:  createdAt: timestamp("created_at").defaultNow(),
+9980:  index("factory_team_sessions_station_idx").on(table.stationId),
+9981:  index("factory_team_sessions_date_idx").on(table.startTime),
+9986:  createdAt: true,
+9993:export const factoryTeamSessionMembers = pgTable("factory_team_session_members", {
+9996:  userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+10005:  index("factory_team_session_members_session_idx").on(table.teamSessionId),
+10006:  index("factory_team_session_members_user_idx").on(table.userId),
+10022:export const factoryShiftCompliance = pgTable("factory_shift_compliance", {
+10024:  userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+10052:  complianceStatus: varchar("compliance_status", { length: 30 }).default("compliant"), // compliant, late, early_leave, break_overage, absent, needs_review
+10072:  createdAt: timestamp("created_at").defaultNow(),
+10075:  index("factory_shift_compliance_user_idx").on(table.userId),
+10076:  index("factory_shift_compliance_date_idx").on(table.workDate),
+10077:  index("factory_shift_compliance_session_idx").on(table.factorySessionId),
+10078:  index("factory_shift_compliance_status_idx").on(table.complianceStatus),
+10083:  createdAt: true,
+10091:export const factoryWeeklyAttendanceSummary = pgTable("factory_weekly_attendance_summary", {
+10093:  userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+10120:  createdAt: timestamp("created_at").defaultNow(),
+10123:  index("factory_weekly_summary_user_idx").on(table.userId),
+10124:  index("factory_weekly_summary_week_idx").on(table.weekStartDate),
+10125:  unique("factory_weekly_summary_user_week_unique").on(table.userId, table.weekStartDate),
+10130:  createdAt: true,
+10142:export const branchStaffPins = pgTable("branch_staff_pins", {
+10144:  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+10145:  branchId: integer("branch_id").notNull().references(() => branches.id, { onDelete: "cascade" }),
+10150:  createdAt: timestamp("created_at").defaultNow(),
+10153:  unique("branch_staff_pins_user_branch_unique").on(table.userId, table.branchId),
+10154:  index("branch_staff_pins_branch_idx").on(table.branchId),
+10159:  createdAt: true,
+10167:export const branchShiftSessions = pgTable("branch_shift_sessions", {
+10169:  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+10170:  branchId: integer("branch_id").notNull().references(() => branches.id, { onDelete: "cascade" }),
+10182:  status: varchar("status", { length: 20 }).default("active").notNull(), // active, on_break, completed, abandoned
+10205:  createdAt: timestamp("created_at").defaultNow(),
+10207:  index("branch_shift_sessions_user_idx").on(table.userId),
+10208:  index("branch_shift_sessions_branch_idx").on(table.branchId),
+10209:  index("branch_shift_sessions_date_idx").on(table.checkInTime),
+10210:  index("branch_shift_sessions_status_idx").on(table.status),
+10215:  createdAt: true,
+10222:export const branchShiftEvents = pgTable("branch_shift_events", {
+10225:  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+10226:  branchId: integer("branch_id").notNull().references(() => branches.id, { onDelete: "cascade" }),
+10233:  createdAt: timestamp("created_at").defaultNow(),
+10235:  index("branch_shift_events_session_idx").on(table.sessionId),
+10236:  index("branch_shift_events_user_idx").on(table.userId),
+10237:  index("branch_shift_events_time_idx").on(table.eventTime),
+10238:  index("branch_shift_events_type_idx").on(table.eventType),
+10243:  createdAt: true,
+10250:export const branchBreakLogs = pgTable("branch_break_logs", {
+10253:  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+10254:  branchId: integer("branch_id").notNull().references(() => branches.id, { onDelete: "cascade" }),
+10262:  createdAt: timestamp("created_at").defaultNow(),
+10264:  index("branch_break_logs_session_idx").on(table.sessionId),
+10265:  index("branch_break_logs_user_idx").on(table.userId),
+10270:  createdAt: true,
+10277:export const branchShiftDailySummary = pgTable("branch_shift_daily_summary", {
+10279:  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+10280:  branchId: integer("branch_id").notNull().references(() => branches.id, { onDelete: "cascade" }),
+10305:  approvalStatus: varchar("approval_status", { length: 20 }).default("pending"), // pending, approved, rejected
+10310:  createdAt: timestamp("created_at").defaultNow(),
+10313:  index("branch_daily_summary_user_idx").on(table.userId),
+10314:  index("branch_daily_summary_branch_idx").on(table.branchId),
+10315:  index("branch_daily_summary_date_idx").on(table.workDate),
+10316:  unique("branch_daily_summary_user_date_unique").on(table.userId, table.workDate),
+10321:  createdAt: true,
+10329:export const branchWeeklyAttendanceSummary = pgTable("branch_weekly_attendance_summary", {
+10331:  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+10332:  branchId: integer("branch_id").notNull().references(() => branches.id, { onDelete: "cascade" }),
+10359:  createdAt: timestamp("created_at").defaultNow(),
+10362:  index("branch_weekly_summary_user_idx").on(table.userId),
+10363:  index("branch_weekly_summary_branch_idx").on(table.branchId),
+10364:  index("branch_weekly_summary_week_idx").on(table.weekStartDate),
+10365:  unique("branch_weekly_summary_user_week_unique").on(table.userId, table.weekStartDate),
+10370:  createdAt: true,
+10378:export const hqShiftSessions = pgTable("hq_shift_sessions", {
+10380:  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+10390:  status: varchar("status", { length: 20 }).default("active").notNull(), // active, on_break, outside, completed
+10398:  createdAt: timestamp("created_at").defaultNow(),
+10400:  index("hq_shift_sessions_user_idx").on(table.userId),
+10401:  index("hq_shift_sessions_date_idx").on(table.checkInTime),
+10402:  index("hq_shift_sessions_status_idx").on(table.status),
+10407:  createdAt: true,
+10414:export const hqShiftEvents = pgTable("hq_shift_events", {
+10417:  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+10429:  createdAt: timestamp("created_at").defaultNow(),
+10431:  index("hq_shift_events_session_idx").on(table.sessionId),
+10432:  index("hq_shift_events_user_idx").on(table.userId),
+10437:  createdAt: true,
+10444:export const branchMonthlyPayrollSummary = pgTable("branch_monthly_payroll_summary", {
+10446:  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+10447:  branchId: integer("branch_id").notNull().references(() => branches.id, { onDelete: "cascade" }),
+10477:  status: varchar("status", { length: 20 }).default("draft"), // draft, finalized, exported
+10483:  createdAt: timestamp("created_at").defaultNow(),
+10486:  index("branch_monthly_payroll_user_idx").on(table.userId),
+10487:  index("branch_monthly_payroll_branch_idx").on(table.branchId),
+10488:  index("branch_monthly_payroll_month_idx").on(table.month, table.year),
+10489:  unique("branch_monthly_payroll_user_month_unique").on(table.userId, table.month, table.year),
+10494:  createdAt: true,
+10502:export const branchKioskSettings = pgTable("branch_kiosk_settings", {
+10504:  branchId: integer("branch_id").notNull().references(() => branches.id, { onDelete: "cascade" }).unique(),
+10526:  createdAt: timestamp("created_at").defaultNow(),
+10532:  createdAt: true,
+10539:export const qrCheckinNonces = pgTable("qr_checkin_nonces", {
+10542:  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+10544:  createdAt: timestamp("created_at").defaultNow().notNull(),
+10604:export const dashboardAlerts = pgTable("dashboard_alerts", {
+10609:  contextId: integer("context_id").notNull(), // branchId veya factoryId (şimdilik hep 1)
+10614:  status: varchar("status", { length: 20 }).notNull().default("active"), // AlertStatusType
+10621:  payload: text("payload"), // { userId, shiftId, checklistId, etc. }
+10641:  createdAt: timestamp("created_at").defaultNow(),
+10643:  index("dashboard_alerts_context_idx").on(table.context, table.contextId),
+10644:  index("dashboard_alerts_status_idx").on(table.status),
+10645:  index("dashboard_alerts_severity_idx").on(table.severity),
+10646:  index("dashboard_alerts_occurred_at_idx").on(table.occurredAt),
+10651:  createdAt: true,
+10660:export const megaModuleConfig = pgTable("mega_module_config", {
+10669:  createdAt: timestamp("created_at").defaultNow(),
+10675:  createdAt: true,
+10683:export const megaModuleItems = pgTable("mega_module_items", {
+10694:  createdAt: timestamp("created_at").defaultNow(),
+10699:  createdAt: true,
+10722:export const staffQrRatings = pgTable("staff_qr_ratings", {
+10727:  branchId: integer("branch_id").notNull().references(() => branches.id, { onDelete: "cascade" }),
+10747:  status: varchar("status", { length: 20 }).default("active").notNull(), // active, flagged, removed
+10749:  createdAt: timestamp("created_at").defaultNow(),
+10751:  index("staff_qr_ratings_staff_idx").on(table.staffId),
+10752:  index("staff_qr_ratings_branch_idx").on(table.branchId),
+10753:  index("staff_qr_ratings_date_idx").on(table.createdAt),
+10754:  index("staff_qr_ratings_token_idx").on(table.qrToken),
+10759:  createdAt: true,
+10771:export const staffQrTokens = pgTable("staff_qr_tokens", {
+10774:  branchId: integer("branch_id").notNull().references(() => branches.id, { onDelete: "cascade" }),
+10784:  createdAt: timestamp("created_at").defaultNow(),
+10787:  unique("staff_qr_tokens_staff_branch_unique").on(table.staffId, table.branchId),
+10788:  index("staff_qr_tokens_token_idx").on(table.token),
+10793:  createdAt: true,
+10801:export const employeeOfMonthWeights = pgTable("employee_of_month_weights", {
+10803:  branchId: integer("branch_id").references(() => branches.id, { onDelete: "cascade" }), // null = global default
+10817:  createdAt: timestamp("created_at").defaultNow(),
+10823:  createdAt: true,
+10831:export const monthlyEmployeePerformance = pgTable("monthly_employee_performance", {
+10833:  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+10834:  branchId: integer("branch_id").notNull().references(() => branches.id, { onDelete: "cascade" }),
+10878:  status: varchar("status", { length: 20 }).default("calculating").notNull(), // calculating, finalized, awarded
+10881:  createdAt: timestamp("created_at").defaultNow(),
+10884:  unique("monthly_perf_user_month_unique").on(table.userId, table.month, table.year),
+10885:  index("monthly_perf_branch_idx").on(table.branchId),
+10886:  index("monthly_perf_period_idx").on(table.month, table.year),
+10887:  index("monthly_perf_score_idx").on(table.finalScore),
+10892:  createdAt: true,
+10900:export const employeeOfMonthAwards = pgTable("employee_of_month_awards", {
+10902:  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+10903:  branchId: integer("branch_id").notNull().references(() => branches.id, { onDelete: "cascade" }),
+10923:  status: varchar("status", { length: 20 }).default("pending").notNull(), // pending, approved, announced, celebrated
+10929:  createdAt: timestamp("created_at").defaultNow(),
+10932:  unique("eom_award_branch_month_unique").on(table.branchId, table.month, table.year, table.awardType),
+10933:  index("eom_award_user_idx").on(table.userId),
+10934:  index("eom_award_period_idx").on(table.month, table.year),
+10939:  createdAt: true,
+10951:export const managerMonthlyRatings = pgTable("manager_monthly_ratings", {
+10959:  branchId: integer("branch_id").notNull().references(() => branches.id, { onDelete: "cascade" }),
+10981:  status: varchar("status", { length: 20 }).default("submitted").notNull(), // draft, submitted
+10983:  createdAt: timestamp("created_at").defaultNow(),
+10987:  index("manager_rating_employee_idx").on(table.employeeId),
+10988:  index("manager_rating_branch_idx").on(table.branchId),
+10989:  index("manager_rating_period_idx").on(table.month, table.year),
+10994:  createdAt: true,
+11011:export const equipmentKnowledge = pgTable("equipment_knowledge", {
+11038:  createdAt: timestamp("created_at").defaultNow(),
+11041:  index("eq_knowledge_type_idx").on(table.equipmentType),
+11042:  index("eq_knowledge_brand_idx").on(table.brand),
+11043:  index("eq_knowledge_category_idx").on(table.category),
+11044:  index("eq_knowledge_active_idx").on(table.isActive),
+11049:  createdAt: true,
+11060:export const aiSystemConfig = pgTable("ai_system_config", {
+11076:  createdAt: timestamp("created_at").defaultNow(),
+11082:  createdAt: true,
+11103:export const inventory = pgTable("inventory", {
+11132:  createdAt: timestamp("created_at").defaultNow(),
+11135:  index("inventory_code_idx").on(table.code),
+11136:  index("inventory_category_idx").on(table.category),
+11137:  index("inventory_barcode_idx").on(table.barcode),
+11138:  index("inventory_active_idx").on(table.isActive),
+11139:  index("inventory_qr_code_idx").on(table.qrCode),
+11144:  createdAt: true,
+11155:export const inventoryMovements = pgTable("inventory_movements", {
+11180:  createdAt: timestamp("created_at").defaultNow(),
+11182:  index("inv_movement_inventory_idx").on(table.inventoryId),
+11183:  index("inv_movement_type_idx").on(table.movementType),
+11184:  index("inv_movement_date_idx").on(table.createdAt),
+11185:  index("inv_movement_ref_idx").on(table.referenceType, table.referenceId),
+11190:  createdAt: true,
+11203:export const suppliers = pgTable("suppliers", {
+11240:  status: varchar("status", { length: 30 }).default("aktif").notNull(),
+11244:  createdAt: timestamp("created_at").defaultNow(),
+11247:  index("supplier_code_idx").on(table.code),
+11248:  index("supplier_name_idx").on(table.name),
+11249:  index("supplier_status_idx").on(table.status),
+11254:  createdAt: true,
+11265:export const productSuppliers = pgTable("product_suppliers", {
+11285:  createdAt: timestamp("created_at").defaultNow(),
+11288:  index("ps_inventory_idx").on(table.inventoryId),
+11289:  index("ps_supplier_idx").on(table.supplierId),
+11294:  createdAt: true,
+11308:export const purchaseOrders = pgTable("purchase_orders", {
+11328:  status: varchar("status", { length: 30 }).default("taslak").notNull(),
+11341:  createdAt: timestamp("created_at").defaultNow(),
+11344:  index("po_order_number_idx").on(table.orderNumber),
+11345:  index("po_supplier_idx").on(table.supplierId),
+11346:  index("po_status_idx").on(table.status),
+11347:  index("po_date_idx").on(table.orderDate),
+11352:  createdAt: true,
+11360:export const purchaseOrderItems = pgTable("purchase_order_items", {
+11379:  createdAt: timestamp("created_at").defaultNow(),
+11381:  index("poi_order_idx").on(table.purchaseOrderId),
+11382:  index("poi_inventory_idx").on(table.inventoryId),
+11387:  createdAt: true,
+11400:export const goodsReceipts = pgTable("goods_receipts", {
+11417:  status: varchar("status", { length: 30 }).default("beklemede").notNull(),
+11427:  deliveryStatus: varchar("delivery_status", { length: 20 }), // early, on_time, late
+11437:  createdAt: timestamp("created_at").defaultNow(),
+11440:  index("gr_receipt_number_idx").on(table.receiptNumber),
+11441:  index("gr_po_idx").on(table.purchaseOrderId),
+11442:  index("gr_supplier_idx").on(table.supplierId),
+11443:  index("gr_status_idx").on(table.status),
+11444:  index("gr_date_idx").on(table.receiptDate),
+11449:  createdAt: true,
+11457:export const goodsReceiptItems = pgTable("goods_receipt_items", {
+11479:  qualityStatus: varchar("quality_status", { length: 30 }).default("beklemede"), // beklemede, gecti, kaldi
+11485:  createdAt: timestamp("created_at").defaultNow(),
+11487:  index("gri_receipt_idx").on(table.goodsReceiptId),
+11488:  index("gri_inventory_idx").on(table.inventoryId),
+11489:  index("gri_batch_idx").on(table.batchNumber),
+11494:  createdAt: true,
+11504:export const recipeIngredients = pgTable("recipe_ingredients", {
+11519:  createdAt: timestamp("created_at").defaultNow(),
+11521:  index("ri_recipe_idx").on(table.recipeId),
+11522:  index("ri_inventory_idx").on(table.inventoryId),
+11527:  createdAt: true,
+11537:export const productionRecords = pgTable("production_records", {
+11559:  status: varchar("status", { length: 30 }).default("tamamlandi"), // planlandi, devam_ediyor, tamamlandi, iptal
+11568:  createdAt: timestamp("created_at").defaultNow(),
+11571:  index("pr_number_idx").on(table.productionNumber),
+11572:  index("pr_date_idx").on(table.productionDate),
+11573:  index("pr_inventory_idx").on(table.inventoryId),
+11574:  index("pr_recipe_idx").on(table.recipeId),
+11575:  index("pr_status_idx").on(table.status),
+11580:  createdAt: true,
+11588:export const productionIngredients = pgTable("production_ingredients", {
+11601:  createdAt: timestamp("created_at").defaultNow(),
+11603:  index("pi_production_idx").on(table.productionRecordId),
+11604:  index("pi_inventory_idx").on(table.inventoryId),
+11609:  createdAt: true,
+11619:export const cariAccounts = pgTable("cari_accounts", {
+11628:  branchId: integer("branch_id").references(() => branches.id, { onDelete: "set null" }),
+11643:  createdAt: timestamp("created_at").defaultNow(),
+11646:  index("cari_account_type_idx").on(table.accountType),
+11647:  index("cari_branch_idx").on(table.branchId),
+11650:export const cariTransactions = pgTable("cari_transactions", {
+11677:  createdAt: timestamp("created_at").defaultNow(),
+11679:  index("cari_tx_account_idx").on(table.accountId),
+11680:  index("cari_tx_date_idx").on(table.transactionDate),
+11681:  index("cari_tx_due_idx").on(table.dueDate),
+11688:  createdAt: true,
+11694:  createdAt: true,
+11714:export const rawMaterials = pgTable("raw_materials", {
+11743:  createdAt: timestamp("created_at").defaultNow(),
+11746:  index("rm_code_idx").on(table.code),
+11747:  index("rm_category_idx").on(table.category),
+11748:  index("rm_inventory_idx").on(table.inventoryId),
+11753:  createdAt: true,
+11761:export const productRecipes = pgTable("product_recipes", {
+11810:  createdAt: timestamp("created_at").defaultNow(),
+11813:  index("pr_product_idx").on(table.productId),
+11814:  index("pr_active_idx").on(table.isActive),
+11819:  createdAt: true,
+11827:export const productRecipeIngredients = pgTable("product_recipe_ingredients", {
+11842:  createdAt: timestamp("created_at").defaultNow(),
+11844:  index("pri_recipe_idx").on(table.recipeId),
+11845:  index("pri_material_idx").on(table.rawMaterialId),
+11850:  createdAt: true,
+11857:export const productPackagingItems = pgTable("product_packaging_items", {
+11869:  createdAt: timestamp("created_at").defaultNow(),
+11871:  index("ppi_product_idx").on(table.productId),
+11876:  createdAt: true,
+11883:export const factoryCostSettings = pgTable("factory_cost_settings", {
+11909:export const factoryFixedCosts = pgTable("factory_fixed_costs", {
+11934:  createdAt: timestamp("created_at").defaultNow(),
+11937:  index("ffc_category_idx").on(table.category),
+11938:  index("ffc_period_idx").on(table.effectiveYear, table.effectiveMonth),
+11943:  createdAt: true,
+11951:export const profitMarginTemplates = pgTable("profit_margin_templates", {
+11968:  createdAt: timestamp("created_at").defaultNow(),
+11971:  index("pmt_category_idx").on(table.category),
+11976:  createdAt: true,
+11984:export const productCostCalculations = pgTable("product_cost_calculations", {
+12021:  createdAt: timestamp("created_at").defaultNow(),
+12023:  index("pcc_product_idx").on(table.productId),
+12024:  index("pcc_period_idx").on(table.periodYear, table.periodMonth),
+12025:  index("pcc_date_idx").on(table.calculationDate),
+12030:  createdAt: true,
+12037:export const productionCostTracking = pgTable("production_cost_tracking", {
+12057:  createdAt: timestamp("created_at").defaultNow(),
+12059:  index("pct_product_idx").on(table.productId),
+12060:  index("pct_date_idx").on(table.productionDate),
+12061:  index("pct_production_idx").on(table.productionRecordId),
+12066:  createdAt: true,
+12072:export const rawMaterialPriceHistory = pgTable("raw_material_price_history", {
+12082:  createdAt: timestamp("created_at").defaultNow(),
+12084:  index("rmph_material_idx").on(table.rawMaterialId),
+12085:  index("rmph_date_idx").on(table.createdAt),
+12086:  index("rmph_supplier_idx").on(table.supplierId),
+12091:  createdAt: true,
+12098:export const factoryMachines = pgTable("factory_machines", {
+12104:  createdAt: timestamp("created_at").defaultNow(),
+12110:  createdAt: true,
+12118:export const machineProducts = pgTable("machine_products", {
+12122:  createdAt: timestamp("created_at").defaultNow(),
+12124:  index("mp_machine_idx").on(table.machineId),
+12125:  index("mp_product_idx").on(table.productId),
+12133:export const factoryShifts = pgTable("factory_shifts", {
+12139:  status: varchar("status", { length: 20 }).default("planned").notNull(), // planned, active, completed, cancelled
+12142:  createdAt: timestamp("created_at").defaultNow(),
+12145:  index("fs_date_idx").on(table.shiftDate),
+12146:  index("fs_type_idx").on(table.shiftType),
+12147:  index("fs_status_idx").on(table.status),
+12152:  createdAt: true,
+12159:export const factoryShiftWorkers = pgTable("factory_shift_workers", {
+12162:  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+12168:  createdAt: timestamp("created_at").defaultNow(),
+12170:  index("fsw_shift_idx").on(table.shiftId),
+12171:  index("fsw_user_idx").on(table.userId),
+12172:  index("fsw_machine_idx").on(table.machineId),
+12177:  createdAt: true,
+12183:export const factoryBatchSpecs = pgTable("factory_batch_specs", {
+12196:  createdAt: timestamp("created_at").defaultNow(),
+12199:  index("fbs_product_idx").on(table.productId),
+12200:  index("fbs_machine_idx").on(table.machineId),
+12205:  createdAt: true,
+12212:export const factoryShiftProductions = pgTable("factory_shift_productions", {
+12220:  status: varchar("status", { length: 20 }).default("planned").notNull(), // planned, in_progress, completed
+12222:  createdAt: timestamp("created_at").defaultNow(),
+12224:  index("fsp_shift_idx").on(table.shiftId),
+12225:  index("fsp_product_idx").on(table.productId),
+12230:  createdAt: true,
+12236:export const factoryProductionBatches = pgTable("factory_production_batches", {
+12266:  status: varchar("status", { length: 20 }).default("in_progress").notNull(), // in_progress, completed, verified, rejected
+12268:  createdAt: timestamp("created_at").defaultNow(),
+12270:  index("fpb_shift_prod_idx").on(table.shiftProductionId),
+12271:  index("fpb_shift_idx").on(table.shiftId),
+12272:  index("fpb_product_idx").on(table.productId),
+12273:  index("fpb_operator_idx").on(table.operatorUserId),
+12274:  index("fpb_machine_idx").on(table.machineId),
+12275:  index("fpb_start_idx").on(table.startTime),
+12280:  createdAt: true,
+12286:export const factoryBatchVerifications = pgTable("factory_batch_verifications", {
+12298:  createdAt: timestamp("created_at").defaultNow(),
+12300:  index("fbv_batch_idx").on(table.batchId),
+12301:  index("fbv_verifier_idx").on(table.verifierUserId),
+12308:export const roleTaskTemplates = pgTable("role_task_templates", {
+12321:  createdAt: timestamp("created_at").defaultNow(),
+12324:  index("rtt_role_idx").on(table.role),
+12325:  index("rtt_frequency_idx").on(table.frequency),
+12328:export const roleTaskCompletions = pgTable("role_task_completions", {
+12330:  userId: varchar("user_id", { length: 255 }).notNull(),
+12336:  index("rtc_user_idx").on(table.userId),
+12337:  index("rtc_template_idx").on(table.templateId),
+12338:  index("rtc_period_idx").on(table.periodDate),
+12345:export const stockCounts = pgTable("stock_counts", {
+12348:  status: varchar("status", { length: 20 }).notNull().default("in_progress"),
+12358:  createdAt: timestamp("created_at").defaultNow(),
+12360:  index("sc_status_idx").on(table.status),
+12361:  index("sc_type_idx").on(table.countType),
+12364:export const insertStockCountSchema = createInsertSchema(stockCounts).omit({ id: true, createdAt: true });
+12372:export const eventTriggeredTasks = pgTable("event_triggered_tasks", {
+12374:  userId: varchar("user_id", { length: 255 }).notNull(),
+12387:  createdAt: timestamp("created_at").defaultNow(),
+12389:  index("ett_user_idx").on(table.userId),
+12390:  index("ett_source_idx").on(table.sourceType, table.sourceId),
+12391:  index("ett_completed_idx").on(table.isCompleted),
+12392:  index("ett_expires_idx").on(table.expiresAt),
+12399:export const professionalTrainingLessons = pgTable("professional_training_lessons", {
+12406:  createdAt: timestamp("created_at").defaultNow(),
+12409:export const insertProfessionalTrainingLessonSchema = createInsertSchema(professionalTrainingLessons).omit({ id: true, createdAt: true });
+12413:export const professionalTrainingProgress = pgTable("professional_training_progress", {
+12415:  userId: varchar("user_id").notNull(),
+12422:  createdAt: timestamp("created_at").defaultNow(),
+12425:export const insertProfessionalTrainingProgressSchema = createInsertSchema(professionalTrainingProgress).omit({ id: true, createdAt: true });
+12429:export const professionalTrainingQuizCache = pgTable("professional_training_quiz_cache", {
+12433:  createdAt: timestamp("created_at").defaultNow(),
+12436:export const stockCountItems = pgTable("stock_count_items", {
+12448:  index("sci_count_idx").on(table.stockCountId),
+12459:export const dashboardWidgets = pgTable("dashboard_widgets", {
+12470:  createdAt: timestamp("created_at").defaultNow(),
+12474:export const insertDashboardWidgetSchema = createInsertSchema(dashboardWidgets).omit({ id: true, createdAt: true, updatedAt: true });
+12478:export const dashboardModuleVisibility = pgTable("dashboard_module_visibility", {
+12492:export const managementReports = pgTable("management_reports", {
+12496:  branchId: integer("branch_id").references(() => branches.id),
+12505:  status: varchar("status", { length: 20 }).default("draft"),
+12509:  createdAt: timestamp("created_at").defaultNow(),
+12513:export const insertManagementReportSchema = createInsertSchema(managementReports).omit({ id: true, createdAt: true, updatedAt: true });
+12517:export const franchiseProjects = pgTable("franchise_projects", {
+12526:  status: varchar("status", { length: 30 }).notNull().default("sozlesme"),
+12535:  branchId: integer("branch_id").references(() => branches.id),
+12539:  createdAt: timestamp("created_at").defaultNow(),
+12542:  index("franchise_projects_status_idx").on(table.status),
+12545:export const insertFranchiseProjectSchema = createInsertSchema(franchiseProjects).omit({ id: true, createdAt: true, updatedAt: true });
+12549:export const franchiseProjectPhases = pgTable("franchise_project_phases", {
+12555:  status: varchar("status", { length: 30 }).notNull().default("pending"),
+12562:  createdAt: timestamp("created_at").defaultNow(),
+12564:  index("franchise_phases_project_idx").on(table.projectId),
+12567:export const insertFranchiseProjectPhaseSchema = createInsertSchema(franchiseProjectPhases).omit({ id: true, createdAt: true });
+12571:export const franchiseProjectTasks = pgTable("franchise_project_tasks", {
+12577:  status: varchar("status", { length: 30 }).notNull().default("pending"),
+12589:  createdAt: timestamp("created_at").defaultNow(),
+12592:  index("franchise_tasks_project_idx").on(table.projectId),
+12593:  index("franchise_tasks_phase_idx").on(table.phaseId),
+12596:export const insertFranchiseProjectTaskSchema = createInsertSchema(franchiseProjectTasks).omit({ id: true, createdAt: true, updatedAt: true });
+12600:export const franchiseCollaborators = pgTable("franchise_collaborators", {
+12615:  index("franchise_collaborators_project_idx").on(table.projectId),
+12622:export const franchiseProjectComments = pgTable("franchise_project_comments", {
+12630:  createdAt: timestamp("created_at").defaultNow(),
+12632:  index("franchise_comments_project_idx").on(table.projectId),
+12635:export const insertFranchiseProjectCommentSchema = createInsertSchema(franchiseProjectComments).omit({ id: true, createdAt: true });
+12643:export const equipmentCatalog = pgTable("equipment_catalog", {
+12668:  createdAt: timestamp("created_at").defaultNow(),
+12671:  index("equipment_catalog_type_idx").on(table.equipmentType),
+12676:  createdAt: true,
+12699:export const faultServiceTracking = pgTable("fault_service_tracking", {
+12703:  branchId: integer("branch_id").notNull().references(() => branches.id, { onDelete: "cascade" }),
+12704:  currentStatus: varchar("current_status", { length: 50 }).notNull().default(FAULT_SERVICE_STATUS.SERVIS_BEKLENIYOR),
+12727:  createdAt: timestamp("created_at").defaultNow(),
+12730:  index("fault_service_tracking_fault_idx").on(table.faultId),
+12731:  index("fault_service_tracking_equipment_idx").on(table.equipmentId),
+12732:  index("fault_service_tracking_branch_idx").on(table.branchId),
+12733:  index("fault_service_tracking_status_idx").on(table.currentStatus),
+12738:  createdAt: true,
+12746:export const faultServiceStatusUpdates = pgTable("fault_service_status_updates", {
+12749:  fromStatus: varchar("from_status", { length: 50 }),
+12750:  toStatus: varchar("to_status", { length: 50 }).notNull(),
+12754:  createdAt: timestamp("created_at").defaultNow(),
+12756:  index("fault_service_status_updates_tracking_idx").on(table.trackingId),
+12761:  createdAt: true,
+12784:export const inventoryCounts = pgTable("inventory_counts", {
+12790:  status: varchar("status", { length: 30 }).notNull().default("planned"),
+12794:  createdAt: timestamp("created_at").defaultNow(),
+12797:  index("inv_count_month_year_idx").on(table.month, table.year),
+12798:  index("inv_count_status_idx").on(table.status),
+12803:  createdAt: true,
+12809:export const inventoryCountAssignments = pgTable("inventory_count_assignments", {
+12815:  status: varchar("status", { length: 30 }).notNull().default("pending"),
+12816:  createdAt: timestamp("created_at").defaultNow(),
+12818:  index("inv_count_assign_count_idx").on(table.countId),
+12819:  index("inv_count_assign_inv_idx").on(table.inventoryId),
+12824:  createdAt: true,
+12829:export const inventoryCountEntries = pgTable("inventory_count_entries", {
+12841:  index("inv_count_entry_assign_idx").on(table.assignmentId),
+12842:  index("inv_count_entry_counter_idx").on(table.counterId),
+12856:export const factoryManagementScores = pgTable("factory_management_scores", {
+12874:  createdAt: timestamp("created_at").defaultNow(),
+12877:  index("factory_mgmt_score_month_idx").on(table.month, table.year),
+12883:  createdAt: true,
+12893:export const supplierPerformanceScores = pgTable("supplier_performance_scores", {
+12909:  createdAt: timestamp("created_at").defaultNow(),
+12911:  index("sup_perf_supplier_idx").on(table.supplierId),
+12912:  index("sup_perf_month_year_idx").on(table.month, table.year),
+12917:  createdAt: true,
+12926:export const inventoryCountReports = pgTable("inventory_count_reports", {
+12938:  createdAt: timestamp("created_at").defaultNow(),
+12940:  index("inv_report_count_idx").on(table.countId),
+12941:  index("inv_report_severity_idx").on(table.severity),
+12946:  createdAt: true,
+12955:export const dashboardWidgetItems = pgTable("dashboard_widget_items", {
+12965:  createdAt: timestamp("created_at").defaultNow(),
+12968:export const insertDashboardWidgetItemSchema = createInsertSchema(dashboardWidgetItems).omit({ id: true, createdAt: true });
+12976:export const financialRecords = pgTable("financial_records", {
+12978:  branchId: integer("branch_id").references(() => branches.id, { onDelete: "cascade" }).notNull(),
+12989:  status: varchar("status", { length: 20 }).default("onaylandi"),
+12991:  createdAt: timestamp("created_at").defaultNow(),
+12994:  index("fin_record_branch_idx").on(table.branchId),
+12995:  index("fin_record_date_idx").on(table.recordDate),
+12996:  index("fin_record_type_idx").on(table.type),
+12997:  index("fin_record_month_year_idx").on(table.month, table.year),
+13000:export const insertFinancialRecordSchema = createInsertSchema(financialRecords).omit({ id: true, createdAt: true, updatedAt: true });
+13008:export const salaryScales = pgTable("salary_scales", {
+13020:  createdAt: timestamp("created_at").defaultNow(),
+13023:  index("salary_scale_type_idx").on(table.locationType),
+13024:  index("salary_scale_level_idx").on(table.level),
+13027:export const insertSalaryScaleSchema = createInsertSchema(salaryScales).omit({ id: true, createdAt: true, updatedAt: true });
+13035:export const supplierQuotes = pgTable("supplier_quotes", {
+13049:  status: varchar("status", { length: 30 }).default("aktif").notNull(),
+13051:  createdAt: timestamp("created_at").defaultNow(),
+13053:  index("sq_inventory_idx").on(table.inventoryId),
+13054:  index("sq_supplier_idx").on(table.supplierId),
+13055:  index("sq_status_idx").on(table.status),
+13060:  createdAt: true,
+13069:export const supplierIssues = pgTable("supplier_issues", {
+13077:  status: varchar("status", { length: 30 }).default("acik").notNull(),
+13080:  createdAt: timestamp("created_at").defaultNow(),
+13082:  index("si_supplier_idx").on(table.supplierId),
+13083:  index("si_inventory_idx").on(table.inventoryId),
+13084:  index("si_status_idx").on(table.status),
+13089:  createdAt: true,
+13098:export const purchaseOrderPayments = pgTable("purchase_order_payments", {
+13107:  status: varchar("status", { length: 30 }).default("beklemede").notNull(),
+13110:  createdAt: timestamp("created_at").defaultNow(),
+13113:  index("pop_order_idx").on(table.purchaseOrderId),
+13114:  index("pop_status_idx").on(table.status),
+13119:  createdAt: true,
+13129:export const haccpControlPoints = pgTable("haccp_control_points", {
+13131:  branchId: integer("branch_id").references(() => branches.id, { onDelete: "cascade" }),
+13142:  createdAt: timestamp("created_at").defaultNow(),
+13145:  index("haccp_cp_branch_idx").on(table.branchId),
+13146:  index("haccp_cp_category_idx").on(table.category),
+13149:export const insertHaccpControlPointSchema = createInsertSchema(haccpControlPoints).omit({ id: true, createdAt: true, updatedAt: true });
+13153:export const haccpRecords = pgTable("haccp_records", {
+13156:  branchId: integer("branch_id").references(() => branches.id, { onDelete: "cascade" }).notNull(),
+13165:  index("haccp_rec_cp_idx").on(table.controlPointId),
+13166:  index("haccp_rec_branch_idx").on(table.branchId),
+13167:  index("haccp_rec_date_idx").on(table.recordedAt),
+13174:export const hygieneAudits = pgTable("hygiene_audits", {
+13176:  branchId: integer("branch_id").references(() => branches.id, { onDelete: "cascade" }).notNull(),
+13190:  status: varchar("status", { length: 20 }).default("completed").notNull(),
+13191:  createdAt: timestamp("created_at").defaultNow(),
+13193:  index("hygiene_audit_branch_idx").on(table.branchId),
+13194:  index("hygiene_audit_date_idx").on(table.auditDate),
+13199:}).omit({ id: true, createdAt: true, auditorId: true });
+13203:export const supplierCertifications = pgTable("supplier_certifications", {
+13211:  status: varchar("status", { length: 30 }).default("active").notNull(),
+13216:  createdAt: timestamp("created_at").defaultNow(),
+13218:  index("supp_cert_supplier_idx").on(table.supplierId),
+13219:  index("supp_cert_expiry_idx").on(table.expiryDate),
+13220:  index("supp_cert_status_idx").on(table.status),
+13226:}).omit({ id: true, createdAt: true });
+13230:export const foodSafetyTrainings = pgTable("food_safety_trainings", {
+13232:  branchId: integer("branch_id").references(() => branches.id, { onDelete: "cascade" }),
+13242:  status: varchar("status", { length: 30 }).default("scheduled").notNull(),
+13245:  createdAt: timestamp("created_at").defaultNow(),
+13247:  index("fst_branch_idx").on(table.branchId),
+13248:  index("fst_status_idx").on(table.status),
+13249:  index("fst_date_idx").on(table.scheduledDate),
+13255:}).omit({ id: true, createdAt: true });
+13259:export const foodSafetyDocuments = pgTable("food_safety_documents", {
+13273:  createdAt: timestamp("created_at").defaultNow(),
+13276:  index("fsd_category_idx").on(table.category),
+13277:  index("fsd_type_idx").on(table.documentType),
+13283:}).omit({ id: true, createdAt: true, updatedAt: true });
+13287:export const importBatches = pgTable("import_batches", {
+13294:  status: varchar("status", { length: 20 }).notNull().default("pending"),
+13303:  createdAt: timestamp("created_at").defaultNow(),
+13305:  index("import_batch_user_idx").on(table.createdByUserId),
+13306:  index("import_batch_status_idx").on(table.status),
+13311:export const importResults = pgTable("import_results", {
+13315:  status: varchar("status", { length: 20 }).notNull(),
+13321:  index("import_result_batch_idx").on(table.batchId),
+13322:  index("import_result_employee_idx").on(table.employeeId),
+13327:export const taskTriggers = pgTable("task_triggers", {
+13339:  createdAt: timestamp("created_at").defaultNow(),
+13342:  index("task_triggers_role_idx").on(table.roleCode),
+13343:  index("task_triggers_scope_idx").on(table.scope),
+13344:  index("task_triggers_active_idx").on(table.isActive),
+13349:  createdAt: true,
+13356:export const opsRules = pgTable("ops_rules", {
+13366:  createdAt: timestamp("created_at").defaultNow(),
+13368:  index("ops_rules_scope_idx").on(table.scope),
+13369:  index("ops_rules_active_idx").on(table.isActive),
+13370:  index("ops_rules_entity_idx").on(table.entityType),
+13375:  createdAt: true,
+13381:export const taskEvidence = pgTable("task_evidence", {
+13388:  status: varchar("status", { length: 20 }).notNull().default("submitted"),
+13392:  createdAt: timestamp("created_at").defaultNow(),
+13394:  index("task_evidence_task_idx").on(table.taskId),
+13395:  index("task_evidence_status_idx").on(table.status),
+13396:  index("task_evidence_submitted_by_idx").on(table.submittedByUserId),
+13401:  createdAt: true,
+13411:export const wasteCategories = pgTable("waste_categories", {
+13418:  createdAt: timestamp("created_at").defaultNow(),
+13423:  createdAt: true,
+13429:export const wasteReasons = pgTable("waste_reasons", {
+13437:  createdAt: timestamp("created_at").defaultNow(),
+13439:  index("waste_reasons_category_idx").on(table.categoryId),
+13444:  createdAt: true,
+13473:export const wasteEvents = pgTable("waste_events", {
+13475:  branchId: integer("branch_id").notNull().references(() => branches.id, { onDelete: "cascade" }),
+13491:  status: varchar("status", { length: 20 }).notNull().default("open"),
+13492:  createdAt: timestamp("created_at").defaultNow(),
+13495:  index("waste_events_branch_idx").on(table.branchId),
+13496:  index("waste_events_category_idx").on(table.categoryId),
+13497:  index("waste_events_reason_idx").on(table.reasonId),
+13498:  index("waste_events_status_idx").on(table.status),
+13499:  index("waste_events_event_ts_idx").on(table.eventTs),
+13500:  index("waste_events_lot_idx").on(table.lotId),
+13501:  index("waste_events_created_by_idx").on(table.createdByUserId),
+13506:  createdAt: true,
+13522:export const wasteLots = pgTable("waste_lots", {
+13529:  qcStatus: varchar("qc_status", { length: 20 }).notNull().default("pending"),
+13533:  createdAt: timestamp("created_at").defaultNow(),
+13536:  index("waste_lots_lot_id_idx").on(table.lotId),
+13537:  index("waste_lots_qc_status_idx").on(table.qcStatus),
+13538:  index("waste_lots_product_idx").on(table.productId),
+13543:  createdAt: true,
+13550:export const wasteActionLinks = pgTable("waste_action_links", {
+13558:  createdAt: timestamp("created_at").defaultNow(),
+13560:  index("waste_action_links_event_idx").on(table.wasteEventId),
+13561:  index("waste_action_links_task_idx").on(table.taskId),
+13566:  createdAt: true,
+13575:export const guideDocs = pgTable("guide_docs", {
+13586:  createdAt: timestamp("created_at").defaultNow(),
+13589:  index("guide_docs_slug_idx").on(table.slug),
+13590:  index("guide_docs_category_idx").on(table.category),
+13595:  createdAt: true,
+13605:export const onboardingPrograms = pgTable("onboarding_programs", {
+13613:  createdAt: timestamp("created_at").defaultNow(),
+13619:  createdAt: true,
+13626:export const onboardingWeeks = pgTable("onboarding_weeks", {
+13633:  createdAt: timestamp("created_at").defaultNow(),
+13635:  index("onboarding_weeks_program_idx").on(table.programId),
+13640:  createdAt: true,
+13646:export const onboardingInstances = pgTable("onboarding_instances", {
+13651:  branchId: integer("branch_id"),
+13652:  status: varchar("status", { length: 30 }).default("active"),
+13655:  createdAt: timestamp("created_at").defaultNow(),
+13657:  index("onboarding_instances_trainee_idx").on(table.traineeId),
+13658:  index("onboarding_instances_mentor_idx").on(table.mentorId),
+13659:  index("onboarding_instances_program_idx").on(table.programId),
+13665:  createdAt: true,
+13671:export const onboardingCheckins = pgTable("onboarding_checkins", {
+13681:  createdAt: timestamp("created_at").defaultNow(),
+13683:  index("onboarding_checkins_instance_idx").on(table.instanceId),
+13684:  index("onboarding_checkins_week_idx").on(table.weekNumber),
+13689:  createdAt: true,
+13699:export const careerGates = pgTable("career_gates", {
+13720:  createdAt: timestamp("created_at").defaultNow(),
+13723:  index("career_gates_gate_number_idx").on(table.gateNumber),
+13724:  index("career_gates_active_idx").on(table.isActive),
+13729:  createdAt: true,
+13736:export const gateAttempts = pgTable("gate_attempts", {
+13739:  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+13753:  status: varchar("status", { length: 20 }).default("in_progress"),
+13761:  createdAt: timestamp("created_at").defaultNow(),
+13763:  index("gate_attempts_gate_idx").on(table.gateId),
+13764:  index("gate_attempts_user_idx").on(table.userId),
+13765:  index("gate_attempts_status_idx").on(table.status),
+13770:  createdAt: true,
+13776:export const kpiSignalRules = pgTable("kpi_signal_rules", {
+13792:  createdAt: timestamp("created_at").defaultNow(),
+13794:  index("kpi_signal_rules_key_idx").on(table.signalKey),
+13795:  index("kpi_signal_rules_active_idx").on(table.isActive),
+13800:  createdAt: true,
+13806:export const contentPacks = pgTable("content_packs", {
+13816:  createdAt: timestamp("created_at").defaultNow(),
+13819:  index("content_packs_role_idx").on(table.targetRole),
+13820:  index("content_packs_type_idx").on(table.packType),
+13821:  index("content_packs_active_idx").on(table.isActive),
+13826:  createdAt: true,
+13833:export const contentPackItems = pgTable("content_pack_items", {
+13848:  createdAt: timestamp("created_at").defaultNow(),
+13850:  index("content_pack_items_pack_idx").on(table.packId),
+13851:  index("content_pack_items_day_idx").on(table.dayNumber),
+13852:  index("content_pack_items_order_idx").on(table.sortOrder),
+13857:  createdAt: true,
+13863:export const userPackProgress = pgTable("user_pack_progress", {
+13865:  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+13868:  status: varchar("status", { length: 20 }).default("pending"),
+13875:  createdAt: timestamp("created_at").defaultNow(),
+13877:  index("user_pack_progress_user_idx").on(table.userId),
+13878:  index("user_pack_progress_pack_idx").on(table.packId),
+13879:  index("user_pack_progress_item_idx").on(table.packItemId),
+13880:  index("user_pack_progress_status_idx").on(table.status),
+13883:export const aiAgentLogs = pgTable("ai_agent_logs", {
+13889:  branchId: integer("branch_id"),
+13893:  status: varchar("status", { length: 20 }).default("success"),
+13895:  createdAt: timestamp("created_at").defaultNow(),
+13897:  index("ai_agent_logs_type_idx").on(table.runType),
+13898:  index("ai_agent_logs_scope_idx").on(table.targetRoleScope),
+13899:  index("ai_agent_logs_created_idx").on(table.createdAt),
+13904:  createdAt: true,
+13912:export const aiDataDomains = pgTable("ai_data_domains", {
+13920:  createdAt: timestamp("created_at").defaultNow(),
+13923:export const aiDomainPolicies = pgTable("ai_domain_policies", {
+13931:  createdAt: timestamp("created_at").defaultNow(),
+13934:  index("ai_policy_domain_idx").on(table.domainId),
+13935:  index("ai_policy_role_idx").on(table.role),
+13940:  createdAt: true,
+13945:  createdAt: true,
+13956:export const employeeTypes = pgTable("employee_types", {
+13965:  createdAt: timestamp("created_at").defaultNow(),
+13969:export const employeeTypePolicies = pgTable("employee_type_policies", {
+13975:  createdAt: timestamp("created_at").defaultNow(),
+13977:  index("emp_type_policy_type_idx").on(table.employeeTypeId),
+13980:export const orgEmployeeTypeAssignments = pgTable("org_employee_type_assignments", {
+13987:  createdAt: timestamp("created_at").defaultNow(),
+13989:  index("org_emp_assign_scope_idx").on(table.orgScope, table.orgId),
+13990:  index("org_emp_assign_type_idx").on(table.employeeTypeId),
+13995:  createdAt: true,
+14001:  createdAt: true,
+14006:  createdAt: true,
