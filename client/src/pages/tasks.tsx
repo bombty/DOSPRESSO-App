@@ -174,10 +174,10 @@ export default function Tasks() {
       queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
       setShowBulkArchiveDialog(false);
       setSelectedArchiveIds([]);
-      toast({ title: "Basarili", description: `${data.archivedCount} gorev arsivlendi` });
+      toast({ title: "Başarılı", description: `${data.archivedCount} görev arşivlendi` });
     },
     onError: (error: any) => {
-      toast({ title: "Hata", description: error.message || "Toplu arsivleme basarisiz", variant: "destructive" });
+      toast({ title: "Hata", description: error.message || "Toplu arşivleme başarısız", variant: "destructive" });
     },
   });
 

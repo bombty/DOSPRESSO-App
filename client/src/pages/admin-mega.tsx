@@ -214,7 +214,7 @@ const ADMIN_TABS: TabConfig[] = [
   {
     id: "aktivite-loglari",
     label: "Audit Logs",
-    labelTr: "Denetim Gunlugu",
+    labelTr: "Denetim Günlüğü",
     icon: <Activity className="h-4 w-4" />,
     permissionModule: "activity_logs",
     group: "sistem",
@@ -223,7 +223,7 @@ const ADMIN_TABS: TabConfig[] = [
   {
     id: "cop-kutusu",
     label: "Trash",
-    labelTr: "Cop Kutusu",
+    labelTr: "Çöp Kutusu",
     icon: <Trash2 className="h-4 w-4" />,
     permissionModule: "backup",
     group: "sistem",
@@ -295,7 +295,7 @@ const ADMIN_TABS: TabConfig[] = [
   {
     id: "gorev-sablonlari",
     label: "Task Templates",
-    labelTr: "Gorev Sablonlari",
+    labelTr: "Görev Şablonları",
     icon: <ListTodo className="h-4 w-4" />,
     permissionModule: "admin_panel",
     group: "operasyon",

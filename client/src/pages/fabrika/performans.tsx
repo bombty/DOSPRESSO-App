@@ -185,7 +185,7 @@ function TrendBadge({ trend }: { trend: string }) {
     return (
       <Badge className="bg-green-600 text-white">
         <ArrowUpRight className="h-3 w-3 mr-1" />
-        Yukselis
+        Yükseliş
       </Badge>
     );
   }
@@ -193,7 +193,7 @@ function TrendBadge({ trend }: { trend: string }) {
     return (
       <Badge className="bg-red-600 text-white">
         <ArrowDownRight className="h-3 w-3 mr-1" />
-        Dusus
+        Düşüş
       </Badge>
     );
   }
@@ -210,7 +210,7 @@ function MaturityBadge({ monthlyDataPoints }: { monthlyDataPoints: number }) {
     return <Badge className="bg-blue-600 text-white">Yeni</Badge>;
   }
   if (monthlyDataPoints <= 6) {
-    return <Badge className="bg-amber-600 text-white">Gelisen</Badge>;
+    return <Badge className="bg-amber-600 text-white">Gelişen</Badge>;
   }
   return <Badge className="bg-green-600 text-white">Olgun</Badge>;
 }
@@ -318,11 +318,11 @@ export default function FabrikaPerformans() {
 
   const radarData = workerScore
     ? [
-        { subject: "Hiz", value: workerScore.breakdown.speedScore, fullMark: 100 },
+        { subject: "Hız", value: workerScore.breakdown.speedScore, fullMark: 100 },
         { subject: "Kalite", value: workerScore.breakdown.qualityScore, fullMark: 100 },
-        { subject: "Tutarlilik", value: workerScore.breakdown.consistencyScore, fullMark: 100 },
+        { subject: "Tutarlılık", value: workerScore.breakdown.consistencyScore, fullMark: 100 },
         { subject: "Devam", value: workerScore.breakdown.attendanceScore, fullMark: 100 },
-        { subject: "Gelisim", value: workerScore.breakdown.improvementScore, fullMark: 100 },
+        { subject: "Gelişim", value: workerScore.breakdown.improvementScore, fullMark: 100 },
       ]
     : [];
 
@@ -1000,7 +1000,7 @@ export default function FabrikaPerformans() {
                   <Card>
                     <CardContent className="p-4 text-center">
                       <TrendingUp className="h-6 w-6 mx-auto mb-2 text-red-500" />
-                      <p className="font-semibold">Gelisim</p>
+                      <p className="font-semibold">Gelişim</p>
                       <p className="text-2xl font-bold text-red-500">%10</p>
                     </CardContent>
                   </Card>

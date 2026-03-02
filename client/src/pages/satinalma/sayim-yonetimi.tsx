@@ -1018,9 +1018,9 @@ function SayimRaporlari({ filterYear }: { filterYear: number }) {
                   </div>
                   <div className="flex items-center gap-2">
                     <Badge variant={r.severity === "critical" || r.severity === "high" ? "destructive" : r.severity === "medium" ? "outline" : "secondary"}>
-                      {r.severity === "critical" ? "Kritik" : r.severity === "high" ? "Yuksek" : r.severity === "medium" ? "Orta" : "Dusuk"}
+                      {r.severity === "critical" ? "Kritik" : r.severity === "high" ? "Yüksek" : r.severity === "medium" ? "Orta" : "Düşük"}
                     </Badge>
-                    {r.resolved_at && <Badge variant="default">Cozuldu</Badge>}
+                    {r.resolved_at && <Badge variant="default">Çözüldü</Badge>}
                   </div>
                 </div>
                 {r.action_taken && <p className="text-xs text-muted-foreground mt-1">{r.action_taken}</p>}

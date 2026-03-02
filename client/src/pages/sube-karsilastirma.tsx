@@ -22,10 +22,10 @@ const getScoreColor = (score: number) => {
 };
 
 const getScoreBadge = (score: number) => {
-  if (score >= 90) return { variant: "default" as const, label: "Mukemmel" };
-  if (score >= 70) return { variant: "secondary" as const, label: "Iyi" };
+  if (score >= 90) return { variant: "default" as const, label: "Mükemmel" };
+  if (score >= 70) return { variant: "secondary" as const, label: "İyi" };
   if (score >= 50) return { variant: "outline" as const, label: "Orta" };
-  return { variant: "destructive" as const, label: "Dusuk" };
+  return { variant: "destructive" as const, label: "Düşük" };
 };
 
 export default function SubeKarsilastirma() {
@@ -53,7 +53,7 @@ export default function SubeKarsilastirma() {
     <div className="p-4 space-y-4">
       <div className="flex items-center gap-3">
         <BarChart3 className="h-6 w-6 text-primary" />
-        <h1 className="text-2xl font-bold">Sube Denetim Karsilastirmasi</h1>
+        <h1 className="text-2xl font-bold">Şube Denetim Karşılaştırması</h1>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
@@ -64,7 +64,7 @@ export default function SubeKarsilastirma() {
                 <Building className="h-5 w-5 text-primary" />
               </div>
               <div>
-                <p className="text-xs text-muted-foreground">Toplam Sube</p>
+                <p className="text-xs text-muted-foreground">Toplam Şube</p>
                 <p className="text-xl font-bold">{branches.length}</p>
               </div>
             </div>
@@ -93,7 +93,7 @@ export default function SubeKarsilastirma() {
                   <Trophy className="h-5 w-5 text-green-500" />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="text-xs text-muted-foreground">En Basarili</p>
+                  <p className="text-xs text-muted-foreground">En Başarılı</p>
                   <p className="text-sm font-bold truncate">{topBranch.branchName}</p>
                   <p className="text-xs text-green-500">{topBranch.averageScore}%</p>
                 </div>
@@ -110,7 +110,7 @@ export default function SubeKarsilastirma() {
                   <AlertTriangle className="h-5 w-5 text-red-500" />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="text-xs text-muted-foreground">Gelistirilmeli</p>
+                  <p className="text-xs text-muted-foreground">Geliştirilmeli</p>
                   <p className="text-sm font-bold truncate">{worstBranch.branchName}</p>
                   <p className="text-xs text-red-500">{worstBranch.averageScore}%</p>
                 </div>
@@ -124,10 +124,10 @@ export default function SubeKarsilastirma() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <BarChart3 className="h-5 w-5" />
-            Sube Bazli Denetim Puanlari
+            Şube Bazlı Denetim Puanları
           </CardTitle>
           <CardDescription>
-            Tum subelerin ortalama denetim puanlari karsilastirmasi
+            Tüm şubelerin ortalama denetim puanları karşılaştırması
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -135,7 +135,7 @@ export default function SubeKarsilastirma() {
             <div className="flex items-center justify-center h-[300px] text-muted-foreground">
               <div className="text-center">
                 <BarChart3 className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                <p>Henuz tamamlanmis denetim bulunmuyor</p>
+                <p>Henüz tamamlanmış denetim bulunmuyor</p>
               </div>
             </div>
           ) : (
@@ -166,9 +166,9 @@ export default function SubeKarsilastirma() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Detayli Sube Listesi</CardTitle>
+          <CardTitle>Detaylı Şube Listesi</CardTitle>
           <CardDescription>
-            Subelerin min, max ve ortalama denetim skorlari
+            Şubelerin min, max ve ortalama denetim skorları
           </CardDescription>
         </CardHeader>
         <CardContent>

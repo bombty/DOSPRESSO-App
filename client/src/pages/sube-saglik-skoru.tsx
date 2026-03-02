@@ -81,9 +81,9 @@ interface CopilotResponse {
 type RangeOption = "7d" | "30d" | "90d";
 
 const RANGE_LABELS: Record<RangeOption, string> = {
-  "7d": "7 Gun",
-  "30d": "30 Gun",
-  "90d": "90 Gun",
+  "7d": "7 Gün",
+  "30d": "30 Gün",
+  "90d": "90 Gün",
 };
 
 const COMPONENT_ICONS: Record<string, typeof Activity> = {
@@ -113,9 +113,9 @@ function getSeverityClasses(severity: string): string {
 }
 
 const SEVERITY_LABELS: Record<string, string> = {
-  high: "Yuksek",
+  high: "Yüksek",
   med: "Orta",
-  low: "Dusuk",
+  low: "Düşük",
 };
 
 const SEVERITY_CLASSES: Record<string, string> = {
@@ -142,7 +142,7 @@ function AiCopilotCard({ range }: { range: RangeOption }) {
         <CardHeader className="flex flex-row items-center gap-2 space-y-0 pb-2 flex-wrap justify-between">
           <div className="flex items-center gap-2">
             <Bot className="h-4 w-4 text-muted-foreground" />
-            <CardTitle className="text-sm font-medium text-muted-foreground">AI Gunluk Ozet</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">AI Günlük Özet</CardTitle>
           </div>
         </CardHeader>
         <CardContent className="space-y-3">
@@ -164,7 +164,7 @@ function AiCopilotCard({ range }: { range: RangeOption }) {
       <CardHeader className="flex flex-row items-center gap-2 space-y-0 pb-2 flex-wrap justify-between">
         <div className="flex items-center gap-2">
           <Bot className="h-4 w-4 text-muted-foreground" />
-          <CardTitle className="text-sm font-medium text-muted-foreground">AI Gunluk Ozet</CardTitle>
+          <CardTitle className="text-sm font-medium text-muted-foreground">AI Günlük Özet</CardTitle>
           {data.fallback_used && (
             <Badge variant="outline" className="text-xs no-default-hover-elevate no-default-active-elevate">
               <Zap className="h-3 w-3 mr-1" />
@@ -225,7 +225,7 @@ function AiCopilotCard({ range }: { range: RangeOption }) {
                             : "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400"
                         }`}
                       >
-                        {aksiyon.oncelik === "yuksek" ? "Yuksek" : aksiyon.oncelik === "orta" ? "Orta" : "Dusuk"}
+                        {aksiyon.oncelik === "yuksek" ? "Yüksek" : aksiyon.oncelik === "orta" ? "Orta" : "Düşük"}
                       </Badge>
                     </div>
                   </Link>
@@ -346,7 +346,7 @@ function BranchDetailView({ branch }: { branch: BranchHealth }) {
                   variant="secondary"
                   className={`text-xs no-default-hover-elevate no-default-active-elevate ${getSeverityClasses(flag.severity)}`}
                 >
-                  {flag.severity === "high" ? "Yuksek" : flag.severity === "med" ? "Orta" : "Dusuk"}
+                  {flag.severity === "high" ? "Yüksek" : flag.severity === "med" ? "Orta" : "Düşük"}
                 </Badge>
               </div>
             ))}
@@ -550,11 +550,11 @@ export default function SubeSaglikSkoru() {
                 <AlertTriangle className="h-4 w-4 flex-shrink-0 mt-0.5" />
                 <div>
                   <span className="font-medium">
-                    {reliability === "low" ? "Guvenilirlik: Dusuk" : "Veri Uyarisi"}
+                    {reliability === "low" ? "Güvenilirlik: Düşük" : "Veri Uyarısı"}
                   </span>
                   <span className="ml-1">
-                    — {branchesWithInsufficient} subede toplam {insufficientCount} bilesen yetersiz veri ile hesaplaniyor.
-                    {reliability === "low" && " Skorlar gercegi yansitmayabilir."}
+                    — {branchesWithInsufficient} şubede toplam {insufficientCount} bileşen yetersiz veri ile hesaplanıyor.
+                    {reliability === "low" && " Skorlar gerçeği yansıtmayabilir."}
                   </span>
                 </div>
               </div>

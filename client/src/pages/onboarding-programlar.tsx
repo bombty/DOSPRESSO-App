@@ -88,8 +88,8 @@ const ROLE_LABELS: Record<string, string> = {
   barista: "Barista",
   supervisor_buddy: "Supervisor Buddy",
   supervisor: "Supervisor",
-  mudur: "Mudur",
-  fabrika_operator: "Fabrika Operator",
+  mudur: "Müdür",
+  fabrika_operator: "Fabrika Operatör",
   fabrika_sorumlu: "Fabrika Sorumlu",
   fabrika_personel: "Fabrika Personel",
 };
@@ -162,7 +162,7 @@ export default function OnboardingProgramlar() {
       return res.json();
     },
     onSuccess: () => {
-      toast({ title: "Onboarding tamamlandi" });
+      toast({ title: "Onboarding tamamlandı" });
       queryClient.invalidateQueries({ queryKey: ["/api/onboarding-instances"] });
       queryClient.invalidateQueries({ queryKey: ["/api/onboarding-instances", selectedInstance] });
     },
@@ -181,7 +181,7 @@ export default function OnboardingProgramlar() {
         <div className="max-w-4xl mx-auto p-4 pb-24 space-y-4">
           <Button variant="ghost" size="sm" onClick={() => setSelectedInstance(null)} data-testid="button-back">
             <ArrowLeft className="h-4 w-4 mr-2" />
-            Geri Don
+            Geri Dön
           </Button>
 
           <div className="space-y-2">
@@ -208,7 +208,7 @@ export default function OnboardingProgramlar() {
           <Card>
             <CardContent className="p-4 space-y-2">
               <div className="flex items-center justify-between gap-2">
-                <span className="text-sm font-medium">Ilerleme</span>
+                <span className="text-sm font-medium">İlerleme</span>
                 <span className="text-sm text-muted-foreground">{completedCheckins}/{totalWeeks} hafta</span>
               </div>
               <Progress value={progressPercent} className="h-2" data-testid="progress-bar" />
@@ -219,7 +219,7 @@ export default function OnboardingProgramlar() {
             <div className="flex items-center justify-between gap-2 flex-wrap">
               <h2 className="text-lg font-semibold flex items-center gap-2">
                 <Calendar className="h-5 w-5" />
-                Haftalik Plan
+                Haftalık Plan
               </h2>
               {isManager && instanceDetail.status === 'active' && (
                 <div className="flex items-center gap-2 flex-wrap">
@@ -265,7 +265,7 @@ export default function OnboardingProgramlar() {
                       {weekCheckin ? (
                         <Badge variant="secondary">
                           <CheckCircle2 className="h-3 w-3 mr-1" />
-                          Tamamlandi
+                          Tamamlandı
                         </Badge>
                       ) : (
                         <Badge variant="outline">
@@ -296,7 +296,7 @@ export default function OnboardingProgramlar() {
                       <div className="pt-2 border-t space-y-2">
                         <div className="flex items-center gap-2">
                           <MessageSquare className="h-4 w-4 text-muted-foreground" />
-                          <span className="text-xs font-medium">Mentor Degerlendirmesi</span>
+                          <span className="text-xs font-medium">Mentor Değerlendirmesi</span>
                           {weekCheckin.rating && (
                             <div className="flex items-center gap-1 ml-auto">
                               {[1, 2, 3, 4, 5].map(s => (
@@ -310,13 +310,13 @@ export default function OnboardingProgramlar() {
                         )}
                         {weekCheckin.strengths && (
                           <div>
-                            <p className="text-xs font-medium text-green-600 dark:text-green-400">Guclu Yonler:</p>
+                            <p className="text-xs font-medium text-green-600 dark:text-green-400">Güçlü Yönler:</p>
                             <p className="text-xs text-muted-foreground">{weekCheckin.strengths}</p>
                           </div>
                         )}
                         {weekCheckin.areasToImprove && (
                           <div>
-                            <p className="text-xs font-medium text-orange-600 dark:text-orange-400">Gelistirilecek Alanlar:</p>
+                            <p className="text-xs font-medium text-orange-600 dark:text-orange-400">Geliştirilecek Alanlar:</p>
                             <p className="text-xs text-muted-foreground">{weekCheckin.areasToImprove}</p>
                           </div>
                         )}
@@ -331,7 +331,7 @@ export default function OnboardingProgramlar() {
           <Dialog open={showCheckinDialog} onOpenChange={setShowCheckinDialog}>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>Haftalik Check-in</DialogTitle>
+                <DialogTitle>Haftalık Check-in</DialogTitle>
               </DialogHeader>
               <div className="space-y-4">
                 <div>
@@ -346,7 +346,7 @@ export default function OnboardingProgramlar() {
                   />
                 </div>
                 <div>
-                  <label className="text-sm font-medium">Degerlendirme (1-5)</label>
+                  <label className="text-sm font-medium">Değerlendirme (1-5)</label>
                   <div className="flex items-center gap-1 mt-1">
                     {[1, 2, 3, 4, 5].map(s => (
                       <Button
@@ -366,34 +366,34 @@ export default function OnboardingProgramlar() {
                   <Textarea
                     value={checkinNotes}
                     onChange={(e) => setCheckinNotes(e.target.value)}
-                    placeholder="Genel degerlendirme..."
+                    placeholder="Genel değerlendirme..."
                     rows={3}
                     data-testid="input-checkin-notes"
                   />
                 </div>
                 <div>
-                  <label className="text-sm font-medium">Guclu Yonler</label>
+                  <label className="text-sm font-medium">Güçlü Yönler</label>
                   <Textarea
                     value={checkinStrengths}
                     onChange={(e) => setCheckinStrengths(e.target.value)}
-                    placeholder="Basarili oldugu alanlar..."
+                    placeholder="Başarılı olduğu alanlar..."
                     rows={2}
                     data-testid="input-checkin-strengths"
                   />
                 </div>
                 <div>
-                  <label className="text-sm font-medium">Gelistirilecek Alanlar</label>
+                  <label className="text-sm font-medium">Geliştirilecek Alanlar</label>
                   <Textarea
                     value={checkinAreas}
                     onChange={(e) => setCheckinAreas(e.target.value)}
-                    placeholder="Uzerinde calisilmasi gereken konular..."
+                    placeholder="Üzerinde çalışılması gereken konular..."
                     rows={2}
                     data-testid="input-checkin-areas"
                   />
                 </div>
                 <div className="flex justify-end gap-2">
                   <Button variant="outline" onClick={() => setShowCheckinDialog(false)} data-testid="button-cancel-checkin">
-                    Iptal
+                    İptal
                   </Button>
                   <Button
                     onClick={() => submitCheckin.mutate()}
@@ -418,10 +418,10 @@ export default function OnboardingProgramlar() {
         <div className="space-y-2">
           <div className="flex items-center gap-2 flex-wrap">
             <GraduationCap className="h-6 w-6 text-primary" />
-            <h1 className="text-2xl font-bold" data-testid="text-page-title">Onboarding Programlari</h1>
+            <h1 className="text-2xl font-bold" data-testid="text-page-title">Onboarding Programları</h1>
           </div>
           <p className="text-sm text-muted-foreground">
-            Hafta bazli onboarding programlari ve mentor check-in takibi
+            Hafta bazlı onboarding programları ve mentor check-in takibi
           </p>
         </div>
 
@@ -447,7 +447,7 @@ export default function OnboardingProgramlar() {
                 <CardContent className="p-6 text-center">
                   <Users className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
                   <p className="text-muted-foreground" data-testid="text-no-instances">
-                    Henuz onboarding atamasi yok.
+                    Henüz onboarding ataması yok.
                   </p>
                 </CardContent>
               </Card>
@@ -498,7 +498,7 @@ export default function OnboardingProgramlar() {
                 <CardContent className="p-6 text-center">
                   <BookOpen className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
                   <p className="text-muted-foreground" data-testid="text-no-programs">
-                    Henuz program olusturulmamis.
+                    Henüz program oluşturulmamış.
                   </p>
                 </CardContent>
               </Card>

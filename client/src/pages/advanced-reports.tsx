@@ -25,8 +25,8 @@ import {
 } from "recharts";
 
 const MONTHS = [
-  "Ocak", "Subat", "Mart", "Nisan", "Mayis", "Haziran",
-  "Temmuz", "Agustos", "Eylul", "Ekim", "Kasim", "Aralik"
+  "Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran",
+  "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"
 ];
 
 const CHART_COLORS = ["#3b82f6", "#22c55e", "#f59e0b", "#ef4444", "#a855f7", "#ec4899"];
@@ -62,21 +62,21 @@ export default function AdvancedReportsPage() {
   const categoryData = [
     { name: "Devam", value: 20, color: CHART_COLORS[0] },
     { name: "Checklist", value: 20, color: CHART_COLORS[1] },
-    { name: "Gorevler", value: 15, color: CHART_COLORS[2] },
+    { name: "Görevler", value: 15, color: CHART_COLORS[2] },
     { name: "Müşteri", value: 15, color: CHART_COLORS[3] },
-    { name: "Yonetici", value: 20, color: CHART_COLORS[4] },
-    { name: "Izin", value: 10, color: CHART_COLORS[5] },
+    { name: "Yönetici", value: 20, color: CHART_COLORS[4] },
+    { name: "İzin", value: 10, color: CHART_COLORS[5] },
   ];
 
   const generatePerformanceReport = async () => {
     setGenerating("performance");
     try {
       const branchName = selectedBranchId === "all" 
-        ? "Tum Subeler" 
+        ? "Tüm Şubeler" 
         : (branches as any[])?.find(b => b.id.toString() === selectedBranchId)?.name || "";
       
       const { doc, yPos: startY } = await createPDFWithHeader({
-        title: "Aylik Performans Raporu",
+        title: "Aylık Performans Raporu",
         subtitle: `${MONTHS[selectedMonth - 1]} ${selectedYear}`,
         branchName,
         orientation: "portrait"
@@ -86,7 +86,7 @@ export default function AdvancedReportsPage() {
 
       // Summary section
       yPos = addSection(doc, "Özet Bilgiler", yPos);
-      yPos = addKeyValue(doc, "Toplam Personel", `${(rankings as any[])?.length || 0} kisi`, yPos);
+      yPos = addKeyValue(doc, "Toplam Personel", `${(rankings as any[])?.length || 0} kişi`, yPos);
       
       const avgScore = (rankings as any[])?.length > 0
         ? ((rankings as any[]).reduce((sum, r) => sum + (r.totalScore || 0), 0) / (rankings as any[]).length).toFixed(2)
@@ -95,14 +95,14 @@ export default function AdvancedReportsPage() {
       
       if ((rankings as any[])?.length > 0) {
         const top = (rankings as any[])[0];
-        yPos = addKeyValue(doc, "En Iyi Performans", `${top.employee?.firstName} ${top.employee?.lastName} (${top.totalScore?.toFixed(1)} puan)`, yPos);
+        yPos = addKeyValue(doc, "En İyi Performans", `${top.employee?.firstName} ${top.employee?.lastName} (${top.totalScore?.toFixed(1)} puan)`, yPos);
       }
       
       yPos += 10;
 
       // Rankings table
       yPos = checkPageBreak(doc, yPos, 60);
-      yPos = addSection(doc, "Performans Siralamasi", yPos);
+      yPos = addSection(doc, "Performans Sıralaması", yPos);
       
       const tableData = (rankings as any[])?.map((r: any, i: number) => [
         (i + 1).toString(),
@@ -117,15 +117,15 @@ export default function AdvancedReportsPage() {
       ]) || [];
 
       yPos = addTable(doc, {
-        head: [["#", "Personel", "Sube", "Devam", "Check.", "Gorev", "Must.", "Yon.", "Toplam"]],
+        head: [["#", "Personel", "Şube", "Devam", "Check.", "Görev", "Müşt.", "Yön.", "Toplam"]],
         body: tableData
       }, yPos);
 
       savePDF(doc, `performans-raporu-${selectedYear}-${selectedMonth}.pdf`);
-      toast({ title: "Basarili", description: "PDF raporu indirildi" });
+      toast({ title: "Başarılı", description: "PDF raporu indirildi" });
     } catch (error) {
       console.error("PDF error:", error);
-      toast({ title: "Hata", description: "PDF olusturulamadi", variant: "destructive" });
+      toast({ title: "Hata", description: "PDF oluşturulamadı", variant: "destructive" });
     } finally {
       setGenerating(null);
     }
@@ -136,7 +136,7 @@ export default function AdvancedReportsPage() {
     try {
       const { doc, yPos: startY } = await createPDFWithHeader({
         title: "Personel Listesi Raporu",
-        subtitle: `Guncel Durum`,
+        subtitle: `Güncel Durum`,
         orientation: "landscape"
       });
 
@@ -145,7 +145,7 @@ export default function AdvancedReportsPage() {
       const activeUsers = (users as any[])?.filter(u => u.isActive) || [];
       
       yPos = addSection(doc, "Aktif Personel", yPos);
-      yPos = addKeyValue(doc, "Toplam Aktif", `${activeUsers.length} kisi`, yPos);
+      yPos = addKeyValue(doc, "Toplam Aktif", `${activeUsers.length} kişi`, yPos);
       yPos += 5;
 
       const tableData = activeUsers.map((u: any, i: number) => [
@@ -158,15 +158,15 @@ export default function AdvancedReportsPage() {
       ]);
 
       yPos = addTable(doc, {
-        head: [["#", "Ad Soyad", "E-posta", "Rol", "Sube", "Telefon"]],
+        head: [["#", "Ad Soyad", "E-posta", "Rol", "Şube", "Telefon"]],
         body: tableData
       }, yPos);
 
       savePDF(doc, `personel-listesi-${new Date().toISOString().split('T')[0]}.pdf`);
-      toast({ title: "Basarili", description: "PDF raporu indirildi" });
+      toast({ title: "Başarılı", description: "PDF raporu indirildi" });
     } catch (error) {
       console.error("PDF error:", error);
-      toast({ title: "Hata", description: "PDF olusturulamadi", variant: "destructive" });
+      toast({ title: "Hata", description: "PDF oluşturulamadı", variant: "destructive" });
     } finally {
       setGenerating(null);
     }
@@ -176,7 +176,7 @@ export default function AdvancedReportsPage() {
     setGenerating("branch");
     try {
       const { doc, yPos: startY } = await createPDFWithHeader({
-        title: "Sube Performans Raporu",
+        title: "Şube Performans Raporu",
         subtitle: `${MONTHS[selectedMonth - 1]} ${selectedYear}`,
         orientation: "portrait"
       });
@@ -195,7 +195,7 @@ export default function AdvancedReportsPage() {
         };
       }) || [];
 
-      yPos = addSection(doc, "Sube Bazli Ozet", yPos);
+      yPos = addSection(doc, "Şube Bazlı Özet", yPos);
 
       const tableData = branchStats.map((s: any, i: number) => [
         (i + 1).toString(),
@@ -205,15 +205,15 @@ export default function AdvancedReportsPage() {
       ]);
 
       yPos = addTable(doc, {
-        head: [["#", "Sube Adi", "Personel Sayisi", "Ort. Puan"]],
+        head: [["#", "Şube Adı", "Personel Sayısı", "Ort. Puan"]],
         body: tableData
       }, yPos);
 
       savePDF(doc, `sube-raporu-${selectedYear}-${selectedMonth}.pdf`);
-      toast({ title: "Basarili", description: "PDF raporu indirildi" });
+      toast({ title: "Başarılı", description: "PDF raporu indirildi" });
     } catch (error) {
       console.error("PDF error:", error);
-      toast({ title: "Hata", description: "PDF olusturulamadi", variant: "destructive" });
+      toast({ title: "Hata", description: "PDF oluşturulamadı", variant: "destructive" });
     } finally {
       setGenerating(null);
     }
@@ -225,10 +225,10 @@ export default function AdvancedReportsPage() {
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2">
             <BarChart3 className="h-6 w-6" />
-            Gelismis Raporlar
+            Gelişmiş Raporlar
           </h1>
           <p className="text-muted-foreground">
-            Detayli PDF raporlar ve grafikler
+            Detaylı PDF raporlar ve grafikler
           </p>
         </div>
         
@@ -259,10 +259,10 @@ export default function AdvancedReportsPage() {
           <Select value={selectedBranchId} onValueChange={setSelectedBranchId}>
             <SelectTrigger className="w-[160px]" data-testid="select-branch">
               <Building className="mr-2 h-4 w-4" />
-              <SelectValue placeholder="Tum subeler" />
+              <SelectValue placeholder="Tüm şubeler" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Tum Subeler</SelectItem>
+              <SelectItem value="all">Tüm Şubeler</SelectItem>
               {(branches as any[])?.map((b: any) => (
                 <SelectItem key={b.id} value={b.id.toString()}>{b.name}</SelectItem>
               ))}
@@ -280,7 +280,7 @@ export default function AdvancedReportsPage() {
               Performans Raporu
             </CardTitle>
             <CardDescription>
-              Aylik personel performans siralamasi ve detaylari
+              Aylık personel performans sıralaması ve detayları
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -295,7 +295,7 @@ export default function AdvancedReportsPage() {
               ) : (
                 <Download className="mr-2 h-4 w-4" />
               )}
-              PDF Indir
+              PDF İndir
             </Button>
           </CardContent>
         </Card>
@@ -307,7 +307,7 @@ export default function AdvancedReportsPage() {
               Personel Listesi
             </CardTitle>
             <CardDescription>
-              Tum aktif personel bilgileri ve iletisim detaylari
+              Tüm aktif personel bilgileri ve iletişim detayları
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -322,7 +322,7 @@ export default function AdvancedReportsPage() {
               ) : (
                 <Download className="mr-2 h-4 w-4" />
               )}
-              PDF Indir
+              PDF İndir
             </Button>
           </CardContent>
         </Card>
@@ -331,10 +331,10 @@ export default function AdvancedReportsPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-lg">
               <Building className="h-5 w-5 text-purple-500" />
-              Sube Raporu
+              Şube Raporu
             </CardTitle>
             <CardDescription>
-              Sube bazli performans karsilastirmasi
+              Şube bazlı performans karşılaştırması
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -349,7 +349,7 @@ export default function AdvancedReportsPage() {
               ) : (
                 <Download className="mr-2 h-4 w-4" />
               )}
-              PDF Indir
+              PDF İndir
             </Button>
           </CardContent>
         </Card>
@@ -371,9 +371,9 @@ export default function AdvancedReportsPage() {
         <TabsContent value="performance">
           <Card>
             <CardHeader>
-              <CardTitle>En Iyi 10 Performans</CardTitle>
+              <CardTitle>En İyi 10 Performans</CardTitle>
               <CardDescription>
-                {MONTHS[selectedMonth - 1]} {selectedYear} performans siralamasI
+                {MONTHS[selectedMonth - 1]} {selectedYear} performans sıralaması
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -394,7 +394,7 @@ export default function AdvancedReportsPage() {
                   </ResponsiveContainer>
                 ) : (
                   <div className="flex items-center justify-center h-full text-muted-foreground">
-                    Veri bulunamadi
+                    Veri bulunamadı
                   </div>
                 )}
               </div>
@@ -407,7 +407,7 @@ export default function AdvancedReportsPage() {
             <CardHeader>
               <CardTitle>Puanlama Kategorileri</CardTitle>
               <CardDescription>
-                Toplam puandaki kategori dagilimi
+                Toplam puandaki kategori dağılımı
               </CardDescription>
             </CardHeader>
             <CardContent>

@@ -156,7 +156,7 @@ export default function HqKiosk() {
         setStep("working");
         toast({
           title: exitReason === "break" ? "Mola basladi" : "Dis gorev kaydedildi",
-          description: exitReason === "break" ? "Iyi dinlenmeler!" : "Basarilar!",
+          description: exitReason === "break" ? "İyi dinlenmeler!" : "Başarılar!",
         });
       }
       setExitReason("");

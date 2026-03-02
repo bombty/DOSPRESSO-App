@@ -137,7 +137,7 @@ export default function SiparisHazirlama() {
         <CardHeader className="p-3 pb-0">
           <CardTitle className="text-sm flex items-center gap-2 flex-wrap">
             <ArrowRightFromLine className="h-4 w-4" />
-            Hizli Stok Cikisi
+            Hızlı Stok Çıkışı
           </CardTitle>
         </CardHeader>
         <CardContent className="p-3 space-y-2">

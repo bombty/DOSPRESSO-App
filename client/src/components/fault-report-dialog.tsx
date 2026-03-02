@@ -367,7 +367,7 @@ export function FaultReportDialog({ equipment, isOpen, onOpenChange }: FaultRepo
     doc.setFontSize(9);
     doc.setTextColor(120, 120, 120);
     doc.text(sanitizeText(`Ariza Referans: DOSPRESSO-F${createdFault.id}`), pw / 2, y, { align: 'center' });
-    doc.text(sanitizeText(`Hizli Erisim: /ariza-detay/${createdFault.id}`), pw / 2, y + 5, { align: 'center' });
+    doc.text(sanitizeText(`Hızlı Erişim: /ariza-detay/${createdFault.id}`), pw / 2, y + 5, { align: 'center' });
 
     savePDF(doc, `DOSPRESSO_Ariza_${createdFault.id}_${format(new Date(), 'yyyyMMdd')}.pdf`);
     setPdfGenerated(true);

@@ -50,7 +50,7 @@ interface MyShift {
 const t = (s: string) => s.substring(0, 5);
 
 function getShiftTypeLabel(type: string) {
-  return type === "morning" ? "Sabah" : type === "evening" ? "Aksam" : "Gece";
+  return type === "morning" ? "Sabah" : type === "evening" ? "Akşam" : "Gece";
 }
 
 function getShiftTypeIcon(type: string) {
@@ -159,10 +159,10 @@ export default function Vardiyalarim() {
       queryClient.invalidateQueries({ queryKey: ["/api/shifts/my"] });
       queryClient.invalidateQueries({ queryKey: ["/api/shift-swap-requests/pending-for-me"] });
       setSwapDialogOpen(false);
-      toast({ title: "Basarili", description: "Takas talebi gonderildi" });
+      toast({ title: "Başarılı", description: "Takas talebi gönderildi" });
     },
     onError: () => {
-      toast({ title: "Hata", description: "Takas talebi gonderilemedi", variant: "destructive" });
+      toast({ title: "Hata", description: "Takas talebi gönderilemedi", variant: "destructive" });
     },
   });
 
@@ -172,10 +172,10 @@ export default function Vardiyalarim() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/shift-swap-requests/pending-for-me"] });
-      toast({ title: "Basarili", description: "Takas talebi onaylandi" });
+      toast({ title: "Başarılı", description: "Takas talebi onaylandı" });
     },
     onError: () => {
-      toast({ title: "Hata", description: "Islem basarisiz", variant: "destructive" });
+      toast({ title: "Hata", description: "İşlem başarısız", variant: "destructive" });
     },
   });
 
@@ -185,10 +185,10 @@ export default function Vardiyalarim() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/shift-swap-requests/pending-for-me"] });
-      toast({ title: "Basarili", description: "Takas talebi reddedildi" });
+      toast({ title: "Başarılı", description: "Takas talebi reddedildi" });
     },
     onError: () => {
-      toast({ title: "Hata", description: "Islem basarisiz", variant: "destructive" });
+      toast({ title: "Hata", description: "İşlem başarısız", variant: "destructive" });
     },
   });
 
@@ -199,10 +199,10 @@ export default function Vardiyalarim() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/shift-swap-requests/pending-supervisor"] });
       queryClient.invalidateQueries({ queryKey: ["/api/shifts"] });
-      toast({ title: "Basarili", description: "Takas onaylandi" });
+      toast({ title: "Başarılı", description: "Takas onaylandı" });
     },
     onError: () => {
-      toast({ title: "Hata", description: "Islem basarisiz", variant: "destructive" });
+      toast({ title: "Hata", description: "İşlem başarısız", variant: "destructive" });
     },
   });
 
@@ -212,10 +212,10 @@ export default function Vardiyalarim() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/shift-swap-requests/pending-supervisor"] });
-      toast({ title: "Basarili", description: "Takas reddedildi" });
+      toast({ title: "Başarılı", description: "Takas reddedildi" });
     },
     onError: () => {
-      toast({ title: "Hata", description: "Islem basarisiz", variant: "destructive" });
+      toast({ title: "Hata", description: "İşlem başarısız", variant: "destructive" });
     },
   });
 
@@ -225,10 +225,10 @@ export default function Vardiyalarim() {
     },
     onSuccess: () => {
       setOvertimeDialogOpen(false);
-      toast({ title: "Basarili", description: "Mesai talebi gonderildi" });
+      toast({ title: "Başarılı", description: "Mesai talebi gönderildi" });
     },
     onError: () => {
-      toast({ title: "Hata", description: "Mesai talebi gonderilemedi", variant: "destructive" });
+      toast({ title: "Hata", description: "Mesai talebi gönderilemedi", variant: "destructive" });
     },
   });
 
@@ -241,10 +241,10 @@ export default function Vardiyalarim() {
       setLeaveDates([]);
       setLeaveType("");
       setLeaveReason("");
-      toast({ title: "Basarili", description: "Izin talebi gonderildi" });
+      toast({ title: "Başarılı", description: "İzin talebi gönderildi" });
     },
     onError: () => {
-      toast({ title: "Hata", description: "Izin talebi gonderilemedi", variant: "destructive" });
+      toast({ title: "Hata", description: "İzin talebi gönderilemedi", variant: "destructive" });
     },
   });
 
@@ -400,7 +400,7 @@ export default function Vardiyalarim() {
               data-testid={`button-popover-leave-${shift.id}`}
             >
               <Calendar className="w-3 h-3" />
-              Izin Talebi
+              İzin Talebi
             </Button>
           )}
         </PopoverContent>
@@ -410,14 +410,14 @@ export default function Vardiyalarim() {
 
   function renderMyShifts() {
     if (isLoading) {
-      return <div className="text-center py-8 text-muted-foreground" data-testid="text-loading">Yukleniyor...</div>;
+      return <div className="text-center py-8 text-muted-foreground" data-testid="text-loading">Yükleniyor...</div>;
     }
 
     const shiftsForWeek = myShifts || [];
     if (shiftsForWeek.length === 0) {
       return (
         <div className="text-center py-8 text-muted-foreground" data-testid="text-no-shifts">
-          Bu hafta icin vardiya bulunamadi
+          Bu hafta için vardiya bulunamadı
         </div>
       );
     }
@@ -444,7 +444,7 @@ export default function Vardiyalarim() {
                     <Badge variant="secondary" className="text-xs" data-testid={`badge-shift-type-${shift.id}`}>
                       {getShiftTypeLabel(shift.shiftType)}
                     </Badge>
-                    {day.isToday && <Badge data-testid={`badge-today-${shift.id}`}>Bugun</Badge>}
+                    {day.isToday && <Badge data-testid={`badge-today-${shift.id}`}>Bugün</Badge>}
                   </div>
                 </div>
                 <div className="flex items-center gap-2 mt-1.5 flex-wrap">
@@ -469,12 +469,12 @@ export default function Vardiyalarim() {
 
   function renderBranchPlan() {
     if (isBranchLoading) {
-      return <div className="text-center py-8 text-muted-foreground" data-testid="text-branch-loading">Yukleniyor...</div>;
+      return <div className="text-center py-8 text-muted-foreground" data-testid="text-branch-loading">Yükleniyor...</div>;
     }
 
     const shiftGroups = [
       { key: "morning", label: "Sabah", icon: <Sun className="w-4 h-4" />, data: branchPlanData.morning },
-      { key: "evening", label: "Aksam", icon: <Sunset className="w-4 h-4" />, data: branchPlanData.evening },
+      { key: "evening", label: "Akşam", icon: <Sunset className="w-4 h-4" />, data: branchPlanData.evening },
     ];
 
     if (branchPlanData.night && branchPlanData.night.size > 0) {
@@ -553,7 +553,7 @@ export default function Vardiyalarim() {
 
         {(!branchShifts || branchShifts.length === 0) && (
           <div className="text-center py-8 text-muted-foreground" data-testid="text-no-branch-shifts">
-            Bu hafta icin sube plani bulunamadi
+            Bu hafta için şube planı bulunamadı
           </div>
         )}
       </div>
@@ -572,26 +572,26 @@ export default function Vardiyalarim() {
           <CardHeader className="pb-2 p-3">
             <CardTitle className="text-sm flex items-center gap-2">
               <Calendar className="w-4 h-4" />
-              Yeni Izin Talebi
+              Yeni İzin Talebi
             </CardTitle>
           </CardHeader>
           <CardContent className="p-3 pt-0 space-y-3">
             <div className="space-y-1.5">
-              <label className="text-xs font-medium">Izin Turu</label>
+              <label className="text-xs font-medium">İzin Türü</label>
               <Select value={leaveType} onValueChange={setLeaveType}>
                 <SelectTrigger data-testid="select-leave-type">
-                  <SelectValue placeholder="Izin turu secin" />
+                  <SelectValue placeholder="İzin türü seçin" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="annual" data-testid="option-leave-annual">Yillik Izin</SelectItem>
-                  <SelectItem value="sick" data-testid="option-leave-sick">Hastalik Izni</SelectItem>
-                  <SelectItem value="personal" data-testid="option-leave-personal">Kisisel Izin</SelectItem>
+                  <SelectItem value="annual" data-testid="option-leave-annual">Yıllık İzin</SelectItem>
+                  <SelectItem value="sick" data-testid="option-leave-sick">Hastalık İzni</SelectItem>
+                  <SelectItem value="personal" data-testid="option-leave-personal">Kişisel İzin</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-xs font-medium">Tarih Secin</label>
+              <label className="text-xs font-medium">Tarih Seçin</label>
               <div className="grid grid-cols-7 gap-1">
                 {nextMonth.map((d) => {
                   const ds = format(d, "yyyy-MM-dd");
@@ -613,7 +613,7 @@ export default function Vardiyalarim() {
               </div>
               {leaveDates.length > 0 && (
                 <p className="text-xs text-muted-foreground" data-testid="text-selected-dates">
-                  Secilen: {leaveDates.map((d) => format(new Date(d), "d MMM", { locale: tr })).join(", ")}
+                  Seçilen: {leaveDates.map((d) => format(new Date(d), "d MMM", { locale: tr })).join(", ")}
                 </p>
               )}
             </div>
@@ -623,7 +623,7 @@ export default function Vardiyalarim() {
               <Textarea
                 value={leaveReason}
                 onChange={(e) => setLeaveReason(e.target.value)}
-                placeholder="Izin sebebinizi yazin..."
+                placeholder="İzin sebebinizi yazın..."
                 className="text-sm"
                 data-testid="textarea-leave-reason"
               />
@@ -635,7 +635,7 @@ export default function Vardiyalarim() {
               data-testid="button-submit-leave"
             >
               <FileText className="w-4 h-4" />
-              Izin Talebi Gonder
+              İzin Talebi Gönder
             </Button>
           </CardContent>
         </Card>
@@ -643,7 +643,7 @@ export default function Vardiyalarim() {
         {myLeaveRequests && myLeaveRequests.length > 0 && (
           <Card data-testid="card-my-leave-requests">
             <CardHeader className="pb-2 p-3">
-              <CardTitle className="text-sm">Izin Taleplerim</CardTitle>
+              <CardTitle className="text-sm">İzin Taleplerim</CardTitle>
             </CardHeader>
             <CardContent className="p-3 pt-0 space-y-2">
               {myLeaveRequests.map((req: any) => (
@@ -654,14 +654,14 @@ export default function Vardiyalarim() {
                       {req.endDate && req.endDate !== req.startDate && ` - ${format(new Date(req.endDate), "d MMM", { locale: tr })}`}
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      {req.leaveType === "annual" ? "Yillik Izin" : req.leaveType === "sick" ? "Hastalik Izni" : "Kisisel Izin"}
+                      {req.leaveType === "annual" ? "Yıllık İzin" : req.leaveType === "sick" ? "Hastalık İzni" : "Kişisel İzin"}
                     </p>
                   </div>
                   <Badge
                     variant={req.status === "approved" ? "default" : req.status === "rejected" ? "destructive" : "secondary"}
                     data-testid={`badge-leave-status-${req.id}`}
                   >
-                    {req.status === "approved" ? "Onaylandi" : req.status === "rejected" ? "Reddedildi" : "Beklemede"}
+                    {req.status === "approved" ? "Onaylandı" : req.status === "rejected" ? "Reddedildi" : "Beklemede"}
                   </Badge>
                 </div>
               ))}
@@ -675,8 +675,8 @@ export default function Vardiyalarim() {
   return (
     <div className="flex flex-col gap-3 p-3">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight" data-testid="text-page-title">Vardiyalarim</h1>
-        <p className="text-sm text-muted-foreground mt-0.5" data-testid="text-page-description">Calisma programiniz ve talepler</p>
+        <h1 className="text-2xl font-bold tracking-tight" data-testid="text-page-title">Vardiyalarım</h1>
+        <p className="text-sm text-muted-foreground mt-0.5" data-testid="text-page-description">Çalışma programınız ve talepler</p>
       </div>
 
       <div className="grid grid-cols-3 gap-2">
@@ -691,7 +691,7 @@ export default function Vardiyalarim() {
         <Card>
           <CardContent className="p-2">
             <div className="flex flex-col items-center text-center gap-0.5">
-              <p className="text-[10px] text-muted-foreground">Yaklasan</p>
+              <p className="text-[10px] text-muted-foreground">Yaklaşan</p>
               <p className="text-lg font-bold" data-testid="text-upcoming-shifts">{upcomingShifts}</p>
             </div>
           </CardContent>
@@ -708,13 +708,13 @@ export default function Vardiyalarim() {
 
       <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as any)} data-testid="tabs-view-mode">
         <TabsList>
-          <TabsTrigger value="my" data-testid="tab-my-shifts">Vardiyalarim</TabsTrigger>
+          <TabsTrigger value="my" data-testid="tab-my-shifts">Vardiyalarım</TabsTrigger>
           <TabsTrigger value="qr" data-testid="tab-qr-checkin">
             <QrCode className="w-3.5 h-3.5 mr-1" />
-            QR Giris
+            QR Giriş
           </TabsTrigger>
-          <TabsTrigger value="branch" data-testid="tab-branch-plan">Sube Plani</TabsTrigger>
-          <TabsTrigger value="leave" data-testid="tab-leave-request">Izin Talebi</TabsTrigger>
+          <TabsTrigger value="branch" data-testid="tab-branch-plan">Şube Planı</TabsTrigger>
+          <TabsTrigger value="leave" data-testid="tab-leave-request">İzin Talebi</TabsTrigger>
         </TabsList>
       </Tabs>
 
@@ -802,9 +802,9 @@ export default function Vardiyalarim() {
           <CardHeader className="pb-2 p-3">
             <CardTitle className="text-sm flex items-center gap-2">
               <AlertTriangle className="w-4 h-4" />
-              Yonetici Onay Bekleyen Takaslar
+              Yönetici Onay Bekleyen Takaslar
             </CardTitle>
-            <CardDescription className="text-xs">Her iki calisan da onayladi, son onayiniz bekleniyor</CardDescription>
+            <CardDescription className="text-xs">Her iki çalışan da onayladı, son onayınız bekleniyor</CardDescription>
           </CardHeader>
           <CardContent className="p-3 pt-0 space-y-2">
             {supervisorPendingSwaps.map((req: any) => (
@@ -874,10 +874,10 @@ export default function Vardiyalarim() {
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-xs font-medium">Sizin vardiyaniz (takas edilecek)</label>
+                <label className="text-xs font-medium">Sizin vardiyanız (takas edilecek)</label>
                 <Select value={swapRequesterShiftId} onValueChange={setSwapRequesterShiftId}>
                   <SelectTrigger data-testid="select-swap-requester-shift">
-                    <SelectValue placeholder="Vardiyanizi secin" />
+                    <SelectValue placeholder="Vardiyanızı seçin" />
                   </SelectTrigger>
                   <SelectContent>
                     {(myShifts || []).map((s) => (
@@ -903,14 +903,14 @@ export default function Vardiyalarim() {
           )}
           <DialogFooter>
             <Button variant="outline" onClick={() => setSwapDialogOpen(false)} data-testid="button-cancel-swap">
-              Iptal
+              İptal
             </Button>
             <Button
               onClick={submitSwap}
               disabled={!swapRequesterShiftId || createSwapMutation.isPending}
               data-testid="button-submit-swap"
             >
-              Takas Talebi Gonder
+              Takas Talebi Gönder
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -932,12 +932,12 @@ export default function Vardiyalarim() {
                   {format(new Date(overtimeShift.shiftDate), "d MMMM yyyy, EEEE", { locale: tr })}
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  Baslangic: {t(overtimeShift.endTime)} (vardiya bitis saati)
+                  Başlangıç: {t(overtimeShift.endTime)} (vardiya bitiş saati)
                 </p>
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-xs font-medium">Sure</label>
+                <label className="text-xs font-medium">Süre</label>
                 <div className="flex gap-2 flex-wrap">
                   {[
                     { val: "60", label: "1 saat" },
@@ -965,12 +965,12 @@ export default function Vardiyalarim() {
                   <Button
                     variant="ghost"
                     size="sm"
-                    className={`toggle-elevate ${overtimeReasonType === "Is Yogunlugu" ? "toggle-elevated" : ""}`}
-                    onClick={() => { setOvertimeReasonType("Is Yogunlugu"); setOvertimeMissingEmployee(""); }}
+                    className={`toggle-elevate ${overtimeReasonType === "İş Yoğunluğu" ? "toggle-elevated" : ""}`}
+                    onClick={() => { setOvertimeReasonType("İş Yoğunluğu"); setOvertimeMissingEmployee(""); }}
                     data-testid="button-reason-workload"
                   >
                     <Clock className="w-3 h-3" />
-                    Is Yogunlugu
+                    İş Yoğunluğu
                   </Button>
                   <Button
                     variant="ghost"
@@ -985,12 +985,12 @@ export default function Vardiyalarim() {
                   <Button
                     variant="ghost"
                     size="sm"
-                    className={`toggle-elevate ${overtimeReasonType === "Yonetici Talebi" ? "toggle-elevated" : ""}`}
-                    onClick={() => { setOvertimeReasonType("Yonetici Talebi"); setOvertimeMissingEmployee(""); }}
+                    className={`toggle-elevate ${overtimeReasonType === "Yönetici Talebi" ? "toggle-elevated" : ""}`}
+                    onClick={() => { setOvertimeReasonType("Yönetici Talebi"); setOvertimeMissingEmployee(""); }}
                     data-testid="button-reason-manager"
                   >
                     <AlertCircle className="w-3 h-3" />
-                    Yonetici Talebi
+                    Yönetici Talebi
                   </Button>
                 </div>
               </div>
@@ -1016,7 +1016,7 @@ export default function Vardiyalarim() {
               )}
 
               <div className="space-y-1.5">
-                <label className="text-xs font-medium">Ek aciklama (opsiyonel)</label>
+                <label className="text-xs font-medium">Ek açıklama (opsiyonel)</label>
                 <Textarea
                   value={overtimeReasonText}
                   onChange={(e) => setOvertimeReasonText(e.target.value)}
@@ -1029,14 +1029,14 @@ export default function Vardiyalarim() {
           )}
           <DialogFooter>
             <Button variant="outline" onClick={() => setOvertimeDialogOpen(false)} data-testid="button-cancel-overtime">
-              Iptal
+              İptal
             </Button>
             <Button
               onClick={submitOvertime}
               disabled={!overtimeReasonType || createOvertimeMutation.isPending}
               data-testid="button-submit-overtime"
             >
-              Mesai Talebi Gonder
+              Mesai Talebi Gönder
             </Button>
           </DialogFooter>
         </DialogContent>

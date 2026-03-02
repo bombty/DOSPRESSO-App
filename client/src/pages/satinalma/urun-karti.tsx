@@ -145,22 +145,22 @@ interface SupplierOption {
 
 const categories: Record<string, string> = {
   hammadde: "Hammadde",
-  yarimamul: "Yari Mamul",
+  yarimamul: "Yarı Mamul",
   mamul: "Mamul",
   ambalaj: "Ambalaj",
   ekipman: "Ekipman",
-  sube_ekipman: "Sube Ekipman",
-  sube_malzeme: "Sube Malzeme",
+  sube_ekipman: "Şube Ekipman",
+  sube_malzeme: "Şube Malzeme",
   konsantre: "Konsantre",
   donut: "Donut",
-  tatli: "Tatli",
+  tatli: "Tatlı",
   tuzlu: "Tuzlu",
-  cay_grubu: "Cay Grubu",
+  cay_grubu: "Çay Grubu",
   kahve: "Kahve",
   toz_topping: "Toz/Topping",
   sarf_malzeme: "Sarf Malzeme",
   temizlik: "Temizlik",
-  diger: "Diger",
+  diger: "Diğer",
 };
 
 const issueTypeLabels: Record<string, string> = {
@@ -168,14 +168,14 @@ const issueTypeLabels: Record<string, string> = {
   teslimat_gecikmesi: "Teslimat Gecikmesi",
   adet_eksik: "Adet Eksik",
   hasar: "Hasar",
-  yanlis_urun: "Yanlis Urun",
-  diger: "Diger",
+  yanlis_urun: "Yanlış Ürün",
+  diger: "Diğer",
 };
 
 const severityLabels: Record<string, string> = {
-  dusuk: "Dusuk",
+  dusuk: "Düşük",
   orta: "Orta",
-  yuksek: "Yuksek",
+  yuksek: "Yüksek",
   kritik: "Kritik",
 };
 
@@ -197,14 +197,14 @@ const orderStatusLabels: Record<string, string> = {
   siparis_verildi: "Sipariş Verildi",
   kismen_teslim: "Kısmen Teslim",
   tamamlandi: "Tamamlandı",
-  iptal: "Iptal",
+  iptal: "İptal",
 };
 
 const issueStatusLabels: Record<string, string> = {
-  acik: "Acik",
-  inceleniyor: "Inceleniyor",
-  cozuldu: "Cozuldu",
-  kapandi: "Kapandi",
+  acik: "Açık",
+  inceleniyor: "İnceleniyor",
+  cozuldu: "Çözüldü",
+  kapandi: "Kapandı",
 };
 
 export default function UrunKarti({ productId, onBack }: UrunKartiProps) {
@@ -425,7 +425,7 @@ export default function UrunKarti({ productId, onBack }: UrunKartiProps) {
   } else if (stockRatio <= 1) {
     stockColor = "text-red-600 dark:text-red-400";
     stockBg = "bg-red-500/10";
-    stockLabel = "Dusuk Stok";
+    stockLabel = "Düşük Stok";
   } else if (stockRatio <= 1.5) {
     stockColor = "text-yellow-600 dark:text-yellow-400";
     stockBg = "bg-yellow-500/10";

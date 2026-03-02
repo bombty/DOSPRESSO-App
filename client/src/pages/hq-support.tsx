@@ -319,7 +319,7 @@ function TicketCard({
               className={ticket.status === HQ_SUPPORT_STATUS.AKTIF ? "bg-warning/100" : ""}
               data-testid={`badge-status-${ticket.id}`}
             >
-              {ticket.status === HQ_SUPPORT_STATUS.AKTIF ? "Aktif" : "Kapatildi"}
+              {ticket.status === HQ_SUPPORT_STATUS.AKTIF ? "Aktif" : "Kapatıldı"}
             </Badge>
             {ticket.rating && ticket.rating > 0 && (
               <div className="flex items-center gap-0.5" data-testid={`rating-display-${ticket.id}`}>
@@ -659,8 +659,8 @@ function TicketDetailDialog({
       queryClient.invalidateQueries({ queryKey: ["/api/hq-support/tickets"] });
       queryClient.invalidateQueries({ queryKey: ["/api/hq-support/tickets", ticketId] });
       toast({
-        title: "Basarili",
-        description: "Talep kapatildi",
+        title: "Başarılı",
+        description: "Talep kapatıldı",
       });
       setShowRatingDialog(false);
       setSelectedRating(0);

@@ -111,22 +111,22 @@ interface CriticalStockItem {
 
 const categoryLabels: Record<string, string> = {
   hammadde: "Hammadde",
-  yarimamul: "Yari Mamul",
+  yarimamul: "Yarı Mamul",
   mamul: "Mamul",
   ambalaj: "Ambalaj",
   ekipman: "Ekipman",
-  sube_ekipman: "Sube Ekipman",
-  sube_malzeme: "Sube Malzeme",
+  sube_ekipman: "Şube Ekipman",
+  sube_malzeme: "Şube Malzeme",
   konsantre: "Konsantre",
   donut: "Donut",
-  tatli: "Tatli",
+  tatli: "Tatlı",
   tuzlu: "Tuzlu",
-  cay_grubu: "Cay Grubu",
+  cay_grubu: "Çay Grubu",
   kahve: "Kahve",
   toz_topping: "Toz/Topping",
   sarf_malzeme: "Sarf Malzeme",
   temizlik: "Temizlik",
-  diger: "Diger",
+  diger: "Diğer",
 };
 
 interface QRFoundProduct {
@@ -411,7 +411,7 @@ export default function SatinalmaDashboard() {
       bgColor: "bg-orange-500/10"
     },
     {
-      title: "Dusuk Stok Uyarisi",
+      title: "Düşük Stok Uyarısı",
       value: data?.lowStockAlerts || 0,
       icon: AlertTriangle,
       color: data?.lowStockAlerts && data.lowStockAlerts > 0 ? "text-red-500" : "text-gray-500",

@@ -435,7 +435,7 @@ export default function FabrikaDashboard() {
               <CardHeader className="pb-1 pt-3 px-3">
                 <CardTitle className="flex items-center gap-2 text-xs">
                   <ExternalLink className="h-3.5 w-3.5 text-primary" />
-                  Hizli Erisim
+                  Hızlı Erişim
                 </CardTitle>
               </CardHeader>
               <CardContent className="px-3 pb-3">
