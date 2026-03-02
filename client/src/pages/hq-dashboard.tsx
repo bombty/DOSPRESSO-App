@@ -1000,7 +1000,7 @@ function KaliteDashboard() {
 }
 
 const departmentOwnerMap: Record<string, string> = {
-  "Satinalma": "Samet",
+  "Satınalma": "Samet",
   "Fabrika": "Eren",
   "IK": "Mahmut",
   "Coach": "Yavuz",
@@ -1033,10 +1033,10 @@ function CGODashboard() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/purchase-orders', 'onay_bekliyor'] });
       queryClient.invalidateQueries({ predicate: (query) => (query.queryKey[0] as string).startsWith("/api/purchase-orders") });
-      toast({ title: "Siparis onaylandi" });
+      toast({ title: "Sipariş onaylandı" });
     },
     onError: () => {
-      toast({ title: "Hata", description: "Onaylama basarisiz", variant: "destructive" });
+      toast({ title: "Hata", description: "Onaylama başarısız", variant: "destructive" });
     }
   });
 
@@ -1047,10 +1047,10 @@ function CGODashboard() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/purchase-orders', 'onay_bekliyor'] });
       queryClient.invalidateQueries({ predicate: (query) => (query.queryKey[0] as string).startsWith("/api/purchase-orders") });
-      toast({ title: "Siparis reddedildi" });
+      toast({ title: "Sipariş reddedildi" });
     },
     onError: () => {
-      toast({ title: "Hata", description: "Reddetme basarisiz", variant: "destructive" });
+      toast({ title: "Hata", description: "Reddetme başarısız", variant: "destructive" });
     }
   });
 
@@ -1185,7 +1185,7 @@ function CGODashboard() {
           <CardHeader className="pb-1 pt-3 px-3">
             <CardTitle className="text-xs flex items-center gap-1.5">
               <ShoppingCart className="w-3.5 h-3.5" />
-              Onay Bekleyen Satinalma Siparisleri
+              Onay Bekleyen Satınalma Siparişleri
               <Badge variant="secondary" className="ml-1" data-testid="badge-pending-count">{pendingOrders.length}</Badge>
             </CardTitle>
           </CardHeader>

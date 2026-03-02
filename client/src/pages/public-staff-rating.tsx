@@ -28,7 +28,7 @@ export default function PublicStaffRating() {
       const res = await fetch(`/api/public/staff-rating/validate/${token}`);
       if (!res.ok) {
         const err = await res.json();
-        throw new Error(err.message || "Gecersiz QR kodu");
+        throw new Error(err.message || "Geçersiz QR kodu");
       }
       return res.json();
     },
@@ -45,15 +45,15 @@ export default function PublicStaffRating() {
       });
       if (!res.ok) {
         const err = await res.json();
-        throw new Error(err.message || "Degerlendirme gonderilemedi");
+        throw new Error(err.message || "Değerlendirme gönderilemedi");
       }
       return res.json();
     },
     onSuccess: () => {
       setSubmitted(true);
       toast({
-        title: "Tesekkurler!",
-        description: "Degerlendirmeniz basariyla kaydedildi.",
+        title: "Teşekkürler!",
+        description: "Değerlendirmeniz başarıyla kaydedildi.",
       });
     },
     onError: (error: any) => {
@@ -68,8 +68,8 @@ export default function PublicStaffRating() {
   const handleSubmit = () => {
     if (overallRating === 0) {
       toast({
-        title: "Uyari",
-        description: "Lutfen genel degerlendirme puani verin.",
+        title: "Uyarı",
+        description: "Lütfen genel değerlendirme puanı verin.",
         variant: "destructive",
       });
       return;
@@ -127,7 +127,7 @@ export default function PublicStaffRating() {
         <Card className="w-full max-w-md">
           <CardContent className="flex flex-col items-center justify-center py-12">
             <Loader2 className="h-12 w-12 animate-spin text-amber-600" />
-            <p className="mt-4 text-muted-foreground">Yukleniyor...</p>
+            <p className="mt-4 text-muted-foreground">Yükleniyor...</p>
           </CardContent>
         </Card>
       </div>
@@ -140,9 +140,9 @@ export default function PublicStaffRating() {
         <Card className="w-full max-w-md">
           <CardContent className="flex flex-col items-center justify-center py-12">
             <AlertCircle className="h-16 w-16 text-destructive mb-4" />
-            <h2 className="text-xl font-semibold mb-2">Gecersiz QR Kodu</h2>
+            <h2 className="text-xl font-semibold mb-2">Geçersiz QR Kodu</h2>
             <p className="text-muted-foreground text-center">
-              Bu degerlendirme linki gecersiz veya suresi dolmus olabilir.
+              Bu değerlendirme linki geçersiz veya süresi dolmuş olabilir.
             </p>
           </CardContent>
         </Card>
@@ -158,9 +158,9 @@ export default function PublicStaffRating() {
             <div className="w-20 h-20 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center mb-4">
               <CheckCircle className="h-12 w-12 text-green-600 dark:text-green-400" />
             </div>
-            <h2 className="text-2xl font-bold mb-2">Tesekkurler!</h2>
+            <h2 className="text-2xl font-bold mb-2">Teşekkürler!</h2>
             <p className="text-muted-foreground text-center mb-6">
-              Degerlendirmeniz icin tesekkur ederiz. Gorusleriniz bizim icin cok degerli.
+              Değerlendirmeniz için teşekkür ederiz. Görüşleriniz bizim için çok değerli.
             </p>
             <div className="flex items-center gap-2 text-amber-600">
               <Coffee className="h-5 w-5" />
@@ -180,7 +180,7 @@ export default function PublicStaffRating() {
             <Coffee className="h-8 w-8 text-amber-600" />
             <span className="text-2xl font-bold text-amber-600">DOSPRESSO</span>
           </div>
-          <CardTitle className="text-xl">Personel Degerlendirmesi</CardTitle>
+          <CardTitle className="text-xl">Personel Değerlendirmesi</CardTitle>
           <CardDescription>
             <span className="font-medium text-foreground">
               {tokenData.staffName}
@@ -193,14 +193,14 @@ export default function PublicStaffRating() {
         <CardContent className="space-y-6">
           {/* Overall Rating - Required */}
           <div className="p-4 bg-amber-50 dark:bg-amber-950/50 rounded-lg">
-            {renderStars("overall", overallRating, setOverallRating, "Genel Degerlendirme *")}
+            {renderStars("overall", overallRating, setOverallRating, "Genel Değerlendirme *")}
           </div>
 
           {/* Optional Ratings */}
           <div className="space-y-4">
             {renderStars("service", serviceRating, setServiceRating, "Hizmet Kalitesi")}
-            {renderStars("friendliness", friendlinessRating, setFriendlinessRating, "Guler Yuzluluk")}
-            {renderStars("speed", speedRating, setSpeedRating, "Hizli Hizmet")}
+            {renderStars("friendliness", friendlinessRating, setFriendlinessRating, "Güler Yüzlülük")}
+            {renderStars("speed", speedRating, setSpeedRating, "Hızlı Hizmet")}
           </div>
 
           {/* Comment */}
@@ -208,7 +208,7 @@ export default function PublicStaffRating() {
             <Label htmlFor="comment">Yorumunuz (Opsiyonel)</Label>
             <Textarea
               id="comment"
-              placeholder="Deneyiminizi paylasabilirsiniz..."
+              placeholder="Deneyiminizi paylaşabilirsiniz..."
               value={comment}
               onChange={(e) => setComment(e.target.value)}
               rows={3}
@@ -231,15 +231,15 @@ export default function PublicStaffRating() {
             {submitMutation.isPending ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Gonderiliyor...
+                Gönderiliyor...
               </>
             ) : (
-              "Degerlendirmeyi Gonder"
+              "Değerlendirmeyi Gönder"
             )}
           </Button>
 
           <p className="text-xs text-muted-foreground text-center">
-            Degerlendirmeniz anonim olarak kaydedilecektir.
+            Değerlendirmeniz anonim olarak kaydedilecektir.
           </p>
         </CardContent>
       </Card>

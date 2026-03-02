@@ -31,11 +31,11 @@ import {
 } from "lucide-react";
 
 const CreateProjectSchema = z.object({
-  name: z.string().min(1, "Proje adi gerekli"),
-  franchiseeName: z.string().min(1, "Franchise sahibi adi gerekli"),
-  contactPerson: z.string().min(1, "Iletisim kisisi gerekli"),
+  name: z.string().min(1, "Proje adı gerekli"),
+  franchiseeName: z.string().min(1, "Franchise sahibi adı gerekli"),
+  contactPerson: z.string().min(1, "İletişim kişisi gerekli"),
   contactPhone: z.string().min(1, "Telefon gerekli"),
-  contactEmail: z.string().email("Gecerli email girin"),
+  contactEmail: z.string().email("Geçerli email girin"),
   location: z.string().optional(),
   city: z.string().optional(),
   estimatedBudget: z.string().optional(),
@@ -46,7 +46,7 @@ const CreateProjectSchema = z.object({
 type CreateProjectValues = z.infer<typeof CreateProjectSchema>;
 
 const CreateTaskSchema = z.object({
-  title: z.string().min(1, "Gorev adi gerekli"),
+  title: z.string().min(1, "Görev adı gerekli"),
   description: z.string().optional(),
   priority: z.string().default("normal"),
   assignedToUserId: z.string().optional(),
@@ -64,7 +64,7 @@ const CreateCollaboratorSchema = z.object({
   name: z.string().min(1, "Ad Soyad gerekli"),
   role: z.string().min(1, "Rol gerekli"),
   company: z.string().optional(),
-  email: z.string().email("Gecerli email girin").optional().or(z.literal("")),
+  email: z.string().email("Geçerli email girin").optional().or(z.literal("")),
   phone: z.string().optional(),
   specialty: z.string().optional(),
   notes: z.string().optional(),
@@ -172,7 +172,7 @@ function getPhaseIcon(phaseNumber: number) {
 
 function getStatusBadge(status: string) {
   switch (status) {
-    case "completed": return <Badge variant="default">Tamamlandi</Badge>;
+    case "completed": return <Badge variant="default">Tamamlandı</Badge>;
     case "in_progress": return <Badge variant="secondary">Devam Ediyor</Badge>;
     case "pending": return <Badge variant="outline">Bekliyor</Badge>;
     case "blocked": return <Badge variant="destructive">Engellendi</Badge>;
@@ -183,9 +183,9 @@ function getStatusBadge(status: string) {
 function getPriorityBadge(priority: string | null) {
   switch (priority) {
     case "critical": return <Badge variant="destructive">Kritik</Badge>;
-    case "high": return <Badge variant="secondary">Yuksek</Badge>;
+    case "high": return <Badge variant="secondary">Yüksek</Badge>;
     case "normal": return <Badge variant="outline">Normal</Badge>;
-    case "low": return <Badge variant="outline">Dusuk</Badge>;
+    case "low": return <Badge variant="outline">Düşük</Badge>;
     default: return null;
   }
 }
@@ -211,7 +211,7 @@ function ProjectList({ onSelectProject }: { onSelectProject: (id: number) => voi
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/franchise-projects"] });
-      toast({ title: "Basarili", description: "Franchise projesi olusturuldu" });
+      toast({ title: "Başarılı", description: "Franchise projesi oluşturuldu" });
       setIsCreateOpen(false);
       form.reset();
     },
@@ -228,9 +228,9 @@ function ProjectList({ onSelectProject }: { onSelectProject: (id: number) => voi
         <div>
           <h1 className="text-xl font-bold flex items-center gap-2" data-testid="heading-franchise">
             <Store className="w-6 h-6 text-primary" />
-            Franchise Acilis Yonetimi
+            Franchise Açılış Yönetimi
           </h1>
-          <p className="text-xs text-muted-foreground mt-0.5">Yeni sube acilis projelerini takip edin</p>
+          <p className="text-xs text-muted-foreground mt-0.5">Yeni şube açılış projelerini takip edin</p>
         </div>
         {isHQ && (
           <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
@@ -239,20 +239,20 @@ function ProjectList({ onSelectProject }: { onSelectProject: (id: number) => voi
             </DialogTrigger>
             <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
               <DialogHeader>
-                <DialogTitle>Yeni Franchise Acilis Projesi</DialogTitle>
-                <DialogDescription>Sozlesmeden acilisa kadar tum sureci takip edin</DialogDescription>
+                <DialogTitle>Yeni Franchise Açılış Projesi</DialogTitle>
+                <DialogDescription>Sözleşmeden açılışa kadar tüm süreci takip edin</DialogDescription>
               </DialogHeader>
               <Form {...form}>
                 <form onSubmit={form.handleSubmit((data) => createMutation.mutate(data))} className="space-y-3">
                   <FormField control={form.control} name="name" render={({ field }) => (
-                    <FormItem><FormLabel>Proje Adi</FormLabel><FormControl><Input {...field} placeholder="DOSPRESSO Kadikoy" data-testid="input-project-name" /></FormControl><FormMessage /></FormItem>
+                    <FormItem><FormLabel>Proje Adı</FormLabel><FormControl><Input {...field} placeholder="DOSPRESSO Kadikoy" data-testid="input-project-name" /></FormControl><FormMessage /></FormItem>
                   )} />
                   <FormField control={form.control} name="franchiseeName" render={({ field }) => (
                     <FormItem><FormLabel>Franchise Sahibi</FormLabel><FormControl><Input {...field} placeholder="Ad Soyad" data-testid="input-franchisee" /></FormControl><FormMessage /></FormItem>
                   )} />
                   <div className="grid grid-cols-2 gap-3">
                     <FormField control={form.control} name="contactPerson" render={({ field }) => (
-                      <FormItem><FormLabel>Iletisim Kisisi</FormLabel><FormControl><Input {...field} placeholder="Ad Soyad" data-testid="input-contact" /></FormControl><FormMessage /></FormItem>
+                      <FormItem><FormLabel>İletişim Kişisi</FormLabel><FormControl><Input {...field} placeholder="Ad Soyad" data-testid="input-contact" /></FormControl><FormMessage /></FormItem>
                     )} />
                     <FormField control={form.control} name="contactPhone" render={({ field }) => (
                       <FormItem><FormLabel>Telefon</FormLabel><FormControl><Input {...field} placeholder="0555 123 45 67" data-testid="input-phone" /></FormControl><FormMessage /></FormItem>
@@ -266,28 +266,28 @@ function ProjectList({ onSelectProject }: { onSelectProject: (id: number) => voi
                       <FormItem><FormLabel>Lokasyon</FormLabel><FormControl><Input {...field} placeholder="Adres" data-testid="input-location" /></FormControl><FormMessage /></FormItem>
                     )} />
                     <FormField control={form.control} name="city" render={({ field }) => (
-                      <FormItem><FormLabel>Sehir</FormLabel><FormControl><Input {...field} placeholder="Istanbul" data-testid="input-city" /></FormControl><FormMessage /></FormItem>
+                      <FormItem><FormLabel>Şehir</FormLabel><FormControl><Input {...field} placeholder="Istanbul" data-testid="input-city" /></FormControl><FormMessage /></FormItem>
                     )} />
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <FormField control={form.control} name="startDate" render={({ field }) => (
-                      <FormItem><FormLabel>Baslangic Tarihi</FormLabel><FormControl><Input type="date" {...field} data-testid="input-start-date" /></FormControl><FormMessage /></FormItem>
+                      <FormItem><FormLabel>Başlangıç Tarihi</FormLabel><FormControl><Input type="date" {...field} data-testid="input-start-date" /></FormControl><FormMessage /></FormItem>
                     )} />
                     <FormField control={form.control} name="expectedEndDate" render={({ field }) => (
-                      <FormItem><FormLabel>Hedef Acilis Tarihi</FormLabel><FormControl><Input type="date" {...field} data-testid="input-end-date" /></FormControl><FormMessage /></FormItem>
+                      <FormItem><FormLabel>Hedef Açılış Tarihi</FormLabel><FormControl><Input type="date" {...field} data-testid="input-end-date" /></FormControl><FormMessage /></FormItem>
                     )} />
                   </div>
                   <FormField control={form.control} name="estimatedBudget" render={({ field }) => (
-                    <FormItem><FormLabel>Tahmini Butce (TL)</FormLabel><FormControl><Input {...field} placeholder="500000" data-testid="input-budget" /></FormControl><FormMessage /></FormItem>
+                    <FormItem><FormLabel>Tahmini Bütçe (TL)</FormLabel><FormControl><Input {...field} placeholder="500000" data-testid="input-budget" /></FormControl><FormMessage /></FormItem>
                   )} />
                   <FormField control={form.control} name="notes" render={({ field }) => (
-                    <FormItem><FormLabel>Notlar</FormLabel><FormControl><Textarea {...field} placeholder="Onemli notlar..." rows={2} data-testid="textarea-notes" /></FormControl><FormMessage /></FormItem>
+                    <FormItem><FormLabel>Notlar</FormLabel><FormControl><Textarea {...field} placeholder="Önemli notlar..." rows={2} data-testid="textarea-notes" /></FormControl><FormMessage /></FormItem>
                   )} />
                   <DialogFooter>
-                    <Button type="button" variant="outline" onClick={() => setIsCreateOpen(false)}>Iptal</Button>
+                    <Button type="button" variant="outline" onClick={() => setIsCreateOpen(false)}>İptal</Button>
                     <Button type="submit" disabled={createMutation.isPending} data-testid="button-submit-project">
                       {createMutation.isPending ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Plus className="w-4 h-4 mr-1" />}
-                      Olustur
+                      Oluştur
                     </Button>
                   </DialogFooter>
                 </form>
@@ -300,9 +300,9 @@ function ProjectList({ onSelectProject }: { onSelectProject: (id: number) => voi
       {!projects || projects.length === 0 ? (
         <EmptyState
           icon={Store}
-          title="Acilis projesi yok"
-          description="Henuz bir franchise acilis projesi baslatilmamis."
-          actionLabel={isHQ ? "Ilk Projeyi Baslat" : undefined}
+          title="Açılış projesi yok"
+          description="Henüz bir franchise açılış projesi başlatılmamış."
+          actionLabel={isHQ ? "İlk Projeyi Başlat" : undefined}
           onAction={isHQ ? () => setIsCreateOpen(true) : undefined}
         />
       ) : (
@@ -368,12 +368,12 @@ function ProjectDetail({ projectId, onBack }: { projectId: number; onBack: () =>
 
   const createTaskMutation = useMutation({
     mutationFn: async (data: CreateTaskValues) => {
-      if (!selectedPhaseId) throw new Error("Faz secimi gerekli");
+      if (!selectedPhaseId) throw new Error("Faz seçimi gerekli");
       await apiRequest("POST", "/api/franchise-project-tasks", { ...data, projectId, phaseId: selectedPhaseId });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/franchise-projects", projectId] });
-      toast({ title: "Basarili", description: "Gorev eklendi" });
+      toast({ title: "Başarılı", description: "Görev eklendi" });
       setIsTaskDialogOpen(false);
       taskForm.reset();
     },
@@ -395,7 +395,7 @@ function ProjectDetail({ projectId, onBack }: { projectId: number; onBack: () =>
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/franchise-projects", projectId] });
-      toast({ title: "Faz guncellendi" });
+      toast({ title: "Faz güncellendi" });
     },
   });
 
@@ -405,7 +405,7 @@ function ProjectDetail({ projectId, onBack }: { projectId: number; onBack: () =>
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/franchise-projects", projectId] });
-      toast({ title: "Basarili", description: "Dis paydas eklendi" });
+      toast({ title: "Başarılı", description: "Dış paydaş eklendi" });
       setIsCollabDialogOpen(false);
       collabForm.reset();
     },
@@ -418,7 +418,7 @@ function ProjectDetail({ projectId, onBack }: { projectId: number; onBack: () =>
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/franchise-projects", projectId] });
-      toast({ title: "Paydas cikarildi" });
+      toast({ title: "Paydaş çıkarıldı" });
     },
   });
 
@@ -434,10 +434,10 @@ function ProjectDetail({ projectId, onBack }: { projectId: number; onBack: () =>
   });
 
   if (isLoading) return <ListSkeleton count={4} variant="card" />;
-  if (!project) return <EmptyState icon={AlertCircle} title="Proje bulunamadi" description="Bu proje mevcut degil veya erisim yetkiniz yok" />;
+  if (!project) return <EmptyState icon={AlertCircle} title="Proje bulunamadı" description="Bu proje mevcut değil veya erişim yetkiniz yok" />;
 
   const getUserName = (userId: string | null) => {
-    if (!userId) return "Atanmamis";
+    if (!userId) return "Atanmamış";
     const u = project.users?.find(u => u.id === userId);
     return u ? `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.username || "Bilinmiyor" : "Bilinmiyor";
   };
@@ -464,7 +464,7 @@ function ProjectDetail({ projectId, onBack }: { projectId: number; onBack: () =>
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <Card data-testid="card-progress">
           <CardContent className="pt-3 pb-2 px-3 text-center">
-            <p className="text-xs text-muted-foreground">Ilerleme</p>
+            <p className="text-xs text-muted-foreground">İlerleme</p>
             <p className="text-xl font-bold text-primary">{project.completionPercentage || 0}%</p>
           </CardContent>
         </Card>
@@ -476,7 +476,7 @@ function ProjectDetail({ projectId, onBack }: { projectId: number; onBack: () =>
         </Card>
         <Card data-testid="card-tasks-count">
           <CardContent className="pt-3 pb-2 px-3 text-center">
-            <p className="text-xs text-muted-foreground">Gorevler</p>
+            <p className="text-xs text-muted-foreground">Görevler</p>
             <p className="text-xl font-bold">{project.tasks?.filter(t => t.status === 'completed').length || 0}/{project.tasks?.length || 0}</p>
           </CardContent>
         </Card>
@@ -496,7 +496,7 @@ function ProjectDetail({ projectId, onBack }: { projectId: number; onBack: () =>
           </TabsTrigger>
           <TabsTrigger value="tasks" className="text-xs" data-testid="tab-tasks">
             <CheckCircle2 className="w-3.5 h-3.5 mr-1" />
-            <span className="hidden sm:inline">Gorevler</span>
+            <span className="hidden sm:inline">Görevler</span>
           </TabsTrigger>
           <TabsTrigger value="team" className="text-xs" data-testid="tab-team">
             <Users className="w-3.5 h-3.5 mr-1" />
@@ -535,7 +535,7 @@ function ProjectDetail({ projectId, onBack }: { projectId: number; onBack: () =>
                         {getStatusBadge(phase.status)}
                         {isHQ && isPending && (
                           <Button size="sm" variant="outline" onClick={() => updatePhaseMutation.mutate({ phaseId: phase.id, updates: { status: 'in_progress', actualStartDate: new Date().toISOString().split('T')[0] } })} data-testid={`button-start-phase-${phase.id}`}>
-                            Baslat
+                            Başlat
                           </Button>
                         )}
                         {isHQ && isActive && (
@@ -547,7 +547,7 @@ function ProjectDetail({ projectId, onBack }: { projectId: number; onBack: () =>
                     </div>
                     <div className="mt-2 space-y-1">
                       <div className="flex items-center justify-between text-xs">
-                        <span className="text-muted-foreground">{completedTasks.length}/{phaseTasks.length} gorev tamamlandi</span>
+                        <span className="text-muted-foreground">{completedTasks.length}/{phaseTasks.length} görev tamamlandı</span>
                         <span className="font-medium">{phaseProgress}%</span>
                       </div>
                       <Progress value={phaseProgress} className="h-1.5" />
@@ -567,7 +567,7 @@ function ProjectDetail({ projectId, onBack }: { projectId: number; onBack: () =>
                     )}
                     {isHQ && isActive && (
                       <Button variant="outline" size="sm" className="mt-2 w-full" onClick={() => { setSelectedPhaseId(phase.id); setIsTaskDialogOpen(true); }} data-testid={`button-add-task-${phase.id}`}>
-                        <Plus className="w-3 h-3 mr-1" />Gorev Ekle
+                        <Plus className="w-3 h-3 mr-1" />Görev Ekle
                       </Button>
                     )}
                   </CardContent>
@@ -580,7 +580,7 @@ function ProjectDetail({ projectId, onBack }: { projectId: number; onBack: () =>
         <TabsContent value="tasks" className="mt-4">
           <div className="space-y-3">
             {(!project.tasks || project.tasks.length === 0) ? (
-              <Card><CardContent className="py-8 text-center text-muted-foreground text-sm">Henuz gorev eklenmemis</CardContent></Card>
+              <Card><CardContent className="py-8 text-center text-muted-foreground text-sm">Henüz görev eklenmemiş</CardContent></Card>
             ) : (
               project.tasks.map(task => {
                 const phase = project.phases?.find(p => p.id === task.phaseId);
@@ -630,7 +630,7 @@ function ProjectDetail({ projectId, onBack }: { projectId: number; onBack: () =>
         <TabsContent value="team" className="mt-4">
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="text-sm font-semibold" data-testid="heading-team">Dis Paydas ve Ekip Uyeleri</h3>
+              <h3 className="text-sm font-semibold" data-testid="heading-team">Dış Paydaş ve Ekip Üyeleri</h3>
               {isHQ && (
                 <Dialog open={isCollabDialogOpen} onOpenChange={setIsCollabDialogOpen}>
                   <DialogTrigger asChild>
@@ -638,8 +638,8 @@ function ProjectDetail({ projectId, onBack }: { projectId: number; onBack: () =>
                   </DialogTrigger>
                   <DialogContent>
                     <DialogHeader>
-                      <DialogTitle>Dis Paydas Ekle</DialogTitle>
-                      <DialogDescription>Mimar, usta, muteahhit gibi dis ekip uyelerini projeye dahil edin</DialogDescription>
+                      <DialogTitle>Dış Paydaş Ekle</DialogTitle>
+                      <DialogDescription>Mimar, usta, müteahhit gibi dış ekip üyelerini projeye dahil edin</DialogDescription>
                     </DialogHeader>
                     <Form {...collabForm}>
                       <form onSubmit={collabForm.handleSubmit((data) => createCollabMutation.mutate(data))} className="space-y-3">
@@ -650,25 +650,25 @@ function ProjectDetail({ projectId, onBack }: { projectId: number; onBack: () =>
                           <FormField control={collabForm.control} name="role" render={({ field }) => (
                             <FormItem><FormLabel>Rol</FormLabel>
                               <Select onValueChange={field.onChange} value={field.value}>
-                                <FormControl><SelectTrigger data-testid="select-collab-role"><SelectValue placeholder="Rol secin" /></SelectTrigger></FormControl>
+                                <FormControl><SelectTrigger data-testid="select-collab-role"><SelectValue placeholder="Rol seçin" /></SelectTrigger></FormControl>
                                 <SelectContent>
                                   <SelectItem value="mimar">Mimar</SelectItem>
-                                  <SelectItem value="muteahhit">Muteahhit</SelectItem>
+                                  <SelectItem value="muteahhit">Müteahhit</SelectItem>
                                   <SelectItem value="usta">Usta</SelectItem>
-                                  <SelectItem value="elektrikci">Elektrikci</SelectItem>
-                                  <SelectItem value="tesisatci">Tesisatci</SelectItem>
-                                  <SelectItem value="dekoratör">Dekorator</SelectItem>
-                                  <SelectItem value="mobilyaci">Mobilyaci</SelectItem>
-                                  <SelectItem value="ekipman_tedarikci">Ekipman Tedarikci</SelectItem>
+                                  <SelectItem value="elektrikci">Elektrikçi</SelectItem>
+                                  <SelectItem value="tesisatci">Tesisatçı</SelectItem>
+                                  <SelectItem value="dekoratör">Dekoratör</SelectItem>
+                                  <SelectItem value="mobilyaci">Mobilyacı</SelectItem>
+                                  <SelectItem value="ekipman_tedarikci">Ekipman Tedarikçi</SelectItem>
                                   <SelectItem value="avukat">Avukat</SelectItem>
-                                  <SelectItem value="diger">Diger</SelectItem>
+                                  <SelectItem value="diger">Diğer</SelectItem>
                                 </SelectContent>
                               </Select>
                             <FormMessage /></FormItem>
                           )} />
                         </div>
                         <FormField control={collabForm.control} name="company" render={({ field }) => (
-                          <FormItem><FormLabel>Sirket</FormLabel><FormControl><Input {...field} placeholder="Sirket adi" data-testid="input-collab-company" /></FormControl><FormMessage /></FormItem>
+                          <FormItem><FormLabel>Şirket</FormLabel><FormControl><Input {...field} placeholder="Şirket adı" data-testid="input-collab-company" /></FormControl><FormMessage /></FormItem>
                         )} />
                         <div className="grid grid-cols-2 gap-3">
                           <FormField control={collabForm.control} name="email" render={({ field }) => (
@@ -679,10 +679,10 @@ function ProjectDetail({ projectId, onBack }: { projectId: number; onBack: () =>
                           )} />
                         </div>
                         <FormField control={collabForm.control} name="specialty" render={({ field }) => (
-                          <FormItem><FormLabel>Uzmanlik Alani</FormLabel><FormControl><Input {...field} placeholder="Orn: Ic mekan tasarim, elektrik tesisat..." data-testid="input-collab-specialty" /></FormControl><FormMessage /></FormItem>
+                          <FormItem><FormLabel>Uzmanlık Alanı</FormLabel><FormControl><Input {...field} placeholder="Örn: İç mekan tasarım, elektrik tesisat..." data-testid="input-collab-specialty" /></FormControl><FormMessage /></FormItem>
                         )} />
                         <DialogFooter>
-                          <Button type="button" variant="outline" onClick={() => setIsCollabDialogOpen(false)}>Iptal</Button>
+                          <Button type="button" variant="outline" onClick={() => setIsCollabDialogOpen(false)}>İptal</Button>
                           <Button type="submit" disabled={createCollabMutation.isPending} data-testid="button-submit-collaborator">
                             {createCollabMutation.isPending ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <UserPlus className="w-4 h-4 mr-1" />}
                             Ekle
@@ -696,7 +696,7 @@ function ProjectDetail({ projectId, onBack }: { projectId: number; onBack: () =>
             </div>
 
             {(!project.collaborators || project.collaborators.filter(c => c.isActive).length === 0) ? (
-              <Card><CardContent className="py-8 text-center text-muted-foreground text-sm">Henuz dis paydas eklenmemis</CardContent></Card>
+              <Card><CardContent className="py-8 text-center text-muted-foreground text-sm">Henüz dış paydaş eklenmemiş</CardContent></Card>
             ) : (
               <div className="grid gap-3 grid-cols-1 md:grid-cols-2">
                 {project.collaborators.filter(c => c.isActive).map(collab => (
@@ -717,7 +717,7 @@ function ProjectDetail({ projectId, onBack }: { projectId: number; onBack: () =>
                             </div>
                             {isHQ && (
                               <Button variant="outline" size="sm" onClick={() => removeCollabMutation.mutate(collab.id)} data-testid={`button-remove-collab-${collab.id}`}>
-                                Cikar
+                                Çıkar
                               </Button>
                             )}
                           </div>
@@ -736,7 +736,7 @@ function ProjectDetail({ projectId, onBack }: { projectId: number; onBack: () =>
 
             {project.contactPerson && (
               <Card>
-                <CardHeader className="pb-2"><CardTitle className="text-sm">Franchise Sahibi Iletisim</CardTitle></CardHeader>
+                <CardHeader className="pb-2"><CardTitle className="text-sm">Franchise Sahibi İletişim</CardTitle></CardHeader>
                 <CardContent className="space-y-1 text-sm">
                   <p className="flex items-center gap-2"><Users className="w-4 h-4 text-muted-foreground" />{project.contactPerson}</p>
                   {project.contactPhone && <p className="flex items-center gap-2"><Phone className="w-4 h-4 text-muted-foreground" />{project.contactPhone}</p>}
@@ -757,7 +757,7 @@ function ProjectDetail({ projectId, onBack }: { projectId: number; onBack: () =>
                     <Textarea
                       value={newComment}
                       onChange={(e) => setNewComment(e.target.value)}
-                      placeholder="Yorum veya guncelleme yazin..."
+                      placeholder="Yorum veya güncelleme yazın..."
                       className="flex-1"
                       rows={2}
                       data-testid="textarea-comment"
@@ -776,7 +776,7 @@ function ProjectDetail({ projectId, onBack }: { projectId: number; onBack: () =>
             )}
 
             {(!project.comments || project.comments.length === 0) ? (
-              <Card><CardContent className="py-8 text-center text-muted-foreground text-sm">Henuz aktivite yok</CardContent></Card>
+              <Card><CardContent className="py-8 text-center text-muted-foreground text-sm">Henüz aktivite yok</CardContent></Card>
             ) : (
               project.comments.map(comment => (
                 <Card key={comment.id} data-testid={`card-comment-${comment.id}`}>
@@ -806,26 +806,26 @@ function ProjectDetail({ projectId, onBack }: { projectId: number; onBack: () =>
       <Dialog open={isTaskDialogOpen} onOpenChange={setIsTaskDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Gorev Ekle</DialogTitle>
-            <DialogDescription>Bu faza yeni bir gorev atayin</DialogDescription>
+            <DialogTitle>Görev Ekle</DialogTitle>
+            <DialogDescription>Bu faza yeni bir görev atayın</DialogDescription>
           </DialogHeader>
           <Form {...taskForm}>
             <form onSubmit={taskForm.handleSubmit((data) => createTaskMutation.mutate(data))} className="space-y-3">
               <FormField control={taskForm.control} name="title" render={({ field }) => (
-                <FormItem><FormLabel>Gorev Adi</FormLabel><FormControl><Input {...field} placeholder="Orn: Mimari proje cizimi" data-testid="input-task-title" /></FormControl><FormMessage /></FormItem>
+                <FormItem><FormLabel>Görev Adı</FormLabel><FormControl><Input {...field} placeholder="Örn: Mimari proje çizimi" data-testid="input-task-title" /></FormControl><FormMessage /></FormItem>
               )} />
               <FormField control={taskForm.control} name="description" render={({ field }) => (
-                <FormItem><FormLabel>Aciklama</FormLabel><FormControl><Textarea {...field} placeholder="Gorev detaylari..." rows={2} data-testid="textarea-task-desc" /></FormControl><FormMessage /></FormItem>
+                <FormItem><FormLabel>Açıklama</FormLabel><FormControl><Textarea {...field} placeholder="Görev detayları..." rows={2} data-testid="textarea-task-desc" /></FormControl><FormMessage /></FormItem>
               )} />
               <div className="grid grid-cols-2 gap-3">
                 <FormField control={taskForm.control} name="priority" render={({ field }) => (
-                  <FormItem><FormLabel>Oncelik</FormLabel>
+                  <FormItem><FormLabel>Öncelik</FormLabel>
                     <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl><SelectTrigger data-testid="select-priority"><SelectValue /></SelectTrigger></FormControl>
                       <SelectContent>
-                        <SelectItem value="low">Dusuk</SelectItem>
+                        <SelectItem value="low">Düşük</SelectItem>
                         <SelectItem value="normal">Normal</SelectItem>
-                        <SelectItem value="high">Yuksek</SelectItem>
+                        <SelectItem value="high">Yüksek</SelectItem>
                         <SelectItem value="critical">Kritik</SelectItem>
                       </SelectContent>
                     </Select>
@@ -836,11 +836,11 @@ function ProjectDetail({ projectId, onBack }: { projectId: number; onBack: () =>
                 )} />
               </div>
               <FormField control={taskForm.control} name="assignedToUserId" render={({ field }) => (
-                <FormItem><FormLabel>Atanan Kisi (HQ)</FormLabel>
+                <FormItem><FormLabel>Atanan Kişi (HQ)</FormLabel>
                   <Select onValueChange={field.onChange} value={field.value}>
-                    <FormControl><SelectTrigger data-testid="select-assignee"><SelectValue placeholder="Kisi secin" /></SelectTrigger></FormControl>
+                    <FormControl><SelectTrigger data-testid="select-assignee"><SelectValue placeholder="Kişi seçin" /></SelectTrigger></FormControl>
                     <SelectContent>
-                      <SelectItem value="">Atanmamis</SelectItem>
+                      <SelectItem value="">Atanmamış</SelectItem>
                       {project.users?.filter(u => ['admin', 'cgo', 'muhasebe_ik', 'satinalma', 'coach', 'marketing', 'trainer', 'kalite_kontrol', 'fabrika_mudur'].includes(u.role)).map(u => (
                         <SelectItem key={u.id} value={u.id}>{`${u.firstName || ''} ${u.lastName || ''}`.trim() || u.username}</SelectItem>
                       ))}
@@ -850,9 +850,9 @@ function ProjectDetail({ projectId, onBack }: { projectId: number; onBack: () =>
               )} />
               {project.collaborators && project.collaborators.filter(c => c.isActive).length > 0 && (
                 <FormField control={taskForm.control} name="assignedToCollaboratorId" render={({ field }) => (
-                  <FormItem><FormLabel>Atanan Dis Paydas</FormLabel>
+                  <FormItem><FormLabel>Atanan Dış Paydaş</FormLabel>
                     <Select onValueChange={(v) => field.onChange(v ? parseInt(v) : undefined)} value={field.value?.toString()}>
-                      <FormControl><SelectTrigger data-testid="select-collaborator-assign"><SelectValue placeholder="Paydas secin" /></SelectTrigger></FormControl>
+                      <FormControl><SelectTrigger data-testid="select-collaborator-assign"><SelectValue placeholder="Paydaş seçin" /></SelectTrigger></FormControl>
                       <SelectContent>
                         <SelectItem value="">Yok</SelectItem>
                         {project.collaborators.filter(c => c.isActive).map(c => (
@@ -867,21 +867,21 @@ function ProjectDetail({ projectId, onBack }: { projectId: number; onBack: () =>
                 <p className="text-xs font-medium text-muted-foreground">RACI Matrisi</p>
                 <div className="grid grid-cols-2 gap-3">
                   <FormField control={taskForm.control} name="raciResponsible" render={({ field }) => (
-                    <FormItem><FormLabel className="text-xs">R - Sorumlu</FormLabel><FormControl><Input {...field} placeholder="Islemi yapacak kisi" className="text-xs" data-testid="input-raci-responsible" /></FormControl><FormMessage /></FormItem>
+                    <FormItem><FormLabel className="text-xs">R - Sorumlu</FormLabel><FormControl><Input {...field} placeholder="İşlemi yapacak kişi" className="text-xs" data-testid="input-raci-responsible" /></FormControl><FormMessage /></FormItem>
                   )} />
                   <FormField control={taskForm.control} name="raciAccountable" render={({ field }) => (
-                    <FormItem><FormLabel className="text-xs">A - Hesap Verebilir</FormLabel><FormControl><Input {...field} placeholder="Onay makami" className="text-xs" data-testid="input-raci-accountable" /></FormControl><FormMessage /></FormItem>
+                    <FormItem><FormLabel className="text-xs">A - Hesap Verebilir</FormLabel><FormControl><Input {...field} placeholder="Onay makamı" className="text-xs" data-testid="input-raci-accountable" /></FormControl><FormMessage /></FormItem>
                   )} />
                   <FormField control={taskForm.control} name="raciConsulted" render={({ field }) => (
-                    <FormItem><FormLabel className="text-xs">C - Danisilan</FormLabel><FormControl><Input {...field} placeholder="Gorusu alinan kisi/ler" className="text-xs" data-testid="input-raci-consulted" /></FormControl><FormMessage /></FormItem>
+                    <FormItem><FormLabel className="text-xs">C - Danışılan</FormLabel><FormControl><Input {...field} placeholder="Görüşü alınan kişi/ler" className="text-xs" data-testid="input-raci-consulted" /></FormControl><FormMessage /></FormItem>
                   )} />
                   <FormField control={taskForm.control} name="raciInformed" render={({ field }) => (
-                    <FormItem><FormLabel className="text-xs">I - Bilgilendirilen</FormLabel><FormControl><Input {...field} placeholder="Bilgilendirilecek kisi/ler" className="text-xs" data-testid="input-raci-informed" /></FormControl><FormMessage /></FormItem>
+                    <FormItem><FormLabel className="text-xs">I - Bilgilendirilen</FormLabel><FormControl><Input {...field} placeholder="Bilgilendirilecek kişi/ler" className="text-xs" data-testid="input-raci-informed" /></FormControl><FormMessage /></FormItem>
                   )} />
                 </div>
               </div>
               <DialogFooter>
-                <Button type="button" variant="outline" onClick={() => setIsTaskDialogOpen(false)}>Iptal</Button>
+                <Button type="button" variant="outline" onClick={() => setIsTaskDialogOpen(false)}>İptal</Button>
                 <Button type="submit" disabled={createTaskMutation.isPending} data-testid="button-submit-task">
                   {createTaskMutation.isPending ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Plus className="w-4 h-4 mr-1" />}
                   Ekle

@@ -60,30 +60,30 @@ import { z } from "zod";
 import type { User, EmployeeOnboarding } from "@shared/schema";
 
 const statusLabels: Record<string, string> = {
-  not_started: "Baslamadi",
+  not_started: "Başlamadı",
   in_progress: "Devam Ediyor",
-  completed: "Tamamlandi",
+  completed: "Tamamlandı",
 };
 
 const taskTypeLabels: Record<string, string> = {
   orientation: "Oryantasyon",
-  training: "Egitim",
+  training: "Eğitim",
   document: "Belge Teslimi",
-  system_access: "Sistem Erisimi",
-  introduction: "Tanisma",
+  system_access: "Sistem Erişimi",
+  introduction: "Tanışma",
   practical: "Pratik Uygulama",
-  evaluation: "Degerlendirme",
-  other: "Diger",
+  evaluation: "Değerlendirme",
+  other: "Diğer",
 };
 
 const MENTOR_ROLES = ["supervisor", "supervisor_buddy", "barista", "mudur"];
 
 const startOnboardingSchema = z.object({
-  userId: z.string().min(1, "Personel secin"),
-  branchId: z.string().min(1, "Sube secin"),
-  templateId: z.string().min(1, "Sablon secin"),
+  userId: z.string().min(1, "Personel seçin"),
+  branchId: z.string().min(1, "Şube seçin"),
+  templateId: z.string().min(1, "Şablon seçin"),
   mentorId: z.string().optional().default(""),
-  startDate: z.string().min(1, "Baslangic tarihi secin"),
+  startDate: z.string().min(1, "Başlangıç tarihi seçin"),
 });
 
 type StartOnboardingForm = z.infer<typeof startOnboardingSchema>;
@@ -118,7 +118,7 @@ function DaysRemainingBadge({ days }: { days: number | null }) {
       data-testid="badge-days-remaining"
     >
       {isOverdue && <AlertTriangle className="h-3 w-3 mr-1" />}
-      {isOverdue ? `${Math.abs(days)} gun gecikme` : `Kalan: ${days} gun`}
+      {isOverdue ? `${Math.abs(days)} gün gecikme` : `Kalan: ${days} gün`}
     </Badge>
   );
 }
@@ -202,7 +202,7 @@ export default function PersonelOnboardingPage() {
       });
     },
     onSuccess: () => {
-      toast({ title: "Basarili", description: "Onboarding sureci baslatildi" });
+      toast({ title: "Başarılı", description: "Onboarding süreci başlatıldı" });
       queryClient.invalidateQueries({ queryKey: ["/api/employee-onboarding?filter=all"] });
       setDialogOpen(false);
     },
@@ -214,7 +214,7 @@ export default function PersonelOnboardingPage() {
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => apiRequest("DELETE", `/api/employee-onboarding/${id}`),
     onSuccess: () => {
-      toast({ title: "Basarili", description: "Kayit silindi" });
+      toast({ title: "Başarılı", description: "Kayıt silindi" });
       queryClient.invalidateQueries({ queryKey: ["/api/employee-onboarding?filter=all"] });
     },
     onError: (error) => {
@@ -230,7 +230,7 @@ export default function PersonelOnboardingPage() {
       });
     },
     onSuccess: () => {
-      toast({ title: "Basarili", description: "Mentor notu eklendi" });
+      toast({ title: "Başarılı", description: "Mentor notu eklendi" });
       queryClient.invalidateQueries({ queryKey: ["/api/employee-onboarding/mentor/my-mentees"] });
       queryClient.invalidateQueries({ queryKey: ["/api/employee-onboarding?filter=all"] });
       setMentorNoteDialogId(null);
@@ -339,20 +339,20 @@ export default function PersonelOnboardingPage() {
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold" data-testid="text-page-title">Personel Onboarding</h1>
-          <p className="text-sm text-muted-foreground mt-1">Yeni personellerin ise alim ve oryantasyon sureclerini yonet</p>
+          <p className="text-sm text-muted-foreground mt-1">Yeni personellerin işe alım ve oryantasyon süreçlerini yönet</p>
         </div>
         <Button onClick={() => setDialogOpen(true)} data-testid="button-start-onboarding" className="gap-2">
           <Plus className="h-4 w-4" />
-          Yeni Onboarding Baslat
+          Yeni Onboarding Başlat
         </Button>
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
         {[
           { label: "Toplam", value: stats.total, testId: "stat-total" },
-          { label: "Baslamadi", value: stats.notStarted, testId: "stat-not-started" },
+          { label: "Başlamadı", value: stats.notStarted, testId: "stat-not-started" },
           { label: "Devam Ediyor", value: stats.inProgress, testId: "stat-in-progress" },
-          { label: "Tamamlandi", value: stats.completed, testId: "stat-completed" },
+          { label: "Tamamlandı", value: stats.completed, testId: "stat-completed" },
         ].map((s) => (
           <Card key={s.testId}>
             <CardHeader className="flex flex-row items-center justify-between gap-1 space-y-0 pb-2">
@@ -371,16 +371,16 @@ export default function PersonelOnboardingPage() {
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">Tumu</SelectItem>
-            <SelectItem value="not_started">Baslamadi</SelectItem>
+            <SelectItem value="all">Tümü</SelectItem>
+            <SelectItem value="not_started">Başlamadı</SelectItem>
             <SelectItem value="in_progress">Devam Ediyor</SelectItem>
-            <SelectItem value="completed">Tamamlandi</SelectItem>
+            <SelectItem value="completed">Tamamlandı</SelectItem>
           </SelectContent>
         </Select>
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Personel adi ara..."
+            placeholder="Personel adı ara..."
             value={searchText}
             onChange={(e) => setSearchText(e.target.value)}
             className="pl-9"
@@ -392,8 +392,8 @@ export default function PersonelOnboardingPage() {
       {isMentorEligible ? (
         <Tabs defaultValue="all" className="w-full">
           <TabsList data-testid="tabs-onboarding">
-            <TabsTrigger value="all" data-testid="tab-all-records">Tum Kayitlar</TabsTrigger>
-            <TabsTrigger value="mentees" data-testid="tab-mentees">Mentorluklerin</TabsTrigger>
+            <TabsTrigger value="all" data-testid="tab-all-records">Tüm Kayıtlar</TabsTrigger>
+            <TabsTrigger value="mentees" data-testid="tab-mentees">Mentorlukların</TabsTrigger>
           </TabsList>
           <TabsContent value="all" className="flex flex-col gap-3 mt-3">
             <RecordsList records={filteredRecords} renderCard={renderRecordCard} searchText={searchText} statusFilter={statusFilter} />
@@ -402,7 +402,7 @@ export default function PersonelOnboardingPage() {
             {menteesLoading ? (
               <ListSkeleton count={3} variant="row" />
             ) : mentees.length === 0 ? (
-              <EmptyState title="Mentee bulunamadi" description="Henuz size atanmis mentee yok" />
+              <EmptyState title="Mentee bulunamadı" description="Henüz size atanmış mentee yok" />
             ) : (
               mentees.map((m) => (
                 <div key={m.id} className="flex flex-col gap-2">
@@ -457,8 +457,8 @@ export default function PersonelOnboardingPage() {
           const id = confirmDelete();
           if (id) deleteMutation.mutate(id as number);
         }}
-        title="Silmek istediginize emin misiniz?"
-        description="Bu kayit silinecektir. Bu islem geri alinamaz."
+        title="Silmek istediğinize emin misiniz?"
+        description="Bu kayıt silinecektir. Bu işlem geri alınamaz."
       />
     </div>
   );
@@ -478,8 +478,8 @@ function RecordsList({
   if (records.length === 0) {
     return (
       <EmptyState
-        title="Kayit bulunamadi"
-        description={searchText || statusFilter !== "all" ? "Secili filtreler icin kayit bulunamadi" : "Henuz onboarding kaydi olusturulmamis"}
+        title="Kayıt bulunamadı"
+        description={searchText || statusFilter !== "all" ? "Seçili filtreler için kayıt bulunamadı" : "Henüz onboarding kaydı oluşturulmamış"}
       />
     );
   }
@@ -505,7 +505,7 @@ function TimelineDetail({
   const completeTaskMutation = useMutation({
     mutationFn: async (taskId: number) => apiRequest("POST", `/api/onboarding-tasks/${taskId}/complete`),
     onSuccess: () => {
-      toast({ title: "Basarili", description: "Gorev tamamlandi" });
+      toast({ title: "Başarılı", description: "Görev tamamlandı" });
       queryClient.invalidateQueries({ queryKey: ["/api/onboarding-tasks", onboardingId] });
       queryClient.invalidateQueries({ queryKey: ["/api/employee-onboarding?filter=all"] });
     },
@@ -517,7 +517,7 @@ function TimelineDetail({
   const verifyTaskMutation = useMutation({
     mutationFn: async (taskId: number) => apiRequest("POST", `/api/onboarding-tasks/${taskId}/verify`),
     onSuccess: () => {
-      toast({ title: "Basarili", description: "Gorev dogrulandi" });
+      toast({ title: "Başarılı", description: "Görev doğrulandı" });
       queryClient.invalidateQueries({ queryKey: ["/api/onboarding-tasks", onboardingId] });
       queryClient.invalidateQueries({ queryKey: ["/api/employee-onboarding?filter=all"] });
     },
@@ -533,7 +533,7 @@ function TimelineDetail({
   if (tasks.length === 0) {
     return (
       <div className="mt-4 pt-4 border-t text-center text-sm text-muted-foreground py-6">
-        Bu onboarding kaydi icin henuz gorev tanimlanmamis
+        Bu onboarding kaydı için henüz görev tanımlanmamış
       </div>
     );
   }
@@ -541,9 +541,9 @@ function TimelineDetail({
   return (
     <div className="mt-4 pt-4 border-t" data-testid={`timeline-${onboardingId}`}>
       <div className="flex items-center justify-between gap-2 mb-4 flex-wrap">
-        <h3 className="font-semibold text-sm">Onboarding Zaman Cizelgesi</h3>
+        <h3 className="font-semibold text-sm">Onboarding Zaman Çizelgesi</h3>
         <span className="text-xs text-muted-foreground">
-          {tasks.filter((t: any) => t.status === "completed").length}/{tasks.length} tamamlandi
+          {tasks.filter((t: any) => t.status === "completed").length}/{tasks.length} tamamlandı
         </span>
       </div>
       <div className="relative flex flex-col gap-0">

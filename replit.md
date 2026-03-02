@@ -75,6 +75,7 @@ The frontend utilizes React 18+ with TypeScript and Vite, employing Shadcn/ui (N
 ## IT Consultant Bug Fixes
 - **Ticket 0 (BLOCKER)**: AI assistant schema mismatch (shifts.userId→assignedToId, redactName showFull for supervisor/manager), task list completed filter toggle, admin quick-action path fix (/admin/icerik-yonetimi→/icerik-studyosu), test data cleanup (5 junk tasks soft-deleted)
 - **Ticket 1 (Data Display)**: CAPA branch name resolution via auditInstances JOIN, recipe PostgreSQL array literal parser (parsePgArray), equipment analytics fault query unwrapping + EN→TR priority normalization, CAPA pie chart case-insensitive status mapping with full label set, feedback badge count aligned with sortedFeedbacks.length
+- **Ticket 2 (Turkish Characters)**: Systematic codebase-wide fix for broken Turkish characters (ı, İ, ş, Ş, ö, Ö, ü, Ü, ç, Ç, ğ, Ğ). Fixed 30+ files across client and server: Satınalma labels, Ödeme/Oluştur/Güncelle in purchasing, Ürün/Üretim/Müşteri/Çalışan/Değerlendirme/Sipariş display strings, AI assistant context, email templates, dashboard labels. URL paths, variable names, and DB columns preserved as ASCII.
 
 ## External Dependencies
 - **OpenAI API**: Used for AI-powered vision analysis, chat completions, embeddings, and summary generation.

@@ -86,7 +86,7 @@ const roleTitles: Record<string, string> = {
   ceo: "CEO Komuta Merkezi",
   cgo: "CGO Komuta Merkezi",
   admin: "Admin Komuta Merkezi",
-  satinalma: "Satinalma Komuta Merkezi",
+  satinalma: "Satınalma Komuta Merkezi",
   kalite_kontrol: "Kalite Kontrol Komuta Merkezi",
   muhasebe: "Muhasebe Komuta Merkezi",
   muhasebe_ik: "Muhasebe & IK Komuta Merkezi",
@@ -110,7 +110,7 @@ function getDeptIcon(source: string) {
     case 'Coach': return <ClipboardCheck className="w-4 h-4" />;
     case 'Kalite Kontrol': return <ShieldCheck className="w-4 h-4" />;
     case 'Trainer': return <GraduationCap className="w-4 h-4" />;
-    case 'Satinalma': return <Store className="w-4 h-4" />;
+    case 'Satınalma': return <Store className="w-4 h-4" />;
     case 'Teknik': return <Wrench className="w-4 h-4" />;
     case 'Destek': return <AlertCircle className="w-4 h-4" />;
     default: return <Eye className="w-4 h-4" />;

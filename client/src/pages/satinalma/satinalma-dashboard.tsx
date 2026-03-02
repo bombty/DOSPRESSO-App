@@ -240,8 +240,8 @@ export default function SatinalmaDashboard() {
       const res = await fetch(`/api/inventory/qr/${encodeURIComponent(qrCode)}`);
       if (!res.ok) {
         toast({
-          title: "Urun Bulunamadi",
-          description: "Bu QR koda ait urun bulunamadi.",
+          title: "Ürün Bulunamadı",
+          description: "Bu QR koda ait ürün bulunamadı.",
           variant: "destructive",
         });
         qrProcessedRef.current = false;
@@ -253,7 +253,7 @@ export default function SatinalmaDashboard() {
       setQrFoundProduct(product);
       setQrProcessing(false);
       toast({
-        title: "Urun Bulundu",
+        title: "Ürün Bulundu",
         description: `${product.name} (${product.code})`,
       });
     } catch {
@@ -335,7 +335,7 @@ export default function SatinalmaDashboard() {
     },
     onSuccess: (data: { updatedCount: number; message: string }) => {
       toast({
-        title: "Fiyatlar Guncellendi",
+        title: "Fiyatlar Güncellendi",
         description: data.message,
       });
       queryClient.invalidateQueries({ queryKey: ['/api/satinalma/dashboard'] });
@@ -615,7 +615,7 @@ export default function SatinalmaDashboard() {
               data-testid="button-update-prices"
             >
               <RefreshCw className={`h-3.5 w-3.5 mr-1 ${updatePricesMutation.isPending ? "animate-spin" : ""}`} />
-              Fiyatlari Guncelle
+              Fiyatları Güncelle
             </Button>
           </CardHeader>
           <CardContent className="px-3 pb-3">

@@ -333,7 +333,7 @@ export default function FabrikaPerformans() {
           <BarChart3 className="h-8 w-8 text-amber-500" />
           <div>
             <h1 className="text-2xl font-bold">Fabrika Performans Analitigi</h1>
-            <p className="text-muted-foreground">Uretim istatistikleri ve personel performansi</p>
+            <p className="text-muted-foreground">Üretim istatistikleri ve personel performansı</p>
           </div>
         </div>
         <div className="flex items-center gap-3">
@@ -354,14 +354,14 @@ export default function FabrikaPerformans() {
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList>
-          <TabsTrigger value="production" data-testid="tab-production">Uretim Raporu</TabsTrigger>
+          <TabsTrigger value="production" data-testid="tab-production">Üretim Raporu</TabsTrigger>
           <TabsTrigger value="workers" data-testid="tab-workers">Personel Performans</TabsTrigger>
           <TabsTrigger value="comparison" data-testid="tab-comparison">Karsilastirma</TabsTrigger>
           <TabsTrigger value="waste" data-testid="tab-waste">Zaiyat Analizi</TabsTrigger>
           <TabsTrigger value="scores" data-testid="tab-scores">Skor Yonetimi</TabsTrigger>
         </TabsList>
 
-        {/* Tab 1: Uretim Raporu */}
+        {/* Tab 1: Üretim Raporu */}
         <TabsContent value="production" className="space-y-6">
           <div className="flex items-center gap-3">
             <Select value={selectedProductId} onValueChange={setSelectedProductId}>
@@ -387,10 +387,10 @@ export default function FabrikaPerformans() {
                 <div className="p-4 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
                   <div className="flex items-center gap-2">
                     <AlertTriangle className="h-4 w-4 text-amber-600" />
-                    <p className="text-sm font-medium text-amber-700 dark:text-amber-400">Secilen donemde uretim verisi bulunamadi</p>
+                    <p className="text-sm font-medium text-amber-700 dark:text-amber-400">Seçilen dönemde üretim verisi bulunamadı</p>
                   </div>
                   <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
-                    Uretim Planlama sayfasindan uretim tamamlayin veya farkli bir donem secin.
+                    Üretim Planlama sayfasından üretim tamamlayın veya farklı bir dönem seçin.
                   </p>
                 </div>
               )}
@@ -402,7 +402,7 @@ export default function FabrikaPerformans() {
                         <Package className="h-5 w-5 text-green-500" />
                       </div>
                       <div>
-                        <p className="text-xs text-muted-foreground">Toplam Uretim</p>
+                        <p className="text-xs text-muted-foreground">Toplam Üretim</p>
                         <p className="text-xl font-bold" data-testid="text-total-produced">{summary.totalProduced}</p>
                       </div>
                     </div>
@@ -441,7 +441,7 @@ export default function FabrikaPerformans() {
                         <Zap className="h-5 w-5 text-blue-500" />
                       </div>
                       <div>
-                        <p className="text-xs text-muted-foreground">Uretim/Saat</p>
+                        <p className="text-xs text-muted-foreground">Üretim/Saat</p>
                         <p className="text-xl font-bold" data-testid="text-production-per-hour">{summary.avgProductionPerHour.toFixed(1)}</p>
                       </div>
                     </div>
@@ -465,8 +465,8 @@ export default function FabrikaPerformans() {
               {dailyTrend.length > 0 && (
                 <Card>
                   <CardHeader>
-                    <CardTitle>Uretim Trendi</CardTitle>
-                    <CardDescription>Gunluk uretim ve zaiyat degisimi</CardDescription>
+                    <CardTitle>Üretim Trendi</CardTitle>
+                    <CardDescription>Günlük üretim ve zaiyat değişimi</CardDescription>
                   </CardHeader>
                   <CardContent>
                     <div className="h-80">
@@ -477,7 +477,7 @@ export default function FabrikaPerformans() {
                           <YAxis />
                           <Tooltip />
                           <Legend />
-                          <Area type="monotone" dataKey="produced" name="Uretim" stroke="#10b981" fill="#10b981" fillOpacity={0.3} />
+                          <Area type="monotone" dataKey="produced" name="Üretim" stroke="#10b981" fill="#10b981" fillOpacity={0.3} />
                           <Area type="monotone" dataKey="waste" name="Zaiyat" stroke="#ef4444" fill="#ef4444" fillOpacity={0.3} />
                         </AreaChart>
                       </ResponsiveContainer>
@@ -488,22 +488,22 @@ export default function FabrikaPerformans() {
 
               <Card>
                 <CardHeader>
-                  <CardTitle>Urun Bazli Uretim</CardTitle>
-                  <CardDescription>Uretim miktarina gore siralanmis</CardDescription>
+                  <CardTitle>Ürün Bazlı Üretim</CardTitle>
+                  <CardDescription>Üretim miktarına göre sıralanmış</CardDescription>
                 </CardHeader>
                 <CardContent>
                   {sortedProducts.length > 0 ? (
                     <Table>
                       <TableHeader>
                         <TableRow>
-                          <TableHead>Urun Adi</TableHead>
+                          <TableHead>Ürün Adı</TableHead>
                           <TableHead>Kategori</TableHead>
-                          <TableHead>Toplam Uretim</TableHead>
+                          <TableHead>Toplam Üretim</TableHead>
                           <TableHead>Zaiyat</TableHead>
                           <TableHead>Zaiyat %</TableHead>
-                          <TableHead>Batch Sayisi</TableHead>
+                          <TableHead>Batch Sayısı</TableHead>
                           <TableHead>Ort. Batch</TableHead>
-                          <TableHead>Uretim/Saat</TableHead>
+                          <TableHead>Üretim/Saat</TableHead>
                           <TableHead>Trend</TableHead>
                         </TableRow>
                       </TableHeader>
@@ -571,10 +571,10 @@ export default function FabrikaPerformans() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Personel</TableHead>
-                      <TableHead>Uretim</TableHead>
+                      <TableHead>Üretim</TableHead>
                       <TableHead>Zaiyat</TableHead>
                       <TableHead>Verimlilik</TableHead>
-                      <TableHead>Uretim/Saat</TableHead>
+                      <TableHead>Üretim/Saat</TableHead>
                       <TableHead>Kalite</TableHead>
                       <TableHead>Istasyonlar</TableHead>
                     </TableRow>
@@ -717,7 +717,7 @@ export default function FabrikaPerformans() {
                               <XAxis dataKey="hour" tickFormatter={(h) => `${h}:00`} />
                               <YAxis />
                               <Tooltip labelFormatter={(h) => `${h}:00`} />
-                              <Bar dataKey="avgProduction" name="Ort. Uretim" fill="#8b5cf6" />
+                              <Bar dataKey="avgProduction" name="Ort. Üretim" fill="#8b5cf6" />
                             </BarChart>
                           </ResponsiveContainer>
                         </div>
@@ -734,8 +734,8 @@ export default function FabrikaPerformans() {
                         <Table>
                           <TableHeader>
                             <TableRow>
-                              <TableHead>Urun</TableHead>
-                              <TableHead>Uretim</TableHead>
+                              <TableHead>Ürün</TableHead>
+                              <TableHead>Üretim</TableHead>
                               <TableHead>Zaiyat</TableHead>
                               <TableHead>Zaiyat %</TableHead>
                             </TableRow>
@@ -771,7 +771,7 @@ export default function FabrikaPerformans() {
           <div className="flex items-center gap-3">
             <Select value={comparisonProductId} onValueChange={setComparisonProductId}>
               <SelectTrigger className="w-56" data-testid="select-comparison-product">
-                <SelectValue placeholder="Urun Secin" />
+                <SelectValue placeholder="Ürün Seçin" />
               </SelectTrigger>
               <SelectContent>
                 {products.map((p) => (
@@ -803,8 +803,8 @@ export default function FabrikaPerformans() {
                         <YAxis dataKey="firstName" type="category" width={80} />
                         <Tooltip />
                         <Legend />
-                        <Bar dataKey="totalProduced" name="Toplam Uretim" fill="#10b981" />
-                        <Bar dataKey="avgProductionPerHour" name="Uretim/Saat" fill="#3b82f6" />
+                        <Bar dataKey="totalProduced" name="Toplam Üretim" fill="#10b981" />
+                        <Bar dataKey="avgProductionPerHour" name="Üretim/Saat" fill="#3b82f6" />
                       </BarChart>
                     </ResponsiveContainer>
                   </div>
@@ -1013,7 +1013,7 @@ export default function FabrikaPerformans() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Settings className="h-5 w-5" />
-                Skor Guncelleme
+                Skor Güncelleme
               </CardTitle>
               <CardDescription>Tum personel skorlarini yeniden hesapla</CardDescription>
             </CardHeader>
@@ -1024,7 +1024,7 @@ export default function FabrikaPerformans() {
                 data-testid="button-update-scores"
               >
                 <RefreshCw className={`h-4 w-4 mr-2 ${updateScoresMutation.isPending ? "animate-spin" : ""}`} />
-                {updateScoresMutation.isPending ? "Hesaplaniyor..." : "Skorlari Guncelle"}
+                {updateScoresMutation.isPending ? "Hesaplanıyor..." : "Skorları Güncelle"}
               </Button>
 
               {updateScoresMutation.data && (

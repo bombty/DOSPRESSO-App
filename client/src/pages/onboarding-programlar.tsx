@@ -96,7 +96,7 @@ const ROLE_LABELS: Record<string, string> = {
 
 const STATUS_CONFIG: Record<string, { label: string; variant: "default" | "secondary" | "outline" | "destructive" }> = {
   active: { label: "Aktif", variant: "default" },
-  completed: { label: "Tamamlandi", variant: "secondary" },
+  completed: { label: "Tamamlandı", variant: "secondary" },
   paused: { label: "Durduruldu", variant: "outline" },
 };
 

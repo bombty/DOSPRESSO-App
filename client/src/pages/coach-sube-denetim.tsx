@@ -163,7 +163,7 @@ export default function CoachSubeDenetim() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/branch-inspections"] });
-      toast({ title: "Basarili", description: "Denetim basariyla kaydedildi" });
+      toast({ title: "Başarılı", description: "Denetim başarıyla kaydedildi" });
       resetForm();
       setActiveTab("gecmis");
     },

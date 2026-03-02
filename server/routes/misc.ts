@@ -8629,7 +8629,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`;
       res.json(enriched);
     } catch (error: any) {
       console.error("Error fetching manager ratings:", error);
-      res.status(500).json({ message: "Degerlendirmeler alinamadi" });
+      res.status(500).json({ message: "Değerlendirmeler alınamadı" });
     }
   });
 
@@ -8678,7 +8678,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`;
     }
   });
 
-  // POST /api/public/staff-rating - Degerlendirme kaydet
+  // POST /api/public/staff-rating - Değerlendirme kaydet
   router.post("/api/public/staff-rating", async (req, res) => {
     try {
       const { token, overallRating, serviceRating, friendlinessRating, speedRating, comment } = req.body;
@@ -8721,10 +8721,10 @@ DOSPRESSO İnsan Kaynakları Ekibi`;
         lastUsedAt: new Date(),
       }).where(eq(staffQrTokens.id, tokenRecord.id));
       
-      res.json({ success: true, message: "Degerlendirme kaydedildi" });
+      res.json({ success: true, message: "Değerlendirme kaydedildi" });
     } catch (error: any) {
       console.error("Error saving staff rating:", error);
-      res.status(500).json({ message: "Degerlendirme kaydedilemedi" });
+      res.status(500).json({ message: "Değerlendirme kaydedilemedi" });
     }
   });
 
@@ -9216,7 +9216,7 @@ Puanlar (100 uzerinden):
 - Devam: ${performance?.attendanceScore || 0}/20
 - Checklist: ${performance?.checklistScore || 0}/20
 - Gorevler: ${performance?.taskScore || 0}/15
-- Musteri: ${performance?.customerRatingScore || 0}/15
+- Müşteri: ${performance?.customerRatingScore || 0}/15
 - Yonetici: ${performance?.managerRatingScore || 0}/20
 
 Dusuk puanli alanlara odaklan ve pozitif, motive edici ol. JSON dizisi olarak yanit ver: ["oneri1", "oneri2", ...]`;
@@ -9239,7 +9239,7 @@ Dusuk puanli alanlara odaklan ve pozitif, motive edici ol. JSON dizisi olarak ya
           tips: [
             "Devam puaninizi artirmak icin mesai saatlerine dikkat edin.",
             "Gunluk checklistleri zamaninda tamamlayin.",
-            "Musterilere guler yuzlu ve hizli hizmet verin.",
+            "Müşterilere güler yüzlü ve hızlı hizmet verin.",
             "Ekip arkadaslarinizla iyi iletisim kurun.",
             "Egitim programlarini takip edin ve tamamlayin."
           ]
@@ -9303,7 +9303,7 @@ Dusuk puanli alanlara odaklan ve pozitif, motive edici ol. JSON dizisi olarak ya
       if (error.code === "23505") {
         return res.status(400).json({ message: "Bu personeli bu ay zaten degerlendirdiniz" });
       }
-      res.status(500).json({ message: "Degerlendirme kaydedilemedi" });
+      res.status(500).json({ message: "Değerlendirme kaydedilemedi" });
     }
   });
   // Branch audit comparison endpoint
@@ -9486,7 +9486,7 @@ Dusuk puanli alanlara odaklan ve pozitif, motive edici ol. JSON dizisi olarak ya
           { key: 'Toplam Ekipman', value: `${allEquipment.length} adet` },
           { key: 'Aktif', value: `${activeEquipment.length} adet` },
           { key: 'Bakimda/Arızali', value: `${brokenEquipment.length} adet` },
-          { key: 'Urun Sikayeti', value: `${openComplaints.length} acik` }
+          { key: 'Ürün Şikayeti', value: `${openComplaints.length} açık` }
         ],
         alert: brokenEquipment.filter((e: any) => e.status === 'broken').length > 0 ? `${brokenEquipment.filter((e: any) => e.status === 'broken').length} ekipman arizali` : null
       };
@@ -9550,7 +9550,7 @@ Dusuk puanli alanlara odaklan ve pozitif, motive edici ol. JSON dizisi olarak ya
       // ======= EN DUSUK 3 YONETICI =======
       const hqRoleSet = new Set(['muhasebe_ik', 'muhasebe', 'satinalma', 'coach', 'marketing', 'trainer', 'kalite_kontrol', 'fabrika_mudur', 'teknik', 'ik']);
       const roleDeptMap: Record<string, string> = {
-        'muhasebe_ik': 'Muhasebe & IK', 'muhasebe': 'Muhasebe', 'satinalma': 'Satinalma',
+        'muhasebe_ik': 'Muhasebe & IK', 'muhasebe': 'Muhasebe', 'satinalma': 'Satınalma',
         'coach': 'Coach', 'marketing': 'Pazarlama', 'trainer': 'Egitim',
         'kalite_kontrol': 'Kalite Kontrol', 'fabrika_mudur': 'Fabrika', 'teknik': 'Teknik', 'ik': 'IK'
       };
@@ -9635,8 +9635,8 @@ Dusuk puanli alanlara odaklan ve pozitif, motive edici ol. JSON dizisi olarak ya
         '- Toplam Sube: ' + branchesData.length + '\n' +
         '- Toplam Personel: ' + usersData.filter(u => u.isActive).length + '\n' +
         '- Aktif Arizalar: ' + faultsData.filter((f: any) => f.status === 'open' || f.status === 'in_progress').length + '\n' +
-        '- Son 30 Gun Musteri Geri Bildirimi: ' + feedbackData.length + '\n' +
-        '- Ortalama Musteri Puani: ' + (feedbackData.length > 0 ? (feedbackData.reduce((sum, f) => sum + (f.overallRating || 0), 0) / feedbackData.length).toFixed(1) : 'Veri yok');
+        '- Son 30 Gün Müşteri Geri Bildirimi: ' + feedbackData.length + '\n' +
+        '- Ortalama Müşteri Puanı: ' + (feedbackData.length > 0 ? (feedbackData.reduce((sum, f) => sum + (f.overallRating || 0), 0) / feedbackData.length).toFixed(1) : 'Veri yok');
 
       const systemPrompt = 'Sen DOSPRESSO kahve zincirinin CEO\'su icin ozel bir AI danismanisin. CEO\'nun sorularina sirket verileri ve ic gorulere dayanarak cevap veriyorsun.\n\nGuncel Sirket Durumu:\n' + contextSummary + '\n\nYanitlarini su sekilde ver:\n1. Net ve ozlu ol\n2. Somut sayilar ve oneriler sun\n3. Riskleri ve firsatlari acikca belirt\n4. Aksiyon onerileri sun\n5. Turkce yaz';
 
@@ -10295,7 +10295,7 @@ Dusuk puanli alanlara odaklan ve pozitif, motive edici ol. JSON dizisi olarak ya
     }
   });
 
-  // GET /api/staff-evaluations/:employeeId/limit-status - Degerlendirme limit durumu
+  // GET /api/staff-evaluations/:employeeId/limit-status - Değerlendirme limit durumu
   router.get('/api/staff-evaluations/:employeeId/limit-status', isAuthenticated, async (req: any, res) => {
     try {
       const user = req.user!;
@@ -11339,7 +11339,7 @@ Bu verilere dayanarak performans analizi ve iyileştirme önerileri oluştur.`
         res.json({ analysis: completion.choices[0]?.message?.content || 'Analiz yapilamadi.' });
       } catch (error: any) {
         console.error('AI analysis error:', error);
-        const fallback = 'Mali Ozet (' + targetYear + '):\n\nToplam Gelir: ' + totalRevenue.toLocaleString('tr-TR') + ' TL\nToplam Gider: ' + totalExpenses.toLocaleString('tr-TR') + ' TL\nNet Kar: ' + totalProfit.toLocaleString('tr-TR') + ' TL\nKar Marji: %' + margin + '\nRapor Sayisi: ' + reports.length + '\n\n(AI analizi su an kullanilamiyor.)';
+        const fallback = 'Mali Özet (' + targetYear + '):\n\nToplam Gelir: ' + totalRevenue.toLocaleString('tr-TR') + ' TL\nToplam Gider: ' + totalExpenses.toLocaleString('tr-TR') + ' TL\nNet Kar: ' + totalProfit.toLocaleString('tr-TR') + ' TL\nKar Marjı: %' + margin + '\nRapor Sayısı: ' + reports.length + '\n\n(AI analizi şu an kullanılamıyor.)';
         res.json({ analysis: fallback });
       }
     } catch (error: any) {

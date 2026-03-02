@@ -105,8 +105,8 @@ const CATEGORY_LABELS: Record<string, string> = {
   genel: "Genel",
   operasyon: "Operasyon",
   teknik: "Teknik",
-  ik: "IK & Vardiya",
-  egitim: "Egitim",
+  ik: "İK & Vardiya",
+  egitim: "Eğitim",
 };
 
 function RenderMarkdown({ content }: { content: string }) {
@@ -196,7 +196,7 @@ export default function KullanimKilavuzu() {
     onError: (error: Error) => {
       toast({
         title: "Hata",
-        description: error.message || "Yanit alinamadi, lutfen tekrar deneyin.",
+        description: error.message || "Yanıt alınamadı, lütfen tekrar deneyin.",
         variant: "destructive",
       });
     },
@@ -222,7 +222,7 @@ export default function KullanimKilavuzu() {
         <div className="space-y-2" data-testid="section-header">
           <div className="flex items-center gap-2 flex-wrap">
             <BookOpen className="h-6 w-6 text-primary" />
-            <h1 className="text-2xl font-bold" data-testid="text-page-title">Kullanim Kilavuzu</h1>
+            <h1 className="text-2xl font-bold" data-testid="text-page-title">Kullanım Kılavuzu</h1>
           </div>
           {guide && (
             <div className="flex items-center gap-2 flex-wrap">
@@ -239,7 +239,7 @@ export default function KullanimKilavuzu() {
             </TabsTrigger>
             <TabsTrigger value="dokumanlar" data-testid="tab-dokumanlar">
               <FileText className="h-4 w-4 mr-2" />
-              Dokumanlar
+              Dokümanlar
             </TabsTrigger>
           </TabsList>
 
@@ -252,7 +252,7 @@ export default function KullanimKilavuzu() {
                   <section data-testid="section-modules">
                     <h2 className="text-lg font-semibold mb-3 flex items-center gap-2">
                       <LayoutDashboard className="h-5 w-5" />
-                      Erisilebilir Moduller
+                      Erişilebilir Modüller
                     </h2>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       {guide.availableModules.map((mod, i) => {
@@ -284,7 +284,7 @@ export default function KullanimKilavuzu() {
                               </div>
                               {isExpanded && (
                                 <div className="mt-3 pt-3 border-t space-y-2">
-                                  <p className="text-xs font-medium text-muted-foreground">Bu modulde yapabilecekleriniz:</p>
+                                  <p className="text-xs font-medium text-muted-foreground">Bu modülde yapabilecekleriniz:</p>
                                   {mod.detailedSteps && mod.detailedSteps.length > 0 ? (
                                     <ul className="space-y-1">
                                       {mod.detailedSteps.map((step, j) => (
@@ -323,7 +323,7 @@ export default function KullanimKilavuzu() {
                   <section data-testid="section-tips">
                     <h2 className="text-lg font-semibold mb-3 flex items-center gap-2">
                       <Lightbulb className="h-5 w-5" />
-                      Hizli Ipuclari
+                      Hızlı İpuçları
                     </h2>
                     <Card>
                       <CardContent className="p-4">
@@ -344,7 +344,7 @@ export default function KullanimKilavuzu() {
                   <section data-testid="section-tasks">
                     <h2 className="text-lg font-semibold mb-3 flex items-center gap-2">
                       <ListChecks className="h-5 w-5" />
-                      Sik Yapilan Islemler
+                      Sık Yapılan İşlemler
                     </h2>
                     <div className="space-y-2">
                       {guide.commonTasks.map((task, i) => (
@@ -383,7 +383,7 @@ export default function KullanimKilavuzu() {
                   <section data-testid="section-restrictions">
                     <h2 className="text-lg font-semibold mb-3 flex items-center gap-2">
                       <ShieldAlert className="h-5 w-5" />
-                      Kisitlamalar
+                      Kısıtlamalar
                     </h2>
                     <Card>
                       <CardContent className="p-4">
@@ -408,10 +408,10 @@ export default function KullanimKilavuzu() {
                   <Card>
                     <CardContent className="p-4 space-y-3">
                       <p className="text-sm text-muted-foreground">
-                        Sistem hakkinda sorularinizi Turkce olarak sorun, AI size rolunuze uygun yanitlar verecektir.
+                        Sistem hakkında sorularınızı Türkçe olarak sorun, AI size rolünüze uygun yanıtlar verecektir.
                       </p>
                       <Textarea
-                        placeholder="Orn: Nasil yeni gorev olusturabilirim?"
+                        placeholder="Örn: Nasıl yeni görev oluşturabilirim?"
                         value={question}
                         onChange={(e) => setQuestion(e.target.value)}
                         className="resize-none"
@@ -444,7 +444,7 @@ export default function KullanimKilavuzu() {
             ) : (
               <Card>
                 <CardContent className="p-6">
-                  <p className="text-muted-foreground" data-testid="text-guide-error">Kullanim kilavuzu yuklenemedi.</p>
+                  <p className="text-muted-foreground" data-testid="text-guide-error">Kullanım kılavuzu yüklenemedi.</p>
                 </CardContent>
               </Card>
             )}
@@ -460,7 +460,7 @@ export default function KullanimKilavuzu() {
                   data-testid="button-back-to-docs"
                 >
                   <ArrowLeft className="h-4 w-4 mr-2" />
-                  Dokumanlara Don
+                  Dokümanlara Dön
                 </Button>
                 <Card>
                   <CardHeader className="flex flex-row items-center justify-between gap-2">
@@ -484,7 +484,7 @@ export default function KullanimKilavuzu() {
                   <div className="relative flex-1 min-w-[200px]">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input
-                      placeholder="Dokumanlarda ara..."
+                      placeholder="Dökümanlarda ara..."
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                       className="pl-9"
@@ -523,7 +523,7 @@ export default function KullanimKilavuzu() {
                   <Card>
                     <CardContent className="p-6 text-center">
                       <FileText className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
-                      <p className="text-muted-foreground" data-testid="text-no-docs">Dokuman bulunamadi.</p>
+                      <p className="text-muted-foreground" data-testid="text-no-docs">Doküman bulunamadı.</p>
                     </CardContent>
                   </Card>
                 ) : (

@@ -34,35 +34,35 @@ const ALL_ROLES = [
   { value: "admin", label: "Admin" },
   { value: "ceo", label: "CEO" },
   { value: "cgo", label: "CGO" },
-  { value: "muhasebe_ik", label: "Muhasebe & IK" },
+  { value: "muhasebe_ik", label: "Muhasebe & İK" },
   { value: "muhasebe", label: "Muhasebe" },
-  { value: "satinalma", label: "Satinalma" },
+  { value: "satinalma", label: "Satınalma" },
   { value: "kalite_kontrol", label: "Kalite Kontrol" },
   { value: "coach", label: "Coach" },
   { value: "trainer", label: "Trainer" },
   { value: "marketing", label: "Marketing" },
   { value: "teknik", label: "Teknik" },
   { value: "destek", label: "Destek" },
-  { value: "fabrika_mudur", label: "Fabrika Mudur" },
-  { value: "fabrika_operator", label: "Fabrika Operator" },
+  { value: "fabrika_mudur", label: "Fabrika Müdür" },
+  { value: "fabrika_operator", label: "Fabrika Operatör" },
   { value: "supervisor", label: "Supervisor" },
   { value: "supervisor_buddy", label: "Supervisor Buddy" },
   { value: "bar_buddy", label: "Bar Buddy" },
   { value: "barista", label: "Barista" },
   { value: "stajyer", label: "Stajyer" },
-  { value: "yatirimci_hq", label: "Yatirimci HQ" },
+  { value: "yatirimci_hq", label: "Yatırımcı HQ" },
 ];
 
 const FREQUENCIES = [
-  { value: "daily", label: "Gunluk" },
-  { value: "weekly", label: "Haftalik" },
-  { value: "monthly", label: "Aylik" },
+  { value: "daily", label: "Günlük" },
+  { value: "weekly", label: "Haftalık" },
+  { value: "monthly", label: "Aylık" },
 ];
 
 const PRIORITIES = [
-  { value: 1, label: "Yuksek" },
+  { value: 1, label: "Yüksek" },
   { value: 2, label: "Orta" },
-  { value: 3, label: "Dusuk" },
+  { value: 3, label: "Düşük" },
 ];
 
 export default function GorevSablonlari() {
@@ -87,7 +87,7 @@ export default function GorevSablonlari() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/task-templates"] });
       setShowNewDialog(false);
-      toast({ title: "Sablon olusturuldu" });
+      toast({ title: "Şablon oluşturuldu" });
     },
   });
 
@@ -98,7 +98,7 @@ export default function GorevSablonlari() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/task-templates"] });
       setEditTemplate(null);
-      toast({ title: "Sablon guncellendi" });
+      toast({ title: "Şablon güncellendi" });
     },
   });
 
@@ -108,7 +108,7 @@ export default function GorevSablonlari() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/task-templates"] });
-      toast({ title: "Sablon silindi" });
+      toast({ title: "Şablon silindi" });
     },
   });
 
@@ -134,8 +134,8 @@ export default function GorevSablonlari() {
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <div className="flex items-center gap-2">
           <ListTodo className="h-5 w-5 text-primary" />
-          <h2 className="text-lg font-bold">Gorev Sablonlari Yonetimi</h2>
-          <Badge variant="secondary">{templates.length} sablon</Badge>
+          <h2 className="text-lg font-bold">Görev Şablonları Yönetimi</h2>
+          <Badge variant="secondary">{templates.length} şablon</Badge>
           <Badge variant="default">{totalActive} aktif</Badge>
         </div>
         <div className="flex items-center gap-2">
@@ -145,7 +145,7 @@ export default function GorevSablonlari() {
               <SelectValue placeholder="Rol Filtrele" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Tum Roller</SelectItem>
+              <SelectItem value="all">Tüm Roller</SelectItem>
               {ALL_ROLES.map(r => (
                 <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
               ))}
@@ -153,7 +153,7 @@ export default function GorevSablonlari() {
           </Select>
           <Button size="sm" onClick={() => setShowNewDialog(true)} data-testid="button-new-template">
             <Plus className="h-4 w-4 mr-1" />
-            Yeni Sablon
+            Yeni Şablon
           </Button>
         </div>
       </div>
@@ -236,22 +236,22 @@ function TemplateTable({
   onDelete: (id: number, name: string) => void;
   onToggle: (id: number, active: boolean) => void;
 }) {
-  const freqLabels: Record<string, string> = { daily: "Gunluk", weekly: "Haftalik", monthly: "Aylik" };
+  const freqLabels: Record<string, string> = { daily: "Günlük", weekly: "Haftalık", monthly: "Aylık" };
   const priorityLabels: Record<number, { label: string; cls: string }> = {
-    1: { label: "Yuksek", cls: "text-red-600 dark:text-red-400" },
+    1: { label: "Yüksek", cls: "text-red-600 dark:text-red-400" },
     2: { label: "Orta", cls: "text-amber-600 dark:text-amber-400" },
-    3: { label: "Dusuk", cls: "text-blue-600 dark:text-blue-400" },
+    3: { label: "Düşük", cls: "text-blue-600 dark:text-blue-400" },
   };
 
   return (
     <Table>
       <TableHeader>
         <TableRow>
-          <TableHead>Gorev</TableHead>
-          <TableHead>Siklik</TableHead>
-          <TableHead>Oncelik</TableHead>
+          <TableHead>Görev</TableHead>
+          <TableHead>Sıklık</TableHead>
+          <TableHead>Öncelik</TableHead>
           <TableHead>Aktif</TableHead>
-          <TableHead className="text-right">Islemler</TableHead>
+          <TableHead className="text-right">İşlemler</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -334,7 +334,7 @@ function TemplateFormDialog({
     <Dialog open={true} onOpenChange={() => onClose()}>
       <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{template ? "Sablonu Duzenle" : "Yeni Gorev Sablonu"}</DialogTitle>
+          <DialogTitle>{template ? "Şablonu Düzenle" : "Yeni Görev Şablonu"}</DialogTitle>
         </DialogHeader>
         <div className="space-y-3">
           <div className="grid grid-cols-2 gap-3">
@@ -352,7 +352,7 @@ function TemplateFormDialog({
               </Select>
             </div>
             <div>
-              <label className="text-sm font-medium mb-1 block">Siklik</label>
+              <label className="text-sm font-medium mb-1 block">Sıklık</label>
               <Select value={formData.frequency} onValueChange={(v) => setFormData({ ...formData, frequency: v })}>
                 <SelectTrigger data-testid="select-template-frequency">
                   <SelectValue />
@@ -367,28 +367,28 @@ function TemplateFormDialog({
           </div>
 
           <div>
-            <label className="text-sm font-medium mb-1 block">Gorev Baslik</label>
+            <label className="text-sm font-medium mb-1 block">Görev Başlık</label>
             <Input
               value={formData.title}
               onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-              placeholder="Gorev basligini girin..."
+              placeholder="Görev başlığını girin..."
               data-testid="input-template-title"
             />
           </div>
 
           <div>
-            <label className="text-sm font-medium mb-1 block">Aciklama</label>
+            <label className="text-sm font-medium mb-1 block">Açıklama</label>
             <Textarea
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              placeholder="Gorev aciklamasi..."
+              placeholder="Görev açıklaması..."
               data-testid="input-template-description"
             />
           </div>
 
           <div className="grid grid-cols-3 gap-3">
             <div>
-              <label className="text-sm font-medium mb-1 block">Oncelik</label>
+              <label className="text-sm font-medium mb-1 block">Öncelik</label>
               <Select value={formData.priority.toString()} onValueChange={(v) => setFormData({ ...formData, priority: parseInt(v) })}>
                 <SelectTrigger data-testid="select-template-priority">
                   <SelectValue />
@@ -401,7 +401,7 @@ function TemplateFormDialog({
               </Select>
             </div>
             <div>
-              <label className="text-sm font-medium mb-1 block">Sira</label>
+              <label className="text-sm font-medium mb-1 block">Sıra</label>
               <Input
                 type="number"
                 value={formData.sortOrder}
@@ -410,7 +410,7 @@ function TemplateFormDialog({
               />
             </div>
             <div>
-              <label className="text-sm font-medium mb-1 block">Ikon</label>
+              <label className="text-sm font-medium mb-1 block">İkon</label>
               <Input
                 value={formData.icon}
                 onChange={(e) => setFormData({ ...formData, icon: e.target.value })}
@@ -431,10 +431,10 @@ function TemplateFormDialog({
           </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={onClose}>Iptal</Button>
+          <Button variant="outline" onClick={onClose}>İptal</Button>
           <Button onClick={handleSubmit} disabled={isPending || !formData.title.trim()} data-testid="button-save-template">
             {isPending ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Save className="h-4 w-4 mr-1" />}
-            {template ? "Guncelle" : "Olustur"}
+            {template ? "Güncelle" : "Oluştur"}
           </Button>
         </DialogFooter>
       </DialogContent>

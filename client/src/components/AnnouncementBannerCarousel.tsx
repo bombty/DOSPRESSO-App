@@ -43,11 +43,11 @@ type AnnouncementDetail = {
 
 const CATEGORY_CONFIG: Record<string, { icon: any; gradient: string; label: string }> = {
   general: { icon: Megaphone, gradient: "from-blue-600 to-blue-800", label: "Genel" },
-  new_product: { icon: ShoppingBag, gradient: "from-green-600 to-green-800", label: "Yeni Urun" },
+  new_product: { icon: ShoppingBag, gradient: "from-green-600 to-green-800", label: "Yeni Ürün" },
   policy: { icon: FileText, gradient: "from-purple-600 to-purple-800", label: "Politika" },
   campaign: { icon: PartyPopper, gradient: "from-orange-600 to-orange-800", label: "Kampanya" },
   urgent: { icon: AlertCircle, gradient: "from-red-600 to-red-800", label: "Acil" },
-  training: { icon: BookOpen, gradient: "from-cyan-600 to-cyan-800", label: "Egitim" },
+  training: { icon: BookOpen, gradient: "from-cyan-600 to-cyan-800", label: "Eğitim" },
   event: { icon: Calendar, gradient: "from-pink-600 to-pink-800", label: "Etkinlik" },
 };
 
@@ -298,7 +298,7 @@ export function AnnouncementBannerCarousel() {
 
                   {announcementDetail.expiresAt && (
                     <p className="text-xs text-muted-foreground pt-2">
-                      Gecerlilik: {format(new Date(announcementDetail.expiresAt), "d MMMM yyyy", { locale: tr })} tarihine kadar
+                      Geçerlilik: {format(new Date(announcementDetail.expiresAt), "d MMMM yyyy", { locale: tr })} tarihine kadar
                     </p>
                   )}
                 </div>
@@ -306,7 +306,7 @@ export function AnnouncementBannerCarousel() {
             </>
           ) : (
             <div className="p-6 text-center text-muted-foreground">
-              Duyuru yuklenemedi
+              Duyuru yüklenemedi
             </div>
           )}
         </DialogContent>

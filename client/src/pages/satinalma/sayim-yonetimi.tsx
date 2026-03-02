@@ -28,33 +28,33 @@ import {
 } from "lucide-react";
 
 const MONTHS = [
-  "Ocak", "Subat", "Mart", "Nisan", "Mayis", "Haziran",
-  "Temmuz", "Agustos", "Eylul", "Ekim", "Kasim", "Aralik"
+  "Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran",
+  "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"
 ];
 
 const CATEGORY_CONFIG: Record<string, { label: string; icon: any; color: string }> = {
-  all: { label: "Tumumu", icon: Boxes, color: "text-foreground" },
+  all: { label: "Tümünü", icon: Boxes, color: "text-foreground" },
   hammadde: { label: "Hammaddeler", icon: Package, color: "text-amber-600 dark:text-amber-400" },
-  bitimis_urun: { label: "Bitmis Urunler", icon: Package, color: "text-emerald-600 dark:text-emerald-400" },
+  bitimis_urun: { label: "Bitmiş Ürünler", icon: Package, color: "text-emerald-600 dark:text-emerald-400" },
   ambalaj: { label: "Ambalajlar", icon: Boxes, color: "text-blue-600 dark:text-blue-400" },
   ekipman: { label: "Ekipman", icon: Wrench, color: "text-slate-600 dark:text-slate-400" },
-  sube_ekipman: { label: "Sube Ekipman", icon: Store, color: "text-purple-600 dark:text-purple-400" },
-  sube_malzeme: { label: "Sube Malzeme", icon: Store, color: "text-indigo-600 dark:text-indigo-400" },
+  sube_ekipman: { label: "Şube Ekipman", icon: Store, color: "text-purple-600 dark:text-purple-400" },
+  sube_malzeme: { label: "Şube Malzeme", icon: Store, color: "text-indigo-600 dark:text-indigo-400" },
   konsantre: { label: "Konsantreler", icon: Droplets, color: "text-orange-600 dark:text-orange-400" },
   donut: { label: "Donutlar", icon: Cookie, color: "text-pink-600 dark:text-pink-400" },
-  tatli: { label: "Tatlilar", icon: Candy, color: "text-rose-600 dark:text-rose-400" },
+  tatli: { label: "Tatlılar", icon: Candy, color: "text-rose-600 dark:text-rose-400" },
   tuzlu: { label: "Tuzlular", icon: Salad, color: "text-green-600 dark:text-green-400" },
-  cay_grubu: { label: "Cay Gruplari", icon: Leaf, color: "text-emerald-600 dark:text-emerald-400" },
+  cay_grubu: { label: "Çay Grupları", icon: Leaf, color: "text-emerald-600 dark:text-emerald-400" },
   kahve: { label: "Kahveler", icon: Coffee, color: "text-amber-800 dark:text-amber-300" },
   toz_topping: { label: "Toz & Topping", icon: Droplets, color: "text-violet-600 dark:text-violet-400" },
 };
 
 const COUNT_TYPE_LABELS: Record<string, string> = {
-  tam_sayim: "Tam Sayim",
-  bitimis_urun: "Bitmis Urun Sayimi",
-  hammadde: "Hammadde Sayimi",
-  ambalaj: "Ambalaj Sayimi",
-  ekipman: "Ekipman Sayimi",
+  tam_sayim: "Tam Sayım",
+  bitimis_urun: "Bitmiş Ürün Sayımı",
+  hammadde: "Hammadde Sayımı",
+  ambalaj: "Ambalaj Sayımı",
+  ekipman: "Ekipman Sayımı",
 };
 
 function getStatusBadge(status: string) {
@@ -63,7 +63,7 @@ function getStatusBadge(status: string) {
     in_progress: { label: "Devam Ediyor", variant: "default" },
     counting: { label: "Sayim Yapiliyor", variant: "default" },
     review: { label: "Incelemede", variant: "outline" },
-    completed: { label: "Tamamlandi", variant: "default" },
+    completed: { label: "Tamamlandı", variant: "default" },
     overdue: { label: "Gecikmis", variant: "destructive" },
     pending: { label: "Bekliyor", variant: "secondary" },
     discrepancy: { label: "Tutarsizlik", variant: "destructive" },
@@ -144,10 +144,10 @@ export default function SayimYonetimi() {
       setNewNotes("");
       setNewDate("");
       setNewCountType("tam_sayim");
-      toast({ title: "Sayim oturumu olusturuldu", description: "Urunler otomatik yuklendi" });
+      toast({ title: "Sayım oturumu oluşturuldu", description: "Ürünler otomatik yüklendi" });
     },
     onError: (e: any) => {
-      toast({ title: "Hata", description: e.message || "Olusturulamadi", variant: "destructive" });
+      toast({ title: "Hata", description: e.message || "Oluşturulamadı", variant: "destructive" });
     },
   });
 
@@ -210,7 +210,7 @@ export default function SayimYonetimi() {
     onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ["/api/inventory-counts"] });
       queryClient.invalidateQueries({ queryKey: ["/api/inventory-count-reports"] });
-      toast({ title: "Sayim sonlandirildi", description: data?.message || "Raporlar olusturuldu" });
+      toast({ title: "Sayım sonlandırıldı", description: data?.message || "Raporlar oluşturuldu" });
     },
     onError: (e: any) => {
       toast({ title: "Hata", description: e.message || "Sonlandirilamadi", variant: "destructive" });
@@ -346,19 +346,19 @@ export default function SayimYonetimi() {
                 <Select value={newCountType} onValueChange={setNewCountType}>
                   <SelectTrigger data-testid="select-count-type"><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="tam_sayim">Tam Sayim (Tum Urunler)</SelectItem>
-                    <SelectItem value="bitimis_urun">Bitmis Urun Sayimi</SelectItem>
-                    <SelectItem value="hammadde">Hammadde Sayimi</SelectItem>
-                    <SelectItem value="ambalaj">Ambalaj Sayimi</SelectItem>
-                    <SelectItem value="ekipman">Ekipman Sayimi</SelectItem>
+                    <SelectItem value="tam_sayim">Tam Sayım (Tüm Ürünler)</SelectItem>
+                    <SelectItem value="bitimis_urun">Bitmiş Ürün Sayımı</SelectItem>
+                    <SelectItem value="hammadde">Hammadde Sayımı</SelectItem>
+                    <SelectItem value="ambalaj">Ambalaj Sayımı</SelectItem>
+                    <SelectItem value="ekipman">Ekipman Sayımı</SelectItem>
                   </SelectContent>
                 </Select>
                 <p className="text-xs text-muted-foreground mt-1">
-                  {newCountType === "tam_sayim" && "Tum envanter kalemleri otomatik yuklenecek"}
-                  {newCountType === "bitimis_urun" && "Donut, tatli, tuzlu gibi bitmis urunler yuklenecek"}
-                  {newCountType === "hammadde" && "Kahve, sut, un gibi hammaddeler yuklenecek"}
-                  {newCountType === "ambalaj" && "Bardak, kapak, pecete gibi ambalajlar yuklenecek"}
-                  {newCountType === "ekipman" && "Makine, yedek parca gibi ekipmanlar yuklenecek"}
+                  {newCountType === "tam_sayim" && "Tüm envanter kalemleri otomatik yüklenecek"}
+                  {newCountType === "bitimis_urun" && "Donut, tatlı, tuzlu gibi bitmiş ürünler yüklenecek"}
+                  {newCountType === "hammadde" && "Kahve, süt, un gibi hammaddeler yüklenecek"}
+                  {newCountType === "ambalaj" && "Bardak, kapak, peçete gibi ambalajlar yüklenecek"}
+                  {newCountType === "ekipman" && "Makine, yedek parça gibi ekipmanlar yüklenecek"}
                 </p>
               </div>
               <div className="grid grid-cols-2 gap-2">
@@ -398,7 +398,7 @@ export default function SayimYonetimi() {
               <Button variant="outline" onClick={() => setShowCreateDialog(false)}>Iptal</Button>
               <Button onClick={() => createMutation.mutate()} disabled={createMutation.isPending} data-testid="button-create-count">
                 {createMutation.isPending && <Loader2 className="h-4 w-4 animate-spin mr-1" />}
-                Olustur
+                Oluştur
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -459,9 +459,9 @@ export default function SayimYonetimi() {
               if (found) {
                 setSelectedAssignment(found);
                 setShowCountDialog(true);
-                toast({ title: "Urun bulundu", description: found.inventory_name });
+                toast({ title: "Ürün bulundu", description: found.inventory_name });
               } else {
-                toast({ title: "Urun bulunamadi", description: `QR: ${qrCode}`, variant: "destructive" });
+                toast({ title: "Ürün bulunamadı", description: `QR: ${qrCode}`, variant: "destructive" });
               }
             }
           }}
@@ -635,7 +635,7 @@ function SayimDetailDialog({
           <div className="relative flex-1">
             <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Urun ara (isim veya kod)..."
+              placeholder="Ürün ara (isim veya kod)..."
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
               className="pl-8"
@@ -1011,7 +1011,7 @@ function SayimRaporlari({ filterYear }: { filterYear: number }) {
               <CardContent className="pt-3 pb-3">
                 <div className="flex items-center justify-between gap-2 flex-wrap">
                   <div>
-                    <p className="text-sm font-medium">{r.inventory_name || `Urun #${r.inventory_id}`}</p>
+                    <p className="text-sm font-medium">{r.inventory_name || `Ürün #${r.inventory_id}`}</p>
                     <p className="text-xs text-muted-foreground">
                       Sistem: {parseFloat(r.system_quantity).toFixed(1)} | Sayim: {parseFloat(r.counted_quantity).toFixed(1)} | Fark: {parseFloat(r.difference).toFixed(1)} ({parseFloat(r.difference_percent).toFixed(1)}%)
                     </p>

@@ -149,7 +149,7 @@ interface ReceiptItemRow {
 }
 
 const statusOptions = [
-  { value: "all", label: "Tumu" },
+  { value: "all", label: "Tümü" },
   { value: "beklemede", label: "Beklemede" },
   { value: "kontrol_ediliyor", label: "Kontrol Ediliyor" },
   { value: "kabul_edildi", label: "Kabul Edildi" },
@@ -159,8 +159,8 @@ const statusOptions = [
 
 const qualityStatusLabels: Record<string, string> = {
   uygun: "Uygun",
-  sartli_kabul: "Sartli Kabul",
-  uygun_degil: "Uygun Degil",
+  sartli_kabul: "Şartlı Kabul",
+  uygun_degil: "Uygun Değil",
   beklemede: "Beklemede",
   gecti: "Gecti",
   kaldi: "Kaldi"
@@ -399,13 +399,13 @@ export default function MalKabul() {
   const handleCreateSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!selectedSupplierId) {
-      toast({ title: "Hata", description: "Tedarikci secmeniz gerekiyor", variant: "destructive" });
+      toast({ title: "Hata", description: "Tedarikçi seçmeniz gerekiyor", variant: "destructive" });
       return;
     }
 
     const validItems = itemRows.filter(row => row.inventoryId && row.receivedQuantity);
     if (validItems.length === 0) {
-      toast({ title: "Hata", description: "En az bir urun eklemeniz gerekiyor", variant: "destructive" });
+      toast({ title: "Hata", description: "En az bir ürün eklemeniz gerekiyor", variant: "destructive" });
       return;
     }
 
@@ -516,8 +516,8 @@ export default function MalKabul() {
   const getQualityBadge = (s: string) => {
     const map: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
       uygun: { label: "Uygun", variant: "default" },
-      sartli_kabul: { label: "Sartli Kabul", variant: "secondary" },
-      uygun_degil: { label: "Uygun Degil", variant: "destructive" },
+      sartli_kabul: { label: "Şartlı Kabul", variant: "secondary" },
+      uygun_degil: { label: "Uygun Değil", variant: "destructive" },
       beklemede: { label: "Beklemede", variant: "outline" },
       gecti: { label: "Gecti", variant: "default" },
       kaldi: { label: "Kaldi", variant: "destructive" }
@@ -565,15 +565,15 @@ export default function MalKabul() {
           <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Yeni Mal Kabul</DialogTitle>
-              <DialogDescription>Tedarikci secin ve teslim alinan urunleri girin</DialogDescription>
+              <DialogDescription>Tedarikçi seçin ve teslim alınan ürünleri girin</DialogDescription>
             </DialogHeader>
             <form onSubmit={handleCreateSubmit} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="supplierId">Tedarikci</Label>
+                  <Label htmlFor="supplierId">Tedarikçi</Label>
                   <Select value={selectedSupplierId} onValueChange={handleSupplierChange}>
                     <SelectTrigger data-testid="select-receipt-supplier">
-                      <SelectValue placeholder="Tedarikci secin" />
+                      <SelectValue placeholder="Tedarikçi seçin" />
                     </SelectTrigger>
                     <SelectContent>
                       {suppliers?.map(supplier => (
@@ -585,14 +585,14 @@ export default function MalKabul() {
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label>Siparis Baglantisi</Label>
+                  <Label>Sipariş Bağlantısı</Label>
                   <div className="flex items-center gap-2">
                     <Select value={selectedPOId} onValueChange={handlePOChange}>
                       <SelectTrigger data-testid="select-receipt-po" className="flex-1">
-                        <SelectValue placeholder="Siparis secin (istege bagli)" />
+                        <SelectValue placeholder="Sipariş seçin (isteğe bağlı)" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="none">Siparissiz</SelectItem>
+                        <SelectItem value="none">Siparişsiz</SelectItem>
                         {supplierPOs?.map(po => (
                           <SelectItem key={po.id} value={po.id.toString()}>
                             {po.orderNumber}
@@ -655,10 +655,10 @@ export default function MalKabul() {
               {selectedSupplierId && (
                 <div className="space-y-3">
                   <div className="flex flex-wrap items-center justify-between gap-2">
-                    <Label className="text-base font-semibold">Urun Kalemleri</Label>
+                    <Label className="text-base font-semibold">Ürün Kalemleri</Label>
                     <Button type="button" variant="outline" size="sm" onClick={addItemRow} data-testid="button-add-item-row">
                       <Plus className="h-4 w-4 mr-1" />
-                      Urun Ekle
+                      Ürün Ekle
                     </Button>
                   </div>
                   
@@ -666,8 +666,8 @@ export default function MalKabul() {
                     <Table>
                       <TableHeader>
                         <TableRow>
-                          <TableHead className="min-w-[200px]">Urun</TableHead>
-                          <TableHead className="w-[100px]">Siparis Mik.</TableHead>
+                          <TableHead className="min-w-[200px]">Ürün</TableHead>
+                          <TableHead className="w-[100px]">Sipariş Mik.</TableHead>
                           <TableHead className="w-[100px]">Teslim Mik.</TableHead>
                           <TableHead className="w-[80px]">Birim</TableHead>
                           <TableHead className="w-[140px]">Kalite Durumu</TableHead>
@@ -681,7 +681,7 @@ export default function MalKabul() {
                             <TableCell>
                               <Select value={row.inventoryId} onValueChange={(val) => updateItemRow(index, "inventoryId", val)}>
                                 <SelectTrigger data-testid={`select-product-${index}`}>
-                                  <SelectValue placeholder="Urun secin" />
+                                  <SelectValue placeholder="Ürün seçin" />
                                 </SelectTrigger>
                                 <SelectContent>
                                   {availableProducts.map(product => (
@@ -725,8 +725,8 @@ export default function MalKabul() {
                                 </SelectTrigger>
                                 <SelectContent>
                                   <SelectItem value="uygun">Uygun</SelectItem>
-                                  <SelectItem value="sartli_kabul">Sartli Kabul</SelectItem>
-                                  <SelectItem value="uygun_degil">Uygun Degil</SelectItem>
+                                  <SelectItem value="sartli_kabul">Şartlı Kabul</SelectItem>
+                                  <SelectItem value="uygun_degil">Uygun Değil</SelectItem>
                                 </SelectContent>
                               </Select>
                             </TableCell>
@@ -773,7 +773,7 @@ export default function MalKabul() {
             <TableHeader>
               <TableRow>
                 <TableHead>Kabul No</TableHead>
-                <TableHead>Tedarikci</TableHead>
+                <TableHead>Tedarikçi</TableHead>
                 <TableHead>Siparis No</TableHead>
                 <TableHead>Kabul Tarihi</TableHead>
                 <TableHead className="text-center">Kalite Kontrol</TableHead>
@@ -890,7 +890,7 @@ export default function MalKabul() {
                   <p className="font-mono text-sm" data-testid="text-detail-receipt-number">{receiptDetail.receiptNumber}</p>
                 </div>
                 <div className="space-y-1">
-                  <span className="text-sm text-muted-foreground">Tedarikci</span>
+                  <span className="text-sm text-muted-foreground">Tedarikçi</span>
                   <p className="text-sm" data-testid="text-detail-supplier">{receiptDetail.supplier?.name} ({receiptDetail.supplier?.code})</p>
                 </div>
                 <div className="space-y-1">
@@ -931,14 +931,14 @@ export default function MalKabul() {
               )}
 
               <div className="space-y-2">
-                <Label className="text-base font-semibold">Teslim Alinan Urunler</Label>
+                <Label className="text-base font-semibold">Teslim Alınan Ürünler</Label>
                 {receiptDetail.items && receiptDetail.items.length > 0 ? (
                   <div className="border rounded-md">
                     <Table>
                       <TableHeader>
                         <TableRow>
-                          <TableHead>Urun</TableHead>
-                          <TableHead className="text-right">Siparis Mik.</TableHead>
+                          <TableHead>Ürün</TableHead>
+                          <TableHead className="text-right">Sipariş Mik.</TableHead>
                           <TableHead className="text-right">Teslim Mik.</TableHead>
                           <TableHead className="text-right">Kabul Mik.</TableHead>
                           <TableHead>Birim</TableHead>
@@ -949,7 +949,7 @@ export default function MalKabul() {
                         {receiptDetail.items.map((item) => (
                           <TableRow key={item.id} data-testid={`detail-item-row-${item.id}`}>
                             <TableCell className="font-medium">
-                              {item.inventory?.name || `Urun #${item.inventoryId}`}
+                              {item.inventory?.name || `Ürün #${item.inventoryId}`}
                             </TableCell>
                             <TableCell className="text-right">{item.orderedQuantity || "-"}</TableCell>
                             <TableCell className="text-right">{item.receivedQuantity}</TableCell>
@@ -962,7 +962,7 @@ export default function MalKabul() {
                     </Table>
                   </div>
                 ) : (
-                  <p className="text-sm text-muted-foreground">Urun kalemi bulunamadi</p>
+                  <p className="text-sm text-muted-foreground">Ürün kalemi bulunamadı</p>
                 )}
               </div>
             </div>
@@ -992,7 +992,7 @@ export default function MalKabul() {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Urun</TableHead>
+                        <TableHead>Ürün</TableHead>
                         <TableHead className="text-right">Teslim Mik.</TableHead>
                         <TableHead>Birim</TableHead>
                         <TableHead className="w-[160px]">Kalite Durumu</TableHead>
@@ -1005,7 +1005,7 @@ export default function MalKabul() {
                         return (
                           <TableRow key={item.id} data-testid={`qc-item-row-${item.id}`}>
                             <TableCell className="font-medium">
-                              {item.inventory?.name || `Urun #${item.inventoryId}`}
+                              {item.inventory?.name || `Ürün #${item.inventoryId}`}
                             </TableCell>
                             <TableCell className="text-right">{item.receivedQuantity}</TableCell>
                             <TableCell>{item.unit}</TableCell>
@@ -1023,8 +1023,8 @@ export default function MalKabul() {
                                 <SelectContent>
                                   <SelectItem value="beklemede">Beklemede</SelectItem>
                                   <SelectItem value="uygun">Uygun</SelectItem>
-                                  <SelectItem value="sartli_kabul">Sartli Kabul</SelectItem>
-                                  <SelectItem value="uygun_degil">Uygun Degil</SelectItem>
+                                  <SelectItem value="sartli_kabul">Şartlı Kabul</SelectItem>
+                                  <SelectItem value="uygun_degil">Uygun Değil</SelectItem>
                                 </SelectContent>
                               </Select>
                             </TableCell>
@@ -1046,7 +1046,7 @@ export default function MalKabul() {
                   </Table>
                 </div>
               ) : (
-                <p className="text-sm text-muted-foreground">Urun kalemi bulunamadi</p>
+                <p className="text-sm text-muted-foreground">Ürün kalemi bulunamadı</p>
               )}
               <div className="flex gap-2">
                 <Button
@@ -1078,7 +1078,7 @@ export default function MalKabul() {
       <Dialog open={isEvaluationDialogOpen} onOpenChange={setIsEvaluationDialogOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Tedarikci Degerlendirmesi</DialogTitle>
+            <DialogTitle>Tedarikçi Değerlendirmesi</DialogTitle>
             <DialogDescription>
               {evaluatingReceipt?.supplier?.name} - {evaluatingReceipt?.receiptNumber}
             </DialogDescription>
@@ -1120,12 +1120,12 @@ export default function MalKabul() {
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="qualityNotes">Degerlendirme Notlari</Label>
+              <Label htmlFor="qualityNotes">Değerlendirme Notları</Label>
               <Textarea
                 id="qualityNotes"
                 value={qualityNotes}
                 onChange={(e) => setQualityNotes(e.target.value)}
-                placeholder="Urun kalitesi, paketleme vb. hakkinda notlar"
+                placeholder="Ürün kalitesi, paketleme vb. hakkında notlar"
                 data-testid="input-quality-notes"
               />
             </div>

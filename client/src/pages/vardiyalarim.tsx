@@ -499,7 +499,7 @@ export default function Vardiyalarim() {
                   <table className="w-full text-xs min-w-[600px]">
                     <thead>
                       <tr className="border-b">
-                        <th className="text-left p-2 pl-3 font-medium text-muted-foreground w-28">Calisan</th>
+                        <th className="text-left p-2 pl-3 font-medium text-muted-foreground w-28">Çalışan</th>
                         {weekDays.map((day, i) => (
                           <th
                             key={i}
@@ -997,10 +997,10 @@ export default function Vardiyalarim() {
 
               {overtimeReasonType === "Gelemeyen Personel" && (
                 <div className="space-y-1.5">
-                  <label className="text-xs font-medium">Gelemeyen calisan</label>
+                  <label className="text-xs font-medium">Gelemeyen çalışan</label>
                   <Select value={overtimeMissingEmployee} onValueChange={setOvertimeMissingEmployee}>
                     <SelectTrigger data-testid="select-missing-employee">
-                      <SelectValue placeholder="Calisan secin" />
+                      <SelectValue placeholder="Çalışan seçin" />
                     </SelectTrigger>
                     <SelectContent>
                       {(branchColleagues || [])

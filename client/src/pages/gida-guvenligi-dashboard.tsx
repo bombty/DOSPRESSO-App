@@ -192,7 +192,7 @@ function getTrainingStatusVariant(status: string): "default" | "secondary" | "de
 }
 
 function getTrainingStatusLabel(status: string): string {
-  if (status === "completed") return "Tamamlandi";
+  if (status === "completed") return "Tamamlandı";
   if (status === "scheduled") return "Planli";
   if (status === "cancelled") return "Iptal";
   return status;

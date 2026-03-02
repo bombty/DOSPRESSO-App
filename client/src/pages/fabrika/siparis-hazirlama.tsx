@@ -80,16 +80,16 @@ export default function SiparisHazirlama() {
       setSelectedInventoryId(data.id.toString());
       setQrDialogOpen(false);
       setQrCode("");
-      toast({ title: "Urun bulundu", description: data.name });
+      toast({ title: "Ürün bulundu", description: data.name });
     },
     onError: () => {
-      toast({ title: "Hata", description: "QR kodu ile urun bulunamadi", variant: "destructive" });
+      toast({ title: "Hata", description: "QR kodu ile ürün bulunamadı", variant: "destructive" });
     },
   });
 
   const handleStockExit = () => {
     if (!selectedInventoryId || !quantity) {
-      toast({ title: "Hata", description: "Urun ve miktar gerekli", variant: "destructive" });
+      toast({ title: "Hata", description: "Ürün ve miktar gerekli", variant: "destructive" });
       return;
     }
     const notesWithRef = reference ? `${notes ? notes + " | " : ""}Ref: ${reference}` : notes;
@@ -148,15 +148,15 @@ export default function SiparisHazirlama() {
               data-testid="button-qr-scan"
             >
               <QrCode className="h-4 w-4 mr-1" />
-              QR ile Urun Bul
+              QR ile Ürün Bul
             </Button>
           </div>
 
           <div className="space-y-1">
-            <Label className="text-xs">Urun</Label>
+            <Label className="text-xs">Ürün</Label>
             <Select value={selectedInventoryId} onValueChange={setSelectedInventoryId}>
               <SelectTrigger data-testid="select-inventory-item">
-                <SelectValue placeholder="Urun secin" />
+                <SelectValue placeholder="Ürün seçin" />
               </SelectTrigger>
               <SelectContent>
                 <div className="p-2">
@@ -249,7 +249,7 @@ export default function SiparisHazirlama() {
                 <TableHeader>
                   <TableRow>
                     <TableHead className="text-xs">Tarih</TableHead>
-                    <TableHead className="text-xs">Urun</TableHead>
+                    <TableHead className="text-xs">Ürün</TableHead>
                     <TableHead className="text-xs text-right">Miktar</TableHead>
                     <TableHead className="text-xs">Not</TableHead>
                   </TableRow>
@@ -279,7 +279,7 @@ export default function SiparisHazirlama() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <QrCode className="h-4 w-4" />
-              QR ile Urun Bul
+              QR ile Ürün Bul
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-3">

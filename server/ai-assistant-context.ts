@@ -43,7 +43,7 @@ const NAV_LINKS: Record<string, { label: string; path: string }> = {
   attendance: { label: "Yoklama", path: "/ik" },
   knowledge_base: { label: "Bilgi Bankasi", path: "/bilgi-bankasi" },
   factory: { label: "Fabrika", path: "/fabrika" },
-  procurement: { label: "Satinalma", path: "/satinalma" },
+  procurement: { label: "Satınalma", path: "/satinalma" },
   quality: { label: "Kalite Kontrol", path: "/kalite-kontrol-dashboard" },
   crm: { label: "CRM", path: "/crm" },
   analytics: { label: "Analitik", path: "/analitik" },
@@ -51,7 +51,7 @@ const NAV_LINKS: Record<string, { label: string; path: string }> = {
   admin: { label: "Admin Paneli", path: "/admin" },
   performance: { label: "Performansim", path: "/performansim" },
   branch_health: { label: "Sube Saglik Skoru", path: "/sube-saglik-skoru" },
-  employee_of_month: { label: "Ayin Calisani", path: "/ayin-calisani" },
+  employee_of_month: { label: "Ayın Çalışanı", path: "/ayin-calisani" },
   support: { label: "Destek", path: "/destek" },
   complaints: { label: "Sikayetler", path: "/sikayetler" },
   cash_reports: { label: "Kasa Raporlari", path: "/kasa-raporlari" },
@@ -186,8 +186,8 @@ export async function gatherAIAssistantContext(user: any) {
 - Acik Arizalar: ${openFaults.length} (Kritik/Yuksek: ${criticalFaults.length})
 - Bekleyen Izin Talepleri: ${pendingLeaves.length}
 - Bekleyen Gorevler: ${pendingTasks.length}
-- Acik Urun Sikayetleri: ${openComplaints.length}
-- Musteri Degerlendirme Ortalamasi: ${avgFeedback}/5 (${feedbackData.length} degerlendirme)
+- Açık Ürün Şikayetleri: ${openComplaints.length}
+- Müşteri Değerlendirme Ortalaması: ${avgFeedback}/5 (${feedbackData.length} değerlendirme)
 
 EN COK ARIZA OLAN SUBELER:
 ${topFaultBranches.length > 0 ? topFaultBranches.map((b, i) => `${i+1}. ${b.name}: ${b.count} acik ariza`).join("\n") : "- Ariza verisi yok"}
@@ -318,8 +318,8 @@ ${Object.entries(roleDistribution).sort(([,a], [,b]) => b - a).slice(0, 8).map((
 - Aktif Personel: ${activeUsers.length}
 - Toplam Acik Ariza: ${openFaults.length}
 - Toplam Denetim: ${inspectionsData.length} (Son 30 Gun: ${recentInspections.length})
-- Acik Urun Sikayeti: ${complaintsData.filter((c: any) => c.status !== "resolved" && c.status !== "cozuldu").length}
-- Musteri Geri Bildirimi: ${feedbackData.length}
+- Açık Ürün Şikayeti: ${complaintsData.filter((c: any) => c.status !== "resolved" && c.status !== "cozuldu").length}
+- Müşteri Geri Bildirimi: ${feedbackData.length}
 
 SUBE PERFORMANS OZETI:
 ${branchStats.slice(0, 10).map((b, i) => `${i+1}. ${b.name} | Personel: ${b.personnel} | Acik Ariza: ${b.openFaults} | Ort. Skor: ${b.avgScore}`).join("\n")}
@@ -330,8 +330,8 @@ ${branchInspectionAvgs.length > 0 ? branchInspectionAvgs.slice(0, 8).map((b, i) 
 SUBE BAZLI EGITIM TAMAMLAMA ORANLARI:
 ${branchTrainingRates.slice(0, 8).map((b, i) => `${i+1}. ${b.name}: %${b.rate} (${b.count}/${b.users})`).join("\n")}
 
-MUSTERI GERI BILDIRIM ORTALAMALARI (Sube Bazli):
-${branchFeedbackAvgs.length > 0 ? branchFeedbackAvgs.slice(0, 5).map((b, i) => `${i+1}. ${b.name}: ${b.avg}/5 (${b.count} degerlendirme)`).join("\n") : "- Geri bildirim verisi yok"}
+MÜŞTERİ GERİ BİLDİRİM ORTALAMALARI (Sube Bazli):
+${branchFeedbackAvgs.length > 0 ? branchFeedbackAvgs.slice(0, 5).map((b, i) => `${i+1}. ${b.name}: ${b.avg}/5 (${b.count} değerlendirme)`).join("\n") : "- Geri bildirim verisi yok"}
 
 DIKKAT GEREKTIREN SUBELER (Dusuk Performans):
 ${lowScoreBranches.length > 0 ? lowScoreBranches.map((b, i) => `${i+1}. ${b.name} - Ort. Skor: ${b.avgScore} | Ariza: ${b.openFaults}`).join("\n") : "- Dusuk performansli sube yok"}
@@ -489,12 +489,12 @@ ${Object.values(faultsByBranch).sort((a, b) => b.count - a.count).slice(0, 5).ma
         .sort((a: any, b: any) => Number(b.totalOrders || 0) - Number(a.totalOrders || 0))
         .slice(0, 5);
 
-      roleDescription = "Satinalma Uzmani";
+      roleDescription = "Satınalma Uzmanı";
       roleContext = `SATINALMA DURUMU:
 - Toplam Sube: ${branchesData.length}
 - Toplam Siparis: ${ordersData.length} (Bekleyen: ${pendingOrders.length})
 - Bekleyen Siparis Toplam Tutar: ${pendingOrdersTotal.toLocaleString("tr-TR")} TL
-- Urun Sikayetleri: ${complaintsData.length}
+- Ürün Şikayetleri: ${complaintsData.length}
 - Aktif Tedarikci: ${activeSuppliersData.length}
 - Son 7 Gun Mal Kabul: ${recentReceipts.length}
 
@@ -553,7 +553,7 @@ ${topSuppliers.length > 0 ? topSuppliers.map((s: any, i: number) => `${i+1}. ${s
 
       roleDescription = "Kalite Kontrol Uzmani";
       roleContext = `KALITE KONTROL DURUMU:
-- Toplam Urun Sikayeti: ${complaintsData.length} (Acik: ${openComplaints.length})
+- Toplam Ürün Şikayeti: ${complaintsData.length} (Açık: ${openComplaints.length})
 - Sube Sayisi: ${branchesData.length}
 - Cozum Bekleyen Sikayetler: ${pendingResolutions.length}
 
@@ -563,11 +563,11 @@ ${Object.entries(severityBreakdown).length > 0 ? Object.entries(severityBreakdow
 EN COK SIKAYET ALAN SUBELER:
 ${topComplaintBranches.length > 0 ? topComplaintBranches.map((b, i) => `${i+1}. ${b.name}: ${b.count} acik sikayet`).join("\n") : "- Sube bazli sikayet yok"}
 
-URETIM PARTI KALITE DURUMU (Son 30 Gun):
+ÜRETİM PARTİ KALİTE DURUMU (Son 30 Gun):
 - Toplam Parti: ${recentBatches.length}
 - Kalite Kontrol Bekleyen: ${pendingQCBatches.length}
 - Kalite Sorunu Olan (Skor<70 veya Reddedilen): ${qualityIssueBatches.length}`;
-      accessibleData = "Kalite denetimleri, urun sikayetleri, standart uyumluluk, recete yonetimi, uretim parti kalitesi";
+      accessibleData = "Kalite denetimleri, ürün şikayetleri, standart uyumluluk, reçete yönetimi, üretim parti kalitesi";
 
     } else if (role === "muhasebe" || role === "muhasebe_ik") {
       const [branchesData, usersData, leavesData, allUsersData] = await Promise.all([
@@ -631,7 +631,7 @@ ${pendingLeaveDetails.length > 0 ? pendingLeaveDetails.join("\n") : "- Bekleyen 
       roleDescription = "Destek Uzmani";
       roleContext = `DESTEK DURUMU:
 - Acik Arizalar: ${openFaults.length}
-- Urun Sikayetleri: ${complaintsData.filter((c: any) => c.status !== "resolved" && c.status !== "cozuldu").length}
+- Ürün Şikayetleri: ${complaintsData.filter((c: any) => c.status !== "resolved" && c.status !== "cozuldu").length}
 - Sube Sayisi: ${branchesData.length}`;
       accessibleData = "Destek talepleri, ariza bildirimleri, iletisim kayitlari";
 
@@ -685,10 +685,10 @@ ${pendingLeaveDetails.length > 0 ? pendingLeaveDetails.join("\n") : "- Bekleyen 
       roleContext = `FABRIKA DURUMU:
 - Toplam Ekipman: ${equipmentData.length}
 - Acik Arizalar: ${openFaults.length} (Kritik/Yuksek: ${criticalFaults.length})
-- Toplam Uretim Partileri: ${batchesData.length}
+- Toplam Üretim Partileri: ${batchesData.length}
 - Aktif Partiler (Devam Eden/Planlanan/KK Bekleyen): ${activeBatches.length}
 
-AKTIF URETIM PARTILERI DURUM:
+AKTİF ÜRETİM PARTİLERİ DURUM:
 ${Object.entries(batchStatusCounts).map(([status, cnt]) => `- ${status}: ${cnt}`).join("\n")}
 
 BAKIM BEKLEYEN EKIPMANLAR:
@@ -698,10 +698,10 @@ ARIZA COZUM SURESI (Son 30 Gun):
 - Cozulen Ariza: ${resolvedFaults.length}
 - Ortalama Cozum Suresi: ${avgResolutionTime} saat
 
-URETIM CIKTISI (Son 30 Gun):
+ÜRETİM ÇIKTISI (Son 30 Gun):
 - Tamamlanan Parti: ${completedBatches.length}
-- Toplam Uretim: ${totalProduced.toLocaleString("tr-TR")} adet`;
-      accessibleData = "Uretim planlama, kalite kontrol, stok yonetimi, ekipman durumu, ariza takibi";
+- Toplam Üretim: ${totalProduced.toLocaleString("tr-TR")} adet`;
+      accessibleData = "Üretim planlama, kalite kontrol, stok yönetimi, ekipman durumu, arıza takibi";
 
     } else if ((role === "supervisor" || role === "supervisor_buddy" || role === "manager") && branchId) {
       const [branchData, usersData, tasksData, faultsData, leavesData, perfData] = await Promise.all([
@@ -796,8 +796,8 @@ EKIPMAN DURUMU:
 - Toplam Ekipman: ${equipmentData.length}
 ${problemEquipment.length > 0 ? `- Sorunlu Ekipman:\n${problemEquipment.map(e => `  * ${e.name}: ${e.status} (${e.faults} acik ariza)`).join("\n")}` : "- Tum ekipmanlar normal"}
 
-MUSTERI GERI BILDIRIMI (Son 30 Gun):
-- Degerlendirme Sayisi: ${recentFeedback.length}
+MÜŞTERİ GERİ BİLDİRİMİ (Son 30 Gun):
+- Değerlendirme Sayısı: ${recentFeedback.length}
 - Ortalama Puan: ${avgFeedbackRating}/5
 
 PERSONEL PERFORMANSLARI:
@@ -871,18 +871,18 @@ ${usersData.map(u => `- ${redactName(u.firstName, u.lastName, showFullNames)} ($
       roleDescription = "Pazarlama Uzmani";
       roleContext = `PAZARLAMA DURUMU:
 - Sube Sayisi: ${branchesData.length}
-- Musteri Geri Bildirimi: ${feedbackData.length}
+- Müşteri Geri Bildirimi: ${feedbackData.length}
 - Ortalama Puan: ${avgRating}/5`;
-      accessibleData = "Kampanyalar, musteri geri bildirimleri, marka iletisimi";
+      accessibleData = "Kampanyalar, müşteri geri bildirimleri, marka iletişimi";
 
     } else {
-      roleDescription = `DOSPRESSO Calisani (${role})`;
+      roleDescription = `DOSPRESSO Çalışanı (${role})`;
       roleContext = "Genel bilgiler";
       accessibleData = "Sinirli erisim - sadece genel bilgiler";
     }
   } catch (e) {
     console.log("AI context gathering error:", e);
-    roleDescription = "DOSPRESSO Calisani";
+    roleDescription = "DOSPRESSO Çalışanı";
     roleContext = "Context yuklenemedi";
     accessibleData = "Sinirli erisim";
   }
@@ -950,7 +950,7 @@ YANITLAMA KURALLARI:
 6. SADECE kullanicinin erisebilecegi veriler hakkinda bilgi ver. Yetkisi disindaki veriler hakkinda "${firstName}, bu bilgiye erisim yetkin bulunmuyor" de.
 7. max_tokens siniri var, bu yuzden gereksiz uzatma. Onemli bilgileri on plana al.
 8. Kullaniciya aksiyon onerileri sun ve hangi sayfaya gitmesi gerektigini linkle goster.
-9. Musteri bir urun hakkinda soru sordugunda, recete bilgilerinden yararlanarak detayli bilgi ver ve upselling onerilerinde bulun.
+9. Müşteri bir ürün hakkında soru sorduğunda, reçete bilgilerinden yararlanarak detaylı bilgi ver ve upselling önerilerinde bulun.
 
 KISITLAMALAR:
 - ASLA baska personelin telefon, e-posta, TC kimlik, adres gibi kisisel bilgilerini PAYLASMAYACAKSIN.

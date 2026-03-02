@@ -199,14 +199,14 @@ const CATEGORY_LABELS: Record<string, string> = {
 };
 
 const MOVEMENT_TYPE_LABELS: Record<string, string> = {
-  giris: "Giris",
-  cikis: "Cikis",
+  giris: "Giriş",
+  cikis: "Çıkış",
   fire: "Fire",
   mal_kabul: "Mal Kabul",
-  iade: "Iade",
-  uretim_giris: "Uretim Giris",
-  uretim_cikis: "Uretim Cikis",
-  sayim_duzeltme: "Sayim Duzeltme",
+  iade: "İade",
+  uretim_giris: "Üretim Giriş",
+  uretim_cikis: "Üretim Çıkış",
+  sayim_duzeltme: "Sayım Düzeltme",
   transfer: "Transfer",
 };
 
@@ -1064,7 +1064,7 @@ function MaliyetAnaliziTab({ branchId }: { branchId: string }) {
                   <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
                   <XAxis dataKey="month" tick={{ fontSize: 11 }} />
                   <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => (v / 1000).toLocaleString("tr-TR") + "K"} />
-                  <Tooltip formatter={(value: number, name: string) => [name === "spending" ? formatCurrency(value) + " TL" : value, name === "spending" ? "Harcama" : "Siparis"]} contentStyle={TOOLTIP_STYLE} />
+                  <Tooltip formatter={(value: number, name: string) => [name === "spending" ? formatCurrency(value) + " TL" : value, name === "spending" ? "Harcama" : "Sipariş"]} contentStyle={TOOLTIP_STYLE} />
                   <Area type="monotone" dataKey="spending" stroke="hsl(var(--primary))" fill="hsl(var(--primary))" fillOpacity={0.15} strokeWidth={2} />
                 </AreaChart>
               </ResponsiveContainer>

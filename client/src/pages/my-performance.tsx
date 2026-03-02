@@ -31,16 +31,16 @@ import {
 type PeriodType = "monthly" | "quarterly" | "yearly" | "all";
 
 const PERIOD_LABELS: Record<PeriodType, string> = {
-  monthly: "Aylik",
-  quarterly: "3 Aylik",
-  yearly: "Yillik",
-  all: "Tum Gecmis"
+  monthly: "Aylık",
+  quarterly: "3 Aylık",
+  yearly: "Yıllık",
+  all: "Tüm Geçmiş"
 };
 
 const PERIOD_DESCRIPTIONS: Record<PeriodType, string> = {
-  monthly: "Prim ve uyari degerlendirmesi",
-  quarterly: "Trend analizi ve gelisim takibi",
-  yearly: "Kariyer degerlendirmesi",
+  monthly: "Prim ve uyarı değerlendirmesi",
+  quarterly: "Trend analizi ve gelişim takibi",
+  yearly: "Kariyer değerlendirmesi",
   all: "Toplam ilerleme grafi\u011fi"
 };
 
@@ -70,8 +70,8 @@ export default function MyPerformancePage() {
   const radarData = perf ? [
     { subject: "Devam", value: (perf.attendanceScore || 0) * 5, fullMark: 100 },
     { subject: "Checklist", value: (perf.checklistScore || 0) * 5, fullMark: 100 },
-    { subject: "Gorevler", value: (perf.taskScore || 0) * 6.67, fullMark: 100 },
-    { subject: "Musteri", value: (perf.customerRatingScore || 0) * 6.67, fullMark: 100 },
+    { subject: "Görevler", value: (perf.taskScore || 0) * 6.67, fullMark: 100 },
+    { subject: "Müşteri", value: (perf.customerRatingScore || 0) * 6.67, fullMark: 100 },
     { subject: "Yonetici", value: (perf.managerRatingScore || 0) * 5, fullMark: 100 },
   ] : [];
 
@@ -83,17 +83,17 @@ export default function MyPerformancePage() {
       });
       const data = await response.json();
       setAiTips(data.tips || []);
-      toast({ title: "Basarili", description: "AI onerileri olusturuldu" });
+      toast({ title: "Başarılı", description: "AI önerileri oluşturuldu" });
     } catch (error) {
       console.error("AI tips error:", error);
       setAiTips([
-        "Devam puaninizi artirmak icin mesai saatlerine dikkat edin.",
-        "Checklist gorevlerini zamaninda tamamlayin.",
-        "Musteri memnuniyeti icin guler yuzlu hizmet verin.",
-        "Ekip calismasina katilim saglayin.",
-        "Egitim programlarini tamamlayin."
+        "Devam puanınızı artırmak için mesai saatlerine dikkat edin.",
+        "Checklist görevlerini zamanında tamamlayın.",
+        "Müşteri memnuniyeti için güler yüzlü hizmet verin.",
+        "Ekip çalışmasına katılım sağlayın.",
+        "Eğitim programlarını tamamlayın."
       ]);
-      toast({ title: "Bilgi", description: "Genel oneriler yuklendi" });
+      toast({ title: "Bilgi", description: "Genel öneriler yüklendi" });
     } finally {
       setGeneratingTips(false);
     }
@@ -106,50 +106,50 @@ export default function MyPerformancePage() {
       const currentYear = new Date().getFullYear();
 
       const { doc, yPos: startY } = await createPDFWithHeader({
-        title: "Kisisel Performans Raporum",
+        title: "Kişisel Performans Raporum",
         subtitle: `${(user as any)?.firstName} ${(user as any)?.lastName}`,
         branchName: (user as any)?.branchName,
         orientation: "portrait"
       });
 
       let yPos = startY;
-      yPos = addSection(doc, "Kisisel Bilgiler", yPos);
+      yPos = addSection(doc, "Kişisel Bilgiler", yPos);
       yPos = addKeyValue(doc, "Ad Soyad", `${(user as any)?.firstName || ""} ${(user as any)?.lastName || ""}`, yPos);
       yPos = addKeyValue(doc, "Pozisyon", (user as any)?.role || "-", yPos);
       yPos = addKeyValue(doc, "Sube", (user as any)?.branchName || "-", yPos);
       yPos += 5;
 
       yPos = checkPageBreak(doc, yPos, 80);
-      yPos = addSection(doc, "Performans Puanlari", yPos);
+      yPos = addSection(doc, "Performans Puanları", yPos);
       yPos = addKeyValue(doc, "Toplam Puan", `${perf?.totalScore?.toFixed(1) || 0} / 100`, yPos);
-      yPos = addKeyValue(doc, "Devam Puani", `${perf?.attendanceScore?.toFixed(1) || 0} / 20`, yPos);
-      yPos = addKeyValue(doc, "Checklist Puani", `${perf?.checklistScore?.toFixed(1) || 0} / 20`, yPos);
-      yPos = addKeyValue(doc, "Gorev Puani", `${perf?.taskScore?.toFixed(1) || 0} / 15`, yPos);
-      yPos = addKeyValue(doc, "Musteri Puani", `${perf?.customerRatingScore?.toFixed(1) || 0} / 15`, yPos);
-      yPos = addKeyValue(doc, "Yonetici Puani", `${perf?.managerRatingScore?.toFixed(1) || 0} / 20`, yPos);
+      yPos = addKeyValue(doc, "Devam Puanı", `${perf?.attendanceScore?.toFixed(1) || 0} / 20`, yPos);
+      yPos = addKeyValue(doc, "Checklist Puanı", `${perf?.checklistScore?.toFixed(1) || 0} / 20`, yPos);
+      yPos = addKeyValue(doc, "Görev Puanı", `${perf?.taskScore?.toFixed(1) || 0} / 15`, yPos);
+      yPos = addKeyValue(doc, "Müşteri Puanı", `${perf?.customerRatingScore?.toFixed(1) || 0} / 15`, yPos);
+      yPos = addKeyValue(doc, "Yönetici Puanı", `${perf?.managerRatingScore?.toFixed(1) || 0} / 20`, yPos);
       yPos += 5;
 
       if (perf?.rank) {
         yPos = checkPageBreak(doc, yPos, 40);
-        yPos = addSection(doc, "Siralama", yPos);
-        yPos = addKeyValue(doc, "Bu Ay Sirasi", `${perf.rank}. sirada`, yPos);
+        yPos = addSection(doc, "Sıralama", yPos);
+        yPos = addKeyValue(doc, "Bu Ay Sırası", `${perf.rank}. sirada`, yPos);
         yPos = addKeyValue(doc, "Toplam Personel", `${perf.totalEmployees || "-"} kisi`, yPos);
         yPos += 5;
       }
 
       if (aiTips.length > 0) {
         yPos = checkPageBreak(doc, yPos, 60);
-        yPos = addSection(doc, "Gelisim Onerileri", yPos);
+        yPos = addSection(doc, "Gelişim Önerileri", yPos);
         for (const tip of aiTips) {
           yPos = addParagraph(doc, `${sanitizeText(tip)}`, yPos);
         }
       }
 
       savePDF(doc, `kisisel-performans-${currentYear}-${currentMonth}.pdf`);
-      toast({ title: "Basarili", description: "PDF raporu indirildi" });
+      toast({ title: "Başarılı", description: "PDF raporu indirildi" });
     } catch (error) {
       console.error("PDF error:", error);
-      toast({ title: "Hata", description: "PDF olusturulamadi", variant: "destructive" });
+      toast({ title: "Hata", description: "PDF oluşturulamadı", variant: "destructive" });
     } finally {
       setGeneratingPDF(false);
     }
@@ -170,7 +170,7 @@ export default function MyPerformancePage() {
             Performansim
           </h1>
           <p className="text-muted-foreground">
-            Kisisel performans takibi ve AI onerileri
+            Kişisel performans takibi ve AI önerileri
           </p>
         </div>
         
@@ -184,7 +184,7 @@ export default function MyPerformancePage() {
           ) : (
             <Download className="mr-2 h-4 w-4" />
           )}
-          Raporumu Indir
+          Raporumu İndir
         </Button>
       </div>
 
@@ -211,9 +211,9 @@ export default function MyPerformancePage() {
                 <div className="flex flex-col items-center">
                   <Medal className="h-8 w-8 mb-2 text-blue-500" />
                   <p className="text-3xl font-bold" data-testid="text-rank">{rank || "-"}</p>
-                  <p className="text-sm text-muted-foreground">Siralama</p>
+                  <p className="text-sm text-muted-foreground">Sıralama</p>
                   {rank && rank <= 3 && (
-                    <Badge className="mt-2">Ilk 3'te!</Badge>
+                    <Badge className="mt-2">İlk 3'te!</Badge>
                   )}
                 </div>
               </CardContent>
@@ -226,7 +226,7 @@ export default function MyPerformancePage() {
                   <p className="text-3xl font-bold">
                     {perf?.customerRatingAvg?.toFixed(1) || "-"}
                   </p>
-                  <p className="text-sm text-muted-foreground">Musteri Puani</p>
+                  <p className="text-sm text-muted-foreground">Müşteri Puanı</p>
                 </div>
               </CardContent>
             </Card>
@@ -256,7 +256,7 @@ export default function MyPerformancePage() {
               </TabsTrigger>
               <TabsTrigger value="tips" data-testid="tab-tips">
                 <Sparkles className="mr-2 h-4 w-4" />
-                AI Onerileri
+                AI Önerileri
               </TabsTrigger>
             </TabsList>
 
@@ -290,8 +290,8 @@ export default function MyPerformancePage() {
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <Card>
                   <CardHeader>
-                    <CardTitle>Performans Radari</CardTitle>
-                    <CardDescription>Kategorilere gore puan dagilimi</CardDescription>
+                    <CardTitle>Performans Radarı</CardTitle>
+                    <CardDescription>Kategorilere göre puan dağılımı</CardDescription>
                   </CardHeader>
                   <CardContent>
                     <div className="h-80">
@@ -316,15 +316,15 @@ export default function MyPerformancePage() {
 
                 <Card>
                   <CardHeader>
-                    <CardTitle>Kategori Detaylari</CardTitle>
-                    <CardDescription>Her kategorideki puaniniz</CardDescription>
+                    <CardTitle>Kategori Detayları</CardTitle>
+                    <CardDescription>Her kategorideki puanınız</CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <ScoreBar label="Devam" value={perf?.attendanceScore || 0} max={20} color="bg-green-500" />
                     <ScoreBar label="Checklist" value={perf?.checklistScore || 0} max={20} color="bg-blue-500" />
-                    <ScoreBar label="Gorevler" value={perf?.taskScore || 0} max={15} color="bg-yellow-500" />
-                    <ScoreBar label="Musteri" value={perf?.customerRatingScore || 0} max={15} color="bg-purple-500" />
-                    <ScoreBar label="Yonetici" value={perf?.managerRatingScore || 0} max={20} color="bg-pink-500" />
+                    <ScoreBar label="Görevler" value={perf?.taskScore || 0} max={15} color="bg-yellow-500" />
+                    <ScoreBar label="Müşteri" value={perf?.customerRatingScore || 0} max={15} color="bg-purple-500" />
+                    <ScoreBar label="Yönetici" value={perf?.managerRatingScore || 0} max={20} color="bg-pink-500" />
                   </CardContent>
                 </Card>
               </div>
@@ -335,17 +335,17 @@ export default function MyPerformancePage() {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <Sparkles className="h-5 w-5 text-purple-500" />
-                    AI Gelisim Onerileri
+                    AI Gelişim Önerileri
                   </CardTitle>
                   <CardDescription>
-                    Performansinizi artirmak icin kisisellestirilmis oneriler
+                    Performansınızı artırmak için kişiselleştirilmiş öneriler
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
                   {generatingTips ? (
                     <div className="flex items-center justify-center py-8">
                       <Loader2 className="h-6 w-6 animate-spin mr-2" />
-                      <span>AI onerileri hazirlaniyor...</span>
+                      <span>AI önerileri hazırlanıyor...</span>
                     </div>
                   ) : aiTips.length > 0 ? (
                     <div className="space-y-3">
@@ -369,13 +369,13 @@ export default function MyPerformancePage() {
                         data-testid="button-refresh-tips"
                       >
                         <Sparkles className="mr-2 h-4 w-4" />
-                        Yeni Oneriler Al
+                        Yeni Öneriler Al
                       </Button>
                     </div>
                   ) : (
                     <div className="text-center py-8 text-muted-foreground">
                       <MessageSquare className="mx-auto h-12 w-12 mb-4 opacity-50" />
-                      <p>Henuz oneri olusturulmadi</p>
+                      <p>Henüz öneri oluşturulmadı</p>
                       <Button 
                         className="mt-4"
                         onClick={generateAITips}
@@ -383,7 +383,7 @@ export default function MyPerformancePage() {
                         data-testid="button-generate-tips"
                       >
                         <Sparkles className="mr-2 h-4 w-4" />
-                        AI Onerilerini Al
+                        AI Önerilerini Al
                       </Button>
                     </div>
                   )}
@@ -404,7 +404,7 @@ function TrendBadge({ value }: { value: number | null }) {
     return (
       <Badge variant="secondary" className="text-xs" data-testid="badge-trend-neutral">
         <Minus className="w-3 h-3 mr-1" />
-        Degisim yok
+        Değişim yok
       </Badge>
     );
   }
@@ -430,7 +430,7 @@ function PeriodContent({ data, period }: { data: any; period: PeriodType }) {
       <Card>
         <CardContent className="py-8 text-center text-muted-foreground">
           <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2" />
-          Yukleniyor...
+          Yükleniyor...
         </CardContent>
       </Card>
     );
@@ -441,8 +441,8 @@ function PeriodContent({ data, period }: { data: any; period: PeriodType }) {
       <Card>
         <CardContent className="py-12 text-center text-muted-foreground">
           <BarChart3 className="h-10 w-10 mx-auto mb-3 opacity-50" />
-          <p className="font-medium">Henuz veri yok</p>
-          <p className="text-sm mt-1">Bu periyod icin performans verisi bulunamadi</p>
+          <p className="font-medium">Henüz veri yok</p>
+          <p className="text-sm mt-1">Bu periyod için performans verisi bulunamadı</p>
         </CardContent>
       </Card>
     );
@@ -471,7 +471,7 @@ function PeriodContent({ data, period }: { data: any; period: PeriodType }) {
         <Card data-testid="card-period-previous">
           <CardContent className="pt-6">
             <div className="flex flex-col items-center">
-              <p className="text-sm text-muted-foreground mb-1">Onceki Periyod</p>
+              <p className="text-sm text-muted-foreground mb-1">Önceki Periyod</p>
               {data.previous ? (
                 <>
                   <p className="text-3xl font-bold text-muted-foreground" data-testid="text-previous-score">
@@ -480,7 +480,7 @@ function PeriodContent({ data, period }: { data: any; period: PeriodType }) {
                   <p className="text-xs text-muted-foreground mt-1">
                     {period === "quarterly" && data.previous.quarter ? `Q${data.previous.quarter} ${data.previous.year}` : ""}
                     {period === "yearly" && data.previous.year ? `${data.previous.year}` : ""}
-                    {period === "monthly" ? "Gecen ay" : ""}
+                    {period === "monthly" ? "Geçen ay" : ""}
                   </p>
                 </>
               ) : (
@@ -498,7 +498,7 @@ function PeriodContent({ data, period }: { data: any; period: PeriodType }) {
                 {(data.summary?.avgScore || 0).toFixed(1)}
               </p>
               <p className="text-xs text-muted-foreground mt-1">
-                {data.summary?.totalMonths || 0} aylik veri
+                {data.summary?.totalMonths || 0} aylık veri
               </p>
             </div>
           </CardContent>
@@ -513,10 +513,10 @@ function PeriodContent({ data, period }: { data: any; period: PeriodType }) {
               {PERIOD_LABELS[period]} Performans Trendi
             </CardTitle>
             <CardDescription>
-              {period === "monthly" ? "Son 12 aylik skor degisimi" : ""}
-              {period === "quarterly" ? "Ceyreklik ortalama skorlar" : ""}
-              {period === "yearly" ? "Yillik skor trendi" : ""}
-              {period === "all" ? "Tum zaman performans gecmisi" : ""}
+              {period === "monthly" ? "Son 12 aylık skor değişimi" : ""}
+              {period === "quarterly" ? "Çeyreklik ortalama skorlar" : ""}
+              {period === "yearly" ? "Yıllık skor trendi" : ""}
+              {period === "all" ? "Tüm zaman performans geçmişi" : ""}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -557,8 +557,8 @@ function PeriodContent({ data, period }: { data: any; period: PeriodType }) {
       {data.chartData && data.chartData.length > 1 && data.chartData[0]?.attendance !== undefined && (
         <Card data-testid="card-category-trend">
           <CardHeader className="pb-2">
-            <CardTitle className="text-base">Kategori Bazli Trend</CardTitle>
-            <CardDescription>Alt skorlarin zaman icindeki degisimi</CardDescription>
+            <CardTitle className="text-base">Kategori Bazlı Trend</CardTitle>
+            <CardDescription>Alt skorların zaman içindeki değişimi</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="h-72">
@@ -571,9 +571,9 @@ function PeriodContent({ data, period }: { data: any; period: PeriodType }) {
                   <Legend wrapperStyle={{ fontSize: 11 }} />
                   <Line type="monotone" dataKey="attendance" name="Devam" stroke="#22c55e" strokeWidth={1.5} dot={false} />
                   <Line type="monotone" dataKey="checklist" name="Checklist" stroke="#3b82f6" strokeWidth={1.5} dot={false} />
-                  <Line type="monotone" dataKey="task" name="Gorev" stroke="#eab308" strokeWidth={1.5} dot={false} />
-                  <Line type="monotone" dataKey="customer" name="Musteri" stroke="#a855f7" strokeWidth={1.5} dot={false} />
-                  <Line type="monotone" dataKey="manager" name="Yonetici" stroke="#ec4899" strokeWidth={1.5} dot={false} />
+                  <Line type="monotone" dataKey="task" name="Görev" stroke="#eab308" strokeWidth={1.5} dot={false} />
+                  <Line type="monotone" dataKey="customer" name="Müşteri" stroke="#a855f7" strokeWidth={1.5} dot={false} />
+                  <Line type="monotone" dataKey="manager" name="Yönetici" stroke="#ec4899" strokeWidth={1.5} dot={false} />
                 </LineChart>
               </ResponsiveContainer>
             </div>

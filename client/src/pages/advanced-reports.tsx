@@ -63,7 +63,7 @@ export default function AdvancedReportsPage() {
     { name: "Devam", value: 20, color: CHART_COLORS[0] },
     { name: "Checklist", value: 20, color: CHART_COLORS[1] },
     { name: "Gorevler", value: 15, color: CHART_COLORS[2] },
-    { name: "Musteri", value: 15, color: CHART_COLORS[3] },
+    { name: "Müşteri", value: 15, color: CHART_COLORS[3] },
     { name: "Yonetici", value: 20, color: CHART_COLORS[4] },
     { name: "Izin", value: 10, color: CHART_COLORS[5] },
   ];
@@ -85,7 +85,7 @@ export default function AdvancedReportsPage() {
       let yPos = startY;
 
       // Summary section
-      yPos = addSection(doc, "Ozet Bilgiler", yPos);
+      yPos = addSection(doc, "Özet Bilgiler", yPos);
       yPos = addKeyValue(doc, "Toplam Personel", `${(rankings as any[])?.length || 0} kisi`, yPos);
       
       const avgScore = (rankings as any[])?.length > 0

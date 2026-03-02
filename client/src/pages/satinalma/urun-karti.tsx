@@ -180,23 +180,23 @@ const severityLabels: Record<string, string> = {
 };
 
 const movementTypeLabels: Record<string, string> = {
-  giris: "Giris",
-  cikis: "Cikis",
-  sayim_duzeltme: "Sayim Duzeltme",
+  giris: "Giriş",
+  cikis: "Çıkış",
+  sayim_duzeltme: "Sayım Düzeltme",
   fire: "Fire",
-  iade: "Iade",
+  iade: "İade",
   mal_kabul: "Mal Kabul",
-  uretim_giris: "Uretimden Giris",
-  uretim_cikis: "Uretime Cikis",
+  uretim_giris: "Üretimden Giriş",
+  uretim_cikis: "Üretime Çıkış",
 };
 
 const orderStatusLabels: Record<string, string> = {
   taslak: "Taslak",
   onay_bekliyor: "Onay Bekliyor",
-  onaylandi: "Onaylandi",
-  siparis_verildi: "Siparis Verildi",
-  kismen_teslim: "Kismen Teslim",
-  tamamlandi: "Tamamlandi",
+  onaylandi: "Onaylandı",
+  siparis_verildi: "Sipariş Verildi",
+  kismen_teslim: "Kısmen Teslim",
+  tamamlandi: "Tamamlandı",
   iptal: "Iptal",
 };
 

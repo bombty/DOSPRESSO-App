@@ -382,7 +382,7 @@ function EmployeeTypesTab() {
             </Button>
             <Button onClick={handleSubmit} disabled={isPending || !formData.key || !formData.name} data-testid="button-save-type">
               {isPending && <Loader2 className="animate-spin" />}
-              {editingType ? "Guncelle" : "Olustur"}
+              {editingType ? "Güncelle" : "Oluştur"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -623,7 +623,7 @@ function PoliciesTab() {
               data-testid="button-save-policy"
             >
               {createPolicyMutation.isPending && <Loader2 className="animate-spin" />}
-              Olustur
+              Oluştur
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -844,7 +844,7 @@ function AssignmentsTab() {
               data-testid="button-save-assignment"
             >
               {createMutation.isPending && <Loader2 className="animate-spin" />}
-              Olustur
+              Oluştur
             </Button>
           </DialogFooter>
         </DialogContent>

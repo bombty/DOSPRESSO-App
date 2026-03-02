@@ -267,7 +267,7 @@ export default function HqKiosk() {
 
   const getStatusText = (status: string) => {
     switch (status) {
-      case "active": return "Calisiyor";
+      case "active": return "Çalışıyor";
       case "on_break": return "Molada";
       case "outside": return "Dis Gorevde";
       default: return status;
@@ -639,7 +639,7 @@ export default function HqKiosk() {
           {(exitReason === "external_task" || exitReason === "personal") && (
             <div className="space-y-2">
               <label className="text-sm font-medium">
-                {exitReason === "external_task" ? "Gorev Aciklamasi" : "Sebep"}
+                {exitReason === "external_task" ? "Görev Açıklaması" : "Sebep"}
               </label>
               <Textarea
                 placeholder={exitReason === "external_task" ? "Dis gorev aciklamasi..." : "Kisisel izin sebebi..."}

@@ -274,25 +274,25 @@ export async function sendEmployeeOfMonthEmail(
           <p style="font-size: 18px;">Sevgili <strong>${employeeName}</strong>,</p>
           
           <div class="highlight">
-            <p style="margin: 0;"><strong>${monthYear}</strong> donemi icin <strong>${branchName}</strong> subesinde <strong>AYIN ELEMANI</strong> secildiniz!</p>
+            <p style="margin: 0;"><strong>${monthYear}</strong> dönemi için <strong>${branchName}</strong> şubesinde <strong>AYIN ELEMANI</strong> seçildiniz!</p>
           </div>
           
-          <p>Gostermis oldugunuz ustun performans, oz veri ve takim ruhu ile bu basariyi hak ettiniz. Calisma arkadaşlariniz ve yoneticileriniz sizinle gurur duyuyor.</p>
+          <p>Göstermiş olduğunuz üstün performans, öz veri ve takım ruhu ile bu başarıyı hak ettiniz. Çalışma arkadaşlarınız ve yöneticileriniz sizinle gurur duyuyor.</p>
           
           <div class="score-box">
-            <div class="label">Genel Performans Puaniniz</div>
+            <div class="label">Genel Performans Puanınız</div>
             <div class="score">${totalScore.toFixed(1)}/100</div>
           </div>
           
-          <p>Bu basariniz profil sayfanizda ve sube panelinde sergilenecektir. Ayrintili performans raporunuzu asagidaki linkten goruntuleyebilirsiniz:</p>
+          <p>Bu başarınız profil sayfanızda ve şube panelinde sergilenecektir. Ayrıntılı performans raporunuzu aşağıdaki linkten görüntüleyebilirsiniz:</p>
           
           <center>
-            <a href="${dashboardUrl}" class="button">Performansimi Gor</a>
+            <a href="${dashboardUrl}" class="button">Performansımı Gör</a>
           </center>
           
-          <p>Basarilarinizin devamini diliyoruz!</p>
+          <p>Başarılarınızın devamını diliyoruz!</p>
           
-          <p style="margin-top: 20px;">Saygilarimizla,<br><strong>DOSPRESSO Aileniz</strong></p>
+          <p style="margin-top: 20px;">Saygılarımızla,<br><strong>DOSPRESSO Aileniz</strong></p>
         </div>
         <div class="footer">
           <p>DOSPRESSO Franchise Management System<br>Bu otomatik bir emaildir.</p>
@@ -304,7 +304,7 @@ export async function sendEmployeeOfMonthEmail(
 
   await sendEmail({
     to: email,
-    subject: `🏆 Tebrikler! ${monthYear} Ayin Elemani Secildiniz`,
+    subject: `🏆 Tebrikler! ${monthYear} Ayın Elemanı Seçildiniz`,
     html,
   });
 }

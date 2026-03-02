@@ -504,7 +504,7 @@ const TARGET_ROLE_OPTIONS = [
   { value: "ceo", label: "CEO" },
   { value: "cgo", label: "CGO" },
   { value: "muhasebe_ik", label: "Muhasebe/IK" },
-  { value: "satinalma", label: "Satinalma" },
+  { value: "satinalma", label: "Satınalma" },
   { value: "marketing", label: "Marketing" },
   { value: "trainer", label: "Trainer" },
   { value: "fabrika_mudur", label: "Fabrika Mudur" },

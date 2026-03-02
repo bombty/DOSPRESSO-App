@@ -86,9 +86,9 @@ interface TaskSummary {
 }
 
 const frequencyLabels: Record<string, string> = {
-  daily: "Gunluk",
-  weekly: "Haftalik",
-  monthly: "Aylik",
+  daily: "Günlük",
+  weekly: "Haftalık",
+  monthly: "Aylık",
 };
 
 const frequencyIcons: Record<string, any> = {
@@ -104,16 +104,16 @@ const priorityColors: Record<number, string> = {
 };
 
 const sourceTypeLabels: Record<string, string> = {
-  task_assigned: "Atanan Gorev",
-  task_completed: "Tamamlanan Gorev",
+  task_assigned: "Atanan Görev",
+  task_completed: "Tamamlanan Görev",
   checklist_assigned: "Checklist",
   feedback_received: "Geri Bildirim",
-  fault_reported: "Ariza Bildirimi",
-  fault_assigned: "Ariza Gorevi",
-  leave_request: "Izin Talebi",
-  training_assigned: "Egitim",
-  stock_alert: "Stok Uyarisi",
-  sla_warning: "SLA Uyarisi",
+  fault_reported: "Arıza Bildirimi",
+  fault_assigned: "Arıza Görevi",
+  leave_request: "İzin Talebi",
+  training_assigned: "Eğitim",
+  stock_alert: "Stok Uyarısı",
+  sla_warning: "SLA Uyarısı",
   performance_review: "Performans",
   quality_audit: "Kalite Denetimi",
   announcement: "Duyuru",
@@ -147,7 +147,7 @@ function TaskDetailPanel({ steps, targetUrl, onNavigate }: { steps: DetailStep[]
           data-testid="task-detail-navigate"
         >
           <ExternalLink className="h-3 w-3" />
-          Ilgili module git
+          İlgili modüle git
         </Button>
       )}
     </div>
@@ -184,7 +184,7 @@ export function DailyTaskPanel() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/daily-tasks?frequency=${frequency}`] });
       queryClient.invalidateQueries({ queryKey: ["/api/daily-tasks/summary"] });
-      toast({ title: "Gorev tamamlandi", description: "Tebrikler!" });
+      toast({ title: "Görev tamamlandı", description: "Tebrikler!" });
     },
   });
 
@@ -205,7 +205,7 @@ export function DailyTaskPanel() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/daily-tasks/events"] });
       queryClient.invalidateQueries({ queryKey: ["/api/daily-tasks/summary"] });
-      toast({ title: "Gorev tamamlandi", description: "Tebrikler!" });
+      toast({ title: "Görev tamamlandı", description: "Tebrikler!" });
     },
   });
 
@@ -277,7 +277,7 @@ export function DailyTaskPanel() {
         <div className="flex items-center justify-between gap-2 flex-wrap">
           <div className="flex items-center gap-2">
             <ListTodo className="h-5 w-5 text-primary" />
-            <CardTitle className="text-base">Bugunun Gorevleri</CardTitle>
+            <CardTitle className="text-base">Bugünün Görevleri</CardTitle>
             {activeEventTasks.length > 0 && (
               <Badge variant="destructive" className="text-[10px] px-1.5 py-0">
                 <Zap className="h-2.5 w-2.5 mr-0.5" />
@@ -288,7 +288,7 @@ export function DailyTaskPanel() {
           {progressPercent === 100 && allTotal > 0 && (
             <Badge variant="default" className="bg-green-600 dark:bg-green-700">
               <Trophy className="h-3 w-3 mr-1" />
-              Tamamlandi
+              Tamamlandı
             </Badge>
           )}
         </div>
@@ -297,7 +297,7 @@ export function DailyTaskPanel() {
           <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="daily" data-testid="tab-daily" className="text-xs">
               <Clock className="h-3 w-3 mr-1" />
-              Gunluk
+              Günlük
               {summary?.daily && (
                 <Badge variant="secondary" className="ml-1 text-[10px] px-1 py-0">
                   {summary.daily.completed}/{summary.daily.total}
@@ -306,7 +306,7 @@ export function DailyTaskPanel() {
             </TabsTrigger>
             <TabsTrigger value="weekly" data-testid="tab-weekly" className="text-xs">
               <Calendar className="h-3 w-3 mr-1" />
-              Haftalik
+              Haftalık
               {summary?.weekly && (
                 <Badge variant="secondary" className="ml-1 text-[10px] px-1 py-0">
                   {summary.weekly.completed}/{summary.weekly.total}
@@ -315,7 +315,7 @@ export function DailyTaskPanel() {
             </TabsTrigger>
             <TabsTrigger value="monthly" data-testid="tab-monthly" className="text-xs">
               <CalendarDays className="h-3 w-3 mr-1" />
-              Aylik
+              Aylık
               {summary?.monthly && (
                 <Badge variant="secondary" className="ml-1 text-[10px] px-1 py-0">
                   {summary.monthly.completed}/{summary.monthly.total}
@@ -329,7 +329,7 @@ export function DailyTaskPanel() {
           <div className="mt-2">
             <div className="flex items-center justify-between gap-2 mb-1">
               <span className="text-xs text-muted-foreground">
-                {allCompleted}/{allTotal} gorev tamamlandi
+                {allCompleted}/{allTotal} görev tamamlandı
               </span>
               <span className="text-xs font-semibold">{progressPercent}%</span>
             </div>
@@ -348,7 +348,7 @@ export function DailyTaskPanel() {
         ) : (tasks.length === 0 && eventTasks.length === 0) ? (
           <div className="text-center py-6 text-muted-foreground">
             <Sparkles className="h-8 w-8 mx-auto mb-2 opacity-50" />
-            <p className="text-sm">Bu periyod icin gorev tanimlanmamis</p>
+            <p className="text-sm">Bu periyod için görev tanımlanmamış</p>
           </div>
         ) : (
           <div className="space-y-1">
@@ -356,7 +356,7 @@ export function DailyTaskPanel() {
               <>
                 <div className="flex items-center gap-1.5 pt-1 pb-1">
                   <Zap className="h-3.5 w-3.5 text-amber-500" />
-                  <span className="text-xs font-semibold text-amber-600 dark:text-amber-400">Sistem Gorevleri</span>
+                  <span className="text-xs font-semibold text-amber-600 dark:text-amber-400">Sistem Görevleri</span>
                   <Badge variant="secondary" className="text-[10px] px-1 py-0">
                     {activeEventTasks.length}
                   </Badge>
@@ -428,7 +428,7 @@ export function DailyTaskPanel() {
                                 data-testid={`event-task-navigate-${task.id}`}
                               >
                                 <ExternalLink className="h-3 w-3" />
-                                Ilgili module git
+                                İlgili modüle git
                               </Button>
                             </div>
                           )}
@@ -445,7 +445,7 @@ export function DailyTaskPanel() {
                 {activeEventTasks.length > 0 && (
                   <div className="flex items-center gap-1.5 pt-2 pb-1">
                     <ListTodo className="h-3.5 w-3.5 text-primary" />
-                    <span className="text-xs font-semibold text-muted-foreground">Rol Gorevleri</span>
+                    <span className="text-xs font-semibold text-muted-foreground">Rol Görevleri</span>
                   </div>
                 )}
                 {pendingTasks.map((task) => {
@@ -520,7 +520,7 @@ export function DailyTaskPanel() {
                                   data-testid={`task-navigate-${task.id}`}
                                 >
                                   <ExternalLink className="h-3 w-3" />
-                                  Ilgili module git
+                                  İlgili modüle git
                                 </Button>
                               )}
                             </div>
@@ -541,7 +541,7 @@ export function DailyTaskPanel() {
                   data-testid="toggle-completed-section"
                 >
                   <CheckCircle className="h-3.5 w-3.5 text-green-500" />
-                  <span className="text-xs font-semibold text-muted-foreground">Tamamlanan Gorevler</span>
+                  <span className="text-xs font-semibold text-muted-foreground">Tamamlanan Görevler</span>
                   <Badge variant="secondary" className="text-[10px] px-1 py-0">
                     {allCompletedTasks.length}
                   </Badge>

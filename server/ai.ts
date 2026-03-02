@@ -1447,7 +1447,7 @@ JSON yanit ver:
   "shifts": [
     {"shiftDate":"YYYY-MM-DD","startTime":"HH:MM:SS","endTime":"HH:MM:SS","breakStartTime":"HH:MM:SS","breakEndTime":"HH:MM:SS","shiftType":"morning|evening","assignedToId":"user-id","status":"draft"}
   ],
-  "summary":"Ozet"
+  "summary":"Özet"
 }`,
         },
       ],

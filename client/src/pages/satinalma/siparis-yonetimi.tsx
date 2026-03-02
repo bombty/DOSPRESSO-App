@@ -84,15 +84,15 @@ interface PurchaseOrderPayment {
 }
 
 const statusOptions = [
-  { value: "all", label: "Tumu" },
+  { value: "all", label: "Tümü" },
   { value: "taslak", label: "Taslak" },
   { value: "onay_bekliyor", label: "Onay Bekliyor" },
-  { value: "onaylandi", label: "Onaylandi" },
-  { value: "siparis_verildi", label: "Siparis Verildi" },
-  { value: "kismen_teslim", label: "Kismen Teslim" },
-  { value: "tamamlandi", label: "Tamamlandi" },
+  { value: "onaylandi", label: "Onaylandı" },
+  { value: "siparis_verildi", label: "Sipariş Verildi" },
+  { value: "kismen_teslim", label: "Kısmen Teslim" },
+  { value: "tamamlandi", label: "Tamamlandı" },
   { value: "reddedildi", label: "Reddedildi" },
-  { value: "iptal", label: "Iptal" }
+  { value: "iptal", label: "İptal" }
 ];
 
 const paymentMethodLabels: Record<string, string> = {
@@ -118,11 +118,11 @@ function PaymentStatusBadge({ orderId }: { orderId: number }) {
   const latestPayment = payments[0];
 
   if (latestPayment.status === "odendi") {
-    return <Badge variant="default" className="bg-green-600 text-white" data-testid={`badge-payment-status-${orderId}`}>Odendi</Badge>;
+    return <Badge variant="default" className="bg-green-600 text-white" data-testid={`badge-payment-status-${orderId}`}>Ödendi</Badge>;
   }
 
   if (latestPayment.status === "beklemede") {
-    return <Badge variant="secondary" className="bg-yellow-500 text-white" data-testid={`badge-payment-status-${orderId}`}>Odeme Bekliyor</Badge>;
+    return <Badge variant="secondary" className="bg-yellow-500 text-white" data-testid={`badge-payment-status-${orderId}`}>Ödeme Bekliyor</Badge>;
   }
 
   return null;
@@ -152,10 +152,10 @@ function PaymentDialog({ order, open, onOpenChange }: { order: PurchaseOrder; op
       setAmount(order.totalAmount || "0");
       setPaymentMethod("havale");
       setNotes("");
-      toast({ title: "Odeme bilgisi kaydedildi" });
+      toast({ title: "Ödeme bilgisi kaydedildi" });
     },
     onError: () => {
-      toast({ title: "Hata", description: "Odeme bilgisi kaydedilemedi", variant: "destructive" });
+      toast({ title: "Hata", description: "Ödeme bilgisi kaydedilemedi", variant: "destructive" });
     }
   });
 
@@ -177,7 +177,7 @@ function PaymentDialog({ order, open, onOpenChange }: { order: PurchaseOrder; op
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md" data-testid="dialog-payment">
         <DialogHeader>
-          <DialogTitle>Odeme Bilgisi - {order.orderNumber}</DialogTitle>
+          <DialogTitle>Ödeme Bilgisi - {order.orderNumber}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
@@ -211,7 +211,7 @@ function PaymentDialog({ order, open, onOpenChange }: { order: PurchaseOrder; op
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="amount">Odeme Tutari</Label>
+            <Label htmlFor="amount">Ödeme Tutarı</Label>
             <Input
               id="amount"
               type="number"
@@ -222,10 +222,10 @@ function PaymentDialog({ order, open, onOpenChange }: { order: PurchaseOrder; op
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="paymentMethod">Odeme Yontemi</Label>
+            <Label htmlFor="paymentMethod">Ödeme Yöntemi</Label>
             <Select value={paymentMethod} onValueChange={setPaymentMethod}>
               <SelectTrigger data-testid="select-payment-method">
-                <SelectValue placeholder="Odeme yontemi secin" />
+                <SelectValue placeholder="Ödeme yöntemi seçin" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="havale">Havale</SelectItem>
@@ -278,10 +278,10 @@ function OrderDetailDialog({ order, open, onOpenChange }: { order: PurchaseOrder
       queryClient.invalidateQueries({ predicate: (query) =>
         (query.queryKey[0] as string).startsWith("/api/purchase-order-payments")
       });
-      toast({ title: "Odeme durumu guncellendi" });
+      toast({ title: "Ödeme durumu güncellendi" });
     },
     onError: () => {
-      toast({ title: "Hata", description: "Odeme durumu guncellenemedi", variant: "destructive" });
+      toast({ title: "Hata", description: "Ödeme durumu güncellenemedi", variant: "destructive" });
     }
   });
 
@@ -296,7 +296,7 @@ function OrderDetailDialog({ order, open, onOpenChange }: { order: PurchaseOrder
 
   const getPaymentStatusBadge = (status: string) => {
     if (status === "odendi") {
-      return <Badge variant="default" className="bg-green-600 text-white">Odendi</Badge>;
+      return <Badge variant="default" className="bg-green-600 text-white">Ödendi</Badge>;
     }
     if (status === "beklemede") {
       return <Badge variant="secondary" className="bg-yellow-500 text-white">Beklemede</Badge>;
@@ -332,7 +332,7 @@ function OrderDetailDialog({ order, open, onOpenChange }: { order: PurchaseOrder
 
           {payments && payments.length > 0 && (
             <div className="space-y-3">
-              <h4 className="font-semibold text-sm">Odeme Bilgileri</h4>
+              <h4 className="font-semibold text-sm">Ödeme Bilgileri</h4>
               {payments.map((payment) => (
                 <Card key={payment.id} data-testid={`card-payment-${payment.id}`}>
                   <CardContent className="p-3 space-y-2">
@@ -354,7 +354,7 @@ function OrderDetailDialog({ order, open, onOpenChange }: { order: PurchaseOrder
                         <p className="font-medium" data-testid={`text-payment-amount-${payment.id}`}>{formatCurrency(payment.amount)} TL</p>
                       </div>
                       <div>
-                        <span className="text-muted-foreground">Odeme Yontemi:</span>
+                        <span className="text-muted-foreground">Ödeme Yöntemi:</span>
                         <p className="font-medium" data-testid={`text-payment-method-${payment.id}`}>{paymentMethodLabels[payment.paymentMethod || ""] || payment.paymentMethod || "-"}</p>
                       </div>
                       <div>
@@ -377,7 +377,7 @@ function OrderDetailDialog({ order, open, onOpenChange }: { order: PurchaseOrder
                         data-testid={`button-mark-paid-${payment.id}`}
                       >
                         <Check className="h-4 w-4 mr-1" />
-                        Odeme Yapildi
+                        Ödeme Yapıldı
                       </Button>
                     )}
                   </CardContent>
@@ -387,7 +387,7 @@ function OrderDetailDialog({ order, open, onOpenChange }: { order: PurchaseOrder
           )}
 
           {payments && payments.length === 0 && (
-            <p className="text-sm text-muted-foreground">Henuz odeme bilgisi yok.</p>
+            <p className="text-sm text-muted-foreground">Henüz ödeme bilgisi yok.</p>
           )}
 
           {paymentsLoading && (
@@ -447,10 +447,10 @@ export default function SiparisYonetimi() {
       });
       setIsAddDialogOpen(false);
       setSelectedSupplierId("");
-      toast({ title: "Siparis olusturuldu" });
+      toast({ title: "Sipariş oluşturuldu" });
     },
     onError: () => {
-      toast({ title: "Hata", description: "Siparis olusturulamadi", variant: "destructive" });
+      toast({ title: "Hata", description: "Sipariş oluşturulamadı", variant: "destructive" });
     }
   });
 
@@ -462,10 +462,10 @@ export default function SiparisYonetimi() {
       queryClient.invalidateQueries({ predicate: (query) => 
         (query.queryKey[0] as string).startsWith("/api/purchase-orders")
       });
-      toast({ title: variables.successMessage || "Siparis durumu guncellendi" });
+      toast({ title: variables.successMessage || "Sipariş durumu güncellendi" });
     },
     onError: () => {
-      toast({ title: "Hata", description: "Durum guncellenemedi", variant: "destructive" });
+      toast({ title: "Hata", description: "Durum güncellenemedi", variant: "destructive" });
     }
   });
 
@@ -477,10 +477,10 @@ export default function SiparisYonetimi() {
       queryClient.invalidateQueries({ predicate: (query) => 
         (query.queryKey[0] as string).startsWith("/api/purchase-orders")
       });
-      toast({ title: "Siparis onaylandi" });
+      toast({ title: "Sipariş onaylandı" });
     },
     onError: () => {
-      toast({ title: "Hata", description: "Onaylama basarisiz", variant: "destructive" });
+      toast({ title: "Hata", description: "Onaylama başarısız", variant: "destructive" });
     }
   });
 
@@ -494,10 +494,10 @@ export default function SiparisYonetimi() {
       });
       setRejectDialogOrder(null);
       setRejectionReason("");
-      toast({ title: "Siparis reddedildi" });
+      toast({ title: "Sipariş reddedildi" });
     },
     onError: () => {
-      toast({ title: "Hata", description: "Red islemi basarisiz", variant: "destructive" });
+      toast({ title: "Hata", description: "Red işlemi başarısız", variant: "destructive" });
     }
   });
 
@@ -520,12 +520,12 @@ export default function SiparisYonetimi() {
     const statusMap: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
       taslak: { label: "Taslak", variant: "outline" },
       onay_bekliyor: { label: "Onay Bekliyor", variant: "secondary" },
-      onaylandi: { label: "Onaylandi", variant: "default" },
-      siparis_verildi: { label: "Siparis Verildi", variant: "secondary" },
-      kismen_teslim: { label: "Kismen Teslim", variant: "secondary" },
-      tamamlandi: { label: "Tamamlandi", variant: "default" },
+      onaylandi: { label: "Onaylandı", variant: "default" },
+      siparis_verildi: { label: "Sipariş Verildi", variant: "secondary" },
+      kismen_teslim: { label: "Kısmen Teslim", variant: "secondary" },
+      tamamlandi: { label: "Tamamlandı", variant: "default" },
       reddedildi: { label: "Reddedildi", variant: "destructive" },
-      iptal: { label: "Iptal", variant: "destructive" }
+      iptal: { label: "İptal", variant: "destructive" }
     };
     const config = statusMap[status] || { label: status, variant: "outline" as const };
     return <Badge variant={config.variant}>{config.label}</Badge>;
@@ -591,7 +591,7 @@ export default function SiparisYonetimi() {
           </DialogTrigger>
           <DialogContent className="max-w-md">
             <DialogHeader>
-              <DialogTitle>Yeni Satinalma Siparisi</DialogTitle>
+              <DialogTitle>Yeni Satınalma Siparişi</DialogTitle>
             </DialogHeader>
             <form onSubmit={handleCreateSubmit} className="space-y-4">
               <div className="space-y-2">
@@ -619,7 +619,7 @@ export default function SiparisYonetimi() {
                 />
               </div>
               <Button type="submit" className="w-full" disabled={createMutation.isPending} data-testid="button-submit-order">
-                {createMutation.isPending ? "Olusturuluyor..." : "Siparis Olustur"}
+                {createMutation.isPending ? "Oluşturuluyor..." : "Sipariş Oluştur"}
               </Button>
             </form>
           </DialogContent>
@@ -686,19 +686,19 @@ export default function SiparisYonetimi() {
                             data-testid={`button-payment-info-${order.id}`}
                           >
                             <CreditCard className="h-4 w-4 mr-1" />
-                            Odeme Bilgisi
+                            Ödeme Bilgisi
                           </Button>
                         )}
                         {order.status === "taslak" && (
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => statusMutation.mutate({ id: order.id, newStatus: "onay_bekliyor", successMessage: "Siparis CEO/CGO onayina gonderildi" })}
+                            onClick={() => statusMutation.mutate({ id: order.id, newStatus: "onay_bekliyor", successMessage: "Sipariş CEO/CGO onayına gönderildi" })}
                             disabled={statusMutation.isPending}
                             data-testid={`button-send-approval-${order.id}`}
                           >
                             <Send className="h-4 w-4 mr-1" />
-                            Onaya Gonder
+                            Onaya Gönder
                           </Button>
                         )}
                         {order.status === "onay_bekliyor" && isAdminOrCeo && (
@@ -726,12 +726,12 @@ export default function SiparisYonetimi() {
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => statusMutation.mutate({ id: order.id, newStatus: "siparis_verildi", successMessage: "Siparis verildi" })}
+                            onClick={() => statusMutation.mutate({ id: order.id, newStatus: "siparis_verildi", successMessage: "Sipariş verildi" })}
                             disabled={statusMutation.isPending}
                             data-testid={`button-place-order-${order.id}`}
                           >
                             <Truck className="h-4 w-4 mr-1" />
-                            Siparis Ver
+                            Sipariş Ver
                           </Button>
                         )}
                       </div>

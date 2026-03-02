@@ -978,7 +978,7 @@ export default function GorevDetay() {
           <CardHeader className="pb-2">
             <CardTitle className="text-base flex items-center gap-2">
               <XCircle className="h-4 w-4" />
-              Gorevi Iptal Et
+              Görevi İptal Et
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -989,7 +989,7 @@ export default function GorevDetay() {
               data-testid="button-cancel-task"
             >
               <XCircle className="h-4 w-4 mr-2" />
-              Gorevi Iptal Et
+              Görevi İptal Et
             </Button>
           </CardContent>
         </Card>
@@ -1968,13 +1968,13 @@ export default function GorevDetay() {
       <Dialog open={showCancelDialog} onOpenChange={setShowCancelDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Gorevi Iptal Et</DialogTitle>
+            <DialogTitle>Görevi İptal Et</DialogTitle>
             <DialogDescription>
-              Gorevi iptal etmek istediginize emin misiniz? Lutfen iptal sebebini belirtin.
+              Görevi iptal etmek istediğinize emin misiniz? Lütfen iptal sebebini belirtin.
             </DialogDescription>
           </DialogHeader>
           <Textarea
-            placeholder="Iptal sebebi..."
+            placeholder="İptal sebebi..."
             value={cancelReason}
             onChange={(e) => setCancelReason(e.target.value)}
             className="min-h-[100px]"
@@ -1994,14 +1994,14 @@ export default function GorevDetay() {
             <Button
               variant="destructive"
               onClick={() => {
-                updateStatusMutation.mutate({ status: "iptal_edildi", note: cancelReason.trim() || "Gorev iptal edildi" });
+                updateStatusMutation.mutate({ status: "iptal_edildi", note: cancelReason.trim() || "Görev iptal edildi" });
                 setShowCancelDialog(false);
                 setCancelReason("");
               }}
               disabled={updateStatusMutation.isPending || !cancelReason.trim()}
               data-testid="button-confirm-cancel-task"
             >
-              {updateStatusMutation.isPending ? "Kaydediliyor..." : "Gorevi Iptal Et"}
+              {updateStatusMutation.isPending ? "Kaydediliyor..." : "Görevi İptal Et"}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -1348,7 +1348,7 @@ const router = Router();
       
       if (task.assignedById && task.assignedById !== user.id) {
         const completedByUser = await storage.getUser(user.id);
-        const completedByName = completedByUser?.firstName || 'Calisan';
+        const completedByName = completedByUser?.firstName || 'Çalışan';
         onTaskCompleted(task.id, task.description || 'Gorev', task.assignedById, completedByName);
       }
       resolveEventTask('task_assigned', task.id);

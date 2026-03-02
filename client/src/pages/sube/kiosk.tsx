@@ -268,7 +268,7 @@ export default function BranchKiosk() {
       if (data.summary) {
         setShiftSummary(data.summary);
       }
-      toast({ title: "Basarili", description: getActionMessage(data.action) });
+      toast({ title: "Başarılı", description: getActionMessage(data.action) });
       if (data.action === 'shift_ended') {
         setStep('end-shift-summary');
       } else {

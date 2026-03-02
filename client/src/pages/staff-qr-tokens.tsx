@@ -43,7 +43,7 @@ export default function StaffQrTokensPage() {
       setCreateDialogOpen(false);
       setSelectedBranchId("");
       setSelectedStaffId("");
-      toast({ title: "Basarili", description: "QR token olusturuldu" });
+      toast({ title: "Başarılı", description: "QR token oluşturuldu" });
     },
     onError: (error: any) => {
       toast({ title: "Hata", description: error.message, variant: "destructive" });
@@ -54,7 +54,7 @@ export default function StaffQrTokensPage() {
     mutationFn: async (id: number) => apiRequest("DELETE", `/api/staff-qr-tokens/${id}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/staff-qr-tokens"] });
-      toast({ title: "Basarili", description: "QR token silindi" });
+      toast({ title: "Başarılı", description: "QR token silindi" });
     },
     onError: (error: any) => {
       toast({ title: "Hata", description: error.message, variant: "destructive" });
@@ -63,7 +63,7 @@ export default function StaffQrTokensPage() {
 
   const handleCreate = () => {
     if (!selectedBranchId || !selectedStaffId) {
-      toast({ title: "Uyari", description: "Sube ve personel secin", variant: "destructive" });
+      toast({ title: "Uyarı", description: "Şube ve personel seçin", variant: "destructive" });
       return;
     }
     createMutation.mutate({
@@ -75,7 +75,7 @@ export default function StaffQrTokensPage() {
   const copyToClipboard = (token: string) => {
     const url = `${window.location.origin}/personel-degerlendirme/${token}`;
     navigator.clipboard.writeText(url);
-    toast({ title: "Kopyalandi", description: "Link panoya kopyalandi" });
+    toast({ title: "Kopyalandı", description: "Link panoya kopyalandı" });
   };
 
   const showQrCode = (token: any) => {
@@ -93,10 +93,10 @@ export default function StaffQrTokensPage() {
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2">
             <QrCode className="h-6 w-6" />
-            Personel QR Degerlendirme
+            Personel QR Değerlendirme
           </h1>
           <p className="text-muted-foreground">
-            Musterilerin personeli degerlendirmesi icin QR kodlar
+            Müşterilerin personeli değerlendirmesi için QR kodlar
           </p>
         </div>
         
@@ -104,19 +104,19 @@ export default function StaffQrTokensPage() {
           <DialogTrigger asChild>
             <Button data-testid="button-create-token">
               <Plus className="mr-2 h-4 w-4" />
-              Yeni QR Olustur
+              Yeni QR Oluştur
             </Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Yeni QR Token Olustur</DialogTitle>
+              <DialogTitle>Yeni QR Token Oluştur</DialogTitle>
             </DialogHeader>
             <div className="space-y-4 py-4">
               <div className="space-y-2">
-                <Label>Sube</Label>
+                <Label>Şube</Label>
                 <Select value={selectedBranchId} onValueChange={setSelectedBranchId}>
                   <SelectTrigger data-testid="select-branch">
-                    <SelectValue placeholder="Sube secin" />
+                    <SelectValue placeholder="Şube seçin" />
                   </SelectTrigger>
                   <SelectContent>
                     {(branches as any[])?.map((b: any) => (
@@ -132,7 +132,7 @@ export default function StaffQrTokensPage() {
                 <Label>Personel</Label>
                 <Select value={selectedStaffId} onValueChange={setSelectedStaffId} disabled={!selectedBranchId}>
                   <SelectTrigger data-testid="select-staff">
-                    <SelectValue placeholder={selectedBranchId ? "Personel secin" : "Once sube secin"} />
+                    <SelectValue placeholder={selectedBranchId ? "Personel seçin" : "Önce şube seçin"} />
                   </SelectTrigger>
                   <SelectContent>
                     {filteredUsers?.map((u: any) => (
@@ -155,7 +155,7 @@ export default function StaffQrTokensPage() {
                 ) : (
                   <QrCode className="mr-2 h-4 w-4" />
                 )}
-                QR Token Olustur
+                QR Token Oluştur
               </Button>
             </div>
           </DialogContent>
@@ -220,7 +220,7 @@ export default function StaffQrTokensPage() {
       <Card>
         <CardHeader>
           <CardTitle>QR Token Listesi</CardTitle>
-          <CardDescription>Personel degerlendirme QR kodlari</CardDescription>
+          <CardDescription>Personel değerlendirme QR kodları</CardDescription>
         </CardHeader>
         <CardContent>
           {isLoading ? (
@@ -229,18 +229,18 @@ export default function StaffQrTokensPage() {
             </div>
           ) : (tokens as any[])?.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
-              Henuz QR token olusturulmamis
+              Henüz QR token oluşturulmamış
             </div>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>Personel</TableHead>
-                  <TableHead>Sube</TableHead>
+                  <TableHead>Şube</TableHead>
                   <TableHead>Kullanim</TableHead>
                   <TableHead>Durum</TableHead>
                   <TableHead>Son Kullanim</TableHead>
-                  <TableHead className="text-right">Islemler</TableHead>
+                  <TableHead className="text-right">İşlemler</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -319,7 +319,7 @@ export default function StaffQrTokensPage() {
                   />
                 </div>
                 <p className="mt-4 text-sm text-muted-foreground text-center">
-                  Musteriler bu QR kodu tarayarak personeli degerlendirebilir
+                  Müşteriler bu QR kodu tarayarak personeli değerlendirebilir
                 </p>
                 <Button
                   className="mt-4"

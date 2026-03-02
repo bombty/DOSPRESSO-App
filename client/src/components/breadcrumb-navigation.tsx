@@ -60,6 +60,7 @@ const PATH_LABELS: Record<string, string> = {
   '/kalite-kriterleri': 'Kalite Kriterleri',
   '/cgo-command-center': 'CGO Komuta Merkezi',
   '/ceo-command-center': 'CEO Komuta Merkezi',
+  '/satinalma': 'Satınalma',
 };
 
 const MAX_HISTORY = 10;

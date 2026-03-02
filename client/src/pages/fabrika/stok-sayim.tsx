@@ -50,7 +50,7 @@ interface StockCountItem {
 const statusLabels: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
   requested: { label: "Talep Edildi", variant: "outline" },
   in_progress: { label: "Devam Ediyor", variant: "secondary" },
-  completed: { label: "Tamamlandi", variant: "default" },
+  completed: { label: "Tamamlandı", variant: "default" },
   approved: { label: "Onaylandi", variant: "default" },
 };
 
@@ -768,7 +768,7 @@ function StockCountDetailDialog({
         setHighlightedItemId(foundItem.id);
         setSearchQuery("");
       } else {
-        toast({ title: "Bulunamadi", description: `"${code}" ile eslesen urun bulunamadi`, variant: "destructive" });
+        toast({ title: "Bulunamadı", description: `"${code}" ile eşleşen ürün bulunamadı`, variant: "destructive" });
       }
     }
   };
@@ -842,7 +842,7 @@ function StockCountDetailDialog({
                 <Input
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Urun ara..."
+                  placeholder="Ürün ara..."
                   className="pl-8"
                   data-testid="input-search-items"
                 />
@@ -859,7 +859,7 @@ function StockCountDetailDialog({
             ) : filteredItems.length === 0 ? (
               <div className="py-8 text-center text-muted-foreground">
                 <Package className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                <p className="text-sm">{searchQuery ? "Aramayla eslesen urun bulunamadi" : "Sayim kalemi bulunmuyor"}</p>
+                <p className="text-sm">{searchQuery ? "Aramayla eşleşen ürün bulunamadı" : "Sayım kalemi bulunmuyor"}</p>
               </div>
             ) : (
               <div className="overflow-y-auto flex-1 -mx-6 px-6">

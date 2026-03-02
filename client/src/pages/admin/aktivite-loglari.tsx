@@ -70,38 +70,38 @@ interface AuditLogResponse {
 }
 
 const EVENT_TYPE_GROUPS: Record<string, { label: string; icon: any; color: string }> = {
-  "auth.login_success": { label: "Giris Basarili", icon: LogIn, color: "text-green-600 bg-green-500/10" },
-  "auth.login_failed": { label: "Giris Basarisiz", icon: AlertTriangle, color: "text-red-600 bg-red-500/10" },
-  "auth.logout": { label: "Cikis", icon: LogOut, color: "text-muted-foreground bg-muted" },
-  "user.created": { label: "Kullanici Olusturuldu", icon: UserPlus, color: "text-blue-600 bg-blue-500/10" },
-  "user.updated": { label: "Kullanici Guncellendi", icon: Edit, color: "text-yellow-600 bg-yellow-500/10" },
-  "user.deactivated": { label: "Kullanici Devre Disi", icon: UserMinus, color: "text-orange-600 bg-orange-500/10" },
-  "user.restored": { label: "Kullanici Aktif", icon: UserPlus, color: "text-green-600 bg-green-500/10" },
-  "user.deleted": { label: "Kullanici Silindi", icon: Trash2, color: "text-red-600 bg-red-500/10" },
-  "role.permission_changed": { label: "Yetki Degisikligi", icon: Shield, color: "text-purple-600 bg-purple-500/10" },
-  "branch.created": { label: "Sube Olusturuldu", icon: Building2, color: "text-blue-600 bg-blue-500/10" },
-  "branch.updated": { label: "Sube Guncellendi", icon: Edit, color: "text-yellow-600 bg-yellow-500/10" },
-  "branch.deleted": { label: "Sube Silindi", icon: Trash2, color: "text-red-600 bg-red-500/10" },
-  "task.created": { label: "Gorev Olusturuldu", icon: ClipboardCheck, color: "text-blue-600 bg-blue-500/10" },
-  "task.status_changed": { label: "Gorev Durumu", icon: ClipboardCheck, color: "text-yellow-600 bg-yellow-500/10" },
-  "equipment.created": { label: "Ekipman Olusturuldu", icon: Wrench, color: "text-blue-600 bg-blue-500/10" },
-  "equipment.updated": { label: "Ekipman Guncellendi", icon: Wrench, color: "text-yellow-600 bg-yellow-500/10" },
-  "equipment.fault_created": { label: "Ariza Bildirildi", icon: AlertTriangle, color: "text-red-600 bg-red-500/10" },
-  "equipment.fault_resolved": { label: "Ariza Cozuldu", icon: Wrench, color: "text-green-600 bg-green-500/10" },
-  "shift.created": { label: "Vardiya Olusturuldu", icon: CalendarDays, color: "text-blue-600 bg-blue-500/10" },
-  "shift.updated": { label: "Vardiya Guncellendi", icon: CalendarDays, color: "text-yellow-600 bg-yellow-500/10" },
+  "auth.login_success": { label: "Giriş Başarılı", icon: LogIn, color: "text-green-600 bg-green-500/10" },
+  "auth.login_failed": { label: "Giriş Başarısız", icon: AlertTriangle, color: "text-red-600 bg-red-500/10" },
+  "auth.logout": { label: "Çıkış", icon: LogOut, color: "text-muted-foreground bg-muted" },
+  "user.created": { label: "Kullanıcı Oluşturuldu", icon: UserPlus, color: "text-blue-600 bg-blue-500/10" },
+  "user.updated": { label: "Kullanıcı Güncellendi", icon: Edit, color: "text-yellow-600 bg-yellow-500/10" },
+  "user.deactivated": { label: "Kullanıcı Devre Dışı", icon: UserMinus, color: "text-orange-600 bg-orange-500/10" },
+  "user.restored": { label: "Kullanıcı Aktif", icon: UserPlus, color: "text-green-600 bg-green-500/10" },
+  "user.deleted": { label: "Kullanıcı Silindi", icon: Trash2, color: "text-red-600 bg-red-500/10" },
+  "role.permission_changed": { label: "Yetki Değişikliği", icon: Shield, color: "text-purple-600 bg-purple-500/10" },
+  "branch.created": { label: "Şube Oluşturuldu", icon: Building2, color: "text-blue-600 bg-blue-500/10" },
+  "branch.updated": { label: "Şube Güncellendi", icon: Edit, color: "text-yellow-600 bg-yellow-500/10" },
+  "branch.deleted": { label: "Şube Silindi", icon: Trash2, color: "text-red-600 bg-red-500/10" },
+  "task.created": { label: "Görev Oluşturuldu", icon: ClipboardCheck, color: "text-blue-600 bg-blue-500/10" },
+  "task.status_changed": { label: "Görev Durumu", icon: ClipboardCheck, color: "text-yellow-600 bg-yellow-500/10" },
+  "equipment.created": { label: "Ekipman Oluşturuldu", icon: Wrench, color: "text-blue-600 bg-blue-500/10" },
+  "equipment.updated": { label: "Ekipman Güncellendi", icon: Wrench, color: "text-yellow-600 bg-yellow-500/10" },
+  "equipment.fault_created": { label: "Arıza Bildirildi", icon: AlertTriangle, color: "text-red-600 bg-red-500/10" },
+  "equipment.fault_resolved": { label: "Arıza Çözüldü", icon: Wrench, color: "text-green-600 bg-green-500/10" },
+  "shift.created": { label: "Vardiya Oluşturuldu", icon: CalendarDays, color: "text-blue-600 bg-blue-500/10" },
+  "shift.updated": { label: "Vardiya Güncellendi", icon: CalendarDays, color: "text-yellow-600 bg-yellow-500/10" },
   "shift.deleted": { label: "Vardiya Silindi", icon: Trash2, color: "text-red-600 bg-red-500/10" },
-  "settings.changed": { label: "Ayar Degisikligi", icon: Settings, color: "text-purple-600 bg-purple-500/10" },
-  "backup.completed": { label: "Yedek Tamamlandi", icon: Database, color: "text-green-600 bg-green-500/10" },
-  "backup.failed": { label: "Yedek Basarisiz", icon: Database, color: "text-red-600 bg-red-500/10" },
+  "settings.changed": { label: "Ayar Değişikliği", icon: Settings, color: "text-purple-600 bg-purple-500/10" },
+  "backup.completed": { label: "Yedek Tamamlandı", icon: Database, color: "text-green-600 bg-green-500/10" },
+  "backup.failed": { label: "Yedek Başarısız", icon: Database, color: "text-red-600 bg-red-500/10" },
   "backup.manual_triggered": { label: "Manuel Yedek", icon: Database, color: "text-blue-600 bg-blue-500/10" },
 };
 
 const RESOURCE_OPTIONS = [
-  { value: "auth", label: "Kimlik Dogrulama" },
-  { value: "users", label: "Kullanicilar" },
-  { value: "branches", label: "Subeler" },
-  { value: "tasks", label: "Gorevler" },
+  { value: "auth", label: "Kimlik Doğrulama" },
+  { value: "users", label: "Kullanıcılar" },
+  { value: "branches", label: "Şubeler" },
+  { value: "tasks", label: "Görevler" },
   { value: "equipment", label: "Ekipmanlar" },
   { value: "shifts", label: "Vardiyalar" },
   { value: "roles", label: "Roller" },
@@ -211,12 +211,12 @@ export default function AdminAktiviteLoglar() {
         <div className="flex-1 min-w-0">
           <h1 className="text-xl font-semibold flex items-center gap-2">
             <Activity className="h-5 w-5" />
-            Denetim Gunlugu
+            Denetim Günlüğü
           </h1>
           <p className="text-sm text-muted-foreground">
             Sistem aktivitelerini takip edin
             {pagination && (
-              <span className="ml-2">({pagination.total} kayit)</span>
+              <span className="ml-2">({pagination.total} kayıt)</span>
             )}
           </p>
         </div>
@@ -245,7 +245,7 @@ export default function AdminAktiviteLoglar() {
                 <SelectValue placeholder="Olay Tipi" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Tum Olaylar</SelectItem>
+                <SelectItem value="all">Tüm Olaylar</SelectItem>
                 {eventTypes?.map(et => (
                   <SelectItem key={et.eventType} value={et.eventType}>
                     {getEventInfo(et.eventType).label} ({et.cnt})
@@ -258,7 +258,7 @@ export default function AdminAktiviteLoglar() {
                 <SelectValue placeholder="Kaynak" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Tum Kaynaklar</SelectItem>
+                <SelectItem value="all">Tüm Kaynaklar</SelectItem>
                 {RESOURCE_OPTIONS.map(opt => (
                   <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
                 ))}
@@ -296,7 +296,7 @@ export default function AdminAktiviteLoglar() {
 
       <Card>
         <CardHeader className="py-3">
-          <CardTitle className="text-sm">Denetim Kayitlari</CardTitle>
+          <CardTitle className="text-sm">Denetim Kayıtları</CardTitle>
         </CardHeader>
         <CardContent>
           <ScrollArea className="h-[calc(100vh-380px)]">
@@ -307,7 +307,7 @@ export default function AdminAktiviteLoglar() {
                 </div>
               ) : logs.length === 0 ? (
                 <p className="text-center text-muted-foreground py-8" data-testid="text-no-logs">
-                  Kayit bulunamadi
+                  Kayıt bulunamadı
                 </p>
               ) : (
                 logs.map((log) => {
@@ -388,7 +388,7 @@ export default function AdminAktiviteLoglar() {
           <SheetHeader>
             <SheetTitle className="flex items-center gap-2">
               <Activity className="h-5 w-5" />
-              Denetim Kaydi Detayi
+              Denetim Kaydı Detayı
             </SheetTitle>
           </SheetHeader>
           {selectedLog && (
@@ -399,11 +399,11 @@ export default function AdminAktiviteLoglar() {
                   <p className="font-medium">{selectedLog.eventType}</p>
                 </div>
                 <div>
-                  <label className="text-xs text-muted-foreground">Islem</label>
+                  <label className="text-xs text-muted-foreground">İşlem</label>
                   <p className="font-medium">{selectedLog.action}</p>
                 </div>
                 <div>
-                  <label className="text-xs text-muted-foreground">Kullanici</label>
+                  <label className="text-xs text-muted-foreground">Kullanıcı</label>
                   <p className="font-medium">{selectedLog.actorName || selectedLog.userId || "Sistem"}</p>
                 </div>
                 <div>
@@ -415,7 +415,7 @@ export default function AdminAktiviteLoglar() {
                   <p className="font-medium">{selectedLog.resource} {selectedLog.resourceId ? `#${selectedLog.resourceId}` : ""}</p>
                 </div>
                 <div>
-                  <label className="text-xs text-muted-foreground">Sube</label>
+                  <label className="text-xs text-muted-foreground">Şube</label>
                   <p className="font-medium">{selectedLog.branchName || selectedLog.scopeBranchId || "-"}</p>
                 </div>
                 <div>
@@ -451,7 +451,7 @@ export default function AdminAktiviteLoglar() {
 
               {selectedLog.before && (
                 <div>
-                  <label className="text-xs text-muted-foreground mb-1 block">Onceki Durum</label>
+                  <label className="text-xs text-muted-foreground mb-1 block">Önceki Durum</label>
                   <pre className="text-xs bg-red-500/5 border border-red-500/20 p-3 rounded-md overflow-x-auto max-h-48" data-testid="text-before-json">
                     {JSON.stringify(selectedLog.before, null, 2)}
                   </pre>

@@ -122,7 +122,7 @@ export function registerHQDashboardRoutes(app: Express, isAuthenticated: any) {
     }
     const openComplaints = allProductComplaints.filter((c: any) => c.status === 'open' || c.status === 'investigating');
     if (openComplaints.length > 0) {
-      urgentAlerts.push({ type: 'complaint', severity: openComplaints.some((c: any) => c.severity === 'critical') ? 'critical' : 'warning', message: `${openComplaints.length} urun sikayeti acik`, count: openComplaints.length });
+      urgentAlerts.push({ type: 'complaint', severity: openComplaints.some((c: any) => c.severity === 'critical') ? 'critical' : 'warning', message: `${openComplaints.length} ürün şikayeti açık`, count: openComplaints.length });
     }
 
     const branchScores = allBranches.map(b => {
@@ -231,7 +231,7 @@ export function registerHQDashboardRoutes(app: Express, isAuthenticated: any) {
     const allTasks = await db.select().from(tasks);
     const hqRoleSet = new Set(['muhasebe_ik', 'muhasebe', 'satinalma', 'coach', 'marketing', 'trainer', 'kalite_kontrol', 'fabrika_mudur', 'teknik', 'ik']);
     const roleDeptMap: Record<string, string> = {
-      'muhasebe_ik': 'Muhasebe & IK', 'muhasebe': 'Muhasebe', 'satinalma': 'Satinalma',
+      'muhasebe_ik': 'Muhasebe & IK', 'muhasebe': 'Muhasebe', 'satinalma': 'Satınalma',
       'coach': 'Coach', 'marketing': 'Pazarlama', 'trainer': 'Egitim',
       'kalite_kontrol': 'Kalite Kontrol', 'fabrika_mudur': 'Fabrika', 'teknik': 'Teknik', 'ik': 'IK'
     };
@@ -287,7 +287,7 @@ export function registerHQDashboardRoutes(app: Express, isAuthenticated: any) {
     const urgentAlerts: Array<{ type: string; severity: 'critical' | 'warning'; message: string; count?: number }> = [];
     const criticalStock = allInventory.filter((i: any) => parseFloat(i.currentStock || '0') < parseFloat(i.minimumStock || '0'));
     if (criticalStock.length > 0) {
-      urgentAlerts.push({ type: 'stock', severity: 'critical', message: `${criticalStock.length} urun kritik stok seviyesinde`, count: criticalStock.length });
+      urgentAlerts.push({ type: 'stock', severity: 'critical', message: `${criticalStock.length} ürün kritik stok seviyesinde`, count: criticalStock.length });
     }
     const pendingOrders = allPurchaseOrders.filter((o: any) => o.status === 'taslak' || o.status === 'beklemede' || o.status === 'pending');
     if (pendingOrders.length > 0) {
@@ -297,7 +297,7 @@ export function registerHQDashboardRoutes(app: Express, isAuthenticated: any) {
     const activeSuppliers = allSuppliers.filter((s: any) => s.isActive !== false);
     const supplierSummary = {
       label: 'Tedarikci Durumu',
-      source: 'Satinalma',
+      source: 'Satınalma',
       status: 'healthy' as const,
       mainMetric: `${activeSuppliers.length} aktif tedarikci`,
       details: [
@@ -309,15 +309,15 @@ export function registerHQDashboardRoutes(app: Express, isAuthenticated: any) {
 
     const stockSummary = {
       label: 'Stok Durumu',
-      source: 'Satinalma',
+      source: 'Satınalma',
       status: criticalStock.length > 5 ? 'critical' as const : criticalStock.length > 0 ? 'warning' as const : 'healthy' as const,
-      mainMetric: `${criticalStock.length} kritik urun`,
+      mainMetric: `${criticalStock.length} kritik ürün`,
       details: [
-        { key: 'Toplam Urun', value: `${allInventory.length}` },
+        { key: 'Toplam Ürün', value: `${allInventory.length}` },
         { key: 'Kritik Stok', value: `${criticalStock.length}` },
         { key: 'Bekleyen Siparis', value: `${pendingOrders.length}` },
       ],
-      alert: criticalStock.length > 0 ? `${criticalStock.length} urun minimum stok altinda!` : null
+      alert: criticalStock.length > 0 ? `${criticalStock.length} ürün minimum stok altında!` : null
     };
 
     res.json({
@@ -335,7 +335,7 @@ export function registerHQDashboardRoutes(app: Express, isAuthenticated: any) {
     });
     } catch (error) {
       console.error("Error building satinalma command center:", error);
-      res.json(buildFallbackCommandCenter("Satinalma"));
+      res.json(buildFallbackCommandCenter("Satınalma"));
     }
   }
 
@@ -380,7 +380,7 @@ export function registerHQDashboardRoutes(app: Express, isAuthenticated: any) {
       label: 'Kalite Metrikleri',
       source: 'Kalite Kontrol',
       status: 'healthy' as const,
-      mainMetric: `Musteri puani: ${avgRating}/5`,
+      mainMetric: `Müşteri puanı: ${avgRating}/5`,
       details: [
         { key: 'Toplam Geri Bildirim', value: `${allFeedback.length}` },
         { key: 'Ort. Puan', value: `${avgRating}/5` },
@@ -684,7 +684,7 @@ export function registerHQDashboardRoutes(app: Express, isAuthenticated: any) {
 
     const openFaults = allFaults.filter((f: any) => f.status === 'open' || f.status === 'in_progress');
     const productionSummary = {
-      label: 'Uretim Durumu',
+      label: 'Üretim Durumu',
       source: 'Fabrika',
       status: rejectedBatches.length > 0 ? 'warning' as const : 'healthy' as const,
       mainMetric: `${activeBatches.length} aktif parti`,
@@ -853,7 +853,7 @@ export function registerHQDashboardRoutes(app: Express, isAuthenticated: any) {
           { title: "Checklist Tamamlanma", value: "92%", status: "healthy", trend: "up" }
         ],
         departmentHealth: [
-          { name: "Satinalma", score: 88, status: "healthy" },
+          { name: "Satınalma", score: 88, status: "healthy" },
           { name: "Fabrika", score: 82, status: "healthy" },
           { name: "IK", score: 91, status: "healthy" },
           { name: "Coach", score: 79, status: "warning" },
@@ -1198,7 +1198,7 @@ export function registerHQDashboardRoutes(app: Express, isAuthenticated: any) {
         campaignPerformance: [
           { name: "Yaz Kampanyasi", reach: 45000, conversion: 12.5, roi: 3.8 },
           { name: "Sadakat Programi", reach: 32000, conversion: 25.0, roi: 4.2 },
-          { name: "Yeni Urun Lansmani", reach: 28000, conversion: 8.3, roi: 2.1 }
+          { name: "Yeni Ürün Lansmanı", reach: 28000, conversion: 8.3, roi: 2.1 }
         ],
         alerts: [
           { message: "Instagram etkilesimi dusuyor", severity: "warning" }
@@ -1231,7 +1231,7 @@ export function registerHQDashboardRoutes(app: Express, isAuthenticated: any) {
         trainingProgress: [
           { category: "Barista Temelleri", completed: 85, inProgress: 10, notStarted: 5 },
           { category: "Hijyen & Guvenlik", completed: 92, inProgress: 5, notStarted: 3 },
-          { category: "Musteri Iliskileri", completed: 68, inProgress: 20, notStarted: 12 }
+          { category: "Müşteri İlişkileri", completed: 68, inProgress: 20, notStarted: 12 }
         ],
         alerts: [
           { message: "15 personelin zorunlu egitimi eksik", severity: "critical" },

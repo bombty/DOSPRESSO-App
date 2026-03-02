@@ -723,7 +723,7 @@ function NewMessageForm({
 
   const roleLabels: Record<string, string> = {
     admin: "Admin", ceo: "CEO", cgo: "CGO", muhasebe_ik: "Muhasebe & IK",
-    satinalma: "Satin Alma", coach: "Coach", marketing: "Marketing",
+    satinalma: "Satın Alma", coach: "Coach", marketing: "Marketing",
     trainer: "Trainer", kalite_kontrol: "Kalite Kontrol",
     fabrika_mudur: "Fabrika Muduru", muhasebe: "Muhasebe", teknik: "Teknik",
     destek: "Destek", fabrika: "Fabrika", yatirimci_hq: "Yatirimci HQ",

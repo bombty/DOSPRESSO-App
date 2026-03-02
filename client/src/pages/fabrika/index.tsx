@@ -110,7 +110,7 @@ const FABRIKA_TABS: TabConfig[] = [
   {
     id: "siparis-hazirlama",
     label: "Order Preparation",
-    labelTr: "Siparis Hazirlama",
+    labelTr: "Sipariş Hazırlama",
     icon: <Package className="h-4 w-4" />,
     permissionModule: "factory_stations",
     component: FabrikaSiparisHazirlama
