@@ -14,10 +14,83 @@ import { Label } from "@/components/ui/label";
 import { 
   ArrowLeft, Users, CheckCircle2, Clock, Wrench, TrendingUp, 
   Star, Award, ClipboardCheck, ThumbsUp, QrCode, MapPin, 
-  Wifi, Download, RefreshCw, Copy, CheckCircle, BarChart3, MessageSquare
+  Wifi, Download, RefreshCw, Copy, CheckCircle, BarChart3, MessageSquare,
+  Monitor, Scan, KeyRound
 } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { isHQRole } from "@shared/schema";
+
+function KioskModeCard({ branchId }: { branchId: number }) {
+  const { toast } = useToast();
+  const { data: kioskSettings } = useQuery<any>({
+    queryKey: ['/api/branches', branchId, 'kiosk', 'settings'],
+    queryFn: async () => {
+      const res = await fetch(`/api/branches/${branchId}/kiosk/settings`);
+      return res.json();
+    },
+  });
+
+  const modeMutation = useMutation({
+    mutationFn: async (mode: string) => {
+      const res = await apiRequest('PATCH', `/api/branches/${branchId}/kiosk/mode`, { kioskMode: mode });
+      return res.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/branches', branchId, 'kiosk', 'settings'] });
+      toast({ title: "Kiosk modu guncellendi", description: `Mod: ${data.kioskMode === 'qr' ? 'QR Kod' : 'PIN'}` });
+    },
+    onError: (err: any) => {
+      toast({ title: "Hata", description: err.message, variant: "destructive" });
+    },
+  });
+
+  const currentMode = kioskSettings?.kioskMode || 'pin';
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Monitor className="h-4 w-4" />
+          Kiosk Giris Modu
+        </CardTitle>
+        <CardDescription>
+          Sube kiosk tabletinde kullanilacak giris yontemini secin
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <div className="grid grid-cols-2 gap-2">
+          <Button
+            variant="outline"
+            className={`flex flex-col items-center gap-2 h-auto py-4 toggle-elevate ${currentMode === 'pin' ? 'toggle-elevated' : ''}`}
+            onClick={() => modeMutation.mutate('pin')}
+            disabled={modeMutation.isPending}
+            data-testid="button-kiosk-mode-pin"
+          >
+            <KeyRound className="h-6 w-6" />
+            <span className="text-sm font-medium">PIN Giris</span>
+            <span className="text-[10px] text-muted-foreground">4 haneli kisisel PIN</span>
+          </Button>
+          <Button
+            variant="outline"
+            className={`flex flex-col items-center gap-2 h-auto py-4 toggle-elevate ${currentMode === 'qr' ? 'toggle-elevated' : ''}`}
+            onClick={() => modeMutation.mutate('qr')}
+            disabled={modeMutation.isPending}
+            data-testid="button-kiosk-mode-qr"
+          >
+            <Scan className="h-6 w-6" />
+            <span className="text-sm font-medium">QR Giris</span>
+            <span className="text-[10px] text-muted-foreground">Telefondan QR okutma</span>
+          </Button>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          {currentMode === 'qr'
+            ? 'Personel telefonundan QR kod uretip kiosk tablette okutarak giris yapar'
+            : 'Personel kiosk tablette PIN kodunu girerek giris yapar'}
+        </p>
+      </CardContent>
+    </Card>
+  );
+}
 
 type Branch = {
   id: number;
@@ -799,6 +872,11 @@ export default function SubeDetayPage() {
                     </Link>
                   </CardContent>
                 </Card>
+              )}
+
+              {/* Kiosk Modu Seçici */}
+              {isAdmin && (
+                <KioskModeCard branchId={branchId} />
               )}
 
               {/* Müşteri Geri Bildirim QR Kodu */}

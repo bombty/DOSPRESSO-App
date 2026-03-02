@@ -32,6 +32,7 @@ import {
   inventory,
   recipes,
   notifications,
+  branchKioskSettings,
 } from "../../shared/schema";
 
 const router = Router();

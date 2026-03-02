@@ -62,7 +62,9 @@ import {
   hqShiftSessions,
   hqShiftEvents,
   notifications,
+  qrCheckinNonces,
 } from "@shared/schema";
+import crypto from "crypto";
 
 const router = Router();
 
@@ -3874,6 +3876,411 @@ router.get('/api/branch-dashboard-v2/:branchId', async (req, res) => {
     });
   } catch (error: any) {
     handleApiError(res, error, "FetchBranchDashboardV2");
+  }
+});
+
+const QR_HMAC_SECRET = process.env.SESSION_SECRET || 'dospresso-qr-fallback-key';
+const QR_EXPIRY_MS = 45_000;
+const NONCE_CLEANUP_INTERVAL = 60 * 60 * 1000;
+
+function generateQrPayload(userId: string) {
+  const nonce = crypto.randomBytes(16).toString('hex');
+  const timestamp = Date.now();
+  const data = JSON.stringify({ userId, timestamp, nonce });
+  const hmac = crypto.createHmac('sha256', QR_HMAC_SECRET).update(data).digest('hex');
+  return { userId, timestamp, nonce, hmac };
+}
+
+function verifyQrPayload(payload: { userId: string; timestamp: number; nonce: string; hmac: string }) {
+  const { userId, timestamp, nonce, hmac } = payload;
+  const data = JSON.stringify({ userId, timestamp, nonce });
+  const expectedHmac = crypto.createHmac('sha256', QR_HMAC_SECRET).update(data).digest('hex');
+  if (!crypto.timingSafeEqual(Buffer.from(hmac, 'hex'), Buffer.from(expectedHmac, 'hex'))) {
+    return { valid: false, error: 'Geçersiz QR kodu (imza hatası)' };
+  }
+  const age = Date.now() - timestamp;
+  if (age > QR_EXPIRY_MS) {
+    return { valid: false, error: 'QR kodunun süresi dolmuş' };
+  }
+  if (age < -5000) {
+    return { valid: false, error: 'Geçersiz QR zaman damgası' };
+  }
+  return { valid: true };
+}
+
+setInterval(async () => {
+  try {
+    const oneHourAgo = new Date(Date.now() - NONCE_CLEANUP_INTERVAL);
+    await db.delete(qrCheckinNonces).where(lte(qrCheckinNonces.createdAt, oneHourAgo));
+  } catch (e) {
+    console.error('QR nonce cleanup error:', e);
+  }
+}, NONCE_CLEANUP_INTERVAL);
+
+router.get('/api/qr-checkin/generate', isAuthenticated, async (req: any, res) => {
+  try {
+    const userId = req.user.id;
+    const payload = generateQrPayload(userId);
+    await db.insert(qrCheckinNonces).values({
+      nonce: payload.nonce,
+      userId,
+    });
+    res.json(payload);
+  } catch (error: any) {
+    console.error('QR generate error:', error);
+    res.status(500).json({ message: 'QR kodu oluşturulamadı' });
+  }
+});
+
+router.post('/api/kiosk/qr-checkin', async (req, res) => {
+  try {
+    const { qrData, branchId, action } = req.body;
+
+    if (!qrData || !branchId || !action) {
+      return res.status(400).json({ message: 'qrData, branchId ve action gerekli' });
+    }
+
+    let parsed: { userId: string; timestamp: number; nonce: string; hmac: string };
+    try {
+      parsed = typeof qrData === 'string' ? JSON.parse(qrData) : qrData;
+    } catch {
+      return res.status(400).json({ message: 'Geçersiz QR verisi' });
+    }
+
+    if (!parsed.userId || !parsed.timestamp || !parsed.nonce || !parsed.hmac) {
+      return res.status(400).json({ message: 'Eksik QR alanları' });
+    }
+
+    const verification = verifyQrPayload(parsed);
+    if (!verification.valid) {
+      return res.status(400).json({ message: verification.error });
+    }
+
+    const [nonceRecord] = await db.select().from(qrCheckinNonces)
+      .where(and(
+        eq(qrCheckinNonces.nonce, parsed.nonce),
+        eq(qrCheckinNonces.userId, parsed.userId)
+      )).limit(1);
+
+    if (!nonceRecord) {
+      return res.status(400).json({ message: 'Geçersiz QR nonce' });
+    }
+    if (nonceRecord.used) {
+      return res.status(400).json({ message: 'Bu QR kodu zaten kullanılmış' });
+    }
+
+    await db.update(qrCheckinNonces)
+      .set({ used: true })
+      .where(eq(qrCheckinNonces.id, nonceRecord.id));
+
+    const [user] = await db.select({
+      id: users.id,
+      firstName: users.firstName,
+      lastName: users.lastName,
+      role: users.role,
+      branchId: users.branchId,
+      profileImageUrl: users.profileImageUrl,
+    }).from(users).where(eq(users.id, parsed.userId)).limit(1);
+
+    if (!user) {
+      return res.status(404).json({ message: 'Kullanıcı bulunamadı' });
+    }
+
+    const numBranchId = parseInt(branchId);
+    if (user.branchId !== numBranchId) {
+      return res.status(403).json({ message: 'Bu şubeye ait değilsiniz' });
+    }
+
+    const validActions = ['shift_start', 'break_start', 'break_end', 'shift_end'];
+    if (!validActions.includes(action)) {
+      return res.status(400).json({ message: 'Geçersiz işlem türü' });
+    }
+
+    const now = new Date();
+
+    if (action === 'shift_start') {
+      const [existingSession] = await db.select().from(branchShiftSessions)
+        .where(and(
+          eq(branchShiftSessions.userId, user.id),
+          eq(branchShiftSessions.branchId, numBranchId),
+          or(
+            eq(branchShiftSessions.status, 'active'),
+            eq(branchShiftSessions.status, 'on_break')
+          )
+        )).limit(1);
+
+      if (existingSession) {
+        return res.json({
+          success: true,
+          action: 'already_active',
+          session: existingSession,
+          user: { id: user.id, firstName: user.firstName, lastName: user.lastName, profileImageUrl: user.profileImageUrl },
+          message: 'Zaten aktif bir vardiyanız var',
+        });
+      }
+
+      const todayStr = now.toISOString().split('T')[0];
+      let plannedShiftId: number | null = null;
+      let lateMinutes = 0;
+
+      const [plannedShift] = await db.select().from(shifts)
+        .where(and(
+          eq(shifts.branchId, numBranchId),
+          eq(shifts.assignedToId, user.id),
+          eq(shifts.shiftDate, todayStr)
+        )).limit(1);
+
+      if (plannedShift) {
+        plannedShiftId = plannedShift.id;
+        const [hours, minutes] = plannedShift.startTime.split(':').map(Number);
+        const plannedStart = new Date(now);
+        plannedStart.setHours(hours, minutes, 0, 0);
+        if (now.getTime() > plannedStart.getTime()) {
+          lateMinutes = Math.floor((now.getTime() - plannedStart.getTime()) / 60000);
+        }
+      }
+
+      const [session] = await db.insert(branchShiftSessions).values({
+        userId: user.id,
+        branchId: numBranchId,
+        checkInTime: now,
+        status: 'active',
+        plannedShiftId,
+        lateMinutes,
+        checkinMethod: 'qr',
+      }).returning();
+
+      await db.insert(branchShiftEvents).values({
+        sessionId: session.id,
+        userId: user.id,
+        branchId: numBranchId,
+        eventType: 'check_in',
+        eventTime: now,
+      });
+
+      return res.json({
+        success: true,
+        action: 'shift_started',
+        session,
+        user: { id: user.id, firstName: user.firstName, lastName: user.lastName, profileImageUrl: user.profileImageUrl },
+      });
+    }
+
+    if (action === 'shift_end') {
+      const [activeSession] = await db.select().from(branchShiftSessions)
+        .where(and(
+          eq(branchShiftSessions.userId, user.id),
+          eq(branchShiftSessions.branchId, numBranchId),
+          or(
+            eq(branchShiftSessions.status, 'active'),
+            eq(branchShiftSessions.status, 'on_break')
+          )
+        )).limit(1);
+
+      if (!activeSession) {
+        return res.status(400).json({ message: 'Aktif vardiya bulunamadı' });
+      }
+
+      if (activeSession.status === 'on_break') {
+        await db.update(branchBreakLogs)
+          .set({ endTime: now })
+          .where(and(
+            eq(branchBreakLogs.sessionId, activeSession.id),
+            isNull(branchBreakLogs.endTime)
+          ));
+      }
+
+      const checkInTime = new Date(activeSession.checkInTime);
+      const totalMinutes = Math.floor((now.getTime() - checkInTime.getTime()) / 60000);
+      const breakMins = activeSession.breakMinutes || 0;
+      const netWorkMinutes = Math.max(0, totalMinutes - breakMins);
+
+      const [updatedSession] = await db.update(branchShiftSessions)
+        .set({
+          checkOutTime: now,
+          status: 'completed',
+          workMinutes: totalMinutes,
+          netWorkMinutes,
+        })
+        .where(eq(branchShiftSessions.id, activeSession.id))
+        .returning();
+
+      await db.insert(branchShiftEvents).values({
+        sessionId: activeSession.id,
+        userId: user.id,
+        branchId: numBranchId,
+        eventType: 'check_out',
+        eventTime: now,
+      });
+
+      return res.json({
+        success: true,
+        action: 'shift_ended',
+        session: updatedSession,
+        user: { id: user.id, firstName: user.firstName, lastName: user.lastName, profileImageUrl: user.profileImageUrl },
+        summary: {
+          totalMinutes,
+          breakMinutes: breakMins,
+          netWorkMinutes,
+        },
+      });
+    }
+
+    if (action === 'break_start') {
+      const [activeSession] = await db.select().from(branchShiftSessions)
+        .where(and(
+          eq(branchShiftSessions.userId, user.id),
+          eq(branchShiftSessions.branchId, numBranchId),
+          eq(branchShiftSessions.status, 'active')
+        )).limit(1);
+
+      if (!activeSession) {
+        return res.status(400).json({ message: 'Aktif vardiya bulunamadı veya zaten molada' });
+      }
+
+      await db.update(branchShiftSessions)
+        .set({ status: 'on_break' })
+        .where(eq(branchShiftSessions.id, activeSession.id));
+
+      await db.insert(branchBreakLogs).values({
+        sessionId: activeSession.id,
+        userId: user.id,
+        branchId: numBranchId,
+        startTime: now,
+        breakType: 'regular',
+      });
+
+      await db.insert(branchShiftEvents).values({
+        sessionId: activeSession.id,
+        userId: user.id,
+        branchId: numBranchId,
+        eventType: 'break_start',
+        eventTime: now,
+      });
+
+      return res.json({ success: true, action: 'break_started', user: { id: user.id, firstName: user.firstName, lastName: user.lastName } });
+    }
+
+    if (action === 'break_end') {
+      const [activeSession] = await db.select().from(branchShiftSessions)
+        .where(and(
+          eq(branchShiftSessions.userId, user.id),
+          eq(branchShiftSessions.branchId, numBranchId),
+          eq(branchShiftSessions.status, 'on_break')
+        )).limit(1);
+
+      if (!activeSession) {
+        return res.status(400).json({ message: 'Mola kaydı bulunamadı' });
+      }
+
+      const [activeBreak] = await db.select().from(branchBreakLogs)
+        .where(and(
+          eq(branchBreakLogs.sessionId, activeSession.id),
+          isNull(branchBreakLogs.endTime)
+        )).limit(1);
+
+      if (activeBreak) {
+        const breakStart = new Date(activeBreak.startTime);
+        const breakDuration = Math.floor((now.getTime() - breakStart.getTime()) / 60000);
+        await db.update(branchBreakLogs)
+          .set({ endTime: now, durationMinutes: breakDuration })
+          .where(eq(branchBreakLogs.id, activeBreak.id));
+
+        const newBreakTotal = (activeSession.breakMinutes || 0) + breakDuration;
+        await db.update(branchShiftSessions)
+          .set({ status: 'active', breakMinutes: newBreakTotal })
+          .where(eq(branchShiftSessions.id, activeSession.id));
+      } else {
+        await db.update(branchShiftSessions)
+          .set({ status: 'active' })
+          .where(eq(branchShiftSessions.id, activeSession.id));
+      }
+
+      await db.insert(branchShiftEvents).values({
+        sessionId: activeSession.id,
+        userId: user.id,
+        branchId: numBranchId,
+        eventType: 'break_end',
+        eventTime: now,
+      });
+
+      return res.json({ success: true, action: 'break_ended', user: { id: user.id, firstName: user.firstName, lastName: user.lastName } });
+    }
+
+    res.status(400).json({ message: 'Geçersiz işlem' });
+  } catch (error: any) {
+    console.error('QR checkin error:', error);
+    res.status(500).json({ message: 'QR giriş işlemi başarısız' });
+  }
+});
+
+router.get('/api/kiosk/qr-status/:userId/:branchId', async (req, res) => {
+  try {
+    const { userId, branchId } = req.params;
+    const numBranchId = parseInt(branchId);
+
+    const [activeSession] = await db.select().from(branchShiftSessions)
+      .where(and(
+        eq(branchShiftSessions.userId, userId),
+        eq(branchShiftSessions.branchId, numBranchId),
+        or(
+          eq(branchShiftSessions.status, 'active'),
+          eq(branchShiftSessions.status, 'on_break')
+        )
+      )).limit(1);
+
+    const [user] = await db.select({
+      id: users.id,
+      firstName: users.firstName,
+      lastName: users.lastName,
+      profileImageUrl: users.profileImageUrl,
+      role: users.role,
+    }).from(users).where(eq(users.id, userId)).limit(1);
+
+    res.json({
+      user: user || null,
+      activeSession: activeSession || null,
+      hasActiveShift: !!activeSession,
+      currentStatus: activeSession?.status || 'none',
+    });
+  } catch (error: any) {
+    console.error('QR status error:', error);
+    res.status(500).json({ message: 'Durum sorgulanamadı' });
+  }
+});
+
+router.patch('/api/branches/:branchId/kiosk/mode', isAuthenticated, async (req: any, res) => {
+  try {
+    const user = req.user;
+    if (!['admin', 'ceo', 'cgo'].includes(user.role)) {
+      return res.status(403).json({ message: 'Bu işlem için yetkiniz yok' });
+    }
+
+    const branchId = parseInt(req.params.branchId);
+    const { kioskMode } = req.body;
+
+    if (!['pin', 'qr'].includes(kioskMode)) {
+      return res.status(400).json({ message: 'Geçerli modlar: pin, qr' });
+    }
+
+    const [existing] = await db.select().from(branchKioskSettings)
+      .where(eq(branchKioskSettings.branchId, branchId)).limit(1);
+
+    if (existing) {
+      await db.update(branchKioskSettings)
+        .set({ kioskMode, updatedAt: new Date() })
+        .where(eq(branchKioskSettings.branchId, branchId));
+    } else {
+      await db.insert(branchKioskSettings).values({
+        branchId,
+        kioskMode,
+      });
+    }
+
+    res.json({ success: true, kioskMode });
+  } catch (error: any) {
+    console.error('Kiosk mode update error:', error);
+    res.status(500).json({ message: 'Kiosk modu güncellenemedi' });
   }
 });
 

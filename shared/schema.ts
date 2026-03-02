@@ -10200,6 +10200,8 @@ export const branchShiftSessions = pgTable("branch_shift_sessions", {
   earlyLeaveMinutes: integer("early_leave_minutes").default(0), // erken cikis dakikasi
   overtimeMinutes: integer("overtime_minutes").default(0), // fazla mesai dakikasi
   
+  checkinMethod: varchar("checkin_method", { length: 10 }).default("pin").notNull(),
+  
   createdAt: timestamp("created_at").defaultNow(),
 }, (table) => [
   index("branch_shift_sessions_user_idx").on(table.userId),
@@ -10519,6 +10521,8 @@ export const branchKioskSettings = pgTable("branch_kiosk_settings", {
   // Aktiflik
   isKioskEnabled: boolean("is_kiosk_enabled").default(true).notNull(),
   
+  kioskMode: varchar("kiosk_mode", { length: 10 }).default("pin").notNull(),
+  
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -10531,6 +10535,16 @@ export const insertBranchKioskSettingsSchema = createInsertSchema(branchKioskSet
 
 export type InsertBranchKioskSettings = z.infer<typeof insertBranchKioskSettingsSchema>;
 export type BranchKioskSettings = typeof branchKioskSettings.$inferSelect;
+
+export const qrCheckinNonces = pgTable("qr_checkin_nonces", {
+  id: serial("id").primaryKey(),
+  nonce: varchar("nonce", { length: 64 }).notNull().unique(),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  used: boolean("used").default(false).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export type QrCheckinNonce = typeof qrCheckinNonces.$inferSelect;
 
 // ========================================
 // BİRLEŞİK UYARI SİSTEMİ (Dashboard Alerts)

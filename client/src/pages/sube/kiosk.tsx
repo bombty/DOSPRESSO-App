@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
@@ -33,10 +33,15 @@ import {
   AlertCircle,
   ListTodo,
   ChevronLeft,
-  AlertTriangle
+  AlertTriangle,
+  QrCode,
+  Camera,
+  Scan,
+  UserCheck
 } from "lucide-react";
+import { Html5QrcodeScanner } from "html5-qrcode";
 
-type KioskStep = 'password' | 'select-user' | 'enter-pin' | 'working' | 'end-shift-summary';
+type KioskStep = 'password' | 'select-user' | 'enter-pin' | 'working' | 'end-shift-summary' | 'qr-scan' | 'qr-action';
 
 interface StaffMember {
   id: string;
@@ -126,6 +131,14 @@ export default function BranchKiosk() {
   const [showBreakConfirm2, setShowBreakConfirm2] = useState(false);
   const [userLocation, setUserLocation] = useState<{latitude: number; longitude: number} | null>(null);
   const [locationStatus, setLocationStatus] = useState<'pending' | 'granted' | 'denied'>('pending');
+  const [kioskMode, setKioskMode] = useState<'pin' | 'qr'>('pin');
+  const [qrScannedUser, setQrScannedUser] = useState<{ id: string; firstName: string; lastName: string; profileImageUrl?: string | null } | null>(null);
+  const [qrUserStatus, setQrUserStatus] = useState<{ hasActiveShift: boolean; currentStatus: string; session?: Session | null }>({ hasActiveShift: false, currentStatus: 'none' });
+  const [qrScanResult, setQrScanResult] = useState<'idle' | 'success' | 'error' | 'processing'>('idle');
+  const [qrScanMessage, setQrScanMessage] = useState('');
+  const qrScannerRef = useRef<Html5QrcodeScanner | null>(null);
+  const lastQrData = useRef<string>('');
+  const qrContainerId = "kiosk-qr-scanner";
 
   useEffect(() => {
     if (navigator.geolocation) {
@@ -141,6 +154,142 @@ export default function BranchKiosk() {
       setLocationStatus('denied');
     }
   }, []);
+
+  useEffect(() => {
+    fetch(`/api/branches/${branchId}/kiosk/settings`)
+      .then(r => r.json())
+      .then(data => {
+        if (data?.kioskMode === 'qr') {
+          setKioskMode('qr');
+          if (step === 'password') setStep('qr-scan');
+        }
+      })
+      .catch(() => {});
+  }, [branchId]);
+
+  useEffect(() => {
+    if (step !== 'qr-scan') {
+      if (qrScannerRef.current) {
+        try { qrScannerRef.current.clear(); } catch {}
+        qrScannerRef.current = null;
+      }
+      return;
+    }
+    const timer = setTimeout(() => {
+      const container = document.getElementById(qrContainerId);
+      if (!container) return;
+      setQrScanResult('idle');
+      setQrScanMessage('');
+      try {
+        const scanner = new Html5QrcodeScanner(
+          qrContainerId,
+          { fps: 10, qrbox: { width: 280, height: 280 }, aspectRatio: 1 },
+          false
+        );
+        scanner.render(
+          (decodedText) => {
+            handleQrScanned(decodedText);
+            scanner.pause();
+          },
+          () => {}
+        );
+        qrScannerRef.current = scanner;
+      } catch (e) {
+        console.error("QR scanner init error:", e);
+      }
+    }, 200);
+    return () => {
+      clearTimeout(timer);
+      if (qrScannerRef.current) {
+        try { qrScannerRef.current.clear(); } catch {}
+      }
+    };
+  }, [step]);
+
+  const handleQrScanned = useCallback(async (decodedText: string) => {
+    setQrScanResult('processing');
+    setQrScanMessage('QR kod dogrulanıyor...');
+    lastQrData.current = decodedText;
+    try {
+      const qrData = JSON.parse(decodedText);
+      if (!qrData.userId || !qrData.hmac) {
+        setQrScanResult('error');
+        setQrScanMessage('Gecersiz QR kod formati');
+        setTimeout(resumeQrScanner, 3000);
+        return;
+      }
+      const statusRes = await fetch(`/api/kiosk/qr-status/${qrData.userId}/${branchId}`);
+      const statusData = await statusRes.json();
+      if (!statusData.user) {
+        setQrScanResult('error');
+        setQrScanMessage('Kullanici bulunamadi');
+        setTimeout(resumeQrScanner, 3000);
+        return;
+      }
+      setQrScannedUser(statusData.user);
+      setQrUserStatus({
+        hasActiveShift: statusData.hasActiveShift,
+        currentStatus: statusData.currentStatus,
+        session: statusData.activeSession,
+      });
+      setQrScanResult('success');
+      setQrScanMessage(`${statusData.user.firstName} ${statusData.user.lastName}`);
+      setTimeout(() => {
+        setStep('qr-action');
+      }, 800);
+    } catch (e) {
+      setQrScanResult('error');
+      setQrScanMessage('QR kod okunamadı');
+      setTimeout(resumeQrScanner, 3000);
+    }
+  }, [branchId]);
+
+  const resumeQrScanner = () => {
+    setQrScanResult('idle');
+    setQrScanMessage('');
+    if (qrScannerRef.current) {
+      try { qrScannerRef.current.resume(); } catch {}
+    }
+  };
+
+  const qrActionMutation = useMutation({
+    mutationFn: async (data: { qrData: string; action: string }) => {
+      const res = await apiRequest('POST', '/api/kiosk/qr-checkin', {
+        qrData: data.qrData,
+        branchId,
+        action: data.action,
+      });
+      return res.json();
+    },
+    onSuccess: (data) => {
+      if (data.session) {
+        setCurrentSession(data.session);
+      }
+      if (data.summary) {
+        setShiftSummary(data.summary);
+      }
+      toast({ title: "Basarili", description: getActionMessage(data.action) });
+      if (data.action === 'shift_ended') {
+        setStep('end-shift-summary');
+      } else {
+        setTimeout(() => setStep('qr-scan'), 3000);
+      }
+    },
+    onError: (error: any) => {
+      toast({ title: "Hata", description: error.message || "İslem basarisiz", variant: "destructive" });
+    },
+  });
+
+  const getActionMessage = (action: string) => {
+    switch (action) {
+      case 'shift_started': return 'Vardiya baslatildi!';
+      case 'shift_ended': return 'Vardiya sonlandirildi!';
+      case 'break_started': return 'Mola baslatildi!';
+      case 'break_ended': return 'Mola sonlandirildi!';
+      case 'already_active': return 'Zaten aktif vardiyaniz var';
+      default: return 'Islem tamamlandi';
+    }
+  };
 
   const { data: staffList = [], isLoading: loadingStaff, refetch: refetchStaff } = useQuery<StaffMember[]>({
     queryKey: ['/api/branches', branchId, 'kiosk', 'staff'],
@@ -332,13 +481,11 @@ export default function BranchKiosk() {
   }, [step]);
 
   const resetKiosk = () => {
-    // If we came from branch dashboard (branchAuth exists), go back to dashboard
     if (branchAuth) {
       setLocation('/sube/dashboard');
       return;
     }
-    // Otherwise, reset to password step
-    setStep('password');
+    setStep(kioskMode === 'qr' ? 'qr-scan' : 'password');
     setKioskPassword('');
     setKioskUsername('');
     setSelectedUser(null);
@@ -348,6 +495,9 @@ export default function BranchKiosk() {
     setElapsedTime(0);
     setShiftSummary(null);
     setAutoLogoutCountdown(15);
+    setQrScannedUser(null);
+    setQrScanResult('idle');
+    setQrScanMessage('');
   };
 
   const formatTime = (seconds: number) => {
@@ -882,6 +1032,175 @@ export default function BranchKiosk() {
     </div>
   );
 
+  const renderQrScanStep = () => (
+    <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-br from-amber-50 to-orange-100 dark:from-gray-900 dark:to-gray-800 p-4">
+      <Card className="w-full max-w-md">
+        <CardHeader className="text-center">
+          <div className="mx-auto mb-4 p-4 rounded-full bg-amber-100 dark:bg-amber-900">
+            <Scan className="h-8 w-8 text-amber-700 dark:text-amber-300" />
+          </div>
+          <CardTitle className="text-xl" data-testid="title-qr-scan">QR Kod Okutun</CardTitle>
+          <CardDescription>Telefonunuzdaki QR kodu kameraya gosterin</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="border rounded-md overflow-hidden bg-black/5">
+            <div id={qrContainerId} style={{ width: '100%' }} />
+          </div>
+
+          {qrScanResult === 'processing' && (
+            <div className="flex items-center justify-center gap-2 p-3 rounded-md bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
+              <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+              <p className="text-sm font-medium text-blue-700 dark:text-blue-300">{qrScanMessage}</p>
+            </div>
+          )}
+
+          {qrScanResult === 'success' && (
+            <div className="flex items-center justify-center gap-2 p-3 rounded-md bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800">
+              <UserCheck className="w-5 h-5 text-green-600 dark:text-green-400" />
+              <p className="text-sm font-medium text-green-700 dark:text-green-300">{qrScanMessage}</p>
+            </div>
+          )}
+
+          {qrScanResult === 'error' && (
+            <div className="flex items-center justify-center gap-2 p-3 rounded-md bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800">
+              <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400" />
+              <p className="text-sm font-medium text-red-700 dark:text-red-300">{qrScanMessage}</p>
+            </div>
+          )}
+
+          <div className="text-center text-xs text-muted-foreground">
+            Personel telefonundan Vardiyalarim &gt; QR Giris sekmesindeki QR kodu okutun
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+
+  const renderQrActionStep = () => {
+    if (!qrScannedUser) return null;
+    const { hasActiveShift, currentStatus } = qrUserStatus;
+
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-br from-amber-50 to-orange-100 dark:from-gray-900 dark:to-gray-800 p-4">
+        <Card className="w-full max-w-md">
+          <CardHeader className="text-center">
+            <div className="mx-auto mb-3">
+              <Avatar className="h-16 w-16 mx-auto">
+                <AvatarImage src={qrScannedUser.profileImageUrl || undefined} />
+                <AvatarFallback className="text-lg bg-amber-100 dark:bg-amber-900 text-amber-700 dark:text-amber-300">
+                  {qrScannedUser.firstName?.[0]}{qrScannedUser.lastName?.[0]}
+                </AvatarFallback>
+              </Avatar>
+            </div>
+            <CardTitle className="text-xl" data-testid="title-qr-user">
+              {qrScannedUser.firstName} {qrScannedUser.lastName}
+            </CardTitle>
+            <CardDescription>
+              {hasActiveShift
+                ? currentStatus === 'on_break'
+                  ? 'Molada'
+                  : 'Aktif vardiyada'
+                : 'Aktif vardiya yok'}
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {!hasActiveShift && (
+              <Button
+                className="w-full"
+                size="lg"
+                onClick={() => {
+                  qrActionMutation.mutate({ qrData: lastQrData.current || '', action: 'shift_start' });
+                }}
+                disabled={qrActionMutation.isPending}
+                data-testid="button-qr-shift-start"
+              >
+                <Play className="w-5 h-5 mr-2" />
+                Vardiya Baslat
+              </Button>
+            )}
+
+            {hasActiveShift && currentStatus === 'active' && (
+              <>
+                <Button
+                  className="w-full"
+                  variant="outline"
+                  size="lg"
+                  onClick={() => {
+                    qrActionMutation.mutate({ qrData: lastQrData.current || '', action: 'break_start' });
+                  }}
+                  disabled={qrActionMutation.isPending}
+                  data-testid="button-qr-break-start"
+                >
+                  <Coffee className="w-5 h-5 mr-2" />
+                  Molaya Cik
+                </Button>
+                <Button
+                  className="w-full"
+                  variant="destructive"
+                  size="lg"
+                  onClick={() => {
+                    qrActionMutation.mutate({ qrData: lastQrData.current || '', action: 'shift_end' });
+                  }}
+                  disabled={qrActionMutation.isPending}
+                  data-testid="button-qr-shift-end"
+                >
+                  <LogOut className="w-5 h-5 mr-2" />
+                  Vardiya Bitir
+                </Button>
+              </>
+            )}
+
+            {hasActiveShift && currentStatus === 'on_break' && (
+              <>
+                <Button
+                  className="w-full"
+                  size="lg"
+                  onClick={() => {
+                    qrActionMutation.mutate({ qrData: lastQrData.current || '', action: 'break_end' });
+                  }}
+                  disabled={qrActionMutation.isPending}
+                  data-testid="button-qr-break-end"
+                >
+                  <Play className="w-5 h-5 mr-2" />
+                  Moladan Don
+                </Button>
+                <Button
+                  className="w-full"
+                  variant="destructive"
+                  size="lg"
+                  onClick={() => {
+                    qrActionMutation.mutate({ qrData: lastQrData.current || '', action: 'shift_end' });
+                  }}
+                  disabled={qrActionMutation.isPending}
+                  data-testid="button-qr-shift-end-break"
+                >
+                  <LogOut className="w-5 h-5 mr-2" />
+                  Vardiya Bitir
+                </Button>
+              </>
+            )}
+
+            <Separator />
+
+            <Button
+              variant="ghost"
+              className="w-full"
+              onClick={() => {
+                setQrScannedUser(null);
+                setQrScanResult('idle');
+                setStep('qr-scan');
+              }}
+              data-testid="button-qr-back"
+            >
+              <ChevronLeft className="w-4 h-4 mr-1" />
+              Geri Don
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  };
+
   const renderContent = () => {
     switch (step) {
       case 'password':
@@ -894,8 +1213,12 @@ export default function BranchKiosk() {
         return renderWorkingStep();
       case 'end-shift-summary':
         return renderEndShiftSummary();
+      case 'qr-scan':
+        return renderQrScanStep();
+      case 'qr-action':
+        return renderQrActionStep();
       default:
-        return renderPasswordStep();
+        return kioskMode === 'qr' ? renderQrScanStep() : renderPasswordStep();
     }
   };
   

@@ -11,7 +11,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { format, startOfWeek, addDays, isToday, differenceInDays, startOfMonth, endOfMonth, eachDayOfInterval } from "date-fns";
 import { tr } from "date-fns/locale";
-import { Clock, Sun, Sunset, Moon, ArrowRightLeft, Calendar, Check, X, Coffee, UserMinus, AlertTriangle, AlertCircle, Timer, FileText } from "lucide-react";
+import { Clock, Sun, Sunset, Moon, ArrowRightLeft, Calendar, Check, X, Coffee, UserMinus, AlertTriangle, AlertCircle, Timer, FileText, QrCode } from "lucide-react";
+import QrCheckinGenerator from "@/components/qr-checkin-generator";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
@@ -62,7 +63,7 @@ export default function Vardiyalarim() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [selectedWeekOffset, setSelectedWeekOffset] = useState<0 | 1>(0);
-  const [viewMode, setViewMode] = useState<"my" | "branch" | "leave">("my");
+  const [viewMode, setViewMode] = useState<"my" | "branch" | "leave" | "qr">("my");
 
   const [swapDialogOpen, setSwapDialogOpen] = useState(false);
   const [swapTargetShift, setSwapTargetShift] = useState<MyShift | null>(null);
@@ -708,6 +709,10 @@ export default function Vardiyalarim() {
       <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as any)} data-testid="tabs-view-mode">
         <TabsList>
           <TabsTrigger value="my" data-testid="tab-my-shifts">Vardiyalarim</TabsTrigger>
+          <TabsTrigger value="qr" data-testid="tab-qr-checkin">
+            <QrCode className="w-3.5 h-3.5 mr-1" />
+            QR Giris
+          </TabsTrigger>
           <TabsTrigger value="branch" data-testid="tab-branch-plan">Sube Plani</TabsTrigger>
           <TabsTrigger value="leave" data-testid="tab-leave-request">Izin Talebi</TabsTrigger>
         </TabsList>
@@ -738,6 +743,7 @@ export default function Vardiyalarim() {
       </div>
 
       {viewMode === "my" && renderMyShifts()}
+      {viewMode === "qr" && <QrCheckinGenerator />}
       {viewMode === "branch" && renderBranchPlan()}
       {viewMode === "leave" && renderLeaveTab()}
 
