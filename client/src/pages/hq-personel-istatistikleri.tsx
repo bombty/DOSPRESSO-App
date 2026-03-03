@@ -14,6 +14,7 @@ import {
   Clock,
   BarChart3,
   ArrowLeft,
+  Info,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "wouter";
@@ -136,8 +137,17 @@ export default function HQPersonelIstatistikleri() {
     return [
       { name: "Tam Zamanlı", value: stats.employmentTypeBreakdown.fullTime },
       { name: "Yarı Zamanlı", value: stats.employmentTypeBreakdown.partTime },
-      { name: "Diğer", value: stats.employmentTypeBreakdown.other },
+      { name: "Belirlenmemiş", value: stats.employmentTypeBreakdown.other },
     ].filter((d) => d.value > 0);
+  }, [stats]);
+
+  const belirlenmemisInfo = useMemo(() => {
+    if (!stats) return null;
+    const otherCount = stats.employmentTypeBreakdown.other;
+    const total = stats.employmentTypeBreakdown.fullTime + stats.employmentTypeBreakdown.partTime + otherCount;
+    if (total === 0 || otherCount === 0) return null;
+    if (otherCount / total > 0.5) return otherCount;
+    return null;
   }, [stats]);
 
   if (!user || (!isHQRole(user.role as any) && user.role !== "admin")) {
@@ -328,6 +338,12 @@ export default function HQPersonelIstatistikleri() {
                 </PieChart>
               </ResponsiveContainer>
             </div>
+            {belirlenmemisInfo !== null && (
+              <div className="flex items-start gap-2 mt-3 p-3 rounded-md bg-muted/50 text-sm text-muted-foreground" data-testid="info-belirlenmemis">
+                <Info className="h-4 w-4 mt-0.5 shrink-0" />
+                <span>{belirlenmemisInfo} personelin çalışma türü henüz belirlenmemiş. Doğru dağılım için personel kayıtlarını güncelleyin.</span>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

@@ -838,7 +838,7 @@ export default function Raporlar() {
                   <BarChart data={comparisonData}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="branch" />
-                    <YAxis />
+                    <YAxis allowDecimals={false} />
                     <Tooltip />
                     <Legend />
                     <Bar dataKey="faults" fill="#ef4444" name="Arızalar" />
@@ -918,7 +918,7 @@ export default function Raporlar() {
                   <LineChart data={trendData}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="date" />
-                    <YAxis />
+                    <YAxis allowDecimals={false} />
                     <Tooltip />
                     <Legend />
                     <Line type="monotone" dataKey="faults" stroke="#ef4444" name="Arızalar" />

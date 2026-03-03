@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useParams, useLocation } from "wouter";
 import { Link } from "wouter";
@@ -335,6 +335,14 @@ export default function PersonelProfilPage() {
   };
 
   const [aiRecsRequested, setAiRecsRequested] = useState(false);
+  const [academyTimeout, setAcademyTimeout] = useState(false);
+
+  useEffect(() => {
+    if (profile?.performanceScore !== null && profile?.performanceScore !== undefined) return;
+    if (profile?.attendanceRate !== null && profile?.attendanceRate !== undefined) return;
+    const timer = setTimeout(() => setAcademyTimeout(true), 5000);
+    return () => clearTimeout(timer);
+  }, [profile?.performanceScore, profile?.attendanceRate]);
   const { data: aiRecs, isLoading: isLoadingAiRecs, error: aiRecsError } = useQuery<AIRecommendations>({
     queryKey: ['/api/personnel', id, 'ai-recommendations'],
     queryFn: async () => {
@@ -422,8 +430,8 @@ export default function PersonelProfilPage() {
   const canEvaluate = user?.role === 'coach' || user?.role === 'admin' || user?.role === 'supervisor' || user?.role === 'yatirimci_hq';
 
   return (
-    <div className="min-h-screen pb-20">
-      <div className="p-3 flex flex-col gap-3 sm:gap-4">
+    <div className="pb-6">
+      <div className="p-3 flex flex-col gap-2 sm:gap-3">
         {/* Profile Header with Photo */}
         <div className="flex items-center gap-4 flex-wrap">
           <div className="relative">
@@ -545,9 +553,9 @@ export default function PersonelProfilPage() {
               </CardTitle>
               <CardDescription>Son 30 günlük performans özeti</CardDescription>
             </CardHeader>
-            <CardContent className="w-full space-y-4">
-              <div className="flex flex-col items-center gap-3">
-                <div className="relative w-32 h-32">
+            <CardContent className="w-full space-y-3">
+              <div className="flex flex-col items-center gap-2">
+                <div className="relative w-28 h-28">
                   <svg className="w-full h-full -rotate-90" viewBox="0 0 120 120">
                     <circle cx="60" cy="60" r="54" fill="none" strokeWidth="8" className="stroke-muted/30" />
                     <circle cx="60" cy="60" r="54" fill="none" strokeWidth="8" className={ringColor}
@@ -608,7 +616,7 @@ export default function PersonelProfilPage() {
           </CardTitle>
           <CardDescription>Yapay zeka destekli kişisel performans analizi ve öneriler</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-3">
           {!aiRecs && !isLoadingAiRecs && (
             <Button
               onClick={() => setAiRecsRequested(true)}
@@ -646,7 +654,7 @@ export default function PersonelProfilPage() {
           )}
 
           {aiRecs && (
-            <div className="space-y-4" data-testid="ai-recommendations-content">
+            <div className="space-y-3" data-testid="ai-recommendations-content">
               {aiRecs.levelRisk && (
                 <div className="p-3 rounded-md bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800" data-testid="ai-level-risk-warning">
                   <div className="flex items-start gap-2">
@@ -859,7 +867,7 @@ export default function PersonelProfilPage() {
       )}
 
       {/* Tabs */}
-      <Tabs className="w-full flex flex-col gap-3 sm:gap-4">
+      <Tabs className="w-full flex flex-col gap-2 sm:gap-3">
         <TabsList className="flex flex-wrap gap-1">
           <TabsTrigger value="bilgiler" data-testid="tab-info" className="flex-1 min-w-fit">Kişisel Bilgiler</TabsTrigger>
           <TabsTrigger value="performans" data-testid="tab-performance" className="flex-1 min-w-fit">Performans</TabsTrigger>
@@ -1640,7 +1648,9 @@ export default function PersonelProfilPage() {
                           <div className="text-xl font-bold text-primary" data-testid="text-performance-score">
                             {profile?.performanceScore !== null && profile?.performanceScore !== undefined 
                               ? `${profile.performanceScore}%` 
-                              : <span className="text-muted-foreground text-sm">Hesaplanıyor...</span>
+                              : academyTimeout
+                                ? <span className="text-muted-foreground text-sm">Henüz akademi verisi yok</span>
+                                : <span className="text-muted-foreground text-sm flex items-center justify-center gap-1"><Loader2 className="w-3 h-3 animate-spin" />Hesaplanıyor...</span>
                             }
                           </div>
                           <div className="text-xs text-muted-foreground">Performans</div>
@@ -1649,12 +1659,30 @@ export default function PersonelProfilPage() {
                           <div className="text-xl font-bold text-green-600" data-testid="text-attendance-rate">
                             {profile?.attendanceRate !== null && profile?.attendanceRate !== undefined 
                               ? `${profile.attendanceRate}%` 
-                              : <span className="text-muted-foreground text-sm">Hesaplanıyor...</span>
+                              : academyTimeout
+                                ? <span className="text-muted-foreground text-sm">Henüz akademi verisi yok</span>
+                                : <span className="text-muted-foreground text-sm flex items-center justify-center gap-1"><Loader2 className="w-3 h-3 animate-spin" />Hesaplanıyor...</span>
                             }
                           </div>
                           <div className="text-xs text-muted-foreground">Devam</div>
                         </div>
                       </div>
+                      {academyTimeout && (profile?.performanceScore === null || profile?.performanceScore === undefined) && (profile?.attendanceRate === null || profile?.attendanceRate === undefined) && (
+                        <div className="flex items-center gap-2 mt-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setAcademyTimeout(false);
+                              queryClient.invalidateQueries({ queryKey: ['/api/personnel', id] });
+                            }}
+                            data-testid="button-retry-academy"
+                          >
+                            <Loader2 className="w-3 h-3 mr-1" />
+                            Tekrar Dene
+                          </Button>
+                        </div>
+                      )}
                       <div className="flex items-center gap-2 mt-3 flex-wrap">
                         <Link href="/akademi-badges">
                           <Badge variant="secondary" className="cursor-pointer hover-elevate" data-testid="link-badges-quick">Rozetler</Badge>

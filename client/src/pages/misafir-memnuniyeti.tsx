@@ -373,13 +373,14 @@ export default function MisafirMemnuniyeti() {
     </div>
   );
 
-  const StatCard = ({ title, value, icon: Icon, trend, color }: any) => (
+  const StatCard = ({ title, value, icon: Icon, trend, color, subtitle }: any) => (
     <Card>
       <CardContent className="p-4">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-2">
           <div>
             <p className="text-sm text-muted-foreground">{title}</p>
             <p className="text-2xl font-bold">{value}</p>
+            {subtitle && <p className="text-xs text-muted-foreground mt-0.5">{subtitle}</p>}
           </div>
           <div className={`p-2 rounded-lg ${color}`}>
             <Icon className="h-5 w-5 text-white" />
@@ -423,9 +424,10 @@ export default function MisafirMemnuniyeti() {
         />
         <StatCard
           title="Ortalama Puan"
-          value={stats?.avgRating?.toFixed(1) || '-'}
+          value={stats?.totalCount === 0 ? '-' : (stats?.avgRating?.toFixed(1) || '-')}
           icon={Star}
           color="bg-yellow-500"
+          subtitle={stats?.totalCount === 0 ? 'Henüz değerlendirme yok' : `(${stats?.totalCount || 0} değerlendirme)`}
         />
         <StatCard
           title="Yeni"
@@ -648,23 +650,35 @@ export default function MisafirMemnuniyeti() {
                 <CardTitle className="text-lg">Kategori Ortalamaları</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                {[
-                  { label: 'Hizmet', value: stats?.avgService, icon: Sparkles },
-                  { label: 'Temizlik', value: stats?.avgCleanliness, icon: Brush },
-                  { label: 'Ürün', value: stats?.avgProduct, icon: Package },
-                  { label: 'Personel', value: stats?.avgStaff, icon: User },
-                ].map((item) => (
-                  <div key={item.label} className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <item.icon className="h-4 w-4 text-muted-foreground" />
-                      <span>{item.label}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <StarDisplay rating={Math.round(item.value || 0)} size="sm" />
-                      <span className="font-medium">{item.value?.toFixed(1) || '-'}</span>
-                    </div>
+                {stats?.totalCount === 0 ? (
+                  <div className="text-center py-4">
+                    <p className="text-muted-foreground">Henüz değerlendirme yok</p>
+                    <p className="text-xs text-muted-foreground mt-1">(0 değerlendirme)</p>
                   </div>
-                ))}
+                ) : (
+                  [{label: 'Hizmet', value: stats?.avgService, icon: Sparkles},
+                   {label: 'Temizlik', value: stats?.avgCleanliness, icon: Brush},
+                   {label: 'Ürün', value: stats?.avgProduct, icon: Package},
+                   {label: 'Personel', value: stats?.avgStaff, icon: User},
+                  ].map((item) => (
+                    <div key={item.label} className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <item.icon className="h-4 w-4 text-muted-foreground" />
+                        <span>{item.label}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {item.value && item.value > 0 ? (
+                          <>
+                            <StarDisplay rating={Math.round(item.value)} size="sm" />
+                            <span className="font-medium">{item.value.toFixed(1)}</span>
+                          </>
+                        ) : (
+                          <span className="text-muted-foreground text-sm">-</span>
+                        )}
+                      </div>
+                    </div>
+                  ))
+                )}
               </CardContent>
             </Card>
 

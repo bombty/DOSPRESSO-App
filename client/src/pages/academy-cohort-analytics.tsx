@@ -162,7 +162,7 @@ export default function AcademyCohortAnalytics() {
                   <BarChart data={branchProgression}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="branch" />
-                    <YAxis />
+                    <YAxis allowDecimals={false} />
                     <Tooltip />
                     <Legend />
                     <Bar dataKey="stajyer" stackId="a" fill="#3b82f6" name="Stajyer" />

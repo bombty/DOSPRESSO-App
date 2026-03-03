@@ -112,7 +112,7 @@ export default function AcademyAdvancedAnalytics() {
               <LineChart data={scoreData}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="week" />
-                <YAxis />
+                <YAxis allowDecimals={false} />
                 <Tooltip />
                 <Line type="monotone" dataKey="score" stroke="#3b82f6" strokeWidth={2} />
               </LineChart>

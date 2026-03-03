@@ -1,4 +1,4 @@
-import { useState, useEffect, Suspense, lazy } from "react";
+import { useState, useEffect, useRef, useCallback, Suspense, lazy } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { useDynamicPermissions } from "@/hooks/useDynamicPermissions";
@@ -71,7 +71,7 @@ const RAPORLAR_TABS: TabConfig[] = [
   {
     id: "kalite-denetimi",
     label: "Audit Reports",
-    labelTr: "Denetim Rap.",
+    labelTr: "Denetim Raporları",
     icon: <ClipboardCheck className="h-4 w-4" />,
     permissionModule: "quality_audit",
     scope: "hq",
@@ -80,7 +80,7 @@ const RAPORLAR_TABS: TabConfig[] = [
   {
     id: "misafir-memnuniyeti",
     label: "Guest Satisfaction",
-    labelTr: "Misafir Memn.",
+    labelTr: "Misafir Memnuniyeti",
     icon: <MessageSquare className="h-4 w-4" />,
     permissionModule: "guest_satisfaction",
     scope: "hq",
@@ -170,7 +170,7 @@ const RAPORLAR_TABS: TabConfig[] = [
   {
     id: "sube-saglik",
     label: "Branch Health",
-    labelTr: "Şube Sağlık",
+    labelTr: "Şube Sağlık Skoru",
     icon: <Activity className="h-4 w-4" />,
     permissionModule: "reports",
     scope: "both",
@@ -277,6 +277,23 @@ export default function RaporlarMegaModule() {
     }
   }, [location, visibleTabs]);
 
+  const tabsContainerRef = useRef<HTMLDivElement>(null);
+
+  const scrollActiveTabIntoView = useCallback((tabId: string) => {
+    requestAnimationFrame(() => {
+      const container = tabsContainerRef.current;
+      if (!container) return;
+      const activeEl = container.querySelector(`[data-testid="tab-raporlar-${tabId}"]`) as HTMLElement;
+      if (activeEl) {
+        activeEl.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+      }
+    });
+  }, []);
+
+  useEffect(() => {
+    scrollActiveTabIntoView(activeTab);
+  }, [activeTab, scrollActiveTabIntoView]);
+
   const handleTabChange = (tabId: string) => {
     setActiveTab(tabId);
     const url = TAB_URL_MAP[tabId];
@@ -322,21 +339,23 @@ export default function RaporlarMegaModule() {
         onValueChange={handleTabChange} 
         className="flex-1 flex flex-col"
       >
-        <div className="border-b px-4">
-          <ScrollArea className="w-full whitespace-nowrap">
-            <TabsList className="inline-flex h-auto p-1 bg-transparent gap-1">
-              {visibleTabs.map((tab) => (
-                <TabsTrigger
-                  key={tab.id}
-                  value={tab.id}
-                  className="flex items-center gap-2 px-4 py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-md"
-                  data-testid={`tab-raporlar-${tab.id}`}
-                >
-                  {tab.icon}
-                  <span className="hidden sm:inline">{tab.labelTr}</span>
-                </TabsTrigger>
-              ))}
-            </TabsList>
+        <div className="border-b px-4" ref={tabsContainerRef}>
+          <ScrollArea className="w-full">
+            <div className="overflow-x-auto">
+              <TabsList className="inline-flex h-auto p-1 bg-transparent gap-1 whitespace-nowrap">
+                {visibleTabs.map((tab) => (
+                  <TabsTrigger
+                    key={tab.id}
+                    value={tab.id}
+                    className="flex items-center gap-2 px-4 py-2 whitespace-nowrap shrink-0 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-md"
+                    data-testid={`tab-raporlar-${tab.id}`}
+                  >
+                    {tab.icon}
+                    <span>{tab.labelTr}</span>
+                  </TabsTrigger>
+                ))}
+              </TabsList>
+            </div>
             <ScrollBar orientation="horizontal" />
           </ScrollArea>
         </div>

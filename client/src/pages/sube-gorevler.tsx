@@ -92,34 +92,54 @@ export default function SubeGorevlerPage() {
         </div>
 
         {/* Performance Score Gauge */}
-        <Card className={getScoreBg(stats.performanceScore)}>
-          <CardHeader>
-            <CardTitle className="flex items-center justify-between">
-              <span>Genel Performans Skoru</span>
-              <TrendingUp className="w-5 h-5" />
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center justify-center gap-8">
-              <div className="text-center">
-                <div className={`text-6xl font-bold ${getScoreColor(stats.performanceScore)}`}>
-                  {stats.performanceScore}
+        {stats.totalTasks === 0 && stats.completed === 0 ? (
+          <Card data-testid="card-no-performance-data">
+            <CardHeader>
+              <CardTitle className="flex items-center justify-between">
+                <span>Genel Performans Skoru</span>
+                <TrendingUp className="w-5 h-5 text-muted-foreground" />
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="flex items-center justify-center py-4">
+                <div className="text-center space-y-2">
+                  <AlertCircle className="w-10 h-10 text-muted-foreground mx-auto" />
+                  <p className="text-lg font-medium text-muted-foreground" data-testid="text-no-data">Henüz yeterli veri yok</p>
+                  <p className="text-sm text-muted-foreground">Performans skoru için en az 1 tamamlanmış görev gerekli</p>
                 </div>
-                <p className="text-sm text-muted-foreground mt-2">/100</p>
               </div>
-              <div className="flex-1">
-                <Progress value={scorePercentage} className="h-4" data-testid="progress-performance" />
-                <p className="text-sm text-muted-foreground mt-2">
-                  {stats.performanceScore >= 80
-                    ? "Mükemmel"
-                    : stats.performanceScore >= 60
-                    ? "İyi"
-                    : "Geliştirilmesi Gerekli"}
-                </p>
+            </CardContent>
+          </Card>
+        ) : (
+          <Card className={getScoreBg(stats.performanceScore)}>
+            <CardHeader>
+              <CardTitle className="flex items-center justify-between">
+                <span>Genel Performans Skoru</span>
+                <TrendingUp className="w-5 h-5" />
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center justify-center gap-8">
+                <div className="text-center">
+                  <div className={`text-6xl font-bold ${getScoreColor(stats.performanceScore)}`}>
+                    {stats.performanceScore}
+                  </div>
+                  <p className="text-sm text-muted-foreground mt-2">/100</p>
+                </div>
+                <div className="flex-1">
+                  <Progress value={scorePercentage} className="h-4" data-testid="progress-performance" />
+                  <p className="text-sm text-muted-foreground mt-2">
+                    {stats.performanceScore >= 80
+                      ? "Mükemmel"
+                      : stats.performanceScore >= 60
+                      ? "İyi"
+                      : "Geliştirilmesi Gerekli"}
+                  </p>
+                </div>
               </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        )}
 
         {/* KPI Cards Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -254,7 +274,7 @@ export default function SubeGorevlerPage() {
               <BarChart data={trendData}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="name" />
-                <YAxis />
+                <YAxis allowDecimals={false} />
                 <Tooltip />
                 <Legend />
                 <Bar dataKey="completed" fill="#22c55e" name="Tamamlanan" />

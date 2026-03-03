@@ -27,13 +27,15 @@ function formatCurrency(value: string | number | null | undefined): string {
   return num.toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " TL";
 }
 
-function getHealthColor(score: number): string {
+function getHealthColor(score: number, hasData: boolean): string {
+  if (!hasData || score === 0) return "bg-muted";
   if (score > 80) return "bg-green-500";
   if (score > 50) return "bg-yellow-500";
   return "bg-red-500";
 }
 
-function getHealthLabel(score: number): string {
+function getHealthLabel(score: number, hasData: boolean): string {
+  if (!hasData || score === 0) return "Henüz değerlendirme yok";
   if (score > 80) return "İyi";
   if (score > 50) return "Orta";
   return "Kritik";
@@ -147,17 +149,23 @@ export function QREquipmentDetail({ equipmentId, open, onOpenChange }: QREquipme
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="flex items-center gap-3">
-                  <div className={`h-10 w-10 rounded-md flex items-center justify-center text-white font-bold text-sm ${getHealthColor(data.healthScore)}`} data-testid="badge-health-score">
-                    {data.healthScore}
-                  </div>
-                  <div>
-                    <p className="font-medium" data-testid="text-health-label">{getHealthLabel(data.healthScore)}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {data.faults.filter((f: any) => f.status !== "resolved" && f.status !== "closed").length} açık arıza
-                    </p>
-                  </div>
-                </div>
+                {(() => {
+                  const hasData = data.faults.length > 0 || data.maintenanceLogs.length > 0;
+                  const isNoData = !hasData && data.healthScore === 0;
+                  return (
+                    <div className="flex items-center gap-3">
+                      <div className={`h-10 w-10 rounded-md flex items-center justify-center font-bold text-sm ${isNoData ? 'bg-muted text-muted-foreground' : `${getHealthColor(data.healthScore, hasData)} text-white`}`} data-testid="badge-health-score">
+                        {isNoData ? '-' : data.healthScore}
+                      </div>
+                      <div>
+                        <p className={`font-medium ${isNoData ? 'text-muted-foreground' : ''}`} data-testid="text-health-label">{getHealthLabel(data.healthScore, hasData)}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {isNoData ? '(0 değerlendirme)' : `${data.faults.filter((f: any) => f.status !== "resolved" && f.status !== "closed").length} açık arıza`}
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })()}
               </CardContent>
             </Card>
 

@@ -71,8 +71,19 @@ export function AISummaryCard() {
           <div>
             <p className="text-xs text-white/70">Ort. Skor</p>
             <div className="flex items-center gap-1">
-              <p className="text-lg font-bold">{avgHealth}%</p>
-              {avgHealth >= 80 && <Badge variant="secondary" className="text-[8px] h-4 bg-white/20 text-white border-0">İyi</Badge>}
+              {totalBranches === 0 ? (
+                <p className="text-sm text-white/60">Henüz değerlendirme yok</p>
+              ) : avgHealth === 0 ? (
+                <>
+                  <p className="text-lg font-bold">0%</p>
+                  <Badge variant="secondary" className="text-[8px] h-4 bg-white/20 text-white/60 border-0">Henüz değerlendirme yok</Badge>
+                </>
+              ) : (
+                <>
+                  <p className="text-lg font-bold">{avgHealth}%</p>
+                  {avgHealth >= 80 && <Badge variant="secondary" className="text-[8px] h-4 bg-white/20 text-white border-0">İyi</Badge>}
+                </>
+              )}
             </div>
           </div>
         </div>

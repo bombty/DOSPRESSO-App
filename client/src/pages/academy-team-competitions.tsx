@@ -126,7 +126,7 @@ export default function AcademyTeamCompetitions() {
                       <BarChart data={chartData}>
                         <CartesianGrid strokeDasharray="3 3" />
                         <XAxis dataKey="branchName" />
-                        <YAxis />
+                        <YAxis allowDecimals={false} />
                         <Tooltip />
                         <Legend />
                         <Bar dataKey="score" fill="#3b82f6" name="Puan" />

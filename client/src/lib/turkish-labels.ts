@@ -162,3 +162,21 @@ export function formatDisplayLabel(key: string | null | undefined): string {
     .replace(/\bPlanlandi\b/gi, "Planlandı")
     .replace(/\bTamamlandi\b/gi, "Tamamlandı");
 }
+
+const MONTH_SHORT_TR: Record<string, string> = {
+  "01": "Oca", "02": "Şub", "03": "Mar", "04": "Nis",
+  "05": "May", "06": "Haz", "07": "Tem", "08": "Ağu",
+  "09": "Eyl", "10": "Eki", "11": "Kas", "12": "Ara",
+};
+
+export function formatTurkishDate(dateStr: string): string {
+  if (!dateStr) return dateStr;
+  const parts = dateStr.split("-");
+  if (parts.length === 2) {
+    return `${MONTH_SHORT_TR[parts[1]] || parts[1]} ${parts[0]}`;
+  }
+  if (parts.length === 3) {
+    return `${parseInt(parts[2])} ${MONTH_SHORT_TR[parts[1]] || parts[1]} ${parts[0]}`;
+  }
+  return dateStr;
+}

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
+import { formatTurkishDate } from "@/lib/turkish-labels";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -473,7 +474,7 @@ export default function FabrikaPerformans() {
                       <ResponsiveContainer width="100%" height="100%">
                         <AreaChart data={dailyTrend}>
                           <CartesianGrid strokeDasharray="3 3" />
-                          <XAxis dataKey="date" />
+                          <XAxis dataKey="date" tickFormatter={(v: string) => formatTurkishDate(v)} />
                           <YAxis />
                           <Tooltip />
                           <Legend />

@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
-import { TrendingUp, AlertTriangle, Zap, CheckCircle2 } from "lucide-react";
+import { TrendingUp, AlertTriangle, Zap, CheckCircle2, BarChart3 } from "lucide-react";
 import { format } from "date-fns";
 import { tr } from "date-fns/locale";
 import type { EquipmentFault, Equipment } from "@shared/schema";
@@ -73,6 +73,19 @@ export default function EquipmentAnalytics() {
     { name: "Devam Ediyor", value: faults.filter(f => f.currentStage === "devam_ediyor").length, color: "#eab308" },
     { name: "Çözüldü", value: faults.filter(f => f.currentStage === "kapatildi").length, color: "#10b981" },
   ].filter(item => item.value > 0);
+
+  const renderPieLabel = ({ name, value, cx, cy, midAngle, innerRadius, outerRadius, percent }: any) => {
+    if (value === 0 || percent < 0.05) return null;
+    const RADIAN = Math.PI / 180;
+    const radius = outerRadius + 25;
+    const x = cx + radius * Math.cos(-midAngle * RADIAN);
+    const y = cy + radius * Math.sin(-midAngle * RADIAN);
+    return (
+      <text x={x} y={y} fill="currentColor" textAnchor={x > cx ? "start" : "end"} dominantBaseline="central" fontSize={12}>
+        {name}: {value}
+      </text>
+    );
+  };
 
   const avgResolutionTime = resolvedFaults > 0 
     ? Math.round(
@@ -175,7 +188,7 @@ export default function EquipmentAnalytics() {
                     cx="50%"
                     cy="50%"
                     labelLine={false}
-                    label={({ name, value }) => `${name}: ${value}`}
+                    label={renderPieLabel}
                     outerRadius={80}
                     dataKey="value"
                   >
@@ -189,6 +202,7 @@ export default function EquipmentAnalytics() {
                     ))}
                   </Pie>
                   <Tooltip />
+                  <Legend />
                 </PieChart>
               </ResponsiveContainer>
             )}
@@ -213,7 +227,7 @@ export default function EquipmentAnalytics() {
                     cx="50%"
                     cy="50%"
                     labelLine={false}
-                    label={({ name, value }) => `${name}: ${value}`}
+                    label={renderPieLabel}
                     outerRadius={80}
                     dataKey="value"
                   >
@@ -222,6 +236,7 @@ export default function EquipmentAnalytics() {
                     ))}
                   </Pie>
                   <Tooltip />
+                  <Legend />
                 </PieChart>
               </ResponsiveContainer>
             )}
@@ -236,18 +251,23 @@ export default function EquipmentAnalytics() {
           <CardDescription>Açık, işleme alınan ve çözülen arızaların sayısı</CardDescription>
         </CardHeader>
         <CardContent className="h-80">
-          {faultStatusData.every(d => d.value === 0) ? (
-            <div className="flex items-center justify-center h-full">
+          {faultStatusData.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-full gap-2">
+              <BarChart3 className="w-10 h-10 text-muted-foreground/40" />
               <p className="text-sm text-muted-foreground">Arıza durum verisi bulunmuyor</p>
             </div>
           ) : (
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={faultStatusData}>
+              <BarChart data={faultStatusData} margin={faultStatusData.length > 6 ? { bottom: 40 } : undefined}>
                 <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="name" />
-                <YAxis />
+                <XAxis dataKey="name" angle={faultStatusData.length > 6 ? -45 : 0} textAnchor={faultStatusData.length > 6 ? "end" : "middle"} interval={0} />
+                <YAxis allowDecimals={false} />
                 <Tooltip />
-                <Bar dataKey="value" fill="#3b82f6" />
+                <Bar dataKey="value" name="Arıza Sayısı" radius={[4, 4, 0, 0]}>
+                  {faultStatusData.map((entry, index) => (
+                    <Cell key={`bar-cell-${index}`} fill={entry.color} />
+                  ))}
+                </Bar>
               </BarChart>
             </ResponsiveContainer>
           )}

@@ -64,6 +64,8 @@ The frontend utilizes React 18+ with TypeScript and Vite, employing Shadcn/ui (N
 - **Bulk Equipment Knowledge**: Endpoint for generating type-level AI knowledge entries for all equipment categories.
 - **Vector Auto-Refresh**: AI settings auto-triggers vector re-embed when provider changes.
 - **Knowledge Base Content Pipeline**: Seed endpoints for importing academy modules, recipes, procedures, and quality specs into AI knowledge base with incremental vector generation and automatic embedding synchronization.
+- **Shared Turkish Label Utility**: `client/src/lib/turkish-labels.ts` provides centralized label maps (signals, severity, priority, audit categories, CAPA statuses/types, stock categories), `formatDisplayLabel()` fallback, and `formatTurkishDate()` for chart axis formatting.
+- **Chart Polish**: All count-based Recharts Y-axes use `allowDecimals={false}`. Pie charts filter zero-value slices with custom label positioning. Date axes use Turkish month names. Empty states shown when no chart data available.
 
 ## External Dependencies
 - **OpenAI API**: Used for AI-powered vision analysis, chat completions, embeddings, and summary generation.

@@ -1773,6 +1773,7 @@ function AIPlanModal({ open, onClose, weekStart, employees, branchId, existingSh
   const [preview, setPreview] = useState<any[]>([]);
   const [aiSummary, setAiSummary] = useState<string>('');
   const [isCached, setIsCached] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
 
   const weekDays = useMemo(() => {
     return Array.from({ length: 7 }, (_, i) => {
@@ -1790,6 +1791,7 @@ function AIPlanModal({ open, onClose, weekStart, employees, branchId, existingSh
   const generateAIPlan = async (skipCache: boolean = false) => {
     setIsGenerating(true);
     setAiSummary('');
+    setAiError(null);
     
     try {
       const weekStartStr = format(weekStart, 'yyyy-MM-dd');
@@ -1855,9 +1857,38 @@ function AIPlanModal({ open, onClose, weekStart, employees, branchId, existingSh
       });
     } catch (error: any) {
       console.error("AI plan error:", error);
+      const rawMessage = (error.message || '').toLowerCase();
+      let userTitle = "AI Planlama Hatası";
+      let userMessage = "";
+
+      if (rawMessage.includes('timeout') || rawMessage.includes('timed out') || rawMessage.includes('504') || rawMessage.includes('zaman aşımı')) {
+        userTitle = "Zaman Aşımı";
+        userMessage = "AI planlama isteği zaman aşımına uğradı. Sunucu yoğun olabilir, lütfen birkaç dakika sonra tekrar deneyin.";
+      } else if (rawMessage.includes('not enough') || rawMessage.includes('yeterli personel') || rawMessage.includes('no employees') || rawMessage.includes('personel bulunamadı')) {
+        userTitle = "Yetersiz Personel";
+        userMessage = "Vardiya planı oluşturmak için yeterli personel bulunamadı. Lütfen şube personel listesini kontrol edin.";
+      } else if (rawMessage.includes('conflict') || rawMessage.includes('çakışma') || rawMessage.includes('already assigned') || rawMessage.includes('zaten atanmış')) {
+        userTitle = "Tarih Çakışması";
+        userMessage = "Seçilen tarih aralığında mevcut vardiyalarla çakışma tespit edildi. Mevcut vardiyaları kontrol edip tekrar deneyin.";
+      } else if (rawMessage.includes('401') || rawMessage.includes('403') || rawMessage.includes('unauthorized') || rawMessage.includes('yetki')) {
+        userTitle = "Yetkilendirme Hatası";
+        userMessage = "Bu işlem için yetkiniz bulunmuyor. Lütfen oturumunuzu kontrol edin.";
+      } else if (rawMessage.includes('openai') || rawMessage.includes('api key') || rawMessage.includes('rate limit') || rawMessage.includes('quota')) {
+        userTitle = "AI Servisi Hatası";
+        userMessage = "AI servisiyle bağlantı kurulamadı. Lütfen birkaç dakika sonra tekrar deneyin.";
+      } else if (rawMessage.includes('500') || rawMessage.includes('internal server')) {
+        userTitle = "Sunucu Hatası";
+        userMessage = "Sunucuda beklenmeyen bir hata oluştu. Lütfen daha sonra tekrar deneyin.";
+      } else if (error.message) {
+        userMessage = error.message;
+      } else {
+        userMessage = "Bilinmeyen bir hata oluştu. Lütfen tekrar deneyin veya yöneticinize başvurun.";
+      }
+
+      setAiError(userMessage);
       toast({ 
-        title: "AI Hatası", 
-        description: error.message || "Planlama başarısız", 
+        title: userTitle, 
+        description: userMessage, 
         variant: "destructive" 
       });
     } finally {
@@ -1894,6 +1925,7 @@ function AIPlanModal({ open, onClose, weekStart, employees, branchId, existingSh
 
   const handleClose = () => {
     setPreview([]);
+    setAiError(null);
     onClose();
   };
 
@@ -1920,26 +1952,50 @@ function AIPlanModal({ open, onClose, weekStart, employees, branchId, existingSh
 
         {preview.length === 0 ? (
           <div className="text-center py-8">
-            <Sparkles className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-            <p className="text-muted-foreground mb-4">
-              {employees.length} personel için AI destekli haftalık plan oluştur
-            </p>
-            <p className="text-xs text-muted-foreground mb-4">
-              OpenAI ile optimal vardiya dağılımı, stajyer-barista eşleşmesi ve 45 saat limiti kontrolü
-            </p>
-            <Button 
-              onClick={() => generateAIPlan(false)} 
-              disabled={isGenerating || employees.length === 0}
-              className="gap-2"
-              data-testid="button-generate-ai"
-            >
-              {isGenerating ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <Wand2 className="w-4 h-4" />
-              )}
-              {isGenerating ? 'AI Düşünüyor...' : 'AI Plan Oluştur'}
-            </Button>
+            {aiError ? (
+              <>
+                <AlertTriangle className="w-12 h-12 mx-auto text-destructive mb-4" />
+                <div className="p-3 mb-4 bg-destructive/10 border border-destructive/20 rounded text-sm text-destructive text-left" data-testid="text-ai-error">
+                  {aiError}
+                </div>
+                <Button 
+                  onClick={() => generateAIPlan(false)} 
+                  disabled={isGenerating}
+                  className="gap-2"
+                  data-testid="button-retry-ai"
+                >
+                  {isGenerating ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Wand2 className="w-4 h-4" />
+                  )}
+                  {isGenerating ? 'AI Düşünüyor...' : 'Tekrar Dene'}
+                </Button>
+              </>
+            ) : (
+              <>
+                <Sparkles className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
+                <p className="text-muted-foreground mb-4">
+                  {employees.length} personel için AI destekli haftalık plan oluştur
+                </p>
+                <p className="text-xs text-muted-foreground mb-4">
+                  OpenAI ile optimal vardiya dağılımı, stajyer-barista eşleşmesi ve 45 saat limiti kontrolü
+                </p>
+                <Button 
+                  onClick={() => generateAIPlan(false)} 
+                  disabled={isGenerating || employees.length === 0}
+                  className="gap-2"
+                  data-testid="button-generate-ai"
+                >
+                  {isGenerating ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Wand2 className="w-4 h-4" />
+                  )}
+                  {isGenerating ? 'AI Düşünüyor...' : 'AI Plan Oluştur'}
+                </Button>
+              </>
+            )}
           </div>
         ) : (
           <div className="space-y-3 max-h-[400px] overflow-y-auto">

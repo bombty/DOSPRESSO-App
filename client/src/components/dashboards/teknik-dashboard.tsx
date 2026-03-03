@@ -77,7 +77,7 @@ export function TeknikDashboard({
               <BarChart data={equipmentStats}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="name" tick={{ fontSize: 11 }} angle={-45} textAnchor="end" height={80} />
-                <YAxis />
+                <YAxis allowDecimals={false} />
                 <Bar dataKey="faults" fill="#dc2626" name="Arızalar" />
               </BarChart>
             </ResponsiveContainer>

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
+import { formatTurkishDate } from "@/lib/turkish-labels";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -85,7 +86,7 @@ function DashboardTab({ year, month }: { year: number; month: number }) {
               <ResponsiveContainer width="100%" height={220}>
                 <AreaChart data={d.monthlyTrend}>
                   <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="month" tick={{ fontSize: 11 }} />
+                  <XAxis dataKey="month" tick={{ fontSize: 11 }} tickFormatter={(v: string) => formatTurkishDate(v)} />
                   <YAxis tick={{ fontSize: 11 }} tickFormatter={(v: number) => `${(v / 1000).toFixed(0)}k`} />
                   <Tooltip formatter={(v: number) => fmt(v)} />
                   <Area type="monotone" dataKey="revenue" stroke="#10b981" fill="#10b98130" name="Gelir" />
@@ -346,7 +347,7 @@ function WasteTab() {
             <ResponsiveContainer width="100%" height={200}>
               <BarChart data={data.monthlyTrend}>
                 <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="month" tick={{ fontSize: 11 }} />
+                <XAxis dataKey="month" tick={{ fontSize: 11 }} tickFormatter={(v: string) => formatTurkishDate(v)} />
                 <YAxis tick={{ fontSize: 11 }} />
                 <Tooltip formatter={(v: number) => fmt(v)} />
                 <Bar dataKey="wasteCost" fill="#f59e0b" name="Fire Maliyeti" radius={[4, 4, 0, 0]} />
