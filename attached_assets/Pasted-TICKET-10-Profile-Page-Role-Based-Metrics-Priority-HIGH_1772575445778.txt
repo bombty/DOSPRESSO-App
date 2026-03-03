@@ -1,0 +1,78 @@
+TICKET 10: Profile Page Role-Based Metrics
+Priority: HIGH
+Estimated effort: 2-3 hours
+
+PROBLEM: HQ users (CGO, CEO etc.) see irrelevant performance metrics on their profile page. CGO Utku's profile shows "Genel Skor: 15" with "Kritik: Seviye düşüşü riski!" warning, because Devam Oranı, Görev Tamamlama, Checklist Skoru are all 0% — these metrics are meaningless for HQ staff who don't work shifts or fill checklists.
+
+From the strategic analysis, we know:
+- File: client/src/pages/personel-profil.tsx, server/routes/misc.ts (lines 9904-10025)
+- The 5th metric already changes by role (Fabrika → "Zayi/Fire Oranı", Satınalma → "Tedarik Performansı" etc.)
+- HQ roles get some default 75-80 values to avoid penalty
+- But the UI still shows all 6 metrics with 0% bars for irrelevant ones
+
+TASK 1 - Define role group metric sets:
+Create a ROLE_METRIC_CONFIG in a shared location (turkish-labels.ts or a new role-config.ts):
+
+HQ Management (ceo, cgo, admin, marketing, pr, muhasebe_ik, satinalma, gida_muhendisi, egitim_sorumlusu):
+- Show: Eğitim İlerlemesi, Operasyonel Skor, Değerlendirme Puanı, Role-Specific KPI
+- Hide: Devam Oranı, Görev Tamamlama, Checklist Skoru
+- Recalculate "Genel Skor" using only relevant metrics (reweight to 100%)
+
+Branch Management (mudur, supervisor, supervisor_buddy, coach):
+- Show ALL 6 metrics (they do operational + management work)
+- No change needed
+
+Branch Operations (barista, bar_buddy, stajyer):
+- Show ALL 6 metrics
+- No change needed
+
+Factory (fabrika_mudur, fabrika_sorumlu, fabrika_operator, fabrika_personel):
+- Show ALL 6 metrics (already has role-specific KPI for factory)
+- No change needed
+
+TASK 2 - Frontend: Conditional metric display:
+File: client/src/pages/personel-profil.tsx
+- Read user's role, determine which metric group they belong to
+- For HQ roles: only render the relevant metrics (hide irrelevant ones)
+- The circular "Genel Skor" gauge should reflect only relevant metrics
+- Remove "Kritik: Seviye düşüşü riski!" warning for HQ users if their relevant metrics are fine
+
+TASK 3 - Backend: Recalculate Genel Skor for HQ:
+File: server/routes/misc.ts (lines 9904-10025)
+- For HQ roles: exclude Devam Oranı (15%), Görev Tamamlama (20%), Checklist Skoru (15%) from calculation
+- Redistribute weights among remaining metrics:
+  - Eğitim İlerlemesi: 25% (was 10%)
+  - Operasyonel Skor: 35% (was 20%)
+  - Değerlendirme Puanı: 25% (was 20%)
+  - Role-Specific KPI: 15% (new)
+- This way HQ users get a meaningful score based on what they actually do
+
+TASK 4 - Profile Akademi tab for HQ:
+File: client/src/pages/personel-profil.tsx (Akademi tab section)
+- Currently shows "Henüz akademi verisi yok" for HQ users
+- For HQ roles: show a different message: "Yönetim eğitimleri için Akademi sayfasını ziyaret edin" with a link to /akademi
+- Or better: show their actual academy progress if they have any training modules assigned via targetRoles
+
+TASK 5 - Vardiya metrics for HQ:
+The profile shows "Toplam Vardiya: 0, Tamamlanan: 0, Geç Kalma: 0, Devamsızlık: 0"
+- For HQ roles: hide the entire Vardiya KPI card row
+- These users don't work shifts
+
+DO NOT BREAK:
+- Existing metric calculations for branch/factory roles
+- The role-specific KPI logic (5th metric that already changes by role)
+- Profile tabs (Kişisel Bilgiler, Performans, Denetimler, Vardiyalar, Mesai Talepleri, Akademi, Değerlendirmeler, Ayarlar)
+- personel-profil.tsx other sections (photo upload, personal info, etc.)
+- Backend API response structure (add new fields, don't remove existing ones)
+- ROLE_LABELS in turkish-labels.ts
+- Badge/progress bar fixes from previous tickets
+- Auth middleware
+
+ACCEPTANCE CRITERIA:
+- CGO/CEO profile: only shows relevant metrics (no 0% Checklist, Vardiya)
+- Genel Skor for HQ users reflects meaningful calculation (not 15/100)
+- No "Kritik: Seviye düşüşü riski!" for HQ users with good relevant scores
+- Vardiya card row hidden for HQ roles
+- Akademi tab shows useful content for HQ (not "verisi yok")
+- Branch/Factory roles: zero change in behavior
+- No console errors
