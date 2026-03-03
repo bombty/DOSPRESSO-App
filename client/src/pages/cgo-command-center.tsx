@@ -9,7 +9,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { ROLE_LABELS, ALERT_TYPE_LABELS } from "@/lib/turkish-labels";
 import { useState } from "react";
+import { ChevronDown, ChevronUp } from "lucide-react";
 import { useLocation } from "wouter";
 import {
   TrendingUp,
@@ -98,6 +100,12 @@ interface CGOData {
   lastUpdated: string;
 }
 
+function getScoreBarColor(score: number) {
+  if (score >= 80) return 'bg-emerald-500';
+  if (score >= 60) return 'bg-amber-500';
+  return 'bg-red-500';
+}
+
 function getStatusColor(status: string) {
   switch (status) {
     case 'healthy': return 'text-green-500';
@@ -140,6 +148,7 @@ function getDeptIcon(iconName: string) {
 
 function GrowthTab({ data }: { data: CGOData }) {
   const [, setLocation] = useLocation();
+  const [showAllBranches, setShowAllBranches] = useState(false);
   const g = data.growth;
 
   const kpiCards = [
@@ -186,7 +195,7 @@ function GrowthTab({ data }: { data: CGOData }) {
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
-              {data.branchPerformance.slice(0, 8).map((branch, i) => (
+              {(showAllBranches ? data.branchPerformance : data.branchPerformance.slice(0, 8)).map((branch, i) => (
                 <div 
                   key={branch.id} 
                   className="flex items-center gap-2 cursor-pointer hover-elevate rounded-md p-1.5"
@@ -204,12 +213,17 @@ function GrowthTab({ data }: { data: CGOData }) {
                         <span className="text-sm font-bold">{branch.score}</span>
                       </div>
                     </div>
-                    <Progress value={branch.score} className="h-1.5" />
+                    <Progress value={branch.score} className="h-1.5" indicatorClassName={getScoreBarColor(branch.score)} />
                   </div>
                 </div>
               ))}
               {data.branchPerformance.length === 0 && (
                 <p className="text-sm text-muted-foreground text-center py-4">Henüz şube verisi yok</p>
+              )}
+              {data.branchPerformance.length > 8 && (
+                <Button variant="ghost" size="sm" className="w-full mt-1" onClick={() => setShowAllBranches(!showAllBranches)} data-testid="cgo-branch-toggle">
+                  {showAllBranches ? <><ChevronUp className="w-3 h-3 mr-1" /> Daralt</> : <><ChevronDown className="w-3 h-3 mr-1" /> Tümünü Gör ({data.branchPerformance.length})</>}
+                </Button>
               )}
               {data.branchPerformance.length > 0 && (
                 <Button variant="outline" size="sm" className="w-full mt-2" onClick={() => setLocation('/sube-karsilastirma')} data-testid="cgo-branch-compare-link">
@@ -236,7 +250,7 @@ function GrowthTab({ data }: { data: CGOData }) {
                     <StatusIcon status={alert.severity} />
                     <div className="min-w-0 flex-1">
                       <p className="text-xs font-medium">{alert.message}</p>
-                      <Badge variant="secondary" className="text-[10px] mt-1">{alert.type}</Badge>
+                      <Badge variant="secondary" className="text-[10px] mt-1">{ALERT_TYPE_LABELS[alert.type] || alert.type}</Badge>
                     </div>
                   </div>
                 )) : (
@@ -304,7 +318,7 @@ function GrowthTab({ data }: { data: CGOData }) {
               .slice(0, 12)
               .map(([role, count]) => (
                 <Badge key={role} variant="secondary" className="text-[10px]">
-                  {role}: {count as number}
+                  {ROLE_LABELS[role] || role}: {count as number}
                 </Badge>
               ))
             }
@@ -388,7 +402,7 @@ function DepartmentTab({ data }: { data: CGOData }) {
                         <span className={`text-sm font-bold ${getStatusColor(dept.status)}`}>{dept.score}</span>
                       </div>
                     </div>
-                    <Progress value={dept.score} className="h-1.5" />
+                    <Progress value={dept.score} className="h-1.5" indicatorClassName={getScoreBarColor(dept.score)} />
                   </div>
                   <ArrowUpRight className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
                 </div>
@@ -402,6 +416,7 @@ function DepartmentTab({ data }: { data: CGOData }) {
 }
 
 function OperationalTab({ data }: { data: CGOData }) {
+  const [showAllFaults, setShowAllFaults] = useState(false);
   const op = data.operational;
   const resolveRate = op.totalFaults > 0 ? Math.round((op.resolvedFaults / op.totalFaults) * 100) : 100;
 
@@ -439,7 +454,7 @@ function OperationalTab({ data }: { data: CGOData }) {
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
-              {data.branchPerformance.slice(0, 6).map((branch) => (
+              {(showAllFaults ? data.branchPerformance : data.branchPerformance.slice(0, 6)).map((branch) => (
                 <div key={branch.id} className="flex items-center justify-between gap-2 p-1.5 rounded-md bg-muted/30" data-testid={`cgo-branch-fault-${branch.id}`}>
                   <div className="flex items-center gap-2 min-w-0">
                     <StatusIcon status={branch.status} />
@@ -453,6 +468,11 @@ function OperationalTab({ data }: { data: CGOData }) {
                   </div>
                 </div>
               ))}
+              {data.branchPerformance.length > 6 && (
+                <Button variant="ghost" size="sm" className="w-full mt-1" onClick={() => setShowAllFaults(!showAllFaults)} data-testid="cgo-fault-toggle">
+                  {showAllFaults ? <><ChevronUp className="w-3 h-3 mr-1" /> Daralt</> : <><ChevronDown className="w-3 h-3 mr-1" /> Tümünü Gör ({data.branchPerformance.length})</>}
+                </Button>
+              )}
             </div>
           </CardContent>
         </Card>

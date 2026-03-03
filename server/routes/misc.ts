@@ -11463,18 +11463,18 @@ Bu verilere dayanarak performans analizi ve iyileştirme önerileri oluştur.`
 
       const alerts: any[] = [];
       if (criticalFaults.length > 0) {
-        alerts.push({ message: criticalFaults.length + ' kritik/yuksek oncelikli ariza acik', severity: 'critical', type: 'fault' });
+        alerts.push({ message: criticalFaults.length + ' kritik/yüksek öncelikli arıza açık', severity: 'critical', type: 'fault' });
       }
       const understaffedBranches = branchScores.filter(b => b.staffCount < 3);
       if (understaffedBranches.length > 0) {
-        alerts.push({ message: understaffedBranches.length + ' subede yetersiz personel', severity: 'warning', type: 'hr' });
+        alerts.push({ message: understaffedBranches.length + ' şubede yetersiz personel', severity: 'warning', type: 'hr' });
       }
       const lowScoreBranches = branchScores.filter(b => b.score < 60);
       if (lowScoreBranches.length > 0) {
-        alerts.push({ message: lowScoreBranches.length + ' sube kritik performans seviyesinde', severity: 'critical', type: 'performance' });
+        alerts.push({ message: lowScoreBranches.length + ' şube kritik performans seviyesinde', severity: 'critical', type: 'performance' });
       }
       if (uptimeRate < 90) {
-        alerts.push({ message: 'Ekipman uptime %' + uptimeRate + ' - hedefin altinda', severity: 'warning', type: 'equipment' });
+        alerts.push({ message: 'Ekipman uptime %' + uptimeRate + ' - hedefin altında', severity: 'warning', type: 'equipment' });
       }
 
       res.json({

@@ -31,34 +31,7 @@ import {
   Cell,
   Legend,
 } from "recharts";
-
-const roleLabels: Record<string, string> = {
-  admin: "Admin",
-  ceo: "CEO",
-  cgo: "CGO",
-  muhasebe_ik: "Muhasebe & İK",
-  satinalma: "Satın Alma",
-  coach: "Coach",
-  marketing: "Marketing",
-  trainer: "Trainer (Eğitmen)",
-  kalite_kontrol: "Kalite Kontrol",
-  fabrika_mudur: "Fabrika Müdürü",
-  muhasebe: "Muhasebe",
-  teknik: "Teknik",
-  destek: "Destek",
-  fabrika: "Fabrika",
-  yatirimci_hq: "Yatırımcı HQ",
-  stajyer: "Stajyer",
-  bar_buddy: "Bar Buddy",
-  barista: "Barista",
-  supervisor_buddy: "Supervisor Buddy",
-  supervisor: "Supervisor",
-  mudur: "Müdür",
-  yatirimci_branch: "Yatırımcı",
-  fabrika_operator: "Fabrika Operatör",
-  fabrika_sorumlu: "Fabrika Sorumlu",
-  fabrika_personel: "Fabrika Personel",
-};
+import { ROLE_LABELS } from "@/lib/turkish-labels";
 
 const COLORS = [
   "hsl(var(--chart-1))",
@@ -118,7 +91,7 @@ export default function HQPersonelIstatistikleri() {
     return Object.entries(stats.totalRoleBreakdown)
       .sort((a, b) => b[1] - a[1])
       .map(([role, count]) => ({
-        name: roleLabels[role] || role,
+        name: ROLE_LABELS[role] || role,
         value: count,
       }));
   }, [stats]);
@@ -385,7 +358,7 @@ export default function HQPersonelIstatistikleri() {
                             .sort((a, b) => b[1] - a[1])
                             .map(([role, count]) => (
                               <Badge key={role} variant="outline" className="text-[10px]">
-                                {roleLabels[role] || role}: {count}
+                                {ROLE_LABELS[role] || role}: {count}
                               </Badge>
                             ))}
                         </div>

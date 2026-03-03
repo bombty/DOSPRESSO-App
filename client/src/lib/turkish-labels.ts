@@ -163,6 +163,41 @@ export function formatDisplayLabel(key: string | null | undefined): string {
     .replace(/\bTamamlandi\b/gi, "Tamamlandı");
 }
 
+export const ROLE_LABELS: Record<string, string> = {
+  admin: "Admin",
+  ceo: "CEO",
+  cgo: "CGO",
+  muhasebe_ik: "Muhasebe & İK",
+  satinalma: "Satın Alma",
+  coach: "Coach",
+  marketing: "Marketing",
+  trainer: "Trainer (Eğitmen)",
+  kalite_kontrol: "Kalite Kontrol",
+  fabrika_mudur: "Fabrika Müdürü",
+  muhasebe: "Muhasebe",
+  teknik: "Teknik",
+  destek: "Destek",
+  fabrika: "Fabrika",
+  yatirimci_hq: "Yatırımcı HQ",
+  stajyer: "Stajyer",
+  bar_buddy: "Bar Buddy",
+  barista: "Barista",
+  supervisor_buddy: "Supervisor Buddy",
+  supervisor: "Supervisor",
+  mudur: "Müdür",
+  yatirimci_branch: "Yatırımcı",
+  fabrika_operator: "Fabrika Operatör",
+  fabrika_sorumlu: "Fabrika Sorumlu",
+  fabrika_personel: "Fabrika Personel",
+};
+
+export const ALERT_TYPE_LABELS: Record<string, string> = {
+  fault: "Arıza",
+  hr: "İK",
+  performance: "Performans",
+  equipment: "Ekipman",
+};
+
 const MONTH_SHORT_TR: Record<string, string> = {
   "01": "Oca", "02": "Şub", "03": "Mar", "04": "Nis",
   "05": "May", "06": "Haz", "07": "Tem", "08": "Ağu",
