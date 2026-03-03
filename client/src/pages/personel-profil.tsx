@@ -28,6 +28,7 @@ import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useBreadcrumb } from "@/components/breadcrumb-navigation";
 import { LanguageSwitcher } from "@/components/language-switcher";
+import { ROLE_LABELS } from "@/lib/turkish-labels";
 import { RadarChart, PolarGrid, PolarAngleAxis, Radar, ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts";
 
 type PersonnelProfile = {
@@ -56,33 +57,7 @@ type PersonnelProfile = {
   profileImageUrl: string | null;
 };
 
-const roleLabels: Record<string, string> = {
-  admin: "Admin",
-  ceo: "CEO",
-  cgo: "CGO",
-  muhasebe_ik: "Muhasebe & İK",
-  satinalma: "Satın Alma",
-  coach: "Coach",
-  marketing: "Marketing",
-  trainer: "Trainer (Eğitmen)",
-  kalite_kontrol: "Kalite Kontrol",
-  fabrika_mudur: "Fabrika Müdürü",
-  muhasebe: "Muhasebe",
-  teknik: "Teknik",
-  destek: "Destek",
-  fabrika: "Fabrika",
-  yatirimci_hq: "Yatırımcı HQ",
-  stajyer: "Stajyer",
-  bar_buddy: "Bar Buddy",
-  barista: "Barista",
-  supervisor_buddy: "Supervisor Buddy",
-  supervisor: "Supervisor",
-  mudur: "Müdür",
-  yatirimci_branch: "Yatırımcı",
-  fabrika_operator: "Fabrika Operatör",
-  fabrika_sorumlu: "Fabrika Sorumlu",
-  fabrika_personel: "Fabrika Personel",
-};
+const HQ_MANAGEMENT_ROLES = ['ceo', 'cgo', 'admin', 'marketing', 'muhasebe_ik', 'satinalma', 'gida_muhendisi', 'yatirimci_hq'];
 
 export default function PersonelProfilPage() {
   const { id } = useParams();
@@ -172,6 +147,7 @@ export default function PersonelProfilPage() {
     evaluationScore: number;
     overallScore: number;
     isHQ: boolean;
+    hiddenMetrics?: string[];
   };
 
   const { data: perfSummary } = useQuery<PerformanceSummary>({
@@ -428,6 +404,7 @@ export default function PersonelProfilPage() {
   const attendanceRate = profile.attendanceRate || 0;
 
   const canEvaluate = user?.role === 'coach' || user?.role === 'admin' || user?.role === 'supervisor' || user?.role === 'yatirimci_hq';
+  const isProfileHQ = HQ_MANAGEMENT_ROLES.includes(profile.role);
 
   return (
     <div className="pb-6">
@@ -461,7 +438,7 @@ export default function PersonelProfilPage() {
           <div className="flex-1 min-w-0">
             <h1 className="text-xl font-bold truncate" data-testid="text-fullname">{profile.fullName}</h1>
             <div className="flex items-center gap-2 flex-wrap">
-              <Badge variant="outline">{roleLabels[profile.role] || profile.role}</Badge>
+              <Badge variant="outline">{ROLE_LABELS[profile.role] || profile.role}</Badge>
               {profile.branchName && (
                 <Badge variant="secondary">{profile.branchName}</Badge>
               )}
@@ -533,14 +510,16 @@ export default function PersonelProfilPage() {
         const scoreColor = overall >= 75 ? "text-emerald-500" : overall >= 65 ? "text-amber-500" : "text-red-500";
         const ringColor = overall >= 75 ? "stroke-emerald-500" : overall >= 65 ? "stroke-amber-500" : "stroke-red-500";
         const isHQProfile = perfSummary?.isHQ ?? false;
-        const metrics = [
-          { label: "Devam Oranı", value: perfSummary?.attendanceRate ?? attendanceRate, weight: "15%", icon: Clock },
-          { label: "Görev Tamamlama", value: perfSummary?.taskCompletion ?? 0, weight: "20%", icon: Target },
-          { label: "Checklist Skoru", value: perfSummary?.checklistScore ?? 0, weight: isHQProfile ? "15%" : "20%", icon: ClipboardCheck },
-          { label: "Eğitim İlerlemesi", value: perfSummary?.trainingProgress ?? 0, weight: "10%", icon: BookOpen },
-          { label: perfSummary?.roleKpiLabel || "Denetim Puanı", value: perfSummary?.roleKpi ?? perfSummary?.inspectionScore ?? 0, weight: isHQProfile ? "20%" : "15%", icon: Eye },
-          { label: "Değerlendirme Puanı", value: perfSummary?.evaluationScore ?? 0, weight: "20%", icon: Star },
+        const hiddenMetrics = perfSummary?.hiddenMetrics || [];
+        const allMetrics = [
+          { key: "attendanceRate", label: "Devam Oranı", value: perfSummary?.attendanceRate ?? attendanceRate, weight: isHQProfile ? "" : "15%", icon: Clock },
+          { key: "taskCompletion", label: "Görev Tamamlama", value: perfSummary?.taskCompletion ?? 0, weight: isHQProfile ? "" : "20%", icon: Target },
+          { key: "checklistScore", label: "Checklist Skoru", value: perfSummary?.checklistScore ?? 0, weight: isHQProfile ? "" : "20%", icon: ClipboardCheck },
+          { key: "trainingProgress", label: "Eğitim İlerlemesi", value: perfSummary?.trainingProgress ?? 0, weight: isHQProfile ? "30%" : "10%", icon: BookOpen },
+          { key: "roleKpi", label: perfSummary?.roleKpiLabel || "Denetim Puanı", value: perfSummary?.roleKpi ?? perfSummary?.inspectionScore ?? 0, weight: isHQProfile ? "35%" : "15%", icon: Eye },
+          { key: "evaluationScore", label: "Değerlendirme Puanı", value: perfSummary?.evaluationScore ?? 0, weight: isHQProfile ? "35%" : "20%", icon: Star },
         ];
+        const metrics = allMetrics.filter(m => !hiddenMetrics.includes(m.key));
         const circumference = 2 * Math.PI * 54;
         const strokeDashoffset = circumference - (overall / 100) * circumference;
 
@@ -570,13 +549,13 @@ export default function PersonelProfilPage() {
                   </div>
                 </div>
 
-                {overall < 65 && (
+                {!isHQProfile && overall < 65 && (
                   <Badge variant="destructive" data-testid="badge-critical-warning">
                     <AlertCircle className="h-3 w-3 mr-1" />
                     Kritik: Seviye düşüşü riski!
                   </Badge>
                 )}
-                {overall >= 65 && overall < 75 && (
+                {!isHQProfile && overall >= 65 && overall < 75 && (
                   <Badge variant="secondary" className="bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300" data-testid="badge-warning">
                     <AlertCircle className="h-3 w-3 mr-1" />
                     Dikkat: Skorunuz düşük, iyileştirme gerekli
@@ -593,7 +572,7 @@ export default function PersonelProfilPage() {
                         <div className="flex items-center gap-1.5 text-sm">
                           <m.icon className="h-3.5 w-3.5 text-muted-foreground" />
                           <span className="font-medium">{m.label}</span>
-                          <span className="text-xs text-muted-foreground">({m.weight})</span>
+                          {m.weight && <span className="text-xs text-muted-foreground">({m.weight})</span>}
                         </div>
                         <span className={`text-sm font-semibold ${mColor}`}>{m.value.toFixed(0)}%</span>
                       </div>
@@ -731,7 +710,7 @@ export default function PersonelProfilPage() {
         </CardContent>
       </Card>
 
-      {/* KPI Cards */}
+      {!isProfileHQ && (
       <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
@@ -785,6 +764,7 @@ export default function PersonelProfilPage() {
           </CardContent>
         </Card>
       </div>
+      )}
 
       {/* Salary Information - Only visible to authorized roles */}
       {canViewSalary && salary && (
@@ -872,7 +852,7 @@ export default function PersonelProfilPage() {
           <TabsTrigger value="bilgiler" data-testid="tab-info" className="flex-1 min-w-fit">Kişisel Bilgiler</TabsTrigger>
           <TabsTrigger value="performans" data-testid="tab-performance" className="flex-1 min-w-fit">Performans</TabsTrigger>
           <TabsTrigger value="denetimler" data-testid="tab-audits" className="flex-1 min-w-fit">Denetimler</TabsTrigger>
-          <TabsTrigger value="vardiyalar" data-testid="tab-shifts" className="flex-1 min-w-fit">Vardiyalar</TabsTrigger>
+          {!isProfileHQ && <TabsTrigger value="vardiyalar" data-testid="tab-shifts" className="flex-1 min-w-fit">Vardiyalar</TabsTrigger>}
           {isOwnProfile && (
             <TabsTrigger value="mesai" data-testid="tab-overtime" className="flex-1 min-w-fit">Mesai Talepleri</TabsTrigger>
           )}
@@ -1332,7 +1312,7 @@ export default function PersonelProfilPage() {
 
         <TabsContent value="akademi" className="flex flex-col gap-3">
           {/* HQ Rolleri için Özel Akademi */}
-          {(['admin', 'muhasebe', 'satinalma', 'coach', 'teknik', 'destek', 'fabrika', 'yatirimci_hq'].includes(profile?.role || '')) ? (
+          {isProfileHQ ? (
             <>
               {/* HQ Gelişim Merkezi Başlık */}
               <Card className="bg-gradient-to-r from-primary/10 to-purple-500/10 border-primary/20" data-testid="card-hq-academy-header">
@@ -1347,14 +1327,18 @@ export default function PersonelProfilPage() {
                         {profile?.role === 'coach' && 'Franchise koçluğu ve şube yönetimi eğitimleri'}
                         {profile?.role === 'satinalma' && 'Tedarik zinciri ve maliyet yönetimi eğitimleri'}
                         {profile?.role === 'muhasebe' && 'Finansal analiz ve raporlama eğitimleri'}
+                        {profile?.role === 'muhasebe_ik' && 'Muhasebe ve insan kaynakları eğitimleri'}
                         {profile?.role === 'teknik' && 'Teknik ekipman ve bakım eğitimleri'}
                         {profile?.role === 'fabrika' && 'Üretim ve kalite kontrol eğitimleri'}
                         {profile?.role === 'destek' && 'Müşteri ilişkileri ve destek eğitimleri'}
+                        {profile?.role === 'marketing' && 'Pazarlama stratejisi ve marka yönetimi eğitimleri'}
+                        {profile?.role === 'gida_muhendisi' && 'Gıda güvenliği ve kalite standartları eğitimleri'}
+                        {(profile?.role === 'ceo' || profile?.role === 'cgo') && 'Stratejik yönetim ve liderlik eğitimleri'}
                         {(profile?.role === 'admin' || profile?.role === 'yatirimci_hq') && 'Tüm departman eğitimlerine erişim'}
                       </p>
                       <div className="flex items-center gap-2 mt-3 flex-wrap">
                         <Badge variant="secondary" className="cursor-pointer" data-testid="badge-hq-role">
-                          {roleLabels[profile?.role || ''] || profile?.role}
+                          {ROLE_LABELS[profile?.role || ''] || profile?.role}
                         </Badge>
                         <Badge variant="outline" data-testid="badge-hq-level">
                           Merkez Personeli
@@ -1939,7 +1923,7 @@ export default function PersonelProfilPage() {
                         <CardContent className="p-3 space-y-2">
                           <div className="flex items-center justify-between gap-2 flex-wrap">
                             <div className="flex items-center gap-2">
-                              <Badge variant="outline">{roleLabels[ev.evaluatorRole] || ev.evaluatorRole}</Badge>
+                              <Badge variant="outline">{ROLE_LABELS[ev.evaluatorRole] || ev.evaluatorRole}</Badge>
                               <span className="text-sm text-muted-foreground">{ev.evaluatorName}</span>
                             </div>
                             <div className="flex items-center gap-2">

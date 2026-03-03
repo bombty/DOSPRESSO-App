@@ -64,7 +64,8 @@ The frontend utilizes React 18+ with TypeScript and Vite, employing Shadcn/ui (N
 - **Bulk Equipment Knowledge**: Endpoint for generating type-level AI knowledge entries for all equipment categories.
 - **Vector Auto-Refresh**: AI settings auto-triggers vector re-embed when provider changes.
 - **Knowledge Base Content Pipeline**: Seed endpoints for importing academy modules, recipes, procedures, and quality specs into AI knowledge base with incremental vector generation and automatic embedding synchronization.
-- **Shared Turkish Label Utility**: `client/src/lib/turkish-labels.ts` provides centralized label maps (signals, severity, priority, audit categories, CAPA statuses/types, stock categories), `formatDisplayLabel()` fallback, and `formatTurkishDate()` for chart axis formatting.
+- **Shared Turkish Label Utility**: `client/src/lib/turkish-labels.ts` provides centralized label maps (signals, severity, priority, audit categories, CAPA statuses/types, stock categories, ROLE_LABELS, ALERT_TYPE_LABELS), `formatDisplayLabel()` fallback, and `formatTurkishDate()` for chart axis formatting.
+- **Role-Based Profile Metrics**: HQ management roles (ceo, cgo, admin, marketing, muhasebe_ik, satinalma, gida_muhendisi, yatirimci_hq) see only relevant metrics on profile page (Eğitim İlerlemesi, Role-Specific KPI, Değerlendirme Puanı). Vardiya cards/tab hidden. Backend recalculates genelSkor excluding irrelevant metrics. Branch/factory roles see all 6 metrics unchanged.
 - **Chart Polish**: All count-based Recharts Y-axes use `allowDecimals={false}`. Pie charts filter zero-value slices with custom label positioning. Date axes use Turkish month names. Empty states shown when no chart data available.
 
 ## External Dependencies

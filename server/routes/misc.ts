@@ -10046,8 +10046,12 @@ Dusuk puanli alanlara odaklan ve pozitif, motive edici ol. JSON dizisi olarak ya
       const evaluationScore = evalScores[0]?.avgScore ? Number(evalScores[0].avgScore) : 0;
 
       const genelSkor = targetIsHQ
-        ? (attendanceRate * 0.15 + taskCompletionRate * 0.20 + checklistScore * 0.15 + trainingProgress * 0.10 + roleKpi * 0.20 + evaluationScore * 0.20)
+        ? (trainingProgress * 0.30 + roleKpi * 0.35 + evaluationScore * 0.35)
         : (attendanceRate * 0.15 + taskCompletionRate * 0.20 + checklistScore * 0.20 + trainingProgress * 0.10 + roleKpi * 0.15 + evaluationScore * 0.20);
+
+      const hiddenMetrics = targetIsHQ
+        ? ['attendanceRate', 'taskCompletion', 'checklistScore']
+        : [];
 
       res.json({
         overallScore: Math.round(genelSkor * 10) / 10,
@@ -10060,6 +10064,7 @@ Dusuk puanli alanlara odaklan ve pozitif, motive edici ol. JSON dizisi olarak ya
         roleKpiLabel,
         evaluationScore: Math.round(evaluationScore * 10) / 10,
         isHQ: targetIsHQ,
+        hiddenMetrics,
       });
     } catch (error: any) {
       console.error("Error fetching performance summary:", error);
