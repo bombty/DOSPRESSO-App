@@ -169,7 +169,7 @@ export const ROLE_LABELS: Record<string, string> = {
   cgo: "CGO",
   muhasebe_ik: "Muhasebe & İK",
   satinalma: "Satın Alma",
-  coach: "Coach",
+  coach: "Koç",
   marketing: "Pazarlama",
   trainer: "Eğitmen",
   kalite_kontrol: "Kalite Kontrol",

@@ -806,24 +806,40 @@ router.get('/api/academy/team-competitions', isAuthenticated, async (req: any, r
       }))
       .sort((a: any, b: any) => b.score - a.score);
 
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth();
+    const monthNames = ['Ocak','Şubat','Mart','Nisan','Mayıs','Haziran','Temmuz','Ağustos','Eylül','Ekim','Kasım','Aralık'];
+    const prevMonth = currentMonth === 0 ? 11 : currentMonth - 1;
+    const prevYear = currentMonth === 0 ? currentYear - 1 : currentYear;
+
+    const currentStart = new Date(currentYear, currentMonth, 1);
+    const currentEnd = new Date(currentYear, currentMonth + 1, 0, 23, 59, 59, 999);
+    const prevStart = new Date(prevYear, prevMonth, 1);
+    const prevEnd = new Date(prevYear, prevMonth + 1, 0);
+
+    const isCurrentActive = now <= currentEnd;
+
     const competitions = [
       {
-        id: "comp-nov-2025",
-        title: "Kasım 2025 Şube Yarışması",
-        description: "Kasım ayında en çok sınav tamamlayan şubeleri buluşturan kapsamlı yarışma",
-        status: "active",
-        startDate: new Date('2025-11-01').toISOString(),
-        endDate: new Date('2025-11-30').toISOString(),
+        id: `comp-${currentMonth + 1}-${currentYear}`,
+        title: `${monthNames[currentMonth]} ${currentYear} Şube Yarışması`,
+        description: `${monthNames[currentMonth]} ayında en çok sınav tamamlayan şubeleri buluşturan kapsamlı yarışma`,
+        status: isCurrentActive ? "active" : "completed",
+        startDate: currentStart.toISOString(),
+        endDate: currentEnd.toISOString(),
         participantCount: branches.length,
         leaderboard: leaderboard,
+        winner: !isCurrentActive ? (leaderboard[0]?.branchName || "Şube") : undefined,
+        winnerScore: !isCurrentActive ? (leaderboard[0]?.score || 0) : undefined,
       },
       {
-        id: "comp-oct-2025",
-        title: "Ekim 2025 Akademi Kupası",
-        description: "Ekim ayının en başarılı performans göstergesi",
+        id: `comp-${prevMonth + 1}-${prevYear}`,
+        title: `${monthNames[prevMonth]} ${prevYear} Akademi Kupası`,
+        description: `${monthNames[prevMonth]} ayının en başarılı performans göstergesi`,
         status: "completed",
-        startDate: new Date('2025-10-01').toISOString(),
-        endDate: new Date('2025-10-31').toISOString(),
+        startDate: prevStart.toISOString(),
+        endDate: prevEnd.toISOString(),
         winner: branches[0]?.name || "Şube",
         winnerScore: 1250,
       },
@@ -844,9 +860,10 @@ router.get('/api/academy/monthly-challenge', isAuthenticated, async (req: any, r
     const daysPassed = now.getDate();
     const daysRemaining = daysInMonth - daysPassed;
 
+    const monthNamesChallenge = ['Ocak','Şubat','Mart','Nisan','Mayıs','Haziran','Temmuz','Ağustos','Eylül','Ekim','Kasım','Aralık'];
     const challenge = {
-      id: "challenge-nov-2025",
-      title: "Quiz Uzmanı",
+      id: `challenge-${now.getMonth() + 1}-${now.getFullYear()}`,
+      title: `${monthNamesChallenge[now.getMonth()]} Quiz Uzmanı`,
       description: "Bu ay 25 sınavdan fazla tamamlayan şubeler ödül kazanacak!",
       daysRemaining: daysRemaining,
       reward: 500,

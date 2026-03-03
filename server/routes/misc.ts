@@ -4838,11 +4838,11 @@ const normalizeTimeGlobal = (timeStr: string): string => {
   const seedBadges = async () => {
     try {
       const badgesList = [
-        { badgeKey: 'coffee_cherry', titleTr: 'Coffee Cherry', descriptionTr: 'Stajyer seviyesi - Başlangıcın', category: 'career', points: 50 },
-        { badgeKey: 'green_bean', titleTr: 'Green Bean', descriptionTr: 'Bar Buddy seviyesi - Temel beceriler', category: 'career', points: 75 },
-        { badgeKey: 'bean_expert', titleTr: 'Bean Expert', descriptionTr: 'Barista seviyesi - Uzman bilgi', category: 'career', points: 100 },
-        { badgeKey: 'roast_master', titleTr: 'Roast Master', descriptionTr: 'Supervisor Buddy seviyesi - Liderlik', category: 'career', points: 125 },
-        { badgeKey: 'coffee_pro', titleTr: 'Coffee Pro', descriptionTr: 'Supervisor seviyesi - Profesyonel', category: 'career', points: 150 },
+        { badgeKey: 'coffee_cherry', titleTr: 'Kahve Kirazı', descriptionTr: 'Stajyer seviyesi - Başlangıcın', category: 'career', points: 50 },
+        { badgeKey: 'green_bean', titleTr: 'Yeşil Çekirdek', descriptionTr: 'Bar Buddy seviyesi - Temel beceriler', category: 'career', points: 75 },
+        { badgeKey: 'bean_expert', titleTr: 'Çekirdek Uzmanı', descriptionTr: 'Barista seviyesi - Uzman bilgi', category: 'career', points: 100 },
+        { badgeKey: 'roast_master', titleTr: 'Kavurma Ustası', descriptionTr: 'Supervisor Buddy seviyesi - Liderlik', category: 'career', points: 125 },
+        { badgeKey: 'coffee_pro', titleTr: 'Kahve Profesyoneli', descriptionTr: 'Supervisor seviyesi - Profesyonel', category: 'career', points: 150 },
       ];
       
       for (const badge of badgesList) {

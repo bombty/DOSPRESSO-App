@@ -1,0 +1,61 @@
+TICKET 9: Data Quality & Quick Fixes
+Priority: HIGH
+Estimated effort: 1 hour
+
+Based on the strategic analysis, fix these data quality and minor UI issues.
+
+TASK 1 - Fix English badge names to Turkish:
+Location: Database badges table (title_tr field or equivalent)
+Update these 5 badges:
+- coffee_cherry: "Coffee Cherry" → "Kahve Kirazı"
+- green_bean: "Green Bean" → "Yeşil Çekirdek"  
+- bean_expert: "Bean Expert" → "Çekirdek Uzmanı"
+- roast_master: "Roast Master" → "Kavurma Ustası"
+- coffee_pro: "Coffee Pro" → "Kahve Profesyoneli"
+Also check: is "Supervisor Yolu" (badge ID 6) correct or should it be "Süpervizör Yolu"?
+
+TASK 2 - Fix Widget Management duplicate in admin-mega:
+File: client/src/pages/admin-mega.tsx (lines 305-320)
+There are 2 widget tabs: "Widget Yönetimi" and "Hero Widget Editör"
+- If these are genuinely different features, rename to make distinction clear: "Sayfa Widgetları" and "Hero Banner Editör" 
+- If they do the same thing, merge into one tab
+- Investigate and decide which approach is correct, then implement
+
+TASK 3 - Investigate Görevler badge count (162):
+The sidebar shows "Görevler 162" for CGO. Investigate:
+- Where does this badge count come from? (file path and line)
+- Is it counting ALL tasks in the system or only tasks assigned to the logged-in user?
+- For CGO role: should they see a task count at all? CGO doesn't do tasks, they manage.
+- If the count is unfiltered/wrong: fix the query to show only relevant pending tasks for the user's role
+- Report your findings before making changes
+
+TASK 4 - Fix kebab-case sidebar labels (if any remain):
+The analysis said menu titleTr fields are already Turkish. Double-check:
+- Search for any sidebar menu item where the displayed label contains hyphens or is in English
+- List any found and fix them
+- Specifically check: "kampanya-yonetimi", "misafir-memnuniyeti", "ai-asistan" — are these shown as labels or only as URL paths?
+
+TASK 5 - Competition stale data check:
+File: academy-team-competitions.tsx
+- The "Kasım 2025 Şube Yarışması" is 4 months old
+- If competition dates are dynamic from DB: check if there's a newer competition record
+- If no active competition exists: the page should show "Aktif yarışma bulunmuyor" instead of showing old data
+- Add logic: if competition.endDate < today, show a "Yarışma Sona Erdi" badge and gray out the card
+
+DO NOT BREAK:
+- Existing badge earning logic and point values
+- Admin mega module tab navigation  
+- Sidebar permission filtering (scope + permissionModule)
+- Task assignment and notification system
+- Academy competition leaderboard calculations
+- ROLE_LABELS in turkish-labels.ts
+- Progress bar score-based colors (just added)
+- Alert Turkish character fixes (just added)
+
+ACCEPTANCE CRITERIA:
+- All 12 badges display Turkish names
+- No duplicate widget tabs (or clearly differentiated names)
+- Görevler badge shows correct filtered count per user
+- No kebab-case labels visible in sidebar UI
+- Old competitions show "Sona Erdi" status
+- Zero console errors

@@ -303,8 +303,8 @@ const ADMIN_TABS: TabConfig[] = [
   },
   {
     id: "widget-yonetimi",
-    label: "Widget Management",
-    labelTr: "Widget Yönetimi",
+    label: "Page Widgets",
+    labelTr: "Sayfa Widgetları",
     icon: <Settings className="h-4 w-4" />,
     permissionModule: "admin_panel",
     group: "sistem",
@@ -312,8 +312,8 @@ const ADMIN_TABS: TabConfig[] = [
   },
   {
     id: "widget-editor",
-    label: "Hero Widget Editor",
-    labelTr: "Hero Widget Editör",
+    label: "Hero Banner Editor",
+    labelTr: "Hero Banner Editör",
     icon: <LayoutGrid className="h-4 w-4" />,
     permissionModule: "admin_panel",
     group: "sistem",
