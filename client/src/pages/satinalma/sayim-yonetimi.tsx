@@ -59,15 +59,15 @@ const COUNT_TYPE_LABELS: Record<string, string> = {
 
 function getStatusBadge(status: string) {
   const map: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
-    planned: { label: "Planlandi", variant: "secondary" },
+    planned: { label: "Planlandı", variant: "secondary" },
     in_progress: { label: "Devam Ediyor", variant: "default" },
-    counting: { label: "Sayim Yapiliyor", variant: "default" },
-    review: { label: "Incelemede", variant: "outline" },
+    counting: { label: "Sayım Yapılıyor", variant: "default" },
+    review: { label: "İncelemede", variant: "outline" },
     completed: { label: "Tamamlandı", variant: "default" },
-    overdue: { label: "Gecikmis", variant: "destructive" },
+    overdue: { label: "Gecikmiş", variant: "destructive" },
     pending: { label: "Bekliyor", variant: "secondary" },
-    discrepancy: { label: "Tutarsizlik", variant: "destructive" },
-    recounting: { label: "Tekrar Sayim", variant: "outline" },
+    discrepancy: { label: "Tutarsızlık", variant: "destructive" },
+    recounting: { label: "Tekrar Sayım", variant: "outline" },
   };
   const cfg = map[status] || { label: status, variant: "secondary" as const };
   return <Badge variant={cfg.variant} data-testid={`badge-status-${status}`}>{cfg.label}</Badge>;
@@ -104,7 +104,7 @@ export default function SayimYonetimi() {
     queryKey: ["/api/inventory-counts", filterYear],
     queryFn: async () => {
       const res = await fetch(`/api/inventory-counts?year=${filterYear}`);
-      if (!res.ok) throw new Error("Sayim listesi alinamadi");
+      if (!res.ok) throw new Error("Sayım listesi alınamadı");
       return res.json();
     },
   });
@@ -177,7 +177,7 @@ export default function SayimYonetimi() {
       setShowCountDialog(false);
       setCountQuantity("");
       setCountNotes("");
-      toast({ title: "Sayim kaydedildi" });
+      toast({ title: "Sayım kaydedildi" });
     },
     onError: (e: any) => {
       toast({ title: "Hata", description: e.message || "Kaydedilemedi", variant: "destructive" });
@@ -226,13 +226,13 @@ export default function SayimYonetimi() {
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <div className="flex items-center gap-2">
           <ClipboardList className="h-5 w-5 text-primary" />
-          <h2 className="text-lg font-bold" data-testid="text-page-title">Sayim Yonetimi</h2>
+          <h2 className="text-lg font-bold" data-testid="text-page-title">Sayım Yönetimi</h2>
         </div>
         <div className="flex items-center gap-2">
           {isFabrikaMudur && (
             <Button size="sm" onClick={() => setShowCreateDialog(true)} data-testid="button-new-count">
               <Plus className="h-4 w-4 mr-1" />
-              Yeni Sayim
+              Yeni Sayım
             </Button>
           )}
         </div>
@@ -272,7 +272,7 @@ export default function SayimYonetimi() {
                 <AlertTriangle className="h-4 w-4 text-red-500" />
               </div>
               <div>
-                <p className="text-xs text-muted-foreground">Gecikmis</p>
+                <p className="text-xs text-muted-foreground">Gecikmiş</p>
                 <p className="text-lg font-bold" data-testid="text-overdue-count">{overdueCounts.length}</p>
               </div>
             </div>
@@ -297,7 +297,7 @@ export default function SayimYonetimi() {
         <TabsList className="w-full justify-start overflow-x-auto">
           <TabsTrigger value="sayimlar" data-testid="tab-sayimlar">
             <ClipboardList className="h-4 w-4 mr-1" />
-            Sayimlar
+            Sayımlar
           </TabsTrigger>
           <TabsTrigger value="raporlar" data-testid="tab-raporlar">
             <BarChart3 className="h-4 w-4 mr-1" />
@@ -337,12 +337,12 @@ export default function SayimYonetimi() {
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 <Plus className="h-5 w-5" />
-                Yeni Sayim Oturumu
+                Yeni Sayım Oturumu
               </DialogTitle>
             </DialogHeader>
             <div className="space-y-3">
               <div>
-                <Label>Sayim Turu</Label>
+                <Label>Sayım Türü</Label>
                 <Select value={newCountType} onValueChange={setNewCountType}>
                   <SelectTrigger data-testid="select-count-type"><SelectValue /></SelectTrigger>
                   <SelectContent>
@@ -391,11 +391,11 @@ export default function SayimYonetimi() {
               </div>
               <div>
                 <Label>Notlar</Label>
-                <Textarea value={newNotes} onChange={e => setNewNotes(e.target.value)} placeholder="Sayim ile ilgili notlar..." data-testid="input-notes" />
+                <Textarea value={newNotes} onChange={e => setNewNotes(e.target.value)} placeholder="Sayım ile ilgili notlar..." data-testid="input-notes" />
               </div>
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setShowCreateDialog(false)}>Iptal</Button>
+              <Button variant="outline" onClick={() => setShowCreateDialog(false)}>İptal</Button>
               <Button onClick={() => createMutation.mutate()} disabled={createMutation.isPending} data-testid="button-create-count">
                 {createMutation.isPending && <Loader2 className="h-4 w-4 animate-spin mr-1" />}
                 Oluştur
@@ -497,7 +497,7 @@ function SayimListesi({ counts, isLoading, isFabrikaMudur, isCounter, onDetail, 
         <div className="space-y-2">
           <h3 className="text-sm font-semibold flex items-center gap-1">
             <AlertCircle className="h-4 w-4 text-amber-500" />
-            Aktif Sayimlar ({activeCounts.length})
+            Aktif Sayımlar ({activeCounts.length})
           </h3>
           {activeCounts.map((c: any) => (
             <SayimCard key={c.id} count={c} isFabrikaMudur={isFabrikaMudur} onDetail={onDetail} onAssign={onAssign} />
@@ -537,7 +537,7 @@ function SayimCard({ count, isFabrikaMudur, onDetail, onAssign }: any) {
           <div className="flex items-center gap-3">
             <div className="flex flex-col">
               <span className="text-sm font-semibold">
-                {COUNT_TYPE_LABELS[count.count_type] || count.count_type || "Tam Sayim"}
+                {COUNT_TYPE_LABELS[count.count_type] || count.count_type || "Tam Sayım"}
               </span>
               <span className="text-xs text-muted-foreground">
                 {MONTHS[(count.month || 1) - 1]} {count.year} {count.scheduled_date ? ` - ${new Date(count.scheduled_date).toLocaleDateString("tr-TR")}` : ""}
@@ -607,7 +607,7 @@ function SayimDetailDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 flex-wrap">
             <ClipboardList className="h-5 w-5" />
-            {COUNT_TYPE_LABELS[count.count_type] || "Sayim"} - {MONTHS[(count.month || 1) - 1]} {count.year}
+            {COUNT_TYPE_LABELS[count.count_type] || "Sayım"} - {MONTHS[(count.month || 1) - 1]} {count.year}
             {getStatusBadge(count.status)}
           </DialogTitle>
         </DialogHeader>
@@ -689,8 +689,8 @@ function SayimDetailDialog({
           ) : Object.keys(groupedByCategory).length === 0 ? (
             <div className="py-8 text-center text-muted-foreground">
               <Package className="h-8 w-8 mx-auto mb-2 opacity-50" />
-              <p className="text-sm">{searchQuery ? "Arama sonucu bulunamadi" : "Henuz sayim kalemi bulunamadi"}</p>
-              {!searchQuery && <p className="text-xs mt-1">Sayim oturumunu kapatip yeniden acmayi deneyin</p>}
+              <p className="text-sm">{searchQuery ? "Arama sonucu bulunamadı" : "Henüz sayım kalemi bulunamadı"}</p>
+              {!searchQuery && <p className="text-xs mt-1">Sayım oturumunu kapatıp yeniden açmayı deneyin</p>}
             </div>
           ) : (
             <div className="space-y-3 p-1">
@@ -733,7 +733,7 @@ function SayimDetailDialog({
             >
               {isFinalizePending && <Loader2 className="h-4 w-4 animate-spin mr-1" />}
               <CheckCircle className="h-4 w-4 mr-1" />
-              Sayimi Sonlandir
+              Sayımı Sonlandır
             </Button>
           )}
           <Button variant="outline" onClick={onClose}>Kapat</Button>
@@ -763,7 +763,7 @@ function AssignmentRow({ assignment: a, isCounter, userId, countStatus, onCount 
               </div>
               <div className="flex items-center gap-2 text-xs text-muted-foreground">
                 <span>Sistem: {parseFloat(a.system_quantity || 0).toFixed(1)} {a.inventory_unit}</span>
-                {a.counted_avg && <span>Sayim: {parseFloat(a.counted_avg).toFixed(1)}</span>}
+                {a.counted_avg && <span>Sayım: {parseFloat(a.counted_avg).toFixed(1)}</span>}
                 {a.difference_display && (
                   <span className={parseFloat(a.difference_display) < 0 ? "text-red-600 dark:text-red-400 font-medium" : parseFloat(a.difference_display) > 0 ? "text-green-600 dark:text-green-400 font-medium" : ""}>
                     Fark: {parseFloat(a.difference_display) > 0 ? "+" : ""}{parseFloat(a.difference_display).toFixed(1)}
@@ -805,7 +805,7 @@ function CountEntryDialog({ assignment, countQuantity, setCountQuantity, countNo
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Hash className="h-5 w-5" />
-            {isRecount ? "Tekrar Sayim" : "Sayim Girisi"}
+            {isRecount ? "Tekrar Sayım" : "Sayım Girişi"}
           </DialogTitle>
         </DialogHeader>
         <div className="space-y-3">
@@ -836,13 +836,13 @@ function CountEntryDialog({ assignment, countQuantity, setCountQuantity, countNo
             <Textarea
               value={countNotes}
               onChange={e => setCountNotes(e.target.value)}
-              placeholder="Sayim notu..."
+              placeholder="Sayım notu..."
               data-testid="input-count-notes"
             />
           </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={onClose}>Iptal</Button>
+          <Button variant="outline" onClick={onClose}>İptal</Button>
           <Button
             onClick={() => onSubmit(isRecount)}
             disabled={isPending || !countQuantity}
@@ -991,7 +991,7 @@ function SayimRaporlari({ filterYear }: { filterYear: number }) {
           <CardContent className="pt-3 pb-3 text-center">
             <CheckCircle className="h-5 w-5 text-green-500 mx-auto mb-1" />
             <p className="text-lg font-bold text-green-600 dark:text-green-400">{lowSeverity.length}</p>
-            <p className="text-xs text-muted-foreground">Dusuk Fark</p>
+            <p className="text-xs text-muted-foreground">Düşük Fark</p>
           </CardContent>
         </Card>
       </div>
@@ -1068,8 +1068,8 @@ function TedarikciPuanlama() {
         <Card>
           <CardContent className="py-8 text-center text-muted-foreground">
             <Truck className="h-8 w-8 mx-auto mb-2 opacity-50" />
-            <p className="text-sm">Tedarikci kaydi bulunmuyor</p>
-            <p className="text-xs mt-1">Tedarikci Yonetimi bolumunden tedarikci ekleyebilirsiniz</p>
+            <p className="text-sm">Tedarikçi kaydı bulunmuyor</p>
+            <p className="text-xs mt-1">Tedarikçi Yönetimi bölümünden tedarikçi ekleyebilirsiniz</p>
           </CardContent>
         </Card>
       ) : (

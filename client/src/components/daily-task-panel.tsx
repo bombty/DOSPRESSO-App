@@ -612,9 +612,9 @@ export function DailyTaskPanel() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel data-testid="task-confirm-cancel">Iptal</AlertDialogCancel>
+            <AlertDialogCancel data-testid="task-confirm-cancel">İptal</AlertDialogCancel>
             <AlertDialogAction onClick={handleConfirmComplete} data-testid="task-confirm-action">
-              Evet, Tamamlandi
+              Evet, Tamamlandı
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

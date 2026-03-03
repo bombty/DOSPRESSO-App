@@ -443,7 +443,7 @@ export default function FabrikaDashboard() {
                   <Link href="/satinalma?tab=sayim-yonetimi">
                     <Button variant="outline" className="w-full justify-start gap-2 text-xs" data-testid="quick-inventory-count">
                       <ClipboardCheck className="h-3.5 w-3.5 text-indigo-500 flex-shrink-0" />
-                      <span className="truncate">Sayim Yonetimi</span>
+                      <span className="truncate">Sayım Yönetimi</span>
                     </Button>
                   </Link>
                   <Link href="/fabrika?tab=uretim-planlama">
@@ -455,7 +455,7 @@ export default function FabrikaDashboard() {
                   <Link href="/satinalma?tab=tedarikciler">
                     <Button variant="outline" className="w-full justify-start gap-2 text-xs" data-testid="quick-suppliers">
                       <BarChart3 className="h-3.5 w-3.5 text-green-500 flex-shrink-0" />
-                      <span className="truncate">Tedarikci Yonetimi</span>
+                      <span className="truncate">Tedarikçi Yönetimi</span>
                     </Button>
                   </Link>
                   <Link href="/fabrika?tab=fabrika-yonetim-skoru">

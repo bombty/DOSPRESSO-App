@@ -279,7 +279,7 @@ export default function CoachTeamProgress() {
         <Card data-testid="no-team">
           <CardContent className="p-6 text-center">
             <Users className="h-10 w-10 mx-auto text-muted-foreground mb-2" />
-            <p className="font-medium">Takim uyesi bulunamadi</p>
+            <p className="font-medium">Takım üyesi bulunamadı</p>
           </CardContent>
         </Card>
       )}

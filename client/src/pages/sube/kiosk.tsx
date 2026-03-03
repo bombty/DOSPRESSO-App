@@ -222,7 +222,7 @@ export default function BranchKiosk() {
       const statusData = await statusRes.json();
       if (!statusData.user) {
         setQrScanResult('error');
-        setQrScanMessage('Kullanici bulunamadi');
+        setQrScanMessage('Kullanıcı bulunamadı');
         setTimeout(resumeQrScanner, 3000);
         return;
       }

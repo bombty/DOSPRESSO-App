@@ -1380,8 +1380,8 @@ function HQEscalatedFaults({ faults, onNavigate }: { faults: any[]; onNavigate: 
       y += 8;
     };
     addField("Ekipman", fault.equipmentName || "-");
-    addField("Sube", fault.branchName || `Sube #${fault.branchId}`);
-    addField("Oncelik", fault.priority === 'yuksek' ? 'Yuksek' : fault.priority === 'kritik' ? 'Kritik' : fault.priority === 'orta' ? 'Orta' : 'Dusuk');
+    addField("Şube", fault.branchName || `Şube #${fault.branchId}`);
+    addField("Öncelik", fault.priority === 'yuksek' ? 'Yüksek' : fault.priority === 'kritik' ? 'Kritik' : fault.priority === 'orta' ? 'Orta' : 'Düşük');
     addField("Durum", fault.currentStage || fault.status);
     addField("Rapor Tarihi", fault.createdAt ? format(new Date(fault.createdAt), "dd MMM yyyy HH:mm", { locale: tr }) : "-");
     addField("Raporlayan", fault.reportedByName || "-");

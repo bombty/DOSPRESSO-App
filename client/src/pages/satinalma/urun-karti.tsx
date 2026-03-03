@@ -403,7 +403,7 @@ export default function UrunKarti({ productId, onBack }: UrunKartiProps) {
         </Button>
         <div className="text-center py-12 text-muted-foreground">
           <Package className="h-12 w-12 mx-auto mb-3 opacity-50" />
-          <p>Urun bulunamadi</p>
+          <p>Ürün bulunamadı</p>
         </div>
       </div>
     );
@@ -1099,7 +1099,7 @@ export default function UrunKarti({ productId, onBack }: UrunKartiProps) {
                 <Label>Sorun Tipi</Label>
                 <Select value={newIssueForm.issueType} onValueChange={(v) => setNewIssueForm((p) => ({ ...p, issueType: v }))}>
                   <SelectTrigger data-testid="select-issue-type">
-                    <SelectValue placeholder="Secin" />
+                    <SelectValue placeholder="Seçin" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="kalite">Kalite</SelectItem>
@@ -1115,12 +1115,12 @@ export default function UrunKarti({ productId, onBack }: UrunKartiProps) {
                 <Label>Onem Derecesi</Label>
                 <Select value={newIssueForm.severity} onValueChange={(v) => setNewIssueForm((p) => ({ ...p, severity: v }))}>
                   <SelectTrigger data-testid="select-issue-severity">
-                    <SelectValue placeholder="Secin" />
+                    <SelectValue placeholder="Seçin" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="dusuk">Dusuk</SelectItem>
+                    <SelectItem value="dusuk">Düşük</SelectItem>
                     <SelectItem value="orta">Orta</SelectItem>
-                    <SelectItem value="yuksek">Yuksek</SelectItem>
+                    <SelectItem value="yuksek">Yüksek</SelectItem>
                     <SelectItem value="kritik">Kritik</SelectItem>
                   </SelectContent>
                 </Select>

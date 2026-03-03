@@ -201,11 +201,11 @@ export default function SiparisHazirlama() {
               />
             </div>
             <div className="space-y-1">
-              <Label className="text-xs">Referans (Sube/Siparis No)</Label>
+              <Label className="text-xs">Referans (Şube/Sipariş No)</Label>
               <Input
                 value={reference}
                 onChange={(e) => setReference(e.target.value)}
-                placeholder="Sube adi veya siparis no"
+                placeholder="Şube adı veya sipariş no"
                 data-testid="input-reference"
               />
             </div>

@@ -918,7 +918,7 @@ export default function MalKabul() {
                   <p className="text-sm" data-testid="text-detail-received-by">{receiptDetail.receivedById || "-"}</p>
                 </div>
                 <div className="space-y-1">
-                  <span className="text-sm text-muted-foreground">Olusturulma Tarihi</span>
+                  <span className="text-sm text-muted-foreground">Oluşturulma Tarihi</span>
                   <p className="text-sm" data-testid="text-detail-created">{receiptDetail.createdAt ? formatDate(receiptDetail.createdAt) : "-"}</p>
                 </div>
               </div>
@@ -1054,7 +1054,7 @@ export default function MalKabul() {
                   className="flex-1"
                   onClick={() => setIsQCDialogOpen(false)}
                 >
-                  Iptal
+                  İptal
                 </Button>
                 <Button
                   className="flex-1"
@@ -1062,7 +1062,7 @@ export default function MalKabul() {
                   disabled={statusMutation.isPending || qcItemMutation.isPending}
                   data-testid="button-confirm-qc"
                 >
-                  {statusMutation.isPending ? "Kaydediliyor..." : "Kalite Kontrolu Onayla"}
+                  {statusMutation.isPending ? "Kaydediliyor..." : "Kalite Kontrolü Onayla"}
                 </Button>
               </div>
             </div>
@@ -1136,7 +1136,7 @@ export default function MalKabul() {
                 className="flex-1"
                 onClick={() => setIsEvaluationDialogOpen(false)}
               >
-                Iptal
+                İptal
               </Button>
               <Button
                 className="flex-1"

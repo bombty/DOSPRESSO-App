@@ -548,9 +548,9 @@ function getScoreColor(score: number) {
 }
 
 function getScoreBadge(score: number) {
-  if (score >= 80) return <Badge className="bg-green-500/10 text-green-700 dark:text-green-300">Basarili</Badge>;
+  if (score >= 80) return <Badge className="bg-green-500/10 text-green-700 dark:text-green-300">Başarılı</Badge>;
   if (score >= 60) return <Badge className="bg-yellow-500/10 text-yellow-700 dark:text-yellow-300">Orta</Badge>;
-  return <Badge className="bg-red-500/10 text-red-700 dark:text-red-300">Dusuk</Badge>;
+  return <Badge className="bg-red-500/10 text-red-700 dark:text-red-300">Düşük</Badge>;
 }
 
 function ManagerCard({ manager }: { manager: ManagerData }) {

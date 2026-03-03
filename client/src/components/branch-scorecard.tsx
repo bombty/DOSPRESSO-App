@@ -37,20 +37,20 @@ function generateAISummary(scoreData: BranchScore): string {
   const score = scoreData.score;
   const parts: string[] = [];
   if (score >= 80) {
-    parts.push("Sube performansi iyi seviyede.");
+    parts.push("Şube performansı iyi seviyede.");
   } else if (score >= 60) {
-    parts.push("Sube performansi orta seviyede, iyilestirme alanlar\u0131 mevcut.");
+    parts.push("Şube performansı orta seviyede, iyileştirme alanları mevcut.");
   } else {
-    parts.push("Sube performans\u0131 kritik seviyede, acil aksiyon gerekiyor.");
+    parts.push("Şube performansı kritik seviyede, acil aksiyon gerekiyor.");
   }
   if (scoreData.tasksPending > 3) {
-    parts.push(`${scoreData.tasksPending} bekleyen gorev onceliklendirilmeli.`);
+    parts.push(`${scoreData.tasksPending} bekleyen görev önceliklendirilmeli.`);
   }
   if (scoreData.activeFaults > 0) {
-    parts.push(`${scoreData.activeFaults} aktif ar\u0131za takip ediliyor.`);
+    parts.push(`${scoreData.activeFaults} aktif arıza takip ediliyor.`);
   }
   if (scoreData.checklistRate < 80) {
-    parts.push("Checklist tamamlama oran\u0131 artt\u0131r\u0131lmal\u0131.");
+    parts.push("Checklist tamamlama oranı arttırılmalı.");
   }
   return parts.join(" ");
 }

@@ -569,10 +569,10 @@ export default function SiparisYonetimi() {
         {canFilterBranch && branches && branches.length > 0 && (
           <Select value={branchFilter} onValueChange={setBranchFilter}>
             <SelectTrigger className="w-[200px]" data-testid="select-order-branch">
-              <SelectValue placeholder="Sube" />
+              <SelectValue placeholder="Şube" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Tum Subeler</SelectItem>
+              <SelectItem value="all">Tüm Şubeler</SelectItem>
               {branches.map((b: { id: number; name: string }) => (
                 <SelectItem key={b.id} value={b.id.toString()}>{b.name}</SelectItem>
               ))}

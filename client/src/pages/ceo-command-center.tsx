@@ -149,9 +149,9 @@ function AIAssistant() {
 
   const suggestions = [
     "Bu hafta nelere dikkat etmeliyim?",
-    "Sube performanslari nasil?",
-    "Personel durumu hakkinda ozet ver",
-    "En buyuk riskler neler?",
+    "Şube performansları nasıl?",
+    "Personel durumu hakkında özet ver",
+    "En büyük riskler neler?",
   ];
 
   return (
@@ -379,7 +379,7 @@ export default function CEOCommandCenter() {
                 <CardContent className="pt-3 pb-2 px-3 text-center">
                   <Store className="w-5 h-5 text-blue-500 mx-auto mb-1" />
                   <p className="text-xl font-bold">{dashboardData.kpiSummary.totalBranches}</p>
-                  <p className="text-[10px] text-muted-foreground">Sube</p>
+                  <p className="text-[10px] text-muted-foreground">Şube</p>
                 </CardContent>
               </Card>
               <Card data-testid="ceo-kpi-employees">
@@ -485,7 +485,7 @@ export default function CEOCommandCenter() {
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="text-sm font-medium">{alert.correctorName || 'Bilinmeyen'}</span>
                           <Badge variant={alert.severity === 'critical' ? 'destructive' : 'secondary'} className="text-[10px]">
-                            {alert.type === 'person_focused' ? 'Kisi Odakli' : 'Yuksek Hacim'}
+                            {alert.type === 'person_focused' ? 'Kişi Odaklı' : 'Yüksek Hacim'}
                           </Badge>
                         </div>
                         <p className="text-xs text-muted-foreground mt-0.5">{alert.message}</p>

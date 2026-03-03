@@ -12,6 +12,7 @@ import {
   Package,
   ShieldAlert,
 } from "lucide-react";
+import { SIGNAL_CODE_LABELS, SEVERITY_LABELS } from "@/lib/turkish-labels";
 
 interface KpiSignal {
   id: number;
@@ -84,7 +85,7 @@ export default function CoachKpiSignals() {
                     <div className="flex items-center gap-2 flex-wrap">
                       <h3 className="font-medium text-sm">{signal.titleTr}</h3>
                       <Badge variant={SEVERITY_VARIANTS[signal.severity] as any || "outline"}>
-                        {signal.severity}
+                        {SEVERITY_LABELS[signal.severity] || signal.severity}
                       </Badge>
                     </div>
                     {signal.description && (
@@ -94,7 +95,7 @@ export default function CoachKpiSignals() {
                       {signal.threshold !== null && (
                         <span>Eşik: {signal.threshold}</span>
                       )}
-                      <span>Sinyal: {signal.signalKey}</span>
+                      <span>Sinyal: {SIGNAL_CODE_LABELS[signal.signalKey] || signal.signalKey}</span>
                       {signal.recommendedPackId && (
                         <Badge variant="outline">Paket #{signal.recommendedPackId}</Badge>
                       )}

@@ -426,10 +426,10 @@ export default function SatinalmaDashboard() {
           <Building2 className="h-4 w-4 text-muted-foreground" />
           <Select value={selectedBranchId} onValueChange={setSelectedBranchId}>
             <SelectTrigger className="w-[220px]" data-testid="select-branch-filter">
-              <SelectValue placeholder="Sube Filtrele" />
+              <SelectValue placeholder="Şube Filtrele" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all" data-testid="select-branch-all">Tum Subeler</SelectItem>
+              <SelectItem value="all" data-testid="select-branch-all">Tüm Şubeler</SelectItem>
               {branchesList?.filter(b => b.isActive).map((branch) => (
                 <SelectItem key={branch.id} value={branch.id.toString()} data-testid={`select-branch-${branch.id}`}>
                   {branch.name}
@@ -635,10 +635,10 @@ export default function SatinalmaDashboard() {
                 <div className="flex items-center justify-between gap-2 text-sm flex-wrap">
                   <span className="flex items-center gap-1.5 text-red-500 dark:text-red-400">
                     <PackageX className="h-3.5 w-3.5" />
-                    {criticalStock.length} urun kritik stok seviyesinde
+                    {criticalStock.length} ürün kritik stok seviyesinde
                   </span>
                   <Button size="sm" variant="outline" onClick={() => window.location.href = '/satinalma/stok-yonetimi'} data-testid="button-critical-stock-view">
-                    Goruntule
+                    Görüntüle
                   </Button>
                 </div>
               )}
@@ -761,7 +761,7 @@ export default function SatinalmaDashboard() {
           <CardHeader className="flex flex-row items-center justify-between pb-1 pt-3 px-3 gap-2">
             <CardTitle className="text-xs flex items-center gap-2">
               <AlertTriangle className="h-3.5 w-3.5 text-red-500" />
-              Dusuk Stok Uyarilari
+              Düşük Stok Uyarıları
             </CardTitle>
             <Badge variant="secondary" className="text-[10px]" data-testid="badge-low-stock-count">
               {lowStockItems?.length || 0} kalem
@@ -803,7 +803,7 @@ export default function SatinalmaDashboard() {
             ) : (
               <div className="text-center py-8 text-muted-foreground">
                 <Package className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                <p data-testid="text-no-low-stock">Dusuk stok uyarisi yok</p>
+                <p data-testid="text-no-low-stock">Düşük stok uyarısı yok</p>
               </div>
             )}
           </CardContent>
@@ -857,7 +857,7 @@ export default function SatinalmaDashboard() {
                 <div className="p-3 rounded-lg bg-red-500/10">
                   <div className="flex items-center gap-2 mb-1">
                     <AlertTriangle className="h-3.5 w-3.5 text-red-600 dark:text-red-400" />
-                    <span className="text-xs font-medium text-red-700 dark:text-red-400">Dusuk Stok</span>
+                    <span className="text-xs font-medium text-red-700 dark:text-red-400">Düşük Stok</span>
                   </div>
                   <div className="text-lg font-bold text-red-700 dark:text-red-400" data-testid="value-low-stock-alerts">
                     {data?.lowStockAlerts || 0}

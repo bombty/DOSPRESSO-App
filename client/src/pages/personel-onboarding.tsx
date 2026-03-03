@@ -586,7 +586,7 @@ function TimelineDetail({
                         {taskTypeLabels[task.taskType] || task.taskType}
                       </Badge>
                       {isCompleted && (
-                        <Badge variant="default" className="text-xs">Tamamlandi</Badge>
+                        <Badge variant="default" className="text-xs">Tamamlandı</Badge>
                       )}
                       {task.verifiedAt && (
                         <Badge variant="default" className="text-xs">
@@ -709,11 +709,11 @@ function StartOnboardingDialog({
               name="branchId"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Sube</FormLabel>
+                  <FormLabel>Şube</FormLabel>
                   <Select onValueChange={field.onChange} value={field.value}>
                     <FormControl>
                       <SelectTrigger data-testid="select-branch">
-                        <SelectValue placeholder="Sube secin" />
+                        <SelectValue placeholder="Şube seçin" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>

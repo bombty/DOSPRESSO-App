@@ -754,7 +754,7 @@ function TicketDetailDialog({
               onClick={() => setShowRatingDialog(false)}
               data-testid="button-cancel-rating"
             >
-              Iptal
+              İptal
             </Button>
             <Button
               variant="destructive"
@@ -824,10 +824,10 @@ function TicketDetailDialog({
             </p>
             <div className="flex items-center gap-2 sm:gap-3 text-sm text-muted-foreground flex-wrap">
               <span data-testid="text-detail-branch">
-                <strong>Sube:</strong> {ticket.branch?.name}
+                <strong>Şube:</strong> {ticket.branch?.name}
               </span>
               <span data-testid="text-detail-created">
-                <strong>Olusturulma:</strong> {ticket.createdAt && format(new Date(ticket.createdAt), "d MMMM yyyy, HH:mm", { locale: tr })}
+                <strong>Oluşturulma:</strong> {ticket.createdAt && format(new Date(ticket.createdAt), "d MMMM yyyy, HH:mm", { locale: tr })}
               </span>
             </div>
           </div>

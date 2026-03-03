@@ -175,7 +175,7 @@ export default function AdminCopKutusu() {
             ) : !trashItems?.length ? (
               <div className="text-center py-8 text-muted-foreground" data-testid="text-empty-trash">
                 <Search className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                <p>Bu tabloda silinmis kayit bulunamadi</p>
+                <p>Bu tabloda silinmiş kayıt bulunamadı</p>
               </div>
             ) : (
               <div className="space-y-2">
@@ -265,7 +265,7 @@ export default function AdminCopKutusu() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel data-testid="button-cancel-action">Iptal</AlertDialogCancel>
+            <AlertDialogCancel data-testid="button-cancel-action">İptal</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleConfirmAction}
               className={confirmAction?.type === "delete" ? "bg-destructive text-destructive-foreground" : ""}

@@ -89,7 +89,9 @@ const statusLabels: Record<string, string> = {
   OPEN: "Açık",
   IN_PROGRESS: "Devam Ediyor",
   PENDING_REVIEW: "İnceleme Bekliyor",
+  PENDING_VERIFICATION: "Doğrulama Bekliyor",
   CLOSED: "Kapatıldı",
+  OVERDUE: "Gecikmiş",
   ESCALATED: "Eskalasyon",
 };
 
@@ -98,6 +100,7 @@ const actionTypeLabels: Record<string, string> = {
   IMMEDIATE: "Acil",
   MAINTENANCE: "Bakım",
   PREVENTIVE: "Önleyici",
+  corrective_and_preventive: "Düzeltici ve Önleyici",
 };
 
 export default function AksiyonTakipPage() {

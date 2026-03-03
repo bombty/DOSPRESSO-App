@@ -184,7 +184,7 @@ export default function EquipmentManagement() {
                 } else {
                   toast({
                     title: 'Hata',
-                    description: 'Bu ekipman bulunamadi',
+                    description: 'Bu ekipman bulunamadı',
                     variant: 'destructive',
                   });
                 }

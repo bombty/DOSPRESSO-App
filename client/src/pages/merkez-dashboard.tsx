@@ -197,7 +197,7 @@ export default function MerkezDashboard() {
                       <Store className="h-4 w-4 text-blue-600" />
                     </div>
                     <div>
-                      <p className="text-[10px] text-muted-foreground">Toplam Sube</p>
+                      <p className="text-[10px] text-muted-foreground">Toplam Şube</p>
                       <p className="text-lg font-bold" data-testid="text-total-branches">{data?.totalBranches || 0}</p>
                     </div>
                   </div>
@@ -239,7 +239,7 @@ export default function MerkezDashboard() {
                       <ListTodo className="h-4 w-4 text-amber-600" />
                     </div>
                     <div>
-                      <p className="text-[10px] text-muted-foreground">Acik Gorev</p>
+                      <p className="text-[10px] text-muted-foreground">Açık Görev</p>
                       <p className="text-lg font-bold" data-testid="text-open-tasks">{data?.openTasks || 0}</p>
                     </div>
                   </div>
@@ -329,7 +329,7 @@ export default function MerkezDashboard() {
                       <div>
                         <div className="flex items-center gap-1.5 mb-1.5">
                           <Store className="h-3 w-3 text-orange-500" />
-                          <span className="text-[10px] font-semibold text-orange-600 dark:text-orange-400">Subeler</span>
+                          <span className="text-[10px] font-semibold text-orange-600 dark:text-orange-400">Şubeler</span>
                         </div>
                         <div className="space-y-1">
                           {subeIssues.slice(0, 5).map((issue, i) => (
@@ -447,7 +447,7 @@ export default function MerkezDashboard() {
                 ) : (
                   <div className="text-center py-4 text-muted-foreground">
                     <Users className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                    <p className="text-xs">Merkez personel verisi bulunamadi</p>
+                    <p className="text-xs">Merkez personel verisi bulunamadı</p>
                   </div>
                 )}
               </CardContent>
@@ -516,7 +516,7 @@ export default function MerkezDashboard() {
                 ) : (
                   <div className="text-center py-4 text-muted-foreground">
                     <Store className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                    <p className="text-xs">Sube verisi bulunamadi</p>
+                    <p className="text-xs">Şube verisi bulunamadı</p>
                   </div>
                 )}
               </CardContent>

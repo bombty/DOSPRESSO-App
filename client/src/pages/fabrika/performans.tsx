@@ -877,7 +877,7 @@ export default function FabrikaPerformans() {
               </Card>
             </>
           ) : (
-            <EmptyState icon={Users} message="Bu urun icin veri bulunamadi" />
+            <EmptyState icon={Users} message="Bu ürün için veri bulunamadı" />
           )}
         </TabsContent>
 

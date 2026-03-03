@@ -84,15 +84,15 @@ export default function CapaRaporlari() {
   const branches = report?.branches || [];
 
   const statusData = [
-    { name: 'Acik', value: totals.open, color: STATUS_COLORS.open },
+    { name: 'Açık', value: totals.open, color: STATUS_COLORS.open },
     { name: 'Devam Eden', value: totals.inProgress, color: STATUS_COLORS.inProgress },
-    { name: 'Gecikmis', value: totals.overdue, color: STATUS_COLORS.overdue },
-    { name: 'Kapali', value: totals.closed, color: STATUS_COLORS.closed },
+    { name: 'Gecikmiş', value: totals.overdue, color: STATUS_COLORS.overdue },
+    { name: 'Kapalı', value: totals.closed, color: STATUS_COLORS.closed },
   ];
 
   const priorityData = [
     { name: 'Kritik', value: totals.critical, color: '#ef4444' },
-    { name: 'Yuksek', value: totals.high, color: '#f97316' },
+    { name: 'Yüksek', value: totals.high, color: '#f97316' },
     { name: 'Orta', value: totals.medium, color: '#eab308' },
   ];
 
@@ -119,7 +119,7 @@ export default function CapaRaporlari() {
           <CardContent className="p-4">
             <div className="flex items-center gap-2">
               <AlertTriangle className="h-5 w-5 text-red-500" />
-              <span className="text-sm text-muted-foreground">Gecikmis</span>
+              <span className="text-sm text-muted-foreground">Gecikmiş</span>
             </div>
             <p className="text-2xl font-bold mt-2 text-red-600" data-testid="text-overdue-count">{totals.overdue}</p>
           </CardContent>
@@ -128,7 +128,7 @@ export default function CapaRaporlari() {
           <CardContent className="p-4">
             <div className="flex items-center gap-2">
               <CheckCircle2 className="h-5 w-5 text-green-500" />
-              <span className="text-sm text-muted-foreground">Kapali</span>
+              <span className="text-sm text-muted-foreground">Kapalı</span>
             </div>
             <p className="text-2xl font-bold mt-2 text-green-600" data-testid="text-closed-count">{totals.closed}</p>
           </CardContent>
@@ -225,10 +225,10 @@ export default function CapaRaporlari() {
                     <YAxis dataKey="branchName" type="category" width={120} tick={{ fontSize: 12 }} />
                     <Tooltip />
                     <Legend />
-                    <Bar dataKey="closed" name="Kapali" stackId="a" fill="#22c55e" />
+                    <Bar dataKey="closed" name="Kapalı" stackId="a" fill="#22c55e" />
                     <Bar dataKey="inProgress" name="Devam Eden" stackId="a" fill="#f97316" />
-                    <Bar dataKey="open" name="Acik" stackId="a" fill="#3b82f6" />
-                    <Bar dataKey="overdue" name="Gecikmis" stackId="a" fill="#ef4444" />
+                    <Bar dataKey="open" name="Açık" stackId="a" fill="#3b82f6" />
+                    <Bar dataKey="overdue" name="Gecikmiş" stackId="a" fill="#ef4444" />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
@@ -237,14 +237,14 @@ export default function CapaRaporlari() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b">
-                      <th className="text-left py-2 px-3">Sube</th>
+                      <th className="text-left py-2 px-3">Şube</th>
                       <th className="text-center py-2 px-3">Toplam</th>
-                      <th className="text-center py-2 px-3">Acik</th>
+                      <th className="text-center py-2 px-3">Açık</th>
                       <th className="text-center py-2 px-3">Devam</th>
-                      <th className="text-center py-2 px-3">Gecikmis</th>
-                      <th className="text-center py-2 px-3">Kapali</th>
-                      <th className="text-center py-2 px-3">Ort. Cozum</th>
-                      <th className="text-center py-2 px-3">Zamaninda</th>
+                      <th className="text-center py-2 px-3">Gecikmiş</th>
+                      <th className="text-center py-2 px-3">Kapalı</th>
+                      <th className="text-center py-2 px-3">Ort. Çözüm</th>
+                      <th className="text-center py-2 px-3">Zamanında</th>
                     </tr>
                   </thead>
                   <tbody>

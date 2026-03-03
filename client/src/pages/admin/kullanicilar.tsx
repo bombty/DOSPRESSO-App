@@ -393,7 +393,7 @@ export default function AdminKullanicilar() {
                     }}
                   >
                     <SelectTrigger className="h-8 w-[160px]" data-testid="select-employee-type">
-                      <SelectValue placeholder="Secin" />
+                      <SelectValue placeholder="Seçin" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="none" data-testid="option-emptype-none">Yok</SelectItem>

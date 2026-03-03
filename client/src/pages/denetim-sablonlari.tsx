@@ -34,6 +34,7 @@ import {
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { ConfirmDeleteDialog, useConfirmDelete } from "@/components/confirm-delete-dialog";
+import { AUDIT_CATEGORY_LABELS } from "@/lib/turkish-labels";
 import { 
   insertAuditTemplateSchema, 
   insertAuditTemplateItemSchema,
@@ -461,7 +462,7 @@ export default function DenetimSablonlariPage() {
                     {template.auditType === 'branch' ? 'Şube' : 'Personel'}
                   </Badge>
                   {template.category && (
-                    <Badge variant="outline" className="text-xs" data-testid={`badge-category-${template.id}`}>{template.category}</Badge>
+                    <Badge variant="outline" className="text-xs" data-testid={`badge-category-${template.id}`}>{AUDIT_CATEGORY_LABELS[template.category] || template.category}</Badge>
                   )}
                   <Badge variant={template.isActive ? 'default' : 'secondary'} className="text-xs" data-testid={`badge-status-${template.id}`}>
                     {template.isActive ? 'Aktif' : 'Pasif'}

@@ -184,18 +184,18 @@ const CATEGORY_LABELS: Record<string, string> = {
   mamul: "Mamul",
   ambalaj: "Ambalaj",
   ekipman: "Ekipman",
-  sube_ekipman: "Sube Ekipman",
-  sube_malzeme: "Sube Malzeme",
+  sube_ekipman: "Şube Ekipman",
+  sube_malzeme: "Şube Malzeme",
   konsantre: "Konsantre",
   donut: "Donut",
-  tatli: "Tatli",
+  tatli: "Tatlı",
   tuzlu: "Tuzlu",
-  cay_grubu: "Cay Grubu",
+  cay_grubu: "Çay Grubu",
   kahve: "Kahve",
   toz_topping: "Toz/Topping",
   sarf_malzeme: "Sarf Malzeme",
   temizlik: "Temizlik",
-  diger: "Diger",
+  diger: "Diğer",
 };
 
 const MOVEMENT_TYPE_LABELS: Record<string, string> = {
@@ -457,7 +457,7 @@ function GenelTrendTab({ data }: { data: TrendData | undefined }) {
               </ResponsiveContainer>
             ) : (
               <div className="flex items-center justify-center h-64 text-muted-foreground text-sm">
-                Siparis verisi bulunamadi
+                Sipariş verisi bulunamadı
               </div>
             )}
           </CardContent>
@@ -501,7 +501,7 @@ function GenelTrendTab({ data }: { data: TrendData | undefined }) {
               </ResponsiveContainer>
             ) : (
               <div className="flex items-center justify-center h-64 text-muted-foreground text-sm">
-                Harcama verisi bulunamadi
+                Harcama verisi bulunamadı
               </div>
             )}
           </CardContent>
@@ -548,7 +548,7 @@ function GenelTrendTab({ data }: { data: TrendData | undefined }) {
               </ResponsiveContainer>
             ) : (
               <div className="flex items-center justify-center h-64 text-muted-foreground text-sm">
-                Stok hareket verisi bulunamadi
+                Stok hareket verisi bulunamadı
               </div>
             )}
           </CardContent>
@@ -593,7 +593,7 @@ function GenelTrendTab({ data }: { data: TrendData | undefined }) {
               </ResponsiveContainer>
             ) : (
               <div className="flex items-center justify-center h-64 text-muted-foreground text-sm">
-                Kategori verisi bulunamadi
+                Kategori verisi bulunamadı
               </div>
             )}
           </CardContent>
@@ -685,7 +685,7 @@ function GenelTrendTab({ data }: { data: TrendData | undefined }) {
             </Table>
           ) : (
             <div className="text-center py-8 text-muted-foreground text-sm">
-              Fiyat degisimi verisi bulunamadi
+              Fiyat değişimi verisi bulunamadı
             </div>
           )}
         </CardContent>
@@ -751,7 +751,7 @@ function TedarikciPerformansTab() {
               </ResponsiveContainer>
             ) : (
               <div className="flex items-center justify-center h-64 text-muted-foreground text-sm">
-                Tedarikci verisi bulunamadi
+                Tedarikci verisi bulunamadı
               </div>
             )}
           </CardContent>
@@ -776,7 +776,7 @@ function TedarikciPerformansTab() {
               </ResponsiveContainer>
             ) : (
               <div className="flex items-center justify-center h-64 text-muted-foreground text-sm">
-                Harcama verisi bulunamadi
+                Harcama verisi bulunamadı
               </div>
             )}
           </CardContent>
@@ -839,7 +839,7 @@ function TedarikciPerformansTab() {
             </div>
           ) : (
             <div className="text-center py-8 text-muted-foreground text-sm">
-              Tedarikci verisi bulunamadi
+              Tedarikci verisi bulunamadı
             </div>
           )}
         </CardContent>
@@ -929,7 +929,7 @@ function StokHareketleriTab({ branchId }: { branchId: string }) {
               </ResponsiveContainer>
             ) : (
               <div className="flex items-center justify-center h-64 text-muted-foreground text-sm">
-                Hareket verisi bulunamadi
+                Hareket verisi bulunamadı
               </div>
             )}
           </CardContent>
@@ -954,7 +954,7 @@ function StokHareketleriTab({ branchId }: { branchId: string }) {
               </ResponsiveContainer>
             ) : (
               <div className="flex items-center justify-center h-64 text-muted-foreground text-sm">
-                Kategori verisi bulunamadi
+                Kategori verisi bulunamadı
               </div>
             )}
           </CardContent>
@@ -994,7 +994,7 @@ function StokHareketleriTab({ branchId }: { branchId: string }) {
             </Table>
           ) : (
             <div className="text-center py-8 text-muted-foreground text-sm">
-              Stok hareket verisi bulunamadi
+              Stok hareket verisi bulunamadı
             </div>
           )}
         </CardContent>
@@ -1070,7 +1070,7 @@ function MaliyetAnaliziTab({ branchId }: { branchId: string }) {
               </ResponsiveContainer>
             ) : (
               <div className="flex items-center justify-center h-64 text-muted-foreground text-sm">
-                Maliyet verisi bulunamadi
+                Maliyet verisi bulunamadı
               </div>
             )}
           </CardContent>
@@ -1095,7 +1095,7 @@ function MaliyetAnaliziTab({ branchId }: { branchId: string }) {
               </ResponsiveContainer>
             ) : (
               <div className="flex items-center justify-center h-64 text-muted-foreground text-sm">
-                Kategori verisi bulunamadi
+                Kategori verisi bulunamadı
               </div>
             )}
           </CardContent>
@@ -1103,7 +1103,7 @@ function MaliyetAnaliziTab({ branchId }: { branchId: string }) {
 
         <Card className="lg:col-span-2" data-testid="chart-top-cost-items">
           <CardHeader className="pb-1 pt-3 px-3">
-            <CardTitle className="text-xs">En Yuksek Maliyetli Urunler</CardTitle>
+            <CardTitle className="text-xs">En Yüksek Maliyetli Ürünler</CardTitle>
           </CardHeader>
           <CardContent className="px-3 pb-3">
             {topItemsChart.length > 0 ? (
@@ -1118,7 +1118,7 @@ function MaliyetAnaliziTab({ branchId }: { branchId: string }) {
               </ResponsiveContainer>
             ) : (
               <div className="flex items-center justify-center h-64 text-muted-foreground text-sm">
-                Maliyet verisi bulunamadi
+                Maliyet verisi bulunamadı
               </div>
             )}
           </CardContent>
@@ -1162,7 +1162,7 @@ function MaliyetAnaliziTab({ branchId }: { branchId: string }) {
             </div>
           ) : (
             <div className="text-center py-8 text-muted-foreground text-sm">
-              Maliyet verisi bulunamadi
+              Maliyet verisi bulunamadı
             </div>
           )}
         </CardContent>
@@ -1202,10 +1202,10 @@ export default function TrendAnalizi() {
           <Building2 className="h-4 w-4 text-muted-foreground" />
           <Select value={branchFilter} onValueChange={setBranchFilter}>
             <SelectTrigger className="w-[200px]" data-testid="select-trend-branch">
-              <SelectValue placeholder="Sube" />
+              <SelectValue placeholder="Şube" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Tum Subeler</SelectItem>
+              <SelectItem value="all">Tüm Şubeler</SelectItem>
               {branches.map((b: { id: number; name: string }) => (
                 <SelectItem key={b.id} value={b.id.toString()}>{b.name}</SelectItem>
               ))}

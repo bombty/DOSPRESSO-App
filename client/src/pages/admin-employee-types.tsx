@@ -84,7 +84,7 @@ const POLICY_KEYS = [
 const ALLOWED_GROUPS = ["branch", "factory", "hq"];
 
 const GROUP_LABELS: Record<string, string> = {
-  branch: "Sube",
+  branch: "Şube",
   factory: "Fabrika",
   hq: "Merkez",
 };
@@ -378,7 +378,7 @@ function EmployeeTypesTab() {
           </div>
           <DialogFooter>
             <Button variant="ghost" onClick={closeDialog} data-testid="button-cancel-type">
-              Iptal
+              İptal
             </Button>
             <Button onClick={handleSubmit} disabled={isPending || !formData.key || !formData.name} data-testid="button-save-type">
               {isPending && <Loader2 className="animate-spin" />}
@@ -615,7 +615,7 @@ function PoliciesTab() {
           </div>
           <DialogFooter>
             <Button variant="ghost" onClick={closeDialog} data-testid="button-cancel-policy">
-              Iptal
+              İptal
             </Button>
             <Button
               onClick={handleCreatePolicy}
@@ -831,7 +831,7 @@ function AssignmentsTab() {
           </div>
           <DialogFooter>
             <Button variant="ghost" onClick={closeDialog} data-testid="button-cancel-assignment">
-              Iptal
+              İptal
             </Button>
             <Button
               onClick={handleCreate}

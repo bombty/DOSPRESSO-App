@@ -116,7 +116,7 @@ export default function MyPerformancePage() {
       yPos = addSection(doc, "Kişisel Bilgiler", yPos);
       yPos = addKeyValue(doc, "Ad Soyad", `${(user as any)?.firstName || ""} ${(user as any)?.lastName || ""}`, yPos);
       yPos = addKeyValue(doc, "Pozisyon", (user as any)?.role || "-", yPos);
-      yPos = addKeyValue(doc, "Sube", (user as any)?.branchName || "-", yPos);
+      yPos = addKeyValue(doc, "Şube", (user as any)?.branchName || "-", yPos);
       yPos += 5;
 
       yPos = checkPageBreak(doc, yPos, 80);

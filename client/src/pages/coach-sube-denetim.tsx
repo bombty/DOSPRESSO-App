@@ -279,7 +279,7 @@ export default function CoachSubeDenetim() {
                     onValueChange={setSelectedBranchId}
                   >
                     <SelectTrigger data-testid="select-branch">
-                      <SelectValue placeholder="Sube secin" />
+                      <SelectValue placeholder="Şube seçin" />
                     </SelectTrigger>
                     <SelectContent>
                       {branches?.map((branch) => (

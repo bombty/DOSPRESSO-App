@@ -318,7 +318,7 @@ export default function HqKiosk() {
           ))}
           {staffList.length === 0 && (
             <div className="col-span-full text-center py-12 text-muted-foreground">
-              HQ personeli bulunamadi
+              HQ personeli bulunamadı
             </div>
           )}
         </div>
@@ -505,7 +505,7 @@ export default function HqKiosk() {
                         }}
                         data-testid="button-hq-personal"
                       >
-                        <UserCircle className="h-4 w-4 mr-2" /> Kisisel Izin
+                        <UserCircle className="h-4 w-4 mr-2" /> Kişisel İzin
                       </Button>
                       <Button
                         variant="destructive"
@@ -555,12 +555,12 @@ export default function HqKiosk() {
                     }`} />
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium">
-                        {event.eventType === "check_in" && "Giris yapildi"}
-                        {event.eventType === "break_start" && "Mola basladi"}
-                        {event.eventType === "break_end" && "Moladan dondu"}
-                        {event.eventType === "outside_start" && `Dis cikis: ${event.exitReason === "external_task" ? "Dis Gorev" : "Kisisel"}`}
-                        {event.eventType === "outside_end" && "Dondu"}
-                        {event.eventType === "check_out" && "Gun sonu"}
+                        {event.eventType === "check_in" && "Giriş yapıldı"}
+                        {event.eventType === "break_start" && "Mola başladı"}
+                        {event.eventType === "break_end" && "Moladan döndü"}
+                        {event.eventType === "outside_start" && `Dış çıkış: ${event.exitReason === "external_task" ? "Dış Görev" : "Kişisel"}`}
+                        {event.eventType === "outside_end" && "Döndü"}
+                        {event.eventType === "check_out" && "Gün sonu"}
                       </p>
                       {event.exitDescription && (
                         <p className="text-xs text-muted-foreground truncate">{event.exitDescription}</p>
@@ -586,7 +586,7 @@ export default function HqKiosk() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel data-testid="button-cancel-end-day">Iptal</AlertDialogCancel>
+            <AlertDialogCancel data-testid="button-cancel-end-day">İptal</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => {
                 if (currentSession) {
@@ -626,13 +626,13 @@ export default function HqKiosk() {
           </Button>
           <CardTitle className="text-center">
             {exitReason === "break" && "Mola"}
-            {exitReason === "external_task" && "Dis Gorev"}
-            {exitReason === "personal" && "Kisisel Izin"}
+            {exitReason === "external_task" && "Dış Görev"}
+            {exitReason === "personal" && "Kişisel İzin"}
           </CardTitle>
           <CardDescription className="text-center">
-            {exitReason === "break" && "Mola suresini belirtin"}
-            {exitReason === "external_task" && "Dis gorev detaylarini girin"}
-            {exitReason === "personal" && "Kisisel izin sebebini belirtin"}
+            {exitReason === "break" && "Mola süresini belirtin"}
+            {exitReason === "external_task" && "Dış görev detaylarını girin"}
+            {exitReason === "personal" && "Kişisel izin sebebini belirtin"}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -697,9 +697,9 @@ export default function HqKiosk() {
           <div className="mx-auto mb-4 p-4 rounded-full bg-green-100 dark:bg-green-900">
             <CheckCircle2 className="h-12 w-12 text-green-600" />
           </div>
-          <CardTitle>Vardiya Tamamlandi</CardTitle>
+          <CardTitle>Vardiya Tamamlandı</CardTitle>
           <CardDescription>
-            {autoLogoutCountdown} saniye sonra otomatik cikis yapilacak
+            {autoLogoutCountdown} saniye sonra otomatik çıkış yapılacak
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">

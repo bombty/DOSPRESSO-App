@@ -64,8 +64,8 @@ const categoryLabels: Record<string, string> = {
   hammadde: "Hammadde",
   ambalaj: "Ambalaj",
   ekipman: "Ekipman",
-  sube_ekipman: "Sube Ekipman",
-  sube_malzeme: "Sube Malzeme",
+  sube_ekipman: "Şube Ekipman",
+  sube_malzeme: "Şube Malzeme",
   konsantre: "Konsantre",
   donut: "Donut",
   tatli: "Tatli",
@@ -106,10 +106,10 @@ export default function StokSayimPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/factory/stock-counts"] });
-      toast({ title: "Sayim baslatildi" });
+      toast({ title: "Sayım başlatıldı" });
     },
     onError: () => {
-      toast({ title: "Hata", description: "Sayim baslatilamadi", variant: "destructive" });
+      toast({ title: "Hata", description: "Sayım başlatılamadı", variant: "destructive" });
     },
   });
 
@@ -119,7 +119,7 @@ export default function StokSayimPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/factory/stock-counts"] });
-      toast({ title: "Sayim tamamlandi" });
+      toast({ title: "Sayım tamamlandı" });
     },
   });
 
@@ -129,7 +129,7 @@ export default function StokSayimPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/factory/stock-counts"] });
-      toast({ title: "Sayim onaylandi" });
+      toast({ title: "Sayım onaylandı" });
     },
   });
 
@@ -153,19 +153,19 @@ export default function StokSayimPage() {
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <div className="flex items-center gap-2">
           <ClipboardList className="h-5 w-5 text-primary" />
-          <h2 className="text-lg font-bold">Stok Sayim</h2>
+          <h2 className="text-lg font-bold">Stok Sayım</h2>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           {canRequest && (
             <Button size="sm" variant="outline" onClick={() => setShowRequestDialog(true)} data-testid="button-request-count">
               <Send className="h-4 w-4 mr-1" />
-              Sayim Talep Et
+              Sayım Talep Et
             </Button>
           )}
           {isManager && (
             <Button size="sm" onClick={() => setShowNewDialog(true)} data-testid="button-new-stock-count">
               <Plus className="h-4 w-4 mr-1" />
-              Yeni Sayim
+              Yeni Sayım
             </Button>
           )}
         </div>
@@ -229,7 +229,7 @@ export default function StokSayimPage() {
       <Tabs defaultValue="active">
         <TabsList>
           <TabsTrigger value="active" data-testid="tab-active-counts">
-            Aktif Sayimlar
+            Aktif Sayımlar
             {activeCounts.length > 0 && <Badge variant="secondary" className="ml-1">{activeCounts.length}</Badge>}
           </TabsTrigger>
           <TabsTrigger value="requests" data-testid="tab-requests">
@@ -247,7 +247,7 @@ export default function StokSayimPage() {
               <CardContent className="py-8 text-center text-muted-foreground">
                 <ClipboardList className="h-8 w-8 mx-auto mb-2 opacity-50" />
                 <p className="text-sm">Aktif stok sayimi bulunmuyor</p>
-                {isManager && <p className="text-xs mt-1">Yeni bir sayim baslatmak icin "Yeni Sayim" butonuna tiklayin</p>}
+                {isManager && <p className="text-xs mt-1">Yeni bir sayım başlatmak için "Yeni Sayım" butonuna tıklayın</p>}
               </CardContent>
             </Card>
           ) : (
@@ -295,7 +295,7 @@ export default function StokSayimPage() {
             <Card>
               <CardContent className="py-8 text-center text-muted-foreground">
                 <Send className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                <p className="text-sm">Sayim talebi bulunmuyor</p>
+                <p className="text-sm">Sayım talebi bulunmuyor</p>
               </CardContent>
             </Card>
           ) : (
@@ -412,7 +412,7 @@ function StockCountCard({
             <Package className="h-4 w-4 text-muted-foreground shrink-0" />
             <div className="min-w-0">
               <p className="text-sm font-medium truncate">
-                {typeLabels[count.countType] || count.countType} Sayimi
+                {typeLabels[count.countType] || count.countType} Sayımı
                 {count.scope === "category" && count.requestedCategory && (
                   <span className="text-muted-foreground"> - {categoryLabels[count.requestedCategory] || count.requestedCategory}</span>
                 )}
@@ -448,7 +448,7 @@ function StockCountCard({
               {canStartThis && (
                 <Button size="sm" onClick={(e) => { e.stopPropagation(); onStart(); }} disabled={isStarting} data-testid={`button-start-count-${count.id}`}>
                   {isStarting ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <Play className="h-3.5 w-3.5 mr-1" />}
-                  Basla
+                  Başla
                 </Button>
               )}
               {count.status === "in_progress" && (
@@ -495,11 +495,11 @@ function NewCountDialog({ onClose, onCreated }: { onClose: () => void; onCreated
     onSuccess: async (response) => {
       const data = await response.json();
       queryClient.invalidateQueries({ queryKey: ["/api/factory/stock-counts"] });
-      toast({ title: "Stok sayimi baslatildi" });
+      toast({ title: "Stok sayımı başlatıldı" });
       onCreated(data);
     },
     onError: () => {
-      toast({ title: "Hata", description: "Stok sayimi baslatilamadi", variant: "destructive" });
+      toast({ title: "Hata", description: "Stok sayımı başlatılamadı", variant: "destructive" });
     },
   });
 
@@ -507,7 +507,7 @@ function NewCountDialog({ onClose, onCreated }: { onClose: () => void; onCreated
     <Dialog open={true} onOpenChange={() => onClose()}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Yeni Stok Sayimi Baslat</DialogTitle>
+          <DialogTitle>Yeni Stok Sayımı Başlat</DialogTitle>
         </DialogHeader>
         <div className="space-y-3">
           <div>
@@ -517,8 +517,8 @@ function NewCountDialog({ onClose, onCreated }: { onClose: () => void; onCreated
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="full">Tum Stok</SelectItem>
-                <SelectItem value="category">Kategori Bazli</SelectItem>
+                <SelectItem value="full">Tüm Stok</SelectItem>
+                <SelectItem value="category">Kategori Bazlı</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -528,7 +528,7 @@ function NewCountDialog({ onClose, onCreated }: { onClose: () => void; onCreated
               <label className="text-sm font-medium mb-1 block">Kategori</label>
               <Select value={requestedCategory} onValueChange={setRequestedCategory}>
                 <SelectTrigger data-testid="select-category">
-                  <SelectValue placeholder="Kategori secin" />
+                  <SelectValue placeholder="Kategori seçin" />
                 </SelectTrigger>
                 <SelectContent>
                   {Object.entries(categoryLabels).map(([key, label]) => (
@@ -540,7 +540,7 @@ function NewCountDialog({ onClose, onCreated }: { onClose: () => void; onCreated
           )}
 
           <div>
-            <label className="text-sm font-medium mb-1 block">Sayim Turu</label>
+            <label className="text-sm font-medium mb-1 block">Sayım Türü</label>
             <Select value={countType} onValueChange={setCountType}>
               <SelectTrigger data-testid="select-count-type">
                 <SelectValue />
@@ -554,7 +554,7 @@ function NewCountDialog({ onClose, onCreated }: { onClose: () => void; onCreated
           </div>
 
           <div>
-            <label className="text-sm font-medium mb-1 block">Gorevli Kisi (Opsiyonel)</label>
+            <label className="text-sm font-medium mb-1 block">Görevli Kişi (Opsiyonel)</label>
             <Input
               value={assignedTo}
               onChange={(e) => setAssignedTo(e.target.value)}
@@ -568,20 +568,20 @@ function NewCountDialog({ onClose, onCreated }: { onClose: () => void; onCreated
             <Textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              placeholder="Sayim ile ilgili notlar..."
+              placeholder="Sayım ile ilgili notlar..."
               data-testid="input-count-notes"
             />
           </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={onClose}>Iptal</Button>
+          <Button variant="outline" onClick={onClose}>İptal</Button>
           <Button
             onClick={() => createMutation.mutate()}
             disabled={createMutation.isPending || (scope === "category" && !requestedCategory)}
             data-testid="button-start-count"
           >
             {createMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Plus className="h-4 w-4 mr-1" />}
-            Sayimi Baslat
+            Sayımı Başlat
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -610,11 +610,11 @@ function RequestCountDialog({ userName, onClose }: { userName: string; onClose: 
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/factory/stock-counts"] });
-      toast({ title: "Sayim talebi olusturuldu" });
+      toast({ title: "Sayım talebi oluşturuldu" });
       onClose();
     },
     onError: () => {
-      toast({ title: "Hata", description: "Sayim talebi olusturulamadi", variant: "destructive" });
+      toast({ title: "Hata", description: "Sayım talebi oluşturulamadı", variant: "destructive" });
     },
   });
 
@@ -622,7 +622,7 @@ function RequestCountDialog({ userName, onClose }: { userName: string; onClose: 
     <Dialog open={true} onOpenChange={() => onClose()}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Sayim Talep Et</DialogTitle>
+          <DialogTitle>Sayım Talep Et</DialogTitle>
         </DialogHeader>
         <div className="space-y-3">
           <div>
@@ -632,8 +632,8 @@ function RequestCountDialog({ userName, onClose }: { userName: string; onClose: 
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="full">Tum Stok</SelectItem>
-                <SelectItem value="category">Kategori Bazli</SelectItem>
+                <SelectItem value="full">Tüm Stok</SelectItem>
+                <SelectItem value="category">Kategori Bazlı</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -643,7 +643,7 @@ function RequestCountDialog({ userName, onClose }: { userName: string; onClose: 
               <label className="text-sm font-medium mb-1 block">Kategori</label>
               <Select value={requestedCategory} onValueChange={setRequestedCategory}>
                 <SelectTrigger data-testid="select-request-category">
-                  <SelectValue placeholder="Kategori secin" />
+                  <SelectValue placeholder="Kategori seçin" />
                 </SelectTrigger>
                 <SelectContent>
                   {Object.entries(categoryLabels).map(([key, label]) => (
@@ -655,7 +655,7 @@ function RequestCountDialog({ userName, onClose }: { userName: string; onClose: 
           )}
 
           <div>
-            <label className="text-sm font-medium mb-1 block">Sayim Turu</label>
+            <label className="text-sm font-medium mb-1 block">Sayım Türü</label>
             <Select value={countType} onValueChange={setCountType}>
               <SelectTrigger data-testid="select-request-count-type">
                 <SelectValue />
@@ -669,11 +669,11 @@ function RequestCountDialog({ userName, onClose }: { userName: string; onClose: 
           </div>
 
           <div>
-            <label className="text-sm font-medium mb-1 block">Gorevli Kisi</label>
+            <label className="text-sm font-medium mb-1 block">Görevli Kişi</label>
             <Input
               value={assignedTo}
               onChange={(e) => setAssignedTo(e.target.value)}
-              placeholder="Sayimi yapacak kisinin adi"
+              placeholder="Sayımı yapacak kişinin adı"
               data-testid="input-request-assigned-to"
             />
           </div>
@@ -689,7 +689,7 @@ function RequestCountDialog({ userName, onClose }: { userName: string; onClose: 
           </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={onClose}>Iptal</Button>
+          <Button variant="outline" onClick={onClose}>İptal</Button>
           <Button
             onClick={() => requestMutation.mutate()}
             disabled={requestMutation.isPending || !assignedTo.trim() || (scope === "category" && !requestedCategory)}
@@ -790,7 +790,7 @@ function StockCountDetailDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 flex-wrap">
             <ClipboardList className="h-5 w-5" />
-            {typeLabels[count.countType] || count.countType} Sayimi
+            {typeLabels[count.countType] || count.countType} Sayımı
             {count.scope === "category" && count.requestedCategory && (
               <span className="text-muted-foreground font-normal">- {categoryLabels[count.requestedCategory] || count.requestedCategory}</span>
             )}
@@ -813,12 +813,12 @@ function StockCountDetailDialog({
         {count.status === "requested" ? (
           <div className="py-8 text-center text-muted-foreground">
             <AlertTriangle className="h-8 w-8 mx-auto mb-2 opacity-50" />
-            <p className="text-sm">Bu sayim henuz baslatilmadi</p>
-            <p className="text-xs mt-1">Sayim baslatildiktan sonra kalemler otomatik olarak yuklenecektir</p>
+            <p className="text-sm">Bu sayım henüz başlatılmadı</p>
+            <p className="text-xs mt-1">Sayım başlatıldıktan sonra kalemler otomatik olarak yüklenecektir</p>
             {canStartThis && (
               <Button className="mt-3" onClick={onStart} data-testid="button-dialog-start">
                 <Play className="h-4 w-4 mr-1" />
-                Sayimi Basla
+                Sayımı Başla
               </Button>
             )}
           </div>
@@ -934,7 +934,7 @@ function StockCountDetailDialog({
           {count.status === "in_progress" && (
             <Button onClick={onComplete} data-testid="button-dialog-complete">
               <CheckCircle2 className="h-4 w-4 mr-1" />
-              Sayimi Tamamla
+              Sayımı Tamamla
             </Button>
           )}
           {count.status === "completed" && isManager && (

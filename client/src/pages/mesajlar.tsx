@@ -379,13 +379,13 @@ export default function Mesajlar() {
                 <MessageSquare className="w-12 h-12 text-muted-foreground/30 mb-3" />
                 <p className="text-muted-foreground font-medium">
                   {debouncedSearch
-                    ? "Aramayla eslesen mesaj bulunamadi"
+                    ? "Aramayla eşleşen mesaj bulunamadı"
                     : filter === "unread"
-                      ? "Okunmamis mesaj yok"
-                      : "Henuz mesaj yok"}
+                      ? "Okunmamış mesaj yok"
+                      : "Henüz mesaj yok"}
                 </p>
                 <p className="text-sm text-muted-foreground/70 mt-1">
-                  {!debouncedSearch && filter === "all" && "Yeni bir mesaj gondererek baslayabilirsiniz"}
+                  {!debouncedSearch && filter === "all" && "Yeni bir mesaj göndererek başlayabilirsiniz"}
                 </p>
               </div>
             ) : (
@@ -799,11 +799,11 @@ function NewMessageForm({
               <Label htmlFor="hq-recipient">Merkez Personel</Label>
               <Select value={recipientId} onValueChange={setRecipientId}>
                 <SelectTrigger id="hq-recipient" data-testid="select-hq-recipient">
-                  <SelectValue placeholder="Personel secin" />
+                  <SelectValue placeholder="Personel seçin" />
                 </SelectTrigger>
                 <SelectContent>
                   {hqUsers.length === 0 ? (
-                    <div className="p-2 text-sm text-muted-foreground">Merkez personeli bulunamadi</div>
+                    <div className="p-2 text-sm text-muted-foreground">Merkez personeli bulunamadı</div>
                   ) : (
                     hqUsers.map((u) => (
                       <SelectItem key={u.id} value={u.id}>
@@ -819,14 +819,14 @@ function NewMessageForm({
           {recipientCategory === "branch" && (
             <>
               <div className="flex flex-col gap-2">
-                <Label htmlFor="branch">Sube Secin</Label>
+                <Label htmlFor="branch">Şube Seçin</Label>
                 <Select value={selectedBranchId} onValueChange={(val) => { setSelectedBranchId(val); setRecipientId(""); }}>
                   <SelectTrigger id="branch" data-testid="select-branch">
-                    <SelectValue placeholder="Sube secin" />
+                    <SelectValue placeholder="Şube seçin" />
                   </SelectTrigger>
                   <SelectContent>
                     {branches.filter((b: any) => b.type !== "hq" && b.type !== "factory").length === 0 ? (
-                      <div className="p-2 text-sm text-muted-foreground">Sube bulunamadi</div>
+                      <div className="p-2 text-sm text-muted-foreground">Şube bulunamadı</div>
                     ) : (
                       branches
                         .filter((b: any) => b.type !== "hq" && b.type !== "factory")
@@ -840,15 +840,15 @@ function NewMessageForm({
                 </Select>
               </div>
               <div className="flex flex-col gap-2">
-                <Label htmlFor="personnel">Personel Secin</Label>
+                <Label htmlFor="personnel">Personel Seçin</Label>
                 <Select value={recipientId} onValueChange={setRecipientId} disabled={!selectedBranchId}>
                   <SelectTrigger id="personnel" data-testid="select-personnel">
-                    <SelectValue placeholder={selectedBranchId ? "Personel secin" : "Once sube secin"} />
+                    <SelectValue placeholder={selectedBranchId ? "Personel seçin" : "Önce şube seçin"} />
                   </SelectTrigger>
                   <SelectContent>
                     {branchPersonel.length === 0 ? (
                       <div className="p-2 text-sm text-muted-foreground">
-                        {selectedBranchId ? "Bu subede personel bulunamadi" : "Sube secin"}
+                        {selectedBranchId ? "Bu şubede personel bulunamadı" : "Şube seçin"}
                       </div>
                     ) : (
                       branchPersonel.map((u) => (

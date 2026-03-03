@@ -142,7 +142,7 @@ interface FoodSafetyDocument {
 }
 
 const categoryLabels: Record<string, string> = {
-  sicaklik: "Sicaklik",
+  sicaklik: "Sıcaklık",
   hijyen: "Hijyen",
   su_kalitesi: "Su Kalitesi",
   depolama: "Depolama",
@@ -152,12 +152,12 @@ const categoryLabels: Record<string, string> = {
 
 const scoreCategories: Array<{ key: keyof HygieneAudit; label: string }> = [
   { key: "handHygieneScore", label: "El Hijyeni" },
-  { key: "surfaceCleanlinessScore", label: "Yuzey Temizligi" },
+  { key: "surfaceCleanlinessScore", label: "Yüzey Temizliği" },
   { key: "equipmentHygieneScore", label: "Ekipman Hijyeni" },
-  { key: "personalHygieneScore", label: "Kisisel Hijyen" },
-  { key: "wasteManagementScore", label: "Atik Yonetimi" },
-  { key: "pestControlScore", label: "Haşere Kontrolu" },
-  { key: "storageConditionsScore", label: "Depolama Kosullari" },
+  { key: "personalHygieneScore", label: "Kişisel Hijyen" },
+  { key: "wasteManagementScore", label: "Atık Yönetimi" },
+  { key: "pestControlScore", label: "Haşere Kontrolü" },
+  { key: "storageConditionsScore", label: "Depolama Koşulları" },
 ];
 
 function getScoreColor(score: number): string {
@@ -193,8 +193,8 @@ function getTrainingStatusVariant(status: string): "default" | "secondary" | "de
 
 function getTrainingStatusLabel(status: string): string {
   if (status === "completed") return "Tamamlandı";
-  if (status === "scheduled") return "Planli";
-  if (status === "cancelled") return "Iptal";
+  if (status === "scheduled") return "Planlı";
+  if (status === "cancelled") return "İptal";
   return status;
 }
 
@@ -829,7 +829,7 @@ export default function GidaGuvenligiDashboard() {
                             </div>
                           </div>
                           <Badge variant="default" className="text-[10px] shrink-0">
-                            Tamamlandi
+                            Tamamlandı
                           </Badge>
                         </div>
                       ))}
@@ -843,7 +843,7 @@ export default function GidaGuvenligiDashboard() {
                   <CardHeader className="pb-2 pt-4 px-4 flex flex-row items-center justify-between gap-2">
                     <CardTitle className="text-sm flex items-center gap-2">
                       <AlertTriangle className="h-4 w-4" />
-                      Iptal Edilen Egitimler
+                      İptal Edilen Eğitimler
                     </CardTitle>
                     <Badge variant="destructive" className="text-xs">
                       {cancelledTrainings.length}
@@ -864,7 +864,7 @@ export default function GidaGuvenligiDashboard() {
                             </p>
                           </div>
                           <Badge variant="destructive" className="text-[10px] shrink-0">
-                            Iptal
+                            İptal
                           </Badge>
                         </div>
                       ))}

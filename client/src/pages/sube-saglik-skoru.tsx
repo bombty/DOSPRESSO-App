@@ -566,7 +566,7 @@ export default function SubeSaglikSkoru() {
           ) : (
             <Card data-testid="card-branch-table">
               <CardHeader>
-                <CardTitle className="text-base">Sube Listesi</CardTitle>
+                <CardTitle className="text-base">Şube Listesi</CardTitle>
               </CardHeader>
               <CardContent className="p-0">
                 <div className="overflow-x-auto">

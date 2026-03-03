@@ -101,7 +101,7 @@ const FABRIKA_TABS: TabConfig[] = [
   {
     id: "stok-sayim",
     label: "Stock Count",
-    labelTr: "Stok Sayim",
+    labelTr: "Stok Sayım",
     icon: <ClipboardList className="h-4 w-4" />,
     permissionModule: "factory_stations",
     restrictedToRoles: ['admin', 'fabrika_mudur'],
