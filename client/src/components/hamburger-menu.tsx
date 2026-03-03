@@ -101,6 +101,9 @@ export function HamburgerMenu() {
     enabled: !!user,
   });
 
+  const strategicRoles = ['ceo', 'cgo', 'admin'];
+  const isStrategicRole = user?.role ? strategicRoles.includes(user.role) : false;
+
   const openFaults = faults.filter((f: any) => f.currentStage !== "kapatildi").length;
   const pendingTasks = tasks.filter((t: any) => t.status === "beklemede").length;
 
@@ -113,8 +116,10 @@ export function HamburgerMenu() {
     items: (mm.items || []).map((item: any) => {
       const itemPath = item.path || '';
       let badge: number | undefined;
-      if (itemPath.includes('gorev') || itemPath.includes('task')) badge = pendingTasks > 0 ? pendingTasks : undefined;
-      if (itemPath.includes('ariza') || itemPath.includes('fault')) badge = openFaults > 0 ? openFaults : undefined;
+      if (!isStrategicRole) {
+        if (itemPath.includes('gorev') || itemPath.includes('task')) badge = pendingTasks > 0 ? pendingTasks : undefined;
+        if (itemPath.includes('ariza') || itemPath.includes('fault')) badge = openFaults > 0 ? openFaults : undefined;
+      }
 
       return {
         id: item.path || item.id,
