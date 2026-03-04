@@ -351,7 +351,7 @@ import { updateEmployeeLocation, getActiveBranchEmployees, getEmployeeLocation, 
 import { compressChecklistPhotoBase64 } from "./photo-utils";
 import { gatherAIAssistantContext } from "./ai-assistant-context";
 import { sendNotificationEmail, sendEmployeeOfMonthEmail } from "./email";
-import { startReminderSystem, startStockAlertSystem, startOnboardingCompletionSystem, startStaleQuoteReminderSystem, notifyTeknikNewFault, notifySatinalmaLowStock } from "./reminders";
+import { startReminderSystem, startStockAlertSystem, startOnboardingCompletionSystem, startStaleQuoteReminderSystem, startNotificationArchiveSystem, notifyTeknikNewFault, notifySatinalmaLowStock } from "./reminders";
 import bcrypt from "bcrypt";
 import { z } from "zod";
 import { resolvePermissionScope, applyScopeFilter, getUserPermissions, getAllActionsGroupedByModule, getRoleGrants, upsertPermissionGrant, deletePermissionGrant, getRoleAccessibleModules } from "./permission-service";
@@ -926,6 +926,7 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
   startStockAlertSystem();
   startOnboardingCompletionSystem();
   startStaleQuoteReminderSystem();
+  startNotificationArchiveSystem();
   registerDailyTaskRoutes(app);
 
   registerSatinalmaRoutes(app, isAuthenticated);

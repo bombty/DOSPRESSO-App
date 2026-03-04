@@ -1,5 +1,5 @@
 import { db } from "./db";
-import { eq, desc, asc, and, or, sql, inArray, gte, lte, isNotNull, isNull, type SQL } from "drizzle-orm";
+import { eq, desc, asc, and, or, sql, inArray, gt, gte, lte, isNotNull, isNull, type SQL } from "drizzle-orm";
 import { randomBytes } from "crypto";
 import type {
   User,
@@ -3621,7 +3621,7 @@ export class DatabaseStorage implements IStorage {
 
   // Notification operations
   async getNotifications(userId: string, isRead?: boolean): Promise<Notification[]> {
-    const conditions = [eq(notifications.userId, userId)];
+    const conditions = [eq(notifications.userId, userId), eq(notifications.isArchived, false)];
     if (isRead !== undefined) {
       conditions.push(eq(notifications.isRead, isRead));
     }
@@ -3636,12 +3636,27 @@ export class DatabaseStorage implements IStorage {
       .from(notifications)
       .where(and(
         eq(notifications.userId, userId),
-        eq(notifications.isRead, false)
+        eq(notifications.isRead, false),
+        eq(notifications.isArchived, false)
       ));
     return result[0]?.count || 0;
   }
 
   async createNotification(notification: InsertNotification): Promise<Notification> {
+    const CRITICAL_TYPES = ['sla_breach', 'pin_lockout', 'critical_fault', 'security_alert', 'fault_alert'];
+    if (!CRITICAL_TYPES.includes(notification.type)) {
+      const [countResult] = await db.select({ count: sql<number>`count(*)::int` })
+        .from(notifications)
+        .where(and(
+          eq(notifications.userId, notification.userId),
+          eq(notifications.isArchived, false),
+          gt(notifications.createdAt, sql`NOW() - INTERVAL '24 hours'`)
+        ));
+      if ((countResult?.count || 0) >= 20) {
+        console.log(`⚠️ Throttled notification for user ${notification.userId}: daily limit (20) reached, type: ${notification.type}`);
+        return { id: -1, ...notification, isRead: false, isArchived: false, branchId: notification.branchId ?? null, link: notification.link ?? null, createdAt: new Date() } as Notification;
+      }
+    }
     const [newNotification] = await db.insert(notifications).values(notification).returning();
     return newNotification;
   }
@@ -3660,7 +3675,10 @@ export class DatabaseStorage implements IStorage {
   async markAllNotificationsAsRead(userId: string): Promise<void> {
     await db.update(notifications)
       .set({ isRead: true })
-      .where(eq(notifications.userId, userId));
+      .where(and(
+        eq(notifications.userId, userId),
+        eq(notifications.isArchived, false)
+      ));
   }
 
   // Announcement operations

@@ -101,16 +101,19 @@ async function checkChecklistReminders() {
     const now = new Date();
     const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
 
-    const recentChecklistNotifs = await db.select({
+    const existingUnreadChecklist = await db.select({
+      id: notifications.id,
       link: notifications.link,
       userId: notifications.userId,
     }).from(notifications)
       .where(and(
         eq(notifications.type, 'checklist_overdue'),
+        eq(notifications.isRead, false),
+        eq(notifications.isArchived, false),
         gt(notifications.createdAt, oneDayAgo)
       ));
-    const recentChecklistKeys = new Set(
-      recentChecklistNotifs.map(n => `${n.userId}:${n.link}`)
+    const existingChecklistMap = new Map<string, number>(
+      existingUnreadChecklist.map(n => [`${n.userId}:${n.link}`, n.id])
     );
 
     try {
@@ -125,19 +128,24 @@ async function checkChecklistReminders() {
         for (const checklist of incompleteChecklists) {
           const checklistLink = `/vardiya/${shift.id}/checklists`;
           const dedupKey = `${shift.assignedToId}:${checklistLink}`;
-          if (recentChecklistKeys.has(dedupKey)) continue;
+          const existingId = existingChecklistMap.get(dedupKey);
 
           try {
-            await storage.createNotification({
-              userId: shift.assignedToId,
-              type: 'checklist_overdue',
-              title: 'Checklist Hatirlatmasi',
-              message: 'Vardiya checklist\'ini tamamlamayi unutmadiniz mi?',
-              link: checklistLink,
-              isRead: false,
-              branchId: shift.branchId,
-            });
-            recentChecklistKeys.add(dedupKey);
+            if (existingId) {
+              await db.update(notifications)
+                .set({ createdAt: new Date() })
+                .where(eq(notifications.id, existingId));
+            } else {
+              await storage.createNotification({
+                userId: shift.assignedToId,
+                type: 'checklist_overdue',
+                title: 'Checklist Hatirlatmasi',
+                message: 'Vardiya checklist\'ini tamamlamayi unutmadiniz mi?',
+                link: checklistLink,
+                isRead: false,
+                branchId: shift.branchId,
+              });
+            }
           } catch (err) {
             // Skip this checklist if notification fails
           }
@@ -481,12 +489,34 @@ async function checkOnboardingDeadlineReminders() {
 }
 
 // Check for overdue tasks and notify both assignee and assigner
-// Uses DB-based deduplication to prevent duplicate notifications even after server restarts
+async function upsertOverdueNotification(
+  userId: string,
+  type: string,
+  title: string,
+  message: string,
+  link: string,
+  branchId: number | null,
+  existingMap: Map<string, number>
+) {
+  const key = `${type}:${userId}:${link}`;
+  const existingId = existingMap.get(key);
+  if (existingId) {
+    await db.update(notifications)
+      .set({ message, createdAt: new Date() })
+      .where(eq(notifications.id, existingId));
+  } else {
+    const newNotif = await storage.createNotification({ userId, type, title, message, link, branchId });
+    if (newNotif.id > 0) {
+      existingMap.set(key, newNotif.id);
+    }
+  }
+}
+
+// Uses DB-based deduplication — updates existing unread notifications instead of creating duplicates
 async function checkOverdueTaskNotifications() {
   try {
     const tasks = await storage.getTasks();
     const now = new Date();
-    const cutoffTime = new Date(now.getTime() - OVERDUE_REMINDER_INTERVAL);
     
     const overdueTasks = tasks.filter((task: Task) => {
       if (!task.dueDate) return false;
@@ -496,7 +526,8 @@ async function checkOverdueTaskNotifications() {
 
     if (overdueTasks.length === 0) return;
 
-    const recentOverdueNotifs = await db.select({
+    const existingUnread = await db.select({
+      id: notifications.id,
       link: notifications.link,
       userId: notifications.userId,
       type: notifications.type,
@@ -506,11 +537,12 @@ async function checkOverdueTaskNotifications() {
           eq(notifications.type, 'task_overdue'),
           eq(notifications.type, 'task_overdue_assigner')
         ),
-        gt(notifications.createdAt, cutoffTime)
+        eq(notifications.isRead, false),
+        eq(notifications.isArchived, false)
       ));
 
-    const recentKeys = new Set(
-      recentOverdueNotifs.map(n => `${n.type}:${n.userId}:${n.link}`)
+    const existingMap = new Map<string, number>(
+      existingUnread.map(n => [`${n.type}:${n.userId}:${n.link}`, n.id])
     );
 
     for (const task of overdueTasks) {
@@ -518,45 +550,39 @@ async function checkOverdueTaskNotifications() {
       const daysOverdue = Math.ceil((now.getTime() - new Date(task.dueDate!).getTime()) / (24 * 60 * 60 * 1000));
 
       if (task.assignedToId) {
-        const key = `task_overdue:${task.assignedToId}:${taskLink}`;
-        if (!recentKeys.has(key)) {
-          try {
-            await storage.createNotification({
-              userId: task.assignedToId,
-              type: 'task_overdue',
-              title: 'Geciken Görev Hatırlatması',
-              message: `"${task.description?.substring(0, 40)}${(task.description?.length || 0) > 40 ? '...' : ''}" görevi ${daysOverdue} gün gecikti!`,
-              link: taskLink,
-              branchId: task.branchId,
-            });
-            recentKeys.add(key);
-          } catch (err) {
-            console.error(`Assignee notification error for task ${task.id}:`, err);
-          }
+        try {
+          await upsertOverdueNotification(
+            task.assignedToId,
+            'task_overdue',
+            'Geciken Görev Hatırlatması',
+            `"${task.description?.substring(0, 40)}${(task.description?.length || 0) > 40 ? '...' : ''}" görevi ${daysOverdue} gün gecikti!`,
+            taskLink,
+            task.branchId,
+            existingMap
+          );
+        } catch (err) {
+          console.error(`Assignee notification error for task ${task.id}:`, err);
         }
       }
 
       if (task.assignedById && task.assignedById !== task.assignedToId) {
-        const key = `task_overdue_assigner:${task.assignedById}:${taskLink}`;
-        if (!recentKeys.has(key)) {
-          try {
-            const assignee = task.assignedToId ? await storage.getUser(task.assignedToId) : null;
-            const assigneeName = assignee?.firstName && assignee?.lastName 
-              ? `${assignee.firstName} ${assignee.lastName}` 
-              : 'Çalışan';
+        try {
+          const assignee = task.assignedToId ? await storage.getUser(task.assignedToId) : null;
+          const assigneeName = assignee?.firstName && assignee?.lastName 
+            ? `${assignee.firstName} ${assignee.lastName}` 
+            : 'Çalışan';
 
-            await storage.createNotification({
-              userId: task.assignedById,
-              type: 'task_overdue_assigner',
-              title: 'Atadığınız Görev Gecikti',
-              message: `${assigneeName}'a atadığınız "${task.description?.substring(0, 40)}${(task.description?.length || 0) > 40 ? '...' : ''}" görevi ${daysOverdue} gün gecikti!`,
-              link: taskLink,
-              branchId: task.branchId,
-            });
-            recentKeys.add(key);
-          } catch (err) {
-            console.error(`Assigner notification error for task ${task.id}:`, err);
-          }
+          await upsertOverdueNotification(
+            task.assignedById,
+            'task_overdue_assigner',
+            'Atadığınız Görev Gecikti',
+            `${assigneeName}'a atadığınız "${task.description?.substring(0, 40)}${(task.description?.length || 0) > 40 ? '...' : ''}" görevi ${daysOverdue} gün gecikti!`,
+            taskLink,
+            task.branchId,
+            existingMap
+          );
+        } catch (err) {
+          console.error(`Assigner notification error for task ${task.id}:`, err);
         }
       }
     }
@@ -1245,5 +1271,59 @@ export function stopOnboardingCompletionSystem() {
     clearInterval(onboardingCheckInterval);
     onboardingCheckInterval = null;
     console.log("Onboarding bildirim sistemi durduruldu");
+  }
+}
+
+export async function archiveOldNotifications() {
+  try {
+    const result = await db.update(notifications)
+      .set({ isArchived: true })
+      .where(and(
+        eq(notifications.isArchived, false),
+        lt(notifications.createdAt, sql`NOW() - INTERVAL '30 days'`)
+      ))
+      .returning({ id: notifications.id });
+    const archivedCount = result.length;
+    if (archivedCount > 0) {
+      console.log(`📦 Archived ${archivedCount} notifications older than 30 days`);
+    }
+    return archivedCount;
+  } catch (error) {
+    console.error("Error archiving old notifications:", error);
+    return 0;
+  }
+}
+
+let archiveInterval: ReturnType<typeof setInterval> | null = null;
+let archiveRanToday = false;
+
+export function startNotificationArchiveSystem() {
+  console.log("📦 Bildirim arşivleme sistemi başlatıldı - Günlük 02:00'de çalışacak");
+
+  setTimeout(() => archiveOldNotifications(), 5000);
+
+  const checkAndArchive = async () => {
+    const now = new Date();
+    const istanbulHour = new Date(now.toLocaleString('en-US', { timeZone: 'Europe/Istanbul' })).getHours();
+    const istanbulMinute = new Date(now.toLocaleString('en-US', { timeZone: 'Europe/Istanbul' })).getMinutes();
+
+    if (istanbulHour === 2 && istanbulMinute >= 0 && istanbulMinute <= 10) {
+      if (!archiveRanToday) {
+        archiveRanToday = true;
+        await archiveOldNotifications();
+      }
+    } else {
+      archiveRanToday = false;
+    }
+  };
+
+  archiveInterval = setInterval(checkAndArchive, 10 * 60 * 1000);
+}
+
+export function stopNotificationArchiveSystem() {
+  if (archiveInterval) {
+    clearInterval(archiveInterval);
+    archiveInterval = null;
+    console.log("Bildirim arşivleme sistemi durduruldu");
   }
 }

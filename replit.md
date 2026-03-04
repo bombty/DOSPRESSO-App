@@ -47,7 +47,7 @@ The frontend utilizes React 18+ with TypeScript and Vite, employing Shadcn/ui (N
 ### System Design Choices
 - **Health Score Calculation**: Real-time scores based on recent faults and compliance.
 - **SLA Calculation**: Dynamic, time-based calculation varying by fault priority.
-- **Notifications**: Automatic in-app alerts and email notifications; manager notifications on critical events.
+- **Notifications**: Automatic in-app alerts and email notifications; manager notifications on critical events. `is_archived` column enables auto-archiving of notifications older than 30 days (daily at 02:00 Istanbul). Overdue task/checklist reminders use DB-based upsert dedup (UPDATE existing unread instead of creating duplicates). Per-user daily throttle (20/day) with critical type bypass (`sla_breach`, `pin_lockout`, `critical_fault`, `security_alert`, `fault_alert`).
 - **State Management**: TanStack Query for server state and localStorage for theme persistence.
 - **Photo Upload**: Persistent storage on AWS S3 via an ObjectUploader component.
 - **Backup System**: Daily automatic backups to object storage with a restore pipeline.

@@ -4037,14 +4037,17 @@ export const notifications = pgTable("notifications", {
   message: text("message").notNull(),
   link: text("link"),
   isRead: boolean("is_read").notNull().default(false),
+  isArchived: boolean("is_archived").notNull().default(false),
   branchId: integer("branch_id"),
   createdAt: timestamp("created_at").defaultNow(),
 }, (table) => ({
   userReadCreatedIdx: index("notifications_user_read_created_idx").on(table.userId, table.isRead, table.createdAt),
+  archivedCreatedIdx: index("notifications_archived_created_idx").on(table.isArchived, table.createdAt),
 }));
 
 export const insertNotificationSchema = createInsertSchema(notifications).omit({
   id: true,
+  isArchived: true,
   createdAt: true,
 });
 
