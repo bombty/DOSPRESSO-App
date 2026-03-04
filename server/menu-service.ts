@@ -546,6 +546,127 @@ const MENU_BLUEPRINT: SidebarMenuSection[] = [
 ];
 
 // ========================================
+// SIDEBAR VISIBILITY OVERRIDES
+// Restricts which menu item IDs each role sees in the sidebar.
+// Roles NOT listed here (e.g. admin) see everything that passes scope+permission checks.
+// This is an additional filter on top of scope + PERMISSIONS — it only hides, never grants access.
+// ========================================
+
+const SIDEBAR_ALLOWED_ITEMS: Partial<Record<UserRoleType, string[]>> = {
+  barista: [
+    'branch-dashboard', 'tasks-list', 'checklists', 'faults',
+    'training-academy', 'notifications', 'usage-guide', 'hq-support',
+  ],
+  stajyer: [
+    'branch-dashboard', 'tasks-list', 'checklists',
+    'training-academy', 'notifications', 'usage-guide', 'hq-support',
+  ],
+  bar_buddy: [
+    'branch-dashboard', 'tasks-list', 'checklists', 'faults',
+    'training-academy', 'notifications', 'usage-guide', 'hq-support',
+  ],
+  supervisor: [
+    'branch-dashboard', 'tasks-list', 'checklists', 'shifts', 'equipment', 'faults',
+    'hr', 'training-academy', 'notifications', 'usage-guide', 'hq-support', 'lost-found',
+  ],
+  supervisor_buddy: [
+    'branch-dashboard', 'tasks-list', 'checklists', 'shifts', 'equipment', 'faults',
+    'hr', 'training-academy', 'notifications', 'usage-guide', 'hq-support', 'lost-found',
+  ],
+  mudur: [
+    'branch-dashboard', 'tasks-list', 'checklists', 'shifts', 'equipment', 'faults',
+    'hr', 'branch-shift-tracking', 'attendance', 'reports', 'lost-found',
+    'training-academy', 'notifications', 'usage-guide', 'hq-support',
+  ],
+  yatirimci_branch: [
+    'branch-dashboard', 'tasks-list', 'checklists', 'shifts', 'hr', 'reports',
+    'notifications', 'usage-guide', 'hq-support',
+  ],
+  ceo: [
+    'dashboard', 'branches-list', 'reports', 'performance-dashboard', 'hr',
+    'training-academy', 'knowledge-base', 'notifications', 'usage-guide',
+    'branch-health', 'hq-support', 'messages',
+  ],
+  cgo: [
+    'dashboard', 'branches-list', 'reports', 'performance-dashboard', 'hr',
+    'training-academy', 'knowledge-base', 'notifications', 'usage-guide',
+    'branch-health', 'hq-support', 'messages', 'customer-satisfaction',
+  ],
+  yatirimci_hq: [
+    'dashboard', 'branches-list', 'reports', 'performance-dashboard',
+    'notifications', 'usage-guide', 'hq-support',
+  ],
+  coach: [
+    'dashboard', 'branches-list', 'hr', 'training-academy', 'reports',
+    'branch-inspection', 'branch-health', 'notifications', 'usage-guide', 'hq-support',
+  ],
+  destek: [
+    'dashboard', 'branches-list', 'hr', 'training-academy', 'reports',
+    'branch-inspection', 'branch-health', 'notifications', 'usage-guide', 'hq-support',
+  ],
+  trainer: [
+    'dashboard', 'training-academy', 'knowledge-base', 'reports',
+    'branches-list', 'notifications', 'usage-guide', 'hq-support',
+  ],
+  kalite_kontrol: [
+    'dashboard', 'quality-control', 'food-safety', 'equipment', 'faults',
+    'product-complaints', 'reports', 'branch-health', 'branch-inspection',
+    'notifications', 'usage-guide', 'hq-support',
+  ],
+  gida_muhendisi: [
+    'dashboard', 'food-safety', 'quality-control', 'equipment', 'faults',
+    'reports', 'notifications', 'usage-guide', 'hq-support',
+  ],
+  marketing: [
+    'dashboard', 'content-studio', 'customer-satisfaction', 'reports',
+    'branches-list', 'notifications', 'usage-guide', 'hq-support',
+  ],
+  muhasebe_ik: [
+    'dashboard', 'hr', 'shifts', 'attendance', 'branch-shift-tracking',
+    'accounting-main', 'financial-management', 'financial-reports', 'reports',
+    'onboarding-programs', 'notifications', 'usage-guide', 'hq-support',
+  ],
+  muhasebe: [
+    'dashboard', 'accounting-main', 'financial-management', 'financial-reports',
+    'reports', 'notifications', 'usage-guide', 'hq-support',
+  ],
+  satinalma: [
+    'dashboard', 'procurement-dashboard', 'stock-management', 'supplier-management',
+    'order-management', 'goods-receipt', 'reports', 'notifications', 'usage-guide', 'hq-support',
+  ],
+  teknik: [
+    'dashboard', 'equipment', 'faults', 'qr-scan', 'reports',
+    'notifications', 'usage-guide', 'hq-support',
+  ],
+  fabrika_mudur: [
+    'dashboard', 'factory-dashboard', 'factory-kiosk', 'factory-quality',
+    'factory-stations', 'factory-analytics', 'factory-compliance',
+    'notifications', 'usage-guide', 'hq-support',
+  ],
+  fabrika: [
+    'factory-dashboard', 'factory-kiosk', 'factory-quality', 'factory-stations',
+    'notifications', 'usage-guide', 'hq-support',
+  ],
+  fabrika_operator: [
+    'factory-dashboard', 'factory-kiosk', 'factory-quality', 'factory-stations',
+    'notifications', 'usage-guide', 'hq-support',
+  ],
+};
+
+// Startup validation: verify all SIDEBAR_ALLOWED_ITEMS IDs exist in MENU_BLUEPRINT
+const ALL_BLUEPRINT_ITEM_IDS = new Set(
+  MENU_BLUEPRINT.flatMap(section => section.items.map(item => item.id))
+);
+for (const [role, itemIds] of Object.entries(SIDEBAR_ALLOWED_ITEMS)) {
+  if (!itemIds) continue;
+  for (const itemId of itemIds) {
+    if (!ALL_BLUEPRINT_ITEM_IDS.has(itemId)) {
+      console.warn(`[menu-service] SIDEBAR_ALLOWED_ITEMS: role "${role}" references unknown item ID "${itemId}"`);
+    }
+  }
+}
+
+// ========================================
 // MENU SERVICE
 // Server-side RBAC filtering with dynamic permissions support
 // ========================================
@@ -619,22 +740,22 @@ export function buildMenuForUser(
     userScope = 'branch';
   }
 
-  // Filter sections by scope
+  const allowedItems = SIDEBAR_ALLOWED_ITEMS[role];
+
+  // Filter sections by scope, permissions, and sidebar visibility overrides
   const filteredSections: SidebarMenuSection[] = MENU_BLUEPRINT
     .filter(section => isScopeAllowed(section.scope, userScope))
     .map(section => ({
       ...section,
       items: section.items.filter(item => {
-        // Check scope
         if (!isScopeAllowed(item.scope, userScope)) return false;
-        // Items marked as alwaysVisible skip permission check
         if (item.alwaysVisible) return true;
-        // Check module permission (with dynamic permissions support)
         if (!canAccessModule(role, item.moduleKey, dynamicPermissions)) return false;
+        if (allowedItems && !allowedItems.includes(item.id)) return false;
         return true;
       }),
     }))
-    .filter(section => section.items.length > 0 || section.items.some(i => i.alwaysVisible)); // Remove empty sections
+    .filter(section => section.items.length > 0);
 
   return {
     sections: filteredSections,
