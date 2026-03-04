@@ -12,6 +12,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { UnifiedHero } from "@/components/widgets/unified-hero";
 import { AtadiklarimWidget } from "@/components/widgets/atadiklarim-widget";
+import { GateRequestsWidget } from "@/components/widgets/gate-requests-widget";
 import { CriticalAlerts } from "@/components/critical-alerts";
 import { DailyTaskPanel } from "@/components/daily-task-panel";
 import { MrDobody } from "@/components/mr-dobody";
@@ -651,6 +652,8 @@ function CoachDashboard() {
 
         <AlertPanel alerts={alerts} />
       </div>
+
+      <GateRequestsWidget />
 
       <Card 
         className="hover-elevate cursor-pointer"

@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Textarea } from "@/components/ui/textarea";
 import { ArrowLeft, Users, CheckCircle, Clock, AlertCircle, Check, X, BookOpen } from "lucide-react";
 import { Link } from "wouter";
+import { GateRequestsWidget } from "@/components/widgets/gate-requests-widget";
 
 export default function AcademySupervisor() {
   const { toast } = useToast();
@@ -97,6 +98,8 @@ export default function AcademySupervisor() {
         <h1 className="text-lg font-bold tracking-tight">Supervisor Paneli</h1>
         <p className="text-xs text-muted-foreground mt-1">Ekip yönetimi ve sınav talepleri</p>
       </div>
+
+      <GateRequestsWidget />
 
       <Tabs defaultValue="team" className="w-full">
         <TabsList className="grid w-full grid-cols-3">

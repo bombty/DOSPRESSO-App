@@ -847,6 +847,9 @@ export interface IStorage {
   getCareerLevels(): Promise<CareerLevel[]>;
   getCareerLevel(id: number): Promise<CareerLevel | undefined>;
   getUserCareerProgress(userId: string): Promise<UserCareerProgress | undefined>;
+  updateUserCareerProgress(userId: string, updates: Partial<typeof userCareerProgress.$inferInsert>): Promise<UserCareerProgress | undefined>;
+  createUserCareerProgress(userId: string, currentCareerLevelId: number): Promise<UserCareerProgress>;
+  addCompletedModuleToCareerProgress(userId: string, moduleId: number): Promise<UserCareerProgress | undefined>;
   createExamRequest(request: InsertExamRequest): Promise<ExamRequest>;
   getExamRequests(filters?: { userId?: string; status?: string; targetRoleId?: string }): Promise<ExamRequest[]>;
   updateExamRequest(id: number, updates: Partial<InsertExamRequest>): Promise<ExamRequest | undefined>;
@@ -879,6 +882,9 @@ export interface IStorage {
   saveCareerScoreHistory(data: InsertCareerScoreHistory): Promise<CareerScoreHistory>;
   getCareerScoreHistory(userId: string, limit?: number): Promise<CareerScoreHistory[]>;
   
+  // Composite score update (nightly job)
+  runAllCompositeScoreUpdates(): Promise<{ processed: number; dangerCount: number; warningCount: number }>;
+
   // Danger zone and demotion
   checkAndProcessDangerZone(userId: string): Promise<{ warning: boolean; demoted: boolean; message: string }>;
   runAllDangerZoneChecks(): Promise<{ processed: number; warnings: number; demotions: number }>;
@@ -7062,6 +7068,36 @@ export class DatabaseStorage implements IStorage {
     return result;
   }
 
+  async addCompletedModuleToCareerProgress(userId: string, moduleId: number): Promise<UserCareerProgress | undefined> {
+    const existing = await this.getUserCareerProgress(userId);
+    if (!existing) {
+      const levels = await this.getCareerLevels();
+      const firstLevel = levels.find((l: CareerLevel) => l.levelNumber === 1);
+      if (!firstLevel) return undefined;
+      await this.createUserCareerProgress(userId, firstLevel.id);
+      const [result] = await db.update(userCareerProgress)
+        .set({
+          completedModuleIds: sql`array_append(COALESCE(completed_module_ids, ARRAY[]::integer[]), ${moduleId})`,
+          lastUpdatedAt: new Date(),
+        })
+        .where(eq(userCareerProgress.userId, userId))
+        .returning();
+      return result;
+    }
+    const currentIds = existing.completedModuleIds || [];
+    if (currentIds.includes(moduleId)) {
+      return existing;
+    }
+    const [result] = await db.update(userCareerProgress)
+      .set({
+        completedModuleIds: sql`array_append(COALESCE(completed_module_ids, ARRAY[]::integer[]), ${moduleId})`,
+        lastUpdatedAt: new Date(),
+      })
+      .where(eq(userCareerProgress.userId, userId))
+      .returning();
+    return result;
+  }
+
   async createExamRequest(request: InsertExamRequest): Promise<ExamRequest> {
     const [result] = await db.insert(examRequests).values(request).returning();
     return result;
@@ -7325,6 +7361,74 @@ export class DatabaseStorage implements IStorage {
     }
     
     return { processed, warnings, demotions };
+  }
+
+  async runAllCompositeScoreUpdates(): Promise<{ processed: number; dangerCount: number; warningCount: number }> {
+    const HQ_ROLES = ['admin', 'ceo', 'cgo', 'coach', 'trainer', 'muhasebe_ik', 'satinalma', 'gida_muhendisi', 'marketing', 'yatirimci_hq', 'destek', 'teknik', 'kalite_kontrol'];
+    const allActiveUsers = await db.select({ id: users.id, role: users.role })
+      .from(users)
+      .where(eq(users.isActive, true));
+
+    const branchFactoryUsers = allActiveUsers.filter(u => !HQ_ROLES.includes(u.role || ''));
+
+    let processed = 0;
+    let dangerCount = 0;
+    let warningCount = 0;
+    const currentMonth = new Date().toISOString().slice(0, 7);
+
+    for (const user of branchFactoryUsers) {
+      try {
+        const scores = await this.calculateCompositeCareerScore(user.id);
+        
+        const existing = await this.getUserCareerProgress(user.id);
+        if (existing) {
+          await this.updateUserCareerScores(user.id, {
+            trainingScore: scores.trainingScore,
+            practicalScore: scores.practicalScore,
+            attendanceScore: scores.attendanceScore,
+            managerScore: scores.managerScore,
+            compositeScore: scores.compositeScore,
+          });
+        } else {
+          await db.insert(userCareerProgress).values({
+            userId: user.id,
+            currentCareerLevelId: 1,
+            completedModuleIds: [],
+            averageQuizScore: 0,
+            totalQuizzesAttempted: 0,
+            trainingScore: scores.trainingScore,
+            practicalScore: scores.practicalScore,
+            attendanceScore: scores.attendanceScore,
+            managerScore: scores.managerScore,
+            compositeScore: scores.compositeScore,
+            dangerZoneMonths: 0,
+          });
+        }
+
+        try {
+          await this.saveCareerScoreHistory({
+            userId: user.id,
+            scoreMonth: currentMonth,
+            trainingScore: scores.trainingScore,
+            practicalScore: scores.practicalScore,
+            attendanceScore: scores.attendanceScore,
+            managerScore: scores.managerScore,
+            compositeScore: scores.compositeScore,
+            careerLevelId: existing?.currentCareerLevelId || 1,
+            dangerZone: scores.dangerZone,
+          });
+        } catch {
+        }
+
+        if (scores.dangerZone) dangerCount++;
+        if (scores.compositeScore >= 60 && scores.compositeScore < 70) warningCount++;
+        processed++;
+      } catch (error) {
+        console.error(`Composite score update failed for user ${user.id}:`, error);
+      }
+    }
+
+    return { processed, dangerCount, warningCount };
   }
 
     async demoteUserCareerLevel(userId: string): Promise<UserCareerProgress | undefined> {

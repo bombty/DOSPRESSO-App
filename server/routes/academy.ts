@@ -27,6 +27,8 @@ import {
   insertRecipeCategorySchema,
   insertRecipeSchema,
   insertRecipeVersionSchema,
+  moduleQuizzes,
+  trainingModules,
 } from "@shared/schema";
 import { eq, desc, asc, and, or, gte, lte, sql, inArray, isNull, not, ne, count, sum, avg, max, min } from "drizzle-orm";
 import { z } from "zod";
@@ -449,10 +451,10 @@ router.get('/api/academy/stats', isAuthenticated, async (req: any, res) => {
   }
 });
 
-// POST /api/academy/quiz-result - Submit quiz result + Auto-unlock badges
+// POST /api/academy/quiz-result - Submit quiz result + Auto-unlock badges + Training completion chain + Anti-cheat metadata
 router.post('/api/academy/quiz-result', isAuthenticated, async (req: any, res) => {
   try {
-    const { quizId, score, answers } = req.body;
+    const { quizId, score, answers, metadata } = req.body;
     if (!quizId || score === undefined) {
       return res.status(400).json({ message: "quizId ve score gerekli" });
     }
@@ -463,6 +465,40 @@ router.post('/api/academy/quiz-result', isAuthenticated, async (req: any, res) =
       score: Number(score),
       answers,
     });
+
+    try {
+      const existingAttempts = await storage.getUserQuizAttempts(req.user.id, Number(quizId));
+      const attemptNumber = existingAttempts.length + 1;
+      const quizData = await storage.getModuleQuiz(Number(quizId));
+      const passingScore = quizData?.passingScore || 70;
+
+      const antiCheatData = metadata ? JSON.stringify({
+        tabSwitchCount: metadata.tabSwitchCount || 0,
+        completionType: metadata.completionType || "normal",
+        deviceType: metadata.deviceType || "unknown",
+        questionTimings: metadata.questionTimings || {},
+        totalTimeSpent: metadata.totalTimeSpent || 0,
+        anomalyFlags: metadata.anomalyFlags || [],
+      }) : null;
+
+      const attemptAnswers = JSON.stringify({
+        userAnswers: answers,
+        ...(antiCheatData ? { antiCheat: JSON.parse(antiCheatData) } : {}),
+      });
+
+      await storage.createQuizAttempt({
+        userId: req.user.id,
+        quizId: Number(quizId),
+        score: Number(score),
+        answers: attemptAnswers,
+        isPassed: Number(score) >= passingScore,
+        timeSpent: metadata?.totalTimeSpent || null,
+        attemptNumber,
+        completedAt: new Date(),
+      });
+    } catch (attemptError: any) {
+      console.error("Quiz attempt record error:", attemptError);
+    }
 
     const badgesList = await storage.getBadges();
     const unlockedBadges: string[] = [];
@@ -480,7 +516,24 @@ router.post('/api/academy/quiz-result', isAuthenticated, async (req: any, res) =
       }
     });
 
-    res.json({ success: true, result, unlockedBadges });
+    let moduleCompleted = false;
+    let completedModuleId: number | null = null;
+    try {
+      const quiz = await storage.getModuleQuiz(Number(quizId));
+      if (quiz && quiz.moduleId) {
+        const passingScore = quiz.passingScore || 70;
+        if (Number(score) >= passingScore) {
+          completedModuleId = quiz.moduleId;
+          await storage.addCompletedModuleToCareerProgress(req.user.id, quiz.moduleId);
+          moduleCompleted = true;
+          console.log(`Training chain: User ${req.user.id} passed quiz ${quizId} (score: ${score}) -> module ${quiz.moduleId} added to completed_module_ids`);
+        }
+      }
+    } catch (chainError: any) {
+      console.error("Training completion chain error:", chainError);
+    }
+
+    res.json({ success: true, result, unlockedBadges, moduleCompleted, completedModuleId });
   } catch (error: any) {
     handleApiError(res, error, "SubmitQuizResult");
   }
@@ -1949,6 +2002,172 @@ router.patch('/api/academy/recipe-notifications/mark-all-read', isAuthenticated,
   } catch (error: any) {
     console.error("Mark all recipe notifications read error:", error);
     res.status(500).json({ message: "Bildirimler güncellenemedi" });
+  }
+});
+
+router.post('/api/academy/ai-generate-quiz/:moduleId', isAuthenticated, async (req: any, res) => {
+  try {
+    const user = req.user!;
+    if (!isHQRole(user.role as any)) {
+      return res.status(403).json({ message: "Bu işlem için yetkiniz yok" });
+    }
+
+    const moduleId = parseInt(req.params.moduleId);
+    if (isNaN(moduleId)) {
+      return res.status(400).json({ message: "Geçersiz modül ID" });
+    }
+
+    const trainingModule = await storage.getTrainingModule(moduleId);
+    if (!trainingModule) {
+      return res.status(404).json({ message: "Modül bulunamadı" });
+    }
+
+    const existingQuizzes = await storage.getModuleQuizzes(moduleId);
+    let quiz;
+    if (existingQuizzes.length > 0) {
+      quiz = existingQuizzes[0];
+      const existingQuestions = await storage.getQuizQuestions(quiz.id);
+      if (existingQuestions.length >= 10) {
+        return res.json({
+          message: "Bu modülde zaten yeterli soru var",
+          quizId: quiz.id,
+          questionCount: existingQuestions.length,
+          skipped: true,
+        });
+      }
+    } else {
+      quiz = await storage.createModuleQuiz({
+        moduleId,
+        title: `${trainingModule.title} - Sınav`,
+        description: `${trainingModule.title} modülü için otomatik oluşturulan sınav`,
+        passingScore: 70,
+        timeLimit: 15,
+        isExam: false,
+        randomizeQuestions: true,
+      });
+    }
+
+    const moduleContext = `Modül Başlığı: ${trainingModule.title}\nKategori: ${trainingModule.category || 'genel'}\nAçıklama: ${trainingModule.description || ''}\nSeviye: ${trainingModule.level || 'beginner'}`;
+
+    const generatedQuestions = await generateQuizQuestionsFromLesson(moduleContext, 15);
+
+    let savedCount = 0;
+    for (const q of generatedQuestions) {
+      try {
+        await storage.createQuizQuestion({
+          quizId: quiz.id,
+          question: q.question,
+          questionType: q.questionType || 'multiple_choice',
+          options: q.options || [],
+          correctAnswer: q.correctAnswer,
+          correctAnswerIndex: q.options ? q.options.indexOf(q.correctAnswer) : 0,
+          explanation: q.explanation || '',
+          points: q.points || 1,
+        });
+        savedCount++;
+      } catch (saveErr: any) {
+        console.error(`Soru kaydetme hatası (modül ${moduleId}):`, saveErr.message);
+      }
+    }
+
+    console.log(`🎓 AI Quiz: Modül ${moduleId} (${trainingModule.title}) için ${savedCount} soru oluşturuldu`);
+
+    res.json({
+      success: true,
+      moduleId,
+      moduleTitle: trainingModule.title,
+      quizId: quiz.id,
+      generatedCount: generatedQuestions.length,
+      savedCount,
+    });
+  } catch (error: any) {
+    console.error("AI quiz generation error:", error);
+    handleApiError(res, error, "AIGenerateQuiz");
+  }
+});
+
+router.post('/api/academy/ai-generate-all-quizzes', isAuthenticated, async (req: any, res) => {
+  try {
+    const user = req.user!;
+    if (!isHQRole(user.role as any)) {
+      return res.status(403).json({ message: "Bu işlem için yetkiniz yok" });
+    }
+
+    const allModules = await db.select().from(trainingModules);
+
+    const results: Array<{ moduleId: number; title: string; status: string; questionCount?: number }> = [];
+    let totalGenerated = 0;
+    let skipped = 0;
+    let failed = 0;
+
+    for (const mod of allModules) {
+      try {
+        const existingQuizzes = await storage.getModuleQuizzes(mod.id);
+        let quiz;
+
+        if (existingQuizzes.length > 0) {
+          quiz = existingQuizzes[0];
+          const existingQuestions = await storage.getQuizQuestions(quiz.id);
+          if (existingQuestions.length >= 10) {
+            results.push({ moduleId: mod.id, title: mod.title, status: 'skipped', questionCount: existingQuestions.length });
+            skipped++;
+            continue;
+          }
+        } else {
+          quiz = await storage.createModuleQuiz({
+            moduleId: mod.id,
+            title: `${mod.title} - Sınav`,
+            description: `${mod.title} modülü için otomatik oluşturulan sınav`,
+            passingScore: 70,
+            timeLimit: 15,
+            isExam: false,
+            randomizeQuestions: true,
+          });
+        }
+
+        const moduleContext = `Modül Başlığı: ${mod.title}\nKategori: ${mod.category || 'genel'}\nAçıklama: ${mod.description || ''}\nSeviye: ${mod.level || 'beginner'}`;
+        const generatedQuestions = await generateQuizQuestionsFromLesson(moduleContext, 15);
+
+        let savedCount = 0;
+        for (const q of generatedQuestions) {
+          try {
+            await storage.createQuizQuestion({
+              quizId: quiz.id,
+              question: q.question,
+              questionType: q.questionType || 'multiple_choice',
+              options: q.options || [],
+              correctAnswer: q.correctAnswer,
+              correctAnswerIndex: q.options ? q.options.indexOf(q.correctAnswer) : 0,
+              explanation: q.explanation || '',
+              points: q.points || 1,
+            });
+            savedCount++;
+          } catch (saveErr: any) {
+            console.error(`Soru kaydetme hatası (modül ${mod.id}):`, saveErr.message);
+          }
+        }
+
+        totalGenerated += savedCount;
+        results.push({ moduleId: mod.id, title: mod.title, status: 'generated', questionCount: savedCount });
+        console.log(`🎓 AI Quiz: Modül ${mod.id} (${mod.title}) -> ${savedCount} soru`);
+      } catch (moduleErr: any) {
+        console.error(`AI quiz generation failed for module ${mod.id}:`, moduleErr.message);
+        results.push({ moduleId: mod.id, title: mod.title, status: 'failed' });
+        failed++;
+      }
+    }
+
+    res.json({
+      success: true,
+      totalModules: allModules.length,
+      totalGenerated,
+      skipped,
+      failed,
+      results,
+    });
+  } catch (error: any) {
+    console.error("Bulk AI quiz generation error:", error);
+    handleApiError(res, error, "AIGenerateAllQuizzes");
   }
 });
 

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useRoute, Link } from "wouter";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
-import { ArrowLeft, CheckCircle, XCircle, Clock, Loader, ArrowRight, Zap, Lock, RefreshCw, Trophy, AlertTriangle } from "lucide-react";
+import { ArrowLeft, CheckCircle, XCircle, Clock, Loader, ArrowRight, Zap, Lock, RefreshCw, Trophy, AlertTriangle, Eye, EyeOff, Timer, Shield } from "lucide-react";
 
 type AttemptInfo = {
   attempts: any[];
@@ -22,6 +22,27 @@ type AttemptInfo = {
   maxAttempts: number;
 };
 
+type AntiCheatMetadata = {
+  tabSwitchCount: number;
+  completionType: "normal" | "timeout" | "tab_switch" | "page_close" | "question_timeout";
+  deviceType: string;
+  questionTimings: Record<number, number>;
+  totalTimeSpent: number;
+  anomalyFlags: string[];
+};
+
+function getDeviceType(): string {
+  const ua = navigator.userAgent;
+  if (/tablet|ipad|playbook|silk/i.test(ua)) return "tablet";
+  if (/mobile|iphone|ipod|android|blackberry|opera mini|iemobile/i.test(ua)) return "mobile";
+  return "desktop";
+}
+
+const QUESTION_TIME_LIMIT = 60;
+const TOTAL_TIME_LIMIT_MINUTES = 30;
+const TOTAL_TIME_LIMIT_SECONDS = TOTAL_TIME_LIMIT_MINUTES * 60;
+const TAB_SWITCH_AUTO_SUBMIT_DELAY = 10;
+
 export default function AcademyQuiz() {
   const { toast } = useToast();
   const { user } = useAuth();
@@ -32,8 +53,22 @@ export default function AcademyQuiz() {
   const [answers, setAnswers] = useState<Record<number, string>>({});
   const [submitted, setSubmitted] = useState(false);
   const [score, setScore] = useState(0);
+  const [quizStarted, setQuizStarted] = useState(false);
 
-  // Fetch attempt info to check if retry is allowed
+  const [totalTimeRemaining, setTotalTimeRemaining] = useState(TOTAL_TIME_LIMIT_SECONDS);
+  const [questionTimeRemaining, setQuestionTimeRemaining] = useState(QUESTION_TIME_LIMIT);
+
+  const [tabSwitchCount, setTabSwitchCount] = useState(0);
+  const [showTabWarning, setShowTabWarning] = useState(false);
+  const [tabWarningCountdown, setTabWarningCountdown] = useState(TAB_SWITCH_AUTO_SUBMIT_DELAY);
+
+  const questionStartTimeRef = useRef<number>(Date.now());
+  const questionTimingsRef = useRef<Record<number, number>>({});
+  const quizStartTimeRef = useRef<number>(Date.now());
+  const hasAutoSubmittedRef = useRef(false);
+  const tabSwitchCountRef = useRef(0);
+  const completionTypeRef = useRef<AntiCheatMetadata["completionType"]>("normal");
+
   const { data: attemptInfo, isLoading: attemptsLoading } = useQuery<AttemptInfo>({
     queryKey: [`/api/academy/quiz/${quizId}/attempts`],
     queryFn: async () => {
@@ -44,7 +79,6 @@ export default function AcademyQuiz() {
     enabled: !!quizId,
   });
 
-  // Fetch quiz questions from database
   const { data: questions = [], isLoading } = useQuery({
     queryKey: [`/api/academy/quiz/${quizId}/questions`],
     queryFn: async () => {
@@ -55,7 +89,6 @@ export default function AcademyQuiz() {
     enabled: !!quizId,
   });
 
-  // Fetch adaptive recommendation
   const { data: recommendation } = useQuery({
     queryKey: [`/api/academy/adaptive-recommendation/${quizId}`],
     queryFn: async () => {
@@ -66,7 +99,6 @@ export default function AcademyQuiz() {
     enabled: submitted,
   });
 
-  // Calculate remaining cooldown time
   const getRemainingTime = () => {
     if (!attemptInfo?.retryAvailableAt) return null;
     const retryTime = new Date(attemptInfo.retryAvailableAt).getTime();
@@ -78,46 +110,200 @@ export default function AcademyQuiz() {
     return `${hours} saat ${minutes} dakika`;
   };
 
-  // Quiz metadata
   const quiz = {
     id: quizId,
     title: "Espresso Hazırlama Teknikleri",
     description: "Profesyonel espresso hazırlamayı öğrenin",
-    timeLimit: 1800, // 30 minutes in seconds
+    timeLimit: TOTAL_TIME_LIMIT_SECONDS,
     passingScore: 70,
     questions: questions,
   };
 
+  const buildMetadata = useCallback((cType: AntiCheatMetadata["completionType"]): AntiCheatMetadata => {
+    const totalTimeSpent = Math.round((Date.now() - quizStartTimeRef.current) / 1000);
+    const anomalyFlags: string[] = [];
+
+    if (totalTimeSpent < 60 && quiz.questions.length >= 10) {
+      anomalyFlags.push("too_fast");
+    }
+    if (tabSwitchCountRef.current >= 3) {
+      anomalyFlags.push("excessive_tab_switches");
+    }
+    if (cType === "page_close") {
+      anomalyFlags.push("page_close");
+    }
+
+    return {
+      tabSwitchCount: tabSwitchCountRef.current,
+      completionType: cType,
+      deviceType: getDeviceType(),
+      questionTimings: { ...questionTimingsRef.current },
+      totalTimeSpent,
+      anomalyFlags,
+    };
+  }, [quiz.questions.length]);
+
   const submitMutation = useMutation({
-    mutationFn: async (result: { quizId: string; score: number; answers: Record<number, string> }) => {
+    mutationFn: async (result: { quizId: string; score: number; answers: Record<number, string>; metadata: AntiCheatMetadata }) => {
       return apiRequest("POST", "/api/academy/quiz-result", result);
     },
     onSuccess: () => {
       toast({ title: "Quiz tamamlandı", description: "Sonuçlarınız kaydedildi" });
       queryClient.invalidateQueries({ queryKey: ["/api/academy/quiz-results"] });
-      // Invalidate attempts to refresh gating status
       queryClient.invalidateQueries({ queryKey: [`/api/academy/quiz/${quizId}/attempts`] });
     },
   });
 
-  const handleSubmit = () => {
-    // Calculate score
+  const doSubmit = useCallback((cType: AntiCheatMetadata["completionType"] = "normal") => {
+    if (hasAutoSubmittedRef.current || submitted) return;
+    hasAutoSubmittedRef.current = true;
+    completionTypeRef.current = cType;
+
+    const elapsed = Math.round((Date.now() - questionStartTimeRef.current) / 1000);
+    questionTimingsRef.current[currentQuestion] = (questionTimingsRef.current[currentQuestion] || 0) + elapsed;
+
     let correctCount = 0;
     quiz.questions.forEach((q: any, idx: number) => {
       if (parseInt(answers[idx]) === q.correct_answer_index) {
         correctCount++;
       }
     });
-    const finalScore = Math.round((correctCount / quiz.questions.length) * 100);
+    const finalScore = quiz.questions.length > 0 ? Math.round((correctCount / quiz.questions.length) * 100) : 0;
     setScore(finalScore);
     setSubmitted(true);
+    setShowTabWarning(false);
 
-    // Submit result
+    const metadata = buildMetadata(cType);
+
     submitMutation.mutate({
       quizId: quizId || "",
       score: finalScore,
       answers,
+      metadata,
     });
+  }, [answers, buildMetadata, currentQuestion, quiz.questions, quizId, submitted, submitMutation]);
+
+  const handleSubmit = useCallback(() => {
+    doSubmit("normal");
+  }, [doSubmit]);
+
+  useEffect(() => {
+    if (!quizStarted || submitted || quiz.questions.length === 0) return;
+
+    const interval = setInterval(() => {
+      setTotalTimeRemaining((prev) => {
+        if (prev <= 1) {
+          clearInterval(interval);
+          doSubmit("timeout");
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [quizStarted, submitted, quiz.questions.length, doSubmit]);
+
+  useEffect(() => {
+    if (!quizStarted || submitted || quiz.questions.length === 0) return;
+
+    setQuestionTimeRemaining(QUESTION_TIME_LIMIT);
+    questionStartTimeRef.current = Date.now();
+
+    const interval = setInterval(() => {
+      setQuestionTimeRemaining((prev) => {
+        if (prev <= 1) {
+          clearInterval(interval);
+          const elapsed = QUESTION_TIME_LIMIT;
+          questionTimingsRef.current[currentQuestion] = (questionTimingsRef.current[currentQuestion] || 0) + elapsed;
+
+          if (currentQuestion < quiz.questions.length - 1) {
+            setCurrentQuestion((q) => q + 1);
+          } else {
+            doSubmit("question_timeout");
+          }
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [currentQuestion, quizStarted, submitted, quiz.questions.length, doSubmit]);
+
+  useEffect(() => {
+    if (!quizStarted || submitted || quiz.questions.length === 0) return;
+
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        tabSwitchCountRef.current += 1;
+        setTabSwitchCount(tabSwitchCountRef.current);
+        setShowTabWarning(true);
+        setTabWarningCountdown(TAB_SWITCH_AUTO_SUBMIT_DELAY);
+
+        toast({
+          title: "Sekme Değişikliği Tespit Edildi",
+          description: `Uyarı ${tabSwitchCountRef.current}: 10 saniye içinde geri dönmezseniz sınavınız otomatik gönderilecektir.`,
+          variant: "destructive",
+        });
+      } else {
+        setShowTabWarning(false);
+        setTabWarningCountdown(TAB_SWITCH_AUTO_SUBMIT_DELAY);
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
+  }, [quizStarted, submitted, quiz.questions.length, toast]);
+
+  useEffect(() => {
+    if (!showTabWarning || submitted) return;
+
+    const interval = setInterval(() => {
+      setTabWarningCountdown((prev) => {
+        if (prev <= 1) {
+          clearInterval(interval);
+          doSubmit("tab_switch");
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [showTabWarning, submitted, doSubmit]);
+
+  useEffect(() => {
+    if (!quizStarted || submitted || quiz.questions.length === 0) return;
+
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = "Sınavınız henüz tamamlanmadı. Sayfadan ayrılmak istediğinize emin misiniz?";
+
+      if (!hasAutoSubmittedRef.current) {
+        doSubmit("page_close");
+      }
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [quizStarted, submitted, quiz.questions.length, doSubmit]);
+
+  const advanceToNextQuestion = useCallback(() => {
+    if (submitted || quiz.questions.length === 0) return;
+
+    const elapsed = Math.round((Date.now() - questionStartTimeRef.current) / 1000);
+    questionTimingsRef.current[currentQuestion] = (questionTimingsRef.current[currentQuestion] || 0) + elapsed;
+
+    if (currentQuestion < quiz.questions.length - 1) {
+      setCurrentQuestion(currentQuestion + 1);
+    }
+  }, [currentQuestion, quiz.questions.length, submitted]);
+
+  const formatTime = (seconds: number): string => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
   };
 
   if (isLoading || attemptsLoading) {
@@ -131,7 +317,6 @@ export default function AcademyQuiz() {
     );
   }
 
-  // Show locked state if already passed
   if (attemptInfo?.hasPassed) {
     return (
       <div className="grid grid-cols-1 gap-3 p-3 max-w-md mx-auto">
@@ -163,7 +348,6 @@ export default function AcademyQuiz() {
     );
   }
 
-  // Show cooldown state if retry is not allowed
   if (attemptInfo && !attemptInfo.canRetry && !attemptInfo.hasPassed) {
     const remainingTime = getRemainingTime();
     const attemptsRemaining = attemptInfo.maxAttempts - attemptInfo.attemptCount;
@@ -186,7 +370,7 @@ export default function AcademyQuiz() {
               Tekrar denemeden önce beklemeniz gerekiyor.
             </p>
             {remainingTime && (
-              <div className="flex items-center justify-center gap-2 p-3 bg-muted rounded-lg">
+              <div className="flex items-center justify-center gap-2 p-3 bg-muted rounded-md">
                 <Clock className="w-5 h-5 text-amber-500" />
                 <span className="font-medium">{remainingTime}</span>
               </div>
@@ -200,7 +384,7 @@ export default function AcademyQuiz() {
               </p>
             </div>
             {attemptsRemaining <= 0 && (
-              <div className="flex items-center justify-center gap-2 p-2 bg-red-500/10 rounded-lg">
+              <div className="flex items-center justify-center gap-2 p-2 bg-red-500/10 rounded-md">
                 <AlertTriangle className="w-4 h-4 text-red-500" />
                 <span className="text-xs text-red-600">Deneme hakkınız kalmadı</span>
               </div>
@@ -227,6 +411,65 @@ export default function AcademyQuiz() {
     );
   }
 
+  if (!quizStarted) {
+    return (
+      <div className="grid grid-cols-1 gap-3 p-3 max-w-md mx-auto">
+        <Link to="/akademi">
+          <Button variant="ghost" size="sm" data-testid="button-back">
+            <ArrowLeft className="w-4 h-4 mr-1" />
+            Akademi
+          </Button>
+        </Link>
+        <Card>
+          <CardHeader className="text-center pb-2">
+            <Shield className="w-10 h-10 text-primary mx-auto mb-2" />
+            <CardTitle className="text-base">Sınav Kuralları</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="space-y-2 text-sm text-muted-foreground">
+              <div className="flex items-start gap-2">
+                <Timer className="w-4 h-4 mt-0.5 shrink-0" />
+                <span>Toplam süre: <strong className="text-foreground">{TOTAL_TIME_LIMIT_MINUTES} dakika</strong></span>
+              </div>
+              <div className="flex items-start gap-2">
+                <Clock className="w-4 h-4 mt-0.5 shrink-0" />
+                <span>Her soru için: <strong className="text-foreground">{QUESTION_TIME_LIMIT} saniye</strong></span>
+              </div>
+              <div className="flex items-start gap-2">
+                <ArrowRight className="w-4 h-4 mt-0.5 shrink-0" />
+                <span>Sorularda <strong className="text-foreground">geri dönemezsiniz</strong></span>
+              </div>
+              <div className="flex items-start gap-2">
+                <EyeOff className="w-4 h-4 mt-0.5 shrink-0" />
+                <span>Sekme değiştirme <strong className="text-foreground">tespit edilir</strong> ve kaydedilir</span>
+              </div>
+              <div className="flex items-start gap-2">
+                <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
+                <span>10 saniye içinde geri dönmezseniz sınav <strong className="text-foreground">otomatik gönderilir</strong></span>
+              </div>
+            </div>
+            <div className="pt-2">
+              <p className="text-xs text-muted-foreground mb-3">
+                Toplam {quiz.questions.length} soru | Geçme notu: %{quiz.passingScore}
+              </p>
+              <Button
+                className="w-full"
+                data-testid="button-start-quiz"
+                onClick={() => {
+                  setQuizStarted(true);
+                  quizStartTimeRef.current = Date.now();
+                  questionStartTimeRef.current = Date.now();
+                }}
+              >
+                Sınava Başla
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   if (submitted) {
     return (
       <div className="grid grid-cols-1 gap-2 p-3 max-w-2xl mx-auto">
@@ -243,8 +486,8 @@ export default function AcademyQuiz() {
                   <XCircle className="w-8 h-8 text-red-500" />
                 )}
               </div>
-              <p className="text-3xl font-bold mb-1">{score}%</p>
-              <Badge variant={score >= quiz.passingScore ? "default" : "destructive"} className="text-xs">
+              <p className="text-3xl font-bold mb-1" data-testid="text-quiz-score">{score}%</p>
+              <Badge variant={score >= quiz.passingScore ? "default" : "destructive"} className="text-xs" data-testid="badge-quiz-result">
                 {score >= quiz.passingScore ? "BAŞARILI" : "BAŞARISIZ"}
               </Badge>
             </div>
@@ -254,7 +497,27 @@ export default function AcademyQuiz() {
               <Progress value={score} className="h-1" />
             </div>
 
-            {/* Retry info for failed attempts */}
+            {completionTypeRef.current !== "normal" && (
+              <div className="flex items-center gap-2 p-2 bg-amber-500/10 rounded-md text-xs">
+                <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0" />
+                <span className="text-muted-foreground">
+                  {completionTypeRef.current === "timeout" && "Süre dolduğu için sınav otomatik gönderildi."}
+                  {completionTypeRef.current === "tab_switch" && "Sekme değişikliği nedeniyle sınav otomatik gönderildi."}
+                  {completionTypeRef.current === "page_close" && "Sayfa kapatıldığı için sınav otomatik gönderildi."}
+                  {completionTypeRef.current === "question_timeout" && "Son sorunun süresi dolduğu için sınav otomatik gönderildi."}
+                </span>
+              </div>
+            )}
+
+            {tabSwitchCount > 0 && (
+              <div className="flex items-center gap-2 p-2 bg-red-500/10 rounded-md text-xs">
+                <Eye className="w-4 h-4 text-red-500 shrink-0" />
+                <span className="text-muted-foreground">
+                  {tabSwitchCount} kez sekme değişikliği tespit edildi.
+                </span>
+              </div>
+            )}
+
             {score < quiz.passingScore && (
               <Card className="bg-amber-500/5 border-amber-500/20">
                 <CardContent className="p-3 space-y-2">
@@ -273,7 +536,6 @@ export default function AcademyQuiz() {
               </Card>
             )}
 
-            {/* Adaptive Progression */}
             {recommendation && (
               <Card className="bg-primary/10 dark:bg-blue-950 border-primary/30 dark:border-primary/40">
                 <CardHeader className="pb-2">
@@ -285,8 +547,7 @@ export default function AcademyQuiz() {
                 <CardContent className="w-full space-y-1 md:space-y-1">
                   <p className="text-sm">{recommendation.recommendation}</p>
                   
-                  {/* Difficulty Progression Path */}
-                  <div className="flex items-center justify-between mt-3 p-2 bg-white dark:bg-slate-900 rounded-lg">
+                  <div className="flex items-center justify-between gap-2 mt-3 p-2 bg-white dark:bg-slate-900 rounded-md">
                     <div className="text-xs text-center">
                       <Badge variant="outline" className="bg-success/10 dark:bg-success/5 text-success dark:text-success">Kolay</Badge>
                       <p className="text-xs text-muted-foreground mt-1">Tamamlandı</p>
@@ -325,22 +586,69 @@ export default function AcademyQuiz() {
 
   const progress = ((currentQuestion + 1) / quiz.questions.length) * 100;
   const question = quiz.questions[currentQuestion];
+  const totalTimeCritical = totalTimeRemaining <= 60;
+  const questionTimeCritical = questionTimeRemaining <= 10;
 
   return (
     <div className="grid grid-cols-1 gap-2 p-3 max-w-2xl mx-auto">
+      {showTabWarning && (
+        <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4" data-testid="overlay-tab-warning">
+          <Card className="max-w-sm w-full border-red-500/50">
+            <CardContent className="p-6 text-center space-y-4">
+              <EyeOff className="w-12 h-12 text-red-500 mx-auto" />
+              <div>
+                <p className="font-semibold text-base mb-1">Sekme Değişikliği Tespit Edildi!</p>
+                <p className="text-sm text-muted-foreground">
+                  Sınav sırasında sekme değiştirmeniz kayıt altına alındı.
+                </p>
+              </div>
+              <div className="p-3 bg-red-500/10 rounded-md">
+                <p className="text-2xl font-bold text-red-500" data-testid="text-tab-countdown">{tabWarningCountdown}</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  saniye içinde sınavınız otomatik gönderilecek
+                </p>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Uyarı sayısı: {tabSwitchCount}
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
       <Card>
         <CardHeader className="pb-2">
-          <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center justify-between gap-2 mb-2 flex-wrap">
             <CardTitle className="text-sm">{quiz.title}</CardTitle>
-            <Badge variant="outline" className="text-xs">
-              <Clock className="w-3 h-3 mr-0.5" />
-              30 dk
-            </Badge>
+            <div className="flex items-center gap-2">
+              {tabSwitchCount > 0 && (
+                <Badge variant="destructive" className="text-xs" data-testid="badge-tab-switch-count">
+                  <Eye className="w-3 h-3 mr-0.5" />
+                  {tabSwitchCount}
+                </Badge>
+              )}
+              <Badge
+                variant="outline"
+                className={`text-xs ${totalTimeCritical ? "border-red-500 text-red-500" : ""}`}
+                data-testid="badge-total-timer"
+              >
+                <Clock className="w-3 h-3 mr-0.5" />
+                {formatTime(totalTimeRemaining)}
+              </Badge>
+            </div>
           </div>
           <Progress value={progress} className="h-1" />
-          <p className="text-xs text-muted-foreground mt-1">
-            {currentQuestion + 1} / {quiz.questions.length}
-          </p>
+          <div className="flex items-center justify-between gap-2 mt-1 flex-wrap">
+            <p className="text-xs text-muted-foreground">
+              {currentQuestion + 1} / {quiz.questions.length}
+            </p>
+            <div className="flex items-center gap-1">
+              <Timer className={`w-3 h-3 ${questionTimeCritical ? "text-red-500" : "text-muted-foreground"}`} />
+              <span className={`text-xs font-mono ${questionTimeCritical ? "text-red-500 font-semibold" : "text-muted-foreground"}`} data-testid="text-question-timer">
+                {questionTimeRemaining}s
+              </span>
+            </div>
+          </div>
         </CardHeader>
 
         <CardContent className="flex flex-col gap-3 sm:gap-4">
@@ -349,9 +657,9 @@ export default function AcademyQuiz() {
 
             <RadioGroup value={answers[currentQuestion] || ""} onValueChange={(value) => setAnswers({ ...answers, [currentQuestion]: value })}>
               {question.options.map((option: string, idx: number) => (
-                <div key={idx} className="flex items-center space-x-2 p-2 border rounded hover:bg-muted text-xs" data-testid={`option-${idx}`}>
-                  <RadioGroupItem value={idx.toString()} id={`option-${idx}`} />
-                  <Label htmlFor={`option-${idx}`} className="flex-1 cursor-pointer">
+                <div key={idx} className="flex items-center space-x-2 p-2 border rounded-md hover-elevate text-xs" data-testid={`option-${idx}`}>
+                  <RadioGroupItem value={idx.toString()} id={`option-${currentQuestion}-${idx}`} />
+                  <Label htmlFor={`option-${currentQuestion}-${idx}`} className="flex-1 cursor-pointer">
                     {option}
                   </Label>
                 </div>
@@ -360,16 +668,12 @@ export default function AcademyQuiz() {
           </div>
 
           <div className="flex gap-1">
-            <Button size="sm" variant="outline" onClick={() => setCurrentQuestion(Math.max(0, currentQuestion - 1))} disabled={currentQuestion === 0} className="h-8">
-              Önceki
-            </Button>
-
             {currentQuestion === quiz.questions.length - 1 ? (
-              <Button size="sm" onClick={handleSubmit} disabled={submitMutation.isPending} className="flex-1 h-8">
+              <Button size="sm" onClick={handleSubmit} disabled={submitMutation.isPending} className="flex-1" data-testid="button-submit-quiz">
                 {submitMutation.isPending ? "Gönderiliyor..." : "Bitir"}
               </Button>
             ) : (
-              <Button size="sm" onClick={() => setCurrentQuestion(currentQuestion + 1)} className="flex-1 h-8">
+              <Button size="sm" onClick={advanceToNextQuestion} className="flex-1" data-testid="button-next-question">
                 Sonraki
               </Button>
             )}

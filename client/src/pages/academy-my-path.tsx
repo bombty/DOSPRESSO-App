@@ -9,6 +9,11 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
   GraduationCap,
   BookOpen,
   CheckCircle2,
@@ -30,6 +35,9 @@ import {
   Wrench,
   ChefHat,
   Loader2,
+  ArrowUpCircle,
+  Info,
+  XCircle,
 } from "lucide-react";
 
 interface MyPathData {
@@ -519,6 +527,172 @@ function OnboardingDetailSection({ assignmentData }: { assignmentData: Onboardin
   );
 }
 
+interface GateEligibility {
+  eligible: boolean;
+  checks: {
+    minDaysInLevel: boolean;
+    requiredModules: boolean;
+    compositeScore: boolean;
+    noActiveCooldown: boolean;
+    maxRetriesNotExceeded: boolean;
+  };
+  gate: {
+    id: number;
+    gateNumber: number;
+    titleTr: string;
+  };
+  attemptCount: number;
+  maxRetries: number;
+}
+
+function GateRequestButton({ data }: { data: MyPathData }) {
+  const { toast } = useToast();
+
+  const nextGate = data.nextGate;
+  const hasActiveGate = !!data.activeGate;
+
+  const { data: eligibility, isLoading: eligLoading } = useQuery<GateEligibility>({
+    queryKey: ['/api/academy/gates', nextGate?.gateId, 'eligibility', data.userId],
+    queryFn: async () => {
+      const res = await fetch(`/api/academy/gates/${nextGate?.gateId}/eligibility/${data.userId}`, { credentials: 'include' });
+      if (!res.ok) throw new Error('Eligibility check failed');
+      return res.json();
+    },
+    enabled: !!nextGate?.gateId && !hasActiveGate,
+  });
+
+  const requestMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest('POST', `/api/academy/gates/${nextGate?.gateId}/attempt`, {
+        userId: data.userId,
+      });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/academy/my-path'] });
+      toast({ title: "Talep Gönderildi", description: "Statü atlama talebiniz başarıyla oluşturuldu." });
+    },
+    onError: (err: Error) => {
+      toast({ title: "Hata", description: err.message, variant: "destructive" });
+    },
+  });
+
+  if (!nextGate || hasActiveGate) return null;
+
+  const missingItems: string[] = [];
+  if (eligibility && !eligibility.eligible) {
+    if (!eligibility.checks.requiredModules) missingItems.push("Zorunlu modüller tamamlanmadı");
+    if (!eligibility.checks.compositeScore) missingItems.push("Bileşik skor 70'in altında");
+    if (!eligibility.checks.minDaysInLevel) missingItems.push("Minimum süre dolmadı");
+    if (!eligibility.checks.noActiveCooldown) missingItems.push("Bekleme süresi devam ediyor");
+    if (!eligibility.checks.maxRetriesNotExceeded) missingItems.push("Maksimum deneme hakkı doldu");
+  }
+
+  const isEligible = eligibility?.eligible === true;
+
+  return (
+    <Card className={isEligible ? "border-green-300 dark:border-green-700 bg-green-50/30 dark:bg-green-950/20" : ""} data-testid="gate-request-card">
+      <CardContent className="p-4">
+        <div className="flex items-center gap-2 mb-2">
+          <ArrowUpCircle className={`h-5 w-5 ${isEligible ? 'text-green-600 dark:text-green-400' : 'text-muted-foreground'}`} />
+          <span className="font-semibold text-sm">Statü Atlama</span>
+          {nextGate && (
+            <Badge variant="secondary">{nextGate.titleTr}</Badge>
+          )}
+        </div>
+
+        <div className="space-y-1.5 mb-3">
+          <div className="flex items-center gap-2 text-xs">
+            {eligibility?.checks.requiredModules ? (
+              <CheckCircle2 className="h-3.5 w-3.5 text-green-500 shrink-0" />
+            ) : (
+              <XCircle className="h-3.5 w-3.5 text-red-500 shrink-0" />
+            )}
+            <span className={eligibility?.checks.requiredModules ? "text-muted-foreground" : ""}>
+              Modüller: {nextGate.requiredModulesCompleted}/{nextGate.requiredModulesTotal}
+            </span>
+          </div>
+          <div className="flex items-center gap-2 text-xs">
+            {eligibility?.checks.compositeScore ? (
+              <CheckCircle2 className="h-3.5 w-3.5 text-green-500 shrink-0" />
+            ) : (
+              <XCircle className="h-3.5 w-3.5 text-red-500 shrink-0" />
+            )}
+            <span className={eligibility?.checks.compositeScore ? "text-muted-foreground" : ""}>
+              Skor: {Math.round(nextGate.currentCompositeScore)}/{nextGate.compositeScoreRequired}
+            </span>
+          </div>
+          <div className="flex items-center gap-2 text-xs">
+            {eligibility?.checks.minDaysInLevel ? (
+              <CheckCircle2 className="h-3.5 w-3.5 text-green-500 shrink-0" />
+            ) : (
+              <XCircle className="h-3.5 w-3.5 text-red-500 shrink-0" />
+            )}
+            <span className={eligibility?.checks.minDaysInLevel ? "text-muted-foreground" : ""}>
+              Minimum süre
+            </span>
+          </div>
+          {eligibility && !eligibility.checks.noActiveCooldown && (
+            <div className="flex items-center gap-2 text-xs">
+              <XCircle className="h-3.5 w-3.5 text-red-500 shrink-0" />
+              <span>Bekleme süresi devam ediyor</span>
+            </div>
+          )}
+        </div>
+
+        {isEligible ? (
+          <Button
+            className="w-full gap-2"
+            onClick={() => requestMutation.mutate()}
+            disabled={requestMutation.isPending}
+            data-testid="button-gate-request"
+          >
+            {requestMutation.isPending ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <ArrowUpCircle className="h-4 w-4" />
+            )}
+            Statü Atlama Talep Et
+          </Button>
+        ) : (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div>
+                <Button
+                  className="w-full gap-2"
+                  disabled
+                  data-testid="button-gate-request-disabled"
+                >
+                  <Lock className="h-4 w-4" />
+                  Statü Atlama Talep Et
+                </Button>
+              </div>
+            </TooltipTrigger>
+            <TooltipContent side="top" className="max-w-xs">
+              <p className="font-medium text-xs mb-1">Eksik Koşullar:</p>
+              <ul className="text-xs space-y-0.5">
+                {missingItems.map((item, i) => (
+                  <li key={i} className="flex items-center gap-1">
+                    <Info className="h-3 w-3 shrink-0" />
+                    {item}
+                  </li>
+                ))}
+              </ul>
+            </TooltipContent>
+          </Tooltip>
+        )}
+
+        {eligLoading && (
+          <div className="flex items-center gap-2 text-xs text-muted-foreground mt-2">
+            <Loader2 className="h-3 w-3 animate-spin" />
+            Uygunluk kontrol ediliyor...
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 function ActionCard({ action, onComplete }: { action: ActionItem; onComplete: (item: ActionItem) => void }) {
   const Icon = TYPE_ICONS[action.type] || BookOpen;
   const priorityCfg = PRIORITY_CONFIG[action.priority] || PRIORITY_CONFIG[4];
@@ -657,6 +831,8 @@ export default function AcademyMyPath() {
       {onboardingData && <OnboardingDetailSection assignmentData={onboardingData} />}
 
       <LevelBanner data={data} />
+
+      <GateRequestButton data={data} />
 
       {data.activeGate && <GateExamBanner gate={data.activeGate} />}
 

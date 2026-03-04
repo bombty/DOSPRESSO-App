@@ -195,6 +195,7 @@ app.use((req, res, next) => {
     
     // Start shift reminder job (runs every 10 minutes)
     startShiftReminderJob();
+    startCompositeScoreUpdateJob();
     startDangerZoneCheckJob();
     startDailyTaskTriggerJob();
     
@@ -310,6 +311,22 @@ function startShiftReminderJob() {
   }, 10 * 60 * 1000); // 10 minutes
   
   log("Shift reminder job started (runs every 10 minutes)");
+}
+
+function startCompositeScoreUpdateJob() {
+  setInterval(async () => {
+    const nowTR = new Date(new Date().toLocaleString("en-US", { timeZone: "Europe/Istanbul" }));
+    if (nowTR.getHours() === 3 && nowTR.getMinutes() < 5) {
+      try {
+        const result = await storage.runAllCompositeScoreUpdates();
+        log(`Composite score update completed: ${result.processed} users, ${result.dangerCount} danger, ${result.warningCount} warning`);
+      } catch (error) {
+        console.error("Error in composite score update job:", error);
+      }
+    }
+  }, 5 * 60 * 1000);
+
+  log("Composite score update job started (daily at 03:00 Europe/Istanbul)");
 }
 
 // Background job for danger zone checks (monthly on 1st)

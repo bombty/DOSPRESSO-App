@@ -34,6 +34,7 @@ import {
   insertEmployeeOnboardingAssignmentSchema,
   branches,
   checklistCompletions,
+  notifications,
 } from "@shared/schema";
 import { eq, desc, asc, and, or, gte, lte, sql, inArray, isNull, not, ne, count } from "drizzle-orm";
 import { z } from "zod";
@@ -193,7 +194,8 @@ router.post('/api/academy/gates/:id/attempt', isAuthenticated, async (req: any, 
   try {
     const user = req.user!;
     const gateId = parseInt(req.params.id);
-    const targetUserId = req.body.userId || user.id;
+    const PRIVILEGED_ROLES = ['admin', 'ceo', 'cgo', 'coach', 'supervisor', 'mudur', 'trainer'];
+    const targetUserId = (req.body.userId && PRIVILEGED_ROLES.includes(user.role)) ? req.body.userId : user.id;
 
     const [gate] = await db.select().from(careerGates).where(eq(careerGates.id, gateId));
     if (!gate) return res.status(404).json({ message: "Gate bulunamadı" });
@@ -217,6 +219,34 @@ router.post('/api/academy/gates/:id/attempt', isAuthenticated, async (req: any, 
       attemptNumber,
       status: 'in_progress',
     }).returning();
+
+    const [targetUser] = await db.select().from(users).where(eq(users.id, targetUserId));
+    const targetName = targetUser ? `${targetUser.firstName || ''} ${targetUser.lastName || ''}`.trim() : targetUserId;
+
+    const supervisors = await db.select().from(users)
+      .where(and(
+        or(
+          eq(users.role, 'supervisor'),
+          eq(users.role, 'mudur'),
+          eq(users.role, 'coach'),
+          eq(users.role, 'cgo'),
+          eq(users.role, 'admin')
+        ),
+        eq(users.accountStatus, 'active')
+      ));
+
+    for (const sup of supervisors) {
+      if (sup.branchId === targetUser?.branchId || ['coach', 'cgo', 'admin'].includes(sup.role)) {
+        await db.insert(notifications).values({
+          userId: sup.id,
+          type: 'gate_request',
+          title: 'Yeni Statü Atlama Talebi',
+          message: `${targetName} - ${gate.titleTr} için statü atlama talebinde bulundu.`,
+          link: '/akademi-supervisor',
+          branchId: targetUser?.branchId || null,
+        });
+      }
+    }
 
     res.status(201).json(attempt);
   } catch (error: any) {
@@ -314,6 +344,28 @@ router.patch('/api/academy/gate-attempts/:attemptId', isAuthenticated, async (re
         }
       }
 
+      if (finalResult.userId) {
+        const [gate] = await db.select().from(careerGates).where(eq(careerGates.id, existing.gateId));
+        const gateName = gate?.titleTr || 'Gate';
+        if (finalResult.overallPassed) {
+          await db.insert(notifications).values({
+            userId: finalResult.userId,
+            type: 'gate_result',
+            title: 'Statü Atlama Başarılı!',
+            message: `${gateName} sınavını başarıyla geçtiniz. Yeni seviyenize terfi edildiniz!`,
+            link: '/akademi/yolum',
+          });
+        } else {
+          await db.insert(notifications).values({
+            userId: finalResult.userId,
+            type: 'gate_result',
+            title: 'Statü Atlama Sonucu',
+            message: `${gateName} sınavında başarısız oldunuz. ${finalResult.failureReason || ''}`,
+            link: '/akademi/yolum',
+          });
+        }
+      }
+
       return res.json(finalResult);
     }
 
@@ -368,6 +420,42 @@ router.get('/api/academy/gate-attempts/user/:userId', isAuthenticated, async (re
     })));
   } catch (error: any) {
     handleApiError(res, error, "Gate denemeleri alınamadı");
+  }
+});
+
+router.get('/api/academy/gate-attempts/pending', isAuthenticated, requireAcademyCoachOrSupervisor, async (req: any, res) => {
+  try {
+    const user = req.user!;
+    const attempts = await db.select({
+      attempt: gateAttempts,
+      gate: careerGates,
+      userName: users.firstName,
+      userLastName: users.lastName,
+      userRole: users.role,
+      userBranchId: users.branchId,
+    })
+    .from(gateAttempts)
+    .leftJoin(careerGates, eq(gateAttempts.gateId, careerGates.id))
+    .leftJoin(users, eq(gateAttempts.userId, users.id))
+    .where(eq(gateAttempts.status, 'in_progress'))
+    .orderBy(asc(gateAttempts.createdAt));
+
+    let filtered = attempts;
+    if (ACADEMY_SUPERVISOR_ROLES.has(user.role) && !ACADEMY_COACH_ROLES.has(user.role)) {
+      filtered = attempts.filter(a => a.userBranchId === user.branchId);
+    }
+
+    res.json(filtered.map(a => ({
+      ...a.attempt,
+      gateTitleTr: a.gate?.titleTr,
+      gateNumber: a.gate?.gateNumber,
+      quizPassingScore: a.gate?.quizPassingScore,
+      userName: `${a.userName || ''} ${a.userLastName || ''}`.trim(),
+      userRole: a.userRole,
+      userBranchId: a.userBranchId,
+    })));
+  } catch (error: any) {
+    handleApiError(res, error, "Bekleyen gate talepleri alınamadı");
   }
 });
 

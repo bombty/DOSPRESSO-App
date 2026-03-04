@@ -3703,6 +3703,13 @@ JSON formatında yanıt ver:
         }
       }
 
+      try {
+        await storage.addCompletedModuleToCareerProgress(userId, moduleId);
+        console.log(`Training chain: User ${userId} completed module ${moduleId} -> added to completed_module_ids`);
+      } catch (chainError: any) {
+        console.error("Career progress update error:", chainError);
+      }
+
       res.json({ 
         message: "Modül tamamlandı",
         badge: awardedBadge,
