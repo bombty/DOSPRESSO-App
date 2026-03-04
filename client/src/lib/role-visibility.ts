@@ -220,6 +220,9 @@ export const WIDGET_VISIBILITY: Record<string, UserRole[]> = {
   
   // Aktivite zaman çizelgesi: HQ ve supervisor'lar
   'activity-timeline': [...HQ_ROLES, 'supervisor', 'supervisor_buddy'],
+
+  // Atadıklarım widget: Görev atama yetkisi olan roller
+  'atadiklarim': ['admin', 'ceo', 'cgo', 'coach', 'supervisor', 'mudur', 'gida_muhendisi', 'kalite_kontrol', 'marketing', 'muhasebe_ik', 'satinalma', 'trainer', 'fabrika_mudur', 'destek', 'teknik'],
 };
 
 export function isRoleAllowed(role: string | undefined, allowedRoles: UserRole[]): boolean {

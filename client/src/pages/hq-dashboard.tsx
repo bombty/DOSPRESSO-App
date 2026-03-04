@@ -1,6 +1,7 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useRoute, useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
+import { canSeeWidget } from "@/lib/role-visibility";
 import { MuhasebeIKDashboard } from "@/components/dashboards/muhasebe-ik-dashboard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -10,6 +11,7 @@ import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { UnifiedHero } from "@/components/widgets/unified-hero";
+import { AtadiklarimWidget } from "@/components/widgets/atadiklarim-widget";
 import { CriticalAlerts } from "@/components/critical-alerts";
 import { DailyTaskPanel } from "@/components/daily-task-panel";
 import { MrDobody } from "@/components/mr-dobody";
@@ -1302,6 +1304,7 @@ function CGODashboard() {
           </CardContent>
         </Card>
       </div>
+
     </div>
   );
 }
@@ -1800,6 +1803,7 @@ export default function HQDashboard() {
         <UnifiedHero />
       <DailyTaskPanel />
       {!isCGO && <CriticalAlerts />}
+      {canSeeWidget(userRole, 'atadiklarim') && <AtadiklarimWidget />}
       <DepartmentComponent />
     </div>
   );

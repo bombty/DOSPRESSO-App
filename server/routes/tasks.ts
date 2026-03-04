@@ -137,6 +137,59 @@ const router = Router();
     }
   });
 
+  router.get('/api/tasks/assigned-by-me', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      ensurePermission(user, 'tasks', 'view');
+
+      const activeStatuses = ['beklemede', 'goruldu', 'devam_ediyor', 'foto_bekleniyor',
+        'incelemede', 'kontrol_bekliyor', 'onay_bekliyor', 'sure_uzatma_talebi',
+        'cevap_bekliyor', 'ek_bilgi_bekleniyor'];
+
+      const myAssigned = await db.select({
+        id: tasks.id,
+        description: tasks.description,
+        status: tasks.status,
+        priority: tasks.priority,
+        dueDate: tasks.dueDate,
+        assignedToId: tasks.assignedToId,
+        branchId: tasks.branchId,
+        createdAt: tasks.createdAt,
+      }).from(tasks)
+        .where(and(
+          eq(tasks.assignedById, user.id),
+          isNull(tasks.deletedAt),
+          inArray(tasks.status, activeStatuses)
+        ))
+        .orderBy(sql`CASE WHEN ${tasks.status} = 'onay_bekliyor' THEN 0 WHEN ${tasks.status} = 'sure_uzatma_talebi' THEN 1 WHEN ${tasks.status} = 'cevap_bekliyor' THEN 2 ELSE 3 END, ${tasks.dueDate} ASC NULLS LAST`)
+        .limit(10);
+
+      const userIds = [...new Set(myAssigned.map(t => t.assignedToId).filter(Boolean))] as string[];
+      const usersMap = new Map<string, { firstName: string | null; lastName: string | null }>();
+      if (userIds.length > 0) {
+        const usersData = await db.select({
+          id: users.id,
+          firstName: users.firstName,
+          lastName: users.lastName,
+        }).from(users).where(inArray(users.id, userIds));
+        usersData.forEach(u => usersMap.set(u.id, u));
+      }
+
+      const enriched = myAssigned.map(t => {
+        const assignee = t.assignedToId ? usersMap.get(t.assignedToId) : null;
+        return {
+          ...t,
+          assigneeName: assignee ? `${assignee.firstName || ''} ${assignee.lastName || ''}`.trim() || 'Bilinmiyor' : 'Atanmamış',
+        };
+      });
+
+      res.json(enriched);
+    } catch (error: any) {
+      console.error('Error getting assigned-by-me tasks:', error);
+      res.status(500).json({ message: 'Atanan görevler alınamadı' });
+    }
+  });
+
   router.get('/api/tasks/pending-checks', isAuthenticated, async (req: any, res) => {
     try {
       const user = req.user!;
