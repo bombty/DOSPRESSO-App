@@ -336,84 +336,146 @@ export default function Academy() {
                   <div className="flex-1">
                     <h3 className="font-bold text-sm mb-1" data-testid="text-getting-started-title">Nereden Başlamalıyım?</h3>
                     <p className="text-xs text-muted-foreground mb-3">
-                      {!currentLevel || currentLevel.levelNumber === 1 
+                      {isHQRole(user?.role as any)
+                        ? "Yönetici rolünüz için önerilen adımlar:"
+                        : !currentLevel || currentLevel.levelNumber === 1 
                         ? "Kariyer yolculuğuna başlamak için önerilen adımlar:"
                         : `${currentLevel.titleTr} seviyesi için önerilen sonraki adımlar:`
                       }
                     </p>
                     <div className="space-y-2">
-                      {/* Adım 1 */}
-                      <div className="flex items-center gap-2 p-2 bg-background/80 rounded-lg border" data-testid="step-1-container">
-                        <div className="w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-bold flex-shrink-0">
-                          1
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <span className="text-xs font-medium" data-testid="text-step-1-description">
-                            {!currentLevel || currentLevel.levelNumber <= 2 
-                              ? "Temel Barista Eğitimlerini Tamamla"
-                              : currentLevel.levelNumber === 3 
-                              ? "İleri Seviye Reçeteleri Öğren"
-                              : "Ekip Yönetimi Modüllerini Bitir"
-                            }
-                          </span>
-                        </div>
-                        <Button 
-                          size="sm" 
-                          variant="ghost" 
-                          onClick={() => setActiveView("modules")}
-                          data-testid="button-start-step-1"
-                        >
-                          Başla
-                        </Button>
-                      </div>
-                      {/* Adım 2 */}
-                      <div className="flex items-center gap-2 p-2 bg-background/80 rounded-lg border" data-testid="step-2-container">
-                        <div className="w-6 h-6 rounded-full bg-muted text-muted-foreground flex items-center justify-center text-xs font-bold flex-shrink-0">
-                          2
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <span className="text-xs font-medium" data-testid="text-step-2-description">
-                            {!currentLevel || currentLevel.levelNumber <= 2 
-                              ? "Reçete Akademisinden 10 Reçete Öğren"
-                              : currentLevel.levelNumber === 3 
-                              ? "Signature İçecekleri Ustalaş"
-                              : "Kalite Denetim Sertifikası Al"
-                            }
-                          </span>
-                        </div>
-                        <Button 
-                          size="sm" 
-                          variant="ghost" 
-                          onClick={() => setActiveView("recipes")}
-                          data-testid="button-start-step-2"
-                        >
-                          Başla
-                        </Button>
-                      </div>
-                      {/* Adım 3 */}
-                      <div className="flex items-center gap-2 p-2 bg-background/80 rounded-lg border" data-testid="step-3-container">
-                        <div className="w-6 h-6 rounded-full bg-muted text-muted-foreground flex items-center justify-center text-xs font-bold flex-shrink-0">
-                          3
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <span className="text-xs font-medium" data-testid="text-step-3-description">
-                            {!currentLevel || currentLevel.levelNumber <= 2 
-                              ? "Günlük Pratik Quizlerini Çöz"
-                              : currentLevel.levelNumber === 3 
-                              ? "Seviye Atlama Sınavına Gir"
-                              : "Supervisor Sertifikasyonunu Tamamla"
-                            }
-                          </span>
-                        </div>
-                        <Button 
-                          size="sm" 
-                          variant="ghost" 
-                          onClick={() => setActiveView("practice")}
-                          data-testid="button-start-step-3"
-                        >
-                          Başla
-                        </Button>
-                      </div>
+                      {isHQRole(user?.role as any) ? (
+                        <>
+                          <div className="flex items-center gap-2 p-2 bg-background/80 rounded-lg border" data-testid="step-1-container">
+                            <div className="w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-bold flex-shrink-0">
+                              1
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <span className="text-xs font-medium" data-testid="text-step-1-description">
+                                Yönetim Eğitimlerini Keşfedin
+                              </span>
+                            </div>
+                            <Button 
+                              size="sm" 
+                              variant="ghost" 
+                              onClick={() => setActiveView("modules")}
+                              data-testid="button-start-step-1"
+                            >
+                              Keşfet
+                            </Button>
+                          </div>
+                          <div className="flex items-center gap-2 p-2 bg-background/80 rounded-lg border" data-testid="step-2-container">
+                            <div className="w-6 h-6 rounded-full bg-muted text-muted-foreground flex items-center justify-center text-xs font-bold flex-shrink-0">
+                              2
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <span className="text-xs font-medium" data-testid="text-step-2-description">
+                                Şube Performans Raporlarını İnceleyin
+                              </span>
+                            </div>
+                            <Link href="/sube-saglik">
+                              <Button 
+                                size="sm" 
+                                variant="ghost"
+                                data-testid="button-start-step-2"
+                              >
+                                İncele
+                              </Button>
+                            </Link>
+                          </div>
+                          <div className="flex items-center gap-2 p-2 bg-background/80 rounded-lg border" data-testid="step-3-container">
+                            <div className="w-6 h-6 rounded-full bg-muted text-muted-foreground flex items-center justify-center text-xs font-bold flex-shrink-0">
+                              3
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <span className="text-xs font-medium" data-testid="text-step-3-description">
+                                AI Asistan ile Bilgi Bankasını Kullanın
+                              </span>
+                            </div>
+                            <Link href="/bilgi-bankasi">
+                              <Button 
+                                size="sm" 
+                                variant="ghost"
+                                data-testid="button-start-step-3"
+                              >
+                                Kullan
+                              </Button>
+                            </Link>
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <div className="flex items-center gap-2 p-2 bg-background/80 rounded-lg border" data-testid="step-1-container">
+                            <div className="w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-bold flex-shrink-0">
+                              1
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <span className="text-xs font-medium" data-testid="text-step-1-description">
+                                {!currentLevel || currentLevel.levelNumber <= 2 
+                                  ? "Temel Barista Eğitimlerini Tamamla"
+                                  : currentLevel.levelNumber === 3 
+                                  ? "İleri Seviye Reçeteleri Öğren"
+                                  : "Ekip Yönetimi Modüllerini Bitir"
+                                }
+                              </span>
+                            </div>
+                            <Button 
+                              size="sm" 
+                              variant="ghost" 
+                              onClick={() => setActiveView("modules")}
+                              data-testid="button-start-step-1"
+                            >
+                              Başla
+                            </Button>
+                          </div>
+                          <div className="flex items-center gap-2 p-2 bg-background/80 rounded-lg border" data-testid="step-2-container">
+                            <div className="w-6 h-6 rounded-full bg-muted text-muted-foreground flex items-center justify-center text-xs font-bold flex-shrink-0">
+                              2
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <span className="text-xs font-medium" data-testid="text-step-2-description">
+                                {!currentLevel || currentLevel.levelNumber <= 2 
+                                  ? "Reçete Akademisinden 10 Reçete Öğren"
+                                  : currentLevel.levelNumber === 3 
+                                  ? "Signature İçecekleri Ustalaş"
+                                  : "Kalite Denetim Sertifikası Al"
+                                }
+                              </span>
+                            </div>
+                            <Button 
+                              size="sm" 
+                              variant="ghost" 
+                              onClick={() => setActiveView("recipes")}
+                              data-testid="button-start-step-2"
+                            >
+                              Başla
+                            </Button>
+                          </div>
+                          <div className="flex items-center gap-2 p-2 bg-background/80 rounded-lg border" data-testid="step-3-container">
+                            <div className="w-6 h-6 rounded-full bg-muted text-muted-foreground flex items-center justify-center text-xs font-bold flex-shrink-0">
+                              3
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <span className="text-xs font-medium" data-testid="text-step-3-description">
+                                {!currentLevel || currentLevel.levelNumber <= 2 
+                                  ? "Günlük Pratik Quizlerini Çöz"
+                                  : currentLevel.levelNumber === 3 
+                                  ? "Seviye Atlama Sınavına Gir"
+                                  : "Supervisor Sertifikasyonunu Tamamla"
+                                }
+                              </span>
+                            </div>
+                            <Button 
+                              size="sm" 
+                              variant="ghost" 
+                              onClick={() => setActiveView("practice")}
+                              data-testid="button-start-step-3"
+                            >
+                              Başla
+                            </Button>
+                          </div>
+                        </>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -481,11 +543,11 @@ export default function Academy() {
             <div className="grid grid-cols-1 gap-2">
               <HubCard
                 icon={Target}
-                title="Kariyer Yolculuğum"
-                description={currentLevel ? `Mevcut: ${currentLevel.titleTr}` : "Kariyer yolculuğuna başla"}
+                title={isHQRole(user?.role as any) ? "Yönetim Gelişim Alanları" : "Kariyer Yolculuğum"}
+                description={isHQRole(user?.role as any) ? "Profesyonel gelişim yol haritası" : currentLevel ? `Mevcut: ${currentLevel.titleTr}` : "Kariyer yolculuğuna başla"}
                 color="#1e3a5f"
                 onClick={() => setActiveView("career")}
-                badge={currentLevel?.levelNumber ? `Lvl ${currentLevel.levelNumber}` : undefined}
+                badge={!isHQRole(user?.role as any) && currentLevel?.levelNumber ? `Lvl ${currentLevel.levelNumber}` : undefined}
               />
               <HubCard
                 icon={Coffee}
@@ -615,6 +677,53 @@ export default function Academy() {
         {activeView === "career" && (
           <>
             <BackButton />
+            {isHQRole(user?.role as any) ? (
+              <>
+                <Card className="bg-gradient-to-r from-primary/10 to-blue-900/10 border-primary/20">
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-3 mb-3">
+                      <Target className="w-8 h-8 text-primary" />
+                      <div className="flex-1">
+                        <h2 className="font-bold" data-testid="text-hq-career-title">Yönetim Gelişim Alanları</h2>
+                        <p className="text-xs text-muted-foreground">Profesyonel gelişim yol haritanız</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+                <div className="grid grid-cols-2 gap-2" data-testid="hq-development-areas">
+                  {[
+                    { title: "Liderlik", desc: "Ekip yönetimi ve motivasyon", icon: Users, color: "from-blue-500/10 to-blue-600/5", borderColor: "border-blue-500/20" },
+                    { title: "Stratejik Planlama", desc: "Hedef belirleme ve analiz", icon: TrendingUp, color: "from-purple-500/10 to-purple-600/5", borderColor: "border-purple-500/20" },
+                    { title: "Operasyon Yönetimi", desc: "Süreç optimizasyonu", icon: Target, color: "from-green-500/10 to-green-600/5", borderColor: "border-green-500/20" },
+                    { title: "Dijital Dönüşüm", desc: "Teknoloji ve inovasyon", icon: Zap, color: "from-orange-500/10 to-orange-600/5", borderColor: "border-orange-500/20" },
+                  ].map((area) => (
+                    <Card key={area.title} className={`bg-gradient-to-br ${area.color} ${area.borderColor} border`} data-testid={`card-dev-area-${area.title.toLowerCase().replace(/\s+/g, '-')}`}>
+                      <CardContent className="p-4">
+                        <div className="flex flex-col items-center text-center gap-2">
+                          <div className="w-10 h-10 rounded-full bg-background/80 flex items-center justify-center">
+                            <area.icon className="w-5 h-5 text-foreground" />
+                          </div>
+                          <div>
+                            <h3 className="font-semibold text-sm">{area.title}</h3>
+                            <p className="text-xs text-muted-foreground mt-0.5">{area.desc}</p>
+                          </div>
+                          <Badge variant="outline" className="text-xs">Yakında</Badge>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+                <Card className="bg-primary/5 border-primary/20">
+                  <CardContent className="p-3">
+                    <p className="text-xs text-muted-foreground text-center">
+                      Yönetim gelişim modülleri hazırlanmaktadır. Mevcut eğitimler için{' '}
+                      <span className="text-primary font-medium cursor-pointer" onClick={() => setActiveView("modules")}>Genel Eğitimler</span> bölümünü ziyaret edebilirsiniz.
+                    </p>
+                  </CardContent>
+                </Card>
+              </>
+            ) : (
+            <>
             <Card className="bg-gradient-to-r from-primary/10 to-blue-900/10 border-primary/20">
               <CardContent className="p-4">
                 {/* Tehlike Bandı */}
@@ -819,6 +928,8 @@ export default function Academy() {
                   </div>
                 </div>
             </div>
+          </>
+            )}
           </>
         )}
 

@@ -1155,6 +1155,10 @@ router.post('/api/academy/streak-activity', isAuthenticated, async (req: any, re
 
 // Phase 23-25 APIs
 router.get('/api/academy/adaptive-recommendations/:userId', isAuthenticated, async (req: any, res) => {
+  const user = req.user;
+  if (user && isHQRole(user.role)) {
+    return res.json([]);
+  }
   res.json([
     { pathId: '1', pathName: 'Barista Yolu', completionPercent: 45, priority: 'high', estimatedDays: 14 },
     { pathId: '2', pathName: 'Hizmet Yolu', completionPercent: 30, priority: 'medium', estimatedDays: 10 },

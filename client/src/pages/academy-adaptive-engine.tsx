@@ -1,10 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
+import { isHQRole } from "@shared/schema";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { ArrowLeft, Brain, Zap, TrendingUp, CheckCircle, AlertCircle } from "lucide-react";
+import { ArrowLeft, Brain, Zap, TrendingUp, CheckCircle, AlertCircle, BookOpen } from "lucide-react";
 import { Link } from "wouter";
 
 export default function AcademyAdaptiveEngine() {
@@ -82,9 +83,25 @@ export default function AcademyAdaptiveEngine() {
               </div>
             ))
           ) : (
-            <div className="text-center py-8">
-              <AlertCircle className="w-8 h-8 text-muted-foreground mx-auto mb-2 opacity-50" />
-              <p className="text-muted-foreground">Henüz öneri yok. Sınavlar çözerek başlayın!</p>
+            <div className="text-center py-8 space-y-2">
+              {isHQRole(user?.role as any) ? (
+                <>
+                  <Brain className="w-8 h-8 text-primary mx-auto mb-2 opacity-70" />
+                  <p className="text-sm font-medium" data-testid="text-hq-adaptive-title">Yönetim Rolünüz İçin Adaptif Öneriler</p>
+                  <p className="text-xs text-muted-foreground" data-testid="text-hq-adaptive-desc">Yönetim seviyesi adaptif öğrenme yolları hazırlanmaktadır.</p>
+                  <Link href="/akademi">
+                    <Button size="sm" variant="outline" className="mt-2" data-testid="button-hq-adaptive-browse">
+                      <BookOpen className="w-3 h-3 mr-1" />
+                      Mevcut Eğitimleri İncele
+                    </Button>
+                  </Link>
+                </>
+              ) : (
+                <>
+                  <AlertCircle className="w-8 h-8 text-muted-foreground mx-auto mb-2 opacity-50" />
+                  <p className="text-muted-foreground">Henüz öneri yok. Sınavlar çözerek başlayın!</p>
+                </>
+              )}
             </div>
           )}
         </CardContent>

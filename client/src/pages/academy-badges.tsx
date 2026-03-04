@@ -1,9 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
+import { isHQRole } from "@shared/schema";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { ArrowLeft, Award, Star, Zap, Flame, Trophy, Coffee, Users, Lock } from "lucide-react";
+import { ArrowLeft, Award, Star, Zap, Flame, Trophy, Coffee, Users, Lock, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "wouter";
 
@@ -67,6 +68,17 @@ export default function AcademyBadges() {
         <h1 className="text-lg font-bold tracking-tight">Rozetler</h1>
         <p className="text-xs text-muted-foreground mt-1">Eğitim yolculuğunda kazanılan başarılar</p>
       </div>
+
+      {isHQRole(user?.role as any) && (
+        <Card className="col-span-full bg-primary/5 border-primary/20">
+          <CardContent className="p-3 flex items-center gap-2">
+            <Info className="w-4 h-4 text-primary flex-shrink-0" />
+            <p className="text-xs text-muted-foreground" data-testid="text-hq-badges-info">
+              Bu rozetler ekibinizin kazanabileceği başarılardır. Rozet sistemini inceleyerek ekibinizi daha iyi yönlendirebilirsiniz.
+            </p>
+          </CardContent>
+        </Card>
+      )}
 
       <div className="col-span-full grid grid-cols-3 md:grid-cols-3 gap-2">
         <Card>

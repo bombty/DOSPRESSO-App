@@ -1,14 +1,16 @@
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
+import { isHQRole } from "@shared/schema";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { ArrowLeft, Brain, Zap, Target, Loader } from "lucide-react";
+import { ArrowLeft, Brain, Zap, Target, Loader, BookOpen } from "lucide-react";
 import { Link } from "wouter";
 
 export default function AcademyLearningPaths() {
   const { user } = useAuth();
+  const userIsHQ = isHQRole(user?.role as any);
 
   const { data: learningPaths = [], isLoading } = useQuery({
     queryKey: ["/api/academy/learning-paths", user?.id],
@@ -75,7 +77,27 @@ export default function AcademyLearningPaths() {
         <p className="text-xs text-muted-foreground mt-1">AI tarafından kişiselleştirilmiş rotalar</p>
       </div>
 
-      {isLoading ? (
+      {userIsHQ ? (
+        <Card className="border-dashed border-2 border-primary/30">
+          <CardContent className="p-6 text-center space-y-3">
+            <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto">
+              <Brain className="w-6 h-6 text-primary" />
+            </div>
+            <div>
+              <h3 className="font-semibold text-sm" data-testid="text-hq-learning-paths-title">Yönetim Seviyesi Öğrenme Yolları</h3>
+              <p className="text-xs text-muted-foreground mt-1" data-testid="text-hq-learning-paths-desc">
+                Yönetim seviyesi öğrenme yolları yakında eklenecektir.
+              </p>
+            </div>
+            <Link href="/akademi">
+              <Button size="sm" variant="outline" data-testid="button-hq-browse-modules">
+                <BookOpen className="w-3 h-3 mr-1" />
+                Mevcut Eğitimleri İncele
+              </Button>
+            </Link>
+          </CardContent>
+        </Card>
+      ) : isLoading ? (
         <div className="flex items-center justify-center p-6">
           <Loader className="w-5 h-5 animate-spin text-muted-foreground" />
         </div>
