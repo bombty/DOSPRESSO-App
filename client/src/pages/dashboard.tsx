@@ -6,10 +6,10 @@ import { useEffect, lazy, Suspense } from "react";
 import { isHQRole, isFactoryFloorRole } from "@shared/schema";
 
 const HQ_SPECIAL_DASHBOARD_ROLES = [
-  'ceo', 'cgo', 'yatirimci_hq',
+  'ceo', 'cgo', 'yatirimci_hq', 'admin',
   'trainer', 'coach', 'satinalma', 'muhasebe', 'muhasebe_ik', 
   'teknik', 'destek', 'marketing', 'kalite_kontrol',
-  'fabrika_mudur', 'fabrika',
+  'fabrika_mudur', 'fabrika', 'gida_muhendisi',
 ];
 
 const HQDashboard = lazy(() => import("@/pages/hq-dashboard"));

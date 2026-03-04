@@ -110,6 +110,7 @@ export default function Login() {
         'teknik': '/',
         'destek': '/',
         'fabrika': '/fabrika/dashboard',
+        'gida_muhendisi': '/',
       };
 
       const getTarget = () => {

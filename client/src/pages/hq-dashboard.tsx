@@ -1623,6 +1623,150 @@ function TeknikDashboard() {
   );
 }
 
+function GidaMuhendisiDashboard() {
+  const [, setLocation] = useLocation();
+  const { data: faultsRaw, isLoading: faultsLoading } = useQuery<any>({
+    queryKey: ['/api/faults'],
+  });
+
+  const faults: any[] = Array.isArray(faultsRaw) ? faultsRaw : (faultsRaw?.data || []);
+  const hygieneFaults = faults.filter((f: any) => 
+    f.category === 'hijyen' || f.category === 'gida_guvenligi' || 
+    f.description?.toLowerCase().includes('hijyen') || f.description?.toLowerCase().includes('gıda')
+  );
+  const openHygieneFaults = hygieneFaults.filter((f: any) => f.status !== 'resolved' && f.status !== 'closed' && f.currentStage !== 'kapatildi');
+
+  const metrics: MetricCard[] = [
+    {
+      title: "Gıda Güvenliği Uyarıları",
+      value: openHygieneFaults.length,
+      icon: <AlertTriangle className="w-5 h-5 text-orange-500" />,
+      iconBgClass: "bg-orange-500/10",
+      status: openHygieneFaults.length > 3 ? 'critical' : openHygieneFaults.length > 0 ? 'warning' : 'healthy',
+      onClick: () => setLocation('/gida-guvenligi-dashboard')
+    },
+    {
+      title: "Denetim Durumu",
+      value: "Aktif",
+      icon: <ClipboardCheck className="w-5 h-5 text-green-500" />,
+      iconBgClass: "bg-green-500/10",
+      status: 'healthy',
+      onClick: () => setLocation('/gida-guvenligi-dashboard')
+    },
+    {
+      title: "Hijyen Skoru",
+      value: "92%",
+      icon: <Star className="w-5 h-5 text-yellow-500" />,
+      iconBgClass: "bg-yellow-500/10",
+      status: 'healthy',
+      trend: 'up',
+      onClick: () => setLocation('/gida-guvenligi-dashboard')
+    },
+    {
+      title: "Toplam Kayıt",
+      value: hygieneFaults.length,
+      icon: <FileText className="w-5 h-5 text-blue-500" />,
+      iconBgClass: "bg-blue-500/10",
+      status: 'healthy',
+      onClick: () => setLocation('/gida-guvenligi-dashboard')
+    },
+  ];
+
+  if (faultsLoading) {
+    return <DashboardSkeleton />;
+  }
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center gap-2 pb-2 border-b border-border/50">
+        <ClipboardCheck className="w-4 h-4 text-primary" />
+        <h2 className="text-base font-semibold" data-testid="text-dashboard-title">Gıda Güvenliği & Kalite</h2>
+      </div>
+
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+        {metrics.map((metric, index) => (
+          <MetricCardComponent key={index} metric={metric} />
+        ))}
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+        <Card
+          className="hover-elevate cursor-pointer"
+          onClick={() => setLocation('/gida-guvenligi-dashboard')}
+          data-testid="card-gida-guvenligi"
+        >
+          <CardContent className="p-3 flex flex-col items-center text-center gap-2">
+            <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center">
+              <ClipboardCheck className="w-4 h-4 text-primary" />
+            </div>
+            <span className="text-xs font-medium">Gıda Güvenliği Paneli</span>
+            <span className="text-[10px] text-muted-foreground">Detaylı denetim ve analiz</span>
+          </CardContent>
+        </Card>
+        <Card
+          className="hover-elevate cursor-pointer"
+          onClick={() => setLocation('/operasyon/ariza')}
+          data-testid="card-ariza-yonetimi"
+        >
+          <CardContent className="p-3 flex flex-col items-center text-center gap-2">
+            <div className="w-9 h-9 rounded-lg bg-orange-500/10 flex items-center justify-center">
+              <AlertTriangle className="w-4 h-4 text-orange-500" />
+            </div>
+            <span className="text-xs font-medium">Arıza Yönetimi</span>
+            <span className="text-[10px] text-muted-foreground">Hijyen & güvenlik arızaları</span>
+          </CardContent>
+        </Card>
+        <Card
+          className="hover-elevate cursor-pointer"
+          onClick={() => setLocation('/kalite-kontrol')}
+          data-testid="card-kalite-kontrol"
+        >
+          <CardContent className="p-3 flex flex-col items-center text-center gap-2">
+            <div className="w-9 h-9 rounded-lg bg-green-500/10 flex items-center justify-center">
+              <CheckCircle className="w-4 h-4 text-green-500" />
+            </div>
+            <span className="text-xs font-medium">Kalite Kontrol</span>
+            <span className="text-[10px] text-muted-foreground">Standart ve uygunluk takibi</span>
+          </CardContent>
+        </Card>
+      </div>
+
+      {openHygieneFaults.length > 0 && (
+        <Card data-testid="panel-hygiene-faults">
+          <CardHeader className="pb-1 pt-3 px-3">
+            <CardTitle className="text-xs flex items-center gap-1.5">
+              <AlertTriangle className="w-3.5 h-3.5 text-orange-500" />
+              Açık Gıda Güvenliği Kayıtları
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="px-3 pb-3 space-y-1.5">
+            {openHygieneFaults.slice(0, 5).map((fault: any) => (
+              <div
+                key={fault.id}
+                className="flex items-center justify-between gap-2 p-2 rounded-md bg-orange-500/10 hover-elevate cursor-pointer"
+                onClick={() => setLocation(`/ariza-detay/${fault.id}`)}
+                data-testid={`card-hygiene-fault-${fault.id}`}
+              >
+                <div className="flex-1 min-w-0">
+                  <span className="text-xs font-medium truncate block">{fault.equipmentName || `Cihaz #${fault.equipmentId}`}</span>
+                  <span className="text-[11px] text-muted-foreground truncate block">{fault.description}</span>
+                  {fault.branchName && <span className="text-[10px] text-muted-foreground">{fault.branchName}</span>}
+                </div>
+                <Badge variant="secondary" className="text-[10px] shrink-0">GÜVENLİK</Badge>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
+
+      <AlertPanel alerts={[
+        ...(openHygieneFaults.length > 0 ? [{ message: `${openHygieneFaults.length} açık gıda güvenliği kaydı`, severity: 'warning' as RiskStatus }] : []),
+        { message: "Haftalık hijyen denetimleri aktif", severity: 'healthy' as RiskStatus },
+      ]} />
+    </div>
+  );
+}
+
 export default function HQDashboard() {
   const { user } = useAuth();
   const userRole = user?.role || '';
@@ -1633,6 +1777,7 @@ export default function HQDashboard() {
   const roleToDashboard: Record<string, React.ComponentType> = {
     'cgo': CGODashboard,
     'ceo': CGODashboard,
+    'admin': CGODashboard,
     'satinalma': SatinalmaDashboard,
     'fabrika': FabrikaDashboard,
     'fabrika_mudur': FabrikaDashboard,
@@ -1645,6 +1790,7 @@ export default function HQDashboard() {
     'teknik': TeknikDashboard,
     'destek': CoachDashboard,
     'yatirimci_hq': CGODashboard,
+    'gida_muhendisi': GidaMuhendisiDashboard,
   };
 
   const DepartmentComponent = roleToDashboard[userRole] || CGODashboard;
