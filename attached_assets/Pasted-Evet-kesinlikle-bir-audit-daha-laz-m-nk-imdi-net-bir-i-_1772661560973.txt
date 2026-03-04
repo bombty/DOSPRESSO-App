@@ -1,0 +1,218 @@
+Evet, kesinlikle bir audit daha lazım. Çünkü şimdi net bir iş kuralı var — statü atlama = eğitim + sınav + skor + yönetici onayı. Bunu mevcut sistemde ne kadarı var, ne kadarı eksik bilmeliyiz.
+
+Replit'e yapıştır:
+
+---
+
+## TASK: Statü Atlama & Terfi Sistemi — Tam Audit
+
+Kod değişikliği YAPMA. Sadece analiz et ve rapor ver.
+
+---
+
+### BÖLÜM A: Kullanıcı Statü/Seviye Yapısı
+
+```bash
+# 1. Users tablosunda seviye/statü bilgisi
+SELECT column_name, data_type FROM information_schema.columns 
+WHERE table_name = 'users' 
+AND (column_name ILIKE '%level%' OR column_name ILIKE '%rank%' OR column_name ILIKE '%status%' OR column_name ILIKE '%role%' OR column_name ILIKE '%position%' OR column_name ILIKE '%title%' OR column_name ILIKE '%grade%' OR column_name ILIKE '%tier%')
+ORDER BY ordinal_position;
+
+# 2. Mevcut roller ve kullanıcı dağılımı
+SELECT role, COUNT(*) as count FROM users WHERE is_active = true GROUP BY role ORDER BY count DESC;
+
+# 3. bar_buddy rolü var mı? Kaç kişi?
+SELECT id, username, role, full_name, created_at FROM users WHERE role ILIKE '%buddy%' OR role ILIKE '%bar%buddy%';
+
+# 4. Stajyer rolü var mı?
+SELECT id, username, role, full_name, created_at FROM users WHERE role ILIKE '%stajyer%' OR role ILIKE '%intern%' OR role ILIKE '%trainee%';
+
+# 5. Tüm benzersiz roller listesi
+SELECT DISTINCT role FROM users ORDER BY role;
+```
+
+Raporla:
+- Kaç farklı rol var? Tam liste
+- Stajyer → Bar Buddy → Barista → Kıdemli Barista → Supervisor zinciri DB'de nasıl temsil ediliyor?
+- Rol değişikliği geçmişi tutuluyor mu? (role_history veya audit log tablosu)
+- Kullanıcının "statü atlama" yapabilmesi için bir mekanizma var mı?
+
+---
+
+### BÖLÜM B: Terfi/Statü Atlama Mekanizması
+
+```bash
+# 1. Terfi/promotion ile ilgili tablolar
+SELECT table_name FROM information_schema.tables 
+WHERE table_name ILIKE '%promot%' OR table_name ILIKE '%terfi%' 
+OR table_name ILIKE '%advancement%' OR table_name ILIKE '%upgrade%'
+OR table_name ILIKE '%status_change%' OR table_name ILIKE '%role_change%'
+OR table_name ILIKE '%level_up%' OR table_name ILIKE '%request%';
+
+# 2. Onay/talep sistemi
+SELECT table_name FROM information_schema.tables 
+WHERE table_name ILIKE '%approval%' OR table_name ILIKE '%onay%' 
+OR table_name ILIKE '%request%' OR table_name ILIKE '%talep%';
+
+# 3. Varsa terfi talepleri tablosu içeriği
+# (tablo adını yukarıdaki sorgulardan bul ve SELECT * LIMIT 10 yap)
+
+# 4. Frontend'de terfi/statü atlama UI var mı?
+grep -rn "promot\|terfi\|level.*up\|statü.*atla\|upgrade.*role\|request.*promotion" client/src/ --include="*.tsx" -l
+
+# 5. Backend'de terfi endpoint'i var mı?
+grep -rn "promot\|terfi\|level.*up\|upgrade.*role\|change.*role\|advancement" server/ --include="*.ts" | head -20
+```
+
+Raporla:
+- Terfi talep sistemi mevcut mu? (DB tablosu + API + UI)
+- Yönetici onay mekanizması var mı?
+- Otomatik skor kontrolü var mı? (skor >= 80 ise talep yapabilir gibi)
+- Terfi geçmişi/log tutuluyor mu?
+
+---
+
+### BÖLÜM C: Onboarding Süreci
+
+```bash
+# 1. Onboarding ile ilgili tablolar
+SELECT table_name FROM information_schema.tables 
+WHERE table_name ILIKE '%onboard%' OR table_name ILIKE '%orient%' 
+OR table_name ILIKE '%welcome%' OR table_name ILIKE '%induction%';
+
+# 2. Onboarding frontend sayfası
+grep -rn "onboard\|oryantasyon\|orientation\|ilk.*gün\|hoş.*geldin" client/src/ --include="*.tsx" -l
+
+# 3. Deneme süresi takibi
+grep -rn "trial\|deneme\|probation\|proba" server/ client/src/ --include="*.ts" --include="*.tsx" | head -15
+SELECT column_name FROM information_schema.columns WHERE table_name = 'users' AND (column_name ILIKE '%start%' OR column_name ILIKE '%hire%' OR column_name ILIKE '%trial%' OR column_name ILIKE '%probation%' OR column_name ILIKE '%onboard%');
+
+# 4. Onboarding eğitim modülleri
+SELECT id, title, category, target_roles FROM training_modules 
+WHERE title ILIKE '%onboard%' OR title ILIKE '%oryantasyon%' 
+OR title ILIKE '%başlangıç%' OR title ILIKE '%temel%' OR title ILIKE '%giriş%'
+OR category ILIKE '%onboard%' OR category ILIKE '%basic%';
+```
+
+Raporla:
+- Onboarding süreci sistematize edilmiş mi? (adım adım checklist, eğitim sırası)
+- Deneme süresi (2 ay) takip ediliyor mu?
+- Onboarding tamamlama oranı hesaplanıyor mu?
+- Onboarding'e özel eğitim modülleri kaç tane?
+
+---
+
+### BÖLÜM D: Skor/Performans Sistemi
+
+```bash
+# 1. Performans/skor tabloları
+SELECT table_name FROM information_schema.tables 
+WHERE table_name ILIKE '%score%' OR table_name ILIKE '%skor%' 
+OR table_name ILIKE '%performance%' OR table_name ILIKE '%performans%'
+OR table_name ILIKE '%evaluation%' OR table_name ILIKE '%değerlendirme%'
+OR table_name ILIKE '%rating%' OR table_name ILIKE '%review%';
+
+# 2. Kişisel skor hesaplama
+grep -rn "personalScore\|kisiselSkor\|employeeScore\|staff.*score\|calculate.*score" server/ --include="*.ts" | head -15
+
+# 3. Performans değerlendirme kayıtları
+# (yukarıdaki sorgulardan bulunan tablo adlarıyla SELECT COUNT(*) ve LIMIT 5 yap)
+
+# 4. Yönetici değerlendirmesi (manager review)
+SELECT table_name FROM information_schema.tables 
+WHERE table_name ILIKE '%staff_eval%' OR table_name ILIKE '%manager_review%' 
+OR table_name ILIKE '%peer_review%' OR table_name ILIKE '%360%';
+
+# 5. Staff evaluations varsa içeriği
+SELECT column_name, data_type FROM information_schema.columns WHERE table_name = 'staff_evaluations' ORDER BY ordinal_position;
+SELECT COUNT(*) FROM staff_evaluations;
+SELECT * FROM staff_evaluations LIMIT 5;
+
+# 6. Davranış/takım çalışması değerlendirmesi
+grep -rn "behavior\|davranış\|teamwork\|takım\|attitude\|disiplin" server/ client/src/ --include="*.ts" --include="*.tsx" | head -15
+```
+
+Raporla:
+- Kişisel skor hesaplama sistemi var mı? Formül ne?
+- Yönetici değerlendirme formu mevcut mu? (davranış, takım çalışması, performans)
+- staff_evaluations tablosunda ne var?
+- Skor eşiği kontrolü var mı? (80+ ise terfi talep edebilir gibi)
+- Peer review veya 360 derece değerlendirme var mı?
+
+---
+
+### BÖLÜM E: Eğitim-Sınav-Skor Bağlantısı
+
+```bash
+# 1. Sınav/quiz sonuçlarının skora etkisi
+grep -rn "quiz.*score\|exam.*score\|sınav.*skor\|test.*result.*score" server/ --include="*.ts" | head -10
+
+# 2. Eğitim tamamlamanın kariyer yoluna etkisi
+grep -rn "career.*progress\|kariyer.*ilerle\|level.*complete\|gate.*check\|prerequisite" server/ --include="*.ts" | head -15
+
+# 3. Career progress tablosu
+SELECT column_name, data_type FROM information_schema.columns WHERE table_name = 'career_progress' ORDER BY ordinal_position;
+SELECT COUNT(*) FROM career_progress;
+SELECT * FROM career_progress LIMIT 10;
+
+# 4. Career path levels ve gate yapısı
+SELECT * FROM career_path_levels ORDER BY level;
+
+# 5. Eğitim + sınav + skor → terfi akışının herhangi bir bağlantısı var mı?
+grep -rn "promot\|terfi\|level.*up\|canPromote\|eligible\|uygun\|hak.*kazan" server/ --include="*.ts" | head -15
+```
+
+Raporla:
+- Eğitim tamamlama → kariyer yolu ilerleme bağlantısı çalışıyor mu?
+- Quiz başarısı skora dahil mi?
+- Kariyer yolu gate'leri (required_module_ids) kontrol ediliyor mu? (tüm modüller tamamlandı mı diye)
+- Skor → terfi uygunluk kontrolü otomatik mi?
+- Bu 3 parçanın (eğitim + skor + terfi) birbiriyle konuştuğu bir akış var mı yoksa birbirinden bağımsız mı?
+
+---
+
+### BÖLÜM F: Fabrika & HQ Eğitim Modeli
+
+```bash
+# 1. Fabrika rolleri ve eğitim durumu
+SELECT role, COUNT(*) FROM users WHERE role ILIKE '%fabrika%' AND is_active = true GROUP BY role;
+SELECT id, title, target_roles FROM training_modules WHERE target_roles ILIKE '%fabrika%';
+
+# 2. HQ rolleri ve eğitim durumu  
+SELECT role, COUNT(*) FROM users WHERE role IN ('ceo','cgo','marketing','muhasebe_ik','satinalma','gida_muhendisi','kalite_kontrol','trainer','coach') AND is_active = true GROUP BY role;
+
+# 3. Prim/maaş sistemi bağlantısı
+SELECT table_name FROM information_schema.tables 
+WHERE table_name ILIKE '%salary%' OR table_name ILIKE '%maas%' 
+OR table_name ILIKE '%bonus%' OR table_name ILIKE '%prim%'
+OR table_name ILIKE '%payroll%' OR table_name ILIKE '%incentive%';
+
+# 4. Haftalık eğitim takibi (HQ/Fabrika için)
+grep -rn "weekly.*training\|haftalik.*egitim\|training.*frequency\|egitim.*sikligi" server/ --include="*.ts" | head -10
+```
+
+Raporla:
+- Fabrika çalışanları için ayrı eğitim modülleri var mı?
+- HQ/Fabrika'da haftalık eğitim takibi yapılıyor mu?
+- Prim/maaş sistemi DB'de mevcut mu? Eğitimle bağlantısı var mı?
+- HQ/Fabrika için "statü atlama yok ama eğitim skor etkisi var" mantığı sisteme yansıtılmış mı?
+
+---
+
+### FORMAT:
+
+Her bölümü (A-F) ayrı başlık altında raporla. Her bölüm için:
+1. **Mevcut durum** — ne var, ne çalışıyor
+2. **Eksikler** — ne yok, ne kırık
+3. **Veri durumu** — kaç kayıt, test mi gerçek mi
+4. **Sprint 2 iş tahmini** — bu alanı düzeltmek küçük/orta/büyük mü
+
+### DO NOT:
+- Kod değişikliği yapma
+- Yeni dosya oluşturma
+- DB'de INSERT/UPDATE/DELETE çalıştırma
+
+---
+
+Bu sonucu getir — Sprint 2 ticket'larını tam olarak DOSPRESSO'nun gerçek terfi akışına göre yazacağım.
