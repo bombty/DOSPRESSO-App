@@ -29,6 +29,8 @@ import {
   insertRecipeVersionSchema,
   moduleQuizzes,
   trainingModules,
+  trainingCompletions,
+  careerLevels,
 } from "@shared/schema";
 import { eq, desc, asc, and, or, gte, lte, sql, inArray, isNull, not, ne, count, sum, avg, max, min } from "drizzle-orm";
 import { z } from "zod";
@@ -2185,6 +2187,590 @@ router.get('/api/academy/recommended-quizzes', isAuthenticated, async (req: any,
   } catch (error: any) {
     console.error("Recommended quizzes error:", error);
     res.json([]);
+  }
+});
+
+// ========== T007: Content Management API ==========
+
+const CONTENT_MANAGER_ROLES = ['trainer', 'coach', 'admin', 'cgo', 'academy_coach'];
+
+function isContentManager(role: string) {
+  return CONTENT_MANAGER_ROLES.includes(role);
+}
+
+function canApproveContent(role: string) {
+  return ['coach', 'admin', 'cgo', 'academy_coach'].includes(role);
+}
+
+// GET /api/academy/modules/management - Tüm modüller (yönetim paneli)
+router.get('/api/academy/modules/management', isAuthenticated, async (req: any, res) => {
+  try {
+    const user = req.user!;
+    if (!isContentManager(user.role)) {
+      return res.status(403).json({ message: "Bu işlem için yetkiniz yok" });
+    }
+
+    const modules = await db.select({
+      id: trainingModules.id,
+      title: trainingModules.title,
+      description: trainingModules.description,
+      category: trainingModules.category,
+      level: trainingModules.level,
+      estimatedDuration: trainingModules.estimatedDuration,
+      targetRoles: trainingModules.targetRoles,
+      status: trainingModules.status,
+      rejectionReason: trainingModules.rejectionReason,
+      isPublished: trainingModules.isPublished,
+      createdBy: trainingModules.createdBy,
+      createdAt: trainingModules.createdAt,
+      isActive: trainingModules.isActive,
+    }).from(trainingModules)
+      .where(isNull(trainingModules.deletedAt))
+      .orderBy(desc(trainingModules.createdAt));
+
+    const moduleIds = modules.map(m => m.id);
+    let questionCounts: Record<number, number> = {};
+    if (moduleIds.length > 0) {
+      const quizzes = await db.select({
+        moduleId: moduleQuizzes.moduleId,
+        quizId: moduleQuizzes.id,
+      }).from(moduleQuizzes)
+        .where(inArray(moduleQuizzes.moduleId, moduleIds));
+
+      const quizIds = quizzes.map(q => q.quizId);
+      if (quizIds.length > 0) {
+        const qCounts = await db.select({
+          quizId: quizQuestions.quizId,
+          count: count(),
+        }).from(quizQuestions)
+          .where(inArray(quizQuestions.quizId, quizIds))
+          .groupBy(quizQuestions.quizId);
+
+        const quizToModule: Record<number, number> = {};
+        quizzes.forEach(q => { quizToModule[q.quizId] = q.moduleId; });
+        qCounts.forEach(qc => {
+          if (qc.quizId) {
+            const mId = quizToModule[qc.quizId];
+            if (mId) questionCounts[mId] = (questionCounts[mId] || 0) + Number(qc.count);
+          }
+        });
+      }
+    }
+
+    const creatorIds = [...new Set(modules.map(m => m.createdBy).filter(Boolean))] as string[];
+    let creatorNames: Record<string, string> = {};
+    if (creatorIds.length > 0) {
+      const creators = await db.select({ id: users.id, firstName: users.firstName, lastName: users.lastName })
+        .from(users).where(inArray(users.id, creatorIds));
+      creators.forEach(c => {
+        creatorNames[c.id] = `${c.firstName || ''} ${c.lastName || ''}`.trim() || c.id;
+      });
+    }
+
+    const result = modules.map(m => ({
+      ...m,
+      questionCount: questionCounts[m.id] || 0,
+      creatorName: m.createdBy ? (creatorNames[m.createdBy] || m.createdBy) : null,
+    }));
+
+    res.json(result);
+  } catch (error: any) {
+    handleApiError(res, error, "Modül listesi alınamadı");
+  }
+});
+
+// POST /api/academy/modules - Yeni modül oluştur
+router.post('/api/academy/modules', isAuthenticated, async (req: any, res) => {
+  try {
+    const user = req.user!;
+    if (!isContentManager(user.role)) {
+      return res.status(403).json({ message: "Bu işlem için yetkiniz yok" });
+    }
+
+    const { title, description, category, level, estimatedDuration, targetRoles, steps, learningObjectives, content } = req.body;
+    if (!title) return res.status(400).json({ message: "Başlık zorunludur" });
+
+    const [newModule] = await db.insert(trainingModules).values({
+      title,
+      description: description || null,
+      category: category || 'general',
+      level: level || 'beginner',
+      estimatedDuration: estimatedDuration || 15,
+      targetRoles: targetRoles || [],
+      steps: steps || (content ? [{ stepNumber: 1, title, content }] : []),
+      learningObjectives: learningObjectives || [],
+      status: 'draft',
+      isPublished: false,
+      createdBy: user.id,
+      isActive: true,
+    }).returning();
+
+    res.json(newModule);
+  } catch (error: any) {
+    handleApiError(res, error, "Modül oluşturulamadı");
+  }
+});
+
+// PATCH /api/academy/modules/:id - Modül düzenle
+router.patch('/api/academy/modules/:id', isAuthenticated, async (req: any, res) => {
+  try {
+    const user = req.user!;
+    const moduleId = parseInt(req.params.id);
+    if (!isContentManager(user.role)) {
+      return res.status(403).json({ message: "Bu işlem için yetkiniz yok" });
+    }
+
+    const [existing] = await db.select().from(trainingModules).where(eq(trainingModules.id, moduleId));
+    if (!existing) return res.status(404).json({ message: "Modül bulunamadı" });
+
+    if (user.role === 'trainer' && existing.createdBy !== user.id) {
+      return res.status(403).json({ message: "Sadece kendi oluşturduğunuz modülleri düzenleyebilirsiniz" });
+    }
+
+    const allowedFields = ['title', 'description', 'category', 'level', 'estimatedDuration', 'targetRoles', 'steps', 'learningObjectives'];
+    const updateData: any = { updatedAt: new Date() };
+    allowedFields.forEach(f => {
+      if (req.body[f] !== undefined) updateData[f] = req.body[f];
+    });
+
+    const [updated] = await db.update(trainingModules)
+      .set(updateData)
+      .where(eq(trainingModules.id, moduleId))
+      .returning();
+
+    res.json(updated);
+  } catch (error: any) {
+    handleApiError(res, error, "Modül güncellenemedi");
+  }
+});
+
+// PATCH /api/academy/modules/:id/status - Modül statüsü değiştir
+router.patch('/api/academy/modules/:id/status', isAuthenticated, async (req: any, res) => {
+  try {
+    const user = req.user!;
+    const moduleId = parseInt(req.params.id);
+    const { status, rejectionReason } = req.body;
+
+    if (!['draft', 'pending_review', 'approved', 'rejected'].includes(status)) {
+      return res.status(400).json({ message: "Geçersiz statü" });
+    }
+
+    const [existing] = await db.select().from(trainingModules).where(eq(trainingModules.id, moduleId));
+    if (!existing) return res.status(404).json({ message: "Modül bulunamadı" });
+
+    if (status === 'pending_review') {
+      if (!isContentManager(user.role)) {
+        return res.status(403).json({ message: "Bu işlem için yetkiniz yok" });
+      }
+    } else if (status === 'approved' || status === 'rejected') {
+      if (!canApproveContent(user.role)) {
+        return res.status(403).json({ message: "Onay yetkisi sadece Coach/Admin'de" });
+      }
+    }
+
+    const updateData: any = { status, updatedAt: new Date() };
+    if (status === 'approved') {
+      updateData.isPublished = true;
+      updateData.rejectionReason = null;
+    }
+    if (status === 'rejected') {
+      if (!rejectionReason) return res.status(400).json({ message: "Red sebebi zorunludur" });
+      updateData.rejectionReason = rejectionReason;
+      updateData.isPublished = false;
+    }
+
+    const [updated] = await db.update(trainingModules)
+      .set(updateData)
+      .where(eq(trainingModules.id, moduleId))
+      .returning();
+
+    try {
+      if (status === 'pending_review' && existing.createdBy) {
+        const approvers = await db.select().from(users)
+          .where(and(
+            or(
+              eq(users.role, 'coach'),
+              eq(users.role, 'academy_coach'),
+              eq(users.role, 'admin'),
+              eq(users.role, 'cgo')
+            ),
+            eq(users.isActive, true)
+          ));
+        for (const approver of approvers) {
+          await storage.createNotification({
+            userId: approver.id,
+            type: 'academy_update',
+            title: 'Yeni modül onay bekliyor',
+            message: `"${existing.title}" modülü onayınızı bekliyor.`,
+            relatedId: moduleId,
+            relatedType: 'training_module',
+          });
+        }
+      }
+
+      if ((status === 'approved' || status === 'rejected') && existing.createdBy) {
+        const statusText = status === 'approved' ? 'onaylandı' : 'reddedildi';
+        await storage.createNotification({
+          userId: existing.createdBy,
+          type: 'academy_update',
+          title: `Modül ${statusText}`,
+          message: `"${existing.title}" modülü ${statusText}.${rejectionReason ? ` Sebep: ${rejectionReason}` : ''}`,
+          relatedId: moduleId,
+          relatedType: 'training_module',
+        });
+      }
+    } catch (notifError) {
+      console.error("Content status notification error:", notifError);
+    }
+
+    res.json(updated);
+  } catch (error: any) {
+    handleApiError(res, error, "Modül statüsü güncellenemedi");
+  }
+});
+
+// DELETE /api/academy/modules/:id - Modül sil (soft delete)
+router.delete('/api/academy/modules/:id', isAuthenticated, async (req: any, res) => {
+  try {
+    const user = req.user!;
+    if (!['admin', 'cgo'].includes(user.role)) {
+      return res.status(403).json({ message: "Silme yetkisi sadece Admin/CGO'da" });
+    }
+
+    const moduleId = parseInt(req.params.id);
+    await db.update(trainingModules)
+      .set({ deletedAt: new Date(), isActive: false, isPublished: false })
+      .where(eq(trainingModules.id, moduleId));
+
+    res.json({ message: "Modül silindi" });
+  } catch (error: any) {
+    handleApiError(res, error, "Modül silinemedi");
+  }
+});
+
+// POST /api/academy/modules/:id/ai-enrich - AI ile içerik zenginleştir
+router.post('/api/academy/modules/:id/ai-enrich', isAuthenticated, async (req: any, res) => {
+  try {
+    const user = req.user!;
+    if (!isContentManager(user.role)) {
+      return res.status(403).json({ message: "Bu işlem için yetkiniz yok" });
+    }
+
+    const moduleId = parseInt(req.params.id);
+    const [mod] = await db.select().from(trainingModules).where(eq(trainingModules.id, moduleId));
+    if (!mod) return res.status(404).json({ message: "Modül bulunamadı" });
+
+    const OpenAI = (await import("openai")).default;
+    const openai = new OpenAI();
+
+    const prompt = `Sen bir kahve franchise eğitim içeriği yazarısın. DOSPRESSO markası için "${mod.title}" başlıklı bir eğitim modülü yazıyorsun.
+Açıklama: ${mod.description || 'Belirtilmemiş'}
+Kategori: ${mod.category || 'Genel'}
+Zorluk: ${mod.level || 'beginner'}
+
+Lütfen şu formatta Türkçe içerik üret:
+1. 4-5 öğrenme hedefi (objectives)
+2. 4-6 adım (step) — her biri başlık ve detaylı içerik
+3. Her adım 2-3 paragraf olsun
+
+JSON formatında döndür:
+{
+  "learningObjectives": ["hedef1", "hedef2", ...],
+  "steps": [{"stepNumber": 1, "title": "Başlık", "content": "İçerik..."}, ...]
+}`;
+
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [{ role: "user", content: prompt }],
+      response_format: { type: "json_object" },
+      temperature: 0.7,
+    });
+
+    const content = completion.choices[0]?.message?.content;
+    if (!content) return res.status(500).json({ message: "AI yanıt vermedi" });
+
+    const parsed = JSON.parse(content);
+
+    await db.update(trainingModules).set({
+      learningObjectives: parsed.learningObjectives || [],
+      steps: parsed.steps || [],
+      generatedByAi: true,
+      updatedAt: new Date(),
+    }).where(eq(trainingModules.id, moduleId));
+
+    res.json({ message: "İçerik zenginleştirildi", ...parsed });
+  } catch (error: any) {
+    handleApiError(res, error, "AI içerik üretilemedi");
+  }
+});
+
+// POST /api/academy/modules/:id/questions - Soru ekle
+router.post('/api/academy/modules/:id/questions', isAuthenticated, async (req: any, res) => {
+  try {
+    const user = req.user!;
+    if (!isContentManager(user.role)) {
+      return res.status(403).json({ message: "Bu işlem için yetkiniz yok" });
+    }
+
+    const moduleId = parseInt(req.params.id);
+    let [quiz] = await db.select().from(moduleQuizzes).where(eq(moduleQuizzes.moduleId, moduleId));
+    if (!quiz) {
+      const [mod] = await db.select().from(trainingModules).where(eq(trainingModules.id, moduleId));
+      [quiz] = await db.insert(moduleQuizzes).values({
+        moduleId,
+        title: `${mod?.title || 'Modül'} Sınavı`,
+        passingScore: 70,
+        timeLimit: 15,
+      }).returning();
+    }
+
+    const { question, options, correctAnswer, correctAnswerIndex, explanation } = req.body;
+    if (!question || !options || !correctAnswer) {
+      return res.status(400).json({ message: "Soru, şıklar ve doğru cevap zorunludur" });
+    }
+
+    const [newQuestion] = await db.insert(quizQuestions).values({
+      quizId: quiz.id,
+      question,
+      options,
+      correctAnswer,
+      correctAnswerIndex: correctAnswerIndex || 0,
+      explanation: explanation || null,
+      reviewStatus: 'manual',
+    }).returning();
+
+    res.json(newQuestion);
+  } catch (error: any) {
+    handleApiError(res, error, "Soru eklenemedi");
+  }
+});
+
+// PATCH /api/academy/questions/:id - Soru düzenle
+router.patch('/api/academy/questions/:id', isAuthenticated, async (req: any, res) => {
+  try {
+    const user = req.user!;
+    if (!isContentManager(user.role)) {
+      return res.status(403).json({ message: "Bu işlem için yetkiniz yok" });
+    }
+
+    const questionId = parseInt(req.params.id);
+    const { question, options, correctAnswer, correctAnswerIndex, explanation, reviewStatus } = req.body;
+    const updateData: any = {};
+    if (question !== undefined) updateData.question = question;
+    if (options !== undefined) updateData.options = options;
+    if (correctAnswer !== undefined) updateData.correctAnswer = correctAnswer;
+    if (correctAnswerIndex !== undefined) updateData.correctAnswerIndex = correctAnswerIndex;
+    if (explanation !== undefined) updateData.explanation = explanation;
+    if (reviewStatus !== undefined) updateData.reviewStatus = reviewStatus;
+
+    const [updated] = await db.update(quizQuestions)
+      .set(updateData)
+      .where(eq(quizQuestions.id, questionId))
+      .returning();
+
+    if (!updated) return res.status(404).json({ message: "Soru bulunamadı" });
+    res.json(updated);
+  } catch (error: any) {
+    handleApiError(res, error, "Soru güncellenemedi");
+  }
+});
+
+// DELETE /api/academy/questions/:id - Soru sil
+router.delete('/api/academy/questions/:id', isAuthenticated, async (req: any, res) => {
+  try {
+    const user = req.user!;
+    if (!isContentManager(user.role)) {
+      return res.status(403).json({ message: "Bu işlem için yetkiniz yok" });
+    }
+
+    const questionId = parseInt(req.params.id);
+    await db.delete(quizQuestions).where(eq(quizQuestions.id, questionId));
+    res.json({ message: "Soru silindi" });
+  } catch (error: any) {
+    handleApiError(res, error, "Soru silinemedi");
+  }
+});
+
+// GET /api/academy/modules/:id/questions - Modül soruları
+router.get('/api/academy/modules/:id/questions', isAuthenticated, async (req: any, res) => {
+  try {
+    const moduleId = parseInt(req.params.id);
+    const quiz = await db.select().from(moduleQuizzes).where(eq(moduleQuizzes.moduleId, moduleId));
+    if (quiz.length === 0) return res.json({ quiz: null, questions: [] });
+
+    const questions = await db.select().from(quizQuestions)
+      .where(eq(quizQuestions.quizId, quiz[0].id))
+      .orderBy(asc(quizQuestions.id));
+
+    res.json({ quiz: quiz[0], questions });
+  } catch (error: any) {
+    handleApiError(res, error, "Sorular alınamadı");
+  }
+});
+
+// GET /api/academy/daily-recommendation - Bugünün önerilen eğitimi
+router.get('/api/academy/daily-recommendation', isAuthenticated, async (req: any, res) => {
+  try {
+    const user = req.user!;
+    const userId = user.id;
+    const userRole = user.role as string;
+
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+
+    const completedModuleIds: number[] = [];
+    const completions = await db.select({ materialId: trainingCompletions.materialId })
+      .from(trainingCompletions)
+      .where(eq(trainingCompletions.userId, userId));
+    completions.forEach(c => completedModuleIds.push(c.materialId));
+
+    const todayCompletions = await db.select({ materialId: trainingCompletions.materialId })
+      .from(trainingCompletions)
+      .where(and(
+        eq(trainingCompletions.userId, userId),
+        gte(trainingCompletions.completedAt, todayStart)
+      ));
+    const alreadyCompletedToday = todayCompletions.length > 0;
+
+    const allModules = await db.select().from(trainingModules)
+      .where(or(eq(trainingModules.isPublished, true), sql`true`));
+
+    const roleModules = allModules.filter(m => {
+      const roles = (m as any).targetRoles as string[] | null;
+      if (!roles || roles.length === 0) return true;
+      return roles.includes(userRole);
+    });
+
+    const uncompletedModules = roleModules.filter(m => !completedModuleIds.includes(m.id));
+
+    const careerProgress = await db.select().from(userCareerProgress)
+      .where(eq(userCareerProgress.userId, userId));
+    let requiredModuleIds: number[] = [];
+    if (careerProgress.length > 0) {
+      const levelId = careerProgress[0].currentCareerLevelId;
+      const [level] = await db.select().from(careerLevels)
+        .where(eq(careerLevels.id, levelId));
+      if (level?.requiredModuleIds) {
+        requiredModuleIds = level.requiredModuleIds.filter((id: number | null): id is number => id !== null);
+      }
+    }
+
+    let recommended = null;
+
+    const careerUncompleted = uncompletedModules.filter(m => requiredModuleIds.includes(m.id));
+    if (careerUncompleted.length > 0) {
+      const sortedByOrder = careerUncompleted.sort((a, b) => {
+        const aIdx = requiredModuleIds.indexOf(a.id);
+        const bIdx = requiredModuleIds.indexOf(b.id);
+        return aIdx - bIdx;
+      });
+      recommended = sortedByOrder[0];
+    } else if (uncompletedModules.length > 0) {
+      recommended = uncompletedModules[0];
+    }
+
+    const levelMap: Record<string, string> = {
+      beginner: 'Kolay',
+      intermediate: 'Orta',
+      advanced: 'Zor',
+    };
+
+    res.json({
+      module: recommended ? {
+        id: recommended.id,
+        title: recommended.title,
+        category: recommended.category || 'Genel',
+        duration: recommended.estimatedDuration || 15,
+        difficulty: levelMap[recommended.level || 'beginner'] || 'Orta',
+        level: recommended.level || 'beginner',
+      } : null,
+      alreadyCompletedToday,
+      totalCompleted: completedModuleIds.length,
+    });
+  } catch (error: any) {
+    handleApiError(res, error, "Günlük öneri alınamadı");
+  }
+});
+
+// GET /api/academy/weekly-progress - Haftalık ilerleme ve streak
+router.get('/api/academy/weekly-progress', isAuthenticated, async (req: any, res) => {
+  try {
+    const user = req.user!;
+    const userId = user.id;
+    const userRole = user.role as string;
+
+    const now = new Date();
+    const dayOfWeek = now.getDay();
+    const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+    const weekStart = new Date(now);
+    weekStart.setDate(now.getDate() + mondayOffset);
+    weekStart.setHours(0, 0, 0, 0);
+
+    const weeklyCompletions = await db.select({ materialId: trainingCompletions.materialId })
+      .from(trainingCompletions)
+      .where(and(
+        eq(trainingCompletions.userId, userId),
+        gte(trainingCompletions.completedAt, weekStart)
+      ));
+
+    const HQ_ROLES = ['ceo', 'cgo', 'admin', 'marketing', 'muhasebe_ik', 'satinalma', 'gida_muhendisi', 'yatirimci_hq'];
+    const weeklyTargets: Record<string, number> = {
+      stajyer: 4,
+      bar_buddy: 2,
+      barista: 2,
+      supervisor_buddy: 2,
+      supervisor: 2,
+      mudur: 2,
+    };
+    const weeklyTarget = HQ_ROLES.includes(userRole) ? 1 : (weeklyTargets[userRole] || 2);
+
+    const allCompletions = await db.select({ completedAt: trainingCompletions.completedAt })
+      .from(trainingCompletions)
+      .where(eq(trainingCompletions.userId, userId))
+      .orderBy(desc(trainingCompletions.completedAt));
+
+    let streakDays = 0;
+    if (allCompletions.length > 0) {
+      const completionDates = new Set<string>();
+      allCompletions.forEach(c => {
+        if (c.completedAt) {
+          const d = new Date(c.completedAt);
+          completionDates.add(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`);
+        }
+      });
+
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+
+      let checkDate = new Date(today);
+      if (!completionDates.has(todayStr)) {
+        checkDate.setDate(checkDate.getDate() - 1);
+      }
+
+      while (true) {
+        const dateStr = `${checkDate.getFullYear()}-${String(checkDate.getMonth() + 1).padStart(2, '0')}-${String(checkDate.getDate()).padStart(2, '0')}`;
+        if (completionDates.has(dateStr)) {
+          streakDays++;
+          checkDate.setDate(checkDate.getDate() - 1);
+        } else {
+          break;
+        }
+      }
+    }
+
+    const lastCompletedDate = allCompletions.length > 0 && allCompletions[0].completedAt
+      ? allCompletions[0].completedAt.toISOString()
+      : null;
+
+    res.json({
+      completedThisWeek: weeklyCompletions.length,
+      weeklyTarget,
+      streakDays,
+      lastCompletedDate,
+    });
+  } catch (error: any) {
+    handleApiError(res, error, "Haftalık ilerleme alınamadı");
   }
 });
 

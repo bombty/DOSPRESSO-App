@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
-import { ArrowLeft, CheckCircle, XCircle, Clock, Loader, ArrowRight, Zap, Lock, RefreshCw, Trophy, AlertTriangle, Eye, EyeOff, Timer, Shield } from "lucide-react";
+import { ArrowLeft, CheckCircle, XCircle, Clock, Loader, ArrowRight, Zap, Lock, RefreshCw, Trophy, AlertTriangle, Eye, EyeOff, Timer, Shield, Flame, BookOpen, Star, TrendingUp } from "lucide-react";
 
 type AttemptInfo = {
   attempts: any[];
@@ -94,6 +94,36 @@ export default function AcademyQuiz() {
     queryFn: async () => {
       const res = await fetch(`/api/academy/adaptive-recommendation/${quizId}`, { credentials: "include" });
       if (!res.ok) return null;
+      return res.json();
+    },
+    enabled: submitted,
+  });
+
+  const { data: dailyRecommendation } = useQuery({
+    queryKey: ['/api/academy/daily-recommendation'],
+    queryFn: async () => {
+      const res = await fetch('/api/academy/daily-recommendation', { credentials: "include" });
+      if (!res.ok) return null;
+      return res.json();
+    },
+    enabled: submitted && score >= (quiz?.passingScore ?? 70),
+  });
+
+  const { data: careerProgress } = useQuery({
+    queryKey: ['/api/academy/career-progress', user?.id],
+    queryFn: async () => {
+      const res = await fetch(`/api/academy/career-progress/${user?.id}`, { credentials: "include" });
+      if (!res.ok) return null;
+      return res.json();
+    },
+    enabled: submitted && !!user?.id,
+  });
+
+  const { data: careerLevels } = useQuery({
+    queryKey: ['/api/academy/career-levels'],
+    queryFn: async () => {
+      const res = await fetch('/api/academy/career-levels', { credentials: "include" });
+      if (!res.ok) return [];
       return res.json();
     },
     enabled: submitted,
@@ -471,30 +501,87 @@ export default function AcademyQuiz() {
   }
 
   if (submitted) {
+    const isPassed = score >= quiz.passingScore;
+    const wrongQuestions = quiz.questions
+      .map((q: any, idx: number) => ({
+        index: idx,
+        question: q.question,
+        userAnswer: answers[idx] !== undefined ? q.options[parseInt(answers[idx])] : null,
+        correctAnswer: q.options[q.correct_answer_index],
+        isCorrect: parseInt(answers[idx]) === q.correct_answer_index,
+      }))
+      .filter((q: any) => !q.isCorrect);
+
+    const correctCount = quiz.questions.length - wrongQuestions.length;
+
+    const currentLevel = careerLevels?.find((l: any) => l.id === careerProgress?.currentCareerLevelId);
+    const nextLevel = careerLevels?.find((l: any) => l.levelNumber === (currentLevel?.levelNumber || 0) + 1);
+    const completedModuleCount = careerProgress?.completedModuleIds?.length || 0;
+    const totalRequired = currentLevel?.requiredModuleIds?.length || 1;
+    const progressPercent = Math.min(100, Math.round((completedModuleCount / totalRequired) * 100));
+
+    const motivationalMessages = [
+      "Her usta bir zamanlar amatördü. Tekrar dene!",
+      "Hatalar, en iyi öğretmenlerdir.",
+      "Azimle devam et, başarı yakın!",
+      "Bir adım geri, iki adım ileri.",
+      "Öğrenmek bir yolculuk, her deneme seni ileriye taşır.",
+    ];
+    const motivationMessage = motivationalMessages[Math.floor(Math.random() * motivationalMessages.length)];
+
     return (
-      <div className="grid grid-cols-1 gap-2 p-3 max-w-2xl mx-auto">
-        <Card>
+      <div className="grid grid-cols-1 gap-3 p-3 max-w-2xl mx-auto">
+        <Card className={isPassed ? "border-green-500/30" : "border-amber-500/30"}>
           <CardHeader className="text-center pb-2">
-            <CardTitle className="text-sm">Quiz Tamamlandı</CardTitle>
+            {isPassed ? (
+              <div className="flex flex-col items-center gap-2">
+                <div className="relative">
+                  <Trophy className="w-12 h-12 text-green-500 animate-bounce" data-testid="icon-success" />
+                  <Star className="w-5 h-5 text-yellow-400 absolute -top-1 -right-1" />
+                </div>
+                <CardTitle className="text-lg" data-testid="text-result-title">Tebrikler!</CardTitle>
+                <p className="text-sm text-muted-foreground">Quiz'i başarıyla tamamladın</p>
+              </div>
+            ) : (
+              <div className="flex flex-col items-center gap-2">
+                <AlertTriangle className="w-12 h-12 text-amber-500" data-testid="icon-fail" />
+                <CardTitle className="text-lg" data-testid="text-result-title">Biraz Daha Çalışmalısın</CardTitle>
+                <p className="text-sm text-muted-foreground">Endişelenme, tekrar deneyebilirsin</p>
+              </div>
+            )}
           </CardHeader>
           <CardContent className="flex flex-col gap-3 sm:gap-4">
             <div className="text-center">
-              <div className="flex items-center justify-center gap-2 mb-1">
-                {score >= quiz.passingScore ? (
-                  <CheckCircle className="w-8 h-8 text-green-500" />
-                ) : (
-                  <XCircle className="w-8 h-8 text-red-500" />
-                )}
-              </div>
-              <p className="text-3xl font-bold mb-1" data-testid="text-quiz-score">{score}%</p>
-              <Badge variant={score >= quiz.passingScore ? "default" : "destructive"} className="text-xs" data-testid="badge-quiz-result">
-                {score >= quiz.passingScore ? "BAŞARILI" : "BAŞARISIZ"}
+              <p className="text-4xl font-bold mb-1" data-testid="text-quiz-score">{score}%</p>
+              <Badge variant={isPassed ? "default" : "destructive"} className="text-xs" data-testid="badge-quiz-result">
+                {isPassed ? "BAŞARILI" : "BAŞARISIZ"}
               </Badge>
             </div>
 
+            <div className="grid grid-cols-3 gap-2 text-center">
+              <div className="p-2 bg-green-500/10 rounded-md">
+                <p className="text-lg font-bold text-green-600 dark:text-green-400" data-testid="text-correct-count">{correctCount}</p>
+                <p className="text-xs text-muted-foreground">Doğru</p>
+              </div>
+              <div className="p-2 bg-red-500/10 rounded-md">
+                <p className="text-lg font-bold text-red-600 dark:text-red-400" data-testid="text-wrong-count">{wrongQuestions.length}</p>
+                <p className="text-xs text-muted-foreground">Yanlış</p>
+              </div>
+              <div className="p-2 bg-muted rounded-md">
+                <p className="text-lg font-bold" data-testid="text-total-count">{quiz.questions.length}</p>
+                <p className="text-xs text-muted-foreground">Toplam</p>
+              </div>
+            </div>
+
             <div>
-              <p className="text-xs text-muted-foreground mb-0.5">Gerekli: {quiz.passingScore}%</p>
-              <Progress value={score} className="h-1" />
+              <p className="text-xs text-muted-foreground mb-1">Geçme Notu: %{quiz.passingScore}</p>
+              <div className="relative">
+                <Progress value={score} className="h-2" />
+                <div
+                  className="absolute top-0 h-2 w-0.5 bg-foreground/50"
+                  style={{ left: `${quiz.passingScore}%` }}
+                />
+              </div>
             </div>
 
             {completionTypeRef.current !== "normal" && (
@@ -518,19 +605,80 @@ export default function AcademyQuiz() {
               </div>
             )}
 
-            {score < quiz.passingScore && (
-              <Card className="bg-amber-500/5 border-amber-500/20">
+            {wrongQuestions.length > 0 && (
+              <Card className="bg-muted/50">
+                <CardHeader className="pb-1 pt-3 px-3">
+                  <div className="flex items-center gap-2">
+                    <XCircle className="w-4 h-4 text-red-500" />
+                    <CardTitle className="text-sm">Yanlış Cevaplanan Konular</CardTitle>
+                  </div>
+                </CardHeader>
+                <CardContent className="px-3 pb-3 pt-1">
+                  <div className="space-y-2" data-testid="list-wrong-topics">
+                    {wrongQuestions.map((wq: any) => (
+                      <div key={wq.index} className="flex items-start gap-2 text-xs p-2 bg-background rounded-md">
+                        <span className="text-red-500 font-medium shrink-0">S{wq.index + 1}</span>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-foreground truncate">{wq.question}</p>
+                          <p className="text-muted-foreground mt-0.5">
+                            Doğru: <span className="text-green-600 dark:text-green-400">{wq.correctAnswer}</span>
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {isPassed && currentLevel && (
+              <Card className="bg-primary/5 border-primary/20">
                 <CardContent className="p-3 space-y-2">
+                  <div className="flex items-center gap-2">
+                    <TrendingUp className="w-4 h-4 text-primary" />
+                    <span className="text-sm font-medium">Kariyer İlerlemen</span>
+                  </div>
+                  <div className="flex items-center justify-between gap-2 text-xs flex-wrap">
+                    <span className="text-muted-foreground">{currentLevel.titleTr || currentLevel.title}</span>
+                    {nextLevel && (
+                      <>
+                        <ArrowRight className="w-3 h-3 text-muted-foreground" />
+                        <span className="text-muted-foreground">{nextLevel.titleTr || nextLevel.title}</span>
+                      </>
+                    )}
+                  </div>
+                  <div className="relative" data-testid="career-progress-bar">
+                    <Progress value={progressPercent} className="h-2 transition-all duration-1000" />
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {completedModuleCount} / {totalRequired} modül tamamlandı
+                  </p>
+                </CardContent>
+              </Card>
+            )}
+
+            {!isPassed && (
+              <Card className="bg-amber-500/5 border-amber-500/20">
+                <CardContent className="p-3 space-y-3">
                   <div className="flex items-center gap-2">
                     <RefreshCw className="w-4 h-4 text-amber-500" />
                     <span className="text-sm font-medium">Tekrar Deneme</span>
                   </div>
-                  <p className="text-xs text-muted-foreground">
-                    24 saat sonra tekrar deneyebilirsiniz. Quiz'i geçmek için en az %{quiz.passingScore} almanız gerekiyor.
-                  </p>
+                  <div className="flex items-center gap-2 p-2 bg-background rounded-md">
+                    <Clock className="w-4 h-4 text-amber-500 shrink-0" />
+                    <p className="text-xs text-muted-foreground">
+                      <strong className="text-foreground">24 saat</strong> sonra tekrar deneyebilirsiniz
+                    </p>
+                  </div>
                   <div className="flex items-center gap-2 text-xs">
                     <span className="text-muted-foreground">Kullanılan deneme:</span>
                     <span className="font-medium">{attemptInfo?.attemptCount || 1} / {attemptInfo?.maxAttempts || 3}</span>
+                  </div>
+                  <div className="flex items-start gap-2 p-2 bg-primary/5 rounded-md">
+                    <Flame className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+                    <p className="text-xs text-muted-foreground italic" data-testid="text-motivation">
+                      {motivationMessage}
+                    </p>
                   </div>
                 </CardContent>
               </Card>
@@ -540,13 +688,12 @@ export default function AcademyQuiz() {
               <Card className="bg-primary/10 dark:bg-blue-950 border-primary/30 dark:border-primary/40">
                 <CardHeader className="pb-2">
                   <div className="flex items-center gap-1">
-                    <Zap className="w-4 h-4 text-primary dark:text-primary" />
+                    <Zap className="w-4 h-4 text-primary" />
                     <CardTitle className="text-sm">Yol Önerisi</CardTitle>
                   </div>
                 </CardHeader>
-                <CardContent className="w-full space-y-1 md:space-y-1">
+                <CardContent className="w-full space-y-1">
                   <p className="text-sm">{recommendation.recommendation}</p>
-                  
                   <div className="flex items-center justify-between gap-2 mt-3 p-2 bg-white dark:bg-slate-900 rounded-md">
                     <div className="text-xs text-center">
                       <Badge variant="outline" className="bg-success/10 dark:bg-success/5 text-success dark:text-success">Kolay</Badge>
@@ -568,14 +715,40 @@ export default function AcademyQuiz() {
             )}
 
             <div className="flex gap-2">
-              <Link to="/akademi" className="flex-1">
-                <Button variant="outline" className="w-full">Akademi'ye Dön</Button>
-              </Link>
-              {score >= quiz.passingScore && (
-                <Button className="flex-1" onClick={() => window.history.back()}>
-                  <Trophy className="w-4 h-4 mr-1" />
-                  Devam Et
-                </Button>
+              {isPassed && dailyRecommendation?.module ? (
+                <>
+                  <Link to="/akademi" className="flex-1">
+                    <Button variant="outline" className="w-full" data-testid="button-back-academy">Akademi'ye Dön</Button>
+                  </Link>
+                  <Link to={`/akademi-quiz/${dailyRecommendation.module.quizId || dailyRecommendation.module.id}`} className="flex-1">
+                    <Button className="w-full" data-testid="button-next-module">
+                      Sonraki Modül
+                      <ArrowRight className="w-4 h-4 ml-1" />
+                    </Button>
+                  </Link>
+                </>
+              ) : isPassed ? (
+                <>
+                  <Link to="/akademi" className="flex-1">
+                    <Button variant="outline" className="w-full" data-testid="button-back-academy">Akademi'ye Dön</Button>
+                  </Link>
+                  <Link to="/akademi" className="flex-1">
+                    <Button className="w-full" data-testid="button-continue">
+                      <Trophy className="w-4 h-4 mr-1" />
+                      Devam Et
+                    </Button>
+                  </Link>
+                </>
+              ) : (
+                <>
+                  <Link to="/akademi" className="flex-1">
+                    <Button variant="outline" className="w-full" data-testid="button-back-academy">Akademi'ye Dön</Button>
+                  </Link>
+                  <Button variant="outline" className="flex-1" onClick={() => window.history.back()} data-testid="button-review-module">
+                    <BookOpen className="w-4 h-4 mr-1" />
+                    Modülü Tekrar Çalış
+                  </Button>
+                </>
               )}
             </div>
           </CardContent>

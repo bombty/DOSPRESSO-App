@@ -3417,6 +3417,8 @@ export const trainingModules = pgTable("training_modules", {
   }>>().default([]), // AI Rol Yapma Senaryoları
   
   targetRoles: text("target_roles").array().default(sql`'{}'::text[]`),
+  status: varchar("status", { length: 20 }).default("approved"),
+  rejectionReason: text("rejection_reason"),
   createdBy: varchar("created_by").references(() => users.id), // VARCHAR - users.id is UUID
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
@@ -3489,6 +3491,7 @@ export const quizQuestions = pgTable("quiz_questions", {
   correctAnswerIndex: integer("correct_answer_index").default(0),
   explanation: text("explanation"),
   points: integer("points").default(1),
+  reviewStatus: varchar("review_status", { length: 20 }).default("manual"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 

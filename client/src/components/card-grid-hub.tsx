@@ -28,6 +28,7 @@ import { HeroSection } from "@/components/ui/hero-section";
 import { MrDobody } from "@/components/mr-dobody";
 import { UnifiedHero } from "@/components/widgets/unified-hero";
 import { AtadiklarimWidget } from "@/components/widgets/atadiklarim-widget";
+import { TeamTrainingWidget } from "@/components/widgets/team-training-widget";
 import {
   Accordion,
   AccordionContent,
@@ -1011,6 +1012,10 @@ export function CardGridHub() {
       {canSeeWidget(userRole, 'critical-alerts') && <CriticalAlerts />}
 
       {canSeeWidget(userRole, 'atadiklarim') && <AtadiklarimWidget />}
+
+      {isBranch && (userRole === 'supervisor' || userRole === 'supervisor_buddy' || userRole === 'mudur') && (
+        <TeamTrainingWidget />
+      )}
 
       {isBranch && user?.role !== "supervisor" && user?.role !== "supervisor_buddy" && <PersonalSummaryCard />}
 

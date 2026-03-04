@@ -56,6 +56,8 @@ const CoachGateManagement = lazy(() => import("./coach-gate-management"));
 const CoachKpiSignals = lazy(() => import("./coach-kpi-signals"));
 const CoachTeamProgress = lazy(() => import("./coach-team-progress"));
 const AcademyAiPanel = lazy(() => import("./academy-ai-panel"));
+const AcademyExplore = lazy(() => import("./academy-explore"));
+const AcademyContentManagement = lazy(() => import("./academy-content-management"));
 
 import {
   type AcademyViewMode,
@@ -117,6 +119,16 @@ const AKADEMI_TABS: TabConfig[] = [
     group: "egitim",
     roleVisibility: "employee",
     component: Academy
+  },
+  {
+    id: "kesfet",
+    label: "Explore",
+    labelTr: "Keşfet",
+    icon: <Eye className="h-4 w-4" />,
+    permissionModule: "academy",
+    group: "egitim",
+    roleVisibility: "employee",
+    component: AcademyExplore
   },
   {
     id: "bilgi-bankasi",
@@ -197,6 +209,16 @@ const AKADEMI_TABS: TabConfig[] = [
     group: "coach-icerik",
     roleVisibility: "coach",
     component: CoachOnboardingStudio
+  },
+  {
+    id: "icerik-yonetimi",
+    label: "Content Management",
+    labelTr: "İçerik Yönetimi",
+    icon: <Settings2 className="h-4 w-4" />,
+    permissionModule: "academy",
+    group: "coach-icerik",
+    roleVisibility: "coach",
+    component: AcademyContentManagement
   },
   {
     id: "coach-gate-yonetim",
@@ -356,6 +378,7 @@ function TabSkeleton() {
 const TAB_URL_MAP: Record<string, string> = {
   "benim-yolum": "/akademi",
   "genel-egitimler": "/akademi/genel-egitimler",
+  "kesfet": "/akademi/kesfet",
   "bilgi-bankasi": "/akademi/bilgi-bankasi",
   "rozetler": "/akademi/rozetler",
   "sertifikalar": "/akademi/sertifikalar",
@@ -364,6 +387,7 @@ const TAB_URL_MAP: Record<string, string> = {
   "seri-takibi": "/akademi/seri-takibi",
   "coach-icerik-kutuphanesi": "/akademi/icerik-kutuphanesi",
   "hq-yonetim": "/akademi/onboarding-studio",
+  "icerik-yonetimi": "/akademi/icerik-yonetimi",
   "coach-gate-yonetim": "/akademi/gate-yonetim",
   "coach-kpi-sinyalleri": "/akademi/kpi-sinyalleri",
   "coach-takim-ilerleme": "/akademi/takim-ilerleme",

@@ -1,25 +1,15 @@
-import { useState } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
-import { apiRequest, queryClient } from "@/lib/queryClient";
-import { useToast } from "@/hooks/use-toast";
+import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { insertExamRequestSchema, type ExamRequest, isHQRole } from "@shared/schema";
-import { isAcademyCoach } from "@shared/permissions";
-import { 
-  BookOpen, Plus, Lightbulb, Trophy, BarChart3, Award, TrendingUp, Zap, Target, 
-  CheckCircle, Flame, Sparkles, Coffee, GraduationCap, Brain, ChevronRight,
-  Snowflake, IceCream, Citrus, Droplets, Leaf, Package, CircleDot, Flower2,
-  Clock, Star, Users, ArrowLeft, Eye, AlertTriangle
+import { Skeleton } from "@/components/ui/skeleton";
+import { isHQRole } from "@shared/schema";
+import {
+  BookOpen, Trophy, TrendingUp, Target,
+  CheckCircle, Flame, GraduationCap, ChevronRight,
+  Clock, Star, Play, Sparkles, Award,
 } from "lucide-react";
 import { Link } from "wouter";
 
@@ -31,96 +21,43 @@ const CAREER_LEVELS = [
   { id: 5, roleId: "supervisor", titleTr: "Supervisor", levelNumber: 5 },
 ];
 
-type HubCategory = {
-  id: number;
-  slug: string;
-  titleTr: string;
-  iconName: string;
-  colorHex: string;
-  description?: string;
+const DIFFICULTY_COLORS: Record<string, string> = {
+  Kolay: "text-green-600 dark:text-green-400 bg-green-100 dark:bg-green-900/30",
+  Orta: "text-amber-600 dark:text-amber-400 bg-amber-100 dark:bg-amber-900/30",
+  Zor: "text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-900/30",
 };
 
-type RecipeCategory = {
-  id: number;
-  slug: string;
-  titleTr: string;
-  titleEn?: string;
-  iconName: string;
-  colorHex: string;
-  description?: string;
-  displayOrder: number;
+const CATEGORY_ICONS: Record<string, any> = {
+  "Barista Temelleri": BookOpen,
+  "Reçeteler": Star,
+  "Ekip Yönetimi": TrendingUp,
+  "Kalite": Award,
+  "Genel": GraduationCap,
 };
-
-type Recipe = {
-  id: number;
-  categoryId: number;
-  nameTr: string;
-  nameEn?: string;
-  code: string;
-  estimatedMinutes: number;
-  difficulty: string;
-  isActive: boolean;
-};
-
-const ICON_MAP: Record<string, any> = {
-  Target, Coffee, BookOpen, Brain, GraduationCap,
-  Snowflake, IceCream, Citrus, Droplets, Leaf, Package, CircleDot, Flower2,
-  Trophy, Flame, Star, Zap, CheckCircle
-};
-
-const getIcon = (iconName: string) => ICON_MAP[iconName] || Coffee;
 
 export default function Academy() {
-  const { toast } = useToast();
   const { user } = useAuth();
-  const [isExamDialogOpen, setIsExamDialogOpen] = useState(false);
-  const [activeView, setActiveView] = useState<"hub" | "recipes" | "career" | "modules" | "practice">("hub");
-  const [selectedCategory, setSelectedCategory] = useState<RecipeCategory | null>(null);
-  const [selectedModuleForPreview, setSelectedModuleForPreview] = useState<any>(null);
+  const userIsHQ = isHQRole(user?.role as any) || user?.role === 'admin';
 
-  // Get hub categories
-  const { data: hubCategories = [] } = useQuery({
-    queryKey: ["/api/academy/hub-categories"],
-    queryFn: async () => {
-      const res = await fetch("/api/academy/hub-categories", { credentials: "include" });
-      if (!res.ok) return [];
-      return res.json();
-    },
+  const { data: dailyRec, isLoading: dailyLoading } = useQuery<{
+    module: { id: number; title: string; category: string; duration: number; difficulty: string; level: string } | null;
+    alreadyCompletedToday: boolean;
+    totalCompleted: number;
+  }>({
+    queryKey: ["/api/academy/daily-recommendation"],
+    enabled: !!user?.id,
   });
 
-  // Get recipe categories
-  const { data: recipeCategories = [] } = useQuery({
-    queryKey: ["/api/academy/recipe-categories"],
-    queryFn: async () => {
-      const res = await fetch("/api/academy/recipe-categories", { credentials: "include" });
-      if (!res.ok) return [];
-      return res.json();
-    },
+  const { data: weeklyProgress, isLoading: weeklyLoading } = useQuery<{
+    completedThisWeek: number;
+    weeklyTarget: number;
+    streakDays: number;
+    lastCompletedDate: string | null;
+  }>({
+    queryKey: ["/api/academy/weekly-progress"],
+    enabled: !!user?.id,
   });
 
-  // Get recipes for selected category
-  const { data: categoryRecipes = [] } = useQuery({
-    queryKey: ["/api/academy/recipes", selectedCategory?.id],
-    queryFn: async () => {
-      if (!selectedCategory?.id) return [];
-      const res = await fetch(`/api/academy/recipes?categoryId=${selectedCategory.id}`, { credentials: "include" });
-      if (!res.ok) return [];
-      return res.json();
-    },
-    enabled: !!selectedCategory?.id,
-  });
-
-  // Get career levels
-  const { data: careerLevels = [] } = useQuery({
-    queryKey: ["/api/academy/career-levels"],
-    queryFn: async () => {
-      const res = await fetch("/api/academy/career-levels", { credentials: "include" });
-      if (!res.ok) return [];
-      return res.json();
-    },
-  });
-
-  // Get user career progress
   const { data: userProgress } = useQuery({
     queryKey: ["/api/academy/career-progress", user?.id],
     queryFn: async () => {
@@ -131,7 +68,7 @@ export default function Academy() {
     },
     enabled: !!user?.id,
   });
-  // Get composite career score
+
   const { data: compositeScore } = useQuery({
     queryKey: ["/api/career/composite-score", user?.id],
     queryFn: async () => {
@@ -143,8 +80,7 @@ export default function Academy() {
     enabled: !!user?.id,
   });
 
-  // Get user badges
-  const { data: userBadges = [] } = useQuery({
+  const { data: userBadges = [] } = useQuery<any[]>({
     queryKey: ["/api/academy/user-badges", user?.id],
     queryFn: async () => {
       if (!user?.id) return [];
@@ -155,974 +91,257 @@ export default function Academy() {
     enabled: !!user?.id,
   });
 
-  // Get all training modules
-  const { data: modules = [] } = useQuery({
-    queryKey: ["/api/training/modules"],
-    queryFn: async () => {
-      const res = await fetch("/api/training/modules", { credentials: "include" });
-      if (!res.ok) return [];
-      return res.json();
-    },
-  });
-
-  // Get completed modules count
-  const { data: completedStats } = useQuery({
-    queryKey: ["/api/training/user-modules-stats", user?.id],
-    queryFn: async () => {
-      if (!user?.id) return { completedCount: 0, totalCount: 0 };
-      const res = await fetch("/api/training/user-modules-stats", { credentials: "include" });
-      if (!res.ok) return { completedCount: 0, totalCount: 0 };
-      return res.json();
-    },
-    enabled: !!user?.id,
-  });
-
-  // Get user module completion status
-  const { data: completedModules = [] } = useQuery({
-    queryKey: ["/api/training/user-progress", user?.id],
-    queryFn: async () => {
-      if (!user?.id) return [];
-      const res = await fetch("/api/training/progress/" + user.id, { credentials: "include" });
-      if (!res.ok) return [];
-      return res.json();
-    },
-    enabled: !!user?.id,
-  });
-
-  // Get recommended quizzes
-  const { data: recommendedQuizzes = [] } = useQuery({
-    queryKey: ["/api/academy/recommended-quizzes", user?.id],
-    queryFn: async () => {
-      if (!user?.id) return [];
-      const res = await fetch("/api/academy/recommended-quizzes", { credentials: "include" });
-      if (!res.ok) return [];
-      return res.json();
-    },
-    enabled: !!user?.id,
-  });
-
-  // Get daily missions
-  const { data: dailyMissions = [] } = useQuery({
-    queryKey: ["/api/academy/daily-missions"],
-    queryFn: async () => {
-      const res = await fetch("/api/academy/daily-missions", { credentials: "include" });
-      if (!res.ok) return [];
-      return res.json();
-    },
-  });
-
-  const isModuleCompleted = (moduleId: number) => {
-    if (!Array.isArray(completedModules)) return false;
-    return completedModules.some((m: any) => m.moduleId === moduleId && m.completedAt);
-  };
-
   const currentLevel = CAREER_LEVELS.find(l => l.roleId === user?.role);
   const nextLevel = currentLevel ? CAREER_LEVELS.find(l => l.levelNumber === currentLevel.levelNumber + 1) : null;
-  const progressPercent = userProgress?.averageQuizScore || 0;
+  const score = compositeScore?.compositeScore || compositeScore?.score || 0;
+  const progressPercent = nextLevel ? Math.min(100, Math.round(score)) : 100;
 
-  // Hub Card Component
-  const HubCard = ({ icon: Icon, title, description, color, onClick, badge }: {
-    icon: any; title: string; description?: string; color: string; onClick: () => void; badge?: string | number;
-  }) => (
-    <Card 
-      className="cursor-pointer hover-elevate transition-all border-2"
-      style={{ borderColor: `${color}20` }}
-      onClick={onClick}
-      data-testid={`hub-card-${title.toLowerCase().replace(/\s+/g, '-')}`}
-    >
-      <CardContent className="p-4 flex items-center gap-3">
-        <div 
-          className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0"
-          style={{ backgroundColor: `${color}15` }}
-        >
-          <Icon className="w-6 h-6" style={{ color }} />
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center justify-between gap-2">
-            <h3 className="font-semibold text-sm truncate">{title}</h3>
-            {badge && (
-              <Badge variant="secondary" className="text-xs flex-shrink-0">{badge}</Badge>
-            )}
-          </div>
-          {description && (
-            <p className="text-xs text-muted-foreground truncate mt-0.5">{description}</p>
-          )}
-        </div>
-        <ChevronRight className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-      </CardContent>
-    </Card>
-  );
+  const weeklyPercent = weeklyProgress
+    ? Math.min(100, Math.round((weeklyProgress.completedThisWeek / Math.max(1, weeklyProgress.weeklyTarget)) * 100))
+    : 0;
+  const weeklyGoalReached = weeklyProgress && weeklyProgress.completedThisWeek >= weeklyProgress.weeklyTarget;
 
-  // Recipe Category Card
-  const RecipeCategoryCard = ({ category }: { category: RecipeCategory }) => {
-    const Icon = getIcon(category.iconName);
-    return (
-      <Card 
-        className="cursor-pointer hover-elevate"
-        onClick={() => { setSelectedCategory(category); setActiveView("recipes"); }}
-        data-testid={`recipe-category-${category.slug}`}
-      >
-        <CardContent className="p-3 flex flex-col items-center text-center gap-2">
-          <div 
-            className="w-10 h-10 rounded-full flex items-center justify-center"
-            style={{ backgroundColor: `${category.colorHex || '#8B4513'}15` }}
-          >
-            <Icon className="w-5 h-5" style={{ color: category.colorHex || '#8B4513' }} />
-          </div>
-          <span className="text-xs font-medium line-clamp-1">{category.titleTr}</span>
-        </CardContent>
-      </Card>
-    );
-  };
+  const CategoryIcon = dailyRec?.module?.category
+    ? (CATEGORY_ICONS[dailyRec.module.category] || GraduationCap)
+    : GraduationCap;
 
-  // Back button for sub-views
-  const BackButton = () => (
-    <Button 
-      variant="ghost" 
-      size="sm" 
-      onClick={() => { setActiveView("hub"); setSelectedCategory(null); }}
-      className="mb-3"
-      data-testid="button-back"
-    >
-      <ArrowLeft className="w-4 h-4 mr-1" />
-      Geri
-    </Button>
-  );
+  const recentBadges = userBadges.slice(-5).reverse();
 
   return (
     <div className="min-h-screen pb-20">
       <div className="p-3 flex flex-col gap-3 sm:gap-4">
 
-        {/* Main Hub View */}
-        {activeView === "hub" && (
-          <>
-            {/* User Stats Header - Compact */}
-            {!isHQRole(user?.role as any) && user?.role !== 'admin' && (
-              <Card className="bg-gradient-to-r from-primary/10 to-primary/5 border-primary/20">
-                <CardContent className="p-3">
-                  <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
-                      <GraduationCap className="w-6 h-6 text-primary" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <h2 className="font-bold text-sm">DOSPRESSO Akademi</h2>
-                      <div className="flex items-center gap-3 mt-1">
-                        <div className="flex items-center gap-1 text-xs" data-testid="text-badge-count">
-                          <Trophy className="w-3 h-3 text-orange-500" />
-                          <span>{userBadges.length} Rozet</span>
-                        </div>
-                        <div className="flex items-center gap-1 text-xs">
-                          <BookOpen className="w-3 h-3 text-primary" />
-                          <span>{completedStats?.completedCount || 0}/{completedStats?.totalCount || 0}</span>
-                        </div>
-                        <div className="flex items-center gap-1 text-xs">
-                          <Flame className="w-3 h-3 text-orange-500" />
-                          <span>{userProgress?.streakDays || 0} Gün</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Nereden Başlamalıyım? - Akıllı Rehber */}
-            <Card className="border-2 border-dashed border-primary/30 bg-gradient-to-br from-primary/5 via-transparent to-blue-500/5">
-              <CardContent className="p-4">
-                <div className="flex items-start gap-3">
-                  <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
-                    <Lightbulb className="w-5 h-5 text-primary" />
-                  </div>
-                  <div className="flex-1">
-                    <h3 className="font-bold text-sm mb-1" data-testid="text-getting-started-title">Nereden Başlamalıyım?</h3>
-                    <p className="text-xs text-muted-foreground mb-3">
-                      {isHQRole(user?.role as any)
-                        ? "Yönetici rolünüz için önerilen adımlar:"
-                        : !currentLevel || currentLevel.levelNumber === 1 
-                        ? "Kariyer yolculuğuna başlamak için önerilen adımlar:"
-                        : `${currentLevel.titleTr} seviyesi için önerilen sonraki adımlar:`
-                      }
-                    </p>
-                    <div className="space-y-2">
-                      {isHQRole(user?.role as any) ? (
-                        <>
-                          <div className="flex items-center gap-2 p-2 bg-background/80 rounded-lg border" data-testid="step-1-container">
-                            <div className="w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-bold flex-shrink-0">
-                              1
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <span className="text-xs font-medium" data-testid="text-step-1-description">
-                                Yönetim Eğitimlerini Keşfedin
-                              </span>
-                            </div>
-                            <Button 
-                              size="sm" 
-                              variant="ghost" 
-                              onClick={() => setActiveView("modules")}
-                              data-testid="button-start-step-1"
-                            >
-                              Keşfet
-                            </Button>
-                          </div>
-                          <div className="flex items-center gap-2 p-2 bg-background/80 rounded-lg border" data-testid="step-2-container">
-                            <div className="w-6 h-6 rounded-full bg-muted text-muted-foreground flex items-center justify-center text-xs font-bold flex-shrink-0">
-                              2
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <span className="text-xs font-medium" data-testid="text-step-2-description">
-                                Şube Performans Raporlarını İnceleyin
-                              </span>
-                            </div>
-                            <Link href="/sube-saglik">
-                              <Button 
-                                size="sm" 
-                                variant="ghost"
-                                data-testid="button-start-step-2"
-                              >
-                                İncele
-                              </Button>
-                            </Link>
-                          </div>
-                          <div className="flex items-center gap-2 p-2 bg-background/80 rounded-lg border" data-testid="step-3-container">
-                            <div className="w-6 h-6 rounded-full bg-muted text-muted-foreground flex items-center justify-center text-xs font-bold flex-shrink-0">
-                              3
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <span className="text-xs font-medium" data-testid="text-step-3-description">
-                                AI Asistan ile Bilgi Bankasını Kullanın
-                              </span>
-                            </div>
-                            <Link href="/bilgi-bankasi">
-                              <Button 
-                                size="sm" 
-                                variant="ghost"
-                                data-testid="button-start-step-3"
-                              >
-                                Kullan
-                              </Button>
-                            </Link>
-                          </div>
-                        </>
-                      ) : (
-                        <>
-                          <div className="flex items-center gap-2 p-2 bg-background/80 rounded-lg border" data-testid="step-1-container">
-                            <div className="w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-bold flex-shrink-0">
-                              1
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <span className="text-xs font-medium" data-testid="text-step-1-description">
-                                {!currentLevel || currentLevel.levelNumber <= 2 
-                                  ? "Temel Barista Eğitimlerini Tamamla"
-                                  : currentLevel.levelNumber === 3 
-                                  ? "İleri Seviye Reçeteleri Öğren"
-                                  : "Ekip Yönetimi Modüllerini Bitir"
-                                }
-                              </span>
-                            </div>
-                            <Button 
-                              size="sm" 
-                              variant="ghost" 
-                              onClick={() => setActiveView("modules")}
-                              data-testid="button-start-step-1"
-                            >
-                              Başla
-                            </Button>
-                          </div>
-                          <div className="flex items-center gap-2 p-2 bg-background/80 rounded-lg border" data-testid="step-2-container">
-                            <div className="w-6 h-6 rounded-full bg-muted text-muted-foreground flex items-center justify-center text-xs font-bold flex-shrink-0">
-                              2
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <span className="text-xs font-medium" data-testid="text-step-2-description">
-                                {!currentLevel || currentLevel.levelNumber <= 2 
-                                  ? "Reçete Akademisinden 10 Reçete Öğren"
-                                  : currentLevel.levelNumber === 3 
-                                  ? "Signature İçecekleri Ustalaş"
-                                  : "Kalite Denetim Sertifikası Al"
-                                }
-                              </span>
-                            </div>
-                            <Button 
-                              size="sm" 
-                              variant="ghost" 
-                              onClick={() => setActiveView("recipes")}
-                              data-testid="button-start-step-2"
-                            >
-                              Başla
-                            </Button>
-                          </div>
-                          <div className="flex items-center gap-2 p-2 bg-background/80 rounded-lg border" data-testid="step-3-container">
-                            <div className="w-6 h-6 rounded-full bg-muted text-muted-foreground flex items-center justify-center text-xs font-bold flex-shrink-0">
-                              3
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <span className="text-xs font-medium" data-testid="text-step-3-description">
-                                {!currentLevel || currentLevel.levelNumber <= 2 
-                                  ? "Günlük Pratik Quizlerini Çöz"
-                                  : currentLevel.levelNumber === 3 
-                                  ? "Seviye Atlama Sınavına Gir"
-                                  : "Supervisor Sertifikasyonunu Tamamla"
-                                }
-                              </span>
-                            </div>
-                            <Button 
-                              size="sm" 
-                              variant="ghost" 
-                              onClick={() => setActiveView("practice")}
-                              data-testid="button-start-step-3"
-                            >
-                              Başla
-                            </Button>
-                          </div>
-                        </>
-                      )}
-                    </div>
-                  </div>
+        {/* Section 1: Bugünün Eğitimi Hero Card */}
+        {dailyLoading ? (
+          <Card data-testid="card-daily-training-skeleton">
+            <CardContent className="p-5 space-y-3">
+              <Skeleton className="h-6 w-48" />
+              <Skeleton className="h-4 w-32" />
+              <Skeleton className="h-10 w-full" />
+            </CardContent>
+          </Card>
+        ) : dailyRec?.alreadyCompletedToday ? (
+          <Card className="bg-gradient-to-br from-green-500/10 via-emerald-500/5 to-transparent border-green-500/20" data-testid="card-daily-completed">
+            <CardContent className="p-5">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-12 h-12 rounded-full bg-green-500/20 flex items-center justify-center flex-shrink-0">
+                  <CheckCircle className="w-6 h-6 text-green-600 dark:text-green-400" />
                 </div>
-              </CardContent>
-            </Card>
-
-            {/* Onboarding Progress - for new employees */}
-            {user?.role === 'stajyer' && (() => {
-              const onboardingModules = modules
-                .filter((m: any) => m.requiredForRole?.includes('stajyer') && m.isPublished)
-                .sort((a: any, b: any) => (a.id || 0) - (b.id || 0));
-              const completedOnboarding = onboardingModules.filter((m: any) => isModuleCompleted(m.id));
-              const onboardingPercent = onboardingModules.length > 0 
-                ? Math.round((completedOnboarding.length / onboardingModules.length) * 100) : 0;
-              const nextModule = onboardingModules.find((m: any) => !isModuleCompleted(m.id));
-              
-              if (onboardingModules.length === 0) return null;
-              return (
-                <Card className="border-2 border-primary/30 bg-gradient-to-br from-green-500/5 to-primary/5" data-testid="onboarding-card">
-                  <CardContent className="p-4 space-y-3">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
-                        <GraduationCap className="w-5 h-5 text-primary" />
-                      </div>
-                      <div className="flex-1">
-                        <h3 className="font-bold text-sm">Oryantasyon E\u011fitimlerin</h3>
-                        <p className="text-xs text-muted-foreground">{completedOnboarding.length}/{onboardingModules.length} tamamland\u0131</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-lg font-bold text-primary">%{onboardingPercent}</p>
-                      </div>
-                    </div>
-                    <Progress value={onboardingPercent} className="h-2" />
-                    <div className="space-y-1.5">
-                      {onboardingModules.map((m: any, idx: number) => {
-                        const completed = isModuleCompleted(m.id);
-                        const isNext = !completed && m.id === nextModule?.id;
-                        const prevCompleted = idx === 0 || isModuleCompleted(onboardingModules[idx - 1]?.id);
-                        const isLocked = !completed && !isNext && !prevCompleted;
-                        return (
-                          <div key={m.id} className={`flex items-center gap-2 p-2 rounded-md text-sm ${isNext ? 'bg-primary/10 border border-primary/30' : completed ? 'bg-green-500/10' : 'bg-muted/30'}`}>
-                            <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${completed ? 'bg-green-500 text-white' : isNext ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}>
-                              {completed ? <CheckCircle className="w-3 h-3" /> : idx + 1}
-                            </div>
-                            <span className={`flex-1 text-xs ${completed ? 'line-through text-muted-foreground' : isLocked ? 'text-muted-foreground' : 'font-medium'}`}>{m.title}</span>
-                            {isNext && (
-                              <Link to={`/akademi-modul/${m.id}`} onClick={() => sessionStorage.setItem('academyReferrer', '/akademi')}>
-                                <Button size="sm" variant="default" data-testid={`button-onboarding-start-${m.id}`}>
-                                  Ba\u015fla
-                                </Button>
-                              </Link>
-                            )}
-                            {isLocked && <Badge variant="outline" className="text-xs">Kilitli</Badge>}
-                            {completed && <Badge variant="secondary" className="text-xs">Tamam</Badge>}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })()}
-
-            {/* Hub Categories Grid */}
-            <div className="grid grid-cols-1 gap-2">
-              <HubCard
-                icon={Target}
-                title={isHQRole(user?.role as any) ? "Yönetim Gelişim Alanları" : "Kariyer Yolculuğum"}
-                description={isHQRole(user?.role as any) ? "Profesyonel gelişim yol haritası" : currentLevel ? `Mevcut: ${currentLevel.titleTr}` : "Kariyer yolculuğuna başla"}
-                color="#1e3a5f"
-                onClick={() => setActiveView("career")}
-                badge={!isHQRole(user?.role as any) && currentLevel?.levelNumber ? `Lvl ${currentLevel.levelNumber}` : undefined}
-              />
-              <HubCard
-                icon={Coffee}
-                title="Reçete Akademisi"
-                description={`${recipeCategories.length} kategori, 145+ reçete`}
-                color="#8B4513"
-                onClick={() => setActiveView("recipes")}
-              />
-              <HubCard
-                icon={BookOpen}
-                title="Genel Eğitimler"
-                description={`${modules.length} modül`}
-                color="#228B22"
-                onClick={() => setActiveView("modules")}
-                badge={completedStats?.completedCount || 0}
-              />
-              <HubCard
-                icon={Brain}
-                title="Sürekli Pratik"
-                description="Quizler ve günlük görevler"
-                color="#4169E1"
-                onClick={() => setActiveView("practice")}
-              />
-            </div>
-
-            {/* Daily Missions Preview */}
-            {dailyMissions.length > 0 && (
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm flex items-center gap-2" data-testid="text-daily-missions-title">
-                    <Zap className="w-4 h-4 text-yellow-500" />
-                    Günlük Görevler
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-2">
-                  {dailyMissions.slice(0, 3).map((mission: any) => (
-                    <div key={mission.id} className="flex items-center justify-between p-2 bg-muted/50 rounded-lg">
-                      <div className="flex items-center gap-2">
-                        <CheckCircle className="w-4 h-4 text-muted-foreground" />
-                        <span className="text-xs">{mission.title_tr}</span>
-                      </div>
-                      <Badge variant="outline" className="text-xs">+{mission.xp_reward} XP</Badge>
-                    </div>
-                  ))}
-                </CardContent>
-              </Card>
-            )}
-          </>
-        )}
-
-        {/* Recipe Categories View */}
-        {activeView === "recipes" && !selectedCategory && (
-          <>
-            <BackButton />
-            <Card className="bg-gradient-to-r from-amber-900/10 to-amber-800/5 border-amber-900/20">
-              <CardContent className="p-4">
-                <div className="flex items-center gap-3">
-                  <Coffee className="w-8 h-8 text-amber-800" />
-                  <div>
-                    <h2 className="font-bold">Reçete Akademisi</h2>
-                    <p className="text-xs text-muted-foreground">145+ reçete, 10 kategori</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2">
-              {recipeCategories.map((cat: RecipeCategory) => (
-                <RecipeCategoryCard key={cat.id} category={cat} />
-              ))}
-            </div>
-          </>
-        )}
-
-        {/* Recipe List for Selected Category */}
-        {activeView === "recipes" && selectedCategory && (
-          <>
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              onClick={() => setSelectedCategory(null)}
-              className="mb-3"
-              data-testid="button-back-recipes"
-            >
-              <ArrowLeft className="w-4 h-4 mr-1" />
-              Kategoriler
-            </Button>
-            <Card style={{ borderColor: `${selectedCategory.colorHex}30` }} className="border-2">
-              <CardContent className="p-4">
-                <div className="flex items-center gap-3">
-                  {(() => { const Icon = getIcon(selectedCategory.iconName); return <Icon className="w-6 h-6" style={{ color: selectedCategory.colorHex }} />; })()}
-                  <div>
-                    <h2 className="font-bold">{selectedCategory.titleTr}</h2>
-                    <p className="text-xs text-muted-foreground">{categoryRecipes.length} reçete</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              {categoryRecipes.map((recipe: Recipe) => (
-                <Link key={recipe.id} to={`/recete/${recipe.id}`}>
-                  <Card className="cursor-pointer hover-elevate" data-testid={`recipe-${recipe.id}`}>
-                    <CardContent className="p-3 flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center">
-                        <Coffee className="w-5 h-5" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <h3 className="font-medium text-sm truncate">{recipe.nameTr}</h3>
-                        <div className="flex items-center gap-2 mt-0.5">
-                          <Badge variant="outline" className="text-xs">{recipe.code}</Badge>
-                          <span className="text-xs text-muted-foreground">{recipe.estimatedMinutes}dk</span>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </Link>
-              ))}
-              {categoryRecipes.length === 0 && (
-                <div className="col-span-full text-center py-8 text-muted-foreground">
-                  Bu kategoride henüz reçete yok
-                </div>
-              )}
-            </div>
-          </>
-        )}
-
-        {/* Career Journey View - Enhanced Visual Timeline */}
-        {activeView === "career" && (
-          <>
-            <BackButton />
-            {isHQRole(user?.role as any) ? (
-              <>
-                <Card className="bg-gradient-to-r from-primary/10 to-blue-900/10 border-primary/20">
-                  <CardContent className="p-4">
-                    <div className="flex items-center gap-3 mb-3">
-                      <Target className="w-8 h-8 text-primary" />
-                      <div className="flex-1">
-                        <h2 className="font-bold" data-testid="text-hq-career-title">Yönetim Gelişim Alanları</h2>
-                        <p className="text-xs text-muted-foreground">Profesyonel gelişim yol haritanız</p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-                <div className="grid grid-cols-2 gap-2" data-testid="hq-development-areas">
-                  {[
-                    { title: "Liderlik", desc: "Ekip yönetimi ve motivasyon", icon: Users, color: "from-blue-500/10 to-blue-600/5", borderColor: "border-blue-500/20" },
-                    { title: "Stratejik Planlama", desc: "Hedef belirleme ve analiz", icon: TrendingUp, color: "from-purple-500/10 to-purple-600/5", borderColor: "border-purple-500/20" },
-                    { title: "Operasyon Yönetimi", desc: "Süreç optimizasyonu", icon: Target, color: "from-green-500/10 to-green-600/5", borderColor: "border-green-500/20" },
-                    { title: "Dijital Dönüşüm", desc: "Teknoloji ve inovasyon", icon: Zap, color: "from-orange-500/10 to-orange-600/5", borderColor: "border-orange-500/20" },
-                  ].map((area) => (
-                    <Card key={area.title} className={`bg-gradient-to-br ${area.color} ${area.borderColor} border`} data-testid={`card-dev-area-${area.title.toLowerCase().replace(/\s+/g, '-')}`}>
-                      <CardContent className="p-4">
-                        <div className="flex flex-col items-center text-center gap-2">
-                          <div className="w-10 h-10 rounded-full bg-background/80 flex items-center justify-center">
-                            <area.icon className="w-5 h-5 text-foreground" />
-                          </div>
-                          <div>
-                            <h3 className="font-semibold text-sm">{area.title}</h3>
-                            <p className="text-xs text-muted-foreground mt-0.5">{area.desc}</p>
-                          </div>
-                          <Badge variant="outline" className="text-xs">Yakında</Badge>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-                <Card className="bg-primary/5 border-primary/20">
-                  <CardContent className="p-3">
-                    <p className="text-xs text-muted-foreground text-center">
-                      Yönetim gelişim modülleri hazırlanmaktadır. Mevcut eğitimler için{' '}
-                      <span className="text-primary font-medium cursor-pointer" onClick={() => setActiveView("modules")}>Genel Eğitimler</span> bölümünü ziyaret edebilirsiniz.
-                    </p>
-                  </CardContent>
-                </Card>
-              </>
-            ) : (
-            <>
-            <Card className="bg-gradient-to-r from-primary/10 to-blue-900/10 border-primary/20">
-              <CardContent className="p-4">
-                {/* Tehlike Bandı */}
-                {compositeScore?.dangerZone && (
-                  <div className="mb-3 p-2 bg-red-500/10 border border-red-500/30 rounded-md" data-testid="danger-zone-banner">
-                    <div className="flex items-center gap-2 text-red-500 text-sm font-medium">
-                      <AlertTriangle className="w-4 h-4" />
-                      <span>Tehlike Bölgesi: Skorunuz %60 altında!</span>
-                    </div>
-                    <p className="text-xs text-red-400 mt-1">
-                      {userProgress?.dangerZoneMonths ? `${3 - (userProgress.dangerZoneMonths || 0)} ay içinde iyileştirme gerekli` : 'Performansınızı artırın'}
-                    </p>
-                  </div>
-                )}
-                
-                {/* Uyarı Bandı */}
-                {compositeScore?.warningZone && !compositeScore?.dangerZone && (
-                  <div className="mb-3 p-2 bg-yellow-500/10 border border-yellow-500/30 rounded-md" data-testid="warning-zone-banner">
-                    <div className="flex items-center gap-2 text-yellow-500 text-sm font-medium">
-                      <AlertTriangle className="w-4 h-4" />
-                      <span>Uyarı: Skorunuz %60-70 arasında!</span>
-                    </div>
-                    <p className="text-xs text-yellow-400 mt-1">
-                      Performansınızı artırmak için eğitimlere devam edin ve görevleri zamanında tamamlayın.
-                    </p>
-                  </div>
-                )}
-                
-                <div className="flex items-center gap-3 mb-3">
-                  <Target className="w-8 h-8 text-primary" />
-                  <div className="flex-1">
-                    <h2 className="font-bold">Kariyer Yolculuğum</h2>
-                    <p className="text-xs text-muted-foreground">Rol bazlı gelişim takibi</p>
-                  </div>
-                  {/* Kompozit Skor Göstergesi */}
-                  {compositeScore && (
-                    <div className={`text-center px-3 py-1 rounded-full ${
-                      compositeScore.compositeScore >= 80 ? 'bg-green-500/10 text-green-500' :
-                      compositeScore.compositeScore >= 60 ? 'bg-yellow-500/10 text-yellow-500' :
-                      'bg-red-500/10 text-red-500'
-                    }`} data-testid="composite-score-badge">
-                      <div className="text-lg font-bold">{Math.round(compositeScore.compositeScore)}%</div>
-                      <div className="text-[10px]">Genel Skor</div>
-                    </div>
-                  )}
-                </div>
-                
-                {/* 4 Kriterli Skor Detayları */}
-                {compositeScore && (
-                  <div className="grid grid-cols-4 gap-1 mb-3 text-center text-xs" data-testid="score-breakdown">
-                    <div className="p-1.5 rounded bg-blue-500/10">
-                      <div className="font-medium text-blue-500">{Math.round(compositeScore.trainingScore)}%</div>
-                      <div className="text-muted-foreground text-[9px]">Eğitim</div>
-                    </div>
-                    <div className="p-1.5 rounded bg-purple-500/10">
-                      <div className="font-medium text-purple-500">{Math.round(compositeScore.practicalScore)}%</div>
-                      <div className="text-muted-foreground text-[9px]">Pratik</div>
-                    </div>
-                    <div className="p-1.5 rounded bg-green-500/10">
-                      <div className="font-medium text-green-500">{Math.round(compositeScore.attendanceScore)}%</div>
-                      <div className="text-muted-foreground text-[9px]">Devam</div>
-                    </div>
-                    <div className="p-1.5 rounded bg-orange-500/10">
-                      <div className="font-medium text-orange-500">{Math.round(compositeScore.managerScore)}%</div>
-                      <div className="text-muted-foreground text-[9px]">Yönetici</div>
-                    </div>
-                  </div>
-                )}
-                
-                {currentLevel && (
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="font-medium">{currentLevel.titleTr}</span>
-                      <span className="text-muted-foreground">Seviye {currentLevel.levelNumber}/5</span>
-                    </div>
-                    <Progress value={progressPercent} className="h-2" />
-                    <div className="flex justify-between text-xs text-muted-foreground">
-                      <span>%{Math.round(progressPercent)} tamamlandı</span>
-                      {nextLevel && <span>Sonraki: {nextLevel.titleTr}</span>}
-                    </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Visual Career Timeline */}
-            <div className="space-y-3" data-testid="career-timeline-container">
-              <div className="flex items-center gap-2">
-                <TrendingUp className="w-4 h-4 text-primary" />
-                <div>
-                  <h3 className="text-sm font-semibold" data-testid="text-career-path-title">Kariyer Yolu Haritası</h3>
-                  <p className="text-xs text-muted-foreground" data-testid="text-career-path-description">Her seviyede yeni yetenekler ve sorumluluklar kazanırsın</p>
+                <div className="flex-1 min-w-0">
+                  <h2 className="font-bold text-base" data-testid="text-daily-completed-title">
+                    {userIsHQ ? "Bu haftanın eğitimini tamamladın!" : "Bugünkü eğitimini tamamladın!"}
+                  </h2>
+                  <p className="text-sm text-muted-foreground mt-0.5">
+                    Toplam {dailyRec.totalCompleted} modül tamamlandı
+                  </p>
                 </div>
               </div>
-              <div className="relative">
-                  {/* Timeline Line */}
-                  <div className="absolute left-4 top-4 bottom-4 w-0.5 bg-gradient-to-b from-green-500 via-primary to-muted"></div>
-                  
-                  {/* Career Levels with Details */}
-                  <div className="space-y-4">
-                    {CAREER_LEVELS.map((level, idx) => {
-                      const isCompleted = currentLevel && level.levelNumber < currentLevel.levelNumber;
-                      const isCurrent = currentLevel?.levelNumber === level.levelNumber;
-                      const isLocked = !isCompleted && !isCurrent;
-                      
-                      const levelRoleMap: Record<number, string> = {
-                        1: "stajyer", 2: "bar_buddy", 3: "barista", 4: "supervisor_buddy", 5: "supervisor"
-                      };
-                      const levelRole = levelRoleMap[level.levelNumber];
-                      const requiredModulesForLevel = modules.filter((m: any) => 
-                        m.requiredForRole?.includes(levelRole) && m.isPublished !== false
-                      );
-                      const completedModulesForLevel = requiredModulesForLevel.filter((m: any) => isModuleCompleted(m.id));
-                      const levelCompletionPercent = requiredModulesForLevel.length > 0 
-                        ? Math.round((completedModulesForLevel.length / requiredModulesForLevel.length) * 100) 
-                        : 0;
-                      const levelRequirements: Record<number, string[]> = {
-                        1: ["Oryantasyon e\u011fitimi", "Temel hijyen kurallar\u0131", ...requiredModulesForLevel.map((m: any) => m.title)],
-                        2: ["5 temel re\u00e7ete", "M\u00fc\u015fteri hizmetleri e\u011fitimi", ...requiredModulesForLevel.map((m: any) => m.title)],
-                        3: ["20+ re\u00e7ete ustas\u0131", "Makine bak\u0131m\u0131 sertifikas\u0131", ...requiredModulesForLevel.map((m: any) => m.title)],
-                        4: ["T\u00fcm re\u00e7eteler", "Vardiya planlama e\u011fitimi", ...requiredModulesForLevel.map((m: any) => m.title)],
-                        5: ["Y\u00f6netim sertifikas\u0131", "Finansal okur-yazarl\u0131k", ...requiredModulesForLevel.map((m: any) => m.title)]
-                      };
-                      
-                      const levelRewards: Record<number, string> = {
-                        1: "Temel Bar Buddy Rozeti",
-                        2: "Barista Sertifikası",
-                        3: "Uzman Barista Rozeti",
-                        4: "Supervisor Adayı Rozeti",
-                        5: "Altın Supervisor Rozeti"
-                      };
-                      
-                      return (
-                        <div key={level.id} className="relative pl-10" data-testid={`career-level-${level.levelNumber}`}>
-                          {/* Timeline Node */}
-                          <div 
-                            className={`absolute left-0 w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold border-2 ${
-                              isCompleted ? 'bg-green-500 border-green-500 text-white' : 
-                              isCurrent ? 'bg-primary border-primary text-primary-foreground animate-pulse' : 
-                              'bg-background border-muted text-muted-foreground'
-                            }`}
-                            data-testid={`timeline-node-${level.levelNumber}`}
-                          >
-                            {isCompleted ? <CheckCircle className="w-4 h-4" /> : level.levelNumber}
-                          </div>
-                          
-                          {/* Level Card */}
-                          <Card className={`${isCurrent ? 'border-primary border-2 shadow-md' : isLocked ? 'opacity-60' : ''}`} data-testid={`card-level-${level.levelNumber}`}>
-                            <CardContent className="p-3">
-                              <div className="flex items-center justify-between mb-2">
-                                <div className="flex items-center gap-2">
-                                  <h3 className={`font-semibold text-sm ${isCompleted ? 'text-muted-foreground' : ''}`} data-testid={`text-level-title-${level.levelNumber}`}>
-                                    {level.titleTr}
-                                  </h3>
-                                  {isCurrent && <Badge className="text-xs" data-testid={`badge-current-${level.levelNumber}`}>Şu An</Badge>}
-                                  {isCompleted && <Badge variant="secondary" className="text-xs" data-testid={`badge-completed-${level.levelNumber}`}>Tamamlandı</Badge>}
-                                  {isLocked && <Badge variant="outline" className="text-xs" data-testid={`badge-locked-${level.levelNumber}`}>Kilitli</Badge>}
-                                </div>
-                              </div>
-                              
-                              {/* Requirements */}
-                              <div className="mb-2" data-testid={`requirements-level-${level.levelNumber}`}>
-                                <span className="text-xs font-medium text-muted-foreground">Gereksinimler:</span>
-                                <div className="flex flex-wrap gap-1 mt-1">
-                                  {levelRequirements[level.levelNumber]?.map((req, i) => (
-                                    <Badge 
-                                      key={i} 
-                                      variant="outline" 
-                                      className={`text-xs ${isCompleted ? 'line-through opacity-50' : ''}`}
-                                      data-testid={`badge-requirement-${level.levelNumber}-${i}`}
-                                    >
-                                      {isCompleted && <CheckCircle className="w-2 h-2 mr-1" />}
-                                      {req}
-                                    </Badge>
-                                  ))}
-                                </div>
-                              </div>
-                              
-                              {/* Module Completion Progress */}
-                              {isCurrent && requiredModulesForLevel.length > 0 && (
-                                <div className="mb-2" data-testid={`module-progress-${level.levelNumber}`}>
-                                  <div className="flex justify-between text-xs mb-1">
-                                    <span className="text-muted-foreground">Mod\u00fcl Tamamlama</span>
-                                    <span className="font-medium">{completedModulesForLevel.length}/{requiredModulesForLevel.length}</span>
-                                  </div>
-                                  <div className="w-full bg-muted rounded-full h-1.5 overflow-hidden">
-                                    <div className="bg-primary h-full transition-all" style={{ width: `${levelCompletionPercent}%` }} />
-                                  </div>
-                                </div>
-                              )}
-                              
-                              {/* Reward */}
-                              <div className="flex items-center gap-2 p-2 bg-orange-100 dark:bg-orange-900/20 rounded-lg" data-testid={`reward-level-${level.levelNumber}`}>
-                                <Award className="w-4 h-4 text-orange-600 dark:text-orange-400" />
-                                <span className="text-xs font-medium" data-testid={`text-reward-${level.levelNumber}`}>{levelRewards[level.levelNumber]}</span>
-                              </div>
-                            </CardContent>
-                          </Card>
-                        </div>
-                      );
-                    })}
+              <Link href="/akademi?tab=kesf">
+                <Button variant="outline" className="w-full" data-testid="button-explore-more">
+                  <Sparkles className="w-4 h-4 mr-2" />
+                  Daha fazla öğren
+                </Button>
+              </Link>
+            </CardContent>
+          </Card>
+        ) : dailyRec?.module ? (
+          <Card className="bg-gradient-to-br from-primary/10 via-primary/5 to-transparent border-primary/20" data-testid="card-daily-training">
+            <CardContent className="p-5">
+              <div className="flex items-center gap-1 mb-3">
+                <Badge variant="secondary" data-testid="text-daily-label">
+                  {userIsHQ ? "Bu Haftanın Eğitimi" : "Bugünün Eğitimi"}
+                </Badge>
+              </div>
+              <div className="flex items-start gap-3 mb-4">
+                <div className="w-12 h-12 rounded-xl bg-primary/15 flex items-center justify-center flex-shrink-0">
+                  <CategoryIcon className="w-6 h-6 text-primary" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h2 className="font-bold text-base leading-tight" data-testid="text-daily-module-title">
+                    {dailyRec.module.title}
+                  </h2>
+                  <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                    <span className="text-xs text-muted-foreground flex items-center gap-1" data-testid="text-daily-category">
+                      <BookOpen className="w-3 h-3" />
+                      {dailyRec.module.category}
+                    </span>
+                    <span className="text-xs text-muted-foreground flex items-center gap-1" data-testid="text-daily-duration">
+                      <Clock className="w-3 h-3" />
+                      {dailyRec.module.duration} dk
+                    </span>
+                    <Badge variant="secondary" className={`text-xs ${DIFFICULTY_COLORS[dailyRec.module.difficulty] || ''}`} data-testid="text-daily-difficulty">
+                      {dailyRec.module.difficulty}
+                    </Badge>
                   </div>
                 </div>
+              </div>
+              <Link to={`/akademi-modul/${dailyRec.module.id}`}>
+                <Button className="w-full" data-testid="button-start-daily">
+                  <Play className="w-4 h-4 mr-2" />
+                  Başla
+                </Button>
+              </Link>
+            </CardContent>
+          </Card>
+        ) : (
+          <Card className="bg-gradient-to-br from-primary/5 to-transparent" data-testid="card-daily-empty">
+            <CardContent className="p-5 text-center">
+              <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-3">
+                <GraduationCap className="w-6 h-6 text-primary" />
+              </div>
+              <h3 className="font-semibold text-sm" data-testid="text-daily-empty">Tüm modülleri tamamladın!</h3>
+              <p className="text-xs text-muted-foreground mt-1">Yeni modüller eklendiğinde burada görünecek.</p>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Section 2: Haftalık İlerleme Özeti */}
+        {weeklyLoading ? (
+          <Card data-testid="card-weekly-skeleton">
+            <CardContent className="p-4 space-y-2">
+              <Skeleton className="h-5 w-40" />
+              <Skeleton className="h-3 w-full" />
+            </CardContent>
+          </Card>
+        ) : weeklyProgress ? (
+          <Card data-testid="card-weekly-progress">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between gap-2 mb-2 flex-wrap">
+                <div className="flex items-center gap-2">
+                  <Target className="w-4 h-4 text-primary" />
+                  <span className="font-semibold text-sm" data-testid="text-weekly-count">
+                    Bu hafta: {weeklyProgress.completedThisWeek}/{weeklyProgress.weeklyTarget}
+                  </span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <Flame className={`w-4 h-4 text-orange-500 ${weeklyProgress.streakDays >= 7 ? 'animate-pulse' : ''}`} />
+                  <span className="text-sm font-medium text-orange-600 dark:text-orange-400" data-testid="text-streak-count">
+                    {weeklyProgress.streakDays} Gün
+                  </span>
+                  {weeklyProgress.streakDays >= 30 && (
+                    <Badge variant="secondary" className="text-[10px] bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300" data-testid="badge-streak-monthly">
+                      Ay'in Ogrencisi
+                    </Badge>
+                  )}
+                  {weeklyProgress.streakDays >= 7 && weeklyProgress.streakDays < 30 && (
+                    <Badge variant="secondary" className="text-[10px] bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300" data-testid="badge-streak-weekly">
+                      Haftalik Yildiz
+                    </Badge>
+                  )}
+                </div>
+              </div>
+              <Progress value={weeklyPercent} className="h-2.5 mb-2" />
+              {weeklyGoalReached && (
+                <div className="flex items-center gap-2 p-2 rounded-md bg-green-50 dark:bg-green-950/30 mt-1" data-testid="text-weekly-congrats">
+                  <Trophy className="w-4 h-4 text-green-600 dark:text-green-400" />
+                  <span className="text-xs font-medium text-green-700 dark:text-green-300">
+                    Haftalık hedefe ulaştın! Harika gidiyorsun!
+                  </span>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        ) : null}
+
+        {/* Section 3: Kariyer Yolu Progress Bar */}
+        {!userIsHQ && currentLevel ? (
+          <Link href="/akademi?tab=kariyer">
+            <Card className="cursor-pointer hover-elevate" data-testid="card-career-progress">
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between gap-2 mb-2 flex-wrap">
+                  <div className="flex items-center gap-2">
+                    <TrendingUp className="w-4 h-4 text-primary" />
+                    <span className="font-semibold text-sm">Kariyer Yolu</span>
+                  </div>
+                  {score > 0 && (
+                    <Badge variant="default" data-testid="text-composite-score">
+                      Skor: {Math.round(score)}
+                    </Badge>
+                  )}
+                </div>
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="flex-1">
+                    <div className="flex items-center justify-between gap-2 text-xs mb-1">
+                      <span className="font-medium" data-testid="text-current-level">{currentLevel.titleTr}</span>
+                      {nextLevel && (
+                        <span className="text-muted-foreground" data-testid="text-next-level">{nextLevel.titleTr}</span>
+                      )}
+                    </div>
+                    <Progress value={progressPercent} className="h-2" />
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                </div>
+              </CardContent>
+            </Card>
+          </Link>
+        ) : userIsHQ ? (
+          <Card data-testid="card-hq-development">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <TrendingUp className="w-4 h-4 text-primary" />
+                <span className="font-semibold text-sm">Gelişim Alanları</span>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="p-2 rounded-md bg-muted/50 text-center">
+                  <div className="text-lg font-bold text-primary" data-testid="text-completed-total">{dailyRec?.totalCompleted || 0}</div>
+                  <div className="text-xs text-muted-foreground">Tamamlanan</div>
+                </div>
+                <div className="p-2 rounded-md bg-muted/50 text-center">
+                  <div className="text-lg font-bold text-orange-500" data-testid="text-streak-total">{weeklyProgress?.streakDays || 0}</div>
+                  <div className="text-xs text-muted-foreground">Gün Seri</div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        ) : null}
+
+        {/* Section 4: Rozetler & Başarılar */}
+        <Card data-testid="card-badges">
+          <CardHeader className="pb-2">
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <Award className="w-4 h-4 text-amber-500" />
+                Rozetler & Başarılar
+              </CardTitle>
+              <Link href="/akademi?tab=rozetler">
+                <Button variant="ghost" size="sm" data-testid="button-all-badges">
+                  Tüm Rozetler
+                  <ChevronRight className="w-3 h-3 ml-1" />
+                </Button>
+              </Link>
             </div>
-          </>
+          </CardHeader>
+          <CardContent>
+            {recentBadges.length > 0 ? (
+              <div className="flex gap-3 overflow-x-auto pb-1" data-testid="badges-scroll">
+                {recentBadges.map((badge: any, idx: number) => (
+                  <div
+                    key={badge.id || idx}
+                    className="flex flex-col items-center gap-1.5 min-w-[64px] flex-shrink-0"
+                    data-testid={`badge-item-${badge.id || idx}`}
+                  >
+                    <div className="w-12 h-12 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
+                      {badge.icon ? (
+                        <span className="text-xl">{badge.icon}</span>
+                      ) : (
+                        <Star className="w-5 h-5 text-amber-500" />
+                      )}
+                    </div>
+                    <span className="text-xs text-center line-clamp-2 leading-tight">
+                      {badge.name || badge.title || badge.badgeName || 'Rozet'}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-4" data-testid="text-no-badges">
+                <Star className="w-8 h-8 text-muted-foreground/30 mx-auto mb-2" />
+                <p className="text-sm text-muted-foreground">Henüz rozet kazanılmadı</p>
+                <p className="text-xs text-muted-foreground mt-0.5">Eğitimleri tamamlayarak rozetler kazan!</p>
+              </div>
             )}
-          </>
-        )}
-
-        {/* General Modules View */}
-        {activeView === "modules" && (
-          <>
-            <BackButton />
-            <Card className="bg-gradient-to-r from-green-900/10 to-green-800/5 border-green-900/20">
-              <CardContent className="p-4">
-                <div className="flex items-center gap-3">
-                  <BookOpen className="w-8 h-8 text-green-700" />
-                  <div>
-                    <h2 className="font-bold">Genel Eğitimler</h2>
-                    <p className="text-xs text-muted-foreground">{modules.length} modül mevcut</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
-              {modules.map((module: { id: number; title: string; level: string; estimatedDuration: number; description?: string; content?: string }) => {
-                const completed = isModuleCompleted(module.id);
-                return (
-                  <div key={module.id}>
-                    <Dialog>
-                      <DialogTrigger asChild>
-                        <Card 
-                          className={`cursor-pointer hover-elevate h-full ${completed ? 'border-green-500' : ''}`} 
-                          data-testid={`card-module-${module.id}`}
-                          onClick={() => setSelectedModuleForPreview(module)}
-                        >
-                          <CardContent className="p-3">
-                            <div className="flex items-start gap-1 mb-2">
-                              <h3 className="text-xs font-semibold line-clamp-2 flex-1">{module.title}</h3>
-                              {completed && <CheckCircle className="w-3 h-3 text-green-500 flex-shrink-0" />}
-                            </div>
-                            <div className="flex items-center gap-1 flex-wrap">
-                              <Badge variant="outline" className="text-xs px-1 py-0">
-                                {module.level === 'beginner' ? 'B' : module.level === 'intermediate' ? 'O' : 'İ'}
-                              </Badge>
-                              <span className="text-xs text-muted-foreground">{module.estimatedDuration}dk</span>
-                            </div>
-                          </CardContent>
-                        </Card>
-                      </DialogTrigger>
-                      <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto" data-testid={`dialog-module-preview-${module.id}`}>
-                        <DialogHeader>
-                          <DialogTitle className="flex items-center justify-between">
-                            <span>{module.title}</span>
-                            <Badge variant="outline">{module.level === 'beginner' ? 'Başlangıç' : module.level === 'intermediate' ? 'Orta' : 'İleri'}</Badge>
-                          </DialogTitle>
-                        </DialogHeader>
-                        <div className="space-y-4">
-                          <div className="flex items-center gap-4">
-                            <div className="flex items-center gap-2">
-                              <Clock className="w-4 h-4 text-muted-foreground" />
-                              <span className="text-sm">{module.estimatedDuration} dakika</span>
-                            </div>
-                            {completed && (
-                              <Badge className="bg-green-500">Tamamlandı</Badge>
-                            )}
-                          </div>
-                          {module.description && (
-                            <div>
-                              <h4 className="font-semibold text-sm mb-1">Açıklama</h4>
-                              <p className="text-sm text-muted-foreground">{module.description}</p>
-                            </div>
-                          )}
-                          {module.content && (
-                            <div>
-                              <h4 className="font-semibold text-sm mb-2">İçerik</h4>
-                              <div className="bg-muted/50 rounded-lg p-3 text-sm whitespace-pre-wrap max-h-96 overflow-y-auto">
-                                {module.content}
-                              </div>
-                            </div>
-                          )}
-                          {isAcademyCoach(user?.role) ? (
-                            <div className="flex gap-2">
-                              <Link 
-                                to={`/akademi-modul/${module.id}`}
-                                onClick={() => sessionStorage.setItem('academyReferrer', '/akademi')}
-                                className="flex-1"
-                              >
-                                <Button variant="outline" className="w-full" data-testid={`button-preview-module-${module.id}`}>
-                                  <Eye className="h-4 w-4 mr-1" />
-                                  Önizle
-                                </Button>
-                              </Link>
-                              <Button variant="default" className="flex-1" data-testid={`button-assign-module-${module.id}`}>
-                                <Users className="h-4 w-4 mr-1" />
-                                Ata
-                              </Button>
-                            </div>
-                          ) : (
-                            <Link 
-                              to={`/akademi-modul/${module.id}`}
-                              onClick={() => sessionStorage.setItem('academyReferrer', '/akademi')}
-                            >
-                              <Button className="w-full" data-testid={`button-start-module-${module.id}`}>
-                                Modülü Başlat
-                              </Button>
-                            </Link>
-                          )}
-                        </div>
-                      </DialogContent>
-                    </Dialog>
-                  </div>
-                );
-              })}
-            </div>
-          </>
-        )}
-
-        {/* Practice View */}
-        {activeView === "practice" && (
-          <>
-            <BackButton />
-            <Card className="bg-gradient-to-r from-blue-900/10 to-indigo-900/10 border-blue-900/20">
-              <CardContent className="p-4">
-                <div className="flex items-center gap-3">
-                  <Brain className="w-8 h-8 text-blue-600" />
-                  <div>
-                    <h2 className="font-bold">Sürekli Pratik</h2>
-                    <p className="text-xs text-muted-foreground">Quizler ve günlük görevler</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Daily Missions */}
-            <Card data-testid="card-daily-missions-full">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm flex items-center gap-2" data-testid="text-daily-missions-full-title">
-                  <Zap className="w-4 h-4 text-yellow-500" />
-                  Günlük Görevler
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                {dailyMissions.map((mission: any) => (
-                  <div key={mission.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg" data-testid={`mission-${mission.id}`}>
-                    <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
-                        <CheckCircle className="w-4 h-4 text-primary" />
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium">{mission.title_tr}</p>
-                        <p className="text-xs text-muted-foreground">{mission.description_tr}</p>
-                      </div>
-                    </div>
-                    <Badge className="bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400" data-testid={`text-xp-${mission.id}`}>+{mission.xp_reward} XP</Badge>
-                  </div>
-                ))}
-                {dailyMissions.length === 0 && (
-                  <div className="text-center py-4 text-muted-foreground text-sm">
-                    Henüz günlük görev yok
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Recommended Quizzes */}
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm flex items-center gap-2">
-                  <Lightbulb className="w-4 h-4 text-primary" />
-                  Önerilen Quizler
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                {recommendedQuizzes.map((quiz: { id: number; title_tr: string; description_tr: string; difficulty: string; estimated_minutes: number }) => (
-                  <Link key={quiz.id} to={`/akademi-quiz/${quiz.id}`}>
-                    <div className="p-3 bg-white dark:bg-slate-900 rounded-lg border hover:border-primary transition cursor-pointer" data-testid={`quiz-card-${quiz.id}`}>
-                      <div className="flex items-center justify-between">
-                        <div className="flex-1">
-                          <p className="font-medium text-sm">{quiz.title_tr}</p>
-                          <p className="text-xs text-muted-foreground mt-0.5">{quiz.description_tr}</p>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs text-muted-foreground">{quiz.estimated_minutes}dk</span>
-                          <ChevronRight className="w-4 h-4" />
-                        </div>
-                      </div>
-                    </div>
-                  </Link>
-                ))}
-                {recommendedQuizzes.length === 0 && (
-                  <div className="text-center py-4 text-muted-foreground text-sm">
-                    Şu anda önerilecek quiz yok
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </>
-        )}
+          </CardContent>
+        </Card>
 
       </div>
     </div>

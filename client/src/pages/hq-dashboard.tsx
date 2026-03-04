@@ -12,6 +12,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { UnifiedHero } from "@/components/widgets/unified-hero";
 import { AtadiklarimWidget } from "@/components/widgets/atadiklarim-widget";
+import { BranchTrainingComparisonWidget } from "@/components/widgets/team-training-widget";
 import { GateRequestsWidget } from "@/components/widgets/gate-requests-widget";
 import { CriticalAlerts } from "@/components/critical-alerts";
 import { DailyTaskPanel } from "@/components/daily-task-panel";
@@ -1807,6 +1808,7 @@ export default function HQDashboard() {
       <DailyTaskPanel />
       {!isCGO && <CriticalAlerts />}
       {canSeeWidget(userRole, 'atadiklarim') && <AtadiklarimWidget />}
+      <BranchTrainingComparisonWidget />
       <DepartmentComponent />
     </div>
   );

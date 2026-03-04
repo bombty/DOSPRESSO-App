@@ -21,7 +21,7 @@ import {
   Sparkles, Upload, FileText, Coffee, Utensils, Leaf, IceCream,
   Heart, Shield, AlertTriangle, Users, Store, Sparkle, Package,
   Warehouse, GraduationCap, Clock, Globe, Loader2, X, Play,
-  Layout, Sun, Snowflake
+  Layout, Sun, Snowflake, Send, CheckCircle, XCircle, Wand2
 } from "lucide-react";
 import { ImageUploader } from "@/components/image-uploader";
 import type { LucideIcon } from "lucide-react";
@@ -588,6 +588,9 @@ export default function AcademyModuleEditor() {
   const [isRequired, setIsRequired] = useState(false);
   const [heroImageUrl, setHeroImageUrl] = useState("");
 
+  const [moduleStatus, setModuleStatus] = useState<string>("draft");
+  const [rejectionReason, setRejectionReason] = useState<string>("");
+
   const [learningObjectives, setLearningObjectives] = useState<string[]>([]);
   const [steps, setSteps] = useState<StepItem[]>([]);
   const [quiz, setQuiz] = useState<QuizItem[]>([]);
@@ -652,6 +655,8 @@ export default function AcademyModuleEditor() {
           ? existingModule.supervisorChecklist.map((item: any) => typeof item === 'string' ? item : item.title || item.description || "")
           : []
       );
+      setModuleStatus((existingModule as any).status || "draft");
+      setRejectionReason((existingModule as any).rejectionReason || "");
       setShowTemplates(false);
     }
   }, [existingModule]);
@@ -769,6 +774,67 @@ export default function AcademyModuleEditor() {
     },
   });
 
+  const submitForReviewMutation = useMutation({
+    mutationFn: async () => {
+      if (!moduleId) throw new Error("Modül önce kaydedilmelidir");
+      return apiRequest("PATCH", `/api/academy/modules/${moduleId}/status`, { status: "pending_review" });
+    },
+    onSuccess: () => {
+      setModuleStatus("pending_review");
+      queryClient.invalidateQueries({ queryKey: ['/api/training/modules', moduleId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/academy/modules/management"] });
+      toast({ title: "Onaya gönderildi", description: "Modül inceleme için gönderildi." });
+    },
+    onError: (error: any) => {
+      toast({ title: "Hata", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const aiEnrichMutation = useMutation({
+    mutationFn: async () => {
+      if (!moduleId) throw new Error("Modül önce kaydedilmelidir");
+      const response = await apiRequest("POST", `/api/academy/modules/${moduleId}/ai-enrich`);
+      return await response.json();
+    },
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/training/modules', moduleId] });
+      toast({ title: "AI ile zenginleştirildi", description: "Modül içeriği AI tarafından geliştirildi." });
+    },
+    onError: (error: any) => {
+      toast({ title: "AI zenginleştirme hatası", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const aiGenerateQuizMutation = useMutation({
+    mutationFn: async () => {
+      if (!moduleId) throw new Error("Modül önce kaydedilmelidir");
+      const response = await apiRequest("POST", `/api/academy/ai-generate-quiz/${moduleId}`);
+      return await response.json();
+    },
+    onSuccess: (data: any) => {
+      if (data?.questions?.length) {
+        const newQuiz = data.questions.map((q: any) => ({
+          questionId: q.questionId || `q${Date.now()}-${Math.random()}`,
+          questionType: q.questionType || "mcq",
+          questionText: q.questionText || q.question || "",
+          options: q.options || [],
+          correctOptionIndex: q.correctOptionIndex ?? q.correctAnswerIndex ?? 0,
+          explanation: q.explanation || "",
+          points: q.points || 10,
+        }));
+        setQuiz(prev => [...prev, ...newQuiz]);
+        toast({ title: "Quiz soruları oluşturuldu", description: `${newQuiz.length} yeni soru eklendi.` });
+      } else {
+        toast({ title: "AI quiz oluşturulamadı", description: "Lütfen önce modül içeriğini kaydedin.", variant: "destructive" });
+      }
+    },
+    onError: (error: any) => {
+      toast({ title: "AI quiz hatası", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const canApproveContent = user?.role && ["coach", "admin", "cgo", "academy_coach"].includes(user.role);
+
   const [aiInputText, setAiInputText] = useState("");
   const [showAiPanel, setShowAiPanel] = useState(false);
 
@@ -866,14 +932,28 @@ export default function AcademyModuleEditor() {
             <ArrowLeft className="w-4 h-4" />
           </Button>
           <span className="text-sm font-medium truncate max-w-[200px]">{title || "Yeni Modül"}</span>
+          {moduleStatus === "approved" && <Badge variant="default" data-testid="badge-module-status"><CheckCircle className="w-3 h-3 mr-1" />Onaylı</Badge>}
+          {moduleStatus === "pending_review" && <Badge variant="outline" data-testid="badge-module-status"><Clock className="w-3 h-3 mr-1" />Onay Bekliyor</Badge>}
+          {moduleStatus === "rejected" && <Badge variant="destructive" data-testid="badge-module-status"><XCircle className="w-3 h-3 mr-1" />Reddedildi</Badge>}
+          {moduleStatus === "draft" && <Badge variant="secondary" data-testid="badge-module-status">Taslak</Badge>}
           {isPublished && <Badge variant="default">Yayında</Badge>}
-          {!isPublished && <Badge variant="secondary">Taslak</Badge>}
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           {lastSaved && (
             <span className="text-xs text-muted-foreground hidden sm:inline">
               Son kayıt: {lastSaved.toLocaleTimeString("tr-TR")}
             </span>
+          )}
+          {moduleId && (
+            <Button
+              variant="outline"
+              onClick={() => aiEnrichMutation.mutate()}
+              disabled={aiEnrichMutation.isPending}
+              data-testid="button-ai-enrich"
+            >
+              {aiEnrichMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Wand2 className="w-4 h-4 mr-2" />}
+              AI Zenginleştir
+            </Button>
           )}
           <Button
             variant="outline"
@@ -884,6 +964,17 @@ export default function AcademyModuleEditor() {
             {isSaving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
             Taslak Kaydet
           </Button>
+          {moduleId && moduleStatus === "draft" && (
+            <Button
+              variant="outline"
+              onClick={() => submitForReviewMutation.mutate()}
+              disabled={submitForReviewMutation.isPending}
+              data-testid="button-submit-review"
+            >
+              {submitForReviewMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Send className="w-4 h-4 mr-2" />}
+              Onaya Gönder
+            </Button>
+          )}
           <Button
             onClick={() => handleSave(true)}
             disabled={isSaving}
@@ -894,6 +985,16 @@ export default function AcademyModuleEditor() {
           </Button>
         </div>
       </div>
+
+      {moduleStatus === "rejected" && rejectionReason && (
+        <div className="bg-destructive/10 border border-destructive/20 px-4 py-2 flex items-start gap-2">
+          <AlertTriangle className="h-4 w-4 text-destructive flex-shrink-0 mt-0.5" />
+          <div>
+            <p className="text-sm font-medium text-destructive">Modül reddedildi</p>
+            <p className="text-sm text-destructive/80" data-testid="text-rejection-reason">{rejectionReason}</p>
+          </div>
+        </div>
+      )}
 
       <div className="flex flex-1 flex-col lg:flex-row">
         <aside className="w-full lg:w-64 border-b lg:border-b-0 lg:border-r bg-muted/30 p-3 flex-shrink-0">
@@ -1282,22 +1383,36 @@ export default function AcademyModuleEditor() {
             <div className="space-y-4">
               <div className="flex items-center justify-between gap-2 flex-wrap">
                 <h2 className="text-lg font-semibold">Quiz Soruları</h2>
-                <Button
-                  size="sm"
-                  onClick={() => setQuiz([...quiz, {
-                    questionId: `q${Date.now()}`,
-                    questionType: "mcq",
-                    questionText: "",
-                    options: ["", "", "", ""],
-                    correctOptionIndex: 0,
-                    explanation: "",
-                    points: 10,
-                  }])}
-                  data-testid="button-add-quiz"
-                >
-                  <Plus className="w-4 h-4 mr-2" />
-                  Soru Ekle
-                </Button>
+                <div className="flex items-center gap-2 flex-wrap">
+                  {moduleId && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => aiGenerateQuizMutation.mutate()}
+                      disabled={aiGenerateQuizMutation.isPending}
+                      data-testid="button-ai-generate-quiz"
+                    >
+                      {aiGenerateQuizMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Sparkles className="w-4 h-4 mr-2" />}
+                      AI ile Soru Oluştur
+                    </Button>
+                  )}
+                  <Button
+                    size="sm"
+                    onClick={() => setQuiz([...quiz, {
+                      questionId: `q${Date.now()}`,
+                      questionType: "mcq",
+                      questionText: "",
+                      options: ["", "", "", ""],
+                      correctOptionIndex: 0,
+                      explanation: "",
+                      points: 10,
+                    }])}
+                    data-testid="button-add-quiz"
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    Soru Ekle
+                  </Button>
+                </div>
               </div>
 
               <Card>
