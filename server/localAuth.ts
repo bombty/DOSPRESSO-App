@@ -17,8 +17,62 @@ const loginSchema = z.object({
   password: z.string().min(1, "Şifre zorunludur"),
 });
 
+const LOGIN_LOCKOUT_MAX_ATTEMPTS = 5;
+const LOGIN_LOCKOUT_WINDOW_MS = 15 * 60 * 1000;
+const LOGIN_LOCKOUT_DURATION_MS = 15 * 60 * 1000;
+
+interface LoginAttemptRecord {
+  count: number;
+  firstAttemptAt: number;
+  lockedUntil: number | null;
+}
+
+const loginAttempts = new Map<string, LoginAttemptRecord>();
+
+function checkLoginLockout(username: string): { locked: boolean; remainingMs: number } {
+  const normalizedUsername = username.toLocaleLowerCase('tr-TR');
+  const record = loginAttempts.get(normalizedUsername);
+  if (!record) return { locked: false, remainingMs: 0 };
+  
+  if (record.lockedUntil) {
+    if (Date.now() < record.lockedUntil) {
+      return { locked: true, remainingMs: record.lockedUntil - Date.now() };
+    }
+    loginAttempts.delete(normalizedUsername);
+    return { locked: false, remainingMs: 0 };
+  }
+  return { locked: false, remainingMs: 0 };
+}
+
+function recordFailedLogin(username: string): boolean {
+  const normalizedUsername = username.toLocaleLowerCase('tr-TR');
+  const now = Date.now();
+  let record = loginAttempts.get(normalizedUsername);
+  
+  if (!record || (now - record.firstAttemptAt > LOGIN_LOCKOUT_WINDOW_MS)) {
+    record = { count: 1, firstAttemptAt: now, lockedUntil: null };
+    loginAttempts.set(normalizedUsername, record);
+    return false;
+  }
+  
+  record.count++;
+  
+  if (record.count >= LOGIN_LOCKOUT_MAX_ATTEMPTS) {
+    record.lockedUntil = now + LOGIN_LOCKOUT_DURATION_MS;
+    loginAttempts.set(normalizedUsername, record);
+    return true;
+  }
+  
+  loginAttempts.set(normalizedUsername, record);
+  return false;
+}
+
+function clearLoginAttempts(username: string): void {
+  loginAttempts.delete(username.toLocaleLowerCase('tr-TR'));
+}
+
 export function getSession() {
-  const sessionTtl = 7 * 24 * 60 * 60 * 1000; // 1 week
+  const sessionTtl = 8 * 60 * 60 * 1000; // 8 hours (one shift)
   const pgStore = connectPg(session);
   const sessionStore = new pgStore({
     conString: process.env.DATABASE_URL,
@@ -170,6 +224,22 @@ export async function setupAuth(app: Express, authLimiter?: any) {
 
     const { username, password } = validationResult.data;
 
+    const lockoutCheck = checkLoginLockout(username);
+    if (lockoutCheck.locked) {
+      const remainingMinutes = Math.ceil(lockoutCheck.remainingMs / 60000);
+      auditLog(req, {
+        eventType: "auth.login_locked",
+        action: "login_blocked",
+        resource: "auth",
+        details: { username, reason: "account_locked", remainingMinutes },
+      });
+      return res.status(423).json({
+        error: `Hesabınız geçici olarak kilitlendi. Lütfen ${remainingMinutes} dakika sonra tekrar deneyin.`,
+        locked: true,
+        remainingMinutes,
+      });
+    }
+
     // İlk önce normal kullanıcı girişini dene
     passport.authenticate("local", async (err: unknown, user: Express.User | false | null, info: any) => {
       if (err) {
@@ -179,6 +249,7 @@ export async function setupAuth(app: Express, authLimiter?: any) {
       
       // Normal kullanıcı girişi başarılı
       if (user) {
+        clearLoginAttempts(username);
         req.login(user, (err) => {
           if (err) {
             console.error("[Auth] Login error:", err);
@@ -251,12 +322,38 @@ export async function setupAuth(app: Express, authLimiter?: any) {
         return;
       }
       
+      const justLocked = recordFailedLogin(username);
+      
       auditLog(req, {
         eventType: "auth.login_failed",
         action: "login_failed",
         resource: "auth",
-        details: { username, reason: info?.message || "Invalid credentials" },
+        details: { username, reason: info?.message || "Invalid credentials", accountLocked: justLocked },
       });
+
+      if (justLocked) {
+        console.warn(`[Auth] Account locked: ${username} (${LOGIN_LOCKOUT_MAX_ATTEMPTS} failed attempts)`);
+        try {
+          const adminUsers = await storage.getUsersByRole('admin');
+          for (const admin of adminUsers) {
+            await storage.createNotification({
+              userId: admin.id,
+              title: "Hesap Kilitleme Uyarısı",
+              message: `"${username}" kullanıcısı ${LOGIN_LOCKOUT_MAX_ATTEMPTS} başarısız giriş denemesi sonrası 15 dakika kilitlendi.`,
+              type: "critical",
+              relatedType: "security",
+              relatedId: username,
+            });
+          }
+        } catch (notifErr) {
+          console.error("[Auth] Admin notification error:", notifErr);
+        }
+        return res.status(423).json({
+          error: `Hesabınız geçici olarak kilitlendi. Lütfen 15 dakika sonra tekrar deneyin.`,
+          locked: true,
+          remainingMinutes: 15,
+        });
+      }
 
       return res.status(401).json({ error: info?.message || "Kullanıcı adı veya şifre hatalı" });
     })(req, res, next);

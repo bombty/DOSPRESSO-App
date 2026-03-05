@@ -666,7 +666,12 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
         firstName: z.string().min(1, "Ad gerekli"),
         lastName: z.string().min(1, "Soyad gerekli"),
         username: z.string().min(3, "Kullanıcı adı en az 3 karakter olmalı"),
-        password: z.string().min(6, "Şifre en az 6 karakter olmalı"),
+        password: z.string()
+          .min(8, "Şifre en az 8 karakter olmalıdır")
+          .regex(/[a-z]/, "Şifre en az bir küçük harf içermelidir")
+          .regex(/[A-Z]/, "Şifre en az bir büyük harf içermelidir")
+          .regex(/[0-9]/, "Şifre en az bir rakam içermelidir")
+          .regex(/[!@#$%^&*._-]/, "Şifre en az bir özel karakter içermelidir (!@#$%^&*._-)"),
         role: z.enum(validRoles, { errorMap: () => ({ message: "Geçersiz rol seçimi" }) }),
         branchId: z.number().nullable().optional(),
       });
@@ -826,9 +831,12 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
       const crypto = await import('crypto');
       const { token } = req.params;
       const schema = z.object({
-        password: z.string().min(8, "Şifre en az 8 karakter olmalı")
-          .regex(/[A-Z]/, "Şifre en az 1 büyük harf içermeli")
-          .regex(/[0-9]/, "Şifre en az 1 rakam içermeli"),
+        password: z.string()
+          .min(8, "Şifre en az 8 karakter olmalıdır")
+          .regex(/[a-z]/, "Şifre en az bir küçük harf içermelidir")
+          .regex(/[A-Z]/, "Şifre en az bir büyük harf içermelidir")
+          .regex(/[0-9]/, "Şifre en az bir rakam içermelidir")
+          .regex(/[!@#$%^&*._-]/, "Şifre en az bir özel karakter içermelidir (!@#$%^&*._-)"),
       });
 
       const { password } = schema.parse(req.body);

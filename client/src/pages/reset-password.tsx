@@ -21,7 +21,12 @@ import { Loader2, CheckCircle } from "lucide-react";
 import logoUrl from "@assets/IMG_6637_1765138781125.png";
 
 const resetPasswordSchema = z.object({
-  password: z.string().min(6, "Şifre en az 6 karakter olmalı"),
+  password: z.string()
+    .min(8, "Şifre en az 8 karakter olmalıdır")
+    .regex(/[a-z]/, "Şifre en az bir küçük harf içermelidir")
+    .regex(/[A-Z]/, "Şifre en az bir büyük harf içermelidir")
+    .regex(/[0-9]/, "Şifre en az bir rakam içermelidir")
+    .regex(/[!@#$%^&*._-]/, "Şifre en az bir özel karakter içermelidir (!@#$%^&*._-)"),
   confirmPassword: z.string(),
 }).refine((data) => data.password === data.confirmPassword, {
   message: "Şifreler eşleşmiyor",

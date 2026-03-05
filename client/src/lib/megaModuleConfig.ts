@@ -48,21 +48,54 @@ const COLOR_MAP: Record<string, string> = {
   'bg-amber-600': 'text-amber-600',
 };
 
-export const MEGA_MODULE_CONFIG: Record<string, MegaModuleConfig> = Object.fromEntries(
-  Object.entries(MEGA_MODULES).map(([key, mod]) => [
-    key,
-    {
-      id: mod.id,
-      title: mod.title,
-      icon: ICON_MAP[mod.icon] || LayoutDashboard,
-      color: COLOR_MAP[mod.color] || 'text-gray-500',
-    }
-  ])
-);
+let _cachedConfig: Record<string, MegaModuleConfig> | null = null;
+let _cachedOrder: string[] | null = null;
 
-export const MEGA_MODULE_ORDER = Object.values(MEGA_MODULES)
-  .sort((a, b) => a.sortOrder - b.sortOrder)
-  .map(m => m.id);
+function buildMegaModuleConfig(): Record<string, MegaModuleConfig> {
+  if (_cachedConfig) return _cachedConfig;
+  _cachedConfig = Object.fromEntries(
+    Object.entries(MEGA_MODULES).map(([key, mod]) => [
+      key,
+      {
+        id: mod.id,
+        title: mod.title,
+        icon: ICON_MAP[mod.icon] || LayoutDashboard,
+        color: COLOR_MAP[mod.color] || 'text-gray-500',
+      }
+    ])
+  );
+  return _cachedConfig;
+}
+
+function buildMegaModuleOrder(): string[] {
+  if (_cachedOrder) return _cachedOrder;
+  _cachedOrder = Object.values(MEGA_MODULES)
+    .sort((a, b) => a.sortOrder - b.sortOrder)
+    .map(m => m.id);
+  return _cachedOrder;
+}
+
+export const MEGA_MODULE_CONFIG: Record<string, MegaModuleConfig> = new Proxy({} as Record<string, MegaModuleConfig>, {
+  get(_, prop: string) { return buildMegaModuleConfig()[prop]; },
+  has(_, prop: string) { return prop in buildMegaModuleConfig(); },
+  ownKeys() { return Object.keys(buildMegaModuleConfig()); },
+  getOwnPropertyDescriptor(_, prop: string) {
+    const config = buildMegaModuleConfig();
+    if (prop in config) return { configurable: true, enumerable: true, value: config[prop] };
+    return undefined;
+  },
+});
+
+export const MEGA_MODULE_ORDER: string[] = new Proxy([] as string[], {
+  get(_, prop: string) {
+    const order = buildMegaModuleOrder();
+    if (prop === 'length') return order.length;
+    if (prop === Symbol.iterator as any) return order[Symbol.iterator].bind(order);
+    const idx = Number(prop);
+    if (!isNaN(idx)) return order[idx];
+    return (order as any)[prop];
+  },
+});
 
 export const DEFAULT_MENU_SECTION_MAPPING: Record<string, string[]> = {
   "dashboard": ["dashboard", "dashboard-hq", "dashboard-branch", "branch-dashboard"],

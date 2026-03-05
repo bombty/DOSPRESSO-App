@@ -32,7 +32,12 @@ const registerSchema = z.object({
   firstName: z.string().min(2, "İsim en az 2 karakter olmalı"),
   lastName: z.string().min(2, "Soyisim en az 2 karakter olmalı"),
   username: z.string().min(3, "Kullanıcı adı en az 3 karakter olmalı"),
-  password: z.string().min(6, "Şifre en az 6 karakter olmalı"),
+  password: z.string()
+    .min(8, "Şifre en az 8 karakter olmalıdır")
+    .regex(/[a-z]/, "Şifre en az bir küçük harf içermelidir")
+    .regex(/[A-Z]/, "Şifre en az bir büyük harf içermelidir")
+    .regex(/[0-9]/, "Şifre en az bir rakam içermelidir")
+    .regex(/[!@#$%^&*._-]/, "Şifre en az bir özel karakter içermelidir (!@#$%^&*._-)"),
   confirmPassword: z.string(),
   role: z.string().min(1, "Rol seçimi zorunlu"),
   branchId: z.number().nullable().optional(),

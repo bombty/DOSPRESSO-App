@@ -860,7 +860,12 @@ const router = Router();
         firstName: z.string().min(1),
         lastName: z.string().min(1),
         username: z.string().min(3),
-        password: z.string().min(6),
+        password: z.string()
+          .min(8, "Şifre en az 8 karakter olmalıdır")
+          .regex(/[a-z]/, "Şifre en az bir küçük harf içermelidir")
+          .regex(/[A-Z]/, "Şifre en az bir büyük harf içermelidir")
+          .regex(/[0-9]/, "Şifre en az bir rakam içermelidir")
+          .regex(/[!@#$%^&*._-]/, "Şifre en az bir özel karakter içermelidir (!@#$%^&*._-)"),
         role: z.string(),
         branchId: z.number().nullable().optional(),
       });

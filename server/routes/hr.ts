@@ -607,12 +607,13 @@ const router = Router();
         return res.status(404).json({ message: "Çalışan bulunamadı" });
       }
 
-      // Validate new password - enforce strong password policy
       const resetPasswordSchema = z.object({
         newPassword: z.string()
           .min(8, "Şifre en az 8 karakter olmalıdır")
-          .regex(/[A-Za-z]/, "Şifre en az bir harf içermelidir")
-          .regex(/[0-9]/, "Şifre en az bir rakam içermelidir"),
+          .regex(/[a-z]/, "Şifre en az bir küçük harf içermelidir")
+          .regex(/[A-Z]/, "Şifre en az bir büyük harf içermelidir")
+          .regex(/[0-9]/, "Şifre en az bir rakam içermelidir")
+          .regex(/[!@#$%^&*._-]/, "Şifre en az bir özel karakter içermelidir (!@#$%^&*._-)"),
       });
 
       const parsed = resetPasswordSchema.safeParse(req.body);

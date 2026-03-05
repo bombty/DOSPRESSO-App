@@ -124,6 +124,8 @@ function RoleDashboardSection({
   certDesigns,
   onEditCert,
   onDeleteCert,
+  onOpenAiOnboarding,
+  onOpenAiProgram,
 }: {
   role: string;
   branchAnalytics: BranchAnalytics[];
@@ -135,6 +137,8 @@ function RoleDashboardSection({
   certDesigns?: any[];
   onEditCert?: (cert: any) => void;
   onDeleteCert?: (id: number) => void;
+  onOpenAiOnboarding?: () => void;
+  onOpenAiProgram?: () => void;
 }) {
   if (isLoading) {
     return (
@@ -368,7 +372,7 @@ function RoleDashboardSection({
           </CardHeader>
           <CardContent className="px-3 pb-3">
             <div className="grid grid-cols-2 gap-2">
-              <Button size="sm" variant="outline" className="justify-start gap-2" data-testid="btn-create-onboarding" onClick={() => setIsAiOnboardingOpen(true)}>
+              <Button size="sm" variant="outline" className="justify-start gap-2" data-testid="btn-create-onboarding" onClick={() => onOpenAiOnboarding?.()}>
                 <Plus className="w-3 h-3" /> Onboarding Şablonu
               </Button>
               <Button size="sm" variant="outline" className="justify-start gap-2" data-testid="btn-view-reports">
@@ -377,7 +381,7 @@ function RoleDashboardSection({
               <Button size="sm" variant="outline" className="justify-start gap-2" data-testid="btn-cert-settings" onClick={() => onCertSettings?.()}>
                 <Award className="w-3 h-3" /> Sertifika Ayarları
               </Button>
-              <Button size="sm" variant="outline" className="justify-start gap-2" data-testid="btn-ai-generate" onClick={() => setIsAiProgramOpen(true)}>
+              <Button size="sm" variant="outline" className="justify-start gap-2" data-testid="btn-ai-generate" onClick={() => onOpenAiProgram?.()}>
                 <GraduationCap className="w-3 h-3" /> AI Modül Üret
               </Button>
             </div>
@@ -506,7 +510,7 @@ function RoleDashboardSection({
           </CardHeader>
           <CardContent className="px-3 pb-3">
             <div className="grid grid-cols-2 gap-2">
-              <Button size="sm" variant="outline" className="justify-start gap-2" data-testid="btn-trainer-create-module" onClick={() => setIsAiOnboardingOpen(true)}>
+              <Button size="sm" variant="outline" className="justify-start gap-2" data-testid="btn-trainer-create-module" onClick={() => onOpenAiOnboarding?.()}>
                 <Plus className="w-3 h-3" /> Onboarding Şablonu
               </Button>
               <Button size="sm" variant="outline" className="justify-start gap-2" data-testid="btn-trainer-view-reports">
@@ -515,7 +519,7 @@ function RoleDashboardSection({
               <Button size="sm" variant="outline" className="justify-start gap-2" data-testid="btn-trainer-cert-settings" onClick={() => onCertSettings?.()}>
                 <Award className="w-3 h-3" /> Sertifika Ayarları
               </Button>
-              <Button size="sm" variant="outline" className="justify-start gap-2" data-testid="btn-trainer-ai-generate" onClick={() => setIsAiProgramOpen(true)}>
+              <Button size="sm" variant="outline" className="justify-start gap-2" data-testid="btn-trainer-ai-generate" onClick={() => onOpenAiProgram?.()}>
                 <GraduationCap className="w-3 h-3" /> AI Modül Üret
               </Button>
             </div>
@@ -1123,6 +1127,8 @@ export default function AcademyHQ() {
           setIsCertDialogOpen(true);
         }}
         onDeleteCert={(id) => deleteCertDesignMutation.mutate(id)}
+        onOpenAiOnboarding={() => setIsAiOnboardingOpen(true)}
+        onOpenAiProgram={() => setIsAiProgramOpen(true)}
       />
 
       <Tabs defaultValue="training" className="w-full">
