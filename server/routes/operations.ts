@@ -26,8 +26,10 @@ import {
   feedbackFormSettings,
   branches,
   users,
+  guestComplaints,
   equipmentServiceRequests,
   shiftChecklists,
+  shifts,
   hasPermission,
   isHQRole,
   isBranchRole,
@@ -51,6 +53,7 @@ import { z } from "zod";
 import { computeAuditScore, getCAPAPriority, shouldCreateCAPA, isValidCAPATransition, calculateSLADeadline, getSLAStatus } from "../audit-scoring";
 import { createAuditEntry, getAuditContext } from "../audit";
 import { handleApiError } from "./helpers";
+import { sendFeedbackThankYouEmail } from "../email";
 
 const router = Router();
 
@@ -3599,17 +3602,51 @@ function ensurePermission(user: unknown, module: string, action: string, errorMe
         return res.status(404).json({ message: "Şube bulunamadı" });
       }
 
-      // Get active staff for this branch (for optional selection)
-      const staff = await db.select({
-        id: users.id,
-        firstName: users.firstName,
-        lastName: users.lastName,
-      }).from(users)
-        .where(and(
-          eq(users.branchId, branch[0].id),
-          eq(users.isActive, true),
-          sql`${users.role} IN ('barista', 'bar_buddy', 'supervisor', 'supervisor_buddy')`
-        ));
+      const branchId = branch[0].id;
+      const now = new Date();
+      const today = now.toISOString().split('T')[0];
+      const currentTime = now.toTimeString().slice(0, 8);
+
+      let staff: { id: string; firstName: string; lastName: string }[] = [];
+      let shiftFiltered = false;
+
+      try {
+        const activeShiftStaff = await db.select({
+          id: users.id,
+          firstName: users.firstName,
+          lastName: users.lastName,
+        }).from(shifts)
+          .innerJoin(users, eq(shifts.assignedToId, users.id))
+          .where(and(
+            eq(shifts.branchId, branchId),
+            eq(shifts.shiftDate, today),
+            sql`${shifts.status} IN ('confirmed', 'completed')`,
+            lte(shifts.startTime, currentTime),
+            gte(shifts.endTime, currentTime),
+            eq(users.isActive, true),
+            sql`${users.role} IN ('barista', 'bar_buddy', 'supervisor', 'supervisor_buddy')`
+          ));
+
+        if (activeShiftStaff.length > 0) {
+          staff = activeShiftStaff;
+          shiftFiltered = true;
+        }
+      } catch (shiftErr) {
+        console.error("Shift query error, falling back to all staff:", shiftErr);
+      }
+
+      if (!shiftFiltered) {
+        staff = await db.select({
+          id: users.id,
+          firstName: users.firstName,
+          lastName: users.lastName,
+        }).from(users)
+          .where(and(
+            eq(users.branchId, branchId),
+            eq(users.isActive, true),
+            sql`${users.role} IN ('barista', 'bar_buddy', 'supervisor', 'supervisor_buddy')`
+          ));
+      }
 
       res.json({ branch: branch[0], staff });
     } catch (error: any) {
@@ -3668,18 +3705,58 @@ function ensurePermission(user: unknown, module: string, action: string, errorMe
         distanceFromBranch = R * c;
       }
 
-      // Suspicious detection
+      // Fetch form settings for this branch to check location requirement
+      const branchFormSettings = await db.select()
+        .from(feedbackFormSettings)
+        .where(eq(feedbackFormSettings.branchId, branch[0].id))
+        .limit(1);
+      const locationRequired = branchFormSettings.length > 0 ? branchFormSettings[0].requireLocationVerification : false;
+      const maxDistance = branchFormSettings.length > 0 ? (branchFormSettings[0].maxDistanceFromBranch || 500) : 500;
+
+      // === HARD REJECT CHECKS ===
+
+      // Hard Reject 1: Same device_fingerprint + same branch in last 24 hours → 429
+      if (deviceFingerprint) {
+        const twentyFourHoursAgo = new Date();
+        twentyFourHoursAgo.setHours(twentyFourHoursAgo.getHours() - 24);
+        const sameFingerprintCount = await db.select({ count: sql<number>`count(*)` })
+          .from(customerFeedback)
+          .where(and(
+            eq(customerFeedback.branchId, branch[0].id),
+            sql`${customerFeedback.deviceFingerprint} = ${deviceFingerprint}`,
+            sql`${customerFeedback.feedbackDate} >= ${twentyFourHoursAgo}`
+          ));
+        
+        if (sameFingerprintCount[0]?.count > 0) {
+          return res.status(429).json({ 
+            message: "Bugün zaten değerlendirme yaptınız. Lütfen yarın tekrar deneyiniz. Geri bildiriminiz için teşekkür ederiz." 
+          });
+        }
+      }
+
+      // Hard Reject 2: GPS distance check — ONLY when form settings require location verification
+      if (locationRequired) {
+        const gpsProvided = userLatitude !== null && userLatitude !== undefined && userLongitude !== null && userLongitude !== undefined;
+        if (distanceFromBranch !== null && distanceFromBranch > maxDistance) {
+          return res.status(403).json({ 
+            message: "Geri bildirim gönderebilmek için şubemizde bulunmanız gerekmektedir. Lütfen şubemizi ziyaret ettiğinizde tekrar deneyiniz." 
+          });
+        }
+        if (!gpsProvided && branch[0].latitude && branch[0].longitude) {
+          return res.status(403).json({ 
+            message: "Geri bildirim gönderebilmek için konum izni vermeniz gerekmektedir. Lütfen konum erişimine izin verin ve tekrar deneyiniz." 
+          });
+        }
+      }
+
+      // === SOFT FLAG CHECKS (accept but mark) ===
       const suspiciousReasons: string[] = [];
       let isSuspicious = false;
 
-      // Check 1: Same IP submitted multiple feedbacks today
-      // Parse date range from query params
-      const fromDate = req.query.from ? new Date(req.query.from as string) : new Date();
-      const toDate = req.query.to ? new Date(req.query.to as string) : new Date();
-      toDate.setHours(23, 59, 59, 999); // Include full end day
-
       const today = new Date();
       today.setHours(0, 0, 0, 0);
+
+      // Soft check: Same IP submitted multiple feedbacks today
       const sameIpCount = await db.select({ count: sql<number>`count(*)` })
         .from(customerFeedback)
         .where(and(
@@ -3693,39 +3770,49 @@ function ensurePermission(user: unknown, module: string, action: string, errorMe
         isSuspicious = true;
       }
 
-      // Check 2: Same fingerprint submitted today
+      // Soft Flag 1: All 1-star + no comment + no name → suspicious, score weight 50% reduced
+      if (rating === 1 && (!comment || comment.trim() === '') && (!customerName || customerName.trim() === '') && isAnonymous) {
+        suspiciousReasons.push('all_low_no_detail');
+        isSuspicious = true;
+      }
+
+      // Soft Flag 2: Same device submitted to different branch same week
       if (deviceFingerprint) {
-        const sameFingerprintCount = await db.select({ count: sql<number>`count(*)` })
+        const weekAgo = new Date();
+        weekAgo.setDate(weekAgo.getDate() - 7);
+        const otherBranchFeedback = await db.select({ count: sql<number>`count(*)` })
           .from(customerFeedback)
           .where(and(
-            eq(customerFeedback.branchId, branch[0].id),
+            sql`${customerFeedback.branchId} != ${branch[0].id}`,
             sql`${customerFeedback.deviceFingerprint} = ${deviceFingerprint}`,
-            sql`${customerFeedback.feedbackDate} >= ${today}`
+            sql`${customerFeedback.feedbackDate} >= ${weekAgo}`
           ));
         
-        if (sameFingerprintCount[0]?.count > 0) {
-          suspiciousReasons.push('same_device_multiple_submissions');
+        if (otherBranchFeedback[0]?.count > 0) {
+          suspiciousReasons.push('multi_branch_same_week');
           isSuspicious = true;
         }
       }
 
-      // Check 3: Too far from branch (> 500m)
-      if (distanceFromBranch !== null && distanceFromBranch > 500) {
-        suspiciousReasons.push('too_far_from_branch');
-        isSuspicious = true;
+      // Soft Flag 3: Form completed in under 30 seconds → "too fast"
+      const { formStartedAt } = req.body;
+      if (formStartedAt) {
+        const startTime = new Date(formStartedAt).getTime();
+        const submissionDuration = (Date.now() - startTime) / 1000;
+        if (submissionDuration < 30) {
+          suspiciousReasons.push('too_fast_submission');
+          isSuspicious = true;
+        }
       }
 
-      // Check 4: Perfect 5-star rating with no comment (potential fake)
+      // Soft check: Perfect 5-star rating with no comment (potential fake)
       if (rating === 5 && serviceRating === 5 && cleanlinessRating === 5 && 
           productRating === 5 && staffRating === 5 && !comment) {
         suspiciousReasons.push('perfect_rating_no_comment');
-        // Only flag as suspicious if combined with other factors
       }
 
-      // Check 5: Staff giving feedback to themselves
+      // Soft check: Staff giving feedback to themselves
       if (staffId) {
-        // This would require more complex checking - if the device belongs to staff
-        // For now, just flag high staff ratings as worth reviewing
         if (staffRating === 5) {
           suspiciousReasons.push('high_staff_rating_selected');
         }
@@ -3785,6 +3872,203 @@ function ensurePermission(user: unknown, module: string, action: string, errorMe
         feedbackType,
         requiresContact,
       }).returning();
+
+      // ========================================
+      // NOTIFICATION INTEGRATION (T002)
+      // ========================================
+      try {
+        const branchId = branch[0].id;
+        const branchName = branch[0].name;
+
+        const supervisors = await db.select({ id: users.id }).from(users)
+          .where(and(
+            eq(users.branchId, branchId),
+            eq(users.isActive, true),
+            sql`${users.role} IN ('supervisor', 'supervisor_buddy')`
+          ));
+
+        const mudurlar = await db.select({ id: users.id }).from(users)
+          .where(and(
+            eq(users.branchId, branchId),
+            eq(users.isActive, true),
+            eq(users.role, 'mudur')
+          ));
+
+        const cgoUsers = await db.select({ id: users.id }).from(users)
+          .where(and(
+            eq(users.isActive, true),
+            eq(users.role, 'cgo')
+          ));
+
+        const supervisorIds = supervisors.map(s => s.id);
+        const mudurIds = mudurlar.map(m => m.id);
+        const cgoIds = cgoUsers.map(c => c.id);
+
+        if (feedbackType === 'complaint') {
+          const complaintTargets = [...new Set([...supervisorIds, ...mudurIds, ...cgoIds])];
+          for (const userId of complaintTargets) {
+            await storage.createNotification({
+              userId,
+              type: 'complaint',
+              title: `Müşteri Şikayeti - ${branchName}`,
+              message: `${branchName} şubesine yeni müşteri şikayeti geldi. Puan: ${rating}/5${comment ? ` - "${comment.substring(0, 100)}"` : ''}`,
+              link: '/musteri-memnuniyeti',
+              isRead: false,
+              branchId,
+            });
+          }
+        } else if (rating && rating <= 2) {
+          const lowRatingTargets = [...new Set([...supervisorIds, ...mudurIds, ...cgoIds])];
+          for (const userId of lowRatingTargets) {
+            await storage.createNotification({
+              userId,
+              type: 'feedback_alert',
+              title: `Düşük Puan Uyarısı - ${branchName}`,
+              message: `${branchName} şubesine düşük puan (${rating}/5) verildi.${comment ? ` Yorum: "${comment.substring(0, 100)}"` : ''}`,
+              link: '/musteri-memnuniyeti',
+              isRead: false,
+              branchId,
+            });
+          }
+        } else if (rating === 3) {
+          for (const userId of supervisorIds) {
+            await storage.createNotification({
+              userId,
+              type: 'feedback_info',
+              title: `Orta Puan Bildirimi - ${branchName}`,
+              message: `${branchName} şubesine orta puan (3/5) verildi.${comment ? ` Yorum: "${comment.substring(0, 100)}"` : ''}`,
+              link: '/musteri-memnuniyeti',
+              isRead: false,
+              branchId,
+            });
+          }
+        } else if (rating && rating >= 4) {
+          for (const userId of supervisorIds) {
+            await storage.createNotification({
+              userId,
+              type: 'feedback_positive',
+              title: `Pozitif Geri Bildirim - ${branchName}`,
+              message: `${branchName} şubesine yüksek puan (${rating}/5) verildi!${comment ? ` Yorum: "${comment.substring(0, 100)}"` : ''}`,
+              link: '/musteri-memnuniyeti',
+              isRead: false,
+              branchId,
+            });
+          }
+
+          if (staffId) {
+            const staffUser = await db.select({ id: users.id }).from(users)
+              .where(eq(users.id, staffId)).limit(1);
+            if (staffUser.length > 0 && !supervisorIds.includes(staffUser[0].id)) {
+              await storage.createNotification({
+                userId: staffUser[0].id,
+                type: 'feedback_positive',
+                title: 'Müşteriden Teşekkür!',
+                message: `Bir müşteri size ${staffRating || rating}/5 puan verdi!${comment ? ` Yorum: "${comment.substring(0, 100)}"` : ''}`,
+                link: '/musteri-memnuniyeti',
+                isRead: false,
+                branchId,
+              });
+            }
+          }
+        }
+
+        if (requiresContact) {
+          const contactResponseDeadline = new Date();
+          contactResponseDeadline.setHours(contactResponseDeadline.getHours() + 24);
+
+          await db.update(customerFeedback)
+            .set({ responseDeadline: contactResponseDeadline })
+            .where(eq(customerFeedback.id, feedback.id));
+
+          for (const userId of supervisorIds) {
+            await storage.createNotification({
+              userId,
+              type: 'feedback_alert',
+              title: `Cevap Bekleniyor - ${branchName}`,
+              message: `Bir müşteri geri bildirim sonrası iletişim bekliyor. 24 saat içinde yanıt verilmelidir.`,
+              link: '/musteri-memnuniyeti',
+              isRead: false,
+              branchId,
+            });
+          }
+        }
+      } catch (notifError) {
+        console.error("Error sending feedback notifications:", notifError);
+      }
+
+      // ========================================
+      // FEEDBACK ↔ COMPLAINT SYNC (T006)
+      // ========================================
+      try {
+        if (feedbackType === 'complaint' || (rating && rating <= 2)) {
+          const complaintPriority = rating === 1 ? 'critical' : rating === 2 ? 'high' : 'high';
+          const complaintCategory = feedbackType === 'complaint' ? 'service_speed' : 
+            (cleanlinessRating && cleanlinessRating <= 2) ? 'cleanliness' :
+            (productRating && productRating <= 2) ? 'product' :
+            (staffRating && staffRating <= 2) ? 'staff' :
+            (serviceRating && serviceRating <= 2) ? 'service_speed' : 'other';
+
+          const complaintSubject = feedbackType === 'complaint' 
+            ? `Müşteri Şikayeti - ${branch[0].name}` 
+            : `Düşük Puan Geri Bildirimi (${rating}/5) - ${branch[0].name}`;
+
+          const complaintDescription = comment && comment.trim() 
+            ? comment 
+            : `Müşteri geri bildirim formu üzerinden ${rating}/5 puan verildi.${
+              serviceRating ? ` Hizmet: ${serviceRating}/5.` : ''}${
+              cleanlinessRating ? ` Temizlik: ${cleanlinessRating}/5.` : ''}${
+              productRating ? ` Ürün: ${productRating}/5.` : ''}${
+              staffRating ? ` Personel: ${staffRating}/5.` : ''}`;
+
+          await db.insert(guestComplaints).values({
+            branchId: branch[0].id,
+            complaintSource: 'customer_feedback_form',
+            complaintCategory,
+            subject: complaintSubject,
+            description: complaintDescription,
+            customerName: isAnonymous ? null : (customerName || null),
+            customerEmail: isAnonymous ? null : (customerEmail || null),
+            customerPhone: isAnonymous ? null : (customerPhone || null),
+            isAnonymous: isAnonymous ?? true,
+            priority: complaintPriority,
+            status: 'new',
+            sourceFeedbackId: feedback.id,
+          });
+        }
+      } catch (complaintSyncError) {
+        console.error("Error syncing feedback to complaint:", complaintSyncError);
+      }
+
+      // ========================================
+      // THANK YOU EMAIL (T007)
+      // ========================================
+      try {
+        const feedbackEmail = customerEmail || (!isAnonymous && req.body.customerEmail);
+        if (feedbackEmail && typeof feedbackEmail === 'string' && feedbackEmail.includes('@')) {
+          await sendFeedbackThankYouEmail(feedbackEmail, {
+            customerName: customerName || null,
+            branchName: branch[0].name,
+            feedbackType: feedbackType as 'feedback' | 'complaint',
+            requiresContact: !!requiresContact,
+            rating,
+          });
+
+          const adminUser = await db.select({ id: users.id }).from(users)
+            .where(eq(users.role, 'admin')).limit(1);
+          
+          if (adminUser.length > 0) {
+            await db.insert(feedbackResponses).values({
+              feedbackId: feedback.id,
+              responderId: adminUser[0].id,
+              responseType: 'customer_contact',
+              content: `Otomatik teşekkür emaili gönderildi: ${feedbackEmail}`,
+              isVisibleToCustomer: false,
+            });
+          }
+        }
+      } catch (emailError) {
+        console.error("Error sending feedback thank you email:", emailError);
+      }
 
       res.json({ 
         success: true, 
@@ -4877,6 +5161,158 @@ function ensurePermission(user: unknown, module: string, action: string, errorMe
     } catch (error: any) {
       console.error("Error completing audit instance:", error);
       res.status(500).json({ message: "Denetim tamamlanırken hata oluştu" });
+    }
+  });
+
+  router.get('/api/dashboard/feedback-summary', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const branchId = user.branchId;
+      if (!branchId) {
+        return res.status(400).json({ message: "Şube ataması yapılmamış" });
+      }
+
+      const now = new Date();
+      const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const sevenDaysAgo = new Date(todayStart);
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+      const allFeedback = await db.select().from(customerFeedback)
+        .where(and(
+          eq(customerFeedback.branchId, branchId),
+          gte(customerFeedback.feedbackDate, sevenDaysAgo)
+        ))
+        .orderBy(desc(customerFeedback.feedbackDate));
+
+      const todayFeedback = allFeedback.filter(f => f.feedbackDate && new Date(f.feedbackDate) >= todayStart);
+      const todayAvg = todayFeedback.length > 0
+        ? (todayFeedback.reduce((s, f) => s + f.rating, 0) / todayFeedback.length).toFixed(1)
+        : null;
+
+      const weekAvg = allFeedback.length > 0
+        ? (allFeedback.reduce((s, f) => s + f.rating, 0) / allFeedback.length).toFixed(1)
+        : null;
+
+      const trendData: { date: string; avg: number; count: number }[] = [];
+      for (let i = 6; i >= 0; i--) {
+        const d = new Date(todayStart);
+        d.setDate(d.getDate() - i);
+        const dStr = d.toISOString().split('T')[0];
+        const dayFb = allFeedback.filter(f => f.feedbackDate && new Date(f.feedbackDate).toISOString().split('T')[0] === dStr);
+        trendData.push({
+          date: dStr,
+          avg: dayFb.length > 0 ? parseFloat((dayFb.reduce((s, f) => s + f.rating, 0) / dayFb.length).toFixed(1)) : 0,
+          count: dayFb.length,
+        });
+      }
+
+      const pendingComplaints = await db.select({ count: sql<number>`count(*)` })
+        .from(guestComplaints)
+        .where(and(
+          eq(guestComplaints.branchId, branchId),
+          inArray(guestComplaints.status, ['new', 'in_progress'])
+        ));
+
+      const categoryScores = {
+        service: allFeedback.filter(f => f.serviceRating).length > 0
+          ? parseFloat((allFeedback.filter(f => f.serviceRating).reduce((s, f) => s + (f.serviceRating || 0), 0) / allFeedback.filter(f => f.serviceRating).length).toFixed(1))
+          : null,
+        cleanliness: allFeedback.filter(f => f.cleanlinessRating).length > 0
+          ? parseFloat((allFeedback.filter(f => f.cleanlinessRating).reduce((s, f) => s + (f.cleanlinessRating || 0), 0) / allFeedback.filter(f => f.cleanlinessRating).length).toFixed(1))
+          : null,
+        product: allFeedback.filter(f => f.productRating).length > 0
+          ? parseFloat((allFeedback.filter(f => f.productRating).reduce((s, f) => s + (f.productRating || 0), 0) / allFeedback.filter(f => f.productRating).length).toFixed(1))
+          : null,
+        staff: allFeedback.filter(f => f.staffRating).length > 0
+          ? parseFloat((allFeedback.filter(f => f.staffRating).reduce((s, f) => s + (f.staffRating || 0), 0) / allFeedback.filter(f => f.staffRating).length).toFixed(1))
+          : null,
+      };
+
+      res.json({
+        todayAvg,
+        todayCount: todayFeedback.length,
+        weekAvg,
+        weekCount: allFeedback.length,
+        trend: trendData,
+        pendingComplaints: Number(pendingComplaints[0]?.count || 0),
+        categoryScores,
+      });
+    } catch (error: any) {
+      console.error("Error fetching feedback summary:", error);
+      res.status(500).json({ message: "Feedback özeti alınamadı" });
+    }
+  });
+
+  router.get('/api/dashboard/feedback-hq-summary', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      if (!isHQRole(user.role as UserRoleType)) {
+        return res.status(403).json({ message: "HQ yetkisi gerekli" });
+      }
+
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+      const allFeedback = await db.select({
+        branchId: customerFeedback.branchId,
+        rating: customerFeedback.rating,
+        slaBreached: customerFeedback.slaBreached,
+      }).from(customerFeedback)
+        .where(gte(customerFeedback.feedbackDate, thirtyDaysAgo));
+
+      const allBranches = await db.select({
+        id: branches.id,
+        name: branches.name,
+      }).from(branches)
+        .where(eq(branches.isActive, true));
+
+      const branchMap = new Map<number, { name: string; ratings: number[]; slaBreaches: number }>();
+      for (const b of allBranches) {
+        branchMap.set(b.id, { name: b.name, ratings: [], slaBreaches: 0 });
+      }
+
+      let totalSlaBreaches = 0;
+      for (const fb of allFeedback) {
+        const entry = branchMap.get(fb.branchId);
+        if (entry) {
+          entry.ratings.push(fb.rating);
+          if (fb.slaBreached) {
+            entry.slaBreaches++;
+            totalSlaBreaches++;
+          }
+        }
+      }
+
+      const branchScores = Array.from(branchMap.entries())
+        .map(([id, data]) => ({
+          branchId: id,
+          branchName: data.name,
+          avg: data.ratings.length > 0 ? parseFloat((data.ratings.reduce((s, r) => s + r, 0) / data.ratings.length).toFixed(1)) : null,
+          count: data.ratings.length,
+          slaBreaches: data.slaBreaches,
+        }))
+        .filter(b => b.count > 0)
+        .sort((a, b) => (b.avg || 0) - (a.avg || 0));
+
+      const overallAvg = allFeedback.length > 0
+        ? parseFloat((allFeedback.reduce((s, f) => s + f.rating, 0) / allFeedback.length).toFixed(1))
+        : null;
+
+      const top3 = branchScores.slice(0, 3);
+      const bottom3 = branchScores.length > 3 ? branchScores.slice(-3).reverse() : [];
+
+      res.json({
+        overallAvg,
+        totalFeedbackCount: allFeedback.length,
+        totalBranches: branchScores.length,
+        totalSlaBreaches,
+        top3,
+        bottom3,
+        allBranches: branchScores,
+      });
+    } catch (error: any) {
+      console.error("Error fetching HQ feedback summary:", error);
+      res.status(500).json({ message: "HQ feedback özeti alınamadı" });
     }
   });
 

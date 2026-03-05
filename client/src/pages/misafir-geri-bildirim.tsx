@@ -98,6 +98,7 @@ const translations: Record<string, Record<string, string>> = {
     complaintOption: "Şikayet",
     requiresContact: "Cevap Bekliyorum",
     requiresContactDesc: "Size geri dönüş yapmamızı istiyorsanız işaretleyin",
+    staffRequired: "Personel puanı verdiyseniz lütfen personel seçin",
   },
   en: {
     title: "Feedback Form",
@@ -145,6 +146,7 @@ const translations: Record<string, Record<string, string>> = {
     complaintOption: "Complaint",
     requiresContact: "I want a response",
     requiresContactDesc: "Check if you want us to contact you back",
+    staffRequired: "Please select a staff member if you rated them",
   },
   zh: {
     title: "反馈表",
@@ -192,6 +194,7 @@ const translations: Record<string, Record<string, string>> = {
     complaintOption: "投诉",
     requiresContact: "我需要回复",
     requiresContactDesc: "如果您希望我们联系您，请勾选",
+    staffRequired: "如果您评价了员工，请选择员工",
   },
   ar: {
     title: "نموذج التعليقات",
@@ -239,6 +242,7 @@ const translations: Record<string, Record<string, string>> = {
     complaintOption: "شكوى",
     requiresContact: "أريد رداً",
     requiresContactDesc: "حدد إذا كنت تريد منا الاتصال بك",
+    staffRequired: "إذا قمت بتقييم الموظف، يرجى اختيار الموظف",
   },
   de: {
     title: "Feedback-Formular",
@@ -286,6 +290,7 @@ const translations: Record<string, Record<string, string>> = {
     complaintOption: "Beschwerde",
     requiresContact: "Ich möchte eine Antwort",
     requiresContactDesc: "Ankreuzen, wenn Sie möchten, dass wir Sie kontaktieren",
+    staffRequired: "Bitte wählen Sie einen Mitarbeiter, wenn Sie ihn bewertet haben",
   },
   ko: {
     title: "피드백 양식",
@@ -333,6 +338,7 @@ const translations: Record<string, Record<string, string>> = {
     complaintOption: "불만",
     requiresContact: "답변을 원합니다",
     requiresContactDesc: "연락을 원하시면 체크하세요",
+    staffRequired: "직원을 평가했다면 직원을 선택해 주세요",
   },
   fr: {
     title: "Formulaire de commentaires",
@@ -380,6 +386,7 @@ const translations: Record<string, Record<string, string>> = {
     complaintOption: "Réclamation",
     requiresContact: "Je souhaite une réponse",
     requiresContactDesc: "Cochez si vous souhaitez que nous vous contactions",
+    staffRequired: "Veuillez sélectionner un membre du personnel si vous l'avez évalué",
   },
 };
 
@@ -453,6 +460,8 @@ export default function MisafirGeriBildirim() {
   const [alreadySubmittedToday, setAlreadySubmittedToday] = useState(false);
   const [locationStatus, setLocationStatus] = useState<'pending' | 'verifying' | 'verified' | 'failed' | 'skipped'>('pending');
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [formStartedAt] = useState(() => new Date().toISOString());
+  const [submitErrorMessage, setSubmitErrorMessage] = useState<string | null>(null);
 
   const t = translations[lang];
 
@@ -511,20 +520,27 @@ export default function MisafirGeriBildirim() {
 
   const submitMutation = useMutation({
     mutationFn: async (data: any) => {
+      setSubmitErrorMessage(null);
       const response = await fetch('/api/feedback/submit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
       });
-      if (!response.ok) throw new Error('Gönderim başarısız');
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => null);
+        const serverMessage = errorData?.message || 'Gönderim başarısız';
+        throw new Error(serverMessage);
+      }
       return response.json();
     },
     onSuccess: () => {
-      // Mark as submitted in localStorage
       const fingerprint = getDeviceFingerprint();
       const storageKey = `feedback_${token}_${fingerprint}`;
       localStorage.setItem(storageKey, new Date().toISOString());
       setSubmitted(true);
+    },
+    onError: (error: Error) => {
+      setSubmitErrorMessage(error.message);
     },
   });
 
@@ -598,9 +614,17 @@ export default function MisafirGeriBildirim() {
     );
   };
 
+  const [staffValidationError, setStaffValidationError] = useState(false);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (rating === 0) return;
+
+    if (staffRating > 0 && !staffId && branchInfo && branchInfo.staff.length > 0 && (formSettings?.showStaffSelection !== false)) {
+      setStaffValidationError(true);
+      return;
+    }
+    setStaffValidationError(false);
 
     // Upload photos first
     const photoUrls: string[] = [];
@@ -646,6 +670,7 @@ export default function MisafirGeriBildirim() {
       language: lang,
       feedbackType,
       requiresContact,
+      formStartedAt,
     });
   };
 
@@ -972,14 +997,18 @@ export default function MisafirGeriBildirim() {
                   <Label className="flex items-center gap-2">
                     <User className="h-4 w-4 text-amber-600" />
                     {t.selectStaff}
-                    <Badge variant="outline" className="text-xs">{t.optional}</Badge>
+                    {staffRating > 0 ? (
+                      <span className="text-red-500 text-xs">{t.required}</span>
+                    ) : (
+                      <Badge variant="outline" className="text-xs">{t.optional}</Badge>
+                    )}
                   </Label>
-                  <Select value={staffId} onValueChange={(val) => setStaffId(val === "_none" ? "" : val)}>
-                    <SelectTrigger data-testid="select-staff">
+                  <Select value={staffId} onValueChange={(val) => { setStaffId(val === "_none" ? "" : val); setStaffValidationError(false); }}>
+                    <SelectTrigger data-testid="select-staff" className={staffValidationError ? "border-red-500 ring-red-500" : ""}>
                       <SelectValue placeholder={t.selectStaffPlaceholder} />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="_none">{t.dontWantToSpecify}</SelectItem>
+                      {!staffRating && <SelectItem value="_none">{t.dontWantToSpecify}</SelectItem>}
                       {branchInfo.staff.map((s) => (
                         <SelectItem key={s.id} value={s.id}>
                           {s.firstName} {s.lastName}
@@ -987,6 +1016,9 @@ export default function MisafirGeriBildirim() {
                       ))}
                     </SelectContent>
                   </Select>
+                  {staffValidationError && (
+                    <p className="text-red-500 text-sm" data-testid="text-staff-validation-error">{t.staffRequired}</p>
+                  )}
                 </div>
               )}
 
@@ -1168,8 +1200,8 @@ export default function MisafirGeriBildirim() {
               </Button>
 
               {submitMutation.isError && (
-                <p className="text-sm text-red-500 text-center">
-                  {t.error}
+                <p className="text-sm text-red-500 text-center" data-testid="text-submit-error">
+                  {submitErrorMessage || t.error}
                 </p>
               )}
             </form>

@@ -2,7 +2,7 @@ import { storage } from "./storage";
 import type { Task, Equipment, User } from "@shared/schema";
 import { sendNotificationEmail } from "./email";
 import { db } from "./db";
-import { correctiveActions, users, auditInstances, branches, factoryProducts, employeeOnboardingAssignments, onboardingTemplates, notifications, staffEvaluations, employeeOnboarding, hqSupportTickets, hqSupportMessages, HQ_SUPPORT_STATUS, inventory, supplierQuotes } from "@shared/schema";
+import { correctiveActions, users, auditInstances, branches, factoryProducts, employeeOnboardingAssignments, onboardingTemplates, notifications, staffEvaluations, employeeOnboarding, hqSupportTickets, hqSupportMessages, HQ_SUPPORT_STATUS, inventory, supplierQuotes, customerFeedback } from "@shared/schema";
 import { eq, lt, and, ne, lte, or, inArray, gt, gte, count, max, sql } from "drizzle-orm";
 import { ObjectStorageService } from "./objectStorage";
 
@@ -1257,6 +1257,208 @@ export function stopStaleQuoteReminderSystem() {
   }
 }
 
+// ═══════════════════════════════════════════════════════════════
+// FEEDBACK SLA BREACH CHECK - Müşteri Geri Bildirim SLA İhlal Kontrolü
+// ═══════════════════════════════════════════════════════════════
+
+const FEEDBACK_SLA_CHECK_INTERVAL = 60 * 60 * 1000; // 1 hour
+let feedbackSlaInterval: NodeJS.Timeout | null = null;
+
+
+export async function checkFeedbackSlaBreaches() {
+  try {
+    const now = new Date();
+
+    const breachedFeedbacks = await db
+      .select({
+        id: customerFeedback.id,
+        branchId: customerFeedback.branchId,
+        rating: customerFeedback.rating,
+        comment: customerFeedback.comment,
+        customerName: customerFeedback.customerName,
+        responseDeadline: customerFeedback.responseDeadline,
+        slaBreached: customerFeedback.slaBreached,
+        status: customerFeedback.status,
+        feedbackType: customerFeedback.feedbackType,
+        createdAt: customerFeedback.createdAt,
+      })
+      .from(customerFeedback)
+      .where(
+        and(
+          lt(customerFeedback.responseDeadline, now),
+          eq(customerFeedback.status, 'new'),
+          eq(customerFeedback.slaBreached, false)
+        )
+      );
+
+    for (const feedback of breachedFeedbacks) {
+      try {
+        await db.update(customerFeedback)
+          .set({ slaBreached: true, updatedAt: now })
+          .where(eq(customerFeedback.id, feedback.id));
+
+        const branchResult = await db.select({ name: branches.name })
+          .from(branches)
+          .where(eq(branches.id, feedback.branchId));
+        const branchName = branchResult[0]?.name || 'Bilinmeyen Şube';
+
+        const supervisors = await db.select({ id: users.id })
+          .from(users)
+          .where(
+            and(
+              eq(users.branchId, feedback.branchId),
+              or(
+                eq(users.role, 'supervisor'),
+                eq(users.role, 'mudur')
+              ),
+              eq(users.isActive, true)
+            )
+          );
+
+        const hqUsers = await db.select({ id: users.id })
+          .from(users)
+          .where(
+            and(
+              or(
+                eq(users.role, 'cgo'),
+                eq(users.role, 'admin')
+              ),
+              eq(users.isActive, true)
+            )
+          );
+
+        const notifyUsers = [...supervisors, ...hqUsers];
+        const customerLabel = feedback.customerName || 'Anonim';
+        const message = `SLA ihlali: ${branchName} - ${customerLabel} geri bildirimi yanıt süresi aşıldı (Puan: ${feedback.rating}/5)`;
+
+        for (const user of notifyUsers) {
+          await storage.createNotification({
+            userId: user.id,
+            type: 'sla_breach',
+            title: 'Müşteri Geri Bildirim SLA İhlali',
+            message,
+            link: `/musteri-memnuniyeti?feedbackId=${feedback.id}`,
+            isRead: false,
+            branchId: feedback.branchId,
+          });
+        }
+
+        console.log(`SLA breach detected for feedback #${feedback.id} at ${branchName}, notified ${notifyUsers.length} users`);
+      } catch (err) {
+        console.error(`Error processing feedback SLA breach for #${feedback.id}:`, err);
+      }
+    }
+
+    const alreadyBreached = await db
+      .select({
+        id: customerFeedback.id,
+        branchId: customerFeedback.branchId,
+        rating: customerFeedback.rating,
+        customerName: customerFeedback.customerName,
+        status: customerFeedback.status,
+      })
+      .from(customerFeedback)
+      .where(
+        and(
+          eq(customerFeedback.slaBreached, true),
+          eq(customerFeedback.status, 'new')
+        )
+      );
+
+    for (const feedback of alreadyBreached) {
+      try {
+        const feedbackLink = `/musteri-memnuniyeti?feedbackId=${feedback.id}`;
+        const branchResult = await db.select({ name: branches.name })
+          .from(branches)
+          .where(eq(branches.id, feedback.branchId));
+        const branchName = branchResult[0]?.name || 'Bilinmeyen Şube';
+
+        const supervisors = await db.select({ id: users.id })
+          .from(users)
+          .where(
+            and(
+              eq(users.branchId, feedback.branchId),
+              or(
+                eq(users.role, 'supervisor'),
+                eq(users.role, 'mudur')
+              ),
+              eq(users.isActive, true)
+            )
+          );
+
+        const hqUsers = await db.select({ id: users.id })
+          .from(users)
+          .where(
+            and(
+              or(
+                eq(users.role, 'cgo'),
+                eq(users.role, 'admin')
+              ),
+              eq(users.isActive, true)
+            )
+          );
+
+        const notifyUsers = [...supervisors, ...hqUsers];
+        const customerLabel = feedback.customerName || 'Anonim';
+        const message = `Tekrar hatırlatma: ${branchName} - ${customerLabel} geri bildirimi hala yanıtlanmadı (Puan: ${feedback.rating}/5)`;
+        const cutoff = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+
+        for (const user of notifyUsers) {
+          const alreadySent = await db.select({ id: notifications.id })
+            .from(notifications)
+            .where(
+              and(
+                eq(notifications.type, 'sla_breach'),
+                eq(notifications.link, feedbackLink),
+                eq(notifications.userId, user.id),
+                gte(notifications.createdAt, cutoff)
+              )
+            )
+            .limit(1);
+          if (alreadySent.length > 0) continue;
+
+          await storage.createNotification({
+            userId: user.id,
+            type: 'sla_breach',
+            title: 'SLA İhlali - Tekrar Hatırlatma',
+            message,
+            link: `/musteri-memnuniyeti?feedbackId=${feedback.id}`,
+            isRead: false,
+            branchId: feedback.branchId,
+          });
+        }
+
+        console.log(`SLA breach re-notification for feedback #${feedback.id} at ${branchName}`);
+      } catch (err) {
+        console.error(`Error re-notifying feedback SLA breach for #${feedback.id}:`, err);
+      }
+    }
+
+    if (breachedFeedbacks.length > 0 || alreadyBreached.length > 0) {
+      console.log(`Feedback SLA check: ${breachedFeedbacks.length} new breaches, ${alreadyBreached.length} ongoing`);
+    }
+  } catch (error) {
+    console.error("Feedback SLA breach check error:", error);
+  }
+}
+
+export function startFeedbackSlaCheckSystem() {
+  if (feedbackSlaInterval) return;
+  console.log("Müşteri geri bildirim SLA kontrol sistemi başlatıldı - Her saat kontrol edilecek");
+
+  setTimeout(checkFeedbackSlaBreaches, 45000);
+
+  feedbackSlaInterval = setInterval(checkFeedbackSlaBreaches, FEEDBACK_SLA_CHECK_INTERVAL);
+}
+
+export function stopFeedbackSlaCheckSystem() {
+  if (feedbackSlaInterval) {
+    clearInterval(feedbackSlaInterval);
+    feedbackSlaInterval = null;
+    console.log("Feedback SLA kontrol sistemi durduruldu");
+  }
+}
+
 export function startOnboardingCompletionSystem() {
   console.log("📋 Onboarding tamamlama bildirim sistemi başlatıldı - Her 10 dakikada bir kontrol edilecek");
   
@@ -1325,5 +1527,253 @@ export function stopNotificationArchiveSystem() {
     clearInterval(archiveInterval);
     archiveInterval = null;
     console.log("Bildirim arşivleme sistemi durduruldu");
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// WEEKLY FEEDBACK PATTERN ANALYSIS - Tekrarlayan Sorun Pattern Analizi
+// ═══════════════════════════════════════════════════════════════
+
+let feedbackPatternInterval: ReturnType<typeof setInterval> | null = null;
+let feedbackPatternRanThisWeek = false;
+
+const FEEDBACK_CATEGORIES = [
+  { column: 'cleanliness_rating', label: 'Temizlik' },
+  { column: 'service_rating', label: 'Hizmet' },
+  { column: 'product_rating', label: 'Ürün Kalitesi' },
+  { column: 'staff_rating', label: 'Personel' },
+] as const;
+
+export async function checkFeedbackPatterns() {
+  try {
+    const now = new Date();
+
+    const activeBranches = await db.select({ id: branches.id, name: branches.name })
+      .from(branches)
+      .where(eq(branches.isActive, true));
+
+    if (activeBranches.length === 0) return;
+
+    const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    const fifteenDaysAgo = new Date(now.getTime() - 15 * 24 * 60 * 60 * 1000);
+    const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const sixtyDaysAgo = new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000);
+
+    let totalNotifications = 0;
+
+    for (const branch of activeBranches) {
+      try {
+        const feedbackRows = await db
+          .select({
+            cleanlinessRating: customerFeedback.cleanlinessRating,
+            serviceRating: customerFeedback.serviceRating,
+            productRating: customerFeedback.productRating,
+            staffRating: customerFeedback.staffRating,
+            createdAt: customerFeedback.createdAt,
+          })
+          .from(customerFeedback)
+          .where(
+            and(
+              eq(customerFeedback.branchId, branch.id),
+              gte(customerFeedback.createdAt, thirtyDaysAgo)
+            )
+          );
+
+        if (feedbackRows.length < 3) continue;
+
+        const last7 = feedbackRows.filter(f => f.createdAt && new Date(f.createdAt) >= sevenDaysAgo);
+        const last15 = feedbackRows.filter(f => f.createdAt && new Date(f.createdAt) >= fifteenDaysAgo);
+        const all30 = feedbackRows;
+
+        for (const cat of FEEDBACK_CATEGORIES) {
+          const getRating = (row: typeof feedbackRows[0]) => {
+            switch (cat.column) {
+              case 'cleanliness_rating': return row.cleanlinessRating;
+              case 'service_rating': return row.serviceRating;
+              case 'product_rating': return row.productRating;
+              case 'staff_rating': return row.staffRating;
+            }
+          };
+
+          const avg30Vals = all30.map(getRating).filter((v): v is number => v != null);
+          if (avg30Vals.length < 3) continue;
+          const avg30 = avg30Vals.reduce((a, b) => a + b, 0) / avg30Vals.length;
+
+          const avg15Vals = last15.map(getRating).filter((v): v is number => v != null);
+          const avg7Vals = last7.map(getRating).filter((v): v is number => v != null);
+
+          const has15DaysData = avg15Vals.length >= 3;
+          const has7DaysData = avg7Vals.length >= 2;
+
+          if (avg30 < 3.0 && has15DaysData) {
+            const hqUsers = await db.select({ id: users.id })
+              .from(users)
+              .where(
+                and(
+                  or(eq(users.role, 'cgo'), eq(users.role, 'admin')),
+                  eq(users.isActive, true)
+                )
+              );
+
+            for (const user of hqUsers) {
+              await storage.createNotification({
+                userId: user.id,
+                type: 'feedback_pattern_critical',
+                title: 'Kritik: Tekrarlayan Sorun',
+                message: `${branch.name} - ${cat.label} kategorisi 15+ gundur ortalama ${avg30.toFixed(1)}/5 (kritik esik: 3.0)`,
+                link: `/musteri-memnuniyeti?branchId=${branch.id}`,
+                isRead: false,
+                branchId: branch.id,
+              });
+              totalNotifications++;
+            }
+          } else if (avg30 < 3.5 && has15DaysData) {
+            const branchManagers = await db.select({ id: users.id })
+              .from(users)
+              .where(
+                and(
+                  eq(users.branchId, branch.id),
+                  or(eq(users.role, 'supervisor'), eq(users.role, 'mudur')),
+                  eq(users.isActive, true)
+                )
+              );
+
+            for (const user of branchManagers) {
+              await storage.createNotification({
+                userId: user.id,
+                type: 'feedback_pattern_warning',
+                title: 'Uyari: Tekrarlayan Dusuk Puan',
+                message: `${branch.name} - ${cat.label} kategorisi 15+ gundur ortalama ${avg30.toFixed(1)}/5 (esik: 3.5)`,
+                link: `/musteri-memnuniyeti?branchId=${branch.id}`,
+                isRead: false,
+                branchId: branch.id,
+              });
+              totalNotifications++;
+            }
+          } else if (avg30 < 3.5 && has7DaysData) {
+            const supervisors = await db.select({ id: users.id })
+              .from(users)
+              .where(
+                and(
+                  eq(users.branchId, branch.id),
+                  eq(users.role, 'supervisor'),
+                  eq(users.isActive, true)
+                )
+              );
+
+            for (const user of supervisors) {
+              await storage.createNotification({
+                userId: user.id,
+                type: 'feedback_pattern_attention',
+                title: 'Dikkat: Dusuk Puan Trendi',
+                message: `${branch.name} - ${cat.label} kategorisi 7+ gundur ortalama ${avg30.toFixed(1)}/5 altinda`,
+                link: `/musteri-memnuniyeti?branchId=${branch.id}`,
+                isRead: false,
+                branchId: branch.id,
+              });
+              totalNotifications++;
+            }
+          }
+        }
+
+        const prevMonthFeedback = await db
+          .select({
+            cleanlinessRating: customerFeedback.cleanlinessRating,
+            serviceRating: customerFeedback.serviceRating,
+            productRating: customerFeedback.productRating,
+            staffRating: customerFeedback.staffRating,
+          })
+          .from(customerFeedback)
+          .where(
+            and(
+              eq(customerFeedback.branchId, branch.id),
+              gte(customerFeedback.createdAt, sixtyDaysAgo),
+              lt(customerFeedback.createdAt, thirtyDaysAgo)
+            )
+          );
+
+        if (prevMonthFeedback.length >= 3) {
+          for (const cat of FEEDBACK_CATEGORIES) {
+            const getRating = (row: any) => {
+              switch (cat.column) {
+                case 'cleanliness_rating': return row.cleanlinessRating;
+                case 'service_rating': return row.serviceRating;
+                case 'product_rating': return row.productRating;
+                case 'staff_rating': return row.staffRating;
+              }
+            };
+
+            const prevVals = prevMonthFeedback.map(getRating).filter((v): v is number => v != null);
+            const currVals = all30.map(getRating).filter((v): v is number => v != null);
+
+            if (prevVals.length < 3 || currVals.length < 3) continue;
+
+            const prevAvg = prevVals.reduce((a, b) => a + b, 0) / prevVals.length;
+            const currAvg = currVals.reduce((a, b) => a + b, 0) / currVals.length;
+
+            if (prevAvg < 3.5 && currAvg > 4.0) {
+              const branchManagers = await db.select({ id: users.id })
+                .from(users)
+                .where(
+                  and(
+                    eq(users.branchId, branch.id),
+                    or(eq(users.role, 'supervisor'), eq(users.role, 'mudur')),
+                    eq(users.isActive, true)
+                  )
+                );
+
+              for (const user of branchManagers) {
+                await storage.createNotification({
+                  userId: user.id,
+                  type: 'feedback_pattern_improvement',
+                  title: 'Iyilesme: Musteri Memnuniyeti Artti',
+                  message: `${branch.name} - ${cat.label} kategorisi ${prevAvg.toFixed(1)} -> ${currAvg.toFixed(1)} iyilesme gosterdi`,
+                  link: `/musteri-memnuniyeti?branchId=${branch.id}`,
+                  isRead: false,
+                  branchId: branch.id,
+                });
+                totalNotifications++;
+              }
+            }
+          }
+        }
+      } catch (branchErr) {
+        console.error(`Feedback pattern analysis error for branch ${branch.id}:`, branchErr);
+      }
+    }
+
+    console.log(`Feedback pattern analysis completed: ${activeBranches.length} branches analyzed, ${totalNotifications} notifications sent`);
+  } catch (error) {
+    console.error("Feedback pattern analysis error:", error);
+  }
+}
+
+export function startFeedbackPatternAnalysisSystem() {
+  if (feedbackPatternInterval) return;
+  console.log("Feedback pattern analiz sistemi baslatildi - Pazartesi 08:00 Europe/Istanbul");
+
+  const checkAndRun = async () => {
+    const nowTR = new Date(new Date().toLocaleString("en-US", { timeZone: "Europe/Istanbul" }));
+    const isMonday = nowTR.getDay() === 1;
+    const isTargetTime = nowTR.getHours() === 8 && nowTR.getMinutes() < 10;
+
+    if (isMonday && isTargetTime) {
+      if (!feedbackPatternRanThisWeek) {
+        feedbackPatternRanThisWeek = true;
+        await checkFeedbackPatterns();
+      }
+    } else {
+      feedbackPatternRanThisWeek = false;
+    }
+  };
+
+  feedbackPatternInterval = setInterval(checkAndRun, 5 * 60 * 1000);
+}
+
+export function stopFeedbackPatternAnalysisSystem() {
+  if (feedbackPatternInterval) {
+    clearInterval(feedbackPatternInterval);
+    feedbackPatternInterval = null;
+    console.log("Feedback pattern analiz sistemi durduruldu");
   }
 }

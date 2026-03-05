@@ -236,6 +236,98 @@ export async function sendRejectionEmail(email: string, reason?: string): Promis
   });
 }
 
+export async function sendFeedbackThankYouEmail(
+  email: string,
+  options: {
+    customerName?: string | null;
+    branchName: string;
+    feedbackType: 'feedback' | 'complaint';
+    requiresContact: boolean;
+    rating: number;
+  }
+): Promise<void> {
+  const { customerName, branchName, feedbackType, requiresContact, rating } = options;
+  const greeting = customerName ? `Sayın ${customerName}` : 'Değerli Misafirimiz';
+
+  let mainMessage = '';
+  let additionalMessage = '';
+  let subjectLine = '';
+  let accentColor = '#7c3aed';
+
+  if (feedbackType === 'complaint') {
+    subjectLine = 'DOSPRESSO - Geri Bildiriminiz Alındı';
+    accentColor = '#e74c3c';
+    mainMessage = `
+      <p>Yaşadığınız olumsuz deneyim için içtenlikle özür dileriz. Geri bildiriminiz bizim için son derece değerlidir.</p>
+      <p>Şikayetiniz ilgili ekibimize iletilmiştir ve <strong>en geç 24 saat içinde</strong> sizinle iletişime geçilecektir.</p>
+      <p>Misafir memnuniyeti önceliğimizdir ve bu durumun tekrarlanmaması için gerekli önlemler alınacaktır.</p>
+    `;
+  } else if (rating <= 2) {
+    subjectLine = 'DOSPRESSO - Geri Bildiriminiz Alındı';
+    accentColor = '#f39c12';
+    mainMessage = `
+      <p>Yaşadığınız deneyimden memnun kalmadığınızı görüyoruz ve bunun için özür dileriz.</p>
+      <p>Geri bildiriminiz ilgili ekibimize iletilmiştir. Hizmet kalitemizi artırmak için değerli görüşlerinizi dikkate alacağız.</p>
+    `;
+  } else {
+    subjectLine = 'DOSPRESSO - Teşekkür Ederiz!';
+    accentColor = '#27ae60';
+    mainMessage = `
+      <p>Geri bildiriminiz için çok teşekkür ederiz! Görüşleriniz, hizmet kalitemizi sürekli iyileştirmemize yardımcı oluyor.</p>
+      <p>Sizi tekrar ${branchName} şubemizde ağırlamaktan mutluluk duyarız.</p>
+    `;
+  }
+
+  if (requiresContact) {
+    additionalMessage = `
+      <div style="background-color: #fff3e0; padding: 15px; border-radius: 8px; border-left: 4px solid #ff9800; margin: 15px 0;">
+        <p style="margin: 0; font-weight: bold; color: #e65100;">Yanıt Talebiniz Alındı</p>
+        <p style="margin: 5px 0 0;">En kısa sürede sizinle iletişime geçilecektir. Tahmini yanıt süresi: <strong>24 saat</strong></p>
+      </div>
+    `;
+  }
+
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; background-color: #f9f9f9; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background-color: ${accentColor}; padding: 25px; text-align: center; border-radius: 10px 10px 0 0; }
+        .header h1 { color: white; margin: 0; font-size: 22px; }
+        .content { background-color: white; padding: 30px; border-radius: 0 0 10px 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .footer { margin-top: 30px; font-size: 12px; color: #666; text-align: center; }
+        .branch-name { font-weight: bold; color: ${accentColor}; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <h1>DOSPRESSO</h1>
+        </div>
+        <div class="content">
+          <p style="font-size: 16px;">${greeting},</p>
+          <p><span class="branch-name">${branchName}</span> şubemize yaptığınız ziyaret ve paylaştığınız değerlendirme için teşekkür ederiz.</p>
+          ${mainMessage}
+          ${additionalMessage}
+          <p style="margin-top: 20px;">Saygılarımızla,<br><strong>DOSPRESSO Ailesi</strong></p>
+        </div>
+        <div class="footer">
+          <p>DOSPRESSO Franchise Management System<br>Bu otomatik bir emaildir, lütfen yanıtlamayın.</p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+
+  await sendEmail({
+    to: email,
+    subject: subjectLine,
+    html,
+  });
+}
+
 export async function sendEmployeeOfMonthEmail(
   email: string, 
   employeeName: string, 

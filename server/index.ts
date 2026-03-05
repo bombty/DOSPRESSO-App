@@ -2,7 +2,7 @@ import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { storage } from "./storage";
-import { startSLACheckSystem, startPhotoCleanupSystem } from "./reminders";
+import { startSLACheckSystem, startPhotoCleanupSystem, startFeedbackSlaCheckSystem, startFeedbackPatternAnalysisSystem } from "./reminders";
 import { seedRolePermissions } from "./seed-role-permissions";
 import { seedPermissionModules } from "./seed-permission-modules";
 import { seedRoleTemplates } from "./seed-role-templates";
@@ -202,6 +202,12 @@ app.use((req, res, next) => {
     // Start SLA check system (runs every 15 minutes)
     startSLACheckSystem();
     startPhotoCleanupSystem();
+    
+    // Start feedback SLA breach check (runs every hour)
+    startFeedbackSlaCheckSystem();
+    
+    // Start weekly feedback pattern analysis (Mondays 08:00 Europe/Istanbul)
+    startFeedbackPatternAnalysisSystem();
     
     // Start weekly backup scheduler (runs every Sunday at midnight Turkey time)
     startWeeklyBackupScheduler();

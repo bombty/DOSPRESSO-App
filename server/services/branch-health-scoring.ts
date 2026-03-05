@@ -4,6 +4,7 @@ import {
   checklistCompletions,
   productComplaints,
   guestComplaints,
+  customerFeedback,
   equipmentFaults,
   trainingAssignments,
   tasks,
@@ -40,11 +41,12 @@ export interface BranchHealthReport {
 }
 
 const WEIGHTS = {
-  inspections: 0.25,
-  complaints: 0.25,
-  equipment: 0.20,
-  training: 0.15,
-  opsHygiene: 0.15,
+  inspections: 0.22,
+  complaints: 0.22,
+  equipment: 0.18,
+  training: 0.13,
+  opsHygiene: 0.13,
+  customerSatisfaction: 0.12,
 };
 
 function neutralComponent(key: string, label: string, weight: number): ComponentScore {
@@ -361,6 +363,94 @@ async function scoreOpsHygiene(branchId: number, rangeDays: number): Promise<Com
   }
 }
 
+async function scoreCustomerSatisfaction(branchId: number, rangeDays: number): Promise<ComponentScore> {
+  const key = "customerSatisfaction";
+  const label = "Müşteri Memnuniyeti";
+  const weight = WEIGHTS.customerSatisfaction;
+
+  try {
+    const { from, to } = dateRange(rangeDays);
+
+    const [result] = await db
+      .select({
+        overallAvg: sql<number>`AVG(${customerFeedback.rating})`,
+        serviceAvg: sql<number>`AVG(${customerFeedback.serviceRating})`,
+        cleanlinessAvg: sql<number>`AVG(${customerFeedback.cleanlinessRating})`,
+        productAvg: sql<number>`AVG(${customerFeedback.productRating})`,
+        totalCount: sql<number>`COUNT(*)`,
+        nonSuspiciousCount: sql<number>`COUNT(*) FILTER (WHERE ${customerFeedback.isSuspicious} = false OR ${customerFeedback.isSuspicious} IS NULL)`,
+      })
+      .from(customerFeedback)
+      .where(
+        and(
+          eq(customerFeedback.branchId, branchId),
+          gte(customerFeedback.createdAt, from),
+          lte(customerFeedback.createdAt, to)
+        )
+      );
+
+    const totalCount = Number(result?.totalCount ?? 0);
+    const nonSuspicious = Number(result?.nonSuspiciousCount ?? 0);
+
+    if (totalCount < 5) {
+      return neutralComponent(key, label, weight);
+    }
+
+    const overallAvg = Number(result?.overallAvg ?? 0);
+    const score = clamp((overallAvg / 5) * 100);
+
+    const notes: string[] = [];
+    notes.push(`${totalCount} değerlendirme (${nonSuspicious} güvenilir)`);
+    if (overallAvg > 0) notes.push(`Genel ortalama: ${overallAvg.toFixed(1)}/5`);
+
+    const serviceAvg = Number(result?.serviceAvg ?? 0);
+    const cleanlinessAvg = Number(result?.cleanlinessAvg ?? 0);
+    const productAvg = Number(result?.productAvg ?? 0);
+
+    if (cleanlinessAvg > 0 && cleanlinessAvg < 3.0) notes.push(`Temizlik dikkat gerektiriyor: ${cleanlinessAvg.toFixed(1)}/5`);
+    if (serviceAvg > 0 && serviceAvg < 3.0) notes.push(`Hizmet dikkat gerektiriyor: ${serviceAvg.toFixed(1)}/5`);
+    if (productAvg > 0 && productAvg < 3.0) notes.push(`Ürün kalitesi dikkat gerektiriyor: ${productAvg.toFixed(1)}/5`);
+
+    return { key, label, score, weight, notes, evidenceCount: totalCount };
+  } catch {
+    return neutralComponent(key, label, weight);
+  }
+}
+
+async function scoreCustomerSatisfactionPrev(branchId: number, rangeDays: number): Promise<ComponentScore> {
+  const key = "customerSatisfaction";
+  const label = "Müşteri Memnuniyeti";
+  const weight = WEIGHTS.customerSatisfaction;
+
+  try {
+    const { from, to } = dateRange(rangeDays, rangeDays);
+
+    const [result] = await db
+      .select({
+        overallAvg: sql<number>`AVG(${customerFeedback.rating})`,
+        totalCount: sql<number>`COUNT(*)`,
+      })
+      .from(customerFeedback)
+      .where(
+        and(
+          eq(customerFeedback.branchId, branchId),
+          gte(customerFeedback.createdAt, from),
+          lte(customerFeedback.createdAt, to)
+        )
+      );
+
+    const totalCount = Number(result?.totalCount ?? 0);
+    if (totalCount < 5) return neutralComponent(key, label, weight);
+
+    const overallAvg = Number(result?.overallAvg ?? 0);
+    const score = clamp((overallAvg / 5) * 100);
+
+    return { key, label, score, weight, notes: [], evidenceCount: totalCount };
+  } catch {
+    return neutralComponent(key, label, weight);
+  }
+}
+
 async function computeTotalForBranch(branchId: number, rangeDays: number): Promise<number> {
   const components = await Promise.all([
     scoreInspections(branchId, rangeDays),
@@ -368,6 +458,7 @@ async function computeTotalForBranch(branchId: number, rangeDays: number): Promi
     scoreEquipment(branchId, rangeDays),
     scoreTraining(branchId, rangeDays),
     scoreOpsHygiene(branchId, rangeDays),
+    scoreCustomerSatisfaction(branchId, rangeDays),
   ]);
 
   return clamp(
@@ -425,6 +516,7 @@ export async function computeBranchHealthScores(options: {
         scoreEquipment(branch.id, rangeDays),
         scoreTraining(branch.id, rangeDays),
         scoreOpsHygiene(branch.id, rangeDays),
+        scoreCustomerSatisfaction(branch.id, rangeDays),
       ]);
 
       const totalScore = clamp(
@@ -442,6 +534,7 @@ export async function computeBranchHealthScores(options: {
           scoreEquipmentPrev(branch.id, rangeDays),
           scoreTrainingPrev(branch.id, rangeDays),
           scoreOpsHygienePrev(branch.id, rangeDays),
+          scoreCustomerSatisfactionPrev(branch.id, rangeDays),
         ]);
         const prevTotal = clamp(
           prevComponents.reduce((sum, c) => sum + c.score * c.weight, 0)

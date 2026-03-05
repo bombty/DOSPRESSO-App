@@ -28,7 +28,7 @@ The frontend utilizes React 18+ with TypeScript and Vite, employing Shadcn/ui (N
 - **Unified Fault System**: Creation, assignment, workflow, escalation, photo documentation, cost tracking, QR-integrated reporting, and professional PDF export.
 - **SLA Monitoring**: Real-time tracking with automated breach alerts.
 - **AI Integration**: AI photo verification for tasks, RAG-enabled knowledge base search, AI Academy Chat Assistant, Adaptive Learning Engine, and AI-powered smart recommendations.
-- **DOSPRESSO Academy (LMS)**: Comprehensive training system including career progression, quiz system, gamification, certification, AI learning paths, advanced analytics, and KPI-driven training recommendations. Role-based module filtering. Microlearning-focused daily recommendation system with weekly progress tracking and streak motivation. Content management panel with approval workflow (draft→pending_review→approved/rejected) for trainer/coach roles.
+- **DOSPRESSO Academy (LMS)**: Comprehensive training system including career progression, quiz system, gamification, certification, AI learning paths, advanced analytics, and KPI-driven training recommendations.
 - **Daily Task Guidance**: Role-based task templates with personalized task lists, completion tracking, and AI-powered recommendations.
 - **Advanced Task Workflow**: Enhanced task lifecycle with assignee-assigner approval, Q&A, deadline extension, scheduled delivery, bulk assignment, subtask management, and expanded checker/verifier system with group chat.
 - **Checklist Management System**: Time-windowed tasks with HQ/Supervisor editable time slots, photo validation, manager notifications, performance weighting, and daily reminders.
@@ -38,16 +38,16 @@ The frontend utilizes React 18+ with TypeScript and Vite, employing Shadcn/ui (N
 - **Procurement Management System**: Complete procurement module with Dashboard, Inventory, Supplier Management, Purchase Orders, and Goods Receipt, including approval roles and branch-based filtering.
 - **Cost Management System**: Comprehensive product cost calculation module integrated with procurement.
 - **Factory Shift & Production Planning**: Complete shift planning system with batch tracking, performance monitoring, worker assignments, kiosk PIN authentication, production/waste recording, and fault reporting.
-- **Factory Kiosk Security**: All kiosk endpoints protected with authentication middleware.
 - **Kiosk Access & Navigation**: Kiosk URLs are public, with admin-controlled "Kiosk Aç" buttons for full-screen access and an "Kiosk'tan Çık" exit button.
 - **Branch QR Shift Check-in System**: HMAC-SHA256 signed dynamic QR codes for branch shift operations, with nonce-based replay protection and timestamp expiry.
-- **Branch Health Score Dashboard**: 5-component deterministic scoring system with role-based scoping, time-range filters, trend indicators, and risk flags.
+- **Branch Health Score Dashboard**: 6-component deterministic scoring system with role-based scoping, time-range filters, trend indicators, and risk flags.
 - **Coach Dashboard & Drill-Down**: Enhanced team progress with gate status badges, checklist completion rates, mentor onboarding tracking, and score trend indicators.
+- **Guest Feedback System**: Public QR feedback form with branch-specific settings, notification integration for low ratings, SLA monitoring, and anti-abuse measures.
 
 ### System Design Choices
 - **Health Score Calculation**: Real-time scores based on recent faults and compliance.
 - **SLA Calculation**: Dynamic, time-based calculation varying by fault priority.
-- **Notifications**: Automatic in-app alerts and email notifications; manager notifications on critical events. `is_archived` column enables auto-archiving of notifications older than 30 days (daily at 02:00 Istanbul). Overdue task/checklist reminders use DB-based upsert dedup (UPDATE existing unread instead of creating duplicates). Per-user daily throttle (20/day) with critical type bypass (`sla_breach`, `pin_lockout`, `critical_fault`, `security_alert`, `fault_alert`).
+- **Notifications**: Automatic in-app alerts and email notifications; manager notifications on critical events with deduplication and throttling.
 - **State Management**: TanStack Query for server state and localStorage for theme persistence.
 - **Photo Upload**: Persistent storage on AWS S3 via an ObjectUploader component.
 - **Backup System**: Daily automatic backups to object storage with a restore pipeline.
@@ -61,16 +61,16 @@ The frontend utilizes React 18+ with TypeScript and Vite, employing Shadcn/ui (N
 - **Evaluation Anti-Abuse System**: Cooldown and monthly limits on employee evaluations.
 - **Reminder System**: Interval-based checks for various task and evaluation reminders with DB-based deduplication.
 - **Academy V2 Implementation**: Includes Gate system, Content Pack management, My Path NBA engine, and Onboarding Studio for creating and assigning day-by-day learning paths with approval workflows.
-- **Academy Microlearning Hub (Sprint 2B)**: `academy.tsx` redesigned as 4-section hub (Bugünün Eğitimi hero card, Haftalık İlerleme + streak, Kariyer Yolu progress bar, Rozetler & Başarılar). `academy-explore.tsx` provides module grid with category/status filters and search. `academy-content-management.tsx` provides trainer/coach content CRUD panel with approval workflow, AI enrichment, and quiz question management. `team-training-widget.tsx` shows team training participation for supervisor/HQ dashboards. Quiz result screen enhanced with career progress animation and next-module CTA. DB columns: `status` (draft/pending_review/approved/rejected) and `rejection_reason` on training_modules; `review_status` (auto_generated/reviewed/manual) on quiz_questions.
-- **Bulk Equipment Knowledge**: Endpoint for generating type-level AI knowledge entries for all equipment categories.
 - **Vector Auto-Refresh**: AI settings auto-triggers vector re-embed when provider changes.
 - **Knowledge Base Content Pipeline**: Seed endpoints for importing academy modules, recipes, procedures, and quality specs into AI knowledge base with incremental vector generation and automatic embedding synchronization.
-- **Shared Turkish Label Utility**: `client/src/lib/turkish-labels.ts` provides centralized label maps (signals, severity, priority, audit categories, CAPA statuses/types, stock categories, ROLE_LABELS, ALERT_TYPE_LABELS), `formatDisplayLabel()` fallback, and `formatTurkishDate()` for chart axis formatting.
-- **Role-Based Profile Metrics**: HQ management roles (ceo, cgo, admin, marketing, muhasebe_ik, satinalma, gida_muhendisi, yatirimci_hq) see only relevant metrics on profile page (Eğitim İlerlemesi, Role-Specific KPI, Değerlendirme Puanı). Vardiya cards/tab hidden. Backend recalculates genelSkor excluding irrelevant metrics. Branch/factory roles see all 6 metrics unchanged.
-- **Academy HQ Role Alignment**: HQ roles see role-appropriate Academy content: "Nereden Başlamalıyım?" shows management recommendations instead of barista steps; Career Path shows "Yönetim Gelişim Alanları" professional development cards instead of 5-level branch timeline; Learning Paths shows coming-soon message instead of barista/supervisor paths; Adaptive Learning returns empty recommendations for HQ with informational message; Badges page adds HQ context banner explaining team badge system. Branch/factory Academy experience unchanged.
-- **Chart Polish**: All count-based Recharts Y-axes use `allowDecimals={false}`. Pie charts filter zero-value slices with custom label positioning. Date axes use Turkish month names. Empty states shown when no chart data available.
-- **Dashboard Role Routing**: Every HQ role has explicit dashboard mapping in `hq-dashboard.tsx` `roleToDashboard`. `gida_muhendisi` gets dedicated GidaMuhendisiDashboard with food safety metrics and quick links. `admin` explicitly mapped to CGODashboard. Branch roles (supervisor, mudur, barista, stajyer) get CardGridHub with role-filtered widgets. Reusable `RoleWelcomeCard` component in `client/src/components/role-welcome-card.tsx`.
-- **Sidebar Role Filtering**: `server/menu-service.ts` has `SIDEBAR_ALLOWED_ITEMS` map defining per-role visible menu item IDs. Applied as an additional filter in `buildMenuForUser()` after scope and permission checks. Roles not in the map (e.g. admin) see everything. Startup validation warns about unknown item IDs. Frontend `app-sidebar.tsx` renders whatever `/api/me/menu` returns — no client-side filtering needed.
+- **Role-Based Profile Metrics**: HQ management roles see relevant metrics, while branch/factory roles see all metrics.
+- **Academy HQ Role Alignment**: HQ roles see role-appropriate Academy content and professional development paths.
+- **Chart Polish**: Consistent display for count-based and pie charts, Turkish month names for date axes, and empty states.
+- **Dashboard Role Routing**: Explicit dashboard mapping for HQ roles, with branch roles getting a CardGridHub with role-filtered widgets.
+- **Sidebar Role Filtering**: Backend service filters sidebar menu items based on user roles and permissions.
+- **Feedback Form Settings**: Seeded settings for branches with categories, photo upload, location verification, multi-language support, and anonymous defaults.
+- **Feedback SLA System**: Hourly background job checks for overdue feedback responses and sends critical notifications with per-user DB-level deduplication (24h cooldown per recipient per feedback).
+- **Feedback Pattern Analysis**: Weekly job analyzes 30-day category averages per branch for alerts and improvement detection.
 
 ## External Dependencies
 - **OpenAI API**: Used for AI-powered vision analysis, chat completions, embeddings, and summary generation.

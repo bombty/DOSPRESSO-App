@@ -5833,6 +5833,7 @@ export const guestComplaints = pgTable("guest_complaints", {
   resolvedAt: timestamp("resolved_at"),
   resolutionNotes: text("resolution_notes"),
   customerSatisfaction: integer("customer_satisfaction"), // 1-5 rating after resolution
+  sourceFeedbackId: integer("source_feedback_id"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => [

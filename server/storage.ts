@@ -7172,7 +7172,17 @@ export class DatabaseStorage implements IStorage {
       ? (completedOnTime.length / userTasks.length) * 100 
       : 100;
     
-    const practicalScore = (checklistRate * 0.5 + taskRate * 0.5);
+    // Müşteri geri bildirim etkisi
+    let feedbackImpact = 0;
+    try {
+      const { calculateFeedbackScoreForUser } = await import("./services/feedback-responsibility");
+      const userData = await db.select({ branchId: users.branchId, role: users.role }).from(users).where(eq(users.id, userId));
+      if (userData.length > 0 && userData[0].branchId) {
+        feedbackImpact = await calculateFeedbackScoreForUser(userId, userData[0].branchId, userData[0].role || '');
+      }
+    } catch {}
+
+    const practicalScore = (checklistRate * 0.4 + taskRate * 0.3 + Math.max(0, Math.min(100, 50 + feedbackImpact * 5)) * 0.3);
     
     // 3. Devam Skoru (%25) - Vardiya check-in zamanında mı
     const userShifts = await db.select()

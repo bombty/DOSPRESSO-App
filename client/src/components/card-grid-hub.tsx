@@ -14,6 +14,7 @@ import { ShiftChecklistCard } from "@/components/shift-checklist-card";
 import { PersonalSummaryCard } from "@/components/personal-summary-card";
 import { AnnouncementBannerCarousel } from "@/components/AnnouncementBannerCarousel";
 import { EmployeeOfMonthWidget } from "@/components/employee-of-month-widget";
+import { FeedbackSupervisorWidget } from "@/components/feedback-dashboard-widget";
 import { DailyTaskPanel } from "@/components/daily-task-panel";
 import { AiNbaCard } from "@/components/ai-nba-card";
 import { ActionCardsWidget } from "@/components/action-cards-widget";
@@ -1012,6 +1013,10 @@ export function CardGridHub() {
       {canSeeWidget(userRole, 'critical-alerts') && <CriticalAlerts />}
 
       {canSeeWidget(userRole, 'atadiklarim') && <AtadiklarimWidget />}
+
+      {canSeeWidget(userRole, 'feedback-supervisor') && isBranch && (
+        <FeedbackSupervisorWidget />
+      )}
 
       {isBranch && (userRole === 'supervisor' || userRole === 'supervisor_buddy' || userRole === 'mudur') && (
         <TeamTrainingWidget />
