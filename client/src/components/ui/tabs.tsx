@@ -8,16 +8,72 @@ const Tabs = TabsPrimitive.Root
 const TabsList = React.forwardRef<
   React.ElementRef<typeof TabsPrimitive.List>,
   React.ComponentPropsWithoutRef<typeof TabsPrimitive.List>
->(({ className, ...props }, ref) => (
-  <TabsPrimitive.List
-    ref={ref}
-    className={cn(
-      "inline-flex h-11 items-center justify-center rounded-xl bg-muted/80 backdrop-blur-sm p-1 text-muted-foreground gap-0.5",
-      className
-    )}
-    {...props}
-  />
-))
+>(({ className, children, ...props }, ref) => {
+  const containerRef = React.useRef<HTMLDivElement>(null)
+  const listRef = React.useRef<HTMLDivElement>(null)
+  const [showLeftGradient, setShowLeftGradient] = React.useState(false)
+  const [showRightGradient, setShowRightGradient] = React.useState(false)
+
+  const checkOverflow = React.useCallback(() => {
+    const el = listRef.current
+    if (!el) return
+    const hasOverflow = el.scrollWidth > el.clientWidth + 2
+    setShowLeftGradient(hasOverflow && el.scrollLeft > 4)
+    setShowRightGradient(hasOverflow && el.scrollLeft < el.scrollWidth - el.clientWidth - 4)
+  }, [])
+
+  React.useEffect(() => {
+    const el = listRef.current
+    if (!el) return
+    checkOverflow()
+    el.addEventListener("scroll", checkOverflow, { passive: true })
+    const ro = new ResizeObserver(checkOverflow)
+    ro.observe(el)
+    return () => {
+      el.removeEventListener("scroll", checkOverflow)
+      ro.disconnect()
+    }
+  }, [checkOverflow])
+
+  React.useEffect(() => {
+    const el = listRef.current
+    if (!el) return
+    const raf = requestAnimationFrame(() => {
+      const activeTab = el.querySelector('[data-state="active"]') as HTMLElement | null
+      if (activeTab) {
+        activeTab.scrollIntoView({ block: "nearest", inline: "nearest", behavior: "smooth" })
+      }
+      checkOverflow()
+    })
+    return () => cancelAnimationFrame(raf)
+  }, [children, checkOverflow])
+
+  return (
+    <div ref={containerRef} className="relative" data-testid="tabs-scroll-container">
+      {showLeftGradient && (
+        <div className="absolute left-0 top-0 bottom-0 w-8 z-10 pointer-events-none rounded-l-xl bg-gradient-to-r from-muted/80 to-transparent" />
+      )}
+      <TabsPrimitive.List
+        ref={(node) => {
+          (listRef as React.MutableRefObject<HTMLDivElement | null>).current = node
+          if (typeof ref === "function") ref(node)
+          else if (ref) (ref as React.MutableRefObject<HTMLDivElement | null>).current = node
+        }}
+        className={cn(
+          "inline-flex h-11 items-center justify-start rounded-xl bg-muted/80 backdrop-blur-sm p-1 text-muted-foreground gap-0.5",
+          "overflow-x-auto scrollbar-hidden max-w-full",
+          className
+        )}
+        {...props}
+      >
+        {children}
+      </TabsPrimitive.List>
+      {showRightGradient && (
+        <div className="absolute right-0 top-0 bottom-0 w-8 z-10 pointer-events-none rounded-r-xl bg-gradient-to-l from-muted/80 to-transparent" />
+      )}
+    </div>
+  )
+})
 TabsList.displayName = TabsPrimitive.List.displayName
 
 const TabsTrigger = React.forwardRef<

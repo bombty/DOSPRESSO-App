@@ -186,6 +186,17 @@ const PATH_LABELS: Record<string, string> = {
 const MAX_HISTORY = 10;
 const STORAGE_KEY = 'dospresso-recent-visits';
 
+const DETAIL_PAGE_PARENTS: Record<string, { parentPath: string; parentLabel: string }> = {
+  '/ariza-detay': { parentPath: '/ariza', parentLabel: 'Arızalar' },
+  '/ekipman-detay': { parentPath: '/ekipman', parentLabel: 'Ekipman' },
+  '/gorev-detay': { parentPath: '/gorevler', parentLabel: 'Görevler' },
+  '/personel-detay': { parentPath: '/ik', parentLabel: 'Personel & İK' },
+  '/recete': { parentPath: '/receteler', parentLabel: 'Reçeteler' },
+  '/yeni-sube-detay': { parentPath: '/yeni-sube-projeler', parentLabel: 'Yeni Şube Projeleri' },
+  '/proje-gorev': { parentPath: '/projeler', parentLabel: 'Projeler' },
+  '/capa-detay': { parentPath: '/capa', parentLabel: 'Düzeltici Faaliyet' },
+};
+
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const NUMERIC_ID_REGEX = /^\d+$/;
 
@@ -255,6 +266,16 @@ function getPathLabel(path: string, dynamicLabels: Record<string, string>): stri
 function getBreadcrumbPath(path: string, dynamicLabels: Record<string, string>): BreadcrumbItem[] {
   const parts = path.split('/').filter(Boolean);
   const items: BreadcrumbItem[] = [];
+
+  const firstSegment = parts.length > 0 ? '/' + parts[0] : '';
+  const parentMapping = DETAIL_PAGE_PARENTS[firstSegment];
+  if (parentMapping && parts.length > 1) {
+    items.push({
+      path: parentMapping.parentPath,
+      label: parentMapping.parentLabel,
+      timestamp: Date.now()
+    });
+  }
 
   let currentPath = '';
   for (let i = 0; i < parts.length; i++) {

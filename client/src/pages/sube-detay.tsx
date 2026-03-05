@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useParams, Link } from "wouter";
+import { useBreadcrumb } from "@/components/breadcrumb-navigation";
 import { useAuth } from "@/hooks/useAuth";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -187,6 +188,8 @@ export default function SubeDetayPage() {
     queryKey: [`/api/branches/${branchId}/detail`],
     enabled: !!branchId,
   });
+
+  useBreadcrumb(branchData?.branch?.name || '');
 
   // Fetch branch audit scores (6-section breakdown)
   interface AuditScoreResponse {

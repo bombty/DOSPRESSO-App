@@ -26,14 +26,14 @@ const MENU_BLUEPRINT: SidebarMenuSection[] = [
   // 1. Dashboard (HQ)
   {
     id: "dashboard-hq",
-    titleTr: "Kontrol Paneli",
+    titleTr: "Ana Sayfa",
     icon: "LayoutDashboard",
     scope: "hq",
     group: "operations",
     items: [
       {
         id: "dashboard",
-        titleTr: "Kontrol Paneli",
+        titleTr: "Ana Sayfa",
         path: "/",
         icon: "LayoutDashboard",
         moduleKey: "dashboard",
@@ -423,6 +423,25 @@ const MENU_BLUEPRINT: SidebarMenuSection[] = [
   // GROUP: SETTINGS — Sistem ayarları, iletişim, yönetim
   // ========================================
 
+  // 7b. Pazarlama
+  {
+    id: "marketing",
+    titleTr: "Pazarlama",
+    icon: "Megaphone",
+    scope: "hq",
+    group: "management",
+    items: [
+      {
+        id: "campaign-management",
+        titleTr: "Kampanya Yönetimi",
+        path: "/kampanya-yonetimi",
+        icon: "Megaphone",
+        moduleKey: "customer_satisfaction",
+        scope: "hq",
+      },
+    ],
+  },
+
   // 8. İletişim
   {
     id: "communication",
@@ -456,6 +475,14 @@ const MENU_BLUEPRINT: SidebarMenuSection[] = [
         moduleKey: "messages",
         scope: "both",
         badge: "messages",
+      },
+      {
+        id: "ai-assistant",
+        titleTr: "AI Asistan",
+        path: "/ai-asistan",
+        icon: "Brain",
+        moduleKey: "knowledge_base",
+        scope: "both",
       },
       {
         id: "usage-guide",
@@ -568,15 +595,17 @@ const SIDEBAR_ALLOWED_ITEMS: Partial<Record<UserRoleType, string[]>> = {
   supervisor: [
     'branch-dashboard', 'tasks-list', 'checklists', 'shifts', 'equipment', 'faults',
     'hr', 'training-academy', 'notifications', 'usage-guide', 'hq-support', 'lost-found',
+    'customer-satisfaction', 'ai-assistant',
   ],
   supervisor_buddy: [
     'branch-dashboard', 'tasks-list', 'checklists', 'shifts', 'equipment', 'faults',
-    'hr', 'training-academy', 'notifications', 'usage-guide', 'hq-support', 'lost-found',
+    'hr', 'training-academy', 'notifications', 'usage-guide', 'hq-support', 'lost-found', 'ai-assistant',
   ],
   mudur: [
     'branch-dashboard', 'tasks-list', 'checklists', 'shifts', 'equipment', 'faults',
     'hr', 'branch-shift-tracking', 'attendance', 'reports', 'lost-found',
     'training-academy', 'notifications', 'usage-guide', 'hq-support',
+    'branch-health', 'customer-satisfaction', 'ai-assistant',
   ],
   yatirimci_branch: [
     'branch-dashboard', 'tasks-list', 'checklists', 'shifts', 'hr', 'reports',
@@ -585,12 +614,12 @@ const SIDEBAR_ALLOWED_ITEMS: Partial<Record<UserRoleType, string[]>> = {
   ceo: [
     'dashboard', 'branches-list', 'reports', 'performance-dashboard', 'hr',
     'training-academy', 'knowledge-base', 'notifications', 'usage-guide',
-    'branch-health', 'hq-support', 'messages',
+    'branch-health', 'hq-support', 'messages', 'ai-assistant',
   ],
   cgo: [
     'dashboard', 'branches-list', 'reports', 'performance-dashboard', 'hr',
     'training-academy', 'knowledge-base', 'notifications', 'usage-guide',
-    'branch-health', 'hq-support', 'messages', 'customer-satisfaction',
+    'branch-health', 'hq-support', 'messages', 'customer-satisfaction', 'ai-assistant',
   ],
   yatirimci_hq: [
     'dashboard', 'branches-list', 'reports', 'performance-dashboard',
@@ -598,7 +627,7 @@ const SIDEBAR_ALLOWED_ITEMS: Partial<Record<UserRoleType, string[]>> = {
   ],
   coach: [
     'dashboard', 'branches-list', 'hr', 'training-academy', 'reports',
-    'branch-inspection', 'branch-health', 'notifications', 'usage-guide', 'hq-support',
+    'branch-inspection', 'branch-health', 'notifications', 'usage-guide', 'hq-support', 'ai-assistant',
   ],
   destek: [
     'dashboard', 'branches-list', 'hr', 'training-academy', 'reports',
@@ -606,7 +635,7 @@ const SIDEBAR_ALLOWED_ITEMS: Partial<Record<UserRoleType, string[]>> = {
   ],
   trainer: [
     'dashboard', 'training-academy', 'knowledge-base', 'reports',
-    'branches-list', 'notifications', 'usage-guide', 'hq-support',
+    'branches-list', 'notifications', 'usage-guide', 'hq-support', 'ai-assistant',
   ],
   kalite_kontrol: [
     'dashboard', 'quality-control', 'food-safety', 'equipment', 'faults',
@@ -618,7 +647,7 @@ const SIDEBAR_ALLOWED_ITEMS: Partial<Record<UserRoleType, string[]>> = {
     'reports', 'notifications', 'usage-guide', 'hq-support',
   ],
   marketing: [
-    'dashboard', 'content-studio', 'customer-satisfaction', 'reports',
+    'dashboard', 'content-studio', 'customer-satisfaction', 'campaign-management', 'reports',
     'branches-list', 'notifications', 'usage-guide', 'hq-support',
   ],
   muhasebe_ik: [

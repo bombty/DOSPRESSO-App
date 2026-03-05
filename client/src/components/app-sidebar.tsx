@@ -1,5 +1,5 @@
 import * as LucideIcons from "lucide-react";
-import { ChevronRight, LogOut } from "lucide-react";
+import { ChevronRight, LogOut, Star } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import {
   Sidebar,
@@ -27,6 +27,9 @@ import { useQuery } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useTranslation } from "react-i18next";
 import { NAV_GROUPS } from "@/lib/nav-registry";
+import { useFavorites } from "@/hooks/use-favorites";
+
+const HUB_ITEM_THRESHOLD = 4;
 
 // Icon mapping dictionary
 const lucideIconMap: Record<string, any> = {
@@ -82,6 +85,13 @@ const lucideIconMap: Record<string, any> = {
   "LayoutGrid": LucideIcons.LayoutGrid,
   "ShieldCheck": LucideIcons.ShieldCheck,
   "MessageSquareHeart": LucideIcons.MessageCircleHeart,
+  "Brain": LucideIcons.Brain,
+  "Trash2": LucideIcons.Trash2,
+  "Search": LucideIcons.Search,
+  "ArrowRight": LucideIcons.ArrowRight,
+  "Heart": LucideIcons.Heart,
+  "Activity": LucideIcons.Activity,
+  "HelpCircle": LucideIcons.HelpCircle,
 };
 
 const getIconComponent = (iconName: string | null | undefined) => {
@@ -176,6 +186,8 @@ export function AppSidebar() {
     }
   };
 
+  const { favorites } = useFavorites();
+
   const GROUP_ORDER: SidebarMenuGroup[] = ["operations", "management", "settings"];
   const sectionsByGroup = GROUP_ORDER.map(g => {
     const grpDef = NAV_GROUPS.find(ng => ng.id === g);
@@ -186,10 +198,15 @@ export function AppSidebar() {
     };
   }).filter(g => g.items.length > 0);
 
+  const totalItemCount = sections.reduce((sum, s) => sum + s.items.length, 0);
+  const useHubPattern = totalItemCount >= 12;
+
   const renderMenuSection = (section: SidebarMenuSection) => {
     const IconComponent = getIconComponent(section.icon);
+    const sectionBadgeCount = section.items.reduce((sum, item) => {
+      return sum + (item.badge ? (badges[item.badge] || 0) : 0);
+    }, 0);
     
-    // If section title is empty and there's only one item, render as direct link
     if (!section.titleTr && section.items.length === 1) {
       const item = section.items[0];
       return (
@@ -197,6 +214,26 @@ export function AppSidebar() {
           <SidebarMenuButton asChild isActive={location === item.path} data-testid={`link-${item.id}`}>
             <Link href={item.path}>
               <span>{item.titleTr}</span>
+            </Link>
+          </SidebarMenuButton>
+        </SidebarMenuItem>
+      );
+    }
+
+    if (useHubPattern && section.items.length >= HUB_ITEM_THRESHOLD) {
+      const hubPath = `/hub/${section.id}`;
+      const isHubActive = location === hubPath || section.items.some(item => location === item.path || location.startsWith(item.path + '/'));
+      return (
+        <SidebarMenuItem key={section.id}>
+          <SidebarMenuButton asChild isActive={isHubActive} data-testid={`link-hub-${section.id}`}>
+            <Link href={hubPath}>
+              <IconComponent className="h-4 w-4" />
+              <span>{section.titleTr}</span>
+              {sectionBadgeCount > 0 && (
+                <Badge variant="destructive" className="ml-auto" data-testid={`badge-hub-${section.id}`}>
+                  {sectionBadgeCount}
+                </Badge>
+              )}
             </Link>
           </SidebarMenuButton>
         </SidebarMenuItem>
@@ -283,6 +320,28 @@ export function AppSidebar() {
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
+              {favorites.length > 0 && (
+                <div>
+                  <div className="mt-2 mb-2 px-3 py-1 text-xs font-bold uppercase tracking-wide text-muted-foreground flex items-center gap-1.5">
+                    <Star className="h-3 w-3" />
+                    {t("favorites", { defaultValue: "Favorilerim" })}
+                  </div>
+                  {favorites.map((fav) => {
+                    const FavIcon = getIconComponent(fav.icon);
+                    return (
+                      <SidebarMenuItem key={fav.path}>
+                        <SidebarMenuButton asChild isActive={location === fav.path} data-testid={`link-fav-${fav.path.replace(/\//g, '-')}`}>
+                          <Link href={fav.path}>
+                            <FavIcon className="h-4 w-4" />
+                            <span>{fav.title}</span>
+                          </Link>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    );
+                  })}
+                  <div className="my-2 border-t" />
+                </div>
+              )}
               {sectionsByGroup.map((grp, gi) => (
                 <div key={grp.group}>
                   {gi > 0 && <div className="my-2 border-t" />}

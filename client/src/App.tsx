@@ -8,6 +8,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "@/contexts/theme-context";
 import { BottomNav } from "@/components/bottom-nav";
 import { BreadcrumbNavigation, BreadcrumbProvider } from "@/components/breadcrumb-navigation";
+import { GlobalSearch } from "@/components/global-search";
 import { InboxDialog } from "@/components/inbox-dialog";
 import { AppHeader } from "@/components/app-header";
 import { QRScannerModal } from "@/components/qr-scanner-modal";
@@ -70,7 +71,6 @@ const AcademyAIAssistant = lazy(() => import("@/pages/academy-ai-assistant"));
 const AcademyAdaptiveEngine = lazy(() => import("@/pages/academy-adaptive-engine"));
 const AcademySocialGroups = lazy(() => import("@/pages/academy-social-groups"));
 const AcademyAdvancedAnalytics = lazy(() => import("@/pages/academy-advanced-analytics"));
-const AcademySuite = lazy(() => import("@/pages/academy-suite"));
 const EgitimProgrami = lazy(() => import("@/pages/egitim-programi"));
 const BadgeCollection = lazy(() => import("@/pages/badge-collection"));
 const GorevDetay = lazy(() => import("@/pages/gorev-detay"));
@@ -95,7 +95,6 @@ const VardiyaPlanlama = lazy(() => import("@/pages/vardiya-planlama"));
 const Vardiyalarim = lazy(() => import("@/pages/vardiyalarim"));
 const PersonelMusaitlik = lazy(() => import("@/pages/personel-musaitlik"));
 const Performance = lazy(() => import("@/pages/performance"));
-const AdminSeed = lazy(() => import("@/pages/admin-seed"));
 const AdminContentManagement = lazy(() => import("@/pages/yonetim/icerik"));
 const Settings = lazy(() => import("@/pages/yonetim/ayarlar"));
 const UserCRM = lazy(() => import("@/pages/yonetim/kullanicilar"));
@@ -195,6 +194,7 @@ const HQPersonelIstatistikleri = lazy(() => import("@/pages/hq-personel-istatist
 const MuhasebeRaporlama = lazy(() => import("@/pages/muhasebe-raporlama"));
 const KullanimKilavuzu = lazy(() => import("@/pages/kullanim-kilavuzu"));
 const WasteMegaModule = lazy(() => import("@/pages/waste-mega"));
+const HubPage = lazy(() => import("@/pages/hub-page"));
 
 const PUBLIC_PATH_PREFIXES = [
   "/login", 
@@ -364,7 +364,7 @@ function Router() {
           <Route path="/projeler" component={Projeler} />
           <Route path="/yeni-sube-projeler" component={YeniSubeProjeler} />
           <Route path="/yeni-sube-detay/:id" component={YeniSubeDetay} />
-          <Route path="/ik" component={IK} />
+          <Route path="/ik/:tab?" component={IK} />
           <Route path="/izin-talepleri" component={LeaveRequests} />
           <Route path="/mesai-talepleri" component={OvertimeRequests} />
           <Route path="/ik-raporlari" component={HRReports} />
@@ -411,6 +411,7 @@ function Router() {
           <Route path="/destek" component={Destek} />
           <Route path="/operasyon/:tab?" component={OperasyonMegaModule} />
           <Route path="/waste/:tab?" component={WasteMegaModule} />
+          <Route path="/hub/:sectionId" component={HubPage} />
           <Route path="/yeni-sube/:tab?" component={YeniSubeMegaModule} />
           <Route path="/banner-editor">{() => <AdminOnly><BannerEditor /></AdminOnly>}</Route>
           <Route path="/crm/*?" component={CRMMegaModule} />
@@ -532,6 +533,9 @@ function AppContent() {
       
       {/* Bottom Navigation */}
       <BottomNav />
+      
+      {/* Global Search (Ctrl+K) */}
+      <GlobalSearch />
       
       {/* Global AI Assistant */}
       {user && <GlobalAIAssistant />}

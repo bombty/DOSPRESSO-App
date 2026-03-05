@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useRoute, Link } from "wouter";
+import { useBreadcrumb } from "@/components/breadcrumb-navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -95,6 +96,8 @@ export default function ReceteDetay() {
     },
     enabled: !!recipeId,
   });
+
+  useBreadcrumb(recipe?.nameTr || '');
 
   // Update recipe mutation
   const updateRecipeMutation = useMutation({

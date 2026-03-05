@@ -1,4 +1,5 @@
 import { useParams, Link, useLocation } from "wouter";
+import { useBreadcrumb } from "@/components/breadcrumb-navigation";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -281,6 +282,8 @@ export default function EquipmentDetail() {
     queryKey: ['/api/equipment', equipmentId, 'service-requests'],
     enabled: !!equipmentId,
   });
+
+  useBreadcrumb(equipment ? `${equipment.brand || ''} ${equipment.model || equipment.equipmentType}`.trim() : '');
 
   const { data: maintenanceSchedules = [] } = useQuery<MaintenanceSchedule[]>({
     queryKey: ['/api/maintenance-schedules'],

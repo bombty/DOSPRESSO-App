@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useParams, Link } from "wouter";
+import { useBreadcrumb } from "@/components/breadcrumb-navigation";
 import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -158,6 +159,8 @@ export default function GorevDetay() {
     },
     enabled: !!id,
   });
+
+  useBreadcrumb(task ? `Görev #${task.id}` : '');
 
   const myParticipantStatus = participantStatuses.find((p: any) => p.userId === currentUser?.id);
   const taskAssigneesList = (task as any)?.assignees || [];

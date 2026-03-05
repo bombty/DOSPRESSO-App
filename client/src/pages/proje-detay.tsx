@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useParams, useLocation } from "wouter";
+import { useBreadcrumb } from "@/components/breadcrumb-navigation";
 import { DndContext, DragEndEvent, DragOverlay, closestCenter, useSensor, useSensors, PointerSensor, TouchSensor } from "@dnd-kit/core";
 import { useDraggable, useDroppable } from "@dnd-kit/core";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -138,6 +139,8 @@ export default function ProjeDetay() {
   const { data: hqUsers } = useQuery<any[]>({
     queryKey: ["/api/hq-users"],
   });
+
+  useBreadcrumb(project?.title || '');
 
   const addTaskMutation = useMutation({
     mutationFn: async (data: typeof newTask) => {

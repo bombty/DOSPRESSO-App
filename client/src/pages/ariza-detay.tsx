@@ -1,4 +1,5 @@
 import { useParams, useLocation } from "wouter";
+import { useBreadcrumb } from "@/components/breadcrumb-navigation";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -749,6 +750,8 @@ export default function FaultDetail() {
   const equipmentInfo = detailData?.equipment;
   const history = detailData?.history || [];
   const comments = detailData?.comments || [];
+
+  useBreadcrumb(fault ? `Arıza #${fault.id}` : '');
 
   const form = useForm<z.infer<typeof updateFaultSchema>>({
     resolver: zodResolver(updateFaultSchema),

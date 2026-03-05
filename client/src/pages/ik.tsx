@@ -14,7 +14,7 @@ import {
 } from "@shared/schema";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { Link } from "wouter";
+import { Link, useParams } from "wouter";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -179,9 +179,14 @@ function getRolesForBranch(branchId: number | undefined): string[] {
   return branchRoles;
 }
 
+const VALID_IK_TABS = ["personel", "disiplin", "onboarding", "documents", "mesai", "ise-alim", "istten-cikis", "izinler", "maas"];
+
 export default function IKPage() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const params = useParams<{ tab?: string }>();
+  const [, navigate] = useLocation();
+  const activeTab = VALID_IK_TABS.includes(params.tab || "") ? params.tab! : "personel";
 
   // Supervisor için şube rolü kontrolü
   const isBranchRole = user?.role && !isHQRole(user.role as any) && user.role !== 'admin';
@@ -683,7 +688,7 @@ export default function IKPage() {
         </div>
 
       {/* Main Tabs Navigation */}
-      <Tabs defaultValue="personel" className="w-full space-y-4">
+      <Tabs value={activeTab} onValueChange={(v) => navigate(`/ik/${v}`, { replace: true })} className="w-full space-y-4">
         <div className="overflow-x-auto -mx-1 px-1">
           <TabsList className="inline-flex h-auto gap-1 p-1 bg-muted/50 rounded-lg whitespace-nowrap" data-testid="ik-main-tabs">
             <TabsTrigger value="personel" className="flex items-center gap-1.5 px-3 py-1.5 text-xs sm:text-sm" data-testid="tab-personel">

@@ -97,14 +97,14 @@ const NAV_ITEM_CONFIG: Record<string, NavItemConfig> = {
   hr: {
     icon: Users,
     labelKey: "nav.hr",
-    defaultLabelTR: "İK",
+    defaultLabelTR: "Personel",
     defaultLabelEN: "HR",
     getPath: () => "/ik",
   },
   fault: {
     icon: Wrench,
     labelKey: "nav.faults",
-    defaultLabelTR: "Arıza",
+    defaultLabelTR: "Arızalar",
     defaultLabelEN: "Faults",
     getPath: () => "/ariza",
   },
