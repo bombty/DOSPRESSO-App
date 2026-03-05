@@ -68,6 +68,10 @@ The frontend utilizes React 18+ with TypeScript and Vite, employing Shadcn/ui (N
 - **Chart Polish**: Consistent display for count-based and pie charts, Turkish month names for date axes, and empty states.
 - **Dashboard Role Routing**: Explicit dashboard mapping for HQ roles, with branch roles getting a CardGridHub with role-filtered widgets.
 - **Sidebar Role Filtering**: Backend service filters sidebar menu items based on user roles and permissions.
+- **Hub-Spoke Sidebar Navigation**: Sections with 4+ items collapse into hub links when total items >= 12. Hub pages (`/hub/:sectionId`) show card grids from the `/api/me/menu` API. Reduces admin sidebar from 49 → 12 items.
+- **Favorites System**: localStorage-based page favorites with star toggle (max 8), sidebar "Favorilerim" section, toast on limit reached. Files: `use-favorites.ts`, `favorite-star.tsx`.
+- **Command Palette (Ctrl+K)**: `GlobalSearchModal` with Turkish fuzzy search, page/menu results from sidebar API, DB object search, keyboard navigation, recent searches. `GlobalSearch` component handles Ctrl+K binding.
+- **İK URL Tab Routing**: İK page (`/ik/:tab?`) supports deep-linking to specific tabs (personel, disiplin, onboarding, etc.) via URL params.
 - **Feedback Form Settings**: Seeded settings for branches with categories, photo upload, location verification, multi-language support, and anonymous defaults.
 - **Feedback SLA System**: Hourly background job checks for overdue feedback responses and sends critical notifications with per-user DB-level deduplication (24h cooldown per recipient per feedback).
 - **Feedback Pattern Analysis**: Weekly job analyzes 30-day category averages per branch for alerts and improvement detection.

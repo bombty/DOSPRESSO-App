@@ -5,7 +5,6 @@ import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ArrowRight, Star } from "lucide-react";
 import * as LucideIcons from "lucide-react";
 import { useBreadcrumb } from "@/components/breadcrumb-navigation";
 import { FavoriteStar } from "@/components/favorite-star";
@@ -102,29 +101,33 @@ export default function HubPage() {
           const badgeCount = item.badge ? badges[item.badge] : 0;
 
           return (
-            <Link key={item.id} href={item.path}>
-              <Card
-                className="hover-elevate cursor-pointer transition-all group h-full"
-                data-testid={`hub-card-${item.id}`}
-              >
-                <CardContent className="p-4 flex items-start gap-3">
-                  <div className="p-2 rounded-lg bg-muted group-hover:bg-primary/10 transition-colors flex-shrink-0">
-                    <ItemIcon className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <h3 className="text-sm font-semibold truncate">{item.titleTr}</h3>
-                      {badgeCount > 0 && (
-                        <Badge variant="destructive" className="flex-shrink-0" data-testid={`hub-badge-${item.id}`}>
-                          {badgeCount}
-                        </Badge>
-                      )}
+            <div key={item.id} className="relative">
+              <Link href={item.path}>
+                <Card
+                  className="hover-elevate cursor-pointer h-full"
+                  data-testid={`hub-card-${item.id}`}
+                >
+                  <CardContent className="p-4 flex items-start gap-3">
+                    <div className="p-2 rounded-lg bg-muted flex-shrink-0">
+                      <ItemIcon className="h-5 w-5 text-muted-foreground" />
                     </div>
-                  </div>
-                  <FavoriteStar page={{ path: item.path, title: item.titleTr, icon: item.icon }} />
-                </CardContent>
-              </Card>
-            </Link>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <h3 className="text-sm font-semibold truncate">{item.titleTr}</h3>
+                        {badgeCount > 0 && (
+                          <Badge variant="destructive" className="flex-shrink-0" data-testid={`hub-badge-${item.id}`}>
+                            {badgeCount}
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </Link>
+              <div className="absolute top-2 right-2 z-10">
+                <FavoriteStar page={{ path: item.path, title: item.titleTr, icon: item.icon }} />
+              </div>
+            </div>
           );
         })}
       </div>

@@ -21,7 +21,7 @@ export function GlobalSearch() {
     <>
       <button
         onClick={() => setOpen(true)}
-        className="flex items-center gap-2 px-3 py-1.5 text-sm text-muted-foreground rounded-md border bg-background hover:bg-accent transition-colors"
+        className="flex items-center gap-2 px-3 py-1.5 text-sm text-muted-foreground rounded-md border bg-background hover-elevate"
         data-testid="button-global-search"
       >
         <Search className="h-4 w-4" />

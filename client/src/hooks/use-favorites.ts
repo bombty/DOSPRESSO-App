@@ -38,23 +38,27 @@ export function useFavorites() {
     return favorites.some(f => f.path === path);
   }, [favorites]);
 
-  const toggleFavorite = useCallback((page: FavoritePage) => {
+  const toggleFavorite = useCallback((page: FavoritePage): { added: boolean; removed: boolean; reachedMax: boolean } => {
+    let result = { added: false, removed: false, reachedMax: false };
     setFavorites(prev => {
       const exists = prev.some(f => f.path === page.path);
-      let next: FavoritePage[];
       if (exists) {
-        next = prev.filter(f => f.path !== page.path);
-      } else {
-        if (prev.length >= MAX_FAVORITES) {
-          next = [...prev.slice(0, MAX_FAVORITES - 1), page];
-        } else {
-          next = [...prev, page];
-        }
+        result.removed = true;
+        const next = prev.filter(f => f.path !== page.path);
+        saveFavorites(next);
+        return next;
       }
+      if (prev.length >= MAX_FAVORITES) {
+        result.reachedMax = true;
+        return prev;
+      }
+      result.added = true;
+      const next = [...prev, page];
       saveFavorites(next);
       return next;
     });
+    return result;
   }, []);
 
-  return { favorites, isFavorite, toggleFavorite };
+  return { favorites, isFavorite, toggleFavorite, maxFavorites: MAX_FAVORITES };
 }
