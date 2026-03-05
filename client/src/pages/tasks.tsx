@@ -228,9 +228,9 @@ export default function Tasks() {
     
     // Search filter
     if (searchQuery) {
-      const query = searchQuery.toLowerCase();
+      const query = searchQuery.toLocaleLowerCase('tr-TR');
       filtered = filtered.filter(task => 
-        task.description?.toLowerCase().includes(query)
+        task.description?.toLocaleLowerCase('tr-TR').includes(query)
       );
     }
     

@@ -369,28 +369,28 @@ function GenelTrendTab({ data }: { data: TrendData | undefined }) {
 
   const summaryCards = [
     {
-      title: "Son 90 Gun Toplam Harcama",
+      title: "Son 90 Gün Toplam Harcama",
       value: formatCurrency(summary.totalSpending) + " TL",
       icon: DollarSign,
       color: "text-green-500",
       bgColor: "bg-green-500/10",
     },
     {
-      title: "Toplam Siparis Sayisi",
+      title: "Toplam Sipariş Sayısı",
       value: summary.orderCount.toString(),
       icon: ShoppingCart,
       color: "text-blue-500",
       bgColor: "bg-blue-500/10",
     },
     {
-      title: "Ortalama Siparis Tutari",
+      title: "Ortalama Sipariş Tutarı",
       value: formatCurrency(summary.avgOrderAmount) + " TL",
       icon: TrendingUp,
       color: "text-purple-500",
       bgColor: "bg-purple-500/10",
     },
     {
-      title: "Fiyat Artisi Orani",
+      title: "Fiyat Artışı Oranı",
       value: "%" + summary.priceIncreaseRate.toFixed(1),
       icon: Percent,
       color:
@@ -725,10 +725,10 @@ function TedarikciPerformansTab() {
   return (
     <div className="space-y-4" data-testid="supplier-performance-container">
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-        <SummaryCard title="Aktif Tedarikci" value={summary.totalSuppliers.toString()} icon={Users} color="text-blue-500" bgColor="bg-blue-500/10" testId="sp-card-suppliers" />
-        <SummaryCard title="Toplam Siparis (90 Gun)" value={summary.totalOrders.toString()} icon={ShoppingCart} color="text-green-500" bgColor="bg-green-500/10" testId="sp-card-orders" />
+        <SummaryCard title="Aktif Tedarikçi" value={summary.totalSuppliers.toString()} icon={Users} color="text-blue-500" bgColor="bg-blue-500/10" testId="sp-card-suppliers" />
+        <SummaryCard title="Toplam Sipariş (90 Gün)" value={summary.totalOrders.toString()} icon={ShoppingCart} color="text-green-500" bgColor="bg-green-500/10" testId="sp-card-orders" />
         <SummaryCard title="Toplam Tutar" value={formatCurrency(summary.totalValue) + " TL"} icon={DollarSign} color="text-purple-500" bgColor="bg-purple-500/10" testId="sp-card-value" />
-        <SummaryCard title="Ort. Kalite Puani" value={summary.avgQuality.toFixed(1)} icon={Star} color="text-yellow-500" bgColor="bg-yellow-500/10" testId="sp-card-quality" />
+        <SummaryCard title="Ort. Kalite Puanı" value={summary.avgQuality.toFixed(1)} icon={Star} color="text-yellow-500" bgColor="bg-yellow-500/10" testId="sp-card-quality" />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
@@ -745,8 +745,8 @@ function TedarikciPerformansTab() {
                   <YAxis tick={{ fontSize: 11 }} domain={[0, 100]} />
                   <Tooltip contentStyle={TOOLTIP_STYLE} />
                   <Legend />
-                  <Bar dataKey="kalite" name="Kalite Puani" fill="hsl(210, 70%, 50%)" radius={[4, 4, 0, 0]} />
-                  <Bar dataKey="teslimat" name="Teslimat Orani" fill="hsl(150, 60%, 45%)" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="kalite" name="Kalite Puanı" fill="hsl(210, 70%, 50%)" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="teslimat" name="Teslimat Oranı" fill="hsl(150, 60%, 45%)" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             ) : (
@@ -904,8 +904,8 @@ function StokHareketleriTab({ branchId }: { branchId: string }) {
     <div className="space-y-4" data-testid="stock-movement-container">
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         <SummaryCard title="Toplam Hareket" value={summary.totalMovements.toLocaleString("tr-TR")} icon={ArrowUpDown} color="text-blue-500" bgColor="bg-blue-500/10" testId="sm-card-total" />
-        <SummaryCard title="Toplam Giris Miktari" value={formatCurrency(summary.totalIn)} icon={ArrowDownRight} color="text-green-500" bgColor="bg-green-500/10" testId="sm-card-in" />
-        <SummaryCard title="Toplam Cikis Miktari" value={formatCurrency(summary.totalOut)} icon={ArrowUpRight} color="text-red-500" bgColor="bg-red-500/10" testId="sm-card-out" />
+        <SummaryCard title="Toplam Giriş Miktarı" value={formatCurrency(summary.totalIn)} icon={ArrowDownRight} color="text-green-500" bgColor="bg-green-500/10" testId="sm-card-in" />
+        <SummaryCard title="Toplam Çıkış Miktarı" value={formatCurrency(summary.totalOut)} icon={ArrowUpRight} color="text-red-500" bgColor="bg-red-500/10" testId="sm-card-out" />
         <SummaryCard title="Net Fark" value={formatCurrency(summary.totalIn - summary.totalOut)} icon={Package} color="text-purple-500" bgColor="bg-purple-500/10" testId="sm-card-net" />
       </div>
 
@@ -921,8 +921,8 @@ function StokHareketleriTab({ branchId }: { branchId: string }) {
                   <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
                   <XAxis dataKey="month" tick={{ fontSize: 11 }} />
                   <YAxis tick={{ fontSize: 11 }} />
-                  <Tooltip contentStyle={TOOLTIP_STYLE} formatter={(value: number, name: string) => [formatCurrency(value), name === "giris" ? "Giris" : "Cikis"]} />
-                  <Legend formatter={(value: string) => value === "giris" ? "Giris" : "Cikis"} />
+                  <Tooltip contentStyle={TOOLTIP_STYLE} formatter={(value: number, name: string) => [formatCurrency(value), name === "giris" ? "Giriş" : "Çıkış"]} />
+                  <Legend formatter={(value: string) => value === "giris" ? "Giriş" : "Çıkış"} />
                   <Bar dataKey="giris" name="giris" fill="hsl(150, 60%, 45%)" radius={[4, 4, 0, 0]} />
                   <Bar dataKey="cikis" name="cikis" fill="hsl(0, 70%, 55%)" radius={[4, 4, 0, 0]} />
                 </BarChart>
@@ -946,8 +946,8 @@ function StokHareketleriTab({ branchId }: { branchId: string }) {
                   <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
                   <XAxis type="number" tick={{ fontSize: 11 }} />
                   <YAxis type="category" dataKey="name" width={100} tick={{ fontSize: 10 }} />
-                  <Tooltip contentStyle={TOOLTIP_STYLE} formatter={(value: number, name: string) => [formatCurrency(value), name === "giris" ? "Giris" : "Cikis"]} />
-                  <Legend formatter={(value: string) => value === "giris" ? "Giris" : "Cikis"} />
+                  <Tooltip contentStyle={TOOLTIP_STYLE} formatter={(value: number, name: string) => [formatCurrency(value), name === "giris" ? "Giriş" : "Çıkış"]} />
+                  <Legend formatter={(value: string) => value === "giris" ? "Giriş" : "Çıkış"} />
                   <Bar dataKey="giris" name="giris" fill="hsl(150, 60%, 45%)" radius={[0, 4, 4, 0]} stackId="stack" />
                   <Bar dataKey="cikis" name="cikis" fill="hsl(0, 70%, 55%)" radius={[0, 4, 4, 0]} stackId="stack" />
                 </BarChart>
@@ -1040,10 +1040,10 @@ function MaliyetAnaliziTab({ branchId }: { branchId: string }) {
     <div className="space-y-4" data-testid="cost-analysis-container">
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         <SummaryCard title="Toplam Harcama (12 Ay)" value={formatCurrency(summary.totalSpending) + " TL"} icon={DollarSign} color="text-green-500" bgColor="bg-green-500/10" testId="ca-card-total" />
-        <SummaryCard title="Toplam Siparis" value={summary.totalOrders.toString()} icon={ShoppingCart} color="text-blue-500" bgColor="bg-blue-500/10" testId="ca-card-orders" />
-        <SummaryCard title="Ort. Aylik Harcama" value={formatCurrency(summary.avgMonthlySpending) + " TL"} icon={BarChart3} color="text-purple-500" bgColor="bg-purple-500/10" testId="ca-card-monthly" />
+        <SummaryCard title="Toplam Sipariş" value={summary.totalOrders.toString()} icon={ShoppingCart} color="text-blue-500" bgColor="bg-blue-500/10" testId="ca-card-orders" />
+        <SummaryCard title="Ort. Aylık Harcama" value={formatCurrency(summary.avgMonthlySpending) + " TL"} icon={BarChart3} color="text-purple-500" bgColor="bg-purple-500/10" testId="ca-card-monthly" />
         <SummaryCard
-          title="6 Aylik Degisim"
+          title="6 Aylık Değişim"
           value={(summary.changePercent >= 0 ? "+" : "") + summary.changePercent.toFixed(1) + "%"}
           icon={summary.changePercent >= 0 ? TrendingUp : ArrowDownRight}
           color={summary.changePercent > 0 ? "text-red-500" : "text-green-500"}

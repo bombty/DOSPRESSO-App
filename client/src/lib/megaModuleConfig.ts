@@ -185,9 +185,9 @@ export function resetMegaModuleConfig(): void {
 }
 
 export function matchesMegaModule(sectionId: string, mappedIds: string[]): boolean {
-  const normalizedSectionId = sectionId.toLowerCase().replace(/-/g, "_");
+  const normalizedSectionId = sectionId.toLocaleLowerCase('tr-TR').replace(/-/g, "_");
   return mappedIds.some(mappedId => {
-    const normalizedMappedId = mappedId.toLowerCase().replace(/-/g, "_");
+    const normalizedMappedId = mappedId.toLocaleLowerCase('tr-TR').replace(/-/g, "_");
     return normalizedSectionId === normalizedMappedId ||
            normalizedSectionId.startsWith(normalizedMappedId + "_") ||
            normalizedSectionId.includes(normalizedMappedId);

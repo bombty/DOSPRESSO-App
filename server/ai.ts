@@ -2731,7 +2731,7 @@ export async function generateBranchSummaryReport(
 Tüm şubelerin genel durumunu özetlersin. Stratejik bakış açısıyla, üst düzey yöneticilere hitap eden profesyonel raporlar hazırlarsın.
 Şube bazlı değil, organizasyon geneli metrikler ve trendlere odaklan. Türkçe kullan.`;
 
-      userPrompt = `DOSPRESSO Genel Merkez için ${periodLabel.toLowerCase()} organizasyon özeti hazırla.
+      userPrompt = `DOSPRESSO Genel Merkez için ${periodLabel.toLocaleLowerCase('tr-TR')} organizasyon özeti hazırla.
 
 **Tüm Şubeler Geneli Veriler:**
 - Toplam aktif arıza: ${data.activeFaults} (tüm şubelerde)
@@ -2754,7 +2754,7 @@ Maksimum 5 satır, profesyonel ve stratejik ton.`;
       // Branch perspective - single branch summary
       systemPrompt = `Sen DOSPRESSO kahve franchise yönetim sisteminin AI raporlama asistanısın. Kısa, önemli, ve şube yöneticisi için kullanışlı raporlar hazırlarsın. Somut öneriler ve aksiyonlar sun. Türkçe kullan.`;
 
-      userPrompt = `${data.branchName} için ${periodLabel.toLowerCase()} özet ve öneri raporu hazırla. 
+      userPrompt = `${data.branchName} için ${periodLabel.toLocaleLowerCase('tr-TR')} özet ve öneri raporu hazırla. 
 
 Veriler: ${data.activeFaults} aktif arıza, ${data.pendingTasks} bekleyen görev, ${data.overdueChecklists} geciken checklist, ${data.maintenanceReminders} bakım hatırlatması, ${data.criticalEquipment} kritik ekipman, ${data.totalAbsences} devamsızlık, ${data.slaBreaches} SLA ihlali, ortalama ekipman sağlığı %${data.averageEquipmentHealth}. 
 

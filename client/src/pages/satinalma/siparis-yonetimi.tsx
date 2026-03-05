@@ -242,7 +242,7 @@ function PaymentDialog({ order, open, onOpenChange }: { order: PurchaseOrder; op
               id="notes"
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              placeholder="Aciklama (istege bagli)"
+              placeholder="Açıklama (isteğe bağlı)"
               data-testid="input-payment-notes"
             />
           </div>
@@ -504,7 +504,7 @@ export default function SiparisYonetimi() {
   const handleCreateSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!selectedSupplierId) {
-      toast({ title: "Hata", description: "Tedarikci secmeniz gerekiyor", variant: "destructive" });
+      toast({ title: "Hata", description: "Tedarikçi seçmeniz gerekiyor", variant: "destructive" });
       return;
     }
     const formData = new FormData(e.currentTarget);
@@ -598,7 +598,7 @@ export default function SiparisYonetimi() {
                 <Label htmlFor="supplierId">Tedarikci</Label>
                 <Select value={selectedSupplierId} onValueChange={setSelectedSupplierId}>
                   <SelectTrigger data-testid="select-supplier">
-                    <SelectValue placeholder="Tedarikci secin" />
+                    <SelectValue placeholder="Tedarikçi seçin" />
                   </SelectTrigger>
                   <SelectContent>
                     {suppliers?.map(supplier => (
@@ -741,7 +741,7 @@ export default function SiparisYonetimi() {
               ) : (
                 <TableRow>
                   <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
-                    {status !== "all" ? "Bu durumda siparis yok" : "Henuz siparis yok"}
+                    {status !== "all" ? "Bu durumda sipariş yok" : "Henüz sipariş yok"}
                   </TableCell>
                 </TableRow>
               )}

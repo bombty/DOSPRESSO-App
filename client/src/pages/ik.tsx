@@ -129,34 +129,7 @@ import { format, differenceInDays } from "date-fns";
 import { useLocation } from "wouter";
 import { CreateDisciplinaryDialog, CreateDisciplinaryDialogWithSelector } from "@/components/hr/DisciplinaryDialogs";
 import { EmployeeTermination, insertEmployeeTerminationSchema } from "@shared/schema";
-
-const roleLabels: Record<string, string> = {
-  admin: "Admin",
-  ceo: "CEO",
-  cgo: "CGO",
-  muhasebe_ik: "Muhasebe & İK",
-  satinalma: "Satın Alma",
-  coach: "Coach",
-  marketing: "Marketing",
-  trainer: "Trainer (Eğitmen)",
-  kalite_kontrol: "Kalite Kontrol",
-  fabrika_mudur: "Fabrika Müdürü",
-  muhasebe: "Muhasebe",
-  teknik: "Teknik",
-  destek: "Destek",
-  fabrika: "Fabrika",
-  yatirimci_hq: "Yatırımcı HQ",
-  stajyer: "Stajyer",
-  bar_buddy: "Bar Buddy",
-  barista: "Barista",
-  supervisor_buddy: "Supervisor Buddy",
-  supervisor: "Supervisor",
-  mudur: "Müdür",
-  yatirimci_branch: "Yatırımcı",
-  fabrika_operator: "Fabrika Operatör",
-  fabrika_sorumlu: "Fabrika Sorumlu",
-  fabrika_personel: "Fabrika Personel",
-};
+import { ROLE_LABELS } from "@/lib/turkish-labels";
 
 const warningTypeLabels: Record<string, string> = {
   verbal: "Sözlü Uyarı",
@@ -826,7 +799,7 @@ export default function IKPage() {
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="all">Tüm Roller</SelectItem>
-                          {Object.entries(roleLabels).map(([key, label]) => (
+                          {Object.entries(ROLE_LABELS).map(([key, label]) => (
                             <SelectItem key={key} value={key}>
                               {label}
                             </SelectItem>
@@ -930,7 +903,7 @@ export default function IKPage() {
                                     {employee.firstName} {employee.lastName}
                                   </h3>
                                   <Badge variant="secondary" className="mt-1">
-                                    {roleLabels[employee.role] || employee.role}
+                                    {ROLE_LABELS[employee.role] || employee.role}
                                   </Badge>
                                 </div>
                                 <div className="flex flex-col items-end gap-1">
@@ -1001,7 +974,7 @@ export default function IKPage() {
                                         {employee.firstName} {employee.lastName}
                                       </h3>
                                       <Badge variant="outline" className="mt-1">
-                                        {roleLabels[employee.role] || employee.role}
+                                        {ROLE_LABELS[employee.role] || employee.role}
                                       </Badge>
                                     </div>
                                     <div className="flex flex-col items-end gap-1">
@@ -1515,7 +1488,7 @@ export default function IKPage() {
                               <TableCell className="font-medium">
                                 {summary.firstName} {summary.lastName}
                                 <br />
-                                <span className="text-xs text-muted-foreground">{roleLabels[summary.role] || summary.role}</span>
+                                <span className="text-xs text-muted-foreground">{ROLE_LABELS[summary.role] || summary.role}</span>
                               </TableCell>
                               <TableCell>{summary.branchName}</TableCell>
                               <TableCell className="text-right">
@@ -2032,7 +2005,7 @@ function AddEmployeeDialog({
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {Object.entries(roleLabels)
+                        {Object.entries(ROLE_LABELS)
                           .filter(([key]) => availableRoles.includes(key))
                           .map(([key, label]) => (
                             <SelectItem key={key} value={key}>
@@ -2367,7 +2340,7 @@ function EditEmployeeDialog({
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            {Object.entries(roleLabels)
+                            {Object.entries(ROLE_LABELS)
                               .filter(([key]) => key !== "admin")
                               .map(([key, label]) => (
                                 <SelectItem key={key} value={key}>
@@ -4956,7 +4929,7 @@ function SalaryManagementSection({ employees, branches }: { employees: User[]; b
   // Filtreleme
   const filteredEmployees = employeesWithSalary.filter((emp: any) => {
     if (branchFilter !== "all" && emp.branch_id?.toString() !== branchFilter) return false;
-    if (searchQuery && !`${emp.first_name} ${emp.last_name}`.toLowerCase().includes(searchQuery.toLowerCase())) return false;
+    if (searchQuery && !`${emp.first_name} ${emp.last_name}`.toLocaleLowerCase('tr-TR').includes(searchQuery.toLocaleLowerCase('tr-TR'))) return false;
     return true;
   });
 
@@ -5116,7 +5089,7 @@ function SalaryManagementSection({ employees, branches }: { employees: User[]; b
                       <TableCell>
                         <div>
                           <p className="font-medium">{emp.first_name} {emp.last_name}</p>
-                          <p className="text-xs text-muted-foreground">{roleLabels[emp.role] || emp.role}</p>
+                          <p className="text-xs text-muted-foreground">{ROLE_LABELS[emp.role] || emp.role}</p>
                         </div>
                       </TableCell>
                       <TableCell>
@@ -5261,7 +5234,7 @@ function SalaryEditDialog({
         <DialogHeader>
           <DialogTitle>Maaş & Yan Haklar</DialogTitle>
           <DialogDescription>
-            {employee.first_name} {employee.last_name} - {roleLabels[employee.role] || employee.role}
+            {employee.first_name} {employee.last_name} - {ROLE_LABELS[employee.role] || employee.role}
           </DialogDescription>
         </DialogHeader>
 
@@ -5533,7 +5506,7 @@ function ExportEmployeesDialog({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all_roles">Tümü</SelectItem>
-                  {Object.entries(roleLabels).map(([key, label]) => (
+                  {Object.entries(ROLE_LABELS).map(([key, label]) => (
                     <SelectItem key={key} value={key}>{label}</SelectItem>
                   ))}
                 </SelectContent>

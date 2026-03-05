@@ -116,12 +116,12 @@ const DEFAULT_REDACTION_FOR_DOMAIN: Record<string, RedactionMode> = {
 };
 
 export function classifyIntent(question: string): string[] {
-  const q = question.toLowerCase().replace(/[ıİ]/g, m => m === 'ı' ? 'i' : 'i');
+  const q = question.toLocaleLowerCase('tr-TR').replace(/[ıİ]/g, m => m === 'ı' ? 'i' : 'i');
   const matched: string[] = [];
 
   for (const [domain, keywords] of Object.entries(DOMAIN_KEYWORDS)) {
     for (const kw of keywords) {
-      const normalizedKw = kw.toLowerCase().replace(/[ıİ]/g, m => m === 'ı' ? 'i' : 'i');
+      const normalizedKw = kw.toLocaleLowerCase('tr-TR').replace(/[ıİ]/g, m => m === 'ı' ? 'i' : 'i');
       if (q.includes(normalizedKw)) {
         if (!matched.includes(domain)) {
           matched.push(domain);

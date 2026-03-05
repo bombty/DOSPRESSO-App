@@ -134,19 +134,19 @@ export function formatDisplayLabel(key: string | null | undefined): string {
     if (map[key]) return map[key];
   }
 
-  const upperKey = key.toUpperCase();
+  const upperKey = key.toLocaleUpperCase('tr-TR');
   for (const map of ALL_LABEL_MAPS) {
     if (map[upperKey]) return map[upperKey];
   }
 
-  const lowerKey = key.toLowerCase();
+  const lowerKey = key.toLocaleLowerCase('tr-TR');
   for (const map of ALL_LABEL_MAPS) {
     if (map[lowerKey]) return map[lowerKey];
   }
 
   return key
     .replace(/[_-]/g, " ")
-    .replace(/\b\w/g, (c) => c.toUpperCase())
+    .replace(/\b\w/g, (c) => c.toLocaleUpperCase('tr-TR'))
     .replace(/\bSicaklik\b/gi, "Sıcaklık")
     .replace(/\bYuzey\b/gi, "Yüzey")
     .replace(/\bTemizligi\b/gi, "Temizliği")

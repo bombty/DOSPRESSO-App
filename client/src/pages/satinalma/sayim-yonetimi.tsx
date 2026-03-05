@@ -161,7 +161,7 @@ export default function SayimYonetimi() {
       toast({ title: "Atamalar kaydedildi" });
     },
     onError: () => {
-      toast({ title: "Hata", description: "Atama yapilamadi", variant: "destructive" });
+      toast({ title: "Hata", description: "Atama yapılamadı", variant: "destructive" });
     },
   });
 
@@ -584,8 +584,8 @@ function SayimDetailDialog({
   const filteredAssignments = assignments.filter((a: any) => {
     const matchCategory = activeCategory === "all" || a.inventory_category === activeCategory;
     const matchSearch = !searchQuery ||
-      a.inventory_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      a.inventory_code?.toLowerCase().includes(searchQuery.toLowerCase());
+      a.inventory_name?.toLocaleLowerCase('tr-TR').includes(searchQuery.toLocaleLowerCase('tr-TR')) ||
+      a.inventory_code?.toLocaleLowerCase('tr-TR').includes(searchQuery.toLocaleLowerCase('tr-TR'));
     return matchCategory && matchSearch;
   });
 

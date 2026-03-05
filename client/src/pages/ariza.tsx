@@ -142,8 +142,8 @@ export default function FaultHub() {
   const manageFaults = useMemo(() => {
     return metrics.open.filter((f: EquipmentFault) => 
       debouncedSearch === "" || 
-      f.equipmentName.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
-      f.description?.toLowerCase().includes(debouncedSearch.toLowerCase())
+      f.equipmentName.toLocaleLowerCase('tr-TR').includes(debouncedSearch.toLocaleLowerCase('tr-TR')) ||
+      f.description?.toLocaleLowerCase('tr-TR').includes(debouncedSearch.toLocaleLowerCase('tr-TR'))
     );
   }, [metrics.open, debouncedSearch]);
 

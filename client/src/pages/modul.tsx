@@ -178,7 +178,7 @@ export default function MegaModulePage() {
       "mal-kabul": ClipboardCheck,
       "goods-receipt": ClipboardCheck,
     };
-    return iconMap[moduleId.toLowerCase()] || Coffee;
+    return iconMap[moduleId.toLocaleLowerCase('tr-TR')] || Coffee;
   };
 
   const getColor = (moduleId: string | undefined | null) => {
@@ -238,12 +238,12 @@ export default function MegaModulePage() {
       "mal-kabul": "bg-amber-600",
       "goods-receipt": "bg-amber-600",
     };
-    return colorMap[moduleId.toLowerCase()] || "bg-slate-400";
+    return colorMap[moduleId.toLocaleLowerCase('tr-TR')] || "bg-slate-400";
   };
 
   const getBadge = (moduleId: string | undefined | null): number | undefined => {
     if (!moduleId) return undefined;
-    const id = moduleId.toLowerCase();
+    const id = moduleId.toLocaleLowerCase('tr-TR');
     if (id.includes('task') || id.includes('gorev')) return pendingTasks > 0 ? pendingTasks : undefined;
     if (id.includes('fault') || id.includes('ariza')) return openFaults > 0 ? openFaults : undefined;
     return undefined;
@@ -326,12 +326,12 @@ export default function MegaModulePage() {
       "satinalma": "bg-amber-500",
       "satinalma-section": "bg-amber-500",
     };
-    return colorMap[sectionId.toLowerCase()] || "bg-primary";
+    return colorMap[sectionId.toLocaleLowerCase('tr-TR')] || "bg-primary";
   };
 
   const normalizeModuleKey = (m: any): string => {
     if (m.id) return m.id;
-    if (m.label) return m.label.toLowerCase().replace(/\s+/g, '-');
+    if (m.label) return m.label.toLocaleLowerCase('tr-TR').replace(/\s+/g, '-');
     if (m.path) return m.path.replace(/^\//, '').replace(/\//g, '-');
     return 'unknown-module';
   };

@@ -179,9 +179,9 @@ function AssignTaskDialog({ open, onOpenChange }: { open: boolean; onOpenChange:
 
   const filteredUsers = (allUsers || []).filter(u => {
     if (!u.id || u.id === user?.id) return false;
-    const fullName = `${u.firstName || ''} ${u.lastName || ''}`.toLowerCase();
-    const email = (u.email || '').toLowerCase();
-    const q = searchQuery.toLowerCase();
+    const fullName = `${u.firstName || ''} ${u.lastName || ''}`.toLocaleLowerCase('tr-TR');
+    const email = (u.email || '').toLocaleLowerCase('tr-TR');
+    const q = searchQuery.toLocaleLowerCase('tr-TR');
     return !q || fullName.includes(q) || email.includes(q);
   });
 

@@ -13,7 +13,7 @@ const router = Router();
 router.get("/api/action-cards/today", isAuthenticated, async (req, res) => {
   try {
     const userId = (req.user as any)?.id;
-    if (!userId) return res.status(401).json({ error: "Unauthorized" });
+    if (!userId) return res.status(401).json({ error: "Yetkilendirme gerekli" });
 
     const nowTR = new Date(new Date().toLocaleString("en-US", { timeZone: "Europe/Istanbul" }));
     const todayStart = new Date(nowTR.getFullYear(), nowTR.getMonth(), nowTR.getDate());
@@ -86,7 +86,7 @@ router.get("/api/action-cards/today", isAuthenticated, async (req, res) => {
 router.post("/api/action-cards/:id/submit", isAuthenticated, async (req, res) => {
   try {
     const userId = (req.user as any)?.id;
-    if (!userId) return res.status(401).json({ error: "Unauthorized" });
+    if (!userId) return res.status(401).json({ error: "Yetkilendirme gerekli" });
 
     const taskId = parseInt(req.params.id);
     if (isNaN(taskId)) return res.status(400).json({ error: "Geçersiz görev ID" });
@@ -172,7 +172,7 @@ router.post("/api/action-cards/:id/submit", isAuthenticated, async (req, res) =>
 router.post("/api/action-cards/:id/approve", isAuthenticated, async (req, res) => {
   try {
     const reviewer = req.user as any;
-    if (!reviewer?.id) return res.status(401).json({ error: "Unauthorized" });
+    if (!reviewer?.id) return res.status(401).json({ error: "Yetkilendirme gerekli" });
 
     if (!APPROVER_ROLES.includes(reviewer.role)) {
       return res.status(403).json({ error: "Onay yetkiniz yok" });
@@ -225,7 +225,7 @@ router.post("/api/action-cards/:id/approve", isAuthenticated, async (req, res) =
 router.post("/api/action-cards/:id/reject", isAuthenticated, async (req, res) => {
   try {
     const reviewer = req.user as any;
-    if (!reviewer?.id) return res.status(401).json({ error: "Unauthorized" });
+    if (!reviewer?.id) return res.status(401).json({ error: "Yetkilendirme gerekli" });
 
     if (!APPROVER_ROLES.includes(reviewer.role)) {
       return res.status(403).json({ error: "Reddetme yetkiniz yok" });
@@ -278,7 +278,7 @@ router.post("/api/action-cards/:id/reject", isAuthenticated, async (req, res) =>
 router.get("/api/action-cards/pending-approvals", isAuthenticated, async (req, res) => {
   try {
     const reviewer = req.user as any;
-    if (!reviewer?.id) return res.status(401).json({ error: "Unauthorized" });
+    if (!reviewer?.id) return res.status(401).json({ error: "Yetkilendirme gerekli" });
 
     if (!APPROVER_ROLES.includes(reviewer.role)) {
       return res.json([]);
@@ -356,7 +356,7 @@ router.get("/api/action-cards/pending-approvals", isAuthenticated, async (req, r
 router.post("/api/action-cards/generate", isAuthenticated, async (req, res) => {
   try {
     const userId = (req.user as any)?.id;
-    if (!userId) return res.status(401).json({ error: "Unauthorized" });
+    if (!userId) return res.status(401).json({ error: "Yetkilendirme gerekli" });
 
     const result = await generateTasksForUser(userId);
     return res.json(result);

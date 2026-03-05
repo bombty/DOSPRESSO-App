@@ -1099,7 +1099,7 @@ export class DatabaseStorage implements IStorage {
       conditions.push(eq(users.accountStatus, filters.accountStatus));
     }
     if (filters.search) {
-      const searchTerm = `%${filters.search.toLowerCase()}%`;
+      const searchTerm = `%${filters.search.toLocaleLowerCase('tr-TR')}%`;
       conditions.push(
         sql`LOWER(${users.firstName}) LIKE ${searchTerm} OR LOWER(${users.lastName}) LIKE ${searchTerm} OR LOWER(${users.email}) LIKE ${searchTerm}`
       );
@@ -1351,7 +1351,7 @@ export class DatabaseStorage implements IStorage {
       });
 
       if (!existingChecklist) {
-        throw new Error("Checklist not found");
+        throw new Error("Checklist bulunamadı");
       }
 
       const { tasks: tasksPayload, ...checklistUpdates } = updates;
@@ -4460,7 +4460,7 @@ export class DatabaseStorage implements IStorage {
   async updatePageContent(slug: string, data: Partial<InsertPageContent> & { updatedById: string }): Promise<PageContent> {
     // Increment version on update
     const existing = await this.getPageContent(slug);
-    if (!existing) throw new Error("Content not found");
+    if (!existing) throw new Error("İçerik bulunamadı");
     
     const updateData: any = {
       ...data,
@@ -4668,7 +4668,7 @@ export class DatabaseStorage implements IStorage {
   async createShiftsFromTemplate(templateId: number, startDate: string, endDate: string, createdById: string): Promise<Shift[]> {
     const template = await this.getShiftTemplate(templateId);
     if (!template) {
-      throw new Error("Template not found");
+      throw new Error("Şablon bulunamadı");
     }
 
     const start = new Date(startDate);
@@ -7881,7 +7881,7 @@ export class DatabaseStorage implements IStorage {
 
   async rateTask(taskId: number, score: number, ratedBy: string): Promise<TaskRating> {
     const task = await this.getTask(taskId);
-    if (!task) throw new Error("Task not found");
+    if (!task) throw new Error("Görev bulunamadı");
     
     const existing = await db.select()
       .from(taskRatings)
@@ -7965,7 +7965,7 @@ export class DatabaseStorage implements IStorage {
     equipment: Array<{ id: number; name: string; type: string; branchId: number | null }>;
   }> {
     console.log("[Search] Starting search for:", query, "isHQ:", isHQ, "userBranchId:", userBranchId);
-    const searchPattern = `%${query.toLowerCase()}%`;
+    const searchPattern = `%${query.toLocaleLowerCase('tr-TR')}%`;
     
     // Use raw SQL queries to avoid Drizzle ORM field ordering issues
     const safeRawQuery = async <T>(queryFn: () => Promise<T[]>, name: string): Promise<T[]> => {
@@ -8547,7 +8547,7 @@ export class DatabaseStorage implements IStorage {
     equipment: Array<{ id: number; name: string; type: string; branchId: number | null }>;
   }> {
     console.log("[Search] Starting permission-filtered search for:", query, "permissions:", permissions);
-    const searchPattern = `%${query.toLowerCase()}%`;
+    const searchPattern = `%${query.toLocaleLowerCase('tr-TR')}%`;
     
     const safeRawQuery = async <T>(queryFn: () => Promise<T[]>, name: string): Promise<T[]> => {
       try {
@@ -8682,7 +8682,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async searchEquipmentKnowledge(query: string, equipmentType?: string): Promise<EquipmentKnowledge[]> {
-    const searchPattern = `%${query.toLowerCase()}%`;
+    const searchPattern = `%${query.toLocaleLowerCase('tr-TR')}%`;
     const conditions = [
       eq(equipmentKnowledge.isActive, true),
       or(
@@ -8748,7 +8748,7 @@ export class DatabaseStorage implements IStorage {
   
   // Search recipes for AI context (reçete arama)
   async searchRecipesForAI(query: string): Promise<Array<{ id: number; name: string; category: string; simplifiedRecipe: string; steps: string[]; size: { massivo: any; longDiva: any } }>> {
-    const queryLower = query.toLowerCase();
+    const queryLower = query.toLocaleLowerCase('tr-TR');
     
     // Get all active recipes with their versions
     const allRecipes = await db.select({
@@ -8764,8 +8764,8 @@ export class DatabaseStorage implements IStorage {
     
     // Filter recipes matching the query
     const matchingRecipes = allRecipes.filter(r => 
-      r.nameTr.toLowerCase().includes(queryLower) ||
-      r.code.toLowerCase().includes(queryLower)
+      r.nameTr.toLocaleLowerCase('tr-TR').includes(queryLower) ||
+      r.code.toLocaleLowerCase('tr-TR').includes(queryLower)
     ).slice(0, 5);
     
     // Get versions for matching recipes

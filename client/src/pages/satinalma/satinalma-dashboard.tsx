@@ -209,8 +209,8 @@ export default function SatinalmaDashboard() {
       );
     } catch {
       toast({
-        title: "Kamera Hatasi",
-        description: "Kameraya erisilemedi. Lutfen izinleri kontrol edin.",
+        title: "Kamera Hatası",
+        description: "Kameraya erişilemedi. Lütfen izinleri kontrol edin.",
         variant: "destructive",
       });
       setQrScanning(false);
@@ -259,7 +259,7 @@ export default function SatinalmaDashboard() {
     } catch {
       toast({
         title: "Hata",
-        description: "QR kod isleme sirasinda hata olustu.",
+        description: "QR kod işleme sırasında hata oluştu.",
         variant: "destructive",
       });
       qrProcessedRef.current = false;
@@ -344,7 +344,7 @@ export default function SatinalmaDashboard() {
     onError: () => {
       toast({
         title: "Hata",
-        description: "Fiyat guncellemesi sirasinda bir hata olustu",
+        description: "Fiyat güncellemesi sırasında bir hata oluştu",
         variant: "destructive",
       });
     },
@@ -397,14 +397,14 @@ export default function SatinalmaDashboard() {
       bgColor: "bg-purple-500/10"
     },
     {
-      title: "Aktif Tedarikci",
+      title: "Aktif Tedarikçi",
       value: data?.totalSuppliers || 0,
       icon: Users,
       color: "text-green-500",
       bgColor: "bg-green-500/10"
     },
     {
-      title: "Bekleyen Siparis",
+      title: "Bekleyen Sipariş",
       value: data?.pendingOrders || 0,
       icon: ShoppingCart,
       color: "text-orange-500",

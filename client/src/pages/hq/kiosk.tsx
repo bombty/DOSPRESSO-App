@@ -115,10 +115,10 @@ export default function HqKiosk() {
         fetchSessionDetails(data.user.id);
       }
       setStep("working");
-      toast({ title: "Giris basarili", description: `Hos geldin ${data.user.firstName}` });
+      toast({ title: "Giriş başarılı", description: `Hoş geldin ${data.user.firstName}` });
     },
     onError: (error: any) => {
-      toast({ title: "Giris basarisiz", description: error.message, variant: "destructive" });
+      toast({ title: "Giriş başarısız", description: error.message, variant: "destructive" });
       setPinInput("");
     },
   });
@@ -155,7 +155,7 @@ export default function HqKiosk() {
         setCurrentSession(data.session);
         setStep("working");
         toast({
-          title: exitReason === "break" ? "Mola basladi" : "Dis gorev kaydedildi",
+          title: exitReason === "break" ? "Mola başladı" : "Dış görev kaydedildi",
           description: exitReason === "break" ? "İyi dinlenmeler!" : "Başarılar!",
         });
       }
@@ -164,7 +164,7 @@ export default function HqKiosk() {
       setEstimatedReturn("");
     },
     onError: (error: any) => {
-      toast({ title: "Islem basarisiz", description: error.message, variant: "destructive" });
+      toast({ title: "İşlem başarısız", description: error.message, variant: "destructive" });
     },
   });
 
@@ -642,7 +642,7 @@ export default function HqKiosk() {
                 {exitReason === "external_task" ? "Görev Açıklaması" : "Sebep"}
               </label>
               <Textarea
-                placeholder={exitReason === "external_task" ? "Dis gorev aciklamasi..." : "Kisisel izin sebebi..."}
+                placeholder={exitReason === "external_task" ? "Dış görev açıklaması..." : "Kişisel izin sebebi..."}
                 value={exitDescription}
                 onChange={(e) => setExitDescription(e.target.value)}
                 className="resize-none"

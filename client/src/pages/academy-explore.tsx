@@ -154,10 +154,10 @@ export default function AcademyExplore() {
       }
 
       if (searchQuery.trim()) {
-        const q = searchQuery.toLowerCase();
-        const titleMatch = m.title?.toLowerCase().includes(q);
-        const descMatch = m.description?.toLowerCase().includes(q);
-        const catMatch = m.category?.toLowerCase().includes(q);
+        const q = searchQuery.toLocaleLowerCase('tr-TR');
+        const titleMatch = m.title?.toLocaleLowerCase('tr-TR').includes(q);
+        const descMatch = m.description?.toLocaleLowerCase('tr-TR').includes(q);
+        const catMatch = m.category?.toLocaleLowerCase('tr-TR').includes(q);
         if (!titleMatch && !descMatch && !catMatch) return false;
       }
 

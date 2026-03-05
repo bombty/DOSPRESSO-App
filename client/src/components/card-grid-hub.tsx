@@ -664,7 +664,7 @@ export function CardGridHub() {
       "crm": Headphones,
       "crm-dashboard": Headphones,
     };
-    return iconMap[moduleId.toLowerCase()] || Coffee;
+    return iconMap[moduleId.toLocaleLowerCase('tr-TR')] || Coffee;
   };
 
   const getColor = (moduleId: string | undefined | null) => {
@@ -755,13 +755,13 @@ export function CardGridHub() {
       "crm": "bg-rose-500",
       "crm-dashboard": "bg-rose-500",
     };
-    return colorMap[moduleId.toLowerCase()] || "bg-slate-400";
+    return colorMap[moduleId.toLocaleLowerCase('tr-TR')] || "bg-slate-400";
   };
 
   // Badge mapping for dynamic modules
   const getBadge = (moduleId: string | undefined | null): number | undefined => {
     if (!moduleId) return undefined;
-    const id = moduleId.toLowerCase();
+    const id = moduleId.toLocaleLowerCase('tr-TR');
     if (id.includes('task') || id.includes('gorev')) return pendingTasks > 0 ? pendingTasks : undefined;
     if (id.includes('fault') || id.includes('ariza')) return openFaults > 0 ? openFaults : undefined;
     return undefined;
@@ -770,7 +770,7 @@ export function CardGridHub() {
   // Helper to normalize module key from id, label, or path
   const normalizeModuleKey = (m: any): string => {
     if (m.id) return m.id;
-    if (m.label) return m.label.toLowerCase().replace(/\s+/g, '-');
+    if (m.label) return m.label.toLocaleLowerCase('tr-TR').replace(/\s+/g, '-');
     if (m.path) return m.path.replace(/^\//, '').replace(/\//g, '-');
     return 'unknown-module';
   };
@@ -855,7 +855,7 @@ export function CardGridHub() {
       "tasks": "bg-green-500",
       "tasks-section": "bg-green-500",
     };
-    return colorMap[sectionId.toLowerCase()] || "bg-primary";
+    return colorMap[sectionId.toLocaleLowerCase('tr-TR')] || "bg-primary";
   };
 
   // Get aggregate badge count for a section's items

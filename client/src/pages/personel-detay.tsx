@@ -70,6 +70,7 @@ import { isHQRole } from "@shared/schema";
 import { CreateDisciplinaryDialog, AddResponseDialog, ResolveDialog } from "@/components/hr/DisciplinaryDialogs";
 import { OnboardingTaskDialog } from "@/components/hr/OnboardingTaskDialog";
 import { useBreadcrumb } from "@/components/breadcrumb-navigation";
+import { ROLE_LABELS } from "@/lib/turkish-labels";
 
 export default function PersonelDetay() {
   const { id } = useParams();
@@ -505,34 +506,6 @@ export default function PersonelDetay() {
     other: "Diğer",
   };
 
-  const roleLabels: Record<string, string> = {
-    admin: "Admin",
-    ceo: "CEO",
-    cgo: "CGO",
-    muhasebe_ik: "Muhasebe & İK",
-    satinalma: "Satın Alma",
-    coach: "Coach",
-    marketing: "Marketing",
-    trainer: "Trainer (Eğitmen)",
-    kalite_kontrol: "Kalite Kontrol",
-    fabrika_mudur: "Fabrika Müdürü",
-    muhasebe: "Muhasebe",
-    teknik: "Teknik",
-    destek: "Destek",
-    fabrika: "Fabrika",
-    yatirimci_hq: "Yatırımcı HQ",
-    stajyer: "Stajyer",
-    bar_buddy: "Bar Buddy",
-    barista: "Barista",
-    supervisor_buddy: "Supervisor Buddy",
-    supervisor: "Supervisor",
-    mudur: "Müdür",
-    yatirimci_branch: "Yatırımcı",
-    fabrika_operator: "Fabrika Operatör",
-    fabrika_sorumlu: "Fabrika Sorumlu",
-    fabrika_personel: "Fabrika Personel",
-  };
-
   return (
     <div className="flex flex-col gap-3 sm:gap-4 p-3">
       <div className="flex items-center justify-between flex-wrap gap-2">
@@ -639,7 +612,7 @@ export default function PersonelDetay() {
               </div>
               <div>
                 <p className="text-muted-foreground text-xs">Rol</p>
-                <Badge className="text-xs">{roleLabels[employee.role] || employee.role}</Badge>
+                <Badge className="text-xs">{ROLE_LABELS[employee.role] || employee.role}</Badge>
               </div>
               <div>
                 <p className="text-muted-foreground text-xs">E-posta</p>

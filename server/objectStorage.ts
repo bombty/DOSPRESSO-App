@@ -32,7 +32,7 @@ export const objectStorageClient = new Storage({
 
 export class ObjectNotFoundError extends Error {
   constructor() {
-    super("Object not found");
+    super("Nesne bulunamadı");
     this.name = "ObjectNotFoundError";
     Object.setPrototypeOf(this, ObjectNotFoundError.prototype);
   }

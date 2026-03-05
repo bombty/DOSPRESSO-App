@@ -214,8 +214,8 @@ export default function Fabrika() {
   });
 
   const filteredProducts = products?.filter(p => {
-    const matchesSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                          p.sku.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSearch = p.name.toLocaleLowerCase('tr-TR').includes(searchTerm.toLocaleLowerCase('tr-TR')) || 
+                          p.sku.toLocaleLowerCase('tr-TR').includes(searchTerm.toLocaleLowerCase('tr-TR'));
     const matchesCategory = selectedCategory === "all" || p.category === selectedCategory;
     return matchesSearch && matchesCategory;
   }) || [];

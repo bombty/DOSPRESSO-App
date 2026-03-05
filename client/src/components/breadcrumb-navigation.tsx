@@ -181,6 +181,15 @@ const PATH_LABELS: Record<string, string> = {
   '/yonetim/degerlendirme': 'Değerlendirme',
   '/yonetim/icerik': 'İçerik',
   '/waste': 'Fire Yönetimi',
+  '/hub/operations': 'Operasyon',
+  '/hub/hr-shifts': 'İK & Vardiya',
+  '/hub/fabrika': 'Fabrika',
+  '/hub/training-academy-section': 'Eğitim',
+  '/hub/audit-analytics': 'Denetim & Analitik',
+  '/hub/finance-procurement': 'Finans & Tedarik',
+  '/hub/marketing': 'Pazarlama',
+  '/hub/communication': 'İletişim',
+  '/hub/management': 'Yönetim',
 };
 
 const MAX_HISTORY = 10;

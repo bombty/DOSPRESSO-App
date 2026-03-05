@@ -1857,7 +1857,7 @@ function AIPlanModal({ open, onClose, weekStart, employees, branchId, existingSh
       });
     } catch (error: any) {
       console.error("AI plan error:", error);
-      const rawMessage = (error.message || '').toLowerCase();
+      const rawMessage = (error.message || '').toLocaleLowerCase('tr-TR');
       let userTitle = "AI Planlama Hatası";
       let userMessage = "";
 

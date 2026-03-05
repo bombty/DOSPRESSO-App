@@ -64,10 +64,10 @@ export default function SiparisHazirlama() {
       setQuantity("");
       setNotes("");
       setReference("");
-      toast({ title: "Stok cikisi yapildi" });
+      toast({ title: "Stok çıkışı yapıldı" });
     },
     onError: (error: any) => {
-      toast({ title: "Hata", description: error.message || "Stok cikisi yapilamadi", variant: "destructive" });
+      toast({ title: "Hata", description: error.message || "Stok çıkışı yapılamadı", variant: "destructive" });
     },
   });
 
@@ -108,7 +108,7 @@ export default function SiparisHazirlama() {
   };
 
   const filteredItems = inventoryItems?.filter(item =>
-    !searchTerm || item.name.toLowerCase().includes(searchTerm.toLowerCase()) || item.code.toLowerCase().includes(searchTerm.toLowerCase())
+    !searchTerm || item.name.toLocaleLowerCase('tr-TR').includes(searchTerm.toLocaleLowerCase('tr-TR')) || item.code.toLocaleLowerCase('tr-TR').includes(searchTerm.toLocaleLowerCase('tr-TR'))
   ) || [];
 
   const selectedItem = inventoryItems?.find(i => i.id.toString() === selectedInventoryId);
@@ -216,7 +216,7 @@ export default function SiparisHazirlama() {
             <Textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              placeholder="Ek aciklama"
+              placeholder="Ek açıklama"
               className="min-h-[60px]"
               data-testid="input-notes"
             />
@@ -228,7 +228,7 @@ export default function SiparisHazirlama() {
             disabled={stockExitMutation.isPending || !selectedInventoryId || !quantity}
             data-testid="button-stock-exit"
           >
-            {stockExitMutation.isPending ? "Isleniyor..." : "Cikis Yap"}
+            {stockExitMutation.isPending ? "İşleniyor..." : "Çıkış Yap"}
           </Button>
         </CardContent>
       </Card>

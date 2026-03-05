@@ -17,6 +17,7 @@ import {
   User,
   Send,
 } from "lucide-react";
+import { ROLE_LABELS } from "@/lib/turkish-labels";
 
 interface PendingAttempt {
   id: number;
@@ -86,14 +87,6 @@ function AttemptEvaluationForm({ attempt }: { attempt: PendingAttempt }) {
     updateMutation.mutate(updates);
   };
 
-  const roleLabels: Record<string, string> = {
-    stajyer: "Stajyer",
-    bar_buddy: "Bar Buddy",
-    barista: "Barista",
-    supervisor_buddy: "Sv. Buddy",
-    supervisor: "Supervisor",
-  };
-
   return (
     <Card data-testid={`gate-attempt-${attempt.id}`}>
       <CardContent className="p-0">
@@ -109,7 +102,7 @@ function AttemptEvaluationForm({ attempt }: { attempt: PendingAttempt }) {
                 {attempt.userName}
               </span>
               <span className="text-xs text-muted-foreground">
-                {roleLabels[attempt.userRole] || attempt.userRole} — {attempt.gateTitleTr}
+                {ROLE_LABELS[attempt.userRole] || attempt.userRole} — {attempt.gateTitleTr}
               </span>
             </div>
           </div>

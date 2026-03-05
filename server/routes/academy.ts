@@ -636,7 +636,7 @@ Cevaplarınız kısa, faydalı ve türkçe olmalıdır.`;
     let assistantMessage = response.choices[0]?.message?.content || "Cevap oluşturulamadı.";
     
     const usageKeywords = ['nasıl kullanılır', 'nasıl yapılır', 'nerede bulabilirim', 'nereden ulaşabilirim', 'sistem', 'menü', 'sayfa', 'modül', 'yetki', 'erişim', 'kullanım', 'özellik', 'buton', 'ekran'];
-    const questionLower = message.toLowerCase();
+    const questionLower = message.toLocaleLowerCase('tr-TR');
     if (usageKeywords.some((kw: string) => questionLower.includes(kw))) {
       assistantMessage += '\n\n---\n-- **Daha fazla bilgi için [Kullanım Kılavuzu](/kullanim-kilavuzu) sayfasını ziyaret edebilirsiniz.** Rolünüze özel tüm modül bilgileri ve ipuçları orada yer almaktadır.';
     }

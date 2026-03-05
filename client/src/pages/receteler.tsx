@@ -594,8 +594,8 @@ export default function Receteler() {
 
   const filteredRecipes = useMemo(() => {
     return recipes.filter((recipe) => {
-      const matchesSearch = recipe.nameTr.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        recipe.code.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesSearch = recipe.nameTr.toLocaleLowerCase('tr-TR').includes(searchQuery.toLocaleLowerCase('tr-TR')) ||
+        recipe.code.toLocaleLowerCase('tr-TR').includes(searchQuery.toLocaleLowerCase('tr-TR'));
       const matchesCategory = selectedCategory === "all" 
         ? activeCategoryIds.has(recipe.categoryId)
         : recipe.categoryId === parseInt(selectedCategory);

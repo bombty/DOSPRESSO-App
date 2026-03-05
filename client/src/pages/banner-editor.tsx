@@ -614,7 +614,7 @@ export default function BannerEditor() {
       link.href = canvas.toDataURL("image/png");
       link.click();
 
-      toast({ title: "Banner indirildi!", description: "PNG dosyasi basariyla olusturuldu." });
+      toast({ title: "Banner indirildi!", description: "PNG dosyası başarıyla oluşturuldu." });
     } catch (error) {
       console.error("Export error:", error);
       toast({ title: "Hata", description: "Banner indirilemedi", variant: "destructive" });

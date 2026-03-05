@@ -271,8 +271,8 @@ function StokTab() {
   ];
 
   const filtered = inventoryItems.filter((item: any) => {
-    const matchesSearch = item.name?.toLowerCase().includes(search.toLowerCase()) ||
-      item.code?.toLowerCase().includes(search.toLowerCase());
+    const matchesSearch = item.name?.toLocaleLowerCase('tr-TR').includes(search.toLocaleLowerCase('tr-TR')) ||
+      item.code?.toLocaleLowerCase('tr-TR').includes(search.toLocaleLowerCase('tr-TR'));
     const matchesCategory = category === "all" || item.category === category;
     return matchesSearch && matchesCategory;
   });
@@ -2163,8 +2163,8 @@ function SalarySettingsSection({ employees, canEdit }: { employees: Employee[]; 
   });
 
   const filteredEmployees = employees.filter(emp => {
-    const name = `${emp.first_name} ${emp.last_name}`.toLowerCase();
-    return name.includes(searchTerm.toLowerCase());
+    const name = `${emp.first_name} ${emp.last_name}`.toLocaleLowerCase('tr-TR');
+    return name.includes(searchTerm.toLocaleLowerCase('tr-TR'));
   });
 
   const handleEdit = (emp: Employee) => {

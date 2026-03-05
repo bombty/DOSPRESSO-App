@@ -197,7 +197,7 @@ export default function CoachSubeDenetim() {
 
   const handleSubmit = () => {
     if (!selectedBranchId) {
-      toast({ title: "Hata", description: "Lutfen bir sube secin", variant: "destructive" });
+      toast({ title: "Hata", description: "Lütfen bir şube seçin", variant: "destructive" });
       return;
     }
 

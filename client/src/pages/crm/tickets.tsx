@@ -96,8 +96,8 @@ export default function CRMTickets() {
 
   const filteredTickets = tickets?.filter(ticket => {
     const matchesSearch = !searchQuery || 
-      ticket.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      ticket.branchName.toLowerCase().includes(searchQuery.toLowerCase());
+      ticket.title.toLocaleLowerCase('tr-TR').includes(searchQuery.toLocaleLowerCase('tr-TR')) ||
+      ticket.branchName.toLocaleLowerCase('tr-TR').includes(searchQuery.toLocaleLowerCase('tr-TR'));
     const matchesStatus = statusFilter === "all" || ticket.status === statusFilter;
     const matchesPriority = priorityFilter === "all" || ticket.priority === priorityFilter;
     const matchesUnassigned = !showUnassignedOnly || (!ticket.assignedTo && ticket.status !== 'resolved' && ticket.status !== 'closed');

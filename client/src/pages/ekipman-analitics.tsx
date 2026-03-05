@@ -37,7 +37,7 @@ export default function EquipmentAnalytics() {
     dusuk: "dusuk",
   };
 
-  const normalizePriority = (p: string | null | undefined) => priorityMap[(p || "").toLowerCase()] || "normal";
+  const normalizePriority = (p: string | null | undefined) => priorityMap[(p || "").toLocaleLowerCase('tr-TR')] || "normal";
 
   const faultsByPriority = {
     kritik: faults.filter(f => normalizePriority(f.priority) === "kritik").length,

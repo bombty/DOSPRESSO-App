@@ -2748,13 +2748,13 @@ function generateRecommendations(
 }
 
 function fuzzyMatch(input: string, target: string): number {
-  const a = input.toLowerCase().replace(/[^a-zçğıöşü0-9]/gi, "");
-  const b = target.toLowerCase().replace(/[^a-zçğıöşü0-9]/gi, "");
+  const a = input.toLocaleLowerCase('tr-TR').replace(/[^a-zçğıöşü0-9]/gi, "");
+  const b = target.toLocaleLowerCase('tr-TR').replace(/[^a-zçğıöşü0-9]/gi, "");
   if (a === b) return 1;
   if (b.includes(a) || a.includes(b)) return 0.8;
   
-  const aWords = input.toLowerCase().split(/\s+/);
-  const bWords = target.toLowerCase().split(/\s+/);
+  const aWords = input.toLocaleLowerCase('tr-TR').split(/\s+/);
+  const bWords = target.toLocaleLowerCase('tr-TR').split(/\s+/);
   let matchCount = 0;
   for (const aw of aWords) {
     for (const bw of bWords) {

@@ -276,7 +276,7 @@ export default function BranchKiosk() {
       }
     },
     onError: (error: any) => {
-      toast({ title: "Hata", description: error.message || "İslem basarisiz", variant: "destructive" });
+      toast({ title: "Hata", description: error.message || "İşlem başarısız", variant: "destructive" });
     },
   });
 

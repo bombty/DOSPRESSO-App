@@ -17,7 +17,7 @@ const router = Router();
 
 function isAdmin(req: any, res: any): boolean {
   if (!req.user || req.user.role !== "admin") {
-    res.status(403).json({ message: "Admin access required" });
+    res.status(403).json({ message: "Admin yetkisi gereklidir" });
     return false;
   }
   return true;
@@ -72,7 +72,7 @@ router.patch("/api/admin/employee-types/:id", isAuthenticated, async (req: any, 
     if (!isAdmin(req, res)) return;
 
     const id = parseInt(req.params.id);
-    if (isNaN(id)) return res.status(400).json({ message: "Invalid ID" });
+    if (isNaN(id)) return res.status(400).json({ message: "Geçersiz ID" });
 
     const [updated] = await db
       .update(employeeTypes)
@@ -80,7 +80,7 @@ router.patch("/api/admin/employee-types/:id", isAuthenticated, async (req: any, 
       .where(eq(employeeTypes.id, id))
       .returning();
 
-    if (!updated) return res.status(404).json({ message: "Employee type not found" });
+    if (!updated) return res.status(404).json({ message: "Çalışan tipi bulunamadı" });
     res.json(updated);
   } catch (error: any) {
     handleApiError(res, error, "Employee type update error");
@@ -92,7 +92,7 @@ router.delete("/api/admin/employee-types/:id", isAuthenticated, async (req: any,
     if (!isAdmin(req, res)) return;
 
     const id = parseInt(req.params.id);
-    if (isNaN(id)) return res.status(400).json({ message: "Invalid ID" });
+    if (isNaN(id)) return res.status(400).json({ message: "Geçersiz ID" });
 
     const [updated] = await db
       .update(employeeTypes)
@@ -100,8 +100,8 @@ router.delete("/api/admin/employee-types/:id", isAuthenticated, async (req: any,
       .where(eq(employeeTypes.id, id))
       .returning();
 
-    if (!updated) return res.status(404).json({ message: "Employee type not found" });
-    res.json({ message: "Employee type deactivated", id });
+    if (!updated) return res.status(404).json({ message: "Çalışan tipi bulunamadı" });
+    res.json({ message: "Çalışan tipi devre dışı bırakıldı", id });
   } catch (error: any) {
     handleApiError(res, error, "Employee type soft delete error");
   }
@@ -112,7 +112,7 @@ router.get("/api/admin/employee-types/:typeId/policies", isAuthenticated, async 
     if (!isAdmin(req, res)) return;
 
     const typeId = parseInt(req.params.typeId);
-    if (isNaN(typeId)) return res.status(400).json({ message: "Invalid type ID" });
+    if (isNaN(typeId)) return res.status(400).json({ message: "Geçersiz tip ID" });
 
     const policies = await db
       .select()
@@ -131,7 +131,7 @@ router.post("/api/admin/employee-types/:typeId/policies", isAuthenticated, async
     if (!isAdmin(req, res)) return;
 
     const typeId = parseInt(req.params.typeId);
-    if (isNaN(typeId)) return res.status(400).json({ message: "Invalid type ID" });
+    if (isNaN(typeId)) return res.status(400).json({ message: "Geçersiz tip ID" });
 
     const parsed = insertEmployeeTypePolicySchema.parse({
       ...req.body,
@@ -149,7 +149,7 @@ router.patch("/api/admin/employee-type-policies/:id", isAuthenticated, async (re
     if (!isAdmin(req, res)) return;
 
     const id = parseInt(req.params.id);
-    if (isNaN(id)) return res.status(400).json({ message: "Invalid ID" });
+    if (isNaN(id)) return res.status(400).json({ message: "Geçersiz ID" });
 
     const [updated] = await db
       .update(employeeTypePolicies)
@@ -157,7 +157,7 @@ router.patch("/api/admin/employee-type-policies/:id", isAuthenticated, async (re
       .where(eq(employeeTypePolicies.id, id))
       .returning();
 
-    if (!updated) return res.status(404).json({ message: "Policy not found" });
+    if (!updated) return res.status(404).json({ message: "Politika bulunamadı" });
     res.json(updated);
   } catch (error: any) {
     handleApiError(res, error, "Employee type policy update error");
@@ -169,15 +169,15 @@ router.delete("/api/admin/employee-type-policies/:id", isAuthenticated, async (r
     if (!isAdmin(req, res)) return;
 
     const id = parseInt(req.params.id);
-    if (isNaN(id)) return res.status(400).json({ message: "Invalid ID" });
+    if (isNaN(id)) return res.status(400).json({ message: "Geçersiz ID" });
 
     const [deleted] = await db
       .delete(employeeTypePolicies)
       .where(eq(employeeTypePolicies.id, id))
       .returning();
 
-    if (!deleted) return res.status(404).json({ message: "Policy not found" });
-    res.json({ message: "Policy deleted", id });
+    if (!deleted) return res.status(404).json({ message: "Politika bulunamadı" });
+    res.json({ message: "Politika silindi", id });
   } catch (error: any) {
     handleApiError(res, error, "Employee type policy delete error");
   }
@@ -225,7 +225,7 @@ router.patch("/api/admin/org-assignments/:id", isAuthenticated, async (req: any,
     if (!isAdmin(req, res)) return;
 
     const id = parseInt(req.params.id);
-    if (isNaN(id)) return res.status(400).json({ message: "Invalid ID" });
+    if (isNaN(id)) return res.status(400).json({ message: "Geçersiz ID" });
 
     const [updated] = await db
       .update(orgEmployeeTypeAssignments)
@@ -233,7 +233,7 @@ router.patch("/api/admin/org-assignments/:id", isAuthenticated, async (req: any,
       .where(eq(orgEmployeeTypeAssignments.id, id))
       .returning();
 
-    if (!updated) return res.status(404).json({ message: "Assignment not found" });
+    if (!updated) return res.status(404).json({ message: "Atama bulunamadı" });
     res.json(updated);
   } catch (error: any) {
     handleApiError(res, error, "Org assignment update error");
@@ -245,15 +245,15 @@ router.delete("/api/admin/org-assignments/:id", isAuthenticated, async (req: any
     if (!isAdmin(req, res)) return;
 
     const id = parseInt(req.params.id);
-    if (isNaN(id)) return res.status(400).json({ message: "Invalid ID" });
+    if (isNaN(id)) return res.status(400).json({ message: "Geçersiz ID" });
 
     const [deleted] = await db
       .delete(orgEmployeeTypeAssignments)
       .where(eq(orgEmployeeTypeAssignments.id, id))
       .returning();
 
-    if (!deleted) return res.status(404).json({ message: "Assignment not found" });
-    res.json({ message: "Assignment deleted", id });
+    if (!deleted) return res.status(404).json({ message: "Atama bulunamadı" });
+    res.json({ message: "Atama silindi", id });
   } catch (error: any) {
     handleApiError(res, error, "Org assignment delete error");
   }
@@ -264,7 +264,7 @@ router.patch("/api/admin/users/:userId/employee-type", isAuthenticated, async (r
     if (!isAdmin(req, res)) return;
 
     const userId = req.params.userId;
-    if (!userId) return res.status(400).json({ message: "Invalid user ID" });
+    if (!userId) return res.status(400).json({ message: "Geçersiz kullanıcı ID" });
 
     const { employeeTypeId } = req.body;
 
@@ -274,7 +274,7 @@ router.patch("/api/admin/users/:userId/employee-type", isAuthenticated, async (r
       .where(eq(users.id, userId))
       .returning({ id: users.id, employeeTypeId: users.employeeTypeId });
 
-    if (!updated) return res.status(404).json({ message: "User not found" });
+    if (!updated) return res.status(404).json({ message: "Kullanıcı bulunamadı" });
     res.json(updated);
   } catch (error: any) {
     handleApiError(res, error, "User employee type assign error");

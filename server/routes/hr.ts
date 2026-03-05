@@ -155,7 +155,7 @@ const router = Router();
       res.json(storedMetrics);
     } catch (error: any) {
       console.error("Error fetching performance metrics:", error);
-      res.status(500).json({ message: "Failed to fetch performance metrics" });
+      res.status(500).json({ message: "Performans metrikleri alınırken hata oluştu" });
     }
   });
 
@@ -166,7 +166,7 @@ const router = Router();
       res.json(latest);
     } catch (error: any) {
       console.error("Error fetching latest performance metrics:", error);
-      res.status(500).json({ message: "Failed to fetch latest performance metrics" });
+      res.status(500).json({ message: "Son performans metrikleri alınırken hata oluştu" });
     }
   });
 
@@ -740,7 +740,7 @@ const router = Router();
         return;
       }
       
-      const userRole = (user.role as string).toLowerCase();
+      const userRole = (user.role as string).toLocaleLowerCase('tr-TR');
       const filtered = modules.filter((m: any) => {
         if (!m.targetRoles || m.targetRoles.length === 0) return true;
         return m.targetRoles.includes(userRole);
@@ -749,7 +749,7 @@ const router = Router();
       res.json(filtered);
     } catch (error: any) {
       console.error("Error fetching training modules:", error);
-      res.status(500).json({ message: "Failed to fetch training modules" });
+      res.status(500).json({ message: "Eğitim modülleri alınırken hata oluştu" });
     }
   });
 
@@ -761,7 +761,7 @@ const router = Router();
       const module = await storage.getTrainingModule(moduleId);
       
       if (!module) {
-        return res.status(404).json({ message: "Module not found" });
+        return res.status(404).json({ message: "Modül bulunamadı" });
       }
 
       // Authorization: Only admin/coach can see unpublished modules
@@ -774,7 +774,7 @@ const router = Router();
       res.json(module);
     } catch (error: any) {
       console.error("Error fetching training module:", error);
-      res.status(500).json({ message: "Failed to fetch training module" });
+      res.status(500).json({ message: "Eğitim modülü alınırken hata oluştu" });
     }
   });
 
@@ -795,10 +795,10 @@ const router = Router();
       res.status(201).json(module);
     } catch (error: any) {
       if (error.name === "ZodError") {
-        return res.status(400).json({ message: "Validation error", errors: error.errors });
+        return res.status(400).json({ message: "Doğrulama hatası", errors: error.errors });
       }
       console.error("Error creating training module:", error);
-      res.status(500).json({ message: "Failed to create training module" });
+      res.status(500).json({ message: "Eğitim modülü oluşturulurken hata oluştu" });
     }
   });
 
@@ -815,16 +815,16 @@ const router = Router();
       const updated = await storage.updateTrainingModule(moduleId, validated);
       
       if (!updated) {
-        return res.status(404).json({ message: "Module not found" });
+        return res.status(404).json({ message: "Modül bulunamadı" });
       }
 
       res.json(updated);
     } catch (error: any) {
       if (error.name === "ZodError") {
-        return res.status(400).json({ message: "Validation error", errors: error.errors });
+        return res.status(400).json({ message: "Doğrulama hatası", errors: error.errors });
       }
       console.error("Error updating training module:", error);
-      res.status(500).json({ message: "Failed to update training module" });
+      res.status(500).json({ message: "Eğitim modülü güncellenirken hata oluştu" });
     }
   });
 
@@ -849,7 +849,7 @@ const router = Router();
       res.status(204).send();
     } catch (error: any) {
       console.error("Error deleting training module:", error);
-      res.status(500).json({ message: "Failed to delete training module" });
+      res.status(500).json({ message: "Eğitim modülü silinirken hata oluştu" });
     }
   });
 
@@ -900,8 +900,8 @@ const router = Router();
               title: moduleData.title,
               description: moduleData.description,
               code: moduleData.code,
-              slug: moduleData.code?.toLowerCase(),
-              category: role.name?.toLowerCase(),
+              slug: moduleData.code?.toLocaleLowerCase('tr-TR'),
+              category: role.name?.toLocaleLowerCase('tr-TR'),
               level: "beginner",
               estimatedDuration: moduleData.estimated_duration_min || 30,
               isPublished: false,
@@ -944,7 +944,7 @@ const router = Router();
       });
     } catch (error: any) {
       console.error("Error importing training modules:", error);
-      res.status(500).json({ message: "Failed to import training modules" });
+      res.status(500).json({ message: "Eğitim modülleri içe aktarılırken hata oluştu" });
     }
   });
 
@@ -1200,7 +1200,7 @@ const router = Router();
       const module = await storage.getTrainingModule(moduleId);
       
       if (!module) {
-        return res.status(404).json({ message: "Module not found" });
+        return res.status(404).json({ message: "Modül bulunamadı" });
       }
 
       // Stub: Return mock objectives (in production, would call OpenAI API)
@@ -1214,7 +1214,7 @@ const router = Router();
       res.json({ objectives });
     } catch (error: any) {
       console.error("Error generating objectives:", error);
-      res.status(500).json({ message: "Failed to generate objectives" });
+      res.status(500).json({ message: "Hedefler oluşturulurken hata oluştu" });
     }
   });
 
@@ -1472,10 +1472,10 @@ JSON formatında yanıt ver:
       res.status(201).json(video);
     } catch (error: any) {
       if (error.name === "ZodError") {
-        return res.status(400).json({ message: "Validation error", errors: error.errors });
+        return res.status(400).json({ message: "Doğrulama hatası", errors: error.errors });
       }
       console.error("Error creating module video:", error);
-      res.status(500).json({ message: "Failed to create module video" });
+      res.status(500).json({ message: "Modül videosu oluşturulurken hata oluştu" });
     }
   });
 
@@ -1488,7 +1488,7 @@ JSON formatında yanıt ver:
       // Check module exists and authorization (same as module detail endpoint)
       const module = await storage.getTrainingModule(moduleId);
       if (!module) {
-        return res.status(404).json({ message: "Module not found" });
+        return res.status(404).json({ message: "Modül bulunamadı" });
       }
 
       // Authorization: Only admin/coach can see lessons from unpublished modules
@@ -1524,7 +1524,7 @@ JSON formatında yanıt ver:
       res.status(201).json(lesson);
     } catch (error: any) {
       if (error.name === "ZodError") {
-        return res.status(400).json({ message: "Validation error", errors: error.errors });
+        return res.status(400).json({ message: "Doğrulama hatası", errors: error.errors });
       }
       console.error("Error creating module lesson:", error);
       res.status(500).json({ message: "Ders oluşturulamadı" });
@@ -1550,7 +1550,7 @@ JSON formatında yanıt ver:
       res.json(updated);
     } catch (error: any) {
       if (error.name === "ZodError") {
-        return res.status(400).json({ message: "Validation error", errors: error.errors });
+        return res.status(400).json({ message: "Doğrulama hatası", errors: error.errors });
       }
       console.error("Error updating module lesson:", error);
       res.status(500).json({ message: "Ders güncellenemedi" });
@@ -1664,10 +1664,10 @@ JSON formatında yanıt ver:
       res.status(201).json(quiz);
     } catch (error: any) {
       if (error.name === "ZodError") {
-        return res.status(400).json({ message: "Validation error", errors: error.errors });
+        return res.status(400).json({ message: "Doğrulama hatası", errors: error.errors });
       }
       console.error("Error creating module quiz:", error);
-      res.status(500).json({ message: "Failed to create module quiz" });
+      res.status(500).json({ message: "Modül sınavı oluşturulurken hata oluştu" });
     }
   });
 
@@ -1680,7 +1680,7 @@ JSON formatında yanıt ver:
       res.json(progress);
     } catch (error: any) {
       console.error("Error fetching training progress:", error);
-      res.status(500).json({ message: "Failed to fetch training progress" });
+      res.status(500).json({ message: "Eğitim ilerlemesi alınırken hata oluştu" });
     }
   });
 
@@ -1695,10 +1695,10 @@ JSON formatında yanıt ver:
       res.json(updated);
     } catch (error: any) {
       if (error.name === "ZodError") {
-        return res.status(400).json({ message: "Validation error", errors: error.errors });
+        return res.status(400).json({ message: "Doğrulama hatası", errors: error.errors });
       }
       console.error("Error updating training progress:", error);
-      res.status(500).json({ message: "Failed to update training progress" });
+      res.status(500).json({ message: "Eğitim ilerlemesi güncellenirken hata oluştu" });
     }
   });
 
@@ -1715,10 +1715,10 @@ JSON formatında yanıt ver:
       res.status(201).json(attempt);
     } catch (error: any) {
       if (error.name === "ZodError") {
-        return res.status(400).json({ message: "Validation error", errors: error.errors });
+        return res.status(400).json({ message: "Doğrulama hatası", errors: error.errors });
       }
       console.error("Error creating quiz attempt:", error);
-      res.status(500).json({ message: "Failed to create quiz attempt" });
+      res.status(500).json({ message: "Sınav denemesi oluşturulurken hata oluştu" });
     }
   });
 
@@ -1736,7 +1736,7 @@ JSON formatında yanıt ver:
       const updated = await storage.approveQuizAttempt(attemptId, user.id, status, feedback);
       
       if (!updated) {
-        return res.status(404).json({ message: "Quiz attempt not found" });
+        return res.status(404).json({ message: "Sınav denemesi bulunamadı" });
       }
 
       res.json(updated);
@@ -2607,7 +2607,7 @@ JSON formatında yanıt ver:
         const dueDate = new Date(startDate);
         dueDate.setDate(dueDate.getDate() + step.endDay);
 
-        const titleLower = step.title.toLowerCase();
+        const titleLower = step.title.toLocaleLowerCase('tr-TR');
         let taskType = 'training';
         if (titleLower.includes('oryantasyon') || titleLower.includes('orientation')) taskType = 'orientation';
         else if (titleLower.includes('eğitim') || titleLower.includes('training')) taskType = 'training';

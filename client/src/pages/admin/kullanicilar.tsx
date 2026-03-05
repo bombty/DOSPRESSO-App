@@ -31,34 +31,7 @@ import {
 } from "lucide-react";
 import { Link } from "wouter";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-
-const ROLE_LABELS: Record<string, string> = {
-  admin: "Admin",
-  ceo: "CEO",
-  cgo: "CGO",
-  muhasebe_ik: "Muhasebe & İK",
-  satinalma: "Satın Alma",
-  coach: "Coach",
-  marketing: "Marketing",
-  trainer: "Trainer (Eğitmen)",
-  kalite_kontrol: "Kalite Kontrol",
-  fabrika_mudur: "Fabrika Müdürü",
-  muhasebe: "Muhasebe",
-  teknik: "Teknik",
-  destek: "Destek",
-  fabrika: "Fabrika",
-  yatirimci_hq: "Yatırımcı HQ",
-  stajyer: "Stajyer",
-  bar_buddy: "Bar Buddy",
-  barista: "Barista",
-  supervisor_buddy: "Supervisor Buddy",
-  supervisor: "Supervisor",
-  mudur: "Müdür",
-  yatirimci_branch: "Yatırımcı",
-  fabrika_operator: "Fabrika Operatör",
-  fabrika_sorumlu: "Fabrika Sorumlu",
-  fabrika_personel: "Fabrika Personel",
-};
+import { ROLE_LABELS } from "@/lib/turkish-labels";
 
 const ROLE_COLORS: Record<string, string> = {
   admin: "bg-red-500/10 text-red-600 dark:text-red-400",
@@ -133,10 +106,10 @@ export default function AdminKullanicilar() {
       apiRequest("PATCH", `/api/admin/users/${userId}/employee-type`, { employeeTypeId }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/users"] });
-      toast({ title: "Personel tipi guncellendi" });
+      toast({ title: "Personel tipi güncellendi" });
     },
     onError: () => {
-      toast({ title: "Hata", description: "Personel tipi guncellenemedi", variant: "destructive" });
+      toast({ title: "Hata", description: "Personel tipi güncellenemedi", variant: "destructive" });
     },
   });
 
@@ -161,9 +134,9 @@ export default function AdminKullanicilar() {
 
   const filteredUsers = users.filter(u => {
     const matchesSearch = 
-      u.firstName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      u.lastName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      u.email?.toLowerCase().includes(searchTerm.toLowerCase());
+      u.firstName?.toLocaleLowerCase('tr-TR').includes(searchTerm.toLocaleLowerCase('tr-TR')) ||
+      u.lastName?.toLocaleLowerCase('tr-TR').includes(searchTerm.toLocaleLowerCase('tr-TR')) ||
+      u.email?.toLocaleLowerCase('tr-TR').includes(searchTerm.toLocaleLowerCase('tr-TR'));
     
     const matchesCategory = categoryFilter === "all" || getUserCategory(u.role) === categoryFilter;
     

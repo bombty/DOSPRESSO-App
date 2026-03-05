@@ -87,9 +87,9 @@ export default function ChecklistTrackingPage() {
 
   const filteredCompletions = completions.filter((c) => {
     if (searchTerm) {
-      const userName = `${c.user?.firstName || ''} ${c.user?.lastName || ''}`.toLowerCase();
-      const checklistName = c.checklist?.title?.toLowerCase() || '';
-      if (!userName.includes(searchTerm.toLowerCase()) && !checklistName.includes(searchTerm.toLowerCase())) {
+      const userName = `${c.user?.firstName || ''} ${c.user?.lastName || ''}`.toLocaleLowerCase('tr-TR');
+      const checklistName = c.checklist?.title?.toLocaleLowerCase('tr-TR') || '';
+      if (!userName.includes(searchTerm.toLocaleLowerCase('tr-TR')) && !checklistName.includes(searchTerm.toLocaleLowerCase('tr-TR'))) {
         return false;
       }
     }

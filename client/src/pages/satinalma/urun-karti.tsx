@@ -283,10 +283,10 @@ export default function UrunKarti({ productId, onBack }: UrunKartiProps) {
       queryClient.invalidateQueries({ queryKey: ['/api/inventory', productId, 'card'] });
       setIsAddSupplierOpen(false);
       setNewSupplierForm({ supplierId: "", unitPrice: "", minimumOrderQuantity: "1", leadTimeDays: "3", isPrimary: false });
-      toast({ title: "Tedarikci eklendi" });
+      toast({ title: "Tedarikçi eklendi" });
     },
     onError: () => {
-      toast({ title: "Hata", description: "Tedarikci eklenemedi", variant: "destructive" });
+      toast({ title: "Hata", description: "Tedarikçi eklenemedi", variant: "destructive" });
     },
   });
 
@@ -296,10 +296,10 @@ export default function UrunKarti({ productId, onBack }: UrunKartiProps) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/inventory', productId, 'card'] });
-      toast({ title: "Tedarikci baglantisi silindi" });
+      toast({ title: "Tedarikçi bağlantısı silindi" });
     },
     onError: () => {
-      toast({ title: "Hata", description: "Tedarikci silinemedi", variant: "destructive" });
+      toast({ title: "Hata", description: "Tedarikçi silinemedi", variant: "destructive" });
     },
   });
 
@@ -311,10 +311,10 @@ export default function UrunKarti({ productId, onBack }: UrunKartiProps) {
       queryClient.invalidateQueries({ queryKey: ['/api/inventory', productId, 'card'] });
       setIsAddQuoteOpen(false);
       setNewQuoteForm({ supplierId: "", unitPrice: "", minimumOrderQuantity: "1", leadTimeDays: "3", shippingCost: "0", paymentTermDays: "30", validUntil: "", notes: "" });
-      toast({ title: "Teklif talebi olusturuldu" });
+      toast({ title: "Teklif talebi oluşturuldu" });
     },
     onError: () => {
-      toast({ title: "Hata", description: "Teklif olusturulamadi", variant: "destructive" });
+      toast({ title: "Hata", description: "Teklif oluşturulamadı", variant: "destructive" });
     },
   });
 
@@ -326,17 +326,17 @@ export default function UrunKarti({ productId, onBack }: UrunKartiProps) {
       queryClient.invalidateQueries({ queryKey: ['/api/inventory', productId, 'card'] });
       setIsReportIssueOpen(false);
       setNewIssueForm({ supplierId: "", issueType: "", severity: "orta", description: "" });
-      toast({ title: "Sorun bildirimi olusturuldu" });
+      toast({ title: "Sorun bildirimi oluşturuldu" });
     },
     onError: () => {
-      toast({ title: "Hata", description: "Sorun bildirimi olusturulamadi", variant: "destructive" });
+      toast({ title: "Hata", description: "Sorun bildirimi oluşturulamadı", variant: "destructive" });
     },
   });
 
   const handleAddSupplier = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newSupplierForm.supplierId || !newSupplierForm.unitPrice) {
-      toast({ title: "Hata", description: "Tedarikci ve birim fiyat zorunludur", variant: "destructive" });
+      toast({ title: "Hata", description: "Tedarikçi ve birim fiyat zorunludur", variant: "destructive" });
       return;
     }
     addSupplierMutation.mutate({
@@ -351,7 +351,7 @@ export default function UrunKarti({ productId, onBack }: UrunKartiProps) {
   const handleAddQuote = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newQuoteForm.supplierId || !newQuoteForm.unitPrice) {
-      toast({ title: "Hata", description: "Tedarikci ve fiyat zorunludur", variant: "destructive" });
+      toast({ title: "Hata", description: "Tedarikçi ve fiyat zorunludur", variant: "destructive" });
       return;
     }
     addQuoteMutation.mutate({
@@ -371,7 +371,7 @@ export default function UrunKarti({ productId, onBack }: UrunKartiProps) {
   const handleReportIssue = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newIssueForm.supplierId || !newIssueForm.issueType || !newIssueForm.description) {
-      toast({ title: "Hata", description: "Tedarikci, sorun tipi ve aciklama zorunludur", variant: "destructive" });
+      toast({ title: "Hata", description: "Tedarikçi, sorun tipi ve açıklama zorunludur", variant: "destructive" });
       return;
     }
     reportIssueMutation.mutate({
@@ -693,7 +693,7 @@ export default function UrunKarti({ productId, onBack }: UrunKartiProps) {
                         </TableCell>
                         <TableCell>
                           <Badge variant={q.status === "aktif" ? "default" : "outline"}>
-                            {q.status === "aktif" ? "Aktif" : q.status === "suresi_doldu" ? "Suresi Doldu" : q.status}
+                            {q.status === "aktif" ? "Aktif" : q.status === "suresi_doldu" ? "Süresi Doldu" : q.status}
                           </Badge>
                         </TableCell>
                       </TableRow>
@@ -915,7 +915,7 @@ export default function UrunKarti({ productId, onBack }: UrunKartiProps) {
               <Label>Tedarikci</Label>
               <Select value={newSupplierForm.supplierId} onValueChange={(v) => setNewSupplierForm((p) => ({ ...p, supplierId: v }))}>
                 <SelectTrigger data-testid="select-supplier">
-                  <SelectValue placeholder="Tedarikci secin" />
+                  <SelectValue placeholder="Tedarikçi seçin" />
                 </SelectTrigger>
                 <SelectContent>
                   {allSuppliers?.map((s: any) => (
@@ -986,7 +986,7 @@ export default function UrunKarti({ productId, onBack }: UrunKartiProps) {
               <Label>Tedarikci</Label>
               <Select value={newQuoteForm.supplierId} onValueChange={(v) => setNewQuoteForm((p) => ({ ...p, supplierId: v }))}>
                 <SelectTrigger data-testid="select-quote-supplier">
-                  <SelectValue placeholder="Tedarikci secin" />
+                  <SelectValue placeholder="Tedarikçi seçin" />
                 </SelectTrigger>
                 <SelectContent>
                   {allSuppliers?.map((s: any) => (
@@ -1085,7 +1085,7 @@ export default function UrunKarti({ productId, onBack }: UrunKartiProps) {
               <Label>Tedarikci</Label>
               <Select value={newIssueForm.supplierId} onValueChange={(v) => setNewIssueForm((p) => ({ ...p, supplierId: v }))}>
                 <SelectTrigger data-testid="select-issue-supplier">
-                  <SelectValue placeholder="Tedarikci secin" />
+                  <SelectValue placeholder="Tedarikçi seçin" />
                 </SelectTrigger>
                 <SelectContent>
                   {allSuppliers?.map((s: any) => (
@@ -1106,13 +1106,13 @@ export default function UrunKarti({ productId, onBack }: UrunKartiProps) {
                     <SelectItem value="teslimat_gecikmesi">Teslimat Gecikmesi</SelectItem>
                     <SelectItem value="adet_eksik">Adet Eksik</SelectItem>
                     <SelectItem value="hasar">Hasar</SelectItem>
-                    <SelectItem value="yanlis_urun">Yanlis Urun</SelectItem>
-                    <SelectItem value="diger">Diger</SelectItem>
+                    <SelectItem value="yanlis_urun">Yanlış Ürün</SelectItem>
+                    <SelectItem value="diger">Diğer</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label>Onem Derecesi</Label>
+                <Label>Önem Derecesi</Label>
                 <Select value={newIssueForm.severity} onValueChange={(v) => setNewIssueForm((p) => ({ ...p, severity: v }))}>
                   <SelectTrigger data-testid="select-issue-severity">
                     <SelectValue placeholder="Seçin" />

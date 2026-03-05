@@ -763,7 +763,7 @@ function AIStrategist() {
     } catch (error) {
       toast({
         title: "Hata",
-        description: "AI yanit veremedi. Lutfen tekrar deneyin.",
+        description: "AI yanıt veremedi. Lütfen tekrar deneyin.",
         variant: "destructive"
       });
     } finally {
@@ -772,9 +772,9 @@ function AIStrategist() {
   };
 
   const suggestions = [
-    "Hangi subeler buyume potansiyeline sahip?",
-    "Departmanlar arasi koordinasyonu nasil gelistirebilirim?",
-    "Personel verimliligini artirmak icin ne yapmaliyim?",
+    "Hangi şubeler büyüme potansiyeline sahip?",
+    "Departmanlar arası koordinasyonu nasıl geliştirebilirim?",
+    "Personel verimliliğini artırmak için ne yapmalıyım?",
     "En kritik operasyonel riskler neler?",
   ];
 

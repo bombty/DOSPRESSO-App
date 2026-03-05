@@ -76,8 +76,8 @@ export default function MentorNotes() {
   });
 
   const filteredNotes = (notes || []).filter(note =>
-    note.employeeName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    note.content?.toLowerCase().includes(searchTerm.toLowerCase())
+    note.employeeName?.toLocaleLowerCase('tr-TR').includes(searchTerm.toLocaleLowerCase('tr-TR')) ||
+    note.content?.toLocaleLowerCase('tr-TR').includes(searchTerm.toLocaleLowerCase('tr-TR'))
   );
 
   if (isLoading) {

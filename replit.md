@@ -75,6 +75,7 @@ The frontend utilizes React 18+ with TypeScript and Vite, employing Shadcn/ui (N
 - **Feedback Form Settings**: Seeded settings for branches with categories, photo upload, location verification, multi-language support, and anonymous defaults.
 - **Feedback SLA System**: Hourly background job checks for overdue feedback responses and sends critical notifications with per-user DB-level deduplication (24h cooldown per recipient per feedback).
 - **Feedback Pattern Analysis**: Weekly job analyzes 30-day category averages per branch for alerts and improvement detection.
+- **Turkish Localization (Sprint 5)**: All ASCII Turkish errors fixed (~193 UI strings corrected with proper ü,ö,ş,ı,ğ,ç,İ). All `toLowerCase()`/`toUpperCase()` calls converted to `toLocaleLowerCase('tr-TR')`/`toLocaleUpperCase('tr-TR')` for proper Turkish I/İ handling. All English API error messages translated to Turkish. ROLE_LABELS centralized in single source `lib/turkish-labels.ts` (previously duplicated in 13 files). Hub page breadcrumbs added to PATH_LABELS.
 
 ## External Dependencies
 - **OpenAI API**: Used for AI-powered vision analysis, chat completions, embeddings, and summary generation.

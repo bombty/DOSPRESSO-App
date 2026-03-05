@@ -134,9 +134,9 @@ export default function AksiyonTakipPage() {
     let matches = true;
     
     if (searchQuery) {
-      const query = searchQuery.toLowerCase();
-      matches = capa.description.toLowerCase().includes(query) ||
-        capa.auditInstance?.branch?.name?.toLowerCase().includes(query) ||
+      const query = searchQuery.toLocaleLowerCase('tr-TR');
+      matches = capa.description.toLocaleLowerCase('tr-TR').includes(query) ||
+        capa.auditInstance?.branch?.name?.toLocaleLowerCase('tr-TR').includes(query) ||
         false;
     }
     

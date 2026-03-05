@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { ROLE_LABELS } from "@/lib/turkish-labels";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -82,17 +83,6 @@ interface OnboardingCheckin {
   checkinDate: string;
 }
 
-const ROLE_LABELS: Record<string, string> = {
-  stajyer: "Stajyer",
-  bar_buddy: "Bar Buddy",
-  barista: "Barista",
-  supervisor_buddy: "Supervisor Buddy",
-  supervisor: "Supervisor",
-  mudur: "Müdür",
-  fabrika_operator: "Fabrika Operatör",
-  fabrika_sorumlu: "Fabrika Sorumlu",
-  fabrika_personel: "Fabrika Personel",
-};
 
 const STATUS_CONFIG: Record<string, { label: string; variant: "default" | "secondary" | "outline" | "destructive" }> = {
   active: { label: "Aktif", variant: "default" },

@@ -278,7 +278,7 @@ export default function MuhasebeRaporlama() {
     if (importData.length < 2) return;
     setImportLoading(true);
     try {
-      const headers = importData[0].map(h => h.toLowerCase());
+      const headers = importData[0].map(h => h.toLocaleLowerCase('tr-TR'));
       const periodIdx = headers.findIndex(h => h.includes('dönem') || h.includes('period') || h.includes('donem'));
       const revenueIdx = headers.findIndex(h => h.includes('gelir') || h.includes('revenue'));
       const expensesIdx = headers.findIndex(h => h.includes('gider') || h.includes('expense'));
@@ -297,7 +297,7 @@ export default function MuhasebeRaporlama() {
           expenses: row[expensesIdx] || '0',
         };
         if (branchIdx >= 0 && row[branchIdx]) {
-          const matchBranch = (branches as any[])?.find((b: any) => b.name.toLowerCase().includes(row[branchIdx].toLowerCase()));
+          const matchBranch = (branches as any[])?.find((b: any) => b.name.toLocaleLowerCase('tr-TR').includes(row[branchIdx].toLocaleLowerCase('tr-TR')));
           if (matchBranch) data.branchId = matchBranch.id;
         }
         if (customerIdx >= 0 && row[customerIdx]) data.customerCount = parseInt(row[customerIdx]) || 0;

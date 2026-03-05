@@ -22,6 +22,7 @@ import {
 import type { Message, User } from "@shared/schema";
 import { isHQRole, isBranchRole, type UserRoleType } from "@shared/schema";
 import { useLocation } from "wouter";
+import { ROLE_LABELS } from "@/lib/turkish-labels";
 
 type ThreadSummary = {
   threadId: string;
@@ -89,14 +90,14 @@ export default function Mesajlar() {
     }
 
     if (debouncedSearch.trim()) {
-      const q = debouncedSearch.toLowerCase();
+      const q = debouncedSearch.toLocaleLowerCase('tr-TR');
       threads = threads.filter(
         (t) =>
-          t.subject.toLowerCase().includes(q) ||
-          t.lastMessageBody.toLowerCase().includes(q) ||
+          t.subject.toLocaleLowerCase('tr-TR').includes(q) ||
+          t.lastMessageBody.toLocaleLowerCase('tr-TR').includes(q) ||
           t.participants.some(
             (p) =>
-              `${p.firstName} ${p.lastName}`.toLowerCase().includes(q)
+              `${p.firstName} ${p.lastName}`.toLocaleLowerCase('tr-TR').includes(q)
           )
       );
     }
@@ -243,10 +244,10 @@ export default function Mesajlar() {
     const now = new Date();
     const diffMs = now.getTime() - d.getTime();
     const diffMins = Math.floor(diffMs / 60000);
-    if (diffMins < 1) return "Simdi";
+    if (diffMins < 1) return "Şimdi";
     if (diffMins < 60) return `${diffMins} dk`;
     if (diffMins < 1440) return `${Math.floor(diffMins / 60)} saat`;
-    if (diffMins < 2880) return "Dun";
+    if (diffMins < 2880) return "Dün";
     return d.toLocaleDateString("tr-TR", { day: "numeric", month: "short" });
   };
 
@@ -266,8 +267,8 @@ export default function Mesajlar() {
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const messageDay = new Date(d.getFullYear(), d.getMonth(), d.getDate());
     const diffDays = Math.floor((today.getTime() - messageDay.getTime()) / 86400000);
-    if (diffDays === 0) return "Bugun";
-    if (diffDays === 1) return "Dun";
+    if (diffDays === 0) return "Bugün";
+    if (diffDays === 1) return "Dün";
     return d.toLocaleDateString("tr-TR", { day: "numeric", month: "long", year: "numeric" });
   };
 
@@ -721,19 +722,6 @@ function NewMessageForm({
 
   const isHQ = currentUser && isHQRole(currentUser.role as UserRoleType);
 
-  const roleLabels: Record<string, string> = {
-    admin: "Admin", ceo: "CEO", cgo: "CGO", muhasebe_ik: "Muhasebe & IK",
-    satinalma: "Satın Alma", coach: "Coach", marketing: "Marketing",
-    trainer: "Trainer", kalite_kontrol: "Kalite Kontrol",
-    fabrika_mudur: "Fabrika Muduru", muhasebe: "Muhasebe", teknik: "Teknik",
-    destek: "Destek", fabrika: "Fabrika", yatirimci_hq: "Yatirimci HQ",
-    stajyer: "Stajyer", bar_buddy: "Bar Buddy", barista: "Barista",
-    supervisor_buddy: "Supervisor Buddy", supervisor: "Supervisor",
-    mudur: "Mudur", yatirimci_branch: "Yatirimci",
-    fabrika_operator: "Fabrika Operator", fabrika_sorumlu: "Fabrika Sorumlu",
-    fabrika_personel: "Fabrika Personel",
-  };
-
   const hqUsers = users.filter((u) => u.id !== currentUser?.id && isHQRole(u.role as UserRoleType));
   const branchPersonel = selectedBranchId
     ? users.filter((u) => u.branchId === parseInt(selectedBranchId) && u.id !== currentUser?.id)
@@ -807,7 +795,7 @@ function NewMessageForm({
                   ) : (
                     hqUsers.map((u) => (
                       <SelectItem key={u.id} value={u.id}>
-                        {u.firstName} {u.lastName} ({roleLabels[u.role || ""] || u.role})
+                        {u.firstName} {u.lastName} ({ROLE_LABELS[u.role || ""] || u.role})
                       </SelectItem>
                     ))
                   )}
@@ -853,7 +841,7 @@ function NewMessageForm({
                     ) : (
                       branchPersonel.map((u) => (
                         <SelectItem key={u.id} value={u.id}>
-                          {u.firstName} {u.lastName} ({roleLabels[u.role || ""] || u.role})
+                          {u.firstName} {u.lastName} ({ROLE_LABELS[u.role || ""] || u.role})
                         </SelectItem>
                       ))
                     )}
@@ -878,7 +866,7 @@ function NewMessageForm({
               ) : (
                 nonHqFilteredUsers.map((u) => (
                   <SelectItem key={u.id} value={u.id}>
-                    {u.firstName} {u.lastName} ({roleLabels[u.role || ""] || u.role})
+                    {u.firstName} {u.lastName} ({ROLE_LABELS[u.role || ""] || u.role})
                   </SelectItem>
                 ))
               )}

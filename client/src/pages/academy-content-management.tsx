@@ -137,7 +137,7 @@ export default function AcademyContentManagement() {
   const canDelete = user?.role && ["admin", "cgo"].includes(user.role);
 
   const filteredModules = (modules || []).filter((m) => {
-    if (searchQuery && !m.title.toLowerCase().includes(searchQuery.toLowerCase())) return false;
+    if (searchQuery && !m.title.toLocaleLowerCase('tr-TR').includes(searchQuery.toLocaleLowerCase('tr-TR'))) return false;
     if (statusFilter !== "all" && m.status !== statusFilter) return false;
     if (categoryFilter !== "all" && m.category !== categoryFilter) return false;
     return true;

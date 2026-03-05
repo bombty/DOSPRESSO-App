@@ -162,8 +162,8 @@ const qualityStatusLabels: Record<string, string> = {
   sartli_kabul: "Şartlı Kabul",
   uygun_degil: "Uygun Değil",
   beklemede: "Beklemede",
-  gecti: "Gecti",
-  kaldi: "Kaldi"
+  gecti: "Geçti",
+  kaldi: "Kaldı"
 };
 
 const emptyRow = (): ReceiptItemRow => ({
@@ -285,10 +285,10 @@ export default function MalKabul() {
       });
       setIsAddDialogOpen(false);
       resetAddForm();
-      toast({ title: "Mal kabul kaydi olusturuldu" });
+      toast({ title: "Mal kabul kaydı oluşturuldu" });
     },
     onError: () => {
-      toast({ title: "Hata", description: "Mal kabul kaydi olusturulamadi", variant: "destructive" });
+      toast({ title: "Hata", description: "Mal kabul kaydı oluşturulamadı", variant: "destructive" });
     }
   });
 
@@ -321,10 +321,10 @@ export default function MalKabul() {
       setQualityNotes("");
       setQcReceiptId(null);
       setQcItemStatuses({});
-      toast({ title: "Mal kabul durumu guncellendi" });
+      toast({ title: "Mal kabul durumu güncellendi" });
     },
     onError: () => {
-      toast({ title: "Hata", description: "Durum guncellenemedi", variant: "destructive" });
+      toast({ title: "Hata", description: "Durum güncellenemedi", variant: "destructive" });
     }
   });
 
@@ -519,8 +519,8 @@ export default function MalKabul() {
       sartli_kabul: { label: "Şartlı Kabul", variant: "secondary" },
       uygun_degil: { label: "Uygun Değil", variant: "destructive" },
       beklemede: { label: "Beklemede", variant: "outline" },
-      gecti: { label: "Gecti", variant: "default" },
-      kaldi: { label: "Kaldi", variant: "destructive" }
+      gecti: { label: "Geçti", variant: "default" },
+      kaldi: { label: "Kaldı", variant: "destructive" }
     };
     const config = map[s] || { label: s, variant: "outline" as const };
     return <Badge variant={config.variant}>{config.label}</Badge>;
@@ -646,7 +646,7 @@ export default function MalKabul() {
                   <Textarea 
                     id="notes" 
                     name="notes" 
-                    placeholder="Istege bagli aciklama"
+                    placeholder="İsteğe bağlı açıklama"
                     data-testid="input-receipt-notes"
                   />
                 </div>
@@ -734,7 +734,7 @@ export default function MalKabul() {
                               <Input
                                 value={row.notes}
                                 onChange={(e) => updateItemRow(index, "notes", e.target.value)}
-                                placeholder="Aciklama"
+                                placeholder="Açıklama"
                                 data-testid={`input-item-notes-${index}`}
                               />
                             </TableCell>
@@ -863,7 +863,7 @@ export default function MalKabul() {
               ) : (
                 <TableRow>
                   <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
-                    {status !== "all" ? "Bu durumda kayit yok" : "Henuz mal kabul kaydi yok"}
+                    {status !== "all" ? "Bu durumda kayıt yok" : "Henüz mal kabul kaydı yok"}
                   </TableCell>
                 </TableRow>
               )}

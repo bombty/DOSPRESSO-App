@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { ROLE_LABELS } from "@/lib/turkish-labels";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -49,13 +50,6 @@ interface PendingApproval {
   completedAt: string;
 }
 
-const ROLE_LABELS: Record<string, string> = {
-  stajyer: "Stajyer",
-  bar_buddy: "Bar Buddy",
-  barista: "Barista",
-  supervisor_buddy: "Supervisor Buddy",
-  supervisor: "Supervisor",
-};
 
 export default function SupervisorOnboarding() {
   const { toast } = useToast();

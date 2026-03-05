@@ -1134,9 +1134,9 @@ function RecipesTab({ recipes, recipeCategories, onEditRecipe, onAddRecipe, onEd
   
   const filteredRecipes = recipes.filter(r => {
     const matchesSearch = searchQuery === "" || 
-      r.nameTr.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (r.nameEn && r.nameEn.toLowerCase().includes(searchQuery.toLowerCase())) ||
-      (r.code && r.code.toLowerCase().includes(searchQuery.toLowerCase()));
+      r.nameTr.toLocaleLowerCase('tr-TR').includes(searchQuery.toLocaleLowerCase('tr-TR')) ||
+      (r.nameEn && r.nameEn.toLocaleLowerCase('tr-TR').includes(searchQuery.toLocaleLowerCase('tr-TR'))) ||
+      (r.code && r.code.toLocaleLowerCase('tr-TR').includes(searchQuery.toLocaleLowerCase('tr-TR')));
     const matchesCategory = filterCategoryId === null || r.categoryId === filterCategoryId;
     return matchesSearch && matchesCategory;
   });
@@ -1667,7 +1667,7 @@ function RecipeDialog({ open, onOpenChange, recipeId, categories, duplicatingRec
         : '/api/academy/recipes';
       const method = recipeId ? 'PATCH' : 'POST';
       
-      const code = data.code || data.nameTr.toUpperCase().substring(0, 3) + String(Date.now()).slice(-3);
+      const code = data.code || data.nameTr.toLocaleUpperCase('tr-TR').substring(0, 3) + String(Date.now()).slice(-3);
       
       const sizes = {
         massivo: {
@@ -2288,7 +2288,7 @@ function CategoryDialog({ open, onOpenChange, category }: {
         : '/api/academy/recipe-categories';
       const method = category ? 'PATCH' : 'POST';
       
-      const slug = data.slug || data.titleTr.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+      const slug = data.slug || data.titleTr.toLocaleLowerCase('tr-TR').replace(/\s+/g, '-').replace(/[^a-z0-9çğıöşü-]/g, '');
       
       const res = await fetch(url, {
         method,

@@ -761,7 +761,7 @@ function StockCountDetailDialog({
     const code = prompt("QR / Barkod kodunu girin:");
     if (code) {
       const foundItem = items.find(i =>
-        i.itemName.toLowerCase().includes(code.toLowerCase()) ||
+        i.itemName.toLocaleLowerCase('tr-TR').includes(code.toLocaleLowerCase('tr-TR')) ||
         String(i.itemId) === code
       );
       if (foundItem) {
@@ -774,7 +774,7 @@ function StockCountDetailDialog({
   };
 
   const filteredItems = searchQuery
-    ? items.filter(i => i.itemName.toLowerCase().includes(searchQuery.toLowerCase()))
+    ? items.filter(i => i.itemName.toLocaleLowerCase('tr-TR').includes(searchQuery.toLocaleLowerCase('tr-TR')))
     : items;
 
   const statusInfo = statusLabels[count.status] || { label: count.status, variant: "secondary" as const };

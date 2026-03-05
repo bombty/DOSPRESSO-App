@@ -94,7 +94,7 @@ function ensurePermission(user: unknown, module: string, action: string, errorMe
       if (error instanceof AuthorizationError) {
         return res.status(403).json({ message: error.message });
       }
-      res.status(500).json({ message: "Failed to fetch checklists" });
+      res.status(500).json({ message: "Checklist'ler alınırken hata oluştu" });
     }
   });
 
@@ -138,12 +138,12 @@ function ensurePermission(user: unknown, module: string, action: string, errorMe
     } catch (error: any) {
       console.error("Error creating checklist:", error);
       if (error.name === 'ZodError') {
-        return res.status(400).json({ message: "Invalid checklist data", errors: error.errors });
+        return res.status(400).json({ message: "Geçersiz checklist verisi", errors: error.errors });
       }
       if (error instanceof AuthorizationError) {
         return res.status(403).json({ message: error.message });
       }
-      res.status(500).json({ message: "Failed to create checklist" });
+      res.status(500).json({ message: "Checklist oluşturulurken hata oluştu" });
     }
   });
 
@@ -188,7 +188,7 @@ function ensurePermission(user: unknown, module: string, action: string, errorMe
     } catch (error: any) {
       console.error("Error updating checklist:", error);
       if (error.name === 'ZodError') {
-        return res.status(400).json({ message: "Invalid checklist data", errors: error.errors });
+        return res.status(400).json({ message: "Geçersiz checklist verisi", errors: error.errors });
       }
       res.status(500).json({ message: "Checklist güncellenemedi" });
     }
@@ -804,7 +804,7 @@ function ensurePermission(user: unknown, module: string, action: string, errorMe
       res.json(tasks);
     } catch (error: any) {
       console.error("Error fetching checklist tasks:", error);
-      res.status(500).json({ message: "Failed to fetch checklist tasks" });
+      res.status(500).json({ message: "Checklist görevleri alınırken hata oluştu" });
     }
   });
 
@@ -975,7 +975,7 @@ function ensurePermission(user: unknown, module: string, action: string, errorMe
       if (error instanceof AuthorizationError) {
         return res.status(403).json({ message: error.message });
       }
-      res.status(500).json({ message: "Failed to fetch faults" });
+      res.status(500).json({ message: "Arızalar alınırken hata oluştu" });
     }
   });
 
@@ -1104,12 +1104,12 @@ function ensurePermission(user: unknown, module: string, action: string, errorMe
     } catch (error: any) {
       console.error("Error creating fault:", error);
       if (error.name === 'ZodError') {
-        return res.status(400).json({ message: "Invalid fault data", errors: error.errors });
+        return res.status(400).json({ message: "Geçersiz arıza verisi", errors: error.errors });
       }
       if (error instanceof AuthorizationError) {
         return res.status(403).json({ message: error.message });
       }
-      res.status(500).json({ message: "Failed to create fault" });
+      res.status(500).json({ message: "Arıza kaydı oluşturulurken hata oluştu" });
     }
   });
 
@@ -1139,7 +1139,7 @@ function ensurePermission(user: unknown, module: string, action: string, errorMe
       // Authorization: Branch users can only update faults from their own branch
       const existingFault = await storage.getFault(id);
       if (!existingFault) {
-        return res.status(404).json({ message: "Fault not found" });
+        return res.status(404).json({ message: "Arıza bulunamadı" });
       }
       
       if (user.role && isBranchRole(user.role as UserRoleType)) {
@@ -1153,7 +1153,7 @@ function ensurePermission(user: unknown, module: string, action: string, errorMe
       if (photoUrl) {
         const fault = await storage.updateFault(id, { photoUrl });
         if (!fault) {
-          return res.status(404).json({ message: "Fault not found" });
+          return res.status(404).json({ message: "Arıza bulunamadı" });
         }
 
         try {
@@ -1179,7 +1179,7 @@ function ensurePermission(user: unknown, module: string, action: string, errorMe
       }
     } catch (error: any) {
       console.error("Error updating fault photo:", error);
-      res.status(500).json({ message: "Failed to update fault photo" });
+      res.status(500).json({ message: "Arıza fotoğrafı güncellenirken hata oluştu" });
     }
   });
 
@@ -1231,7 +1231,7 @@ function ensurePermission(user: unknown, module: string, action: string, errorMe
       // Authorization: Branch users can only resolve faults from their own branch
       const existingFault = await storage.getFault(id);
       if (!existingFault) {
-        return res.status(404).json({ message: "Fault not found" });
+        return res.status(404).json({ message: "Arıza bulunamadı" });
       }
       
       if (user.role && isBranchRole(user.role as UserRoleType)) {
@@ -1243,7 +1243,7 @@ function ensurePermission(user: unknown, module: string, action: string, errorMe
       
       const fault = await storage.resolveFault(id);
       if (!fault) {
-        return res.status(404).json({ message: "Fault not found" });
+        return res.status(404).json({ message: "Arıza bulunamadı" });
       }
       // Auto-resolve fault event tasks
       resolveEventTask('fault_reported', parseInt(req.params.id));
@@ -1251,7 +1251,7 @@ function ensurePermission(user: unknown, module: string, action: string, errorMe
       res.json(fault);
     } catch (error: any) {
       console.error("Error resolving fault:", error);
-      res.status(500).json({ message: "Failed to resolve fault" });
+      res.status(500).json({ message: "Arıza çözülürken hata oluştu" });
     }
   });
 
@@ -1270,13 +1270,13 @@ function ensurePermission(user: unknown, module: string, action: string, errorMe
       const { FAULT_STAGES } = await import('@shared/schema');
       const validStages = Object.values(FAULT_STAGES);
       if (!validStages.includes(stage)) {
-        return res.status(400).json({ message: "Invalid stage value" });
+        return res.status(400).json({ message: "Geçersiz aşama değeri" });
       }
       
       // Check permissions: branch vs hq_teknik
       const faultToUpdate = await storage.getFault(id);
       if (!faultToUpdate) {
-        return res.status(404).json({ message: "Fault not found" });
+        return res.status(404).json({ message: "Arıza bulunamadı" });
       }
       
       // Permission logic:
@@ -1302,7 +1302,7 @@ function ensurePermission(user: unknown, module: string, action: string, errorMe
       res.json(fault);
     } catch (error: any) {
       console.error("Error changing fault stage:", error);
-      res.status(500).json({ message: "Failed to change fault stage" });
+      res.status(500).json({ message: "Arıza aşaması değiştirilirken hata oluştu" });
     }
   });
 
@@ -1315,7 +1315,7 @@ function ensurePermission(user: unknown, module: string, action: string, errorMe
 
       const existingFault = await storage.getFault(id);
       if (!existingFault) {
-        return res.status(404).json({ message: "Fault not found" });
+        return res.status(404).json({ message: "Arıza bulunamadı" });
       }
 
       // Permission logic: branch users can only manage their own branch's faults
@@ -1356,7 +1356,7 @@ function ensurePermission(user: unknown, module: string, action: string, errorMe
       res.json(updated);
     } catch (error: any) {
       console.error("Error updating fault:", error);
-      res.status(500).json({ message: "Failed to update fault" });
+      res.status(500).json({ message: "Arıza güncellenirken hata oluştu" });
     }
   });
 
@@ -1368,7 +1368,7 @@ function ensurePermission(user: unknown, module: string, action: string, errorMe
       // Check permissions for viewing history
       const fault = await storage.getFault(id);
       if (!fault) {
-        return res.status(404).json({ message: "Fault not found" });
+        return res.status(404).json({ message: "Arıza bulunamadı" });
       }
       
       // Permission logic: same as stage change
@@ -1387,7 +1387,7 @@ function ensurePermission(user: unknown, module: string, action: string, errorMe
       res.json(history);
     } catch (error: any) {
       console.error("Error fetching fault history:", error);
-      res.status(500).json({ message: "Failed to fetch fault history" });
+      res.status(500).json({ message: "Arıza geçmişi alınırken hata oluştu" });
     }
   });
 
@@ -1395,7 +1395,7 @@ function ensurePermission(user: unknown, module: string, action: string, errorMe
     try {
       const faultId = parseInt(req.params.id);
       const fault = await storage.getFault(faultId);
-      if (!fault) return res.status(404).json({ message: "Fault not found" });
+      if (!fault) return res.status(404).json({ message: "Arıza bulunamadı" });
 
       const comments = await db.select().from(faultComments).where(eq(faultComments.faultId, faultId)).orderBy(faultComments.createdAt);
 
@@ -1406,7 +1406,7 @@ function ensurePermission(user: unknown, module: string, action: string, errorMe
       res.json(enriched);
     } catch (error: any) {
       console.error("Error fetching fault comments:", error);
-      res.status(500).json({ message: "Failed to fetch fault comments" });
+      res.status(500).json({ message: "Arıza yorumları alınırken hata oluştu" });
     }
   });
 
@@ -1421,7 +1421,7 @@ function ensurePermission(user: unknown, module: string, action: string, errorMe
       }
 
       const fault = await storage.getFault(faultId);
-      if (!fault) return res.status(404).json({ message: "Fault not found" });
+      if (!fault) return res.status(404).json({ message: "Arıza bulunamadı" });
 
       const [comment] = await db.insert(faultComments).values({
         faultId,
@@ -1434,7 +1434,7 @@ function ensurePermission(user: unknown, module: string, action: string, errorMe
       res.json(comment);
     } catch (error: any) {
       console.error("Error creating fault comment:", error);
-      res.status(500).json({ message: "Failed to create comment" });
+      res.status(500).json({ message: "Yorum oluşturulurken hata oluştu" });
     }
   });
 
@@ -1442,7 +1442,7 @@ function ensurePermission(user: unknown, module: string, action: string, errorMe
     try {
       const id = parseInt(req.params.id);
       const fault = await storage.getFault(id);
-      if (!fault) return res.status(404).json({ message: "Fault not found" });
+      if (!fault) return res.status(404).json({ message: "Arıza bulunamadı" });
 
       const history = await storage.getFaultStageHistory(id);
       const comments = await db.select().from(faultComments).where(eq(faultComments.faultId, id)).orderBy(faultComments.createdAt);
@@ -1474,7 +1474,7 @@ function ensurePermission(user: unknown, module: string, action: string, errorMe
       });
     } catch (error: any) {
       console.error("Error fetching fault detail:", error);
-      res.status(500).json({ message: "Failed to fetch fault detail" });
+      res.status(500).json({ message: "Arıza detayı alınırken hata oluştu" });
     }
   });
 
@@ -1704,7 +1704,7 @@ function ensurePermission(user: unknown, module: string, action: string, errorMe
       if (error instanceof AuthorizationError) {
         return res.status(403).json({ message: error.message });
       }
-      res.status(500).json({ message: "Failed to fetch service requests" });
+      res.status(500).json({ message: "Servis talepleri alınırken hata oluştu" });
     }
   });
 
@@ -1817,7 +1817,7 @@ function ensurePermission(user: unknown, module: string, action: string, errorMe
     } catch (error: any) {
       console.error("Error creating service request:", error);
       if (error.name === 'ZodError') {
-        return res.status(400).json({ message: "Invalid service request data", errors: error.errors });
+        return res.status(400).json({ message: "Geçersiz servis talebi verisi", errors: error.errors });
       }
       res.status(500).json({ message: "Servis talebi oluşturulamadı" });
     }
@@ -3378,8 +3378,8 @@ function ensurePermission(user: unknown, module: string, action: string, errorMe
         try {
           const firstName = (row['Ad*'] || row['Ad'] || '').toString().trim();
           const lastName = (row['Soyad*'] || row['Soyad'] || '').toString().trim();
-          const email = (row['Email*'] || row['Email'] || '').toString().trim().toLowerCase();
-          const role = (row['Rol*'] || row['Rol'] || '').toString().trim().toLowerCase();
+          const email = (row['Email*'] || row['Email'] || '').toString().trim().toLocaleLowerCase('tr-TR');
+          const role = (row['Rol*'] || row['Rol'] || '').toString().trim().toLocaleLowerCase('tr-TR');
           
           if (!firstName || !lastName) {
             results.errors.push(`Satır ${i + 2}: Ad ve soyad zorunludur`);

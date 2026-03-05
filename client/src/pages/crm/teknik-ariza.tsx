@@ -83,9 +83,9 @@ export default function TeknikAriza() {
   
   const displayFaults = (activeTab === "active" ? activeFaults : resolvedFaults)
     .filter(f => {
-      const matchesSearch = f.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        f.branchName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        f.equipmentName?.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesSearch = f.title?.toLocaleLowerCase('tr-TR').includes(searchTerm.toLocaleLowerCase('tr-TR')) ||
+        f.branchName?.toLocaleLowerCase('tr-TR').includes(searchTerm.toLocaleLowerCase('tr-TR')) ||
+        f.equipmentName?.toLocaleLowerCase('tr-TR').includes(searchTerm.toLocaleLowerCase('tr-TR'));
       const matchesStatus = statusFilter === "all" || f.status === statusFilter;
       return matchesSearch && matchesStatus;
     });

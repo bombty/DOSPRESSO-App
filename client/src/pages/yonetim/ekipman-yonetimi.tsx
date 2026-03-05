@@ -265,15 +265,15 @@ export default function EquipmentManagement() {
       
       // Search filter
       if (searchQuery.trim()) {
-        const query = searchQuery.toLowerCase();
+        const query = searchQuery.toLocaleLowerCase('tr-TR');
         filtered = filtered.filter(sr => {
           const eq = equipment.find(e => e.id === sr.equipmentId);
           const branch = branches.find(b => b.id === eq?.branchId);
           return (
-            sr.notes?.toLowerCase().includes(query) ||
-            sr.serviceProvider?.toLowerCase().includes(query) ||
-            eq?.equipmentType.toLowerCase().includes(query) ||
-            branch?.name.toLowerCase().includes(query)
+            sr.notes?.toLocaleLowerCase('tr-TR').includes(query) ||
+            sr.serviceProvider?.toLocaleLowerCase('tr-TR').includes(query) ||
+            eq?.equipmentType.toLocaleLowerCase('tr-TR').includes(query) ||
+            branch?.name.toLocaleLowerCase('tr-TR').includes(query)
           );
         });
       }

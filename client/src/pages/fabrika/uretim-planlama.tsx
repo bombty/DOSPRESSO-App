@@ -688,8 +688,8 @@ export default function FabrikaUretimPlanlama() {
               {(() => {
                 const filtered = productionHistory.filter(record => {
                   if (historyFilter.search) {
-                    const s = historyFilter.search.toLowerCase();
-                    if (!record.productionNumber?.toLowerCase().includes(s) && !record.notes?.toLowerCase().includes(s)) return false;
+                    const s = historyFilter.search.toLocaleLowerCase('tr-TR');
+                    if (!record.productionNumber?.toLocaleLowerCase('tr-TR').includes(s) && !record.notes?.toLocaleLowerCase('tr-TR').includes(s)) return false;
                   }
                   if (historyFilter.status !== 'all' && record.status !== historyFilter.status && record.status !== (historyFilter.status === 'completed' ? 'tamamlandi' : historyFilter.status === 'in_progress' ? 'devam_ediyor' : 'iptal')) return false;
                   if (historyFilter.dateFrom && new Date(record.productionDate) < new Date(historyFilter.dateFrom)) return false;

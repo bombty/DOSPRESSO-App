@@ -105,7 +105,7 @@ const router = Router();
       if (error instanceof AuthorizationError) {
         return res.status(403).json({ message: error.message });
       }
-      res.status(500).json({ message: "Failed to fetch equipment" });
+      res.status(500).json({ message: "Ekipman listesi alınırken hata oluştu" });
     }
   });
 
@@ -135,7 +135,7 @@ const router = Router();
       if (error instanceof AuthorizationError) {
         return res.status(403).json({ message: error.message });
       }
-      res.status(500).json({ message: "Failed to fetch critical equipment" });
+      res.status(500).json({ message: "Kritik ekipman listesi alınırken hata oluştu" });
     }
   });
 
@@ -148,7 +148,7 @@ const router = Router();
       
       const equipmentItem = await storage.getEquipmentById(id);
       if (!equipmentItem) {
-        return res.status(404).json({ message: "Equipment not found" });
+        return res.status(404).json({ message: "Ekipman bulunamadı" });
       }
 
       if (user.role && isBranchRole(user.role as UserRoleType)) {
@@ -176,7 +176,7 @@ const router = Router();
       if (error instanceof AuthorizationError) {
         return res.status(403).json({ message: error.message });
       }
-      res.status(500).json({ message: "Failed to fetch equipment" });
+      res.status(500).json({ message: "Ekipman bilgisi alınırken hata oluştu" });
     }
   });
 
@@ -209,7 +209,7 @@ const router = Router();
       res.json({ ...equipmentItem, qrCodeUrl });
     } catch (error: any) {
       console.error("Error creating equipment:", error);
-      res.status(500).json({ message: "Failed to create equipment" });
+      res.status(500).json({ message: "Ekipman oluşturulurken hata oluştu" });
     }
   });
 
@@ -222,7 +222,7 @@ const router = Router();
       
       const existingEquipment = await storage.getEquipmentById(id);
       if (!existingEquipment) {
-        return res.status(404).json({ message: "Equipment not found" });
+        return res.status(404).json({ message: "Ekipman bulunamadı" });
       }
       
       if (user.role && isBranchRole(user.role as UserRoleType)) {
@@ -248,7 +248,7 @@ const router = Router();
       res.json(equipmentItem);
     } catch (error: any) {
       console.error("Error updating equipment:", error);
-      res.status(500).json({ message: "Failed to update equipment" });
+      res.status(500).json({ message: "Ekipman güncellenirken hata oluştu" });
     }
   });
 
@@ -295,7 +295,7 @@ const router = Router();
       
       const equipmentItem = await storage.getEquipmentById(id);
       if (!equipmentItem) {
-        return res.status(404).json({ message: "Equipment not found" });
+        return res.status(404).json({ message: "Ekipman bulunamadı" });
       }
       
       if (user.role && isBranchRole(user.role as UserRoleType)) {
@@ -319,9 +319,9 @@ const router = Router();
     } catch (error: any) {
       console.error("Error logging maintenance:", error);
       if (error.name === 'ZodError') {
-        return res.status(400).json({ message: "Invalid maintenance log data", errors: error.errors });
+        return res.status(400).json({ message: "Geçersiz bakım kaydı verisi", errors: error.errors });
       }
-      res.status(500).json({ message: "Failed to log maintenance" });
+      res.status(500).json({ message: "Bakım kaydı oluşturulurken hata oluştu" });
     }
   });
 
@@ -334,7 +334,7 @@ const router = Router();
       
       const equipmentItem = await storage.getEquipmentById(id);
       if (!equipmentItem) {
-        return res.status(404).json({ message: "Equipment not found" });
+        return res.status(404).json({ message: "Ekipman bulunamadı" });
       }
       
       if (user.role && isBranchRole(user.role as UserRoleType)) {
@@ -354,9 +354,9 @@ const router = Router();
     } catch (error: any) {
       console.error("Error creating equipment comment:", error);
       if (error.name === 'ZodError') {
-        return res.status(400).json({ message: "Invalid comment data", errors: error.errors });
+        return res.status(400).json({ message: "Geçersiz yorum verisi", errors: error.errors });
       }
-      res.status(500).json({ message: "Failed to create comment" });
+      res.status(500).json({ message: "Yorum oluşturulurken hata oluştu" });
     }
   });
 
@@ -368,7 +368,7 @@ const router = Router();
       
       const equipmentItem = await storage.getEquipmentById(id);
       if (!equipmentItem) {
-        return res.status(404).json({ message: "Equipment not found" });
+        return res.status(404).json({ message: "Ekipman bulunamadı" });
       }
       
       if (user.role && isBranchRole(user.role as UserRoleType)) {
@@ -382,7 +382,7 @@ const router = Router();
       res.json(serviceRequests);
     } catch (error: any) {
       console.error("Error fetching service requests:", error);
-      res.status(500).json({ message: "Failed to fetch service requests" });
+      res.status(500).json({ message: "Servis talepleri alınırken hata oluştu" });
     }
   });
 
@@ -395,7 +395,7 @@ const router = Router();
       
       const equipmentItem = await storage.getEquipmentById(id);
       if (!equipmentItem) {
-        return res.status(404).json({ message: "Equipment not found" });
+        return res.status(404).json({ message: "Ekipman bulunamadı" });
       }
       
       if (user.role && isBranchRole(user.role as UserRoleType)) {
@@ -416,9 +416,9 @@ const router = Router();
     } catch (error: any) {
       console.error("Error creating service request:", error);
       if (error.name === 'ZodError') {
-        return res.status(400).json({ message: "Invalid service request data", errors: error.errors });
+        return res.status(400).json({ message: "Geçersiz servis talebi verisi", errors: error.errors });
       }
-      res.status(500).json({ message: "Failed to create service request" });
+      res.status(500).json({ message: "Servis talebi oluşturulurken hata oluştu" });
     }
   });
 
@@ -429,12 +429,12 @@ const router = Router();
       
       const serviceRequest = await storage.getServiceRequest(id);
       if (!serviceRequest) {
-        return res.status(404).json({ message: "Service request not found" });
+        return res.status(404).json({ message: "Servis talebi bulunamadı" });
       }
       
       const equipmentItem = await storage.getEquipmentById(serviceRequest.equipmentId);
       if (!equipmentItem) {
-        return res.status(404).json({ message: "Equipment not found" });
+        return res.status(404).json({ message: "Ekipman bulunamadı" });
       }
       
       if (user.role && isBranchRole(user.role as UserRoleType)) {
@@ -447,7 +447,7 @@ const router = Router();
       res.json(serviceRequest);
     } catch (error: any) {
       console.error("Error fetching service request:", error);
-      res.status(500).json({ message: "Failed to fetch service request" });
+      res.status(500).json({ message: "Servis talebi alınırken hata oluştu" });
     }
   });
 
@@ -458,12 +458,12 @@ const router = Router();
       
       const serviceRequest = await storage.getServiceRequest(id);
       if (!serviceRequest) {
-        return res.status(404).json({ message: "Service request not found" });
+        return res.status(404).json({ message: "Servis talebi bulunamadı" });
       }
       
       const equipmentItem = await storage.getEquipmentById(serviceRequest.equipmentId);
       if (!equipmentItem) {
-        return res.status(404).json({ message: "Equipment not found" });
+        return res.status(404).json({ message: "Ekipman bulunamadı" });
       }
       
       if (user.role && isBranchRole(user.role as UserRoleType)) {
@@ -478,9 +478,9 @@ const router = Router();
     } catch (error: any) {
       console.error("Error updating service request:", error);
       if (error.name === 'ZodError') {
-        return res.status(400).json({ message: "Invalid service request data", errors: error.errors });
+        return res.status(400).json({ message: "Geçersiz servis talebi verisi", errors: error.errors });
       }
-      res.status(500).json({ message: "Failed to update service request" });
+      res.status(500).json({ message: "Servis talebi güncellenirken hata oluştu" });
     }
   });
 
@@ -491,12 +491,12 @@ const router = Router();
       
       const serviceRequest = await storage.getServiceRequest(id);
       if (!serviceRequest) {
-        return res.status(404).json({ message: "Service request not found" });
+        return res.status(404).json({ message: "Servis talebi bulunamadı" });
       }
       
       const equipmentItem = await storage.getEquipmentById(serviceRequest.equipmentId);
       if (!equipmentItem) {
-        return res.status(404).json({ message: "Equipment not found" });
+        return res.status(404).json({ message: "Ekipman bulunamadı" });
       }
       
       if (user.role && isBranchRole(user.role as UserRoleType)) {
@@ -507,10 +507,10 @@ const router = Router();
       }
       
       await storage.deleteServiceRequest(id);
-      res.json({ message: "Service request deleted successfully" });
+      res.json({ message: "Servis talebi başarıyla silindi" });
     } catch (error: any) {
       console.error("Error deleting service request:", error);
-      res.status(500).json({ message: "Failed to delete service request" });
+      res.status(500).json({ message: "Servis talebi silinirken hata oluştu" });
     }
   });
 
@@ -522,17 +522,17 @@ const router = Router();
       const { newStatus, notes } = req.body;
       
       if (!newStatus) {
-        return res.status(400).json({ message: "newStatus is required" });
+        return res.status(400).json({ message: "Yeni durum değeri gereklidir" });
       }
       
       const serviceRequest = await storage.getServiceRequest(id);
       if (!serviceRequest) {
-        return res.status(404).json({ message: "Service request not found" });
+        return res.status(404).json({ message: "Servis talebi bulunamadı" });
       }
       
       const equipmentItem = await storage.getEquipmentById(serviceRequest.equipmentId);
       if (!equipmentItem) {
-        return res.status(404).json({ message: "Equipment not found" });
+        return res.status(404).json({ message: "Ekipman bulunamadı" });
       }
       
       if (user.role && isBranchRole(user.role as UserRoleType)) {
@@ -550,7 +550,7 @@ const router = Router();
       if (error.message?.includes("Invalid status transition")) {
         return res.status(400).json({ message: error.message });
       }
-      res.status(500).json({ message: "Failed to update service request status" });
+      res.status(500).json({ message: "Servis talebi durumu güncellenirken hata oluştu" });
     }
   });
 
@@ -563,12 +563,12 @@ const router = Router();
       
       const serviceRequest = await storage.getServiceRequest(id);
       if (!serviceRequest) {
-        return res.status(404).json({ message: "Service request not found" });
+        return res.status(404).json({ message: "Servis talebi bulunamadı" });
       }
       
       const equipmentItem = await storage.getEquipmentById(serviceRequest.equipmentId);
       if (!equipmentItem) {
-        return res.status(404).json({ message: "Equipment not found" });
+        return res.status(404).json({ message: "Ekipman bulunamadı" });
       }
       
       if (user.role && isBranchRole(user.role as UserRoleType)) {
@@ -588,7 +588,7 @@ const router = Router();
       res.json(updated);
     } catch (error: any) {
       console.error("Error adding timeline entry:", error);
-      res.status(500).json({ message: "Failed to add timeline entry" });
+      res.status(500).json({ message: "Zaman çizelgesi kaydı eklenirken hata oluştu" });
     }
   });
 

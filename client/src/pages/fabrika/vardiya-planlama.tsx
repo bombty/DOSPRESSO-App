@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { ROLE_LABELS } from "@/lib/turkish-labels";
 import { ConfirmDeleteDialog, useConfirmDelete } from "@/components/confirm-delete-dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -449,40 +450,13 @@ export default function FabrikaVardiyaPlanlama() {
 
   const filteredStaff = useMemo(() => {
     if (!staffSearch.trim()) return staffList;
-    const q = staffSearch.toLowerCase();
+    const q = staffSearch.toLocaleLowerCase('tr-TR');
     return staffList.filter((s: any) =>
-      `${s.firstName} ${s.lastName}`.toLowerCase().includes(q) ||
-      (s.role || "").toLowerCase().includes(q)
+      `${s.firstName} ${s.lastName}`.toLocaleLowerCase('tr-TR').includes(q) ||
+      (s.role || "").toLocaleLowerCase('tr-TR').includes(q)
     );
   }, [staffList, staffSearch]);
 
-  const ROLE_LABELS: Record<string, string> = {
-    admin: "Admin",
-    ceo: "CEO",
-    cgo: "CGO",
-    muhasebe_ik: "Muhasebe & İK",
-    satinalma: "Satın Alma",
-    coach: "Coach",
-    marketing: "Marketing",
-    trainer: "Trainer (Eğitmen)",
-    kalite_kontrol: "Kalite Kontrol",
-    fabrika_mudur: "Fabrika Müdürü",
-    muhasebe: "Muhasebe",
-    teknik: "Teknik",
-    destek: "Destek",
-    fabrika: "Fabrika",
-    yatirimci_hq: "Yatırımcı HQ",
-    stajyer: "Stajyer",
-    bar_buddy: "Bar Buddy",
-    barista: "Barista",
-    supervisor_buddy: "Supervisor Buddy",
-    supervisor: "Supervisor",
-    mudur: "Müdür",
-    yatirimci_branch: "Yatırımcı",
-    fabrika_operator: "Fabrika Operatör",
-    fabrika_sorumlu: "Fabrika Sorumlu",
-    fabrika_personel: "Fabrika Personel",
-  };
 
   function openEditShift(shift: any) {
     setEditingShift(shift);

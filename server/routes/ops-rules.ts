@@ -16,7 +16,7 @@ const router = Router();
 router.get("/api/ops-rules/evaluate", isAuthenticated, async (req, res) => {
   try {
     const user = req.user as any;
-    if (!user?.id) return res.status(401).json({ error: "Unauthorized" });
+    if (!user?.id) return res.status(401).json({ error: "Yetkilendirme gerekli" });
 
     const role = user.role as UserRoleType;
     let branchId = user.branchId;
@@ -62,7 +62,7 @@ router.get("/api/ops-rules/evaluate", isAuthenticated, async (req, res) => {
 router.get("/api/ops-rules", isAuthenticated, async (req, res) => {
   try {
     const user = req.user as any;
-    if (!user?.id) return res.status(401).json({ error: "Unauthorized" });
+    if (!user?.id) return res.status(401).json({ error: "Yetkilendirme gerekli" });
 
     const role = user.role as UserRoleType;
     if (!isHQRole(role) && role !== "admin") {

@@ -1401,17 +1401,17 @@ function HQEscalatedFaults({ faults, onNavigate }: { faults: any[]; onNavigate: 
     doc.setDrawColor(200, 200, 200);
     doc.line(14, y, pw - 14, y); y += 10;
     doc.setFont("helvetica", "bold");
-    doc.text(sanitizeTurkishPDF("Aciklama:"), 14, y); y += 7;
+    doc.text(sanitizeTurkishPDF("Açıklama:"), 14, y); y += 7;
     doc.setFont("helvetica", "normal");
-    const desc = fault.description || "Aciklama girilmedi";
+    const desc = fault.description || "Açıklama girilmedi";
     const splitDesc = doc.splitTextToSize(sanitizeTurkishPDF(desc), pw - 28);
     doc.text(splitDesc, 14, y);
     y += splitDesc.length * 6 + 10;
     doc.setFont("helvetica", "bold");
-    doc.text(sanitizeTurkishPDF("Servis Ileti Bilgisi:"), 14, y); y += 7;
+    doc.text(sanitizeTurkishPDF("Servis İleti Bilgisi:"), 14, y); y += 7;
     doc.setFont("helvetica", "normal");
-    doc.text(sanitizeTurkishPDF("Bu ariza raporu teknik servise iletilmek uzere hazirlanmistir."), 14, y); y += 7;
-    doc.text(sanitizeTurkishPDF("Lutfen gerekli islemi baslatin ve sisteme bildirim tarihi girin."), 14, y);
+    doc.text(sanitizeTurkishPDF("Bu arıza raporu teknik servise iletilmek üzere hazırlanmıştır."), 14, y); y += 7;
+    doc.text(sanitizeTurkishPDF("Lütfen gerekli işlemi başlatın ve sisteme bildirim tarihi girin."), 14, y);
     doc.setFontSize(9);
     doc.setTextColor(150, 150, 150);
     doc.text(`DOSPRESSO - ${format(new Date(), "dd/MM/yyyy HH:mm")}`, pw / 2, doc.internal.pageSize.getHeight() - 10, { align: "center" });
@@ -1644,7 +1644,7 @@ function GidaMuhendisiDashboard() {
   const faults: any[] = Array.isArray(faultsRaw) ? faultsRaw : (faultsRaw?.data || []);
   const hygieneFaults = faults.filter((f: any) => 
     f.category === 'hijyen' || f.category === 'gida_guvenligi' || 
-    f.description?.toLowerCase().includes('hijyen') || f.description?.toLowerCase().includes('gıda')
+    f.description?.toLocaleLowerCase('tr-TR').includes('hijyen') || f.description?.toLocaleLowerCase('tr-TR').includes('gıda')
   );
   const openHygieneFaults = hygieneFaults.filter((f: any) => f.status !== 'resolved' && f.status !== 'closed' && f.currentStage !== 'kapatildi');
 

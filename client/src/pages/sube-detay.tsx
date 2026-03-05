@@ -38,7 +38,7 @@ function KioskModeCard({ branchId }: { branchId: number }) {
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['/api/branches', branchId, 'kiosk', 'settings'] });
-      toast({ title: "Kiosk modu guncellendi", description: `Mod: ${data.kioskMode === 'qr' ? 'QR Kod' : 'PIN'}` });
+      toast({ title: "Kiosk modu güncellendi", description: `Mod: ${data.kioskMode === 'qr' ? 'QR Kod' : 'PIN'}` });
     },
     onError: (err: any) => {
       toast({ title: "Hata", description: err.message, variant: "destructive" });

@@ -15,6 +15,7 @@ import {
   Minus,
   GraduationCap,
 } from "lucide-react";
+import { ROLE_LABELS } from "@/lib/turkish-labels";
 
 interface GateInfo {
   gateNumber: number;
@@ -57,15 +58,6 @@ interface TeamProgressResponse {
   team: TeamMember[];
   mentorOnboardings: MentorOnboarding[];
 }
-
-const ROLE_LABELS: Record<string, string> = {
-  stajyer: "Stajyer",
-  bar_buddy: "Bar Buddy",
-  barista: "Barista",
-  supervisor_buddy: "Sup. Buddy",
-  supervisor: "Supervisor",
-  mudur: "Mudur",
-};
 
 const LEVEL_COLORS: Record<number, string> = {
   1: "bg-gray-100 dark:bg-gray-900/30 text-gray-700 dark:text-gray-300",

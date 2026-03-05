@@ -505,7 +505,7 @@ export async function generateEmployeeOfMonthCertificate(options: CertificateOpt
   doc.setFont("helvetica", "bold");
   doc.setFontSize(32);
   doc.setTextColor(30, 58, 95);
-  doc.text(sanitizeText(employeeName.toUpperCase()), pageWidth / 2, yPos, { align: "center" });
+  doc.text(sanitizeText(employeeName.toLocaleUpperCase('tr-TR')), pageWidth / 2, yPos, { align: "center" });
   yPos += 15;
   
   // Branch name
@@ -518,8 +518,8 @@ export async function generateEmployeeOfMonthCertificate(options: CertificateOpt
   // Description
   doc.setFontSize(12);
   doc.setTextColor(80, 80, 80);
-  const description = "Gostermis oldugunuz ustun performans, ozverili calisma ve takim ruhu ile";
-  const description2 = "bu basariyi hak ettiniz. Tebrik eder, basarilarinizin devamini dileriz.";
+  const description = "Göstermiş olduğunuz üstün performans, özverili çalışma ve takım ruhu ile";
+  const description2 = "bu başarıyı hak ettiniz. Tebrik eder, başarılarınızın devamını dileriz.";
   doc.text(description, pageWidth / 2, yPos, { align: "center" });
   yPos += 7;
   doc.text(description2, pageWidth / 2, yPos, { align: "center" });
@@ -548,9 +548,9 @@ export async function generateEmployeeOfMonthCertificate(options: CertificateOpt
   doc.setDrawColor(100, 100, 100);
   doc.line(pageWidth / 2 - 40, bottomY - 2, pageWidth / 2 + 40, bottomY - 2);
   doc.setFontSize(11);
-  doc.text("DOSPRESSO Yonetimi", pageWidth / 2, bottomY + 5, { align: "center" });
+  doc.text("DOSPRESSO Yönetimi", pageWidth / 2, bottomY + 5, { align: "center" });
   doc.setFontSize(9);
-  doc.text("Imza", pageWidth / 2, bottomY + 11, { align: "center" });
+  doc.text("İmza", pageWidth / 2, bottomY + 11, { align: "center" });
   
   // Certificate number
   if (certificateNo) {

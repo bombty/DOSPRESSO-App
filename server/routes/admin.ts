@@ -111,13 +111,13 @@ const router = Router();
     try {
       const user = req.user!;
       if (!user.role || !isHQRole(user.role as UserRoleType)) {
-        return res.status(403).json({ message: "Access denied" });
+        return res.status(403).json({ message: "Erişim reddedildi" });
       }
       const menu = await storage.listMenu();
       res.json(menu);
     } catch (error: any) {
       console.error("Error fetching menu:", error);
-      res.status(500).json({ message: "Failed to fetch menu" });
+      res.status(500).json({ message: "Menü alınırken hata oluştu" });
     }
   });
 
@@ -125,7 +125,7 @@ const router = Router();
     try {
       const user = req.user!;
       if (!user.role || !isHQRole(user.role as UserRoleType)) {
-        return res.status(403).json({ message: "Access denied" });
+        return res.status(403).json({ message: "Erişim reddedildi" });
       }
       const data = insertMenuSectionSchema.parse(req.body);
       const section = await storage.createMenuSection(data);
@@ -133,9 +133,9 @@ const router = Router();
     } catch (error: any) {
       console.error("Error creating menu section:", error);
       if (error.name === 'ZodError') {
-        return res.status(400).json({ message: "Invalid menu section data", errors: error.errors });
+        return res.status(400).json({ message: "Geçersiz menü bölümü verisi", errors: error.errors });
       }
-      res.status(500).json({ message: "Failed to create menu section" });
+      res.status(500).json({ message: "Menü bölümü oluşturulurken hata oluştu" });
     }
   });
 
@@ -143,7 +143,7 @@ const router = Router();
     try {
       const user = req.user!;
       if (!user.role || !isHQRole(user.role as UserRoleType)) {
-        return res.status(403).json({ message: "Access denied" });
+        return res.status(403).json({ message: "Erişim reddedildi" });
       }
       const id = parseInt(req.params.id);
       const data = insertMenuSectionSchema.partial().parse(req.body);
@@ -152,9 +152,9 @@ const router = Router();
     } catch (error: any) {
       console.error("Error updating menu section:", error);
       if (error.name === 'ZodError') {
-        return res.status(400).json({ message: "Invalid menu section data", errors: error.errors });
+        return res.status(400).json({ message: "Geçersiz menü bölümü verisi", errors: error.errors });
       }
-      res.status(500).json({ message: "Failed to update menu section" });
+      res.status(500).json({ message: "Menü bölümü güncellenirken hata oluştu" });
     }
   });
 
@@ -162,14 +162,14 @@ const router = Router();
     try {
       const user = req.user!;
       if (!user.role || !isHQRole(user.role as UserRoleType)) {
-        return res.status(403).json({ message: "Access denied" });
+        return res.status(403).json({ message: "Erişim reddedildi" });
       }
       const id = parseInt(req.params.id);
       await storage.deleteMenuSection(id);
       res.status(204).send();
     } catch (error: any) {
       console.error("Error deleting menu section:", error);
-      res.status(500).json({ message: "Failed to delete menu section" });
+      res.status(500).json({ message: "Menü bölümü silinirken hata oluştu" });
     }
   });
 
@@ -177,17 +177,17 @@ const router = Router();
     try {
       const user = req.user!;
       if (!user.role || !isHQRole(user.role as UserRoleType)) {
-        return res.status(403).json({ message: "Access denied" });
+        return res.status(403).json({ message: "Erişim reddedildi" });
       }
       const { sectionIds } = req.body;
       if (!Array.isArray(sectionIds) || !sectionIds.every(id => typeof id === 'number')) {
-        return res.status(400).json({ message: "Invalid sectionIds array" });
+        return res.status(400).json({ message: "Geçersiz bölüm ID dizisi" });
       }
       await storage.reorderMenuSections(sectionIds);
       res.status(204).send();
     } catch (error: any) {
       console.error("Error reordering menu sections:", error);
-      res.status(500).json({ message: "Failed to reorder menu sections" });
+      res.status(500).json({ message: "Menü bölümleri sıralanırken hata oluştu" });
     }
   });
 
@@ -195,7 +195,7 @@ const router = Router();
     try {
       const user = req.user!;
       if (!user.role || !isHQRole(user.role as UserRoleType)) {
-        return res.status(403).json({ message: "Access denied" });
+        return res.status(403).json({ message: "Erişim reddedildi" });
       }
       const data = insertMenuItemSchema.parse(req.body);
       const item = await storage.createMenuItem(data);
@@ -203,9 +203,9 @@ const router = Router();
     } catch (error: any) {
       console.error("Error creating menu item:", error);
       if (error.name === 'ZodError') {
-        return res.status(400).json({ message: "Invalid menu item data", errors: error.errors });
+        return res.status(400).json({ message: "Geçersiz menü öğesi verisi", errors: error.errors });
       }
-      res.status(500).json({ message: "Failed to create menu item" });
+      res.status(500).json({ message: "Menü öğesi oluşturulurken hata oluştu" });
     }
   });
 
@@ -213,7 +213,7 @@ const router = Router();
     try {
       const user = req.user!;
       if (!user.role || !isHQRole(user.role as UserRoleType)) {
-        return res.status(403).json({ message: "Access denied" });
+        return res.status(403).json({ message: "Erişim reddedildi" });
       }
       const id = parseInt(req.params.id);
       const data = insertMenuItemSchema.partial().parse(req.body);
@@ -222,9 +222,9 @@ const router = Router();
     } catch (error: any) {
       console.error("Error updating menu item:", error);
       if (error.name === 'ZodError') {
-        return res.status(400).json({ message: "Invalid menu item data", errors: error.errors });
+        return res.status(400).json({ message: "Geçersiz menü öğesi verisi", errors: error.errors });
       }
-      res.status(500).json({ message: "Failed to update menu item" });
+      res.status(500).json({ message: "Menü öğesi güncellenirken hata oluştu" });
     }
   });
 
@@ -232,14 +232,14 @@ const router = Router();
     try {
       const user = req.user!;
       if (!user.role || !isHQRole(user.role as UserRoleType)) {
-        return res.status(403).json({ message: "Access denied" });
+        return res.status(403).json({ message: "Erişim reddedildi" });
       }
       const id = parseInt(req.params.id);
       await storage.deleteMenuItem(id);
       res.status(204).send();
     } catch (error: any) {
       console.error("Error deleting menu item:", error);
-      res.status(500).json({ message: "Failed to delete menu item" });
+      res.status(500).json({ message: "Menü öğesi silinirken hata oluştu" });
     }
   });
 
@@ -247,17 +247,17 @@ const router = Router();
     try {
       const user = req.user!;
       if (!user.role || !isHQRole(user.role as UserRoleType)) {
-        return res.status(403).json({ message: "Access denied" });
+        return res.status(403).json({ message: "Erişim reddedildi" });
       }
       const { sectionId, itemIds } = req.body;
       if (typeof sectionId !== 'number' || !Array.isArray(itemIds) || !itemIds.every(id => typeof id === 'number')) {
-        return res.status(400).json({ message: "Invalid sectionId or itemIds array" });
+        return res.status(400).json({ message: "Geçersiz bölüm ID veya öğe ID dizisi" });
       }
       await storage.reorderMenuItems(sectionId, itemIds);
       res.status(204).send();
     } catch (error: any) {
       console.error("Error reordering menu items:", error);
-      res.status(500).json({ message: "Failed to reorder menu items" });
+      res.status(500).json({ message: "Menü öğeleri sıralanırken hata oluştu" });
     }
   });
 
@@ -265,7 +265,7 @@ const router = Router();
     try {
       const user = req.user!;
       if (!user.role || !isHQRole(user.role as UserRoleType)) {
-        return res.status(403).json({ message: "Access denied" });
+        return res.status(403).json({ message: "Erişim reddedildi" });
       }
       const data = insertMenuVisibilityRuleSchema.parse(req.body);
       const rule = await storage.createVisibilityRule(data);
@@ -273,9 +273,9 @@ const router = Router();
     } catch (error: any) {
       console.error("Error creating visibility rule:", error);
       if (error.name === 'ZodError') {
-        return res.status(400).json({ message: "Invalid visibility rule data", errors: error.errors });
+        return res.status(400).json({ message: "Geçersiz görünürlük kuralı verisi", errors: error.errors });
       }
-      res.status(500).json({ message: "Failed to create visibility rule" });
+      res.status(500).json({ message: "Görünürlük kuralı oluşturulurken hata oluştu" });
     }
   });
 
@@ -283,14 +283,14 @@ const router = Router();
     try {
       const user = req.user!;
       if (!user.role || !isHQRole(user.role as UserRoleType)) {
-        return res.status(403).json({ message: "Access denied" });
+        return res.status(403).json({ message: "Erişim reddedildi" });
       }
       const id = parseInt(req.params.id);
       await storage.deleteVisibilityRule(id);
       res.status(204).send();
     } catch (error: any) {
       console.error("Error deleting visibility rule:", error);
-      res.status(500).json({ message: "Failed to delete visibility rule" });
+      res.status(500).json({ message: "Görünürlük kuralı silinirken hata oluştu" });
     }
   });
 
@@ -305,7 +305,7 @@ const router = Router();
       res.json(contents);
     } catch (error: any) {
       console.error("Error fetching page content:", error);
-      res.status(500).json({ message: "Failed to fetch page content" });
+      res.status(500).json({ message: "Sayfa içeriği alınırken hata oluştu" });
     }
   });
 
@@ -323,7 +323,7 @@ const router = Router();
       res.json(content);
     } catch (error: any) {
       console.error("Error fetching page content:", error);
-      res.status(500).json({ message: "Failed to fetch page content" });
+      res.status(500).json({ message: "Sayfa içeriği alınırken hata oluştu" });
     }
   });
 
@@ -347,7 +347,7 @@ const router = Router();
       if (error.name === 'ZodError') {
         return res.status(400).json({ message: "Geçersiz veri", errors: error.errors });
       }
-      res.status(500).json({ message: "Failed to create page content" });
+      res.status(500).json({ message: "Sayfa içeriği oluşturulurken hata oluştu" });
     }
   });
 
@@ -373,10 +373,10 @@ const router = Router();
       if (error.name === 'ZodError') {
         return res.status(400).json({ message: "Geçersiz veri", errors: error.errors });
       }
-      if (error instanceof Error && error.message === "Content not found") {
+      if (error instanceof Error && error.message === "İçerik bulunamadı") {
         return res.status(404).json({ message: "İçerik bulunamadı" });
       }
-      res.status(500).json({ message: "Failed to update page content" });
+      res.status(500).json({ message: "Sayfa içeriği güncellenirken hata oluştu" });
     }
   });
 
@@ -391,7 +391,7 @@ const router = Router();
       res.status(204).send();
     } catch (error: any) {
       console.error("Error deleting page content:", error);
-      res.status(500).json({ message: "Failed to delete page content" });
+      res.status(500).json({ message: "Sayfa içeriği silinirken hata oluştu" });
     }
   });
 
@@ -410,7 +410,7 @@ const router = Router();
       });
     } catch (error: any) {
       console.error("Error fetching branding:", error);
-      res.status(500).json({ message: "Failed to fetch branding" });
+      res.status(500).json({ message: "Marka bilgileri alınırken hata oluştu" });
     }
   });
 
@@ -439,7 +439,7 @@ const router = Router();
       if (error.name === 'ZodError') {
         return res.status(400).json({ message: "Geçersiz veri", errors: error.errors });
       }
-      res.status(500).json({ message: "Failed to update logo" });
+      res.status(500).json({ message: "Logo güncellenirken hata oluştu" });
     }
   });
 
@@ -523,7 +523,7 @@ const router = Router();
       res.json(filteredUsers);
     } catch (error: any) {
       console.error("Error fetching users:", error);
-      res.status(500).json({ message: "Failed to fetch users" });
+      res.status(500).json({ message: "Kullanıcılar alınırken hata oluştu" });
     }
   });
 
@@ -557,7 +557,7 @@ const router = Router();
       if (error.name === 'ZodError') {
         return res.status(400).json({ message: "Geçersiz veri", errors: error.errors });
       }
-      res.status(500).json({ message: "Failed to update user" });
+      res.status(500).json({ message: "Kullanıcı güncellenirken hata oluştu" });
     }
   });
 
@@ -634,7 +634,7 @@ const router = Router();
       if (error.name === 'ZodError') {
         return res.status(400).json({ message: "Geçersiz CSV verisi", errors: error.errors });
       }
-      res.status(500).json({ message: "Failed to import users" });
+      res.status(500).json({ message: "Kullanıcılar içe aktarılırken hata oluştu" });
     }
   });
 
@@ -2958,7 +2958,7 @@ const router = Router();
       res.json({ ok: true, userId, insertedId: created.id, countForUser });
     } catch (err: any) {
       console.error("Test notification error:", err);
-      res.status(500).json({ error: "Failed to create test notification" });
+      res.status(500).json({ error: "Test bildirimi oluşturulurken hata oluştu" });
     }
   });
 

@@ -705,7 +705,7 @@ function TicketDetailDialog({
 
   const handleConfirmClose = () => {
     if (selectedRating < 1) {
-      toast({ title: "Uyari", description: "Lutfen bir puan seciniz", variant: "destructive" });
+      toast({ title: "Uyarı", description: "Lütfen bir puan seçiniz", variant: "destructive" });
       return;
     }
     closeTicketMutation.mutate(selectedRating);

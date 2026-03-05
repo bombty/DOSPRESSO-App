@@ -1476,7 +1476,7 @@ export default function MaliyetYonetimi() {
     const ing = aiIngredients[idx];
     setNewMaterialForIdx(idx);
     setNewMaterialName(ing?.originalName || "");
-    setNewMaterialCode("HM-" + (ing?.originalName || "").toUpperCase().replace(/\s+/g, "-").substring(0, 15));
+    setNewMaterialCode("HM-" + (ing?.originalName || "").toLocaleUpperCase('tr-TR').replace(/\s+/g, "-").substring(0, 15));
     setNewMaterialUnit(ing?.unit || "gr");
     setNewMaterialCategory("Genel");
     setNewMaterialPrice("0");

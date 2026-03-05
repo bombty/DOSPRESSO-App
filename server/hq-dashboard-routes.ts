@@ -239,8 +239,8 @@ export function registerHQDashboardRoutes(app: Express, isAuthenticated: any) {
     const hqManagers = allUsers.filter(u => {
       if (!hqRoleSet.has(u.role) || !u.isActive) return false;
       const name = ((u.firstName || '') + ' ' + (u.lastName || '')).trim();
-      if (!name || seenNames.has(name.toLowerCase())) return false;
-      seenNames.add(name.toLowerCase());
+      if (!name || seenNames.has(name.toLocaleLowerCase('tr-TR'))) return false;
+      seenNames.add(name.toLocaleLowerCase('tr-TR'));
       if (u.username && /^(test|e2e|api[-_])/i.test(u.username)) return false;
       if (/^(Test |E2E |API |Admin )/i.test(name)) return false;
       return true;

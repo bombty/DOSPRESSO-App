@@ -5,6 +5,7 @@ import { ConfirmDeleteDialog, useConfirmDelete } from "@/components/confirm-dele
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { invalidateMenuCache } from "@/components/app-sidebar";
+import { ROLE_LABELS } from "@/lib/turkish-labels";
 import { 
   type MenuSection, 
   type MenuItem, 
@@ -95,34 +96,6 @@ const lucideIconOptions = [
 
 // Role options for visibility rules
 const ALL_ROLES = Object.values(UserRole);
-
-const roleLabels: Record<string, string> = {
-  [UserRole.ADMIN]: "Admin",
-  [UserRole.CEO]: "CEO",
-  [UserRole.CGO]: "CGO",
-  [UserRole.MUHASEBE_IK]: "Muhasebe & İK",
-  [UserRole.SATINALMA]: "Satın Alma",
-  [UserRole.COACH]: "Coach",
-  [UserRole.MARKETING]: "Marketing",
-  [UserRole.TRAINER]: "Trainer (Eğitmen)",
-  [UserRole.KALITE_KONTROL]: "Kalite Kontrol",
-  [UserRole.FABRIKA_MUDUR]: "Fabrika Müdürü",
-  [UserRole.MUHASEBE]: "Muhasebe",
-  [UserRole.TEKNIK]: "Teknik",
-  [UserRole.DESTEK]: "Destek",
-  [UserRole.FABRIKA]: "Fabrika",
-  [UserRole.YATIRIMCI_HQ]: "Yatırımcı HQ",
-  [UserRole.STAJYER]: "Stajyer",
-  [UserRole.BAR_BUDDY]: "Bar Buddy",
-  [UserRole.BARISTA]: "Barista",
-  [UserRole.SUPERVISOR_BUDDY]: "Supervisor Buddy",
-  [UserRole.SUPERVISOR]: "Supervisor",
-  [UserRole.MUDUR]: "Müdür",
-  [UserRole.YATIRIMCI_BRANCH]: "Yatırımcı",
-  [UserRole.FABRIKA_OPERATOR]: "Fabrika Operatör",
-  [UserRole.FABRIKA_SORUMLU]: "Fabrika Sorumlu",
-  [UserRole.FABRIKA_PERSONEL]: "Fabrika Personel",
-};
 
 // Sortable Section Component
 function SortableSection({ 
@@ -1043,7 +1016,7 @@ export default function AdminMenuManagement() {
                           {rule.allow ? "İzin Ver" : "Reddet"}
                         </Badge>
                         <span className="text-sm">
-                          {rule.ruleType === 'role' && `Rol: ${roleLabels[rule.role || ''] || rule.role}`}
+                          {rule.ruleType === 'role' && `Rol: ${ROLE_LABELS[rule.role || ''] || rule.role}`}
                           {rule.ruleType === 'user' && `Kullanıcı ID: ${rule.userId}`}
                           {rule.ruleType === 'branch' && `Şube ID: ${rule.branchId}`}
                         </span>
@@ -1122,7 +1095,7 @@ export default function AdminMenuManagement() {
                                         : [...current, role]
                                     );
                                   }}>
-                                    {roleLabels[role]}
+                                    {ROLE_LABELS[role]}
                                   </label>
                                 </div>
                               ))}

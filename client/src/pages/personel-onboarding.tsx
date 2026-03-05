@@ -176,8 +176,8 @@ export default function PersonelOnboardingPage() {
     return onboardingRecords.filter((record) => {
       if (statusFilter !== "all" && record.status !== statusFilter) return false;
       if (searchText) {
-        const search = searchText.toLowerCase();
-        const fullName = `${record.user?.firstName || ""} ${record.user?.lastName || ""}`.toLowerCase();
+        const search = searchText.toLocaleLowerCase('tr-TR');
+        const fullName = `${record.user?.firstName || ""} ${record.user?.lastName || ""}`.toLocaleLowerCase('tr-TR');
         if (!fullName.includes(search)) return false;
       }
       return true;

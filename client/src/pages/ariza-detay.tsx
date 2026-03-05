@@ -871,9 +871,9 @@ export default function FaultDetail() {
     doc.setDrawColor(200, 200, 200);
     doc.line(14, y, pw - 14, y); y += 10;
     doc.setFont("helvetica", "bold");
-    doc.text("Aciklama:", 14, y); y += 7;
+    doc.text("Açıklama:", 14, y); y += 7;
     doc.setFont("helvetica", "normal");
-    const desc = fault.description || "Aciklama girilmedi";
+    const desc = fault.description || "Açıklama girilmedi";
     const splitDesc = doc.splitTextToSize(desc, pw - 28);
     doc.text(splitDesc, 14, y);
     y += splitDesc.length * 6 + 10;

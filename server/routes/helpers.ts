@@ -4,7 +4,7 @@ export function handleApiError(res: Response, error: unknown, context: string): 
   const message = error instanceof Error ? error.message : String(error);
   console.error(`[${context}]`, message);
   if (!res.headersSent) {
-    res.status(500).json({ message: "Internal server error" });
+    res.status(500).json({ message: "Sunucu hatası oluştu" });
   }
 }
 

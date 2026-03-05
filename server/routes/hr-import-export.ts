@@ -500,8 +500,8 @@ router.post("/api/hr/employees/import/dry-run", isAuthenticated, upload.single("
     });
 
     const existingUsers = await db.select().from(users).where(isNull(users.deletedAt));
-    const usernameMap = new Map(existingUsers.filter(u => u.username).map(u => [u.username!.toLowerCase(), u]));
-    const emailMap = new Map(existingUsers.filter(u => u.email).map(u => [u.email!.toLowerCase(), u]));
+    const usernameMap = new Map(existingUsers.filter(u => u.username).map(u => [u.username!.toLocaleLowerCase('tr-TR'), u]));
+    const emailMap = new Map(existingUsers.filter(u => u.email).map(u => [u.email!.toLocaleLowerCase('tr-TR'), u]));
     const idMap = new Map(existingUsers.map(u => [u.id, u]));
 
     const results: { rowNumber: number; status: string; message: string; employeeId?: string }[] = [];
@@ -521,11 +521,11 @@ router.post("/api/hr/employees/import/dry-run", isAuthenticated, upload.single("
       } else if (data.id && idMap.has(data.id)) {
         existing = idMap.get(data.id);
       } else if (matchKey === "email" && data.email) {
-        existing = emailMap.get(data.email.toString().toLowerCase());
+        existing = emailMap.get(data.email.toString().toLocaleLowerCase('tr-TR'));
       } else if (matchKey === "username" && data.username) {
-        existing = usernameMap.get(data.username.toString().toLowerCase());
+        existing = usernameMap.get(data.username.toString().toLocaleLowerCase('tr-TR'));
       } else if (data.username) {
-        existing = usernameMap.get(data.username.toString().toLowerCase());
+        existing = usernameMap.get(data.username.toString().toLocaleLowerCase('tr-TR'));
       }
 
       if (existing && isAdminUser(existing)) {
@@ -588,8 +588,8 @@ router.post("/api/hr/employees/import/dry-run", isAuthenticated, upload.single("
       for (const { data } of rows) {
         let matched: any = null;
         if (matchKey === "employeeId" && data.id) matched = idMap.get(data.id);
-        else if (matchKey === "email" && data.email) matched = emailMap.get(data.email.toString().toLowerCase());
-        else if (data.username) matched = usernameMap.get(data.username?.toString().toLowerCase());
+        else if (matchKey === "email" && data.email) matched = emailMap.get(data.email.toString().toLocaleLowerCase('tr-TR'));
+        else if (data.username) matched = usernameMap.get(data.username?.toString().toLocaleLowerCase('tr-TR'));
         if (matched) importedIds.add(matched.id);
       }
       for (const emp of existingUsers) {
@@ -688,8 +688,8 @@ router.post("/api/hr/employees/import/apply", isAuthenticated, upload.single("fi
     });
 
     const existingUsers = await db.select().from(users).where(isNull(users.deletedAt));
-    const usernameMap = new Map(existingUsers.filter(u => u.username).map(u => [u.username!.toLowerCase(), u]));
-    const emailMap = new Map(existingUsers.filter(u => u.email).map(u => [u.email!.toLowerCase(), u]));
+    const usernameMap = new Map(existingUsers.filter(u => u.username).map(u => [u.username!.toLocaleLowerCase('tr-TR'), u]));
+    const emailMap = new Map(existingUsers.filter(u => u.email).map(u => [u.email!.toLocaleLowerCase('tr-TR'), u]));
     const idMap = new Map(existingUsers.map(u => [u.id, u]));
 
     let createdCount = 0, updatedCount = 0, skippedCount = 0, errorCount = 0, deactivatedCount = 0;
@@ -737,11 +737,11 @@ router.post("/api/hr/employees/import/apply", isAuthenticated, upload.single("fi
             } else if (data.id && idMap.has(data.id)) {
               existing = idMap.get(data.id);
             } else if (matchKey === "email" && data.email) {
-              existing = emailMap.get(data.email.toString().toLowerCase());
+              existing = emailMap.get(data.email.toString().toLocaleLowerCase('tr-TR'));
             } else if (matchKey === "username" && data.username) {
-              existing = usernameMap.get(data.username.toString().toLowerCase());
+              existing = usernameMap.get(data.username.toString().toLocaleLowerCase('tr-TR'));
             } else if (data.username) {
-              existing = usernameMap.get(data.username.toString().toLowerCase());
+              existing = usernameMap.get(data.username.toString().toLocaleLowerCase('tr-TR'));
             }
 
             if (existing && isAdminUser(existing)) {
@@ -844,8 +844,8 @@ router.post("/api/hr/employees/import/apply", isAuthenticated, upload.single("fi
           for (const { data } of rows) {
             let matched: any = null;
             if (matchKey === "employeeId" && data.id) matched = idMap.get(data.id);
-            else if (matchKey === "email" && data.email) matched = emailMap.get(data.email.toString().toLowerCase());
-            else if (data.username) matched = usernameMap.get(data.username?.toString().toLowerCase());
+            else if (matchKey === "email" && data.email) matched = emailMap.get(data.email.toString().toLocaleLowerCase('tr-TR'));
+            else if (data.username) matched = usernameMap.get(data.username?.toString().toLocaleLowerCase('tr-TR'));
             if (matched) importedIds.add(matched.id);
           }
 
@@ -1190,7 +1190,7 @@ function validateRowDetailed(row: Record<string, any>, rowNum: number): { errors
   }
 
   if (row.role) {
-    const role = row.role.toString().trim().toLowerCase();
+    const role = row.role.toString().trim().toLocaleLowerCase('tr-TR');
     if (!VALID_ROLES.includes(role)) {
       errors.push(`Geçersiz rol: "${row.role}"`);
     }
@@ -1268,8 +1268,8 @@ router.post("/api/hr/employees/import/validate", isAuthenticated, upload.single(
     });
 
     const existingUsers = await db.select().from(users).where(isNull(users.deletedAt));
-    const usernameSet = new Map(existingUsers.filter(u => u.username).map(u => [u.username!.toLowerCase(), u]));
-    const emailSet = new Map(existingUsers.filter(u => u.email).map(u => [u.email!.toLowerCase(), u]));
+    const usernameSet = new Map(existingUsers.filter(u => u.username).map(u => [u.username!.toLocaleLowerCase('tr-TR'), u]));
+    const emailSet = new Map(existingUsers.filter(u => u.email).map(u => [u.email!.toLocaleLowerCase('tr-TR'), u]));
     const tcknSet = new Map(existingUsers.filter(u => (u as any).tckn).map(u => [(u as any).tckn?.toString(), u]));
 
     const existingBranches = await db.select({ id: branches.id }).from(branches);
@@ -1281,12 +1281,12 @@ router.post("/api/hr/employees/import/validate", isAuthenticated, upload.single(
 
     for (const { rowNumber, data } of allRows) {
       if (data.username) {
-        const key = data.username.toString().trim().toLowerCase();
+        const key = data.username.toString().trim().toLocaleLowerCase('tr-TR');
         if (!inFileUsernames.has(key)) inFileUsernames.set(key, []);
         inFileUsernames.get(key)!.push(rowNumber);
       }
       if (data.email) {
-        const key = data.email.toString().trim().toLowerCase();
+        const key = data.email.toString().trim().toLocaleLowerCase('tr-TR');
         if (!inFileEmails.has(key)) inFileEmails.set(key, []);
         inFileEmails.get(key)!.push(rowNumber);
       }
@@ -1315,14 +1315,14 @@ router.post("/api/hr/employees/import/validate", isAuthenticated, upload.single(
 
       const duplicateMessages: string[] = [];
       if (data.username) {
-        const key = data.username.toString().trim().toLowerCase();
+        const key = data.username.toString().trim().toLocaleLowerCase('tr-TR');
         const rows = inFileUsernames.get(key);
         if (rows && rows.length > 1) {
           duplicateMessages.push(`Kullanıcı adı "${data.username}" satır ${rows.filter(r => r !== rowNumber).join(", ")} ile tekrar`);
         }
       }
       if (data.email) {
-        const key = data.email.toString().trim().toLowerCase();
+        const key = data.email.toString().trim().toLocaleLowerCase('tr-TR');
         const rows = inFileEmails.get(key);
         if (rows && rows.length > 1) {
           duplicateMessages.push(`E-posta "${data.email}" satır ${rows.filter(r => r !== rowNumber).join(", ")} ile tekrar`);
@@ -1339,13 +1339,13 @@ router.post("/api/hr/employees/import/validate", isAuthenticated, upload.single(
 
       const conflictMessages: string[] = [];
       if (data.username) {
-        const existing = usernameSet.get(data.username.toString().trim().toLowerCase());
+        const existing = usernameSet.get(data.username.toString().trim().toLocaleLowerCase('tr-TR'));
         if (existing) {
           conflictMessages.push(`Kullanıcı adı "${data.username}" mevcut (${existing.firstName || ""} ${existing.lastName || ""})`);
         }
       }
       if (data.email) {
-        const existing = emailSet.get(data.email.toString().trim().toLowerCase());
+        const existing = emailSet.get(data.email.toString().trim().toLocaleLowerCase('tr-TR'));
         if (existing) {
           conflictMessages.push(`E-posta "${data.email}" mevcut (${existing.username || ""})`);
         }

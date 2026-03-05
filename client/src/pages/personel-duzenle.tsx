@@ -38,6 +38,7 @@ import type { User as UserType, Branch } from "@shared/schema";
 import { isHQRole } from "@shared/schema";
 import { ObjectUploader } from "@/components/ObjectUploader";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { ROLE_LABELS } from "@/lib/turkish-labels";
 
 const employeeFormSchema = z.object({
   profileImageUrl: z.string().optional(),
@@ -242,34 +243,6 @@ export default function PersonelDuzenle() {
       </div>
     );
   }
-
-  const roleLabels: Record<string, string> = {
-    admin: "Admin",
-    ceo: "CEO",
-    cgo: "CGO",
-    muhasebe_ik: "Muhasebe & İK",
-    satinalma: "Satın Alma",
-    coach: "Coach",
-    marketing: "Marketing",
-    trainer: "Trainer (Eğitmen)",
-    kalite_kontrol: "Kalite Kontrol",
-    fabrika_mudur: "Fabrika Müdürü",
-    muhasebe: "Muhasebe",
-    teknik: "Teknik",
-    destek: "Destek",
-    fabrika: "Fabrika",
-    yatirimci_hq: "Yatırımcı HQ",
-    stajyer: "Stajyer",
-    bar_buddy: "Bar Buddy",
-    barista: "Barista",
-    supervisor_buddy: "Supervisor Buddy",
-    supervisor: "Supervisor",
-    mudur: "Müdür",
-    yatirimci_branch: "Yatırımcı",
-    fabrika_operator: "Fabrika Operatör",
-    fabrika_sorumlu: "Fabrika Sorumlu",
-    fabrika_personel: "Fabrika Personel",
-  };
 
   const onSubmit = (data: EmployeeFormValues) => {
     updateMutation.mutate(data);
@@ -531,7 +504,7 @@ export default function PersonelDuzenle() {
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            {Object.entries(roleLabels).map(([key, label]) => (
+                            {Object.entries(ROLE_LABELS).map(([key, label]) => (
                               <SelectItem key={key} value={key}>{label}</SelectItem>
                             ))}
                           </SelectContent>

@@ -48,6 +48,7 @@ import {
   User
 } from "lucide-react";
 import type { Project, ProjectPhase } from "@shared/schema";
+import { ROLE_LABELS } from "@/lib/turkish-labels";
 
 interface HQUser {
   id: string;
@@ -91,34 +92,6 @@ const priorityConfig: Record<string, { label: string; color: string }> = {
   medium: { label: "Orta", color: "bg-blue-400" },
   high: { label: "Yüksek", color: "bg-orange-400" },
   urgent: { label: "Acil", color: "bg-red-500" },
-};
-
-const roleLabels: Record<string, string> = {
-  admin: "Admin",
-  ceo: "CEO",
-  cgo: "CGO",
-  muhasebe_ik: "Muhasebe & İK",
-  satinalma: "Satın Alma",
-  coach: "Coach",
-  marketing: "Marketing",
-  trainer: "Trainer (Eğitmen)",
-  kalite_kontrol: "Kalite Kontrol",
-  fabrika_mudur: "Fabrika Müdürü",
-  muhasebe: "Muhasebe",
-  teknik: "Teknik",
-  destek: "Destek",
-  fabrika: "Fabrika",
-  yatirimci_hq: "Yatırımcı HQ",
-  stajyer: "Stajyer",
-  bar_buddy: "Bar Buddy",
-  barista: "Barista",
-  supervisor_buddy: "Supervisor Buddy",
-  supervisor: "Supervisor",
-  mudur: "Müdür",
-  yatirimci_branch: "Yatırımcı",
-  fabrika_operator: "Fabrika Operatör",
-  fabrika_sorumlu: "Fabrika Sorumlu",
-  fabrika_personel: "Fabrika Personel",
 };
 
 const memberRoleConfig: Record<string, { label: string; description: string }> = {
@@ -441,7 +414,7 @@ export default function Projeler() {
                                     </Avatar>
                                     <div>
                                       <p className="text-sm font-medium">{user.firstName} {user.lastName}</p>
-                                      <p className="text-xs text-muted-foreground">{roleLabels[user.role] || user.role}</p>
+                                      <p className="text-xs text-muted-foreground">{ROLE_LABELS[user.role] || user.role}</p>
                                     </div>
                                   </div>
                                   

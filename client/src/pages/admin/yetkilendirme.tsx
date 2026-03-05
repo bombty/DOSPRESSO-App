@@ -68,6 +68,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ROLE_LABELS } from "@/lib/turkish-labels";
 
 type PermissionAction = {
   id: number;
@@ -139,33 +140,6 @@ const ROLE_GROUPS = {
   })
 };
 
-const ROLE_LABELS: Record<string, string> = {
-  admin: "Admin",
-  ceo: "CEO",
-  cgo: "CGO",
-  muhasebe_ik: "Muhasebe & İK",
-  satinalma: "Satın Alma",
-  coach: "Coach",
-  marketing: "Marketing",
-  trainer: "Trainer (Eğitmen)",
-  kalite_kontrol: "Kalite Kontrol",
-  fabrika_mudur: "Fabrika Müdürü",
-  muhasebe: "Muhasebe",
-  teknik: "Teknik",
-  destek: "Destek",
-  fabrika: "Fabrika",
-  yatirimci_hq: "Yatırımcı HQ",
-  stajyer: "Stajyer",
-  bar_buddy: "Bar Buddy",
-  barista: "Barista",
-  supervisor_buddy: "Supervisor Buddy",
-  supervisor: "Supervisor",
-  mudur: "Müdür",
-  yatirimci_branch: "Yatırımcı",
-  fabrika_operator: "Fabrika Operatör",
-  fabrika_sorumlu: "Fabrika Sorumlu",
-  fabrika_personel: "Fabrika Personel",
-};
 
 const MODULE_GROUPS = [
   {
@@ -1503,7 +1477,7 @@ export default function AdminYetkilendirme() {
       toast({ title: "Hata", description: "Rol adı gerekli", variant: "destructive" });
       return;
     }
-    createRoleMutation.mutate({ roleName: newRoleName.trim().toLowerCase(), scope: newRoleScope, description: newRoleDescription });
+    createRoleMutation.mutate({ roleName: newRoleName.trim().toLocaleLowerCase('tr-TR'), scope: newRoleScope, description: newRoleDescription });
   };
 
   // Yeni modül ekleme mutation
@@ -1533,7 +1507,7 @@ export default function AdminYetkilendirme() {
       return;
     }
     createModuleMutation.mutate({ 
-      moduleKey: newModuleKey.trim().toLowerCase().replace(/\s+/g, '_'), 
+      moduleKey: newModuleKey.trim().toLocaleLowerCase('tr-TR').replace(/\s+/g, '_'), 
       label: newModuleLabel.trim(), 
       megaModuleId: newModuleMegaModule 
     });

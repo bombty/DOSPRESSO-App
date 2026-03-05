@@ -487,7 +487,7 @@ const normalizeTimeGlobal = (timeStr: string): string => {
   router.get('/api/global-search', isAuthenticated, async (req: any, res) => {
     try {
       const user = req.user!;
-      const query = (req.query.q as string || '').trim().toLowerCase();
+      const query = (req.query.q as string || '').trim().toLocaleLowerCase('tr-TR');
       if (!query || query.length < 2) {
         return res.json({ results: [] });
       }
@@ -716,7 +716,7 @@ const normalizeTimeGlobal = (timeStr: string): string => {
       res.json(sanitizeUsersForRole(users, user.role as UserRoleType));
     } catch (error: any) {
       console.error("Error fetching users:", error);
-      res.status(500).json({ message: "Failed to fetch users" });
+      res.status(500).json({ message: "Kullanıcılar alınırken hata oluştu" });
     }
   });
 
@@ -737,7 +737,7 @@ const normalizeTimeGlobal = (timeStr: string): string => {
       // Parse base64 data URL
       const matches = dataUrl.match(/^data:(.+);base64,(.+)$/);
       if (!matches) {
-        return res.status(400).json({ message: "Invalid data URL format" });
+        return res.status(400).json({ message: "Geçersiz veri URL formatı" });
       }
       
       const mimeType = matches[1];
@@ -754,7 +754,7 @@ const normalizeTimeGlobal = (timeStr: string): string => {
       
       if (!ok) {
         console.error("Object Storage upload failed:", error);
-        return res.status(500).json({ message: "Internal server error" });
+        return res.status(500).json({ message: "Sunucu hatası oluştu" });
       }
       
       // Store access token mapping (in-memory for now, use Redis/DB for production)
@@ -776,9 +776,9 @@ const normalizeTimeGlobal = (timeStr: string): string => {
     } catch (error: any) {
       console.error("Error uploading photo:", error);
       if (error.name === 'ZodError') {
-        return res.status(400).json({ message: "Invalid upload data", errors: error.errors });
+        return res.status(400).json({ message: "Geçersiz yükleme verisi", errors: error.errors });
       }
-      res.status(500).json({ message: "Upload failed" });
+      res.status(500).json({ message: "Yükleme başarısız oldu" });
     }
   });
 
@@ -812,7 +812,7 @@ const normalizeTimeGlobal = (timeStr: string): string => {
       
       if (!ok) {
         console.error("Object Storage upload failed:", error);
-        return res.status(500).json({ message: "Internal server error" });
+        return res.status(500).json({ message: "Sunucu hatası oluştu" });
       }
       
       // Store access token mapping
@@ -845,7 +845,7 @@ const normalizeTimeGlobal = (timeStr: string): string => {
       
       // Check token validity
       if (!global.fileAccessTokens || !global.fileAccessTokens.has(token)) {
-        return res.status(404).json({ message: "Invalid or expired token" });
+        return res.status(404).json({ message: "Geçersiz veya süresi dolmuş token" });
       }
       
       const tokenData = global.fileAccessTokens.get(token);
@@ -859,7 +859,7 @@ const normalizeTimeGlobal = (timeStr: string): string => {
       const { ok, value, error } = await client.downloadAsBytes(tokenData.path);
       
       if (!ok) {
-        return res.status(404).json({ message: "File not found" });
+        return res.status(404).json({ message: "Dosya bulunamadı" });
       }
       
       // Detect mime type from path
@@ -875,7 +875,7 @@ const normalizeTimeGlobal = (timeStr: string): string => {
       res.send(Buffer.from(value));
     } catch (error: any) {
       console.error("Error serving public file:", error);
-      res.status(500).json({ message: "Failed to serve file" });
+      res.status(500).json({ message: "Dosya sunulurken hata oluştu" });
     }
   });
 
@@ -901,7 +901,7 @@ const normalizeTimeGlobal = (timeStr: string): string => {
       const { ok, value, error } = await client.downloadAsBytes(path);
       
       if (!ok) {
-        return res.status(404).json({ message: "File not found" });
+        return res.status(404).json({ message: "Dosya bulunamadı" });
       }
       
       // Detect mime type from path
@@ -916,7 +916,7 @@ const normalizeTimeGlobal = (timeStr: string): string => {
       res.send(Buffer.from(value));
     } catch (error: any) {
       console.error("Error serving file:", error);
-      res.status(500).json({ message: "Failed to serve file" });
+      res.status(500).json({ message: "Dosya sunulurken hata oluştu" });
     }
   });
 
@@ -933,7 +933,7 @@ const normalizeTimeGlobal = (timeStr: string): string => {
       res.json(publicBranches);
     } catch (error: any) {
       console.error("Error fetching public branches:", error);
-      res.status(500).json({ message: "Failed to fetch branches" });
+      res.status(500).json({ message: "Şubeler alınırken hata oluştu" });
     }
   });
 
@@ -1317,7 +1317,7 @@ const normalizeTimeGlobal = (timeStr: string): string => {
       res.json(articles);
     } catch (error: any) {
       console.error("Error fetching articles:", error);
-      res.status(500).json({ message: "Failed to fetch articles" });
+      res.status(500).json({ message: "Makaleler alınırken hata oluştu" });
     }
   });
 
@@ -1345,9 +1345,9 @@ const normalizeTimeGlobal = (timeStr: string): string => {
     } catch (error: any) {
       console.error("Error creating article:", error);
       if (error.name === 'ZodError') {
-        return res.status(400).json({ message: "Invalid article data", errors: error.errors });
+        return res.status(400).json({ message: "Geçersiz makale verisi", errors: error.errors });
       }
-      res.status(500).json({ message: "Failed to create article" });
+      res.status(500).json({ message: "Makale oluşturulurken hata oluştu" });
     }
   });
 
@@ -1638,7 +1638,7 @@ const normalizeTimeGlobal = (timeStr: string): string => {
           title: `${cat.titleTr} Reçeteleri`,
           content,
           category: 'recipe',
-          tags: ['reçete', cat.titleTr.toLowerCase(), cat.slug || ''],
+          tags: ['reçete', cat.titleTr.toLocaleLowerCase('tr-TR'), cat.slug || ''],
         });
 
         if (result.skipped) skipped++;
@@ -1898,12 +1898,12 @@ const normalizeTimeGlobal = (timeStr: string): string => {
 
       content += `## Sıkça Sorulan Sorular\n\n`;
       content += `**Donut hamuru kaç gram olmalı?**\n`;
-      const gramSpec = numericSpecs.find(s => s.name.toLowerCase().includes('gramaj'));
+      const gramSpec = numericSpecs.find(s => s.name.toLocaleLowerCase('tr-TR').includes('gramaj'));
       if (gramSpec) {
         content += `Donut hamuru ${gramSpec.minValue}-${gramSpec.maxValue} ${gramSpec.unit} arasında olmalıdır. Hedef ağırlık ${gramSpec.targetValue} ${gramSpec.unit}'dır.\n\n`;
       }
 
-      const heightSpec = numericSpecs.find(s => s.name.toLowerCase().includes('yükseklik'));
+      const heightSpec = numericSpecs.find(s => s.name.toLocaleLowerCase('tr-TR').includes('yükseklik'));
       if (heightSpec) {
         content += `**Donut yüksekliği ne olmalı?**\n`;
         content += `Donut yüksekliği ${heightSpec.minValue}-${heightSpec.maxValue} ${heightSpec.unit} arasında olmalıdır. Hedef yükseklik ${heightSpec.targetValue} ${heightSpec.unit}'dir.\n\n`;
@@ -2017,7 +2017,7 @@ const normalizeTimeGlobal = (timeStr: string): string => {
 
         // Search for matching recipes if question is about menu/drinks
         const recipeKeywords = ['reçete', 'tarif', 'nasıl yapılır', 'hazırla', 'latte', 'americano', 'cappuccino', 'flat white', 'espresso', 'frappe', 'iced', 'içecek', 'kahve', 'menü'];
-        const isRecipeQuestion = recipeKeywords.some(kw => question.toLowerCase().includes(kw));
+        const isRecipeQuestion = recipeKeywords.some(kw => question.toLocaleLowerCase('tr-TR').includes(kw));
         
         if (isRecipeQuestion) {
           const recipeResults = await storage.searchRecipesForAI(question);
@@ -2047,7 +2047,7 @@ const normalizeTimeGlobal = (timeStr: string): string => {
       const response = await answerTechnicalQuestion(question, equipmentContext, userId);
       
       const usageKeywords = ['nasıl kullanılır', 'nasıl yapılır', 'nerede bulabilirim', 'nereden ulaşabilirim', 'sistem', 'menü', 'sayfa', 'modül', 'yetki', 'erişim', 'kullanım', 'özellik'];
-      const questionLower = question.toLowerCase();
+      const questionLower = question.toLocaleLowerCase('tr-TR');
       if (usageKeywords.some((kw: string) => questionLower.includes(kw)) && response.answer) {
         response.answer += '\n\n---\n-- **Detaylı bilgi için [Kullanım Kılavuzu](/kullanim-kilavuzu) sayfasını ziyaret edebilirsiniz.**';
       }
@@ -2178,7 +2178,7 @@ const normalizeTimeGlobal = (timeStr: string): string => {
       res.json(designs);
     } catch (error: any) {
       console.error("Error fetching certificate designs:", error);
-      res.status(500).json({ message: "Failed to fetch certificate designs" });
+      res.status(500).json({ message: "Sertifika tasarımları alınırken hata oluştu" });
     }
   });
 
@@ -2196,7 +2196,7 @@ const normalizeTimeGlobal = (timeStr: string): string => {
       res.json(design);
     } catch (error: any) {
       console.error("Error creating certificate design:", error);
-      res.status(500).json({ message: "Failed to create certificate design" });
+      res.status(500).json({ message: "Sertifika tasarımı oluşturulurken hata oluştu" });
     }
   });
 
@@ -2212,12 +2212,12 @@ const normalizeTimeGlobal = (timeStr: string): string => {
         .where(eq(certificateDesignSettings.id, id))
         .returning();
       if (!updated) {
-        return res.status(404).json({ message: "Design not found" });
+        return res.status(404).json({ message: "Tasarım bulunamadı" });
       }
       res.json(updated);
     } catch (error: any) {
       console.error("Error updating certificate design:", error);
-      res.status(500).json({ message: "Failed to update certificate design" });
+      res.status(500).json({ message: "Sertifika tasarımı güncellenirken hata oluştu" });
     }
   });
 
@@ -2232,7 +2232,7 @@ const normalizeTimeGlobal = (timeStr: string): string => {
       res.json({ success: true });
     } catch (error: any) {
       console.error("Error deleting certificate design:", error);
-      res.status(500).json({ message: "Failed to delete certificate design" });
+      res.status(500).json({ message: "Sertifika tasarımı silinirken hata oluştu" });
     }
   });
 
@@ -2245,7 +2245,7 @@ const normalizeTimeGlobal = (timeStr: string): string => {
       res.json({ method: "PUT", url: uploadURL });
     } catch (error: any) {
       console.error("Error getting upload URL:", error);
-      res.status(500).json({ message: "Failed to get upload URL" });
+      res.status(500).json({ message: "Yükleme URL'si alınırken hata oluştu" });
     }
   });
 
@@ -2258,7 +2258,7 @@ const normalizeTimeGlobal = (timeStr: string): string => {
       
       const { url, visibility = "public" } = req.body;
       if (!url || typeof url !== "string") {
-        return res.status(400).json({ message: "URL is required" });
+        return res.status(400).json({ message: "URL gereklidir" });
       }
       
       // Normalize the URL and set ACL policy
@@ -2270,13 +2270,13 @@ const normalizeTimeGlobal = (timeStr: string): string => {
       // Validate the result - if path doesn't start with /objects/, ACL setting failed
       if (!normalizedPath || !normalizedPath.startsWith("/objects/")) {
         console.error("Failed to normalize object path:", url, "->", normalizedPath);
-        return res.status(500).json({ message: "Failed to normalize upload path" });
+        return res.status(500).json({ message: "Yükleme yolu düzenlenirken hata oluştu" });
       }
       
       res.json({ normalizedUrl: normalizedPath });
     } catch (error: any) {
       console.error("Error finalizing object:", error);
-      res.status(500).json({ message: "Failed to finalize upload" });
+      res.status(500).json({ message: "Yükleme tamamlanırken hata oluştu" });
     }
   });
 
@@ -2684,7 +2684,7 @@ const normalizeTimeGlobal = (timeStr: string): string => {
       return res.status(200).json(menuResponse);
     } catch (error: any) {
       console.error("Error fetching user menu:", error);
-      res.status(500).json({ message: "Failed to fetch menu" });
+      res.status(500).json({ message: "Menü alınırken hata oluştu" });
     }
   });
 
@@ -2716,7 +2716,7 @@ const normalizeTimeGlobal = (timeStr: string): string => {
       });
     } catch (error: any) {
       console.error("Error fetching user permissions:", error);
-      res.status(500).json({ message: "Failed to fetch permissions" });
+      res.status(500).json({ message: "Yetkiler alınırken hata oluştu" });
     }
   });
 
@@ -2768,7 +2768,7 @@ const normalizeTimeGlobal = (timeStr: string): string => {
       });
     } catch (error: any) {
       console.error("Error fetching menu:", error);
-      res.status(500).json({ message: "Failed to fetch menu" });
+      res.status(500).json({ message: "Menü alınırken hata oluştu" });
     }
   });
   
@@ -5877,7 +5877,7 @@ const normalizeTimeGlobal = (timeStr: string): string => {
       const hasAllAccess = accessibleModules.has('all');
       
       // Search modules (mega-modules and sub-modules) with permission filtering
-      const searchPattern = query.trim().toLowerCase();
+      const searchPattern = query.trim().toLocaleLowerCase('tr-TR');
       
       // Get mega-module configs
       const megaConfigs = await db.select().from(megaModuleConfig).where(eq(megaModuleConfig.isActive, true));
@@ -5899,8 +5899,8 @@ const normalizeTimeGlobal = (timeStr: string): string => {
       
       // Search mega-modules
       for (const mega of megaConfigs) {
-        if (mega.megaModuleName.toLowerCase().includes(searchPattern) ||
-            mega.megaModuleNameTr.toLowerCase().includes(searchPattern)) {
+        if (mega.megaModuleName.toLocaleLowerCase('tr-TR').includes(searchPattern) ||
+            mega.megaModuleNameTr.toLocaleLowerCase('tr-TR').includes(searchPattern)) {
           // Check if user has access to at least one sub-module in this mega-module
           const megaSubModules = subModules.filter(s => s.megaModuleId === mega.megaModuleId);
           const hasAccessToMega = hasAllAccess || megaSubModules.some(sub => accessibleModules.has(sub.subModuleId));
@@ -5920,8 +5920,8 @@ const normalizeTimeGlobal = (timeStr: string): string => {
       
       // Search sub-modules with permission check
       for (const sub of subModules) {
-        if (sub.subModuleName.toLowerCase().includes(searchPattern) ||
-            sub.subModuleNameTr.toLowerCase().includes(searchPattern)) {
+        if (sub.subModuleName.toLocaleLowerCase('tr-TR').includes(searchPattern) ||
+            sub.subModuleNameTr.toLocaleLowerCase('tr-TR').includes(searchPattern)) {
           // Check if user has access to this module
           if (hasAllAccess || accessibleModules.has(sub.subModuleId)) {
             const parentMega = megaConfigs.find(m => m.megaModuleId === sub.megaModuleId);
@@ -7507,11 +7507,11 @@ DOSPRESSO İnsan Kaynakları Ekibi`;
         const ann = r.announcement;
         // Hedefleme yoksa veya "all" seçildiyse herkese göster
         const hasNoTargeting = !ann.targetRoles?.length && !ann.targetBranches?.length;
-        const targetRolesLower = ann.targetRoles?.map(role => role.toLowerCase()) || [];
+        const targetRolesLower = ann.targetRoles?.map(role => role.toLocaleLowerCase('tr-TR')) || [];
         const isTargetAll = targetRolesLower.includes("all");
         if (hasNoTargeting || isTargetAll) return true;
         // Kullanıcının rolü hedeflenmiş mi? (case-insensitive)
-        const userRoleLower = user.role?.toLowerCase();
+        const userRoleLower = user.role?.toLocaleLowerCase('tr-TR');
         if (targetRolesLower.length && userRoleLower && targetRolesLower.includes(userRoleLower)) return true;
         // Kullanıcının şubesi hedeflenmiş mi? (string/number normalize)
         if (ann.targetBranches?.length && user.branchId !== undefined && user.branchId !== null) {
@@ -7556,12 +7556,12 @@ DOSPRESSO İnsan Kaynakları Ekibi`;
       const filtered = results.filter(ann => {
         // Hedefleme yoksa veya "all" seçildiyse herkese göster
         const hasNoTargeting = !ann.targetRoles?.length && !ann.targetBranches?.length;
-        const targetRolesLower = ann.targetRoles?.map(r => r.toLowerCase()) || [];
+        const targetRolesLower = ann.targetRoles?.map(r => r.toLocaleLowerCase('tr-TR')) || [];
         const isTargetAll = targetRolesLower.includes("all");
         if (hasNoTargeting || isTargetAll) return true;
         
         // Kullanıcının rolü hedeflenmiş mi? (case-insensitive)
-        const userRoleLower = user.role?.toLowerCase();
+        const userRoleLower = user.role?.toLocaleLowerCase('tr-TR');
         if (targetRolesLower.length && userRoleLower && targetRolesLower.includes(userRoleLower)) return true;
         
         // Kullanıcının şubesi hedeflenmiş mi? (string/number normalize)
@@ -7600,11 +7600,11 @@ DOSPRESSO İnsan Kaynakları Ekibi`;
       const visibleIds = allAnnouncements.filter(ann => {
         // Hedefleme yoksa veya "all" seçildiyse herkese göster
         const hasNoTargeting = !ann.targetRoles?.length && !ann.targetBranches?.length;
-        const targetRolesLower = ann.targetRoles?.map(role => role.toLowerCase()) || [];
+        const targetRolesLower = ann.targetRoles?.map(role => role.toLocaleLowerCase('tr-TR')) || [];
         const isTargetAll = targetRolesLower.includes("all");
         if (hasNoTargeting || isTargetAll) return true;
         // Kullanıcının rolü hedeflenmiş mi? (case-insensitive)
-        const userRoleLower = user.role?.toLowerCase();
+        const userRoleLower = user.role?.toLocaleLowerCase('tr-TR');
         if (targetRolesLower.length && userRoleLower && targetRolesLower.includes(userRoleLower)) return true;
         // Kullanıcının şubesi hedeflenmiş mi? (string/number normalize)
         if (ann.targetBranches?.length && user.branchId !== undefined && user.branchId !== null) {
@@ -7851,7 +7851,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`;
       if (!response.ok) {
         const error = await response.json();
         console.error("DALL-E error:", error);
-        return res.status(500).json({ message: "Internal server error" });
+        return res.status(500).json({ message: "Sunucu hatası oluştu" });
       }
 
       const data = await response.json();
@@ -9558,8 +9558,8 @@ Dusuk puanli alanlara odaklan ve pozitif, motive edici ol. JSON dizisi olarak ya
       const hqManagers = allUsers.filter(u => {
         if (!hqRoleSet.has(u.role) || !u.isActive) return false;
         const name = ((u.firstName || '') + ' ' + (u.lastName || '')).trim();
-        if (!name || seenNames.has(name.toLowerCase())) return false;
-        seenNames.add(name.toLowerCase());
+        if (!name || seenNames.has(name.toLocaleLowerCase('tr-TR'))) return false;
+        seenNames.add(name.toLocaleLowerCase('tr-TR'));
         if (u.username && /^(test|e2e|api[-_])/i.test(u.username)) return false;
         if (/^(Test |E2E |API |Admin )/i.test(name)) return false;
         return true;
@@ -9669,7 +9669,7 @@ Dusuk puanli alanlara odaklan ve pozitif, motive edici ol. JSON dizisi olarak ya
       let answer = aiResponse.choices[0]?.message?.content || 'Yanit alinamadi';
       
       const usageKeywords = ['nasıl kullanılır', 'nasıl yapılır', 'nerede bulabilirim', 'nereden ulaşabilirim', 'sistem', 'menü', 'sayfa', 'modül', 'yetki', 'erişim', 'kullanım', 'özellik'];
-      const questionLower = question.toLowerCase();
+      const questionLower = question.toLocaleLowerCase('tr-TR');
       if (usageKeywords.some((kw: string) => questionLower.includes(kw))) {
         answer += '\n\n---\n-- **Detaylı bilgi için [Kullanım Kılavuzu](/kullanim-kilavuzu) sayfasını ziyaret edebilirsiniz.**';
       }
@@ -9748,7 +9748,7 @@ Dusuk puanli alanlara odaklan ve pozitif, motive edici ol. JSON dizisi olarak ya
       let answer = aiResponse.choices[0]?.message?.content || "Yanit alinamadi";
       
       const usageKeywords = ['nasıl kullanılır', 'nasıl yapılır', 'nerede bulabilirim', 'nereden ulaşabilirim', 'sistem', 'menü', 'sayfa', 'modül', 'yetki', 'erişim', 'kullanım', 'özellik'];
-      const questionLower = question.toLowerCase();
+      const questionLower = question.toLocaleLowerCase('tr-TR');
       if (usageKeywords.some((kw: string) => questionLower.includes(kw))) {
         answer += '\n\n---\n-- **Detaylı bilgi için [Kullanım Kılavuzu](/kullanim-kilavuzu) sayfasını ziyaret edebilirsiniz.**';
       }
@@ -11570,7 +11570,7 @@ Buyume odakli, stratejik ve aksiyona yonelik cevaplar ver. Turkce yanit ver.`;
         let cgoAnswer = completion.choices[0]?.message?.content || 'Yanit alinamadi.';
         
         const usageKeywords = ['nasıl kullanılır', 'nasıl yapılır', 'nerede bulabilirim', 'nereden ulaşabilirim', 'sistem', 'menü', 'sayfa', 'modül', 'yetki', 'erişim', 'kullanım', 'özellik'];
-        const questionLower = question.toLowerCase();
+        const questionLower = question.toLocaleLowerCase('tr-TR');
         if (usageKeywords.some((kw: string) => questionLower.includes(kw))) {
           cgoAnswer += '\n\n---\n-- **Detaylı bilgi için [Kullanım Kılavuzu](/kullanim-kilavuzu) sayfasını ziyaret edebilirsiniz.**';
         }
@@ -12648,8 +12648,8 @@ Kurallar:
         return d.targetRoles.includes(user.role);
       }).filter((d: any) => {
         if (!search) return true;
-        const q = (search as string).toLowerCase();
-        return d.title.toLowerCase().includes(q) || d.content.toLowerCase().includes(q);
+        const q = (search as string).toLocaleLowerCase('tr-TR');
+        return d.title.toLocaleLowerCase('tr-TR').includes(q) || d.content.toLocaleLowerCase('tr-TR').includes(q);
       });
       res.json(filtered);
     } catch (error: any) {

@@ -158,16 +158,16 @@ interface ScoreUpdateResult {
 const CHART_COLORS = ["#f59e0b", "#10b981", "#ef4444", "#3b82f6", "#8b5cf6", "#ec4899", "#14b8a6", "#f97316"];
 
 const PERIOD_OPTIONS = [
-  { value: "daily", label: "Bugun" },
+  { value: "daily", label: "Bugün" },
   { value: "weekly", label: "Bu Hafta" },
   { value: "monthly", label: "Bu Ay" },
-  { value: "yearly", label: "Bu Yil" },
+  { value: "yearly", label: "Bu Yıl" },
 ];
 
 function LoadingState() {
   return (
     <div className="flex items-center justify-center py-12 text-muted-foreground">
-      Yukleniyor...
+      Yükleniyor...
     </div>
   );
 }
@@ -290,12 +290,12 @@ export default function FabrikaPerformans() {
       return res.json();
     },
     onSuccess: (data) => {
-      toast({ title: "Skorlar guncellendi", description: `${data.updated} personelin skoru guncellendi.` });
+      toast({ title: "Skorlar güncellendi", description: `${data.updated} personelin skoru güncellendi.` });
       queryClient.invalidateQueries({ queryKey: ["/api/factory/analytics/workers"] });
       queryClient.invalidateQueries({ queryKey: ["/api/factory/analytics/worker-comparison"] });
     },
     onError: () => {
-      toast({ title: "Hata", description: "Skorlar guncellenirken bir hata olustu.", variant: "destructive" });
+      toast({ title: "Hata", description: "Skorlar güncellenirken bir hata oluştu.", variant: "destructive" });
     },
   });
 
@@ -333,7 +333,7 @@ export default function FabrikaPerformans() {
         <div className="flex items-center gap-3">
           <BarChart3 className="h-8 w-8 text-amber-500" />
           <div>
-            <h1 className="text-2xl font-bold">Fabrika Performans Analitigi</h1>
+            <h1 className="text-2xl font-bold">Fabrika Performans Analitiği</h1>
             <p className="text-muted-foreground">Üretim istatistikleri ve personel performansı</p>
           </div>
         </div>
@@ -357,9 +357,9 @@ export default function FabrikaPerformans() {
         <TabsList>
           <TabsTrigger value="production" data-testid="tab-production">Üretim Raporu</TabsTrigger>
           <TabsTrigger value="workers" data-testid="tab-workers">Personel Performans</TabsTrigger>
-          <TabsTrigger value="comparison" data-testid="tab-comparison">Karsilastirma</TabsTrigger>
+          <TabsTrigger value="comparison" data-testid="tab-comparison">Karşılaştırma</TabsTrigger>
           <TabsTrigger value="waste" data-testid="tab-waste">Zaiyat Analizi</TabsTrigger>
-          <TabsTrigger value="scores" data-testid="tab-scores">Skor Yonetimi</TabsTrigger>
+          <TabsTrigger value="scores" data-testid="tab-scores">Skor Yönetimi</TabsTrigger>
         </TabsList>
 
         {/* Tab 1: Üretim Raporu */}
@@ -367,10 +367,10 @@ export default function FabrikaPerformans() {
           <div className="flex items-center gap-3">
             <Select value={selectedProductId} onValueChange={setSelectedProductId}>
               <SelectTrigger className="w-56" data-testid="select-product-filter">
-                <SelectValue placeholder="Tum Urunler" />
+                <SelectValue placeholder="Tüm Ürünler" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Tum Urunler</SelectItem>
+                <SelectItem value="all">Tüm Ürünler</SelectItem>
                 {products.map((p) => (
                   <SelectItem key={p.id} value={String(p.id)}>
                     {p.name}
@@ -547,13 +547,13 @@ export default function FabrikaPerformans() {
                       </TableBody>
                     </Table>
                   ) : (
-                    <EmptyState icon={Package} message="Henuz veri yok" />
+                    <EmptyState icon={Package} message="Henüz veri yok" />
                   )}
                 </CardContent>
               </Card>
             </>
           ) : (
-            <EmptyState icon={Factory} message="Henuz veri yok" />
+            <EmptyState icon={Factory} message="Henüz veri yok" />
           )}
         </TabsContent>
 
@@ -562,7 +562,7 @@ export default function FabrikaPerformans() {
           <Card>
             <CardHeader>
               <CardTitle>Personel Performans Tablosu</CardTitle>
-              <CardDescription>Bir personele tiklayarak detayli skoru gorebilirsiniz</CardDescription>
+              <CardDescription>Bir personele tıklayarak detaylı skoru görebilirsiniz</CardDescription>
             </CardHeader>
             <CardContent>
               {loadingWorkers ? (
@@ -577,7 +577,7 @@ export default function FabrikaPerformans() {
                       <TableHead>Verimlilik</TableHead>
                       <TableHead>Üretim/Saat</TableHead>
                       <TableHead>Kalite</TableHead>
-                      <TableHead>Istasyonlar</TableHead>
+                      <TableHead>İstasyonlar</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -637,7 +637,7 @@ export default function FabrikaPerformans() {
                   </TableBody>
                 </Table>
               ) : (
-                <EmptyState icon={Users} message="Secilen donemde veri yok" />
+                <EmptyState icon={Users} message="Seçilen dönemde veri yok" />
               )}
             </CardContent>
           </Card>
@@ -647,7 +647,7 @@ export default function FabrikaPerformans() {
               <DialogHeader>
                 <DialogTitle className="flex items-center gap-2">
                   <Award className="h-5 w-5 text-amber-500" />
-                  {workerScore ? `${workerScore.firstName} ${workerScore.lastName} - Performans Detayi` : "Personel Detayi"}
+                  {workerScore ? `${workerScore.firstName} ${workerScore.lastName} - Performans Detayı` : "Personel Detayı"}
                 </DialogTitle>
               </DialogHeader>
               {loadingWorkerScore ? (
@@ -667,7 +667,7 @@ export default function FabrikaPerformans() {
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     <Card>
                       <CardHeader>
-                        <CardTitle className="text-base">Yetkinlik Dagilimi</CardTitle>
+                        <CardTitle className="text-base">Yetkinlik Dağılımı</CardTitle>
                       </CardHeader>
                       <CardContent>
                         <div className="h-64">
@@ -686,7 +686,7 @@ export default function FabrikaPerformans() {
                     {workerScore.scoreHistory.length > 0 && (
                       <Card>
                         <CardHeader>
-                          <CardTitle className="text-base">Aylik Skor Trendi</CardTitle>
+                          <CardTitle className="text-base">Aylık Skor Trendi</CardTitle>
                         </CardHeader>
                         <CardContent>
                           <div className="h-64">
@@ -708,7 +708,7 @@ export default function FabrikaPerformans() {
                   {workerScore.peakHours.length > 0 && (
                     <Card>
                       <CardHeader>
-                        <CardTitle className="text-base">Yoğun Calisma Saatleri</CardTitle>
+                        <CardTitle className="text-base">Yoğun Çalışma Saatleri</CardTitle>
                       </CardHeader>
                       <CardContent>
                         <div className="h-48">
@@ -729,7 +729,7 @@ export default function FabrikaPerformans() {
                   {workerScore.productBreakdown.length > 0 && (
                     <Card>
                       <CardHeader>
-                        <CardTitle className="text-base">Urun Bazli Dagilim</CardTitle>
+                        <CardTitle className="text-base">Ürün Bazlı Dağılım</CardTitle>
                       </CardHeader>
                       <CardContent>
                         <Table>
@@ -761,7 +761,7 @@ export default function FabrikaPerformans() {
                   )}
                 </div>
               ) : (
-                <EmptyState icon={Users} message="Henuz veri yok" />
+                <EmptyState icon={Users} message="Henüz veri yok" />
               )}
             </DialogContent>
           </Dialog>
@@ -785,15 +785,15 @@ export default function FabrikaPerformans() {
           </div>
 
           {!comparisonProductId ? (
-            <EmptyState icon={Target} message="Karsilastirma icin bir urun secin" />
+            <EmptyState icon={Target} message="Karşılaştırma için bir ürün seçin" />
           ) : loadingComparison ? (
             <LoadingState />
           ) : sortedComparison.length > 0 ? (
             <>
               <Card>
                 <CardHeader>
-                  <CardTitle>{comparisonData?.productName} - Personel Karsilastirmasi</CardTitle>
-                  <CardDescription>Genel skora gore siralanmis</CardDescription>
+                  <CardTitle>{comparisonData?.productName} - Personel Karşılaştırması</CardTitle>
+                  <CardDescription>Genel skora göre sıralanmış</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="h-80">
@@ -814,16 +814,16 @@ export default function FabrikaPerformans() {
 
               <Card>
                 <CardHeader>
-                  <CardTitle>Skor Karsilastirmasi</CardTitle>
+                  <CardTitle>Skor Karşılaştırması</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <Table>
                     <TableHeader>
                       <TableRow>
                         <TableHead>Personel</TableHead>
-                        <TableHead>Hiz Skoru</TableHead>
+                        <TableHead>Hız Skoru</TableHead>
                         <TableHead>Kalite Skoru</TableHead>
-                        <TableHead>Tutarlilik Skoru</TableHead>
+                        <TableHead>Tutarlılık Skoru</TableHead>
                         <TableHead>Genel Skor</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -842,7 +842,7 @@ export default function FabrikaPerformans() {
                               {w.userId === topPerformerId && (
                                 <Badge className="bg-amber-500 text-white">
                                   <Medal className="h-3 w-3 mr-1" />
-                                  En Iyi
+                                  En İyi
                                 </Badge>
                               )}
                             </div>
@@ -887,7 +887,7 @@ export default function FabrikaPerformans() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <Card>
               <CardHeader>
-                <CardTitle>Zaiyat Nedenleri Dagilimi</CardTitle>
+                <CardTitle>Zaiyat Nedenleri Dağılımı</CardTitle>
               </CardHeader>
               <CardContent>
                 {loadingWaste ? (
@@ -914,14 +914,14 @@ export default function FabrikaPerformans() {
                     </ResponsiveContainer>
                   </div>
                 ) : (
-                  <EmptyState icon={Trash2} message="Zaiyat kaydi yok" />
+                  <EmptyState icon={Trash2} message="Zaiyat kaydı yok" />
                 )}
               </CardContent>
             </Card>
 
             <Card>
               <CardHeader>
-                <CardTitle>Zaiyat Detaylari</CardTitle>
+                <CardTitle>Zaiyat Detayları</CardTitle>
               </CardHeader>
               <CardContent>
                 {loadingWaste ? (
@@ -946,7 +946,7 @@ export default function FabrikaPerformans() {
                     ))}
                   </div>
                 ) : (
-                  <EmptyState icon={Trash2} message="Zaiyat kaydi yok" />
+                  <EmptyState icon={Trash2} message="Zaiyat kaydı yok" />
                 )}
               </CardContent>
             </Card>
@@ -959,21 +959,21 @@ export default function FabrikaPerformans() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Info className="h-5 w-5 text-blue-500" />
-                Skorlama Algoritmasi
+                Skorlama Algoritması
               </CardTitle>
-              <CardDescription>Personel performans skorlari asagidaki agirliklarla hesaplanir</CardDescription>
+              <CardDescription>Personel performans skorları aşağıdaki ağırlıklarla hesaplanır</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
                 <p className="text-sm text-muted-foreground">
-                  Her personelin genel performans skoru, 5 farkli bilesenin agirlikli ortalamasiyla hesaplanir.
-                  Skorlar 0-100 arasinda deger alir ve duzenlı olarak guncellenebilir.
+                  Her personelin genel performans skoru, 5 farklı bileşenin ağırlıklı ortalamasıyla hesaplanır.
+                  Skorlar 0-100 arasında değer alır ve düzenli olarak güncellenebilir.
                 </p>
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
                   <Card>
                     <CardContent className="p-4 text-center">
                       <Zap className="h-6 w-6 mx-auto mb-2 text-amber-500" />
-                      <p className="font-semibold">Hiz</p>
+                      <p className="font-semibold">Hız</p>
                       <p className="text-2xl font-bold text-amber-500">%25</p>
                     </CardContent>
                   </Card>
@@ -987,7 +987,7 @@ export default function FabrikaPerformans() {
                   <Card>
                     <CardContent className="p-4 text-center">
                       <BarChart3 className="h-6 w-6 mx-auto mb-2 text-blue-500" />
-                      <p className="font-semibold">Tutarlilik</p>
+                      <p className="font-semibold">Tutarlılık</p>
                       <p className="text-2xl font-bold text-blue-500">%20</p>
                     </CardContent>
                   </Card>
@@ -1016,7 +1016,7 @@ export default function FabrikaPerformans() {
                 <Settings className="h-5 w-5" />
                 Skor Güncelleme
               </CardTitle>
-              <CardDescription>Tum personel skorlarini yeniden hesapla</CardDescription>
+              <CardDescription>Tüm personel skorlarını yeniden hesapla</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <Button
@@ -1031,7 +1031,7 @@ export default function FabrikaPerformans() {
               {updateScoresMutation.data && (
                 <div className="space-y-3">
                   <p className="text-sm text-muted-foreground">
-                    {updateScoresMutation.data.updated} personelin skoru guncellendi
+                    {updateScoresMutation.data.updated} personelin skoru güncellendi
                   </p>
                   <Table>
                     <TableHeader>
@@ -1039,7 +1039,7 @@ export default function FabrikaPerformans() {
                         <TableHead>Personel</TableHead>
                         <TableHead>Eski Skor</TableHead>
                         <TableHead>Yeni Skor</TableHead>
-                        <TableHead>Degisim</TableHead>
+                        <TableHead>Değişim</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>

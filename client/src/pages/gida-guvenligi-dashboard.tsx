@@ -180,8 +180,8 @@ function getCertStatusVariant(status: string): "default" | "secondary" | "destru
 
 function getCertStatusLabel(status: string): string {
   if (status === "active") return "Aktif";
-  if (status === "expiring_soon") return "Suresi Yaklasan";
-  return "Suresi Dolmus";
+  if (status === "expiring_soon") return "Süresi Yaklaşan";
+  return "Süresi Dolmuş";
 }
 
 function getTrainingStatusVariant(status: string): "default" | "secondary" | "destructive" | "outline" {
@@ -533,7 +533,7 @@ export default function GidaGuvenligiDashboard() {
                                 variant={daysLeft <= 7 ? "destructive" : "secondary"}
                                 className="text-[10px]"
                               >
-                                {daysLeft <= 0 ? "Suresi doldu" : `${daysLeft} gun kaldi`}
+                                {daysLeft <= 0 ? "Süresi doldu" : `${daysLeft} gün kaldı`}
                               </Badge>
                             </div>
                             <p className="text-[11px] text-muted-foreground">
@@ -719,7 +719,7 @@ export default function GidaGuvenligiDashboard() {
                             {getCertStatusLabel(cert.status)}
                           </Badge>
                           <span className={`text-[11px] font-medium ${daysLeft <= 30 ? "text-red-600" : daysLeft <= 90 ? "text-yellow-600" : "text-green-600"}`}>
-                            {daysLeft <= 0 ? "Suresi doldu" : `${daysLeft} gun kaldi`}
+                            {daysLeft <= 0 ? "Süresi doldu" : `${daysLeft} gün kaldı`}
                           </span>
                         </div>
                       </div>

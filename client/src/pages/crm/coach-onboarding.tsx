@@ -14,6 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Plus, Edit, Trash2, GraduationCap, Users, Calendar, ClipboardList, ChevronRight, ArrowUp, ArrowDown } from "lucide-react";
 import { ConfirmDeleteDialog, useConfirmDelete } from "@/components/confirm-delete-dialog";
+import { ROLE_LABELS } from "@/lib/turkish-labels";
 
 interface OnboardingTemplate {
   id: number;
@@ -38,34 +39,6 @@ interface OnboardingTemplateStep {
   trainingModuleId: number | null;
   requiredCompletion: boolean;
 }
-
-const roleLabels: Record<string, string> = {
-  admin: "Admin",
-  ceo: "CEO",
-  cgo: "CGO",
-  muhasebe_ik: "Muhasebe & İK",
-  satinalma: "Satın Alma",
-  coach: "Coach",
-  marketing: "Marketing",
-  trainer: "Trainer (Eğitmen)",
-  kalite_kontrol: "Kalite Kontrol",
-  fabrika_mudur: "Fabrika Müdürü",
-  muhasebe: "Muhasebe",
-  teknik: "Teknik",
-  destek: "Destek",
-  fabrika: "Fabrika",
-  yatirimci_hq: "Yatırımcı HQ",
-  stajyer: "Stajyer",
-  bar_buddy: "Bar Buddy",
-  barista: "Barista",
-  supervisor_buddy: "Supervisor Buddy",
-  supervisor: "Supervisor",
-  mudur: "Müdür",
-  yatirimci_branch: "Yatırımcı",
-  fabrika_operator: "Fabrika Operatör",
-  fabrika_sorumlu: "Fabrika Sorumlu",
-  fabrika_personel: "Fabrika Personel",
-};
 
 const mentorRoleLabels: Record<string, string> = {
   barista: "Kıdemli Barista",
@@ -237,7 +210,7 @@ export default function CoachOnboardingPage() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {Object.entries(roleLabels).map(([value, label]) => (
+                      {Object.entries(ROLE_LABELS).map(([value, label]) => (
                         <SelectItem key={value} value={value}>{label}</SelectItem>
                       ))}
                     </SelectContent>
@@ -297,7 +270,7 @@ export default function CoachOnboardingPage() {
                     <div>
                       <p className="font-medium">{template.name}</p>
                       <div className="flex items-center gap-2 mt-1">
-                        <Badge variant="outline">{roleLabels[template.targetRole]}</Badge>
+                        <Badge variant="outline">{ROLE_LABELS[template.targetRole]}</Badge>
                         <span className="text-xs text-muted-foreground">{template.durationDays} gün</span>
                       </div>
                     </div>
@@ -418,7 +391,7 @@ export default function CoachOnboardingPage() {
                 <div className="flex items-center gap-4 mb-4 p-3 bg-muted/50 rounded-lg">
                   <div className="flex items-center gap-2">
                     <Users className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-sm">{roleLabels[selectedTemplate.targetRole]}</span>
+                    <span className="text-sm">{ROLE_LABELS[selectedTemplate.targetRole]}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <Calendar className="h-4 w-4 text-muted-foreground" />

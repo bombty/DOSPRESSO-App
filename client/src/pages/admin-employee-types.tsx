@@ -111,7 +111,7 @@ function EmployeeTypesTab() {
       apiRequest("POST", "/api/admin/employee-types", data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/employee-types"] });
-      toast({ title: "Personel tipi olusturuldu" });
+      toast({ title: "Personel tipi oluşturuldu" });
       closeDialog();
     },
     onError: (err: Error) => {
@@ -124,7 +124,7 @@ function EmployeeTypesTab() {
       apiRequest("PATCH", `/api/admin/employee-types/${id}`, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/employee-types"] });
-      toast({ title: "Personel tipi guncellendi" });
+      toast({ title: "Personel tipi güncellendi" });
       closeDialog();
     },
     onError: (err: Error) => {
@@ -294,12 +294,12 @@ function EmployeeTypesTab() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
-              {editingType ? "Personel Tipini Duzenle" : "Yeni Personel Tipi"}
+              {editingType ? "Personel Tipini Düzenle" : "Yeni Personel Tipi"}
             </DialogTitle>
             <DialogDescription>
               {editingType
-                ? "Mevcut personel tipini guncelleyin"
-                : "Yeni bir personel tipi olusturun"}
+                ? "Mevcut personel tipini güncelleyin"
+                : "Yeni bir personel tipi oluşturun"}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
@@ -329,7 +329,7 @@ function EmployeeTypesTab() {
                 id="type-description"
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                placeholder="Aciklama"
+                placeholder="Açıklama"
                 data-testid="input-type-description"
               />
             </div>
@@ -415,7 +415,7 @@ function PoliciesTab() {
         queryKey: ["/api/admin/employee-types", selectedTypeId, "policies"],
       });
       queryClient.invalidateQueries({ queryKey: ["/api/admin/employee-types"] });
-      toast({ title: "Politika olusturuldu" });
+      toast({ title: "Politika oluşturuldu" });
       closeDialog();
     },
     onError: (err: Error) => {
@@ -657,7 +657,7 @@ function AssignmentsTab() {
       apiRequest("POST", "/api/admin/org-assignments", data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/org-assignments"] });
-      toast({ title: "Atama olusturuldu" });
+      toast({ title: "Atama oluşturuldu" });
       closeDialog();
     },
     onError: (err: Error) => {

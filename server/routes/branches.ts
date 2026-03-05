@@ -166,7 +166,7 @@ router.get('/api/branches', isAuthenticated, async (req, res) => {
     res.json(branches);
   } catch (error: any) {
     console.error("Error fetching branches:", error);
-    res.status(500).json({ message: "Failed to fetch branches" });
+    res.status(500).json({ message: "Şubeler alınırken hata oluştu" });
   }
 });
 
@@ -183,12 +183,12 @@ router.get('/api/branches/:id', isAuthenticated, async (req, res) => {
     
     const branch = await storage.getBranch(id);
     if (!branch) {
-      return res.status(404).json({ message: "Branch not found" });
+      return res.status(404).json({ message: "Şube bulunamadı" });
     }
     res.json(branch);
   } catch (error: any) {
     console.error("Error fetching branch:", error);
-    res.status(500).json({ message: "Failed to fetch branch" });
+    res.status(500).json({ message: "Şube bilgisi alınırken hata oluştu" });
   }
 });
 
@@ -259,9 +259,9 @@ router.post('/api/branches', isAuthenticated, async (req, res) => {
   } catch (error: any) {
     console.error("Error creating branch:", error);
     if (error.name === 'ZodError') {
-      return res.status(400).json({ message: "Invalid branch data", errors: error.errors });
+      return res.status(400).json({ message: "Geçersiz şube verisi", errors: error.errors });
     }
-    res.status(500).json({ message: "Failed to create branch" });
+    res.status(500).json({ message: "Şube oluşturulurken hata oluştu" });
   }
 });
 
@@ -278,16 +278,16 @@ router.patch('/api/branches/:id', isAuthenticated, async (req, res) => {
     const existingBranch = await storage.getBranch(id);
     const branch = await storage.updateBranch(id, validatedData);
     if (!branch) {
-      return res.status(404).json({ message: "Branch not found" });
+      return res.status(404).json({ message: "Şube bulunamadı" });
     }
     auditLog(req, { eventType: "branch.updated", action: "updated", resource: "branches", resourceId: String(id), before: existingBranch ? { name: existingBranch.name } : undefined, after: validatedData });
     res.json(branch);
   } catch (error: any) {
     console.error("Error updating branch:", error);
     if (error.name === 'ZodError') {
-      return res.status(400).json({ message: "Invalid branch data", errors: error.errors });
+      return res.status(400).json({ message: "Geçersiz şube verisi", errors: error.errors });
     }
-    res.status(500).json({ message: "Failed to update branch" });
+    res.status(500).json({ message: "Şube güncellenirken hata oluştu" });
   }
 });
 
@@ -355,10 +355,10 @@ router.delete('/api/branches/:id', isAuthenticated, async (req, res) => {
       resourceId: String(id),
       details: { softDelete: true },
     });
-    res.json({ message: "Branch deleted successfully" });
+    res.json({ message: "Şube başarıyla silindi" });
   } catch (error: any) {
     console.error("Error deleting branch:", error);
-    res.status(500).json({ message: "Failed to delete branch" });
+    res.status(500).json({ message: "Şube silinirken hata oluştu" });
   }
 });
 

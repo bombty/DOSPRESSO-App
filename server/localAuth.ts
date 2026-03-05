@@ -111,7 +111,7 @@ export async function setupAuth(app: Express, authLimiter?: any) {
   });
 
   // Şube kimlik bilgileri kontrolü için yardımcı fonksiyon
-  const normalizeTurkish = (s: string) => s.toLowerCase()
+  const normalizeTurkish = (s: string) => s.toLocaleLowerCase('tr-TR')
     .replace(/ı/g, 'i').replace(/ş/g, 's').replace(/ğ/g, 'g')
     .replace(/ü/g, 'u').replace(/ö/g, 'o').replace(/ç/g, 'c');
 

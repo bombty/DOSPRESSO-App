@@ -89,14 +89,14 @@ export default function UserCRM() {
     let bValue: string | number | Date;
 
     if (sortField === "name") {
-      aValue = `${a.firstName} ${a.lastName}`.toLowerCase();
-      bValue = `${b.firstName} ${b.lastName}`.toLowerCase();
+      aValue = `${a.firstName} ${a.lastName}`.toLocaleLowerCase('tr-TR');
+      bValue = `${b.firstName} ${b.lastName}`.toLocaleLowerCase('tr-TR');
     } else if (sortField === "email") {
-      aValue = (a.email || "").toLowerCase();
-      bValue = (b.email || "").toLowerCase();
+      aValue = (a.email || "").toLocaleLowerCase('tr-TR');
+      bValue = (b.email || "").toLocaleLowerCase('tr-TR');
     } else if (sortField === "role") {
-      aValue = a.role.toLowerCase();
-      bValue = b.role.toLowerCase();
+      aValue = a.role.toLocaleLowerCase('tr-TR');
+      bValue = b.role.toLocaleLowerCase('tr-TR');
     } else {
       aValue = a.createdAt ? new Date(a.createdAt).getTime() : 0;
       bValue = b.createdAt ? new Date(b.createdAt).getTime() : 0;

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { ROLE_LABELS } from "@/lib/turkish-labels";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -94,13 +95,6 @@ interface Branch {
 
 type StudioView = "list" | "editor" | "preview" | "assign";
 
-const ROLE_LABELS: Record<string, string> = {
-  stajyer: "Stajyer",
-  bar_buddy: "Bar Buddy",
-  barista: "Barista",
-  supervisor_buddy: "Supervisor Buddy",
-  supervisor: "Supervisor",
-};
 
 const CONTENT_TYPES = [
   { value: "module", label: "Modül", icon: BookOpen },

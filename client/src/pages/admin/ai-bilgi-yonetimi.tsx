@@ -395,9 +395,9 @@ export default function AdminAIBilgiYonetimi() {
 
   const filteredItems = knowledgeItems.filter(item => {
     const matchesSearch = 
-      item.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.content.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.keywords?.some(k => k.toLowerCase().includes(searchTerm.toLowerCase()));
+      item.title.toLocaleLowerCase('tr-TR').includes(searchTerm.toLocaleLowerCase('tr-TR')) ||
+      item.content.toLocaleLowerCase('tr-TR').includes(searchTerm.toLocaleLowerCase('tr-TR')) ||
+      item.keywords?.some(k => k.toLocaleLowerCase('tr-TR').includes(searchTerm.toLocaleLowerCase('tr-TR')));
     
     const matchesType = filterType === "all" || item.equipmentType === filterType;
     const matchesCategory = filterCategory === "all" || item.category === filterCategory;

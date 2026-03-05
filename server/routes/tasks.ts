@@ -109,7 +109,7 @@ const router = Router();
       if (error instanceof AuthorizationError) {
         return res.status(403).json({ message: error.message });
       }
-      res.status(500).json({ message: "Failed to fetch tasks" });
+      res.status(500).json({ message: "Görevler alınırken hata oluştu" });
     }
   });
 
