@@ -124,7 +124,7 @@ export default function AcademyAchievements() {
         <CardHeader className="pb-2">
           <CardTitle className="text-sm">Özet</CardTitle>
         </CardHeader>
-        <CardContent className="grid grid-cols-3 gap-1">
+        <CardContent className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-1">
           <div className="text-center">
             <p className="text-lg font-bold text-amber-500">{unlockedCount}</p>
             <p className="text-xs text-muted-foreground">Açıldı</p>

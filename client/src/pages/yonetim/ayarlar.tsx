@@ -211,7 +211,7 @@ export default function Settings() {
       </h1>
 
       <Tabs defaultValue="genel" className="w-full">
-        <TabsList className="grid w-full grid-cols-5" data-testid="tabs-settings">
+        <TabsList className="w-full" data-testid="tabs-settings">
           <TabsTrigger value="genel" data-testid="tab-trigger-genel">Genel</TabsTrigger>
           <TabsTrigger value="mail" data-testid="tab-trigger-mail">Mail Ayarları</TabsTrigger>
           <TabsTrigger value="tema" data-testid="tab-trigger-tema">Tema</TabsTrigger>
@@ -568,6 +568,7 @@ export default function Settings() {
                       alt="Logo Preview"
                       className="max-w-xs h-auto border rounded-md mt-2"
                       data-testid="img-logo-preview"
+                      loading="lazy"
                     />
                   )}
                 </div>
@@ -614,6 +615,7 @@ export default function Settings() {
                       alt="Favicon Preview"
                       className="w-8 h-8 border rounded mt-2"
                       data-testid="img-favicon-preview"
+                      loading="lazy"
                     />
                   )}
                 </div>
@@ -660,6 +662,7 @@ export default function Settings() {
                       alt="Banner Preview"
                       className="max-w-full h-auto border rounded-md mt-2"
                       data-testid="img-banner-preview"
+                      loading="lazy"
                     />
                   )}
                 </div>

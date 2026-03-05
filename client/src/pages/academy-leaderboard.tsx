@@ -85,7 +85,7 @@ export default function AcademyLeaderboard() {
       )}
 
       <Tabs defaultValue="global" className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="w-full">
           <TabsTrigger value="global">
             <Trophy className="w-4 h-4 mr-2" />
             Genel Liderlik

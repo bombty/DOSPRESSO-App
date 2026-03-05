@@ -558,7 +558,7 @@ export default function AcademyQuiz() {
               </Badge>
             </div>
 
-            <div className="grid grid-cols-3 gap-2 text-center">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 text-center">
               <div className="p-2 bg-green-500/10 rounded-md">
                 <p className="text-lg font-bold text-green-600 dark:text-green-400" data-testid="text-correct-count">{correctCount}</p>
                 <p className="text-xs text-muted-foreground">Doğru</p>

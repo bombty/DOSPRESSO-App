@@ -1070,6 +1070,7 @@ export default function Equipment() {
                         alt="QR Code" 
                         className="h-24 w-24 mx-auto border rounded"
                         data-testid={`img-qr-${item.id}`}
+                        loading="lazy"
                       />
                     </div>
                   )}

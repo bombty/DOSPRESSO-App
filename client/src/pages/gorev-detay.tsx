@@ -1736,6 +1736,7 @@ export default function GorevDetay() {
               alt="Görev fotoğrafı" 
               className="w-full h-auto rounded-md border"
               data-testid="img-task-photo"
+              loading="lazy"
             />
           </CardContent>
         </Card>

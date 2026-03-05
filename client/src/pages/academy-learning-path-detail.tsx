@@ -67,7 +67,7 @@ export default function AcademyLearningPathDetail() {
             </CardHeader>
             <CardContent className="w-full space-y-1 md:space-y-1">
               <Progress value={totalCompletion} className="h-1" />
-              <div className="grid grid-cols-3 gap-1 text-xs">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-1 text-xs">
                 <div>
                   <p className="text-muted-foreground">Tamamlanan</p>
                   <p className="font-bold text-lg">{recommendedQuizzes.filter(q => q.status === "completed").length}</p>

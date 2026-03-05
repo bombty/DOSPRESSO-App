@@ -370,7 +370,7 @@ export function QuickActionsGrid() {
         {t("quickActions", { defaultValue: "Hızlı İşlemler" })}
       </h3>
       
-      <div className="grid grid-cols-3 gap-1.5">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-1.5">
         {displayActions.map((action, index) => {
           const Icon = action.icon;
           return (

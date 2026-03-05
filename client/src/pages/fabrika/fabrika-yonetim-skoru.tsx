@@ -244,7 +244,7 @@ export default function FabrikaYonetimSkoru() {
                         {score.overall_score}/100
                       </Badge>
                     </div>
-                    <div className="grid grid-cols-5 gap-1">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-1">
                       {[
                         { key: "inventory_count_score", label: "S" },
                         { key: "waste_score", label: "Z" },

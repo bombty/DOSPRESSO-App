@@ -505,7 +505,7 @@ export default function AdminFabrikaKaliteKriterleri() {
               />
 
               {measurementType === "numeric" && (
-                <div className="grid grid-cols-4 gap-4 p-4 bg-muted/50 rounded-lg">
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 p-4 bg-muted/50 rounded-lg">
                   <FormField
                     control={form.control}
                     name="minValue"
@@ -564,7 +564,7 @@ export default function AdminFabrikaKaliteKriterleri() {
                 </div>
               )}
 
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 <FormField
                   control={form.control}
                   name="isRequired"

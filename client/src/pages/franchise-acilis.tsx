@@ -489,7 +489,7 @@ function ProjectDetail({ projectId, onBack }: { projectId: number; onBack: () =>
       </div>
 
       <Tabs defaultValue="phases" className="w-full">
-        <TabsList className="w-full grid grid-cols-4">
+        <TabsList className="w-full">
           <TabsTrigger value="phases" className="text-xs" data-testid="tab-phases">
             <ClipboardCheck className="w-3.5 h-3.5 mr-1" />
             <span className="hidden sm:inline">Fazlar</span>

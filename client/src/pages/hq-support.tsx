@@ -880,6 +880,7 @@ function TicketDetailDialog({
                                     alt={att.name || "Ek"}
                                     className="max-w-[200px] rounded-md"
                                     data-testid={`attachment-image-${msg.id}-${idx}`}
+                                    loading="lazy"
                                   />
                                 ) : null
                               ))}
@@ -900,7 +901,7 @@ function TicketDetailDialog({
               <Separator />
               {pendingAttachment && (
                 <div className="flex items-center gap-2 p-2 bg-muted rounded-md">
-                  <img src={pendingAttachment} alt="Ek" className="w-12 h-12 object-cover rounded-md" />
+                  <img src={pendingAttachment} alt="Ek" className="w-12 h-12 object-cover rounded-md" loading="lazy" />
                   <span className="text-sm text-muted-foreground flex-1">Resim eklendi</span>
                   <Button
                     variant="ghost"

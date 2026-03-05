@@ -807,6 +807,7 @@ export default function MisafirGeriBildirim() {
               src={formSettings.bannerUrl} 
               alt="Banner" 
               className="w-full h-32 object-cover"
+              loading="lazy"
             />
           </div>
         )}
@@ -1058,6 +1059,7 @@ export default function MisafirGeriBildirim() {
                             src={photo.preview} 
                             alt={`Photo ${index + 1}`}
                             className="w-20 h-20 object-cover rounded-lg border"
+                            loading="lazy"
                           />
                           <button
                             type="button"

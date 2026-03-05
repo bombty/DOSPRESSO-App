@@ -572,6 +572,7 @@ export default function Mesajlar() {
                                         style={{ maxHeight: "250px" }}
                                         onClick={() => window.open(att.url, "_blank")}
                                         data-testid={`image-attachment-${att.id}`}
+                                        loading="lazy"
                                       />
                                     ) : (
                                       <a
@@ -615,7 +616,7 @@ export default function Mesajlar() {
                       <div key={att.id} className="relative" data-testid={`attachment-preview-${att.id}`}>
                         {att.type.startsWith("image/") ? (
                           <div className="relative">
-                            <img src={att.url} alt={att.name} className="h-14 w-14 object-cover rounded-md border" />
+                            <img src={att.url} alt={att.name} className="h-14 w-14 object-cover rounded-md border" loading="lazy" />
                             <button
                               onClick={() => setAttachments((prev) => prev.filter((a) => a.id !== att.id))}
                               className="absolute -top-1.5 -right-1.5 bg-destructive text-destructive-foreground rounded-full w-4 h-4 flex items-center justify-center text-[10px] leading-none"

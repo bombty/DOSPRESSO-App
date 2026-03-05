@@ -206,7 +206,7 @@ export default function FabrikaVardiyaUyumluluk() {
                         <div className="text-xs text-muted-foreground">Skor</div>
                       </div>
                     </div>
-                    <div className="mt-2 pt-2 border-t grid grid-cols-3 gap-2 text-xs text-center">
+                    <div className="mt-2 pt-2 border-t grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 text-xs text-center">
                       <div>
                         <div className="text-muted-foreground">Çalışma</div>
                         <div className="font-medium">{Math.floor((record.compliance.effectiveWorkedMinutes || 0) / 60)}s {(record.compliance.effectiveWorkedMinutes || 0) % 60}dk</div>
@@ -252,7 +252,7 @@ export default function FabrikaVardiyaUyumluluk() {
 
           <Card className="bg-muted/50">
             <CardContent className="p-3">
-              <div className="grid grid-cols-3 gap-4 text-center">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 text-center">
                 <div>
                   <div className="text-2xl font-bold">{weeklySummaries?.all?.length || 0}</div>
                   <div className="text-xs text-muted-foreground">Personel</div>

@@ -1568,7 +1568,7 @@ export default function PersonelDetay() {
                 </div>
               ) : trainingProgress && typeof trainingProgress === 'object' && !Array.isArray(trainingProgress) ? (
                 <div className="flex flex-col gap-3 sm:gap-4">
-                  <div className="grid grid-cols-4 gap-2 sm:gap-3">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3">
                     <div className="border rounded-lg p-3">
                       <p className="text-sm text-muted-foreground">Toplam</p>
                       <p className="text-2xl font-bold">{(trainingProgress as any).summary?.total || 0}</p>

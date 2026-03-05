@@ -56,7 +56,7 @@ export function MuhasebeIKDashboard() {
           <Skeleton className="h-20" />
           <Skeleton className="h-20" />
         </div>
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
           <Skeleton className="h-32" />
           <Skeleton className="h-32" />
           <Skeleton className="h-32" />

@@ -612,7 +612,7 @@ function SayimDetailDialog({
           </DialogTitle>
         </DialogHeader>
 
-        <div className="grid grid-cols-4 gap-2 mb-2">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 mb-2">
           <div className="text-center p-2 bg-muted/50 rounded-lg">
             <p className="text-lg font-bold">{totalItems}</p>
             <p className="text-xs text-muted-foreground">Toplam</p>
@@ -972,7 +972,7 @@ function SayimRaporlari({ filterYear }: { filterYear: number }) {
 
   return (
     <div className="space-y-3">
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
         <Card>
           <CardContent className="pt-3 pb-3 text-center">
             <AlertTriangle className="h-5 w-5 text-red-500 mx-auto mb-1" />
@@ -1097,7 +1097,7 @@ function TedarikciPuanlama() {
                     </div>
                   </div>
                   {latestScore && (
-                    <div className="grid grid-cols-3 gap-2 mt-2">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 mt-2">
                       <div className="text-center p-1.5 bg-muted/50 rounded">
                         <p className="text-sm font-semibold">{parseFloat(latestScore.delivery_score || 0).toFixed(0)}</p>
                         <p className="text-xs text-muted-foreground">Sevkiyat</p>

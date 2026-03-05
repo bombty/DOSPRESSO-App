@@ -261,6 +261,7 @@ export default function AdminBannerlar() {
                             src={banner.imageUrl} 
                             alt={banner.title} 
                             className="w-full h-full object-cover"
+                            loading="lazy"
                           />
                         </div>
                       )}
@@ -367,6 +368,7 @@ export default function AdminBannerlar() {
                       src={formData.imageUrl} 
                       alt="Banner önizleme" 
                       className="w-full h-full object-cover"
+                      loading="lazy"
                     />
                   </div>
                   <Button

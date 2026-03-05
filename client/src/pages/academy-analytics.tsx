@@ -142,7 +142,7 @@ export default function AcademyAnalytics() {
         </div>
       ) : (
         <Tabs defaultValue="performance" className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="w-full">
             <TabsTrigger value="performance">Performans</TabsTrigger>
             <TabsTrigger value="badges">Rozetler</TabsTrigger>
             <TabsTrigger value="progress">Kariyer Yolu</TabsTrigger>

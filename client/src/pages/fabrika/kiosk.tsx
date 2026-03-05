@@ -973,6 +973,7 @@ export default function FactoryKiosk() {
                         src={productionPhotoUrl} 
                         alt="Üretim fotoğrafı" 
                         className="w-full h-40 object-cover rounded-lg border border-slate-600"
+                        loading="lazy"
                       />
                       <Button
                         size="icon"

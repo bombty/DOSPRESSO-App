@@ -294,7 +294,7 @@ export function DailyTaskPanel() {
         </div>
 
         <Tabs value={frequency} onValueChange={setFrequency} className="mt-2">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
             <TabsTrigger value="daily" data-testid="tab-daily" className="text-xs">
               <Clock className="h-3 w-3 mr-1" />
               Günlük

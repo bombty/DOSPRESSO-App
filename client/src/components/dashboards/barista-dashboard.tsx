@@ -43,7 +43,7 @@ export function BaristaDashboard({
 
       {/* Personal Performance Gauges */}
       {!isLoading && (
-        <div className="grid gap-0.5 grid-cols-3">
+        <div className="grid gap-0.5 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
           <GaugeCard label="Günlük" value={dailyRate} icon={TrendingUp} />
           <GaugeCard label="Genel" value={overallRate} icon={Zap} />
           <GaugeCard label="Kalan" value={Math.max(0, 100 - (pendingTasks * 20))} icon={Clock} />
@@ -51,7 +51,7 @@ export function BaristaDashboard({
       )}
 
       {/* Quick Stats */}
-      <div className="grid gap-0.5 grid-cols-3">
+      <div className="grid gap-0.5 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
         <KPICard icon={CheckCircle} label="Yapıldı" value={completedTasks} color="green" />
         <KPICard icon={Clock} label="Yapılacak" value={pendingTasks} color="blue" />
         <KPICard icon={ListTodo} label="Bugün" value={todaysTasks.length} color="purple" />

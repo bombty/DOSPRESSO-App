@@ -383,7 +383,7 @@ export default function ModuleDetail() {
 
         {/* Student Learning Tabs */}
         <Tabs value={previewPhase} onValueChange={(v) => setPreviewPhase(v as 'objectives' | 'steps' | 'quiz' | 'scenarios' | 'completed')} className="w-full">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="w-full">
             <TabsTrigger value="objectives">Hedefler</TabsTrigger>
             <TabsTrigger value="steps" disabled={previewPhase === 'objectives'}>İçerik</TabsTrigger>
             <TabsTrigger value="quiz" disabled={previewPhase !== 'quiz' && previewPhase !== 'completed'}>Sınav</TabsTrigger>
@@ -819,7 +819,7 @@ export default function ModuleDetail() {
                               <div className="w-full space-y-2 sm:space-y-3 gap-2">
                                 {steps[currentStepIndex].photos.map((photo: string, pidx: number) => (
                                   <div key={pidx} className="overflow-hidden rounded-lg bg-muted aspect-video">
-                                    <img src={photo} alt={`Step photo ${pidx}`} className="w-full h-full object-cover" />
+                                    <img src={photo} alt={`Step photo ${pidx}`} className="w-full h-full object-cover" loading="lazy" />
                                   </div>
                                 ))}
                               </div>
@@ -1205,6 +1205,7 @@ export default function ModuleDetail() {
                         alt={img.alt || `Fotoğraf ${idx + 1}`}
                         className="w-full h-full object-cover"
                         data-testid={`image-gallery-${idx}`}
+                        loading="lazy"
                       />
                     </div>
                   ))}
@@ -1403,7 +1404,7 @@ export default function ModuleDetail() {
                                 <div className="flex gap-2 mt-2 flex-wrap">
                                   {step.photos.map((photo: string, pidx: number) => (
                                     <div key={pidx} className="relative w-16 h-16 rounded overflow-hidden bg-muted">
-                                      <img src={photo} alt={`Photo ${pidx}`} className="w-full h-full object-cover" />
+                                      <img src={photo} alt={`Photo ${pidx}`} className="w-full h-full object-cover" loading="lazy" />
                                       <button
                                         type="button"
                                         onClick={() => {
@@ -1465,7 +1466,7 @@ export default function ModuleDetail() {
                           <div className="grid grid-cols-2 gap-2">
                             {step.photos.map((photo: string, pidx: number) => (
                               <div key={pidx} className="overflow-hidden rounded-md bg-muted aspect-video">
-                                <img src={photo} alt={`Step photo ${pidx}`} className="w-full h-full object-cover" />
+                                <img src={photo} alt={`Step photo ${pidx}`} className="w-full h-full object-cover" loading="lazy" />
                               </div>
                             ))}
                           </div>

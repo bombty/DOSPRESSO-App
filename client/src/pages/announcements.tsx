@@ -367,6 +367,7 @@ export default function Announcements() {
                             src={bannerImageUrl} 
                             alt="Banner önizleme" 
                             className="w-full h-32 object-cover rounded-lg"
+                            loading="lazy"
                           />
                           <Button
                             type="button"
@@ -637,6 +638,7 @@ export default function Announcements() {
                       src={announcement.bannerImageUrl!} 
                       alt={announcement.title}
                       className="w-full h-full object-cover"
+                      loading="lazy"
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />
                     <div className="absolute bottom-0 left-0 right-0 p-3">
@@ -750,6 +752,7 @@ export default function Announcements() {
                     src={selectedAnnouncement.bannerImageUrl} 
                     alt={selectedAnnouncement.title}
                     className="w-full h-full object-cover"
+                    loading="lazy"
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />
                 </div>
@@ -907,7 +910,7 @@ export default function Announcements() {
                     
                     {bannerImageUrl ? (
                       <div className="relative">
-                        <img src={bannerImageUrl} alt="Banner önizleme" className="w-full h-32 object-cover rounded-lg" />
+                        <img src={bannerImageUrl} alt="Banner önizleme" className="w-full h-32 object-cover rounded-lg" loading="lazy" />
                         <Button
                           type="button"
                           variant="destructive"

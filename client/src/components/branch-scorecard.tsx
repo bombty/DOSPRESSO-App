@@ -118,7 +118,7 @@ export function BranchScorecard() {
 
         <Progress value={scoreData.score} className="h-1.5 mb-3" />
 
-        <div className="grid grid-cols-4 gap-1.5 text-center">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-1.5 text-center">
           <div className="p-1.5 rounded-md bg-muted/50">
             <CheckCircle2 className="h-3.5 w-3.5 mx-auto text-green-500 mb-0.5" />
             <p className="text-sm font-bold">{scoreData.tasksCompleted}</p>

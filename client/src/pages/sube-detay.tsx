@@ -923,6 +923,7 @@ export default function SubeDetayPage() {
                           alt="Müşteri Geri Bildirim QR Kodu"
                           className="w-48 h-48"
                           data-testid="img-feedback-qr"
+                          loading="lazy"
                         />
                         <p className="text-xs text-muted-foreground mt-2 font-mono text-center break-all max-w-[200px]">
                           {feedbackQrData.url}

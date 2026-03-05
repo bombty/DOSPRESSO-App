@@ -102,7 +102,7 @@ export default function AcademySupervisor() {
       <GateRequestsWidget />
 
       <Tabs defaultValue="team" className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="w-full">
           <TabsTrigger value="team" className="text-xs">
             <Users className="w-3 h-3 mr-1" />
             Ekibim

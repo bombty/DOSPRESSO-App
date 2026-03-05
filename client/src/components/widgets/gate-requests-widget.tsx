@@ -118,7 +118,7 @@ function AttemptEvaluationForm({ attempt }: { attempt: PendingAttempt }) {
 
         {expanded && (
           <div className="px-3 pb-3 space-y-3 border-t">
-            <div className="grid grid-cols-3 gap-2 mt-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 mt-3">
               <div className="space-y-1">
                 <label className="text-xs text-muted-foreground flex items-center gap-1">
                   Quiz Skor

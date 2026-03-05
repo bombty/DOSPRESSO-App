@@ -222,7 +222,7 @@ export default function AdminAcademy() {
       </Card>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 h-auto gap-1 p-1">
+        <TabsList className="w-full h-auto gap-1 p-1">
           <TabsTrigger value="overview" className="text-xs sm:text-sm" data-testid="tab-overview">
             <BarChart3 className="w-4 h-4 mr-1" />
             Genel Bakış
@@ -504,7 +504,6 @@ function CategoriesTab({ recipeCategories, hubCategories, onEdit, onAdd }: {
                         <Button 
                           size="icon" 
                           variant="ghost" 
-                          className="h-7 w-7"
                           onClick={() => onEdit(cat)}
                           data-testid={`button-edit-category-${cat.id}`}
                         >
@@ -513,7 +512,7 @@ function CategoriesTab({ recipeCategories, hubCategories, onEdit, onAdd }: {
                         <Button 
                           size="icon" 
                           variant="ghost" 
-                          className="h-7 w-7 text-destructive"
+                          className="text-destructive"
                           onClick={() => requestDelete(cat.id, cat.titleTr)}
                           data-testid={`button-delete-category-${cat.id}`}
                         >
@@ -654,7 +653,6 @@ function ModulesTab({ modules, recipeCategories, onEdit, onAdd }: {
                     <Button 
                       size="icon" 
                       variant="ghost" 
-                      className="h-7 w-7"
                       onClick={() => onEdit(mod)}
                       data-testid={`button-edit-module-${mod.id}`}
                     >
@@ -663,7 +661,7 @@ function ModulesTab({ modules, recipeCategories, onEdit, onAdd }: {
                     <Button 
                       size="icon" 
                       variant="ghost" 
-                      className="h-7 w-7 text-destructive"
+                      className="text-destructive"
                       onClick={() => requestDelete(mod.id, mod.title)}
                       data-testid={`button-delete-module-${mod.id}`}
                     >
@@ -1321,7 +1319,6 @@ function RecipesTab({ recipes, recipeCategories, onEditRecipe, onAddRecipe, onEd
                                 <Button 
                                   size="icon" 
                                   variant="ghost" 
-                                  className="h-7 w-7"
                                   onClick={() => handleViewDetail(recipe)}
                                   data-testid={`button-view-recipe-${recipe.id}`}
                                   title="Görüntüle"
@@ -1331,7 +1328,6 @@ function RecipesTab({ recipes, recipeCategories, onEditRecipe, onAddRecipe, onEd
                                 <Button 
                                   size="icon" 
                                   variant="ghost" 
-                                  className="h-7 w-7"
                                   onClick={() => onEditRecipe(recipe)}
                                   data-testid={`button-edit-recipe-${recipe.id}`}
                                   title="Düzenle"
@@ -1342,7 +1338,6 @@ function RecipesTab({ recipes, recipeCategories, onEditRecipe, onAddRecipe, onEd
                                   <Button 
                                     size="icon" 
                                     variant="ghost" 
-                                    className="h-7 w-7"
                                     onClick={() => onDuplicateRecipe(recipe)}
                                     data-testid={`button-duplicate-recipe-${recipe.id}`}
                                     title="Kopyala"
@@ -1353,7 +1348,7 @@ function RecipesTab({ recipes, recipeCategories, onEditRecipe, onAddRecipe, onEd
                                 <Button 
                                   size="icon" 
                                   variant="ghost" 
-                                  className="h-7 w-7 text-destructive"
+                                  className="text-destructive"
                                   onClick={() => requestRecipeDelete(recipe.id, recipe.nameTr)}
                                   data-testid={`button-delete-recipe-${recipe.id}`}
                                   title="Sil"
@@ -1398,7 +1393,6 @@ function RecipesTab({ recipes, recipeCategories, onEditRecipe, onAddRecipe, onEd
                       <Button 
                         size="icon" 
                         variant="ghost" 
-                        className="h-7 w-7"
                         onClick={() => onEditCategory(category)}
                         data-testid={`button-edit-category-${category.id}`}
                         title="Düzenle"
@@ -1408,7 +1402,7 @@ function RecipesTab({ recipes, recipeCategories, onEditRecipe, onAddRecipe, onEd
                       <Button 
                         size="icon" 
                         variant="ghost" 
-                        className={`h-7 w-7 ${recipeCount === 0 ? 'text-destructive' : 'text-muted-foreground'}`}
+                        className={recipeCount === 0 ? 'text-destructive' : 'text-muted-foreground'}
                         onClick={() => handleDeleteCategory(category)}
                         data-testid={`button-delete-category-${category.id}`}
                         title={recipeCount > 0 ? `${recipeCount} reçete var - silinemez` : "Sil"}
@@ -1754,7 +1748,7 @@ function RecipeDialog({ open, onOpenChange, recipeId, categories, duplicatingRec
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-              <TabsList className="grid w-full grid-cols-3">
+              <TabsList className="w-full">
                 <TabsTrigger value="temel">Temel Bilgi</TabsTrigger>
                 <TabsTrigger value="massivo">MASSIVO (350ml)</TabsTrigger>
                 <TabsTrigger value="longdiva">LONG DIVA (550ml)</TabsTrigger>
@@ -1875,12 +1869,13 @@ function RecipeDialog({ open, onOpenChange, recipeId, categories, duplicatingRec
                                 src={field.value} 
                                 alt="Reçete fotoğrafı" 
                                 className="w-full h-full object-cover"
+                                loading="lazy"
                               />
                               <Button
                                 type="button"
                                 size="icon"
                                 variant="destructive"
-                                className="absolute top-1 right-1 h-6 w-6"
+                                className="absolute top-1 right-1"
                                 onClick={() => field.onChange("")}
                               >
                                 <Trash2 className="w-3 h-3" />
@@ -2602,7 +2597,7 @@ function ModuleDialog({ open, onOpenChange, module, categories }: {
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             <Tabs value={activeDialogTab} onValueChange={(v) => setActiveDialogTab(v as any)}>
-              <TabsList className="grid w-full grid-cols-3">
+              <TabsList className="w-full">
                 <TabsTrigger value="basic">Temel Bilgiler</TabsTrigger>
                 <TabsTrigger value="content">İçerik</TabsTrigger>
                 <TabsTrigger value="settings">Ayarlar</TabsTrigger>
@@ -2646,7 +2641,7 @@ function ModuleDialog({ open, onOpenChange, module, categories }: {
                   )}
                 />
                 
-                <div className="grid grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                   <FormField
                     control={form.control}
                     name="level"

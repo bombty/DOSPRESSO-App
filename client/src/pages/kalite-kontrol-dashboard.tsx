@@ -612,7 +612,7 @@ export default function KaliteKontrolDashboard() {
               </div>
               
               {selectedFeedback.serviceRating && (
-                <div className="grid grid-cols-4 gap-1 text-center">
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-1 text-center">
                   <div className="p-1.5 bg-muted rounded">
                     <p className="text-sm font-bold">{selectedFeedback.serviceRating}</p>
                     <p className="text-[10px] text-muted-foreground">Hizmet</p>

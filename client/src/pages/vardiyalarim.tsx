@@ -679,7 +679,7 @@ export default function Vardiyalarim() {
         <p className="text-sm text-muted-foreground mt-0.5" data-testid="text-page-description">Çalışma programınız ve talepler</p>
       </div>
 
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
         <Card>
           <CardContent className="p-2">
             <div className="flex flex-col items-center text-center gap-0.5">

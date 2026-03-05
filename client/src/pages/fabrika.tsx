@@ -265,7 +265,7 @@ export default function Fabrika() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="w-full">
           <TabsTrigger value="dashboard" data-testid="tab-dashboard">
             <TrendingUp className="h-4 w-4 mr-2" />
             Özet

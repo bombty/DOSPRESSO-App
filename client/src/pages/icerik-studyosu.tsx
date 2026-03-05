@@ -227,7 +227,7 @@ export default function IcerikStudyosu() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="w-full">
           <TabsTrigger value="drafts" className="flex items-center gap-2" data-testid="tab-drafts">
             <FileText className="w-4 h-4" />
             Taslaklar
@@ -263,6 +263,7 @@ export default function IcerikStudyosu() {
                       src={banner.imageUrl} 
                       alt={banner.title}
                       className="w-full h-full object-cover"
+                      loading="lazy"
                     />
                     <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
                       <Button 
@@ -321,6 +322,7 @@ export default function IcerikStudyosu() {
                         src={announcement.bannerImageUrl} 
                         alt={announcement.title}
                         className="w-full h-full object-cover"
+                        loading="lazy"
                       />
                       <Badge 
                         className="absolute top-2 right-2"
@@ -403,6 +405,7 @@ export default function IcerikStudyosu() {
                       src={banner.imageUrl} 
                       alt={banner.title}
                       className="w-full h-full object-cover"
+                      loading="lazy"
                     />
                     <Badge className="absolute top-2 left-2 bg-green-500">
                       Aktif
@@ -479,7 +482,7 @@ export default function IcerikStudyosu() {
                 <div className="space-y-4 pb-4">
                   {bannerImageUrl && (
                     <div className="relative rounded-lg overflow-hidden">
-                      <img src={bannerImageUrl} alt="Banner" className="w-full h-32 object-cover" />
+                      <img src={bannerImageUrl} alt="Banner" className="w-full h-32 object-cover" loading="lazy" />
                     </div>
                   )}
 

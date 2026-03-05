@@ -144,6 +144,7 @@ export function AnnouncementBannerCarousel() {
                       alt={currentBanner.title}
                       className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                       onError={() => handleImageError(currentBanner.id)}
+                      loading="lazy"
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent" />
                   </>
@@ -221,6 +222,7 @@ export function AnnouncementBannerCarousel() {
                     src={announcementDetail.bannerImageUrl}
                     alt={announcementDetail.title}
                     className="w-full h-full object-cover"
+                    loading="lazy"
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
                   <div className="absolute bottom-4 left-4 right-4">

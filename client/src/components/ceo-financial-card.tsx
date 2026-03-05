@@ -192,7 +192,7 @@ export function CEOFinancialCard() {
             <Users className="w-3.5 h-3.5" />
             Personel Maliyeti
           </div>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
             <div>
               <p className="text-[10px] text-muted-foreground">Personel</p>
               <p className="text-sm font-bold" data-testid="text-total-employees">{personelMaliyeti.totalEmployees}</p>

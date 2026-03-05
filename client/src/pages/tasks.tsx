@@ -415,7 +415,7 @@ export default function Tasks() {
         )}
       </div>
 
-      <div className="grid grid-cols-3 gap-2 sm:gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-3">
         {overdueTasks.length > 0 && (
           <Card 
             data-testid="card-stat-overdue" 
@@ -770,7 +770,7 @@ export default function Tasks() {
                 {/* Sortable Column Headers - Desktop only */}
                 <Card className="hidden lg:block">
                   <CardContent className="py-2 px-3">
-                    <div className="grid grid-cols-5 gap-2 sm:gap-3">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-3">
                       <Button
                         variant="ghost"
                         size="sm"
@@ -932,7 +932,7 @@ export default function Tasks() {
                             </div>
                           </div>
                           
-                          <div className="grid grid-cols-3 gap-1 text-xs text-muted-foreground">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-1 text-xs text-muted-foreground">
                             {task.assignedToId && (
                               <div className="min-w-0">
                                 <p className="font-medium text-foreground truncate text-[10px]">

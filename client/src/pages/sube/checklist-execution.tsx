@@ -411,6 +411,7 @@ export default function ChecklistExecutionPage() {
                           src={taskCompletion.photoUrl} 
                           alt="Görev fotoğrafı" 
                           className="h-20 w-20 object-cover rounded-md"
+                          loading="lazy"
                         />
                         {taskCompletion.aiVerificationResult && (
                           <div className={`flex items-center gap-2 p-2 rounded-md text-sm ${
@@ -453,11 +454,12 @@ export default function ChecklistExecutionPage() {
                               src={taskPhotos[task.id]} 
                               alt="Yüklenen fotoğraf" 
                               className="h-32 w-32 object-cover rounded-md"
+                              loading="lazy"
                             />
                             <Button
                               variant="destructive"
-                              size="sm"
-                              className="absolute -top-2 -right-2 h-6 w-6 p-0 rounded-full"
+                              size="icon"
+                              className="absolute -top-2 -right-2"
                               onClick={() => setTaskPhotos(prev => ({ ...prev, [task.id]: '' }))}
                             >
                               ×

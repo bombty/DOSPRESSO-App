@@ -642,6 +642,7 @@ export default function EkipmanKatalog() {
                     alt={item.name}
                     className="h-full w-full object-cover"
                     data-testid={`img-catalog-${item.id}`}
+                    loading="lazy"
                   />
                 </div>
               )}

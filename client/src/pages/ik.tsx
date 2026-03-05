@@ -720,7 +720,7 @@ export default function IKPage() {
               <CardContent className="w-full space-y-3 sm:space-y-4">
                 {/* Tabs for Active/Terminated Employees */}
                 <Tabs defaultValue="active" className="w-full">
-                  <TabsList className={`grid w-full max-w-md ${(isHQRole(user?.role as any) || user?.role === 'admin') ? 'grid-cols-2' : 'grid-cols-1'}`}>
+                  <TabsList className="w-full max-w-md">
                     <TabsTrigger value="active" data-testid="tab-active-employees" className="flex items-center gap-2">
                       <Users className="h-4 w-4" />
                       Aktif Personel
@@ -2054,7 +2054,7 @@ function AddEmployeeDialog({
               )}
             </div>
 
-            <div className="grid grid-cols-3 gap-2 sm:gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-3">
               <FormField
                 control={form.control}
                 name="hireDate"
@@ -2383,7 +2383,7 @@ function EditEmployeeDialog({
                   />
                 </div>
 
-                <div className="grid grid-cols-3 gap-2 sm:gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-3">
                   <FormField
                     control={form.control}
                     name="hireDate"
@@ -2994,7 +2994,7 @@ function RecruitmentSection() {
 
       {/* Tabs for Positions, Applications and Interviews */}
       <Tabs defaultValue="positions" className="w-full">
-        <TabsList className="grid w-full max-w-lg grid-cols-3">
+        <TabsList className="w-full max-w-lg">
           <TabsTrigger value="positions" data-testid="tab-positions">
             Pozisyonlar
             <Badge variant="secondary" className="ml-2">{positions.filter(p => p.status === 'open').length}</Badge>
@@ -5611,7 +5611,7 @@ function BatchDetailSkeleton() {
           </div>
         ))}
       </div>
-      <div className="grid grid-cols-4 gap-2">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
         {Array.from({ length: 4 }).map((_, i) => (
           <div key={i} className="p-2 border rounded-md text-center space-y-1">
             <Skeleton className="h-6 w-10 mx-auto" />
@@ -5810,7 +5810,7 @@ function BatchDetailSheet({
                 </div>
               </div>
 
-              <div className="grid grid-cols-4 gap-2">
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
                 <Card className="p-2 text-center">
                   <p className="text-lg font-bold text-green-600" data-testid="stat-created">{batch.createdCount ?? 0}</p>
                   <p className="text-[10px] text-muted-foreground">Oluşturulan</p>

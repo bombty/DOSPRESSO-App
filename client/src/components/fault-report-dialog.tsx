@@ -458,6 +458,7 @@ export function FaultReportDialog({ equipment, isOpen, onOpenChange }: FaultRepo
                     alt="Yüklenen Fotoğraf"
                     className="h-32 w-32 object-cover rounded border"
                     data-testid="img-uploaded-photo"
+                    loading="lazy"
                   />
                   <Button
                     type="button"
@@ -507,7 +508,7 @@ export function FaultReportDialog({ equipment, isOpen, onOpenChange }: FaultRepo
             <CardContent className="space-y-4">
               <div>
                 <p className="text-sm font-medium mb-2">Belirtiler</p>
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   {['Ses / titreşim sorunu', 'Sıcaklık problemi', 'Sızıntı / kaçak', 'Elektrik arızası', 'Mekanik hasar', 'Yazılım hatası', 'Basınç sorunu', 'Performans düşüklüğü'].map(symptom => (
                     <label key={symptom} className="flex items-center gap-2 text-sm cursor-pointer" data-testid={`checkbox-symptom-${symptom.replace(/\s/g, '-')}`}>
                       <input
@@ -527,7 +528,7 @@ export function FaultReportDialog({ equipment, isOpen, onOpenChange }: FaultRepo
 
               <div>
                 <p className="text-sm font-medium mb-2">Etkilenen Alanlar</p>
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   {['Bar alanı', 'Mutfak', 'Depo', 'Müşteri alanı', 'Ofis', 'Dış mekan'].map(area => (
                     <label key={area} className="flex items-center gap-2 text-sm cursor-pointer" data-testid={`checkbox-area-${area.replace(/\s/g, '-')}`}>
                       <input
@@ -908,7 +909,7 @@ export function FaultReportDialog({ equipment, isOpen, onOpenChange }: FaultRepo
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-2 text-sm">
-                    <div className="grid grid-cols-2 gap-2">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                       <div><span className="font-medium">Ekipman:</span> {metadata?.nameTr}</div>
                       <div><span className="font-medium">Seri No:</span> {equipment.serialNumber}</div>
                       <div><span className="font-medium">Öncelik:</span> {createdFault?.priority === 'yuksek' ? 'Yüksek' : createdFault?.priority === 'dusuk' ? 'Düşük' : 'Orta'}</div>
@@ -938,7 +939,7 @@ export function FaultReportDialog({ equipment, isOpen, onOpenChange }: FaultRepo
               <div className="space-y-3">
                 <Card>
                   <CardContent className="space-y-2 text-sm pt-4">
-                    <div className="grid grid-cols-2 gap-2">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                       <div><span className="font-medium">Ekipman:</span> {metadata?.nameTr}</div>
                       <div><span className="font-medium">Seri No:</span> {equipment.serialNumber}</div>
                       <div><span className="font-medium">Öncelik:</span> {createdFault?.priority === 'yuksek' ? 'Yüksek' : createdFault?.priority === 'dusuk' ? 'Düşük' : 'Orta'}</div>
@@ -1002,7 +1003,7 @@ export function FaultReportDialog({ equipment, isOpen, onOpenChange }: FaultRepo
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <label className="text-xs font-medium text-muted-foreground">Bildirim Tarihi</label>
                     <Input

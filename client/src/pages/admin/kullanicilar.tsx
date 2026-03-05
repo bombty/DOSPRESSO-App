@@ -185,7 +185,7 @@ export default function AdminKullanicilar() {
 
       {/* Kategori Filtreleri */}
       <Tabs value={categoryFilter} onValueChange={(v) => setCategoryFilter(v as CategoryFilter)}>
-        <TabsList className="w-full grid grid-cols-4 h-auto">
+        <TabsList className="w-full h-auto">
           <TabsTrigger value="all" className="text-[10px] sm:text-xs px-1 sm:px-2 py-1.5" data-testid="tab-filter-all">
             Tümü ({counts.all})
           </TabsTrigger>
@@ -271,7 +271,7 @@ export default function AdminKullanicilar() {
                     </div>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                        <Button variant="ghost" size="icon" className="h-8 w-8" data-testid={`button-user-menu-${userItem.id}`}>
+                        <Button variant="ghost" size="icon" data-testid={`button-user-menu-${userItem.id}`}>
                           <MoreVertical className="h-4 w-4" />
                         </Button>
                       </DropdownMenuTrigger>

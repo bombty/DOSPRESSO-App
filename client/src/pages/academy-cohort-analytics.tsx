@@ -112,7 +112,7 @@ export default function AcademyCohortAnalytics() {
         </div>
       ) : (
         <Tabs defaultValue="funnel" className="w-full">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="w-full">
             <TabsTrigger value="funnel">Huni</TabsTrigger>
             <TabsTrigger value="progression">İlerleme</TabsTrigger>
             <TabsTrigger value="scores">Puanlar</TabsTrigger>

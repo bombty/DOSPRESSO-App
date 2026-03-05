@@ -120,7 +120,7 @@ export default function AcademyBranchAnalytics() {
         </div>
       ) : (
         <Tabs defaultValue="comparison" className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="w-full">
             <TabsTrigger value="comparison">Karşılaştırma</TabsTrigger>
             <TabsTrigger value="ranking">Sıralama</TabsTrigger>
             <TabsTrigger value="details">Detaylar</TabsTrigger>

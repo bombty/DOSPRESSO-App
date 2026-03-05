@@ -816,12 +816,13 @@ function ChecklistFormDialog({
                                     src={task.referencePhotoUrl} 
                                     alt="Referans" 
                                     className="w-full h-full object-cover"
+                                    loading="lazy"
                                   />
                                   <Button
                                     type="button"
                                     variant="destructive"
                                     size="icon"
-                                    className="absolute top-1 right-1 h-5 w-5"
+                                    className="absolute top-1 right-1"
                                     onClick={() => updateTask(index, 'referencePhotoUrl', '')}
                                   >
                                     <X className="h-3 w-3" />

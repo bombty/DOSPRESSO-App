@@ -126,11 +126,12 @@ export function ImageUploader({ value, onChange, purpose = "general", label, cla
               compact ? "max-h-32 max-w-48" : "max-h-48 w-full max-w-md"
             )}
             data-testid="img-preview"
+            loading="lazy"
           />
           <Button
             variant="destructive"
             size="icon"
-            className="absolute top-1 right-1 h-6 w-6 rounded-full opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity"
+            className="absolute top-1 right-1 rounded-full opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity"
             style={{ visibility: "visible" }}
             onClick={handleRemove}
             data-testid="button-remove-image"

@@ -1006,7 +1006,7 @@ export default function FaultDetail() {
       <ServiceNotificationCard fault={fault} />
 
       <Tabs defaultValue="details" className="w-full">
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className="w-full">
           <TabsTrigger value="details" data-testid="tab-details">
             <Settings className="w-3.5 h-3.5 mr-1 hidden sm:inline" />
             Detaylar

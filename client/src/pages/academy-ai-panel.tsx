@@ -255,7 +255,7 @@ function SupervisorPanel({ data }: { data: SupervisorPanelData }) {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-3 gap-3" data-testid="team-stats-row">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3" data-testid="team-stats-row">
             <div className="p-3 rounded-md bg-muted/50 text-center">
               <div className="flex items-center justify-center gap-1 mb-1">
                 <Users className="h-4 w-4 text-muted-foreground" />
@@ -434,7 +434,7 @@ function CoachPanel({ data }: { data: CoachPanelData }) {
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-4 gap-3" data-testid="system-stats-row">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3" data-testid="system-stats-row">
             <div className="p-3 rounded-md bg-muted/50 text-center">
               <div className="text-lg font-semibold" data-testid="stat-total-runs">
                 {data.systemStats.totalRuns}
@@ -509,7 +509,7 @@ function CoachPanel({ data }: { data: CoachPanelData }) {
           <div data-testid="recent-logs-section">
             <h4 className="text-sm font-medium mb-2">Recent Logs</h4>
             <div className="space-y-1">
-              <div className="grid grid-cols-6 gap-2 px-2 py-1 text-xs font-medium text-muted-foreground">
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 px-2 py-1 text-xs font-medium text-muted-foreground">
                 <span>Timestamp</span>
                 <span>Run Type</span>
                 <span>Scope</span>
@@ -522,7 +522,7 @@ function CoachPanel({ data }: { data: CoachPanelData }) {
                 return (
                   <div key={log.id} data-testid={`log-row-${log.id}`}>
                     <button
-                      className="w-full grid grid-cols-6 gap-2 px-2 py-2 text-xs rounded-md hover-elevate items-center"
+                      className="w-full grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 px-2 py-2 text-xs rounded-md hover-elevate items-center"
                       onClick={() => toggleRow(log.id)}
                       data-testid={`toggle-log-${log.id}`}
                     >

@@ -85,7 +85,7 @@ export default function AcademyTeamCompetitions() {
       )}
 
       <Tabs defaultValue="active" className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="w-full">
           <TabsTrigger value="active">Canlı Yarışma</TabsTrigger>
           <TabsTrigger value="leaderboard">Liderlik</TabsTrigger>
           <TabsTrigger value="history">Geçmiş</TabsTrigger>

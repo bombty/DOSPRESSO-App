@@ -648,7 +648,7 @@ export default function StokYonetimi() {
                   <CardTitle className="text-sm">Stok Durumu</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="grid grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                     <div className="text-center p-3 rounded-lg bg-muted">
                       <p className="text-2xl font-bold">{parseFloat(selectedItem.currentStock).toLocaleString("tr-TR")}</p>
                       <p className="text-xs text-muted-foreground">Mevcut ({selectedItem.unit})</p>

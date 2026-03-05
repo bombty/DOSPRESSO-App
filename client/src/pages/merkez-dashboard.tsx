@@ -353,7 +353,7 @@ export default function MerkezDashboard() {
                               </Badge>
                             )}
                           </div>
-                          <div className="grid grid-cols-3 gap-1.5">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-1.5">
                             <div className="text-center p-1.5 rounded bg-blue-500/10">
                               <Users className="h-3 w-3 mx-auto text-blue-500 mb-0.5" />
                               <p className="text-sm font-bold text-blue-600 dark:text-blue-400">{branch.employeeCount}</p>

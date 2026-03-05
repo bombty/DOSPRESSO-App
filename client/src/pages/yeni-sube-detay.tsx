@@ -1215,7 +1215,7 @@ export default function YeniSubeDetay() {
       </Card>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4" data-testid="tabs-container">
-        <TabsList className="grid w-full grid-cols-5 lg:w-auto lg:inline-grid" data-testid="tabs-list">
+        <TabsList className="w-full" data-testid="tabs-list">
           <TabsTrigger value="overview" className="gap-1" data-testid="tab-overview">
             <Eye className="h-4 w-4" />
             <span className="hidden sm:inline">Genel Bakış</span>
@@ -1721,7 +1721,7 @@ export default function YeniSubeDetay() {
           </DialogHeader>
 
           <Tabs value={phaseDetailTab} onValueChange={setPhaseDetailTab} className="flex-1 flex flex-col overflow-hidden">
-            <TabsList className="grid w-full grid-cols-4" data-testid="tabs-phase-detail">
+            <TabsList className="w-full" data-testid="tabs-phase-detail">
               <TabsTrigger value="general" className="gap-1" data-testid="tab-phase-general">
                 <Eye className="h-4 w-4" />
                 Genel
@@ -1882,7 +1882,7 @@ export default function YeniSubeDetay() {
                       >
                         <div className="flex items-center gap-2 p-2 rounded-md bg-muted/50 hover-elevate" data-testid={`category-${category.id}`}>
                           <CollapsibleTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-6 w-6">
+                            <Button variant="ghost" size="icon">
                               {expandedCategories.has(category.id) ? (
                                 <ChevronDown className="h-4 w-4" />
                               ) : (
@@ -1891,13 +1891,13 @@ export default function YeniSubeDetay() {
                             </Button>
                           </CollapsibleTrigger>
                           <span className="font-medium flex-1" data-testid={`text-category-title-${category.id}`}>{category.title}</span>
-                          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={(e) => { e.stopPropagation(); handleOpenSubTaskDialog(category.id, false); }} data-testid={`button-add-task-to-${category.id}`}>
+                          <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); handleOpenSubTaskDialog(category.id, false); }} data-testid={`button-add-task-to-${category.id}`}>
                             <Plus className="h-3 w-3" />
                           </Button>
-                          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={(e) => { e.stopPropagation(); handleEditSubTask(category); }} data-testid={`button-edit-category-${category.id}`}>
+                          <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); handleEditSubTask(category); }} data-testid={`button-edit-category-${category.id}`}>
                             <Edit2 className="h-3 w-3" />
                           </Button>
-                          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={(e) => { e.stopPropagation(); requestSubTaskDelete(category.id, category.title || "Kategori"); }} data-testid={`button-delete-category-${category.id}`}>
+                          <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); requestSubTaskDelete(category.id, category.title || "Kategori"); }} data-testid={`button-delete-category-${category.id}`}>
                             <Trash2 className="h-3 w-3 text-destructive" />
                           </Button>
                         </div>
@@ -1927,10 +1927,10 @@ export default function YeniSubeDetay() {
                                   {format(new Date(task.dueDate), "d MMM", { locale: tr })}
                                 </span>
                               )}
-                              <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleEditSubTask(task)} data-testid={`button-edit-subtask-${task.id}`}>
+                              <Button variant="ghost" size="icon" onClick={() => handleEditSubTask(task)} data-testid={`button-edit-subtask-${task.id}`}>
                                 <Edit2 className="h-3 w-3" />
                               </Button>
-                              <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => requestSubTaskDelete(task.id, task.title || "Görev")} data-testid={`button-delete-subtask-${task.id}`}>
+                              <Button variant="ghost" size="icon" onClick={() => requestSubTaskDelete(task.id, task.title || "Görev")} data-testid={`button-delete-subtask-${task.id}`}>
                                 <Trash2 className="h-3 w-3 text-destructive" />
                               </Button>
                             </div>
@@ -1970,10 +1970,10 @@ export default function YeniSubeDetay() {
                                 {format(new Date(task.dueDate), "d MMM", { locale: tr })}
                               </span>
                             )}
-                            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleEditSubTask(task)} data-testid={`button-edit-subtask-${task.id}`}>
+                            <Button variant="ghost" size="icon" onClick={() => handleEditSubTask(task)} data-testid={`button-edit-subtask-${task.id}`}>
                               <Edit2 className="h-3 w-3" />
                             </Button>
-                            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => requestSubTaskDelete(task.id, task.title || "Görev")} data-testid={`button-delete-subtask-${task.id}`}>
+                            <Button variant="ghost" size="icon" onClick={() => requestSubTaskDelete(task.id, task.title || "Görev")} data-testid={`button-delete-subtask-${task.id}`}>
                               <Trash2 className="h-3 w-3 text-destructive" />
                             </Button>
                           </div>

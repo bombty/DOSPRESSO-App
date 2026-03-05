@@ -271,7 +271,7 @@ function GrowthTab({ data }: { data: CGOData }) {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
                 {quickActions.map((action, i) => (
                   <Button
                     key={i}
@@ -298,7 +298,7 @@ function GrowthTab({ data }: { data: CGOData }) {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-3 gap-4 mb-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
             <div className="text-center" data-testid="cgo-workforce-total">
               <p className="text-2xl font-bold">{data.workforce.total}</p>
               <p className="text-xs text-muted-foreground">Toplam Personel</p>
@@ -598,7 +598,7 @@ function ManagerCard({ manager }: { manager: ManagerData }) {
               </div>
               {getScoreBadge(manager.metrics.overallScore)}
             </div>
-            <div className="mt-2 grid grid-cols-3 gap-2 text-center">
+            <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 text-center">
               <div className="bg-muted/50 rounded p-1.5">
                 <p className={`text-sm font-bold ${getScoreColor(manager.metrics.overallScore)}`} data-testid={`text-score-${manager.id}`}>{manager.metrics.overallScore}</p>
                 <p className="text-[10px] text-muted-foreground">Puan</p>
@@ -613,7 +613,7 @@ function ManagerCard({ manager }: { manager: ManagerData }) {
               </div>
             </div>
             {(manager.metrics.slaComplianceRate !== undefined || manager.metrics.trainingProgress !== undefined || manager.metrics.avgResponseTime) && (
-              <div className="mt-1.5 grid grid-cols-3 gap-2 text-center">
+              <div className="mt-1.5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 text-center">
                 {manager.metrics.slaComplianceRate !== undefined && (
                   <div className="bg-muted/50 rounded p-1.5">
                     <p className={`text-sm font-bold ${getScoreColor(manager.metrics.slaComplianceRate)}`}>%{manager.metrics.slaComplianceRate}</p>
@@ -912,7 +912,7 @@ export default function CGOCommandCenter() {
       </div>
 
       <Tabs defaultValue="growth" className="w-full">
-        <TabsList className="w-full grid grid-cols-5">
+        <TabsList className="w-full">
           <TabsTrigger value="growth" className="text-xs" data-testid="tab-cgo-growth">
             <TrendingUp className="w-3.5 h-3.5 mr-1" />
             <span className="hidden sm:inline">Büyüme</span>

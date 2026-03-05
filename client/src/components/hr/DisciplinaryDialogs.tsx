@@ -128,7 +128,7 @@ export function CreateDisciplinaryDialog({ userId, branchId }: CreateDisciplinar
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <FormField
                 control={form.control}
                 name="reportType"
@@ -203,7 +203,7 @@ export function CreateDisciplinaryDialog({ userId, branchId }: CreateDisciplinar
                 </FormItem>
               )}
             />
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <FormField
                 control={form.control}
                 name="incidentDate"
@@ -365,7 +365,7 @@ export function CreateDisciplinaryDialogWithSelector({ branchId }: CreateDiscipl
                 </FormItem>
               )}
             />
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <FormField
                 control={form.control}
                 name="reportType"
@@ -440,7 +440,7 @@ export function CreateDisciplinaryDialogWithSelector({ branchId }: CreateDiscipl
                 </FormItem>
               )}
             />
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <FormField
                 control={form.control}
                 name="incidentDate"

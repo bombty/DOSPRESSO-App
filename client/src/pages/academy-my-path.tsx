@@ -355,7 +355,7 @@ function OnboardingDetailSection({ assignmentData }: { assignmentData: Onboardin
 
       <Progress value={assignmentData.stats.overallPercent} className="h-2 mb-3" />
 
-      <div className="grid grid-cols-3 gap-2 text-center text-xs mb-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 text-center text-xs mb-3">
         <div className="p-2 rounded-md bg-muted/50">
           <div className="font-semibold text-green-600 dark:text-green-400">{assignmentData.stats.completed}</div>
           <div className="text-muted-foreground">Tamamlanan</div>

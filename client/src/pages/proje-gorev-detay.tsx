@@ -374,7 +374,7 @@ export default function ProjeGorevDetay() {
                           <span className="text-sm">{dep.dependsOnTask.title}</span>
                           <Badge variant="outline" className="text-xs">{depStatus.label}</Badge>
                         </div>
-                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => removeDependencyMutation.mutate(dep.id)}>
+                        <Button variant="ghost" size="icon" onClick={() => removeDependencyMutation.mutate(dep.id)}>
                           <X className="h-3 w-3" />
                         </Button>
                       </div>

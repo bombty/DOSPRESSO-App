@@ -458,7 +458,7 @@ export default function Projeler() {
                                 </Avatar>
                                 <span className="text-xs">{user.firstName}</span>
                                 <span className="text-xs text-muted-foreground">({memberRoleConfig[member.role]?.label})</span>
-                                <Button variant="ghost" size="icon" className="h-4 w-4 ml-1" onClick={() => toggleTeamMember(member.userId)}>
+                                <Button variant="ghost" size="icon" className="ml-1" onClick={() => toggleTeamMember(member.userId)}>
                                   <X className="h-3 w-3" />
                                 </Button>
                               </Badge>

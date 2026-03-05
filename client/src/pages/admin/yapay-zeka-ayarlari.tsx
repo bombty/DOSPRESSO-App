@@ -328,7 +328,7 @@ export default function AdminYapayZekaAyarlari() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                 {AI_PROVIDERS.map((provider) => {
                   const Icon = provider.icon;
                   const isSelected = formData.provider === provider.value;

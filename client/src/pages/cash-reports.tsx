@@ -644,7 +644,7 @@ export default function CashReports() {
                   </div>
 
                   {(report.cashSales || report.cardSales || report.expenses) && (
-                    <div className="grid grid-cols-3 gap-2 sm:gap-3 pt-2 border-t">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-3 pt-2 border-t">
                       <div className="w-full space-y-1 md:space-y-1">
                         <p className="text-xs text-muted-foreground">Nakit Satış</p>
                         <p className="text-sm font-medium">

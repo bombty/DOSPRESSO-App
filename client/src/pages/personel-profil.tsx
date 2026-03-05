@@ -1724,7 +1724,7 @@ export default function PersonelProfilPage() {
                     <CardTitle className="text-sm">Hızlı Erişim</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="grid grid-cols-3 gap-1.5">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-1.5">
                       <Link href="/akademi">
                         <Button variant="outline" size="sm" className="w-full text-xs" data-testid="link-akademi">Akademi</Button>
                       </Link>

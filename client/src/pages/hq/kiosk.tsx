@@ -459,7 +459,7 @@ export default function HqKiosk() {
                   </p>
                 </div>
 
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                   <div className="text-center p-3 rounded-lg bg-muted/50">
                     <p className="text-xs text-muted-foreground">Mola</p>
                     <p className="font-semibold">{formatMinutes(currentSession.breakMinutes || 0)}</p>

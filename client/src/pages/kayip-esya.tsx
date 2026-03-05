@@ -290,6 +290,7 @@ export default function KayipEsyaPage() {
                         className="w-full h-24 object-cover rounded-md cursor-pointer hover-elevate"
                         onClick={() => setSelectedPhotoUrl(item.photoUrl)}
                         data-testid={`img-photo-${item.id}`}
+                        loading="lazy"
                       />
                     )}
 
@@ -361,6 +362,7 @@ export default function KayipEsyaPage() {
                         className="w-full h-20 object-cover rounded-md opacity-70 cursor-pointer hover-elevate"
                         onClick={() => setSelectedPhotoUrl(item.photoUrl)}
                         data-testid={`img-photo-handover-${item.id}`}
+                        loading="lazy"
                       />
                     )}
 
@@ -715,6 +717,7 @@ export default function KayipEsyaPage() {
               src={selectedPhotoUrl}
               alt="Fotoğraf"
               className="w-full h-auto rounded-md"
+              loading="lazy"
             />
           )}
         </DialogContent>
@@ -740,6 +743,7 @@ export default function KayipEsyaPage() {
                     src={selectedItem.photoUrl}
                     alt="Eşya"
                     className="w-full h-40 object-cover rounded-md"
+                    loading="lazy"
                   />
                 </div>
               )}

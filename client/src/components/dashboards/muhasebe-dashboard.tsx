@@ -103,7 +103,7 @@ export function MuhasebeDashboard({
           <CardTitle className="text-xs font-semibold text-slate-600 dark:text-slate-400">Hızlı Erişim</CardTitle>
         </CardHeader>
         <CardContent className="py-1 px-3 pb-3">
-          <div className="grid grid-cols-3 gap-1.5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-1.5">
             {quickActions.map((action, idx) => (
               <motion.div
                 key={action.label}

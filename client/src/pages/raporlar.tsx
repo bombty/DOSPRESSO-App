@@ -803,7 +803,7 @@ export default function Raporlar() {
       </div>
 
       <Tabs defaultValue={selectedTab} onValueChange={setSelectedTab} className="w-full">
-        <TabsList className={`grid w-full ${isHQ ? 'grid-cols-4' : 'grid-cols-3'}`}>
+        <TabsList className="w-full">
           {/* Şube Karşılaştırması only for HQ users */}
           {isHQ && <TabsTrigger value="comparison">Şube Karşılaştırması</TabsTrigger>}
           <TabsTrigger value="trends">Trend Analizi</TabsTrigger>

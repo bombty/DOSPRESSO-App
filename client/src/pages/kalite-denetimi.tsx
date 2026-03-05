@@ -421,7 +421,7 @@ export default function KaliteDenetimi() {
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className={`grid w-full ${(isHQ || user?.role === 'admin') ? 'grid-cols-4' : 'grid-cols-3'}`}>
+        <TabsList className="w-full">
           <TabsTrigger value="dashboard" data-testid="tab-dashboard">
             <BarChart3 className="w-4 h-4 mr-1 hidden sm:inline" />
             Özet

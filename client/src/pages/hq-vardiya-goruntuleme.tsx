@@ -275,7 +275,7 @@ export default function HqVardiyaGoruntuleme() {
               <CardTitle className="text-sm font-medium text-muted-foreground">Haftal{"\u0131"}k {"\u00D6"}zet</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-3 gap-4" data-testid="summary-stats">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4" data-testid="summary-stats">
                 <div className="text-center" data-testid="stat-total-shifts">
                   <div className="flex items-center justify-center gap-1 text-muted-foreground mb-1">
                     <Calendar className="w-4 h-4" />

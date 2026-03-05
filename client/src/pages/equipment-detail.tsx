@@ -1095,6 +1095,7 @@ export default function EquipmentDetail() {
                             alt="Arıza fotoğrafı" 
                             className="rounded-md max-h-48 object-cover mt-2"
                             data-testid={`img-fault-photo-${fault.id}`}
+                            loading="lazy"
                           />
                         )}
                       </div>
@@ -1352,6 +1353,7 @@ export default function EquipmentDetail() {
                       alt="Ekipman QR Kodu" 
                       className="w-64 h-64"
                       data-testid="img-qr-code"
+                      loading="lazy"
                     />
                   </div>
                   <div className="text-center grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">

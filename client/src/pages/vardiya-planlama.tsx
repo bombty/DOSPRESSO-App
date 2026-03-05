@@ -911,7 +911,7 @@ export default function VardiyaPlanlama() {
               )}
 
               {/* Time Selection */}
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
                 <div>
                   <label className="text-[10px] font-medium text-muted-foreground">Başlangıç</label>
                   <Input

@@ -786,7 +786,7 @@ export default function BannerEditor() {
                     onMouseDown={(e) => handleMouseDown(e, "image", img.id)}
                     data-testid={`image-element-${img.id}`}
                   >
-                    <img src={img.src} alt="" className="w-full h-full object-cover rounded" />
+                    <img src={img.src} alt="" className="w-full h-full object-cover rounded" loading="lazy" />
                   </div>
                 );
               })}
@@ -858,7 +858,7 @@ export default function BannerEditor() {
 
         <div className="space-y-4">
           <Tabs defaultValue="background" className="w-full">
-            <TabsList className="grid w-full grid-cols-4">
+            <TabsList className="w-full">
               <TabsTrigger value="background" data-testid="tab-background">
                 <Palette className="h-4 w-4" />
               </TabsTrigger>

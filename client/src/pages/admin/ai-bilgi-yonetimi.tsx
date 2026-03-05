@@ -455,7 +455,7 @@ export default function AdminAIBilgiYonetimi() {
                     <li>Adım adım çözümler oluşturur</li>
                   </ul>
 
-                  <div className="grid grid-cols-3 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                     <div className="space-y-2">
                       <Label>Ekipman Tipi *</Label>
                       <Select 

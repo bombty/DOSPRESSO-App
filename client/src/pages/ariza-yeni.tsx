@@ -575,7 +575,7 @@ export default function NewFaultReport() {
               {photoPreview ? (
                 <div className="flex flex-col gap-3 sm:gap-4">
                   <div className="relative w-full h-48 rounded-lg overflow-hidden bg-muted">
-                    <img src={photoPreview} alt="Arıza fotoğrafı" className="w-full h-full object-cover" />
+                    <img src={photoPreview} alt="Arıza fotoğrafı" className="w-full h-full object-cover" loading="lazy" />
                   </div>
                   <Button
                     type="button"

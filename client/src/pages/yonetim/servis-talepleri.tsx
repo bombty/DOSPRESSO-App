@@ -971,7 +971,7 @@ export default function ServiceRequestsManagement() {
                 <div className="flex flex-col gap-3 sm:gap-4">
                   <Label>Fotoğraf 1</Label>
                   {photo1Preview && (
-                    <img src={photo1Preview} alt="Photo 1" className="w-full h-32 object-cover rounded-md border" />
+                    <img src={photo1Preview} alt="Photo 1" className="w-full h-32 object-cover rounded-md border" loading="lazy" />
                   )}
                   <Button
                     variant="outline"
@@ -1006,7 +1006,7 @@ export default function ServiceRequestsManagement() {
                 <div className="flex flex-col gap-3 sm:gap-4">
                   <Label>Fotoğraf 2</Label>
                   {photo2Preview && (
-                    <img src={photo2Preview} alt="Photo 2" className="w-full h-32 object-cover rounded-md border" />
+                    <img src={photo2Preview} alt="Photo 2" className="w-full h-32 object-cover rounded-md border" loading="lazy" />
                   )}
                   <Button
                     variant="outline"
@@ -1174,7 +1174,7 @@ export default function ServiceRequestsManagement() {
               <div className="grid grid-cols-2 gap-2 sm:gap-3">
                 <div>
                   {createPhoto1Preview ? (
-                    <img src={createPhoto1Preview} alt="Fotoğraf 1" className="w-full aspect-square object-cover rounded-lg border" />
+                    <img src={createPhoto1Preview} alt="Fotoğraf 1" className="w-full aspect-square object-cover rounded-lg border" loading="lazy" />
                   ) : (
                     <div className="aspect-square bg-secondary dark:bg-gray-800 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600 flex items-center justify-center">
                       <div className="text-center">
@@ -1213,7 +1213,7 @@ export default function ServiceRequestsManagement() {
                 </div>
                 <div>
                   {createPhoto2Preview ? (
-                    <img src={createPhoto2Preview} alt="Fotoğraf 2" className="w-full aspect-square object-cover rounded-lg border" />
+                    <img src={createPhoto2Preview} alt="Fotoğraf 2" className="w-full aspect-square object-cover rounded-lg border" loading="lazy" />
                   ) : (
                     <div className="aspect-square bg-secondary dark:bg-gray-800 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600 flex items-center justify-center">
                       <div className="text-center">

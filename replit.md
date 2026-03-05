@@ -76,6 +76,7 @@ The frontend utilizes React 18+ with TypeScript and Vite, employing Shadcn/ui (N
 - **Feedback SLA System**: Hourly background job checks for overdue feedback responses and sends critical notifications with per-user DB-level deduplication (24h cooldown per recipient per feedback).
 - **Feedback Pattern Analysis**: Weekly job analyzes 30-day category averages per branch for alerts and improvement detection.
 - **Turkish Localization (Sprint 5)**: All ASCII Turkish errors fixed (~193 UI strings corrected with proper ü,ö,ş,ı,ğ,ç,İ). All `toLowerCase()`/`toUpperCase()` calls converted to `toLocaleLowerCase('tr-TR')`/`toLocaleUpperCase('tr-TR')` for proper Turkish I/İ handling. All English API error messages translated to Turkish. ROLE_LABELS centralized in single source `lib/turkish-labels.ts` (previously duplicated in 13 files). Hub page breadcrumbs added to PATH_LABELS.
+- **Mobile UX Sprint 6**: TabsList grid override removed from 30+ pages (built-in scroll+gradient+auto-scroll now works). 98 files fixed with responsive grid breakpoints (grid-cols-3→grid-cols-1 sm:grid-cols-2 lg:grid-cols-3). Safe area support added to bottom nav via `env(safe-area-inset-bottom)`. Form dialog grids made responsive (grid-cols-2→grid-cols-1 sm:grid-cols-2). 61 content images got `loading="lazy"`. 14 files fixed for minimum 36px touch targets on icon buttons.
 
 ## External Dependencies
 - **OpenAI API**: Used for AI-powered vision analysis, chat completions, embeddings, and summary generation.

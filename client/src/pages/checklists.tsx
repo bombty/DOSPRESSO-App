@@ -613,6 +613,7 @@ export default function Checklists() {
                                     src={taskCompletionData.photoUrl} 
                                     alt="Görev fotoğrafı" 
                                     className="w-full max-h-48 object-cover rounded-md border"
+                                    loading="lazy"
                                   />
                                 </div>
                               ) : !taskCompleted && !isCompleted ? (

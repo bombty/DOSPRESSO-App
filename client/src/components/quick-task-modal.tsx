@@ -628,7 +628,7 @@ export function QuickTaskModal({ trigger }: QuickTaskModalProps) {
                         type="button"
                         variant="ghost"
                         size="icon"
-                        className="h-5 w-5 text-muted-foreground"
+                        className="text-muted-foreground"
                         onClick={() => setSubTasks(prev => prev.filter((_, i) => i !== idx))}
                         data-testid={`button-remove-subtask-${idx}`}
                       >

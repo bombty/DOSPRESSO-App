@@ -741,6 +741,7 @@ export default function MisafirMemnuniyeti() {
                               src={qrDataMap[branch.id].qrCode} 
                               alt={`${branch.name} QR Kod`}
                               className="w-40 h-40 mb-3"
+                              loading="lazy"
                             />
                             <p className="text-xs text-muted-foreground mb-3 break-all max-w-full">
                               {qrDataMap[branch.id].url}
@@ -858,6 +859,7 @@ export default function MisafirMemnuniyeti() {
                                   src={formSettings.bannerUrl} 
                                   alt="Banner" 
                                   className="w-full h-full object-cover"
+                                  loading="lazy"
                                 />
                                 <Button
                                   variant="destructive"
@@ -903,6 +905,7 @@ export default function MisafirMemnuniyeti() {
                                   src={formSettings.logoUrl} 
                                   alt="Logo" 
                                   className="w-full h-full object-contain p-2"
+                                  loading="lazy"
                                 />
                                 <Button
                                   variant="destructive"

@@ -500,7 +500,6 @@ function DroppableMegaModule({
                 <Button 
                   size="icon" 
                   variant="ghost" 
-                  className="h-6 w-6"
                   onMouseDown={(e) => e.preventDefault()} // Prevent blur from firing
                   onClick={handleSaveTitle}
                   data-testid={`button-save-mega-title-${megaModule.id}`}
@@ -1530,7 +1529,7 @@ export default function AdminYetkilendirme() {
       <div className="p-3 border-b flex items-center justify-between gap-2 flex-wrap">
         <div className="flex items-center gap-2">
           <Link href="/admin">
-            <Button variant="ghost" size="icon" className="h-8 w-8" data-testid="button-back-admin">
+            <Button variant="ghost" size="icon" data-testid="button-back-admin">
               <ArrowLeft className="h-4 w-4" />
             </Button>
           </Link>

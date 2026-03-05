@@ -2533,7 +2533,7 @@ export default function MaliyetYonetimi() {
                       <div className="border-2 border-dashed rounded-md p-6 text-center">
                         {aiImagePreview ? (
                           <div className="space-y-3">
-                            <img src={aiImagePreview} alt="Reçete" className="max-h-48 mx-auto rounded-md object-contain" />
+                            <img src={aiImagePreview} alt="Reçete" className="max-h-48 mx-auto rounded-md object-contain" loading="lazy" />
                             <Button variant="outline" size="sm" onClick={() => { setAiImageBase64(null); setAiImagePreview(null); }} data-testid="button-remove-image">
                               <X className="w-4 h-4 mr-2" />
                               Kaldır
@@ -2690,7 +2690,7 @@ export default function MaliyetYonetimi() {
                     </div>
                   )}
 
-                  <div className="grid grid-cols-3 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                     <div className="p-2 rounded-md bg-muted/50 text-center">
                       <p className="text-xs text-muted-foreground">Batch</p>
                       <p className="font-medium text-sm">{aiParsedResult?.parsed?.batchSize || "-"} {aiParsedResult?.parsed?.outputUnit || ""}</p>
@@ -2733,7 +2733,7 @@ export default function MaliyetYonetimi() {
                               </Badge>
                             </div>
                           </div>
-                          <div className="grid grid-cols-3 gap-2">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
                             <div>
                               <label className="text-xs text-muted-foreground">Hammadde</label>
                               <Popover open={openMaterialPopoverIdx === idx} onOpenChange={(open) => setOpenMaterialPopoverIdx(open ? idx : null)} modal={true}>
@@ -2891,7 +2891,7 @@ export default function MaliyetYonetimi() {
                     />
                   </div>
                 </div>
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                   <div>
                     <label className="text-sm font-medium">Birim</label>
                     <Select value={newMaterialUnit} onValueChange={setNewMaterialUnit}>

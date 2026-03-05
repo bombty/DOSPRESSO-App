@@ -36,7 +36,7 @@ export function AnalyticsCard() {
       </CardHeader>
       <CardContent className="space-y-4">
         {/* Stats Grid */}
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
           <div className="p-2 bg-background/50 rounded border border-primary/10">
             <p className="text-xs text-muted-foreground">Saatler</p>
             <p className="text-lg font-bold text-primary">{analytics.weeklyHours}</p>

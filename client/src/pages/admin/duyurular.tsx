@@ -399,6 +399,7 @@ export default function AdminDuyurular() {
                             src={announcement.bannerImageUrl} 
                             alt={announcement.title} 
                             className="w-full h-full object-cover"
+                            loading="lazy"
                           />
                         </div>
                       )}
@@ -486,7 +487,7 @@ export default function AdminDuyurular() {
           
           <ScrollArea className="flex-1 pr-4 -mr-4">
           <Tabs defaultValue="content" className="w-full">
-            <TabsList className="grid w-full grid-cols-3">
+            <TabsList className="w-full">
               <TabsTrigger value="content">İçerik</TabsTrigger>
               <TabsTrigger value="banner">Banner</TabsTrigger>
               <TabsTrigger value="targeting">Hedefleme</TabsTrigger>
@@ -622,6 +623,7 @@ export default function AdminDuyurular() {
                             src={formData.bannerImageUrl} 
                             alt="Banner önizleme" 
                             className="w-full h-full object-cover"
+                            loading="lazy"
                           />
                         </div>
                         <Button

@@ -67,7 +67,7 @@ export default function TeknikAriza() {
     return (
       <div className="p-4 space-y-4">
         <Skeleton className="h-8 w-48" />
-        <div className="grid grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
           {[1, 2, 3, 4].map((i) => (
             <Skeleton key={i} className="h-24" />
           ))}

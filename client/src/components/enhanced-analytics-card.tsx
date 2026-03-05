@@ -287,7 +287,7 @@ export function EnhancedAnalyticsCard() {
       
       <div>
         <SectionHeader title="Görev Metrikleri" icon={ClipboardCheck} />
-        <div className="grid grid-cols-3 gap-1.5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-1.5">
           <StatTile
             label="Bugün Tamamlanan"
             value={analytics?.taskMetrics.daily.completed || 0}
@@ -319,7 +319,7 @@ export function EnhancedAnalyticsCard() {
 
       <div>
         <SectionHeader title="Checklist Durumu" icon={ClipboardCheck} />
-        <div className="grid grid-cols-3 gap-1.5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-1.5">
           <div className="p-2 rounded-lg border bg-card col-span-2">
             <div className="flex justify-between items-center mb-1">
               <span className="text-[10px] text-muted-foreground">Tamamlanma</span>
@@ -347,7 +347,7 @@ export function EnhancedAnalyticsCard() {
 
       <div>
         <SectionHeader title="Kritik Durumlar" icon={AlertCircle} />
-        <div className="grid grid-cols-3 gap-1.5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-1.5">
           <StatTile
             label="Aktif Arıza"
             value={analytics?.criticalIssues.totalActiveFaults || 0}
@@ -581,7 +581,7 @@ export function EnhancedAnalyticsCard() {
 
           <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)} className="flex-1">
             <div className="px-3">
-              <TabsList className="grid w-full grid-cols-4 h-8">
+              <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 h-8">
                 <TabsTrigger value="overview" className="text-[10px]">Genel</TabsTrigger>
                 <TabsTrigger value="branches" className="text-[10px]" disabled={!isHQ}>Şubeler</TabsTrigger>
                 <TabsTrigger value="personnel" className="text-[10px]">Personel</TabsTrigger>

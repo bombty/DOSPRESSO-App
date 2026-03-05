@@ -124,7 +124,6 @@ export function CriticalAlerts() {
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-7 w-7"
                   onClick={() => handleDismiss(alert.id)}
                   data-testid={`dismiss-alert-${alert.id}`}
                 >

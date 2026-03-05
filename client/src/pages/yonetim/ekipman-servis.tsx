@@ -448,7 +448,7 @@ export default function EkipmanServis() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-3 gap-2 sm:gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-3">
         <Card>
           <CardContent className="p-3">
             <div className="flex flex-col items-center text-center gap-1.5">
@@ -738,7 +738,7 @@ export default function EkipmanServis() {
                         </ul>
                       </div>
                     )}
-                    <div className="grid grid-cols-3 gap-2 text-xs">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 text-xs">
                       <div className="bg-white dark:bg-primary/5 p-2 rounded">
                         <p className="text-muted-foreground dark:text-gray-300">Ciddiyet</p>
                         <p className="font-semibold text-primary dark:text-primary">{aiDiagnosis.estimatedSeverity}</p>
@@ -824,7 +824,7 @@ export default function EkipmanServis() {
                   <div className="grid grid-cols-2 gap-2 sm:gap-3">
                     <div>
                       {photo1Preview ? (
-                        <img src={photo1Preview} alt="Foto 1" className="w-full aspect-square object-cover rounded-lg border" />
+                        <img src={photo1Preview} alt="Foto 1" className="w-full aspect-square object-cover rounded-lg border" loading="lazy" />
                       ) : (
                         <div className="aspect-square bg-secondary dark:bg-gray-800 rounded-lg border-2 border-dashed flex items-center justify-center">
                           <ImageIcon className="w-6 h-6 text-gray-400" />
@@ -850,7 +850,7 @@ export default function EkipmanServis() {
                     </div>
                     <div>
                       {photo2Preview ? (
-                        <img src={photo2Preview} alt="Foto 2" className="w-full aspect-square object-cover rounded-lg border" />
+                        <img src={photo2Preview} alt="Foto 2" className="w-full aspect-square object-cover rounded-lg border" loading="lazy" />
                       ) : (
                         <div className="aspect-square bg-secondary dark:bg-gray-800 rounded-lg border-2 border-dashed flex items-center justify-center">
                           <ImageIcon className="w-6 h-6 text-gray-400" />
@@ -955,8 +955,8 @@ export default function EkipmanServis() {
                     <div className="flex flex-col gap-3 sm:gap-4">
                       <p className="text-sm text-muted-foreground">Fotoğraflar</p>
                       <div className="grid grid-cols-2 gap-2">
-                        {selectedRequest.photo1Url && <img src={selectedRequest.photo1Url} alt="Foto 1" className="w-full h-32 object-cover rounded-lg" />}
-                        {selectedRequest.photo2Url && <img src={selectedRequest.photo2Url} alt="Foto 2" className="w-full h-32 object-cover rounded-lg" />}
+                        {selectedRequest.photo1Url && <img src={selectedRequest.photo1Url} alt="Foto 1" className="w-full h-32 object-cover rounded-lg" loading="lazy" />}
+                        {selectedRequest.photo2Url && <img src={selectedRequest.photo2Url} alt="Foto 2" className="w-full h-32 object-cover rounded-lg" loading="lazy" />}
                       </div>
                     </div>
                   )}

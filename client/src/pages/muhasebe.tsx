@@ -1549,7 +1549,7 @@ export default function Muhasebe() {
               <Separator />
               <h4 className="font-medium flex items-center gap-2"><TrendingUp className="h-4 w-4" /> Gelir Vergisi Dilimleri</h4>
               
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                 <div className="space-y-2">
                   <Label>1. Dilim Oran (%)</Label>
                   <Input
@@ -1649,7 +1649,7 @@ export default function Muhasebe() {
               <Separator />
               <h4 className="font-medium flex items-center gap-2"><Utensils className="h-4 w-4" /> Yemek & Ulaşım Muafiyetleri (Günlük TL)</h4>
               
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <Label>Yemek Vergi Muafiyeti</Label>
                   <Input
@@ -1685,7 +1685,7 @@ export default function Muhasebe() {
               <Separator />
               <h4 className="font-medium flex items-center gap-2"><Clock className="h-4 w-4" /> Çalışma Parametreleri</h4>
               
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <Label>Aylık Gün</Label>
                   <Input

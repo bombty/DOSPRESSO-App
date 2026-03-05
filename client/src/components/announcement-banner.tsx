@@ -66,7 +66,7 @@ export function AnnouncementBanner() {
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-6 w-6 shrink-0"
+                className="shrink-0"
                 onClick={() => handleDismiss(announcement.id)}
                 data-testid={`button-dismiss-${announcement.id}`}
               >

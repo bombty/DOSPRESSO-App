@@ -591,7 +591,7 @@ export default function E2EReportsPage() {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-5 lg:w-auto lg:inline-grid">
+          <TabsList className="w-full">
             <TabsTrigger value="overview" className="gap-2" data-testid="tab-overview">
               <BarChart3 className="h-4 w-4" />
               <span className="hidden sm:inline">Genel Bakış</span>
@@ -869,7 +869,7 @@ export default function E2EReportsPage() {
                     </div>
                     <p className="text-muted-foreground mt-2">Ortalama Çözüm Süresi (Gün)</p>
                   </div>
-                  <div className="grid grid-cols-3 gap-4 text-center">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 text-center">
                     <div>
                       <div className="text-2xl font-semibold text-red-600">{faultStats.open}</div>
                       <p className="text-xs text-muted-foreground">Açık</p>

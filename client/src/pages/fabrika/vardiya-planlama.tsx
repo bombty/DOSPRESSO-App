@@ -2082,7 +2082,7 @@ function AIRecommendations({ openCreateShift }: { openCreateShift: (date?: Date)
                         <Badge variant={cfg.variant}>{cfg.label}</Badge>
                       </div>
                       <p className="text-sm text-muted-foreground">{rec.reason}</p>
-                      <div className="grid grid-cols-3 gap-3 text-xs">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 text-xs">
                         <div className="flex flex-col items-center bg-muted rounded-md p-2">
                           <span className="text-muted-foreground">Batch</span>
                           <span className="font-mono font-semibold text-base">{rec.suggestedBatches}</span>
