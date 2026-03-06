@@ -15,7 +15,9 @@ import {
   Factory,
   Calculator,
   Clock,
-  Package
+  Package,
+  Truck,
+  Shield,
 } from "lucide-react";
 
 const FabrikaKaliteKontrol = lazy(() => import("./kalite-kontrol"));
@@ -27,6 +29,8 @@ const FabrikaMaliyetYonetimi = lazy(() => import("./maliyet-yonetimi"));
 const FabrikaVardiyaPlanlama = lazy(() => import("./vardiya-planlama"));
 const FabrikaStokSayim = lazy(() => import("./stok-sayim"));
 const FabrikaSiparisHazirlama = lazy(() => import("./siparis-hazirlama"));
+const FabrikaSevkiyat = lazy(() => import("./sevkiyat"));
+const GidaGuvenligi = lazy(() => import("./gida-guvenligi"));
 
 interface TabConfig {
   id: string;
@@ -114,6 +118,22 @@ const FABRIKA_TABS: TabConfig[] = [
     icon: <Package className="h-4 w-4" />,
     permissionModule: "factory_stations",
     component: FabrikaSiparisHazirlama
+  },
+  {
+    id: "sevkiyat",
+    label: "Shipments",
+    labelTr: "Sevkiyat",
+    icon: <Truck className="h-4 w-4" />,
+    permissionModule: "factory_shipments",
+    component: FabrikaSevkiyat
+  },
+  {
+    id: "gida-guvenligi",
+    label: "Food Safety",
+    labelTr: "Gıda Güvenliği",
+    icon: <Shield className="h-4 w-4" />,
+    permissionModule: "factory_food_safety",
+    component: GidaGuvenligi
   }
 ];
 

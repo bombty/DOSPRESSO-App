@@ -302,6 +302,9 @@ export type PermissionModule =
   | 'product_complaints'
   // Food safety
   | 'food_safety'
+  // Shipments & HACCP
+  | 'factory_shipments'
+  | 'factory_food_safety'
   // CRM modules
   | 'crm_dashboard'
   | 'crm_feedback'
@@ -455,6 +458,8 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     factory_analytics: ['view'],
     factory_stations: ['view', 'create', 'edit', 'delete'],
     factory_compliance: ['view', 'edit', 'approve'],
+    factory_shipments: ['view', 'create', 'edit', 'delete'],
+    factory_food_safety: ['view', 'create', 'edit', 'approve'],
     branch_shift_tracking: ['view', 'edit'],
     // Satinalma modules
     satinalma: ['view', 'create', 'edit', 'delete'],
@@ -534,6 +539,8 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     factory_analytics: [],
     factory_stations: [],
     factory_compliance: [],
+    factory_shipments: [],
+    factory_food_safety: [],
     branch_shift_tracking: ['view'],
     // Academy modules - HQ full access
     academy: ['view', 'create', 'edit', 'delete'],
@@ -612,6 +619,8 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     factory_analytics: [],
     factory_stations: [],
     factory_compliance: [],
+    factory_shipments: [],
+    factory_food_safety: [],
     branch_shift_tracking: [],
 
     // Academy modules - HQ access
@@ -693,6 +702,8 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     factory_analytics: ['view'],
     factory_stations: [],
     factory_compliance: ['view'],
+    factory_shipments: ['view'],
+    factory_food_safety: ['view'],
     branch_shift_tracking: ['view', 'edit'],
 
     // Academy modules - HQ access
@@ -770,6 +781,8 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     factory_analytics: [],
     factory_stations: [],
     factory_compliance: [],
+    factory_shipments: [],
+    factory_food_safety: [],
     branch_shift_tracking: [],
     // Satinalma modules - No access for teknik
     satinalma: [],
@@ -848,6 +861,8 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     factory_analytics: [],
     factory_stations: [],
     factory_compliance: [],
+    factory_shipments: [],
+    factory_food_safety: [],
     branch_shift_tracking: ['view'],
     // Satinalma modules - No access for destek
     satinalma: [],
@@ -926,6 +941,8 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     factory_analytics: ['view'],
     factory_stations: ['view'],
     factory_compliance: ['view'],
+    factory_shipments: ['view'],
+    factory_food_safety: ['view'],
     branch_shift_tracking: [],
     // Satinalma modules - No access for fabrika
     satinalma: [],
@@ -1005,6 +1022,8 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     factory_analytics: ['view'],
     factory_stations: [],
     factory_compliance: [],
+    factory_shipments: [],
+    factory_food_safety: [],
     branch_shift_tracking: [],
     // Satinalma modules - No access
     satinalma: [],
@@ -1087,6 +1106,8 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     factory_analytics: [],
     factory_stations: [],
     factory_compliance: [],
+    factory_shipments: [],
+    factory_food_safety: [],
     branch_shift_tracking: ['view', 'edit'],
     // Satinalma modules - No access
     satinalma: [],
@@ -1163,6 +1184,8 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     factory_analytics: [],
     factory_stations: [],
     factory_compliance: [],
+    factory_shipments: [],
+    factory_food_safety: [],
     branch_shift_tracking: ['view'],
     // Satinalma modules - No access
     satinalma: [],
@@ -1241,6 +1264,8 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     factory_analytics: [],
     factory_stations: [],
     factory_compliance: [],
+    factory_shipments: [],
+    factory_food_safety: [],
     branch_shift_tracking: ['view'],
     // Academy modules - Şube personeli eğitime erişebilir
     academy: ['view'],
@@ -1319,6 +1344,8 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     factory_analytics: [],
     factory_stations: [],
     factory_compliance: [],
+    factory_shipments: [],
+    factory_food_safety: [],
     branch_shift_tracking: ['view'],
     // Academy modules - Şube personeli eğitime erişebilir
     academy: ['view'],
@@ -1397,6 +1424,8 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     factory_analytics: [],
     factory_stations: [],
     factory_compliance: [],
+    factory_shipments: [],
+    factory_food_safety: [],
     branch_shift_tracking: ['view'],
     // Academy modules - Stajyer eğitime erişebilir
     academy: ['view'],
@@ -1477,6 +1506,8 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     factory_analytics: [],
     factory_stations: [],
     factory_compliance: [],
+    factory_shipments: [],
+    factory_food_safety: [],
     branch_shift_tracking: ['view', 'edit'],
     satinalma: [],
     inventory: ['view'],
@@ -1549,6 +1580,8 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     factory_analytics: [],
     factory_stations: [],
     factory_compliance: [],
+    factory_shipments: [],
+    factory_food_safety: [],
     branch_shift_tracking: ['view'],
     academy: ['view'],
     academy_admin: [],
@@ -1625,6 +1658,8 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     factory_analytics: ['view'],
     factory_stations: ['view'],
     factory_compliance: ['view'],
+    factory_shipments: ['view'],
+    factory_food_safety: ['view'],
     branch_shift_tracking: ['view'],
     academy: ['view'],
     academy_admin: [],
@@ -1701,6 +1736,8 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     factory_analytics: ['view'],
     factory_stations: ['view'],
     factory_compliance: ['view'],
+    factory_shipments: ['view'],
+    factory_food_safety: ['view'],
     branch_shift_tracking: ['view'],
     academy: ['view'],
     academy_admin: [],
@@ -1777,6 +1814,8 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     factory_analytics: [],
     factory_stations: [],
     factory_compliance: [],
+    factory_shipments: [],
+    factory_food_safety: [],
     branch_shift_tracking: ['view'],
     academy: ['view'],
     academy_admin: [],
@@ -1853,6 +1892,8 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     factory_analytics: [],
     factory_stations: [],
     factory_compliance: [],
+    factory_shipments: [],
+    factory_food_safety: [],
     branch_shift_tracking: [],
     academy: ['view'],
     academy_admin: [],
@@ -1929,6 +1970,8 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     factory_analytics: [],
     factory_stations: [],
     factory_compliance: [],
+    factory_shipments: [],
+    factory_food_safety: [],
     branch_shift_tracking: [],
     academy: ['view', 'create', 'edit', 'delete'],
     academy_admin: ['view', 'create', 'edit'],
@@ -2007,6 +2050,8 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     factory_analytics: ['view'],
     factory_stations: ['view'],
     factory_compliance: ['view'],
+    factory_shipments: ['view'],
+    factory_food_safety: ['view'],
     branch_shift_tracking: [],
     academy: ['view'],
     academy_admin: [],
@@ -2083,6 +2128,8 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     factory_analytics: ['view'],
     factory_stations: ['view'],
     factory_compliance: ['view', 'create', 'edit'],
+    factory_shipments: ['view'],
+    factory_food_safety: ['view', 'create', 'edit', 'approve'],
     branch_shift_tracking: [],
     academy: ['view'],
     academy_admin: [],
@@ -2157,6 +2204,8 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     factory_analytics: ['view'],
     factory_stations: ['view', 'create', 'edit'],
     factory_compliance: ['view', 'edit'],
+    factory_shipments: ['view', 'create', 'edit'],
+    factory_food_safety: ['view', 'create', 'edit'],
     branch_shift_tracking: [],
     academy: ['view'],
     academy_admin: [],
@@ -2233,6 +2282,8 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     factory_analytics: [],
     factory_stations: ['view'],
     factory_compliance: [],
+    factory_shipments: [],
+    factory_food_safety: [],
     branch_shift_tracking: [],
     academy: ['view'],
     academy_admin: [],
@@ -2308,6 +2359,8 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     factory_analytics: ['view'],
     factory_stations: ['view', 'edit'],
     factory_compliance: ['view'],
+    factory_shipments: ['view'],
+    factory_food_safety: ['view'],
     branch_shift_tracking: [],
     academy: ['view'],
     academy_admin: [],
@@ -2383,6 +2436,8 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     factory_analytics: [],
     factory_stations: ['view'],
     factory_compliance: [],
+    factory_shipments: [],
+    factory_food_safety: [],
     branch_shift_tracking: [],
     academy: ['view'],
     academy_admin: [],
@@ -9372,6 +9427,9 @@ export const factoryProducts = pgTable("factory_products", {
   isTemporarilyStopped: boolean("is_temporarily_stopped").default(false),
   isNewProduct: boolean("is_new_product").default(false),
   
+  requiresFoodEngineerApproval: boolean("requires_food_engineer_approval").default(false),
+  allergens: text("allergens").array(),
+  
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => [
@@ -9941,20 +9999,31 @@ export const factoryQualityChecks = pgTable("factory_quality_checks", {
   id: serial("id").primaryKey(),
   productionOutputId: integer("production_output_id").notNull().references(() => factoryProductionOutputs.id),
   
-  // Kontrol yapan
   inspectorId: text("inspector_id").notNull().references(() => users.id),
-  
-  // Üreten personel
   producerId: text("producer_id").notNull().references(() => users.id),
-  
   stationId: integer("station_id").notNull().references(() => factoryStations.id),
   
-  // Karar
-  decision: varchar("decision", { length: 20 }).notNull(), // approved, rejected
+  decision: varchar("decision", { length: 20 }).notNull(), // approved, rejected, pending_engineer, hold
   decisionReason: text("decision_reason"),
-  
-  // Genel notlar
   notes: text("notes"),
+  
+  visualInspection: varchar("visual_inspection", { length: 20 }),
+  tasteTest: varchar("taste_test", { length: 20 }),
+  textureCheck: varchar("texture_check", { length: 20 }),
+  weightCheck: varchar("weight_check", { length: 20 }),
+  temperatureCheck: varchar("temperature_check", { length: 20 }),
+  packagingIntegrity: varchar("packaging_integrity", { length: 20 }),
+  
+  allergenCheck: boolean("allergen_check").default(false),
+  haccpCompliance: boolean("haccp_compliance").default(true),
+  
+  inspectorNotes: text("inspector_notes"),
+  correctiveAction: text("corrective_action"),
+  holdReason: text("hold_reason"),
+  
+  foodEngineerApproval: boolean("food_engineer_approval").default(false),
+  foodEngineerId: varchar("food_engineer_id", { length: 255 }),
+  foodEngineerApprovedAt: timestamp("food_engineer_approved_at"),
   
   checkedAt: timestamp("checked_at").defaultNow(),
 }, (table) => [
@@ -14298,3 +14367,83 @@ export const insertAgentEscalationHistorySchema = createInsertSchema(agentEscala
 });
 export type InsertAgentEscalationHistory = z.infer<typeof insertAgentEscalationHistorySchema>;
 export type AgentEscalationHistory = typeof agentEscalationHistory.$inferSelect;
+
+// ========================================
+// FABRIKA SEVKİYAT SİSTEMİ
+// ========================================
+
+export const factoryShipments = pgTable("factory_shipments", {
+  id: serial("id").primaryKey(),
+  shipmentNumber: varchar("shipment_number", { length: 50 }).notNull().unique(),
+  branchId: integer("branch_id").notNull().references(() => branches.id, { onDelete: "cascade" }),
+  status: varchar("status", { length: 20 }).notNull().default("hazirlaniyor"),
+  preparedById: varchar("prepared_by_id").references(() => users.id, { onDelete: "set null" }),
+  dispatchedAt: timestamp("dispatched_at"),
+  deliveredAt: timestamp("delivered_at"),
+  deliveryNotes: text("delivery_notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("factory_shipments_branch_idx").on(table.branchId),
+  index("factory_shipments_status_idx").on(table.status),
+  index("factory_shipments_date_idx").on(table.createdAt),
+]);
+
+export const insertFactoryShipmentSchema = createInsertSchema(factoryShipments).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertFactoryShipment = z.infer<typeof insertFactoryShipmentSchema>;
+export type FactoryShipment = typeof factoryShipments.$inferSelect;
+
+export const factoryShipmentItems = pgTable("factory_shipment_items", {
+  id: serial("id").primaryKey(),
+  shipmentId: integer("shipment_id").notNull().references(() => factoryShipments.id, { onDelete: "cascade" }),
+  productId: integer("product_id").notNull().references(() => factoryProducts.id, { onDelete: "cascade" }),
+  quantity: numeric("quantity", { precision: 12, scale: 3 }).notNull(),
+  unit: varchar("unit", { length: 20 }),
+  lotNumber: varchar("lot_number", { length: 50 }),
+  notes: text("notes"),
+}, (table) => [
+  index("factory_shipment_items_shipment_idx").on(table.shipmentId),
+  index("factory_shipment_items_product_idx").on(table.productId),
+]);
+
+export const insertFactoryShipmentItemSchema = createInsertSchema(factoryShipmentItems).omit({
+  id: true,
+});
+
+export type InsertFactoryShipmentItem = z.infer<typeof insertFactoryShipmentItemSchema>;
+export type FactoryShipmentItem = typeof factoryShipmentItems.$inferSelect;
+
+// ==========================================
+// HACCP CHECK RECORDS (FABRİKA)
+// ==========================================
+
+export const haccpCheckRecords = pgTable("haccp_check_records", {
+  id: serial("id").primaryKey(),
+  checkPoint: varchar("check_point", { length: 100 }).notNull(),
+  stationId: integer("station_id").references(() => factoryStations.id, { onDelete: "set null" }),
+  checkedBy: varchar("checked_by", { length: 255 }).references(() => users.id).notNull(),
+  checkDate: timestamp("check_date").defaultNow(),
+  result: varchar("result", { length: 20 }).notNull(),
+  temperatureValue: numeric("temperature_value", { precision: 5, scale: 2 }),
+  correctiveAction: text("corrective_action"),
+  notes: text("notes"),
+  productionOutputId: integer("production_output_id").references(() => factoryProductionOutputs.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("haccp_cr_station_idx").on(table.stationId),
+  index("haccp_cr_checked_by_idx").on(table.checkedBy),
+  index("haccp_cr_date_idx").on(table.checkDate),
+  index("haccp_cr_result_idx").on(table.result),
+]);
+
+export const insertHaccpCheckRecordSchema = createInsertSchema(haccpCheckRecords).omit({
+  id: true,
+  createdAt: true,
+});
+export type InsertHaccpCheckRecord = z.infer<typeof insertHaccpCheckRecordSchema>;
+export type HaccpCheckRecord = typeof haccpCheckRecords.$inferSelect;

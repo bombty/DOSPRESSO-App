@@ -27,6 +27,12 @@ import {
   factoryProductionBatches,
   factoryBatchVerifications,
   factoryManagementScores,
+  factoryQualityChecks,
+  haccpCheckRecords,
+  factoryShipments,
+  factoryShipmentItems,
+  factoryInventory,
+  inventoryMovements,
   users,
   branches,
   inventory,
@@ -2713,6 +2719,230 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
     }
   });
 
+  router.post('/api/factory/quality/technician-review', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user as any;
+      const allowedRoles = ['admin', 'fabrika_mudur', 'fabrika_sorumlu', 'inspector', 'fabrika_operator', 'kalite_kontrol'];
+      if (!allowedRoles.includes(user.role)) {
+        return res.status(403).json({ message: "Bu işlem için yetkiniz yok" });
+      }
+
+      const {
+        outputId, decision, reason, visualInspection, weightCheck, packagingIntegrity,
+        temperatureCheck, allergenCheck, haccpCompliance, inspectorNotes
+      } = req.body;
+
+      if (!outputId || !decision) {
+        return res.status(400).json({ message: "Geçersiz parametreler" });
+      }
+
+      const [output] = await db.select({
+        id: factoryProductionOutputs.id,
+        productId: factoryProductionOutputs.productId,
+        stationId: factoryProductionOutputs.stationId,
+        userId: factoryProductionOutputs.userId,
+        qualityStatus: factoryProductionOutputs.qualityStatus,
+      }).from(factoryProductionOutputs)
+        .where(eq(factoryProductionOutputs.id, outputId))
+        .limit(1);
+
+      if (!output) {
+        return res.status(404).json({ message: "Üretim kaydı bulunamadı" });
+      }
+
+      if (output.qualityStatus === 'pending_engineer' || output.qualityStatus === 'approved') {
+        return res.status(400).json({ message: "Bu üretim kaydı zaten kontrol edilmiş" });
+      }
+
+      let requiresEngineer = false;
+      if (output.productId) {
+        const [product] = await db.select({ requiresFoodEngineerApproval: factoryProducts.requiresFoodEngineerApproval })
+          .from(factoryProducts)
+          .where(eq(factoryProducts.id, output.productId))
+          .limit(1);
+        if (product?.requiresFoodEngineerApproval) {
+          requiresEngineer = true;
+        }
+      }
+
+      let finalDecision = decision;
+      if (decision === 'approved' && requiresEngineer) {
+        finalDecision = 'pending_engineer';
+      }
+
+      const qualityStatus = finalDecision === 'pending_engineer' ? 'pending_engineer' : finalDecision;
+      await db.update(factoryProductionOutputs)
+        .set({
+          qualityStatus,
+          qualityCheckedBy: user.id,
+          qualityCheckedAt: new Date(),
+        })
+        .where(eq(factoryProductionOutputs.id, outputId));
+
+      const [qualityCheck] = await db.insert(factoryQualityChecks).values({
+        productionOutputId: outputId,
+        inspectorId: user.id,
+        producerId: output.userId,
+        stationId: output.stationId,
+        decision: finalDecision,
+        decisionReason: reason || null,
+        visualInspection: visualInspection || null,
+        weightCheck: weightCheck || null,
+        packagingIntegrity: packagingIntegrity || null,
+        temperatureCheck: temperatureCheck || null,
+        allergenCheck: allergenCheck || false,
+        haccpCompliance: haccpCompliance !== false,
+        inspectorNotes: inspectorNotes || null,
+      }).returning();
+
+      if (requiresEngineer && finalDecision === 'pending_engineer') {
+        try {
+          const engineers = await db.select({ id: users.id })
+            .from(users)
+            .where(and(eq(users.role, 'gida_muhendisi'), eq(users.isActive, true)));
+          if (engineers.length > 0) {
+            await db.insert(notifications).values(engineers.map(eng => ({
+              userId: eng.id,
+              type: 'quality_approval_needed',
+              title: 'Kalite Onayı Bekliyor',
+              message: `Üretim #${outputId} gıda mühendisi onayı bekliyor`,
+              link: '/fabrika?tab=kalite-kontrol',
+              isRead: false,
+            })));
+          }
+        } catch (notifErr) {
+          console.error("Quality notification error:", notifErr);
+        }
+      }
+
+      res.json({
+        success: true,
+        qualityCheck,
+        requiresEngineerApproval: requiresEngineer,
+        message: finalDecision === 'pending_engineer'
+          ? 'Teknisyen kontrolü tamamlandı, gıda mühendisi onayı bekleniyor'
+          : finalDecision === 'approved' ? 'Üretim onaylandı' : 'Üretim reddedildi'
+      });
+    } catch (error: any) {
+      console.error("Error in technician review:", error);
+      res.status(500).json({ message: "Teknisyen kontrolü kaydedilemedi" });
+    }
+  });
+
+  router.patch('/api/factory/quality/engineer-approve/:checkId', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user as any;
+      if (user.role !== 'gida_muhendisi' && user.role !== 'admin') {
+        return res.status(403).json({ message: "Sadece gıda mühendisi bu işlemi yapabilir" });
+      }
+
+      const checkId = parseInt(req.params.checkId);
+      const {
+        decision, tasteTest, textureCheck, haccpCompliance,
+        correctiveAction, holdReason, notes
+      } = req.body;
+
+      if (!decision || !['approved', 'rejected', 'hold'].includes(decision)) {
+        return res.status(400).json({ message: "Geçersiz karar. approved, rejected veya hold olmalı" });
+      }
+
+      if (decision === 'rejected' && !correctiveAction?.trim()) {
+        return res.status(400).json({ message: "Red durumunda düzeltici faaliyet zorunludur" });
+      }
+
+      if (decision === 'hold' && !holdReason?.trim()) {
+        return res.status(400).json({ message: "Hold durumunda sebep zorunludur" });
+      }
+
+      const [existingCheck] = await db.select().from(factoryQualityChecks)
+        .where(eq(factoryQualityChecks.id, checkId))
+        .limit(1);
+
+      if (!existingCheck) {
+        return res.status(404).json({ message: "Kalite kontrol kaydı bulunamadı" });
+      }
+
+      if (existingCheck.decision !== 'pending_engineer') {
+        return res.status(400).json({ message: "Bu kayıt gıda mühendisi onayı beklemiyordu" });
+      }
+
+      const [updatedCheck] = await db.update(factoryQualityChecks)
+        .set({
+          decision,
+          tasteTest: tasteTest || null,
+          textureCheck: textureCheck || null,
+          haccpCompliance: haccpCompliance !== false,
+          correctiveAction: correctiveAction || null,
+          holdReason: holdReason || null,
+          notes: notes || existingCheck.notes,
+          foodEngineerApproval: decision === 'approved',
+          foodEngineerId: user.id,
+          foodEngineerApprovedAt: new Date(),
+        })
+        .where(eq(factoryQualityChecks.id, checkId))
+        .returning();
+
+      const qualityStatus = decision === 'hold' ? 'pending' : decision;
+      await db.update(factoryProductionOutputs)
+        .set({
+          qualityStatus,
+          qualityCheckedAt: new Date(),
+        })
+        .where(eq(factoryProductionOutputs.id, existingCheck.productionOutputId));
+
+      res.json({
+        success: true,
+        qualityCheck: updatedCheck,
+        message: decision === 'approved' ? 'Gıda mühendisi onayı verildi'
+          : decision === 'hold' ? 'Ürün beklemeye alındı'
+          : 'Ürün reddedildi'
+      });
+    } catch (error: any) {
+      console.error("Error in engineer approval:", error);
+      res.status(500).json({ message: "Gıda mühendisi onayı kaydedilemedi" });
+    }
+  });
+
+  router.get('/api/factory/quality/pending-engineer', isAuthenticated, async (req: any, res) => {
+    try {
+      const checks = await db.select({
+        id: factoryQualityChecks.id,
+        productionOutputId: factoryQualityChecks.productionOutputId,
+        inspectorId: factoryQualityChecks.inspectorId,
+        producerId: factoryQualityChecks.producerId,
+        stationId: factoryQualityChecks.stationId,
+        decision: factoryQualityChecks.decision,
+        decisionReason: factoryQualityChecks.decisionReason,
+        visualInspection: factoryQualityChecks.visualInspection,
+        weightCheck: factoryQualityChecks.weightCheck,
+        packagingIntegrity: factoryQualityChecks.packagingIntegrity,
+        temperatureCheck: factoryQualityChecks.temperatureCheck,
+        allergenCheck: factoryQualityChecks.allergenCheck,
+        haccpCompliance: factoryQualityChecks.haccpCompliance,
+        inspectorNotes: factoryQualityChecks.inspectorNotes,
+        checkedAt: factoryQualityChecks.checkedAt,
+        producedQuantity: factoryProductionOutputs.producedQuantity,
+        producedUnit: factoryProductionOutputs.producedUnit,
+        wasteQuantity: factoryProductionOutputs.wasteQuantity,
+        wasteUnit: factoryProductionOutputs.wasteUnit,
+        producerFirstName: users.firstName,
+        producerLastName: users.lastName,
+        stationName: factoryStations.name,
+      })
+        .from(factoryQualityChecks)
+        .innerJoin(factoryProductionOutputs, eq(factoryQualityChecks.productionOutputId, factoryProductionOutputs.id))
+        .innerJoin(users, eq(factoryQualityChecks.producerId, users.id))
+        .innerJoin(factoryStations, eq(factoryQualityChecks.stationId, factoryStations.id))
+        .where(eq(factoryQualityChecks.decision, 'pending_engineer'))
+        .orderBy(desc(factoryQualityChecks.checkedAt));
+
+      res.json(checks);
+    } catch (error: any) {
+      console.error("Error fetching pending engineer checks:", error);
+      res.status(500).json({ message: "Mühendis onayı bekleyen kayıtlar alınamadı" });
+    }
+  });
+
   // Fabrika Analitiği - Personel performansı
   router.get('/api/factory/analytics/workers', isAuthenticated, async (req: any, res) => {
     try {
@@ -3940,6 +4170,585 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
     } catch (error: any) {
       console.error("Error calculating factory score:", error);
       res.status(500).json({ message: "Fabrika skoru hesaplanamadı" });
+    }
+  });
+
+  // ========================================
+  // HACCP CHECK RECORDS
+  // ========================================
+
+  router.post('/api/factory/haccp', isAuthenticated, async (req: any, res) => {
+    try {
+      const { checkPoint, stationId, result, temperatureValue, correctiveAction, notes, productionOutputId, checkDate } = req.body;
+
+      if (!checkPoint || !result) {
+        return res.status(400).json({ message: "Kontrol noktası ve sonuç gerekli" });
+      }
+
+      if (!['pass', 'fail', 'warning'].includes(result)) {
+        return res.status(400).json({ message: "Sonuç pass, fail veya warning olmalı" });
+      }
+
+      const [record] = await db.insert(haccpCheckRecords).values({
+        checkPoint,
+        stationId: stationId || null,
+        checkedBy: req.user.id,
+        checkDate: checkDate ? new Date(checkDate) : new Date(),
+        result,
+        temperatureValue: temperatureValue != null ? String(temperatureValue) : null,
+        correctiveAction: correctiveAction || null,
+        notes: notes || null,
+        productionOutputId: productionOutputId || null,
+      }).returning();
+
+      if (result === 'fail') {
+        try {
+          const alertRoles = ['gida_muhendisi', 'fabrika_mudur'];
+          const alertUsers = await db.select({ id: users.id })
+            .from(users)
+            .where(and(inArray(users.role, alertRoles), eq(users.isActive, true)));
+          if (alertUsers.length > 0) {
+            await db.insert(notifications).values(alertUsers.map(u => ({
+              userId: u.id,
+              type: 'haccp_fail' as any,
+              title: 'HACCP Kontrol Başarısız',
+              message: `${checkPoint} kontrol noktasında HACCP başarısızlık kaydedildi`,
+              link: '/fabrika/gida-guvenligi',
+              isRead: false,
+            })));
+          }
+        } catch (notifErr) {
+          console.error("HACCP fail notification error:", notifErr);
+        }
+      }
+
+      res.status(201).json(record);
+    } catch (error: any) {
+      console.error("Error creating HACCP record:", error);
+      res.status(500).json({ message: "HACCP kaydı oluşturulamadı" });
+    }
+  });
+
+  router.get('/api/factory/haccp', isAuthenticated, async (req: any, res) => {
+    try {
+      const { stationId, result: resultFilter, startDate, endDate } = req.query;
+
+      const conditions: any[] = [];
+
+      if (stationId) {
+        conditions.push(eq(haccpCheckRecords.stationId, parseInt(stationId as string)));
+      }
+      if (resultFilter) {
+        conditions.push(eq(haccpCheckRecords.result, resultFilter as string));
+      }
+      if (startDate) {
+        conditions.push(gte(haccpCheckRecords.checkDate, new Date(startDate as string)));
+      }
+      if (endDate) {
+        conditions.push(lte(haccpCheckRecords.checkDate, new Date(endDate as string)));
+      }
+
+      const records = await db.select({
+        id: haccpCheckRecords.id,
+        checkPoint: haccpCheckRecords.checkPoint,
+        stationId: haccpCheckRecords.stationId,
+        checkedBy: haccpCheckRecords.checkedBy,
+        checkDate: haccpCheckRecords.checkDate,
+        result: haccpCheckRecords.result,
+        temperatureValue: haccpCheckRecords.temperatureValue,
+        correctiveAction: haccpCheckRecords.correctiveAction,
+        notes: haccpCheckRecords.notes,
+        productionOutputId: haccpCheckRecords.productionOutputId,
+        createdAt: haccpCheckRecords.createdAt,
+        checkedByFirstName: users.firstName,
+        checkedByLastName: users.lastName,
+        stationName: factoryStations.name,
+      })
+        .from(haccpCheckRecords)
+        .leftJoin(users, eq(haccpCheckRecords.checkedBy, users.id))
+        .leftJoin(factoryStations, eq(haccpCheckRecords.stationId, factoryStations.id))
+        .where(conditions.length > 0 ? and(...conditions) : undefined)
+        .orderBy(desc(haccpCheckRecords.checkDate));
+
+      res.json(records);
+    } catch (error: any) {
+      console.error("Error fetching HACCP records:", error);
+      res.status(500).json({ message: "HACCP kayıtları getirilemedi" });
+    }
+  });
+
+  router.get('/api/factory/haccp/summary', isAuthenticated, async (req: any, res) => {
+    try {
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+      const summary = await db.select({
+        result: haccpCheckRecords.result,
+        count: count(),
+      })
+        .from(haccpCheckRecords)
+        .where(gte(haccpCheckRecords.checkDate, thirtyDaysAgo))
+        .groupBy(haccpCheckRecords.result);
+
+      const summaryMap: Record<string, number> = { pass: 0, fail: 0, warning: 0 };
+      for (const row of summary) {
+        summaryMap[row.result] = Number(row.count);
+      }
+
+      const total = summaryMap.pass + summaryMap.fail + summaryMap.warning;
+
+      res.json({
+        pass: summaryMap.pass,
+        fail: summaryMap.fail,
+        warning: summaryMap.warning,
+        total,
+        complianceRate: total > 0 ? Math.round((summaryMap.pass / total) * 100) : 100,
+        period: '30_days',
+      });
+    } catch (error: any) {
+      console.error("Error fetching HACCP summary:", error);
+      res.status(500).json({ message: "HACCP özeti getirilemedi" });
+    }
+  });
+
+  // ========================================
+  // SEVKİYAT SİSTEMİ — Shipment Management
+  // ========================================
+
+  router.get('/api/factory/shipments', isAuthenticated, async (req: any, res) => {
+    try {
+      const branchId = req.query.branchId ? parseInt(req.query.branchId as string) : undefined;
+      const status = req.query.status as string | undefined;
+      const startDate = req.query.startDate as string | undefined;
+      const endDate = req.query.endDate as string | undefined;
+
+      const conditions: any[] = [];
+      if (branchId) conditions.push(eq(factoryShipments.branchId, branchId));
+      if (status) conditions.push(eq(factoryShipments.status, status));
+      if (startDate) conditions.push(gte(factoryShipments.createdAt, new Date(startDate)));
+      if (endDate) conditions.push(lte(factoryShipments.createdAt, new Date(endDate)));
+
+      const shipments = await db.select({
+        id: factoryShipments.id,
+        shipmentNumber: factoryShipments.shipmentNumber,
+        branchId: factoryShipments.branchId,
+        status: factoryShipments.status,
+        preparedById: factoryShipments.preparedById,
+        dispatchedAt: factoryShipments.dispatchedAt,
+        deliveredAt: factoryShipments.deliveredAt,
+        deliveryNotes: factoryShipments.deliveryNotes,
+        createdAt: factoryShipments.createdAt,
+        updatedAt: factoryShipments.updatedAt,
+        branchName: branches.name,
+      })
+        .from(factoryShipments)
+        .leftJoin(branches, eq(factoryShipments.branchId, branches.id))
+        .where(conditions.length > 0 ? and(...conditions) : undefined)
+        .orderBy(desc(factoryShipments.createdAt));
+
+      res.json(shipments);
+    } catch (error: any) {
+      console.error("Get shipments error:", error);
+      res.status(500).json({ message: "Sevkiyatlar getirilemedi" });
+    }
+  });
+
+  router.get('/api/factory/shipments/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const id = parseInt(req.params.id);
+
+      const [shipment] = await db.select({
+        id: factoryShipments.id,
+        shipmentNumber: factoryShipments.shipmentNumber,
+        branchId: factoryShipments.branchId,
+        status: factoryShipments.status,
+        preparedById: factoryShipments.preparedById,
+        dispatchedAt: factoryShipments.dispatchedAt,
+        deliveredAt: factoryShipments.deliveredAt,
+        deliveryNotes: factoryShipments.deliveryNotes,
+        createdAt: factoryShipments.createdAt,
+        updatedAt: factoryShipments.updatedAt,
+        branchName: branches.name,
+      })
+        .from(factoryShipments)
+        .leftJoin(branches, eq(factoryShipments.branchId, branches.id))
+        .where(eq(factoryShipments.id, id));
+
+      if (!shipment) {
+        return res.status(404).json({ message: "Sevkiyat bulunamadı" });
+      }
+
+      const items = await db.select({
+        id: factoryShipmentItems.id,
+        shipmentId: factoryShipmentItems.shipmentId,
+        productId: factoryShipmentItems.productId,
+        quantity: factoryShipmentItems.quantity,
+        unit: factoryShipmentItems.unit,
+        lotNumber: factoryShipmentItems.lotNumber,
+        notes: factoryShipmentItems.notes,
+        productName: factoryProducts.name,
+        productSku: factoryProducts.sku,
+      })
+        .from(factoryShipmentItems)
+        .leftJoin(factoryProducts, eq(factoryShipmentItems.productId, factoryProducts.id))
+        .where(eq(factoryShipmentItems.shipmentId, id));
+
+      res.json({ ...shipment, items });
+    } catch (error: any) {
+      console.error("Get shipment detail error:", error);
+      res.status(500).json({ message: "Sevkiyat detayı getirilemedi" });
+    }
+  });
+
+  router.post('/api/factory/shipments', isAuthenticated, async (req: any, res) => {
+    try {
+      const userRole = req.user?.role;
+      if (!['admin', 'fabrika', 'fabrika_mudur', 'coach'].includes(userRole)) {
+        return res.status(403).json({ message: "Yetkiniz yok" });
+      }
+
+      const { branchId, deliveryNotes, items } = req.body;
+
+      if (!branchId) {
+        return res.status(400).json({ message: "Şube seçilmeli" });
+      }
+
+      if (!items || !Array.isArray(items) || items.length === 0) {
+        return res.status(400).json({ message: "En az bir ürün eklenmeli" });
+      }
+
+      const shipmentNumber = `SVK-${Date.now()}`;
+
+      const [shipment] = await db.insert(factoryShipments).values({
+        shipmentNumber,
+        branchId,
+        status: 'hazirlaniyor',
+        preparedById: req.user.id,
+        deliveryNotes: deliveryNotes || null,
+      }).returning();
+
+      for (const item of items) {
+        await db.insert(factoryShipmentItems).values({
+          shipmentId: shipment.id,
+          productId: item.productId,
+          quantity: String(item.quantity),
+          unit: item.unit || null,
+          lotNumber: item.lotNumber || null,
+          notes: item.notes || null,
+        });
+      }
+
+      res.status(201).json(shipment);
+    } catch (error: any) {
+      console.error("Create shipment error:", error);
+      res.status(500).json({ message: "Sevkiyat oluşturulamadı" });
+    }
+  });
+
+  router.patch('/api/factory/shipments/:id/status', isAuthenticated, async (req: any, res) => {
+    try {
+      const userRole = req.user?.role;
+      if (!['admin', 'fabrika', 'fabrika_mudur', 'coach'].includes(userRole)) {
+        return res.status(403).json({ message: "Yetkiniz yok" });
+      }
+
+      const id = parseInt(req.params.id);
+      const { status, deliveryNotes } = req.body;
+
+      const [currentShipment] = await db.select().from(factoryShipments)
+        .where(eq(factoryShipments.id, id));
+
+      if (!currentShipment) {
+        return res.status(404).json({ message: "Sevkiyat bulunamadı" });
+      }
+
+      const validTransitions: Record<string, string[]> = {
+        'hazirlaniyor': ['sevk_edildi', 'iptal'],
+        'sevk_edildi': ['teslim_edildi'],
+      };
+
+      const allowed = validTransitions[currentShipment.status];
+      if (!allowed || !allowed.includes(status)) {
+        return res.status(400).json({
+          message: `Geçersiz durum geçişi: ${currentShipment.status} → ${status}`
+        });
+      }
+
+      const updates: any = { status, updatedAt: new Date() };
+
+      if (status === 'sevk_edildi') {
+        updates.dispatchedAt = new Date();
+
+        const items = await db.select().from(factoryShipmentItems)
+          .where(eq(factoryShipmentItems.shipmentId, id));
+
+        const insufficientItems: string[] = [];
+        for (const item of items) {
+          const [invRecord] = await db.select().from(factoryInventory)
+            .where(eq(factoryInventory.productId, item.productId))
+            .limit(1);
+          const needed = Math.round(parseFloat(item.quantity));
+          if (!invRecord || invRecord.quantity < needed) {
+            const [prod] = await db.select({ name: factoryProducts.name }).from(factoryProducts).where(eq(factoryProducts.id, item.productId)).limit(1);
+            insufficientItems.push(`${prod?.name || 'Urun #' + item.productId}: Mevcut ${invRecord?.quantity || 0}, Gerekli ${needed}`);
+          }
+        }
+
+        if (insufficientItems.length > 0) {
+          return res.status(400).json({
+            message: "Yetersiz stok: " + insufficientItems.join("; ")
+          });
+        }
+
+        for (const item of items) {
+          const [invRecord] = await db.select().from(factoryInventory)
+            .where(eq(factoryInventory.productId, item.productId))
+            .limit(1);
+
+          if (invRecord) {
+            const newQuantity = invRecord.quantity - Math.round(parseFloat(item.quantity));
+            await db.update(factoryInventory)
+              .set({
+                quantity: newQuantity,
+                lastUpdatedById: req.user.id,
+                updatedAt: new Date(),
+              })
+              .where(eq(factoryInventory.id, invRecord.id));
+          }
+
+          const invItems = await db.select().from(inventory)
+            .where(eq(inventory.name, (await db.select({ name: factoryProducts.name }).from(factoryProducts).where(eq(factoryProducts.id, item.productId)).limit(1))[0]?.name || ''))
+            .limit(1);
+
+          if (invItems.length > 0) {
+            const prevStock = invItems[0].currentStock || "0";
+            const qtyNum = parseFloat(item.quantity);
+            const newStock = String(Math.max(0, parseFloat(prevStock) - qtyNum));
+
+            await db.insert(inventoryMovements).values({
+              inventoryId: invItems[0].id,
+              movementType: 'cikis',
+              quantity: item.quantity,
+              previousStock: prevStock,
+              newStock: newStock,
+              referenceType: 'shipment',
+              referenceId: id,
+              notes: `Sevkiyat #${currentShipment.shipmentNumber} - stok çıkışı`,
+              createdById: req.user.id,
+            });
+          }
+        }
+      }
+
+      if (status === 'teslim_edildi') {
+        updates.deliveredAt = new Date();
+      }
+
+      if (deliveryNotes) {
+        updates.deliveryNotes = deliveryNotes;
+      }
+
+      const [updated] = await db.update(factoryShipments)
+        .set(updates)
+        .where(eq(factoryShipments.id, id))
+        .returning();
+
+      res.json(updated);
+    } catch (error: any) {
+      console.error("Update shipment status error:", error);
+      res.status(500).json({ message: "Sevkiyat durumu güncellenemedi" });
+    }
+  });
+
+  router.delete('/api/factory/shipments/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userRole = req.user?.role;
+      if (!['admin', 'fabrika', 'fabrika_mudur', 'coach'].includes(userRole)) {
+        return res.status(403).json({ message: "Yetkiniz yok" });
+      }
+
+      const id = parseInt(req.params.id);
+
+      const [shipment] = await db.select().from(factoryShipments)
+        .where(eq(factoryShipments.id, id));
+
+      if (!shipment) {
+        return res.status(404).json({ message: "Sevkiyat bulunamadı" });
+      }
+
+      if (shipment.status !== 'hazirlaniyor') {
+        return res.status(400).json({ message: "Sadece 'hazırlanıyor' durumundaki sevkiyatlar silinebilir" });
+      }
+
+      await db.delete(factoryShipmentItems).where(eq(factoryShipmentItems.shipmentId, id));
+      await db.delete(factoryShipments).where(eq(factoryShipments.id, id));
+
+      res.json({ success: true, message: "Sevkiyat silindi" });
+    } catch (error: any) {
+      console.error("Delete shipment error:", error);
+      res.status(500).json({ message: "Sevkiyat silinemedi" });
+    }
+  });
+
+  router.get('/api/factory/dashboard/food-engineer-stats', isAuthenticated, async (req: any, res) => {
+    try {
+      const now = new Date();
+      const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+      const [pendingEngineerResult] = await db
+        .select({ count: count() })
+        .from(factoryQualityChecks)
+        .where(eq(factoryQualityChecks.decision, 'pending_engineer'));
+
+      const todayOutputs = await db
+        .select({
+          qualityStatus: factoryProductionOutputs.qualityStatus,
+          cnt: count(),
+          totalWaste: sum(factoryProductionOutputs.wasteQuantity),
+          totalProduced: sum(factoryProductionOutputs.producedQuantity),
+        })
+        .from(factoryProductionOutputs)
+        .where(gte(factoryProductionOutputs.createdAt, todayStart))
+        .groupBy(factoryProductionOutputs.qualityStatus);
+
+      let todayTotalLots = 0;
+      let approvedCount = 0;
+      let pendingCount = 0;
+      let rejectedCount = 0;
+      let totalWaste = 0;
+      let totalProduced = 0;
+
+      for (const row of todayOutputs) {
+        const c = Number(row.cnt);
+        todayTotalLots += c;
+        totalWaste += parseFloat(row.totalWaste || '0');
+        totalProduced += parseFloat(row.totalProduced || '0');
+        if (row.qualityStatus === 'approved') approvedCount += c;
+        else if (row.qualityStatus === 'rejected') rejectedCount += c;
+        else pendingCount += c;
+      }
+
+      const wasteRate = totalProduced > 0 ? Math.round((totalWaste / totalProduced) * 10000) / 100 : 0;
+
+      const haccpResults = await db
+        .select({
+          result: haccpCheckRecords.result,
+          cnt: count(),
+        })
+        .from(haccpCheckRecords)
+        .where(gte(haccpCheckRecords.checkDate, thirtyDaysAgo))
+        .groupBy(haccpCheckRecords.result);
+
+      let haccpFail = 0;
+      let haccpWarning = 0;
+      let haccpPass = 0;
+      for (const row of haccpResults) {
+        const c = Number(row.cnt);
+        if (row.result === 'fail') haccpFail = c;
+        else if (row.result === 'warning') haccpWarning = c;
+        else if (row.result === 'pass') haccpPass = c;
+      }
+
+      const [openCorrectiveActions] = await db
+        .select({ count: count() })
+        .from(haccpCheckRecords)
+        .where(and(
+          isNotNull(haccpCheckRecords.correctiveAction),
+          or(
+            eq(haccpCheckRecords.result, 'fail'),
+            eq(haccpCheckRecords.result, 'warning')
+          ),
+          gte(haccpCheckRecords.checkDate, thirtyDaysAgo)
+        ));
+
+      const lowStockItems = await db
+        .select({ count: count() })
+        .from(factoryInventory)
+        .innerJoin(factoryProducts, eq(factoryInventory.productId, factoryProducts.id))
+        .where(sql`${factoryInventory.quantity} <= ${factoryProducts.minStock} AND ${factoryProducts.minStock} > 0`);
+
+      const lowStockCount = lowStockItems[0]?.count ? Number(lowStockItems[0].count) : 0;
+
+      res.json({
+        pendingEngineerApprovals: Number(pendingEngineerResult?.count || 0),
+        dailyProduction: {
+          totalLots: todayTotalLots,
+          approved: approvedCount,
+          pending: pendingCount,
+          rejected: rejectedCount,
+          wasteRate,
+        },
+        haccpCompliance: {
+          pass: haccpPass,
+          fail: haccpFail,
+          warning: haccpWarning,
+          openCorrectiveActions: Number(openCorrectiveActions?.count || 0),
+        },
+        stockAlerts: {
+          lowStockCount,
+        },
+      });
+    } catch (error: any) {
+      console.error("Food engineer stats error:", error);
+      res.status(500).json({ message: "İstatistikler getirilemedi" });
+    }
+  });
+
+  router.post('/api/factory/seed-data', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user as any;
+      if (user.role !== 'admin') {
+        return res.status(403).json({ message: "Sadece admin seed data oluşturabilir" });
+      }
+
+      const existingStations = await db.select({ id: factoryStations.id }).from(factoryStations).limit(1);
+      if (existingStations.length > 0) {
+        return res.json({ message: "Seed data zaten mevcut", seeded: false });
+      }
+
+      const stationsData = [
+        { name: "Kavurma Hatti", code: "KAVURMA", category: "uretim", description: "Kahve kavurma istasyonu", targetHourlyOutput: 50, sortOrder: 1 },
+        { name: "Paketleme Hatti", code: "PAKETLEME", category: "paketleme", description: "Urun paketleme istasyonu", targetHourlyOutput: 100, sortOrder: 2 },
+        { name: "Dondurma Hatti", code: "DONDURMA", category: "uretim", description: "Soguk urun uretim hatti", targetHourlyOutput: 30, sortOrder: 3 },
+        { name: "Hamur Hatti", code: "HAMUR", category: "uretim", description: "Hamurisi urun hazirlama", targetHourlyOutput: 40, sortOrder: 4 },
+        { name: "Pisirme Hatti", code: "PISIRME", category: "uretim", description: "Firinlama ve pisirme", targetHourlyOutput: 60, sortOrder: 5 },
+      ];
+      const insertedStations = await db.insert(factoryStations).values(stationsData).returning();
+
+      const productsData = [
+        { name: "Cheesecake", sku: "FP-CHEESE-001", category: "tatli", unit: "adet", unitPrice: 4500, minStock: 20, requiresFoodEngineerApproval: true, allergens: ["sut", "gluten", "yumurta"], description: "Klasik cheesecake" },
+        { name: "Cookie", sku: "FP-COOKIE-001", category: "tatli", unit: "adet", unitPrice: 1500, minStock: 50, requiresFoodEngineerApproval: true, allergens: ["gluten", "yumurta", "sut"], description: "Cikolatali cookie" },
+        { name: "Filtre Kahve 250g", sku: "FP-FILTRE-250", category: "kahve", unit: "paket", unitPrice: 12000, minStock: 100, requiresFoodEngineerApproval: false, description: "Filtre kahve 250g paket" },
+        { name: "Espresso Blend 1kg", sku: "FP-ESPRESSO-1K", category: "kahve", unit: "paket", unitPrice: 45000, minStock: 50, requiresFoodEngineerApproval: false, description: "Espresso blend 1kg" },
+        { name: "Donut", sku: "FP-DONUT-001", category: "tatli", unit: "adet", unitPrice: 2000, minStock: 40, requiresFoodEngineerApproval: true, allergens: ["gluten", "yumurta", "sut"], description: "Klasik donut" },
+        { name: "Kek Dilimi", sku: "FP-KEK-001", category: "tatli", unit: "adet", unitPrice: 3500, minStock: 30, requiresFoodEngineerApproval: true, allergens: ["gluten", "yumurta", "sut"], description: "Gunluk taze kek dilimi" },
+        { name: "Granola Bar", sku: "FP-GRANOLA-001", category: "atistirmalik", unit: "adet", unitPrice: 2500, minStock: 60, requiresFoodEngineerApproval: false, allergens: ["gluten", "fistik"], description: "Yulafli granola bar" },
+        { name: "Soguk Brew 500ml", sku: "FP-COLDBREW-500", category: "kahve", unit: "sise", unitPrice: 8000, minStock: 80, requiresFoodEngineerApproval: false, description: "Cold brew kahve 500ml" },
+        { name: "Tuzlu Kurabiye", sku: "FP-TUZLU-001", category: "atistirmalik", unit: "adet", unitPrice: 1800, minStock: 40, requiresFoodEngineerApproval: true, allergens: ["gluten", "sut"], description: "Tuzlu kurabiye" },
+        { name: "Brownie", sku: "FP-BROWNIE-001", category: "tatli", unit: "adet", unitPrice: 3000, minStock: 25, requiresFoodEngineerApproval: true, allergens: ["gluten", "yumurta", "sut", "kakao"], description: "Cikolatali brownie" },
+        { name: "Limonata Konsantre", sku: "FP-LIMONATA-001", category: "icecek", unit: "litre", unitPrice: 6000, minStock: 30, requiresFoodEngineerApproval: false, description: "Ev yapimi limonata konsantresi" },
+        { name: "Cinnaboom", sku: "FP-CINNABOOM-001", category: "tatli", unit: "adet", unitPrice: 3500, minStock: 20, requiresFoodEngineerApproval: true, allergens: ["gluten", "yumurta", "sut", "tarcin"], description: "Tarcınlı rulo" },
+      ];
+      const insertedProducts = await db.insert(factoryProducts).values(productsData).returning();
+
+      for (const product of insertedProducts) {
+        await db.insert(factoryInventory).values({
+          productId: product.id,
+          quantity: Math.floor(Math.random() * 50) + 10,
+          reservedQuantity: 0,
+        });
+      }
+
+      res.json({
+        message: "Fabrika seed data basariyla olusturuldu",
+        seeded: true,
+        stations: insertedStations.length,
+        products: insertedProducts.length,
+      });
+    } catch (error: any) {
+      console.error("Factory seed error:", error);
+      res.status(500).json({ message: "Seed data olusturulamadi: " + error.message });
     }
   });
 

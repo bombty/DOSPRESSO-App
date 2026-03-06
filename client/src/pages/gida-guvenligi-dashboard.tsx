@@ -1,6 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -22,6 +24,9 @@ import {
   Activity,
   Beaker,
   Users,
+  Factory,
+  Package,
+  Percent,
 } from "lucide-react";
 import { format, differenceInDays, parseISO } from "date-fns";
 import { tr } from "date-fns/locale";
@@ -34,6 +39,26 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
+
+interface FoodEngineerStats {
+  pendingEngineerApprovals: number;
+  dailyProduction: {
+    totalLots: number;
+    approved: number;
+    pending: number;
+    rejected: number;
+    wasteRate: number;
+  };
+  haccpCompliance: {
+    pass: number;
+    fail: number;
+    warning: number;
+    openCorrectiveActions: number;
+  };
+  stockAlerts: {
+    lowStockCount: number;
+  };
+}
 
 interface DashboardSummary {
   overview: {
@@ -199,6 +224,12 @@ function getTrainingStatusLabel(status: string): string {
 }
 
 export default function GidaGuvenligiDashboard() {
+  const [, setLocation] = useLocation();
+
+  const { data: factoryStats, isLoading: factoryStatsLoading } = useQuery<FoodEngineerStats>({
+    queryKey: ["/api/factory/dashboard/food-engineer-stats"],
+  });
+
   const { data: summary, isLoading: summaryLoading } = useQuery<DashboardSummary>({
     queryKey: ["/api/food-safety/dashboard-summary"],
   });
@@ -270,6 +301,128 @@ export default function GidaGuvenligiDashboard() {
           <Calendar className="h-3 w-3 mr-1" />
           {format(new Date(), "d MMMM yyyy", { locale: tr })}
         </Badge>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <Card
+          className="hover-elevate cursor-pointer"
+          data-testid="card-pending-quality-approvals"
+          onClick={() => setLocation('/fabrika/kalite-kontrol')}
+        >
+          <CardContent className="pt-4 px-4 pb-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-full bg-orange-100 dark:bg-orange-900/30">
+                <ClipboardCheck className="h-5 w-5 text-orange-600" />
+              </div>
+              <div className="min-w-0">
+                {factoryStatsLoading ? (
+                  <Skeleton className="h-8 w-12" />
+                ) : (
+                  <p className="text-2xl font-bold" data-testid="text-pending-approvals-count">
+                    {factoryStats?.pendingEngineerApprovals ?? 0}
+                  </p>
+                )}
+                <p className="text-xs text-muted-foreground">Bekleyen Kalite Onaylari</p>
+              </div>
+            </div>
+            <p className="text-[11px] text-muted-foreground mt-2">
+              Muhendis onayı bekleyen uretimler
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card data-testid="card-daily-production-summary">
+          <CardContent className="pt-4 px-4 pb-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-full bg-blue-100 dark:bg-blue-900/30">
+                <Factory className="h-5 w-5 text-blue-600" />
+              </div>
+              <div className="min-w-0">
+                {factoryStatsLoading ? (
+                  <Skeleton className="h-8 w-12" />
+                ) : (
+                  <p className="text-2xl font-bold" data-testid="text-daily-lots-count">
+                    {factoryStats?.dailyProduction?.totalLots ?? 0}
+                  </p>
+                )}
+                <p className="text-xs text-muted-foreground">Gunluk Uretim Ozeti</p>
+              </div>
+            </div>
+            {!factoryStatsLoading && factoryStats && (
+              <div className="flex items-center gap-3 mt-2 text-[11px] flex-wrap">
+                <span className="text-green-600" data-testid="text-approved-lots">
+                  {factoryStats.dailyProduction.approved} onayli
+                </span>
+                <span className="text-yellow-600" data-testid="text-pending-lots">
+                  {factoryStats.dailyProduction.pending} bekleyen
+                </span>
+                <span className="text-red-600" data-testid="text-rejected-lots">
+                  {factoryStats.dailyProduction.rejected} red
+                </span>
+                <span className="flex items-center gap-0.5 text-muted-foreground" data-testid="text-waste-rate">
+                  <Percent className="h-3 w-3" />
+                  {factoryStats.dailyProduction.wasteRate} fire
+                </span>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card data-testid="card-haccp-compliance-factory">
+          <CardContent className="pt-4 px-4 pb-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-full bg-emerald-100 dark:bg-emerald-900/30">
+                <ShieldCheck className="h-5 w-5 text-emerald-600" />
+              </div>
+              <div className="min-w-0">
+                {factoryStatsLoading ? (
+                  <Skeleton className="h-8 w-16" />
+                ) : (
+                  <p className="text-2xl font-bold" data-testid="text-haccp-fail-count">
+                    {(factoryStats?.haccpCompliance?.fail ?? 0) + (factoryStats?.haccpCompliance?.warning ?? 0)}
+                  </p>
+                )}
+                <p className="text-xs text-muted-foreground">HACCP Uyum (30 Gun)</p>
+              </div>
+            </div>
+            {!factoryStatsLoading && factoryStats && (
+              <div className="flex items-center gap-3 mt-2 text-[11px] flex-wrap">
+                <span className="text-red-600" data-testid="text-haccp-fails">
+                  {factoryStats.haccpCompliance.fail} fail
+                </span>
+                <span className="text-yellow-600" data-testid="text-haccp-warnings">
+                  {factoryStats.haccpCompliance.warning} warning
+                </span>
+                <span className="text-muted-foreground" data-testid="text-haccp-corrective">
+                  {factoryStats.haccpCompliance.openCorrectiveActions} duzeltici faaliyet
+                </span>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card data-testid="card-stock-alerts">
+          <CardContent className="pt-4 px-4 pb-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-full bg-red-100 dark:bg-red-900/30">
+                <Package className="h-5 w-5 text-red-600" />
+              </div>
+              <div className="min-w-0">
+                {factoryStatsLoading ? (
+                  <Skeleton className="h-8 w-12" />
+                ) : (
+                  <p className="text-2xl font-bold" data-testid="text-low-stock-count">
+                    {factoryStats?.stockAlerts?.lowStockCount ?? 0}
+                  </p>
+                )}
+                <p className="text-xs text-muted-foreground">Stok Uyarilari</p>
+              </div>
+            </div>
+            <p className="text-[11px] text-muted-foreground mt-2">
+              Minimum stok altindaki hammaddeler
+            </p>
+          </CardContent>
+        </Card>
       </div>
 
       <Tabs defaultValue="overview" className="w-full">
