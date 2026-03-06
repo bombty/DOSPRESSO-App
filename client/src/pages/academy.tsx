@@ -281,7 +281,7 @@ export default function Academy() {
                 <TrendingUp className="w-4 h-4 text-primary" />
                 <span className="font-semibold text-sm">Gelişim Alanları</span>
               </div>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 <div className="p-2 rounded-md bg-muted/50 text-center">
                   <div className="text-lg font-bold text-primary" data-testid="text-completed-total">{dailyRec?.totalCompleted || 0}</div>
                   <div className="text-xs text-muted-foreground">Tamamlanan</div>

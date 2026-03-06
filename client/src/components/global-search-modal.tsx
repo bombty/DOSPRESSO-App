@@ -304,7 +304,7 @@ export function GlobalSearchModal({ open, onOpenChange }: GlobalSearchModalProps
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg max-h-[85vh] overflow-hidden flex flex-col p-0">
+      <DialogContent className="sm:max-w-lg max-h-[100dvh] sm:max-h-[85vh] overflow-hidden flex flex-col p-0 w-full h-[100dvh] sm:h-auto sm:w-auto rounded-none sm:rounded-lg top-0 bottom-0 sm:top-[50%] sm:bottom-auto">
         <DialogHeader className="px-4 pt-4 pb-0">
           <DialogTitle className="sr-only">Komut Paleti</DialogTitle>
           <div className="relative">

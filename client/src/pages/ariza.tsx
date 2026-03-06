@@ -80,7 +80,7 @@ function useDebounce<T>(value: T, delay: number): T {
 function FaultSkeleton() {
   return (
     <div className="flex items-center justify-between p-3 border rounded animate-pulse">
-      <div className="flex-1 grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+      <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
         <div className="h-4 bg-accent dark:bg-gray-700 rounded w-3/4"></div>
         <div className="h-3 bg-accent dark:bg-gray-700 rounded w-1/2"></div>
       </div>

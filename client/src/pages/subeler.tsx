@@ -145,7 +145,7 @@ export default function SubelerPage() {
 
   if (error) {
     return (
-      <div className="flex flex-col items-center justify-center h-full grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
+      <div className="flex flex-col items-center justify-center h-full gap-2">
         <p className="text-lg text-destructive">Şubeler yüklenirken hata oluştu</p>
         <p className="text-sm text-muted-foreground">Lütfen sistem yöneticinize başvurun</p>
       </div>
@@ -158,7 +158,7 @@ export default function SubelerPage() {
     <div className="flex flex-col gap-3 sm:gap-4">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold" data-testid="text-page-title">Şubeler</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold" data-testid="text-page-title">Şubeler</h1>
           <p className="text-muted-foreground mt-1">
             DOSPRESSO şubelerini görüntüleyin ve yönetin
           </p>

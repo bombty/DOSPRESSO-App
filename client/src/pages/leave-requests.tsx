@@ -103,7 +103,7 @@ export default function LeaveRequestsPage() {
   });
 
   return (
-    <div className="container mx-auto p-3 grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+    <div className="container mx-auto p-3 space-y-3 sm:space-y-4">
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold" data-testid="text-page-title">İzin Talepleri</h1>
@@ -305,7 +305,7 @@ function CreateLeaveRequestDialog({ open, onOpenChange }: { open: boolean; onOpe
               )}
             />
 
-            <div className="grid grid-cols-2 gap-2 sm:gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
               <FormField
                 control={form.control}
                 name="startDate"
@@ -353,7 +353,7 @@ function CreateLeaveRequestDialog({ open, onOpenChange }: { open: boolean; onOpe
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
                 İptal
               </Button>
-              <Button type="submit" disabled={createMutation.isPending} data-testid="button-submit-leave">
+              <Button type="submit" disabled={createMutation.isPending} className="w-full sm:w-auto" data-testid="button-submit-leave">
                 {createMutation.isPending ? "Oluşturuluyor..." : "Oluştur"}
               </Button>
             </DialogFooter>

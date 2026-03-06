@@ -358,11 +358,11 @@ export function BreadcrumbNavigation() {
   }
 
   return (
-    <div className="flex items-center gap-2 px-3 py-1.5 bg-muted/30 rounded-lg text-sm">
+    <div className="flex items-center gap-2 px-3 py-1.5 bg-muted/30 rounded-lg text-sm overflow-x-auto scrollbar-hidden min-w-0">
       <Button
         variant="ghost"
         size="sm"
-        className="h-6 px-2 gap-1"
+        className="h-6 px-2 gap-1 shrink-0"
         onClick={() => navigate('/')}
         data-testid="breadcrumb-home"
       >
@@ -370,10 +370,10 @@ export function BreadcrumbNavigation() {
       </Button>
 
       {breadcrumbs.map((item, idx) => (
-        <div key={item.path} className="flex items-center gap-1">
+        <div key={item.path} className="flex items-center gap-1 shrink-0">
           <ChevronRight className="h-3 w-3 text-muted-foreground" />
           {idx === breadcrumbs.length - 1 ? (
-            <span className="font-medium text-foreground truncate max-w-[200px]">{item.label}</span>
+            <span className="font-medium text-foreground truncate max-w-[120px] sm:max-w-[200px] whitespace-nowrap">{item.label}</span>
           ) : (
             <Button
               variant="ghost"
@@ -394,7 +394,7 @@ export function BreadcrumbNavigation() {
             <Button
               variant="ghost"
               size="sm"
-              className="h-6 px-2 ml-auto gap-1 text-muted-foreground"
+              className="h-6 px-2 ml-auto gap-1 text-muted-foreground shrink-0"
               data-testid="recent-history-trigger"
             >
               <History className="h-3.5 w-3.5" />

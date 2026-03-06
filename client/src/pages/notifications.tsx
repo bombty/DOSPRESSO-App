@@ -337,7 +337,7 @@ function AssignTaskDialog({ open, onOpenChange }: { open: boolean; onOpenChange:
             )}
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-2">
               <Label>Öncelik</Label>
               <Select value={priority} onValueChange={setPriority}>
@@ -366,11 +366,12 @@ function AssignTaskDialog({ open, onOpenChange }: { open: boolean; onOpenChange:
           </div>
         </div>
 
-        <DialogFooter className="gap-2">
+        <DialogFooter className="gap-2 flex-col sm:flex-row">
           <Button
             variant="outline"
             onClick={() => { resetForm(); onOpenChange(false); }}
             data-testid="button-cancel-task"
+            className="w-full sm:w-auto"
           >
             Vazgeç
           </Button>
@@ -378,6 +379,7 @@ function AssignTaskDialog({ open, onOpenChange }: { open: boolean; onOpenChange:
             onClick={handleSubmit}
             disabled={createTaskMutation.isPending || !description.trim() || !assigneeId}
             data-testid="button-submit-task"
+            className="w-full sm:w-auto"
           >
             {createTaskMutation.isPending ? (
               <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />
@@ -730,7 +732,7 @@ export default function Notifications() {
         </TabsList>
 
         <TabsContent value="notifications" className="mt-4 space-y-3">
-          <div className="flex flex-wrap gap-1.5">
+          <div className="flex gap-1.5 overflow-x-auto pb-1 -mx-3 px-3 sm:mx-0 sm:px-0 sm:flex-wrap sm:overflow-visible">
             {Object.entries(NOTIFICATION_CATEGORIES).map(([key, cat]) => {
               const count = key === "all" 
                 ? notifications?.length || 0
@@ -740,7 +742,7 @@ export default function Notifications() {
                 <Badge
                   key={key}
                   variant={categoryFilter === key ? "default" : "secondary"}
-                  className="cursor-pointer text-xs gap-1"
+                  className="cursor-pointer text-xs gap-1 flex-shrink-0"
                   onClick={() => setCategoryFilter(key)}
                   data-testid={`filter-${key}`}
                 >

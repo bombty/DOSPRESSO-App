@@ -707,14 +707,21 @@ export default function Vardiyalarim() {
       </div>
 
       <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as any)} data-testid="tabs-view-mode">
-        <TabsList>
-          <TabsTrigger value="my" data-testid="tab-my-shifts">Vardiyalarım</TabsTrigger>
-          <TabsTrigger value="qr" data-testid="tab-qr-checkin">
-            <QrCode className="w-3.5 h-3.5 mr-1" />
-            QR Giriş
+        <TabsList className="w-full grid grid-cols-4">
+          <TabsTrigger value="my" data-testid="tab-my-shifts" className="text-xs sm:text-sm">Vardiyalarım</TabsTrigger>
+          <TabsTrigger value="qr" data-testid="tab-qr-checkin" className="text-xs sm:text-sm">
+            <QrCode className="w-3.5 h-3.5 sm:mr-1" />
+            <span className="hidden sm:inline">QR Giriş</span>
+            <span className="sm:hidden">QR</span>
           </TabsTrigger>
-          <TabsTrigger value="branch" data-testid="tab-branch-plan">Şube Planı</TabsTrigger>
-          <TabsTrigger value="leave" data-testid="tab-leave-request">İzin Talebi</TabsTrigger>
+          <TabsTrigger value="branch" data-testid="tab-branch-plan" className="text-xs sm:text-sm">
+            <span className="hidden sm:inline">Şube Planı</span>
+            <span className="sm:hidden">Plan</span>
+          </TabsTrigger>
+          <TabsTrigger value="leave" data-testid="tab-leave-request" className="text-xs sm:text-sm">
+            <span className="hidden sm:inline">İzin Talebi</span>
+            <span className="sm:hidden">İzin</span>
+          </TabsTrigger>
         </TabsList>
       </Tabs>
 

@@ -165,7 +165,7 @@ export function HamburgerMenu() {
           <Menu className="w-4 h-4 text-white" />
         </Button>
       </SheetTrigger>
-      <SheetContent side="left" className="w-[300px] p-0" data-testid="panel-hamburger-menu">
+      <SheetContent side="left" className="w-[85vw] max-w-[300px] p-0" data-testid="panel-hamburger-menu">
         <SheetHeader className="px-4 pt-4 pb-3 border-b bg-primary/5">
           <SheetTitle className="text-sm font-bold flex items-center gap-2">
             <Coffee className="w-4 h-4 text-primary" />

@@ -315,7 +315,7 @@ export default function Tasks() {
     <div className="max-w-6xl mx-auto px-3 sm:px-4 py-3 pb-24 space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h1 className="text-xl sm:text-2xl font-semibold" data-testid="text-page-title">Tasklar</h1>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-2 items-center">
           {isHQ && (
             <Button size="sm" variant="outline" onClick={() => setShowFairnessDialog(true)} data-testid="button-fairness-report">
               <BarChart3 className="h-4 w-4 mr-2" />
@@ -335,10 +335,11 @@ export default function Tasks() {
       </div>
 
       {/* Assignment Direction Filter + Branch Selector */}
-      <div className="flex flex-wrap gap-2">
+      <div className="flex gap-2 overflow-x-auto pb-1 -mx-3 px-3 sm:mx-0 sm:px-0 sm:flex-wrap sm:overflow-visible">
         <Button
           variant={assignmentFilter === "bana_atanan" ? "default" : "outline"}
           size="sm"
+          className="whitespace-nowrap flex-shrink-0"
           onClick={() => {
             setAssignmentFilter(assignmentFilter === "bana_atanan" ? null : "bana_atanan");
             setFilterBranchId(null);
@@ -351,6 +352,7 @@ export default function Tasks() {
           <Button
             variant={assignmentFilter === "atadiklarim" ? "default" : "outline"}
             size="sm"
+            className="whitespace-nowrap flex-shrink-0"
             onClick={() => {
               setAssignmentFilter(assignmentFilter === "atadiklarim" ? null : "atadiklarim");
               setFilterBranchId(null);
@@ -367,6 +369,7 @@ export default function Tasks() {
               <Button
                 variant={filterBranchId !== null ? "default" : "outline"}
                 size="sm"
+                className="whitespace-nowrap flex-shrink-0"
                 data-testid="button-branch-filter"
               >
                 <Building2 className="h-4 w-4 mr-1" />
@@ -564,8 +567,8 @@ export default function Tasks() {
           </CardHeader>
           <CollapsibleContent>
             <CardContent className="pt-0 pb-3">
-              <div className="grid grid-cols-2 gap-2">
-                <div className="col-span-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <div className="sm:col-span-2">
                   <div className="relative">
                     <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
                     <Input
@@ -703,15 +706,18 @@ export default function Tasks() {
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full flex flex-col gap-3 sm:gap-4" ref={tasksContainerRef}>
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-3">
-          <TabsList data-testid="tabs-task-filter">
-            <TabsTrigger value="all" data-testid="tab-all">Tümü</TabsTrigger>
-            <TabsTrigger value="onay_bekleyen" data-testid="tab-pending-approval">Onay Bekleyen</TabsTrigger>
-            {isHQ && <TabsTrigger value="zamanlanmis" data-testid="tab-scheduled">Zamanlanmış</TabsTrigger>}
-          </TabsList>
+          <div className="w-full sm:w-auto overflow-x-auto">
+            <TabsList data-testid="tabs-task-filter">
+              <TabsTrigger value="all" data-testid="tab-all">Tümü</TabsTrigger>
+              <TabsTrigger value="onay_bekleyen" data-testid="tab-pending-approval">Onay Bekleyen</TabsTrigger>
+              {isHQ && <TabsTrigger value="zamanlanmis" data-testid="tab-scheduled">Zamanlanmış</TabsTrigger>}
+            </TabsList>
+          </div>
           {activeTab === "all" && !filterStatus && (
             <Button
               variant={showCompleted ? "secondary" : "outline"}
               size="sm"
+              className="w-full sm:w-auto whitespace-nowrap"
               onClick={() => setShowCompleted(!showCompleted)}
               data-testid="button-toggle-completed"
             >
@@ -1103,7 +1109,7 @@ export default function Tasks() {
                 data-testid="input-bulk-description"
               />
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="text-sm font-medium block mb-1">Öncelik</label>
                 <Select value={bulkPriority} onValueChange={setBulkPriority}>
@@ -1179,7 +1185,7 @@ export default function Tasks() {
               <p className="text-xs text-muted-foreground mb-2">
                 Belirtilen tarih ve saatte görevler otomatik olarak iletilecektir.
               </p>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <Input
                   type="date"
                   value={bulkScheduledDate}
@@ -1195,9 +1201,10 @@ export default function Tasks() {
               </div>
             </div>
           </div>
-          <div className="flex justify-end gap-2 mt-4">
-            <Button variant="outline" onClick={() => setShowBulkDialog(false)}>İptal</Button>
+          <div className="flex flex-col sm:flex-row justify-end gap-2 mt-4">
+            <Button variant="outline" onClick={() => setShowBulkDialog(false)} className="w-full sm:w-auto">İptal</Button>
             <Button
+              className="w-full sm:w-auto"
               onClick={() => {
                 if (!bulkDescription.trim() || !bulkRoleFilter) {
                   toast({ title: "Hata", description: "Açıklama ve hedef rol zorunludur", variant: "destructive" });

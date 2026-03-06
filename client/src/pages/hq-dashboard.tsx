@@ -267,7 +267,7 @@ function SatinalmaDashboard() {
             </CardTitle>
           </CardHeader>
           <CardContent className="px-3 pb-3">
-            <ResponsiveContainer width="100%" height={140}>
+            <ResponsiveContainer width="100%" height={180}>
               <BarChart data={demandData}>
                 <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
                 <XAxis dataKey="name" fontSize={10} tickLine={false} axisLine={false} />
@@ -381,7 +381,7 @@ function FabrikaDashboard() {
             </CardTitle>
           </CardHeader>
           <CardContent className="px-3 pb-3">
-            <ResponsiveContainer width="100%" height={140}>
+            <ResponsiveContainer width="100%" height={180}>
               <AreaChart data={productionData}>
                 <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
                 <XAxis dataKey="name" fontSize={10} tickLine={false} axisLine={false} />
@@ -502,7 +502,7 @@ function IKDashboard() {
             </CardTitle>
           </CardHeader>
           <CardContent className="px-3 pb-3">
-            <ResponsiveContainer width="100%" height={140}>
+            <ResponsiveContainer width="100%" height={180}>
               <BarChart data={turnoverData}>
                 <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
                 <XAxis dataKey="name" fontSize={10} tickLine={false} axisLine={false} />
@@ -774,7 +774,7 @@ function MarketingDashboard() {
           </CardTitle>
         </CardHeader>
         <CardContent className="px-3 pb-3">
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             <div className="p-2 rounded-lg bg-green-500/10">
               <p className="text-xs text-muted-foreground">Yükselen</p>
               <p className="text-xs font-medium">Cold Brew</p>
@@ -1325,7 +1325,7 @@ function DashboardSkeleton() {
         <Skeleton className="w-6 h-6 rounded" />
         <Skeleton className="h-8 w-48" />
       </div>
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
         {[...Array(6)].map((_, i) => (
           <Card key={i}>
             <CardContent className="p-4">

@@ -494,7 +494,7 @@ export default function KaliteKontrolDashboard() {
               </div>
               <Progress value={performance.weeklyScore} className="h-1.5" />
             </div>
-            <div className="grid grid-cols-2 gap-2 pt-1">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
               <div className="text-center p-2 bg-muted/50 rounded-lg">
                 <p className="text-base font-bold text-green-600">{performance.totalResponded}</p>
                 <p className="text-[10px] text-muted-foreground">Toplam Yanıtlanan</p>
@@ -585,7 +585,7 @@ export default function KaliteKontrolDashboard() {
           </DialogHeader>
           {selectedFeedback && (
             <div className="space-y-3">
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 <div>
                   <label className="text-[10px] text-muted-foreground">Şube</label>
                   <p className="font-medium text-xs">{selectedFeedback.branchName}</p>

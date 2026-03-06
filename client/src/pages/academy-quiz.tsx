@@ -315,8 +315,18 @@ export default function AcademyQuiz() {
       }
     };
 
+    const handlePageHide = () => {
+      if (!hasAutoSubmittedRef.current) {
+        doSubmit("page_close");
+      }
+    };
+
     window.addEventListener("beforeunload", handleBeforeUnload);
-    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+    window.addEventListener("pagehide", handlePageHide);
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+      window.removeEventListener("pagehide", handlePageHide);
+    };
   }, [quizStarted, submitted, quiz.questions.length, doSubmit]);
 
   const advanceToNextQuestion = useCallback(() => {
@@ -574,7 +584,7 @@ export default function AcademyQuiz() {
             </div>
 
             <div>
-              <p className="text-xs text-muted-foreground mb-1">Geçme Notu: %{quiz.passingScore}</p>
+              <p className="text-sm text-muted-foreground mb-1">Geçme Notu: %{quiz.passingScore}</p>
               <div className="relative">
                 <Progress value={score} className="h-2" />
                 <div
@@ -585,7 +595,7 @@ export default function AcademyQuiz() {
             </div>
 
             {completionTypeRef.current !== "normal" && (
-              <div className="flex items-center gap-2 p-2 bg-amber-500/10 rounded-md text-xs">
+              <div className="flex items-center gap-2 p-2 bg-amber-500/10 rounded-md text-sm">
                 <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0" />
                 <span className="text-muted-foreground">
                   {completionTypeRef.current === "timeout" && "Süre dolduğu için sınav otomatik gönderildi."}
@@ -597,7 +607,7 @@ export default function AcademyQuiz() {
             )}
 
             {tabSwitchCount > 0 && (
-              <div className="flex items-center gap-2 p-2 bg-red-500/10 rounded-md text-xs">
+              <div className="flex items-center gap-2 p-2 bg-red-500/10 rounded-md text-sm">
                 <Eye className="w-4 h-4 text-red-500 shrink-0" />
                 <span className="text-muted-foreground">
                   {tabSwitchCount} kez sekme değişikliği tespit edildi.
@@ -616,7 +626,7 @@ export default function AcademyQuiz() {
                 <CardContent className="px-3 pb-3 pt-1">
                   <div className="space-y-2" data-testid="list-wrong-topics">
                     {wrongQuestions.map((wq: any) => (
-                      <div key={wq.index} className="flex items-start gap-2 text-xs p-2 bg-background rounded-md">
+                      <div key={wq.index} className="flex items-start gap-2 text-sm p-2 bg-background rounded-md">
                         <span className="text-red-500 font-medium shrink-0">S{wq.index + 1}</span>
                         <div className="flex-1 min-w-0">
                           <p className="text-foreground truncate">{wq.question}</p>
@@ -650,7 +660,7 @@ export default function AcademyQuiz() {
                   <div className="relative" data-testid="career-progress-bar">
                     <Progress value={progressPercent} className="h-2 transition-all duration-1000" />
                   </div>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-sm text-muted-foreground">
                     {completedModuleCount} / {totalRequired} modül tamamlandı
                   </p>
                 </CardContent>
@@ -666,17 +676,17 @@ export default function AcademyQuiz() {
                   </div>
                   <div className="flex items-center gap-2 p-2 bg-background rounded-md">
                     <Clock className="w-4 h-4 text-amber-500 shrink-0" />
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-sm text-muted-foreground">
                       <strong className="text-foreground">24 saat</strong> sonra tekrar deneyebilirsiniz
                     </p>
                   </div>
-                  <div className="flex items-center gap-2 text-xs">
+                  <div className="flex items-center gap-2 text-sm">
                     <span className="text-muted-foreground">Kullanılan deneme:</span>
                     <span className="font-medium">{attemptInfo?.attemptCount || 1} / {attemptInfo?.maxAttempts || 3}</span>
                   </div>
                   <div className="flex items-start gap-2 p-2 bg-primary/5 rounded-md">
                     <Flame className="w-4 h-4 text-primary shrink-0 mt-0.5" />
-                    <p className="text-xs text-muted-foreground italic" data-testid="text-motivation">
+                    <p className="text-sm text-muted-foreground italic" data-testid="text-motivation">
                       {motivationMessage}
                     </p>
                   </div>
@@ -810,7 +820,7 @@ export default function AcademyQuiz() {
               </Badge>
             </div>
           </div>
-          <Progress value={progress} className="h-1" />
+          <Progress value={progress} className="h-2" />
           <div className="flex items-center justify-between gap-2 mt-1 flex-wrap">
             <p className="text-xs text-muted-foreground">
               {currentQuestion + 1} / {quiz.questions.length}
@@ -828,11 +838,11 @@ export default function AcademyQuiz() {
           <div>
             <p className="text-sm font-medium mb-2">{question.question}</p>
 
-            <RadioGroup value={answers[currentQuestion] || ""} onValueChange={(value) => setAnswers({ ...answers, [currentQuestion]: value })}>
+            <RadioGroup value={answers[currentQuestion] || ""} onValueChange={(value) => setAnswers({ ...answers, [currentQuestion]: value })} className="flex flex-col gap-3">
               {question.options.map((option: string, idx: number) => (
-                <div key={idx} className="flex items-center space-x-2 p-2 border rounded-md hover-elevate text-xs" data-testid={`option-${idx}`}>
+                <div key={idx} className="flex items-center space-x-3 p-3 border rounded-md hover-elevate text-sm min-h-[48px]" data-testid={`option-${idx}`}>
                   <RadioGroupItem value={idx.toString()} id={`option-${currentQuestion}-${idx}`} />
-                  <Label htmlFor={`option-${currentQuestion}-${idx}`} className="flex-1 cursor-pointer">
+                  <Label htmlFor={`option-${currentQuestion}-${idx}`} className="flex-1 cursor-pointer text-sm">
                     {option}
                   </Label>
                 </div>
@@ -840,13 +850,13 @@ export default function AcademyQuiz() {
             </RadioGroup>
           </div>
 
-          <div className="flex gap-1">
+          <div className="flex gap-1 sticky bottom-0 bg-card py-2">
             {currentQuestion === quiz.questions.length - 1 ? (
-              <Button size="sm" onClick={handleSubmit} disabled={submitMutation.isPending} className="flex-1" data-testid="button-submit-quiz">
+              <Button onClick={handleSubmit} disabled={submitMutation.isPending} className="flex-1" data-testid="button-submit-quiz">
                 {submitMutation.isPending ? "Gönderiliyor..." : "Bitir"}
               </Button>
             ) : (
-              <Button size="sm" onClick={advanceToNextQuestion} className="flex-1" data-testid="button-next-question">
+              <Button onClick={advanceToNextQuestion} className="flex-1" data-testid="button-next-question">
                 Sonraki
               </Button>
             )}

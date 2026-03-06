@@ -1879,7 +1879,7 @@ function AddEmployeeDialog({
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="w-full space-y-2 sm:space-y-3">
-            <div className="grid grid-cols-2 gap-2 sm:gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
               <FormField
                 control={form.control}
                 name="firstName"
@@ -1909,7 +1909,7 @@ function AddEmployeeDialog({
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-2 sm:gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
               <FormField
                 control={form.control}
                 name="username"
@@ -1991,7 +1991,7 @@ function AddEmployeeDialog({
               </div>
             )}
 
-            <div className={`grid gap-2 sm:gap-3 ${personnelCategory === "branch" && !isSupervisor ? "grid-cols-2" : "grid-cols-1"}`}>
+            <div className={`grid gap-2 sm:gap-3 ${personnelCategory === "branch" && !isSupervisor ? "grid-cols-1 sm:grid-cols-2" : "grid-cols-1"}`}>
               <FormField
                 control={form.control}
                 name="role"
@@ -2112,7 +2112,7 @@ function AddEmployeeDialog({
               )}
             />
 
-            <div className="grid grid-cols-2 gap-2 sm:gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
               <FormField
                 control={form.control}
                 name="employmentType"
@@ -2165,7 +2165,7 @@ function AddEmployeeDialog({
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-2 sm:gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
               <FormField
                 control={form.control}
                 name="emergencyContactName"
@@ -2213,7 +2213,7 @@ function AddEmployeeDialog({
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
                 İptal
               </Button>
-              <Button type="submit" disabled={createMutation.isPending} data-testid="button-submit-employee">
+              <Button type="submit" disabled={createMutation.isPending} className="w-full sm:w-auto" data-testid="button-submit-employee">
                 {createMutation.isPending ? "Ekleniyor..." : "Personel Ekle"}
               </Button>
             </DialogFooter>
@@ -2296,7 +2296,7 @@ function EditEmployeeDialog({
           <form onSubmit={form.handleSubmit(onSubmit)} className="w-full space-y-2 sm:space-y-3">
             {userRole === "admin" && (
               <>
-                <div className="grid grid-cols-2 gap-2 sm:gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
                   <FormField
                     control={form.control}
                     name="firstName"
@@ -2326,7 +2326,7 @@ function EditEmployeeDialog({
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-2 sm:gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
                   <FormField
                     control={form.control}
                     name="role"
@@ -2445,7 +2445,7 @@ function EditEmployeeDialog({
                   )}
                 />
 
-                <div className="grid grid-cols-2 gap-2 sm:gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
                   <FormField
                     control={form.control}
                     name="emergencyContactName"
@@ -2498,7 +2498,7 @@ function EditEmployeeDialog({
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
                 İptal
               </Button>
-              <Button type="submit" disabled={updateMutation.isPending}>
+              <Button type="submit" disabled={updateMutation.isPending} className="w-full sm:w-auto">
                 {updateMutation.isPending ? "Güncelleniyor..." : "Güncelle"}
               </Button>
             </DialogFooter>
@@ -2694,7 +2694,7 @@ function AddWarningDialog({
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
                 İptal
               </Button>
-              <Button type="submit" disabled={createWarningMutation.isPending} data-testid="button-submit-warning">
+              <Button type="submit" disabled={createWarningMutation.isPending} className="w-full sm:w-auto" data-testid="button-submit-warning">
                 {createWarningMutation.isPending ? "Kaydediliyor..." : "Uyarı Ekle"}
               </Button>
             </DialogFooter>
@@ -3637,7 +3637,7 @@ function AddPositionDialog({
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="text-sm font-medium">Rol</label>
               <Select value={targetRole} onValueChange={setTargetRole}>
@@ -3713,7 +3713,7 @@ function AddPositionDialog({
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               İptal
             </Button>
-            <Button type="submit" disabled={createMutation.isPending} data-testid="button-submit-position">
+            <Button type="submit" disabled={createMutation.isPending} className="w-full sm:w-auto" data-testid="button-submit-position">
               {createMutation.isPending ? "Kaydediliyor..." : "Oluştur"}
             </Button>
           </DialogFooter>
@@ -3810,7 +3810,7 @@ function AddApplicationDialog({
             </Select>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="text-sm font-medium">Ad *</label>
               <Input
@@ -3871,7 +3871,7 @@ function AddApplicationDialog({
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               İptal
             </Button>
-            <Button type="submit" disabled={createMutation.isPending} data-testid="button-submit-application">
+            <Button type="submit" disabled={createMutation.isPending} className="w-full sm:w-auto" data-testid="button-submit-application">
               {createMutation.isPending ? "Kaydediliyor..." : "Başvuru Ekle"}
             </Button>
           </DialogFooter>
@@ -3951,7 +3951,7 @@ function ScheduleInterviewDialog({
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="text-sm font-medium">Tarih *</label>
               <Input
@@ -4011,7 +4011,7 @@ function ScheduleInterviewDialog({
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               İptal
             </Button>
-            <Button type="submit" disabled={createMutation.isPending} data-testid="button-submit-interview">
+            <Button type="submit" disabled={createMutation.isPending} className="w-full sm:w-auto" data-testid="button-submit-interview">
               {createMutation.isPending ? "Kaydediliyor..." : "Planla"}
             </Button>
           </DialogFooter>
@@ -4395,7 +4395,7 @@ function InterviewDetailModal({
 
         <div className="space-y-6">
           {/* Interview Info */}
-          <div className="grid grid-cols-2 gap-4 p-4 bg-muted/30 rounded-lg">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 bg-muted/30 rounded-lg">
             <div>
               <p className="text-sm text-muted-foreground">Tarih/Saat</p>
               <p className="font-medium">
@@ -4493,7 +4493,7 @@ function InterviewDetailModal({
           </div>
 
           {/* Strengths & Weaknesses */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="text-sm font-medium text-green-600">Güçlü Yönler</label>
               <Textarea
@@ -4737,7 +4737,7 @@ function AddTerminationDialog({
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               İptal
             </Button>
-            <Button type="submit" disabled={createMutation.isPending} data-testid="button-submit-termination">
+            <Button type="submit" disabled={createMutation.isPending} className="w-full sm:w-auto" data-testid="button-submit-termination">
               {createMutation.isPending ? "Kaydediliyor..." : "Kaydet"}
             </Button>
           </DialogFooter>
@@ -5242,7 +5242,7 @@ function SalaryEditDialog({
           {/* Maaş Bilgisi */}
           <div className="p-4 border rounded-lg space-y-3">
             <h4 className="font-medium">Maaş Bilgisi</h4>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="text-sm font-medium">Net Maaş (TL)</label>
                 <Input
@@ -5258,6 +5258,7 @@ function SalaryEditDialog({
                 <Button 
                   onClick={handleSaveSalary} 
                   disabled={isPending}
+                  className="w-full sm:w-auto"
                   data-testid="button-save-salary"
                 >
                   Maaş Kaydet
@@ -5274,7 +5275,7 @@ function SalaryEditDialog({
           {/* Yemek Yardımı */}
           <div className="p-4 border rounded-lg space-y-3">
             <h4 className="font-medium">Yemek Yardımı</h4>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="text-sm font-medium">Tip</label>
                 <Select value={mealBenefitType} onValueChange={setMealBenefitType}>
@@ -5307,7 +5308,7 @@ function SalaryEditDialog({
           {/* Ulaşım Yardımı */}
           <div className="p-4 border rounded-lg space-y-3">
             <h4 className="font-medium">Ulaşım Yardımı</h4>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="text-sm font-medium">Tip</label>
                 <Select value={transportBenefitType} onValueChange={setTransportBenefitType}>
@@ -5339,7 +5340,7 @@ function SalaryEditDialog({
           {/* Prim */}
           <div className="p-4 border rounded-lg space-y-3">
             <h4 className="font-medium">Prim/Bonus</h4>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="flex items-center gap-2">
                 <Checkbox
                   id="bonus-eligible"
@@ -5497,7 +5498,7 @@ function ExportEmployeesDialog({
             </div>
           )}
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="text-sm font-medium">Rol Filtre</label>
               <Select value={roleFilter} onValueChange={setRoleFilter}>
@@ -5542,7 +5543,7 @@ function ExportEmployeesDialog({
             </Select>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="text-sm font-medium">İşe Giriş Başlangıç</label>
               <Input
@@ -5603,7 +5604,7 @@ function classifyError(err: any): "unauthorized" | "forbidden" | "network" | "ge
 function BatchDetailSkeleton() {
   return (
     <div className="space-y-4 mt-4" data-testid="skeleton-batch-detail">
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         {Array.from({ length: 6 }).map((_, i) => (
           <div key={i} className="space-y-1">
             <Skeleton className="h-3 w-16" />
@@ -5777,7 +5778,7 @@ function BatchDetailSheet({
 
           {batch && (
             <div className="space-y-4 mt-4">
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1">
                   <p className="text-[11px] text-muted-foreground">Batch ID</p>
                   <p className="text-sm font-medium" data-testid="text-batch-id">{batch.id}</p>

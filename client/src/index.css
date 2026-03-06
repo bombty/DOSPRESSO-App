@@ -606,6 +606,13 @@
   }
 }
 
+/* Mobile Phone (375px) Optimizations */
+html, body {
+  -webkit-tap-highlight-color: transparent;
+  -webkit-text-size-adjust: 100%;
+}
+
+
 /* RTL Support for Arabic language */
 [dir="rtl"] {
   text-align: right;

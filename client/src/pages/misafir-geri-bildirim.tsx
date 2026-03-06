@@ -687,17 +687,17 @@ export default function MisafirGeriBildirim() {
         {label}
         {required && <span className="text-red-500">*</span>}
       </Label>
-      <div className="flex gap-1">
+      <div className="flex gap-0.5 sm:gap-1">
         {[1, 2, 3, 4, 5].map((star) => (
           <button
             key={star}
             type="button"
             onClick={() => onChange(star)}
-            className="focus:outline-none transition-all hover:scale-110 active:scale-95"
+            className="focus:outline-none transition-all hover:scale-110 active:scale-95 p-1.5 min-h-[44px] min-w-[44px] flex items-center justify-center touch-manipulation"
             data-testid={`star-${label.toLowerCase().replace(/\s/g, '-')}-${star}`}
           >
             <Star
-              className={`h-10 w-10 transition-colors ${
+              className={`h-9 w-9 sm:h-10 sm:w-10 transition-colors ${
                 star <= value 
                   ? 'fill-amber-400 text-amber-400 drop-shadow-md' 
                   : 'text-gray-300 hover:text-amber-200'
@@ -711,12 +711,12 @@ export default function MisafirGeriBildirim() {
 
   // Language Selector
   const LanguageSelector = () => (
-    <div className="flex flex-wrap justify-center gap-2 mb-4">
+    <div className="flex flex-wrap justify-center gap-1.5 sm:gap-2 mb-4">
       {Object.entries(languageFlags).map(([code, { flag, name }]) => (
         <button
           key={code}
           onClick={() => setLang(code)}
-          className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-sm transition-all ${
+          className={`flex items-center gap-1 px-2.5 sm:px-3 py-1.5 rounded-full text-sm transition-all min-h-[40px] touch-manipulation ${
             lang === code 
               ? 'bg-amber-600 text-white shadow-md' 
               : 'bg-white/80 hover:bg-white text-gray-700 shadow'
@@ -792,7 +792,7 @@ export default function MisafirGeriBildirim() {
 
   return (
     <div 
-      className={`min-h-screen p-4 py-6 ${lang === 'ar' ? 'rtl' : 'ltr'}`}
+      className={`min-h-screen px-3 sm:px-4 py-4 sm:py-6 ${lang === 'ar' ? 'rtl' : 'ltr'}`}
       style={{ 
         background: formSettings?.backgroundColor 
           ? formSettings.backgroundColor 
@@ -819,9 +819,9 @@ export default function MisafirGeriBildirim() {
             alt="DOSPRESSO" 
             className="h-28 mx-auto mb-4 drop-shadow-lg"
           />
-          <div className="bg-white/60 backdrop-blur-sm rounded-xl px-4 py-2 inline-block shadow-sm">
-            <div className="flex items-center gap-2 text-amber-800">
-              <MapPin className="h-4 w-4" />
+          <div className="bg-white/60 backdrop-blur-sm rounded-xl px-3 sm:px-4 py-2 inline-block shadow-sm max-w-full">
+            <div className="flex items-center gap-1.5 sm:gap-2 text-amber-800 flex-wrap justify-center text-sm sm:text-base">
+              <MapPin className="h-4 w-4 shrink-0" />
               <span className="font-medium">{branchInfo.branch.name}</span>
               <span className="text-amber-600">•</span>
               <span>{branchInfo.branch.city}</span>
@@ -861,8 +861,8 @@ export default function MisafirGeriBildirim() {
             </CardDescription>
           </CardHeader>
 
-          <CardContent className="pt-6">
-            <form onSubmit={handleSubmit} className="space-y-6">
+          <CardContent className="pt-6 px-4 sm:px-6">
+            <form onSubmit={handleSubmit} className="space-y-5 sm:space-y-6">
               {/* Location Status */}
               {formSettings?.requireLocationVerification !== false && locationStatus === 'pending' && branchInfo.branch.latitude && (
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
@@ -911,7 +911,7 @@ export default function MisafirGeriBildirim() {
                   <Label className="flex items-center gap-2 text-sm font-medium">
                     {t.feedbackTypeLabel}
                   </Label>
-                  <div className="flex gap-3">
+                  <div className="flex gap-2 sm:gap-3">
                     <Button
                       type="button"
                       variant={feedbackType === 'feedback' ? 'default' : 'outline'}
@@ -919,7 +919,7 @@ export default function MisafirGeriBildirim() {
                       onClick={() => setFeedbackType('feedback')}
                       data-testid="button-feedback-type-feedback"
                     >
-                      <CheckCircle2 className="h-4 w-4 mr-2" />
+                      <CheckCircle2 className="h-4 w-4 mr-1.5 sm:mr-2" />
                       {t.feedbackOption}
                     </Button>
                     <Button
@@ -929,7 +929,7 @@ export default function MisafirGeriBildirim() {
                       onClick={() => setFeedbackType('complaint')}
                       data-testid="button-feedback-type-complaint"
                     >
-                      <AlertTriangle className="h-4 w-4 mr-2" />
+                      <AlertTriangle className="h-4 w-4 mr-1.5 sm:mr-2" />
                       {t.complaintOption}
                     </Button>
                   </div>
@@ -1008,7 +1008,7 @@ export default function MisafirGeriBildirim() {
                     <SelectTrigger data-testid="select-staff" className={staffValidationError ? "border-red-500 ring-red-500" : ""}>
                       <SelectValue placeholder={t.selectStaffPlaceholder} />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="max-h-[240px]">
                       {!staffRating && <SelectItem value="_none">{t.dontWantToSpecify}</SelectItem>}
                       {branchInfo.staff.map((s) => (
                         <SelectItem key={s.id} value={s.id}>
@@ -1088,7 +1088,7 @@ export default function MisafirGeriBildirim() {
                         <Button
                           type="button"
                           variant="outline"
-                          className="cursor-pointer"
+                          className="cursor-pointer w-full sm:w-auto"
                           disabled={uploadingPhoto}
                           asChild
                         >
@@ -1190,7 +1190,8 @@ export default function MisafirGeriBildirim() {
               {/* Submit Button */}
               <Button
                 type="submit"
-                className="w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-semibold py-6 text-lg shadow-lg"
+                size="lg"
+                className="w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-semibold py-6 text-base sm:text-lg shadow-lg touch-manipulation"
                 disabled={rating === 0 || submitMutation.isPending || locationStatus === 'failed'}
                 data-testid="button-submit"
               >

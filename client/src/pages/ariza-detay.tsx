@@ -196,7 +196,7 @@ function ServiceNotificationCard({ fault }: { fault: any }) {
                 Teknik Servise Mail
               </Button>
             </div>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               <div>
                 <label className="text-xs text-muted-foreground">Bildirim Tarihi</label>
                 <Input
@@ -587,7 +587,7 @@ function ServiceTrackingTab({ fault, equipment, branchName }: { fault: any; equi
               />
               <label htmlFor="deviceTested" className="text-sm">Cihaz test edildi mi?</label>
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="text-xs text-muted-foreground mb-1 block">Test Eden Kişi</label>
                 <Input
@@ -606,7 +606,7 @@ function ServiceTrackingTab({ fault, equipment, branchName }: { fault: any; equi
                 />
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="text-xs text-muted-foreground mb-1 block">Servis Ücreti (₺)</label>
                 <Input
@@ -635,7 +635,7 @@ function ServiceTrackingTab({ fault, equipment, branchName }: { fault: any; equi
                 data-testid="input-warranty-notes"
               />
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="text-xs text-muted-foreground mb-1 block">Teslim Alan</label>
                 <Input

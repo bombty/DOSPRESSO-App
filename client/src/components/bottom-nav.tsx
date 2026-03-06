@@ -256,8 +256,8 @@ export function BottomNav() {
 
   return (
     <>
-      <nav className="fixed left-3 right-3 z-[60]" style={{ bottom: 'max(12px, env(safe-area-inset-bottom, 12px))' }} data-testid="bottom-nav">
-        <div className="flex items-center justify-around h-14 max-w-md mx-auto px-2 rounded-2xl bg-card/95 backdrop-blur-xl border border-card-border shadow-xl">
+      <nav className="fixed left-0 right-0 sm:left-3 sm:right-3 z-[60]" style={{ bottom: 'max(0px, env(safe-area-inset-bottom, 0px))' }} data-testid="bottom-nav">
+        <div className="flex items-center justify-around h-14 sm:max-w-md mx-auto px-1 sm:px-2 sm:rounded-2xl rounded-none bg-card/95 backdrop-blur-xl border-t sm:border border-card-border sm:shadow-xl">
           {navItems.map((item, index) => {
             const Icon = item.icon;
             const active = isActive(item.path);
@@ -275,7 +275,7 @@ export function BottomNav() {
                       <Icon className="w-5 h-5 transition-colors duration-300" />
                     </div>
                   </div>
-                  <span className="text-[10px] pointer-events-none transition-all duration-300 font-medium">
+                  <span className="text-[10px] pointer-events-none transition-all duration-300 font-medium hidden sm:inline">
                     {item.label}
                   </span>
                 </button>
@@ -295,7 +295,7 @@ export function BottomNav() {
                       <Icon className="w-5 h-5 transition-colors duration-300" />
                     </div>
                   </div>
-                  <span className="text-[10px] pointer-events-none transition-all duration-300 font-medium">
+                  <span className="text-[10px] pointer-events-none transition-all duration-300 font-medium hidden sm:inline">
                     {item.label}
                   </span>
                 </button>
@@ -326,7 +326,7 @@ export function BottomNav() {
                     </span>
                   )}
                 </div>
-                <span className={`text-[10px] pointer-events-none transition-all duration-300 ${active ? "font-bold text-primary" : "font-medium"}`}>
+                <span className={`text-[10px] pointer-events-none transition-all duration-300 ${active ? "font-bold text-primary" : "font-medium hidden sm:inline"}`}>
                   {item.label}
                 </span>
               </Link>

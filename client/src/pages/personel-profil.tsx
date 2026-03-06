@@ -410,67 +410,69 @@ export default function PersonelProfilPage() {
     <div className="pb-6">
       <div className="p-3 flex flex-col gap-2 sm:gap-3">
         {/* Profile Header with Photo */}
-        <div className="flex items-center gap-4 flex-wrap">
-          <div className="relative">
-            <Avatar className="w-20 h-20 border-2 border-border">
-              {profile.profileImageUrl ? (
-                <AvatarImage src={profile.profileImageUrl} alt="Profil" className="object-cover" />
-              ) : (
-                <AvatarFallback className="text-xl">
-                  {(profile.firstName?.[0] || "") + (profile.lastName?.[0] || "")}
-                </AvatarFallback>
-              )}
-            </Avatar>
-            {isOwnProfile && profile.profileImageUrl && (
-              <Button
-                type="button"
-                size="icon"
-                variant="destructive"
-                className="absolute -top-1 -right-1 h-5 w-5 rounded-full"
-                onClick={() => updatePhotoMutation.mutate(null)}
-                disabled={updatePhotoMutation.isPending}
-                data-testid="button-remove-profile-photo"
-              >
-                <Trash2 className="w-3 h-3" />
-              </Button>
-            )}
-          </div>
-          <div className="flex-1 min-w-0">
-            <h1 className="text-xl font-bold truncate" data-testid="text-fullname">{profile.fullName}</h1>
-            <div className="flex items-center gap-2 flex-wrap">
-              <Badge variant="outline">{ROLE_LABELS[profile.role] || profile.role}</Badge>
-              {profile.branchName && (
-                <Badge variant="secondary">{profile.branchName}</Badge>
-              )}
-              <EmployeeOfMonthBadge userId={profile.id} />
-            </div>
-            {isOwnProfile && (
-              <div className="mt-2">
-                <ObjectUploader
-                  onGetUploadParameters={async () => {
-                    const res = await fetch("/api/objects/upload", {
-                      method: "POST",
-                      credentials: "include",
-                      headers: { "Content-Type": "application/json" }
-                    });
-                    if (!res.ok) throw new Error("Yükleme URL'si alınamadı");
-                    return res.json();
-                  }}
-                  onComplete={(result) => {
-                    if (result.successful?.[0]?.uploadURL) {
-                      updatePhotoMutation.mutate(result.successful[0].uploadURL);
-                    }
-                  }}
-                  maxFileSize={3 * 1024 * 1024}
-                  buttonClassName="h-8"
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4">
+          <div className="flex items-center gap-3 w-full sm:w-auto">
+            <div className="relative shrink-0">
+              <Avatar className="w-16 h-16 sm:w-20 sm:h-20 border-2 border-border">
+                {profile.profileImageUrl ? (
+                  <AvatarImage src={profile.profileImageUrl} alt="Profil" className="object-cover" />
+                ) : (
+                  <AvatarFallback className="text-xl">
+                    {(profile.firstName?.[0] || "") + (profile.lastName?.[0] || "")}
+                  </AvatarFallback>
+                )}
+              </Avatar>
+              {isOwnProfile && profile.profileImageUrl && (
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="destructive"
+                  className="absolute -top-1 -right-1 h-5 w-5 rounded-full"
+                  onClick={() => updatePhotoMutation.mutate(null)}
+                  disabled={updatePhotoMutation.isPending}
+                  data-testid="button-remove-profile-photo"
                 >
-                  <Camera className="w-3 h-3 mr-1" />
-                  Fotoğraf Değiştir
-                </ObjectUploader>
+                  <Trash2 className="w-3 h-3" />
+                </Button>
+              )}
+            </div>
+            <div className="flex-1 min-w-0">
+              <h1 className="text-lg sm:text-xl font-bold truncate" data-testid="text-fullname">{profile.fullName}</h1>
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <Badge variant="outline">{ROLE_LABELS[profile.role] || profile.role}</Badge>
+                {profile.branchName && (
+                  <Badge variant="secondary">{profile.branchName}</Badge>
+                )}
+                <EmployeeOfMonthBadge userId={profile.id} />
               </div>
-            )}
+              {isOwnProfile && (
+                <div className="mt-2">
+                  <ObjectUploader
+                    onGetUploadParameters={async () => {
+                      const res = await fetch("/api/objects/upload", {
+                        method: "POST",
+                        credentials: "include",
+                        headers: { "Content-Type": "application/json" }
+                      });
+                      if (!res.ok) throw new Error("Yükleme URL'si alınamadı");
+                      return res.json();
+                    }}
+                    onComplete={(result) => {
+                      if (result.successful?.[0]?.uploadURL) {
+                        updatePhotoMutation.mutate(result.successful[0].uploadURL);
+                      }
+                    }}
+                    maxFileSize={3 * 1024 * 1024}
+                    buttonClassName="h-8"
+                  >
+                    <Camera className="w-3 h-3 mr-1" />
+                    Fotoğraf Değiştir
+                  </ObjectUploader>
+                </div>
+              )}
+            </div>
           </div>
-          <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-2 flex-wrap w-full sm:w-auto">
             <Badge variant={profile.isActive ? "default" : "secondary"} data-testid="personnel-status">
               {profile.isActive ? "Aktif" : "Pasif"}
             </Badge>
@@ -711,7 +713,7 @@ export default function PersonelProfilPage() {
       </Card>
 
       {!isProfileHQ && (
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Toplam Vardiya</CardTitle>
@@ -786,7 +788,7 @@ export default function PersonelProfilPage() {
             )}
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Çalışma Tipi</p>
                 <p className="text-base font-medium" data-testid="salary-employment-type">
@@ -869,7 +871,7 @@ export default function PersonelProfilPage() {
               <CardTitle>Personel Bilgileri</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">Kullanıcı Adı</p>
                   <p className="text-base" data-testid="info-username">{profile.username}</p>
@@ -928,7 +930,7 @@ export default function PersonelProfilPage() {
               <CardContent className="space-y-5">
                 <div data-testid="leave-info-section">
                   <p className="text-sm font-semibold mb-3">İzin Durumu</p>
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
                     <div>
                       <p className="text-sm text-muted-foreground">Yıllık İzin Hakkı</p>
                       <p className="text-base font-medium" data-testid="text-annual-leave-total">{leaveSalary.annualLeaveTotal} gün</p>
@@ -1599,7 +1601,7 @@ export default function PersonelProfilPage() {
                   <CardDescription>Tüm HQ personeli için genel eğitimler</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2">
                     <Link href="/akademi-badges">
                       <Button variant="outline" className="w-full" data-testid="link-hq-badges">Rozetler</Button>
                     </Link>

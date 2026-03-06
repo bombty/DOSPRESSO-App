@@ -75,6 +75,7 @@ The frontend utilizes React 18+ with TypeScript and Vite, employing Shadcn/ui (N
 - **Feedback Form Settings**: Seeded settings for branches with categories, photo upload, location verification, multi-language support, and anonymous defaults.
 - **Feedback SLA System**: Hourly background job checks for overdue feedback responses and sends critical notifications with per-user DB-level deduplication.
 - **Feedback Pattern Analysis**: Weekly job analyzes 30-day category averages per branch for alerts and improvement detection.
+- **Mobile-First Responsive (Sprint 11)**: 375px (iPhone SE) optimization across all pages. DialogContent uses bottom-sheet pattern on mobile (`<640px`) with slide-up animation, reverting to centered modal on `sm:`. Grids use `grid-cols-1 sm:grid-cols-2` pattern. Bottom nav is full-width on mobile (`left-0 right-0`). Touch targets minimum 44-48px. Quiz options `min-h-[48px]` with `text-sm`. Filter buttons use horizontal scroll on mobile. Hamburger menu uses `w-[85vw] max-w-[300px]`. Global search modal is full-screen on mobile.
 
 ## External Dependencies
 - **OpenAI API**: Used for AI-powered vision analysis, chat completions, embeddings, and summary generation.

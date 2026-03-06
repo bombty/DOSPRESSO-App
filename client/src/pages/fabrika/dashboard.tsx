@@ -346,7 +346,7 @@ export default function FabrikaDashboard() {
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="px-3 pb-3">
-                    <div className="grid grid-cols-2 gap-2">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                       <div className="text-center p-2 bg-indigo-500/10 rounded-lg">
                         <p className="text-sm font-bold text-indigo-600" data-testid="text-raw-materials">{stockOverview.totalRawMaterials}</p>
                         <p className="text-xs text-muted-foreground">Hammadde</p>
@@ -390,7 +390,7 @@ export default function FabrikaDashboard() {
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="px-3 pb-3">
-                    <div className="grid grid-cols-2 gap-2">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                       <div className="text-center p-2 bg-emerald-500/10 rounded-lg">
                         <p className="text-sm font-bold text-emerald-600" data-testid="text-quality-passed">{qualityOverview.todayPassed}</p>
                         <p className="text-xs text-muted-foreground">Onaylanan</p>

@@ -773,7 +773,7 @@ export default function Checklists() {
       
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-semibold" data-testid="text-page-title">Checklistler</h1>
+          <h1 className="text-2xl sm:text-3xl font-semibold" data-testid="text-page-title">Checklistler</h1>
           <p className="text-muted-foreground mt-1">
             {canManageChecklists 
               ? "Görev şablonlarını ve rutin kontrolleri yönetin" 

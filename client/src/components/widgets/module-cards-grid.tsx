@@ -144,7 +144,7 @@ export function ModuleCardsGrid() {
     <div className="space-y-1.5">
       <h3 className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Modüller</h3>
       
-      <div className="grid grid-cols-2 gap-1.5">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
         {visibleModules.map((module, index) => {
           const Icon = module.icon;
           const metric = getModuleMetric(module.id);
