@@ -105,13 +105,13 @@ const EquipmentManagement = lazy(() => import("@/pages/yonetim/ekipman-yonetimi"
 const AdminAcademy = lazy(() => import("@/pages/yonetim/akademi"));
 const KaliteDenetimi = lazy(() => import("@/pages/kalite-denetimi"));
 const CoachSubeDenetim = lazy(() => import("@/pages/coach-sube-denetim"));
-const Sikayetler = lazy(() => import("@/pages/sikayetler"));
+
 const PublicStaffRating = lazy(() => import("@/pages/public-staff-rating"));
 const StaffQrTokensPage = lazy(() => import("@/pages/staff-qr-tokens"));
 const EmployeeOfMonthPage = lazy(() => import("@/pages/employee-of-month"));
 const AdvancedReportsPage = lazy(() => import("@/pages/advanced-reports"));
 const MyPerformancePage = lazy(() => import("@/pages/my-performance"));
-const KampanyaYonetimi = lazy(() => import("@/pages/kampanya-yonetimi"));
+
 const FranchiseAcilis = lazy(() => import("@/pages/franchise-acilis"));
 const DenetimSablonlari = lazy(() => import("@/pages/denetim-sablonlari"));
 const DenetimYurutme = lazy(() => import("@/pages/denetim-yurutme"));
@@ -172,7 +172,7 @@ const KaliteKontrolDashboard = lazy(() => import("@/pages/kalite-kontrol-dashboa
 const GidaGuvenligiDashboard = lazy(() => import("@/pages/gida-guvenligi-dashboard"));
 const Setup = lazy(() => import("@/pages/setup"));
 const MisafirGeriBildirimPublic = lazy(() => import("@/pages/misafir-geri-bildirim"));
-const MisafirMemnuniyeti = lazy(() => import("@/pages/misafir-memnuniyeti"));
+
 const NotFound = lazy(() => import("@/pages/not-found"));
 const MegaModulePage = lazy(() => import("@/pages/modul"));
 const IcerikStudyosu = lazy(() => import("@/pages/icerik-studyosu"));
@@ -187,7 +187,7 @@ const CEOCommandCenter = lazy(() => import("@/pages/ceo-command-center"));
 const CGOCommandCenter = lazy(() => import("@/pages/cgo-command-center"));
 const HQDashboard = lazy(() => import("@/pages/hq-dashboard"));
 const SatinalmaMega = lazy(() => import("@/pages/satinalma-mega"));
-const UrunSikayet = lazy(() => import("@/pages/urun-sikayet"));
+
 const SubeSaglikSkoru = lazy(() => import("@/pages/sube-saglik-skoru"));
 const HqVardiyaGoruntuleme = lazy(() => import("@/pages/hq-vardiya-goruntuleme"));
 const HQPersonelIstatistikleri = lazy(() => import("@/pages/hq-personel-istatistikleri"));

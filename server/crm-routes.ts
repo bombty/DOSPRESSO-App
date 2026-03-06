@@ -25,12 +25,11 @@ export function registerCRMRoutes(app: Express, isAuthenticated: any) {
 
       const now = new Date();
       const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-      const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
       const [feedbackStats] = await db.select({
         totalFeedback: count(),
         avgRating: avg(customerFeedback.rating),
-        todayCount: sql<number>`COUNT(*) FILTER (WHERE ${customerFeedback.createdAt} >= ${todayStart})`,
+        todayCount: sql<number>`COUNT(*) FILTER (WHERE ${customerFeedback.createdAt} >= (NOW() AT TIME ZONE 'Europe/Istanbul')::date)`,
         negativeCount: sql<number>`COUNT(*) FILTER (WHERE ${customerFeedback.rating} <= 2)`,
         slaBreachCount: sql<number>`COUNT(*) FILTER (WHERE ${customerFeedback.slaBreached} = true AND ${customerFeedback.status} NOT IN ('resolved', 'closed'))`,
         avgServiceRating: avg(customerFeedback.serviceRating),
