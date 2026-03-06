@@ -16,7 +16,7 @@ import { startTrackingCleanup } from "./tracking";
 import bcrypt from "bcrypt";
 import { db } from "./db";
 import { users, productionLots, notifications as notificationsTable } from "@shared/schema";
-import { eq, sql, count, and, lte, gte, ne } from "drizzle-orm";
+import { eq, sql, count, and, lte, gte, ne, inArray, isNotNull } from "drizzle-orm";
 
 process.on('unhandledRejection', (reason: unknown, promise: Promise<unknown>) => {
   console.error('[UnhandledRejection] Unhandled promise rejection:', reason);
@@ -385,13 +385,35 @@ function startSktExpiryCheckJob() {
     try {
       const now = new Date();
       const sevenDaysLater = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+      const todayStr = now.toISOString().slice(0, 10);
 
       const expiringLots = await db.select().from(productionLots)
         .where(and(
+          isNotNull(productionLots.expiryDate),
           lte(productionLots.expiryDate, sevenDaysLater),
           ne(productionLots.status, 'iptal'),
           ne(productionLots.status, 'expired'),
+        ))
+        .limit(500);
+
+      if (expiringLots.length === 0) return;
+
+      const targetUsers = await db.select({ id: users.id }).from(users)
+        .where(sql`${users.role} IN ('gida_muhendisi', 'fabrika_mudur', 'admin')`);
+
+      const expiredIds: number[] = [];
+      const notifValues: { userId: string; type: string; title: string; message: string }[] = [];
+
+      const existingNotifs = await db.select({
+        type: notificationsTable.type,
+        message: notificationsTable.message,
+      }).from(notificationsTable)
+        .where(and(
+          sql`${notificationsTable.type} IN ('skt_expired', 'skt_warning')`,
+          gte(notificationsTable.createdAt, new Date(todayStr)),
         ));
+
+      const existingSet = new Set(existingNotifs.map(n => `${n.type}:${n.message}`));
 
       for (const lot of expiringLots) {
         const isExpired = lot.expiryDate && new Date(lot.expiryDate) < now;
@@ -401,37 +423,31 @@ function startSktExpiryCheckJob() {
           : `LOT ${lot.lotNumber} son kullanma tarihi 7 gün içinde dolacak.`;
 
         if (isExpired) {
-          await db.update(productionLots)
-            .set({ status: 'expired' })
-            .where(eq(productionLots.id, lot.id));
+          expiredIds.push(lot.id);
         }
 
-        const todayStr = now.toISOString().slice(0, 10);
-        const existing = await db.select().from(notificationsTable)
-          .where(and(
-            eq(notificationsTable.type, notifType),
-            sql`${notificationsTable.message} LIKE ${'%' + lot.lotNumber + '%'}`,
-            gte(notificationsTable.createdAt, new Date(todayStr)),
-          ));
-
-        if (existing.length === 0) {
-          const targetUsers = await db.select({ id: users.id }).from(users)
-            .where(sql`${users.role} IN ('gida_muhendisi', 'fabrika_mudur', 'admin')`);
-
+        const alreadySent = existingSet.has(`${notifType}:${message}`);
+        if (!alreadySent) {
           for (const u of targetUsers) {
-            await db.insert(notificationsTable).values({
-              userId: u.id,
-              type: notifType,
-              title: isExpired ? 'SKT Süresi Dolmuş!' : 'SKT Uyarısı',
-              message,
-            });
+            notifValues.push({ userId: u.id, type: notifType, title: isExpired ? 'SKT Süresi Dolmuş!' : 'SKT Uyarısı', message });
           }
         }
       }
 
-      if (expiringLots.length > 0) {
-        log(`[SKT] Checked: ${expiringLots.length} lots approaching/past expiry`);
+      if (expiredIds.length > 0) {
+        await db.update(productionLots)
+          .set({ status: 'expired' })
+          .where(inArray(productionLots.id, expiredIds));
       }
+
+      if (notifValues.length > 0) {
+        const BATCH_SIZE = 100;
+        for (let i = 0; i < notifValues.length; i += BATCH_SIZE) {
+          await db.insert(notificationsTable).values(notifValues.slice(i, i + BATCH_SIZE));
+        }
+      }
+
+      log(`[SKT] Checked: ${expiringLots.length} lots, expired: ${expiredIds.length}, notifications: ${notifValues.length}`);
     } catch (error) {
       console.error("[SKT] Expiry check error:", error);
     }

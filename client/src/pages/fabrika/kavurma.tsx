@@ -25,11 +25,11 @@ export default function Kavurma() {
   const [showForm, setShowForm] = useState(false);
   const { toast } = useToast();
 
-  const { data: logs, isLoading } = useQuery<any[]>({
+  const { data: logs, isLoading, isError: logsError } = useQuery<any[]>({
     queryKey: ["/api/factory/roasting"],
   });
 
-  const { data: stats } = useQuery<any>({
+  const { data: stats, isError: statsError } = useQuery<any>({
     queryKey: ["/api/factory/roasting/stats"],
   });
 
@@ -100,6 +100,20 @@ export default function Kavurma() {
       <div className="space-y-4 p-4">
         <Skeleton className="h-24 w-full" />
         <Skeleton className="h-64 w-full" />
+      </div>
+    );
+  }
+
+  if (logsError || statsError) {
+    return (
+      <div className="p-4">
+        <Card data-testid="kavurma-error-card">
+          <CardContent className="flex flex-col items-center justify-center py-12 text-center">
+            <Flame className="h-12 w-12 text-muted-foreground mb-4" />
+            <p className="text-lg font-medium">Veri yüklenirken hata oluştu</p>
+            <p className="text-sm text-muted-foreground mt-1">Kavurma kayıtları alınamadı. Lütfen sayfayı yenileyin.</p>
+          </CardContent>
+        </Card>
       </div>
     );
   }

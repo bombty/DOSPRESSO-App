@@ -4504,14 +4504,23 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
         updates.dispatchedAt = new Date();
 
         const result = await db.transaction(async (tx) => {
+          const lockedShipment = await tx.execute(
+            sql`SELECT * FROM factory_shipments WHERE id = ${id} FOR UPDATE`
+          );
+          const shipmentRow = lockedShipment.rows?.[0] as any;
+          if (!shipmentRow || shipmentRow.status !== 'hazirlaniyor') {
+            throw new Error("INVALID_TRANSITION:Bu sevkiyat zaten işlenmiş veya durumu değişmiş");
+          }
+
           const items = await tx.select().from(factoryShipmentItems)
             .where(eq(factoryShipmentItems.shipmentId, id));
 
           const insufficientItems: string[] = [];
           for (const item of items) {
-            const [invRecord] = await tx.select().from(factoryInventory)
-              .where(eq(factoryInventory.productId, item.productId))
-              .limit(1);
+            const lockedRows = await tx.execute(
+              sql`SELECT * FROM factory_inventory WHERE product_id = ${item.productId} LIMIT 1 FOR UPDATE`
+            );
+            const invRecord = lockedRows.rows?.[0] as any;
             const needed = Math.round(parseFloat(item.quantity));
             if (!invRecord || invRecord.quantity < needed) {
               const [prod] = await tx.select({ name: factoryProducts.name }).from(factoryProducts).where(eq(factoryProducts.id, item.productId)).limit(1);
@@ -4524,9 +4533,10 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
           }
 
           for (const item of items) {
-            const [invRecord] = await tx.select().from(factoryInventory)
-              .where(eq(factoryInventory.productId, item.productId))
-              .limit(1);
+            const lockedRows = await tx.execute(
+              sql`SELECT * FROM factory_inventory WHERE product_id = ${item.productId} LIMIT 1 FOR UPDATE`
+            );
+            const invRecord = lockedRows.rows?.[0] as any;
 
             if (invRecord) {
               const newQuantity = invRecord.quantity - Math.round(parseFloat(item.quantity));
@@ -4602,6 +4612,11 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
       if (error.message?.startsWith('INSUFFICIENT_STOCK:')) {
         return res.status(400).json({
           message: "Yetersiz stok: " + error.message.replace('INSUFFICIENT_STOCK:', '')
+        });
+      }
+      if (error.message?.startsWith('INVALID_TRANSITION:')) {
+        return res.status(409).json({
+          message: error.message.replace('INVALID_TRANSITION:', '')
         });
       }
       console.error("Update shipment status error:", error);
@@ -4824,7 +4839,19 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
 
       const greenW = parseFloat(greenWeightKg);
       const roastedW = parseFloat(roastedWeightKg);
-      const weightLossPct = ((greenW - roastedW) / greenW * 100).toFixed(2);
+
+      if (!greenW || greenW <= 0 || isNaN(greenW)) {
+        return res.status(400).json({ message: "Yeşil kahve ağırlığı 0'dan büyük olmalı" });
+      }
+      if (isNaN(roastedW) || roastedW < 0) {
+        return res.status(400).json({ message: "Kavurulmuş ağırlık geçerli bir değer olmalı" });
+      }
+
+      const rawPct = (greenW - roastedW) / greenW * 100;
+      if (!isFinite(rawPct)) {
+        return res.status(400).json({ message: "Fire oranı hesaplanamadı — ağırlık değerlerini kontrol edin" });
+      }
+      const weightLossPct = rawPct.toFixed(2);
 
       const today = new Date();
       const dateStr = today.toISOString().slice(0, 10).replace(/-/g, '');
@@ -4909,20 +4936,27 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
         .orderBy(desc(coffeeRoastingLogs.roastDate))
         .limit(100);
 
-      const enriched = await Promise.all(rawLogs.map(async (log) => {
-        let operatorName = null;
-        let greenProductName = null;
-        if (log.operatorId) {
-          const [u] = await db.select({ firstName: users.firstName, lastName: users.lastName }).from(users)
-            .where(eq(users.id, log.operatorId));
-          operatorName = u ? `${u.firstName || ''} ${u.lastName || ''}`.trim() : null;
-        }
-        if (log.greenCoffeeProductId) {
-          const [p] = await db.select({ name: factoryProducts.name }).from(factoryProducts)
-            .where(eq(factoryProducts.id, log.greenCoffeeProductId));
-          greenProductName = p?.name || null;
-        }
-        return { log, operatorName, greenProductName };
+      const operatorIds = [...new Set(rawLogs.map(l => l.operatorId).filter(Boolean))] as string[];
+      const productIds = [...new Set(rawLogs.map(l => l.greenCoffeeProductId).filter(Boolean))] as number[];
+
+      const operatorMap = new Map<string, string>();
+      if (operatorIds.length > 0) {
+        const ops = await db.select({ id: users.id, firstName: users.firstName, lastName: users.lastName })
+          .from(users).where(inArray(users.id, operatorIds));
+        for (const u of ops) operatorMap.set(u.id, `${u.firstName || ''} ${u.lastName || ''}`.trim());
+      }
+
+      const productMap = new Map<number, string>();
+      if (productIds.length > 0) {
+        const prods = await db.select({ id: factoryProducts.id, name: factoryProducts.name })
+          .from(factoryProducts).where(inArray(factoryProducts.id, productIds));
+        for (const p of prods) productMap.set(p.id, p.name);
+      }
+
+      const enriched = rawLogs.map(log => ({
+        log,
+        operatorName: log.operatorId ? operatorMap.get(log.operatorId) || null : null,
+        greenProductName: log.greenCoffeeProductId ? productMap.get(log.greenCoffeeProductId) || null : null,
       }));
 
       res.json(enriched);
@@ -5029,20 +5063,27 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
         .orderBy(desc(productionLots.productionDate))
         .limit(200);
 
-      const enriched = await Promise.all(rawLots.map(async (lot) => {
-        let productName = null;
-        let producerName = null;
-        if (lot.productId) {
-          const [p] = await db.select({ name: factoryProducts.name }).from(factoryProducts)
-            .where(eq(factoryProducts.id, lot.productId));
-          productName = p?.name || null;
-        }
-        if (lot.producedBy) {
-          const [u] = await db.select({ firstName: users.firstName, lastName: users.lastName }).from(users)
-            .where(eq(users.id, lot.producedBy));
-          producerName = u ? `${u.firstName || ''} ${u.lastName || ''}`.trim() : null;
-        }
-        return { lot, productName, producerName };
+      const lotProductIds = [...new Set(rawLots.map(l => l.productId).filter(Boolean))] as number[];
+      const lotProducerIds = [...new Set(rawLots.map(l => l.producedBy).filter(Boolean))] as string[];
+
+      const lotProductMap = new Map<number, string>();
+      if (lotProductIds.length > 0) {
+        const prods = await db.select({ id: factoryProducts.id, name: factoryProducts.name })
+          .from(factoryProducts).where(inArray(factoryProducts.id, lotProductIds));
+        for (const p of prods) lotProductMap.set(p.id, p.name);
+      }
+
+      const lotProducerMap = new Map<string, string>();
+      if (lotProducerIds.length > 0) {
+        const usrs = await db.select({ id: users.id, firstName: users.firstName, lastName: users.lastName })
+          .from(users).where(inArray(users.id, lotProducerIds));
+        for (const u of usrs) lotProducerMap.set(u.id, `${u.firstName || ''} ${u.lastName || ''}`.trim());
+      }
+
+      const enriched = rawLots.map(lot => ({
+        lot,
+        productName: lot.productId ? lotProductMap.get(lot.productId) || null : null,
+        producerName: lot.producedBy ? lotProducerMap.get(lot.producedBy) || null : null,
       }));
 
       res.json(enriched);
@@ -5161,10 +5202,17 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
         return res.status(404).json({ message: "Ürün bulunamadı" });
       }
 
-      const result = await db.transaction(async (tx) => {
-        const qty = parseFloat(quantity);
-        const waste = wasteQuantity ? parseFloat(wasteQuantity) : 0;
+      const qty = parseFloat(quantity);
+      const waste = wasteQuantity ? parseFloat(wasteQuantity) : 0;
 
+      if (!qty || qty <= 0 || isNaN(qty)) {
+        return res.status(400).json({ message: "Miktar 0'dan büyük olmalı" });
+      }
+      if (waste < 0 || isNaN(waste)) {
+        return res.status(400).json({ message: "Fire miktarı negatif olamaz" });
+      }
+
+      const result = await db.transaction(async (tx) => {
         if (product.productType === 'mamul' && product.parentProductId) {
           const ratio = parseFloat(String(product.conversionRatio || '1'));
           if (ratio <= 0) {
@@ -5260,17 +5308,35 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
         return res.status(400).json({ message: "Aktif vardiya bulunamadı" });
       }
 
-      const outputs = await db.select({ count: count() }).from(factoryProductionOutputs)
+      const outputAgg = await db.select({
+        totalCount: count(),
+        totalProduced: sql<string>`COALESCE(SUM(CAST(${factoryProductionOutputs.producedQuantity} AS numeric)), 0)`,
+        totalWaste: sql<string>`COALESCE(SUM(CAST(${factoryProductionOutputs.wasteQuantity} AS numeric)), 0)`,
+      }).from(factoryProductionOutputs)
         .where(eq(factoryProductionOutputs.sessionId, activeSession.id));
 
+      const checkOutTime = new Date();
+      const workMinutes = Math.round((checkOutTime.getTime() - new Date(activeSession.checkInTime).getTime()) / 60000);
+      const totalProduced = Math.round(parseFloat(outputAgg[0]?.totalProduced || '0'));
+      const totalWaste = Math.round(parseFloat(outputAgg[0]?.totalWaste || '0'));
+
       await db.update(factoryShiftSessions)
-        .set({ status: 'completed', checkOutTime: new Date() })
+        .set({
+          status: 'completed',
+          checkOutTime,
+          totalProduced,
+          totalWaste,
+          workMinutes: Math.max(0, workMinutes),
+        })
         .where(eq(factoryShiftSessions.id, activeSession.id));
 
       res.json({
         message: "Vardiya sonlandırıldı",
         sessionId: activeSession.id,
-        totalOutputs: outputs[0]?.count || 0,
+        totalOutputs: outputAgg[0]?.totalCount || 0,
+        totalProduced,
+        totalWaste,
+        workMinutes: Math.max(0, workMinutes),
       });
     } catch (error: any) {
       console.error("Quick end error:", error);

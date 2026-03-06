@@ -9458,7 +9458,7 @@ export const factoryProducts = pgTable("factory_products", {
   allergens: text("allergens").array(),
   
   productType: varchar("product_type", { length: 20 }).default("mamul"),
-  parentProductId: integer("parent_product_id"),
+  parentProductId: integer("parent_product_id").references(() => factoryProducts.id, { onDelete: "set null" }),
   conversionRatio: numeric("conversion_ratio", { precision: 10, scale: 4 }).default("1"),
   
   createdAt: timestamp("created_at").defaultNow(),

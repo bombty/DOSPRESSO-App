@@ -33,7 +33,7 @@ export default function LotIzleme() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedLot, setSelectedLot] = useState<string | null>(null);
 
-  const { data: lots, isLoading } = useQuery<any[]>({
+  const { data: lots, isLoading, isError } = useQuery<any[]>({
     queryKey: ["/api/factory/lots", statusFilter],
     queryFn: async () => {
       const params = new URLSearchParams();
@@ -70,6 +70,20 @@ export default function LotIzleme() {
       <div className="space-y-4 p-4">
         <Skeleton className="h-10 w-full" />
         <Skeleton className="h-64 w-full" />
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div className="p-4">
+        <Card data-testid="lot-error-card">
+          <CardContent className="flex flex-col items-center justify-center py-12 text-center">
+            <Package className="h-12 w-12 text-muted-foreground mb-4" />
+            <p className="text-lg font-medium">Veri yüklenirken hata oluştu</p>
+            <p className="text-sm text-muted-foreground mt-1">LOT listesi alınamadı. Lütfen sayfayı yenileyin.</p>
+          </CardContent>
+        </Card>
       </div>
     );
   }
