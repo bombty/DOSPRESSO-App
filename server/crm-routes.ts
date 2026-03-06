@@ -1,649 +1,511 @@
 import { Express } from "express";
 import { db } from "./db";
 import { 
-  equipmentFaults, 
-  users, 
-  branches, 
-  employeeSatisfactionScores, 
   customerFeedback,
-  shiftAttendance,
-  leaveRequests,
-  userTrainingProgress,
-  userQuizAttempts,
-  tasks
+  feedbackResponses,
+  guestComplaints,
+  productComplaints,
+  campaigns,
+  campaignBranches,
+  feedbackFormSettings,
+  branches,
+  users,
+  HQ_ROLES,
 } from "@shared/schema";
-import { eq, and, gte, desc } from "drizzle-orm";
+import { eq, and, gte, lte, desc, sql, count, avg, inArray, isNull } from "drizzle-orm";
 
 export function registerCRMRoutes(app: Express, isAuthenticated: any) {
-  
-  // CRM Overview - Aggregated metrics
-  app.get('/api/crm/overview', isAuthenticated, async (req: any, res) => {
+
+  app.get('/api/crm/dashboard-stats', isAuthenticated, async (req: any, res) => {
     try {
       const user = req.user!;
-      
-      // Only HQ roles can access CRM dashboard
-      const hqRoles = ['admin', 'muhasebe', 'satinalma', 'coach', 'teknik', 'destek', 'fabrika', 'yatirimci_hq'];
-      if (!hqRoles.includes(user.role)) {
-        return res.status(403).json({ message: "CRM Dashboard erişiminiz yok" });
-      }
-
-      // Get all faults for metrics
-      const allFaults = await db.select().from(equipmentFaults);
-      const now = new Date();
-      const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-      const twoWeeksAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
-
-      // Calculate metrics
-      const openTickets = allFaults.filter(f => f.status !== 'çözüldü' && f.status !== 'kapatıldı').length;
-      const closedTickets = allFaults.filter(f => 
-        (f.status === 'çözüldü' || f.status === 'kapatıldı') && 
-        f.resolvedAt && new Date(f.resolvedAt) >= oneWeekAgo
-      ).length;
-      const unassignedTickets = allFaults.filter(f => !f.assignedTo && f.status !== 'çözüldü' && f.status !== 'kapatıldı').length;
-
-      // Calculate average resolution time (in hours)
-      const resolvedFaults = allFaults.filter(f => f.resolvedAt && f.createdAt);
-      let avgResolutionTime = 0;
-      if (resolvedFaults.length > 0) {
-        const totalHours = resolvedFaults.reduce((sum, f) => {
-          const created = new Date(f.createdAt!);
-          const resolved = new Date(f.resolvedAt!);
-          return sum + (resolved.getTime() - created.getTime()) / (1000 * 60 * 60);
-        }, 0);
-        avgResolutionTime = Math.round(totalHours / resolvedFaults.length);
-      }
-
-      // SLA compliance
-      const slaTargets: Record<string, number> = { 'kritik': 4, 'yüksek': 24, 'orta': 48, 'düşük': 72 };
-      const slaCompliantCount = resolvedFaults.filter(f => {
-        const target = slaTargets[f.priority || 'orta'] || 48;
-        const created = new Date(f.createdAt!);
-        const resolved = new Date(f.resolvedAt!);
-        const hours = (resolved.getTime() - created.getTime()) / (1000 * 60 * 60);
-        return hours <= target;
-      }).length;
-      const slaCompliance = resolvedFaults.length > 0 ? Math.round((slaCompliantCount / resolvedFaults.length) * 100) : 100;
-
-      // Weekly comparison
-      const ticketsThisWeek = allFaults.filter(f => f.createdAt && new Date(f.createdAt) >= oneWeekAgo).length;
-      const ticketsLastWeek = allFaults.filter(f => 
-        f.createdAt && 
-        new Date(f.createdAt) >= twoWeeksAgo && 
-        new Date(f.createdAt) < oneWeekAgo
-      ).length;
-
-      // Trend data (last 7 days)
-      const trendData = [];
-      for (let i = 6; i >= 0; i--) {
-        const date = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
-        const dateStr = date.toISOString().split('T')[0];
-        const opened = allFaults.filter(f => 
-          f.createdAt && f.createdAt.toISOString().split('T')[0] === dateStr
-        ).length;
-        const closed = allFaults.filter(f => 
-          f.resolvedAt && new Date(f.resolvedAt).toISOString().split('T')[0] === dateStr
-        ).length;
-        trendData.push({ 
-          date: date.toLocaleDateString('tr-TR', { weekday: 'short' }), 
-          opened, 
-          closed 
-        });
-      }
-
-      // Priority breakdown
-      const priorityBreakdown = [
-        { priority: 'kritik', count: allFaults.filter(f => f.priority === 'kritik' && f.status !== 'çözüldü').length },
-        { priority: 'yüksek', count: allFaults.filter(f => f.priority === 'yüksek' && f.status !== 'çözüldü').length },
-        { priority: 'orta', count: allFaults.filter(f => f.priority === 'orta' && f.status !== 'çözüldü').length },
-        { priority: 'düşük', count: allFaults.filter(f => f.priority === 'düşük' && f.status !== 'çözüldü').length }
-      ];
-
-      // Top agents
-      const agentStats: Record<string, { resolved: number; totalTime: number }> = {};
-      resolvedFaults.forEach(f => {
-        if (f.assignedTo) {
-          if (!agentStats[f.assignedTo]) {
-            agentStats[f.assignedTo] = { resolved: 0, totalTime: 0 };
-          }
-          agentStats[f.assignedTo].resolved++;
-          if (f.createdAt && f.resolvedAt) {
-            agentStats[f.assignedTo].totalTime += (new Date(f.resolvedAt).getTime() - new Date(f.createdAt).getTime()) / (1000 * 60 * 60);
-          }
-        }
-      });
-
-      const allUsers = await db.select().from(users);
-      const topAgents = Object.entries(agentStats)
-        .map(([id, stats]) => {
-          const userInfo = allUsers.find(u => u.id === id);
-          return {
-            id,
-            name: userInfo ? `${userInfo.firstName} ${userInfo.lastName}` : 'Bilinmeyen',
-            resolved: stats.resolved,
-            avgTime: stats.resolved > 0 ? Math.round(stats.totalTime / stats.resolved) : 0
-          };
-        })
-        .sort((a, b) => b.resolved - a.resolved)
-        .slice(0, 5);
-
-      res.json({
-        openTickets,
-        closedTickets,
-        unassignedTickets,
-        avgResolutionTime,
-        slaCompliance,
-        ticketsThisWeek,
-        ticketsLastWeek,
-        trendData,
-        priorityBreakdown,
-        topAgents
-      });
-    } catch (error: any) {
-      console.error("Error fetching CRM overview:", error);
-      res.status(500).json({ message: "CRM verileri yüklenemedi" });
-    }
-  });
-
-  // CRM Tickets
-  app.get('/api/crm/tickets', isAuthenticated, async (req: any, res) => {
-    try {
-      const user = req.user!;
-      
-      const hqRoles = ['admin', 'muhasebe', 'satinalma', 'coach', 'teknik', 'destek', 'fabrika', 'yatirimci_hq'];
-      if (!hqRoles.includes(user.role)) {
+      if (!HQ_ROLES.has(user.role) && user.role !== 'admin') {
         return res.status(403).json({ message: "CRM erişiminiz yok" });
       }
 
-      const allFaults = await db.select().from(equipmentFaults);
-      const allBranches = await db.select().from(branches);
-      const allUsers = await db.select().from(users);
-      
       const now = new Date();
-      const slaTargets: Record<string, number> = { 'kritik': 4, 'yüksek': 24, 'orta': 48, 'düşük': 72 };
+      const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+      const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
-      const tickets = allFaults.map(fault => {
-        const branch = allBranches.find(b => b.id === fault.branchId);
-        const assignee = fault.assignedTo ? allUsers.find(u => u.id === fault.assignedTo) : null;
-        
-        const slaHours = slaTargets[fault.priority || 'orta'] || 48;
-        const createdAt = fault.createdAt ? new Date(fault.createdAt) : new Date();
-        const slaDeadline = new Date(createdAt.getTime() + slaHours * 60 * 60 * 1000);
-        const isSlaBreach = fault.status !== 'çözüldü' && fault.status !== 'kapatıldı' && now > slaDeadline;
+      const [feedbackStats] = await db.select({
+        totalFeedback: count(),
+        avgRating: avg(customerFeedback.rating),
+        todayCount: sql<number>`COUNT(*) FILTER (WHERE ${customerFeedback.createdAt} >= ${todayStart})`,
+        negativeCount: sql<number>`COUNT(*) FILTER (WHERE ${customerFeedback.rating} <= 2)`,
+        slaBreachCount: sql<number>`COUNT(*) FILTER (WHERE ${customerFeedback.slaBreached} = true AND ${customerFeedback.status} NOT IN ('resolved', 'closed'))`,
+        avgServiceRating: avg(customerFeedback.serviceRating),
+        avgCleanlinessRating: avg(customerFeedback.cleanlinessRating),
+        avgProductRating: avg(customerFeedback.productRating),
+        avgStaffRating: avg(customerFeedback.staffRating),
+      }).from(customerFeedback)
+        .where(gte(customerFeedback.createdAt, thirtyDaysAgo));
 
-        return {
-          id: fault.id,
-          type: 'fault' as const,
-          title: fault.description?.slice(0, 50) || 'Arıza Bildirimi',
-          description: fault.description || '',
-          priority: fault.priority || 'orta',
-          status: fault.status === 'çözüldü' || fault.status === 'kapatıldı' ? 'resolved' : 
-                  fault.status === 'beklemede' ? 'pending' : 
-                  fault.assignedTo ? 'in_progress' : 'open',
-          branchName: branch?.name || 'Bilinmiyor',
-          assignedTo: fault.assignedTo,
-          assignedToName: assignee ? `${assignee.firstName} ${assignee.lastName}` : null,
-          createdAt: fault.createdAt?.toISOString() || new Date().toISOString(),
-          slaDeadline: slaDeadline.toISOString(),
-          isSlaBreach
-        };
-      }).sort((a, b) => {
-        if (a.isSlaBreach && !b.isSlaBreach) return -1;
-        if (!a.isSlaBreach && b.isSlaBreach) return 1;
-        const priorityOrder = { 'kritik': 0, 'yüksek': 1, 'orta': 2, 'düşük': 3 };
-        return (priorityOrder[a.priority as keyof typeof priorityOrder] || 2) - (priorityOrder[b.priority as keyof typeof priorityOrder] || 2);
-      });
+      const [openGuestComplaints] = await db.select({
+        count: count(),
+      }).from(guestComplaints)
+        .where(inArray(guestComplaints.status, ['new', 'assigned', 'in_progress']));
 
-      res.json(tickets);
-    } catch (error: any) {
-      console.error("Error fetching CRM tickets:", error);
-      res.status(500).json({ message: "Talepler yüklenemedi" });
-    }
-  });
+      const [openProductComplaints] = await db.select({
+        count: count(),
+      }).from(productComplaints)
+        .where(inArray(productComplaints.status, ['new', 'investigating']));
 
-  // CRM Performance
-  app.get('/api/crm/performance', isAuthenticated, async (req: any, res) => {
-    try {
-      const user = req.user!;
-      
-      const hqRoles = ['admin', 'muhasebe', 'satinalma', 'coach', 'teknik', 'destek', 'fabrika', 'yatirimci_hq'];
-      if (!hqRoles.includes(user.role)) {
-        return res.status(403).json({ message: "CRM erişiminiz yok" });
-      }
+      const branchStats = await db.select({
+        branchId: customerFeedback.branchId,
+        branchName: branches.name,
+        avgRating: avg(customerFeedback.rating),
+        feedbackCount: count(),
+      }).from(customerFeedback)
+        .innerJoin(branches, eq(customerFeedback.branchId, branches.id))
+        .where(gte(customerFeedback.createdAt, thirtyDaysAgo))
+        .groupBy(customerFeedback.branchId, branches.name)
+        .orderBy(desc(avg(customerFeedback.rating)));
 
-      const allFaults = await db.select().from(equipmentFaults);
-      const allUsers = await db.select().from(users);
-      const allBranches = await db.select().from(branches);
-      const satisfactionScores = await db.select().from(employeeSatisfactionScores);
+      const recentFeedback = await db.select({
+        id: customerFeedback.id,
+        branchId: customerFeedback.branchId,
+        branchName: branches.name,
+        rating: customerFeedback.rating,
+        comment: customerFeedback.comment,
+        status: customerFeedback.status,
+        feedbackType: customerFeedback.feedbackType,
+        source: customerFeedback.source,
+        createdAt: customerFeedback.createdAt,
+      }).from(customerFeedback)
+        .innerJoin(branches, eq(customerFeedback.branchId, branches.id))
+        .orderBy(desc(customerFeedback.createdAt))
+        .limit(10);
 
-      const now = new Date();
-      const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-      const twoWeeksAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
+      const categoryDistribution = await db.select({
+        category: sql<string>`CASE 
+          WHEN ${customerFeedback.cleanlinessRating} IS NOT NULL AND ${customerFeedback.cleanlinessRating} <= 2 THEN 'cleanliness'
+          WHEN ${customerFeedback.serviceRating} IS NOT NULL AND ${customerFeedback.serviceRating} <= 2 THEN 'service'
+          WHEN ${customerFeedback.productRating} IS NOT NULL AND ${customerFeedback.productRating} <= 2 THEN 'product'
+          WHEN ${customerFeedback.staffRating} IS NOT NULL AND ${customerFeedback.staffRating} <= 2 THEN 'staff'
+          ELSE 'other'
+        END`,
+        count: count(),
+      }).from(customerFeedback)
+        .where(and(
+          gte(customerFeedback.createdAt, thirtyDaysAgo),
+          lte(customerFeedback.rating, 3)
+        ))
+        .groupBy(sql`CASE 
+          WHEN ${customerFeedback.cleanlinessRating} IS NOT NULL AND ${customerFeedback.cleanlinessRating} <= 2 THEN 'cleanliness'
+          WHEN ${customerFeedback.serviceRating} IS NOT NULL AND ${customerFeedback.serviceRating} <= 2 THEN 'service'
+          WHEN ${customerFeedback.productRating} IS NOT NULL AND ${customerFeedback.productRating} <= 2 THEN 'product'
+          WHEN ${customerFeedback.staffRating} IS NOT NULL AND ${customerFeedback.staffRating} <= 2 THEN 'staff'
+          ELSE 'other'
+        END`);
 
-      // Calculate per-agent stats
-      const agentStats: Record<string, any> = {};
-      
-      allFaults.forEach(fault => {
-        if (fault.assignedTo) {
-          if (!agentStats[fault.assignedTo]) {
-            agentStats[fault.assignedTo] = {
-              resolved: 0,
-              resolvedThisWeek: 0,
-              resolvedLastWeek: 0,
-              totalTime: 0,
-              slaCompliant: 0
-            };
-          }
-          
-          if (fault.status === 'çözüldü' || fault.status === 'kapatıldı') {
-            agentStats[fault.assignedTo].resolved++;
-            
-            if (fault.resolvedAt) {
-              const resolvedDate = new Date(fault.resolvedAt);
-              if (resolvedDate >= oneWeekAgo) {
-                agentStats[fault.assignedTo].resolvedThisWeek++;
-              } else if (resolvedDate >= twoWeeksAgo) {
-                agentStats[fault.assignedTo].resolvedLastWeek++;
-              }
-              
-              if (fault.createdAt) {
-                const hours = (resolvedDate.getTime() - new Date(fault.createdAt).getTime()) / (1000 * 60 * 60);
-                agentStats[fault.assignedTo].totalTime += hours;
-                
-                const slaTargets: Record<string, number> = { 'kritik': 4, 'yüksek': 24, 'orta': 48, 'düşük': 72 };
-                if (hours <= (slaTargets[fault.priority || 'orta'] || 48)) {
-                  agentStats[fault.assignedTo].slaCompliant++;
-                }
-              }
-            }
-          }
-        }
-      });
-
-      // Build agent performance list
-      const agents = Object.entries(agentStats).map(([userId, stats]) => {
-        const userInfo = allUsers.find(u => u.id === userId);
-        const satisfaction = satisfactionScores.find(s => s.userId === userId);
-        const branch = userInfo?.branchId ? allBranches.find(b => b.id === userInfo.branchId) : null;
-
-        return {
-          id: userId,
-          name: userInfo ? `${userInfo.firstName} ${userInfo.lastName}` : 'Bilinmeyen',
-          role: userInfo?.role || '',
-          branchName: branch?.name,
-          stats: {
-            resolved: stats.resolved,
-            avgResolutionTime: stats.resolved > 0 ? Math.round(stats.totalTime / stats.resolved) : 0,
-            slaCompliance: stats.resolved > 0 ? Math.round((stats.slaCompliant / stats.resolved) * 100) : 100,
-            taskRating: satisfaction?.taskSatisfactionAvg || 0,
-            checklistCompletion: 0, // Calculated elsewhere
-            compositeScore: satisfaction?.compositeScore || 0
-          }
-        };
-      }).sort((a, b) => b.stats.compositeScore - a.stats.compositeScore);
-
-      // Team stats
-      const totalResolved = Object.values(agentStats).reduce((sum: number, s: any) => sum + s.resolved, 0);
-      const totalTime = Object.values(agentStats).reduce((sum: number, s: any) => sum + s.totalTime, 0);
-      const totalSlaCompliant = Object.values(agentStats).reduce((sum: number, s: any) => sum + s.slaCompliant, 0);
-      const allTaskRatings = satisfactionScores.filter(s => s.taskSatisfactionAvg && s.taskSatisfactionAvg > 0);
-      const avgTaskRating = allTaskRatings.length > 0 
-        ? allTaskRatings.reduce((sum, s) => sum + (s.taskSatisfactionAvg || 0), 0) / allTaskRatings.length 
-        : 0;
-
-      // Weekly comparison data
-      const weeklyComparison = [
-        { name: 'Pzt', thisWeek: 0, lastWeek: 0 },
-        { name: 'Sal', thisWeek: 0, lastWeek: 0 },
-        { name: 'Çar', thisWeek: 0, lastWeek: 0 },
-        { name: 'Per', thisWeek: 0, lastWeek: 0 },
-        { name: 'Cum', thisWeek: 0, lastWeek: 0 },
-        { name: 'Cmt', thisWeek: 0, lastWeek: 0 },
-        { name: 'Paz', thisWeek: 0, lastWeek: 0 }
-      ];
-
-      allFaults.forEach(fault => {
-        if (fault.resolvedAt) {
-          const resolved = new Date(fault.resolvedAt);
-          const dayIndex = (resolved.getDay() + 6) % 7;
-          if (resolved >= oneWeekAgo) {
-            weeklyComparison[dayIndex].thisWeek++;
-          } else if (resolved >= twoWeeksAgo) {
-            weeklyComparison[dayIndex].lastWeek++;
-          }
-        }
-      });
+      const pendingResponses = await db.select({
+        count: count(),
+      }).from(customerFeedback)
+        .where(and(
+          inArray(customerFeedback.status, ['new', 'in_progress']),
+          sql`${customerFeedback.responseDeadline} IS NOT NULL`,
+          sql`${customerFeedback.responseDeadline} < NOW()`
+        ));
 
       res.json({
-        agents,
-        teamStats: {
-          totalResolved,
-          avgResolutionTime: totalResolved > 0 ? Math.round(totalTime / totalResolved) : 0,
-          avgSlaCompliance: totalResolved > 0 ? Math.round((totalSlaCompliant / totalResolved) * 100) : 100,
-          avgTaskRating
+        kpis: {
+          todayFeedbackCount: Number(feedbackStats?.todayCount || 0),
+          avgRating: feedbackStats?.avgRating ? Number(Number(feedbackStats.avgRating).toFixed(1)) : 0,
+          openComplaintsCount: Number(openGuestComplaints?.count || 0) + Number(openProductComplaints?.count || 0),
+          slaBreachCount: Number(feedbackStats?.slaBreachCount || 0) + Number(pendingResponses?.count || 0),
+          totalFeedback30d: Number(feedbackStats?.totalFeedback || 0),
+          negativeCount: Number(feedbackStats?.negativeCount || 0),
+          avgServiceRating: feedbackStats?.avgServiceRating ? Number(Number(feedbackStats.avgServiceRating).toFixed(1)) : null,
+          avgCleanlinessRating: feedbackStats?.avgCleanlinessRating ? Number(Number(feedbackStats.avgCleanlinessRating).toFixed(1)) : null,
+          avgProductRating: feedbackStats?.avgProductRating ? Number(Number(feedbackStats.avgProductRating).toFixed(1)) : null,
+          avgStaffRating: feedbackStats?.avgStaffRating ? Number(Number(feedbackStats.avgStaffRating).toFixed(1)) : null,
         },
-        weeklyComparison
+        branchComparison: branchStats.map(b => ({
+          branchId: b.branchId,
+          branchName: b.branchName,
+          avgRating: b.avgRating ? Number(Number(b.avgRating).toFixed(1)) : 0,
+          feedbackCount: Number(b.feedbackCount),
+        })),
+        recentInteractions: recentFeedback,
+        categoryDistribution: categoryDistribution.map(c => ({
+          category: c.category,
+          count: Number(c.count),
+        })),
       });
     } catch (error: any) {
-      console.error("Error fetching CRM performance:", error);
-      res.status(500).json({ message: "Performans verileri yüklenemedi" });
+      console.error("CRM dashboard stats error:", error);
+      res.status(500).json({ message: "Dashboard verileri yüklenemedi" });
     }
   });
 
-  // CRM SLA
-  app.get('/api/crm/sla', isAuthenticated, async (req: any, res) => {
+  app.get('/api/crm/complaints', isAuthenticated, async (req: any, res) => {
     try {
       const user = req.user!;
-      
-      const hqRoles = ['admin', 'muhasebe', 'satinalma', 'coach', 'teknik', 'destek', 'fabrika', 'yatirimci_hq'];
-      if (!hqRoles.includes(user.role)) {
-        return res.status(403).json({ message: "CRM erişiminiz yok" });
+      if (!HQ_ROLES.has(user.role) && user.role !== 'admin') {
+        return res.status(403).json({ message: "Erişim yok" });
       }
 
-      const allFaults = await db.select().from(equipmentFaults);
-      const allBranches = await db.select().from(branches);
-      
-      const now = new Date();
-      const slaTargets: Record<string, number> = { 'kritik': 4, 'yüksek': 24, 'orta': 48, 'düşük': 72 };
+      const { type, branchId, status, priority, startDate, endDate } = req.query;
 
-      const activeFaults = allFaults.filter(f => f.status !== 'çözüldü' && f.status !== 'kapatıldı');
-      
-      const items = activeFaults.map(fault => {
-        const branch = allBranches.find(b => b.id === fault.branchId);
-        const slaHours = slaTargets[fault.priority || 'orta'] || 48;
-        const createdAt = fault.createdAt ? new Date(fault.createdAt) : new Date();
-        const slaDeadline = new Date(createdAt.getTime() + slaHours * 60 * 60 * 1000);
-        const hoursRemaining = (slaDeadline.getTime() - now.getTime()) / (1000 * 60 * 60);
+      let guestResults: any[] = [];
+      let productResults: any[] = [];
 
-        let status: 'on_track' | 'warning' | 'breached' = 'on_track';
-        if (hoursRemaining < 0) status = 'breached';
-        else if (hoursRemaining <= slaHours * 0.25) status = 'warning';
+      if (!type || type === 'misafir' || type === 'all') {
+        const guestQuery = db.select({
+          id: guestComplaints.id,
+          type: sql<string>`'misafir'`,
+          branchId: guestComplaints.branchId,
+          branchName: branches.name,
+          status: guestComplaints.status,
+          priority: guestComplaints.priority,
+          title: guestComplaints.subject,
+          description: guestComplaints.description,
+          category: guestComplaints.complaintCategory,
+          customerName: guestComplaints.customerName,
+          slaBreached: guestComplaints.slaBreached,
+          responseDeadline: guestComplaints.responseDeadline,
+          assignedToId: guestComplaints.assignedToId,
+          createdAt: guestComplaints.createdAt,
+          resolvedAt: guestComplaints.resolvedAt,
+        }).from(guestComplaints)
+          .innerJoin(branches, eq(guestComplaints.branchId, branches.id));
 
-        return {
-          id: fault.id,
-          type: 'fault',
-          title: fault.description?.slice(0, 50) || 'Arıza',
-          priority: fault.priority || 'orta',
-          branchName: branch?.name || 'Bilinmiyor',
-          createdAt: fault.createdAt?.toISOString() || new Date().toISOString(),
-          slaDeadline: slaDeadline.toISOString(),
-          status,
-          hoursRemaining: Math.round(hoursRemaining)
-        };
-      }).sort((a, b) => a.hoursRemaining - b.hoursRemaining);
+        const conditions: any[] = [];
+        if (branchId) conditions.push(eq(guestComplaints.branchId, Number(branchId)));
+        if (status) conditions.push(eq(guestComplaints.status, String(status)));
+        if (priority) conditions.push(eq(guestComplaints.priority, String(priority)));
+        if (startDate) conditions.push(gte(guestComplaints.createdAt, new Date(String(startDate))));
+        if (endDate) conditions.push(lte(guestComplaints.createdAt, new Date(String(endDate))));
 
-      const onTrack = items.filter(i => i.status === 'on_track').length;
-      const warning = items.filter(i => i.status === 'warning').length;
-      const breached = items.filter(i => i.status === 'breached').length;
+        guestResults = conditions.length > 0 
+          ? await guestQuery.where(and(...conditions))
+          : await guestQuery;
+      }
 
-      const resolvedFaults = allFaults.filter(f => f.resolvedAt);
-      const compliantCount = resolvedFaults.filter(f => {
-        const target = slaTargets[f.priority || 'orta'] || 48;
-        if (f.createdAt && f.resolvedAt) {
-          const hours = (new Date(f.resolvedAt).getTime() - new Date(f.createdAt).getTime()) / (1000 * 60 * 60);
-          return hours <= target;
+      if (!type || type === 'urun' || type === 'all') {
+        const productQuery = db.select({
+          id: productComplaints.id,
+          type: sql<string>`'urun'`,
+          branchId: productComplaints.branchId,
+          branchName: branches.name,
+          status: productComplaints.status,
+          priority: productComplaints.severity,
+          title: productComplaints.productName,
+          description: productComplaints.description,
+          category: productComplaints.complaintType,
+          customerName: sql<string>`NULL`,
+          slaBreached: sql<boolean>`false`,
+          responseDeadline: sql<string>`NULL`,
+          assignedToId: productComplaints.assignedToId,
+          createdAt: productComplaints.createdAt,
+          resolvedAt: productComplaints.resolvedAt,
+        }).from(productComplaints)
+          .innerJoin(branches, eq(productComplaints.branchId, branches.id));
+
+        const conditions: any[] = [];
+        if (branchId) conditions.push(eq(productComplaints.branchId, Number(branchId)));
+        if (status) conditions.push(eq(productComplaints.status, String(status)));
+        if (priority) conditions.push(eq(productComplaints.severity, String(priority)));
+        if (startDate) conditions.push(gte(productComplaints.createdAt, new Date(String(startDate))));
+        if (endDate) conditions.push(lte(productComplaints.createdAt, new Date(String(endDate))));
+
+        productResults = conditions.length > 0
+          ? await productQuery.where(and(...conditions))
+          : await productQuery;
+      }
+
+      const combined = [...guestResults, ...productResults]
+        .sort((a, b) => new Date(b.createdAt!).getTime() - new Date(a.createdAt!).getTime());
+
+      res.json(combined);
+    } catch (error: any) {
+      console.error("CRM complaints error:", error);
+      res.status(500).json({ message: "Şikayetler yüklenemedi" });
+    }
+  });
+
+  app.get('/api/crm/complaints/:type/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      if (!HQ_ROLES.has(user.role) && user.role !== 'admin') {
+        return res.status(403).json({ message: "CRM erişiminiz yok" });
+      }
+      const { type, id } = req.params;
+      if (type === 'misafir') {
+        const [complaint] = await db.select().from(guestComplaints).where(eq(guestComplaints.id, Number(id)));
+        if (!complaint) return res.status(404).json({ message: "Bulunamadı" });
+        const [branch] = await db.select().from(branches).where(eq(branches.id, complaint.branchId));
+        let assignedUser = null;
+        if (complaint.assignedToId) {
+          const [u] = await db.select({ id: users.id, firstName: users.firstName, lastName: users.lastName })
+            .from(users).where(eq(users.id, complaint.assignedToId));
+          assignedUser = u;
         }
-        return true;
-      }).length;
-      const complianceRate = resolvedFaults.length > 0 ? Math.round((compliantCount / resolvedFaults.length) * 100) : 100;
+        res.json({ ...complaint, branchName: branch?.name, assignedUser, complaintType: 'misafir' });
+      } else if (type === 'urun') {
+        const [complaint] = await db.select().from(productComplaints).where(eq(productComplaints.id, Number(id)));
+        if (!complaint) return res.status(404).json({ message: "Bulunamadı" });
+        const [branch] = await db.select().from(branches).where(eq(branches.id, complaint.branchId));
+        let assignedUser = null;
+        if (complaint.assignedToId) {
+          const [u] = await db.select({ id: users.id, firstName: users.firstName, lastName: users.lastName })
+            .from(users).where(eq(users.id, complaint.assignedToId));
+          assignedUser = u;
+        }
+        res.json({ ...complaint, branchName: branch?.name, assignedUser, complaintType: 'urun' });
+      } else {
+        res.status(400).json({ message: "Geçersiz şikayet türü" });
+      }
+    } catch (error: any) {
+      console.error("CRM complaint detail error:", error);
+      res.status(500).json({ message: "Şikayet detayı yüklenemedi" });
+    }
+  });
 
-      const prioritySLA = Object.entries(slaTargets).map(([priority, target]) => {
-        const priorityFaults = resolvedFaults.filter(f => f.priority === priority);
-        if (priorityFaults.length === 0) return { priority, target, actual: 0 };
-        
-        const avgTime = priorityFaults.reduce((sum, f) => {
-          if (f.createdAt && f.resolvedAt) {
-            return sum + (new Date(f.resolvedAt).getTime() - new Date(f.createdAt).getTime()) / (1000 * 60 * 60);
-          }
-          return sum;
-        }, 0) / priorityFaults.length;
-        
-        return { priority, target, actual: Math.round(avgTime) };
-      });
+  app.patch('/api/crm/complaints/:type/:id/assign', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      if (!HQ_ROLES.has(user.role) && user.role !== 'admin') {
+        return res.status(403).json({ message: "CRM erişiminiz yok" });
+      }
+      const { type, id } = req.params;
+      const { assignedToId } = req.body;
+      if (!assignedToId) return res.status(400).json({ message: "Atanacak kişi gerekli" });
+
+      if (type === 'misafir') {
+        await db.update(guestComplaints)
+          .set({ assignedToId, assignedAt: new Date(), status: 'assigned', updatedAt: new Date() })
+          .where(eq(guestComplaints.id, Number(id)));
+      } else if (type === 'urun') {
+        await db.update(productComplaints)
+          .set({ assignedToId, status: 'investigating', updatedAt: new Date() })
+          .where(eq(productComplaints.id, Number(id)));
+      }
+      res.json({ message: "Atama yapıldı" });
+    } catch (error: any) {
+      res.status(500).json({ message: "Atama başarısız" });
+    }
+  });
+
+  app.patch('/api/crm/complaints/:type/:id/resolve', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      if (!HQ_ROLES.has(user.role) && user.role !== 'admin') {
+        return res.status(403).json({ message: "CRM erişiminiz yok" });
+      }
+      const { type, id } = req.params;
+      const { resolutionNotes } = req.body;
+      if (!resolutionNotes) return res.status(400).json({ message: "Çözüm notu zorunlu" });
+
+      const now = new Date();
+      if (type === 'misafir') {
+        await db.update(guestComplaints)
+          .set({ status: 'resolved', resolutionNotes, resolvedById: req.user!.id, resolvedAt: now, updatedAt: now })
+          .where(eq(guestComplaints.id, Number(id)));
+      } else if (type === 'urun') {
+        await db.update(productComplaints)
+          .set({ status: 'resolved', resolution: resolutionNotes, resolvedById: req.user!.id, resolvedAt: now, updatedAt: now })
+          .where(eq(productComplaints.id, Number(id)));
+      }
+      res.json({ message: "Şikayet çözümlendi" });
+    } catch (error: any) {
+      res.status(500).json({ message: "Çözümleme başarısız" });
+    }
+  });
+
+  app.get('/api/crm/analytics', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      if (!HQ_ROLES.has(user.role) && user.role !== 'admin') {
+        return res.status(403).json({ message: "Erişim yok" });
+      }
+
+      const days = Number(req.query.days) || 30;
+      const branchId = req.query.branchId ? Number(req.query.branchId) : null;
+      const startDate = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+
+      const conditions: any[] = [gte(customerFeedback.createdAt, startDate)];
+      if (branchId) conditions.push(eq(customerFeedback.branchId, branchId));
+
+      const dailyTrend = await db.select({
+        date: sql<string>`DATE(${customerFeedback.createdAt})`,
+        avgRating: avg(customerFeedback.rating),
+        count: count(),
+        avgService: avg(customerFeedback.serviceRating),
+        avgCleanliness: avg(customerFeedback.cleanlinessRating),
+        avgProduct: avg(customerFeedback.productRating),
+        avgStaff: avg(customerFeedback.staffRating),
+      }).from(customerFeedback)
+        .where(and(...conditions))
+        .groupBy(sql`DATE(${customerFeedback.createdAt})`)
+        .orderBy(sql`DATE(${customerFeedback.createdAt})`);
+
+      const sentimentData = await db.select({
+        positive: sql<number>`COUNT(*) FILTER (WHERE ${customerFeedback.rating} >= 4)`,
+        neutral: sql<number>`COUNT(*) FILTER (WHERE ${customerFeedback.rating} = 3)`,
+        negative: sql<number>`COUNT(*) FILTER (WHERE ${customerFeedback.rating} <= 2)`,
+      }).from(customerFeedback)
+        .where(and(...conditions));
+
+      const branchComparison = await db.select({
+        branchId: customerFeedback.branchId,
+        branchName: branches.name,
+        avgRating: avg(customerFeedback.rating),
+        avgService: avg(customerFeedback.serviceRating),
+        avgCleanliness: avg(customerFeedback.cleanlinessRating),
+        avgProduct: avg(customerFeedback.productRating),
+        avgStaff: avg(customerFeedback.staffRating),
+        feedbackCount: count(),
+      }).from(customerFeedback)
+        .innerJoin(branches, eq(customerFeedback.branchId, branches.id))
+        .where(gte(customerFeedback.createdAt, startDate))
+        .groupBy(customerFeedback.branchId, branches.name)
+        .orderBy(desc(avg(customerFeedback.rating)));
 
       res.json({
-        totalActive: items.length,
-        onTrack,
-        warning,
-        breached,
-        complianceRate,
-        avgResolutionHours: resolvedFaults.length > 0 ? Math.round(
-          resolvedFaults.reduce((sum, f) => {
-            if (f.createdAt && f.resolvedAt) {
-              return sum + (new Date(f.resolvedAt).getTime() - new Date(f.createdAt).getTime()) / (1000 * 60 * 60);
-            }
-            return sum;
-          }, 0) / resolvedFaults.length
-        ) : 0,
-        items,
-        prioritySLA
+        dailyTrend: dailyTrend.map(d => ({
+          date: d.date,
+          avgRating: d.avgRating ? Number(Number(d.avgRating).toFixed(1)) : 0,
+          count: Number(d.count),
+          avgService: d.avgService ? Number(Number(d.avgService).toFixed(1)) : null,
+          avgCleanliness: d.avgCleanliness ? Number(Number(d.avgCleanliness).toFixed(1)) : null,
+          avgProduct: d.avgProduct ? Number(Number(d.avgProduct).toFixed(1)) : null,
+          avgStaff: d.avgStaff ? Number(Number(d.avgStaff).toFixed(1)) : null,
+        })),
+        sentiment: sentimentData[0] ? {
+          positive: Number(sentimentData[0].positive || 0),
+          neutral: Number(sentimentData[0].neutral || 0),
+          negative: Number(sentimentData[0].negative || 0),
+        } : { positive: 0, neutral: 0, negative: 0 },
+        branchComparison: branchComparison.map(b => ({
+          branchId: b.branchId,
+          branchName: b.branchName,
+          avgRating: b.avgRating ? Number(Number(b.avgRating).toFixed(1)) : 0,
+          avgService: b.avgService ? Number(Number(b.avgService).toFixed(1)) : null,
+          avgCleanliness: b.avgCleanliness ? Number(Number(b.avgCleanliness).toFixed(1)) : null,
+          avgProduct: b.avgProduct ? Number(Number(b.avgProduct).toFixed(1)) : null,
+          avgStaff: b.avgStaff ? Number(Number(b.avgStaff).toFixed(1)) : null,
+          feedbackCount: Number(b.feedbackCount),
+        })),
       });
     } catch (error: any) {
-      console.error("Error fetching CRM SLA:", error);
+      console.error("CRM analytics error:", error);
+      res.status(500).json({ message: "Analiz verileri yüklenemedi" });
+    }
+  });
+
+  app.get('/api/crm/sla-tracking', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      if (!HQ_ROLES.has(user.role) && user.role !== 'admin') {
+        return res.status(403).json({ message: "Erişim yok" });
+      }
+
+      const now = new Date();
+
+      const pendingFeedback = await db.select({
+        id: customerFeedback.id,
+        branchId: customerFeedback.branchId,
+        branchName: branches.name,
+        rating: customerFeedback.rating,
+        comment: customerFeedback.comment,
+        status: customerFeedback.status,
+        responseDeadline: customerFeedback.responseDeadline,
+        slaBreached: customerFeedback.slaBreached,
+        createdAt: customerFeedback.createdAt,
+      }).from(customerFeedback)
+        .innerJoin(branches, eq(customerFeedback.branchId, branches.id))
+        .where(inArray(customerFeedback.status, ['new', 'in_progress', 'awaiting_response']))
+        .orderBy(customerFeedback.responseDeadline);
+
+      const items = pendingFeedback.map(f => {
+        let slaStatus: 'green' | 'yellow' | 'red' = 'green';
+        let hoursRemaining: number | null = null;
+        if (f.responseDeadline) {
+          const deadline = new Date(f.responseDeadline);
+          hoursRemaining = (deadline.getTime() - now.getTime()) / (1000 * 60 * 60);
+          if (hoursRemaining < 0 || f.slaBreached) slaStatus = 'red';
+          else if (hoursRemaining < 12) slaStatus = 'yellow';
+        }
+        return { ...f, slaStatus, hoursRemaining: hoursRemaining !== null ? Number(hoursRemaining.toFixed(1)) : null };
+      });
+
+      const branchSla = await db.select({
+        branchId: customerFeedback.branchId,
+        branchName: branches.name,
+        totalFeedback: count(),
+        breachedCount: sql<number>`COUNT(*) FILTER (WHERE ${customerFeedback.slaBreached} = true)`,
+        avgResponseHours: sql<number>`AVG(EXTRACT(EPOCH FROM (COALESCE(${customerFeedback.reviewedAt}, NOW()) - ${customerFeedback.createdAt})) / 3600) FILTER (WHERE ${customerFeedback.reviewedAt} IS NOT NULL)`,
+      }).from(customerFeedback)
+        .innerJoin(branches, eq(customerFeedback.branchId, branches.id))
+        .where(gte(customerFeedback.createdAt, new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)))
+        .groupBy(customerFeedback.branchId, branches.name)
+        .orderBy(desc(sql`COUNT(*) FILTER (WHERE ${customerFeedback.slaBreached} = true)`));
+
+      res.json({
+        pendingItems: items,
+        branchPerformance: branchSla.map(b => ({
+          branchId: b.branchId,
+          branchName: b.branchName,
+          totalFeedback: Number(b.totalFeedback),
+          breachedCount: Number(b.breachedCount || 0),
+          complianceRate: Number(b.totalFeedback) > 0
+            ? Number(((1 - Number(b.breachedCount || 0) / Number(b.totalFeedback)) * 100).toFixed(1))
+            : 100,
+          avgResponseHours: b.avgResponseHours ? Number(Number(b.avgResponseHours).toFixed(1)) : null,
+        })),
+        summary: {
+          totalPending: items.length,
+          breached: items.filter(i => i.slaStatus === 'red').length,
+          warning: items.filter(i => i.slaStatus === 'yellow').length,
+          onTrack: items.filter(i => i.slaStatus === 'green').length,
+        },
+      });
+    } catch (error: any) {
+      console.error("CRM SLA tracking error:", error);
       res.status(500).json({ message: "SLA verileri yüklenemedi" });
     }
   });
 
-  // CRM Feedback
-  app.get('/api/crm/feedback', isAuthenticated, async (req: any, res) => {
+  app.get('/api/crm/settings', isAuthenticated, async (req: any, res) => {
     try {
       const user = req.user!;
-      
-      const hqRoles = ['admin', 'muhasebe', 'satinalma', 'coach', 'teknik', 'destek', 'fabrika', 'yatirimci_hq'];
-      if (!hqRoles.includes(user.role)) {
+      if (!HQ_ROLES.has(user.role) && user.role !== 'admin') {
         return res.status(403).json({ message: "CRM erişiminiz yok" });
       }
-
-      let feedbackData: any[] = [];
-      try {
-        feedbackData = await db.select().from(customerFeedback);
-      } catch (e) {
-        // Table might not exist
-      }
-
-      const allBranches = await db.select().from(branches);
-
-      const totalFeedback = feedbackData.length;
-      const ratingsWithValue = feedbackData.filter(f => f.rating && f.rating > 0);
-      const averageRating = ratingsWithValue.length > 0 
-        ? ratingsWithValue.reduce((sum, f) => sum + (f.rating || 0), 0) / ratingsWithValue.length 
-        : 0;
-      const positiveRate = ratingsWithValue.length > 0
-        ? Math.round((ratingsWithValue.filter(f => (f.rating || 0) >= 4).length / ratingsWithValue.length) * 100)
-        : 0;
-
-      const ratingDistribution = [1, 2, 3, 4, 5].map(rating => ({
-        rating,
-        count: feedbackData.filter(f => f.rating === rating).length
-      }));
-
-      const branchRatings: Record<number, { sum: number; count: number }> = {};
-      feedbackData.forEach(f => {
-        if (f.branchId && f.rating) {
-          if (!branchRatings[f.branchId]) {
-            branchRatings[f.branchId] = { sum: 0, count: 0 };
-          }
-          branchRatings[f.branchId].sum += f.rating;
-          branchRatings[f.branchId].count++;
-        }
-      });
-
-      const branchRankings = Object.entries(branchRatings)
-        .map(([branchId, stats]) => {
-          const branch = allBranches.find(b => b.id === parseInt(branchId));
-          return {
-            branchName: branch?.name || 'Bilinmiyor',
-            avgRating: stats.count > 0 ? stats.sum / stats.count : 0,
-            count: stats.count
-          };
-        })
-        .sort((a, b) => b.avgRating - a.avgRating);
-
-      const recentFeedback = feedbackData
-        .sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime())
-        .slice(0, 10)
-        .map(f => {
-          const branch = f.branchId ? allBranches.find(b => b.id === f.branchId) : null;
-          return {
-            id: f.id,
-            rating: f.rating || 0,
-            comment: f.comment || '',
-            branchName: branch?.name || 'Bilinmiyor',
-            createdAt: f.createdAt?.toISOString() || new Date().toISOString(),
-            source: f.source || 'web'
-          };
-        });
-
+      const settings = await db.select().from(feedbackFormSettings);
       res.json({
-        averageRating,
-        totalFeedback,
-        positiveRate,
-        ratingDistribution,
-        recentFeedback,
-        branchRankings
+        formSettings: settings,
+        slaThresholds: {
+          defaultResponseHours: 24,
+          escalationHours: 48,
+          criticalResponseHours: 4,
+        },
+        notificationRules: {
+          lowRatingThreshold: 2,
+          autoAssignEnabled: true,
+          escalationEnabled: true,
+        },
+        responsibilityMatrix: {
+          temizlik: 'supervisor',
+          hizmet: 'supervisor',
+          urun: 'kalite_kontrol',
+          personel: 'mudur',
+          guler_yuzluluk: 'bireysel',
+        },
       });
     } catch (error: any) {
-      console.error("Error fetching CRM feedback:", error);
-      res.status(500).json({ message: "Geri bildirim verileri yüklenemedi" });
+      res.status(500).json({ message: "Ayarlar yüklenemedi" });
     }
   });
 
-  // GET /api/crm/my-stats - Çalışanın kişisel istatistikleri (şube/fabrika personeli için)
-  app.get('/api/crm/my-stats', isAuthenticated, async (req: any, res) => {
+  app.get('/api/crm/branches', isAuthenticated, async (req: any, res) => {
     try {
-      const user = req.user!;
-      const userId = user.id;
-      const now = new Date();
-      const oneMonthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-      const threeMonthsAgo = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
-
-      // 1. Vardiya/Devam İstatistikleri
-      const allAttendance = await db.select()
-        .from(shiftAttendance)
-        .where(eq(shiftAttendance.userId, userId));
-      
-      const recentAttendance = allAttendance.filter(a => 
-        a.checkInTime && new Date(a.checkInTime) >= oneMonthAgo
-      );
-      
-      const lateArrivals = recentAttendance.filter(a => (a.latenessMinutes || 0) > 0).length;
-      const earlyDepartures = recentAttendance.filter(a => (a.earlyLeaveMinutes || 0) > 0).length;
-      const totalShifts = recentAttendance.length;
-      const onTimeRate = totalShifts > 0 
-        ? Math.round(((totalShifts - lateArrivals) / totalShifts) * 100) 
-        : 100;
-
-      // 2. İzin Durumu
-      const userLeaves = await db.select()
-        .from(leaveRequests)
-        .where(eq(leaveRequests.userId, userId));
-      
-      const currentYear = now.getFullYear();
-      const thisYearLeaves = userLeaves.filter(l => {
-        const start = l.startDate ? new Date(l.startDate) : null;
-        return start && start.getFullYear() === currentYear;
-      });
-      
-      const approvedLeaves = thisYearLeaves.filter(l => l.status === 'onaylandı' || l.status === 'approved');
-      const pendingLeaves = thisYearLeaves.filter(l => l.status === 'beklemede' || l.status === 'pending');
-      const totalLeaveDays = approvedLeaves.reduce((sum, l) => {
-        const start = l.startDate ? new Date(l.startDate) : new Date();
-        const end = l.endDate ? new Date(l.endDate) : new Date();
-        const days = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
-        return sum + days;
-      }, 0);
-      const remainingLeave = Math.max(0, 14 - totalLeaveDays); // Varsayılan yıllık izin: 14 gün
-
-      // 3. Eğitim İlerlemesi
-      const trainingProgress = await db.select()
-        .from(userTrainingProgress)
-        .where(eq(userTrainingProgress.userId, userId));
-      
-      const completedModules = trainingProgress.filter(p => p.completedAt).length;
-      const inProgressModules = trainingProgress.filter(p => !p.completedAt && (p.progressPercentage || 0) > 0).length;
-      const totalModules = trainingProgress.length;
-      
-      // Quiz attempts
-      const quizAttempts = await db.select()
-        .from(userQuizAttempts)
-        .where(eq(userQuizAttempts.userId, userId));
-      
-      const passedQuizzes = quizAttempts.filter(a => a.isPassed).length;
-      const totalQuizAttempts = quizAttempts.length;
-
-      // 4. Görev İstatistikleri
-      const userTasks = await db.select()
-        .from(tasks)
-        .where(eq(tasks.assignedToId, userId));
-      
-      const recentTasks = userTasks.filter(t => 
-        t.createdAt && new Date(t.createdAt) >= threeMonthsAgo
-      );
-      
-      const completedTasks = recentTasks.filter(t => t.status === 'tamamlandı' || t.status === 'completed').length;
-      const pendingTasks = recentTasks.filter(t => t.status === 'beklemede' || t.status === 'pending').length;
-      const inProgressTasks = recentTasks.filter(t => t.status === 'devam_ediyor' || t.status === 'in_progress').length;
-      const taskCompletionRate = recentTasks.length > 0 
-        ? Math.round((completedTasks / recentTasks.length) * 100) 
-        : 100;
-
-      // 5. Performans Skoru
-      const satisfactionScore = await db.select()
-        .from(employeeSatisfactionScores)
-        .where(eq(employeeSatisfactionScores.userId, userId))
-        .limit(1);
-      
-      const performanceScore = satisfactionScore[0]?.compositeScore || 0;
-      const taskRating = satisfactionScore[0]?.taskSatisfactionAvg || 0;
-
-      // 6. Şube bilgisi
-      let branchName = 'Bilinmiyor';
-      if (user.branchId) {
-        const branch = await db.select()
-          .from(branches)
-          .where(eq(branches.id, user.branchId))
-          .limit(1);
-        branchName = branch[0]?.name || 'Bilinmiyor';
-      }
-
-      res.json({
-        user: {
-          name: user.name || user.username,
-          role: user.role,
-          branchName
-        },
-        attendance: {
-          totalShifts,
-          lateArrivals,
-          earlyDepartures,
-          onTimeRate
-        },
-        leave: {
-          usedDays: totalLeaveDays,
-          remainingDays: remainingLeave,
-          pendingRequests: pendingLeaves.length,
-          approvedThisYear: approvedLeaves.length
-        },
-        training: {
-          completedModules,
-          inProgressModules,
-          totalModules,
-          passedQuizzes,
-          totalQuizAttempts
-        },
-        tasks: {
-          completed: completedTasks,
-          pending: pendingTasks,
-          inProgress: inProgressTasks,
-          completionRate: taskCompletionRate
-        },
-        performance: {
-          compositeScore: performanceScore,
-          taskRating: taskRating
-        }
-      });
+      const allBranches = await db.select({ id: branches.id, name: branches.name })
+        .from(branches).orderBy(branches.name);
+      res.json(allBranches);
     } catch (error: any) {
-      console.error("Error fetching personal CRM stats:", error);
-      res.status(500).json({ message: "Kişisel istatistikler yüklenemedi" });
+      res.status(500).json({ message: "Şubeler yüklenemedi" });
     }
   });
 }

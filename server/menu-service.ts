@@ -304,9 +304,9 @@ const MENU_BLUEPRINT: SidebarMenuSection[] = [
       {
         id: "customer-satisfaction",
         titleTr: "Misafir Memnuniyeti",
-        path: "/misafir-memnuniyeti",
+        path: "/crm/geri-bildirimler",
         icon: "MessageSquareHeart",
-        moduleKey: "customer_satisfaction",
+        moduleKey: "crm_feedback",
         scope: "hq",
       },
       {
@@ -335,11 +335,11 @@ const MENU_BLUEPRINT: SidebarMenuSection[] = [
       },
       {
         id: "product-complaints",
-        titleTr: "Ürün Şikayetleri",
-        path: "/urun-sikayet",
+        titleTr: "Şikayetler",
+        path: "/crm/sikayetler",
         icon: "AlertTriangle",
-        moduleKey: "product_complaints",
-        scope: "both",
+        moduleKey: "crm_complaints",
+        scope: "hq",
       },
     ],
   },
@@ -419,11 +419,30 @@ const MENU_BLUEPRINT: SidebarMenuSection[] = [
     ],
   },
 
+  // 7b. CRM — Müşteri İlişkileri Yönetimi
+  {
+    id: "crm",
+    titleTr: "CRM",
+    icon: "Users",
+    scope: "hq",
+    group: "management",
+    items: [
+      {
+        id: "crm-main",
+        titleTr: "CRM",
+        path: "/crm",
+        icon: "Users",
+        moduleKey: "crm_dashboard",
+        scope: "hq",
+      },
+    ],
+  },
+
   // ========================================
   // GROUP: SETTINGS — Sistem ayarları, iletişim, yönetim
   // ========================================
 
-  // 7b. Pazarlama
+  // 7c. Pazarlama
   {
     id: "marketing",
     titleTr: "Pazarlama",
@@ -433,10 +452,10 @@ const MENU_BLUEPRINT: SidebarMenuSection[] = [
     items: [
       {
         id: "campaign-management",
-        titleTr: "Kampanya Yönetimi",
-        path: "/kampanya-yonetimi",
+        titleTr: "Kampanyalar",
+        path: "/crm/kampanyalar",
         icon: "Megaphone",
-        moduleKey: "customer_satisfaction",
+        moduleKey: "crm_campaigns",
         scope: "hq",
       },
     ],
@@ -623,12 +642,12 @@ const SIDEBAR_ALLOWED_ITEMS: Partial<Record<UserRoleType, string[]>> = {
   ceo: [
     'dashboard', 'branches-list', 'reports', 'performance-dashboard', 'hr',
     'training-academy', 'knowledge-base', 'notifications', 'usage-guide',
-    'branch-health', 'hq-support', 'messages', 'ai-assistant', 'agent-center',
+    'branch-health', 'hq-support', 'messages', 'ai-assistant', 'agent-center', 'crm-main',
   ],
   cgo: [
     'dashboard', 'branches-list', 'reports', 'performance-dashboard', 'hr',
     'training-academy', 'knowledge-base', 'notifications', 'usage-guide',
-    'branch-health', 'hq-support', 'messages', 'customer-satisfaction', 'ai-assistant', 'agent-center',
+    'branch-health', 'hq-support', 'messages', 'customer-satisfaction', 'ai-assistant', 'agent-center', 'crm-main',
   ],
   yatirimci_hq: [
     'dashboard', 'branches-list', 'reports', 'performance-dashboard',
@@ -636,7 +655,7 @@ const SIDEBAR_ALLOWED_ITEMS: Partial<Record<UserRoleType, string[]>> = {
   ],
   coach: [
     'dashboard', 'branches-list', 'hr', 'training-academy', 'reports',
-    'branch-inspection', 'branch-health', 'notifications', 'usage-guide', 'hq-support', 'ai-assistant', 'agent-center',
+    'branch-inspection', 'branch-health', 'notifications', 'usage-guide', 'hq-support', 'ai-assistant', 'agent-center', 'crm-main',
   ],
   destek: [
     'dashboard', 'branches-list', 'hr', 'training-academy', 'reports',
@@ -649,7 +668,7 @@ const SIDEBAR_ALLOWED_ITEMS: Partial<Record<UserRoleType, string[]>> = {
   kalite_kontrol: [
     'dashboard', 'quality-control', 'food-safety', 'equipment', 'faults',
     'product-complaints', 'reports', 'branch-health', 'branch-inspection',
-    'notifications', 'usage-guide', 'hq-support',
+    'notifications', 'usage-guide', 'hq-support', 'crm-main',
   ],
   gida_muhendisi: [
     'dashboard', 'food-safety', 'quality-control', 'equipment', 'faults',
@@ -657,7 +676,7 @@ const SIDEBAR_ALLOWED_ITEMS: Partial<Record<UserRoleType, string[]>> = {
   ],
   marketing: [
     'dashboard', 'content-studio', 'customer-satisfaction', 'campaign-management', 'reports',
-    'branches-list', 'notifications', 'usage-guide', 'hq-support',
+    'branches-list', 'notifications', 'usage-guide', 'hq-support', 'crm-main',
   ],
   muhasebe_ik: [
     'dashboard', 'hr', 'shifts', 'attendance', 'branch-shift-tracking',

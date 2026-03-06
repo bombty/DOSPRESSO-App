@@ -1,353 +1,364 @@
 import { useQuery } from "@tanstack/react-query";
-import { useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
-  Ticket,
-  Clock,
-  CheckCircle,
+  Star,
+  MessageSquare,
   AlertTriangle,
-  Users,
+  ShieldAlert,
   TrendingUp,
   TrendingDown,
-  AlertCircle,
-  Timer,
-  Star,
-  ChevronRight
 } from "lucide-react";
+import { formatDistanceToNow } from "date-fns";
+import { tr } from "date-fns/locale";
 import {
-  AreaChart,
-  Area,
+  BarChart,
+  Bar,
   XAxis,
   YAxis,
-  CartesianGrid,
-  Tooltip,
   ResponsiveContainer,
+  Tooltip,
+  Cell,
   PieChart,
   Pie,
-  Cell,
-  BarChart,
-  Bar
+  Legend,
 } from "recharts";
 
-interface CRMOverview {
-  openTickets: number;
-  closedTickets: number;
-  unassignedTickets: number;
-  avgResolutionTime: number;
-  slaCompliance: number;
-  ticketsThisWeek: number;
-  ticketsLastWeek: number;
-  trendData: { date: string; opened: number; closed: number }[];
-  priorityBreakdown: { priority: string; count: number }[];
-  topAgents: { id: string; name: string; resolved: number; avgTime: number }[];
+interface DashboardKpis {
+  todayFeedbackCount: number;
+  avgRating: number;
+  openComplaintsCount: number;
+  slaBreachCount: number;
+  totalFeedback30d: number;
+  negativeCount: number;
+  avgServiceRating: number | null;
+  avgCleanlinessRating: number | null;
+  avgProductRating: number | null;
+  avgStaffRating: number | null;
 }
 
-function StatCard({ 
-  title, 
-  value, 
-  subtitle, 
-  icon: Icon, 
-  trend,
-  variant = "default",
-  testId,
-  onClick
-}: { 
-  title: string; 
-  value: string | number; 
-  subtitle?: string; 
-  icon: any;
-  trend?: { value: number; positive: boolean };
-  variant?: "default" | "warning" | "success" | "danger";
-  testId: string;
-  onClick?: () => void;
-}) {
-  const variantStyles = {
-    default: "bg-card",
-    warning: "bg-orange-50 dark:bg-orange-950/30 border-orange-200 dark:border-orange-800",
-    success: "bg-green-50 dark:bg-green-950/30 border-green-200 dark:border-green-800",
-    danger: "bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-800"
-  };
+interface BranchComparison {
+  branchId: number;
+  branchName: string;
+  avgRating: number;
+  feedbackCount: number;
+}
 
-  const iconStyles = {
-    default: "text-primary",
-    warning: "text-orange-600 dark:text-orange-400",
-    success: "text-green-600 dark:text-green-400",
-    danger: "text-red-600 dark:text-red-400"
-  };
+interface RecentInteraction {
+  id: number;
+  branchId: number;
+  branchName: string;
+  rating: number;
+  comment: string | null;
+  status: string;
+  feedbackType: string | null;
+  source: string | null;
+  createdAt: string;
+}
 
+interface CategoryDistItem {
+  category: string;
+  count: number;
+}
+
+interface DashboardData {
+  kpis: DashboardKpis;
+  branchComparison: BranchComparison[];
+  recentInteractions: RecentInteraction[];
+  categoryDistribution: CategoryDistItem[];
+}
+
+const CATEGORY_LABELS: Record<string, string> = {
+  cleanliness: "Temizlik",
+  service: "Hizmet",
+  product: "Ürün",
+  staff: "Personel",
+  other: "Diğer",
+};
+
+const CATEGORY_COLORS: Record<string, string> = {
+  cleanliness: "#3b82f6",
+  service: "#f59e0b",
+  product: "#10b981",
+  staff: "#8b5cf6",
+  other: "#6b7280",
+};
+
+function StarRating({ rating }: { rating: number }) {
   return (
-    <Card 
-      className={`${variantStyles[variant]} transition-all ${onClick ? 'cursor-pointer hover-elevate' : ''}`} 
-      data-testid={testId}
-      onClick={onClick}
-    >
-      <CardContent className="p-3">
-        <div className="flex items-start justify-between">
-          <div className="space-y-1">
-            <p className="text-xs text-muted-foreground font-medium">{title}</p>
-            <p className="text-lg font-bold">{value}</p>
-            {subtitle && <p className="text-xs text-muted-foreground">{subtitle}</p>}
-            {trend && (
-              <div className={`flex items-center gap-1 text-xs ${trend.positive ? 'text-green-600' : 'text-red-600'}`}>
-                {trend.positive ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
-                <span>{trend.positive ? '+' : ''}{trend.value}%</span>
-              </div>
-            )}
-          </div>
-          <div className="flex items-center gap-2">
-            <div className={`p-2 rounded-lg bg-background/50 ${iconStyles[variant]}`}>
-              <Icon className="h-4 w-4" />
-            </div>
-            {onClick && <ChevronRight className="h-4 w-4 text-muted-foreground" />}
-          </div>
-        </div>
-      </CardContent>
-    </Card>
+    <div className="flex items-center gap-0.5">
+      {[1, 2, 3, 4, 5].map((star) => (
+        <Star
+          key={star}
+          className={`h-3 w-3 ${star <= rating ? "text-yellow-500 fill-yellow-500" : "text-muted-foreground/30"}`}
+        />
+      ))}
+    </div>
   );
 }
 
-const PRIORITY_COLORS: Record<string, string> = {
-  "kritik": "#ef4444",
-  "yüksek": "#f97316",
-  "orta": "#eab308",
-  "düşük": "#22c55e"
-};
+function StatusBadge({ status }: { status: string }) {
+  const map: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
+    new: { label: "Yeni", variant: "default" },
+    in_progress: { label: "İşlemde", variant: "secondary" },
+    resolved: { label: "Çözüldü", variant: "outline" },
+    closed: { label: "Kapatıldı", variant: "outline" },
+    awaiting_response: { label: "Yanıt Bekliyor", variant: "destructive" },
+  };
+  const entry = map[status] || { label: status, variant: "secondary" as const };
+  return (
+    <Badge variant={entry.variant} data-testid={`badge-status-${status}`}>
+      {entry.label}
+    </Badge>
+  );
+}
 
 export default function CRMDashboard() {
-  const [, setLocation] = useLocation();
-  const { data: overview, isLoading } = useQuery<CRMOverview>({
-    queryKey: ["/api/crm/overview"],
+  const { data, isLoading } = useQuery<DashboardData>({
+    queryKey: ["/api/crm/dashboard-stats"],
   });
-
-  const navigateToTickets = (filter?: string) => {
-    if (filter) {
-      setLocation(`/crm/talepler?filter=${filter}`);
-    } else {
-      setLocation('/crm/talepler');
-    }
-  };
-
-  const navigateToSLA = () => {
-    setLocation('/crm/sla');
-  };
-
-  const navigateToPerformance = () => {
-    setLocation('/crm/performans');
-  };
 
   if (isLoading) {
     return (
-      <div className="p-3 space-y-3">
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2">
-          {[...Array(5)].map((_, i) => (
-            <Skeleton key={i} className="h-24" />
+      <div className="p-4 space-y-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          {[...Array(4)].map((_, i) => (
+            <Skeleton key={i} className="h-28" />
           ))}
         </div>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-          <Skeleton className="h-64" />
-          <Skeleton className="h-64" />
+        <Skeleton className="h-72" />
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <Skeleton className="h-80" />
+          <Skeleton className="h-80" />
         </div>
       </div>
     );
   }
 
-  if (!overview) {
+  if (!data) {
     return (
-      <div className="p-3 text-center text-muted-foreground text-sm">
-        Veri yüklenemedi
+      <div className="p-4 text-center text-muted-foreground">
+        Dashboard verileri yüklenemedi
       </div>
     );
   }
 
-  const weeklyChange = overview.ticketsLastWeek > 0 
-    ? Math.round(((overview.ticketsThisWeek - overview.ticketsLastWeek) / overview.ticketsLastWeek) * 100)
+  const { kpis, branchComparison, recentInteractions, categoryDistribution } = data;
+
+  const positiveRate = kpis.totalFeedback30d > 0
+    ? Math.round(((kpis.totalFeedback30d - kpis.negativeCount) / kpis.totalFeedback30d) * 100)
     : 0;
+
+  const barData = branchComparison.map((b) => ({
+    name: b.branchName,
+    avgRating: b.avgRating,
+    feedbackCount: b.feedbackCount,
+  }));
+
+  const topBranches = new Set(branchComparison.slice(0, 3).map((b) => b.branchName));
+  const bottomBranches = new Set(
+    branchComparison.length > 3
+      ? branchComparison.slice(-3).map((b) => b.branchName)
+      : []
+  );
+
+  const pieData = categoryDistribution.map((c) => ({
+    name: CATEGORY_LABELS[c.category] || c.category,
+    value: c.count,
+    category: c.category,
+  }));
 
   return (
     <ScrollArea className="h-full">
-      <div className="p-3 space-y-3">
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2">
-          <StatCard
-            title="Açık Talepler"
-            value={overview.openTickets}
-            icon={Ticket}
-            variant={overview.openTickets > 10 ? "warning" : "default"}
-            testId="stat-open-tickets"
-            onClick={() => navigateToTickets('open')}
-          />
-          <StatCard
-            title="Atanmamış"
-            value={overview.unassignedTickets}
-            icon={AlertTriangle}
-            variant={overview.unassignedTickets > 5 ? "danger" : "default"}
-            testId="stat-unassigned"
-            onClick={() => navigateToTickets('unassigned')}
-          />
-          <StatCard
-            title="Bu Hafta Çözülen"
-            value={overview.closedTickets}
-            icon={CheckCircle}
-            trend={{ value: weeklyChange, positive: weeklyChange >= 0 }}
-            variant="success"
-            testId="stat-closed"
-            onClick={() => navigateToTickets('closed')}
-          />
-          <StatCard
-            title="Ort. Çözüm Süresi"
-            value={`${overview.avgResolutionTime}s`}
-            subtitle="saat"
-            icon={Timer}
-            testId="stat-avg-time"
-            onClick={navigateToPerformance}
-          />
-          <StatCard
-            title="SLA Uyumu"
-            value={`${overview.slaCompliance}%`}
-            icon={Clock}
-            variant={overview.slaCompliance >= 90 ? "success" : overview.slaCompliance >= 70 ? "warning" : "danger"}
-            testId="stat-sla"
-            onClick={navigateToSLA}
-          />
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-          <Card data-testid="chart-trend">
-            <CardHeader className="pb-1 pt-3 px-3">
-              <CardTitle className="text-xs font-medium">Talep Trendi</CardTitle>
-            </CardHeader>
-            <CardContent className="px-3 pb-3">
-              <div className="h-48">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={overview.trendData}>
-                    <defs>
-                      <linearGradient id="colorOpened" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#f97316" stopOpacity={0.3}/>
-                        <stop offset="95%" stopColor="#f97316" stopOpacity={0}/>
-                      </linearGradient>
-                      <linearGradient id="colorClosed" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#22c55e" stopOpacity={0.3}/>
-                        <stop offset="95%" stopColor="#22c55e" stopOpacity={0}/>
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                    <XAxis dataKey="date" tick={{ fontSize: 11 }} className="text-muted-foreground" />
-                    <YAxis tick={{ fontSize: 11 }} className="text-muted-foreground" />
-                    <Tooltip 
-                      contentStyle={{ 
-                        backgroundColor: 'hsl(var(--background))', 
-                        border: '1px solid hsl(var(--border))',
-                        borderRadius: '6px'
-                      }} 
-                    />
-                    <Area type="monotone" dataKey="opened" stroke="#f97316" fillOpacity={1} fill="url(#colorOpened)" name="Açılan" />
-                    <Area type="monotone" dataKey="closed" stroke="#22c55e" fillOpacity={1} fill="url(#colorClosed)" name="Çözülen" />
-                  </AreaChart>
-                </ResponsiveContainer>
+      <div className="p-4 space-y-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          <Card data-testid="kpi-today-feedback">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between gap-2">
+                <div>
+                  <p className="text-xs text-muted-foreground">Bugün Geri Bildirim</p>
+                  <p className="text-2xl font-bold" data-testid="value-today-feedback">
+                    {kpis.todayFeedbackCount}
+                  </p>
+                  <div className="flex items-center gap-1 mt-1">
+                    <StarRating rating={Math.round(kpis.avgRating)} />
+                    <span className="text-sm font-medium" data-testid="value-avg-rating">
+                      {kpis.avgRating.toFixed(1)}
+                    </span>
+                  </div>
+                </div>
+                <div className="p-3 rounded-full bg-blue-100 dark:bg-blue-900/30">
+                  <MessageSquare className="h-5 w-5 text-blue-600" />
+                </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card data-testid="chart-priority">
-            <CardHeader className="pb-1 pt-3 px-3">
-              <CardTitle className="text-xs font-medium">Öncelik Dağılımı</CardTitle>
-            </CardHeader>
-            <CardContent className="px-3 pb-3">
-              <div className="h-48 flex items-center">
-                <ResponsiveContainer width="50%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={overview.priorityBreakdown}
-                      dataKey="count"
-                      nameKey="priority"
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={40}
-                      outerRadius={70}
-                      paddingAngle={2}
-                    >
-                      {overview.priorityBreakdown.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={PRIORITY_COLORS[entry.priority] || '#888'} />
-                      ))}
-                    </Pie>
-                    <Tooltip />
-                  </PieChart>
-                </ResponsiveContainer>
-                <div className="flex-1 space-y-2">
-                  {overview.priorityBreakdown.map((item) => (
-                    <div 
-                      key={item.priority} 
-                      className="flex items-center justify-between text-xs p-1.5 rounded-md cursor-pointer hover-elevate"
-                      onClick={() => navigateToTickets(item.priority)}
-                      data-testid={`priority-${item.priority}`}
-                    >
-                      <div className="flex items-center gap-2">
-                        <div 
-                          className="w-3 h-3 rounded-full" 
-                          style={{ backgroundColor: PRIORITY_COLORS[item.priority] || '#888' }}
-                        />
-                        <span className="capitalize">{item.priority}</span>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <Badge variant="secondary" className="text-[10px]">{item.count}</Badge>
-                        <ChevronRight className="h-3 w-3 text-muted-foreground" />
-                      </div>
-                    </div>
-                  ))}
+          <Card data-testid="kpi-open-complaints">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between gap-2">
+                <div>
+                  <p className="text-xs text-muted-foreground">Açık Şikayetler</p>
+                  <p className="text-2xl font-bold" data-testid="value-open-complaints">
+                    {kpis.openComplaintsCount}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">Çözüm bekliyor</p>
+                </div>
+                <div className={`p-3 rounded-full ${kpis.openComplaintsCount > 0 ? "bg-orange-100 dark:bg-orange-900/30" : "bg-green-100 dark:bg-green-900/30"}`}>
+                  <AlertTriangle className={`h-5 w-5 ${kpis.openComplaintsCount > 0 ? "text-orange-600" : "text-green-600"}`} />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card data-testid="kpi-sla-breaches">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between gap-2">
+                <div>
+                  <p className="text-xs text-muted-foreground">SLA İhlalleri</p>
+                  <p className="text-2xl font-bold" data-testid="value-sla-breaches">
+                    {kpis.slaBreachCount}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">Süre aşımı</p>
+                </div>
+                <div className={`p-3 rounded-full ${kpis.slaBreachCount > 0 ? "bg-red-100 dark:bg-red-900/30" : "bg-green-100 dark:bg-green-900/30"}`}>
+                  <ShieldAlert className={`h-5 w-5 ${kpis.slaBreachCount > 0 ? "text-red-600" : "text-green-600"}`} />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card data-testid="kpi-satisfaction">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between gap-2">
+                <div>
+                  <p className="text-xs text-muted-foreground">Memnuniyet Trendi</p>
+                  <p className="text-2xl font-bold" data-testid="value-satisfaction">
+                    %{positiveRate}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Son 30 gün ({kpis.totalFeedback30d} bildirim)
+                  </p>
+                </div>
+                <div className={`p-3 rounded-full ${positiveRate >= 70 ? "bg-green-100 dark:bg-green-900/30" : "bg-orange-100 dark:bg-orange-900/30"}`}>
+                  {positiveRate >= 70 ? (
+                    <TrendingUp className="h-5 w-5 text-green-600" />
+                  ) : (
+                    <TrendingDown className="h-5 w-5 text-orange-600" />
+                  )}
                 </div>
               </div>
             </CardContent>
           </Card>
         </div>
 
-        <Card data-testid="table-top-agents">
-          <CardHeader className="pb-1 pt-3 px-3">
-            <CardTitle className="text-xs font-medium flex items-center gap-2">
-              <Users className="h-3.5 w-3.5" />
-              En Aktif Personel
-            </CardTitle>
+        <Card data-testid="branch-comparison-chart">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Şube Karşılaştırması</CardTitle>
           </CardHeader>
-          <CardContent className="px-3 pb-3">
-            <div className="space-y-2">
-              {overview.topAgents.length === 0 ? (
-                <p className="text-xs text-muted-foreground text-center py-3">Henüz veri yok</p>
-              ) : (
-                overview.topAgents.map((agent, index) => (
-                  <div 
-                    key={agent.id} 
-                    className="flex items-center justify-between p-2 rounded-lg bg-muted/30 cursor-pointer hover-elevate gap-2"
-                    data-testid={`agent-row-${index}`}
-                    onClick={() => navigateToPerformance()}
-                  >
-                    <div className="flex items-center gap-2">
-                      <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-medium flex-shrink-0 ${
-                        index === 0 ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300' :
-                        index === 1 ? 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300' :
-                        index === 2 ? 'bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300' :
-                        'bg-muted text-muted-foreground'
-                      }`}>
-                        {index + 1}
-                      </div>
-                      <div className="min-w-0">
-                        <p className="font-medium text-xs">{agent.name}</p>
-                        <p className="text-xs text-muted-foreground">Ort. {agent.avgTime}s çözüm</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2 flex-shrink-0">
-                      <div className="text-right">
-                        <p className="font-semibold text-sm">{agent.resolved}</p>
-                        <p className="text-xs text-muted-foreground">çözülen</p>
-                      </div>
-                      <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
+          <CardContent>
+            {barData.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-8">Şube verisi yok</p>
+            ) : (
+              <div className="h-64">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={barData} layout="vertical" margin={{ left: 80, right: 20, top: 5, bottom: 5 }}>
+                    <XAxis type="number" domain={[0, 5]} tickCount={6} />
+                    <YAxis type="category" dataKey="name" width={75} tick={{ fontSize: 12 }} />
+                    <Tooltip
+                      formatter={(value: number) => [value.toFixed(1), "Ort. Puan"]}
+                      labelFormatter={(label: string) => label}
+                    />
+                    <Bar dataKey="avgRating" radius={[0, 4, 4, 0]}>
+                      {barData.map((entry) => {
+                        let fill = "#6b7280";
+                        if (topBranches.has(entry.name)) fill = "#22c55e";
+                        else if (bottomBranches.has(entry.name)) fill = "#ef4444";
+                        return <Cell key={entry.name} fill={fill} />;
+                      })}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            )}
           </CardContent>
         </Card>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <Card data-testid="recent-interactions">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium">Son Etkileşimler</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                {recentInteractions.length === 0 ? (
+                  <p className="text-sm text-muted-foreground text-center py-4">Henüz etkileşim yok</p>
+                ) : (
+                  recentInteractions.map((item) => (
+                    <div
+                      key={item.id}
+                      className="p-3 rounded-lg bg-muted/30 space-y-1"
+                      data-testid={`interaction-item-${item.id}`}
+                    >
+                      <div className="flex items-center justify-between gap-2 flex-wrap">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <Badge variant="outline" className="text-xs">
+                            {item.branchName}
+                          </Badge>
+                          <StarRating rating={item.rating} />
+                          <StatusBadge status={item.status} />
+                        </div>
+                        <span className="text-xs text-muted-foreground" data-testid={`interaction-date-${item.id}`}>
+                          {formatDistanceToNow(new Date(item.createdAt), { addSuffix: true, locale: tr })}
+                        </span>
+                      </div>
+                      {item.comment && (
+                        <p className="text-xs text-muted-foreground line-clamp-2">{item.comment}</p>
+                      )}
+                    </div>
+                  ))
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card data-testid="category-distribution-chart">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium">Kategori Dağılımı</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {pieData.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-8">Kategori verisi yok</p>
+              ) : (
+                <div className="h-64">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={pieData}
+                        dataKey="value"
+                        nameKey="name"
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={45}
+                        outerRadius={80}
+                        paddingAngle={2}
+                        label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                      >
+                        {pieData.map((entry) => (
+                          <Cell key={entry.category} fill={CATEGORY_COLORS[entry.category] || "#6b7280"} />
+                        ))}
+                      </Pie>
+                      <Tooltip formatter={(value: number) => [value, "Adet"]} />
+                      <Legend />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </ScrollArea>
   );

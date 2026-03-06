@@ -5,186 +5,116 @@ import { useDynamicPermissions } from "@/hooks/useDynamicPermissions";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
+import { HQ_ROLES } from "@shared/schema";
 import {
   LayoutDashboard,
-  Ticket,
+  MessageSquareHeart,
+  AlertTriangle,
+  Megaphone,
   Clock,
-  Star,
-  TrendingUp,
-  Wrench,
-  Building2,
-  MessageSquare,
-  GraduationCap
+  BarChart3,
+  Settings,
 } from "lucide-react";
 
 const CRMDashboard = lazy(() => import("@/pages/crm/dashboard"));
-const CRMTickets = lazy(() => import("@/pages/crm/tickets"));
-const CRMPerformance = lazy(() => import("@/pages/crm/performance"));
-const CRMSLA = lazy(() => import("@/pages/crm/sla"));
 const CRMFeedback = lazy(() => import("@/pages/crm/feedback"));
+const CRMComplaints = lazy(() => import("@/pages/crm/complaints"));
+const CRMCampaigns = lazy(() => import("@/pages/crm/campaigns"));
+const CRMSLATracking = lazy(() => import("@/pages/crm/sla-tracking"));
+const CRMAnalytics = lazy(() => import("@/pages/crm/analytics"));
+const CRMSettings = lazy(() => import("@/pages/crm/settings"));
 const EmployeeDashboard = lazy(() => import("@/pages/crm/employee-dashboard"));
-const CoachBranches = lazy(() => import("@/pages/crm/coach-branches"));
-const CoachOnboarding = lazy(() => import("@/pages/crm/coach-onboarding"));
-const MentorNotes = lazy(() => import("@/pages/crm/mentor-notes"));
-const TeknikAriza = lazy(() => import("@/pages/crm/teknik-ariza"));
-
-const HQ_ROLES = [
-  'admin', 
-  'muhasebe', 
-  'satinalma', 
-  'coach', 
-  'teknik', 
-  'destek', 
-  'fabrika', 
-  'yatirimci_hq',
-  'yonetici', 
-  'genel_mudur', 
-  'bolge_muduru', 
-  'operasyon_muduru',
-  'teknik_mudur',
-  'egitim_muduru',
-  'ik_muduru',
-  'pazarlama_muduru',
-  'muhasebe_muduru'
-];
-
-function isHQRole(role: string): boolean {
-  return HQ_ROLES.includes(role);
-}
 
 interface TabConfig {
   id: string;
-  label: string;
   labelTr: string;
   icon: React.ReactNode;
-  permissionModule?: string;
+  permissionModule: string;
   component: React.LazyExoticComponent<React.ComponentType<any>>;
-  allowedRoles?: string[];
 }
 
 const CRM_TABS: TabConfig[] = [
   {
     id: "dashboard",
-    label: "Dashboard",
     labelTr: "Dashboard",
     icon: <LayoutDashboard className="h-4 w-4" />,
     permissionModule: "crm_dashboard",
-    component: CRMDashboard
+    component: CRMDashboard,
   },
   {
-    id: "tickets",
-    label: "Tickets",
-    labelTr: "Talepler",
-    icon: <Ticket className="h-4 w-4" />,
-    permissionModule: "crm_tickets",
-    component: CRMTickets
+    id: "geri-bildirimler",
+    labelTr: "Geri Bildirimler",
+    icon: <MessageSquareHeart className="h-4 w-4" />,
+    permissionModule: "crm_feedback",
+    component: CRMFeedback,
   },
   {
-    id: "performance",
-    label: "Performance",
-    labelTr: "Performans",
-    icon: <TrendingUp className="h-4 w-4" />,
-    permissionModule: "crm_performance",
-    component: CRMPerformance
+    id: "sikayetler",
+    labelTr: "Şikayetler",
+    icon: <AlertTriangle className="h-4 w-4" />,
+    permissionModule: "crm_complaints",
+    component: CRMComplaints,
+  },
+  {
+    id: "kampanyalar",
+    labelTr: "Kampanyalar",
+    icon: <Megaphone className="h-4 w-4" />,
+    permissionModule: "crm_campaigns",
+    component: CRMCampaigns,
   },
   {
     id: "sla",
-    label: "SLA",
     labelTr: "SLA Takibi",
     icon: <Clock className="h-4 w-4" />,
-    permissionModule: "crm_sla",
-    component: CRMSLA
-  },
-  {
-    id: "feedback",
-    label: "Feedback",
-    labelTr: "Geri Bildirimler",
-    icon: <Star className="h-4 w-4" />,
     permissionModule: "crm_feedback",
-    component: CRMFeedback
+    component: CRMSLATracking,
   },
   {
-    id: "sube-takibi",
-    label: "Branch Tracking",
-    labelTr: "Şube Takibi",
-    icon: <Building2 className="h-4 w-4" />,
-    permissionModule: "sube_takibi",
-    component: CoachBranches,
-    allowedRoles: ['admin', 'coach', 'bolge_muduru', 'operasyon_muduru', 'genel_mudur']
+    id: "analizler",
+    labelTr: "Analizler",
+    icon: <BarChart3 className="h-4 w-4" />,
+    permissionModule: "crm_analytics",
+    component: CRMAnalytics,
   },
   {
-    id: "onboarding-sablonlari",
-    label: "Onboarding Templates",
-    labelTr: "Onboarding Şablonları",
-    icon: <GraduationCap className="h-4 w-4" />,
-    permissionModule: "onboarding",
-    component: CoachOnboarding,
-    allowedRoles: ['admin', 'coach', 'egitim_muduru']
+    id: "ayarlar",
+    labelTr: "Ayarlar",
+    icon: <Settings className="h-4 w-4" />,
+    permissionModule: "crm_settings",
+    component: CRMSettings,
   },
-  {
-    id: "mentor-notlari",
-    label: "Mentor Notes",
-    labelTr: "Mentor Notları",
-    icon: <MessageSquare className="h-4 w-4" />,
-    permissionModule: "mentor_notlari",
-    component: MentorNotes,
-    allowedRoles: ['admin', 'coach', 'egitim_muduru', 'bolge_muduru']
-  },
-  {
-    id: "ariza-takibi",
-    label: "Fault Tracking",
-    labelTr: "Arıza Takibi",
-    icon: <Wrench className="h-4 w-4" />,
-    permissionModule: "ariza_takibi",
-    component: TeknikAriza,
-    allowedRoles: ['admin', 'teknik', 'teknik_mudur']
-  }
 ];
 
-function TabSkeleton() {
-  return (
-    <div className="space-y-4 p-4">
-      <div className="flex gap-4">
-        <Skeleton className="h-24 w-48" />
-        <Skeleton className="h-24 w-48" />
-        <Skeleton className="h-24 w-48" />
-        <Skeleton className="h-24 w-48" />
-      </div>
-      <Skeleton className="h-64 w-full" />
-    </div>
-  );
-}
-
 const TAB_URL_MAP: Record<string, string> = {
-  "dashboard": "/crm",
-  "tickets": "/crm/talepler",
-  "performance": "/crm/performans",
-  "sla": "/crm/sla",
-  "feedback": "/crm/geri-bildirimler",
-  "sube-takibi": "/crm/sube-takibi",
-  "onboarding-sablonlari": "/crm/onboarding",
-  "mentor-notlari": "/crm/mentor-notlari",
-  "ariza-takibi": "/crm/ariza-takibi"
+  dashboard: "/crm",
+  "geri-bildirimler": "/crm/geri-bildirimler",
+  sikayetler: "/crm/sikayetler",
+  kampanyalar: "/crm/kampanyalar",
+  sla: "/crm/sla",
+  analizler: "/crm/analizler",
+  ayarlar: "/crm/ayarlar",
 };
 
 function getTabFromUrl(pathname: string): string | null {
   if (pathname === "/crm" || pathname === "/crm/") return "dashboard";
-  if (pathname.startsWith("/crm/talepler")) return "tickets";
-  if (pathname.startsWith("/crm/performans")) return "performance";
-  if (pathname.startsWith("/crm/sla")) return "sla";
-  if (pathname.startsWith("/crm/geri-bildirimler")) return "feedback";
-  if (pathname.startsWith("/crm/sube-takibi")) return "sube-takibi";
-  if (pathname.startsWith("/crm/onboarding")) return "onboarding-sablonlari";
-  if (pathname.startsWith("/crm/mentor-notlari")) return "mentor-notlari";
-  if (pathname.startsWith("/crm/ariza-takibi")) return "ariza-takibi";
-  
-  const parts = pathname.split("/").filter(Boolean);
-  if (parts[0] === "crm" && parts[1]) {
-    const tab = CRM_TABS.find(t => t.id === parts[1]);
-    if (tab) return tab.id;
+  for (const [tabId, url] of Object.entries(TAB_URL_MAP)) {
+    if (tabId !== "dashboard" && pathname.startsWith(url)) return tabId;
   }
-  
   return null;
+}
+
+function TabSkeleton() {
+  return (
+    <div className="space-y-4 p-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <Skeleton className="h-24" />
+        <Skeleton className="h-24" />
+        <Skeleton className="h-24" />
+        <Skeleton className="h-24" />
+      </div>
+      <Skeleton className="h-64 w-full" />
+    </div>
+  );
 }
 
 export default function CRMMegaModule() {
@@ -193,66 +123,34 @@ export default function CRMMegaModule() {
   const [location, setLocation] = useLocation();
   const [activeTab, setActiveTab] = useState<string>("dashboard");
 
-  const userIsHQ = user ? isHQRole(user.role) : false;
+  const userIsHQ = user ? (HQ_ROLES.has(user.role as any) || user.role === "admin") : false;
 
-  const allowedTabs = CRM_TABS.filter(tab => {
+  const allowedTabs = CRM_TABS.filter((tab) => {
     if (!user) return false;
-    
-    if (tab.allowedRoles && tab.allowedRoles.length > 0) {
-      if (user.role === 'admin') return true;
-      return tab.allowedRoles.includes(user.role);
-    }
-    
-    if (user.role === 'admin') return true;
-    
-    if (!tab.permissionModule) return true;
-    return canAccess(tab.permissionModule!, 'view');
+    if (user.role === "admin") return true;
+    return canAccess(tab.permissionModule, "view");
   });
 
   useEffect(() => {
     if (!userIsHQ) return;
-    
     const tabFromUrl = getTabFromUrl(location);
-    
-    if (tabFromUrl && !allowedTabs.some(t => t.id === tabFromUrl)) {
-      if (allowedTabs.length > 0) {
-        const firstAllowed = allowedTabs[0];
-        const newUrl = TAB_URL_MAP[firstAllowed.id] || `/crm/${firstAllowed.id}`;
-        setLocation(newUrl);
-        setActiveTab(firstAllowed.id);
-      }
-      return;
-    }
-    
-    if (tabFromUrl && allowedTabs.some(t => t.id === tabFromUrl)) {
+    if (tabFromUrl && allowedTabs.some((t) => t.id === tabFromUrl)) {
       setActiveTab(tabFromUrl);
-    } else if (allowedTabs.length > 0 && !allowedTabs.some(t => t.id === activeTab)) {
-      const firstAllowed = allowedTabs[0];
-      setActiveTab(firstAllowed.id);
-      const newUrl = TAB_URL_MAP[firstAllowed.id] || `/crm/${firstAllowed.id}`;
-      if (location !== newUrl) {
-        setLocation(newUrl);
-      }
+    } else if (allowedTabs.length > 0 && !allowedTabs.some((t) => t.id === activeTab)) {
+      const first = allowedTabs[0];
+      setActiveTab(first.id);
+      const newUrl = TAB_URL_MAP[first.id] || `/crm/${first.id}`;
+      if (location !== newUrl) setLocation(newUrl);
     }
   }, [location, allowedTabs, userIsHQ]);
 
   const handleTabChange = (tabId: string) => {
     setActiveTab(tabId);
     const newUrl = TAB_URL_MAP[tabId] || `/crm/${tabId}`;
-    if (location !== newUrl) {
-      setLocation(newUrl);
-    }
+    if (location !== newUrl) setLocation(newUrl);
   };
 
-  useEffect(() => {
-    if (userIsHQ && allowedTabs.length === 0 && user) {
-      setLocation("/");
-    }
-  }, [allowedTabs.length, user, userIsHQ]);
-
-  if (!user) {
-    return null;
-  }
+  if (!user) return null;
 
   if (!userIsHQ) {
     return (
@@ -270,15 +168,13 @@ export default function CRMMegaModule() {
     );
   }
 
-  if (allowedTabs.length === 0) {
-    return null;
-  }
+  if (allowedTabs.length === 0) return null;
 
   return (
     <div className="flex flex-col h-full">
       <div className="px-4 pt-3 pb-2">
-        <h1 className="text-xl font-semibold" data-testid="text-crm-title">CRM Dashboard</h1>
-        <p className="text-sm text-muted-foreground">Merkez destek ve talep yönetimi</p>
+        <h1 className="text-xl font-semibold" data-testid="text-crm-title">CRM — Müşteri İlişkileri</h1>
+        <p className="text-sm text-muted-foreground">Geri bildirim, şikayet, kampanya ve müşteri etkileşimleri</p>
       </div>
 
       <Tabs value={activeTab} onValueChange={handleTabChange} className="flex-1 flex flex-col">
@@ -303,9 +199,9 @@ export default function CRMMegaModule() {
 
         <div className="flex-1 overflow-auto">
           {allowedTabs.map((tab) => (
-            <TabsContent 
-              key={tab.id} 
-              value={tab.id} 
+            <TabsContent
+              key={tab.id}
+              value={tab.id}
               className="h-full m-0 p-0 data-[state=inactive]:hidden"
             >
               <Suspense fallback={<TabSkeleton />}>

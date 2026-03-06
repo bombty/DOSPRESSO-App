@@ -389,11 +389,11 @@ function Router() {
           <Route path="/denetimler" component={Denetimler} />
           <Route path="/denetim/:id" component={DenetimYurutme} />
           <Route path="/capa/:id" component={CapaDetay} />
-          <Route path="/misafir-geri-bildirim" component={MisafirMemnuniyeti} />
-          <Route path="/misafir-memnuniyeti" component={MisafirMemnuniyeti} />
-          <Route path="/sikayetler" component={Sikayetler} />
+          <Route path="/misafir-geri-bildirim">{() => { window.location.replace("/crm/geri-bildirimler"); return null; }}</Route>
+          <Route path="/misafir-memnuniyeti">{() => { window.location.replace("/crm/geri-bildirimler"); return null; }}</Route>
+          <Route path="/sikayetler">{() => { window.location.replace("/crm/sikayetler"); return null; }}</Route>
           <Route path="/hq-destek" component={HQSupport} />
-          <Route path="/kampanya-yonetimi" component={KampanyaYonetimi} />
+          <Route path="/kampanya-yonetimi">{() => { window.location.replace("/crm/kampanyalar"); return null; }}</Route>
           <Route path="/franchise-acilis" component={FranchiseAcilis} />
           <Route path="/yonetim/icerik" component={AdminContentManagement} />
           <Route path="/yonetim/ayarlar" component={Settings} />
@@ -423,7 +423,7 @@ function Router() {
           <Route path="/kalite-kontrol-dashboard">{() => <HQOnly><KaliteKontrolDashboard /></HQOnly>}</Route>
           <Route path="/gida-guvenligi-dashboard">{() => <HQOnly><GidaGuvenligiDashboard /></HQOnly>}</Route>
           <Route path="/satinalma/:tab?" component={SatinalmaMega} />
-          <Route path="/urun-sikayet" component={UrunSikayet} />
+          <Route path="/urun-sikayet">{() => { window.location.replace("/crm/sikayetler"); return null; }}</Route>
           <Route path="/raporlar/sube-saglik" component={SubeSaglikSkoru} />
           <Route path="/sube-saglik-skoru" component={SubeSaglikSkoru} />
           <Route path="/sube-karsilastirma">{() => <HQOnly><SubeKarsilastirma /></HQOnly>}</Route>
