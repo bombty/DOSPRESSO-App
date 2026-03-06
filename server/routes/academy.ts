@@ -1680,16 +1680,14 @@ router.post('/api/academy/recipes', isAuthenticated, async (req: any, res) => {
         const allBranchUsers = await db.select({ id: users.id, role: users.role }).from(users)
           .where(eq(users.isActive, true));
         const branchStaff = allBranchUsers.filter(u => isBranchRole(u.role as UserRoleType));
-        const notifValues = branchStaff.map(u => ({
-          userId: u.id,
-          type: 'recipe_update',
-          title: 'Yeni Reçete',
-          message: `"${recipe.nameTr}" reçetesi eklendi. Lütfen inceleyin.`,
-          link: '/receteler',
-          isRead: false,
-        }));
-        if (notifValues.length > 0) {
-          await db.insert(notifications).values(notifValues);
+        for (const u of branchStaff) {
+          await storage.createNotification({
+            userId: u.id,
+            type: 'recipe_update',
+            title: 'Yeni Recete',
+            message: `"${recipe.nameTr}" recetesi eklendi. Lutfen inceleyin.`,
+            link: '/receteler',
+          });
         }
       } catch (notifErr) {
         console.error("Recipe create notification error:", notifErr);
@@ -1769,16 +1767,14 @@ router.patch('/api/academy/recipes/:id', isAuthenticated, async (req: any, res) 
         const allBranchUsers = await db.select({ id: users.id, role: users.role }).from(users)
           .where(eq(users.isActive, true));
         const branchStaff = allBranchUsers.filter(u => isBranchRole(u.role as UserRoleType));
-        const notifValues = branchStaff.map(u => ({
-          userId: u.id,
-          type: 'recipe_update',
-          title: 'Reçete Güncellendi',
-          message: `"${recipe.nameTr}" reçetesi güncellendi. Lütfen inceleyin.`,
-          link: '/receteler',
-          isRead: false,
-        }));
-        if (notifValues.length > 0) {
-          await db.insert(notifications).values(notifValues);
+        for (const u of branchStaff) {
+          await storage.createNotification({
+            userId: u.id,
+            type: 'recipe_update',
+            title: 'Recete Guncellendi',
+            message: `"${recipe.nameTr}" recetesi guncellendi. Lutfen inceleyin.`,
+            link: '/receteler',
+          });
         }
       } catch (notifErr) {
         console.error("Recipe update notification error:", notifErr);
@@ -2000,13 +1996,12 @@ router.post('/api/academy/recipe-version', isAuthenticated, async (req: any, res
             isRead: false,
           }).onConflictDoNothing();
 
-          await db.insert(notifications).values({
+          await storage.createNotification({
             userId: targetUser.id,
             type: 'recipe_update',
-            title: 'Reçete Güncellendi',
-            message: `"${updatedRecipe.nameTr}" reçetesi güncellendi (v${newVersionNumber}). Lütfen yeni adımları inceleyin.`,
+            title: 'Recete Guncellendi',
+            message: `"${updatedRecipe.nameTr}" recetesi guncellendi (v${newVersionNumber}). Lutfen yeni adimlari inceleyin.`,
             link: `/academy/recipes/${data.recipeId}`,
-            isRead: false,
           });
         }
         console.log(`📢 Recipe version notifications sent to ${targetUsers.length} staff for "${updatedRecipe.nameTr}"`);

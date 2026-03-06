@@ -633,12 +633,12 @@ const SIDEBAR_ALLOWED_ITEMS: Partial<Record<UserRoleType, string[]>> = {
   ceo: [
     'dashboard', 'branches-list', 'reports', 'performance-dashboard', 'hr',
     'training-academy', 'knowledge-base', 'notifications', 'usage-guide',
-    'branch-health', 'hq-support', 'messages', 'ai-assistant', 'agent-center', 'crm-main',
+    'branch-health', 'hq-support', 'ai-assistant', 'agent-center', 'crm-main',
   ],
   cgo: [
     'dashboard', 'branches-list', 'reports', 'performance-dashboard', 'hr',
     'training-academy', 'knowledge-base', 'notifications', 'usage-guide',
-    'branch-health', 'hq-support', 'messages', 'customer-satisfaction', 'ai-assistant', 'agent-center', 'crm-main',
+    'branch-health', 'hq-support', 'customer-satisfaction', 'ai-assistant', 'agent-center', 'crm-main',
   ],
   yatirimci_hq: [
     'dashboard', 'branches-list', 'reports', 'performance-dashboard',
