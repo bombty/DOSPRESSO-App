@@ -312,7 +312,9 @@ export type PermissionModule =
   | 'crm_complaints'
   | 'crm_campaigns'
   | 'crm_analytics'
-  | 'crm_settings';
+  | 'crm_settings'
+  | 'branch_orders'
+  | 'branch_inventory';
 
 // Path to Permission Module mapping - Merkezi tanım
 // Dashboard modülleri için URL path'lerini permission modüllerine eşleştirir
@@ -460,6 +462,8 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     factory_stations: ['view', 'create', 'edit', 'delete'],
     factory_compliance: ['view', 'edit', 'approve'],
     factory_production: ['view', 'create', 'edit', 'delete'],
+    branch_orders: ['view', 'create', 'edit', 'delete'],
+    branch_inventory: ['view', 'create', 'edit'],
     factory_shipments: ['view', 'create', 'edit', 'delete'],
     factory_food_safety: ['view', 'create', 'edit', 'approve'],
     branch_shift_tracking: ['view', 'edit'],
@@ -542,6 +546,8 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     factory_stations: [],
     factory_compliance: [],
     factory_production: [],
+    branch_orders: ['view', 'create', 'edit', 'delete'],
+    branch_inventory: ['view', 'create', 'edit'],
     factory_shipments: [],
     factory_food_safety: [],
     branch_shift_tracking: ['view'],
@@ -623,6 +629,8 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     factory_stations: [],
     factory_compliance: [],
     factory_production: [],
+    branch_orders: ['view', 'create', 'edit', 'delete'],
+    branch_inventory: ['view', 'create', 'edit'],
     factory_shipments: [],
     factory_food_safety: [],
     branch_shift_tracking: [],
@@ -707,6 +715,8 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     factory_stations: [],
     factory_compliance: ['view'],
     factory_production: [],
+    branch_orders: ['view', 'create', 'edit', 'delete'],
+    branch_inventory: ['view', 'create', 'edit'],
     factory_shipments: ['view'],
     factory_food_safety: ['view'],
     branch_shift_tracking: ['view', 'edit'],
@@ -787,6 +797,8 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     factory_stations: [],
     factory_compliance: [],
     factory_production: [],
+    branch_orders: ['view', 'create', 'edit', 'delete'],
+    branch_inventory: ['view', 'create', 'edit'],
     factory_shipments: [],
     factory_food_safety: [],
     branch_shift_tracking: [],
@@ -868,6 +880,8 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     factory_stations: [],
     factory_compliance: [],
     factory_production: [],
+    branch_orders: ['view', 'create', 'edit', 'delete'],
+    branch_inventory: ['view', 'create', 'edit'],
     factory_shipments: [],
     factory_food_safety: [],
     branch_shift_tracking: ['view'],
@@ -949,6 +963,8 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     factory_stations: ['view'],
     factory_compliance: ['view'],
     factory_production: [],
+    branch_orders: ['view', 'create', 'edit', 'delete'],
+    branch_inventory: ['view', 'create', 'edit'],
     factory_shipments: ['view'],
     factory_food_safety: ['view'],
     branch_shift_tracking: [],
@@ -1031,6 +1047,8 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     factory_stations: [],
     factory_compliance: [],
     factory_production: [],
+    branch_orders: ['view', 'create', 'edit', 'delete'],
+    branch_inventory: ['view', 'create', 'edit'],
     factory_shipments: [],
     factory_food_safety: [],
     branch_shift_tracking: [],
@@ -1116,6 +1134,8 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     factory_stations: [],
     factory_compliance: [],
     factory_production: [],
+    branch_orders: ['view', 'create', 'edit', 'delete'],
+    branch_inventory: ['view', 'create', 'edit'],
     factory_shipments: [],
     factory_food_safety: [],
     branch_shift_tracking: ['view', 'edit'],
@@ -1195,6 +1215,8 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     factory_stations: [],
     factory_compliance: [],
     factory_production: [],
+    branch_orders: ['view', 'create', 'edit', 'delete'],
+    branch_inventory: ['view', 'create', 'edit'],
     factory_shipments: [],
     factory_food_safety: [],
     branch_shift_tracking: ['view'],
@@ -1276,6 +1298,8 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     factory_stations: [],
     factory_compliance: [],
     factory_production: [],
+    branch_orders: ['view', 'create', 'edit', 'delete'],
+    branch_inventory: ['view', 'create', 'edit'],
     factory_shipments: [],
     factory_food_safety: [],
     branch_shift_tracking: ['view'],
@@ -1357,6 +1381,8 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     factory_stations: [],
     factory_compliance: [],
     factory_production: [],
+    branch_orders: ['view', 'create', 'edit', 'delete'],
+    branch_inventory: ['view', 'create', 'edit'],
     factory_shipments: [],
     factory_food_safety: [],
     branch_shift_tracking: ['view'],
@@ -1438,6 +1464,8 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     factory_stations: [],
     factory_compliance: [],
     factory_production: [],
+    branch_orders: ['view', 'create', 'edit', 'delete'],
+    branch_inventory: ['view', 'create', 'edit'],
     factory_shipments: [],
     factory_food_safety: [],
     branch_shift_tracking: ['view'],
@@ -1521,6 +1549,8 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     factory_stations: [],
     factory_compliance: [],
     factory_production: [],
+    branch_orders: ['view', 'create', 'edit', 'delete'],
+    branch_inventory: ['view', 'create', 'edit'],
     factory_shipments: [],
     factory_food_safety: [],
     branch_shift_tracking: ['view', 'edit'],
@@ -1596,6 +1626,8 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     factory_stations: [],
     factory_compliance: [],
     factory_production: [],
+    branch_orders: ['view', 'create', 'edit', 'delete'],
+    branch_inventory: ['view', 'create', 'edit'],
     factory_shipments: [],
     factory_food_safety: [],
     branch_shift_tracking: ['view'],
@@ -1675,6 +1707,8 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     factory_stations: ['view'],
     factory_compliance: ['view'],
     factory_production: [],
+    branch_orders: ['view', 'create', 'edit', 'delete'],
+    branch_inventory: ['view', 'create', 'edit'],
     factory_shipments: ['view'],
     factory_food_safety: ['view'],
     branch_shift_tracking: ['view'],
@@ -1754,6 +1788,8 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     factory_stations: ['view'],
     factory_compliance: ['view'],
     factory_production: [],
+    branch_orders: ['view', 'create', 'edit', 'delete'],
+    branch_inventory: ['view', 'create', 'edit'],
     factory_shipments: ['view'],
     factory_food_safety: ['view'],
     branch_shift_tracking: ['view'],
@@ -1833,6 +1869,8 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     factory_stations: [],
     factory_compliance: [],
     factory_production: [],
+    branch_orders: ['view', 'create', 'edit', 'delete'],
+    branch_inventory: ['view', 'create', 'edit'],
     factory_shipments: [],
     factory_food_safety: [],
     branch_shift_tracking: ['view'],
@@ -1912,6 +1950,8 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     factory_stations: [],
     factory_compliance: [],
     factory_production: [],
+    branch_orders: ['view', 'create', 'edit', 'delete'],
+    branch_inventory: ['view', 'create', 'edit'],
     factory_shipments: [],
     factory_food_safety: [],
     branch_shift_tracking: [],
@@ -1991,6 +2031,8 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     factory_stations: [],
     factory_compliance: [],
     factory_production: [],
+    branch_orders: ['view', 'create', 'edit', 'delete'],
+    branch_inventory: ['view', 'create', 'edit'],
     factory_shipments: [],
     factory_food_safety: [],
     branch_shift_tracking: [],
@@ -2072,6 +2114,8 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     factory_stations: ['view'],
     factory_compliance: ['view'],
     factory_production: [],
+    branch_orders: ['view', 'create', 'edit', 'delete'],
+    branch_inventory: ['view', 'create', 'edit'],
     factory_shipments: ['view'],
     factory_food_safety: ['view'],
     branch_shift_tracking: [],
@@ -2151,6 +2195,8 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     factory_stations: ['view'],
     factory_compliance: ['view', 'create', 'edit'],
     factory_production: ['view', 'create', 'edit'],
+    branch_orders: ['view', 'create', 'edit', 'delete'],
+    branch_inventory: ['view', 'create', 'edit'],
     factory_shipments: ['view'],
     factory_food_safety: ['view', 'create', 'edit', 'approve'],
     branch_shift_tracking: [],
@@ -2228,6 +2274,8 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     factory_stations: ['view', 'create', 'edit'],
     factory_compliance: ['view', 'edit'],
     factory_production: ['view', 'create', 'edit'],
+    branch_orders: ['view', 'create', 'edit', 'delete'],
+    branch_inventory: ['view', 'create', 'edit'],
     factory_shipments: ['view', 'create', 'edit'],
     factory_food_safety: ['view', 'create', 'edit'],
     branch_shift_tracking: [],
@@ -2307,6 +2355,8 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     factory_stations: ['view'],
     factory_compliance: [],
     factory_production: [],
+    branch_orders: ['view', 'create', 'edit', 'delete'],
+    branch_inventory: ['view', 'create', 'edit'],
     factory_shipments: [],
     factory_food_safety: [],
     branch_shift_tracking: [],
@@ -2385,6 +2435,8 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     factory_stations: ['view', 'edit'],
     factory_compliance: ['view'],
     factory_production: [],
+    branch_orders: ['view', 'create', 'edit', 'delete'],
+    branch_inventory: ['view', 'create', 'edit'],
     factory_shipments: ['view'],
     factory_food_safety: ['view'],
     branch_shift_tracking: [],
@@ -2463,6 +2515,8 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     factory_stations: ['view'],
     factory_compliance: [],
     factory_production: [],
+    branch_orders: ['view', 'create', 'edit', 'delete'],
+    branch_inventory: ['view', 'create', 'edit'],
     factory_shipments: [],
     factory_food_safety: [],
     branch_shift_tracking: [],
@@ -2542,7 +2596,8 @@ export const branches = pgTable("branches", {
   instagramHandle: varchar("instagram_handle", { length: 100 }), // Instagram handle for review tracking
   // Kiosk Authentication
   kioskUsername: varchar("kiosk_username", { length: 50 }), // Şube kiosk giriş kullanıcı adı
-  kioskPassword: varchar("kiosk_password", { length: 100 }), // Şube kiosk şifresi (plain text veya hash)
+  kioskPassword: varchar("kiosk_password", { length: 100 }),
+  ownershipType: varchar("ownership_type", { length: 20 }).default("franchise"),
   deletedAt: timestamp("deleted_at"),
 });
 
@@ -9520,17 +9575,21 @@ export const branchOrders = pgTable("branch_orders", {
   orderNumber: varchar("order_number", { length: 50 }).notNull().unique(),
   branchId: integer("branch_id").notNull().references(() => branches.id, { onDelete: "cascade" }),
   
-  status: varchar("status", { length: 30 }).notNull().default("pending"), // pending, confirmed, preparing, shipped, delivered, cancelled
-  priority: varchar("priority", { length: 20 }).default("normal"), // low, normal, high, urgent
+  status: varchar("status", { length: 30 }).notNull().default("pending"),
+  priority: varchar("priority", { length: 20 }).default("normal"),
   
   requestedById: varchar("requested_by_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   processedById: varchar("processed_by_id").references(() => users.id, { onDelete: "set null" }),
+  approvedById: varchar("approved_by_id").references(() => users.id, { onDelete: "set null" }),
+  approvedAt: timestamp("approved_at"),
+  shipmentId: integer("shipment_id"),
   
   requestedDeliveryDate: date("requested_delivery_date"),
   actualDeliveryDate: date("actual_delivery_date"),
   
-  totalAmount: integer("total_amount").default(0), // Kuruş
+  totalAmount: integer("total_amount").default(0),
   notes: text("notes"),
+  rejectionReason: text("rejection_reason"),
   
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
@@ -9556,8 +9615,10 @@ export const branchOrderItems = pgTable("branch_order_items", {
   productId: integer("product_id").notNull().references(() => factoryProducts.id, { onDelete: "cascade" }),
   
   quantity: integer("quantity").notNull(),
-  unitPrice: integer("unit_price").notNull(), // Kuruş
-  totalPrice: integer("total_price").notNull(), // Kuruş
+  approvedQuantity: integer("approved_quantity"),
+  unit: varchar("unit", { length: 20 }).default("adet"),
+  unitPrice: integer("unit_price").notNull(),
+  totalPrice: integer("total_price").notNull(),
   
   deliveredQuantity: integer("delivered_quantity").default(0),
   batchId: integer("batch_id").references(() => productionBatches.id, { onDelete: "set null" }),
@@ -14409,6 +14470,10 @@ export const factoryShipments = pgTable("factory_shipments", {
   branchId: integer("branch_id").notNull().references(() => branches.id, { onDelete: "cascade" }),
   status: varchar("status", { length: 20 }).notNull().default("hazirlaniyor"),
   preparedById: varchar("prepared_by_id").references(() => users.id, { onDelete: "set null" }),
+  orderRequestId: integer("order_request_id"),
+  transferType: varchar("transfer_type", { length: 20 }).default("sale"),
+  totalCost: numeric("total_cost", { precision: 12, scale: 2 }),
+  totalSalePrice: numeric("total_sale_price", { precision: 12, scale: 2 }),
   dispatchedAt: timestamp("dispatched_at"),
   deliveredAt: timestamp("delivered_at"),
   deliveryNotes: text("delivery_notes"),
@@ -14436,6 +14501,7 @@ export const factoryShipmentItems = pgTable("factory_shipment_items", {
   quantity: numeric("quantity", { precision: 12, scale: 3 }).notNull(),
   unit: varchar("unit", { length: 20 }),
   lotNumber: varchar("lot_number", { length: 50 }),
+  expiryDate: timestamp("expiry_date"),
   notes: text("notes"),
 }, (table) => [
   index("factory_shipment_items_shipment_idx").on(table.shipmentId),
@@ -14537,3 +14603,59 @@ export const insertProductionLotSchema = createInsertSchema(productionLots).omit
 });
 export type InsertProductionLot = z.infer<typeof insertProductionLotSchema>;
 export type ProductionLot = typeof productionLots.$inferSelect;
+
+// ========================================
+// ŞUBE STOK SİSTEMİ
+// ========================================
+
+export const branchInventory = pgTable("branch_inventory", {
+  id: serial("id").primaryKey(),
+  branchId: integer("branch_id").notNull().references(() => branches.id, { onDelete: "cascade" }),
+  productId: integer("product_id").notNull().references(() => factoryProducts.id, { onDelete: "cascade" }),
+  currentStock: numeric("current_stock", { precision: 10, scale: 2 }).default("0"),
+  minimumStock: numeric("minimum_stock", { precision: 10, scale: 2 }).default("5"),
+  unit: varchar("unit", { length: 20 }),
+  lastReceivedAt: timestamp("last_received_at"),
+  lastCountedAt: timestamp("last_counted_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("branch_inventory_branch_idx").on(table.branchId),
+  index("branch_inventory_product_idx").on(table.productId),
+]);
+
+export const insertBranchInventorySchema = createInsertSchema(branchInventory).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertBranchInventory = z.infer<typeof insertBranchInventorySchema>;
+export type BranchInventory = typeof branchInventory.$inferSelect;
+
+export const branchStockMovements = pgTable("branch_stock_movements", {
+  id: serial("id").primaryKey(),
+  branchId: integer("branch_id").notNull().references(() => branches.id, { onDelete: "cascade" }),
+  productId: integer("product_id").notNull().references(() => factoryProducts.id, { onDelete: "cascade" }),
+  movementType: varchar("movement_type", { length: 30 }).notNull(),
+  quantity: numeric("quantity", { precision: 10, scale: 2 }).notNull(),
+  previousStock: numeric("previous_stock", { precision: 10, scale: 2 }),
+  newStock: numeric("new_stock", { precision: 10, scale: 2 }),
+  referenceType: varchar("reference_type", { length: 50 }),
+  referenceId: integer("reference_id"),
+  lotNumber: varchar("lot_number", { length: 50 }),
+  expiryDate: timestamp("expiry_date"),
+  notes: text("notes"),
+  createdById: varchar("created_by_id").references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("branch_stock_movements_branch_idx").on(table.branchId),
+  index("branch_stock_movements_product_idx").on(table.productId),
+  index("branch_stock_movements_date_idx").on(table.createdAt),
+]);
+
+export const insertBranchStockMovementSchema = createInsertSchema(branchStockMovements).omit({
+  id: true,
+  createdAt: true,
+});
+export type InsertBranchStockMovement = z.infer<typeof insertBranchStockMovementSchema>;
+export type BranchStockMovement = typeof branchStockMovements.$inferSelect;

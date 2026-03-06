@@ -41,6 +41,10 @@ import {
   recipes,
   notifications,
   branchKioskSettings,
+  branchInventory,
+  branchStockMovements,
+  branchOrders,
+  branchOrderItems,
 } from "../../shared/schema";
 
 const router = Router();
@@ -4357,6 +4361,10 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
         dispatchedAt: factoryShipments.dispatchedAt,
         deliveredAt: factoryShipments.deliveredAt,
         deliveryNotes: factoryShipments.deliveryNotes,
+        transferType: factoryShipments.transferType,
+        totalCost: factoryShipments.totalCost,
+        totalSalePrice: factoryShipments.totalSalePrice,
+        orderRequestId: factoryShipments.orderRequestId,
         createdAt: factoryShipments.createdAt,
         updatedAt: factoryShipments.updatedAt,
         branchName: branches.name,
@@ -4390,6 +4398,10 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
         dispatchedAt: factoryShipments.dispatchedAt,
         deliveredAt: factoryShipments.deliveredAt,
         deliveryNotes: factoryShipments.deliveryNotes,
+        transferType: factoryShipments.transferType,
+        totalCost: factoryShipments.totalCost,
+        totalSalePrice: factoryShipments.totalSalePrice,
+        orderRequestId: factoryShipments.orderRequestId,
         createdAt: factoryShipments.createdAt,
         updatedAt: factoryShipments.updatedAt,
         branchName: branches.name,
@@ -4409,6 +4421,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
         quantity: factoryShipmentItems.quantity,
         unit: factoryShipmentItems.unit,
         lotNumber: factoryShipmentItems.lotNumber,
+        expiryDate: factoryShipmentItems.expiryDate,
         notes: factoryShipmentItems.notes,
         productName: factoryProducts.name,
         productSku: factoryProducts.sku,
@@ -4441,7 +4454,111 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
         return res.status(400).json({ message: "En az bir ürün eklenmeli" });
       }
 
+      const now = new Date();
+      const resolvedItems: Array<{
+        productId: number;
+        quantity: string;
+        unit: string | null;
+        lotNumber: string | null;
+        expiryDate: Date | null;
+        notes: string | null;
+      }> = [];
+
+      for (const item of items) {
+        if (item.lotNumber) {
+          const [lot] = await db.select().from(productionLots)
+            .where(eq(productionLots.lotNumber, item.lotNumber))
+            .limit(1);
+
+          if (lot) {
+            if (lot.status === 'expired' || (lot.expiryDate && new Date(lot.expiryDate) < now)) {
+              const [prod] = await db.select({ name: factoryProducts.name }).from(factoryProducts)
+                .where(eq(factoryProducts.id, item.productId)).limit(1);
+              return res.status(400).json({
+                message: `SKT geçmiş LOT sevkiyata eklenemez: ${prod?.name || 'Ürün #' + item.productId} - LOT: ${item.lotNumber}`
+              });
+            }
+
+            if (lot.status !== 'onaylandi') {
+              const [prod] = await db.select({ name: factoryProducts.name }).from(factoryProducts)
+                .where(eq(factoryProducts.id, item.productId)).limit(1);
+              return res.status(400).json({
+                message: `Sadece kalite onaylı LOT'lar sevkiyata eklenebilir: ${prod?.name || 'Ürün #' + item.productId} - LOT: ${item.lotNumber} (durum: ${lot.status})`
+              });
+            }
+
+            resolvedItems.push({
+              productId: item.productId,
+              quantity: String(item.quantity),
+              unit: item.unit || null,
+              lotNumber: lot.lotNumber,
+              expiryDate: lot.expiryDate ? new Date(lot.expiryDate) : null,
+              notes: item.notes || null,
+            });
+          } else {
+            resolvedItems.push({
+              productId: item.productId,
+              quantity: String(item.quantity),
+              unit: item.unit || null,
+              lotNumber: item.lotNumber,
+              expiryDate: null,
+              notes: item.notes || null,
+            });
+          }
+        } else {
+          const availableLots = await db.select().from(productionLots)
+            .where(and(
+              eq(productionLots.productId, item.productId),
+              eq(productionLots.status, 'onaylandi'),
+              or(
+                isNull(productionLots.expiryDate),
+                gte(productionLots.expiryDate, now)
+              )
+            ))
+            .orderBy(asc(productionLots.expiryDate));
+
+          if (availableLots.length > 0) {
+            const fifoLot = availableLots[0];
+            resolvedItems.push({
+              productId: item.productId,
+              quantity: String(item.quantity),
+              unit: item.unit || null,
+              lotNumber: fifoLot.lotNumber,
+              expiryDate: fifoLot.expiryDate ? new Date(fifoLot.expiryDate) : null,
+              notes: item.notes || null,
+            });
+          } else {
+            resolvedItems.push({
+              productId: item.productId,
+              quantity: String(item.quantity),
+              unit: item.unit || null,
+              lotNumber: null,
+              expiryDate: null,
+              notes: item.notes || null,
+            });
+          }
+        }
+      }
+
       const shipmentNumber = `SVK-${Date.now()}`;
+
+      const [targetBranch] = await db.select({ ownershipType: branches.ownershipType }).from(branches)
+        .where(eq(branches.id, branchId));
+      const transferType = targetBranch?.ownershipType === 'bombtea' ? 'internal' : 'sale';
+
+      let totalCost = 0;
+      let totalSalePrice = 0;
+      for (const ri of resolvedItems) {
+        const [prod] = await db.select({
+          costPrice: factoryProducts.costPrice,
+          salePrice: factoryProducts.salePrice,
+        }).from(factoryProducts).where(eq(factoryProducts.id, ri.productId));
+        const qty = parseFloat(ri.quantity);
+        if (prod?.costPrice) totalCost += parseFloat(String(prod.costPrice)) * qty;
+        if (prod?.salePrice) totalSalePrice += parseFloat(String(prod.salePrice)) * qty;
+      }
+
+      const { orderRequestId } = req.body;
 
       const [shipment] = await db.insert(factoryShipments).values({
         shipmentNumber,
@@ -4449,17 +4566,28 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
         status: 'hazirlaniyor',
         preparedById: req.user.id,
         deliveryNotes: deliveryNotes || null,
+        transferType,
+        totalCost: String(totalCost),
+        totalSalePrice: String(totalSalePrice),
+        orderRequestId: orderRequestId || null,
       }).returning();
 
-      for (const item of items) {
+      for (const ri of resolvedItems) {
         await db.insert(factoryShipmentItems).values({
           shipmentId: shipment.id,
-          productId: item.productId,
-          quantity: String(item.quantity),
-          unit: item.unit || null,
-          lotNumber: item.lotNumber || null,
-          notes: item.notes || null,
+          productId: ri.productId,
+          quantity: ri.quantity,
+          unit: ri.unit,
+          lotNumber: ri.lotNumber,
+          expiryDate: ri.expiryDate,
+          notes: ri.notes,
         });
+      }
+
+      if (orderRequestId) {
+        await db.update(branchOrders)
+          .set({ status: 'shipped', shipmentId: shipment.id, updatedAt: new Date() })
+          .where(eq(branchOrders.id, orderRequestId));
       }
 
       res.status(201).json(shipment);
@@ -4588,6 +4716,22 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
             .where(eq(factoryShipments.id, id))
             .returning();
 
+          const supervisors = await tx.select({ id: users.id }).from(users)
+            .where(and(
+              eq(users.branchId, currentShipment.branchId),
+              sql`${users.role} IN ('supervisor', 'mudur')`
+            ));
+          const [branchInfo] = await tx.select({ name: branches.name }).from(branches)
+            .where(eq(branches.id, currentShipment.branchId));
+          for (const sup of supervisors) {
+            await tx.insert(notifications).values({
+              userId: sup.id,
+              type: 'shipment_dispatched',
+              title: 'Sevkiyat Yola Çıktı',
+              message: `${branchInfo?.name || 'Şube'} sevkiyatı yola çıktı — ${currentShipment.shipmentNumber}`,
+            });
+          }
+
           return updated;
         });
 
@@ -4596,6 +4740,118 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
 
       if (status === 'teslim_edildi') {
         updates.deliveredAt = new Date();
+
+        if (deliveryNotes) {
+          updates.deliveryNotes = deliveryNotes;
+        }
+
+        const deliveryResult = await db.transaction(async (tx) => {
+          const lockedShip = await tx.execute(
+            sql`SELECT * FROM factory_shipments WHERE id = ${id} FOR UPDATE`
+          );
+          const shipRow = lockedShip.rows?.[0] as any;
+          if (!shipRow || shipRow.status !== 'sevk_edildi') {
+            throw new Error("INVALID_TRANSITION:Bu sevkiyat teslim edilebilir durumda değil");
+          }
+
+          const items = await tx.select().from(factoryShipmentItems)
+            .where(eq(factoryShipmentItems.shipmentId, id));
+
+          const branchId = shipRow.branch_id;
+
+          for (const item of items) {
+            const qty = parseFloat(item.quantity);
+
+            const [existingInv] = await tx.select().from(branchInventory)
+              .where(and(
+                eq(branchInventory.branchId, branchId),
+                eq(branchInventory.productId, item.productId)
+              ));
+
+            let previousStock = '0';
+            let newStockVal = qty;
+
+            if (existingInv) {
+              previousStock = String(existingInv.currentStock || '0');
+              newStockVal = parseFloat(previousStock) + qty;
+              await tx.update(branchInventory)
+                .set({
+                  currentStock: String(newStockVal),
+                  lastReceivedAt: new Date(),
+                  updatedAt: new Date(),
+                })
+                .where(eq(branchInventory.id, existingInv.id));
+            } else {
+              const [prod] = await tx.select({ unit: factoryProducts.unit }).from(factoryProducts)
+                .where(eq(factoryProducts.id, item.productId));
+              await tx.insert(branchInventory).values({
+                branchId,
+                productId: item.productId,
+                currentStock: String(qty),
+                unit: item.unit || prod?.unit || 'adet',
+                lastReceivedAt: new Date(),
+              });
+            }
+
+            await tx.insert(branchStockMovements).values({
+              branchId,
+              productId: item.productId,
+              movementType: 'sevkiyat_giris',
+              quantity: String(qty),
+              previousStock,
+              newStock: String(newStockVal),
+              referenceType: 'shipment',
+              referenceId: id,
+              lotNumber: item.lotNumber || null,
+              expiryDate: item.expiryDate || null,
+              createdById: req.user.id,
+            });
+          }
+
+          if (shipRow.order_request_id) {
+            await tx.update(branchOrders)
+              .set({ status: 'delivered', actualDeliveryDate: new Date().toISOString().slice(0, 10), updatedAt: new Date() })
+              .where(eq(branchOrders.id, shipRow.order_request_id));
+          }
+
+          const [updated] = await tx.update(factoryShipments)
+            .set(updates)
+            .where(eq(factoryShipments.id, id))
+            .returning();
+
+          const supervisors = await tx.select({ id: users.id }).from(users)
+            .where(and(
+              eq(users.branchId, branchId),
+              sql`${users.role} IN ('supervisor', 'mudur')`
+            ));
+
+          const [branchInfo] = await tx.select({ name: branches.name }).from(branches)
+            .where(eq(branches.id, branchId));
+
+          for (const sup of supervisors) {
+            await tx.insert(notifications).values({
+              userId: sup.id,
+              type: 'shipment_delivered',
+              title: 'Sevkiyat Teslim Alındı',
+              message: `${branchInfo?.name || 'Şube'} için sevkiyat teslim alındı — ${items.length} ürün, stok güncellendi`,
+            });
+          }
+
+          const fabrikaMudurleri = await tx.select({ id: users.id }).from(users)
+            .where(sql`${users.role} IN ('fabrika_mudur', 'admin')`);
+          for (const fm of fabrikaMudurleri) {
+            await tx.insert(notifications).values({
+              userId: fm.id,
+              type: 'shipment_delivered',
+              title: 'Sevkiyat Teslim Edildi',
+              message: `${branchInfo?.name || 'Şube'} teslim aldı — Sevkiyat #${shipRow.shipment_number}`,
+            });
+          }
+
+          return updated;
+        });
+
+        return res.json(deliveryResult);
       }
 
       if (deliveryNotes) {

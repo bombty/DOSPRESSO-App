@@ -142,6 +142,7 @@ const FabrikaPerformans = lazy(() => import("@/pages/fabrika/performans"));
 const FabrikaAIRaporlar = lazy(() => import("@/pages/fabrika/ai-raporlar"));
 const FabrikaUretimPlanlama = lazy(() => import("@/pages/fabrika/uretim-planlama"));
 const FabrikaVardiyaUyumluluk = lazy(() => import("@/pages/fabrika/vardiya-uyumluluk"));
+const SubeSiparisStok = lazy(() => import("@/pages/sube/siparis-stok"));
 const SubeKiosk = lazy(() => import("@/pages/sube/kiosk"));
 const HqKiosk = lazy(() => import("@/pages/hq/kiosk"));
 const HqStaffDashboard = lazy(() => import("@/pages/hq/staff-dashboard"));
@@ -430,6 +431,7 @@ function Router() {
           <Route path="/sube-saglik-skoru" component={SubeSaglikSkoru} />
           <Route path="/sube-karsilastirma">{() => <HQOnly><SubeKarsilastirma /></HQOnly>}</Route>
           <Route path="/kullanim-kilavuzu" component={KullanimKilavuzu} />
+          <Route path="/sube/siparis-stok" component={SubeSiparisStok} />
           <Route path="/agent-merkezi" component={AgentMerkezi} />
         </>
       )}

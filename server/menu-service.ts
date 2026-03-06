@@ -110,6 +110,14 @@ const MENU_BLUEPRINT: SidebarMenuSection[] = [
         scope: "both",
       },
       {
+        id: "branch-stock-orders",
+        titleTr: "Şube Stok & Sipariş",
+        path: "/sube/siparis-stok",
+        icon: "Package",
+        moduleKey: "branch_orders",
+        scope: "branch",
+      },
+      {
         id: "lost-found",
         titleTr: "Kayıp Eşya",
         path: "/kayip-esya",
@@ -614,7 +622,7 @@ const SIDEBAR_ALLOWED_ITEMS: Partial<Record<UserRoleType, string[]>> = {
   supervisor: [
     'branch-dashboard', 'tasks-list', 'checklists', 'shifts', 'equipment', 'faults',
     'hr', 'training-academy', 'notifications', 'usage-guide', 'hq-support', 'lost-found',
-    'customer-satisfaction', 'ai-assistant', 'agent-center',
+    'customer-satisfaction', 'ai-assistant', 'agent-center', 'branch-stock-orders',
   ],
   supervisor_buddy: [
     'branch-dashboard', 'tasks-list', 'checklists', 'shifts', 'equipment', 'faults',
@@ -624,7 +632,7 @@ const SIDEBAR_ALLOWED_ITEMS: Partial<Record<UserRoleType, string[]>> = {
     'branch-dashboard', 'tasks-list', 'checklists', 'shifts', 'equipment', 'faults',
     'hr', 'branch-shift-tracking', 'attendance', 'reports', 'lost-found',
     'training-academy', 'notifications', 'usage-guide', 'hq-support',
-    'branch-health', 'customer-satisfaction', 'ai-assistant', 'agent-center',
+    'branch-health', 'customer-satisfaction', 'ai-assistant', 'agent-center', 'branch-stock-orders',
   ],
   yatirimci_branch: [
     'branch-dashboard', 'tasks-list', 'checklists', 'shifts', 'hr', 'reports',
@@ -646,7 +654,7 @@ const SIDEBAR_ALLOWED_ITEMS: Partial<Record<UserRoleType, string[]>> = {
   ],
   coach: [
     'dashboard', 'branches-list', 'hr', 'training-academy', 'reports',
-    'branch-inspection', 'branch-health', 'notifications', 'usage-guide', 'hq-support', 'ai-assistant', 'agent-center', 'crm-main',
+    'branch-inspection', 'branch-health', 'notifications', 'usage-guide', 'hq-support', 'ai-assistant', 'agent-center', 'crm-main', 'branch-stock-orders',
   ],
   destek: [
     'dashboard', 'branches-list', 'hr', 'training-academy', 'reports',
