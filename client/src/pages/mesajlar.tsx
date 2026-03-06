@@ -144,7 +144,7 @@ export default function Mesajlar() {
       queryClient.invalidateQueries({ queryKey: ["/api/messages"] });
     },
     onError: (error: any, variables: any) => {
-      offlineErrorHandler(error, { url: `/api/messages/${variables.threadId}/replies`, method: "POST", body: { body: variables.body } }, "Mesaj yanıtı", toast);
+      offlineErrorHandler(error, { url: `/api/messages/${variables.threadId}/replies`, method: "POST", body: { body: variables.body, attachments: variables.attachments } }, "Mesaj yaniti", toast);
     },
   });
 

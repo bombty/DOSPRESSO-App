@@ -9,14 +9,14 @@ if (!root) {
 } else {
   try {
     createRoot(root).render(<App />);
-    console.log("✅ App rendered successfully");
+    console.log("App rendered successfully");
   } catch (e) {
-    console.error("❌ App render error:", e);
-    root.innerHTML = `<div style="padding: 20px; color: red;">Uygulama yükleme hatası: ${e instanceof Error ? e.message : "Unknown error"}</div>`;
+    console.error("App render error:", e);
+    root.innerHTML = `<div style="padding: 20px; color: red;">Uygulama yukleme hatasi: ${e instanceof Error ? e.message : "Unknown error"}</div>`;
   }
 }
 
-if ("serviceWorker" in navigator) {
+if (import.meta.env.PROD && "serviceWorker" in navigator) {
   window.addEventListener("load", () => {
     navigator.serviceWorker
       .register("/service-worker.js")

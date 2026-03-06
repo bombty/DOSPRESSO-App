@@ -10,6 +10,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { HamburgerMenu } from "@/components/hamburger-menu";
+import { InboxDialog } from "@/components/inbox-dialog";
 import dospressoLogo from "@assets/IMG_6637_1765138781125.png";
 import type { User } from "@shared/schema";
 
@@ -123,6 +124,7 @@ export function AppHeader({ user, branchName, onQRClick }: AppHeaderProps) {
         </div>
 
         <div className="flex-1 flex justify-end gap-1">
+          <InboxDialog />
           <Button
             variant="ghost"
             size="icon"

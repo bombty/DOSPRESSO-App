@@ -152,8 +152,19 @@ function ServiceNotificationCard({ fault }: { fault: any }) {
       toast({ title: 'Bildirim tarihi kaydedildi' });
       queryClient.invalidateQueries({ queryKey: ['/api/faults'] });
     },
-    onError: () => {
-      toast({ title: 'Hata', description: 'Kayıt başarısız', variant: 'destructive' });
+    onError: (error: Error) => {
+      if (!notifDate || !notifTime) return;
+      const dateTime = new Date(`${notifDate}T${notifTime}`);
+      offlineErrorHandler(
+        error,
+        {
+          url: `/api/faults/${fault.id}/service-notification`,
+          method: "POST",
+          body: { serviceNotificationDate: dateTime.toISOString(), serviceNotificationMethod: 'email' },
+        },
+        "Ariza servis bildirimi",
+        toast
+      );
     },
   });
 
@@ -328,8 +339,17 @@ function ServiceTrackingTab({ fault, equipment, branchName }: { fault: any; equi
       setStatusValue("");
       setStatusComment("");
     },
-    onError: () => {
-      toast({ title: "Hata", description: "Durum güncellenemedi", variant: "destructive" });
+    onError: (error: Error) => {
+      offlineErrorHandler(
+        error,
+        {
+          url: `/api/fault-service-tracking/${tracking.id}/status`,
+          method: "PATCH",
+          body: { toStatus: statusValue, comment: statusComment },
+        },
+        "Ariza durum guncelleme",
+        toast
+      );
     },
   });
 
@@ -807,8 +827,17 @@ export default function FaultDetail() {
       queryClient.invalidateQueries({ queryKey: ["/api/faults", id, "detail"] });
       setCommentText("");
     },
-    onError: () => {
-      toast({ title: "Hata", description: "Mesaj gönderilemedi", variant: "destructive" });
+    onError: (error: Error, message: string) => {
+      offlineErrorHandler(
+        error,
+        {
+          url: `/api/faults/${id}/comments`,
+          method: "POST",
+          body: { message },
+        },
+        "Ariza yorumu",
+        toast
+      );
     },
   });
 

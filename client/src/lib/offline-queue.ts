@@ -27,15 +27,17 @@ export function getQueueItems(): QueuedMutation[] {
   }
 }
 
-function saveQueue(items: QueuedMutation[]): void {
+function saveQueue(items: QueuedMutation[]): boolean {
   try {
     localStorage.setItem(QUEUE_KEY, JSON.stringify(items));
+    return true;
   } catch {
     console.warn("Offline queue save failed — localStorage may be full");
+    return false;
   }
 }
 
-export function addToQueue(mutation: Omit<QueuedMutation, "id" | "timestamp" | "retryCount" | "status" | "maxRetries"> & { maxRetries?: number }): string {
+export function addToQueue(mutation: Omit<QueuedMutation, "id" | "timestamp" | "retryCount" | "status" | "maxRetries"> & { maxRetries?: number }): string | null {
   const items = getQueueItems();
   const id = generateId();
   items.push({
@@ -46,7 +48,8 @@ export function addToQueue(mutation: Omit<QueuedMutation, "id" | "timestamp" | "
     maxRetries: mutation.maxRetries ?? 5,
     status: "pending",
   });
-  saveQueue(items);
+  const saved = saveQueue(items);
+  if (!saved) return null;
   window.dispatchEvent(new CustomEvent("offline-queue-change"));
   return id;
 }
@@ -58,7 +61,7 @@ export function removeFromQueue(id: string): void {
 }
 
 export function getQueueSize(): number {
-  return getQueueItems().filter((i) => i.status !== "processing").length;
+  return getQueueItems().length;
 }
 
 export function clearQueue(): void {
@@ -78,6 +81,20 @@ export function cleanExpiredItems(): number {
   return removed;
 }
 
+function recoverStuckItems(): void {
+  const items = getQueueItems();
+  let changed = false;
+  for (const item of items) {
+    if (item.status === "processing") {
+      item.status = "pending";
+      changed = true;
+    }
+  }
+  if (changed) {
+    saveQueue(items);
+  }
+}
+
 export interface ProcessResult {
   total: number;
   succeeded: number;
@@ -92,6 +109,7 @@ export async function processQueue(
   if (isProcessingGlobal) return { total: 0, succeeded: 0, failed: 0 };
   isProcessingGlobal = true;
   try {
+    recoverStuckItems();
     return await _processQueueInternal(onProgress);
   } finally {
     isProcessingGlobal = false;
@@ -101,7 +119,7 @@ export async function processQueue(
 async function _processQueueInternal(
   onProgress?: (current: number, total: number) => void
 ): Promise<ProcessResult> {
-  const items = getQueueItems().filter((i) => i.status !== "processing");
+  const items = getQueueItems().filter((i) => i.status === "pending" || i.status === "failed");
   if (items.length === 0) return { total: 0, succeeded: 0, failed: 0 };
 
   let succeeded = 0;
@@ -114,20 +132,19 @@ async function _processQueueInternal(
 
     const allItems = getQueueItems();
     const idx = allItems.findIndex((q) => q.id === item.id);
-    if (idx >= 0) {
-      allItems[idx].status = "processing";
-      saveQueue(allItems);
-    }
+    if (idx < 0) continue;
+    allItems[idx].status = "processing";
+    saveQueue(allItems);
 
     try {
-      const headers: HeadersInit = item.body
+      const headers: HeadersInit = item.body != null
         ? { "Content-Type": "application/json" }
         : {};
 
       const res = await fetch(item.url, {
         method: item.method,
         headers,
-        body: item.body ? JSON.stringify(item.body) : undefined,
+        body: item.body != null ? JSON.stringify(item.body) : undefined,
         credentials: "include",
       });
 
@@ -142,13 +159,14 @@ async function _processQueueInternal(
         const idx2 = allItems2.findIndex((q) => q.id === item.id);
         if (idx2 >= 0) {
           allItems2[idx2].retryCount++;
-          allItems2[idx2].status = "failed";
           if (allItems2[idx2].retryCount >= allItems2[idx2].maxRetries) {
             allItems2.splice(idx2, 1);
-            failed++;
+          } else {
+            allItems2[idx2].status = "failed";
           }
           saveQueue(allItems2);
         }
+        failed++;
       }
     } catch {
       const allItems3 = getQueueItems();

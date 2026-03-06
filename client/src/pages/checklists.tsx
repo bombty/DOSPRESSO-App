@@ -201,8 +201,17 @@ export default function Checklists() {
       refetchCompletions();
       queryClient.invalidateQueries({ queryKey: ["/api/checklist-completions/my/today"] });
     },
-    onError: (error: Error) => {
-      toast({ title: "Hata", description: error.message, variant: "destructive" });
+    onError: (error: Error, variables) => {
+      offlineErrorHandler(
+        error,
+        {
+          url: `/api/checklist-completions/${variables.completionId}/tasks/${variables.taskId}/complete`,
+          method: "POST",
+          body: { photoUrl: variables.photoUrl, notes: variables.notes },
+        },
+        "Checklist gorev tamamlama",
+        toast
+      );
     },
   });
 

@@ -29,22 +29,30 @@ export function useOfflineMutation<TData = unknown, TVariables = unknown>(
     onError: (error, variables) => {
       if (!options.skipQueue && (isNetworkError(error) || error instanceof NetworkError)) {
         const queueData = options.getQueueData(variables);
-        addToQueue({
+        const id = addToQueue({
           ...queueData,
           description: options.queueDescription,
         });
-        toast({
-          title: "İnternet bağlantısı yok",
-          description: `${options.queueDescription} — internet gelince otomatik gönderilecek`,
-        });
-        window.dispatchEvent(new CustomEvent("offline-queue-change"));
+        if (id) {
+          toast({
+            title: "Internet baglantisi yok",
+            description: `${options.queueDescription} — internet gelince otomatik gonderilecek`,
+          });
+          window.dispatchEvent(new CustomEvent("offline-queue-change"));
+        } else {
+          toast({
+            title: "Veri kaydedilemedi",
+            description: "Cihaz depolama alani dolu. Lutfen bazi verileri temizleyin ve tekrar deneyin.",
+            variant: "destructive",
+          });
+        }
       } else {
         if (options.onError) {
           options.onError(error, variables);
         } else {
           toast({
             title: "Hata",
-            description: error.message || "İşlem başarısız",
+            description: error.message || "Islem basarisiz",
             variant: "destructive",
           });
         }
@@ -61,19 +69,33 @@ export function offlineErrorHandler(
   fallbackErrorHandler?: (error: Error) => void
 ): boolean {
   if (isNetworkError(error) || error instanceof NetworkError) {
-    addToQueue({
+    const id = addToQueue({
       ...queueData,
       description,
     });
-    toast({
-      title: "İnternet bağlantısı yok",
-      description: `${description} — internet gelince otomatik gönderilecek`,
-    });
-    window.dispatchEvent(new CustomEvent("offline-queue-change"));
-    return true;
+    if (id) {
+      toast({
+        title: "Internet baglantisi yok",
+        description: `${description} — internet gelince otomatik gonderilecek`,
+      });
+      window.dispatchEvent(new CustomEvent("offline-queue-change"));
+    } else {
+      toast({
+        title: "Veri kaydedilemedi",
+        description: "Cihaz depolama alani dolu. Lutfen bazi verileri temizleyin ve tekrar deneyin.",
+        variant: "destructive",
+      });
+    }
+    return id !== null;
   }
   if (fallbackErrorHandler) {
     fallbackErrorHandler(error);
+  } else {
+    toast({
+      title: "Hata",
+      description: error.message || "Islem basarisiz",
+      variant: "destructive",
+    });
   }
   return false;
 }

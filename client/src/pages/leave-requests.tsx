@@ -380,12 +380,17 @@ function ApproveButton({ requestId }: { requestId: number }) {
       });
       queryClient.invalidateQueries({ queryKey: ["/api/leave-requests"] });
     },
-    onError: (error) => {
-      toast({
-        title: "Hata",
-        description: error.message || "İzin talebi onaylanamadı",
-        variant: "destructive",
-      });
+    onError: (error: Error) => {
+      offlineErrorHandler(
+        error,
+        {
+          url: `/api/leave-requests/${requestId}/status`,
+          method: "PATCH",
+          body: { status: "approved" },
+        },
+        "Izin talebi onaylama",
+        toast
+      );
     },
   });
 
@@ -416,12 +421,17 @@ function RejectButton({ requestId }: { requestId: number }) {
       });
       queryClient.invalidateQueries({ queryKey: ["/api/leave-requests"] });
     },
-    onError: (error) => {
-      toast({
-        title: "Hata",
-        description: error.message || "İzin talebi reddedilemedi",
-        variant: "destructive",
-      });
+    onError: (error: Error) => {
+      offlineErrorHandler(
+        error,
+        {
+          url: `/api/leave-requests/${requestId}/status`,
+          method: "PATCH",
+          body: { status: "rejected" },
+        },
+        "Izin talebi reddetme",
+        toast
+      );
     },
   });
 

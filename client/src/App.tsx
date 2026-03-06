@@ -15,6 +15,7 @@ import { QRScannerModal } from "@/components/qr-scanner-modal";
 import { GlobalAIAssistant } from "@/components/global-ai-assistant";
 import { useAuth } from "@/hooks/useAuth";
 import { OfflineBanner } from "@/components/offline-banner";
+import { NetworkStatusProvider } from "@/hooks/useNetworkStatus";
 import { useLanguageSync } from "@/hooks/useLanguageSync";
 import { ProtectedRoute } from "@/components/protected-route";
 import logoPath from "@assets/IMG_6637_1765138781125.png";
@@ -552,12 +553,14 @@ export default function App() {
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
         <ThemeProvider>
-          <TooltipProvider>
-            <BreadcrumbProvider>
-              <AppContent />
-            </BreadcrumbProvider>
-            <Toaster />
-          </TooltipProvider>
+          <NetworkStatusProvider>
+            <TooltipProvider>
+              <BreadcrumbProvider>
+                <AppContent />
+              </BreadcrumbProvider>
+              <Toaster />
+            </TooltipProvider>
+          </NetworkStatusProvider>
         </ThemeProvider>
       </QueryClientProvider>
     </ErrorBoundary>

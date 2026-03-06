@@ -76,17 +76,39 @@ export const getQueryFn: <T>(options: {
   on401: UnauthorizedBehavior;
 }) => QueryFunction<T> =
   ({ on401: unauthorizedBehavior }) =>
-  async ({ queryKey }) => {
-    const res = await fetch(queryKey.join("/") as string, {
-      credentials: 'include',
-    });
+  async ({ queryKey, signal }) => {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT);
 
-    if (unauthorizedBehavior === "returnNull" && res.status === 401) {
-      return null;
+    if (signal) {
+      signal.addEventListener("abort", () => controller.abort());
     }
 
-    await throwIfResNotOk(res);
-    return await res.json();
+    try {
+      const res = await fetch(queryKey.join("/") as string, {
+        credentials: 'include',
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeoutId);
+
+      if (unauthorizedBehavior === "returnNull" && res.status === 401) {
+        return null;
+      }
+
+      await throwIfResNotOk(res);
+      return await res.json();
+    } catch (error) {
+      clearTimeout(timeoutId);
+      if (error instanceof HttpError) throw error;
+      if (error instanceof DOMException && error.name === "AbortError") {
+        throw new NetworkError("Istek zaman asimina ugradi");
+      }
+      if (error instanceof TypeError) {
+        throw new NetworkError(error.message);
+      }
+      throw error;
+    }
   };
 
 export const queryClient = new QueryClient({

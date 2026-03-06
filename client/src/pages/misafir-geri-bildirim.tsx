@@ -541,17 +541,21 @@ export default function MisafirGeriBildirim() {
       localStorage.setItem(storageKey, new Date().toISOString());
       setSubmitted(true);
     },
-    onError: (error: Error) => {
+    onError: (error: Error, variables: any) => {
       if (isNetworkError(error)) {
-        addToQueue({
+        const id = addToQueue({
           url: "/api/feedback/submit",
           method: "POST",
-          body: {},
+          body: variables,
           description: "Misafir geri bildirimi",
         });
-        window.dispatchEvent(new CustomEvent("offline-queue-change"));
-        setSubmitted(true);
-        setSubmitErrorMessage(null);
+        if (id) {
+          window.dispatchEvent(new CustomEvent("offline-queue-change"));
+          setSubmitted(true);
+          setSubmitErrorMessage(null);
+        } else {
+          setSubmitErrorMessage("Cihaz depolama alani dolu. Geri bildiriminiz kaydedilemedi. Lutfen tekrar deneyin.");
+        }
       } else {
         setSubmitErrorMessage(error.message);
       }

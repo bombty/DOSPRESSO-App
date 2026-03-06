@@ -1,32 +1,40 @@
 import { useNetworkStatus } from "@/hooks/useNetworkStatus";
 import { WifiOff, Wifi } from "lucide-react";
 
+const BANNER_HEIGHT = "36px";
+
 export function OfflineBanner() {
   const { isOnline, wasOffline } = useNetworkStatus();
 
-  if (isOnline && !wasOffline) return null;
+  const showBanner = !isOnline || wasOffline;
 
   return (
-    <div
-      className={`fixed top-0 left-0 right-0 z-[9999] px-4 py-2.5 flex items-center justify-center gap-2 text-sm font-medium transition-colors duration-300 ${
-        !isOnline
-          ? "bg-destructive text-destructive-foreground"
-          : "bg-green-600 text-white"
-      }`}
-      data-testid="offline-banner"
-      role="alert"
-    >
-      {!isOnline ? (
-        <>
-          <WifiOff className="h-4 w-4 shrink-0" />
-          <span>İnternet bağlantısı yok — Değişiklikleriniz kaydedildi, bağlantı gelince otomatik gönderilecek</span>
-        </>
-      ) : (
-        <>
-          <Wifi className="h-4 w-4 shrink-0" />
-          <span>İnternet bağlantısı geri geldi — Bekleyen veriler gönderiliyor...</span>
-        </>
+    <>
+      {showBanner && <div style={{ height: BANNER_HEIGHT }} />}
+      {showBanner && (
+        <div
+          className={`fixed top-0 left-0 right-0 z-[9999] px-4 py-2 flex items-center justify-center gap-2 text-sm font-medium transition-colors duration-300 ${
+            !isOnline
+              ? "bg-destructive text-destructive-foreground"
+              : "bg-green-600 text-white"
+          }`}
+          style={{ height: BANNER_HEIGHT }}
+          data-testid="offline-banner"
+          role="alert"
+        >
+          {!isOnline ? (
+            <>
+              <WifiOff className="h-4 w-4 shrink-0" />
+              <span>Internet baglantisi yok — Verileriniz kaydedildi, baglanti gelince otomatik gonderilecek</span>
+            </>
+          ) : (
+            <>
+              <Wifi className="h-4 w-4 shrink-0" />
+              <span>Internet baglantisi geri geldi — Bekleyen veriler gonderiliyor...</span>
+            </>
+          )}
+        </div>
       )}
-    </div>
+    </>
   );
 }
