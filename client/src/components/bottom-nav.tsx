@@ -112,8 +112,8 @@ const NAV_ITEM_CONFIG: Record<string, NavItemConfig> = {
   notifications: {
     icon: Bell,
     labelKey: "nav.notifications",
-    defaultLabelTR: "Bildirimler",
-    defaultLabelEN: "Notifications",
+    defaultLabelTR: "Iletisim",
+    defaultLabelEN: "Messages",
     getPath: () => "/bildirimler",
   },
   tasks: {

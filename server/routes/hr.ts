@@ -3483,6 +3483,22 @@ JSON formatında yanıt ver:
         ...data,
         assignedById: req.user.id,
       });
+
+      try {
+        if (data.userId) {
+          const assignerName = `${req.user.firstName || ''} ${req.user.lastName || ''}`.trim() || 'Yonetici';
+          await storage.createNotification({
+            userId: data.userId,
+            type: 'training_assigned',
+            title: 'Yeni Egitim Atandi',
+            message: `${assignerName} tarafindan yeni bir egitim atandi.`,
+            link: '/akademi',
+          });
+        }
+      } catch (notifErr: any) {
+        console.error("Training assignment notification error:", notifErr);
+      }
+
       res.status(201).json(assignment);
     } catch (error: any) {
       res.status(400).json({ message: error.message || "Atama oluşturulamadı" });

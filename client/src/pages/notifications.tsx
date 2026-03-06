@@ -1,24 +1,28 @@
-import { useState } from "react";
+import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAdaptivePolling } from "@/hooks/useAdaptivePolling";
 import { useLocation } from "wouter";
-import type { Notification, Branch } from "@shared/schema";
-import { hasPermission, type UserRoleType } from "@shared/schema";
+import type { Notification, Branch, Message, User, Announcement } from "@shared/schema";
+import { hasPermission, isHQRole, type UserRoleType } from "@shared/schema";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Skeleton } from "@/components/ui/skeleton";
 import { ListSkeleton } from "@/components/list-skeleton";
 import { EmptyState } from "@/components/empty-state";
+import { ROLE_LABELS } from "@/lib/turkish-labels";
 import { 
   Bell, 
   CheckCheck, 
@@ -41,7 +45,22 @@ import {
   CalendarIcon,
   UserPlus,
   Loader2,
+  Award,
+  Flame,
+  TrendingUp,
+  BookOpen,
+  MessageSquare,
+  Search,
+  Mail,
+  MailOpen,
+  ArrowLeft,
+  Paperclip,
+  Calendar,
+  AlertCircle,
+  Settings,
+  BellOff,
 } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
 import { format, formatDistanceToNow } from "date-fns";
 import { tr } from "date-fns/locale";
 
@@ -88,6 +107,22 @@ const notificationTypeIcons: Record<string, any> = {
   warning: AlertTriangle,
   alert: AlertTriangle,
   system: Info,
+  quiz_passed: CheckCheck,
+  quiz_failed: AlertTriangle,
+  module_completed: GraduationCap,
+  badge_earned: Award,
+  gate_passed: GraduationCap,
+  gate_failed: AlertTriangle,
+  gate_request: GraduationCap,
+  gate_result: GraduationCap,
+  certificate_earned: Award,
+  streak_milestone: Flame,
+  score_change: TrendingUp,
+  recipe_updated: BookOpen,
+  recipe_update: BookOpen,
+  module_approval_pending: GraduationCap,
+  module_approved: CheckCheck,
+  module_rejected: AlertTriangle,
 };
 
 const notificationTypeLabels: Record<string, string> = {
@@ -133,15 +168,32 @@ const notificationTypeLabels: Record<string, string> = {
   warning: "Uyarı",
   alert: "Acil Uyarı",
   system: "Sistem",
+  quiz_passed: "Quiz Basarili",
+  quiz_failed: "Quiz Basarisiz",
+  module_completed: "Modul Tamamlandi",
+  badge_earned: "Rozet Kazanildi",
+  gate_passed: "Statu Atlama Basarili",
+  gate_failed: "Statu Atlama Basarisiz",
+  gate_request: "Statu Atlama Talebi",
+  gate_result: "Statu Atlama Sonucu",
+  certificate_earned: "Sertifika Kazanildi",
+  streak_milestone: "Seri Rekoru",
+  score_change: "Skor Degisimi",
+  recipe_updated: "Recete Guncellendi",
+  recipe_update: "Recete Guncellendi",
+  module_approval_pending: "Modul Onay Bekliyor",
+  module_approved: "Modul Onaylandi",
+  module_rejected: "Modul Reddedildi",
 };
 
 const NOTIFICATION_CATEGORIES: Record<string, { label: string; icon: any; types: string[] }> = {
   all: { label: "Tümü", icon: Bell, types: [] },
   tasks: { label: "Görevler", icon: ClipboardCheck, types: ["task_assigned", "task_started", "task_complete", "task_completed", "task_verified", "task_rejected", "task_overdue", "task_acknowledged", "task_overdue_assigner", "task_check_requested", "task_check_approved", "task_check_rejected", "task_status_changed"] },
-  faults: { label: "Arızalar", icon: Wrench, types: ["fault_reported", "fault_assigned", "fault_resolved", "fault_updated", "fault_alert", "critical_fault", "critical_service_request", "maintenance_reminder"] },
+  faults: { label: "Arızalar", icon: Wrench, types: ["fault_reported", "fault_assigned", "fault_resolved", "fault_updated", "fault_alert", "critical_fault", "critical_service_request", "maintenance_reminder", "recipe_updated", "recipe_update"] },
   checklists: { label: "Checklistler", icon: CheckSquare, types: ["checklist_reminder", "checklist_overdue", "capa_overdue"] },
   announcements: { label: "Duyurular", icon: Megaphone, types: ["announcement", "info", "warning", "alert", "system"] },
-  hr: { label: "İK", icon: Clock, types: ["shift_change", "shift_assigned", "shift_swap_request", "shift_swap_approved", "shift_swap_rejected", "shift_swap_completed", "shift_swap_pending_supervisor", "leave_request", "training_assigned", "training_overdue", "training_reminder", "onboarding_complete"] },
+  egitim: { label: "Egitim", icon: GraduationCap, types: ["quiz_passed", "quiz_failed", "module_completed", "badge_earned", "gate_passed", "gate_failed", "gate_request", "gate_result", "certificate_earned", "streak_milestone", "score_change", "training_assigned", "training_overdue", "training_reminder", "module_approval_pending", "module_approved", "module_rejected"] },
+  hr: { label: "IK", icon: Clock, types: ["shift_change", "shift_assigned", "shift_swap_request", "shift_swap_approved", "shift_swap_rejected", "shift_swap_completed", "shift_swap_pending_supervisor", "leave_request", "onboarding_complete"] },
   stock: { label: "Stok", icon: Package, types: ["stock_alert"] },
 };
 
@@ -394,10 +446,435 @@ function AssignTaskDialog({ open, onOpenChange }: { open: boolean; onOpenChange:
   );
 }
 
+type ThreadSummary = {
+  threadId: string;
+  subject: string;
+  lastMessageBody: string;
+  lastMessageAt: Date;
+  unreadCount: number;
+  sentByMe: boolean;
+  participants: Array<{ id: string; firstName: string; lastName: string; profileImageUrl?: string | null }>;
+};
+
+type ThreadData = {
+  messages: Message[];
+  participants: Array<{ id: string; firstName: string; lastName: string; profileImageUrl?: string | null; role?: string }>;
+};
+
+type AnnouncementWithUser = Announcement & {
+  createdBy: {
+    fullName: string;
+  };
+};
+
+const announcementPriorityLabels: Record<string, string> = {
+  normal: "Normal",
+  urgent: "Acil",
+};
+
+const announcementCategoryLabels: Record<string, string> = {
+  general: "Genel",
+  new_product: "Yeni Urun",
+  policy: "Politika",
+  campaign: "Kampanya",
+  urgent: "Acil",
+  training: "Egitim",
+  event: "Etkinlik",
+};
+
+function EmbeddedMessages() {
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const [filter, setFilter] = useState<"all" | "unread" | "sent">("all");
+  const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null);
+  const [messageText, setMessageText] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(searchQuery), 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  const { data: allThreads = [], isLoading: threadsLoading, isFetching: threadsFetching } = useQuery<ThreadSummary[]>({
+    queryKey: ["/api/messages"],
+    refetchInterval: 5000,
+    staleTime: 2000,
+  });
+
+  const filteredThreads = useMemo(() => {
+    let threads = allThreads;
+    if (filter === "unread") threads = threads.filter((t) => t.unreadCount > 0);
+    else if (filter === "sent") threads = threads.filter((t) => t.sentByMe);
+    if (debouncedSearch.trim()) {
+      const q = debouncedSearch.toLocaleLowerCase('tr-TR');
+      threads = threads.filter(
+        (t) =>
+          t.subject.toLocaleLowerCase('tr-TR').includes(q) ||
+          t.lastMessageBody.toLocaleLowerCase('tr-TR').includes(q) ||
+          t.participants.some((p) => `${p.firstName} ${p.lastName}`.toLocaleLowerCase('tr-TR').includes(q))
+      );
+    }
+    return threads;
+  }, [allThreads, filter, debouncedSearch]);
+
+  const { data: threadData, isLoading: threadLoading } = useQuery<ThreadData>({
+    queryKey: ["/api/messages", selectedThreadId],
+    enabled: !!selectedThreadId,
+    refetchInterval: selectedThreadId ? 5000 : false,
+  });
+
+  const markReadMutation = useMutation({
+    mutationFn: (threadId: string) => apiRequest("POST", `/api/messages/${threadId}/read`, {}),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/messages"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/messages/unread-count"] });
+    },
+  });
+
+  const sendReplyMutation = useMutation({
+    mutationFn: (data: { threadId: string; body: string }) =>
+      apiRequest("POST", `/api/messages/${data.threadId}/replies`, { body: data.body, attachments: [] }),
+    onSuccess: () => {
+      setMessageText("");
+      queryClient.invalidateQueries({ queryKey: ["/api/messages"] });
+    },
+  });
+
+  useEffect(() => {
+    if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+  }, [threadData?.messages]);
+
+  useEffect(() => {
+    if (selectedThreadId && threadData) {
+      const thread = allThreads.find((t) => t.threadId === selectedThreadId);
+      if (thread && thread.unreadCount > 0) markReadMutation.mutate(selectedThreadId);
+    }
+  }, [selectedThreadId, threadData]);
+
+  const handleSendMessage = useCallback(() => {
+    if (!messageText.trim() || !selectedThreadId) return;
+    sendReplyMutation.mutate({ threadId: selectedThreadId, body: messageText });
+  }, [messageText, selectedThreadId]);
+
+  const formatDate = (date: Date | string) => {
+    const d = new Date(date);
+    const now = new Date();
+    const diffMins = Math.floor((now.getTime() - d.getTime()) / 60000);
+    if (diffMins < 1) return "Simdi";
+    if (diffMins < 60) return `${diffMins} dk`;
+    if (diffMins < 1440) return `${Math.floor(diffMins / 60)} saat`;
+    if (diffMins < 2880) return "Dun";
+    return d.toLocaleDateString("tr-TR", { day: "numeric", month: "short" });
+  };
+
+  const getInitials = (firstName: string, lastName: string) =>
+    `${firstName?.[0] || ""}${lastName?.[0] || ""}`.toUpperCase();
+
+  const getOtherParticipants = (participants: Array<{ id?: string; userId?: string; firstName: string; lastName: string }>) =>
+    participants.filter((p) => (p.id || (p as any).userId) !== user?.id);
+
+  const getParticipantNames = (participants: Array<{ id?: string; userId?: string; firstName: string; lastName: string }>) => {
+    const others = getOtherParticipants(participants);
+    if (others.length === 0) return "Sen";
+    if (others.length === 1) return `${others[0].firstName} ${others[0].lastName}`;
+    return `${others[0].firstName} ${others[0].lastName} +${others.length - 1}`;
+  };
+
+  const unreadTotal = useMemo(() => allThreads.reduce((sum, t) => sum + t.unreadCount, 0), [allThreads]);
+  const isMobile = typeof window !== "undefined" && window.innerWidth < 768;
+  const showThreadList = !isMobile || !selectedThreadId;
+  const showConversation = !isMobile || !!selectedThreadId;
+
+  return (
+    <div className="flex h-[calc(100vh-220px)] min-h-[400px] overflow-hidden rounded-md border" data-testid="embedded-messages-container">
+      {showThreadList && (
+        <div className={`${isMobile ? "w-full" : "w-[340px] min-w-[280px]"} border-r flex flex-col bg-background`}>
+          <div className="p-3 border-b space-y-2">
+            <div className="flex items-center justify-between gap-2">
+              <h2 className="text-lg font-semibold" data-testid="text-embedded-messages-title">Mesajlar</h2>
+              <Button size="sm" variant="outline" onClick={() => window.location.href = '/mesajlar'} data-testid="button-open-full-messages">
+                Tam Gorunum
+              </Button>
+            </div>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Ara..."
+                className="pl-9"
+                data-testid="input-embedded-search-threads"
+              />
+            </div>
+            <div className="flex gap-1">
+              {([
+                { key: "all" as const, label: "Tumunu", icon: MessageSquare },
+                { key: "unread" as const, label: "Okunmamis", icon: Mail, count: unreadTotal },
+                { key: "sent" as const, label: "Gonderdiklerim", icon: MailOpen },
+              ]).map((fb) => (
+                <Button
+                  key={fb.key}
+                  variant={filter === fb.key ? "default" : "ghost"}
+                  size="sm"
+                  onClick={() => setFilter(fb.key)}
+                  className="flex-1 gap-1"
+                  data-testid={`button-embedded-filter-${fb.key}`}
+                >
+                  <fb.icon className="w-3.5 h-3.5" />
+                  <span className="text-xs">{fb.label}</span>
+                  {fb.count !== undefined && fb.count > 0 && (
+                    <Badge variant="destructive" className="ml-0.5 text-[10px] leading-none px-1.5 py-0.5">{fb.count}</Badge>
+                  )}
+                </Button>
+              ))}
+            </div>
+          </div>
+          <ScrollArea className="flex-1">
+            {threadsLoading || (threadsFetching && allThreads.length === 0) ? (
+              <div className="p-3 space-y-3">
+                {[1, 2, 3, 4].map((i) => (
+                  <div key={i} className="flex items-start gap-3 p-2">
+                    <Skeleton className="h-10 w-10 rounded-full shrink-0" />
+                    <div className="flex-1 space-y-2">
+                      <Skeleton className="h-4 w-3/4" />
+                      <Skeleton className="h-3 w-1/2" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : filteredThreads.length === 0 ? (
+              <div className="flex flex-col items-center justify-center p-8 text-center" data-testid="text-embedded-no-threads">
+                <MessageSquare className="w-10 h-10 text-muted-foreground/30 mb-2" />
+                <p className="text-sm text-muted-foreground">Mesaj bulunamadi</p>
+              </div>
+            ) : (
+              <div>
+                {filteredThreads.map((thread) => {
+                  const others = getOtherParticipants(thread.participants);
+                  const isSelected = selectedThreadId === thread.threadId;
+                  const hasUnread = thread.unreadCount > 0;
+                  return (
+                    <div
+                      key={thread.threadId}
+                      onClick={() => setSelectedThreadId(thread.threadId)}
+                      className={`flex items-start gap-3 p-3 cursor-pointer border-b transition-colors ${isSelected ? "bg-accent" : "hover-elevate"} ${hasUnread ? "font-medium" : ""}`}
+                      data-testid={`embedded-thread-item-${thread.threadId}`}
+                    >
+                      <Avatar className="shrink-0">
+                        <AvatarFallback className={hasUnread ? "bg-primary text-primary-foreground" : ""}>
+                          {others[0] ? getInitials(others[0].firstName, others[0].lastName) : "?"}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className={`text-sm truncate ${hasUnread ? "font-semibold" : "font-medium"}`}>{getParticipantNames(thread.participants)}</span>
+                          <span className="text-xs text-muted-foreground whitespace-nowrap shrink-0">{formatDate(thread.lastMessageAt)}</span>
+                        </div>
+                        <p className={`text-sm truncate mt-0.5 ${hasUnread ? "text-foreground" : "text-muted-foreground"}`}>{thread.subject}</p>
+                        <div className="flex items-center justify-between gap-2 mt-0.5">
+                          <p className="text-xs text-muted-foreground truncate">{thread.lastMessageBody}</p>
+                          {hasUnread && (
+                            <Badge variant="default" className="shrink-0 text-[10px] leading-none px-1.5 py-0.5">{thread.unreadCount}</Badge>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </ScrollArea>
+        </div>
+      )}
+
+      {showConversation && (
+        <div className="flex-1 flex flex-col min-w-0 bg-background">
+          {!selectedThreadId ? (
+            <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground gap-3" data-testid="text-embedded-no-thread-selected">
+              <MessageSquare className="w-14 h-14 text-muted-foreground/20" />
+              <p className="text-base font-medium">Bir konusma secin</p>
+              <p className="text-sm text-muted-foreground/70">Sol taraftan bir mesaj secin</p>
+            </div>
+          ) : threadLoading ? (
+            <div className="flex-1 flex flex-col">
+              <div className="p-3 border-b space-y-2">
+                <Skeleton className="h-5 w-48" />
+                <Skeleton className="h-4 w-32" />
+              </div>
+              <div className="flex-1 p-4 space-y-4">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className={`flex ${i % 2 === 0 ? "justify-end" : "justify-start"}`}>
+                    <Skeleton className="h-16 w-48 rounded-lg" />
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : threadData ? (
+            <>
+              <div className="p-3 border-b flex items-center gap-3">
+                {isMobile && (
+                  <Button size="icon" variant="ghost" onClick={() => setSelectedThreadId(null)} data-testid="button-embedded-back-to-list">
+                    <ArrowLeft className="w-5 h-5" />
+                  </Button>
+                )}
+                <div className="flex-1 min-w-0">
+                  <h2 className="font-semibold truncate" data-testid="text-embedded-thread-title">
+                    {threadData.messages[0]?.subject || "Mesaj"}
+                  </h2>
+                  <p className="text-sm text-muted-foreground truncate">
+                    {getParticipantNames(threadData.participants.map((p: any) => ({ id: p.id || p.userId, firstName: p.firstName || "", lastName: p.lastName || "" })))}
+                  </p>
+                </div>
+              </div>
+              <ScrollArea className="flex-1" ref={scrollRef as any}>
+                <div className="p-4 space-y-2">
+                  {threadData.messages.map((message) => {
+                    const isSent = message.senderId === user?.id;
+                    const sender = threadData.participants.find((p: any) => (p.id || p.userId) === message.senderId);
+                    return (
+                      <div key={message.id} className={`flex ${isSent ? "justify-end" : "justify-start"} mb-1`} data-testid={`embedded-message-${message.id}`}>
+                        <div className={`max-w-[75%] px-3 py-2 rounded-lg ${isSent ? "bg-primary text-primary-foreground" : "bg-muted"}`}>
+                          {!isSent && sender && (
+                            <p className="text-xs font-medium mb-1">{sender.firstName} {sender.lastName}</p>
+                          )}
+                          <p className="text-sm whitespace-pre-wrap break-words">{message.body}</p>
+                          <p className={`text-[10px] mt-1 ${isSent ? "text-primary-foreground/70" : "text-muted-foreground"}`}>
+                            {new Date(message.createdAt).toLocaleString("tr-TR", { hour: "2-digit", minute: "2-digit", day: "numeric", month: "short" })}
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </ScrollArea>
+              <div className="p-3 border-t">
+                <div className="flex gap-2">
+                  <Input
+                    value={messageText}
+                    onChange={(e) => setMessageText(e.target.value)}
+                    placeholder="Mesajinizi yazin..."
+                    onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSendMessage(); } }}
+                    data-testid="input-embedded-message"
+                  />
+                  <Button
+                    onClick={handleSendMessage}
+                    disabled={!messageText.trim() || sendReplyMutation.isPending}
+                    data-testid="button-embedded-send"
+                  >
+                    <Send className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+            </>
+          ) : null}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function EmbeddedAnnouncements() {
+  const { user } = useAuth();
+
+  const { data: announcements, isLoading } = useQuery<AnnouncementWithUser[]>({
+    queryKey: ['/api/announcements'],
+  });
+
+  return (
+    <div className="space-y-4" data-testid="embedded-announcements-container">
+      <div className="flex items-center justify-between gap-2">
+        <h2 className="text-lg font-semibold" data-testid="text-embedded-announcements-title">Duyurular</h2>
+        <Button size="sm" variant="outline" onClick={() => window.location.href = '/duyurular'} data-testid="button-open-full-announcements">
+          Tam Gorunum
+        </Button>
+      </div>
+
+      {isLoading ? (
+        <ListSkeleton count={4} variant="card" />
+      ) : announcements && announcements.length > 0 ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          {announcements.map((announcement) => {
+            const isUrgent = announcement.priority === 'urgent';
+            const hasBanner = !!announcement.bannerImageUrl;
+
+            return (
+              <Card
+                key={announcement.id}
+                className={`overflow-hidden cursor-pointer transition-all hover:shadow-lg hover:-translate-y-1 ${isUrgent ? 'ring-2 ring-destructive' : ''}`}
+                data-testid={`embedded-card-announcement-${announcement.id}`}
+              >
+                {hasBanner ? (
+                  <div className="relative h-32 overflow-hidden">
+                    <img src={announcement.bannerImageUrl!} alt={announcement.title} className="w-full h-full object-cover" loading="lazy" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />
+                    <div className="absolute bottom-0 left-0 right-0 p-3">
+                      <h3 className="text-white font-semibold line-clamp-2 text-sm" data-testid={`embedded-text-announcement-title-${announcement.id}`}>
+                        {announcement.title}
+                      </h3>
+                    </div>
+                    <div className="absolute top-2 right-2 flex gap-1">
+                      <Badge variant={isUrgent ? "destructive" : "secondary"} className="text-xs">
+                        {announcementPriorityLabels[announcement.priority]}
+                      </Badge>
+                    </div>
+                  </div>
+                ) : (
+                  <div className={`h-32 flex items-center justify-center ${isUrgent ? 'bg-destructive/10' : 'bg-primary/5'}`}>
+                    <div className="text-center p-4">
+                      {isUrgent ? (
+                        <AlertCircle className="w-8 h-8 mx-auto text-destructive mb-2" />
+                      ) : (
+                        <Megaphone className="w-8 h-8 mx-auto text-primary mb-2" />
+                      )}
+                      <h3 className="font-semibold line-clamp-2 text-sm" data-testid={`embedded-text-announcement-title-${announcement.id}`}>
+                        {announcement.title}
+                      </h3>
+                    </div>
+                  </div>
+                )}
+                <CardContent className="p-3">
+                  <p className="text-sm text-muted-foreground line-clamp-2 mb-2">{announcement.message}</p>
+                  <div className="flex items-center justify-between text-xs text-muted-foreground">
+                    <div className="flex items-center gap-1">
+                      <Calendar className="w-3 h-3" />
+                      <span>
+                        {announcement.publishedAt
+                          ? format(new Date(announcement.publishedAt), "d MMM yyyy", { locale: tr })
+                          : "Taslak"}
+                      </span>
+                    </div>
+                    <Badge variant="outline" className="text-xs">
+                      {announcementCategoryLabels[announcement.category] || announcement.category}
+                    </Badge>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      ) : (
+        <EmptyState
+          icon={Megaphone}
+          title="Henuz duyuru yok"
+          description="Yeni duyurular burada goruntulenecek."
+          data-testid="empty-state-embedded-announcements"
+        />
+      )}
+    </div>
+  );
+}
+
 export default function Notifications() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [, navigate] = useLocation();
+
+  const urlParams = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '');
+  const initialTopTab = urlParams.get('tab') || 'bildirimler';
+  const [topLevelTab, setTopLevelTab] = useState(initialTopTab);
+
   const [activeTab, setActiveTab] = useState("notifications");
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [branchFilter, setBranchFilter] = useState("all");
@@ -406,6 +883,16 @@ export default function Notifications() {
   const isAdmin = user?.role === 'admin' || user?.role === 'ceo';
   const canAssignTasks = user?.role ? hasPermission(user.role as UserRoleType, 'tasks', 'create') : false;
   const [viewAll, setViewAll] = useState(false);
+
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    if (topLevelTab === 'bildirimler') {
+      url.searchParams.delete('tab');
+    } else {
+      url.searchParams.set('tab', topLevelTab);
+    }
+    window.history.replaceState({}, '', url.toString());
+  }, [topLevelTab]);
   
   const pollingInterval = useAdaptivePolling();
   
@@ -453,6 +940,24 @@ export default function Notifications() {
   });
   
   const unreadCount = unreadData?.count || 0;
+  const [prefsOpen, setPrefsOpen] = useState(false);
+
+  const { data: notifPrefs } = useQuery<Record<string, boolean>>({
+    queryKey: ['/api/notification-preferences'],
+  });
+
+  const updatePrefsMutation = useMutation({
+    mutationFn: async (prefs: Record<string, boolean>) => {
+      await apiRequest('PATCH', '/api/notification-preferences', prefs);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/notification-preferences'] });
+      toast({ title: "Basarili", description: "Bildirim tercihleri guncellendi" });
+    },
+    onError: () => {
+      toast({ title: "Hata", description: "Tercihler guncellenemedi", variant: "destructive" });
+    },
+  });
   
   const branchMap = (branches || []).reduce((acc, b) => { acc[b.id] = b.name; return acc; }, {} as Record<number, string>);
 
@@ -613,123 +1118,157 @@ export default function Notifications() {
   return (
     <div className="max-w-6xl mx-auto px-3 sm:px-4 py-3 space-y-4 pb-24">
       <div className="flex flex-wrap items-start justify-between gap-2 sm:gap-3">
-        <div>
-          <h1 className="text-xl sm:text-2xl font-bold tracking-tight" data-testid="text-page-title">
-            Bildirimler
-          </h1>
-          <p className="text-sm text-muted-foreground mt-1" data-testid="text-page-description">
-            Bildirimler, görevler ve hatırlatmalar
-          </p>
+        <div className="flex items-center gap-2">
+          <div>
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight" data-testid="text-page-title">
+              Iletisim Merkezi
+            </h1>
+            <p className="text-sm text-muted-foreground mt-1" data-testid="text-page-description">
+              Bildirimler, mesajlar ve duyurular
+            </p>
+          </div>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setPrefsOpen(true)}
+            data-testid="button-notification-settings"
+          >
+            <Settings className="w-4 h-4" />
+          </Button>
         </div>
         
-        <div className="flex items-center gap-2 flex-wrap">
-          {canAssignTasks && (
-            <Button
-              variant="default"
-              size="sm"
-              onClick={() => setAssignTaskOpen(true)}
-              data-testid="button-assign-task"
-            >
-              <UserPlus className="w-3.5 h-3.5 mr-1.5" />
-              Görev Ata
-            </Button>
-          )}
-          {isAdmin && (
-            <Button
-              variant={viewAll ? "default" : "outline"}
-              size="sm"
-              onClick={() => { setViewAll(!viewAll); setBranchFilter('all'); }}
-              data-testid="button-toggle-view-all"
-            >
-              <Building2 className="w-3.5 h-3.5 mr-1.5" />
-              {viewAll ? 'Sistem Bildirimleri' : 'Kişisel'}
-            </Button>
-          )}
-          {isAdmin && viewAll && branches && branches.length > 0 && (
-            <Select value={branchFilter} onValueChange={setBranchFilter}>
-              <SelectTrigger className="w-[180px]" data-testid="select-branch-filter">
-                <Building2 className="w-3.5 h-3.5 mr-1.5 flex-shrink-0" />
-                <SelectValue placeholder="Tüm Şubeler" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all" data-testid="branch-option-all">Tüm Şubeler</SelectItem>
-                {branches.map(branch => (
-                  <SelectItem key={branch.id} value={String(branch.id)} data-testid={`branch-option-${branch.id}`}>
-                    {branch.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
-          
-          {isAdmin && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => testNotificationMutation.mutate()}
-              disabled={testNotificationMutation.isPending}
-              data-testid="button-test-notification"
-            >
-              <Plus className="w-3.5 h-3.5 mr-1.5" />
-              {testNotificationMutation.isPending ? "Gönderiliyor..." : "Test Bildirimi Gönder"}
-            </Button>
-          )}
-          {unreadCount > 0 && activeTab === "notifications" && (
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  data-testid="button-mark-all-read"
-                >
-                  <CheckCheck className="w-4 h-4 mr-2" />
-                  Tümünü Okundu İşaretle
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent data-testid="dialog-confirm-mark-all-read">
-                <AlertDialogHeader>
-                  <AlertDialogTitle data-testid="dialog-title-confirm">Emin misiniz?</AlertDialogTitle>
-                  <AlertDialogDescription data-testid="dialog-description">
-                    Tüm bildirimler okundu olarak işaretlenecek. Bu işlem geri alınamaz.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel data-testid="button-dialog-cancel">Vazgeç</AlertDialogCancel>
-                  <AlertDialogAction 
-                    onClick={() => markAllAsReadMutation.mutate()}
-                    disabled={markAllAsReadMutation.isPending}
-                    data-testid="button-dialog-confirm"
+        {topLevelTab === 'bildirimler' && (
+          <div className="flex items-center gap-2 flex-wrap">
+            {canAssignTasks && (
+              <Button
+                variant="default"
+                size="sm"
+                onClick={() => setAssignTaskOpen(true)}
+                data-testid="button-assign-task"
+              >
+                <UserPlus className="w-3.5 h-3.5 mr-1.5" />
+                Gorev Ata
+              </Button>
+            )}
+            {isAdmin && (
+              <Button
+                variant={viewAll ? "default" : "outline"}
+                size="sm"
+                onClick={() => { setViewAll(!viewAll); setBranchFilter('all'); }}
+                data-testid="button-toggle-view-all"
+              >
+                <Building2 className="w-3.5 h-3.5 mr-1.5" />
+                {viewAll ? 'Sistem Bildirimleri' : 'Kisisel'}
+              </Button>
+            )}
+            {isAdmin && viewAll && branches && branches.length > 0 && (
+              <Select value={branchFilter} onValueChange={setBranchFilter}>
+                <SelectTrigger className="w-[180px]" data-testid="select-branch-filter">
+                  <Building2 className="w-3.5 h-3.5 mr-1.5 flex-shrink-0" />
+                  <SelectValue placeholder="Tum Subeler" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all" data-testid="branch-option-all">Tum Subeler</SelectItem>
+                  {branches.map(branch => (
+                    <SelectItem key={branch.id} value={String(branch.id)} data-testid={`branch-option-${branch.id}`}>
+                      {branch.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+            
+            {isAdmin && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => testNotificationMutation.mutate()}
+                disabled={testNotificationMutation.isPending}
+                data-testid="button-test-notification"
+              >
+                <Plus className="w-3.5 h-3.5 mr-1.5" />
+                {testNotificationMutation.isPending ? "Gonderiliyor..." : "Test Bildirimi Gonder"}
+              </Button>
+            )}
+            {unreadCount > 0 && activeTab === "notifications" && (
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    data-testid="button-mark-all-read"
                   >
-                    Evet, İşaretle
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          )}
-        </div>
+                    <CheckCheck className="w-4 h-4 mr-2" />
+                    Tumunu Okundu Isaretle
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent data-testid="dialog-confirm-mark-all-read">
+                  <AlertDialogHeader>
+                    <AlertDialogTitle data-testid="dialog-title-confirm">Emin misiniz?</AlertDialogTitle>
+                    <AlertDialogDescription data-testid="dialog-description">
+                      Tum bildirimler okundu olarak isaretlenecek. Bu islem geri alinamaz.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel data-testid="button-dialog-cancel">Vazgec</AlertDialogCancel>
+                    <AlertDialogAction 
+                      onClick={() => markAllAsReadMutation.mutate()}
+                      disabled={markAllAsReadMutation.isPending}
+                      data-testid="button-dialog-confirm"
+                    >
+                      Evet, Isaretle
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            )}
+          </div>
+        )}
       </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList data-testid="tabs-main">
-          <TabsTrigger value="notifications" data-testid="tab-notifications" className="gap-1.5">
-            <Bell className="w-3.5 h-3.5" />
-            Bildirimler
-            {unreadCount > 0 && (
-              <Badge variant="destructive" className="text-[10px] px-1.5 py-0 ml-1">
-                {unreadCount}
-              </Badge>
-            )}
-          </TabsTrigger>
-          <TabsTrigger value="pending" data-testid="tab-pending" className="gap-1.5">
-            <ClipboardCheck className="w-3.5 h-3.5" />
-            Bekleyenler
-            {totalPending > 0 && (
-              <Badge variant="secondary" className="text-[10px] px-1.5 py-0 ml-1">
-                {totalPending}
-              </Badge>
-            )}
-          </TabsTrigger>
-        </TabsList>
+      <Tabs value={topLevelTab} onValueChange={setTopLevelTab}>
+        <div className="overflow-x-auto -mx-3 px-3 sm:mx-0 sm:px-0">
+          <TabsList className="w-full sm:w-auto" data-testid="tabs-top-level">
+            <TabsTrigger value="bildirimler" data-testid="tab-top-bildirimler" className="gap-1.5 flex-1 sm:flex-initial">
+              <Bell className="w-3.5 h-3.5" />
+              Bildirimler
+              {unreadCount > 0 && (
+                <Badge variant="destructive" className="text-[10px] px-1.5 py-0 ml-1">{unreadCount}</Badge>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="mesajlar" data-testid="tab-top-mesajlar" className="gap-1.5 flex-1 sm:flex-initial">
+              <MessageSquare className="w-3.5 h-3.5" />
+              Mesajlar
+            </TabsTrigger>
+            <TabsTrigger value="duyurular" data-testid="tab-top-duyurular" className="gap-1.5 flex-1 sm:flex-initial">
+              <Megaphone className="w-3.5 h-3.5" />
+              Duyurular
+            </TabsTrigger>
+          </TabsList>
+        </div>
+
+        <TabsContent value="bildirimler" className="mt-4 space-y-3">
+          <Tabs value={activeTab} onValueChange={setActiveTab}>
+            <TabsList data-testid="tabs-main">
+              <TabsTrigger value="notifications" data-testid="tab-notifications" className="gap-1.5">
+                <Bell className="w-3.5 h-3.5" />
+                Bildirimler
+                {unreadCount > 0 && (
+                  <Badge variant="destructive" className="text-[10px] px-1.5 py-0 ml-1">
+                    {unreadCount}
+                  </Badge>
+                )}
+              </TabsTrigger>
+              <TabsTrigger value="pending" data-testid="tab-pending" className="gap-1.5">
+                <ClipboardCheck className="w-3.5 h-3.5" />
+                Bekleyenler
+                {totalPending > 0 && (
+                  <Badge variant="secondary" className="text-[10px] px-1.5 py-0 ml-1">
+                    {totalPending}
+                  </Badge>
+                )}
+              </TabsTrigger>
+            </TabsList>
 
         <TabsContent value="notifications" className="mt-4 space-y-3">
           <div className="flex gap-1.5 overflow-x-auto pb-1 -mx-3 px-3 sm:mx-0 sm:px-0 sm:flex-wrap sm:overflow-visible">
@@ -944,15 +1483,185 @@ export default function Notifications() {
           ) : totalPending === 0 && (
             <EmptyState 
               icon={CheckCheck}
-              title="Bekleyen işiniz yok"
-              description="Tüm görevleriniz ve checklistleriniz tamamlanmış."
+              title="Bekleyen isiniz yok"
+              description="Tum gorevleriniz ve checklistleriniz tamamlanmis."
               data-testid="empty-state-pending"
             />
           )}
         </TabsContent>
       </Tabs>
+        </TabsContent>
+
+        <TabsContent value="mesajlar" className="mt-4">
+          <EmbeddedMessages />
+        </TabsContent>
+
+        <TabsContent value="duyurular" className="mt-4">
+          <EmbeddedAnnouncements />
+        </TabsContent>
+      </Tabs>
 
       <AssignTaskDialog open={assignTaskOpen} onOpenChange={setAssignTaskOpen} />
+
+      <Dialog open={prefsOpen} onOpenChange={setPrefsOpen}>
+        <DialogContent className="max-w-md max-h-[85vh] overflow-y-auto" data-testid="dialog-notification-preferences">
+          <DialogHeader>
+            <DialogTitle data-testid="text-prefs-title">Bildirim Tercihleri</DialogTitle>
+            <DialogDescription className="text-sm text-muted-foreground">
+              Almak istemediginiz bildirim turlerini kapatabilirsiniz. Kritik bildirimler her zaman aktiftir.
+            </DialogDescription>
+          </DialogHeader>
+          <NotificationPreferencesContent
+            prefs={notifPrefs || {}}
+            onSave={(newPrefs) => {
+              updatePrefsMutation.mutate(newPrefs);
+            }}
+            isPending={updatePrefsMutation.isPending}
+          />
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+const PREF_CATEGORIES = [
+  {
+    key: 'egitim',
+    label: 'Egitim Bildirimleri',
+    icon: GraduationCap,
+    types: [
+      { key: 'quiz_passed', label: 'Quiz basarili sonuclari' },
+      { key: 'quiz_failed', label: 'Quiz basarisiz sonuclari' },
+      { key: 'module_completed', label: 'Modul tamamlama' },
+      { key: 'badge_earned', label: 'Rozet kazanma' },
+      { key: 'gate_passed', label: 'Statu atlama basarili' },
+      { key: 'gate_failed', label: 'Statu atlama basarisiz' },
+      { key: 'certificate_earned', label: 'Sertifika kazanma' },
+      { key: 'streak_milestone', label: 'Seri rekoru' },
+      { key: 'score_change', label: 'Skor degisimi' },
+      { key: 'training_assigned', label: 'Egitim atama' },
+    ],
+  },
+  {
+    key: 'gorevler',
+    label: 'Gorev Bildirimleri',
+    icon: ClipboardCheck,
+    types: [
+      { key: 'task_assigned', label: 'Yeni gorev atamasi' },
+      { key: 'task_overdue', label: 'Gecikme uyarisi' },
+      { key: 'task_completed', label: 'Gorev tamamlama' },
+      { key: 'checklist_reminder', label: 'Checklist hatirlatma' },
+    ],
+  },
+  {
+    key: 'misafir',
+    label: 'Misafir Bildirimleri',
+    icon: AlertCircle,
+    types: [
+      { key: 'feedback_alert', label: 'Dusuk puan uyarisi' },
+      { key: 'complaint', label: 'Sikayet bildirimi' },
+    ],
+  },
+  {
+    key: 'recete',
+    label: 'Recete Bildirimleri',
+    icon: BookOpen,
+    types: [
+      { key: 'recipe_updated', label: 'Recete guncelleme' },
+      { key: 'recipe_update', label: 'Yeni recete' },
+    ],
+  },
+  {
+    key: 'sistem',
+    label: 'Diger Bildirimler',
+    icon: Bell,
+    types: [
+      { key: 'shift_assigned', label: 'Vardiya atamasi' },
+      { key: 'shift_swap_request', label: 'Vardiya takas talebi' },
+      { key: 'leave_request', label: 'Izin talebi' },
+      { key: 'stock_alert', label: 'Stok uyarisi' },
+      { key: 'announcement', label: 'Duyurular' },
+    ],
+  },
+];
+
+const NEVER_DISABLE = ['sla_breach', 'pin_lockout', 'critical_fault', 'security_alert', 'fault_alert'];
+
+function NotificationPreferencesContent({
+  prefs,
+  onSave,
+  isPending,
+}: {
+  prefs: Record<string, boolean>;
+  onSave: (prefs: Record<string, boolean>) => void;
+  isPending: boolean;
+}) {
+  const [localPrefs, setLocalPrefs] = useState<Record<string, boolean>>({ ...prefs });
+
+  useEffect(() => {
+    setLocalPrefs({ ...prefs });
+  }, [prefs]);
+
+  const togglePref = (key: string) => {
+    if (NEVER_DISABLE.includes(key)) return;
+    setLocalPrefs(prev => ({ ...prev, [key]: prev[key] === false ? true : false }));
+  };
+
+  const isEnabled = (key: string) => {
+    if (NEVER_DISABLE.includes(key)) return true;
+    return localPrefs[key] !== false;
+  };
+
+  return (
+    <div className="space-y-4" data-testid="notification-preferences-content">
+      {PREF_CATEGORIES.map((cat) => {
+        const CatIcon = cat.icon;
+        return (
+          <div key={cat.key} className="space-y-2">
+            <div className="flex items-center gap-2 text-sm font-medium">
+              <CatIcon className="w-4 h-4 text-muted-foreground" />
+              <span>{cat.label}</span>
+            </div>
+            <div className="space-y-1 pl-6">
+              {cat.types.map((type) => (
+                <div
+                  key={type.key}
+                  className="flex items-center justify-between py-1.5"
+                  data-testid={`pref-row-${type.key}`}
+                >
+                  <span className="text-sm">{type.label}</span>
+                  <Switch
+                    checked={isEnabled(type.key)}
+                    onCheckedChange={() => togglePref(type.key)}
+                    disabled={NEVER_DISABLE.includes(type.key)}
+                    data-testid={`switch-pref-${type.key}`}
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })}
+
+      <div className="space-y-2 border-t pt-3">
+        <div className="flex items-center gap-2 text-sm font-medium text-destructive">
+          <BellOff className="w-4 h-4" />
+          <span>Kapatılamaz Bildirimler</span>
+        </div>
+        <p className="text-xs text-muted-foreground pl-6">
+          SLA ihlali, guvenlik uyarisi ve kritik ariza bildirimleri her zaman aktiftir.
+        </p>
+      </div>
+
+      <Button
+        onClick={() => onSave(localPrefs)}
+        disabled={isPending}
+        className="w-full"
+        data-testid="button-save-preferences"
+      >
+        {isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+        Tercihleri Kaydet
+      </Button>
     </div>
   );
 }

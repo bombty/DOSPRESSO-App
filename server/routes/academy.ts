@@ -535,6 +535,64 @@ router.post('/api/academy/quiz-result', isAuthenticated, async (req: any, res) =
       console.error("Training completion chain error:", chainError);
     }
 
+    try {
+      const quiz = await storage.getModuleQuiz(Number(quizId));
+      const passingScore = quiz?.passingScore || 70;
+      const quizTitle = quiz?.title || 'Quiz';
+      const moduleName = quiz?.moduleId ? (await db.select().from(trainingModules).where(eq(trainingModules.id, quiz.moduleId)).limit(1))?.[0]?.titleTr || 'Modül' : '';
+
+      if (Number(score) >= passingScore) {
+        await storage.createNotification({
+          userId: req.user.id,
+          type: 'quiz_passed',
+          title: 'Quiz Basarili!',
+          message: `${quizTitle} quizini basariyla gectiniz! Skor: %${score}`,
+          link: quiz?.moduleId ? `/akademi/modul/${quiz.moduleId}` : '/akademi',
+        });
+      } else {
+        await storage.createNotification({
+          userId: req.user.id,
+          type: 'quiz_failed',
+          title: 'Quiz Sonucu',
+          message: `${quizTitle} quizinde %${score} aldiniz. Gecme puani: %${passingScore}. Tekrar deneyebilirsiniz.`,
+          link: quiz?.moduleId ? `/akademi/modul/${quiz.moduleId}` : '/akademi',
+        });
+      }
+
+      if (moduleCompleted && completedModuleId) {
+        await storage.createNotification({
+          userId: req.user.id,
+          type: 'module_completed',
+          title: 'Modul Tamamlandi!',
+          message: `'${moduleName}' modulunu basariyla tamamladiniz!`,
+          link: `/akademi/modul/${completedModuleId}`,
+        });
+
+        const [currentUser] = await db.select().from(users).where(eq(users.id, req.user.id));
+        if (currentUser?.branchId) {
+          const userName = `${currentUser.firstName || ''} ${currentUser.lastName || ''}`.trim();
+          const branchSupervisors = await db.select().from(users)
+            .where(and(
+              or(eq(users.role, 'supervisor'), eq(users.role, 'mudur')),
+              eq(users.branchId, currentUser.branchId),
+              eq(users.accountStatus, 'active')
+            ));
+          for (const sup of branchSupervisors) {
+            await storage.createNotification({
+              userId: sup.id,
+              type: 'module_completed',
+              title: 'Modul Tamamlandi',
+              message: `${userName} '${moduleName}' modulunu tamamladi.`,
+              link: `/akademi/modul/${completedModuleId}`,
+              branchId: currentUser.branchId,
+            });
+          }
+        }
+      }
+    } catch (notifError: any) {
+      console.error("Quiz notification error:", notifError);
+    }
+
     res.json({ success: true, result, unlockedBadges, moduleCompleted, completedModuleId });
   } catch (error: any) {
     handleApiError(res, error, "SubmitQuizResult");
@@ -1200,7 +1258,22 @@ router.post('/api/academy/streak-activity', isAuthenticated, async (req: any, re
       })
       .where(eq(learningStreaks.id, streak.id))
       .returning();
-    
+
+    const STREAK_MILESTONES = [7, 14, 30, 60, 100];
+    if (STREAK_MILESTONES.includes(newCurrentStreak)) {
+      try {
+        await storage.createNotification({
+          userId,
+          type: 'streak_milestone',
+          title: `${newCurrentStreak} Gun Serisi!`,
+          message: `${newCurrentStreak} gun ust uste egitim yaptiniz! Harika gidiyorsunuz!`,
+          link: '/akademi',
+        });
+      } catch (e) {
+        console.error("Streak milestone notification error:", e);
+      }
+    }
+
     res.json(updated[0]);
   } catch (error: any) {
     console.error('Streak activity error:', error);
@@ -2399,9 +2472,9 @@ router.patch('/api/academy/modules/:id/status', isAuthenticated, async (req: any
         for (const approver of approvers) {
           await storage.createNotification({
             userId: approver.id,
-            type: 'academy_update',
-            title: 'Yeni modül onay bekliyor',
-            message: `"${existing.title}" modülü onayınızı bekliyor.`,
+            type: 'module_approval_pending',
+            title: 'Yeni modul onay bekliyor',
+            message: `"${existing.title}" modulu onayinizi bekliyor.`,
             relatedId: moduleId,
             relatedType: 'training_module',
           });
@@ -2409,12 +2482,13 @@ router.patch('/api/academy/modules/:id/status', isAuthenticated, async (req: any
       }
 
       if ((status === 'approved' || status === 'rejected') && existing.createdBy) {
-        const statusText = status === 'approved' ? 'onaylandı' : 'reddedildi';
+        const notifType = status === 'approved' ? 'module_approved' : 'module_rejected';
+        const statusText = status === 'approved' ? 'onaylandi' : 'reddedildi';
         await storage.createNotification({
           userId: existing.createdBy,
-          type: 'academy_update',
-          title: `Modül ${statusText}`,
-          message: `"${existing.title}" modülü ${statusText}.${rejectionReason ? ` Sebep: ${rejectionReason}` : ''}`,
+          type: notifType,
+          title: `Modul ${statusText}`,
+          message: `"${existing.title}" modulu ${statusText}.${rejectionReason ? ` Sebep: ${rejectionReason}` : ''}`,
           relatedId: moduleId,
           relatedType: 'training_module',
         });

@@ -9871,6 +9871,45 @@ Dusuk puanli alanlara odaklan ve pozitif, motive edici ol. JSON dizisi olarak ya
 
 
   // ========================================
+  // NOTIFICATION PREFERENCES
+  // ========================================
+
+  router.get('/api/notification-preferences', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const [row] = await db.select({ notificationPreferences: users.notificationPreferences })
+        .from(users).where(eq(users.id, user.id));
+      res.json(row?.notificationPreferences || {});
+    } catch (error: any) {
+      console.error("Error fetching notification preferences:", error);
+      res.status(500).json({ message: "Tercihler alinamadi" });
+    }
+  });
+
+  router.patch('/api/notification-preferences', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const prefs = req.body;
+
+      const NEVER_MUTABLE = ['sla_breach', 'pin_lockout', 'critical_fault', 'security_alert', 'fault_alert'];
+      for (const key of NEVER_MUTABLE) {
+        if (prefs[key] === false) {
+          delete prefs[key];
+        }
+      }
+
+      await db.update(users)
+        .set({ notificationPreferences: prefs, updatedAt: new Date() })
+        .where(eq(users.id, user.id));
+
+      res.json({ success: true, preferences: prefs });
+    } catch (error: any) {
+      console.error("Error updating notification preferences:", error);
+      res.status(500).json({ message: "Tercihler guncellenemedi" });
+    }
+  });
+
+  // ========================================
   // STAFF EVALUATIONS & PERFORMANCE SUMMARY
   // ========================================
 

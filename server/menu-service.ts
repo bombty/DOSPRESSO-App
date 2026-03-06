@@ -479,21 +479,12 @@ const MENU_BLUEPRINT: SidebarMenuSection[] = [
       },
       {
         id: "notifications",
-        titleTr: "Bildirimler",
+        titleTr: "Iletisim Merkezi",
         path: "/bildirimler",
         icon: "Bell",
         moduleKey: "notifications",
         scope: "both",
         badge: "notifications",
-      },
-      {
-        id: "messages",
-        titleTr: "Mesajlar",
-        path: "/mesajlar",
-        icon: "MessageSquare",
-        moduleKey: "messages",
-        scope: "both",
-        badge: "messages",
       },
       {
         id: "ai-assistant",

@@ -3649,8 +3649,27 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createNotification(notification: InsertNotification): Promise<Notification> {
-    const CRITICAL_TYPES = ['sla_breach', 'pin_lockout', 'critical_fault', 'security_alert', 'fault_alert'];
-    if (!CRITICAL_TYPES.includes(notification.type)) {
+    const NEVER_MUTABLE_TYPES = ['sla_breach', 'pin_lockout', 'critical_fault', 'security_alert', 'fault_alert'];
+    const THROTTLE_EXEMPT_TYPES = [...NEVER_MUTABLE_TYPES,
+      'quiz_passed', 'quiz_failed', 'badge_earned', 'gate_passed', 'gate_failed', 'gate_result', 'gate_request',
+      'certificate_earned', 'streak_milestone', 'module_completed', 'score_change'];
+
+    if (!NEVER_MUTABLE_TYPES.includes(notification.type)) {
+      try {
+        const [userRow] = await db.select({ notificationPreferences: users.notificationPreferences })
+          .from(users).where(eq(users.id, notification.userId));
+        if (userRow?.notificationPreferences) {
+          const prefs = userRow.notificationPreferences as Record<string, boolean>;
+          if (prefs[notification.type] === false) {
+            return { id: -1, ...notification, isRead: false, isArchived: false, branchId: notification.branchId ?? null, link: notification.link ?? null, createdAt: new Date() } as Notification;
+          }
+        }
+      } catch (e) {
+        // ignore preference check errors
+      }
+    }
+
+    if (!THROTTLE_EXEMPT_TYPES.includes(notification.type)) {
       const [countResult] = await db.select({ count: sql<number>`count(*)::int` })
         .from(notifications)
         .where(and(
@@ -7516,6 +7535,23 @@ export class DatabaseStorage implements IStorage {
       .values({ userId, badgeId })
       .onConflictDoNothing()
       .returning();
+
+    if (result) {
+      try {
+        const [badge] = await db.select().from(badges).where(eq(badges.id, badgeId));
+        if (badge) {
+          await this.createNotification({
+            userId,
+            type: 'badge_earned',
+            title: 'Rozet Kazanildi!',
+            message: `'${badge.titleTr || badge.badgeKey}' rozetini kazandiniz!`,
+            link: '/akademi/rozetlerim',
+          });
+        }
+      } catch (e) {
+        console.error("Badge notification error:", e);
+      }
+    }
     return result;
   }
 

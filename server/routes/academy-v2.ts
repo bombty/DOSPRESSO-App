@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { db } from "../db";
+import { storage } from "../storage";
 import { isAuthenticated } from "../localAuth";
 import {
   isHQRole,
@@ -237,11 +238,11 @@ router.post('/api/academy/gates/:id/attempt', isAuthenticated, async (req: any, 
 
     for (const sup of supervisors) {
       if (sup.branchId === targetUser?.branchId || ['coach', 'cgo', 'admin'].includes(sup.role)) {
-        await db.insert(notifications).values({
+        await storage.createNotification({
           userId: sup.id,
           type: 'gate_request',
-          title: 'Yeni Statü Atlama Talebi',
-          message: `${targetName} - ${gate.titleTr} için statü atlama talebinde bulundu.`,
+          title: 'Yeni Statu Atlama Talebi',
+          message: `${targetName} - ${gate.titleTr} icin statu atlama talebinde bulundu.`,
           link: '/akademi-supervisor',
           branchId: targetUser?.branchId || null,
         });
@@ -341,28 +342,87 @@ router.patch('/api/academy/gate-attempts/:attemptId', isAuthenticated, async (re
               .set({ role: toLevel.roleId })
               .where(eq(users.id, finalResult.userId));
           }
+
+          try {
+            const levelName = toLevel?.titleTr || gate.titleTr || 'Yeni Seviye';
+            await storage.createNotification({
+              userId: finalResult.userId,
+              type: 'certificate_earned',
+              title: 'Sertifika Kazanildi!',
+              message: `'${levelName}' sertifikasini kazandiniz! Sertifikanizi profilinizden indirebilirsiniz.`,
+              link: '/akademi/sertifikalarim',
+            });
+          } catch (e) {
+            console.error("Certificate notification error:", e);
+          }
         }
       }
 
       if (finalResult.userId) {
         const [gate] = await db.select().from(careerGates).where(eq(careerGates.id, existing.gateId));
         const gateName = gate?.titleTr || 'Gate';
+        const [targetUser] = await db.select().from(users).where(eq(users.id, finalResult.userId));
+        const targetName = targetUser ? `${targetUser.firstName || ''} ${targetUser.lastName || ''}`.trim() : '';
+
         if (finalResult.overallPassed) {
-          await db.insert(notifications).values({
+          await storage.createNotification({
             userId: finalResult.userId,
-            type: 'gate_result',
-            title: 'Statü Atlama Başarılı!',
-            message: `${gateName} sınavını başarıyla geçtiniz. Yeni seviyenize terfi edildiniz!`,
+            type: 'gate_passed',
+            title: 'Statu Atlama Basarili!',
+            message: `${gateName} sinavini basariyla gectiniz. Yeni seviyenize terfi edildiniz!`,
             link: '/akademi/yolum',
           });
+
+          const supervisors = await db.select().from(users)
+            .where(and(
+              or(
+                eq(users.role, 'supervisor'),
+                eq(users.role, 'mudur'),
+                eq(users.role, 'coach'),
+                eq(users.role, 'cgo'),
+                eq(users.role, 'admin')
+              ),
+              eq(users.accountStatus, 'active')
+            ));
+          for (const sup of supervisors) {
+            if (sup.branchId === targetUser?.branchId || ['coach', 'cgo', 'admin'].includes(sup.role)) {
+              await storage.createNotification({
+                userId: sup.id,
+                type: 'gate_passed',
+                title: 'Statu Atlama Basarili',
+                message: `${targetName} ${gateName} sinavini basariyla gecti.`,
+                link: '/akademi-supervisor',
+                branchId: targetUser?.branchId || null,
+              });
+            }
+          }
         } else {
-          await db.insert(notifications).values({
+          await storage.createNotification({
             userId: finalResult.userId,
-            type: 'gate_result',
-            title: 'Statü Atlama Sonucu',
-            message: `${gateName} sınavında başarısız oldunuz. ${finalResult.failureReason || ''}`,
+            type: 'gate_failed',
+            title: 'Statu Atlama Sonucu',
+            message: `${gateName} sinavinda basarisiz oldunuz. ${finalResult.failureReason || ''}`,
             link: '/akademi/yolum',
           });
+
+          if (targetUser?.branchId) {
+            const branchSups = await db.select().from(users)
+              .where(and(
+                or(eq(users.role, 'supervisor'), eq(users.role, 'mudur')),
+                eq(users.branchId, targetUser.branchId),
+                eq(users.accountStatus, 'active')
+              ));
+            for (const sup of branchSups) {
+              await storage.createNotification({
+                userId: sup.id,
+                type: 'gate_failed',
+                title: 'Statu Atlama Basarisiz',
+                message: `${targetName} ${gateName} sinavinda basarisiz oldu. ${finalResult.failureReason || ''}`,
+                link: '/akademi-supervisor',
+                branchId: targetUser.branchId,
+              });
+            }
+          }
         }
       }
 

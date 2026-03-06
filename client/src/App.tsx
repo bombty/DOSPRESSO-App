@@ -361,7 +361,7 @@ function Router() {
           <Route path="/bildirimler" component={Notifications} />
           <Route path="/duyurular">{() => <HQOnly><IcerikStudyosu /></HQOnly>}</Route>
           <Route path="/icerik-studyosu">{() => <HQOnly><IcerikStudyosu /></HQOnly>}</Route>
-          <Route path="/mesajlar" component={Mesajlar} />
+          <Route path="/mesajlar">{() => { if (typeof window !== 'undefined') window.location.href = '/bildirimler?tab=mesajlar'; return null; }}</Route>
           <Route path="/proje-gorev/:id" component={ProjeGorevDetay} />
           <Route path="/projeler/:id" component={ProjeDetay} />
           <Route path="/projeler" component={Projeler} />

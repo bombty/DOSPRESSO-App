@@ -287,15 +287,7 @@ export function HamburgerMenu() {
               data-testid="menu-item-notifications"
             >
               <Bell className="w-4 h-4 text-muted-foreground" />
-              <span>Bildirimler</span>
-            </button>
-            <button
-              onClick={() => handleNavigate("/mesajlar")}
-              className="w-full flex items-center gap-3 px-4 py-2.5 text-sm hover-elevate transition-colors"
-              data-testid="menu-item-messages"
-            >
-              <MessageSquare className="w-4 h-4 text-muted-foreground" />
-              <span>Mesajlar</span>
+              <span>Iletisim Merkezi</span>
             </button>
             <button
               onClick={() => handleNavigate(user ? `/personel/${user.id}` : "/login")}
