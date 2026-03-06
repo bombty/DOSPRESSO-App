@@ -15,3 +15,16 @@ if (!root) {
     root.innerHTML = `<div style="padding: 20px; color: red;">Uygulama yükleme hatası: ${e instanceof Error ? e.message : "Unknown error"}</div>`;
   }
 }
+
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker
+      .register("/service-worker.js")
+      .then((reg) => {
+        console.log("[SW] Registered:", reg.scope);
+      })
+      .catch((err) => {
+        console.log("[SW] Registration failed:", err);
+      });
+  });
+}

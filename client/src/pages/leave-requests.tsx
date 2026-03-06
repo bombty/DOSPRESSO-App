@@ -4,6 +4,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { isHQRole, insertLeaveRequestSchema } from "@shared/schema";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { offlineErrorHandler } from "@/hooks/useOfflineMutation";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -258,12 +259,13 @@ function CreateLeaveRequestDialog({ open, onOpenChange }: { open: boolean; onOpe
       onOpenChange(false);
       form.reset();
     },
-    onError: (error) => {
-      toast({
-        title: "Hata",
-        description: error.message || "İzin talebi oluşturulamadı",
-        variant: "destructive",
-      });
+    onError: (error: any, variables: any) => {
+      offlineErrorHandler(error, { url: "/api/leave-requests", method: "POST", body: variables }, "İzin talebi oluşturma", toast) ||
+        toast({
+          title: "Hata",
+          description: error.message || "İzin talebi oluşturulamadı",
+          variant: "destructive",
+        });
     },
   });
 

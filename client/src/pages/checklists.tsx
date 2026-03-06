@@ -6,6 +6,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { isHQRole } from "@shared/schema";
+import { offlineErrorHandler } from "@/hooks/useOfflineMutation";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -158,7 +159,8 @@ export default function Checklists() {
       toast({ title: "Başarılı", description: "Checklist başlatıldı" });
     },
     onError: (error: Error) => {
-      toast({ title: "Hata", description: error.message, variant: "destructive" });
+      offlineErrorHandler(error, { url: "/api/checklist-completions/start", method: "POST", body: { branchId: user?.branchId } }, "Checklist başlatma", toast) ||
+        toast({ title: "Hata", description: error.message, variant: "destructive" });
     },
   });
 
@@ -220,7 +222,8 @@ export default function Checklists() {
       toast({ title: "Başarılı", description: "Checklist tamamlandı ve gönderildi!" });
     },
     onError: (error: Error) => {
-      toast({ title: "Hata", description: error.message, variant: "destructive" });
+      offlineErrorHandler(error, { url: `/api/checklist-completions/${activeCompletionId}/submit`, method: "POST", body: null }, "Checklist tamamlama", toast) ||
+        toast({ title: "Hata", description: error.message, variant: "destructive" });
     },
   });
 

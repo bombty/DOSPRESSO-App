@@ -14,6 +14,7 @@ import { AppHeader } from "@/components/app-header";
 import { QRScannerModal } from "@/components/qr-scanner-modal";
 import { GlobalAIAssistant } from "@/components/global-ai-assistant";
 import { useAuth } from "@/hooks/useAuth";
+import { OfflineBanner } from "@/components/offline-banner";
 import { useLanguageSync } from "@/hooks/useLanguageSync";
 import { ProtectedRoute } from "@/components/protected-route";
 import logoPath from "@assets/IMG_6637_1765138781125.png";
@@ -504,6 +505,7 @@ function AppContent() {
   if (isStandaloneDashboard) {
     return (
       <div className="flex flex-col min-h-screen bg-background">
+        <OfflineBanner />
         <main className="flex-1 overflow-auto">
           <Router />
         </main>
@@ -513,7 +515,7 @@ function AppContent() {
 
   return (
     <div className="flex flex-col min-h-screen bg-background">
-      {/* Global Header */}
+      <OfflineBanner />
       <AppHeader 
         user={user}
         branchName={branchName}

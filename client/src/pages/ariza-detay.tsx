@@ -8,6 +8,7 @@ import { useState, useRef, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { offlineErrorHandler } from "@/hooks/useOfflineMutation";
 import type { EquipmentFault, FaultComment } from "@shared/schema";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -306,8 +307,9 @@ function ServiceTrackingTab({ fault, equipment, branchName }: { fault: any; equi
       queryClient.invalidateQueries({ queryKey: ["/api/fault-service-tracking", faultId] });
       toast({ title: "Başarılı", description: "Servis takibi başlatıldı" });
     },
-    onError: () => {
-      toast({ title: "Hata", description: "Servis takibi başlatılamadı", variant: "destructive" });
+    onError: (error: any) => {
+      offlineErrorHandler(error, { url: "/api/fault-service-tracking", method: "POST", body: { faultId, equipmentId: fault?.equipmentId, branchId: fault?.branchId } }, "Servis takibi başlatma", toast) ||
+        toast({ title: "Hata", description: "Servis takibi başlatılamadı", variant: "destructive" });
     },
   });
 

@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
+import { offlineErrorHandler } from "@/hooks/useOfflineMutation";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -142,6 +143,9 @@ export default function Mesajlar() {
       setAttachments([]);
       queryClient.invalidateQueries({ queryKey: ["/api/messages"] });
     },
+    onError: (error: any, variables: any) => {
+      offlineErrorHandler(error, { url: `/api/messages/${variables.threadId}/replies`, method: "POST", body: { body: variables.body } }, "Mesaj yanıtı", toast);
+    },
   });
 
   const createMessageMutation = useMutation({
@@ -159,6 +163,9 @@ export default function Mesajlar() {
       setIsNewMessageOpen(false);
       queryClient.invalidateQueries({ queryKey: ["/api/messages"] });
       setSelectedThreadId(newMessage.threadId);
+    },
+    onError: (error: any, variables: any) => {
+      offlineErrorHandler(error, { url: "/api/messages", method: "POST", body: { recipientId: variables.recipientId, subject: variables.subject, body: variables.body, type: variables.type } }, "Yeni mesaj gönderme", toast);
     },
   });
 

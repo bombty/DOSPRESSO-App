@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Mail } from "lucide-react";
+import { Mail, Upload } from "lucide-react";
+import { useOfflineQueue } from "@/hooks/useOfflineQueue";
 import { Button } from "@/components/ui/button";
 import { useAdaptivePolling } from "@/hooks/useAdaptivePolling";
 import {
@@ -138,7 +139,23 @@ export function InboxDialog() {
             </div>
           )}
         </ScrollArea>
+        <OfflineQueueSection />
       </DialogContent>
     </Dialog>
+  );
+}
+
+function OfflineQueueSection() {
+  const { queueSize } = useOfflineQueue();
+  if (queueSize === 0) return null;
+
+  return (
+    <div className="mt-3 pt-3 border-t">
+      <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground" data-testid="inbox-queue-indicator">
+        <Upload className="h-4 w-4" />
+        <span>{queueSize} bekleyen gönderim</span>
+        <Badge variant="destructive" className="text-[10px]">{queueSize}</Badge>
+      </div>
+    </div>
   );
 }

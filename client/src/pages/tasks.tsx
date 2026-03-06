@@ -5,6 +5,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { isHQRole } from "@shared/schema";
+import { offlineErrorHandler } from "@/hooks/useOfflineMutation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -176,8 +177,9 @@ export default function Tasks() {
       setSelectedArchiveIds([]);
       toast({ title: "Başarılı", description: `${data.archivedCount} görev arşivlendi` });
     },
-    onError: (error: any) => {
-      toast({ title: "Hata", description: error.message || "Toplu arşivleme başarısız", variant: "destructive" });
+    onError: (error: any, variables: any) => {
+      offlineErrorHandler(error, { url: "/api/tasks/bulk-archive", method: "POST", body: variables }, "Toplu arşivleme", toast) ||
+        toast({ title: "Hata", description: error.message || "Toplu arşivleme başarısız", variant: "destructive" });
     },
   });
 
@@ -198,8 +200,9 @@ export default function Tasks() {
       setBulkScheduledTime("");
       toast({ title: "Başarılı", description: `${data.created || 0} görev oluşturuldu` });
     },
-    onError: (error: any) => {
-      toast({ title: "Hata", description: error.message || "Toplu görev oluşturulamadı", variant: "destructive" });
+    onError: (error: any, variables: any) => {
+      offlineErrorHandler(error, { url: "/api/tasks/bulk", method: "POST", body: variables }, "Toplu görev oluşturma", toast) ||
+        toast({ title: "Hata", description: error.message || "Toplu görev oluşturulamadı", variant: "destructive" });
     },
   });
 

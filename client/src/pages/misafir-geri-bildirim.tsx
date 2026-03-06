@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import { useParams } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
+import { addToQueue } from "@/lib/offline-queue";
+import { isNetworkError } from "@/hooks/useNetworkStatus";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -540,7 +542,19 @@ export default function MisafirGeriBildirim() {
       setSubmitted(true);
     },
     onError: (error: Error) => {
-      setSubmitErrorMessage(error.message);
+      if (isNetworkError(error)) {
+        addToQueue({
+          url: "/api/feedback/submit",
+          method: "POST",
+          body: {},
+          description: "Misafir geri bildirimi",
+        });
+        window.dispatchEvent(new CustomEvent("offline-queue-change"));
+        setSubmitted(true);
+        setSubmitErrorMessage(null);
+      } else {
+        setSubmitErrorMessage(error.message);
+      }
     },
   });
 

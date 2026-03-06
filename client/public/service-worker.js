@@ -1,71 +1,112 @@
-const CACHE_NAME = 'dospresso-v1';
+const CACHE_VERSION = 'dospresso-v2';
+const STATIC_CACHE = CACHE_VERSION + '-static';
+const API_CACHE = CACHE_VERSION + '-api';
+
 const STATIC_ASSETS = [
   '/',
   '/index.html',
   '/favicon.png',
 ];
 
-// Install event - cache static assets
+const API_CACHE_PATTERNS = [
+  '/api/me/menu',
+  '/api/health',
+  '/api/branches',
+];
+
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
+    caches.open(STATIC_CACHE).then((cache) => {
       return cache.addAll(STATIC_ASSETS).catch(() => {
-        console.log('Offline mode: Some assets could not be cached');
+        console.log('[SW] Some static assets could not be cached');
       });
     })
   );
   self.skipWaiting();
 });
 
-// Activate event - clean up old caches
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((cacheNames) => {
       return Promise.all(
-        cacheNames.map((cacheName) => {
-          if (cacheName !== CACHE_NAME) {
-            return caches.delete(cacheName);
-          }
-        })
+        cacheNames
+          .filter((name) => !name.startsWith(CACHE_VERSION))
+          .map((name) => caches.delete(name))
       );
     })
   );
   self.clients.claim();
 });
 
-// Fetch event - network first, fall back to cache
 self.addEventListener('fetch', (event) => {
-  // Skip non-GET requests
-  if (event.request.method !== 'GET') {
+  if (event.request.method !== 'GET') return;
+  if (!event.request.url.startsWith('http')) return;
+
+  const url = new URL(event.request.url);
+
+  if (url.pathname.startsWith('/api/')) {
+    const safeToCache = API_CACHE_PATTERNS.some(p => url.pathname === p || url.pathname.startsWith(p + '/'));
+    if (safeToCache) {
+      event.respondWith(networkFirstWithCache(event.request, API_CACHE));
+    }
     return;
   }
 
-  // Skip Chrome extensions and other non-http(s) requests
-  if (!event.request.url.startsWith('http')) {
+  if (isStaticAsset(url.pathname)) {
+    event.respondWith(cacheFirstWithNetwork(event.request, STATIC_CACHE));
     return;
   }
 
-  event.respondWith(
-    fetch(event.request)
-      .then((response) => {
-        // Cache successful responses
-        if (response && response.status === 200) {
-          const responseToCache = response.clone();
-          caches.open(CACHE_NAME).then((cache) => {
-            cache.put(event.request, responseToCache);
-          });
-        }
-        return response;
-      })
-      .catch(() => {
-        // Fall back to cache if network fails
-        return caches.match(event.request).then((cachedResponse) => {
-          return cachedResponse || new Response('Offline - Resource not available', {
-            status: 503,
-            statusText: 'Service Unavailable',
-            headers: new Headers({ 'Content-Type': 'text/plain' }),
-          });
-        });
-      })
-  );
+  if (url.pathname === '/' || !url.pathname.includes('.')) {
+    event.respondWith(networkFirstWithCache(event.request, STATIC_CACHE));
+    return;
+  }
+
+  event.respondWith(cacheFirstWithNetwork(event.request, STATIC_CACHE));
 });
+
+function isStaticAsset(pathname) {
+  return /\.(js|css|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|eot)(\?|$)/.test(pathname);
+}
+
+async function cacheFirstWithNetwork(request, cacheName) {
+  try {
+    const cached = await caches.match(request);
+    if (cached) return cached;
+
+    const response = await fetch(request);
+    if (response && response.status === 200) {
+      const cache = await caches.open(cacheName);
+      cache.put(request, response.clone());
+    }
+    return response;
+  } catch {
+    const cached = await caches.match(request);
+    if (cached) return cached;
+    return new Response('Offline', { status: 503, statusText: 'Service Unavailable' });
+  }
+}
+
+async function networkFirstWithCache(request, cacheName) {
+  try {
+    const response = await fetch(request);
+    if (response && response.status === 200) {
+      const cache = await caches.open(cacheName);
+      cache.put(request, response.clone());
+    }
+    return response;
+  } catch {
+    const cached = await caches.match(request);
+    if (cached) return cached;
+
+    if (request.headers.get('accept')?.includes('text/html')) {
+      const indexCached = await caches.match('/');
+      if (indexCached) return indexCached;
+    }
+
+    return new Response(
+      JSON.stringify({ error: 'offline', message: 'Çevrimdışı — bu veri şu an kullanılamıyor' }),
+      { status: 503, headers: { 'Content-Type': 'application/json' } }
+    );
+  }
+}

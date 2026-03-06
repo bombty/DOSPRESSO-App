@@ -4,6 +4,7 @@ import { useRoute, Link } from "wouter";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
+import { useNetworkStatus } from "@/hooks/useNetworkStatus";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -48,12 +49,14 @@ export default function AcademyQuiz() {
   const { user } = useAuth();
   const [, params] = useRoute("/akademi-quiz/:quizId");
   const quizId = params?.quizId;
+  const { isOnline } = useNetworkStatus();
 
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [answers, setAnswers] = useState<Record<number, string>>({});
   const [submitted, setSubmitted] = useState(false);
   const [score, setScore] = useState(0);
   const [quizStarted, setQuizStarted] = useState(false);
+  const [offlineWarningShown, setOfflineWarningShown] = useState(false);
 
   const [totalTimeRemaining, setTotalTimeRemaining] = useState(TOTAL_TIME_LIMIT_SECONDS);
   const [questionTimeRemaining, setQuestionTimeRemaining] = useState(QUESTION_TIME_LIMIT);
@@ -68,6 +71,21 @@ export default function AcademyQuiz() {
   const hasAutoSubmittedRef = useRef(false);
   const tabSwitchCountRef = useRef(0);
   const completionTypeRef = useRef<AntiCheatMetadata["completionType"]>("normal");
+
+  useEffect(() => {
+    if (!isOnline && quizStarted && !submitted && !offlineWarningShown) {
+      setOfflineWarningShown(true);
+      toast({
+        title: "İnternet bağlantısı kesildi",
+        description: "Sınavınız geçersiz sayılacak. Lütfen internet bağlantınızı kontrol edin.",
+        variant: "destructive",
+        duration: 10000,
+      });
+    }
+    if (isOnline && offlineWarningShown) {
+      setOfflineWarningShown(false);
+    }
+  }, [isOnline, quizStarted, submitted, offlineWarningShown, toast]);
 
   const { data: attemptInfo, isLoading: attemptsLoading } = useQuery<AttemptInfo>({
     queryKey: [`/api/academy/quiz/${quizId}/attempts`],
