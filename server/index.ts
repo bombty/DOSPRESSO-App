@@ -15,8 +15,8 @@ import { startWeeklyBackupScheduler, performHealthCheck } from "./backup";
 import { startTrackingCleanup } from "./tracking";
 import bcrypt from "bcrypt";
 import { db } from "./db";
-import { users } from "@shared/schema";
-import { eq, sql, count } from "drizzle-orm";
+import { users, productionLots, notifications as notificationsTable } from "@shared/schema";
+import { eq, sql, count, and, lte, gte, ne } from "drizzle-orm";
 
 process.on('unhandledRejection', (reason: unknown, promise: Promise<unknown>) => {
   console.error('[UnhandledRejection] Unhandled promise rejection:', reason);
@@ -198,6 +198,7 @@ app.use((req, res, next) => {
     startCompositeScoreUpdateJob();
     startDangerZoneCheckJob();
     startDailyTaskTriggerJob();
+    startSktExpiryCheckJob();
     
     // Start SLA check system (runs every 15 minutes)
     startSLACheckSystem();
@@ -377,4 +378,64 @@ function startDailyTaskTriggerJob() {
   }, 5 * 60 * 1000);
 
   log("Task trigger daily scheduler started (08:00 Europe/Istanbul)");
+}
+
+function startSktExpiryCheckJob() {
+  setInterval(async () => {
+    try {
+      const now = new Date();
+      const sevenDaysLater = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+
+      const expiringLots = await db.select().from(productionLots)
+        .where(and(
+          lte(productionLots.expiryDate, sevenDaysLater),
+          ne(productionLots.status, 'iptal'),
+          ne(productionLots.status, 'expired'),
+        ));
+
+      for (const lot of expiringLots) {
+        const isExpired = lot.expiryDate && new Date(lot.expiryDate) < now;
+        const notifType = isExpired ? 'skt_expired' : 'skt_warning';
+        const message = isExpired
+          ? `LOT ${lot.lotNumber} son kullanma tarihi geçmiş! Acil müdahale gerekli.`
+          : `LOT ${lot.lotNumber} son kullanma tarihi 7 gün içinde dolacak.`;
+
+        if (isExpired) {
+          await db.update(productionLots)
+            .set({ status: 'expired' })
+            .where(eq(productionLots.id, lot.id));
+        }
+
+        const todayStr = now.toISOString().slice(0, 10);
+        const existing = await db.select().from(notificationsTable)
+          .where(and(
+            eq(notificationsTable.type, notifType),
+            sql`${notificationsTable.message} LIKE ${'%' + lot.lotNumber + '%'}`,
+            gte(notificationsTable.createdAt, new Date(todayStr)),
+          ));
+
+        if (existing.length === 0) {
+          const targetUsers = await db.select({ id: users.id }).from(users)
+            .where(sql`${users.role} IN ('gida_muhendisi', 'fabrika_mudur', 'admin')`);
+
+          for (const u of targetUsers) {
+            await db.insert(notificationsTable).values({
+              userId: u.id,
+              type: notifType,
+              title: isExpired ? 'SKT Süresi Dolmuş!' : 'SKT Uyarısı',
+              message,
+            });
+          }
+        }
+      }
+
+      if (expiringLots.length > 0) {
+        log(`[SKT] Checked: ${expiringLots.length} lots approaching/past expiry`);
+      }
+    } catch (error) {
+      console.error("[SKT] Expiry check error:", error);
+    }
+  }, 6 * 60 * 60 * 1000);
+
+  log("SKT expiry check job started (runs every 6 hours)");
 }

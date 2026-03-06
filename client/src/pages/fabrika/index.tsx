@@ -18,6 +18,8 @@ import {
   Package,
   Truck,
   Shield,
+  ScanBarcode,
+  Flame,
 } from "lucide-react";
 
 const FabrikaKaliteKontrol = lazy(() => import("./kalite-kontrol"));
@@ -31,6 +33,8 @@ const FabrikaStokSayim = lazy(() => import("./stok-sayim"));
 const FabrikaSiparisHazirlama = lazy(() => import("./siparis-hazirlama"));
 const FabrikaSevkiyat = lazy(() => import("./sevkiyat"));
 const GidaGuvenligi = lazy(() => import("./gida-guvenligi"));
+const LotIzleme = lazy(() => import("./lot-izleme"));
+const Kavurma = lazy(() => import("./kavurma"));
 
 interface TabConfig {
   id: string;
@@ -134,6 +138,22 @@ const FABRIKA_TABS: TabConfig[] = [
     icon: <Shield className="h-4 w-4" />,
     permissionModule: "factory_food_safety",
     component: GidaGuvenligi
+  },
+  {
+    id: "lot-izleme",
+    label: "LOT Tracking",
+    labelTr: "LOT İzleme",
+    icon: <ScanBarcode className="h-4 w-4" />,
+    permissionModule: "factory_production",
+    component: LotIzleme
+  },
+  {
+    id: "kavurma",
+    label: "Roasting",
+    labelTr: "Kavurma",
+    icon: <Flame className="h-4 w-4" />,
+    permissionModule: "factory_production",
+    component: Kavurma
   }
 ];
 

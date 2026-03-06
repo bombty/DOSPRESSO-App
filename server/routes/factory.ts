@@ -33,6 +33,8 @@ import {
   factoryShipmentItems,
   factoryInventory,
   inventoryMovements,
+  coffeeRoastingLogs,
+  productionLots,
   users,
   branches,
   inventory,
@@ -1155,7 +1157,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
           COUNT(*) as total_checked,
           COUNT(CASE WHEN quality_status = 'approved' THEN 1 END) as passed,
           COUNT(CASE WHEN quality_status = 'rejected' THEN 1 END) as failed,
-          COUNT(CASE WHEN quality_status = 'pending' THEN 1 END) as pending
+          COUNT(CASE WHEN quality_status IN ('pending', 'pending_engineer') THEN 1 END) as pending
         FROM factory_production_batches
         WHERE DATE(start_time) = CURRENT_DATE
           AND status IN ('completed', 'verified')
@@ -1804,6 +1806,8 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
 
       const approved = qualityOutputs.filter(o => o.qualityStatus === 'approved').length;
       const rejected = qualityOutputs.filter(o => o.qualityStatus === 'rejected').length;
+      const pendingEngineer = qualityOutputs.filter(o => o.qualityStatus === 'pending_engineer').length;
+      const pending = qualityOutputs.filter(o => o.qualityStatus === 'pending').length;
       const total = approved + rejected;
       
       const approvalRate = total > 0 ? (approved / total * 100).toFixed(1) : 0;
@@ -2905,6 +2909,10 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
 
   router.get('/api/factory/quality/pending-engineer', isAuthenticated, async (req: any, res) => {
     try {
+      const userRole = req.user?.role as UserRoleType;
+      if (!hasPermission(userRole, 'factory_quality', 'view')) {
+        return res.status(403).json({ message: "Bu işlem için yetkiniz yok" });
+      }
       const checks = await db.select({
         id: factoryQualityChecks.id,
         productionOutputId: factoryQualityChecks.productionOutputId,
@@ -4231,6 +4239,10 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
 
   router.get('/api/factory/haccp', isAuthenticated, async (req: any, res) => {
     try {
+      const userRole = req.user?.role as UserRoleType;
+      if (!hasPermission(userRole, 'factory_food_safety', 'view')) {
+        return res.status(403).json({ message: "Bu işlem için yetkiniz yok" });
+      }
       const { stationId, result: resultFilter, startDate, endDate } = req.query;
 
       const conditions: any[] = [];
@@ -4279,6 +4291,10 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
 
   router.get('/api/factory/haccp/summary', isAuthenticated, async (req: any, res) => {
     try {
+      const userRole = req.user?.role as UserRoleType;
+      if (!hasPermission(userRole, 'factory_food_safety', 'view')) {
+        return res.status(403).json({ message: "Bu işlem için yetkiniz yok" });
+      }
       const thirtyDaysAgo = new Date();
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
@@ -4317,6 +4333,10 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
 
   router.get('/api/factory/shipments', isAuthenticated, async (req: any, res) => {
     try {
+      const userRole = req.user?.role as UserRoleType;
+      if (!hasPermission(userRole, 'factory_shipments', 'view')) {
+        return res.status(403).json({ message: "Bu işlem için yetkiniz yok" });
+      }
       const branchId = req.query.branchId ? parseInt(req.query.branchId as string) : undefined;
       const status = req.query.status as string | undefined;
       const startDate = req.query.startDate as string | undefined;
@@ -4355,6 +4375,10 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
 
   router.get('/api/factory/shipments/:id', isAuthenticated, async (req: any, res) => {
     try {
+      const userRole = req.user?.role as UserRoleType;
+      if (!hasPermission(userRole, 'factory_shipments', 'view')) {
+        return res.status(403).json({ message: "Bu işlem için yetkiniz yok" });
+      }
       const id = parseInt(req.params.id);
 
       const [shipment] = await db.select({
@@ -4479,65 +4503,85 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
       if (status === 'sevk_edildi') {
         updates.dispatchedAt = new Date();
 
-        const items = await db.select().from(factoryShipmentItems)
-          .where(eq(factoryShipmentItems.shipmentId, id));
+        const result = await db.transaction(async (tx) => {
+          const items = await tx.select().from(factoryShipmentItems)
+            .where(eq(factoryShipmentItems.shipmentId, id));
 
-        const insufficientItems: string[] = [];
-        for (const item of items) {
-          const [invRecord] = await db.select().from(factoryInventory)
-            .where(eq(factoryInventory.productId, item.productId))
-            .limit(1);
-          const needed = Math.round(parseFloat(item.quantity));
-          if (!invRecord || invRecord.quantity < needed) {
-            const [prod] = await db.select({ name: factoryProducts.name }).from(factoryProducts).where(eq(factoryProducts.id, item.productId)).limit(1);
-            insufficientItems.push(`${prod?.name || 'Urun #' + item.productId}: Mevcut ${invRecord?.quantity || 0}, Gerekli ${needed}`);
-          }
-        }
-
-        if (insufficientItems.length > 0) {
-          return res.status(400).json({
-            message: "Yetersiz stok: " + insufficientItems.join("; ")
-          });
-        }
-
-        for (const item of items) {
-          const [invRecord] = await db.select().from(factoryInventory)
-            .where(eq(factoryInventory.productId, item.productId))
-            .limit(1);
-
-          if (invRecord) {
-            const newQuantity = invRecord.quantity - Math.round(parseFloat(item.quantity));
-            await db.update(factoryInventory)
-              .set({
-                quantity: newQuantity,
-                lastUpdatedById: req.user.id,
-                updatedAt: new Date(),
-              })
-              .where(eq(factoryInventory.id, invRecord.id));
+          const insufficientItems: string[] = [];
+          for (const item of items) {
+            const [invRecord] = await tx.select().from(factoryInventory)
+              .where(eq(factoryInventory.productId, item.productId))
+              .limit(1);
+            const needed = Math.round(parseFloat(item.quantity));
+            if (!invRecord || invRecord.quantity < needed) {
+              const [prod] = await tx.select({ name: factoryProducts.name }).from(factoryProducts).where(eq(factoryProducts.id, item.productId)).limit(1);
+              insufficientItems.push(`${prod?.name || 'Urun #' + item.productId}: Mevcut ${invRecord?.quantity || 0}, Gerekli ${needed}`);
+            }
           }
 
-          const invItems = await db.select().from(inventory)
-            .where(eq(inventory.name, (await db.select({ name: factoryProducts.name }).from(factoryProducts).where(eq(factoryProducts.id, item.productId)).limit(1))[0]?.name || ''))
-            .limit(1);
-
-          if (invItems.length > 0) {
-            const prevStock = invItems[0].currentStock || "0";
-            const qtyNum = parseFloat(item.quantity);
-            const newStock = String(Math.max(0, parseFloat(prevStock) - qtyNum));
-
-            await db.insert(inventoryMovements).values({
-              inventoryId: invItems[0].id,
-              movementType: 'cikis',
-              quantity: item.quantity,
-              previousStock: prevStock,
-              newStock: newStock,
-              referenceType: 'shipment',
-              referenceId: id,
-              notes: `Sevkiyat #${currentShipment.shipmentNumber} - stok çıkışı`,
-              createdById: req.user.id,
-            });
+          if (insufficientItems.length > 0) {
+            throw new Error("INSUFFICIENT_STOCK:" + insufficientItems.join("; "));
           }
-        }
+
+          for (const item of items) {
+            const [invRecord] = await tx.select().from(factoryInventory)
+              .where(eq(factoryInventory.productId, item.productId))
+              .limit(1);
+
+            if (invRecord) {
+              const newQuantity = invRecord.quantity - Math.round(parseFloat(item.quantity));
+              if (newQuantity < 0) {
+                const [prod] = await tx.select({ name: factoryProducts.name }).from(factoryProducts).where(eq(factoryProducts.id, item.productId)).limit(1);
+                throw new Error("INSUFFICIENT_STOCK:" + `${prod?.name || 'Urun #' + item.productId}: Stok negatife düşer`);
+              }
+              await tx.update(factoryInventory)
+                .set({
+                  quantity: newQuantity,
+                  lastUpdatedById: req.user.id,
+                  updatedAt: new Date(),
+                })
+                .where(eq(factoryInventory.id, invRecord.id));
+            }
+
+            const [prod] = await tx.select({ name: factoryProducts.name }).from(factoryProducts).where(eq(factoryProducts.id, item.productId)).limit(1);
+            const prodName = prod?.name || '';
+
+            const invItems = await tx.select().from(inventory)
+              .where(eq(inventory.name, prodName))
+              .limit(1);
+
+            if (invItems.length > 0) {
+              const prevStock = invItems[0].currentStock || "0";
+              const qtyNum = parseFloat(item.quantity);
+              const newStock = String(Math.max(0, parseFloat(prevStock) - qtyNum));
+
+              await tx.insert(inventoryMovements).values({
+                inventoryId: invItems[0].id,
+                movementType: 'cikis',
+                quantity: item.quantity,
+                previousStock: prevStock,
+                newStock: newStock,
+                referenceType: 'shipment',
+                referenceId: id,
+                notes: `Sevkiyat #${currentShipment.shipmentNumber} - stok çıkışı`,
+                createdById: req.user.id,
+              });
+            }
+          }
+
+          if (deliveryNotes) {
+            updates.deliveryNotes = deliveryNotes;
+          }
+
+          const [updated] = await tx.update(factoryShipments)
+            .set(updates)
+            .where(eq(factoryShipments.id, id))
+            .returning();
+
+          return updated;
+        });
+
+        return res.json(result);
       }
 
       if (status === 'teslim_edildi') {
@@ -4555,6 +4599,11 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
 
       res.json(updated);
     } catch (error: any) {
+      if (error.message?.startsWith('INSUFFICIENT_STOCK:')) {
+        return res.status(400).json({
+          message: "Yetersiz stok: " + error.message.replace('INSUFFICIENT_STOCK:', '')
+        });
+      }
       console.error("Update shipment status error:", error);
       res.status(500).json({ message: "Sevkiyat durumu güncellenemedi" });
     }
@@ -4592,6 +4641,10 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
 
   router.get('/api/factory/dashboard/food-engineer-stats', isAuthenticated, async (req: any, res) => {
     try {
+      const userRole = req.user?.role as UserRoleType;
+      if (!hasPermission(userRole, 'factory_quality', 'view')) {
+        return res.status(403).json({ message: "Bu işlem için yetkiniz yok" });
+      }
       const now = new Date();
       const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
       const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
@@ -4749,6 +4802,571 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
     } catch (error: any) {
       console.error("Factory seed error:", error);
       res.status(500).json({ message: "Seed data olusturulamadi: " + error.message });
+    }
+  });
+
+  // ========================================
+  // T007: KAHVE KAVURMA KAYIT SİSTEMİ
+  // ========================================
+
+  router.post("/api/factory/roasting", isAuthenticated, async (req: any, res) => {
+    try {
+      const userRole = req.user?.role as UserRoleType;
+      if (!hasPermission(userRole, 'factory_production', 'create')) {
+        return res.status(403).json({ message: "Bu işlem için yetkiniz yok" });
+      }
+
+      const { greenCoffeeProductId, roastedProductId, greenWeightKg, roastedWeightKg, roastDegree, startTemperature, endTemperature, firstCrackTime, roastDurationMinutes, notes } = req.body;
+
+      if (!greenWeightKg || !roastedWeightKg || !roastDegree) {
+        return res.status(400).json({ message: "Yeşil kahve ağırlığı, kavurulmuş ağırlık ve kavurma derecesi zorunludur" });
+      }
+
+      const greenW = parseFloat(greenWeightKg);
+      const roastedW = parseFloat(roastedWeightKg);
+      const weightLossPct = ((greenW - roastedW) / greenW * 100).toFixed(2);
+
+      const today = new Date();
+      const dateStr = today.toISOString().slice(0, 10).replace(/-/g, '');
+      const existingCount = await db.select({ count: count() }).from(coffeeRoastingLogs)
+        .where(gte(coffeeRoastingLogs.roastDate, new Date(today.toISOString().slice(0, 10))));
+      const seq = String((existingCount[0]?.count || 0) + 1).padStart(3, '0');
+      const chargeNumber = `CHG-${dateStr}-${seq}`;
+
+      const result = await db.transaction(async (tx) => {
+        const [log] = await tx.insert(coffeeRoastingLogs).values({
+          chargeNumber,
+          greenCoffeeProductId: greenCoffeeProductId || null,
+          roastedProductId: roastedProductId || null,
+          greenWeightKg: String(greenWeightKg),
+          roastedWeightKg: String(roastedWeightKg),
+          weightLossPct,
+          roastDegree,
+          startTemperature: startTemperature ? String(startTemperature) : null,
+          endTemperature: endTemperature ? String(endTemperature) : null,
+          firstCrackTime: firstCrackTime || null,
+          roastDurationMinutes: roastDurationMinutes || null,
+          operatorId: req.user?.id,
+          notes: notes || null,
+        }).returning();
+
+        if (greenCoffeeProductId) {
+          const [greenStock] = await tx.select().from(factoryInventory)
+            .where(eq(factoryInventory.productId, greenCoffeeProductId));
+          if (greenStock) {
+            const newQty = Math.round(parseFloat(String(greenStock.quantity)) - greenW);
+            await tx.update(factoryInventory)
+              .set({ quantity: Math.max(0, newQty), updatedAt: new Date() })
+              .where(eq(factoryInventory.productId, greenCoffeeProductId));
+          }
+        }
+
+        if (roastedProductId) {
+          const [roastedStock] = await tx.select().from(factoryInventory)
+            .where(eq(factoryInventory.productId, roastedProductId));
+          if (roastedStock) {
+            const newQty = Math.round(parseFloat(String(roastedStock.quantity)) + roastedW);
+            await tx.update(factoryInventory)
+              .set({ quantity: newQty, updatedAt: new Date() })
+              .where(eq(factoryInventory.productId, roastedProductId));
+          } else {
+            await tx.insert(factoryInventory).values({
+              productId: roastedProductId,
+              quantity: Math.round(roastedW),
+              reservedQuantity: 0,
+            });
+          }
+        }
+
+        return log;
+      });
+
+      res.status(201).json(result);
+    } catch (error: any) {
+      console.error("Roasting log create error:", error);
+      res.status(500).json({ message: "Kavurma kaydı oluşturulamadı: " + error.message });
+    }
+  });
+
+  router.get("/api/factory/roasting", isAuthenticated, async (req: any, res) => {
+    try {
+      const userRole = req.user?.role as UserRoleType;
+      if (!hasPermission(userRole, 'factory_production', 'view')) {
+        return res.status(403).json({ message: "Bu işlem için yetkiniz yok" });
+      }
+
+      const { startDate, endDate, roastDegree, operatorId } = req.query;
+      const conditions: any[] = [];
+
+      if (startDate) conditions.push(gte(coffeeRoastingLogs.roastDate, new Date(startDate as string)));
+      if (endDate) conditions.push(lte(coffeeRoastingLogs.roastDate, new Date(endDate as string)));
+      if (roastDegree) conditions.push(eq(coffeeRoastingLogs.roastDegree, roastDegree as string));
+      if (operatorId) conditions.push(eq(coffeeRoastingLogs.operatorId, operatorId as string));
+
+      const rawLogs = await db.select()
+        .from(coffeeRoastingLogs)
+        .where(conditions.length > 0 ? and(...conditions) : undefined)
+        .orderBy(desc(coffeeRoastingLogs.roastDate))
+        .limit(100);
+
+      const enriched = await Promise.all(rawLogs.map(async (log) => {
+        let operatorName = null;
+        let greenProductName = null;
+        if (log.operatorId) {
+          const [u] = await db.select({ firstName: users.firstName, lastName: users.lastName }).from(users)
+            .where(eq(users.id, log.operatorId));
+          operatorName = u ? `${u.firstName || ''} ${u.lastName || ''}`.trim() : null;
+        }
+        if (log.greenCoffeeProductId) {
+          const [p] = await db.select({ name: factoryProducts.name }).from(factoryProducts)
+            .where(eq(factoryProducts.id, log.greenCoffeeProductId));
+          greenProductName = p?.name || null;
+        }
+        return { log, operatorName, greenProductName };
+      }));
+
+      res.json(enriched);
+    } catch (error: any) {
+      console.error("Roasting list error:", error);
+      res.status(500).json({ message: "Kavurma kayıtları listelenemedi" });
+    }
+  });
+
+  router.get("/api/factory/roasting/stats", isAuthenticated, async (req: any, res) => {
+    try {
+      const userRole = req.user?.role as UserRoleType;
+      if (!hasPermission(userRole, 'factory_production', 'view')) {
+        return res.status(403).json({ message: "Bu işlem için yetkiniz yok" });
+      }
+
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+      const stats = await db.select({
+        totalRoasts: count(),
+        avgWeightLoss: avg(coffeeRoastingLogs.weightLossPct),
+        totalGreenKg: sum(coffeeRoastingLogs.greenWeightKg),
+        totalRoastedKg: sum(coffeeRoastingLogs.roastedWeightKg),
+      }).from(coffeeRoastingLogs)
+        .where(gte(coffeeRoastingLogs.roastDate, thirtyDaysAgo));
+
+      const degreeBreakdown = await db.select({
+        degree: coffeeRoastingLogs.roastDegree,
+        count: count(),
+      }).from(coffeeRoastingLogs)
+        .where(gte(coffeeRoastingLogs.roastDate, thirtyDaysAgo))
+        .groupBy(coffeeRoastingLogs.roastDegree);
+
+      res.json({ stats: stats[0], degreeBreakdown });
+    } catch (error: any) {
+      console.error("Roasting stats error:", error);
+      res.status(500).json({ message: "Kavurma istatistikleri alınamadı" });
+    }
+  });
+
+  // ========================================
+  // T005: LOT/PARTİ İZLENEBİLİRLİK SİSTEMİ
+  // ========================================
+
+  router.post("/api/factory/lots", isAuthenticated, async (req: any, res) => {
+    try {
+      const userRole = req.user?.role as UserRoleType;
+      if (!hasPermission(userRole, 'factory_production', 'create')) {
+        return res.status(403).json({ message: "Bu işlem için yetkiniz yok" });
+      }
+
+      const { productId, batchId, quantity, unit, expiryDate, stationId, notes } = req.body;
+
+      if (!productId || !quantity) {
+        return res.status(400).json({ message: "Ürün ve miktar zorunludur" });
+      }
+
+      const today = new Date();
+      const dateStr = today.toISOString().slice(0, 10).replace(/-/g, '');
+      const existingCount = await db.select({ count: count() }).from(productionLots)
+        .where(gte(productionLots.productionDate, new Date(today.toISOString().slice(0, 10))));
+      const seq = String((existingCount[0]?.count || 0) + 1).padStart(3, '0');
+      const lotNumber = `LOT-${dateStr}-${seq}`;
+
+      const [lot] = await db.insert(productionLots).values({
+        lotNumber,
+        productId,
+        batchId: batchId || null,
+        quantity: String(quantity),
+        unit: unit || 'adet',
+        expiryDate: expiryDate ? new Date(expiryDate) : null,
+        producedBy: req.user?.id,
+        stationId: stationId || null,
+        status: 'uretildi',
+        notes: notes || null,
+      }).returning();
+
+      res.status(201).json(lot);
+    } catch (error: any) {
+      console.error("LOT create error:", error);
+      res.status(500).json({ message: "LOT oluşturulamadı: " + error.message });
+    }
+  });
+
+  router.get("/api/factory/lots", isAuthenticated, async (req: any, res) => {
+    try {
+      const userRole = req.user?.role as UserRoleType;
+      if (!hasPermission(userRole, 'factory_production', 'view')) {
+        return res.status(403).json({ message: "Bu işlem için yetkiniz yok" });
+      }
+
+      const { productId, status, startDate, endDate } = req.query;
+      const conditions: any[] = [];
+
+      if (productId) conditions.push(eq(productionLots.productId, parseInt(productId as string)));
+      if (status) conditions.push(eq(productionLots.status, status as string));
+      if (startDate) conditions.push(gte(productionLots.productionDate, new Date(startDate as string)));
+      if (endDate) conditions.push(lte(productionLots.productionDate, new Date(endDate as string)));
+
+      const rawLots = await db.select()
+        .from(productionLots)
+        .where(conditions.length > 0 ? and(...conditions) : undefined)
+        .orderBy(desc(productionLots.productionDate))
+        .limit(200);
+
+      const enriched = await Promise.all(rawLots.map(async (lot) => {
+        let productName = null;
+        let producerName = null;
+        if (lot.productId) {
+          const [p] = await db.select({ name: factoryProducts.name }).from(factoryProducts)
+            .where(eq(factoryProducts.id, lot.productId));
+          productName = p?.name || null;
+        }
+        if (lot.producedBy) {
+          const [u] = await db.select({ firstName: users.firstName, lastName: users.lastName }).from(users)
+            .where(eq(users.id, lot.producedBy));
+          producerName = u ? `${u.firstName || ''} ${u.lastName || ''}`.trim() : null;
+        }
+        return { lot, productName, producerName };
+      }));
+
+      res.json(enriched);
+    } catch (error: any) {
+      console.error("LOT list error:", error);
+      res.status(500).json({ message: "LOT listesi alınamadı" });
+    }
+  });
+
+  router.get("/api/factory/lots/:lotNumber/trace", isAuthenticated, async (req: any, res) => {
+    try {
+      const userRole = req.user?.role as UserRoleType;
+      if (!hasPermission(userRole, 'factory_production', 'view')) {
+        return res.status(403).json({ message: "Bu işlem için yetkiniz yok" });
+      }
+
+      const { lotNumber } = req.params;
+      const [lot] = await db.select().from(productionLots)
+        .where(eq(productionLots.lotNumber, lotNumber));
+
+      if (!lot) {
+        return res.status(404).json({ message: "LOT bulunamadı" });
+      }
+
+      const product = lot.productId ? await db.select().from(factoryProducts)
+        .where(eq(factoryProducts.id, lot.productId)) : [];
+
+      const qualityCheck = lot.qualityCheckId ? await db.select().from(factoryQualityChecks)
+        .where(eq(factoryQualityChecks.id, lot.qualityCheckId)) : [];
+
+      const shipmentItems = await db.select({
+        item: factoryShipmentItems,
+        shipment: factoryShipments,
+      })
+        .from(factoryShipmentItems)
+        .leftJoin(factoryShipments, eq(factoryShipmentItems.shipmentId, factoryShipments.id))
+        .where(eq(factoryShipmentItems.lotNumber, lotNumber));
+
+      const producerRaw = lot.producedBy ? await db.select({ firstName: users.firstName, lastName: users.lastName })
+        .from(users).where(eq(users.id, lot.producedBy)) : [];
+      const producer = producerRaw.length > 0 ? [{ fullName: `${producerRaw[0].firstName || ''} ${producerRaw[0].lastName || ''}`.trim() }] : [];
+
+      res.json({
+        lot,
+        product: product[0] || null,
+        producer: producer[0] || null,
+        qualityCheck: qualityCheck[0] || null,
+        shipments: shipmentItems,
+      });
+    } catch (error: any) {
+      console.error("LOT trace error:", error);
+      res.status(500).json({ message: "LOT izlenebilirlik bilgisi alınamadı" });
+    }
+  });
+
+  // ========================================
+  // T009: KİOSK BASİTLEŞTİRME (3 BUTON AKIŞI)
+  // ========================================
+
+  router.post("/api/factory/kiosk/quick-start", isKioskAuthenticated, async (req: any, res) => {
+    try {
+      const { stationId } = req.body;
+      const userId = req.user?.id;
+
+      if (!stationId) {
+        return res.status(400).json({ message: "İstasyon seçimi zorunludur" });
+      }
+
+      const existingSession = await db.select().from(factoryShiftSessions)
+        .where(and(
+          eq(factoryShiftSessions.userId, userId),
+          eq(factoryShiftSessions.status, 'active')
+        ));
+
+      if (existingSession.length > 0) {
+        return res.json({ session: existingSession[0], message: "Zaten aktif vardiya var" });
+      }
+
+      const [session] = await db.insert(factoryShiftSessions).values({
+        userId,
+        stationId,
+        status: 'active',
+        checkInTime: new Date(),
+      }).returning();
+
+      res.status(201).json({ session, message: "Vardiya başlatıldı" });
+    } catch (error: any) {
+      console.error("Quick start error:", error);
+      res.status(500).json({ message: "Vardiya başlatılamadı: " + error.message });
+    }
+  });
+
+  router.post("/api/factory/kiosk/quick-complete", isKioskAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.id;
+      const { productId, quantity, wasteQuantity, notes } = req.body;
+
+      if (!productId || !quantity) {
+        return res.status(400).json({ message: "Ürün ve miktar zorunludur" });
+      }
+
+      const [activeSession] = await db.select().from(factoryShiftSessions)
+        .where(and(
+          eq(factoryShiftSessions.userId, userId),
+          eq(factoryShiftSessions.status, 'active')
+        ));
+
+      if (!activeSession) {
+        return res.status(400).json({ message: "Aktif vardiya bulunamadı. Önce vardiya başlatın." });
+      }
+
+      const [product] = await db.select().from(factoryProducts)
+        .where(eq(factoryProducts.id, productId));
+
+      if (!product) {
+        return res.status(404).json({ message: "Ürün bulunamadı" });
+      }
+
+      const result = await db.transaction(async (tx) => {
+        const qty = parseFloat(quantity);
+        const waste = wasteQuantity ? parseFloat(wasteQuantity) : 0;
+
+        if (product.productType === 'mamul' && product.parentProductId) {
+          const ratio = parseFloat(String(product.conversionRatio || '1'));
+          if (ratio <= 0) {
+            throw new Error(`INSUFFICIENT_SEMI: Geçersiz dönüşüm oranı: ${ratio}`);
+          }
+          const [parentStock] = await tx.select().from(factoryInventory)
+            .where(eq(factoryInventory.productId, product.parentProductId));
+          const needed = qty * ratio;
+          const available = parentStock ? parseFloat(String(parentStock.quantity)) : 0;
+
+          if (available < needed) {
+            throw new Error(`INSUFFICIENT_SEMI: Yarı mamül yetersiz. Gereken: ${needed}, Mevcut: ${available}`);
+          }
+
+          await tx.update(factoryInventory)
+            .set({ quantity: Math.round(available - needed), updatedAt: new Date() })
+            .where(eq(factoryInventory.productId, product.parentProductId));
+        }
+
+        const [output] = await tx.insert(factoryProductionOutputs).values({
+          sessionId: activeSession.id,
+          userId,
+          stationId: activeSession.stationId,
+          productId,
+          productName: product.name,
+          producedQuantity: String(qty),
+          producedUnit: product.unit || 'adet',
+          wasteQuantity: String(waste),
+          wasteUnit: product.unit || 'adet',
+          qualityStatus: 'pending',
+          createdAt: new Date(),
+        }).returning();
+
+        const today = new Date();
+        const dateStr = today.toISOString().slice(0, 10).replace(/-/g, '');
+        const existingLots = await tx.select({ count: count() }).from(productionLots)
+          .where(gte(productionLots.productionDate, new Date(today.toISOString().slice(0, 10))));
+        const seq = String((existingLots[0]?.count || 0) + 1).padStart(3, '0');
+        const lotNumber = `LOT-${dateStr}-${seq}`;
+
+        const [lot] = await tx.insert(productionLots).values({
+          lotNumber,
+          productId,
+          quantity: String(qty),
+          unit: product.unit || 'adet',
+          producedBy: userId,
+          stationId: activeSession.stationId,
+          status: 'kalite_bekliyor',
+        }).returning();
+
+        const [existingInventory] = await tx.select().from(factoryInventory)
+          .where(eq(factoryInventory.productId, productId));
+        if (existingInventory) {
+          await tx.update(factoryInventory)
+            .set({ quantity: Math.round(parseFloat(String(existingInventory.quantity)) + qty), updatedAt: new Date() })
+            .where(eq(factoryInventory.productId, productId));
+        } else {
+          await tx.insert(factoryInventory).values({
+            productId,
+            quantity: Math.round(qty),
+            reservedQuantity: 0,
+          });
+        }
+
+        return { output, lot };
+      });
+
+      res.status(201).json({
+        message: "Üretim kaydedildi",
+        output: result.output,
+        lot: result.lot,
+      });
+    } catch (error: any) {
+      if (error.message?.startsWith('INSUFFICIENT_SEMI:')) {
+        return res.status(400).json({ message: error.message.replace('INSUFFICIENT_SEMI: ', '') });
+      }
+      console.error("Quick complete error:", error);
+      res.status(500).json({ message: "Üretim kaydedilemedi: " + error.message });
+    }
+  });
+
+  router.post("/api/factory/kiosk/quick-end", isKioskAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.id;
+
+      const [activeSession] = await db.select().from(factoryShiftSessions)
+        .where(and(
+          eq(factoryShiftSessions.userId, userId),
+          eq(factoryShiftSessions.status, 'active')
+        ));
+
+      if (!activeSession) {
+        return res.status(400).json({ message: "Aktif vardiya bulunamadı" });
+      }
+
+      const outputs = await db.select({ count: count() }).from(factoryProductionOutputs)
+        .where(eq(factoryProductionOutputs.sessionId, activeSession.id));
+
+      await db.update(factoryShiftSessions)
+        .set({ status: 'completed', checkOutTime: new Date() })
+        .where(eq(factoryShiftSessions.id, activeSession.id));
+
+      res.json({
+        message: "Vardiya sonlandırıldı",
+        sessionId: activeSession.id,
+        totalOutputs: outputs[0]?.count || 0,
+      });
+    } catch (error: any) {
+      console.error("Quick end error:", error);
+      res.status(500).json({ message: "Vardiya sonlandırılamadı: " + error.message });
+    }
+  });
+
+  // ========================================
+  // T004: TEST SEED DATA (Üretim + HACCP)
+  // ========================================
+
+  router.post("/api/factory/seed-test-data", isAuthenticated, async (req: any, res) => {
+    try {
+      if (process.env.NODE_ENV === 'production') {
+        return res.status(403).json({ message: "Seed data üretim ortamında kullanılamaz" });
+      }
+      const userRole = req.user?.role as UserRoleType;
+      if (userRole !== 'admin') {
+        return res.status(403).json({ message: "Sadece admin seed data oluşturabilir" });
+      }
+
+      const products = await db.select().from(factoryProducts).limit(10);
+      const stations = await db.select().from(factoryStations).limit(5);
+
+      if (products.length === 0 || stations.length === 0) {
+        return res.status(400).json({ message: "Önce fabrika ürün ve istasyon seed'i çalıştırın" });
+      }
+
+      const userId = req.user?.id;
+
+      const [testSession] = await db.insert(factoryShiftSessions).values({
+        userId,
+        stationId: stations[0].id,
+        status: 'completed',
+        checkInTime: new Date(Date.now() - 8 * 60 * 60 * 1000),
+        checkOutTime: new Date(),
+      }).returning();
+
+      const outputStatuses = ['pending', 'pending_engineer', 'approved', 'rejected', 'pending', 'approved', 'pending_engineer', 'approved'];
+      const outputValues = [];
+      for (let i = 0; i < Math.min(8, products.length); i++) {
+        outputValues.push({
+          sessionId: testSession.id,
+          userId,
+          stationId: stations[i % stations.length].id,
+          productId: products[i].id,
+          productName: products[i].name,
+          producedQuantity: String(Math.floor(Math.random() * 50) + 10),
+          producedUnit: products[i].unit || 'adet',
+          wasteQuantity: String(Math.floor(Math.random() * 5)),
+          wasteUnit: products[i].unit || 'adet',
+          qualityStatus: outputStatuses[i],
+          createdAt: new Date(Date.now() - Math.random() * 48 * 60 * 60 * 1000),
+        });
+      }
+      const insertedOutputs = await db.insert(factoryProductionOutputs).values(outputValues).returning();
+
+      const haccpValues = [
+        { checkType: 'sicaklik', checkPoint: 'Depolama Buzdolabı A', measuredValue: '3.2', standardValue: '0-4°C', unit: '°C', result: 'pass' as const, checkedById: userId, notes: 'Normal sıcaklık aralığında' },
+        { checkType: 'sicaklik', checkPoint: 'Pişirme Hattı B', measuredValue: '72.5', standardValue: '72°C min', unit: '°C', result: 'pass' as const, checkedById: userId, notes: 'Pişirme sıcaklığı uygun' },
+        { checkType: 'temizlik', checkPoint: 'Üretim Tezgahı C', measuredValue: 'Uygun Değil', standardValue: 'Temiz', unit: 'gözlem', result: 'fail' as const, checkedById: userId, notes: 'Temizlik yetersiz, yeniden temizlenmeli' },
+        { checkType: 'sicaklik', checkPoint: 'Soğuk Zincir Aracı', measuredValue: '5.8', standardValue: '0-4°C', unit: '°C', result: 'warning' as const, checkedById: userId, notes: 'Sıcaklık sınırda, izlemeye alındı' },
+        { checkType: 'nem', checkPoint: 'Hammadde Deposu', measuredValue: '55', standardValue: '40-60%', unit: '%RH', result: 'pass' as const, checkedById: userId, notes: 'Nem değeri uygun' },
+      ];
+      const insertedHaccp = await db.insert(haccpCheckRecords).values(haccpValues).returning();
+
+      const today = new Date();
+      const dateStr = today.toISOString().slice(0, 10).replace(/-/g, '');
+      const lotValues = [];
+      for (let i = 0; i < Math.min(5, products.length); i++) {
+        const expiryDate = new Date();
+        expiryDate.setDate(expiryDate.getDate() + (i < 2 ? 5 : 30));
+        lotValues.push({
+          lotNumber: `LOT-${dateStr}-T${String(i + 1).padStart(2, '0')}`,
+          productId: products[i].id,
+          quantity: String(Math.floor(Math.random() * 100) + 20),
+          unit: products[i].unit || 'adet',
+          producedBy: userId,
+          stationId: stations[i % stations.length].id,
+          status: ['uretildi', 'kalite_bekliyor', 'onaylandi', 'sevk_edildi', 'uretildi'][i],
+          expiryDate,
+          notes: `Test LOT #${i + 1}`,
+        });
+      }
+      const insertedLots = await db.insert(productionLots).values(lotValues).returning();
+
+      res.json({
+        message: "Test seed data başarıyla oluşturuldu",
+        session: testSession.id,
+        outputs: insertedOutputs.length,
+        haccpRecords: insertedHaccp.length,
+        lots: insertedLots.length,
+      });
+    } catch (error: any) {
+      console.error("Test seed error:", error);
+      res.status(500).json({ message: "Test seed data oluşturulamadı: " + error.message });
     }
   });
 
