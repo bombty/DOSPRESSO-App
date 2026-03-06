@@ -485,6 +485,15 @@ const MENU_BLUEPRINT: SidebarMenuSection[] = [
         scope: "both",
       },
       {
+        id: "agent-center",
+        titleTr: "Agent Merkezi",
+        path: "/agent-merkezi",
+        icon: "Shield",
+        moduleKey: "support",
+        scope: "both",
+        badge: "agent",
+      },
+      {
         id: "usage-guide",
         titleTr: "Kılavuz",
         path: "/kullanim-kilavuzu",
@@ -595,7 +604,7 @@ const SIDEBAR_ALLOWED_ITEMS: Partial<Record<UserRoleType, string[]>> = {
   supervisor: [
     'branch-dashboard', 'tasks-list', 'checklists', 'shifts', 'equipment', 'faults',
     'hr', 'training-academy', 'notifications', 'usage-guide', 'hq-support', 'lost-found',
-    'customer-satisfaction', 'ai-assistant',
+    'customer-satisfaction', 'ai-assistant', 'agent-center',
   ],
   supervisor_buddy: [
     'branch-dashboard', 'tasks-list', 'checklists', 'shifts', 'equipment', 'faults',
@@ -605,7 +614,7 @@ const SIDEBAR_ALLOWED_ITEMS: Partial<Record<UserRoleType, string[]>> = {
     'branch-dashboard', 'tasks-list', 'checklists', 'shifts', 'equipment', 'faults',
     'hr', 'branch-shift-tracking', 'attendance', 'reports', 'lost-found',
     'training-academy', 'notifications', 'usage-guide', 'hq-support',
-    'branch-health', 'customer-satisfaction', 'ai-assistant',
+    'branch-health', 'customer-satisfaction', 'ai-assistant', 'agent-center',
   ],
   yatirimci_branch: [
     'branch-dashboard', 'tasks-list', 'checklists', 'shifts', 'hr', 'reports',
@@ -614,12 +623,12 @@ const SIDEBAR_ALLOWED_ITEMS: Partial<Record<UserRoleType, string[]>> = {
   ceo: [
     'dashboard', 'branches-list', 'reports', 'performance-dashboard', 'hr',
     'training-academy', 'knowledge-base', 'notifications', 'usage-guide',
-    'branch-health', 'hq-support', 'messages', 'ai-assistant',
+    'branch-health', 'hq-support', 'messages', 'ai-assistant', 'agent-center',
   ],
   cgo: [
     'dashboard', 'branches-list', 'reports', 'performance-dashboard', 'hr',
     'training-academy', 'knowledge-base', 'notifications', 'usage-guide',
-    'branch-health', 'hq-support', 'messages', 'customer-satisfaction', 'ai-assistant',
+    'branch-health', 'hq-support', 'messages', 'customer-satisfaction', 'ai-assistant', 'agent-center',
   ],
   yatirimci_hq: [
     'dashboard', 'branches-list', 'reports', 'performance-dashboard',
@@ -627,7 +636,7 @@ const SIDEBAR_ALLOWED_ITEMS: Partial<Record<UserRoleType, string[]>> = {
   ],
   coach: [
     'dashboard', 'branches-list', 'hr', 'training-academy', 'reports',
-    'branch-inspection', 'branch-health', 'notifications', 'usage-guide', 'hq-support', 'ai-assistant',
+    'branch-inspection', 'branch-health', 'notifications', 'usage-guide', 'hq-support', 'ai-assistant', 'agent-center',
   ],
   destek: [
     'dashboard', 'branches-list', 'hr', 'training-academy', 'reports',
@@ -661,7 +670,7 @@ const SIDEBAR_ALLOWED_ITEMS: Partial<Record<UserRoleType, string[]>> = {
   ],
   satinalma: [
     'dashboard', 'procurement-dashboard', 'stock-management', 'supplier-management',
-    'order-management', 'goods-receipt', 'reports', 'notifications', 'usage-guide', 'hq-support',
+    'order-management', 'goods-receipt', 'reports', 'notifications', 'usage-guide', 'hq-support', 'agent-center',
   ],
   teknik: [
     'dashboard', 'equipment', 'faults', 'qr-scan', 'reports',

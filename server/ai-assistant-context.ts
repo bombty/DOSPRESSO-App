@@ -56,10 +56,11 @@ const NAV_LINKS: Record<string, { label: string; path: string }> = {
   complaints: { label: "Sikayetler", path: "/sikayetler" },
   cash_reports: { label: "Kasa Raporlari", path: "/kasa-raporlari" },
   accounting: { label: "Muhasebe", path: "/muhasebe" },
+  agent_center: { label: "Agent Merkezi", path: "/agent-merkezi" },
 };
 
 function buildNavLinksPrompt(role: string): string {
-  const hqLinks = ["dashboard", "branches", "faults", "equipment", "tasks", "checklists", "personnel", "training", "academy", "reports", "inspections", "notifications", "branch_health", "employee_of_month"];
+  const hqLinks = ["dashboard", "branches", "faults", "equipment", "tasks", "checklists", "personnel", "training", "academy", "reports", "inspections", "notifications", "branch_health", "employee_of_month", "agent_center"];
   const branchLinks = ["dashboard", "faults", "tasks", "checklists", "training", "academy", "recipes", "shifts", "leave", "attendance", "performance", "lost_found", "notifications"];
   const adminLinks = [...hqLinks, "admin", "knowledge_base"];
   const coachLinks = ["dashboard", "branches", "inspections", "personnel", "training", "academy", "reports", "branch_health", "crm"];

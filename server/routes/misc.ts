@@ -2657,9 +2657,30 @@ const normalizeTimeGlobal = (timeStr: string): string => {
         // Ignore message count errors
       }
       
+      let agentPendingCount = 0;
+      try {
+        const { agentPendingActions } = await import("@shared/schema");
+        const { eq, and, or, count: countFn } = await import("drizzle-orm");
+        const { db } = await import("../db");
+        const conditions: any[] = [eq(agentPendingActions.status, "pending")];
+        const adminRoles = ["admin", "ceo", "cgo"];
+        if (!adminRoles.includes(userRole)) {
+          conditions.push(
+            or(
+              eq(agentPendingActions.targetUserId, String(user.id)),
+              eq(agentPendingActions.targetRoleScope, userRole)
+            )
+          );
+        }
+        const [result] = await db.select({ count: countFn() }).from(agentPendingActions)
+          .where(and(...conditions));
+        agentPendingCount = Number(result?.count ?? 0);
+      } catch {}
+
       const badges: Record<string, number> = {
         notifications: notificationCount,
         messages: messageCount,
+        agent: agentPendingCount,
       };
       
       // Fetch dynamic permissions from database for this role

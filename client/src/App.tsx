@@ -195,6 +195,7 @@ const MuhasebeRaporlama = lazy(() => import("@/pages/muhasebe-raporlama"));
 const KullanimKilavuzu = lazy(() => import("@/pages/kullanim-kilavuzu"));
 const WasteMegaModule = lazy(() => import("@/pages/waste-mega"));
 const HubPage = lazy(() => import("@/pages/hub-page"));
+const AgentMerkezi = lazy(() => import("@/pages/agent-merkezi"));
 
 const PUBLIC_PATH_PREFIXES = [
   "/login", 
@@ -427,6 +428,7 @@ function Router() {
           <Route path="/sube-saglik-skoru" component={SubeSaglikSkoru} />
           <Route path="/sube-karsilastirma">{() => <HQOnly><SubeKarsilastirma /></HQOnly>}</Route>
           <Route path="/kullanim-kilavuzu" component={KullanimKilavuzu} />
+          <Route path="/agent-merkezi" component={AgentMerkezi} />
         </>
       )}
       

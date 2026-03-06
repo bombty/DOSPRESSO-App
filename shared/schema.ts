@@ -14026,3 +14026,103 @@ export type InsertEmployeeTypePolicy = z.infer<typeof insertEmployeeTypePolicySc
 export type EmployeeTypePolicy = typeof employeeTypePolicies.$inferSelect;
 export type InsertOrgEmployeeTypeAssignment = z.infer<typeof insertOrgEmployeeTypeAssignmentSchema>;
 export type OrgEmployeeTypeAssignment = typeof orgEmployeeTypeAssignments.$inferSelect;
+
+// ==================== Agent Engine — Pending Actions ====================
+
+export const agentActionTypeEnum = ["remind", "escalate", "report", "suggest_task", "alert", "checklist_warning", "training_nudge", "stock_alert", "sla_warning", "performance_note"] as const;
+export type AgentActionType = typeof agentActionTypeEnum[number];
+
+export const agentActionSeverityEnum = ["low", "med", "high", "critical"] as const;
+export type AgentActionSeverity = typeof agentActionSeverityEnum[number];
+
+export const agentActionStatusEnum = ["pending", "approved", "rejected", "expired", "auto_resolved"] as const;
+export type AgentActionStatus = typeof agentActionStatusEnum[number];
+
+export const agentPendingActions = pgTable("agent_pending_actions", {
+  id: serial("id").primaryKey(),
+  runId: integer("run_id"),
+  actionType: varchar("action_type", { length: 30 }).notNull(),
+  targetUserId: varchar("target_user_id", { length: 255 }),
+  targetRoleScope: varchar("target_role_scope", { length: 30 }),
+  branchId: integer("branch_id"),
+  title: varchar("title", { length: 255 }).notNull(),
+  description: text("description"),
+  deepLink: varchar("deep_link", { length: 500 }),
+  severity: varchar("severity", { length: 10 }).notNull().default("med"),
+  status: varchar("status", { length: 20 }).notNull().default("pending"),
+  approvedByUserId: varchar("approved_by_user_id", { length: 255 }),
+  approvedAt: timestamp("approved_at"),
+  rejectedReason: text("rejected_reason"),
+  expiresAt: timestamp("expires_at"),
+  metadata: jsonb("metadata").$type<Record<string, any>>().default({}),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("agent_action_status_idx").on(table.status),
+  index("agent_action_target_idx").on(table.targetUserId),
+  index("agent_action_type_idx").on(table.actionType),
+  index("agent_action_branch_idx").on(table.branchId),
+  index("agent_action_created_idx").on(table.createdAt),
+]);
+
+export const insertAgentPendingActionSchema = createInsertSchema(agentPendingActions).omit({
+  id: true,
+  createdAt: true,
+});
+export type InsertAgentPendingAction = z.infer<typeof insertAgentPendingActionSchema>;
+export type AgentPendingAction = typeof agentPendingActions.$inferSelect;
+
+// ==================== Agent Engine — Agent Runs ====================
+
+export const agentRunTypeEnum = ["daily_analysis", "weekly_summary", "event_triggered", "escalation_check"] as const;
+export type AgentRunType = typeof agentRunTypeEnum[number];
+
+export const agentRuns = pgTable("agent_runs", {
+  id: serial("id").primaryKey(),
+  runType: varchar("run_type", { length: 30 }).notNull(),
+  scopeType: varchar("scope_type", { length: 20 }).notNull(),
+  scopeId: varchar("scope_id", { length: 255 }),
+  triggeredBy: varchar("triggered_by", { length: 20 }).notNull().default("cron"),
+  inputKpis: jsonb("input_kpis").$type<Record<string, any>>().default({}),
+  llmUsed: boolean("llm_used").default(false),
+  llmModel: varchar("llm_model", { length: 50 }),
+  llmTokens: integer("llm_tokens").default(0),
+  actionsGenerated: integer("actions_generated").default(0),
+  status: varchar("status", { length: 20 }).default("success"),
+  executionTimeMs: integer("execution_time_ms"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("agent_run_type_idx").on(table.runType),
+  index("agent_run_scope_idx").on(table.scopeType),
+  index("agent_run_created_idx").on(table.createdAt),
+]);
+
+export const insertAgentRunSchema = createInsertSchema(agentRuns).omit({
+  id: true,
+  createdAt: true,
+});
+export type InsertAgentRun = z.infer<typeof insertAgentRunSchema>;
+export type AgentRun = typeof agentRuns.$inferSelect;
+
+// ==================== Agent Engine — Escalation History ====================
+
+export const agentEscalationHistory = pgTable("agent_escalation_history", {
+  id: serial("id").primaryKey(),
+  sourceActionId: integer("source_action_id").references(() => agentPendingActions.id, { onDelete: "cascade" }).notNull(),
+  escalationLevel: integer("escalation_level").notNull().default(1),
+  escalatedToUserId: varchar("escalated_to_user_id", { length: 255 }),
+  escalatedToRole: varchar("escalated_to_role", { length: 30 }),
+  escalatedAt: timestamp("escalated_at").defaultNow(),
+  resolvedAt: timestamp("resolved_at"),
+  resolution: text("resolution"),
+}, (table) => [
+  index("agent_esc_action_idx").on(table.sourceActionId),
+  index("agent_esc_level_idx").on(table.escalationLevel),
+  index("agent_esc_user_idx").on(table.escalatedToUserId),
+]);
+
+export const insertAgentEscalationHistorySchema = createInsertSchema(agentEscalationHistory).omit({
+  id: true,
+  escalatedAt: true,
+});
+export type InsertAgentEscalationHistory = z.infer<typeof insertAgentEscalationHistorySchema>;
+export type AgentEscalationHistory = typeof agentEscalationHistory.$inferSelect;

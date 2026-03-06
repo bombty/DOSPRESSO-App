@@ -13,6 +13,7 @@ import { registerInspectionRoutes } from "./inspection-routes";
 import { registerExportRoutes } from "./export-routes";
 import { registerBranchHealthRoutes } from "./routes/branch-health";
 import { registerAiOpsCopilotRoutes } from "./routes/ai-ops-copilot";
+import { registerAgentRoutes } from "./routes/agent";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated, createKioskSession, isKioskAuthenticated, deleteKioskSession, updateKioskStation } from "./localAuth";
@@ -374,6 +375,7 @@ import { wasteRouter } from "./routes/waste";
 import aiNbaRouter from "./routes/ai-nba";
 import employeeTypesRouter from "./routes/employee-types";
 import aiPolicyAdminRouter from "./routes/ai-policy-admin";
+import { startAgentScheduler, stopAgentScheduler, getSchedulerStatus } from "./services/agent-scheduler";
 
 // Multer configuration for file uploads (memory storage)
 const uploadStorage = multer.memoryStorage();
@@ -935,6 +937,7 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
   startOnboardingCompletionSystem();
   startStaleQuoteReminderSystem();
   startNotificationArchiveSystem();
+  startAgentScheduler();
   registerDailyTaskRoutes(app);
 
   registerSatinalmaRoutes(app, isAuthenticated);
@@ -948,6 +951,7 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
   registerCRMRoutes(app, isAuthenticated);
   registerBranchHealthRoutes(app);
   registerAiOpsCopilotRoutes(app);
+  registerAgentRoutes(app);
   async function seedDashboardWidgetItems() {
     try {
       const existingWidgets = await db.select().from(dashboardWidgetItems);

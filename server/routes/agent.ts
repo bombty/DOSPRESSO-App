@@ -1,0 +1,321 @@
+import { Router, type Express } from "express";
+import { db } from "../db";
+import { storage } from "../storage";
+import { 
+  agentPendingActions, agentRuns, agentEscalationHistory, 
+  users, notifications
+} from "@shared/schema";
+import { eq, desc, and, count, sql, gte, or, inArray } from "drizzle-orm";
+import { runAgentAnalysis } from "../services/agent-engine";
+import { getEscalationHistory, resolveEscalation, getUnresolvedEscalations } from "../services/agent-escalation";
+import { getSchedulerStatus } from "../services/agent-scheduler";
+
+const router = Router();
+
+function isAuthenticated(req: any, res: any, next: any) {
+  if (!req.user) return res.status(401).json({ message: "Oturum açmanız gerekiyor" });
+  next();
+}
+
+function isHQOrAdmin(req: any, res: any, next: any) {
+  const role = req.user?.role;
+  const hqRoles = ["admin", "ceo", "cgo", "coach", "trainer", "teknik", "ekipman_teknik", "satinalma", "muhasebe", "destek", "gida_muhendisi", "kalite_kontrol"];
+  if (!hqRoles.includes(role)) return res.status(403).json({ message: "Yetkiniz yok" });
+  next();
+}
+
+router.get("/api/agent/actions", isAuthenticated, async (req: any, res) => {
+  try {
+    const user = req.user;
+    const { status, limit: limitParam, offset: offsetParam } = req.query;
+    const limit = Math.min(parseInt(limitParam as string) || 20, 100);
+    const offset = parseInt(offsetParam as string) || 0;
+
+    const conditions: any[] = [];
+
+    const adminRoles = ["admin", "ceo", "cgo"];
+    if (!adminRoles.includes(user.role)) {
+      conditions.push(
+        or(
+          eq(agentPendingActions.targetUserId, user.id),
+          eq(agentPendingActions.targetRoleScope, user.role)
+        )
+      );
+      if (user.branchId) {
+        conditions.push(
+          or(
+            eq(agentPendingActions.branchId, user.branchId),
+            sql`${agentPendingActions.branchId} IS NULL`
+          )
+        );
+      }
+    }
+
+    if (status && status !== "all") {
+      conditions.push(eq(agentPendingActions.status, status as string));
+    }
+
+    const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+
+    const [results, totalResult] = await Promise.all([
+      db.select().from(agentPendingActions)
+        .where(whereClause)
+        .orderBy(desc(agentPendingActions.createdAt))
+        .limit(limit)
+        .offset(offset),
+      db.select({ count: count() }).from(agentPendingActions).where(whereClause)
+    ]);
+
+    const total = totalResult[0]?.count ?? 0;
+
+    res.json({ data: results, total, limit, offset });
+  } catch (error: any) {
+    console.error("Agent actions list error:", error);
+    res.status(500).json({ message: "Agent önerileri alınamadı" });
+  }
+});
+
+router.get("/api/agent/actions/summary", isAuthenticated, async (req: any, res) => {
+  try {
+    const user = req.user;
+    const conditions: any[] = [];
+    const adminRoles = ["admin", "ceo", "cgo"];
+
+    if (!adminRoles.includes(user.role)) {
+      conditions.push(
+        or(
+          eq(agentPendingActions.targetUserId, user.id),
+          eq(agentPendingActions.targetRoleScope, user.role)
+        )
+      );
+    }
+
+    const pendingConditions = [...conditions, eq(agentPendingActions.status, "pending")];
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    const todayConditions = [...conditions, gte(agentPendingActions.createdAt, todayStart)];
+
+    const [pendingResult, todayResult, criticalResult] = await Promise.all([
+      db.select({ count: count() }).from(agentPendingActions)
+        .where(pendingConditions.length > 0 ? and(...pendingConditions) : eq(agentPendingActions.status, "pending")),
+      db.select({ count: count() }).from(agentPendingActions)
+        .where(todayConditions.length > 0 ? and(...todayConditions) : gte(agentPendingActions.createdAt, todayStart)),
+      db.select({ count: count() }).from(agentPendingActions)
+        .where(and(
+          eq(agentPendingActions.status, "pending"),
+          or(
+            eq(agentPendingActions.severity, "high"),
+            eq(agentPendingActions.severity, "critical")
+          ),
+          ...(conditions.length > 0 ? conditions : [])
+        ))
+    ]);
+
+    res.json({
+      pending: pendingResult[0]?.count ?? 0,
+      today: todayResult[0]?.count ?? 0,
+      critical: criticalResult[0]?.count ?? 0,
+    });
+  } catch (error: any) {
+    console.error("Agent summary error:", error);
+    res.status(500).json({ message: "Agent özeti alınamadı" });
+  }
+});
+
+router.post("/api/agent/actions/:id/approve", isAuthenticated, async (req: any, res) => {
+  try {
+    const actionId = parseInt(req.params.id);
+    const user = req.user;
+
+    const [action] = await db.select().from(agentPendingActions).where(eq(agentPendingActions.id, actionId));
+    if (!action) return res.status(404).json({ message: "Öneri bulunamadı" });
+    if (action.status !== "pending") return res.status(400).json({ message: "Bu öneri zaten işlenmiş" });
+
+    const adminRoles = ["admin", "ceo", "cgo"];
+    const isAdmin = adminRoles.includes(user.role);
+    const isTargetUser = action.targetUserId && action.targetUserId === String(user.id);
+    const isRoleScopeFallback = !action.targetUserId && action.targetRoleScope === user.role &&
+      (action.branchId === null || action.branchId === user.branchId);
+
+    if (!isAdmin && !isTargetUser && !isRoleScopeFallback) {
+      return res.status(403).json({ message: "Bu öneriyi onaylama yetkiniz yok" });
+    }
+
+    await db.update(agentPendingActions)
+      .set({
+        status: "approved",
+        approvedByUserId: String(user.id),
+        approvedAt: new Date(),
+      })
+      .where(eq(agentPendingActions.id, actionId));
+
+    if (action.actionType === "remind" && action.targetUserId) {
+      await storage.createNotification({
+        userId: action.targetUserId,
+        type: "agent_reminder",
+        title: action.title,
+        message: action.description || "",
+        link: action.deepLink || undefined,
+      });
+    } else if (action.actionType === "alert" && action.targetUserId) {
+      await storage.createNotification({
+        userId: action.targetUserId,
+        type: "agent_alert",
+        title: action.title,
+        message: action.description || "",
+        link: action.deepLink || undefined,
+      });
+    }
+
+    res.json({ message: "Öneri onaylandı", actionId });
+  } catch (error: any) {
+    console.error("Agent approve error:", error);
+    res.status(500).json({ message: "Onaylama hatası" });
+  }
+});
+
+router.post("/api/agent/actions/:id/reject", isAuthenticated, async (req: any, res) => {
+  try {
+    const actionId = parseInt(req.params.id);
+    const user = req.user;
+    const { reason } = req.body;
+
+    const [action] = await db.select().from(agentPendingActions).where(eq(agentPendingActions.id, actionId));
+    if (!action) return res.status(404).json({ message: "Öneri bulunamadı" });
+    if (action.status !== "pending") return res.status(400).json({ message: "Bu öneri zaten işlenmiş" });
+
+    const adminRoles = ["admin", "ceo", "cgo"];
+    const isAdmin = adminRoles.includes(user.role);
+    const isTargetUser = action.targetUserId && action.targetUserId === String(user.id);
+    const isRoleScopeFallback = !action.targetUserId && action.targetRoleScope === user.role &&
+      (action.branchId === null || action.branchId === user.branchId);
+
+    if (!isAdmin && !isTargetUser && !isRoleScopeFallback) {
+      return res.status(403).json({ message: "Bu öneriyi reddetme yetkiniz yok" });
+    }
+
+    await db.update(agentPendingActions)
+      .set({
+        status: "rejected",
+        rejectedReason: reason || null,
+      })
+      .where(eq(agentPendingActions.id, actionId));
+
+    res.json({ message: "Öneri reddedildi", actionId });
+  } catch (error: any) {
+    console.error("Agent reject error:", error);
+    res.status(500).json({ message: "Reddetme hatası" });
+  }
+});
+
+router.post("/api/agent/run-now", isAuthenticated, isHQOrAdmin, async (req: any, res) => {
+  try {
+    const user = req.user;
+    const result = await runAgentAnalysis(String(user.id), "daily_analysis", "manual");
+    res.json({
+      message: "Agent analizi tamamlandı",
+      actionsGenerated: result.actionsCreated,
+      runId: result.run?.id ?? null,
+    });
+  } catch (error: any) {
+    console.error("Agent run-now error:", error);
+    res.status(500).json({ message: "Agent analizi çalıştırılamadı" });
+  }
+});
+
+router.get("/api/agent/escalations", isAuthenticated, isHQOrAdmin, async (req: any, res) => {
+  try {
+    const unresolved = await getUnresolvedEscalations();
+    res.json({ data: unresolved });
+  } catch (error: any) {
+    console.error("Agent escalations error:", error);
+    res.status(500).json({ message: "Escalation listesi alınamadı" });
+  }
+});
+
+router.get("/api/agent/escalations/:actionId", isAuthenticated, async (req: any, res) => {
+  try {
+    const actionId = parseInt(req.params.actionId);
+    const history = await getEscalationHistory(actionId);
+    res.json({ data: history });
+  } catch (error: any) {
+    console.error("Escalation history error:", error);
+    res.status(500).json({ message: "Escalation geçmişi alınamadı" });
+  }
+});
+
+router.post("/api/agent/escalations/:actionId/resolve", isAuthenticated, isHQOrAdmin, async (req: any, res) => {
+  try {
+    const actionId = parseInt(req.params.actionId);
+    const { resolution } = req.body;
+    await resolveEscalation(actionId, resolution || "Manuel olarak çözüldü");
+    res.json({ message: "Escalation çözüldü" });
+  } catch (error: any) {
+    console.error("Resolve escalation error:", error);
+    res.status(500).json({ message: "Escalation çözülemedi" });
+  }
+});
+
+router.get("/api/agent/admin/stats", isAuthenticated, isHQOrAdmin, async (req: any, res) => {
+  try {
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+    const [
+      totalRunsResult,
+      totalActionsResult,
+      statusBreakdown,
+      llmTokensResult,
+      recentRuns,
+      schedulerStatus
+    ] = await Promise.all([
+      db.select({ count: count() }).from(agentRuns)
+        .where(gte(agentRuns.createdAt, thirtyDaysAgo)),
+      db.select({ count: count() }).from(agentPendingActions)
+        .where(gte(agentPendingActions.createdAt, thirtyDaysAgo)),
+      db.select({
+        status: agentPendingActions.status,
+        count: count(),
+      }).from(agentPendingActions)
+        .where(gte(agentPendingActions.createdAt, thirtyDaysAgo))
+        .groupBy(agentPendingActions.status),
+      db.select({
+        totalTokens: sql<number>`COALESCE(SUM(${agentRuns.llmTokens}), 0)`,
+        llmCallCount: sql<number>`COUNT(*) FILTER (WHERE ${agentRuns.llmUsed} = true)`,
+      }).from(agentRuns)
+        .where(gte(agentRuns.createdAt, thirtyDaysAgo)),
+      db.select().from(agentRuns)
+        .orderBy(desc(agentRuns.createdAt))
+        .limit(10),
+      Promise.resolve(getSchedulerStatus()),
+    ]);
+
+    const statusMap: Record<string, number> = {};
+    for (const row of statusBreakdown) {
+      statusMap[row.status || "unknown"] = Number(row.count);
+    }
+
+    const approvalRate = (statusMap["approved"] || 0) + (statusMap["rejected"] || 0) > 0
+      ? Math.round(((statusMap["approved"] || 0) / ((statusMap["approved"] || 0) + (statusMap["rejected"] || 0))) * 100)
+      : 0;
+
+    res.json({
+      totalRuns: totalRunsResult[0]?.count ?? 0,
+      totalActions: totalActionsResult[0]?.count ?? 0,
+      statusBreakdown: statusMap,
+      approvalRate,
+      llmTokens: llmTokensResult[0]?.totalTokens ?? 0,
+      llmCallCount: llmTokensResult[0]?.llmCallCount ?? 0,
+      recentRuns,
+      schedulerStatus,
+      period: "30d",
+    });
+  } catch (error: any) {
+    console.error("Agent admin stats error:", error);
+    res.status(500).json({ message: "Agent istatistikleri alınamadı" });
+  }
+});
+
+export function registerAgentRoutes(app: Express) {
+  app.use(router);
+}

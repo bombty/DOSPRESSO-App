@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useMemo } from "react";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
@@ -419,6 +419,12 @@ export function GlobalAIAssistant() {
   const userName = user?.firstName || 'Kullanıcı';
   const quickQueries = roleBasedQueries[userRole] || roleBasedQueries.default;
 
+  const agentSummaryQuery = useQuery<{ pending: number; critical: number }>({
+    queryKey: ["/api/agent/actions/summary"],
+    refetchInterval: 60000,
+    enabled: !!user,
+  });
+
   useEffect(() => {
     const handler = () => setIsOpen(true);
     window.addEventListener('open-ai-assistant', handler);
@@ -536,6 +542,15 @@ export function GlobalAIAssistant() {
                       <p className="text-sm font-medium">
                         Merhaba {userName}, ben Mr. Dobody.
                       </p>
+                      {(agentSummaryQuery.data?.pending ?? 0) > 0 && (
+                        <button
+                          onClick={() => { setIsOpen(false); navigate("/agent-merkezi"); }}
+                          className="mt-2 text-xs bg-primary/20 text-primary-foreground rounded-md px-3 py-1.5 hover:bg-primary/30 transition-colors"
+                          data-testid="link-agent-center-from-chat"
+                        >
+                          {agentSummaryQuery.data!.pending} bekleyen öneriniz var
+                        </button>
+                      )}
                       <div className="mt-3 mx-2 p-2.5 bg-muted/50 rounded-lg border border-border/50">
                         <p className="text-[11px] text-muted-foreground italic leading-relaxed">
                           "{getDailyQuote(userRole)}"
@@ -671,8 +686,14 @@ export function GlobalAIAssistant() {
               initial={{ scale: 0.5, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.5, opacity: 0 }}
+              className="relative"
             >
               <DobodyIcon size={64} />
+              {(agentSummaryQuery.data?.pending ?? 0) > 0 && (
+                <span className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1 shadow-sm" data-testid="badge-agent-fab">
+                  {agentSummaryQuery.data!.pending}
+                </span>
+              )}
             </motion.div>
           )}
         </AnimatePresence>
