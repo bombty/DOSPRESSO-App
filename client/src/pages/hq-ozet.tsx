@@ -1,0 +1,286 @@
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { useAuth } from "@/hooks/useAuth";
+import { Link } from "wouter";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
+import {
+  Building2,
+  AlertTriangle,
+  AlertOctagon,
+  CheckCircle2,
+  Factory,
+  Package,
+  ShoppingCart,
+  Lightbulb,
+  ExternalLink,
+  Star,
+  TrendingUp,
+} from "lucide-react";
+
+interface HQSummaryData {
+  branchStatus: {
+    normal: number;
+    warning: number;
+    critical: number;
+    total: number;
+  };
+  branchRanking: Array<{
+    id: number;
+    name: string;
+    avgRating: number;
+    feedbackCount: number;
+    status: string;
+  }>;
+  factory: {
+    todayProduction: number;
+    wasteCount: number;
+    wastePercentage: number;
+    pendingShipments: number;
+  };
+  pendingOrders: number;
+  suggestions: Array<{
+    id: string;
+    message: string;
+    actionType: string;
+    actionLabel: string;
+    priority: string;
+    icon: string;
+    payload?: Record<string, any>;
+  }>;
+}
+
+function StatusCard({ icon: Icon, label, value, color }: {
+  icon: any; label: string; value: number; color: string;
+}) {
+  return (
+    <Card>
+      <CardContent className="p-4 flex items-center gap-3">
+        <div className={`p-2 rounded-md ${color}`}>
+          <Icon className="h-5 w-5" />
+        </div>
+        <div>
+          <div className="text-2xl font-bold">{value}</div>
+          <div className="text-xs text-muted-foreground">{label}</div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+export default function HQOzet() {
+  const { user } = useAuth();
+  const { toast } = useToast();
+
+  const { data, isLoading } = useQuery<HQSummaryData>({
+    queryKey: ["/api/hq-summary"],
+  });
+
+  const quickAction = useMutation({
+    mutationFn: async (action: any) => {
+      const res = await apiRequest("POST", "/api/quick-action", action);
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Islem tamamlandi" });
+      queryClient.invalidateQueries({ queryKey: ["/api/hq-summary"] });
+    },
+  });
+
+  if (isLoading) {
+    return (
+      <div className="p-4 space-y-4 max-w-2xl mx-auto" data-testid="hq-ozet-loading">
+        <Skeleton className="h-8 w-1/3" />
+        <div className="grid grid-cols-3 gap-3">
+          <Skeleton className="h-24" /><Skeleton className="h-24" /><Skeleton className="h-24" />
+        </div>
+        <Skeleton className="h-32" />
+      </div>
+    );
+  }
+
+  if (!data) {
+    return (
+      <div className="p-4 max-w-2xl mx-auto" data-testid="hq-ozet-error">
+        <Card><CardContent className="p-6 text-center text-muted-foreground">Veriler yuklenemedi</CardContent></Card>
+      </div>
+    );
+  }
+
+  const topBranches = data.branchRanking.filter((b) => b.avgRating >= 3.5).slice(0, 5);
+  const bottomBranches = data.branchRanking.filter((b) => b.avgRating > 0 && b.avgRating < 3.5).slice(-5).reverse();
+
+  return (
+    <div className="p-4 space-y-4 max-w-2xl mx-auto overflow-y-auto h-full" data-testid="hq-ozet-page">
+      <div data-testid="hq-header">
+        <h1 className="text-xl font-bold" data-testid="text-hq-title">HQ Genel Bakis</h1>
+        <p className="text-sm text-muted-foreground">{data.branchStatus.total} sube</p>
+      </div>
+
+      <div className="grid grid-cols-3 gap-3" data-testid="status-grid">
+        <StatusCard
+          icon={CheckCircle2}
+          label="Normal"
+          value={data.branchStatus.normal}
+          color="bg-green-500/10 text-green-500"
+        />
+        <StatusCard
+          icon={AlertTriangle}
+          label="Dikkat"
+          value={data.branchStatus.warning}
+          color="bg-orange-500/10 text-orange-500"
+        />
+        <StatusCard
+          icon={AlertOctagon}
+          label="Kritik"
+          value={data.branchStatus.critical}
+          color="bg-red-500/10 text-red-500"
+        />
+      </div>
+
+      <Card data-testid="card-factory">
+        <CardHeader className="pb-2 pt-4 px-4">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Factory className="h-4 w-4" />
+            Fabrika Ozet
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="px-4 pb-4">
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1" data-testid="stat-production">
+              <div className="text-lg font-bold">{data.factory.todayProduction}</div>
+              <div className="text-xs text-muted-foreground">Bugunun Uretimi</div>
+            </div>
+            <div className="space-y-1" data-testid="stat-waste">
+              <div className="text-lg font-bold">
+                %{data.factory.wastePercentage}
+              </div>
+              <div className="text-xs text-muted-foreground">Fire Orani</div>
+            </div>
+            <div className="space-y-1" data-testid="stat-shipments">
+              <div className="flex items-center gap-1">
+                <Package className="h-4 w-4 text-blue-500" />
+                <span className="text-lg font-bold">{data.factory.pendingShipments}</span>
+              </div>
+              <div className="text-xs text-muted-foreground">Bekleyen Sevkiyat</div>
+            </div>
+            <div className="space-y-1" data-testid="stat-orders">
+              <div className="flex items-center gap-1">
+                <ShoppingCart className="h-4 w-4 text-purple-500" />
+                <span className="text-lg font-bold">{data.pendingOrders}</span>
+              </div>
+              <div className="text-xs text-muted-foreground">Bekleyen Siparis</div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {data.suggestions && data.suggestions.length > 0 && (
+        <Card data-testid="card-dobody-suggestions">
+          <CardHeader className="pb-2 pt-4 px-4">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Lightbulb className="h-4 w-4 text-yellow-500" />
+              Mr. Dobody
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="px-4 pb-4 space-y-2">
+            {data.suggestions.map((s) => (
+              <div
+                key={s.id}
+                className="flex items-start justify-between gap-2 p-2 rounded-md bg-muted/30"
+                data-testid={`suggestion-${s.id}`}
+              >
+                <p className="text-sm flex-1">{s.message}</p>
+                {s.actionType === "send_notification" && s.payload?.branchId && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={quickAction.isPending}
+                    onClick={() => quickAction.mutate({
+                      actionType: "info",
+                      suggestionId: s.id,
+                    })}
+                    data-testid={`btn-action-${s.id}`}
+                  >
+                    {s.actionLabel}
+                  </Button>
+                )}
+                {s.actionType === "redirect" && s.payload?.route && (
+                  <Link href={s.payload.route}>
+                    <Button size="sm" variant="outline" data-testid={`btn-action-${s.id}`}>
+                      {s.actionLabel}
+                    </Button>
+                  </Link>
+                )}
+                {s.actionType === "info" && (
+                  <Badge variant="secondary" className="text-xs flex-shrink-0">{s.actionLabel}</Badge>
+                )}
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
+
+      {(topBranches.length > 0 || bottomBranches.length > 0) && (
+        <Card data-testid="card-branch-ranking">
+          <CardHeader className="pb-2 pt-4 px-4">
+            <CardTitle className="text-base flex items-center gap-2">
+              <TrendingUp className="h-4 w-4" />
+              Sube Siralamasi
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="px-4 pb-4 space-y-3">
+            {topBranches.length > 0 && (
+              <div>
+                <p className="text-xs font-medium text-muted-foreground mb-1">En iyi subeler</p>
+                {topBranches.map((b, i) => (
+                  <div key={b.id} className="flex items-center justify-between gap-2 py-1" data-testid={`branch-top-${b.id}`}>
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="text-xs text-muted-foreground w-4">{i + 1}.</span>
+                      <span className="text-sm truncate">{b.name}</span>
+                    </div>
+                    <div className="flex items-center gap-1 flex-shrink-0">
+                      <Star className="h-3 w-3 text-yellow-500" />
+                      <span className="text-sm font-medium">{b.avgRating}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+            {bottomBranches.length > 0 && (
+              <div>
+                <p className="text-xs font-medium text-muted-foreground mb-1">Dikkat gereken subeler</p>
+                {bottomBranches.map((b) => (
+                  <div key={b.id} className="flex items-center justify-between gap-2 py-1" data-testid={`branch-bottom-${b.id}`}>
+                    <span className="text-sm truncate">{b.name}</span>
+                    <Badge variant="outline" className={`text-xs ${b.status === "critical" ? "text-red-500 border-red-500/30" : "text-orange-500 border-orange-500/30"}`}>
+                      {b.avgRating}
+                    </Badge>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      <div className="pb-4 flex gap-2">
+        <Link href="/hq-dashboard" className="flex-1">
+          <Button variant="outline" className="w-full" data-testid="btn-hq-dashboard">
+            <ExternalLink className="h-4 w-4 mr-2" />
+            HQ Dashboard
+          </Button>
+        </Link>
+        <Link href="/ceo-command-center" className="flex-1">
+          <Button variant="outline" className="w-full" data-testid="btn-ceo-center">
+            <Building2 className="h-4 w-4 mr-2" />
+            Komut Merkezi
+          </Button>
+        </Link>
+      </div>
+    </div>
+  );
+}

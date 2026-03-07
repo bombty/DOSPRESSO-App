@@ -14,6 +14,12 @@ import { registerExportRoutes } from "./export-routes";
 import { registerBranchHealthRoutes } from "./routes/branch-health";
 import { registerAiOpsCopilotRoutes } from "./routes/ai-ops-copilot";
 import { registerAgentRoutes } from "./routes/agent";
+import { registerQuickActionRoutes } from "./routes/quick-action";
+import myDayRoutes from "./routes/my-day";
+import branchSummaryRoutes from "./routes/branch-summary";
+import hqSummaryRoutes from "./routes/hq-summary";
+import coachSummaryRoutes from "./routes/coach-summary";
+import franchiseSummaryRoutes from "./routes/franchise-summary";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated, createKioskSession, isKioskAuthenticated, deleteKioskSession, updateKioskStation } from "./localAuth";
@@ -956,6 +962,12 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
   registerBranchHealthRoutes(app);
   registerAiOpsCopilotRoutes(app);
   registerAgentRoutes(app);
+  registerQuickActionRoutes(app);
+  app.use(myDayRoutes);
+  app.use(branchSummaryRoutes);
+  app.use(hqSummaryRoutes);
+  app.use(coachSummaryRoutes);
+  app.use(franchiseSummaryRoutes);
   async function seedDashboardWidgetItems() {
     try {
       const existingWidgets = await db.select().from(dashboardWidgetItems);

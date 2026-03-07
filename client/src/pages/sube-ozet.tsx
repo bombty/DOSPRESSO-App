@@ -1,0 +1,282 @@
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { useAuth } from "@/hooks/useAuth";
+import { Link } from "wouter";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
+import {
+  Users,
+  ClipboardCheck,
+  Star,
+  AlertTriangle,
+  CheckCircle2,
+  Clock,
+  Circle,
+  Package,
+  Lightbulb,
+  ExternalLink,
+  ChevronRight,
+} from "lucide-react";
+
+interface BranchSummaryData {
+  branch: { id: number; name: string };
+  kpis: {
+    activeStaff: number;
+    totalStaff: number;
+    checklistCompletion: number;
+    customerAvg: number;
+    feedbackCount: number;
+    warnings: number;
+  };
+  teamStatus: Array<{
+    id: string;
+    name: string;
+    role: string;
+    checklistStatus: string;
+  }>;
+  lowStockItems: Array<{
+    productName: string;
+    currentStock: number;
+    minimumStock: number;
+    unit: string;
+  }>;
+  suggestions: Array<{
+    id: string;
+    message: string;
+    actionType: string;
+    actionLabel: string;
+    priority: string;
+    icon: string;
+    targetUserId?: string;
+    payload?: Record<string, any>;
+  }>;
+}
+
+function ChecklistStatusIcon({ status }: { status: string }) {
+  if (status === "completed") return <CheckCircle2 className="h-4 w-4 text-green-500" />;
+  if (status === "in_progress") return <Clock className="h-4 w-4 text-blue-500" />;
+  return <Circle className="h-4 w-4 text-muted-foreground" />;
+}
+
+function KPICard({ icon: Icon, label, value, sub, variant = "default" }: {
+  icon: any; label: string; value: string | number; sub?: string;
+  variant?: "default" | "warning" | "success";
+}) {
+  const borderClass = variant === "warning" ? "border-orange-500/30" :
+    variant === "success" ? "border-green-500/30" : "";
+  return (
+    <Card className={borderClass}>
+      <CardContent className="p-3 flex flex-col items-center gap-1">
+        <Icon className={`h-5 w-5 ${variant === "warning" ? "text-orange-500" : variant === "success" ? "text-green-500" : "text-muted-foreground"}`} />
+        <div className="text-xl font-bold">{value}</div>
+        <div className="text-xs text-muted-foreground text-center">{label}</div>
+        {sub && <div className="text-xs text-muted-foreground">{sub}</div>}
+      </CardContent>
+    </Card>
+  );
+}
+
+export default function SubeOzet() {
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const branchId = user?.branchId ? Number(user.branchId) : null;
+
+  const { data, isLoading } = useQuery<BranchSummaryData>({
+    queryKey: ["/api/branch-summary", branchId],
+    queryFn: async () => {
+      const res = await fetch(`/api/branch-summary/${branchId}`);
+      if (!res.ok) throw new Error("Failed to load");
+      return res.json();
+    },
+    enabled: !!branchId,
+  });
+
+  const quickAction = useMutation({
+    mutationFn: async (action: any) => {
+      const res = await apiRequest("POST", "/api/quick-action", action);
+      return res.json();
+    },
+    onSuccess: (result) => {
+      toast({ title: "Islem tamamlandi", description: result.message });
+      queryClient.invalidateQueries({ queryKey: ["/api/branch-summary", branchId] });
+    },
+  });
+
+  if (!branchId) {
+    return (
+      <div className="p-4 max-w-lg mx-auto">
+        <Card><CardContent className="p-6 text-center text-muted-foreground">Sube bilgisi bulunamadi</CardContent></Card>
+      </div>
+    );
+  }
+
+  if (isLoading) {
+    return (
+      <div className="p-4 space-y-4 max-w-lg mx-auto" data-testid="sube-ozet-loading">
+        <Skeleton className="h-8 w-2/3" />
+        <div className="grid grid-cols-2 gap-3">
+          <Skeleton className="h-24" /><Skeleton className="h-24" />
+          <Skeleton className="h-24" /><Skeleton className="h-24" />
+        </div>
+        <Skeleton className="h-32" />
+      </div>
+    );
+  }
+
+  if (!data) {
+    return (
+      <div className="p-4 max-w-lg mx-auto" data-testid="sube-ozet-error">
+        <Card><CardContent className="p-6 text-center text-muted-foreground">Veriler yuklenemedi</CardContent></Card>
+      </div>
+    );
+  }
+
+  return (
+    <div className="p-4 space-y-4 max-w-lg mx-auto overflow-y-auto h-full" data-testid="sube-ozet-page">
+      <div data-testid="branch-header">
+        <h1 className="text-xl font-bold" data-testid="text-branch-name">{data.branch.name}</h1>
+        <p className="text-sm text-muted-foreground">Sube Ozeti</p>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3" data-testid="kpi-grid">
+        <KPICard
+          icon={Users}
+          label="Aktif Personel"
+          value={data.kpis.activeStaff}
+          sub={`/ ${data.kpis.totalStaff}`}
+        />
+        <KPICard
+          icon={ClipboardCheck}
+          label="Checklist"
+          value={`%${data.kpis.checklistCompletion}`}
+          variant={data.kpis.checklistCompletion < 50 ? "warning" : data.kpis.checklistCompletion >= 80 ? "success" : "default"}
+        />
+        <KPICard
+          icon={Star}
+          label="Musteri Puani"
+          value={data.kpis.customerAvg || "---"}
+          sub={data.kpis.feedbackCount > 0 ? `${data.kpis.feedbackCount} degerlendirme` : undefined}
+          variant={data.kpis.customerAvg > 0 && data.kpis.customerAvg < 3.5 ? "warning" : "default"}
+        />
+        <KPICard
+          icon={AlertTriangle}
+          label="Uyarilar"
+          value={data.kpis.warnings}
+          variant={data.kpis.warnings > 0 ? "warning" : "default"}
+        />
+      </div>
+
+      {data.suggestions && data.suggestions.length > 0 && (
+        <Card data-testid="card-dobody-suggestions">
+          <CardHeader className="pb-2 pt-4 px-4">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Lightbulb className="h-4 w-4 text-yellow-500" />
+              Mr. Dobody Onerileri
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="px-4 pb-4 space-y-2">
+            {data.suggestions.map((s) => (
+              <div
+                key={s.id}
+                className="flex items-start justify-between gap-2 p-2 rounded-md bg-muted/30"
+                data-testid={`suggestion-${s.id}`}
+              >
+                <p className="text-sm flex-1">{s.message}</p>
+                {s.actionType === "send_notification" && (s.targetUserId || s.payload?.userIds?.[0]) && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={quickAction.isPending}
+                    onClick={() => quickAction.mutate({
+                      actionType: "send_notification",
+                      targetUserId: s.targetUserId || s.payload?.userIds?.[0],
+                      title: s.actionLabel,
+                      message: s.message,
+                      suggestionId: s.id,
+                    })}
+                    data-testid={`btn-action-${s.id}`}
+                  >
+                    {s.actionLabel}
+                  </Button>
+                )}
+                {s.actionType === "redirect" && s.payload?.route && (
+                  <Link href={s.payload.route}>
+                    <Button size="sm" variant="outline" data-testid={`btn-action-${s.id}`}>
+                      {s.actionLabel}
+                    </Button>
+                  </Link>
+                )}
+                {s.actionType === "info" && (
+                  <Badge variant="secondary" className="text-xs flex-shrink-0">{s.actionLabel}</Badge>
+                )}
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
+
+      {data.teamStatus.length > 0 && (
+        <Card data-testid="card-team-status">
+          <CardHeader className="pb-2 pt-4 px-4">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Users className="h-4 w-4" />
+              Ekip Durumu
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="px-4 pb-4 space-y-1">
+            {data.teamStatus.map((member) => (
+              <div
+                key={member.id}
+                className="flex items-center justify-between gap-2 p-2 rounded-md"
+                data-testid={`team-member-${member.id}`}
+              >
+                <div className="flex items-center gap-2 min-w-0">
+                  <ChecklistStatusIcon status={member.checklistStatus} />
+                  <span className="text-sm truncate">{member.name}</span>
+                </div>
+                <Badge variant="outline" className="text-xs flex-shrink-0">{member.role}</Badge>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
+
+      {data.lowStockItems.length > 0 && (
+        <Card data-testid="card-low-stock">
+          <CardHeader className="pb-2 pt-4 px-4">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Package className="h-4 w-4 text-orange-500" />
+              Stok Uyarilari
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="px-4 pb-4 space-y-1">
+            {data.lowStockItems.map((item, i) => (
+              <div
+                key={i}
+                className="flex items-center justify-between gap-2 p-2 rounded-md text-sm"
+                data-testid={`stock-item-${i}`}
+              >
+                <span className="truncate">{item.productName}</span>
+                <span className="text-orange-500 font-medium flex-shrink-0">
+                  {item.currentStock}/{item.minimumStock} {item.unit}
+                </span>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
+
+      <div className="pb-4">
+        <Link href="/">
+          <Button variant="outline" className="w-full" data-testid="btn-detailed-dashboard">
+            <ExternalLink className="h-4 w-4 mr-2" />
+            Detayli Dashboard
+          </Button>
+        </Link>
+      </div>
+    </div>
+  );
+}

@@ -95,31 +95,38 @@ export default function Login() {
       });
 
       const userRole = data.user?.role;
-      const departmentRoutes: Record<string, string> = {
-        'admin': '/',
-        'ceo': '/ceo-command-center',
-        'cgo': '/cgo-command-center',
-        'muhasebe_ik': '/merkez-dashboard',
-        'satinalma': '/hq-dashboard/satinalma',
-        'coach': '/hq-dashboard/coach',
-        'marketing': '/hq-dashboard/marketing',
-        'trainer': '/hq-dashboard/trainer',
-        'kalite_kontrol': '/kalite-kontrol-dashboard',
-        'fabrika_mudur': '/fabrika/dashboard',
-        'muhasebe': '/merkez-dashboard',
-        'teknik': '/',
-        'destek': '/',
-        'fabrika': '/fabrika/dashboard',
-        'gida_muhendisi': '/',
+      const ROLE_HOME_ROUTES: Record<string, string> = {
+        stajyer: '/benim-gunum',
+        bar_buddy: '/benim-gunum',
+        barista: '/benim-gunum',
+        supervisor: '/sube-ozet',
+        supervisor_buddy: '/sube-ozet',
+        mudur: '/sube-ozet',
+        fabrika_operator: '/fabrika/kiosk',
+        fabrika_mudur: '/fabrika/dashboard',
+        fabrika: '/fabrika/dashboard',
+        ceo: '/hq-ozet',
+        cgo: '/hq-ozet',
+        admin: '/hq-ozet',
+        coach: '/kocluk-paneli',
+        trainer: '/hq-dashboard/trainer',
+        gida_muhendisi: '/hq-dashboard',
+        muhasebe: '/merkez-dashboard',
+        muhasebe_ik: '/merkez-dashboard',
+        satinalma: '/hq-dashboard/satinalma',
+        marketing: '/hq-dashboard/marketing',
+        teknik: '/',
+        destek: '/',
+        kalite_kontrol: '/kalite-kontrol-dashboard',
+        yatirimci_hq: '/franchise-ozet',
+        yatirimci_branch: '/franchise-ozet',
       };
 
       const getTarget = () => {
-        if (userRole && departmentRoutes[userRole]) return departmentRoutes[userRole];
-        if (userRole === 'supervisor' || userRole === 'supervisor_buddy') return '/';
-        if (userRole === 'mudur' && data.user?.branchId) return `/sube/${data.user.branchId}/dashboard`;
-        const branchRoles = ['stajyer', 'bar_buddy', 'barista', 'yatirimci_branch'];
-        if (userRole && branchRoles.includes(userRole) && data.user?.branchId) return '/sube/employee-dashboard';
-        return getRedirectTarget();
+        const redirectTarget = getRedirectTarget();
+        if (redirectTarget && redirectTarget !== '/') return redirectTarget;
+        if (userRole && ROLE_HOME_ROUTES[userRole]) return ROLE_HOME_ROUTES[userRole];
+        return '/';
       };
 
       const target = getTarget();

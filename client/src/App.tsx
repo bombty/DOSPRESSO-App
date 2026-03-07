@@ -199,6 +199,11 @@ const KullanimKilavuzu = lazy(() => import("@/pages/kullanim-kilavuzu"));
 const WasteMegaModule = lazy(() => import("@/pages/waste-mega"));
 const HubPage = lazy(() => import("@/pages/hub-page"));
 const AgentMerkezi = lazy(() => import("@/pages/agent-merkezi"));
+const BenimGunum = lazy(() => import("@/pages/benim-gunum"));
+const SubeOzet = lazy(() => import("@/pages/sube-ozet"));
+const HQOzet = lazy(() => import("@/pages/hq-ozet"));
+const KoclukPaneli = lazy(() => import("@/pages/kocluk-paneli"));
+const FranchiseOzet = lazy(() => import("@/pages/franchise-ozet"));
 
 const PUBLIC_PATH_PREFIXES = [
   "/login", 
@@ -433,6 +438,11 @@ function Router() {
           <Route path="/kullanim-kilavuzu" component={KullanimKilavuzu} />
           <Route path="/sube/siparis-stok" component={SubeSiparisStok} />
           <Route path="/agent-merkezi" component={AgentMerkezi} />
+          <Route path="/benim-gunum" component={BenimGunum} />
+          <Route path="/sube-ozet" component={SubeOzet} />
+          <Route path="/hq-ozet" component={HQOzet} />
+          <Route path="/kocluk-paneli" component={KoclukPaneli} />
+          <Route path="/franchise-ozet" component={FranchiseOzet} />
         </>
       )}
       
