@@ -3,7 +3,7 @@ import { db } from "../db";
 import { storage } from "../storage";
 import { 
   agentPendingActions, agentRuns, agentEscalationHistory, 
-  users, notifications
+  users, notifications, aiAgentLogs
 } from "@shared/schema";
 import { eq, desc, and, count, sql, gte, or, inArray } from "drizzle-orm";
 import { runAgentAnalysis } from "../services/agent-engine";
@@ -27,7 +27,7 @@ function isHQOrAdmin(req: any, res: any, next: any) {
 router.get("/api/agent/actions", isAuthenticated, async (req: any, res) => {
   try {
     const user = req.user;
-    const { status, limit: limitParam, offset: offsetParam } = req.query;
+    const { status, limit: limitParam, offset: offsetParam, skillId } = req.query;
     const limit = Math.min(parseInt(limitParam as string) || 20, 100);
     const offset = parseInt(offsetParam as string) || 0;
 
@@ -53,6 +53,12 @@ router.get("/api/agent/actions", isAuthenticated, async (req: any, res) => {
 
     if (status && status !== "all") {
       conditions.push(eq(agentPendingActions.status, status as string));
+    }
+
+    if (skillId && skillId !== "all") {
+      conditions.push(
+        sql`(${agentPendingActions.metadata}->>'skillId')::text = ${skillId as string}`
+      );
     }
 
     const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
@@ -253,6 +259,111 @@ router.post("/api/agent/escalations/:actionId/resolve", isAuthenticated, isHQOrA
   } catch (error: any) {
     console.error("Resolve escalation error:", error);
     res.status(500).json({ message: "Escalation çözülemedi" });
+  }
+});
+
+router.get("/api/agent-center/stats", isAuthenticated, async (req: any, res) => {
+  try {
+    const weekStart = new Date();
+    weekStart.setDate(weekStart.getDate() - 7);
+    weekStart.setHours(0, 0, 0, 0);
+
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+
+    const user = req.user;
+    const conditions: any[] = [gte(agentPendingActions.createdAt, weekStart)];
+    const adminRoles = ["admin", "ceo", "cgo"];
+    if (!adminRoles.includes(user.role)) {
+      conditions.push(
+        or(
+          eq(agentPendingActions.targetUserId, String(user.id)),
+          eq(agentPendingActions.targetRoleScope, user.role)
+        )
+      );
+    }
+
+    const whereClause = and(...conditions);
+
+    const [
+      weeklyStatusBreakdown,
+      weeklySkillBreakdown,
+      autoExecutedResult,
+      tokenUsageResult,
+    ] = await Promise.all([
+      db.select({
+        status: agentPendingActions.status,
+        cnt: count(),
+      })
+        .from(agentPendingActions)
+        .where(whereClause)
+        .groupBy(agentPendingActions.status),
+
+      db.select({
+        skillId: sql<string>`COALESCE((${agentPendingActions.metadata}->>'skillId')::text, 'legacy')`,
+        cnt: count(),
+      })
+        .from(agentPendingActions)
+        .where(whereClause)
+        .groupBy(sql`COALESCE((${agentPendingActions.metadata}->>'skillId')::text, 'legacy')`),
+
+      db.select({ cnt: count() })
+        .from(aiAgentLogs)
+        .where(
+          and(
+            gte(aiAgentLogs.createdAt, weekStart),
+            eq(aiAgentLogs.status, "auto_executed")
+          )
+        ),
+
+      db.select({
+        totalTokens: sql<number>`COALESCE(SUM(${agentRuns.llmTokens}), 0)`,
+        callCount: sql<number>`COUNT(*) FILTER (WHERE ${agentRuns.llmUsed} = true)`,
+      })
+        .from(agentRuns)
+        .where(gte(agentRuns.createdAt, todayStart)),
+    ]);
+
+    const statusMap: Record<string, number> = {};
+    let totalSuggestions = 0;
+    for (const row of weeklyStatusBreakdown) {
+      statusMap[row.status || "unknown"] = Number(row.cnt);
+      totalSuggestions += Number(row.cnt);
+    }
+
+    const skillMap: Record<string, number> = {};
+    for (const row of weeklySkillBreakdown) {
+      skillMap[row.skillId] = Number(row.cnt);
+    }
+
+    const dailyTokenLimit = 10;
+    const dailyTokensUsed = Number(tokenUsageResult[0]?.totalTokens ?? 0);
+    const dailyCallCount = Number(tokenUsageResult[0]?.callCount ?? 0);
+
+    res.json({
+      period: "7d",
+      totalSuggestions,
+      approved: statusMap["approved"] || 0,
+      rejected: statusMap["rejected"] || 0,
+      pending: statusMap["pending"] || 0,
+      completed: statusMap["completed"] || 0,
+      expired: statusMap["expired"] || 0,
+      autoExecuted: Number(autoExecutedResult[0]?.cnt ?? 0),
+      skillBreakdown: skillMap,
+      tokenUsage: {
+        dailyUsed: dailyTokensUsed,
+        dailyLimit: dailyTokenLimit,
+        dailyCallCount,
+      },
+      quietHours: {
+        start: "20:00",
+        end: "07:00",
+        timezone: "Europe/Istanbul",
+      },
+    });
+  } catch (error: any) {
+    console.error("Agent center stats error:", error);
+    res.status(500).json({ message: "Agent merkezi istatistikleri alınamadı" });
   }
 });
 

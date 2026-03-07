@@ -5,6 +5,8 @@ import { getRoleGroup, ROLE_GROUP_MAP } from "./ai-policy-engine";
 import { runAgentAnalysis, runBatchAnalysis } from "./agent-engine";
 import { checkDailyActionLimit } from "./agent-safety";
 import { runEscalationCheck } from "./agent-escalation";
+import { getSkillsBySchedule, runSkillsForUser, ensureSkillsLoaded } from "../agent/skills/skill-registry";
+import { sendQueuedNotifications } from "../agent/skills/skill-notifications";
 
 const TURKEY_OFFSET_MS = 3 * 60 * 60 * 1000;
 
@@ -81,6 +83,8 @@ let dailyInterval: NodeJS.Timeout | null = null;
 let weeklyInterval: NodeJS.Timeout | null = null;
 let eventCheckInterval: NodeJS.Timeout | null = null;
 let escalationInterval: NodeJS.Timeout | null = null;
+let skillHourlyInterval: NodeJS.Timeout | null = null;
+let skillQueueInterval: NodeJS.Timeout | null = null;
 let isRunning = false;
 
 async function getUsersByRoleGroups(groups: string[]): Promise<{ id: string; role: string; branchId: number | null }[]> {
@@ -251,6 +255,72 @@ async function checkEventTriggers(): Promise<void> {
   }
 }
 
+async function runSkillsBySchedule(schedule: "hourly" | "daily" | "weekly"): Promise<void> {
+  const label = schedule === "hourly" ? "Saatlik" : schedule === "daily" ? "Gunluk" : "Haftalik";
+  console.log(`[SkillScheduler] ${label} skill calismasi baslatiliyor...`);
+
+  try {
+    const skills = await getSkillsBySchedule(schedule);
+    if (skills.length === 0) return;
+
+    const allTargetRoles = [...new Set(skills.flatMap((s) => s.targetRoles))];
+
+    const activeUsers = await db
+      .select({
+        id: users.id,
+        role: users.role,
+        branchId: users.branchId,
+      })
+      .from(users)
+      .where(eq(users.isActive, true));
+
+    const targetUsers = activeUsers.filter((u) => allTargetRoles.includes(u.role));
+
+    let processed = 0;
+    let errors = 0;
+
+    for (const user of targetUsers) {
+      try {
+        await runSkillsForUser(user.id, user.role, user.branchId || undefined);
+        processed++;
+      } catch (err) {
+        errors++;
+        console.error(`[SkillScheduler] ${schedule} skill error for ${user.id}:`, err);
+      }
+
+      if (processed % 20 === 0) {
+        await new Promise((resolve) => setTimeout(resolve, 200));
+      }
+    }
+
+    console.log(`[SkillScheduler] ${label} skill tamamlandi: ${processed} kullanici, ${errors} hata`);
+  } catch (err) {
+    console.error(`[SkillScheduler] ${label} skill hatasi:`, err);
+  }
+}
+
+async function runHourlySkills(): Promise<void> {
+  const turkeyHour = getTurkeyDate().getUTCHours();
+  if (turkeyHour < 7 || turkeyHour >= 20) {
+    console.log("[SkillScheduler] Sessiz saat, saatlik skill'ler atlanıyor.");
+    return;
+  }
+  await runSkillsBySchedule("hourly");
+
+  const sent = await sendQueuedNotifications();
+  if (sent > 0) {
+    console.log(`[SkillScheduler] ${sent} kuyruklu bildirim gonderildi.`);
+  }
+}
+
+async function runDailySkills(): Promise<void> {
+  await runSkillsBySchedule("daily");
+}
+
+async function runWeeklySkills(): Promise<void> {
+  await runSkillsBySchedule("weekly");
+}
+
 function getMillisUntilTurkeyTime(targetHour: number, targetMinute: number): number {
   const now = new Date();
   const turkeyNow = new Date(now.getTime() + TURKEY_OFFSET_MS);
@@ -321,6 +391,31 @@ export function startAgentScheduler(): void {
   }, 60 * 60 * 1000);
   console.log("[AgentScheduler] Escalation kontrol her 1 saatte çalışacak.");
 
+  skillHourlyInterval = setInterval(runHourlySkills, 60 * 60 * 1000);
+  console.log("[SkillScheduler] Saatlik skill'ler her 1 saatte çalışacak (07:00-20:00 TR).");
+
+  const dailySkillDelayMs = getMillisUntilTurkeyTime(7, 0);
+  console.log(`[SkillScheduler] Günlük skill'ler ${Math.round(dailySkillDelayMs / 60000)} dakika sonra çalışacak (07:00 TR)`);
+  setTimeout(() => {
+    runDailySkills();
+    setInterval(runDailySkills, 24 * 60 * 60 * 1000);
+  }, dailySkillDelayMs);
+
+  const weeklySkillDelayMs = getMillisUntilNextMonday(9, 0);
+  console.log(`[SkillScheduler] Haftalık skill'ler ${Math.round(weeklySkillDelayMs / 60000)} dakika sonra çalışacak (Pazartesi 09:00 TR)`);
+  setTimeout(() => {
+    runWeeklySkills();
+    setInterval(runWeeklySkills, 7 * 24 * 60 * 60 * 1000);
+  }, weeklySkillDelayMs);
+
+  skillQueueInterval = setInterval(async () => {
+    try {
+      const sent = await sendQueuedNotifications();
+      if (sent > 0) console.log(`[SkillScheduler] Kuyruklu bildirim: ${sent} gönderildi`);
+    } catch {}
+  }, 30 * 60 * 1000);
+  console.log("[SkillScheduler] Kuyruk kontrolü her 30 dakikada çalışacak.");
+
   console.log("[AgentScheduler] Agent Scheduler başarıyla başlatıldı.");
 }
 
@@ -342,6 +437,14 @@ export function stopAgentScheduler(): void {
   if (escalationInterval) {
     clearInterval(escalationInterval);
     escalationInterval = null;
+  }
+  if (skillHourlyInterval) {
+    clearInterval(skillHourlyInterval);
+    skillHourlyInterval = null;
+  }
+  if (skillQueueInterval) {
+    clearInterval(skillQueueInterval);
+    skillQueueInterval = null;
   }
 
   isRunning = false;

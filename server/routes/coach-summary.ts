@@ -9,6 +9,7 @@ import {
 } from "@shared/schema";
 import { eq, and, sql, lt } from "drizzle-orm";
 import { getCoachSuggestions } from "../lib/dobody-suggestions";
+import { getLatestSkillInsights, deduplicateSuggestions } from "../agent/skills/skill-registry";
 
 const router = Router();
 
@@ -69,6 +70,11 @@ router.get("/api/coach-summary", isAuthenticated, async (req: any, res) => {
     let suggestions: any[] = [];
     try {
       suggestions = await getCoachSuggestions(req.user.id);
+    } catch {}
+
+    try {
+      const skillInsights = await getLatestSkillInsights(req.user.id, userRole);
+      suggestions = deduplicateSuggestions([...suggestions, ...skillInsights]);
     } catch {}
 
     res.json({

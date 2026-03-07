@@ -14,6 +14,7 @@ import {
 } from "@shared/schema";
 import { eq, and, sql, count, avg, lt } from "drizzle-orm";
 import { getSupervisorSuggestions } from "../lib/dobody-suggestions";
+import { getLatestSkillInsights, deduplicateSuggestions } from "../agent/skills/skill-registry";
 
 const router = Router();
 
@@ -159,6 +160,13 @@ router.get("/api/branch-summary/:branchId", isAuthenticated, async (req: any, re
     let suggestions: any[] = [];
     try {
       suggestions = await getSupervisorSuggestions(branchId);
+    } catch {}
+
+    try {
+      const userId = req.user.id;
+      const userRole = req.user.role;
+      const skillInsights = await getLatestSkillInsights(userId, userRole);
+      suggestions = deduplicateSuggestions([...suggestions, ...skillInsights]);
     } catch {}
 
     res.json({

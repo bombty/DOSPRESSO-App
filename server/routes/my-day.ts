@@ -14,6 +14,7 @@ import {
 } from "@shared/schema";
 import { eq, and, sql, count } from "drizzle-orm";
 import { getBaristaSuggestions } from "../lib/dobody-suggestions";
+import { getLatestSkillInsights, deduplicateSuggestions } from "../agent/skills/skill-registry";
 
 const router = Router();
 
@@ -237,6 +238,11 @@ router.get("/api/my-day", isAuthenticated, async (req: any, res) => {
     let suggestions: any[] = [];
     try {
       suggestions = await getBaristaSuggestions(userId);
+    } catch {}
+
+    try {
+      const skillInsights = await getLatestSkillInsights(userId, userRole);
+      suggestions = deduplicateSuggestions([...suggestions, ...skillInsights]);
     } catch {}
 
     res.json({

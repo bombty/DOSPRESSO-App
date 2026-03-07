@@ -12,6 +12,7 @@ import {
 } from "@shared/schema";
 import { eq, and, sql, count, avg, sum, desc } from "drizzle-orm";
 import { getHQSuggestions } from "../lib/dobody-suggestions";
+import { getLatestSkillInsights, deduplicateSuggestions } from "../agent/skills/skill-registry";
 
 const router = Router();
 
@@ -119,6 +120,12 @@ router.get("/api/hq-summary", isAuthenticated, async (req: any, res) => {
     let suggestions: any[] = [];
     try {
       suggestions = await getHQSuggestions();
+    } catch {}
+
+    try {
+      const userId = req.user.id;
+      const skillInsights = await getLatestSkillInsights(userId, userRole);
+      suggestions = deduplicateSuggestions([...suggestions, ...skillInsights]);
     } catch {}
 
     res.json({

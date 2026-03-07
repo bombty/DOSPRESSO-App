@@ -176,7 +176,7 @@ function ActionCard({ action, onApprove, onReject }: {
   );
 }
 
-export function AgentActionCenter() {
+export function AgentActionCenter({ skillFilter }: { skillFilter?: string }) {
   const { toast } = useToast();
   const [statusFilter, setStatusFilter] = useState<string>("pending");
   const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
@@ -190,10 +190,11 @@ export function AgentActionCenter() {
   });
 
   const actionsQuery = useQuery<{ data: AgentAction[]; total: number }>({
-    queryKey: ["/api/agent/actions", statusFilter],
+    queryKey: ["/api/agent/actions", statusFilter, skillFilter],
     queryFn: async () => {
       const params = new URLSearchParams();
       if (statusFilter !== "all") params.set("status", statusFilter);
+      if (skillFilter && skillFilter !== "all") params.set("skillId", skillFilter);
       params.set("limit", showAll ? "100" : "10");
       const res = await fetch(`/api/agent/actions?${params.toString()}`, { credentials: "include" });
       if (!res.ok) throw new Error("Yüklenemedi");
