@@ -232,12 +232,7 @@ router.get("/api/my-day", isAuthenticated, async (req: any, res) => {
       });
     }
 
-    const weekAgo = new Date();
-    weekAgo.setDate(weekAgo.getDate() - 7);
-    let weeklyScoreChange = 0;
-    if (career?.compositeScore) {
-      weeklyScoreChange = Math.floor(Math.random() * 6) - 1;
-    }
+    const weeklyScoreChange = 0;
 
     let suggestions: any[] = [];
     try {

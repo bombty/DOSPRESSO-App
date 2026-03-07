@@ -285,18 +285,20 @@ export async function getHQSuggestions(): Promise<DobodySuggestion[]> {
       .from(branches)
       .where(eq(branches.isActive, true));
 
-    for (const branch of activeBranches) {
-      const recentCompletions = await db
-        .select({ cnt: count() })
-        .from(checklistCompletions)
-        .where(
-          and(
-            eq(checklistCompletions.branchId, branch.id),
-            gte(checklistCompletions.scheduledDate, twoDaysAgoStr)
-          )
-        );
+    const activeBranchChecklist = await db
+      .select({
+        branchId: checklistCompletions.branchId,
+        cnt: count(),
+      })
+      .from(checklistCompletions)
+      .where(gte(checklistCompletions.scheduledDate, twoDaysAgoStr))
+      .groupBy(checklistCompletions.branchId);
 
-      if ((recentCompletions[0]?.cnt || 0) === 0) {
+    const activeSet = new Set(activeBranchChecklist.map((r) => r.branchId));
+
+    for (const branch of activeBranches) {
+      if (suggestions.length >= MAX_SUGGESTIONS) break;
+      if (!activeSet.has(branch.id)) {
         suggestions.push({
           id: `branch-inactive-${branch.id}`,
           message: `${branch.name} son 2 gundur checklist aktivitesi yok. Iletisime gecin.`,
@@ -308,7 +310,6 @@ export async function getHQSuggestions(): Promise<DobodySuggestion[]> {
           icon: "AlertTriangle",
         });
       }
-      if (suggestions.length >= MAX_SUGGESTIONS) break;
     }
 
     const sevenDaysAgo = new Date();

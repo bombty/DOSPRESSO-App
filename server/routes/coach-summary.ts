@@ -30,43 +30,31 @@ router.get("/api/coach-summary", isAuthenticated, async (req: any, res) => {
         .select({
           userId: userCareerProgress.userId,
           compositeScore: userCareerProgress.compositeScore,
-          currentCareerLevelId: userCareerProgress.currentCareerLevelId,
           dangerZoneMonths: userCareerProgress.dangerZoneMonths,
+          firstName: users.firstName,
+          lastName: users.lastName,
+          branchId: users.branchId,
+          role: users.role,
+          levelTitle: careerLevels.titleTr,
         })
         .from(userCareerProgress)
+        .innerJoin(users, eq(userCareerProgress.userId, users.id))
+        .leftJoin(careerLevels, eq(userCareerProgress.currentCareerLevelId, careerLevels.id))
         .where(lt(userCareerProgress.compositeScore, 65))
         .limit(10);
 
-      for (const ucp of lowScoreUsers) {
-        const [user] = await db
-          .select({
-            firstName: users.firstName,
-            lastName: users.lastName,
-            branchId: users.branchId,
-            role: users.role,
-          })
-          .from(users)
-          .where(eq(users.id, ucp.userId));
-
-        if (!user) continue;
-
-        const branch = allBranches.find((b) => b.id === user.branchId);
-
-        const [level] = await db
-          .select({ titleTr: careerLevels.titleTr })
-          .from(careerLevels)
-          .where(eq(careerLevels.id, ucp.currentCareerLevelId));
-
+      for (const row of lowScoreUsers) {
+        const branch = allBranches.find((b) => b.id === row.branchId);
         attentionNeeded.push({
-          userId: ucp.userId,
-          name: `${user.firstName} ${user.lastName}`,
+          userId: row.userId,
+          name: `${row.firstName} ${row.lastName}`,
           branchName: branch?.name || "Bilinmiyor",
-          branchId: user.branchId,
-          role: user.role,
-          compositeScore: Math.round(ucp.compositeScore || 0),
-          currentLevel: level?.titleTr || "Belirsiz",
-          dangerZoneMonths: ucp.dangerZoneMonths || 0,
-          reason: (ucp.compositeScore || 0) < 50 ? "Kritik dusuk skor" : "Dusuk skor",
+          branchId: row.branchId,
+          role: row.role,
+          compositeScore: Math.round(row.compositeScore || 0),
+          currentLevel: row.levelTitle || "Belirsiz",
+          dangerZoneMonths: row.dangerZoneMonths || 0,
+          reason: (row.compositeScore || 0) < 50 ? "Kritik dusuk skor" : "Dusuk skor",
         });
       }
     } catch {}

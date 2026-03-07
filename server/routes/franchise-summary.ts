@@ -6,7 +6,7 @@ import {
   users,
   customerFeedback,
 } from "@shared/schema";
-import { eq, and, sql, count, avg } from "drizzle-orm";
+import { eq, and, sql, count, avg, inArray } from "drizzle-orm";
 
 const router = Router();
 
@@ -34,43 +34,59 @@ router.get("/api/franchise-summary", isAuthenticated, async (req: any, res) => {
         .where(eq(branches.isActive, true));
     }
 
-    const branchData = [];
-    for (const branch of targetBranches) {
-      const [staffCount] = await db
-        .select({ count: count() })
-        .from(users)
-        .where(and(eq(users.branchId, branch.id), eq(users.isActive, true)));
+    const branchIds = targetBranches.map((b) => b.id);
 
-      const sevenDaysAgo = new Date();
-      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    const staffCounts = branchIds.length > 0
+      ? await db
+          .select({ branchId: users.branchId, count: count() })
+          .from(users)
+          .where(and(inArray(users.branchId, branchIds), eq(users.isActive, true)))
+          .groupBy(users.branchId)
+      : [];
 
-      let avgRating = 0;
-      let feedbackCount = 0;
-      try {
-        const [fb] = await db
+    const staffMap = new Map<number, number>();
+    for (const s of staffCounts) {
+      if (s.branchId) staffMap.set(s.branchId, s.count);
+    }
+
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+    const feedbackStats = branchIds.length > 0
+      ? await db
           .select({
+            branchId: customerFeedback.branchId,
             avgRating: avg(customerFeedback.rating),
             count: count(),
           })
           .from(customerFeedback)
           .where(
             and(
-              eq(customerFeedback.branchId, branch.id),
+              inArray(customerFeedback.branchId, branchIds),
               sql`${customerFeedback.createdAt} >= ${sevenDaysAgo}`
             )
-          );
-        avgRating = fb?.avgRating ? parseFloat(String(fb.avgRating)) : 0;
-        feedbackCount = fb?.count || 0;
-      } catch {}
+          )
+          .groupBy(customerFeedback.branchId)
+      : [];
 
-      branchData.push({
-        id: branch.id,
-        name: branch.name,
-        staffCount: staffCount?.count || 0,
-        avgRating: Math.round(avgRating * 10) / 10,
-        feedbackCount,
+    const feedbackMap = new Map<number, { avg: number; count: number }>();
+    for (const f of feedbackStats) {
+      feedbackMap.set(f.branchId, {
+        avg: f.avgRating ? parseFloat(String(f.avgRating)) : 0,
+        count: f.count || 0,
       });
     }
+
+    const branchData = targetBranches.map((branch) => {
+      const fb = feedbackMap.get(branch.id);
+      return {
+        id: branch.id,
+        name: branch.name,
+        staffCount: staffMap.get(branch.id) || 0,
+        avgRating: fb ? Math.round(fb.avg * 10) / 10 : 0,
+        feedbackCount: fb?.count || 0,
+      };
+    });
 
     res.json({
       branches: branchData,

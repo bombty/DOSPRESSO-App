@@ -15,11 +15,11 @@ import {
   Factory,
   Package,
   ShoppingCart,
-  Lightbulb,
   ExternalLink,
   Star,
   TrendingUp,
 } from "lucide-react";
+import { DobodySuggestionList } from "@/components/dobody-suggestion-card";
 
 interface HQSummaryData {
   branchStatus: {
@@ -178,51 +178,15 @@ export default function HQOzet() {
         </CardContent>
       </Card>
 
-      {data.suggestions && data.suggestions.length > 0 && (
-        <Card data-testid="card-dobody-suggestions">
-          <CardHeader className="pb-2 pt-4 px-4">
-            <CardTitle className="text-base flex items-center gap-2">
-              <Lightbulb className="h-4 w-4 text-yellow-500" />
-              Mr. Dobody
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="px-4 pb-4 space-y-2">
-            {data.suggestions.map((s) => (
-              <div
-                key={s.id}
-                className="flex items-start justify-between gap-2 p-2 rounded-md bg-muted/30"
-                data-testid={`suggestion-${s.id}`}
-              >
-                <p className="text-sm flex-1">{s.message}</p>
-                {s.actionType === "send_notification" && s.payload?.branchId && (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    disabled={quickAction.isPending}
-                    onClick={() => quickAction.mutate({
-                      actionType: "info",
-                      suggestionId: s.id,
-                    })}
-                    data-testid={`btn-action-${s.id}`}
-                  >
-                    {s.actionLabel}
-                  </Button>
-                )}
-                {s.actionType === "redirect" && s.payload?.route && (
-                  <Link href={s.payload.route}>
-                    <Button size="sm" variant="outline" data-testid={`btn-action-${s.id}`}>
-                      {s.actionLabel}
-                    </Button>
-                  </Link>
-                )}
-                {s.actionType === "info" && (
-                  <Badge variant="secondary" className="text-xs flex-shrink-0">{s.actionLabel}</Badge>
-                )}
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-      )}
+      <DobodySuggestionList
+        suggestions={data.suggestions || []}
+        onAction={(s) => quickAction.mutate({
+          actionType: s.actionType === "send_notification" ? "info" : s.actionType,
+          suggestionId: s.id,
+          ...(s.targetUserId ? { targetUserId: s.targetUserId, title: s.actionLabel, message: s.message } : {}),
+        })}
+        isPending={quickAction.isPending}
+      />
 
       {(topBranches.length > 0 || bottomBranches.length > 0) && (
         <Card data-testid="card-branch-ranking">

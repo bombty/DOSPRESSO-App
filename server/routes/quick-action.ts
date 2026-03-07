@@ -1,16 +1,12 @@
 import { Router, type Express } from "express";
 import { db } from "../db";
 import { storage } from "../storage";
-import { aiAgentLogs, notifications, tasks, users } from "@shared/schema";
+import { isAuthenticated } from "../localAuth";
+import { aiAgentLogs, notifications, tasks, users, isHQRole, type UserRoleType } from "@shared/schema";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 
 const router = Router();
-
-function isAuthenticated(req: any, res: any, next: any) {
-  if (!req.user) return res.status(401).json({ message: "Oturum açmanız gerekiyor" });
-  next();
-}
 
 const SUPERVISOR_PLUS_ROLES = new Set([
   "supervisor", "supervisor_buddy", "mudur",
@@ -54,9 +50,17 @@ router.post("/api/quick-action", isAuthenticated, isSupervisorPlus, async (req: 
       if (!targetUserId || !title || !message) {
         return res.status(400).json({ message: "send_notification için targetUserId, title ve message gereklidir" });
       }
-      const [targetUser] = await db.select({ id: users.id }).from(users).where(eq(users.id, targetUserId));
+      const [targetUser] = await db.select({ id: users.id, branchId: users.branchId }).from(users).where(eq(users.id, targetUserId));
       if (!targetUser) {
         return res.status(404).json({ message: "Hedef kullanıcı bulunamadı" });
+      }
+      const senderRole = user.role as UserRoleType;
+      if (!isHQRole(senderRole)) {
+        const senderBranch = user.branchId ? Number(user.branchId) : null;
+        const targetBranch = targetUser.branchId ? Number(targetUser.branchId) : null;
+        if (senderBranch !== targetBranch) {
+          return res.status(403).json({ message: "Farkli subedeki kullaniciya bildirim gonderemezsiniz" });
+        }
       }
       const notification = await storage.createNotification({
         userId: targetUserId,
