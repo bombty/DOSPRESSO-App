@@ -229,14 +229,31 @@ router.get('/api/pdks-payroll/:userId', isAuthenticated, async (req: any, res: R
     }
 
     const isSupervisor = user.role === 'supervisor';
+    const isInvestor = ['yatirimci_branch', 'yatirimci_hq'].includes(user.role);
+
     if (isSupervisor && user.id !== targetUserId) {
       return res.json({
-        userId: payroll.userId,
-        workedDays: payroll.workedDays,
-        offDays: payroll.offDays,
-        absentDays: payroll.absentDays,
-        overtimeMinutes: payroll.overtimeMinutes,
-        status: payroll.status,
+        payroll: {
+          userId: payroll.userId,
+          workedDays: payroll.workedDays,
+          offDays: payroll.offDays,
+          absentDays: payroll.absentDays,
+          overtimeMinutes: payroll.overtimeMinutes,
+          status: payroll.status,
+        },
+        days: [],
+      });
+    }
+
+    if (isInvestor) {
+      return res.json({
+        payroll: {
+          userId: payroll.userId,
+          netPay: payroll.netPay,
+          status: payroll.status,
+          workedDays: payroll.workedDays,
+        },
+        days: [],
       });
     }
 

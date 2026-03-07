@@ -152,6 +152,13 @@ router.get('/api/pdks/records/:userId', isAuthenticated, async (req: any, res: R
       }
     }
 
+    if (['mudur', 'supervisor', 'coach'].includes(user.role) && user.id !== targetUserId) {
+      const [targetUser] = await db.select({ branchId: users.branchId }).from(users).where(eq(users.id, targetUserId)).limit(1);
+      if (!targetUser || targetUser.branchId !== user.branchId) {
+        return res.status(403).json({ error: 'Sadece kendi şubenizdeki personeli görebilirsiniz' });
+      }
+    }
+
     const classification = await getMonthClassification(targetUserId, Number(year), Number(month));
     res.json(classification);
   } catch (error) {
@@ -162,9 +169,17 @@ router.get('/api/pdks/records/:userId', isAuthenticated, async (req: any, res: R
 
 router.get('/api/pdks/daily-summary', isAuthenticated, async (req: any, res: Response) => {
   try {
+    const user = req.user;
     const { branchId, date } = req.query;
     if (!branchId || !date) {
       return res.status(400).json({ error: 'branchId ve date gerekli' });
+    }
+
+    if (!canManagePdks(user.role) && !['mudur', 'supervisor', 'coach'].includes(user.role)) {
+      return res.status(403).json({ error: 'Yetkisiz' });
+    }
+    if (['mudur', 'supervisor', 'coach'].includes(user.role) && user.branchId !== Number(branchId)) {
+      return res.status(403).json({ error: 'Sadece kendi şubenizi görebilirsiniz' });
     }
 
     const records = await db.select({
@@ -236,9 +251,22 @@ router.post('/api/pdks/scheduled-offs', isAuthenticated, async (req: any, res: R
 
 router.get('/api/pdks/scheduled-offs', isAuthenticated, async (req: any, res: Response) => {
   try {
+    const user = req.user;
     const { userId, month, year } = req.query;
     if (!userId || !month || !year) {
       return res.status(400).json({ error: 'userId, month ve year gerekli' });
+    }
+
+    if (!canManagePdks(user.role) && !['mudur', 'supervisor', 'coach'].includes(user.role)) {
+      if (user.id !== userId) {
+        return res.status(403).json({ error: 'Sadece kendi off günlerinizi görebilirsiniz' });
+      }
+    }
+    if (['mudur', 'supervisor', 'coach'].includes(user.role) && user.id !== userId) {
+      const [targetUser] = await db.select({ branchId: users.branchId }).from(users).where(eq(users.id, userId as string)).limit(1);
+      if (!targetUser || targetUser.branchId !== user.branchId) {
+        return res.status(403).json({ error: 'Sadece kendi şubenizdeki personeli görebilirsiniz' });
+      }
     }
 
     const m = Number(month);
@@ -284,6 +312,11 @@ router.get('/api/pdks/branch-summary', isAuthenticated, async (req: any, res: Re
     const { branchId, month, year } = req.query;
     if (!branchId || !month || !year) {
       return res.status(400).json({ error: 'branchId, month ve year gerekli' });
+    }
+
+    const allowedRoles = ['admin', 'ceo', 'cgo', 'muhasebe_ik', 'muhasebe', 'coach', 'mudur', 'supervisor', 'yatirimci_branch', 'yatirimci_hq'];
+    if (!allowedRoles.includes(user.role)) {
+      return res.status(403).json({ error: 'Yetkisiz' });
     }
 
     const bId = Number(branchId);
