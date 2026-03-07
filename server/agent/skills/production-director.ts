@@ -73,9 +73,9 @@ const productionDirectorSkill: AgentSkill = {
 
       if (lowRawMaterials.length > 0) {
         insights.push({
-          type: "raw_material_low",
-          severity: lowRawMaterials.length >= 3 ? "critical" : "warning",
-          message: `${lowRawMaterials.length} hammadde takip edilmeli`,
+          type: "raw_material_monitored",
+          severity: "info",
+          message: `${lowRawMaterials.length} hammadde minimum stok limiti tanimli — stok durumu kontrol edilmeli`,
           data: { items: lowRawMaterials.map((r) => ({ name: r.name, minStock: r.minStock })) },
           requiresAI: false,
         });
@@ -100,14 +100,14 @@ const productionDirectorSkill: AgentSkill = {
         });
       }
 
-      if (insight.type === "raw_material_low") {
+      if (insight.type === "raw_material_monitored") {
         actions.push({
-          actionType: "alert",
+          actionType: "report",
           targetUserId: context.userId,
-          title: "Hammadde uyarisi",
+          title: "Hammadde takibi",
           description: insight.message,
           deepLink: "/fabrika/dashboard",
-          severity: insight.severity === "critical" ? "high" : "med",
+          severity: "low",
         });
       }
 

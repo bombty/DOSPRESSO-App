@@ -65,9 +65,9 @@ const stockAssistantSkill: AgentSkill = {
 
         if (factoryItems.length > 0) {
           insights.push({
-            type: "factory_low_stock",
-            severity: factoryItems.length >= 5 ? "critical" : "warning",
-            message: `Fabrikada ${factoryItems.length} hammadde izlenmeli`,
+            type: "factory_materials_monitored",
+            severity: "info",
+            message: `Fabrikada ${factoryItems.length} hammadde minimum stok limiti tanimli — stok takibi onerilir`,
             data: { items: factoryItems.map((f) => ({ id: f.id, name: f.name, minStock: f.minStock })) },
             requiresAI: false,
           });
@@ -94,14 +94,14 @@ const stockAssistantSkill: AgentSkill = {
         });
       }
 
-      if (insight.type === "factory_low_stock") {
+      if (insight.type === "factory_materials_monitored") {
         actions.push({
-          actionType: "alert",
+          actionType: "report",
           targetUserId: context.userId,
-          title: "Fabrika hammadde uyarisi",
+          title: "Fabrika hammadde takibi",
           description: insight.message,
           deepLink: "/fabrika/dashboard",
-          severity: "high",
+          severity: "low",
         });
       }
 

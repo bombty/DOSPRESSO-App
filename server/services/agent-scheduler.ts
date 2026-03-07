@@ -84,6 +84,8 @@ let weeklyInterval: NodeJS.Timeout | null = null;
 let eventCheckInterval: NodeJS.Timeout | null = null;
 let escalationInterval: NodeJS.Timeout | null = null;
 let skillHourlyInterval: NodeJS.Timeout | null = null;
+let skillDailyInterval: NodeJS.Timeout | null = null;
+let skillWeeklyInterval: NodeJS.Timeout | null = null;
 let skillQueueInterval: NodeJS.Timeout | null = null;
 let isRunning = false;
 
@@ -306,11 +308,6 @@ async function runHourlySkills(): Promise<void> {
     return;
   }
   await runSkillsBySchedule("hourly");
-
-  const sent = await sendQueuedNotifications();
-  if (sent > 0) {
-    console.log(`[SkillScheduler] ${sent} kuyruklu bildirim gonderildi.`);
-  }
 }
 
 async function runDailySkills(): Promise<void> {
@@ -398,14 +395,14 @@ export function startAgentScheduler(): void {
   console.log(`[SkillScheduler] Günlük skill'ler ${Math.round(dailySkillDelayMs / 60000)} dakika sonra çalışacak (07:00 TR)`);
   setTimeout(() => {
     runDailySkills();
-    setInterval(runDailySkills, 24 * 60 * 60 * 1000);
+    skillDailyInterval = setInterval(runDailySkills, 24 * 60 * 60 * 1000);
   }, dailySkillDelayMs);
 
   const weeklySkillDelayMs = getMillisUntilNextMonday(9, 0);
   console.log(`[SkillScheduler] Haftalık skill'ler ${Math.round(weeklySkillDelayMs / 60000)} dakika sonra çalışacak (Pazartesi 09:00 TR)`);
   setTimeout(() => {
     runWeeklySkills();
-    setInterval(runWeeklySkills, 7 * 24 * 60 * 60 * 1000);
+    skillWeeklyInterval = setInterval(runWeeklySkills, 7 * 24 * 60 * 60 * 1000);
   }, weeklySkillDelayMs);
 
   skillQueueInterval = setInterval(async () => {
@@ -441,6 +438,14 @@ export function stopAgentScheduler(): void {
   if (skillHourlyInterval) {
     clearInterval(skillHourlyInterval);
     skillHourlyInterval = null;
+  }
+  if (skillDailyInterval) {
+    clearInterval(skillDailyInterval);
+    skillDailyInterval = null;
+  }
+  if (skillWeeklyInterval) {
+    clearInterval(skillWeeklyInterval);
+    skillWeeklyInterval = null;
   }
   if (skillQueueInterval) {
     clearInterval(skillQueueInterval);

@@ -10,7 +10,7 @@ const trainingOptimizerSkill: AgentSkill = {
   targetRoles: ["trainer", "coach"],
   schedule: "weekly",
   autonomyLevel: "info_only",
-  dataSources: ["trainingAssignments", "trainingCompletions"],
+  dataSources: ["trainingAssignments", "trainingMaterials"],
 
   async analyze(context: SkillContext): Promise<SkillInsight[]> {
     const insights: SkillInsight[] = [];
