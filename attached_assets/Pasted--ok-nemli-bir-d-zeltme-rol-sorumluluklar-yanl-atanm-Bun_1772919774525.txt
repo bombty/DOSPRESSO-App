@@ -1,0 +1,113 @@
+Çok önemli bir düzeltme — rol sorumlulukları yanlış atanmış. Bunu Sprint 20'den önce düzeltelim.
+
+Replit'e yapıştır:
+
+---
+
+## TASK: Fix Role Responsibility Assignment — Branch Inspections & Quality Control
+
+### PROBLEM
+
+Branch inspections (şube denetimleri) are currently assigned to the `kalite_kontrol` role. This is WRONG per business rules.
+
+**Correct assignment:**
+- **Coach + Trainer** → Branch inspections (şube denetimleri). They visit branches, conduct inspections, score branches, track improvements.
+- **Kalite Kontrol** → Factory-only QC: product quality checks during production, handling product complaints from branches and guests, factory floor inspections. NOT branch inspections.
+
+### CHANGES NEEDED
+
+**1. Sidebar: Move branch-inspection from kalite_kontrol to coach/trainer**
+
+In `server/menu-service.ts`, find `SIDEBAR_ALLOWED_ITEMS`:
+
+- **kalite_kontrol**: REMOVE `branch-inspection` from this role's array
+- **coach**: ENSURE `branch-inspection` is in this role's array (audit shows it's already there — verify)
+- **trainer**: ADD `branch-inspection` to this role's array if missing
+
+**2. RBAC: Update branch inspection API permissions**
+
+Search for branch inspection route permissions:
+```bash
+grep -rn "branch.inspection\|branch-inspection\|branchInspection\|denetim" server/routes/ --include="*.ts" | head -20
+```
+
+Update the allowed roles for ALL branch inspection endpoints:
+- REMOVE `kalite_kontrol` from branch inspection route permissions
+- ENSURE `coach`, `trainer`, `admin`, `cgo` have access
+- `supervisor` and `mudur` should have READ access to their own branch inspections (they see results but don't create inspections)
+
+**3. Kalite Kontrol sidebar: Replace branch-inspection with factory-focused items**
+
+Current kalite_kontrol sidebar has: `dashboard, quality-control, food-safety, equipment, faults, product-complaints, reports, branch-health, branch-inspection, notifications, usage-guide, hq-support, crm-main`
+
+Update to remove branch items and focus on factory/complaints:
+- REMOVE: `branch-inspection`, `branch-health`
+- KEEP: `dashboard, quality-control, food-safety, equipment, faults, product-complaints, reports, notifications, usage-guide, hq-support`
+- ADD if missing: `factory-quality` (factory QC dashboard)
+
+**4. Kalite Kontrol landing page**
+
+Current: `/kalite-kontrol-dashboard`
+This page should focus on:
+- Pending factory QC checks (not branch inspections)
+- Product complaints from branches and guests
+- Factory quality metrics
+
+Verify this page does NOT show branch inspection data. If it does, remove that section.
+
+**5. Coach landing page**
+
+Current: `/kocluk-paneli`
+Verify this page DOES show:
+- Assigned branches for inspection
+- Upcoming/overdue inspections
+- Inspection scores and trends
+
+If branch inspection data is missing from coach panel, add a widget/section.
+
+**6. Trainer landing page**
+
+Verify trainer can access branch inspection results for training gap analysis.
+
+### VERIFICATION
+
+After changes:
+```bash
+# 1. Verify kalite_kontrol NO LONGER has branch-inspection in sidebar
+grep -A 20 "kalite_kontrol" server/menu-service.ts | grep "branch-inspection"
+# Should return NOTHING
+
+# 2. Verify coach HAS branch-inspection
+grep -A 20 "coach" server/menu-service.ts | grep "branch-inspection"
+# Should find it
+
+# 3. Verify trainer HAS branch-inspection
+grep -A 20 "trainer" server/menu-service.ts | grep "branch-inspection"
+# Should find it
+
+# 4. Verify branch inspection API does NOT allow kalite_kontrol
+grep -rn "kalite_kontrol" server/routes/ --include="*.ts" | grep -i "inspection"
+# Should return NOTHING
+```
+
+### DO NOT BREAK:
+- Kalite kontrol's access to factory quality control, food safety, and product complaints
+- Coach's existing coaching panel functionality
+- Trainer's existing training management
+- Any existing branch inspection data or records
+- Branch health score calculation (kalite_kontrol may still VIEW health scores but NOT conduct inspections)
+
+### ACCEPTANCE CRITERIA:
+- [ ] kalite_kontrol sidebar: NO branch-inspection, NO branch-health
+- [ ] kalite_kontrol sidebar: HAS factory-quality
+- [ ] coach sidebar: HAS branch-inspection
+- [ ] trainer sidebar: HAS branch-inspection
+- [ ] Branch inspection API: coach/trainer/admin/cgo allowed, kalite_kontrol NOT allowed
+- [ ] Coach panel shows branch inspection data
+- [ ] Kalite kontrol dashboard focused on factory QC + complaints
+- [ ] 0 console errors
+- [ ] Existing inspection records preserved
+
+---
+
+Bu düzeltme yapıldıktan sonra Sprint 20 UX sadeleştirmeye geçeriz. Sonucu getirince doğrularız.
