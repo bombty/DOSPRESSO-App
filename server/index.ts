@@ -456,18 +456,33 @@ function startSktExpiryCheckJob() {
   log("SKT expiry check job started (runs every 6 hours)");
 }
 
-process.on('SIGTERM', () => {
-  console.log('SIGTERM received, shutting down...');
-  if (httpServer) {
-    httpServer.close(() => process.exit(0));
-  }
-  setTimeout(() => process.exit(1), 5000);
-});
+function forceShutdown(signal: string) {
+  console.log(`${signal} received, shutting down...`);
+  const activeHandles = (process as any)._getActiveHandles?.() || [];
+  const activeRequests = (process as any)._getActiveRequests?.() || [];
+  console.log(`Active handles: ${activeHandles.length}, active requests: ${activeRequests.length}`);
 
-process.on('SIGINT', () => {
-  console.log('SIGINT received, shutting down...');
+  const clearAllIntervals = () => {
+    const highestId = Number(setInterval(() => {}, 100000));
+    for (let i = 0; i <= highestId; i++) {
+      clearInterval(i);
+    }
+  };
+
+  clearAllIntervals();
+
   if (httpServer) {
-    httpServer.close(() => process.exit(0));
+    httpServer.close(() => {
+      console.log('Server closed gracefully');
+      process.exit(0);
+    });
   }
-  setTimeout(() => process.exit(1), 5000);
-});
+
+  setTimeout(() => {
+    console.log('Forced exit after timeout');
+    process.exit(0);
+  }, 2000).unref();
+}
+
+process.on('SIGTERM', () => forceShutdown('SIGTERM'));
+process.on('SIGINT', () => forceShutdown('SIGINT'));
