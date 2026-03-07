@@ -3687,9 +3687,9 @@ export class DatabaseStorage implements IStorage {
     try {
       const { sendPushNotification, PUSH_ENABLED_TYPES } = await import('./lib/push-service');
       if (PUSH_ENABLED_TYPES.has(notification.type)) {
-        const numericUserId = typeof notification.userId === 'string' ? parseInt(notification.userId, 10) : notification.userId;
-        if (!isNaN(numericUserId)) {
-          sendPushNotification(numericUserId, {
+        const uid = String(notification.userId);
+        if (uid) {
+          sendPushNotification(uid, {
             title: notification.title,
             message: notification.message,
             tag: notification.type,

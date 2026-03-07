@@ -40,7 +40,7 @@ export interface PushPayload {
   type?: string;
 }
 
-export async function sendPushNotification(userId: number, payload: PushPayload): Promise<void> {
+export async function sendPushNotification(userId: string, payload: PushPayload): Promise<void> {
   if (!VAPID_PUBLIC || !VAPID_PRIVATE) return;
 
   if (payload.type && !PUSH_ENABLED_TYPES.has(payload.type)) return;
