@@ -109,28 +109,44 @@ router.get("/api/branch-orders", isAuthenticated, async (req: any, res) => {
       ? parseInt(req.query.branchId as string)
       : undefined;
 
-    if (
-      userRole === "supervisor" ||
-      userRole === "supervisor_buddy" ||
-      userRole === "mudur"
-    ) {
+    if (!isHQRole(userRole) && !['fabrika_mudur', 'fabrika', 'admin'].includes(userRole)) {
       branchIdFilter = req.user.branchId ? Number(req.user.branchId) : branchIdFilter;
     }
 
-    const orders = await storage.getBranchOrders(branchIdFilter, statusFilter);
+    const conditions = [];
+    if (branchIdFilter) {
+      conditions.push(eq(branchOrders.branchId, branchIdFilter));
+    }
+    if (statusFilter) {
+      conditions.push(eq(branchOrders.status, statusFilter));
+    }
 
-    const enriched = await Promise.all(
-      orders.map(async (order) => {
-        const [branch] = await db
-          .select({ id: branches.id, name: branches.name })
-          .from(branches)
-          .where(eq(branches.id, order.branchId))
-          .limit(1);
-        return { ...order, branchName: branch?.name || "Bilinmiyor" };
+    const orders = await db
+      .select({
+        id: branchOrders.id,
+        orderNumber: branchOrders.orderNumber,
+        branchId: branchOrders.branchId,
+        status: branchOrders.status,
+        priority: branchOrders.priority,
+        requestedById: branchOrders.requestedById,
+        requestedDeliveryDate: branchOrders.requestedDeliveryDate,
+        actualDeliveryDate: branchOrders.actualDeliveryDate,
+        totalAmount: branchOrders.totalAmount,
+        notes: branchOrders.notes,
+        rejectionReason: branchOrders.rejectionReason,
+        approvedById: branchOrders.approvedById,
+        approvedAt: branchOrders.approvedAt,
+        shipmentId: branchOrders.shipmentId,
+        createdAt: branchOrders.createdAt,
+        updatedAt: branchOrders.updatedAt,
+        branchName: branches.name,
       })
-    );
+      .from(branchOrders)
+      .leftJoin(branches, eq(branchOrders.branchId, branches.id))
+      .where(conditions.length > 0 ? and(...conditions) : undefined)
+      .orderBy(desc(branchOrders.createdAt));
 
-    res.json(enriched);
+    res.json(orders);
   } catch (error: any) {
     console.error("Get branch orders error:", error);
     res.status(500).json({ message: "Siparişler getirilemedi" });

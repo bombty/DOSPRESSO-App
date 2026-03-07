@@ -158,7 +158,7 @@ function SiparisVerTab({ branchId }: { branchId: number }) {
   const filteredProducts = products.filter(
     (p: any) =>
       p.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      p.code?.toLowerCase().includes(searchTerm.toLowerCase())
+      p.sku?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   return (
@@ -197,7 +197,7 @@ function SiparisVerTab({ branchId }: { branchId: number }) {
                   >
                     <div className="min-w-0 flex-1">
                       <p className="text-sm font-medium truncate">{product.name}</p>
-                      <p className="text-xs text-muted-foreground">{product.code} - {product.category}</p>
+                      <p className="text-xs text-muted-foreground">{product.sku} - {product.category}</p>
                     </div>
                     <Button
                       size="sm"
@@ -553,8 +553,8 @@ function StokDurumuTab({ branchId }: { branchId: number }) {
                     <TableCell>
                       <div>
                         <p className="font-medium">{item.productName || "Bilinmiyor"}</p>
-                        {item.productCode && (
-                          <p className="text-xs text-muted-foreground">{item.productCode}</p>
+                        {item.productSku && (
+                          <p className="text-xs text-muted-foreground">{item.productSku}</p>
                         )}
                       </div>
                     </TableCell>
