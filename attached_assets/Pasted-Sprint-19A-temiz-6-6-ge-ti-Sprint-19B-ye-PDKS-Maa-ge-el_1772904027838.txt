@@ -1,0 +1,613 @@
+Sprint 19A temiz — 6/6 geçti. Sprint 19B'ye (PDKS + Maaş) geçelim. Bu büyük ve hassas modül — doğru yazılmalı.
+
+Replit'e yapıştır:
+
+---
+
+## TASK: Sprint 19B — PDKS + Maaş Hesaplama Modülü
+
+### ÖZET
+
+DOSPRESSO şubelerinde personel giriş/çıkış takibi (PDKS) ve aylık maaş/hakediş hesaplaması yapılacak. Şu an Excel'de manuel yapılıyor. Bu sprint sisteme entegre otomatik PDKS + maaş hesaplama modülü kuruyor.
+
+**KRİTİK İŞ KURALLARI (DOSPRESSO'ya özel — değiştirme):**
+
+1. **Günlük ücret = Toplam Maaş ÷ 30** (İş Kanunu Md.49 — Şubat 28 gün olsa bile bölen DAİMA 30)
+2. **Eksik gün kesintisi = (Eksik Gün + 1) × Günlük Ücret** (+1 ceza günü)
+3. **Prim kesintisi = (Ücretsiz İzin Günü ÷ 30) × Prim** (sadece prim kesilir, taban korunur)
+4. **FM = (FM Dakika ÷ 60) × Saatlik Ücret × 1.5** (Saatlik = Toplam Maaş ÷ 240)
+5. **Kapanış vardiyası:** 00:00-05:59 arası TEK damga = önceki gecenin kapanış çıkışı → o gün OFF
+6. **Off limiti:** Kişi başı max 4 off/ay
+7. **NET = Toplam Maaş − Gün Kesintisi − Prim Kesintisi + FM Tutarı**
+8. **İşten ayrılan:** NET = Çalışılan Gün × Günlük Ücret + FM Tutarı
+
+---
+
+### T001 — PDKS Tablo & Schema (~1-2 saat)
+
+**Yapılacak:**
+
+1. Mevcut giriş/çıkış tablolarını kontrol et:
+```bash
+grep -rn "attendance\|pdks\|clock_in\|clock_out\|time_record\|punch\|damga" server/ --include="*.ts" | head -15
+```
+```sql
+SELECT tablename FROM pg_tables WHERE tablename ILIKE '%attend%' OR tablename ILIKE '%clock%' OR tablename ILIKE '%pdks%' OR tablename ILIKE '%time_record%';
+```
+
+2. PDKS tablosu (yoksa oluştur):
+```sql
+CREATE TABLE IF NOT EXISTS pdks_records (
+  id SERIAL PRIMARY KEY,
+  user_id VARCHAR(255) REFERENCES users(id) NOT NULL,
+  branch_id INTEGER REFERENCES branches(id) NOT NULL,
+  record_date DATE NOT NULL,
+  record_time TIME NOT NULL,
+  record_type VARCHAR(10) NOT NULL, -- 'giris' veya 'cikis'
+  source VARCHAR(20) DEFAULT 'kiosk', -- 'kiosk', 'mobil', 'manuel', 'import'
+  device_info VARCHAR(255),
+  created_at TIMESTAMP DEFAULT NOW(),
+  created_by VARCHAR(255) REFERENCES users(id) -- Manuel giriş yapan kişi
+);
+CREATE INDEX idx_pdks_user_date ON pdks_records(user_id, record_date);
+CREATE INDEX idx_pdks_branch_date ON pdks_records(branch_id, record_date);
+```
+
+3. Pozisyon maaş tablosu:
+```sql
+CREATE TABLE IF NOT EXISTS position_salaries (
+  id SERIAL PRIMARY KEY,
+  position_code VARCHAR(50) NOT NULL, -- 'stajyer', 'bar_buddy', 'barista', 'supervisor_buddy', 'supervisor'
+  position_name VARCHAR(100) NOT NULL,
+  total_salary INTEGER NOT NULL, -- Kuruş cinsinden (33000_00 = 33.000 TL)
+  base_salary INTEGER NOT NULL,
+  bonus INTEGER NOT NULL, -- total - base = prim
+  effective_from DATE NOT NULL,
+  effective_to DATE, -- NULL = hâlâ geçerli
+  created_at TIMESTAMP DEFAULT NOW()
+);
+```
+
+4. Seed maaş verileri (2026):
+```sql
+INSERT INTO position_salaries (position_code, position_name, total_salary, base_salary, bonus, effective_from) VALUES
+('stajyer', 'Stajyer', 3300000, 3100000, 200000, '2026-01-01'),
+('bar_buddy', 'Bar Buddy', 3600000, 3100000, 500000, '2026-01-01'),
+('barista', 'Barista', 4100000, 3100000, 1000000, '2026-01-01'),
+('supervisor_buddy', 'Supervisor Buddy', 4500000, 3100000, 1400000, '2026-01-01'),
+('supervisor', 'Supervisor', 4900000, 3100000, 1800000, '2026-01-01');
+```
+
+5. Aylık maaş hesaplama tablosu:
+```sql
+CREATE TABLE IF NOT EXISTS monthly_payroll (
+  id SERIAL PRIMARY KEY,
+  user_id VARCHAR(255) REFERENCES users(id) NOT NULL,
+  branch_id INTEGER REFERENCES branches(id) NOT NULL,
+  year INTEGER NOT NULL,
+  month INTEGER NOT NULL, -- 1-12
+  position_code VARCHAR(50) NOT NULL,
+  
+  -- Devam bilgileri
+  total_calendar_days INTEGER NOT NULL, -- Ayın gün sayısı (28/30/31)
+  worked_days INTEGER NOT NULL DEFAULT 0,
+  off_days INTEGER NOT NULL DEFAULT 0, -- Program off + kapanış off
+  absent_days INTEGER NOT NULL DEFAULT 0, -- Eksik gün
+  unpaid_leave_days INTEGER NOT NULL DEFAULT 0, -- Ücretsiz izin
+  sick_leave_days INTEGER NOT NULL DEFAULT 0, -- Raporlu gün
+  overtime_minutes INTEGER NOT NULL DEFAULT 0, -- FM dakika
+  
+  -- Maaş bileşenleri (kuruş)
+  total_salary INTEGER NOT NULL,
+  base_salary INTEGER NOT NULL,
+  bonus INTEGER NOT NULL,
+  daily_rate INTEGER NOT NULL, -- total_salary / 30
+  
+  -- Kesintiler (kuruş)
+  absence_deduction INTEGER NOT NULL DEFAULT 0, -- (absent + 1) × daily_rate
+  bonus_deduction INTEGER NOT NULL DEFAULT 0, -- (unpaid_leave / 30) × bonus
+  overtime_pay INTEGER NOT NULL DEFAULT 0, -- FM tutarı
+  
+  -- Net
+  net_pay INTEGER NOT NULL DEFAULT 0, -- total - absence - bonus_ded + overtime
+  
+  -- Durum
+  status VARCHAR(20) DEFAULT 'draft', -- draft, calculated, approved, paid
+  calculated_at TIMESTAMP,
+  approved_by VARCHAR(255) REFERENCES users(id),
+  approved_at TIMESTAMP,
+  notes TEXT,
+  
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW(),
+  UNIQUE(user_id, year, month)
+);
+```
+
+6. Off gün tablosu:
+```sql
+CREATE TABLE IF NOT EXISTS scheduled_offs (
+  id SERIAL PRIMARY KEY,
+  user_id VARCHAR(255) REFERENCES users(id) NOT NULL,
+  branch_id INTEGER REFERENCES branches(id),
+  off_date DATE NOT NULL,
+  off_type VARCHAR(20) NOT NULL, -- 'program_off', 'kapanish_off'
+  created_at TIMESTAMP DEFAULT NOW(),
+  UNIQUE(user_id, off_date)
+);
+```
+
+---
+
+### T002 — PDKS Giriş/Çıkış Kayıt Endpoint'leri (~1-2 saat)
+
+**Yapılacak:**
+
+1. Kiosk'tan giriş/çıkış:
+```
+POST /api/pdks/punch
+{
+  userId: string,
+  branchId: number,
+  type: 'giris' | 'cikis',
+  source: 'kiosk' | 'mobil'
+}
+```
+- Kiosk PIN giriş sonrası otomatik PDKS "giris" kaydı
+- Kiosk vardiya bitirme'de otomatik PDKS "cikis" kaydı
+- Mevcut kiosk sistemiyle entegrasyon
+
+2. Manuel kayıt (muhasebe/admin):
+```
+POST /api/pdks/manual
+{
+  userId: string,
+  branchId: number,
+  date: string, // '2026-03-06'
+  time: string, // '08:30'
+  type: 'giris' | 'cikis',
+  reason: string // 'Kiosk arızası' vb.
+}
+```
+
+3. PDKS sorgulama:
+```
+GET /api/pdks/records?branchId=5&startDate=2026-03-01&endDate=2026-03-31
+GET /api/pdks/records/:userId?month=3&year=2026
+GET /api/pdks/daily-summary?branchId=5&date=2026-03-06
+```
+
+4. Off gün yönetimi:
+```
+POST /api/pdks/scheduled-offs — Haftalık program off ekleme (toplu)
+GET /api/pdks/scheduled-offs?userId=abc&month=3&year=2026
+DELETE /api/pdks/scheduled-offs/:id
+```
+
+---
+
+### T003 — Gün Sınıflandırma Motoru (~2-3 saat)
+
+**KRİTİK — DOSPRESSO'nun özel kapanış vardiyası mantığı**
+
+```typescript
+// server/lib/pdks-engine.ts (yeni)
+
+interface DayClassification {
+  date: string;
+  status: 'worked' | 'program_off' | 'kapanish_off' | 'absent' | 'unpaid_leave' | 'sick_leave';
+  records: PdksRecord[];
+  workedMinutes: number;
+  overtimeMinutes: number;
+}
+
+function classifyDay(
+  date: Date,
+  records: PdksRecord[],
+  scheduledOffs: ScheduledOff[],
+  leaves: LeaveRequest[]
+): DayClassification {
+  
+  // 1. İzinli mi kontrol et
+  const leave = leaves.find(l => l.date === dateStr);
+  if (leave) {
+    if (leave.type === 'ucretsiz_izin') return { status: 'unpaid_leave', ... };
+    if (leave.type === 'rapor') return { status: 'sick_leave', ... };
+  }
+  
+  // 2. PDKS kaydı var mı?
+  const dayRecords = records.filter(r => r.record_date === dateStr);
+  
+  if (dayRecords.length === 0) {
+    // Hiç kayıt yok
+    const isScheduledOff = scheduledOffs.find(o => o.off_date === dateStr);
+    if (isScheduledOff) return { status: 'program_off', ... };
+    return { status: 'absent', ... }; // DEVAMSIZ
+  }
+  
+  // 3. Kapanış off kontrolü
+  // 00:00-05:59 arası TEK damga varsa = kapanış off
+  const hasOnlyNightStamp = dayRecords.every(r => {
+    const hour = parseInt(r.record_time.split(':')[0]);
+    return hour >= 0 && hour < 6;
+  }) && dayRecords.length === 1;
+  
+  if (hasOnlyNightStamp) {
+    return { status: 'kapanish_off', ... };
+  }
+  
+  // 4. 06:00+ kaydı var = ÇALIŞTI
+  const hasWorkStamp = dayRecords.some(r => {
+    const hour = parseInt(r.record_time.split(':')[0]);
+    return hour >= 6;
+  });
+  
+  if (hasWorkStamp) {
+    // Çalışma süresi hesapla
+    const workedMinutes = calculateWorkedMinutes(dayRecords);
+    const overtimeMinutes = Math.max(0, workedMinutes - 480); // 480dk = 8 saat
+    return { status: 'worked', workedMinutes, overtimeMinutes, ... };
+  }
+  
+  return { status: 'absent', ... };
+}
+
+function calculateWorkedMinutes(records: PdksRecord[]): number {
+  // Giriş-çıkış çiftlerini bul
+  const sorted = records.sort((a, b) => a.record_time.localeCompare(b.record_time));
+  let total = 0;
+  
+  for (let i = 0; i < sorted.length - 1; i += 2) {
+    if (sorted[i].type === 'giris' && sorted[i+1]?.type === 'cikis') {
+      const diff = timeDiffMinutes(sorted[i].record_time, sorted[i+1].record_time);
+      total += diff;
+    }
+  }
+  
+  return total;
+}
+```
+
+---
+
+### T004 — Maaş Hesaplama Motoru (~2-3 saat)
+
+```typescript
+// server/lib/payroll-engine.ts (yeni)
+
+interface PayrollCalculation {
+  userId: string;
+  year: number;
+  month: number;
+  
+  // Devam
+  totalCalendarDays: number;
+  workedDays: number;
+  offDays: number;
+  absentDays: number;
+  unpaidLeaveDays: number;
+  sickLeaveDays: number;
+  overtimeMinutes: number;
+  
+  // Maaş
+  totalSalary: number; // kuruş
+  baseSalary: number;
+  bonus: number;
+  dailyRate: number; // totalSalary / 30
+  
+  // Kesintiler
+  absenceDeduction: number; // (absent + 1) × dailyRate (absent > 0 ise)
+  bonusDeduction: number; // (unpaidLeave / 30) × bonus
+  overtimePay: number; // (minutes / 60) × (totalSalary / 240) × 1.5
+  
+  // Net
+  netPay: number;
+}
+
+async function calculatePayroll(userId: string, year: number, month: number): Promise<PayrollCalculation> {
+  // 1. Kullanıcı pozisyonunu ve maaşını al
+  const user = await getUser(userId);
+  const salary = await getPositionSalary(user.role, year, month);
+  
+  // 2. Ayın tüm günlerini sınıflandır
+  const daysInMonth = new Date(year, month, 0).getDate();
+  const records = await getPdksRecords(userId, year, month);
+  const offs = await getScheduledOffs(userId, year, month);
+  const leaves = await getLeaves(userId, year, month);
+  
+  const classifications: DayClassification[] = [];
+  for (let day = 1; day <= daysInMonth; day++) {
+    const date = new Date(year, month - 1, day);
+    classifications.push(classifyDay(date, records, offs, leaves));
+  }
+  
+  // 3. Sayıları topla
+  const workedDays = classifications.filter(d => d.status === 'worked').length;
+  const offDays = classifications.filter(d => ['program_off', 'kapanish_off'].includes(d.status)).length;
+  const absentDays = classifications.filter(d => d.status === 'absent').length;
+  const unpaidLeaveDays = classifications.filter(d => d.status === 'unpaid_leave').length;
+  const sickLeaveDays = classifications.filter(d => d.status === 'sick_leave').length;
+  const totalOvertimeMinutes = classifications.reduce((sum, d) => sum + d.overtimeMinutes, 0);
+  
+  // 4. Off limiti kontrolü (max 4)
+  const effectiveOffDays = Math.min(offDays, 4);
+  
+  // 5. Maaş hesapla
+  const dailyRate = Math.round(salary.totalSalary / 30);
+  
+  // Gün kesintisi
+  let absenceDeduction = 0;
+  if (absentDays > 0) {
+    absenceDeduction = (absentDays + 1) * dailyRate; // +1 ceza
+  }
+  
+  // Prim kesintisi
+  let bonusDeduction = 0;
+  if (unpaidLeaveDays > 0) {
+    bonusDeduction = Math.round((unpaidLeaveDays / 30) * salary.bonus);
+  }
+  
+  // FM tutarı
+  const hourlyRate = Math.round(salary.totalSalary / 240); // 30 gün × 8 saat
+  const overtimePay = Math.round((totalOvertimeMinutes / 60) * hourlyRate * 1.5);
+  
+  // NET
+  const netPay = salary.totalSalary - absenceDeduction - bonusDeduction + overtimePay;
+  
+  return {
+    totalCalendarDays: daysInMonth,
+    workedDays, offDays: effectiveOffDays, absentDays,
+    unpaidLeaveDays, sickLeaveDays, overtimeMinutes: totalOvertimeMinutes,
+    totalSalary: salary.totalSalary, baseSalary: salary.baseSalary,
+    bonus: salary.bonus, dailyRate,
+    absenceDeduction, bonusDeduction, overtimePay,
+    netPay
+  };
+}
+```
+
+---
+
+### T005 — Maaş API Endpoint'leri (~1-2 saat)
+
+```
+POST /api/payroll/calculate
+{ branchId: 5, year: 2026, month: 3 }
+→ Tüm şube personeli için maaş hesapla, monthly_payroll'a kaydet
+
+GET /api/payroll/summary?branchId=5&year=2026&month=3
+→ Şube bazlı maaş özeti (tüm personel)
+
+GET /api/payroll/:userId?year=2026&month=3
+→ Tek personel maaş detayı (gün gün sınıflandırma dahil)
+
+PATCH /api/payroll/:id/approve
+→ Maaş onay (muhasebe)
+
+POST /api/payroll/export-excel
+{ branchId: 5, year: 2026, month: 3 }
+→ Excel dosyası (mevcut Excel formatına uygun)
+```
+
+**Yetki:**
+- Muhasebe: tüm şubeler, hesaplama + onay + düzenleme
+- Şube Müdürü: kendi şubesi, sadece görüntüleme
+- Yatırımcı: kendi şubesi, net ödemeler (formül detayı gizli)
+- Supervisor: kendi ekibi, sadece devam durumu (maaş tutarları GİZLİ)
+- Personel: sadece kendi bordrosu
+
+---
+
+### T006 — PDKS & Maaş UI (~2-3 saat)
+
+**A) PDKS Sayfası (/pdks):**
+
+```
+📊 PDKS — Devam Takibi
+━━━━━━━━━━━━━━━━━━━━━
+
+Şube: [Beachpark ▼]  Ay: [Mart 2026 ▼]
+
+👤 Personel    | Çalışılan | Off | Eksik | FM(dk) | Rapor
+─────────────────────────────────────────────────────────
+Cihan Yılmaz   |    24     |  4  |   0   |  120   |  0
+Elif Demir     |    22     |  4  |   2   |   45   |  0
+Ayşe Kaya      |    20     |  4  |   1   |    0   |  3
+─────────────────────────────────────────────────────────
+
+[Tıkla → gün gün detay]
+```
+
+Personel satırına tıklayınca gün gün detay:
+```
+Cihan Yılmaz — Mart 2026
+━━━━━━━━━━━━━━━━━━━━━━━
+
+1 Pzt  ✅ Çalıştı  08:15-16:30  (8s 15dk)
+2 Sal  ✅ Çalıştı  08:00-17:45  (9s 45dk, FM: 105dk)
+3 Çar  🏖️ Off (Program)
+4 Per  ✅ Çalıştı  08:30-16:15  (7s 45dk)
+5 Cum  ❌ Eksik
+...
+```
+
+**B) Maaş Hesaplama Sayfası (/maas):**
+
+```
+💰 Maaş Hesaplama — Mart 2026
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Şube: [Beachpark ▼]  Durum: [Taslak ▼]
+
+[📊 Hesapla]  [✅ Onayla]  [📥 Excel İndir]
+
+👤 Personel     | Pozisyon  | Maaş    | Kesinti | FM    | NET
+──────────────────────────────────────────────────────────────
+Cihan Yılmaz    | Barista   | 41.000  | 0       | 750   | 41.750
+Elif Demir      | Bar Buddy | 36.000  | 3.600   | 225   | 32.625
+Ayşe Kaya       | Stajyer   | 33.000  | 0       | 0     | 33.000
+──────────────────────────────────────────────────────────────
+TOPLAM                       | 110.000 | 3.600   | 975   | 107.375
+
+[Personel satırına tıkla → detaylı bordro]
+```
+
+Personel detay bordrosu:
+```
+Elif Demir — Mart 2026 Bordro
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Pozisyon: Bar Buddy
+Toplam Maaş: 36.000 TL (Taban: 31.000 + Prim: 5.000)
+
+📊 Devam:
+  Çalışılan: 22 gün | Off: 4 gün | Eksik: 2 gün
+  Ücretsiz İzin: 0 | Rapor: 0 | FM: 116 dk
+
+💰 Hesaplama:
+  Günlük Ücret: 36.000 ÷ 30 = 1.200 TL
+  Gün Kesintisi: (2+1) × 1.200 = 3.600 TL
+  Prim Kesintisi: 0 TL
+  FM Tutarı: (116÷60) × (36.000÷240) × 1.5 = 435 TL
+
+  NET ÖDEME: 36.000 - 3.600 + 435 = 32.835 TL
+```
+
+**C) Personel Kendi Bordrosu (profil sayfasına ekle):**
+
+Personel kendi profilinde "Bordrom" bölümü:
+```
+💰 Bordrom — Mart 2026
+
+Çalışılan Gün: 24
+Off Gün: 4
+Eksik Gün: 0
+FM: 120 dakika
+
+NET ÖDEME: 41.750 TL
+
+[Geçmiş Aylar ▼]
+```
+
+---
+
+### T007 — Excel Export (Mevcut Format Uyumlu) (~1 saat)
+
+Maaş hesaplama sonucu Excel'e aktarılabilmeli — mevcut DOSPRESSO Excel formatına uygun:
+
+Sütunlar:
+```
+A: Sıra No
+B: Ad Soyad
+C: Pozisyon
+D: Çalışılan Gün (🔵 otomatik)
+E: Off Gün (🔵 otomatik)
+F: Eksik Gün (🔵 otomatik)
+G: Ücretsiz İzin (🟡 elle)
+H: FM Dakika (🔵 otomatik)
+I: Raporlu Gün (🟡 elle)
+J: Toplam Maaş
+K: Taban Maaş
+L: Prim
+M: Günlük Ücret
+N: Gün Kesintisi
+O: Prim Kesintisi
+P: FM Tutarı
+Q: NET ÖDEME
+```
+
+Renk kodlama: 🔵 Mavi (PDKS otomatik), 🟡 Sarı (elle giriş), 🟢 Yeşil (maaş), 🔴 Kırmızı (kesinti)
+
+---
+
+### T008 — Kiosk PDKS Entegrasyonu (~1 saat)
+
+Mevcut kiosk sistemiyle PDKS'yi bağla:
+
+1. Kiosk PIN giriş başarılı olduğunda → otomatik pdks_records "giris" kaydı
+2. Kiosk vardiya bitirme'de → otomatik pdks_records "cikis" kaydı
+3. Mevcut kiosk endpoint'lerine PDKS hook ekle (endpoint'leri BOZMA, sadece hook)
+
+```bash
+grep -rn "kiosk.*login\|kiosk.*start-shift\|kiosk.*end-shift" server/ --include="*.ts" | head -10
+```
+
+---
+
+### T009 — İzin Modülü Entegrasyonu (~30 dakika)
+
+Mevcut leave_requests (izin talepleri) sistemiyle PDKS'yi bağla:
+
+1. Onaylanan izin → maaş hesaplamada otomatik yansısın
+2. Ücretsiz izin → prim kesintisi
+3. Raporlu → kesinti yok
+4. Yıllık izin → kesinti yok
+
+```bash
+grep -rn "leave_request\|leaveRequest\|izin.*onay" server/ --include="*.ts" | head -10
+```
+
+---
+
+### T010 — E2E Test (~1 saat)
+
+**Senaryo 1 — PDKS Kayıt:**
+1. Kiosk PIN giriş → pdks_records'ta "giris" kaydı var mı?
+2. Vardiya bitir → "cikis" kaydı var mı?
+3. Manuel kayıt (admin) → kayıt oluştu mu?
+
+**Senaryo 2 — Gün Sınıflandırma:**
+1. 08:15 giriş, 16:30 çıkış → "worked"
+2. 00:45 tek damga → "kapanish_off"
+3. Hiç kayıt + program off → "program_off"
+4. Hiç kayıt + off yok → "absent"
+
+**Senaryo 3 — Maaş Hesaplama:**
+1. 24 gün çalışan, 0 eksik → kesinti 0
+2. 22 gün çalışan, 2 eksik → kesinti (2+1) × günlük
+3. FM 120 dk → FM tutarı doğru mu?
+4. İşten ayrılan → çalışılan gün × günlük
+
+**Senaryo 4 — Yetki:**
+1. Barista → maaş sayfasını göremez
+2. Muhasebe → tüm şubeleri görür
+3. Yatırımcı → kendi şubesi, net tutar
+4. Personel → sadece kendi bordrosu
+
+**Senaryo 5 — Excel:**
+1. Excel indir → format doğru mu? Renkler var mı?
+
+---
+
+### ÖNCELİK SIRASI: T001 → T003 → T004 → T002 → T005 → T008 → T009 → T006 → T007 → T010
+
+### DO NOT BREAK:
+- Mevcut kiosk sistemi (PIN giriş, vardiya, üretim)
+- Mevcut izin sistemi (leave_requests)
+- Sprint 1-19A'daki tüm değişiklikler
+- Mevcut Excel export altyapısı
+
+### KABUL KRİTERLERİ:
+- [ ] pdks_records tablosu çalışıyor
+- [ ] position_salaries 5 pozisyon seed edildi
+- [ ] monthly_payroll tablosu çalışıyor
+- [ ] Kiosk giriş/çıkışta otomatik PDKS kaydı
+- [ ] Manuel PDKS girişi çalışıyor (muhasebe)
+- [ ] Kapanış vardiyası doğru sınıflandırılıyor (00:00-05:59 tek damga = off)
+- [ ] Off limiti max 4/ay kontrol ediliyor
+- [ ] Günlük ücret DAİMA maaş/30 (ay gün sayısından bağımsız)
+- [ ] Eksik gün kesintisi (eksik+1) × günlük çalışıyor
+- [ ] Prim kesintisi sadece prim üzerinden
+- [ ] FM hesaplaması doğru (×1.5)
+- [ ] NET = Toplam − Gün Kesintisi − Prim Kesintisi + FM
+- [ ] Maaş onay akışı (draft → calculated → approved)
+- [ ] Excel export mevcut formata uygun
+- [ ] Muhasebe tüm şubeleri görüyor
+- [ ] Personel sadece kendi bordrosunu görüyor
+- [ ] Yatırımcı net tutar görüyor (formül gizli)
+- [ ] Supervisor maaş tutarlarını GÖRMİYOR (devam durumu görebilir)
+- [ ] 0 console error
+
+---
+
+Bunu Replit'e yapıştır ve çalıştır. Sonucu getir.
