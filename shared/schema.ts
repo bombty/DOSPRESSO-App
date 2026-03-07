@@ -342,6 +342,9 @@ export const PATH_TO_PERMISSION_MAP: Record<string, PermissionModule> = {
   '/izinler': 'leave_requests',
   '/mesai': 'overtime_requests',
   '/puantaj': 'attendance',
+  '/pdks': 'attendance',
+  '/maas': 'accounting',
+  '/bordrom': 'employees',
   '/performans': 'performance',
   '/onboarding-programlar': 'hr',
   
@@ -14679,3 +14682,108 @@ export const insertPushSubscriptionSchema = createInsertSchema(pushSubscriptions
 });
 export type InsertPushSubscription = z.infer<typeof insertPushSubscriptionSchema>;
 export type PushSubscription = typeof pushSubscriptions.$inferSelect;
+
+export const pdksRecords = pgTable("pdks_records", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  branchId: integer("branch_id").notNull().references(() => branches.id, { onDelete: "cascade" }),
+  recordDate: date("record_date").notNull(),
+  recordTime: time("record_time").notNull(),
+  recordType: varchar("record_type", { length: 10 }).notNull(),
+  source: varchar("source", { length: 20 }).default("kiosk"),
+  deviceInfo: varchar("device_info", { length: 255 }),
+  createdAt: timestamp("created_at").defaultNow(),
+  createdBy: varchar("created_by").references(() => users.id, { onDelete: "set null" }),
+}, (table) => [
+  index("pdks_records_user_date_idx").on(table.userId, table.recordDate),
+  index("pdks_records_branch_date_idx").on(table.branchId, table.recordDate),
+]);
+
+export const insertPdksRecordSchema = createInsertSchema(pdksRecords).omit({
+  id: true,
+  createdAt: true,
+});
+export type InsertPdksRecord = z.infer<typeof insertPdksRecordSchema>;
+export type PdksRecord = typeof pdksRecords.$inferSelect;
+
+export const positionSalaries = pgTable("position_salaries", {
+  id: serial("id").primaryKey(),
+  positionCode: varchar("position_code", { length: 50 }).notNull(),
+  positionName: varchar("position_name", { length: 100 }).notNull(),
+  totalSalary: integer("total_salary").notNull(),
+  baseSalary: integer("base_salary").notNull(),
+  bonus: integer("bonus").notNull(),
+  effectiveFrom: date("effective_from").notNull(),
+  effectiveTo: date("effective_to"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertPositionSalarySchema = createInsertSchema(positionSalaries).omit({
+  id: true,
+  createdAt: true,
+});
+export type InsertPositionSalary = z.infer<typeof insertPositionSalarySchema>;
+export type PositionSalary = typeof positionSalaries.$inferSelect;
+
+export const monthlyPayroll = pgTable("monthly_payroll", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  branchId: integer("branch_id").notNull().references(() => branches.id, { onDelete: "cascade" }),
+  year: integer("year").notNull(),
+  month: integer("month").notNull(),
+  positionCode: varchar("position_code", { length: 50 }).notNull(),
+  totalCalendarDays: integer("total_calendar_days").notNull(),
+  workedDays: integer("worked_days").notNull().default(0),
+  offDays: integer("off_days").notNull().default(0),
+  absentDays: integer("absent_days").notNull().default(0),
+  unpaidLeaveDays: integer("unpaid_leave_days").notNull().default(0),
+  sickLeaveDays: integer("sick_leave_days").notNull().default(0),
+  overtimeMinutes: integer("overtime_minutes").notNull().default(0),
+  totalSalary: integer("total_salary").notNull(),
+  baseSalary: integer("base_salary").notNull(),
+  bonus: integer("bonus").notNull(),
+  dailyRate: integer("daily_rate").notNull(),
+  absenceDeduction: integer("absence_deduction").notNull().default(0),
+  bonusDeduction: integer("bonus_deduction").notNull().default(0),
+  overtimePay: integer("overtime_pay").notNull().default(0),
+  netPay: integer("net_pay").notNull().default(0),
+  status: varchar("status", { length: 20 }).default("draft"),
+  calculatedAt: timestamp("calculated_at"),
+  approvedBy: varchar("approved_by").references(() => users.id, { onDelete: "set null" }),
+  approvedAt: timestamp("approved_at"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  unique("monthly_payroll_user_year_month_uniq").on(table.userId, table.year, table.month),
+  index("monthly_payroll_branch_idx").on(table.branchId),
+  index("monthly_payroll_period_idx").on(table.year, table.month),
+]);
+
+export const insertPdksPayrollSchema = createInsertSchema(monthlyPayroll).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertPdksPayroll = z.infer<typeof insertPdksPayrollSchema>;
+export type PdksPayroll = typeof monthlyPayroll.$inferSelect;
+
+export const scheduledOffs = pgTable("scheduled_offs", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  branchId: integer("branch_id").references(() => branches.id, { onDelete: "set null" }),
+  offDate: date("off_date").notNull(),
+  offType: varchar("off_type", { length: 20 }).notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  unique("scheduled_offs_user_date_uniq").on(table.userId, table.offDate),
+  index("scheduled_offs_user_idx").on(table.userId),
+  index("scheduled_offs_date_idx").on(table.offDate),
+]);
+
+export const insertScheduledOffSchema = createInsertSchema(scheduledOffs).omit({
+  id: true,
+  createdAt: true,
+});
+export type InsertScheduledOff = z.infer<typeof insertScheduledOffSchema>;
+export type ScheduledOff = typeof scheduledOffs.$inferSelect;

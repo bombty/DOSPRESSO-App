@@ -63,6 +63,7 @@ import {
   hqShiftEvents,
   notifications,
   qrCheckinNonces,
+  pdksRecords,
 } from "@shared/schema";
 import crypto from "crypto";
 
@@ -2628,6 +2629,21 @@ router.post('/api/branches/:branchId/kiosk/shift-start', async (req, res) => {
       eventTime: now,
     });
 
+    try {
+      const dateStr = now.toISOString().split('T')[0];
+      const timeStr = now.toTimeString().split(' ')[0].substring(0, 5);
+      await db.insert(pdksRecords).values({
+        userId,
+        branchId,
+        recordDate: dateStr,
+        recordTime: timeStr,
+        recordType: 'giris',
+        source: 'kiosk',
+      });
+    } catch (pdksErr) {
+      console.error("PDKS giris hook error (non-blocking):", pdksErr);
+    }
+
     res.json({
       success: true,
       session,
@@ -2872,6 +2888,21 @@ router.post('/api/branches/:branchId/kiosk/shift-end', async (req, res) => {
         totalBreakMinutes: session.breakMinutes || 0,
         netWorkMinutes: netWorkMinutes,
       });
+    }
+
+    try {
+      const dateStr = now.toISOString().split('T')[0];
+      const timeStr = now.toTimeString().split(' ')[0].substring(0, 5);
+      await db.insert(pdksRecords).values({
+        userId: session.userId,
+        branchId,
+        recordDate: dateStr,
+        recordTime: timeStr,
+        recordType: 'cikis',
+        source: 'kiosk',
+      });
+    } catch (pdksErr) {
+      console.error("PDKS cikis hook error (non-blocking):", pdksErr);
     }
 
     res.json({

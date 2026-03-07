@@ -386,6 +386,8 @@ import branchOrdersRouter from "./routes/branch-orders";
 import pushRouter from "./routes/push";
 import dataManagementRouter from "./routes/data-management";
 import setupRouter from "./routes/setup";
+import pdksRouter from "./routes/pdks";
+import payrollRouter from "./routes/payroll";
 import { startAgentScheduler, stopAgentScheduler, getSchedulerStatus } from "./services/agent-scheduler";
 
 // Multer configuration for file uploads (memory storage)
@@ -718,6 +720,8 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
   app.use(pushRouter);
   app.use(dataManagementRouter);
   app.use(setupRouter);
+  app.use(pdksRouter);
+  app.use(payrollRouter);
 
   app.get('/api/health', async (req, res) => {
     try {
