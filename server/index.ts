@@ -455,3 +455,19 @@ function startSktExpiryCheckJob() {
 
   log("SKT expiry check job started (runs every 6 hours)");
 }
+
+process.on('SIGTERM', () => {
+  console.log('SIGTERM received, shutting down...');
+  if (httpServer) {
+    httpServer.close(() => process.exit(0));
+  }
+  setTimeout(() => process.exit(1), 5000);
+});
+
+process.on('SIGINT', () => {
+  console.log('SIGINT received, shutting down...');
+  if (httpServer) {
+    httpServer.close(() => process.exit(0));
+  }
+  setTimeout(() => process.exit(1), 5000);
+});
