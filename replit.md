@@ -81,6 +81,8 @@ The frontend utilizes React 18+ with TypeScript and Vite, employing Shadcn/ui (N
 - **Feedback Form Settings**: Seeded settings for branches with categories, photo upload, location verification, multi-language support, and anonymous defaults.
 - **Feedback SLA System**: Hourly background job checks for overdue feedback responses and sends critical notifications with per-user DB-level deduplication.
 - **Feedback Pattern Analysis**: Weekly job analyzes 30-day category averages per branch for alerts and improvement detection.
+- **WordPress-Style Data Export/Import**: Full system data export to ZIP (manifest.json + categorized table JSONs + SHA-256 checksum), background job processing with progress tracking, 3 export scopes (full/config_only/branch), 3 import modes (merge/full_replace/config_only), ZIP validation, bcrypt password safety, admin-only access with audit logging. Files: `server/lib/export-service.ts`, `server/lib/import-service.ts`, `server/routes/data-management.ts`.
+- **Setup Wizard**: 6-step setup wizard at `/setup` for initial system configuration (company info, admin account, SMTP, DB test). Backend at `server/routes/setup.ts` with default data seeding and demo user creation.
 
 ## External Dependencies
 - **OpenAI API**: Used for AI-powered vision analysis, chat completions, embeddings, and summary generation.

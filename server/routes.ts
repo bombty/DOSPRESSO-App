@@ -384,6 +384,8 @@ import aiPolicyAdminRouter from "./routes/ai-policy-admin";
 import branchInventoryRouter from "./routes/branch-inventory";
 import branchOrdersRouter from "./routes/branch-orders";
 import pushRouter from "./routes/push";
+import dataManagementRouter from "./routes/data-management";
+import setupRouter from "./routes/setup";
 import { startAgentScheduler, stopAgentScheduler, getSchedulerStatus } from "./services/agent-scheduler";
 
 // Multer configuration for file uploads (memory storage)
@@ -714,6 +716,8 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
   app.use(branchOrdersRouter);
   app.use(branchInventoryRouter);
   app.use(pushRouter);
+  app.use(dataManagementRouter);
+  app.use(setupRouter);
 
   app.get('/api/health', async (req, res) => {
     try {

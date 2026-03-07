@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
@@ -6,461 +6,576 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Progress } from "@/components/ui/progress";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
-import { 
-  Download, 
-  Upload, 
-  FileSpreadsheet, 
-  Users, 
-  Building2, 
-  Wrench,
+import {
+  Download,
+  Upload,
+  Database,
   CheckCircle2,
   XCircle,
   AlertTriangle,
-  FileUp,
+  FileArchive,
   RefreshCw,
-  ArrowRight
+  ArrowRight,
+  Shield,
+  HardDrive,
+  Loader2,
+  Info
 } from "lucide-react";
 
-type DataType = 'equipment' | 'personnel' | 'branches';
+interface ExportJobStatus {
+  status: 'processing' | 'completed' | 'failed';
+  progress: number;
+  totalTables: number;
+  processedTables: number;
+  downloadUrl?: string;
+  error?: string;
+  fileSize?: number;
+  startedAt?: string;
+  completedAt?: string;
+}
 
-interface ImportResult {
-  success: number;
-  failed: number;
+interface ImportJobStatus {
+  status: 'validating' | 'importing' | 'completed' | 'failed';
+  progress: number;
+  totalTables: number;
+  processedTables: number;
   errors: string[];
+  warnings: string[];
+  summary?: {
+    users: number;
+    branches: number;
+    tables: number;
+    totalRecords: number;
+    estimatedTime: string;
+  };
+  startedAt?: string;
+  completedAt?: string;
 }
 
-interface ParsedData {
-  data: Record<string, any>[];
-  headers: string[];
-  rowCount: number;
+interface ValidationResult {
+  isValid: boolean;
+  errors: string[];
+  warnings: string[];
+  summary: {
+    users: number;
+    branches: number;
+    tables: number;
+    totalRecords: number;
+    estimatedTime: string;
+  };
 }
-
-const dataTypeConfig = {
-  equipment: {
-    label: 'Ekipman',
-    icon: Wrench,
-    description: 'Kahve makineleri, değirmenler ve diğer ekipmanlar',
-    templateUrl: '/api/bulk/template/equipment',
-    exportUrl: '/api/bulk/export/equipment',
-    importUrl: '/api/bulk/import/equipment',
-    requiredRoles: ['admin', 'coach', 'teknik']
-  },
-  personnel: {
-    label: 'Personel',
-    icon: Users,
-    description: 'Çalışan bilgileri ve rol atamaları',
-    templateUrl: '/api/bulk/template/personnel',
-    exportUrl: '/api/bulk/export/personnel',
-    importUrl: '/api/bulk/import/personnel',
-    requiredRoles: ['admin', 'coach', 'muhasebe']
-  },
-  branches: {
-    label: 'Şubeler',
-    icon: Building2,
-    description: 'Şube adresleri ve iletişim bilgileri',
-    templateUrl: '/api/bulk/template/branches',
-    exportUrl: '/api/bulk/export/branches',
-    importUrl: '/api/bulk/import/branches',
-    requiredRoles: ['admin']
-  }
-};
 
 export default function TopluVeriYonetimi() {
   const { user } = useAuth();
   const { toast } = useToast();
-  const [activeTab, setActiveTab] = useState<DataType>('equipment');
-  const [isUploading, setIsUploading] = useState(false);
-  const [parsedData, setParsedData] = useState<ParsedData | null>(null);
-  const [importResult, setImportResult] = useState<ImportResult | null>(null);
-  const [showPreviewDialog, setShowPreviewDialog] = useState(false);
-  const [showResultDialog, setShowResultDialog] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const userRole = user?.role || '';
+  const [exportScope, setExportScope] = useState<string>('full');
+  const [exportBranchId, setExportBranchId] = useState<string>('');
+  const [exportJobId, setExportJobId] = useState<string | null>(null);
+  const [exportStatus, setExportStatus] = useState<ExportJobStatus | null>(null);
+  const [isExporting, setIsExporting] = useState(false);
 
-  const canAccessType = (type: DataType) => {
-    return dataTypeConfig[type].requiredRoles.includes(userRole);
-  };
+  const [importMode, setImportMode] = useState<string>('merge');
+  const [importJobId, setImportJobId] = useState<string | null>(null);
+  const [importStatus, setImportStatus] = useState<ImportJobStatus | null>(null);
+  const [isImporting, setIsImporting] = useState(false);
+  const [validationResult, setValidationResult] = useState<ValidationResult | null>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
 
-  const downloadTemplate = async (type: DataType) => {
+  useEffect(() => {
+    if (!exportJobId || exportStatus?.status === 'completed' || exportStatus?.status === 'failed') return;
+    const interval = setInterval(async () => {
+      try {
+        const res = await fetch(`/api/admin/export/${exportJobId}/status`, { credentials: 'include' });
+        const data = await res.json();
+        setExportStatus(data);
+        if (data.status === 'completed' || data.status === 'failed') {
+          setIsExporting(false);
+          if (data.status === 'completed') {
+            toast({ title: "Export Tamamlandı", description: "ZIP dosyası indirmeye hazır." });
+          }
+        }
+      } catch {}
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [exportJobId, exportStatus?.status]);
+
+  useEffect(() => {
+    if (!importJobId || importStatus?.status === 'completed' || importStatus?.status === 'failed') return;
+    const interval = setInterval(async () => {
+      try {
+        const res = await fetch(`/api/admin/import/${importJobId}/status`, { credentials: 'include' });
+        const data = await res.json();
+        setImportStatus(data);
+        if (data.status === 'completed' || data.status === 'failed') {
+          setIsImporting(false);
+          if (data.status === 'completed') {
+            toast({ title: "Import Tamamlandı", description: "Veriler başarıyla içe aktarıldı." });
+          }
+        }
+      } catch {}
+    }, 1500);
+    return () => clearInterval(interval);
+  }, [importJobId, importStatus?.status]);
+
+  const startExport = async () => {
+    setIsExporting(true);
+    setExportStatus(null);
     try {
-      const response = await fetch(dataTypeConfig[type].templateUrl, {
-        credentials: 'include'
-      });
-      
-      if (!response.ok) {
-        throw new Error('Şablon indirilemedi');
-      }
-
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `${type}_sablonu.xlsx`;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
-
-      toast({
-        title: "Şablon İndirildi",
-        description: `${dataTypeConfig[type].label} şablonu başarıyla indirildi.`
-      });
+      const body: any = { scope: exportScope };
+      if (exportScope === 'branch' && exportBranchId) body.branchId = parseInt(exportBranchId);
+      const res = await apiRequest('POST', '/api/admin/export', body);
+      const data = await res.json();
+      setExportJobId(data.jobId);
+      setExportStatus({ status: 'processing', progress: 0, totalTables: 0, processedTables: 0 });
     } catch (error: any) {
-      toast({
-        title: "Hata",
-        description: error.message || "Şablon indirilemedi",
-        variant: "destructive"
-      });
+      setIsExporting(false);
+      toast({ title: "Hata", description: error.message || "Export başlatılamadı", variant: "destructive" });
     }
   };
 
-  const exportData = async (type: DataType) => {
-    try {
-      const response = await fetch(dataTypeConfig[type].exportUrl, {
-        credentials: 'include'
-      });
-      
-      if (!response.ok) {
-        throw new Error('Veri dışa aktarılamadı');
-      }
-
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `${type}_listesi_${new Date().toISOString().split('T')[0]}.xlsx`;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
-
-      toast({
-        title: "Dışa Aktarıldı",
-        description: `${dataTypeConfig[type].label} listesi başarıyla indirildi.`
-      });
-    } catch (error: any) {
-      toast({
-        title: "Hata",
-        description: error.message || "Dışa aktarma başarısız",
-        variant: "destructive"
-      });
+  const downloadExport = () => {
+    if (exportJobId) {
+      window.open(`/api/admin/export/${exportJobId}/download`, '_blank');
     }
   };
 
-  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>, type: DataType) => {
+  const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    if (!file.name.endsWith('.xlsx') && !file.name.endsWith('.xls')) {
-      toast({
-        title: "Geçersiz Dosya",
-        description: "Lütfen Excel (.xlsx veya .xls) dosyası yükleyin.",
-        variant: "destructive"
-      });
+    if (!file.name.endsWith('.zip')) {
+      toast({ title: "Geçersiz Dosya", description: "Lütfen ZIP dosyası seçin.", variant: "destructive" });
       return;
     }
 
-    setIsUploading(true);
-    setParsedData(null);
-    setImportResult(null);
+    setSelectedFile(file);
+    setValidationResult(null);
+    setImportStatus(null);
+
+    const formData = new FormData();
+    formData.append('file', file);
 
     try {
-      const reader = new FileReader();
-      reader.onload = async (e) => {
-        try {
-          const fileData = e.target?.result as string;
-          
-          const response = await apiRequest('POST', '/api/bulk/parse', { fileData, fileName: file.name });
-          const result = await response.json();
-
-          setParsedData(result as ParsedData);
-          setShowPreviewDialog(true);
-        } catch (error: any) {
-          toast({
-            title: "Hata",
-            description: error.message || "Dosya okunamadı",
-            variant: "destructive"
-          });
-        } finally {
-          setIsUploading(false);
-        }
-      };
-      reader.readAsDataURL(file);
-    } catch (error: any) {
-      setIsUploading(false);
-      toast({
-        title: "Hata",
-        description: error.message || "Dosya yüklenemedi",
-        variant: "destructive"
+      const res = await fetch('/api/admin/import/validate', {
+        method: 'POST',
+        credentials: 'include',
+        body: formData,
       });
+      const data = await res.json();
+      setValidationResult(data);
+    } catch (error: any) {
+      toast({ title: "Validasyon Hatası", description: error.message, variant: "destructive" });
     }
 
     event.target.value = '';
   };
 
-  const confirmImport = async () => {
-    if (!parsedData) return;
+  const startImport = async () => {
+    if (!selectedFile) return;
+    setShowConfirmDialog(false);
+    setIsImporting(true);
+    setImportStatus(null);
+
+    const formData = new FormData();
+    formData.append('file', selectedFile);
+    formData.append('mode', importMode);
 
     try {
-      const response = await apiRequest('POST', dataTypeConfig[activeTab].importUrl, { data: parsedData.data });
-      const result = await response.json();
-
-      setImportResult(result as ImportResult);
-      setShowPreviewDialog(false);
-      setShowResultDialog(true);
-      setParsedData(null);
-    } catch (error: any) {
-      toast({
-        title: "Hata",
-        description: error.message || "İçe aktarma başarısız",
-        variant: "destructive"
+      const res = await fetch('/api/admin/import', {
+        method: 'POST',
+        credentials: 'include',
+        body: formData,
       });
+      const data = await res.json();
+      setImportJobId(data.jobId);
+      setImportStatus({ status: 'validating', progress: 0, totalTables: 0, processedTables: 0, errors: [], warnings: [] });
+    } catch (error: any) {
+      setIsImporting(false);
+      toast({ title: "Hata", description: error.message || "Import başlatılamadı", variant: "destructive" });
     }
   };
 
-  const DataTypeCard = ({ type }: { type: DataType }) => {
-    const config = dataTypeConfig[type];
-    const Icon = config.icon;
-    const hasAccess = canAccessType(type);
-
-    return (
-      <Card className={`${!hasAccess ? 'opacity-50' : ''}`} data-testid={`card-${type}`}>
-        <CardHeader className="pb-2">
-          <div className="flex items-center gap-2">
-            <div className="p-2 rounded-lg bg-primary/10">
-              <Icon className="h-5 w-5 text-primary" />
-            </div>
-            <div>
-              <CardTitle className="text-lg">{config.label}</CardTitle>
-              <CardDescription className="text-xs">{config.description}</CardDescription>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-col gap-2">
-            <Button 
-              variant="outline" 
-              size="sm" 
-              className="w-full justify-start gap-2"
-              onClick={() => downloadTemplate(type)}
-              disabled={!hasAccess}
-              data-testid={`button-download-template-${type}`}
-            >
-              <Download className="h-4 w-4" />
-              Şablon İndir
-            </Button>
-            
-            <Button 
-              variant="outline" 
-              size="sm" 
-              className="w-full justify-start gap-2"
-              onClick={() => exportData(type)}
-              disabled={!hasAccess}
-              data-testid={`button-export-${type}`}
-            >
-              <FileSpreadsheet className="h-4 w-4" />
-              Mevcut Verileri İndir
-            </Button>
-            
-            <div className="relative">
-              <input
-                type="file"
-                accept=".xlsx,.xls"
-                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed"
-                onChange={(e) => {
-                  setActiveTab(type);
-                  handleFileUpload(e, type);
-                }}
-                disabled={!hasAccess || isUploading}
-                data-testid={`input-upload-${type}`}
-              />
-              <Button 
-                variant="default" 
-                size="sm" 
-                className="w-full justify-start gap-2"
-                disabled={!hasAccess || isUploading}
-                data-testid={`button-upload-${type}`}
-              >
-                {isUploading && activeTab === type ? (
-                  <RefreshCw className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Upload className="h-4 w-4" />
-                )}
-                Dosya Yükle
-              </Button>
-            </div>
-
-            {!hasAccess && (
-              <p className="text-xs text-muted-foreground mt-1">
-                Bu işlem için yetkiniz bulunmuyor.
-              </p>
-            )}
-          </div>
-        </CardContent>
-      </Card>
-    );
+  const formatFileSize = (bytes: number) => {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
   };
+
+  const isAdmin = user?.role === 'admin' || user?.role === 'ceo' || user?.role === 'cgo';
+
+  if (!isAdmin) {
+    return (
+      <div className="p-4">
+        <Alert variant="destructive">
+          <Shield className="h-4 w-4" />
+          <AlertTitle>Yetkisiz Erişim</AlertTitle>
+          <AlertDescription>Bu sayfaya erişim yetkiniz bulunmuyor.</AlertDescription>
+        </Alert>
+      </div>
+    );
+  }
 
   return (
     <div className="p-4 space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-2">
         <div>
-          <h1 className="text-2xl font-bold" data-testid="text-page-title">Toplu Veri Yönetimi</h1>
-          <p className="text-muted-foreground">Excel dosyaları ile toplu veri içe/dışa aktarma</p>
+          <h1 className="text-2xl font-bold" data-testid="text-page-title">Veri Yönetimi</h1>
+          <p className="text-muted-foreground">Sistem verilerini dışa/içe aktar</p>
         </div>
+        <Badge variant="outline">
+          <Database className="h-3 w-3 mr-1" />
+          WordPress Tarzı
+        </Badge>
       </div>
 
-      <Alert>
-        <FileUp className="h-4 w-4" />
-        <AlertTitle>Nasıl Kullanılır?</AlertTitle>
-        <AlertDescription>
-          <ol className="list-decimal list-inside space-y-1 mt-2 text-sm">
-            <li>Önce <strong>Şablon İndir</strong> butonuyla Excel şablonunu indirin</li>
-            <li>Şablonu doldurun (yıldızlı alanlar zorunludur)</li>
-            <li><strong>Dosya Yükle</strong> ile Excel dosyanızı seçin</li>
-            <li>Önizleme ekranında verileri kontrol edin</li>
-            <li>Onaylayarak içe aktarmayı tamamlayın</li>
-          </ol>
-        </AlertDescription>
-      </Alert>
+      <Tabs defaultValue="export">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="export" data-testid="tab-export">
+            <Download className="h-4 w-4 mr-2" />
+            Dışa Aktar
+          </TabsTrigger>
+          <TabsTrigger value="import" data-testid="tab-import">
+            <Upload className="h-4 w-4 mr-2" />
+            İçe Aktar
+          </TabsTrigger>
+        </TabsList>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {(Object.keys(dataTypeConfig) as DataType[]).map(type => (
-          <DataTypeCard key={type} type={type} />
-        ))}
-      </div>
+        <TabsContent value="export" className="space-y-4 mt-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <FileArchive className="h-5 w-5" />
+                Sistem Verilerini Dışa Aktar
+              </CardTitle>
+              <CardDescription>
+                Tüm sistem verilerinizi ZIP dosyası olarak indirin. Yedekleme, taşıma veya arşivleme için kullanabilirsiniz.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Kapsam</label>
+                <Select value={exportScope} onValueChange={setExportScope}>
+                  <SelectTrigger data-testid="select-export-scope">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="full">Tam Yedek (Tüm veriler)</SelectItem>
+                    <SelectItem value="config_only">Sadece Yapılandırma</SelectItem>
+                    <SelectItem value="branch">Tek Şube</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  {exportScope === 'full' && 'Kullanıcılar, şubeler, eğitimler, tarifler, fabrika ve operasyon verileri dahil'}
+                  {exportScope === 'config_only' && 'Roller, ayarlar, eğitim modülleri, ürünler ve tarifler'}
+                  {exportScope === 'branch' && 'Seçili şubeye ait tüm veriler'}
+                </p>
+              </div>
 
-      <Dialog open={showPreviewDialog} onOpenChange={setShowPreviewDialog}>
-        <DialogContent className="max-w-4xl max-h-[80vh] overflow-hidden">
+              {exportScope === 'branch' && (
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Şube ID</label>
+                <input
+                  type="number"
+                  min="1"
+                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm"
+                  placeholder="Şube ID girin"
+                  value={exportBranchId}
+                  onChange={(e) => setExportBranchId(e.target.value)}
+                  data-testid="input-branch-id"
+                />
+              </div>
+              )}
+
+              <Alert>
+                <Info className="h-4 w-4" />
+                <AlertDescription className="text-xs">
+                  Şifreler bcrypt hash olarak aktarılır. Plaintext şifre asla dışa aktarılmaz.
+                </AlertDescription>
+              </Alert>
+
+              <Button
+                onClick={startExport}
+                disabled={isExporting}
+                className="w-full"
+                data-testid="button-start-export"
+              >
+                {isExporting ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Download className="h-4 w-4 mr-2" />
+                )}
+                {isExporting ? 'Export Devam Ediyor...' : 'Dışa Aktarmayı Başlat'}
+              </Button>
+
+              {exportStatus && (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between text-sm">
+                    <span>
+                      {exportStatus.status === 'processing' && 'İşleniyor...'}
+                      {exportStatus.status === 'completed' && 'Tamamlandı'}
+                      {exportStatus.status === 'failed' && 'Başarısız'}
+                    </span>
+                    <span className="text-muted-foreground">
+                      {exportStatus.processedTables}/{exportStatus.totalTables} tablo
+                    </span>
+                  </div>
+                  <Progress value={exportStatus.progress} className="h-2" />
+
+                  {exportStatus.status === 'completed' && (
+                    <div className="flex items-center justify-between gap-2 pt-2">
+                      <div className="flex items-center gap-2 text-sm">
+                        <CheckCircle2 className="h-4 w-4 text-green-500" />
+                        <span>
+                          {exportStatus.fileSize ? formatFileSize(exportStatus.fileSize) : ''} ZIP hazır
+                        </span>
+                      </div>
+                      <Button onClick={downloadExport} data-testid="button-download-export">
+                        <Download className="h-4 w-4 mr-2" />
+                        İndir
+                      </Button>
+                    </div>
+                  )}
+
+                  {exportStatus.status === 'failed' && (
+                    <Alert variant="destructive">
+                      <XCircle className="h-4 w-4" />
+                      <AlertDescription>{exportStatus.error}</AlertDescription>
+                    </Alert>
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="import" className="space-y-4 mt-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Upload className="h-5 w-5" />
+                ZIP Dosyasından İçe Aktar
+              </CardTitle>
+              <CardDescription>
+                Daha önce dışa aktarılmış ZIP dosyasını yükleyerek verileri geri yükleyin.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">İçe Aktarma Modu</label>
+                <Select value={importMode} onValueChange={setImportMode}>
+                  <SelectTrigger data-testid="select-import-mode">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="merge">Birleştir (Mevcut verileri koru)</SelectItem>
+                    <SelectItem value="full_replace">Tam Değiştir (Mevcut verileri sil)</SelectItem>
+                    <SelectItem value="config_only">Sadece Yapılandırma</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  {importMode === 'merge' && 'Yeni kayıtlar eklenir, mevcutlar korunur'}
+                  {importMode === 'full_replace' && 'DİKKAT: Tüm mevcut veriler silinip yerine import verileri yazılır'}
+                  {importMode === 'config_only' && 'Sadece yapılandırma tabloları güncellenir'}
+                </p>
+              </div>
+
+              {importMode === 'full_replace' && (
+                <Alert variant="destructive">
+                  <AlertTriangle className="h-4 w-4" />
+                  <AlertTitle>Dikkat!</AlertTitle>
+                  <AlertDescription>
+                    Tam değiştir modu tüm mevcut verileri silecektir. Bu işlem geri alınamaz.
+                  </AlertDescription>
+                </Alert>
+              )}
+
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".zip"
+                className="hidden"
+                onChange={handleFileSelect}
+                data-testid="input-import-file"
+              />
+
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isImporting}
+                data-testid="button-select-file"
+              >
+                <FileArchive className="h-4 w-4 mr-2" />
+                {selectedFile ? selectedFile.name : 'ZIP Dosyası Seç'}
+              </Button>
+
+              {validationResult && (
+                <Card className="bg-muted/30">
+                  <CardContent className="pt-4 space-y-3">
+                    <div className="flex items-center gap-2">
+                      {validationResult.isValid ? (
+                        <CheckCircle2 className="h-5 w-5 text-green-500" />
+                      ) : (
+                        <XCircle className="h-5 w-5 text-red-500" />
+                      )}
+                      <span className="font-medium">
+                        {validationResult.isValid ? 'Dosya geçerli' : 'Dosya geçersiz'}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2 text-sm">
+                      <div className="flex items-center gap-1">
+                        <HardDrive className="h-3 w-3 text-muted-foreground" />
+                        <span>{validationResult.summary.tables} tablo</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Database className="h-3 w-3 text-muted-foreground" />
+                        <span>{validationResult.summary.totalRecords.toLocaleString()} kayıt</span>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">Kullanıcı:</span> {validationResult.summary.users}
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">Şube:</span> {validationResult.summary.branches}
+                      </div>
+                    </div>
+
+                    <p className="text-xs text-muted-foreground">
+                      Tahmini süre: {validationResult.summary.estimatedTime}
+                    </p>
+
+                    {validationResult.warnings.length > 0 && (
+                      <div className="space-y-1">
+                        {validationResult.warnings.map((w, i) => (
+                          <div key={i} className="flex items-start gap-1 text-xs text-yellow-600 dark:text-yellow-400">
+                            <AlertTriangle className="h-3 w-3 mt-0.5 flex-shrink-0" />
+                            <span>{w}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {validationResult.errors.length > 0 && (
+                      <div className="space-y-1">
+                        {validationResult.errors.map((e, i) => (
+                          <div key={i} className="flex items-start gap-1 text-xs text-red-600">
+                            <XCircle className="h-3 w-3 mt-0.5 flex-shrink-0" />
+                            <span>{e}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              )}
+
+              {validationResult?.isValid && (
+                <Button
+                  onClick={() => setShowConfirmDialog(true)}
+                  disabled={isImporting}
+                  className="w-full"
+                  data-testid="button-start-import"
+                >
+                  {isImporting ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <ArrowRight className="h-4 w-4 mr-2" />
+                  )}
+                  {isImporting ? 'İçe Aktarılıyor...' : 'İçe Aktarmayı Başlat'}
+                </Button>
+              )}
+
+              {importStatus && (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between text-sm">
+                    <span>
+                      {importStatus.status === 'validating' && 'Doğrulanıyor...'}
+                      {importStatus.status === 'importing' && 'İçe aktarılıyor...'}
+                      {importStatus.status === 'completed' && 'Tamamlandı'}
+                      {importStatus.status === 'failed' && 'Başarısız'}
+                    </span>
+                    <span className="text-muted-foreground">
+                      {importStatus.processedTables}/{importStatus.totalTables} tablo
+                    </span>
+                  </div>
+                  <Progress value={importStatus.progress} className="h-2" />
+
+                  {importStatus.status === 'completed' && (
+                    <div className="flex items-center gap-2 text-sm text-green-600">
+                      <CheckCircle2 className="h-4 w-4" />
+                      <span>Veriler başarıyla içe aktarıldı</span>
+                    </div>
+                  )}
+
+                  {importStatus.errors.length > 0 && (
+                    <ScrollArea className="h-[120px] border rounded-md p-2">
+                      {importStatus.errors.map((e, i) => (
+                        <div key={i} className="flex items-start gap-1 text-xs text-red-600 mb-1">
+                          <XCircle className="h-3 w-3 mt-0.5 flex-shrink-0" />
+                          <span>{e}</span>
+                        </div>
+                      ))}
+                    </ScrollArea>
+                  )}
+
+                  {importStatus.warnings.length > 0 && (
+                    <ScrollArea className="h-[80px] border rounded-md p-2">
+                      {importStatus.warnings.slice(0, 20).map((w, i) => (
+                        <div key={i} className="flex items-start gap-1 text-xs text-yellow-600 dark:text-yellow-400 mb-1">
+                          <AlertTriangle className="h-3 w-3 mt-0.5 flex-shrink-0" />
+                          <span>{w}</span>
+                        </div>
+                      ))}
+                    </ScrollArea>
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+
+      <Dialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
+        <DialogContent>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <FileSpreadsheet className="h-5 w-5" />
-              Veri Önizleme - {dataTypeConfig[activeTab].label}
+              <AlertTriangle className="h-5 w-5 text-yellow-500" />
+              İçe Aktarmayı Onayla
             </DialogTitle>
             <DialogDescription>
-              İçe aktarılacak verileri kontrol edin. Toplam {parsedData?.rowCount || 0} satır bulundu.
+              {importMode === 'full_replace'
+                ? 'Bu işlem mevcut tüm verileri silecek ve yerine yeni verileri yazacaktır. Bu işlem geri alınamaz!'
+                : importMode === 'merge'
+                  ? 'Mevcut veriler korunacak, yeni kayıtlar eklenecektir.'
+                  : 'Sadece yapılandırma tabloları güncellenecektir.'
+              }
             </DialogDescription>
           </DialogHeader>
-
-          <ScrollArea className="h-[400px] border rounded-md">
-            {parsedData && parsedData.data.length > 0 ? (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-12">#</TableHead>
-                    {parsedData.headers.map((header, i) => (
-                      <TableHead key={i}>{header}</TableHead>
-                    ))}
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {parsedData.data.slice(0, 50).map((row, rowIndex) => (
-                    <TableRow key={rowIndex}>
-                      <TableCell className="font-mono text-xs">{rowIndex + 1}</TableCell>
-                      {parsedData.headers.map((header, colIndex) => (
-                        <TableCell key={colIndex} className="text-sm">
-                          {String(row[header] || '-')}
-                        </TableCell>
-                      ))}
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            ) : (
-              <div className="flex items-center justify-center h-full text-muted-foreground">
-                Henüz veri bulunmuyor
-              </div>
-            )}
-          </ScrollArea>
-
-          {parsedData && parsedData.data.length > 50 && (
-            <p className="text-sm text-muted-foreground">
-              İlk 50 satır gösteriliyor. Toplam {parsedData.rowCount} satır içe aktarılacak.
-            </p>
+          {validationResult?.summary && (
+            <div className="text-sm space-y-1 py-2">
+              <p>Toplam: <strong>{validationResult.summary.totalRecords.toLocaleString()}</strong> kayıt</p>
+              <p>Tahmini süre: <strong>{validationResult.summary.estimatedTime}</strong></p>
+            </div>
           )}
-
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowPreviewDialog(false)} data-testid="button-cancel-import">
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setShowConfirmDialog(false)} data-testid="button-cancel-import">
               İptal
             </Button>
-            <Button 
-              onClick={confirmImport} 
-              disabled={!parsedData || parsedData.data.length === 0}
+            <Button
+              onClick={startImport}
+              variant={importMode === 'full_replace' ? 'destructive' : 'default'}
               data-testid="button-confirm-import"
             >
               <ArrowRight className="h-4 w-4 mr-2" />
-              İçe Aktar ({parsedData?.rowCount || 0} satır)
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={showResultDialog} onOpenChange={setShowResultDialog}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              {importResult && importResult.failed === 0 ? (
-                <CheckCircle2 className="h-5 w-5 text-green-500" />
-              ) : (
-                <AlertTriangle className="h-5 w-5 text-yellow-500" />
-              )}
-              İçe Aktarma Sonucu
-            </DialogTitle>
-          </DialogHeader>
-
-          {importResult && (
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <Card>
-                  <CardContent className="p-4 text-center">
-                    <CheckCircle2 className="h-8 w-8 mx-auto text-green-500 mb-2" />
-                    <p className="text-2xl font-bold text-green-600">{importResult.success}</p>
-                    <p className="text-sm text-muted-foreground">Başarılı</p>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardContent className="p-4 text-center">
-                    <XCircle className="h-8 w-8 mx-auto text-red-500 mb-2" />
-                    <p className="text-2xl font-bold text-red-600">{importResult.failed}</p>
-                    <p className="text-sm text-muted-foreground">Başarısız</p>
-                  </CardContent>
-                </Card>
-              </div>
-
-              {importResult.errors.length > 0 && (
-                <div>
-                  <p className="font-medium mb-2">Hatalar:</p>
-                  <ScrollArea className="h-[150px] border rounded-md p-2">
-                    <ul className="space-y-1 text-sm">
-                      {importResult.errors.map((error, i) => (
-                        <li key={i} className="text-red-600 flex items-start gap-2">
-                          <XCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                          {error}
-                        </li>
-                      ))}
-                    </ul>
-                  </ScrollArea>
-                </div>
-              )}
-
-              <Progress 
-                value={(importResult.success / (importResult.success + importResult.failed)) * 100} 
-                className="h-2"
-              />
-              <p className="text-sm text-center text-muted-foreground">
-                Başarı oranı: {Math.round((importResult.success / (importResult.success + importResult.failed)) * 100)}%
-              </p>
-            </div>
-          )}
-
-          <DialogFooter>
-            <Button onClick={() => setShowResultDialog(false)} data-testid="button-close-result">
-              Kapat
+              Onayla ve Başlat
             </Button>
           </DialogFooter>
         </DialogContent>
