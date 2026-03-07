@@ -2,6 +2,7 @@ import { Router } from "express";
 import { db } from "../db";
 import { storage } from "../storage";
 import { isAuthenticated, isKioskAuthenticated, createKioskSession } from "../localAuth";
+import { auditLog } from "../audit";
 import { eq, desc, asc, and, or, gte, lte, sql, inArray, isNull, isNotNull, not, ne, count, sum, avg, max, min } from "drizzle-orm";
 import bcrypt from "bcrypt";
 import {
@@ -4590,6 +4591,8 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
           .where(eq(branchOrders.id, orderRequestId));
       }
 
+      auditLog(req, { eventType: "shipment.created", action: "created", resource: "factory_shipments", resourceId: String(shipment.id), after: { shipmentNumber, branchId, itemCount: resolvedItems.length, transferType, totalCost, totalSalePrice } });
+
       res.status(201).json(shipment);
     } catch (error: any) {
       console.error("Create shipment error:", error);
@@ -4735,6 +4738,8 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
           return updated;
         });
 
+        auditLog(req, { eventType: "shipment.dispatched", action: "dispatched", resource: "factory_shipments", resourceId: String(id), before: { status: currentShipment.status }, after: { status: "sevk_edildi" }, details: { shipmentNumber: currentShipment.shipmentNumber, branchId: currentShipment.branchId } });
+
         return res.json(result);
       }
 
@@ -4850,6 +4855,8 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
 
           return updated;
         });
+
+        auditLog(req, { eventType: "shipment.delivered", action: "delivered", resource: "factory_shipments", resourceId: String(id), before: { status: "sevk_edildi" }, after: { status: "teslim_edildi" }, details: { shipmentNumber: currentShipment.shipmentNumber, branchId: currentShipment.branchId } });
 
         return res.json(deliveryResult);
       }

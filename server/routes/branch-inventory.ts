@@ -14,6 +14,7 @@ import {
 import { eq, and, desc, sql, lte, gte, count } from "drizzle-orm";
 import { handleApiError, parsePagination, wrapPaginatedResponse } from "./helpers";
 import { z } from "zod";
+import { auditLog } from "../audit";
 
 const router = Router();
 
@@ -212,6 +213,8 @@ router.post("/api/branch-inventory/:branchId/waste", isAuthenticated, async (req
       return { movement, previousStock, newStock };
     });
 
+    auditLog(req, { eventType: "branch_inventory.waste", action: "waste_recorded", resource: "branch_inventory", resourceId: String(branchId), details: { productId, quantity, reason, previousStock: result.previousStock, newStock: result.newStock } });
+
     res.json({
       message: "Zayiat kaydı oluşturuldu",
       movement: result.movement,
@@ -298,6 +301,8 @@ router.post("/api/branch-inventory/:branchId/count", isAuthenticated, async (req
 
       return { movement, previousStock, newStock: countedQuantity, diff };
     });
+
+    auditLog(req, { eventType: "branch_inventory.count_correction", action: "count_corrected", resource: "branch_inventory", resourceId: String(branchId), details: { productId, countedQuantity, previousStock: result.previousStock, newStock: result.newStock, diff: result.diff } });
 
     res.json({
       message: "Sayım düzeltmesi kaydedildi",

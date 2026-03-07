@@ -23,7 +23,7 @@ import franchiseSummaryRoutes from "./routes/franchise-summary";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated, createKioskSession, isKioskAuthenticated, deleteKioskSession, updateKioskStation } from "./localAuth";
-import { auditMiddleware } from "./audit";
+import { auditMiddleware, auditLogSystem } from "./audit";
 import * as XLSX from "xlsx";
 import QRCode from "qrcode";
 import { sanitizeUser, sanitizeUsers, sanitizeUserForRole, sanitizeUsersForRole } from "./security";
@@ -383,6 +383,7 @@ import employeeTypesRouter from "./routes/employee-types";
 import aiPolicyAdminRouter from "./routes/ai-policy-admin";
 import branchInventoryRouter from "./routes/branch-inventory";
 import branchOrdersRouter from "./routes/branch-orders";
+import pushRouter from "./routes/push";
 import { startAgentScheduler, stopAgentScheduler, getSchedulerStatus } from "./services/agent-scheduler";
 
 // Multer configuration for file uploads (memory storage)
@@ -596,20 +597,64 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
 function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.delete(identifier); }
 
   app.use(helmet({
-    contentSecurityPolicy: false,
+    contentSecurityPolicy: process.env.NODE_ENV === 'production' ? {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'", "'unsafe-inline'"],
+        styleSrc: ["'self'", "'unsafe-inline'"],
+        imgSrc: ["'self'", "data:", "blob:", "https:", "http:"],
+        connectSrc: ["'self'", "https://api.openai.com", "https://*.replit.dev", "https://*.replit.app"],
+        fontSrc: ["'self'", "data:"],
+        objectSrc: ["'none'"],
+        frameSrc: ["'self'", "https://www.youtube.com"],
+        baseUri: ["'self'"],
+        formAction: ["'self'"],
+      },
+    } : false,
     crossOriginEmbedderPolicy: false,
+    referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
   }));
 
-  // General API rate limit: 200 requests per minute per IP
+  app.use((req, res, next) => {
+    res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+    if (process.env.NODE_ENV === 'production') {
+      res.setHeader('X-Frame-Options', 'DENY');
+    }
+    next();
+  });
+
+  const corsOrigins = process.env.NODE_ENV === 'production'
+    ? [
+        process.env.REPLIT_DEV_DOMAIN ? `https://${process.env.REPLIT_DEV_DOMAIN}` : '',
+        process.env.REPL_SLUG ? `https://${process.env.REPL_SLUG}.replit.app` : '',
+        'https://dospresso.com',
+      ].filter(Boolean)
+    : true;
+
+  app.use((req, res, next) => {
+    if (process.env.NODE_ENV === 'production' && req.headers.origin) {
+      const allowed = Array.isArray(corsOrigins) ? corsOrigins.includes(req.headers.origin) : true;
+      if (allowed) {
+        res.setHeader('Access-Control-Allow-Origin', req.headers.origin);
+        res.setHeader('Access-Control-Allow-Credentials', 'true');
+        res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,PATCH,DELETE,OPTIONS');
+        res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization,Cookie');
+      }
+      if (req.method === 'OPTIONS') {
+        return res.sendStatus(204);
+      }
+    }
+    next();
+  });
+
   const generalLimiter = rateLimit({
     windowMs: 60 * 1000,
-    max: 200,
+    max: 100,
     standardHeaders: true,
     legacyHeaders: false,
     message: { error: 'Çok fazla istek gönderdiniz, lütfen bir süre bekleyin' },
   });
 
-  // Strict rate limit for auth routes: 20 requests per minute
   const authLimiter = rateLimit({
     windowMs: 60 * 1000,
     max: 20,
@@ -618,12 +663,34 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
     message: { error: 'Çok fazla giriş denemesi, lütfen bekleyin' },
   });
 
-  // Apply general rate limit to all API routes
+  const sensitiveApiLimiter = rateLimit({
+    windowMs: 60 * 60 * 1000,
+    max: 20,
+    standardHeaders: true,
+    legacyHeaders: false,
+    keyGenerator: (req: any) => req.user?.id?.toString() || 'anon',
+    message: { error: 'Bu işlem için istek limitine ulaştınız, lütfen bekleyin' },
+    validate: false,
+  });
+
+  const agentRunLimiter = rateLimit({
+    windowMs: 60 * 60 * 1000,
+    max: 5,
+    standardHeaders: true,
+    legacyHeaders: false,
+    keyGenerator: (req: any) => req.user?.id?.toString() || 'anon',
+    message: { error: 'Agent çalıştırma limitine ulaştınız' },
+    validate: false,
+  });
+
   app.use('/api/', generalLimiter);
 
   app.use(auditMiddleware());
 
   await setupAuth(app, authLimiter);
+
+  app.use('/api/ai/', sensitiveApiLimiter);
+  app.use('/api/agent/run-now', agentRunLimiter);
 
   app.use(adminRouter);
   app.use(factoryRouter);
@@ -646,6 +713,7 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
   app.use(aiPolicyAdminRouter);
   app.use(branchOrdersRouter);
   app.use(branchInventoryRouter);
+  app.use(pushRouter);
 
   app.get('/api/health', async (req, res) => {
     try {
@@ -876,6 +944,8 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
 
       // Update user password
       await storage.updateUserPassword(resetToken.userId, hashedPassword);
+
+      auditLogSystem({ eventType: "auth.password_reset", action: "password_reset", resource: "users", resourceId: resetToken.userId, userId: resetToken.userId, details: { method: "token" } });
 
       res.json({ message: "Şifre başarıyla değiştirildi" });
     } catch (error: Error | unknown) {

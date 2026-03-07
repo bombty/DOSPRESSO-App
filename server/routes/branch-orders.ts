@@ -15,6 +15,7 @@ import {
   branches,
   notifications,
 } from "../../shared/schema";
+import { auditLog } from "../audit";
 
 const router = Router();
 
@@ -89,6 +90,8 @@ router.post("/api/branch-orders", isAuthenticated, async (req: any, res) => {
         message: `${branchInfo?.name || 'Şube'} yeni sipariş oluşturdu — ${items.length} ürün, ${orderNumber}`,
       });
     }
+
+    auditLog(req, { eventType: "branch_order.created", action: "created", resource: "branch_orders", resourceId: String(order.id), after: { orderNumber, branchId, itemCount: items.length, totalAmount } });
 
     res.status(201).json({ ...order, totalAmount, items: createdItems });
   } catch (error: any) {
@@ -282,6 +285,8 @@ router.patch("/api/branch-orders/:id/approve", isAuthenticated, async (req: any,
       });
     }
 
+    auditLog(req, { eventType: "branch_order.approved", action: "approved", resource: "branch_orders", resourceId: String(id), before: { status: "pending" }, after: { status: "approved" }, details: { orderNumber: order.orderNumber, stockWarnings } });
+
     res.json({
       ...updated,
       stockWarnings: stockWarnings.length > 0 ? stockWarnings : undefined,
@@ -323,6 +328,8 @@ router.patch("/api/branch-orders/:id/cancel", isAuthenticated, async (req: any, 
       status: "cancelled",
       rejectionReason: reason || "İptal edildi",
     } as any);
+
+    auditLog(req, { eventType: "branch_order.cancelled", action: "cancelled", resource: "branch_orders", resourceId: String(id), before: { status: order.status }, after: { status: "cancelled" }, details: { orderNumber: order.orderNumber, reason: reason || "İptal edildi" } });
 
     const supervisors = await db.select({ id: users.id }).from(users)
       .where(and(

@@ -43,19 +43,12 @@ The frontend utilizes React 18+ with TypeScript and Vite, employing Shadcn/ui (N
 - **Branch Health Score Dashboard**: 6-component deterministic scoring system with role-based scoping, time-range filters, and trend indicators.
 - **Coach Dashboard & Drill-Down**: Enhanced team progress with gate status badges, checklist completion rates, and mentor onboarding tracking.
 - **Guest Feedback System**: Public QR feedback form with branch-specific settings, notification integration, SLA monitoring, and anti-abuse measures.
-- **Mr. Dobody Agent Engine**: Autonomous AI agent system with "Read-Only AI, Write-Through Human" architecture, analyzing data and proposing actions requiring user approval. Includes rule-based suggestion engine (`server/lib/dobody-suggestions.ts`) with 12 rules across 5 role functions (barista, supervisor, HQ, coach, factory) and Quick Action API (`POST /api/quick-action`) for one-click approval with audit trail. **Sprint 17B Modular Skill Engine**: 8 modular skills (`server/agent/skills/`) — daily_coach, team_tracker, stock_assistant, customer_watcher, production_director, food_safety, training_optimizer, performance_coach. Skill registry with lazy loading, AI enrichment via OpenAI (gpt-4o-mini), proactive notification system with throttling (3/day/skill) and quiet hours (20:00-07:00 TR), scheduler integration (hourly/daily/weekly), dashboard skill-insight merging, and expanded Agent Center with stats and skill-based filtering.
-- **Role-Based Single-Screen Dashboards (Sprint 17A)**: Simplified landing pages per role after login. 5 new pages: `/benim-gunum` (barista/stajyer/bar_buddy), `/sube-ozet` (supervisor/mudur), `/hq-ozet` (ceo/cgo/admin), `/kocluk-paneli` (coach), `/franchise-ozet` (yatirimci). Each shows role-relevant KPIs, Mr. Dobody suggestions, and links to detailed dashboards. Login routing updated in `ROLE_HOME_ROUTES` map.
-  - **New Route Files**: `server/routes/my-day.ts`, `server/routes/branch-summary.ts`, `server/routes/hq-summary.ts`, `server/routes/coach-summary.ts`, `server/routes/franchise-summary.ts`, `server/routes/quick-action.ts`
-  - **New UI Pages**: `client/src/pages/benim-gunum.tsx`, `client/src/pages/sube-ozet.tsx`, `client/src/pages/hq-ozet.tsx`, `client/src/pages/kocluk-paneli.tsx`, `client/src/pages/franchise-ozet.tsx`
-- **CRM — Müşteri 360°**: A comprehensive customer relationship management module replacing ticket-based CRM, including dashboards, feedback, complaints, campaigns, SLA tracking, and analytics.
-- **Akademi Bildirim Zenginlestirme + Iletisim Merkezi**: Enriched academy notifications and a unified communication page (`/bildirimler`) with tabs for Notifications, Messages, and Announcements, including category filters and user preferences.
-- **Fabrika Uretim-Stok-Sevkiyat Zinciri + Gida Muhendisi Entegrasyonu**: Shipment system with status workflow, pre-dispatch stock validation, automatic inventory deduction (atomic transactions). Includes a 2-stage quality control process with technician review and food engineer final approval, HACCP check records, and expanded factory menu access for food engineers. LOT/Parti tracking system with full traceability (production→quality→shipment). Coffee roasting log system with charge numbers, weight loss tracking, and automatic stock updates. Semi-finished product anti-abuse (conversion ratio enforcement). SKT (expiry date) background job every 6 hours with notifications. Simplified 3-button kiosk flow (quick-start/complete/end).
-- **Branch Order & Stock Management (Sprint 16B Phase 2)**: Full branch order lifecycle (create→approve→ship→deliver→branch stock update). Branch orders with auto-generated order numbers, factory approval with stock checks. Branch inventory system with stock movements tracking, waste recording, count corrections, and expiring product alerts. Bombtea vs Franchise ownership distinction (internal vs sale transfer types). SKT validation on shipments with FIFO LOT auto-assignment. Notifications at every lifecycle stage. Factory Sevkiyat UI extended with "Şube Siparişleri" tab for order approval workflow. New Şube Sipariş & Stok page (`/sube/siparis-stok`) with 4 tabs.
-  - **New DB Tables**: `branch_inventory` (branch_id, product_id, current_stock, minimum_stock, unit), `branch_stock_movements` (movement history with lot/expiry tracking)
-  - **New Route Files**: `server/routes/branch-orders.ts` (CRUD + approve/cancel), `server/routes/branch-inventory.ts` (stock list, movements, waste, count, expiring)
-  - **New UI Pages**: `client/src/pages/sube/siparis-stok.tsx` (Sipariş Ver, Siparişlerim, Stok Durumu, Stok Hareketleri tabs)
-  - **Permission Modules**: `branch_orders`, `branch_inventory` added to RBAC with role-specific access
-  - **Bombtea Logic**: `branches.ownershipType` column, Işıklar (id=5) = bombtea → internal transfers, all others = franchise → sale transfers
+- **Mr. Dobody Agent Engine**: Autonomous AI agent system with "Read-Only AI, Write-Through Human" architecture, analyzing data and proposing actions requiring user approval. Includes rule-based suggestion engine with 12 rules across 5 role functions and a Quick Action API for one-click approval with audit trail. Features a modular skill engine with 8 skills, AI enrichment via OpenAI (gpt-4o-mini), proactive notification system with throttling and quiet hours, scheduler integration, and an expanded Agent Center.
+- **Role-Based Single-Screen Dashboards**: Simplified landing pages per role after login, showing role-relevant KPIs, Mr. Dobody suggestions, and links to detailed dashboards.
+- **CRM — Müşteri 360°**: A comprehensive customer relationship management module including dashboards, feedback, complaints, campaigns, SLA tracking, and analytics.
+- **Akademi Bildirim Zenginlestirme + Iletisim Merkezi**: Enriched academy notifications and a unified communication page with tabs for Notifications, Messages, and Announcements.
+- **Fabrika Uretim-Stok-Sevkiyat Zinciri + Gida Muhendisi Entegrasyonu**: Shipment system with status workflow, pre-dispatch stock validation, automatic inventory deduction, 2-stage quality control, HACCP check records, LOT/Parti tracking, coffee roasting log, semi-finished product anti-abuse, SKT background job with notifications, and simplified 3-button kiosk flow.
+- **Branch Order & Stock Management**: Full branch order lifecycle (create→approve→ship→deliver→branch stock update) with auto-generated order numbers and factory approval. Branch inventory system with stock movements, waste recording, count corrections, expiring product alerts, Bombtea vs Franchise ownership distinction, SKT validation on shipments with FIFO LOT auto-assignment, and notifications at every lifecycle stage.
 
 ### System Design Choices
 - **Health Score Calculation**: Real-time scores based on recent faults and compliance.
@@ -64,6 +57,7 @@ The frontend utilizes React 18+ with TypeScript and Vite, employing Shadcn/ui (N
 - **State Management**: TanStack Query for server state and localStorage for theme persistence.
 - **Photo Upload**: Persistent storage on AWS S3 via an ObjectUploader component.
 - **Backup System**: Daily automatic backups to object storage with a restore pipeline.
+- **Security Hardening**: CSP headers, Permissions-Policy, Referrer-Policy, CORS whitelist, expanded rate limiting, session fixation protection, expanded audit logging, and Web Push notifications with VAPID keys and quiet hours.
 - **API Security**: Rate limiting via express-rate-limit and Factory RBAC for data access.
 - **Transaction Safety**: Atomic operations for factory batch completion, verification, and machine self-selection using Drizzle transactions.
 - **RAG Knowledge Base**: Vector-based semantic search using OpenAI embeddings.
@@ -80,10 +74,10 @@ The frontend utilizes React 18+ with TypeScript and Vite, employing Shadcn/ui (N
 - **Academy HQ Role Alignment**: HQ roles see role-appropriate Academy content and professional development paths.
 - **Dashboard Role Routing**: Explicit dashboard mapping for HQ roles, with branch roles getting a CardGridHub with role-filtered widgets.
 - **Sidebar Role Filtering**: Backend service filters sidebar menu items based on user roles and permissions.
-- **Hub-Spoke Sidebar Navigation**: Sections with 4+ items collapse into hub links, showing card grids from the `/api/me/menu` API.
-- **Favorites System**: localStorage-based page favorites with star toggle (max 8), sidebar "Favorilerim" section.
-- **Command Palette (Ctrl+K)**: `GlobalSearchModal` with Turkish fuzzy search, page/menu results, DB object search, and keyboard navigation.
-- **İK URL Tab Routing**: İK page (`/ik/:tab?`) supports deep-linking to specific tabs via URL parameters.
+- **Hub-Spoke Sidebar Navigation**: Sections with 4+ items collapse into hub links, showing card grids.
+- **Favorites System**: localStorage-based page favorites with star toggle.
+- **Command Palette (Ctrl+K)**: Global search modal with Turkish fuzzy search, page/menu results, DB object search, and keyboard navigation.
+- **İK URL Tab Routing**: İK page supports deep-linking to specific tabs via URL parameters.
 - **Feedback Form Settings**: Seeded settings for branches with categories, photo upload, location verification, multi-language support, and anonymous defaults.
 - **Feedback SLA System**: Hourly background job checks for overdue feedback responses and sends critical notifications with per-user DB-level deduplication.
 - **Feedback Pattern Analysis**: Weekly job analyzes 30-day category averages per branch for alerts and improvement detection.

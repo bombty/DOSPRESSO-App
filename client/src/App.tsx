@@ -13,6 +13,7 @@ import { InboxDialog } from "@/components/inbox-dialog";
 import { AppHeader } from "@/components/app-header";
 import { QRScannerModal } from "@/components/qr-scanner-modal";
 import { GlobalAIAssistant } from "@/components/global-ai-assistant";
+import { PushPermissionBanner } from "@/components/push-permission";
 import { useAuth } from "@/hooks/useAuth";
 import { OfflineBanner } from "@/components/offline-banner";
 import { NetworkStatusProvider } from "@/hooks/useNetworkStatus";
@@ -571,6 +572,7 @@ export default function App() {
                 <AppContent />
               </BreadcrumbProvider>
               <Toaster />
+              <PushPermissionBanner />
             </TooltipProvider>
           </NetworkStatusProvider>
         </ThemeProvider>

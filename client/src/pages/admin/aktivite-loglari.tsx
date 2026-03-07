@@ -95,6 +95,19 @@ const EVENT_TYPE_GROUPS: Record<string, { label: string; icon: any; color: strin
   "backup.completed": { label: "Yedek Tamamlandı", icon: Database, color: "text-green-600 bg-green-500/10" },
   "backup.failed": { label: "Yedek Başarısız", icon: Database, color: "text-red-600 bg-red-500/10" },
   "backup.manual_triggered": { label: "Manuel Yedek", icon: Database, color: "text-blue-600 bg-blue-500/10" },
+  "user.password_changed": { label: "Şifre Değiştirildi", icon: Shield, color: "text-yellow-600 bg-yellow-500/10" },
+  "user.password_reset": { label: "Şifre Sıfırlandı", icon: Shield, color: "text-orange-600 bg-orange-500/10" },
+  "user.bulk_imported": { label: "Toplu İçe Aktarım", icon: UserPlus, color: "text-blue-600 bg-blue-500/10" },
+  "role.changed": { label: "Rol Değişikliği", icon: Shield, color: "text-purple-600 bg-purple-500/10" },
+  "permission.granted": { label: "Yetki Verildi", icon: Shield, color: "text-green-600 bg-green-500/10" },
+  "permission.revoked": { label: "Yetki Kaldırıldı", icon: Shield, color: "text-red-600 bg-red-500/10" },
+  "inventory.adjusted": { label: "Stok Düzeltme", icon: Database, color: "text-yellow-600 bg-yellow-500/10" },
+  "inventory.counted": { label: "Sayım Yapıldı", icon: ClipboardCheck, color: "text-blue-600 bg-blue-500/10" },
+  "shipment.created": { label: "Sevkiyat Oluşturuldu", icon: ClipboardCheck, color: "text-blue-600 bg-blue-500/10" },
+  "shipment.delivered": { label: "Sevkiyat Teslim", icon: ClipboardCheck, color: "text-green-600 bg-green-500/10" },
+  "order.approved": { label: "Sipariş Onaylandı", icon: ClipboardCheck, color: "text-green-600 bg-green-500/10" },
+  "order.rejected": { label: "Sipariş Reddedildi", icon: AlertTriangle, color: "text-red-600 bg-red-500/10" },
+  "order.created": { label: "Sipariş Oluşturuldu", icon: ClipboardCheck, color: "text-blue-600 bg-blue-500/10" },
 };
 
 const RESOURCE_OPTIONS = [
@@ -105,8 +118,13 @@ const RESOURCE_OPTIONS = [
   { value: "equipment", label: "Ekipmanlar" },
   { value: "shifts", label: "Vardiyalar" },
   { value: "roles", label: "Roller" },
+  { value: "permissions", label: "Yetkiler" },
   { value: "settings", label: "Ayarlar" },
   { value: "backup", label: "Yedekleme" },
+  { value: "inventory", label: "Stok/Envanter" },
+  { value: "branch_orders", label: "Şube Siparişleri" },
+  { value: "shipments", label: "Sevkiyatlar" },
+  { value: "factory", label: "Fabrika" },
 ];
 
 function getEventInfo(eventType: string) {
@@ -140,7 +158,8 @@ export default function AdminAktiviteLoglar() {
   const [selectedLog, setSelectedLog] = useState<AuditLogEntry | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
 
-  if (user?.role !== "admin" && user?.role !== "genel_mudur") {
+  const hqRoles = ["admin", "ceo", "cgo", "muhasebe_ik", "muhasebe", "satinalma", "coach", "marketing", "trainer", "kalite_kontrol", "gida_muhendisi", "fabrika_mudur", "teknik", "destek", "fabrika", "yatirimci_hq"];
+  if (!user?.role || !hqRoles.includes(user.role)) {
     return <Redirect to="/" />;
   }
 
@@ -157,9 +176,9 @@ export default function AdminAktiviteLoglar() {
   }, [page, searchTerm, eventTypeFilter, resourceFilter, startDate, endDate]);
 
   const { data, isLoading } = useQuery<AuditLogResponse>({
-    queryKey: ["/api/audit-logs", page, searchTerm, eventTypeFilter, resourceFilter, startDate, endDate],
+    queryKey: ["/api/admin/audit-logs", page, searchTerm, eventTypeFilter, resourceFilter, startDate, endDate],
     queryFn: async () => {
-      const res = await fetch(`/api/audit-logs?${buildQueryParams()}`);
+      const res = await fetch(`/api/admin/audit-logs?${buildQueryParams()}`);
       if (!res.ok) throw new Error("Failed to fetch audit logs");
       return res.json();
     },
@@ -167,6 +186,11 @@ export default function AdminAktiviteLoglar() {
 
   const { data: eventTypes } = useQuery<{ eventType: string; cnt: number }[]>({
     queryKey: ["/api/audit-logs/stats/event-types"],
+    queryFn: async () => {
+      const res = await fetch("/api/audit-logs/stats/event-types");
+      if (!res.ok) throw new Error("Failed to fetch event types");
+      return res.json();
+    },
   });
 
   const handleExportCSV = () => {

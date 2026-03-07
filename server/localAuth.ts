@@ -250,33 +250,37 @@ export async function setupAuth(app: Express, authLimiter?: any) {
       // Normal kullanıcı girişi başarılı
       if (user) {
         clearLoginAttempts(username);
-        req.login(user, (err) => {
-          if (err) {
-            console.error("[Auth] Login error:", err);
-            return res.status(500).json({ error: "Giriş işlemi başarısız" });
+        req.session.regenerate((regenErr) => {
+          if (regenErr) {
+            console.error("[Auth] Session regenerate error:", regenErr);
           }
-          
-          req.session.save((saveErr) => {
-            if (saveErr) {
-              console.error("[Auth] Session save error:", saveErr);
-              return res.status(500).json({ error: "Oturum kaydedilemedi" });
+          req.login(user, (err) => {
+            if (err) {
+              console.error("[Auth] Login error:", err);
+              return res.status(500).json({ error: "Giriş işlemi başarısız" });
             }
+          
+            req.session.save((saveErr) => {
+              if (saveErr) {
+                console.error("[Auth] Session save error:", saveErr);
+                return res.status(500).json({ error: "Oturum kaydedilemedi" });
+              }
             
-            auditLog(req, {
-              eventType: "auth.login_success",
-              action: "login",
-              resource: "auth",
-              resourceId: (user as any).id,
-              details: { username: (user as any).username, authType: "user" },
-            });
+              auditLog(req, {
+                eventType: "auth.login_success",
+                action: "login",
+                resource: "auth",
+                resourceId: (user as any).id,
+                details: { username: (user as any).username, authType: "user" },
+              });
 
-            generateTasksForUser((user as any).id).catch((err: any) => 
-              console.error("[TaskTrigger] Login hook error:", err.message)
-            );
+              generateTasksForUser((user as any).id).catch((err: any) => 
+                console.error("[TaskTrigger] Login hook error:", err.message)
+              );
 
-            return res.json({ 
-              success: true,
-              authType: 'user',
+              return res.json({ 
+                success: true,
+                authType: 'user',
               user: {
                 id: (user as any).id,
                 username: (user as any).username,
@@ -288,6 +292,7 @@ export async function setupAuth(app: Express, authLimiter?: any) {
             });
           });
         });
+        });
         return;
       }
       
@@ -295,28 +300,32 @@ export async function setupAuth(app: Express, authLimiter?: any) {
       const branch = await tryBranchLogin(username, password);
       
       if (branch) {
-        // Şube girişi başarılı - session'a şube bilgilerini kaydet
-        (req.session as any).branchAuth = {
-          authType: 'branch',
-          branchId: branch.id,
-          branchName: branch.name,
-          loginTime: new Date().toISOString(),
-        };
-        
-        req.session.save((saveErr) => {
-          if (saveErr) {
-            console.error("[Auth] Session save error:", saveErr);
-            return res.status(500).json({ error: "Oturum kaydedilemedi" });
+        req.session.regenerate((regenErr) => {
+          if (regenErr) {
+            console.error("[Auth] Branch session regenerate error:", regenErr);
           }
-          
-          return res.json({ 
-            success: true,
+          (req.session as any).branchAuth = {
             authType: 'branch',
-            branch: {
-              id: branch.id,
-              name: branch.name,
-            },
-            redirectTo: '/sube/dashboard'
+            branchId: branch.id,
+            branchName: branch.name,
+            loginTime: new Date().toISOString(),
+          };
+        
+          req.session.save((saveErr) => {
+            if (saveErr) {
+              console.error("[Auth] Session save error:", saveErr);
+              return res.status(500).json({ error: "Oturum kaydedilemedi" });
+            }
+          
+            return res.json({ 
+              success: true,
+              authType: 'branch',
+              branch: {
+                id: branch.id,
+                name: branch.name,
+              },
+              redirectTo: '/sube/dashboard'
+            });
           });
         });
         return;

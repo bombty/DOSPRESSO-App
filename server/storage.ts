@@ -3683,6 +3683,24 @@ export class DatabaseStorage implements IStorage {
       }
     }
     const [newNotification] = await db.insert(notifications).values(notification).returning();
+
+    try {
+      const { sendPushNotification, PUSH_ENABLED_TYPES } = await import('./lib/push-service');
+      if (PUSH_ENABLED_TYPES.has(notification.type)) {
+        const numericUserId = typeof notification.userId === 'string' ? parseInt(notification.userId, 10) : notification.userId;
+        if (!isNaN(numericUserId)) {
+          sendPushNotification(numericUserId, {
+            title: notification.title,
+            message: notification.message,
+            tag: notification.type,
+            link: notification.link || '/',
+            type: notification.type,
+          }).catch(err => console.error('[Push] Send failed:', err.message));
+        }
+      }
+    } catch (e) {
+    }
+
     return newNotification;
   }
 

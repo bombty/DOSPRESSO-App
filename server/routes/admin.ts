@@ -628,6 +628,8 @@ const router = Router();
       const validatedUsers = csvUsers.map(u => userSchema.parse(u));
       const imported = await storage.bulkImportUsers(validatedUsers);
 
+      auditLog(req, { eventType: "user.bulk_import", action: "bulk_import", resource: "users", details: { importedCount: imported.length, roles: [...new Set(validatedUsers.map((u: any) => u.role))] } });
+
       res.json({ imported: imported.length, users: imported });
     } catch (error: any) {
       console.error("Error bulk importing users:", error);
@@ -2975,7 +2977,7 @@ const router = Router();
   router.get('/api/audit-logs/export', isAuthenticated, async (req: any, res) => {
     try {
       const user = req.user;
-      if (user.role !== 'admin' && user.role !== 'genel_mudur') {
+      if (!isHQRole(user.role as UserRoleType)) {
         return res.status(403).json({ error: 'Yetkiniz yok' });
       }
 
@@ -3063,7 +3065,7 @@ const router = Router();
   router.get('/api/audit-logs/stats/event-types', isAuthenticated, async (req: any, res) => {
     try {
       const user = req.user;
-      if (user.role !== 'admin' && user.role !== 'genel_mudur') {
+      if (!isHQRole(user.role as UserRoleType)) {
         return res.status(403).json({ error: 'Yetkiniz yok' });
       }
 
@@ -3084,7 +3086,7 @@ const router = Router();
   router.get('/api/audit-logs/:id', isAuthenticated, async (req: any, res) => {
     try {
       const user = req.user;
-      if (user.role !== 'admin' && user.role !== 'genel_mudur') {
+      if (!isHQRole(user.role as UserRoleType)) {
         return res.status(403).json({ error: 'Yetkiniz yok' });
       }
 
@@ -3128,10 +3130,10 @@ const router = Router();
     }
   });
 
-  router.get('/api/audit-logs', isAuthenticated, async (req: any, res) => {
+  router.get('/api/admin/audit-logs', isAuthenticated, async (req: any, res) => {
     try {
       const user = req.user;
-      if (user.role !== 'admin' && user.role !== 'genel_mudur') {
+      if (!isHQRole(user.role as UserRoleType)) {
         return res.status(403).json({ error: 'Yetkiniz yok' });
       }
 
@@ -3143,6 +3145,9 @@ const router = Router();
 
       if (req.query.eventType) {
         conditions.push(sql`${auditLogs.eventType} = ${req.query.eventType}`);
+      }
+      if (req.query.action) {
+        conditions.push(eq(auditLogs.action, req.query.action as string));
       }
       if (req.query.userId) {
         conditions.push(eq(auditLogs.userId, req.query.userId as string));
