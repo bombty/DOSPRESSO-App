@@ -1,0 +1,322 @@
+Replit'e yapıştır:
+
+---
+
+## TASK: Sprint 20A — Critical UI Fixes (Audit-Driven)
+
+Based on a comprehensive 26-role UI audit, fix the following critical issues. These are all display/routing bugs — no new features.
+
+### T001 — Fix 40+ ASCII Turkish Display Strings (~2 hours)
+
+**Problem:** Across ALL landing pages, Turkish special characters are missing. Users see "Sube Ozeti" instead of "Şube Özeti".
+
+**Fix these exact strings in these exact files:**
+
+**benim-gunum.tsx:**
+- "Islem tamamlandi" → "İşlem tamamlandı"
+- "Veriler yuklenemedi" → "Veriler yüklenemedi"
+- "tamamlandi" → "tamamlandı"
+- "Bugun Yapilacaklar" → "Bugün Yapılacaklar"
+- "modul kaldi" → "modül kaldı"
+- "Detayli Dashboard" → "Detaylı Dashboard"
+
+**sube-ozet.tsx:**
+- "Sube Ozeti" → "Şube Özeti"
+- "Musteri Puani" → "Müşteri Puanı"
+- "degerlendirme" → "değerlendirme"
+- "Sube bilgisi bulunamadi" → "Şube bilgisi bulunamadı"
+- "Stok Uyarilari" → "Stok Uyarıları"
+- "Mr. Dobody Onerileri" → "Mr. Dobody Önerileri"
+- "Detayli Dashboard" → "Detaylı Dashboard"
+
+**hq-ozet.tsx:**
+- "HQ Genel Bakis" → "HQ Genel Bakış"
+- "Fabrika Ozet" → "Fabrika Özet"
+- "Bugunun Uretimi" → "Bugünün Üretimi"
+- "Fire Orani" → "Fire Oranı"
+- "Bekleyen Siparis" → "Bekleyen Sipariş"
+- "Sube Siralamasi" → "Şube Sıralaması"
+
+**franchise-ozet.tsx:**
+- "Franchise Ozet" → "Franchise Özet"
+- "Goruntulecek sube bulunamadi" → "Görüntülenecek şube bulunamadı"
+
+**kocluk-paneli.tsx:**
+- "Kocluk Paneli" → "Koçluk Paneli"
+- "sube takip ediliyor" → "şube takip ediliyor"
+- "Tum personel normal durumda" → "Tüm personel normal durumda"
+- "Incele" → "İncele"
+- "Detayli Koc Dashboard" → "Detaylı Koç Dashboard"
+
+**menu-service.ts + bottom-nav.tsx:**
+- "Iletisim Merkezi" → "İletişim Merkezi"
+- "Iletisim" → "İletişim" (bottom-nav.tsx)
+
+**hq/kiosk.tsx:**
+- "Dis Gorevde" → "Dış Görevde"
+
+**Also do a FULL global scan and fix ALL remaining ASCII Turkish in user-visible strings:**
+```bash
+grep -rn '"[^"]*[Oo]zet[^"]*"\|"[^"]*[Dd]egerlendirme[^"]*"\|"[^"]*[Uu]retim[^"]*"\|"[^"]*[Ii]letisim[^"]*"\|"[^"]*[Ss]ube[^"]*"\|"[^"]*[Mm]usteri[^"]*"\|"[^"]*[Bb]asarili[^"]*"\|"[^"]*[Gg]orev[^"]*"\|"[^"]*tamamlandi[^"]*"\|"[^"]*yuklenemedi[^"]*"\|"[^"]*bulunamadi[^"]*"\|"[^"]*Ozel[^"]*"\|"[^"]*Gonder[^"]*"\|"[^"]*Duzelt[^"]*"\|"[^"]*Guncelle[^"]*"' client/src/ --include="*.tsx" | grep -v "className\|import\|route\|path\|slug\|url\|node_modules"
+```
+Fix ALL results that are user-visible strings. Do NOT change URLs, route paths, classNames, or import statements — only displayed text.
+
+---
+
+### T002 — Fix Logo/Home Button Routing (~1 hour)
+
+**Problem:** Clicking the DOSPRESSO logo routes CEO→/ceo-command-center, CGO→/cgo-command-center, but ALL other roles go to `/` (generic CardGridHub). A supervisor clicking the logo sees an admin overview instead of their branch dashboard.
+
+**Fix:** Logo click should route to each role's landing page using the same ROLE_HOME_ROUTES mapping used by login redirect.
+
+Find the logo click handler:
+```bash
+grep -rn "logo\|brand.*click\|header.*navigate\|home.*link" client/src/components/header* client/src/components/Header* client/src/components/layout* --include="*.tsx" | grep -i "navigate\|href\|to=" | head -20
+```
+
+Find the existing ROLE_HOME_ROUTES:
+```bash
+grep -rn "ROLE_HOME_ROUTES\|roleHome" client/src/ --include="*.tsx" --include="*.ts" | head -10
+```
+
+Update the logo to navigate to:
+- stajyer, bar_buddy, barista → /benim-gunum
+- supervisor, supervisor_buddy, mudur → /sube-ozet
+- ceo → /ceo-command-center
+- cgo → /cgo-command-center
+- coach → /kocluk-paneli
+- trainer → /hq-dashboard/trainer
+- yatirimci_hq, yatirimci_branch → /franchise-ozet
+- fabrika_mudur, fabrika → /fabrika/dashboard
+- fabrika_operator → /fabrika/kiosk
+- muhasebe, muhasebe_ik → /merkez-dashboard
+- kalite_kontrol → /kalite-kontrol-dashboard
+- satinalma → /hq-dashboard/satinalma
+- marketing → /hq-dashboard/marketing
+- gida_muhendisi → /hq-dashboard
+- admin → /hq-ozet
+- destek → /hq-dashboard (fallback until dedicated page exists)
+- teknik → /hq-dashboard (fallback until dedicated page exists)
+- All unknown roles → /hq-ozet (safe default)
+
+---
+
+### T003 — Add Missing Sidebar Definitions for 3 Roles (~1 hour)
+
+**Problem:** `fabrika_sorumlu`, `fabrika_personel`, and `admin` have NO entry in SIDEBAR_ALLOWED_ITEMS. They see ALL unfiltered sidebar items — potentially 40+ items.
+
+**Fix in server/menu-service.ts**, add these to SIDEBAR_ALLOWED_ITEMS:
+
+**admin:**
+```
+['dashboard', 'branches-list', 'reports', 'performance-dashboard', 'hr', 'training-academy', 'knowledge-base', 'branch-health', 'customer-satisfaction', 'ai-assistant', 'agent-center', 'crm-main', 'notifications', 'usage-guide', 'hq-support']
+```
+
+**fabrika_sorumlu:**
+```
+['factory-dashboard', 'factory-kiosk', 'factory-quality', 'factory-stations', 'notifications', 'usage-guide', 'hq-support']
+```
+
+**fabrika_personel:**
+```
+['factory-dashboard', 'factory-kiosk', 'notifications', 'usage-guide']
+```
+
+---
+
+### T004 — Fix Landing Pages for Destek & Teknik Roles (~1 hour)
+
+**Problem:** `destek` and `teknik` both land on `/` which shows generic CardGridHub — wrong content.
+
+**Fix:**
+
+1. Find ROLE_HOME_ROUTES:
+```bash
+grep -rn "ROLE_HOME_ROUTES" client/src/ --include="*.tsx" --include="*.ts" | head -10
+```
+
+2. Check if dedicated dashboard components exist:
+```bash
+grep -rn "TeknikDashboard\|DestekDashboard\|teknik.*dashboard\|destek.*dashboard" client/src/ --include="*.tsx" | head -10
+```
+
+3. If TeknikDashboard already exists in hq-dashboard.tsx, update ROLE_HOME_ROUTES:
+- teknik → '/hq-dashboard/teknik'
+- destek → '/hq-dashboard/destek'
+
+4. If these components do NOT exist, create simple dedicated sections in hq-dashboard.tsx:
+
+**TeknikDashboard:** Show open fault tickets, equipment status, branch list
+**DestekDashboard:** Show open support tickets, branch list, recent activity
+
+---
+
+### T005 — Add PDKS & Payroll to Muhasebe Sidebar (~30 min)
+
+**Problem:** Sprint 19B added PDKS (/pdks) and Payroll (/maas) pages but they were NOT added to muhasebe sidebar.
+
+**Fix:**
+
+1. Check what menu item keys exist for PDKS/payroll:
+```bash
+grep -rn "pdks\|payroll\|maas\|bordro" server/menu-service.ts | head -10
+```
+
+2. If menu items exist, add them to SIDEBAR_ALLOWED_ITEMS for:
+- `muhasebe` role: add pdks + maas/payroll items
+- `muhasebe_ik` role: add pdks + maas/payroll items
+
+3. If NO menu items exist for PDKS/payroll, first add them to the menu blueprint:
+- Key: 'pdks', Label: 'PDKS', Route: '/pdks', Icon: appropriate icon
+- Key: 'maas', Label: 'Maaş Hesaplama', Route: '/maas', Icon: appropriate icon
+Then add these keys to muhasebe and muhasebe_ik SIDEBAR_ALLOWED_ITEMS.
+
+---
+
+### T006 — Add Dobody Suggestions to Franchise Summary (~1 hour)
+
+**Problem:** franchise-ozet.tsx has NO Mr. Dobody suggestions. Investors see no AI recommendations. All other landing pages have Dobody integrated.
+
+**Fix:**
+
+1. Check existing Dobody integration pattern in other landing pages:
+```bash
+grep -rn "suggestion\|dobody\|Dobody\|DobodySuggestion" client/src/pages/sube-ozet.tsx client/src/pages/hq-ozet.tsx | head -10
+```
+
+2. Check franchise summary API:
+```bash
+grep -rn "suggestion\|dobody" server/routes/franchise-summary.ts 2>/dev/null | head -10
+```
+
+3. Add investor-relevant suggestions to franchise summary API. Create `getInvestorSuggestions(userId, branchIds)` in dobody-suggestions.ts with rules like:
+- "Şubenizin müşteri puanı son 7 günde düştü"
+- "Personel devamsızlık oranı normalin üzerinde"
+- "Stok maliyetinde artış trendi var"
+- If no issues found: "Şubeleriniz normal durumda, tüm metrikler hedef dahilinde"
+
+4. Add DobodySuggestionList component to franchise-ozet.tsx using the same pattern as sube-ozet.tsx
+
+---
+
+### T007 — Fix Duplicate Warning in Supervisor Dashboard (~30 min)
+
+**Problem:** In sube-ozet, warnings like "Cihan Kolakan yalnız çalışamaz" appear TWICE with identical text.
+
+**Fix:**
+
+1. Find where warnings are generated:
+```bash
+grep -rn "yalniz\|yalnız\|warning\|uyari" server/routes/branch-summary.ts | head -15
+```
+
+2. Add deduplication before returning warnings to frontend. Either:
+- In the API: deduplicate by message text before sending response
+- In the frontend: filter unique warnings before rendering
+
+```typescript
+// Dedup by message content
+const uniqueWarnings = warnings.filter((w, i, arr) => 
+  arr.findIndex(x => x.message === w.message && x.type === w.type) === i
+);
+```
+
+---
+
+### T008 — Fix HQ Role Users with Incorrect branch_id (~15 min)
+
+**Problem:** Trainer user (Ece Özdemir) has branch_id=23. HQ roles should NOT have branch assignments — this causes data scoping issues.
+
+**Fix:**
+
+1. First check which HQ users have branch_id set:
+```sql
+SELECT id, username, full_name, role, branch_id FROM users 
+WHERE role IN ('trainer', 'coach', 'ceo', 'cgo', 'admin', 'marketing', 'muhasebe', 'muhasebe_ik', 'satinalma', 'kalite_kontrol', 'gida_muhendisi', 'teknik', 'destek')
+AND branch_id IS NOT NULL;
+```
+
+2. Check code handles NULL branch_id for HQ roles:
+```bash
+grep -rn "branch_id\|branchId" server/routes/ --include="*.ts" | grep -i "null\|undefined\|optional" | head -10
+```
+
+3. If safe, set branch_id to NULL for HQ roles:
+```sql
+UPDATE users SET branch_id = NULL 
+WHERE role IN ('trainer', 'coach', 'ceo', 'cgo', 'admin', 'marketing', 'muhasebe', 'muhasebe_ik', 'satinalma', 'kalite_kontrol', 'gida_muhendisi', 'teknik', 'destek')
+AND branch_id IS NOT NULL;
+```
+
+**IMPORTANT:** If any HQ role legitimately needs a branch_id (e.g., coach assigned to specific branches), do NOT null it. Only fix obviously wrong assignments like trainer having a single branch.
+
+---
+
+### T009 — Fix Admin Dashboard Broken Links (~15 min)
+
+**Problem:** Admin dashboard has 2 quick-action buttons with wrong URLs:
+- "Servis Mail Ayarları" links to `/admin/servis-mail-ayarlari` but mega module tab is `/admin/servis-mail`
+- "Yapay Zeka" links to `/admin/yapay-zeka-ayarlari` but mega module tab is `/admin/yapay-zeka`
+
+**Fix:** In admin/index.tsx, find the quick action buttons and update URLs:
+```bash
+grep -rn "servis-mail-ayarlari\|yapay-zeka-ayarlari" client/src/pages/admin/index.tsx | head -5
+```
+- Change `/admin/servis-mail-ayarlari` → `/admin/servis-mail`
+- Change `/admin/yapay-zeka-ayarlari` → `/admin/yapay-zeka`
+
+---
+
+### VERIFICATION
+
+After ALL fixes, run these checks:
+
+```bash
+# 1. ASCII Turkish scan — should return 0 user-visible results
+grep -rn '"[^"]*Ozet[^"]*"\|"[^"]*tamamlandi[^"]*"\|"[^"]*yuklenemedi[^"]*"\|"[^"]*bulunamadi[^"]*"\|"[^"]*Iletisim[^"]*"\|"[^"]*Musteri[^"]*"\|"[^"]*Sube[^"]*"' client/src/pages/ --include="*.tsx" | grep -v "className\|import\|route\|path\|slug\|url"
+
+# 2. Verify fabrika_sorumlu has sidebar definition
+grep -A 5 "fabrika_sorumlu" server/menu-service.ts
+
+# 3. Verify fabrika_personel has sidebar definition
+grep -A 5 "fabrika_personel" server/menu-service.ts
+
+# 4. Verify admin has sidebar definition
+grep -A 5 "'admin'" server/menu-service.ts | head -10
+
+# 5. Verify muhasebe sidebar includes pdks/maas
+grep -A 10 "'muhasebe'" server/menu-service.ts
+
+# 6. Verify admin dashboard links are correct
+grep -n "servis-mail\|yapay-zeka" client/src/pages/admin/index.tsx
+```
+
+### PRIORITY ORDER: T001 → T002 → T003 → T005 → T009 → T004 → T006 → T007 → T008
+
+### DO NOT BREAK:
+- Any existing landing page layout or functionality
+- Login redirect system (ROLE_HOME_ROUTES)
+- Mr. Dobody suggestions on existing pages (sube-ozet, hq-ozet, kocluk-paneli)
+- Sidebar items for roles that are already correct
+- Bottom nav configuration
+- Admin mega module tab structure
+- Any Sprint 1-19B features
+- Factory kiosk system
+- Quality control 2-stage flow
+
+### ACCEPTANCE CRITERIA:
+- [ ] 0 ASCII Turkish errors on all 5 landing pages + menu-service + bottom-nav
+- [ ] Logo routes to role-specific landing page for ALL 26 roles
+- [ ] fabrika_sorumlu, fabrika_personel, admin have explicit SIDEBAR_ALLOWED_ITEMS
+- [ ] destek and teknik have proper landing pages (not generic /)
+- [ ] muhasebe and muhasebe_ik sidebar includes PDKS and payroll
+- [ ] franchise-ozet shows Mr. Dobody suggestions section
+- [ ] No duplicate warnings in supervisor dashboard
+- [ ] HQ role users with wrong branch_id are fixed
+- [ ] Admin dashboard quick-action links are correct
+- [ ] 0 console errors on all pages
+- [ ] All 26 roles can login and see appropriate content
+
+---
+
+Bunu Replit'e yapıştır. 9 task, tahmini toplam ~8 saat. Sonucu getirince doğrularız.
