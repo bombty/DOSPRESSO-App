@@ -662,11 +662,11 @@ const SIDEBAR_ALLOWED_ITEMS: Partial<Record<UserRoleType, string[]>> = {
   ],
   trainer: [
     'dashboard', 'training-academy', 'knowledge-base', 'reports',
-    'branches-list', 'notifications', 'usage-guide', 'hq-support', 'ai-assistant',
+    'branches-list', 'branch-inspection', 'notifications', 'usage-guide', 'hq-support', 'ai-assistant',
   ],
   kalite_kontrol: [
     'dashboard', 'quality-control', 'food-safety', 'equipment', 'faults',
-    'product-complaints', 'reports', 'branch-health', 'branch-inspection',
+    'product-complaints', 'reports', 'factory-quality',
     'notifications', 'usage-guide', 'hq-support', 'crm-main',
   ],
   gida_muhendisi: [

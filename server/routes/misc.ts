@@ -2867,9 +2867,10 @@ const normalizeTimeGlobal = (timeStr: string): string => {
     try {
       const user = req.user!;
       
-      // Only HQ coach/admin can create audits
-      if (!isHQRole(user.role as UserRoleType) || (user.role !== 'coach' && user.role !== 'admin')) {
-        return res.status(403).json({ message: "Sadece coach veya admin denetim oluşturabilir" });
+      // Only HQ coach/admin/trainer/cgo can create audits
+      const auditRoles = ['coach', 'admin', 'trainer', 'cgo'];
+      if (!isHQRole(user.role as UserRoleType) || !auditRoles.includes(user.role)) {
+        return res.status(403).json({ message: "Sadece coach, trainer veya admin denetim oluşturabilir" });
       }
 
       const validatedData = insertQualityAuditSchema.parse(req.body);
