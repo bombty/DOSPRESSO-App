@@ -154,12 +154,87 @@ function getRolesForBranch(branchId: number | undefined): string[] {
 
 const VALID_IK_TABS = ["personel", "disiplin", "onboarding", "documents", "mesai", "ise-alim", "istten-cikis", "izinler", "maas"];
 
+type TabGroupKey = "personel" | "izin-mesai" | "maas-bordro" | "disiplin-islemler" | "vardiya";
+
+interface TabGroupDef {
+  key: TabGroupKey;
+  label: string;
+  icon: typeof Users;
+  tabs: string[];
+}
+
+const TAB_GROUPS: TabGroupDef[] = [
+  { key: "personel", label: "Personel", icon: Users, tabs: ["personel", "documents"] },
+  { key: "izin-mesai", label: "İzin & Mesai", icon: Calendar, tabs: ["izinler", "mesai"] },
+  { key: "maas-bordro", label: "Maaş & Bordro", icon: Star, tabs: ["maas", "onboarding"] },
+  { key: "disiplin-islemler", label: "Disiplin & İşlemler", icon: FileWarning, tabs: ["disiplin", "ise-alim", "istten-cikis"] },
+  { key: "vardiya", label: "Vardiya", icon: Clock, tabs: [] },
+];
+
+const TAB_LABELS: Record<string, { label: string; icon: typeof Users }> = {
+  personel: { label: "Personel", icon: Users },
+  documents: { label: "Özlük", icon: FolderOpen },
+  izinler: { label: "İzinler", icon: Calendar },
+  mesai: { label: "Mesai", icon: Clock },
+  maas: { label: "Maaş", icon: Star },
+  onboarding: { label: "Onboarding", icon: UserCheck },
+  disiplin: { label: "Disiplin", icon: FileWarning },
+  "ise-alim": { label: "İşe Alım", icon: UserPlus },
+  "istten-cikis": { label: "Çıkış", icon: UserMinus },
+};
+
+function getGroupForTab(tab: string): TabGroupKey {
+  for (const group of TAB_GROUPS) {
+    if (group.tabs.includes(tab)) return group.key;
+  }
+  return "personel";
+}
+
+function getTabVisibility(role: string | undefined): Set<string> {
+  const visible = new Set(["personel", "documents", "disiplin", "onboarding"]);
+  if (!role) return visible;
+  const hq = isHQRole(role as any) || role === "admin";
+  if (hq) {
+    ["izinler", "mesai", "maas", "ise-alim", "istten-cikis"].forEach(t => visible.add(t));
+  }
+  if (role === "supervisor" || role === "supervisor_buddy") {
+    visible.add("mesai");
+  }
+  if (role === "supervisor") {
+    visible.add("ise-alim");
+  }
+  if (role === "muhasebe") {
+    visible.add("maas");
+  }
+  return visible;
+}
+
+function getVisibleGroups(role: string | undefined): TabGroupKey[] {
+  if (!role) return ["personel"];
+  if (role === "admin" || role === "muhasebe_ik") {
+    return ["personel", "izin-mesai", "maas-bordro", "disiplin-islemler", "vardiya"];
+  }
+  const branchRoleList = ["mudur", "supervisor", "supervisor_buddy", "barista", "bar_buddy", "stajyer"];
+  if (branchRoleList.includes(role)) {
+    return ["personel", "izin-mesai"];
+  }
+  if (role === "muhasebe") {
+    return ["personel", "maas-bordro"];
+  }
+  return ["personel"];
+}
+
 export default function IKPage() {
   const { user } = useAuth();
   const { toast } = useToast();
   const params = useParams<{ tab?: string }>();
   const [, navigate] = useLocation();
   const activeTab = VALID_IK_TABS.includes(params.tab || "") ? params.tab! : "personel";
+
+  const visibleGroupKeys = useMemo(() => getVisibleGroups(user?.role), [user?.role]);
+  const tabVisibility = useMemo(() => getTabVisibility(user?.role), [user?.role]);
+  const visibleGroups = useMemo(() => TAB_GROUPS.filter(g => visibleGroupKeys.includes(g.key) && g.tabs.some(t => tabVisibility.has(t))), [visibleGroupKeys, tabVisibility]);
+  const [activeGroup, setActiveGroup] = useState<TabGroupKey>(() => getGroupForTab(activeTab));
 
   // Supervisor için şube rolü kontrolü
   const isBranchRole = user?.role && !isHQRole(user.role as any) && user.role !== 'admin';
@@ -660,58 +735,68 @@ export default function IKPage() {
           </div>
         </div>
 
-      {/* Main Tabs Navigation */}
-      <Tabs value={activeTab} onValueChange={(v) => navigate(`/ik/${v}`, { replace: true })} className="w-full space-y-4">
-        <div className="overflow-x-auto -mx-1 px-1">
-          <TabsList className="inline-flex h-auto gap-1 p-1 bg-muted/50 rounded-lg whitespace-nowrap" data-testid="ik-main-tabs">
-            <TabsTrigger value="personel" className="flex items-center gap-1.5 px-3 py-1.5 text-xs sm:text-sm" data-testid="tab-personel">
-              <Users className="h-3.5 w-3.5 flex-shrink-0" />
-              Personel
-              <Badge variant="secondary" className="ml-0.5 text-[10px] px-1.5 py-0">{filteredEmployees.length}</Badge>
-            </TabsTrigger>
-            <TabsTrigger value="disiplin" className="flex items-center gap-1.5 px-3 py-1.5 text-xs sm:text-sm" data-testid="tab-disiplin">
-              <FileWarning className="h-3.5 w-3.5 flex-shrink-0" />
-              Disiplin
-            </TabsTrigger>
-            <TabsTrigger value="onboarding" className="flex items-center gap-1.5 px-3 py-1.5 text-xs sm:text-sm" data-testid="tab-onboarding">
-              <UserCheck className="h-3.5 w-3.5 flex-shrink-0" />
-              Onboarding
-            </TabsTrigger>
-            <TabsTrigger value="documents" className="flex items-center gap-1.5 px-3 py-1.5 text-xs sm:text-sm" data-testid="tab-documents">
-              <FolderOpen className="h-3.5 w-3.5 flex-shrink-0" />
-              Özlük
-            </TabsTrigger>
-            {canViewAttendance && (
-              <TabsTrigger value="mesai" className="flex items-center gap-1.5 px-3 py-1.5 text-xs sm:text-sm" data-testid="tab-mesai">
-                <Clock className="h-3.5 w-3.5 flex-shrink-0" />
-                Mesai
-              </TabsTrigger>
-            )}
-            {(isHQRole(user?.role as any) || user?.role === 'supervisor') && (
-              <TabsTrigger value="ise-alim" className="flex items-center gap-1.5 px-3 py-1.5 text-xs sm:text-sm" data-testid="tab-ise-alim">
-                <UserPlus className="h-3.5 w-3.5 flex-shrink-0" />
-                İşe Alım
-              </TabsTrigger>
-            )}
-            {isHQRole(user?.role as any) && (
-              <TabsTrigger value="istten-cikis" className="flex items-center gap-1.5 px-3 py-1.5 text-xs sm:text-sm" data-testid="tab-istten-cikis">
-                <UserMinus className="h-3.5 w-3.5 flex-shrink-0" />
-                Çıkış
-              </TabsTrigger>
-            )}
-            {(isHQRole(user?.role as any) || user?.role === 'admin' || user?.role === 'supervisor') && (
-              <TabsTrigger value="izinler" className="flex items-center gap-1.5 px-3 py-1.5 text-xs sm:text-sm" data-testid="tab-izinler">
-                <Calendar className="h-3.5 w-3.5 flex-shrink-0" />
-                İzinler
-              </TabsTrigger>
-            )}
-            {(isHQRole(user?.role as any) || user?.role === 'admin' || user?.role === 'muhasebe') && (
-              <TabsTrigger value="maas" className="flex items-center gap-1.5 px-3 py-1.5 text-xs sm:text-sm" data-testid="tab-maas">
-                <Star className="h-3.5 w-3.5 flex-shrink-0" />
-                Maaş
-              </TabsTrigger>
-            )}
-          </TabsList>
+      {/* Main Tabs Navigation - Grouped */}
+      <Tabs value={activeTab} onValueChange={(v) => {
+        navigate(`/ik/${v}`, { replace: true });
+        setActiveGroup(getGroupForTab(v));
+      }} className="w-full space-y-4">
+        <div className="space-y-2">
+          <div className="overflow-x-auto -mx-1 px-1">
+            <div className="inline-flex h-auto gap-1 p-1 bg-muted/50 rounded-lg whitespace-nowrap" data-testid="ik-group-tabs">
+              {visibleGroups.map((group) => {
+                const GroupIcon = group.icon;
+                return (
+                  <Button
+                    key={group.key}
+                    variant={activeGroup === group.key ? "default" : "ghost"}
+                    size="sm"
+                    className="flex items-center gap-1.5 text-xs sm:text-sm"
+                    onClick={() => {
+                      setActiveGroup(group.key);
+                      const firstVisible = group.tabs.find(t => tabVisibility.has(t));
+                      if (firstVisible) {
+                        navigate(`/ik/${firstVisible}`, { replace: true });
+                      }
+                    }}
+                    data-testid={`group-${group.key}`}
+                  >
+                    <GroupIcon className="h-3.5 w-3.5 flex-shrink-0" />
+                    {group.label}
+                  </Button>
+                );
+              })}
+            </div>
+          </div>
+          {(() => {
+            const currentGroup = TAB_GROUPS.find(g => g.key === activeGroup);
+            const groupTabs = (currentGroup?.tabs || []).filter(t => tabVisibility.has(t));
+            if (groupTabs.length === 0) return null;
+            return (
+              <div className="overflow-x-auto -mx-1 px-1">
+                <TabsList className="inline-flex h-auto gap-1 p-1 bg-muted/50 rounded-lg whitespace-nowrap" data-testid="ik-main-tabs">
+                  {groupTabs.map((tabValue) => {
+                    const tabDef = TAB_LABELS[tabValue];
+                    if (!tabDef) return null;
+                    const TabIcon = tabDef.icon;
+                    return (
+                      <TabsTrigger
+                        key={tabValue}
+                        value={tabValue}
+                        className="flex items-center gap-1.5 px-3 py-1.5 text-xs sm:text-sm"
+                        data-testid={`tab-${tabValue}`}
+                      >
+                        <TabIcon className="h-3.5 w-3.5 flex-shrink-0" />
+                        {tabDef.label}
+                        {tabValue === "personel" && (
+                          <Badge variant="secondary" className="ml-0.5 text-[10px] px-1.5 py-0">{filteredEmployees.length}</Badge>
+                        )}
+                      </TabsTrigger>
+                    );
+                  })}
+                </TabsList>
+              </div>
+            );
+          })()}
         </div>
 
         {/* Tab 1: Personel Listesi */}

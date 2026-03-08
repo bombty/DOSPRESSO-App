@@ -1041,45 +1041,74 @@ export default function ModuleDetail() {
       </div>
 
       {/* Content Tabs */}
-      <Tabs defaultValue="overview" className="w-full">
+      {(() => {
+        const userRole = user?.role as string;
+        const allEditorTabs = ['overview', 'objectives', 'steps', 'quiz', 'scenarios', 'checklist', 'sales-coach', 'presentation', 'marketing'];
+        const roleTabMap: Record<string, string[]> = {
+          barista: ['overview', 'steps', 'quiz', 'scenarios'],
+          stajyer: ['overview', 'steps', 'quiz', 'scenarios'],
+          trainer: ['overview', 'objectives', 'steps', 'quiz', 'scenarios', 'checklist', 'sales-coach', 'presentation', 'marketing'],
+          admin: allEditorTabs,
+        };
+        const visibleTabs = roleTabMap[userRole] || allEditorTabs;
+        return (
+      <Tabs defaultValue={visibleTabs[0] || "overview"} className="w-full">
         <div className="overflow-x-auto">
           <TabsList className="inline-flex w-max min-w-full">
+            {visibleTabs.includes('overview') && (
             <TabsTrigger value="overview">
               <BookOpen className="w-4 h-4 mr-2" />
               Genel
             </TabsTrigger>
+            )}
+            {visibleTabs.includes('objectives') && (
             <TabsTrigger value="objectives">
               <Lightbulb className="w-4 h-4 mr-2" />
               Hedefler ({learningObjectives.length})
             </TabsTrigger>
+            )}
+            {visibleTabs.includes('steps') && (
             <TabsTrigger value="steps">
               <CheckCircle className="w-4 h-4 mr-2" />
               Adımlar ({steps.length})
             </TabsTrigger>
+            )}
+            {visibleTabs.includes('quiz') && (
             <TabsTrigger value="quiz">
               <BookOpen className="w-4 h-4 mr-2" />
               Quiz ({module?.quiz?.length || 0})
             </TabsTrigger>
+            )}
+            {visibleTabs.includes('scenarios') && (
             <TabsTrigger value="scenarios">
               <Clock className="w-4 h-4 mr-2" />
               Senaryolar ({scenarioTasks.length})
             </TabsTrigger>
+            )}
+            {visibleTabs.includes('checklist') && (
             <TabsTrigger value="checklist">
               <CheckCircle className="w-4 h-4 mr-2" />
               Kontrol
             </TabsTrigger>
+            )}
+            {visibleTabs.includes('sales-coach') && (
             <TabsTrigger value="sales-coach">
               <MessageCircle className="w-4 h-4 mr-2" />
               Satış Koçu
             </TabsTrigger>
+            )}
+            {visibleTabs.includes('presentation') && (
             <TabsTrigger value="presentation">
               <Presentation className="w-4 h-4 mr-2" />
               Sunum
             </TabsTrigger>
+            )}
+            {visibleTabs.includes('marketing') && (
             <TabsTrigger value="marketing">
               <TrendingUp className="w-4 h-4 mr-2" />
               Pazarlama
             </TabsTrigger>
+            )}
           </TabsList>
         </div>
 
@@ -2337,6 +2366,8 @@ export default function ModuleDetail() {
           </Card>
         </TabsContent>
       </Tabs>
+        );
+      })()}
 
       {/* Back Button */}
       <div>

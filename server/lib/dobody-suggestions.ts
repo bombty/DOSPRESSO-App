@@ -1,5 +1,5 @@
 import { db } from "../db";
-import { sql, eq, and, lt, lte, gte, desc, count, avg } from "drizzle-orm";
+import { sql, eq, and, lt, lte, gte, desc, count, avg, sum, isNull } from "drizzle-orm";
 import {
   users,
   checklistAssignments,
@@ -17,6 +17,17 @@ import {
   factoryInventory,
   factoryProducts,
   branches,
+  trainingModules,
+  quizResults,
+  payrollRecords,
+  productComplaints,
+  haccpControlPoints,
+  haccpRecords,
+  factoryStations,
+  factoryProductionOutputs,
+  purchaseOrders,
+  campaigns,
+  foodSafetyDocuments,
 } from "@shared/schema";
 
 export interface DobodySuggestion {
@@ -533,4 +544,631 @@ export async function getFactorySuggestions(): Promise<DobodySuggestion[]> {
   }
 
   return suggestions.slice(0, MAX_SUGGESTIONS);
+}
+
+const MAX_ROLE_SUGGESTIONS = 5;
+
+export async function getTrainerSuggestions(): Promise<DobodySuggestion[]> {
+  const suggestions: DobodySuggestion[] = [];
+
+  try {
+    const unpublishedModules = await db
+      .select({ id: trainingModules.id, title: trainingModules.title })
+      .from(trainingModules)
+      .where(eq(trainingModules.isPublished, false))
+      .limit(5);
+
+    if (unpublishedModules.length > 0) {
+      suggestions.push({
+        id: "trainer-pending-modules",
+        message: `${unpublishedModules.length} egitim modulu yayinlanmayi bekliyor.`,
+        actionType: "redirect",
+        actionLabel: "Modulleri Gor",
+        payload: { route: "/egitim" },
+        priority: "high",
+        icon: "BookOpen",
+      });
+    }
+
+    const threeDaysAgo = new Date();
+    threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
+    const threeDaysAgoStr = threeDaysAgo.toISOString().split("T")[0];
+
+    const overdueTrainings = await db
+      .select({ cnt: count() })
+      .from(trainingAssignments)
+      .where(
+        and(
+          eq(trainingAssignments.status, "assigned"),
+          lte(trainingAssignments.dueDate, threeDaysAgoStr)
+        )
+      );
+
+    const overdueCount = overdueTrainings[0]?.cnt || 0;
+    if (overdueCount > 0) {
+      suggestions.push({
+        id: "trainer-overdue-training",
+        message: `${overdueCount} personelin egitimi 3+ gun gecikti. Takip gerekiyor.`,
+        actionType: "redirect",
+        actionLabel: "Geciken Egitimler",
+        payload: { route: "/egitim" },
+        priority: "critical",
+        icon: "AlertTriangle",
+      });
+    }
+
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+    const quizStats = await db
+      .select({
+        totalQuizzes: count(),
+        passedQuizzes: sql<number>`COUNT(CASE WHEN ${quizResults.score} >= 70 THEN 1 END)`,
+      })
+      .from(quizResults)
+      .where(gte(quizResults.completedAt, thirtyDaysAgo));
+
+    const total = quizStats[0]?.totalQuizzes || 0;
+    const passed = quizStats[0]?.passedQuizzes || 0;
+    if (total > 5) {
+      const passRate = (passed / total) * 100;
+      if (passRate < 60) {
+        suggestions.push({
+          id: "trainer-low-quiz-pass",
+          message: `Son 30 gunde quiz basari orani %${passRate.toFixed(0)}. Icerik gozden gecirilmeli.`,
+          actionType: "redirect",
+          actionLabel: "Quiz Sonuclari",
+          payload: { route: "/egitim" },
+          priority: "high",
+          icon: "TrendingDown",
+        });
+      }
+    }
+  } catch (error) {
+    console.error("getTrainerSuggestions error:", error);
+  }
+
+  return suggestions.slice(0, MAX_ROLE_SUGGESTIONS);
+}
+
+export async function getMuhasebeSuggestions(): Promise<DobodySuggestion[]> {
+  const suggestions: DobodySuggestion[] = [];
+
+  try {
+    const now = new Date();
+    const currentMonth = now.getMonth() + 1;
+    const currentYear = now.getFullYear();
+
+    const payrollResult = await db
+      .select({ cnt: count() })
+      .from(payrollRecords)
+      .where(
+        and(
+          eq(payrollRecords.periodYear, currentYear),
+          eq(payrollRecords.periodMonth, currentMonth),
+          eq(payrollRecords.status, "draft")
+        )
+      );
+
+    const pendingPayroll = payrollResult[0]?.cnt || 0;
+    if (pendingPayroll > 0) {
+      suggestions.push({
+        id: "muhasebe-pending-payroll",
+        message: `${pendingPayroll} personelin bu ayki bordrosu taslak durumunda.`,
+        actionType: "redirect",
+        actionLabel: "Bordro Yonetimi",
+        payload: { route: "/maas" },
+        priority: "high",
+        icon: "DollarSign",
+      });
+    }
+
+    const dayOfMonth = now.getDate();
+    if (dayOfMonth >= 25) {
+      suggestions.push({
+        id: "muhasebe-payroll-deadline",
+        message: "Maas odeme donemi yaklasti. Bordrolari kontrol edin.",
+        actionType: "redirect",
+        actionLabel: "Bordrolara Git",
+        payload: { route: "/maas" },
+        priority: "critical",
+        icon: "Clock",
+      });
+    }
+
+    const activeEmployees = await db
+      .select({ cnt: count() })
+      .from(users)
+      .where(eq(users.isActive, true));
+
+    const employeesWithPayroll = await db
+      .select({ cnt: count() })
+      .from(payrollRecords)
+      .where(
+        and(
+          eq(payrollRecords.periodYear, currentYear),
+          eq(payrollRecords.periodMonth, currentMonth)
+        )
+      );
+
+    const totalActive = activeEmployees[0]?.cnt || 0;
+    const withPayroll = employeesWithPayroll[0]?.cnt || 0;
+    const missingCount = totalActive - withPayroll;
+
+    if (missingCount > 5) {
+      suggestions.push({
+        id: "muhasebe-missing-pdks",
+        message: `${missingCount} personelin bu ay icin bordro kaydi olusturulmamis.`,
+        actionType: "redirect",
+        actionLabel: "Puantaj Kontrol",
+        payload: { route: "/pdks" },
+        priority: "medium",
+        icon: "UserX",
+      });
+    }
+  } catch (error) {
+    console.error("getMuhasebeSuggestions error:", error);
+  }
+
+  return suggestions.slice(0, MAX_ROLE_SUGGESTIONS);
+}
+
+export async function getKaliteKontrolSuggestions(): Promise<DobodySuggestion[]> {
+  const suggestions: DobodySuggestion[] = [];
+
+  try {
+    const pendingComplaints = await db
+      .select({
+        cnt: count(),
+      })
+      .from(productComplaints)
+      .where(eq(productComplaints.status, "new"));
+
+    const pendingCount = pendingComplaints[0]?.cnt || 0;
+    if (pendingCount > 0) {
+      suggestions.push({
+        id: "kalite-pending-complaints",
+        message: `${pendingCount} yeni urun sikayeti inceleme bekliyor.`,
+        actionType: "redirect",
+        actionLabel: "Sikayetleri Gor",
+        payload: { route: "/urun-sikayet" },
+        priority: "high",
+        icon: "MessageSquareWarning",
+      });
+    }
+
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+    const outOfLimitRecords = await db
+      .select({ cnt: count() })
+      .from(haccpRecords)
+      .where(
+        and(
+          eq(haccpRecords.isWithinLimits, false),
+          gte(haccpRecords.recordedAt, sevenDaysAgo)
+        )
+      );
+
+    const haccpWarnings = outOfLimitRecords[0]?.cnt || 0;
+    if (haccpWarnings > 0) {
+      suggestions.push({
+        id: "kalite-haccp-warnings",
+        message: `Son 7 gunde ${haccpWarnings} HACCP limit asimi tespit edildi.`,
+        actionType: "redirect",
+        actionLabel: "HACCP Kayitlari",
+        payload: { route: "/gida-guvenligi-dashboard" },
+        priority: "critical",
+        icon: "ShieldAlert",
+      });
+    }
+
+    const criticalComplaints = await db
+      .select({ cnt: count() })
+      .from(productComplaints)
+      .where(
+        and(
+          eq(productComplaints.severity, "critical"),
+          eq(productComplaints.status, "investigating")
+        )
+      );
+
+    const criticalCount = criticalComplaints[0]?.cnt || 0;
+    if (criticalCount > 0) {
+      suggestions.push({
+        id: "kalite-critical-complaints",
+        message: `${criticalCount} kritik seviye urun sikayeti arastirma asamasinda.`,
+        actionType: "redirect",
+        actionLabel: "Kritik Sikayetler",
+        payload: { route: "/urun-sikayet" },
+        priority: "critical",
+        icon: "AlertTriangle",
+      });
+    }
+  } catch (error) {
+    console.error("getKaliteKontrolSuggestions error:", error);
+  }
+
+  return suggestions.slice(0, MAX_ROLE_SUGGESTIONS);
+}
+
+export async function getGidaMuhendisiSuggestions(): Promise<DobodySuggestion[]> {
+  const suggestions: DobodySuggestion[] = [];
+
+  try {
+    const sevenDaysLater = new Date();
+    sevenDaysLater.setDate(sevenDaysLater.getDate() + 7);
+    const todayStr = new Date().toISOString().split("T")[0];
+    const sevenDaysStr = sevenDaysLater.toISOString().split("T")[0];
+
+    const expiringBatches = await db
+      .select({
+        cnt: count(),
+      })
+      .from(productionBatches)
+      .where(
+        and(
+          lte(productionBatches.expiryDate, sevenDaysStr),
+          gte(productionBatches.expiryDate, todayStr),
+          sql`${productionBatches.status} NOT IN ('rejected')`
+        )
+      );
+
+    const expiringCount = expiringBatches[0]?.cnt || 0;
+    if (expiringCount > 0) {
+      suggestions.push({
+        id: "gida-expiring-lots",
+        message: `${expiringCount} partinin son kullanma tarihi 7 gun icinde doluyor.`,
+        actionType: "redirect",
+        actionLabel: "Lot Takibi",
+        payload: { route: "/fabrika/dashboard" },
+        priority: "high",
+        icon: "Clock",
+      });
+    }
+
+    const reviewDocs = await db
+      .select({ id: foodSafetyDocuments.id, title: foodSafetyDocuments.title })
+      .from(foodSafetyDocuments)
+      .where(
+        and(
+          eq(foodSafetyDocuments.isActive, true),
+          lte(foodSafetyDocuments.reviewDate, sevenDaysLater),
+          gte(foodSafetyDocuments.reviewDate, new Date())
+        )
+      )
+      .limit(5);
+
+    if (reviewDocs.length > 0) {
+      suggestions.push({
+        id: "gida-review-due",
+        message: `${reviewDocs.length} gida guvenligi dokumani gozden gecirme tarihine yaklasti.`,
+        actionType: "redirect",
+        actionLabel: "Dokumanlar",
+        payload: { route: "/gida-guvenligi-dashboard" },
+        priority: "medium",
+        icon: "FileSearch",
+      });
+    }
+
+    const threeDaysAgo = new Date();
+    threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
+
+    const outOfLimitRecords = await db
+      .select({ cnt: count() })
+      .from(haccpRecords)
+      .where(
+        and(
+          eq(haccpRecords.isWithinLimits, false),
+          gte(haccpRecords.recordedAt, threeDaysAgo)
+        )
+      );
+
+    const haccpIssues = outOfLimitRecords[0]?.cnt || 0;
+    if (haccpIssues > 0) {
+      suggestions.push({
+        id: "gida-haccp-issues",
+        message: `Son 3 gunde ${haccpIssues} HACCP kontrol noktasinda limit asimi.`,
+        actionType: "redirect",
+        actionLabel: "HACCP Kontrol",
+        payload: { route: "/gida-guvenligi-dashboard" },
+        priority: "critical",
+        icon: "ShieldAlert",
+      });
+    }
+  } catch (error) {
+    console.error("getGidaMuhendisiSuggestions error:", error);
+  }
+
+  return suggestions.slice(0, MAX_ROLE_SUGGESTIONS);
+}
+
+export async function getFabrikaMudurSuggestions(): Promise<DobodySuggestion[]> {
+  const suggestions: DobodySuggestion[] = [];
+
+  try {
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+
+    const prodStats = await db
+      .select({
+        totalProduced: sum(factoryProductionOutputs.producedQuantity),
+        totalWaste: sum(factoryProductionOutputs.wasteQuantity),
+      })
+      .from(factoryProductionOutputs)
+      .where(sql`${factoryProductionOutputs.createdAt} >= ${todayStart}`);
+
+    const produced = parseFloat(String(prodStats[0]?.totalProduced || 0));
+    const waste = parseFloat(String(prodStats[0]?.totalWaste || 0));
+
+    if (produced > 0 && waste > 0) {
+      const wasteRate = (waste / (produced + waste)) * 100;
+      if (wasteRate > 5) {
+        suggestions.push({
+          id: "fabrika-mudur-high-waste",
+          message: `Bugunki fire orani %${wasteRate.toFixed(1)}. Normal ustu fire uretiliyor.`,
+          actionType: "redirect",
+          actionLabel: "Uretim Raporu",
+          payload: { route: "/fabrika/dashboard" },
+          priority: "high",
+          icon: "AlertTriangle",
+        });
+      }
+    }
+
+    const hour = new Date().getHours();
+    if (hour >= 12 && produced === 0) {
+      suggestions.push({
+        id: "fabrika-mudur-no-production",
+        message: "Bugun henuz uretim girisi yapilmamis. Istasyonlari kontrol edin.",
+        actionType: "redirect",
+        actionLabel: "Uretim Girisi",
+        payload: { route: "/fabrika/dashboard" },
+        priority: "critical",
+        icon: "Factory",
+      });
+    }
+
+    const pendingOrders = await db
+      .select({ cnt: count() })
+      .from(branchOrders)
+      .where(eq(branchOrders.status, "pending"));
+
+    const pendingCount = pendingOrders[0]?.cnt || 0;
+    if (pendingCount > 0) {
+      suggestions.push({
+        id: "fabrika-mudur-pending-orders",
+        message: `${pendingCount} sube siparisi onay bekliyor.`,
+        actionType: "redirect",
+        actionLabel: "Siparisleri Gor",
+        payload: { route: "/fabrika/dashboard", tab: "orders" },
+        priority: "high",
+        icon: "ShoppingCart",
+      });
+    }
+
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    const thirtyDaysStr = thirtyDaysAgo.toISOString().split("T")[0];
+
+    const rejectedBatches = await db
+      .select({ cnt: count() })
+      .from(productionBatches)
+      .where(
+        and(
+          eq(productionBatches.status, "rejected"),
+          gte(productionBatches.productionDate, thirtyDaysStr)
+        )
+      );
+
+    const totalBatches = await db
+      .select({ cnt: count() })
+      .from(productionBatches)
+      .where(gte(productionBatches.productionDate, thirtyDaysStr));
+
+    const rejected = rejectedBatches[0]?.cnt || 0;
+    const batchTotal = totalBatches[0]?.cnt || 1;
+    const batchWasteRate = (rejected / batchTotal) * 100;
+
+    if (batchWasteRate > 5 && batchTotal > 0) {
+      suggestions.push({
+        id: "fabrika-mudur-batch-reject",
+        message: `Son 30 gunde parti red orani %${batchWasteRate.toFixed(1)}. Kalite surecleri incelenmeli.`,
+        actionType: "redirect",
+        actionLabel: "Kalite Raporlari",
+        payload: { route: "/fabrika/dashboard", tab: "quality" },
+        priority: "critical",
+        icon: "XCircle",
+      });
+    }
+  } catch (error) {
+    console.error("getFabrikaMudurSuggestions error:", error);
+  }
+
+  return suggestions.slice(0, MAX_ROLE_SUGGESTIONS);
+}
+
+export async function getSatinalmaSuggestions(): Promise<DobodySuggestion[]> {
+  const suggestions: DobodySuggestion[] = [];
+
+  try {
+    const lowStockItems = await db
+      .select({ cnt: count() })
+      .from(branchInventory)
+      .where(
+        sql`CAST(${branchInventory.currentStock} AS numeric) < CAST(${branchInventory.minimumStock} AS numeric)`
+      );
+
+    const criticalStock = lowStockItems[0]?.cnt || 0;
+    if (criticalStock > 0) {
+      suggestions.push({
+        id: "satinalma-critical-stock",
+        message: `${criticalStock} urun minimum stok seviyesinin altinda.`,
+        actionType: "redirect",
+        actionLabel: "Stok Yonetimi",
+        payload: { route: "/satinalma/stok-yonetimi" },
+        priority: "critical",
+        icon: "PackageX",
+      });
+    }
+
+    const threeDaysLater = new Date();
+    threeDaysLater.setDate(threeDaysLater.getDate() + 3);
+
+    const approachingDeliveries = await db
+      .select({ cnt: count() })
+      .from(purchaseOrders)
+      .where(
+        and(
+          sql`${purchaseOrders.status} IN ('onaylandi', 'siparis_verildi')`,
+          lte(purchaseOrders.expectedDeliveryDate, threeDaysLater),
+          gte(purchaseOrders.expectedDeliveryDate, new Date()),
+          isNull(purchaseOrders.actualDeliveryDate)
+        )
+      );
+
+    const deliveryCount = approachingDeliveries[0]?.cnt || 0;
+    if (deliveryCount > 0) {
+      suggestions.push({
+        id: "satinalma-approaching-delivery",
+        message: `${deliveryCount} sipariste teslimat 3 gun icinde bekleniyor.`,
+        actionType: "redirect",
+        actionLabel: "Siparis Takibi",
+        payload: { route: "/satinalma/siparis-yonetimi" },
+        priority: "medium",
+        icon: "Truck",
+      });
+    }
+
+    const pendingPOs = await db
+      .select({ cnt: count() })
+      .from(purchaseOrders)
+      .where(eq(purchaseOrders.status, "taslak"));
+
+    const pendingCount = pendingPOs[0]?.cnt || 0;
+    if (pendingCount > 0) {
+      suggestions.push({
+        id: "satinalma-pending-orders",
+        message: `${pendingCount} satin alma siparisi taslak durumunda.`,
+        actionType: "redirect",
+        actionLabel: "Siparisleri Gor",
+        payload: { route: "/satinalma/siparis-yonetimi" },
+        priority: "high",
+        icon: "FileEdit",
+      });
+    }
+  } catch (error) {
+    console.error("getSatinalmaSuggestions error:", error);
+  }
+
+  return suggestions.slice(0, MAX_ROLE_SUGGESTIONS);
+}
+
+export async function getMarketingSuggestions(): Promise<DobodySuggestion[]> {
+  const suggestions: DobodySuggestion[] = [];
+
+  try {
+    const todayStr = new Date().toISOString().split("T")[0];
+
+    const activeCampaigns = await db
+      .select({ cnt: count() })
+      .from(campaigns)
+      .where(
+        and(
+          eq(campaigns.status, "active"),
+          gte(campaigns.endDate, todayStr)
+        )
+      );
+
+    const activeCount = activeCampaigns[0]?.cnt || 0;
+    if (activeCount > 0) {
+      suggestions.push({
+        id: "marketing-active-campaigns",
+        message: `${activeCount} aktif kampanya devam ediyor.`,
+        actionType: "redirect",
+        actionLabel: "Kampanyalari Gor",
+        payload: { route: "/crm/kampanyalar" },
+        priority: "low",
+        icon: "Megaphone",
+      });
+    }
+
+    const endingSoonCampaigns = await db
+      .select({ id: campaigns.id, title: campaigns.title })
+      .from(campaigns)
+      .where(
+        and(
+          eq(campaigns.status, "active"),
+          lte(campaigns.endDate, new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString().split("T")[0]),
+          gte(campaigns.endDate, todayStr)
+        )
+      )
+      .limit(3);
+
+    if (endingSoonCampaigns.length > 0) {
+      const names = endingSoonCampaigns.map(c => c.title).slice(0, 2).join(", ");
+      suggestions.push({
+        id: "marketing-ending-campaigns",
+        message: `${endingSoonCampaigns.length} kampanya 3 gun icinde sona eriyor: ${names}`,
+        actionType: "redirect",
+        actionLabel: "Kampanya Detayi",
+        payload: { route: "/crm/kampanyalar" },
+        priority: "medium",
+        icon: "CalendarClock",
+      });
+    }
+
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+    const branchScores = await db
+      .select({
+        branchId: customerFeedback.branchId,
+        avgRating: avg(customerFeedback.rating),
+        branchName: branches.name,
+      })
+      .from(customerFeedback)
+      .innerJoin(branches, eq(customerFeedback.branchId, branches.id))
+      .where(gte(customerFeedback.feedbackDate, sevenDaysAgo))
+      .groupBy(customerFeedback.branchId, branches.name)
+      .having(sql`AVG(${customerFeedback.rating}) < 3.0`)
+      .limit(5);
+
+    if (branchScores.length > 0) {
+      const branchNames = branchScores.map(b => b.branchName).slice(0, 3).join(", ");
+      suggestions.push({
+        id: "marketing-declining-scores",
+        message: `${branchScores.length} subede musteri memnuniyeti dusuk: ${branchNames}`,
+        actionType: "redirect",
+        actionLabel: "Analizleri Gor",
+        payload: { route: "/crm/analizler" },
+        priority: "high",
+        icon: "TrendingDown",
+      });
+    }
+
+    const overallRating = await db
+      .select({ avgRating: avg(customerFeedback.rating) })
+      .from(customerFeedback)
+      .where(gte(customerFeedback.feedbackDate, sevenDaysAgo));
+
+    const avgRating = overallRating[0]?.avgRating ? parseFloat(String(overallRating[0].avgRating)) : null;
+    if (avgRating !== null) {
+      if (avgRating < 3.5) {
+        suggestions.push({
+          id: "marketing-overall-satisfaction",
+          message: `Genel musteri memnuniyet puani ${avgRating.toFixed(1)} - iyilestirme gerekiyor.`,
+          actionType: "redirect",
+          actionLabel: "Geri Bildirimler",
+          payload: { route: "/crm/geri-bildirimler" },
+          priority: "critical",
+          icon: "Star",
+        });
+      }
+    }
+  } catch (error) {
+    console.error("getMarketingSuggestions error:", error);
+  }
+
+  return suggestions.slice(0, MAX_ROLE_SUGGESTIONS);
 }

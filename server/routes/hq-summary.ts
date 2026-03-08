@@ -11,7 +11,16 @@ import {
   type UserRoleType,
 } from "@shared/schema";
 import { eq, and, sql, count, avg, sum, desc } from "drizzle-orm";
-import { getHQSuggestions } from "../lib/dobody-suggestions";
+import {
+  getHQSuggestions,
+  getTrainerSuggestions,
+  getMuhasebeSuggestions,
+  getKaliteKontrolSuggestions,
+  getGidaMuhendisiSuggestions,
+  getFabrikaMudurSuggestions,
+  getSatinalmaSuggestions,
+  getMarketingSuggestions,
+} from "../lib/dobody-suggestions";
 import { getLatestSkillInsights, deduplicateSuggestions } from "../agent/skills/skill-registry";
 
 const router = Router();
@@ -119,7 +128,22 @@ router.get("/api/hq-summary", isAuthenticated, async (req: any, res) => {
 
     let suggestions: any[] = [];
     try {
-      suggestions = await getHQSuggestions();
+      const roleSuggestionMap: Record<string, () => Promise<any[]>> = {
+        trainer: getTrainerSuggestions,
+        muhasebe: getMuhasebeSuggestions,
+        muhasebe_ik: getMuhasebeSuggestions,
+        kalite_kontrol: getKaliteKontrolSuggestions,
+        gida_muhendisi: getGidaMuhendisiSuggestions,
+        fabrika_mudur: getFabrikaMudurSuggestions,
+        satinalma: getSatinalmaSuggestions,
+        marketing: getMarketingSuggestions,
+      };
+      const roleFn = roleSuggestionMap[userRole];
+      if (roleFn) {
+        suggestions = await roleFn();
+      } else {
+        suggestions = await getHQSuggestions();
+      }
     } catch {}
 
     try {

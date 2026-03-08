@@ -1,4 +1,4 @@
-import { LogOut, QrCode, Sun, Moon } from "lucide-react";
+import { LogOut, QrCode, Sun, Moon, CircleHelp, Headset } from "lucide-react";
 import { useTheme } from "@/contexts/theme-context";
 import { Button } from "@/components/ui/button";
 import { useLocation } from "wouter";
@@ -73,12 +73,21 @@ export function AppHeader({ user, branchName, onQRClick }: AppHeaderProps) {
     return role ? roleMap[role] || role : "";
   };
 
+  const SMALL_SIDEBAR_ROLES = [
+    'stajyer', 'bar_buddy', 'barista',
+    'yatirimci_branch', 'yatirimci_hq',
+    'fabrika_operator', 'fabrika_personel',
+  ];
+  const hideHamburgerOnMobile = user?.role ? SMALL_SIDEBAR_ROLES.includes(user.role) : false;
+
   return (
     <div className="sticky top-0 z-50 bg-background border-b">
       <div className="px-3 py-2 border-b bg-[#1e3a5f] dark:bg-[#1e3a5f] flex items-center gap-3 relative">
         
         <div className="flex items-center gap-1 flex-shrink-0">
-          <HamburgerMenu />
+          <div className={hideHamburgerOnMobile ? 'hidden md:block' : ''}>
+            <HamburgerMenu />
+          </div>
           <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
             <DropdownMenuTrigger asChild>
               <Button
@@ -101,6 +110,10 @@ export function AppHeader({ user, branchName, onQRClick }: AppHeaderProps) {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start" className="w-40">
+              <DropdownMenuItem onClick={() => { setIsOpen(false); setLocation("/hq-destek"); }} data-testid="button-support">
+                <Headset className="mr-2 h-4 w-4" />
+                <span>Destek</span>
+              </DropdownMenuItem>
               <DropdownMenuItem onClick={handleLogout} data-testid="button-logout">
                 <LogOut className="mr-2 h-4 w-4" />
                 <span>Çıkış Yap</span>
@@ -123,6 +136,16 @@ export function AppHeader({ user, branchName, onQRClick }: AppHeaderProps) {
 
         <div className="flex-1 flex justify-end gap-1">
           <InboxDialog />
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8"
+            onClick={() => setLocation("/kullanim-kilavuzu")}
+            data-testid="button-help"
+            title="Kullanım Rehberi"
+          >
+            <CircleHelp className="w-4 h-4 text-white" />
+          </Button>
           <Button
             variant="ghost"
             size="icon"

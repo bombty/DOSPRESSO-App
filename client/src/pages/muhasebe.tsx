@@ -680,32 +680,56 @@ export default function Muhasebe() {
           </div>
         </div>
 
-        <Tabs defaultValue="bordro" className="w-full">
+        {(() => {
+          const userRole = user?.role as string;
+          const allMuhasebeTabs = ['bordro', 'salaries', 'parameters', 'calculator', 'stok', 'reports'];
+          const muhasebeRoleTabMap: Record<string, string[]> = {
+            ceo: ['bordro', 'reports'],
+            cgo: ['bordro', 'reports'],
+            muhasebe: allMuhasebeTabs,
+            muhasebe_ik: allMuhasebeTabs,
+            admin: allMuhasebeTabs,
+          };
+          const visibleMuhasebeTabs = muhasebeRoleTabMap[userRole] || ['bordro', 'reports'];
+          return (
+        <Tabs defaultValue={visibleMuhasebeTabs[0] || "bordro"} className="w-full">
           <TabsList className="flex flex-wrap gap-1 h-auto p-1 w-full">
+            {visibleMuhasebeTabs.includes('bordro') && (
             <TabsTrigger value="bordro" data-testid="tab-bordro" className="flex-1 min-w-[80px] text-xs sm:text-sm px-2 py-1.5">
               <FileText className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2 flex-shrink-0" />
               <span className="truncate">Bordro</span>
             </TabsTrigger>
+            )}
+            {visibleMuhasebeTabs.includes('salaries') && (
             <TabsTrigger value="salaries" data-testid="tab-salaries" className="flex-1 min-w-[80px] text-xs sm:text-sm px-2 py-1.5">
               <Banknote className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2 flex-shrink-0" />
               <span className="truncate">Maaşlar</span>
             </TabsTrigger>
+            )}
+            {visibleMuhasebeTabs.includes('parameters') && (
             <TabsTrigger value="parameters" data-testid="tab-parameters" className="flex-1 min-w-[80px] text-xs sm:text-sm px-2 py-1.5">
               <Settings className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2 flex-shrink-0" />
               <span className="truncate">Parametreler</span>
             </TabsTrigger>
+            )}
+            {visibleMuhasebeTabs.includes('calculator') && (
             <TabsTrigger value="calculator" data-testid="tab-calculator" className="flex-1 min-w-[80px] text-xs sm:text-sm px-2 py-1.5">
               <Calculator className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2 flex-shrink-0" />
               <span className="truncate">Hesaplama</span>
             </TabsTrigger>
+            )}
+            {visibleMuhasebeTabs.includes('stok') && (
             <TabsTrigger value="stok" data-testid="tab-stok" className="flex-1 min-w-[80px] text-xs sm:text-sm px-2 py-1.5">
               <Package className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2 flex-shrink-0" />
               <span className="truncate">Stok</span>
             </TabsTrigger>
+            )}
+            {visibleMuhasebeTabs.includes('reports') && (
             <TabsTrigger value="reports" data-testid="tab-reports" className="flex-1 min-w-[80px] text-xs sm:text-sm px-2 py-1.5">
               <TrendingUp className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2 flex-shrink-0" />
               <span className="truncate">Raporlar</span>
             </TabsTrigger>
+            )}
           </TabsList>
 
           {/* BORDRO TAB */}
@@ -1449,6 +1473,8 @@ export default function Muhasebe() {
             </Card>
           </TabsContent>
         </Tabs>
+          );
+        })()}
       </div>
 
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>

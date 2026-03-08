@@ -1143,6 +1143,12 @@ export default function YeniSubeDetay() {
   const BUDGET_VISIBLE_ROLES = ["admin", "muhasebe", "muhasebe_ik", "genel_mudur"];
   const canSeeBudget = user?.role && BUDGET_VISIBLE_ROLES.includes(user.role);
 
+  const FULL_ACCESS_ROLES = ['admin', 'ceo', 'cgo'];
+  const hasFullTabAccess = FULL_ACCESS_ROLES.includes(user?.role || '') || isProjectOwner;
+  const canSeeVendors = hasFullTabAccess || canManageProject;
+  const canSeeRisks = hasFullTabAccess || canManageProject;
+  const canSeeActivities = hasFullTabAccess || canManageProject;
+
   const totalPlanned = project.budgetLines?.reduce((sum, bl) => sum + (bl.plannedAmount || 0), 0) || 0;
   const totalActual = project.budgetLines?.reduce((sum, bl) => sum + (bl.actualAmount || 0), 0) || 0;
   const totalVariance = totalPlanned - totalActual;
@@ -1226,18 +1232,24 @@ export default function YeniSubeDetay() {
               <span className="hidden sm:inline">Bütçe</span>
             </TabsTrigger>
           )}
+          {canSeeVendors && (
           <TabsTrigger value="vendors" className="gap-1" data-testid="tab-vendors">
             <Truck className="h-4 w-4" />
             <span className="hidden sm:inline">Tedarikçiler</span>
           </TabsTrigger>
+          )}
+          {canSeeRisks && (
           <TabsTrigger value="risks" className="gap-1" data-testid="tab-risks">
             <ShieldAlert className="h-4 w-4" />
             <span className="hidden sm:inline">Riskler</span>
           </TabsTrigger>
+          )}
+          {canSeeActivities && (
           <TabsTrigger value="activities" className="gap-1" data-testid="tab-activities">
             <Activity className="h-4 w-4" />
             <span className="hidden sm:inline">Aktiviteler</span>
           </TabsTrigger>
+          )}
         </TabsList>
 
         <TabsContent value="overview" className="space-y-4" data-testid="tab-content-overview">

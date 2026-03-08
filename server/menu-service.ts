@@ -624,105 +624,73 @@ const MENU_BLUEPRINT: SidebarMenuSection[] = [
 
 const SIDEBAR_ALLOWED_ITEMS: Partial<Record<UserRoleType, string[]>> = {
   barista: [
-    'branch-dashboard', 'tasks-list', 'checklists', 'faults',
-    'training-academy', 'notifications', 'usage-guide', 'hq-support',
+    'branch-dashboard', 'tasks-list', 'training-academy', 'notifications',
   ],
   stajyer: [
-    'branch-dashboard', 'tasks-list', 'checklists',
-    'training-academy', 'notifications', 'usage-guide', 'hq-support',
+    'branch-dashboard', 'training-academy', 'notifications', 'hq-support',
   ],
   bar_buddy: [
-    'branch-dashboard', 'tasks-list', 'checklists', 'faults',
-    'training-academy', 'notifications', 'usage-guide', 'hq-support',
+    'branch-dashboard', 'tasks-list', 'training-academy', 'notifications',
   ],
   supervisor: [
-    'branch-dashboard', 'tasks-list', 'checklists', 'shifts', 'equipment', 'faults',
-    'hr', 'training-academy', 'notifications', 'usage-guide', 'hq-support', 'lost-found',
-    'customer-satisfaction', 'ai-assistant', 'agent-center', 'branch-stock-orders',
+    'branch-dashboard', 'tasks-list', 'notifications', 'ai-assistant', 'branch-stock-orders',
   ],
   supervisor_buddy: [
-    'branch-dashboard', 'tasks-list', 'checklists', 'shifts', 'equipment', 'faults',
-    'hr', 'training-academy', 'notifications', 'usage-guide', 'hq-support', 'lost-found', 'ai-assistant',
+    'branch-dashboard', 'tasks-list', 'notifications', 'ai-assistant', 'hq-support',
   ],
   mudur: [
-    'branch-dashboard', 'tasks-list', 'checklists', 'shifts', 'equipment', 'faults',
-    'hr', 'branch-shift-tracking', 'attendance', 'reports', 'lost-found',
-    'training-academy', 'notifications', 'usage-guide', 'hq-support',
-    'branch-health', 'customer-satisfaction', 'ai-assistant', 'agent-center', 'branch-stock-orders',
+    'branch-dashboard', 'tasks-list', 'reports', 'notifications', 'ai-assistant', 'branch-stock-orders',
   ],
   yatirimci_branch: [
-    'branch-dashboard', 'tasks-list', 'checklists', 'shifts', 'hr', 'reports',
-    'notifications', 'usage-guide', 'hq-support',
+    'branch-dashboard', 'reports', 'notifications',
   ],
   ceo: [
-    'dashboard', 'branches-list', 'reports', 'performance-dashboard', 'hr',
-    'training-academy', 'knowledge-base', 'notifications', 'usage-guide',
-    'branch-health', 'hq-support', 'ai-assistant', 'agent-center', 'crm-main',
+    'dashboard', 'reports', 'ai-assistant', 'notifications', 'crm-main',
   ],
   cgo: [
-    'dashboard', 'branches-list', 'reports', 'performance-dashboard', 'hr',
-    'training-academy', 'knowledge-base', 'notifications', 'usage-guide',
-    'branch-health', 'hq-support', 'customer-satisfaction', 'ai-assistant', 'agent-center', 'crm-main',
+    'dashboard', 'branches-list', 'reports', 'customer-satisfaction', 'ai-assistant', 'notifications',
   ],
   yatirimci_hq: [
-    'dashboard', 'branches-list', 'reports', 'performance-dashboard',
-    'notifications', 'usage-guide', 'hq-support',
+    'dashboard', 'reports', 'notifications',
   ],
   coach: [
-    'dashboard', 'branches-list', 'hr', 'training-academy', 'reports',
-    'branch-inspection', 'branch-health', 'notifications', 'usage-guide', 'hq-support', 'ai-assistant', 'agent-center', 'crm-main', 'branch-stock-orders',
+    'dashboard', 'branches-list', 'branch-inspection', 'training-academy', 'ai-assistant', 'notifications',
   ],
   destek: [
-    'dashboard', 'branches-list', 'hr', 'training-academy', 'reports',
-    'branch-inspection', 'branch-health', 'notifications', 'usage-guide', 'hq-support',
+    'dashboard', 'branches-list', 'faults', 'hq-support', 'notifications',
   ],
   trainer: [
-    'dashboard', 'training-academy', 'knowledge-base', 'reports',
-    'branches-list', 'branch-inspection', 'notifications', 'usage-guide', 'hq-support', 'ai-assistant',
+    'dashboard', 'training-academy', 'branch-inspection', 'knowledge-base', 'notifications',
   ],
   kalite_kontrol: [
-    'dashboard', 'quality-control', 'food-safety', 'equipment', 'faults',
-    'product-complaints', 'reports', 'factory-quality',
-    'notifications', 'usage-guide', 'hq-support', 'crm-main',
+    'dashboard', 'quality-control', 'food-safety', 'factory-quality', 'notifications',
   ],
   gida_muhendisi: [
-    'dashboard', 'food-safety', 'quality-control', 'equipment', 'faults',
-    'reports', 'notifications', 'usage-guide', 'hq-support',
-    'factory-dashboard', 'factory-quality', 'factory-stations', 'factory-analytics',
+    'dashboard', 'food-safety', 'factory-quality', 'factory-dashboard', 'reports', 'notifications',
   ],
   marketing: [
-    'dashboard', 'content-studio', 'customer-satisfaction', 'campaign-management', 'reports',
-    'branches-list', 'notifications', 'usage-guide', 'hq-support', 'crm-main',
+    'dashboard', 'campaign-management', 'customer-satisfaction', 'reports', 'notifications',
   ],
   muhasebe_ik: [
-    'dashboard', 'hr', 'shifts', 'attendance', 'branch-shift-tracking',
-    'accounting-main', 'financial-management', 'financial-reports', 'reports',
-    'onboarding-programs', 'pdks', 'maas', 'notifications', 'usage-guide', 'hq-support',
+    'dashboard', 'hr', 'pdks', 'maas', 'reports', 'notifications',
   ],
   muhasebe: [
-    'dashboard', 'accounting-main', 'financial-management', 'financial-reports',
-    'reports', 'pdks', 'maas', 'notifications', 'usage-guide', 'hq-support',
+    'dashboard', 'accounting-main', 'pdks', 'maas', 'notifications',
   ],
   satinalma: [
-    'dashboard', 'procurement-dashboard', 'stock-management', 'supplier-management',
-    'order-management', 'goods-receipt', 'reports', 'notifications', 'usage-guide', 'hq-support', 'agent-center',
+    'dashboard', 'procurement-dashboard', 'stock-management', 'reports', 'notifications',
   ],
   teknik: [
-    'dashboard', 'equipment', 'faults', 'qr-scan', 'reports',
-    'notifications', 'usage-guide', 'hq-support',
+    'dashboard', 'equipment', 'faults', 'reports', 'notifications',
   ],
   fabrika_mudur: [
-    'dashboard', 'factory-dashboard', 'factory-kiosk', 'factory-quality',
-    'factory-stations', 'factory-analytics', 'factory-compliance',
-    'notifications', 'usage-guide', 'hq-support',
+    'factory-dashboard', 'factory-kiosk', 'factory-quality', 'factory-stations', 'factory-analytics', 'notifications',
   ],
   fabrika: [
-    'factory-dashboard', 'factory-kiosk', 'factory-quality', 'factory-stations',
-    'notifications', 'usage-guide', 'hq-support',
+    'factory-dashboard', 'factory-kiosk', 'factory-quality', 'factory-stations', 'notifications',
   ],
   fabrika_operator: [
-    'factory-dashboard', 'factory-kiosk', 'factory-quality', 'factory-stations',
-    'notifications', 'usage-guide', 'hq-support',
+    'factory-dashboard', 'factory-kiosk', 'notifications', 'usage-guide',
   ],
   admin: [
     'dashboard', 'branches-list', 'reports', 'performance-dashboard', 'hr',
@@ -730,11 +698,10 @@ const SIDEBAR_ALLOWED_ITEMS: Partial<Record<UserRoleType, string[]>> = {
     'ai-assistant', 'agent-center', 'crm-main', 'notifications', 'usage-guide', 'hq-support',
   ],
   fabrika_sorumlu: [
-    'factory-dashboard', 'factory-kiosk', 'factory-quality', 'factory-stations',
-    'notifications', 'usage-guide', 'hq-support',
+    'factory-dashboard', 'factory-kiosk', 'factory-quality', 'notifications',
   ],
   fabrika_personel: [
-    'factory-dashboard', 'factory-kiosk', 'notifications', 'usage-guide',
+    'factory-dashboard', 'factory-kiosk', 'notifications',
   ],
 };
 
@@ -834,9 +801,9 @@ export function buildMenuForUser(
       ...section,
       items: section.items.filter(item => {
         if (!isScopeAllowed(item.scope, userScope)) return false;
+        if (allowedItems && !allowedItems.includes(item.id)) return false;
         if (item.alwaysVisible) return true;
         if (!canAccessModule(role, item.moduleKey, dynamicPermissions)) return false;
-        if (allowedItems && !allowedItems.includes(item.id)) return false;
         return true;
       }),
     }))

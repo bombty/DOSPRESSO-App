@@ -15,12 +15,9 @@ The frontend utilizes React 18+ with TypeScript and Vite, employing Shadcn/ui (N
 - **Backend**: Node.js, Express.js, TypeScript, with Replit Auth (OpenID) and Passport.js for authentication.
 - **Database**: PostgreSQL (Neon serverless) via Drizzle ORM and pgvector for embeddings.
 - **i18n**: i18next with lazy-loaded translation files. Supports TR (default), EN, AR (RTL), DE.
-- **Charts**: Recharts for data visualization.
 - **File Upload**: Uppy integrated with AWS S3.
 - **QR Code**: html5-qrcode for scanning.
 - **Background Jobs**: Node.js interval-based scheduling for tasks like SLA checks, notifications, and maintenance reminders.
-- **Notifications**: In-app and email async notifications.
-- **PDF Generation**: Uses jsPDF.
 - **Offline Resilience**: Service Worker, localStorage-based mutation queue, and API retry mechanisms ensure data integrity during network outages.
 
 ### Feature Specifications
@@ -39,18 +36,13 @@ The frontend utilizes React 18+ with TypeScript and Vite, employing Shadcn/ui (N
 - **Procurement Management System**: Complete procurement module with Dashboard, Inventory, Supplier Management, Purchase Orders, and Goods Receipt, including approval roles and branch-based filtering.
 - **Cost Management System**: Comprehensive product cost calculation module integrated with procurement.
 - **Factory Shift & Production Planning**: Complete shift planning system with batch tracking, performance monitoring, worker assignments, kiosk PIN authentication, production/waste recording, and fault reporting.
-- **Branch QR Shift Check-in System**: HMAC-SHA256 signed dynamic QR codes for branch shift operations.
-- **Branch Health Score Dashboard**: 6-component deterministic scoring system with role-based scoping, time-range filters, and trend indicators.
-- **Coach Dashboard & Drill-Down**: Enhanced team progress with gate status badges, checklist completion rates, and mentor onboarding tracking.
-- **Guest Feedback System**: Public QR feedback form with branch-specific settings, notification integration, SLA monitoring, and anti-abuse measures.
 - **Mr. Dobody Agent Engine**: Autonomous AI agent system with "Read-Only AI, Write-Through Human" architecture, analyzing data and proposing actions requiring user approval. Includes rule-based suggestion engine with 12 rules across 5 role functions and a Quick Action API for one-click approval with audit trail. Features a modular skill engine with 8 skills, AI enrichment via OpenAI (gpt-4o-mini), proactive notification system with throttling and quiet hours, scheduler integration, and an expanded Agent Center.
 - **Role-Based Single-Screen Dashboards**: Simplified landing pages per role after login, showing role-relevant KPIs, Mr. Dobody suggestions, and links to detailed dashboards.
 - **CRM — Müşteri 360°**: A comprehensive customer relationship management module including dashboards, feedback, complaints, campaigns, SLA tracking, and analytics.
-- **Akademi Bildirim Zenginlestirme + Iletisim Merkezi**: Enriched academy notifications and a unified communication page with tabs for Notifications, Messages, and Announcements.
 - **Fabrika Uretim-Stok-Sevkiyat Zinciri + Gida Muhendisi Entegrasyonu**: Shipment system with status workflow, pre-dispatch stock validation, automatic inventory deduction, 2-stage quality control, HACCP check records, LOT/Parti tracking, coffee roasting log, semi-finished product anti-abuse, SKT background job with notifications, and simplified 3-button kiosk flow.
 - **Branch Order & Stock Management**: Full branch order lifecycle (create→approve→ship→deliver→branch stock update) with auto-generated order numbers and factory approval. Branch inventory system with stock movements, waste recording, count corrections, expiring product alerts, Bombtea vs Franchise ownership distinction, SKT validation on shipments with FIFO LOT auto-assignment, and notifications at every lifecycle stage.
-- **PDKS (Personel Devam Kontrol Sistemi)**: Kiosk-integrated attendance tracking with giriş/çıkış stamps, day classification engine (worked/program_off/kapanish_off/absent/leave), kapanış off detection (00:00-05:59 night stamps), scheduled off management (max 4/month), and branch-level monthly summaries. Files: `server/lib/pdks-engine.ts`, `server/routes/pdks.ts`, `client/src/pages/pdks.tsx`.
-- **Maaş Hesaplama (Payroll Calculation)**: Position-based salary system (5 positions in kuruş), monthly payroll calculation with 8 business rules (daily rate=salary÷30, absence deduction=(absent+1)×daily, bonus deduction, overtime 1.5x, terminated pro-rata). Role-based access: muhasebe=full, müdür=own branch read-only, yatırımcı=net only, supervisor=attendance only, personel=own payslip. CSV export. Files: `server/lib/payroll-engine.ts`, `server/routes/payroll.ts`, `client/src/pages/maas.tsx`, `client/src/pages/bordrom.tsx`. API prefix: `/api/pdks-payroll/` (to avoid conflict with existing hr.ts `/api/payroll/`).
+- **PDKS (Personel Devam Kontrol Sistemi)**: Kiosk-integrated attendance tracking with giriş/çıkış stamps, day classification engine, and branch-level monthly summaries.
+- **Maaş Hesaplama (Payroll Calculation)**: Position-based salary system, monthly payroll calculation with 8 business rules and role-based access.
 
 ### System Design Choices
 - **Health Score Calculation**: Real-time scores based on recent faults and compliance.
@@ -70,22 +62,17 @@ The frontend utilizes React 18+ with TypeScript and Vite, employing Shadcn/ui (N
 - **Evaluation Anti-Abuse System**: Cooldown and monthly limits on employee evaluations.
 - **Reminder System**: Interval-based checks for various task and evaluation reminders with DB-based deduplication.
 - **Academy V2 Implementation**: Includes Gate system, Content Pack management, My Path NBA engine, and Onboarding Studio for creating and assigning day-by-day learning paths with approval workflows.
-- **Vector Auto-Refresh**: AI settings auto-triggers vector re-embed when provider changes.
 - **Knowledge Base Content Pipeline**: Seed endpoints for importing academy modules, recipes, procedures, and quality specs into AI knowledge base with incremental vector generation and automatic embedding synchronization.
-- **Role-Based Profile Metrics**: HQ management roles see relevant metrics, while branch/factory roles see all metrics.
-- **Academy HQ Role Alignment**: HQ roles see role-appropriate Academy content and professional development paths.
 - **Dashboard Role Routing**: Explicit dashboard mapping for HQ roles, with branch roles getting a CardGridHub with role-filtered widgets.
 - **Sidebar Role Filtering**: Backend service filters sidebar menu items based on user roles and permissions.
 - **Hub-Spoke Sidebar Navigation**: Sections with 4+ items collapse into hub links, showing card grids.
 - **Favorites System**: localStorage-based page favorites with star toggle.
 - **Command Palette (Ctrl+K)**: Global search modal with Turkish fuzzy search, page/menu results, DB object search, and keyboard navigation.
-- **İK URL Tab Routing**: İK page supports deep-linking to specific tabs via URL parameters.
 - **Feedback Form Settings**: Seeded settings for branches with categories, photo upload, location verification, multi-language support, and anonymous defaults.
 - **Feedback SLA System**: Hourly background job checks for overdue feedback responses and sends critical notifications with per-user DB-level deduplication.
 - **Feedback Pattern Analysis**: Weekly job analyzes 30-day category averages per branch for alerts and improvement detection.
-- **WordPress-Style Data Export/Import**: Full system data export to ZIP (manifest.json + categorized table JSONs + SHA-256 checksum), background job processing with progress tracking, 3 export scopes (full/config_only/branch), 3 import modes (merge/full_replace/config_only), ZIP validation, bcrypt password safety, admin-only access with audit logging. Files: `server/lib/export-service.ts`, `server/lib/import-service.ts`, `server/routes/data-management.ts`.
-- **Setup Wizard**: 6-step setup wizard at `/setup` for initial system configuration (company info, admin account, SMTP, DB test). Backend at `server/routes/setup.ts` with default data seeding and demo user creation.
-- **Role Home Routes (Sprint 20A)**: Centralized `ROLE_HOME_ROUTES` mapping in `client/src/lib/role-routes.ts` used by login redirect, logo click in sidebar, and logo click in header. All 26 roles route to role-specific landing pages. Sidebar definitions exist for all roles in `server/menu-service.ts` SIDEBAR_ALLOWED_ITEMS. PDKS and Maaş menu items added for muhasebe/muhasebe_ik. Destek has dedicated DestekDashboard in hq-dashboard.tsx.
+- **WordPress-Style Data Export/Import**: Full system data export to ZIP, background job processing, 3 export scopes, 3 import modes, ZIP validation, and admin-only access with audit logging.
+- **Setup Wizard**: 6-step setup wizard for initial system configuration (company info, admin account, SMTP, DB test) with default data seeding and demo user creation.
 
 ## External Dependencies
 - **OpenAI API**: Used for AI-powered vision analysis, chat completions, embeddings, and summary generation.

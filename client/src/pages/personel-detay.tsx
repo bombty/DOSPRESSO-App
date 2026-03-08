@@ -645,44 +645,72 @@ export default function PersonelDetay() {
         </CardContent>
       </Card>
 
-      <Tabs defaultValue="documents" className="w-full">
+      {(() => {
+        const userRole = currentUser?.role as string;
+        const allTabs = ['documents', 'attendance', 'performance', 'training', 'leave', 'disciplinary', 'onboarding', 'tasks', 'messages'];
+        const roleTabMap: Record<string, string[]> = {
+          supervisor: ['documents', 'attendance', 'performance', 'tasks'],
+          supervisor_buddy: ['documents', 'attendance', 'performance', 'tasks'],
+          muhasebe: ['documents', 'leave', 'onboarding'],
+        };
+        const visibleTabs = roleTabMap[userRole] || allTabs;
+        return (
+      <Tabs defaultValue={visibleTabs[0] || "documents"} className="w-full">
         <TabsList className="flex flex-wrap gap-1 h-auto p-1">
+          {visibleTabs.includes('documents') && (
           <TabsTrigger value="documents" data-testid="tab-documents" className="text-xs px-2 py-1.5">
             <FileText className="h-3 w-3 mr-1" />
             Özlük
           </TabsTrigger>
+          )}
+          {visibleTabs.includes('attendance') && (
           <TabsTrigger value="attendance" data-testid="tab-attendance" className="text-xs px-2 py-1.5">
             <Clock className="h-3 w-3 mr-1" />
             Vardiya
           </TabsTrigger>
+          )}
+          {visibleTabs.includes('performance') && (
           <TabsTrigger value="performance" data-testid="tab-performance" className="text-xs px-2 py-1.5">
             <TrendingUp className="h-3 w-3 mr-1" />
             Performans
           </TabsTrigger>
+          )}
+          {visibleTabs.includes('training') && (
           <TabsTrigger value="training" data-testid="tab-training" className="text-xs px-2 py-1.5">
             <Award className="h-3 w-3 mr-1" />
             Eğitim
           </TabsTrigger>
+          )}
+          {visibleTabs.includes('leave') && (
           <TabsTrigger value="leave" data-testid="tab-leave" className="text-xs px-2 py-1.5">
             <CalendarDays className="h-3 w-3 mr-1" />
             İzin/Mesai
           </TabsTrigger>
+          )}
+          {visibleTabs.includes('disciplinary') && (
           <TabsTrigger value="disciplinary" data-testid="tab-disciplinary" className="text-xs px-2 py-1.5">
             <Shield className="h-3 w-3 mr-1" />
             Disiplin
           </TabsTrigger>
+          )}
+          {visibleTabs.includes('onboarding') && (
           <TabsTrigger value="onboarding" data-testid="tab-onboarding" className="text-xs px-2 py-1.5">
             <GraduationCap className="h-3 w-3 mr-1" />
             Onboarding
           </TabsTrigger>
+          )}
+          {visibleTabs.includes('tasks') && (
           <TabsTrigger value="tasks" data-testid="tab-assign-task" className="text-xs px-2 py-1.5">
             <ListTodo className="h-3 w-3 mr-1" />
             Görev
           </TabsTrigger>
+          )}
+          {visibleTabs.includes('messages') && (
           <TabsTrigger value="messages" data-testid="tab-send-message" className="text-xs px-2 py-1.5">
             <Send className="h-3 w-3 mr-1" />
             Mesaj
           </TabsTrigger>
+          )}
         </TabsList>
 
         <TabsContent value="documents" className="flex flex-col gap-3">
@@ -1757,6 +1785,8 @@ export default function PersonelDetay() {
           </Card>
         </TabsContent>
       </Tabs>
+        );
+      })()}
 
       <ConfirmDeleteDialog
         open={deleteState.open}

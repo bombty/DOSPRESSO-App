@@ -251,6 +251,10 @@ export default function Receteler() {
 
   const canEdit = user?.role === 'admin' || isHQRole(user?.role as any);
 
+  const LIMITED_VIEW_ROLES = ['barista', 'stajyer', 'bar_buddy'];
+  const isLimitedView = LIMITED_VIEW_ROLES.includes(user?.role as string);
+  const canSeeFood = !isLimitedView || user?.role === 'admin' || isHQRole(user?.role as any) || user?.role === 'trainer';
+
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editingRecipe, setEditingRecipe] = useState<Recipe | null>(null);
   const [formNameTr, setFormNameTr] = useState("");
@@ -712,18 +716,20 @@ export default function Receteler() {
           </div>
         </div>
 
-        <Tabs value={mainTab} onValueChange={(v) => { const newTab = v as "beverages" | "food"; setMainTab(newTab); setSelectedCategory("all"); if (newTab === "food") { setTempFilter("all"); } }}>
+        <Tabs value={mainTab} onValueChange={(v) => { const newTab = v as "beverages" | "food"; if (!canSeeFood && newTab === "food") return; setMainTab(newTab); setSelectedCategory("all"); if (newTab === "food") { setTempFilter("all"); } }}>
           <TabsList className="w-full">
             <TabsTrigger value="beverages" className="flex-1 gap-2" data-testid="tab-beverages">
               <Coffee className="h-4 w-4" />
               İçecekler
               <Badge variant="secondary" className="ml-1">{beverageCount}</Badge>
             </TabsTrigger>
+            {canSeeFood && (
             <TabsTrigger value="food" className="flex-1 gap-2" data-testid="tab-food">
               <UtensilsCrossed className="h-4 w-4" />
               Yiyecekler
               <Badge variant="secondary" className="ml-1">{foodCount}</Badge>
             </TabsTrigger>
+            )}
           </TabsList>
         </Tabs>
 
