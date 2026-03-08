@@ -36,11 +36,55 @@ async function getActiveAvatars(): Promise<DobodyAvatar[]> {
   return avatars;
 }
 
+function getTurkeyHour(): number {
+  const now = new Date();
+  const turkeyTime = new Date(
+    now.toLocaleString("en-US", { timeZone: "Europe/Istanbul" })
+  );
+  return turkeyTime.getHours() + turkeyTime.getMinutes() / 60;
+}
+
+function isInTimeWindow(
+  timeStart: string | null,
+  timeEnd: string | null,
+  currentHour: number
+): boolean {
+  if (!timeStart || !timeEnd) return true;
+
+  const [startH, startM] = timeStart.split(":").map(Number);
+  const [endH, endM] = timeEnd.split(":").map(Number);
+  const start = startH + (startM || 0) / 60;
+  const end = endH + (endM || 0) / 60;
+
+  if (start <= end) {
+    return currentHour >= start && currentHour < end;
+  }
+  return currentHour >= start || currentHour < end;
+}
+
+function isForRole(
+  roles: string[] | null,
+  userRole: string | undefined
+): boolean {
+  if (!roles || roles.length === 0) return true;
+  if (!userRole) return true;
+  return roles.includes(userRole);
+}
+
 router.get("/api/dobody/avatars", isAuthenticated, async (req: any, res) => {
   try {
     const avatars = await getActiveAvatars();
+    const userRole = req.user?.role as string | undefined;
+    const currentHour = getTurkeyHour();
+
+    const filtered = avatars.filter(
+      (a) =>
+        isInTimeWindow(a.timeStart, a.timeEnd, currentHour) &&
+        isForRole(a.roles, userRole)
+    );
+
     res.json(
-      avatars.map((a) => ({
+      filtered.map((a) => ({
         id: a.id,
         imageUrl: a.imageUrl,
         category: a.category,
@@ -55,9 +99,19 @@ router.get("/api/dobody/avatars", isAuthenticated, async (req: any, res) => {
 router.get("/api/dobody/avatars/random", isAuthenticated, async (req: any, res) => {
   try {
     const category = req.query.category as string | undefined;
+    const userRole = req.user?.role as string | undefined;
+    const currentHour = getTurkeyHour();
+
     let avatars = await getActiveAvatars();
+    avatars = avatars.filter(
+      (a) =>
+        isInTimeWindow(a.timeStart, a.timeEnd, currentHour) &&
+        isForRole(a.roles, userRole)
+    );
+
     if (category && category !== "all") {
-      avatars = avatars.filter((a) => a.category === category);
+      const catFiltered = avatars.filter((a) => a.category === category);
+      if (catFiltered.length > 0) avatars = catFiltered;
     }
     if (avatars.length === 0) {
       return res.json({ imageUrl: null });
@@ -114,12 +168,16 @@ router.patch("/api/admin/dobody/avatars/:id", isAuthenticated, async (req: any, 
       return res.status(400).json({ message: "Geçersiz ID" });
     }
 
+    const hhmmPattern = /^([01]\d|2[0-3]):[0-5]\d$/;
     const updateSchema = z.object({
       label: z.string().nullable().optional(),
       category: z.string().optional(),
       isActive: z.boolean().optional(),
       sortOrder: z.number().optional(),
       imageUrl: z.string().optional(),
+      timeStart: z.string().regex(hhmmPattern, "HH:MM formatında olmalı").nullable().optional(),
+      timeEnd: z.string().regex(hhmmPattern, "HH:MM formatında olmalı").nullable().optional(),
+      roles: z.array(z.string()).nullable().optional(),
     });
 
     const data = updateSchema.parse(req.body);
@@ -193,13 +251,17 @@ router.post("/api/admin/dobody/avatars/upload", isAuthenticated, async (req: any
       return res.status(403).json({ message: "Erişim reddedildi" });
     }
 
+    const hhmmUploadPattern = /^([01]\d|2[0-3]):[0-5]\d$/;
     const bodySchema = z.object({
       imageUrl: z.string().min(1),
       label: z.string().optional(),
       category: z.string().default("general"),
+      timeStart: z.string().regex(hhmmUploadPattern, "HH:MM formatında olmalı").nullable().optional(),
+      timeEnd: z.string().regex(hhmmUploadPattern, "HH:MM formatında olmalı").nullable().optional(),
+      roles: z.array(z.string()).nullable().optional(),
     });
 
-    const { imageUrl, label, category } = bodySchema.parse(req.body);
+    const { imageUrl, label, category, timeStart, timeEnd, roles } = bodySchema.parse(req.body);
 
     const [avatar] = await db
       .insert(dobodyAvatars)
@@ -209,6 +271,9 @@ router.post("/api/admin/dobody/avatars/upload", isAuthenticated, async (req: any
         category,
         isActive: true,
         sortOrder: 0,
+        timeStart: timeStart || null,
+        timeEnd: timeEnd || null,
+        roles: roles || null,
       })
       .returning();
 
@@ -219,6 +284,43 @@ router.post("/api/admin/dobody/avatars/upload", isAuthenticated, async (req: any
       return res.status(400).json({ message: "Geçersiz veri", errors: error.errors });
     }
     handleApiError(res, error, "dobody-avatars:upload");
+  }
+});
+
+router.patch("/api/admin/dobody/avatars/bulk-update", isAuthenticated, async (req: any, res) => {
+  try {
+    const user = req.user!;
+    if (!isHQRole(user.role as UserRoleType)) {
+      return res.status(403).json({ message: "Erişim reddedildi" });
+    }
+
+    const bulkSchema = z.object({
+      ids: z.array(z.number()).min(1),
+      update: z.object({
+        category: z.string().optional(),
+        timeStart: z.string().nullable().optional(),
+        timeEnd: z.string().nullable().optional(),
+        roles: z.array(z.string()).nullable().optional(),
+        isActive: z.boolean().optional(),
+      }),
+    });
+
+    const { ids, update } = bulkSchema.parse(req.body);
+
+    for (const id of ids) {
+      await db
+        .update(dobodyAvatars)
+        .set(update)
+        .where(eq(dobodyAvatars.id, id));
+    }
+
+    invalidateAvatarCache();
+    res.json({ updated: ids.length });
+  } catch (error: any) {
+    if (error.name === "ZodError") {
+      return res.status(400).json({ message: "Geçersiz veri", errors: error.errors });
+    }
+    handleApiError(res, error, "dobody-avatars:bulk-update");
   }
 });
 

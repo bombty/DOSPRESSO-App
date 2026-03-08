@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
+import { useAuth } from "@/hooks/useAuth";
 
 interface DobodyAvatarData {
   id: number;
@@ -9,10 +10,12 @@ interface DobodyAvatarData {
 }
 
 export function useDobodyAvatar(category?: string): string | null {
+  const { user } = useAuth();
+
   const { data: avatars } = useQuery<DobodyAvatarData[]>({
     queryKey: ["/api/dobody/avatars"],
-    staleTime: 30 * 60 * 1000,
-    gcTime: 60 * 60 * 1000,
+    staleTime: 10 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
   });
 
   const avatarUrl = useMemo(() => {

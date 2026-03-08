@@ -14795,6 +14795,9 @@ export const dobodyAvatars = pgTable("dobody_avatars", {
   category: text("category").default("general").notNull(),
   isActive: boolean("is_active").default(true).notNull(),
   sortOrder: integer("sort_order").default(0).notNull(),
+  timeStart: text("time_start"),
+  timeEnd: text("time_end"),
+  roles: text("roles").array(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 export const insertDobodyAvatarSchema = createInsertSchema(dobodyAvatars).omit({
