@@ -22,9 +22,11 @@ import {
   isHQRole,
   isBranchRole,
   isFactoryFloorRole,
+  dobodyFlowTasks,
+  dobodyFlowCompletions,
   type UserRoleType,
 } from "@shared/schema";
-import { eq, and, sql, count, avg, lte, gte, desc, ne, or } from "drizzle-orm";
+import { eq, and, sql, count, avg, lte, gte, desc, ne, or, inArray } from "drizzle-orm";
 import {
   getBaristaSuggestions,
   getSupervisorSuggestions,
@@ -539,6 +541,80 @@ async function getDefaultFlowTasks(userId: string, role: string): Promise<FlowTa
   return flowTasks.slice(0, 3);
 }
 
+async function getManualFlowTasks(userId: string, userRole: string, branchId: number | null): Promise<FlowTask[]> {
+  try {
+    const today = new Date().toISOString().split("T")[0];
+
+    const activeManualTasks = await db
+      .select()
+      .from(dobodyFlowTasks)
+      .where(
+        and(
+          eq(dobodyFlowTasks.isActive, true),
+          lte(dobodyFlowTasks.startDate, today),
+          or(
+            sql`${dobodyFlowTasks.endDate} IS NULL`,
+            gte(dobodyFlowTasks.endDate, today)
+          )
+        )
+      );
+
+    const matchingTasks = activeManualTasks.filter((task) => {
+      const targetUsers = task.targetUsers || [];
+      if (targetUsers.length > 0 && targetUsers.includes(userId)) {
+        return true;
+      }
+
+      if (targetUsers.length > 0) {
+        return false;
+      }
+
+      const targetRoles = task.targetRoles || [];
+      const targetBranches = task.targetBranches || [];
+
+      const roleMatch = targetRoles.length === 0 || targetRoles.includes(userRole);
+      const branchMatch = targetBranches.length === 0 || (branchId !== null && targetBranches.includes(branchId));
+
+      return roleMatch && branchMatch;
+    });
+
+    if (matchingTasks.length === 0) return [];
+
+    const taskIds = matchingTasks.map((t) => t.id);
+    const completions = await db
+      .select({ taskId: dobodyFlowCompletions.taskId })
+      .from(dobodyFlowCompletions)
+      .where(
+        and(
+          eq(dobodyFlowCompletions.userId, userId),
+          inArray(dobodyFlowCompletions.taskId, taskIds)
+        )
+      );
+
+    const completedTaskIds = new Set(completions.map((c) => c.taskId));
+
+    const priorityMap: Record<string, "low" | "medium" | "high" | "critical"> = {
+      high: "critical",
+      normal: "medium",
+      low: "low",
+    };
+
+    return matchingTasks.map((task) => ({
+      id: `manual-task-${task.id}`,
+      title: `${task.title} (HQ)`,
+      description: task.description ? task.description.substring(0, 80) : "",
+      route: task.navigateTo || "/",
+      estimatedMinutes: task.estimatedMinutes || 5,
+      priority: priorityMap[task.priority] || "medium",
+      icon: "Star",
+      completed: completedTaskIds.has(task.id),
+    }));
+  } catch (err) {
+    console.error("Manual flow tasks error:", err);
+    return [];
+  }
+}
+
 router.get("/api/dobody/flow-tasks", isAuthenticated, async (req: any, res) => {
   try {
     const userId = req.user.id;
@@ -574,6 +650,9 @@ router.get("/api/dobody/flow-tasks", isAuthenticated, async (req: any, res) => {
     } else {
       flowTasks = await getDefaultFlowTasks(userId, userRole);
     }
+
+    const manualTasks = await getManualFlowTasks(userId, userRole, branchId);
+    flowTasks = [...manualTasks, ...flowTasks];
 
     const today = new Date().toISOString().split("T")[0];
     let completedToday = 0;

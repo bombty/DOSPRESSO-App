@@ -14,8 +14,11 @@ import {
   GraduationCap,
   Star,
 } from "lucide-react";
+import { useState } from "react";
 import { DobodySuggestionList } from "@/components/dobody-suggestion-card";
 import { DobodyFlowMode } from "@/components/dobody-flow-mode";
+import { DobodyTaskAssignDialog } from "@/components/dobody-task-assign-dialog";
+import { Bot } from "lucide-react";
 
 interface CoachSummaryData {
   branches: Array<{ id: number; name: string }>;
@@ -44,6 +47,7 @@ interface CoachSummaryData {
 
 export default function KoclukPaneli() {
   const { user } = useAuth();
+  const [showAssignDialog, setShowAssignDialog] = useState(false);
 
   const { data, isLoading } = useQuery<CoachSummaryData>({
     queryKey: ["/api/coach-summary"],
@@ -150,7 +154,11 @@ export default function KoclukPaneli() {
 
       <DobodySuggestionList suggestions={data.suggestions || []} />
 
-      <div className="pb-4">
+      <div className="pb-4 space-y-2">
+        <Button variant="outline" className="w-full" onClick={() => setShowAssignDialog(true)} data-testid="btn-assign-task">
+          <Bot className="h-4 w-4 mr-2" />
+          Ekibe Görev Ata
+        </Button>
         <Link href="/hq-dashboard/coach">
           <Button variant="outline" className="w-full" data-testid="btn-detailed-dashboard">
             <ExternalLink className="h-4 w-4 mr-2" />
@@ -158,6 +166,13 @@ export default function KoclukPaneli() {
           </Button>
         </Link>
       </div>
+
+      <DobodyTaskAssignDialog
+        open={showAssignDialog}
+        onOpenChange={setShowAssignDialog}
+        scope="coach"
+        branchIds={data.branches.map((b) => b.id)}
+      />
     </div>
   );
 }

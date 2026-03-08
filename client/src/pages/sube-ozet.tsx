@@ -19,8 +19,11 @@ import {
   ExternalLink,
   ChevronRight,
 } from "lucide-react";
+import { useState } from "react";
 import { DobodySuggestionList } from "@/components/dobody-suggestion-card";
 import { DobodyFlowMode } from "@/components/dobody-flow-mode";
+import { DobodyTaskAssignDialog } from "@/components/dobody-task-assign-dialog";
+import { Bot } from "lucide-react";
 
 interface BranchSummaryData {
   branch: { id: number; name: string };
@@ -84,6 +87,7 @@ export default function SubeOzet() {
   const { user } = useAuth();
   const { toast } = useToast();
   const branchId = user?.branchId ? Number(user.branchId) : null;
+  const [showAssignDialog, setShowAssignDialog] = useState(false);
 
   const { data, isLoading } = useQuery<BranchSummaryData>({
     queryKey: ["/api/branch-summary", branchId],
@@ -252,7 +256,13 @@ export default function SubeOzet() {
         </Card>
       )}
 
-      <div className="pb-4">
+      <div className="pb-4 space-y-2">
+        {(user?.role === "supervisor" || user?.role === "supervisor_buddy" || user?.role === "mudur") && (
+          <Button variant="outline" className="w-full" onClick={() => setShowAssignDialog(true)} data-testid="btn-assign-task">
+            <Bot className="h-4 w-4 mr-2" />
+            Ekibe Görev Ata
+          </Button>
+        )}
         <Link href="/">
           <Button variant="outline" className="w-full" data-testid="btn-detailed-dashboard">
             <ExternalLink className="h-4 w-4 mr-2" />
@@ -260,6 +270,13 @@ export default function SubeOzet() {
           </Button>
         </Link>
       </div>
+
+      <DobodyTaskAssignDialog
+        open={showAssignDialog}
+        onOpenChange={setShowAssignDialog}
+        scope="branch"
+        branchId={branchId}
+      />
     </div>
   );
 }

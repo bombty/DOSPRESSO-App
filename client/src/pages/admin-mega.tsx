@@ -70,6 +70,7 @@ const AdminWidgetYonetimi = lazy(() => import("./admin/widget-yonetimi"));
 const AdminHeroWidgetEditor = lazy(() => import("./admin/widget-editor"));
 const AdminAIPolitikalari = lazy(() => import("./admin/ai-politikalari"));
 const AdminDobodyAvatarlar = lazy(() => import("./admin/dobody-avatarlar"));
+const AdminDobodyGorevYonetimi = lazy(() => import("./admin/dobody-gorev-yonetimi"));
 
 interface TabConfig {
   id: string;
@@ -373,6 +374,15 @@ const ADMIN_TABS: TabConfig[] = [
     permissionModule: "admin_panel",
     group: "icerik",
     component: AdminDobodyAvatarlar
+  },
+  {
+    id: "dobody-gorevler",
+    label: "Mr. Dobody Tasks",
+    labelTr: "Mr. Dobody Görevler",
+    icon: <Bot className="h-4 w-4" />,
+    permissionModule: "admin_panel",
+    group: "operasyon",
+    component: AdminDobodyGorevYonetimi
   }
 ];
 
@@ -420,7 +430,8 @@ const TAB_URL_MAP: Record<string, string> = {
   "kalite-kriterleri": "/admin/kalite-kriterleri",
   "personel-tipleri": "/admin/personel-tipleri",
   "ai-politikalari": "/admin/ai-politikalari",
-  "dobody-avatarlar": "/admin/dobody-avatarlar"
+  "dobody-avatarlar": "/admin/dobody-avatarlar",
+  "dobody-gorevler": "/admin/dobody-gorevler"
 };
 
 function getTabFromUrl(pathname: string): string | null {

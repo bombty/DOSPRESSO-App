@@ -14806,3 +14806,49 @@ export const insertDobodyAvatarSchema = createInsertSchema(dobodyAvatars).omit({
 });
 export type InsertDobodyAvatar = z.infer<typeof insertDobodyAvatarSchema>;
 export type DobodyAvatar = typeof dobodyAvatars.$inferSelect;
+
+export const dobodyFlowTasks = pgTable("dobody_flow_tasks", {
+  id: serial("id").primaryKey(),
+  title: varchar("title", { length: 255 }).notNull(),
+  description: text("description"),
+  navigateTo: varchar("navigate_to", { length: 500 }),
+  estimatedMinutes: integer("estimated_minutes").default(5),
+  priority: varchar("priority", { length: 20 }).default("normal").notNull(),
+  targetRoles: text("target_roles").array(),
+  targetBranches: integer("target_branches").array(),
+  targetUsers: text("target_users").array(),
+  startDate: date("start_date").notNull(),
+  endDate: date("end_date"),
+  isActive: boolean("is_active").default(true).notNull(),
+  createdById: varchar("created_by_id").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("dobody_flow_tasks_active_idx").on(table.isActive),
+  index("dobody_flow_tasks_created_by_idx").on(table.createdById),
+]);
+
+export const insertDobodyFlowTaskSchema = createInsertSchema(dobodyFlowTasks).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertDobodyFlowTask = z.infer<typeof insertDobodyFlowTaskSchema>;
+export type DobodyFlowTask = typeof dobodyFlowTasks.$inferSelect;
+
+export const dobodyFlowCompletions = pgTable("dobody_flow_completions", {
+  id: serial("id").primaryKey(),
+  taskId: integer("task_id").notNull(),
+  userId: varchar("user_id").notNull(),
+  completedAt: timestamp("completed_at").defaultNow().notNull(),
+}, (table) => [
+  index("dobody_flow_comp_task_idx").on(table.taskId),
+  index("dobody_flow_comp_user_idx").on(table.userId),
+]);
+
+export const insertDobodyFlowCompletionSchema = createInsertSchema(dobodyFlowCompletions).omit({
+  id: true,
+  completedAt: true,
+});
+export type InsertDobodyFlowCompletion = z.infer<typeof insertDobodyFlowCompletionSchema>;
+export type DobodyFlowCompletion = typeof dobodyFlowCompletions.$inferSelect;
