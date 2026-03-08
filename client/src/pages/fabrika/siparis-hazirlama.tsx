@@ -130,7 +130,7 @@ export default function SiparisHazirlama() {
     <div className="p-3 space-y-3">
       <div className="flex items-center gap-2">
         <Package className="h-5 w-5 text-muted-foreground" />
-        <h1 className="text-lg font-semibold" data-testid="text-page-title">Siparis Hazirlama</h1>
+        <h1 className="text-lg font-semibold" data-testid="text-page-title">Sipariş Hazırlama</h1>
       </div>
 
       <Card>
@@ -237,12 +237,12 @@ export default function SiparisHazirlama() {
         <CardHeader className="p-3 pb-0">
           <CardTitle className="text-sm flex items-center gap-2 flex-wrap">
             <Clock className="h-4 w-4" />
-            Son Stok Cikislari
+            Son Stok Çıkışları
           </CardTitle>
         </CardHeader>
         <CardContent className="p-3">
           {exitsLoading ? (
-            <div className="text-center py-4 text-muted-foreground text-sm">Yukleniyor...</div>
+            <div className="text-center py-4 text-muted-foreground text-sm">Yükleniyor...</div>
           ) : recentExits && recentExits.length > 0 ? (
             <div className="border rounded-md overflow-x-auto">
               <Table>
@@ -268,7 +268,7 @@ export default function SiparisHazirlama() {
             </div>
           ) : (
             <div className="text-center py-4 text-muted-foreground text-sm" data-testid="text-no-exits">
-              Henuz stok cikisi yapilmamis
+              Henüz stok çıkışı yapılmamış
             </div>
           )}
         </CardContent>

@@ -449,7 +449,7 @@ export default function FabrikaDashboard() {
                   <Link href="/fabrika?tab=uretim-planlama">
                     <Button variant="outline" className="w-full justify-start gap-2 text-xs" data-testid="quick-production">
                       <Factory className="h-3.5 w-3.5 text-blue-500 flex-shrink-0" />
-                      <span className="truncate">Uretim Planlama</span>
+                      <span className="truncate">Üretim Planlama</span>
                     </Button>
                   </Link>
                   <Link href="/satinalma?tab=tedarikciler">

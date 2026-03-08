@@ -1206,11 +1206,11 @@ export default function Notifications() {
                   <AlertDialogHeader>
                     <AlertDialogTitle data-testid="dialog-title-confirm">Emin misiniz?</AlertDialogTitle>
                     <AlertDialogDescription data-testid="dialog-description">
-                      Tum bildirimler okundu olarak isaretlenecek. Bu islem geri alinamaz.
+                      Tüm bildirimler okundu olarak işaretlenecek. Bu işlem geri alınamaz.
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
-                    <AlertDialogCancel data-testid="button-dialog-cancel">Vazgec</AlertDialogCancel>
+                    <AlertDialogCancel data-testid="button-dialog-cancel">Vazgeç</AlertDialogCancel>
                     <AlertDialogAction 
                       onClick={() => markAllAsReadMutation.mutate()}
                       disabled={markAllAsReadMutation.isPending}

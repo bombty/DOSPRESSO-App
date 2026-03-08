@@ -205,7 +205,7 @@ function AiCopilotCard({ range }: { range: RangeOption }) {
 
           {data.ilk_3_aksiyon.length > 0 && (
             <div>
-              <p className="text-xs font-semibold text-muted-foreground mb-2">Aksiyon Onerileri</p>
+              <p className="text-xs font-semibold text-muted-foreground mb-2">Aksiyon Önerileri</p>
               <div className="space-y-1.5" data-testid="list-aksiyonlar">
                 {data.ilk_3_aksiyon.map((aksiyon, i) => (
                   <Link key={i} href={aksiyon.deepLink}>

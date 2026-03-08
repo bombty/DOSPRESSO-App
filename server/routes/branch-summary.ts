@@ -144,12 +144,13 @@ router.get("/api/branch-summary/:branchId", isAuthenticated, async (req: any, re
             sql`CAST(${branchInventory.currentStock} AS numeric) < CAST(${branchInventory.minimumStock} AS numeric)`
           )
         );
-      lowStockItems = inventory.map((i) => ({
+      const rawItems = inventory.map((i) => ({
         productName: i.productName || "Urun",
         currentStock: parseFloat(i.currentStock || "0"),
         minimumStock: parseFloat(i.minimumStock || "0"),
         unit: i.unit || "adet",
       }));
+      lowStockItems = rawItems.filter((w, i, arr) => arr.findIndex(x => x.productName === w.productName) === i);
     } catch {}
 
     let warnings = 0;

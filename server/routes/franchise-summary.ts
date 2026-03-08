@@ -7,6 +7,8 @@ import {
   customerFeedback,
 } from "@shared/schema";
 import { eq, and, sql, count, avg, inArray } from "drizzle-orm";
+import { getHQSuggestions } from "../lib/dobody-suggestions";
+import { getLatestSkillInsights, deduplicateSuggestions } from "../agent/skills/skill-registry";
 
 const router = Router();
 
@@ -88,9 +90,20 @@ router.get("/api/franchise-summary", isAuthenticated, async (req: any, res) => {
       };
     });
 
+    let suggestions: any[] = [];
+    try {
+      suggestions = await getHQSuggestions();
+      const userId = req.user.id;
+      const skillInsights = await getLatestSkillInsights(userId, userRole);
+      suggestions = deduplicateSuggestions([...suggestions, ...skillInsights]);
+    } catch (e) {
+      console.error("Franchise suggestions error:", e);
+    }
+
     res.json({
       branches: branchData,
       totalBranches: targetBranches.length,
+      suggestions,
     });
   } catch (error: any) {
     console.error("Franchise summary error:", error);

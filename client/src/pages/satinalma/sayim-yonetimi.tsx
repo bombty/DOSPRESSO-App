@@ -1000,8 +1000,8 @@ function SayimRaporlari({ filterYear }: { filterYear: number }) {
         <Card>
           <CardContent className="py-8 text-center text-muted-foreground">
             <BarChart3 className="h-8 w-8 mx-auto mb-2 opacity-50" />
-            <p className="text-sm">Henuz tutarsizlik raporu bulunmuyor</p>
-            <p className="text-xs mt-1">Sayimlar tamamlandiginda tutarsizlik raporlari burada gorunecektir</p>
+            <p className="text-sm">Henüz tutarsızlık raporu bulunmuyor</p>
+            <p className="text-xs mt-1">Sayımlar tamamlandığında tutarsızlık raporları burada görünecektir</p>
           </CardContent>
         </Card>
       ) : (
@@ -1113,8 +1113,8 @@ function TedarikciPuanlama() {
                     </div>
                   )}
                   <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
-                    <span>Toplam Siparis: {s.total_orders || 0}</span>
-                    <span>Zamaninda: %{parseFloat(s.on_time_delivery_rate || 0).toFixed(0)}</span>
+                    <span>Toplam Sipariş: {s.total_orders || 0}</span>
+                    <span>Zamanında: %{parseFloat(s.on_time_delivery_rate || 0).toFixed(0)}</span>
                   </div>
                 </CardContent>
               </Card>

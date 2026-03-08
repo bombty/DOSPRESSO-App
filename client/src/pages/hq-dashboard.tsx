@@ -1202,7 +1202,7 @@ function CGODashboard() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="text-xs">Siparis No</TableHead>
+                  <TableHead className="text-xs">Sipariş No</TableHead>
                   <TableHead className="text-xs">Tedarikci</TableHead>
                   <TableHead className="text-xs text-right">Tutar</TableHead>
                   <TableHead className="text-xs">Tarih</TableHead>
@@ -1635,6 +1635,102 @@ function TeknikDashboard() {
   );
 }
 
+function DestekDashboard() {
+  const [, setLocation] = useLocation();
+  const { data, isLoading } = useQuery<any>({
+    queryKey: ['/api/hq-dashboard/destek'],
+  });
+
+  const fallbackMetrics: MetricCard[] = [
+    { title: "Açık Destek Talepleri", value: 8, icon: <MessageSquare className="w-5 h-5 text-blue-500" />, iconBgClass: "bg-blue-500/10", status: 'warning', trend: 'stable' },
+    { title: "Ortalama Çözüm Süresi", value: "4.2 saat", icon: <Clock className="w-5 h-5 text-green-500" />, iconBgClass: "bg-green-500/10", status: 'healthy', trend: 'up' },
+    { title: "Memnuniyet Oranı", value: "91%", icon: <ThumbsUp className="w-5 h-5 text-yellow-500" />, iconBgClass: "bg-yellow-500/10", status: 'healthy', trend: 'up' },
+    { title: "Bugün Çözülen", value: 5, icon: <CheckCircle className="w-5 h-5 text-green-500" />, iconBgClass: "bg-green-500/10", status: 'healthy' },
+  ];
+
+  const fallbackAlerts = [
+    { message: "2 destek talebi 24 saatten fazla bekliyor", severity: 'warning' as RiskStatus },
+    { message: "Kadıköy şubesinden yoğun talep akışı", severity: 'warning' as RiskStatus },
+  ];
+
+  const metrics = data?.metrics ? data.metrics.map((m: any, index: number) => {
+    const fallbackIcon = fallbackMetrics[index]?.icon || <MessageSquare className="w-5 h-5 text-muted-foreground" />;
+    return {
+      title: m.title,
+      value: m.value,
+      status: m.status,
+      trend: m.trend,
+      icon: fallbackIcon,
+      iconBgClass: fallbackMetrics[index]?.iconBgClass,
+    };
+  }) : fallbackMetrics;
+
+  const alerts = data?.alerts || fallbackAlerts;
+
+  if (isLoading) {
+    return <DashboardSkeleton />;
+  }
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center gap-2 pb-2 border-b border-border/50">
+        <MessageSquare className="w-4 h-4 text-primary" />
+        <h2 className="text-base font-semibold" data-testid="text-dashboard-title">Destek Merkezi</h2>
+      </div>
+
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+        {metrics.map((metric: MetricCard, index: number) => (
+          <MetricCardComponent key={index} metric={metric} />
+        ))}
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+        <Card
+          className="hover-elevate cursor-pointer"
+          onClick={() => setLocation('/operasyon/ariza')}
+          data-testid="card-ariza-takip"
+        >
+          <CardContent className="p-3 flex flex-col items-center text-center gap-2">
+            <div className="w-9 h-9 rounded-lg bg-orange-500/10 flex items-center justify-center">
+              <Wrench className="w-4 h-4 text-orange-500" />
+            </div>
+            <span className="text-xs font-medium">Arıza Takip</span>
+            <span className="text-[10px] text-muted-foreground">Açık arıza ve talepleri yönet</span>
+          </CardContent>
+        </Card>
+        <Card
+          className="hover-elevate cursor-pointer"
+          onClick={() => setLocation('/sube-saglik-skoru')}
+          data-testid="card-sube-saglik"
+        >
+          <CardContent className="p-3 flex flex-col items-center text-center gap-2">
+            <div className="w-9 h-9 rounded-lg bg-green-500/10 flex items-center justify-center">
+              <Heart className="w-4 h-4 text-green-500" />
+            </div>
+            <span className="text-xs font-medium">Şube Sağlık Skoru</span>
+            <span className="text-[10px] text-muted-foreground">Şube durumlarını incele</span>
+          </CardContent>
+        </Card>
+        <Card
+          className="hover-elevate cursor-pointer"
+          onClick={() => setLocation('/musteri-memnuniyeti')}
+          data-testid="card-musteri-memnuniyeti"
+        >
+          <CardContent className="p-3 flex flex-col items-center text-center gap-2">
+            <div className="w-9 h-9 rounded-lg bg-blue-500/10 flex items-center justify-center">
+              <ThumbsUp className="w-4 h-4 text-blue-500" />
+            </div>
+            <span className="text-xs font-medium">Müşteri Memnuniyeti</span>
+            <span className="text-[10px] text-muted-foreground">Geri bildirim ve analizler</span>
+          </CardContent>
+        </Card>
+      </div>
+
+      <AlertPanel alerts={alerts} />
+    </div>
+  );
+}
+
 function GidaMuhendisiDashboard() {
   const [, setLocation] = useLocation();
   const { data: faultsRaw, isLoading: faultsLoading } = useQuery<any>({
@@ -1800,7 +1896,7 @@ export default function HQDashboard() {
     'trainer': TrainerDashboard,
     'kalite_kontrol': KaliteDashboard,
     'teknik': TeknikDashboard,
-    'destek': CoachDashboard,
+    'destek': DestekDashboard,
     'yatirimci_hq': CGODashboard,
     'gida_muhendisi': GidaMuhendisiDashboard,
   };

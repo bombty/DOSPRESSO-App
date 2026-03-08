@@ -28,6 +28,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useTranslation } from "react-i18next";
 import { NAV_GROUPS } from "@/lib/nav-registry";
 import { useFavorites } from "@/hooks/use-favorites";
+import { getRoleHomePath } from "@/lib/role-routes";
 
 const HUB_ITEM_THRESHOLD = 4;
 
@@ -313,8 +314,7 @@ export function AppSidebar() {
               className="h-12 w-auto cursor-pointer"
               data-testid="img-dospresso-logo"
               onClick={() => {
-                const homePath = user?.role === 'ceo' ? '/ceo-command-center' : user?.role === 'cgo' ? '/cgo-command-center' : '/';
-                navigate(homePath);
+                navigate(getRoleHomePath(user?.role));
               }}
             />
           </SidebarGroupLabel>

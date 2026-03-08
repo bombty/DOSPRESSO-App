@@ -308,16 +308,16 @@ function OrderDetailDialog({ order, open, onOpenChange }: { order: PurchaseOrder
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg" data-testid="dialog-order-detail">
         <DialogHeader>
-          <DialogTitle>Siparis Detayi - {order.orderNumber}</DialogTitle>
+          <DialogTitle>Sipariş Detayı - {order.orderNumber}</DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-3 text-sm">
             <div>
-              <span className="text-muted-foreground">Tedarikci:</span>
+              <span className="text-muted-foreground">Tedarikçi:</span>
               <p className="font-medium" data-testid="text-order-supplier">{order.supplier?.name || "-"}</p>
             </div>
             <div>
-              <span className="text-muted-foreground">Siparis Tarihi:</span>
+              <span className="text-muted-foreground">Sipariş Tarihi:</span>
               <p className="font-medium" data-testid="text-order-date">{new Date(order.orderDate).toLocaleDateString("tr-TR")}</p>
             </div>
             <div>
@@ -595,7 +595,7 @@ export default function SiparisYonetimi() {
             </DialogHeader>
             <form onSubmit={handleCreateSubmit} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="supplierId">Tedarikci</Label>
+                <Label htmlFor="supplierId">Tedarikçi</Label>
                 <Select value={selectedSupplierId} onValueChange={setSelectedSupplierId}>
                   <SelectTrigger data-testid="select-supplier">
                     <SelectValue placeholder="Tedarikçi seçin" />
@@ -631,13 +631,13 @@ export default function SiparisYonetimi() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Siparis No</TableHead>
-                <TableHead>Tedarikci</TableHead>
-                <TableHead>Siparis Tarihi</TableHead>
+                <TableHead>Sipariş No</TableHead>
+                <TableHead>Tedarikçi</TableHead>
+                <TableHead>Sipariş Tarihi</TableHead>
                 <TableHead>Teslimat Tarihi</TableHead>
                 <TableHead className="text-right">Tutar</TableHead>
                 <TableHead>Durum</TableHead>
-                <TableHead className="text-right">Islemler</TableHead>
+                <TableHead className="text-right">İşlemler</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -769,7 +769,7 @@ export default function SiparisYonetimi() {
       <Dialog open={!!rejectDialogOrder} onOpenChange={(open) => { if (!open) { setRejectDialogOrder(null); setRejectionReason(""); } }}>
         <DialogContent className="max-w-md" data-testid="dialog-reject-order">
           <DialogHeader>
-            <DialogTitle>Siparis Reddet - {rejectDialogOrder?.orderNumber}</DialogTitle>
+            <DialogTitle>Sipariş Reddet - {rejectDialogOrder?.orderNumber}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">

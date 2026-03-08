@@ -91,11 +91,11 @@ export default function AdminCopKutusu() {
   function getDisplayName(item: any, tableName: string): string {
     if (tableName === "users") return `${item.firstName || ""} ${item.lastName || ""}`.trim() || item.email || item.id;
     if (tableName === "branches") return item.name || item.id;
-    if (tableName === "tasks") return item.title || `Gorev #${item.id}`;
+    if (tableName === "tasks") return item.title || `Görev #${item.id}`;
     if (tableName === "equipment") return item.name || `Ekipman #${item.id}`;
     if (tableName === "checklists") return item.title || `Checklist #${item.id}`;
     if (tableName === "recipes") return item.name || `Tarif #${item.id}`;
-    if (tableName === "training_modules") return item.title || `Modul #${item.id}`;
+    if (tableName === "training_modules") return item.title || `Modül #${item.id}`;
     if (tableName === "shifts") return `Vardiya #${item.id} - ${item.shiftType || ""}`;
     return String(item.id);
   }
@@ -258,8 +258,8 @@ export default function AdminCopKutusu() {
               ) : (
                 <>
                   <AlertTriangle className="h-4 w-4 inline mr-1 text-destructive" />
-                  <strong>{confirmAction?.displayName}</strong> kaydini kalici olarak silmek istiyor musunuz?
-                  Bu islem geri alinamaz!
+                  <strong>{confirmAction?.displayName}</strong> kaydını kalıcı olarak silmek istiyor musunuz?
+                  Bu işlem geri alınamaz!
                 </>
               )}
             </AlertDialogDescription>

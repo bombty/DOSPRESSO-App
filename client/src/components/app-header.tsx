@@ -13,6 +13,7 @@ import { HamburgerMenu } from "@/components/hamburger-menu";
 import { InboxDialog } from "@/components/inbox-dialog";
 import dospressoLogo from "@assets/IMG_6637_1765138781125.png";
 import type { User } from "@shared/schema";
+import { getRoleHomePath } from "@/lib/role-routes";
 
 interface AppHeaderProps {
   user?: User | null;
@@ -114,10 +115,7 @@ export function AppHeader({ user, branchName, onQRClick }: AppHeaderProps) {
             alt="DOSPRESSO" 
             className="h-8 object-contain cursor-pointer"
             onClick={() => {
-              const role = user?.role;
-              if (role === 'ceo') setLocation('/ceo-command-center');
-              else if (role === 'cgo') setLocation('/cgo-command-center');
-              else setLocation('/');
+              setLocation(getRoleHomePath(user?.role));
             }}
             data-testid="img-dospresso-logo"
           />

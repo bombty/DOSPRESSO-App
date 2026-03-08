@@ -837,7 +837,7 @@ function TicketDetailDialog({
           <ScrollArea className="flex-1 pr-4">
             <div className="flex flex-col gap-2 sm:gap-3 pb-4">
               {messages.length === 0 ? (
-                <p className="text-center text-muted-foreground py-8">Henuz mesaj yok</p>
+                <p className="text-center text-muted-foreground py-8">Henüz mesaj yok</p>
               ) : (
                 messages.map((msg) => {
                   const isCurrentUser = msg.senderId === user?.id;

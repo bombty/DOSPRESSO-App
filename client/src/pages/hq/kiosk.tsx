@@ -130,10 +130,10 @@ export default function HqKiosk() {
     },
     onSuccess: (data) => {
       setCurrentSession(data.session);
-      toast({ title: "Vardiya basladi", description: "Iyi calismalar!" });
+      toast({ title: "Vardiya başladı", description: "İyi çalışmalar!" });
     },
     onError: (error: any) => {
-      toast({ title: "Vardiya baslatilamadi", description: error.message, variant: "destructive" });
+      toast({ title: "Vardiya başlatılamadı", description: error.message, variant: "destructive" });
     },
   });
 
@@ -176,12 +176,12 @@ export default function HqKiosk() {
     onSuccess: (data) => {
       setCurrentSession(data.session);
       toast({
-        title: "Donus kaydedildi",
-        description: `${data.exitDuration} dakika disarida kalindi`,
+        title: "Dönüş kaydedildi",
+        description: `${data.exitDuration} dakika dışarıda kalındı`,
       });
     },
     onError: (error: any) => {
-      toast({ title: "Donus kaydedilemedi", description: error.message, variant: "destructive" });
+      toast({ title: "Dönüş kaydedilemedi", description: error.message, variant: "destructive" });
     },
   });
 
@@ -269,7 +269,7 @@ export default function HqKiosk() {
     switch (status) {
       case "active": return "Çalışıyor";
       case "on_break": return "Molada";
-      case "outside": return "Dis Gorevde";
+      case "outside": return "Dış Görevde";
       default: return status;
     }
   };
@@ -422,7 +422,7 @@ export default function HqKiosk() {
           </div>
         </div>
         <Button variant="outline" onClick={resetKiosk} data-testid="button-hq-logout">
-          <LogOut className="h-4 w-4 mr-2" /> Cikis
+          <LogOut className="h-4 w-4 mr-2" /> Çıkış
         </Button>
       </div>
 
@@ -437,7 +437,7 @@ export default function HqKiosk() {
             {!currentSession ? (
               <div className="text-center py-8">
                 <Timer className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
-                <p className="text-lg mb-6">Vardiya baslatilmadi</p>
+                <p className="text-lg mb-6">Vardiya başlatılmadı</p>
                 <Button
                   size="lg"
                   onClick={() => selectedUser && startShiftMutation.mutate(selectedUser.id)}
@@ -445,7 +445,7 @@ export default function HqKiosk() {
                   data-testid="button-hq-start-shift"
                 >
                   <LogIn className="h-5 w-5 mr-2" />
-                  {startShiftMutation.isPending ? "Baslatiliyor..." : "Vardiya Baslat"}
+                  {startShiftMutation.isPending ? "Başlatılıyor..." : "Vardiya Başlat"}
                 </Button>
               </div>
             ) : (
@@ -455,7 +455,7 @@ export default function HqKiosk() {
                     {formatTime(elapsedTime)}
                   </p>
                   <p className="text-sm text-muted-foreground mt-1">
-                    Baslangic: {new Date(currentSession.checkInTime).toLocaleTimeString("tr-TR")}
+                    Başlangıç: {new Date(currentSession.checkInTime).toLocaleTimeString("tr-TR")}
                   </p>
                 </div>
 
@@ -465,11 +465,11 @@ export default function HqKiosk() {
                     <p className="font-semibold">{formatMinutes(currentSession.breakMinutes || 0)}</p>
                   </div>
                   <div className="text-center p-3 rounded-lg bg-muted/50">
-                    <p className="text-xs text-muted-foreground">Dis Gorev</p>
+                    <p className="text-xs text-muted-foreground">Dış Görev</p>
                     <p className="font-semibold">{formatMinutes(currentSession.outsideMinutes || 0)}</p>
                   </div>
                   <div className="text-center p-3 rounded-lg bg-muted/50">
-                    <p className="text-xs text-muted-foreground">Net Calisma</p>
+                    <p className="text-xs text-muted-foreground">Net Çalışma</p>
                     <p className="font-semibold">{formatMinutes(Math.max(0, Math.floor(elapsedTime / 60) - (currentSession.breakMinutes || 0) - (currentSession.outsideMinutes || 0)))}</p>
                   </div>
                 </div>
@@ -495,7 +495,7 @@ export default function HqKiosk() {
                         }}
                         data-testid="button-hq-external"
                       >
-                        <Briefcase className="h-4 w-4 mr-2" /> Dis Gorev
+                        <Briefcase className="h-4 w-4 mr-2" /> Dış Görev
                       </Button>
                       <Button
                         variant="outline"
@@ -512,7 +512,7 @@ export default function HqKiosk() {
                         onClick={() => setShowEndDayConfirm(true)}
                         data-testid="button-hq-end-day"
                       >
-                        <LogOut className="h-4 w-4 mr-2" /> Gun Sonu
+                        <LogOut className="h-4 w-4 mr-2" /> Gün Sonu
                       </Button>
                     </div>
                   )}
@@ -525,7 +525,7 @@ export default function HqKiosk() {
                       data-testid="button-hq-return"
                     >
                       <ArrowLeft className="h-4 w-4 mr-2" />
-                      {returnMutation.isPending ? "Kaydediliyor..." : "Ofise Don"}
+                      {returnMutation.isPending ? "Kaydediliyor..." : "Ofise Dön"}
                     </Button>
                   )}
                 </div>
@@ -537,12 +537,12 @@ export default function HqKiosk() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <MapPin className="h-5 w-5" /> Olay Gecmisi
+              <MapPin className="h-5 w-5" /> Olay Geçmişi
             </CardTitle>
           </CardHeader>
           <CardContent>
             {sessionEvents.length === 0 ? (
-              <p className="text-center text-muted-foreground py-8">Henuz olay yok</p>
+              <p className="text-center text-muted-foreground py-8">Henüz olay yok</p>
             ) : (
               <div className="space-y-3 max-h-80 overflow-y-auto">
                 {sessionEvents.map((event) => (
@@ -580,9 +580,9 @@ export default function HqKiosk() {
       <AlertDialog open={showEndDayConfirm} onOpenChange={setShowEndDayConfirm}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Gun Sonu</AlertDialogTitle>
+            <AlertDialogTitle>Gün Sonu</AlertDialogTitle>
             <AlertDialogDescription>
-              Vardiyayi sonlandirmak istediginize emin misiniz? Bu islem geri alinamaz.
+              Vardiyayı sonlandırmak istediğinize emin misiniz? Bu işlem geri alınamaz.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -652,7 +652,7 @@ export default function HqKiosk() {
           )}
 
           <div className="space-y-2">
-            <label className="text-sm font-medium">Tahmini Donus Saati</label>
+            <label className="text-sm font-medium">Tahmini Dönüş Saati</label>
             <Input
               type="time"
               value={estimatedReturn}
@@ -683,7 +683,7 @@ export default function HqKiosk() {
             disabled={exitMutation.isPending}
             data-testid="button-confirm-exit"
           >
-            {exitMutation.isPending ? "Kaydediliyor..." : "Onayla ve Cik"}
+            {exitMutation.isPending ? "Kaydediliyor..." : "Onayla ve Çık"}
           </Button>
         </CardContent>
       </Card>
@@ -706,7 +706,7 @@ export default function HqKiosk() {
           {shiftSummary && (
             <div className="space-y-3">
               <div className="flex justify-between items-center p-3 rounded-lg bg-muted/50">
-                <span className="text-sm text-muted-foreground">Toplam Sure</span>
+                <span className="text-sm text-muted-foreground">Toplam Süre</span>
                 <span className="font-semibold">{formatMinutes(shiftSummary.totalMinutes)}</span>
               </div>
               <div className="flex justify-between items-center p-3 rounded-lg bg-muted/50">
@@ -714,17 +714,17 @@ export default function HqKiosk() {
                 <span className="font-semibold">{formatMinutes(shiftSummary.breakMinutes)}</span>
               </div>
               <div className="flex justify-between items-center p-3 rounded-lg bg-muted/50">
-                <span className="text-sm text-muted-foreground">Dis Gorev</span>
+                <span className="text-sm text-muted-foreground">Dış Görev</span>
                 <span className="font-semibold">{formatMinutes(shiftSummary.outsideMinutes)}</span>
               </div>
               <div className="flex justify-between items-center p-3 rounded-lg bg-blue-50 dark:bg-blue-900/50">
-                <span className="text-sm font-medium">Net Calisma</span>
+                <span className="text-sm font-medium">Net Çalışma</span>
                 <span className="font-bold text-lg">{formatMinutes(shiftSummary.netWorkMinutes)}</span>
               </div>
             </div>
           )}
           <Button variant="outline" className="w-full" onClick={resetKiosk} data-testid="button-hq-back-home">
-            Ana Sayfaya Don
+            Ana Sayfaya Dön
           </Button>
         </CardContent>
       </Card>
@@ -740,7 +740,7 @@ export default function HqKiosk() {
       data-testid="button-kiosk-exit"
     >
       <LogOut className="h-4 w-4 mr-2" />
-      Kiosk'tan Cik
+      Kiosk'tan Çık
     </Button>
   );
 

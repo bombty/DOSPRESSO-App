@@ -100,7 +100,7 @@ export default function SubeOzet() {
       return res.json();
     },
     onSuccess: (result) => {
-      toast({ title: "Islem tamamlandi", description: result.message });
+      toast({ title: "İşlem tamamlandı", description: result.message });
       queryClient.invalidateQueries({ queryKey: ["/api/branch-summary", branchId] });
     },
   });
@@ -108,7 +108,7 @@ export default function SubeOzet() {
   if (!branchId) {
     return (
       <div className="p-4 max-w-lg mx-auto">
-        <Card><CardContent className="p-6 text-center text-muted-foreground">Sube bilgisi bulunamadi</CardContent></Card>
+        <Card><CardContent className="p-6 text-center text-muted-foreground">Şube bilgisi bulunamadı</CardContent></Card>
       </div>
     );
   }
@@ -129,7 +129,7 @@ export default function SubeOzet() {
   if (!data) {
     return (
       <div className="p-4 max-w-lg mx-auto" data-testid="sube-ozet-error">
-        <Card><CardContent className="p-6 text-center text-muted-foreground">Veriler yuklenemedi</CardContent></Card>
+        <Card><CardContent className="p-6 text-center text-muted-foreground">Veriler yüklenemedi</CardContent></Card>
       </div>
     );
   }
@@ -138,7 +138,7 @@ export default function SubeOzet() {
     <div className="p-4 space-y-4 max-w-lg mx-auto overflow-y-auto h-full" data-testid="sube-ozet-page">
       <div data-testid="branch-header">
         <h1 className="text-xl font-bold" data-testid="text-branch-name">{data.branch.name}</h1>
-        <p className="text-sm text-muted-foreground">Sube Ozeti</p>
+        <p className="text-sm text-muted-foreground">Şube Özeti</p>
       </div>
 
       <div className="grid grid-cols-2 gap-3" data-testid="kpi-grid">
@@ -156,14 +156,14 @@ export default function SubeOzet() {
         />
         <KPICard
           icon={Star}
-          label="Musteri Puani"
+          label="Müşteri Puanı"
           value={data.kpis.customerAvg || "---"}
-          sub={data.kpis.feedbackCount > 0 ? `${data.kpis.feedbackCount} degerlendirme` : undefined}
+          sub={data.kpis.feedbackCount > 0 ? `${data.kpis.feedbackCount} değerlendirme` : undefined}
           variant={data.kpis.customerAvg > 0 && data.kpis.customerAvg < 3.5 ? "warning" : "default"}
         />
         <KPICard
           icon={AlertTriangle}
-          label="Uyarilar"
+          label="Uyarılar"
           value={data.kpis.warnings}
           variant={data.kpis.warnings > 0 ? "warning" : "default"}
         />
@@ -171,7 +171,7 @@ export default function SubeOzet() {
 
       <DobodySuggestionList
         suggestions={data.suggestions || []}
-        title="Mr. Dobody Onerileri"
+        title="Mr. Dobody Önerileri"
         onAction={(s) => quickAction.mutate({
           actionType: "send_notification",
           targetUserId: s.targetUserId || s.payload?.userIds?.[0],
@@ -213,7 +213,7 @@ export default function SubeOzet() {
           <CardHeader className="pb-2 pt-4 px-4">
             <CardTitle className="text-base flex items-center gap-2">
               <Package className="h-4 w-4 text-orange-500" />
-              Stok Uyarilari
+              Stok Uyarıları
             </CardTitle>
           </CardHeader>
           <CardContent className="px-4 pb-4 space-y-1">
@@ -237,7 +237,7 @@ export default function SubeOzet() {
         <Link href="/">
           <Button variant="outline" className="w-full" data-testid="btn-detailed-dashboard">
             <ExternalLink className="h-4 w-4 mr-2" />
-            Detayli Dashboard
+            Detaylı Dashboard
           </Button>
         </Link>
       </div>

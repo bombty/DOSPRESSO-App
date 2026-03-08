@@ -73,15 +73,15 @@ export function OfflineQueuePanel() {
             </AlertDialogTrigger>
             <AlertDialogContent>
               <AlertDialogHeader>
-                <AlertDialogTitle>Tum bekleyen gonderimler silinsin mi?</AlertDialogTitle>
+                <AlertDialogTitle>Tüm bekleyen gönderimler silinsin mi?</AlertDialogTitle>
                 <AlertDialogDescription>
-                  Bu islem geri alinamaz. Tum bekleyen veriler kalici olarak silinecek.
+                  Bu işlem geri alınamaz. Tüm bekleyen veriler kalıcı olarak silinecek.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
-                <AlertDialogCancel>Iptal</AlertDialogCancel>
+                <AlertDialogCancel>İptal</AlertDialogCancel>
                 <AlertDialogAction onClick={() => clearQueue()} data-testid="button-confirm-clear">
-                  Tumunu Sil
+                  Tümünü Sil
                 </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>

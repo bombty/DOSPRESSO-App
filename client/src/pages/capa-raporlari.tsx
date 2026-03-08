@@ -137,7 +137,7 @@ export default function CapaRaporlari() {
           <CardContent className="p-4">
             <div className="flex items-center gap-2">
               <TrendingUp className="h-5 w-5 text-primary" />
-              <span className="text-sm text-muted-foreground">Kapatma Orani</span>
+              <span className="text-sm text-muted-foreground">Kapatma Oranı</span>
             </div>
             <p className="text-2xl font-bold mt-2" data-testid="text-closure-rate">{closureRate}%</p>
             <Progress value={closureRate} className="mt-2 h-2" />
@@ -214,7 +214,7 @@ export default function CapaRaporlari() {
         </CardHeader>
         <CardContent>
           {branches.length === 0 ? (
-            <p className="text-muted-foreground text-center py-8">Henuz CAPA verisi bulunmuyor</p>
+            <p className="text-muted-foreground text-center py-8">Henüz CAPA verisi bulunmuyor</p>
           ) : (
             <>
               <div className="h-80 mb-6">

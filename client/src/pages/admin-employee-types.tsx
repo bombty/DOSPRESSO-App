@@ -819,7 +819,7 @@ function AssignmentsTab() {
               </Select>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="task-pack-key">Gorev Paketi Key</Label>
+              <Label htmlFor="task-pack-key">Görev Paketi Key</Label>
               <Input
                 id="task-pack-key"
                 value={formData.taskPackKey}

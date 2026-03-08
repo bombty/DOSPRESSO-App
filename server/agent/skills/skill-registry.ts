@@ -206,11 +206,14 @@ export async function getLatestSkillInsights(
 }
 
 export function deduplicateSuggestions(suggestions: any[]): any[] {
-  const seen = new Set<string>();
+  const seenIds = new Set<string>();
+  const seenMessages = new Set<string>();
   return suggestions.filter((s) => {
-    const key = s.id || `${s.message}`;
-    if (seen.has(key)) return false;
-    seen.add(key);
+    const id = s.id || "";
+    const msg = s.message || "";
+    if ((id && seenIds.has(id)) || (msg && seenMessages.has(msg))) return false;
+    if (id) seenIds.add(id);
+    if (msg) seenMessages.add(msg);
     return true;
   });
 }

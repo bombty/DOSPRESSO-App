@@ -80,7 +80,7 @@ export function BranchScorecard() {
       <Card>
         <CardContent className="p-3 flex flex-col items-center justify-center min-h-[80px] gap-2">
           <AlertTriangle className="h-5 w-5 text-destructive" />
-          <p className="text-xs text-muted-foreground">Skor yuklenemedi</p>
+          <p className="text-xs text-muted-foreground">Skor yüklenemedi</p>
           <Button variant="ghost" size="sm" onClick={() => refetch()} data-testid="button-retry-score">
             <RefreshCw className="h-3 w-3 mr-1" />
             Tekrar Dene
@@ -147,7 +147,7 @@ export function BranchScorecard() {
           data-testid="button-ai-summary-toggle"
         >
           <Sparkles className="h-3 w-3" />
-          {showAI ? 'Gizle' : 'AI Ozet'}
+          {showAI ? 'Gizle' : 'AI Özet'}
         </button>
 
         {showAI && (

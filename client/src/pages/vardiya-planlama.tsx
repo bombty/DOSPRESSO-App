@@ -2010,7 +2010,7 @@ function AIPlanModal({ open, onClose, weekStart, employees, branchId, existingSh
             
             {aiSummary && (
               <div className="p-2 bg-muted/50 rounded text-xs text-muted-foreground">
-                <strong>AI Ozeti:</strong> {aiSummary}
+                <strong>AI Özeti:</strong> {aiSummary}
               </div>
             )}
             

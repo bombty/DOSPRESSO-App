@@ -774,11 +774,11 @@ export default function MalKabul() {
               <TableRow>
                 <TableHead>Kabul No</TableHead>
                 <TableHead>Tedarikçi</TableHead>
-                <TableHead>Siparis No</TableHead>
+                <TableHead>Sipariş No</TableHead>
                 <TableHead>Kabul Tarihi</TableHead>
                 <TableHead className="text-center">Kalite Kontrol</TableHead>
                 <TableHead>Durum</TableHead>
-                <TableHead className="text-right">Islemler</TableHead>
+                <TableHead className="text-right">İşlemler</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>

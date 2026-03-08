@@ -21,6 +21,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import logoUrl from "@assets/IMG_6637_1765138781125.png";
+import { ROLE_HOME_ROUTES } from "@/lib/role-routes";
 
 type LoginFormData = { username: string; password: string };
 
@@ -95,32 +96,6 @@ export default function Login() {
       });
 
       const userRole = data.user?.role;
-      const ROLE_HOME_ROUTES: Record<string, string> = {
-        stajyer: '/benim-gunum',
-        bar_buddy: '/benim-gunum',
-        barista: '/benim-gunum',
-        supervisor: '/sube-ozet',
-        supervisor_buddy: '/sube-ozet',
-        mudur: '/sube-ozet',
-        fabrika_operator: '/fabrika/kiosk',
-        fabrika_mudur: '/fabrika/dashboard',
-        fabrika: '/fabrika/dashboard',
-        ceo: '/hq-ozet',
-        cgo: '/hq-ozet',
-        admin: '/hq-ozet',
-        coach: '/kocluk-paneli',
-        trainer: '/hq-dashboard/trainer',
-        gida_muhendisi: '/hq-dashboard',
-        muhasebe: '/merkez-dashboard',
-        muhasebe_ik: '/merkez-dashboard',
-        satinalma: '/hq-dashboard/satinalma',
-        marketing: '/hq-dashboard/marketing',
-        teknik: '/',
-        destek: '/',
-        kalite_kontrol: '/kalite-kontrol-dashboard',
-        yatirimci_hq: '/franchise-ozet',
-        yatirimci_branch: '/franchise-ozet',
-      };
 
       const getTarget = () => {
         const redirectTarget = getRedirectTarget();

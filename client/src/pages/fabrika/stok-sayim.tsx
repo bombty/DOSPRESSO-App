@@ -320,7 +320,7 @@ export default function StokSayimPage() {
             <Card>
               <CardContent className="py-8 text-center text-muted-foreground">
                 <FileText className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                <p className="text-sm">Gecmis sayim kaydi bulunmuyor</p>
+                <p className="text-sm">Geçmiş sayım kaydı bulunmuyor</p>
               </CardContent>
             </Card>
           ) : (
@@ -800,11 +800,11 @@ function StockCountDetailDialog({
 
         <div className="text-xs text-muted-foreground space-y-0.5">
           <div className="flex items-center gap-3 flex-wrap">
-            <span>Baslama: {new Date(count.startedAt || count.createdAt).toLocaleString("tr-TR")}</span>
+            <span>Başlama: {new Date(count.startedAt || count.createdAt).toLocaleString("tr-TR")}</span>
             {count.completedAt && <span>Tamamlanma: {new Date(count.completedAt).toLocaleString("tr-TR")}</span>}
           </div>
           <div className="flex items-center gap-3 flex-wrap">
-            {count.assignedTo && <span className="flex items-center gap-0.5"><User className="h-3 w-3" /> Gorevli: {count.assignedTo}</span>}
+            {count.assignedTo && <span className="flex items-center gap-0.5"><User className="h-3 w-3" /> Görevli: {count.assignedTo}</span>}
             {count.requestedBy && <span>Talep eden: {count.requestedBy}</span>}
             {count.scope && <span>Kapsam: {scopeLabels[count.scope] || count.scope}</span>}
           </div>

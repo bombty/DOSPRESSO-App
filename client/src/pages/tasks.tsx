@@ -1063,12 +1063,12 @@ export default function Tasks() {
       <Dialog open={showBulkArchiveDialog} onOpenChange={setShowBulkArchiveDialog}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Toplu Gorev Arsivleme</DialogTitle>
+            <DialogTitle>Toplu Görev Arşivleme</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <p className="text-sm text-muted-foreground">
-              30+ gun gecikmiş <strong>{selectedArchiveIds.length}</strong> gorev "iptal edildi" olarak isaretlenecek.
-              Bu islem geri alinamaz.
+              30+ gün gecikmiş <strong>{selectedArchiveIds.length}</strong> görev "iptal edildi" olarak işaretlenecek.
+              Bu işlem geri alınamaz.
             </p>
             <div className="flex gap-2 justify-end">
               <Button

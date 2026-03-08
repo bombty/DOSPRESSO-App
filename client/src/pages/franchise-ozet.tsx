@@ -1,9 +1,11 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { Link } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 import {
   Building2,
   Users,
@@ -11,6 +13,7 @@ import {
   ExternalLink,
   MessageSquare,
 } from "lucide-react";
+import { DobodySuggestionList } from "@/components/dobody-suggestion-card";
 
 interface FranchiseSummaryData {
   branches: Array<{
@@ -21,13 +24,35 @@ interface FranchiseSummaryData {
     feedbackCount: number;
   }>;
   totalBranches: number;
+  suggestions: Array<{
+    id: string;
+    message: string;
+    actionType: string;
+    actionLabel: string;
+    priority: string;
+    icon: string;
+    targetUserId?: string;
+    payload?: Record<string, any>;
+  }>;
 }
 
 export default function FranchiseOzet() {
   const { user } = useAuth();
+  const { toast } = useToast();
 
   const { data, isLoading } = useQuery<FranchiseSummaryData>({
     queryKey: ["/api/franchise-summary"],
+  });
+
+  const quickAction = useMutation({
+    mutationFn: async (action: any) => {
+      const res = await apiRequest("POST", "/api/quick-action", action);
+      return res.json();
+    },
+    onSuccess: (result) => {
+      toast({ title: "İşlem tamamlandı", description: result.message });
+      queryClient.invalidateQueries({ queryKey: ["/api/franchise-summary"] });
+    },
   });
 
   if (isLoading) {
@@ -42,7 +67,7 @@ export default function FranchiseOzet() {
   if (!data) {
     return (
       <div className="p-4 max-w-lg mx-auto" data-testid="franchise-ozet-error">
-        <Card><CardContent className="p-6 text-center text-muted-foreground">Veriler yuklenemedi</CardContent></Card>
+        <Card><CardContent className="p-6 text-center text-muted-foreground">Veriler yüklenemedi</CardContent></Card>
       </div>
     );
   }
@@ -50,8 +75,8 @@ export default function FranchiseOzet() {
   return (
     <div className="p-4 space-y-4 max-w-lg mx-auto overflow-y-auto h-full" data-testid="franchise-ozet-page">
       <div data-testid="franchise-header">
-        <h1 className="text-xl font-bold" data-testid="text-franchise-title">Franchise Ozet</h1>
-        <p className="text-sm text-muted-foreground">{data.totalBranches} sube</p>
+        <h1 className="text-xl font-bold" data-testid="text-franchise-title">Franchise Özet</h1>
+        <p className="text-sm text-muted-foreground">{data.totalBranches} şube</p>
       </div>
 
       {data.branches.map((branch) => (
@@ -83,10 +108,23 @@ export default function FranchiseOzet() {
         </Card>
       ))}
 
+      <DobodySuggestionList
+        suggestions={data.suggestions || []}
+        title="Mr. Dobody Önerileri"
+        onAction={(s) => quickAction.mutate({
+          actionType: "send_notification",
+          targetUserId: s.targetUserId || s.payload?.userIds?.[0],
+          title: s.actionLabel,
+          message: s.message,
+          suggestionId: s.id,
+        })}
+        isPending={quickAction.isPending}
+      />
+
       {data.branches.length === 0 && (
         <Card data-testid="card-no-branches">
           <CardContent className="p-6 text-center text-muted-foreground">
-            Goruntulecek sube bulunamadi
+            Görüntülenecek şube bulunamadı
           </CardContent>
         </Card>
       )}
@@ -95,7 +133,7 @@ export default function FranchiseOzet() {
         <Link href="/">
           <Button variant="outline" className="w-full" data-testid="btn-detailed-dashboard">
             <ExternalLink className="h-4 w-4 mr-2" />
-            Detayli Dashboard
+            Detaylı Dashboard
           </Button>
         </Link>
       </div>

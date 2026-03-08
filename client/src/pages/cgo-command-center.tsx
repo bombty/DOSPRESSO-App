@@ -361,11 +361,11 @@ function DepartmentTab({ data }: { data: CGOData }) {
             <div className="flex items-center justify-center gap-4 mt-3">
               <div className="flex items-center gap-1">
                 <div className="w-2.5 h-2.5 rounded-full bg-green-500" />
-                <span className="text-[10px] text-muted-foreground">Saglikli</span>
+                <span className="text-[10px] text-muted-foreground">Sağlıklı</span>
               </div>
               <div className="flex items-center gap-1">
                 <div className="w-2.5 h-2.5 rounded-full bg-yellow-500" />
-                <span className="text-[10px] text-muted-foreground">Uyari</span>
+                <span className="text-[10px] text-muted-foreground">Uyarı</span>
               </div>
               <div className="flex items-center gap-1">
                 <div className="w-2.5 h-2.5 rounded-full bg-red-500" />

@@ -759,7 +759,7 @@ function TedarikciPerformansTab() {
 
         <Card data-testid="chart-supplier-value">
           <CardHeader className="pb-1 pt-3 px-3">
-            <CardTitle className="text-xs">Tedarikci Bazli Harcama Dagilimi</CardTitle>
+            <CardTitle className="text-xs">Tedarikçi Bazlı Harcama Dağılımı</CardTitle>
           </CardHeader>
           <CardContent className="px-3 pb-3">
             {valueChartData.length > 0 ? (
@@ -785,8 +785,8 @@ function TedarikciPerformansTab() {
 
       <Card data-testid="table-supplier-performance">
         <CardHeader className="flex flex-row items-center justify-between pb-1 pt-3 px-3 gap-2">
-          <CardTitle className="text-xs">Tedarikci Performans Detayi</CardTitle>
-          <Badge variant="secondary" className="text-[10px]">Son 90 Gun</Badge>
+          <CardTitle className="text-xs">Tedarikçi Performans Detayı</CardTitle>
+          <Badge variant="secondary" className="text-[10px]">Son 90 Gün</Badge>
         </CardHeader>
         <CardContent className="px-3 pb-3">
           {suppliersList.length > 0 ? (
@@ -794,13 +794,13 @@ function TedarikciPerformansTab() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Tedarikci</TableHead>
+                    <TableHead>Tedarikçi</TableHead>
                     <TableHead className="text-right">Kalite</TableHead>
                     <TableHead className="text-right">Teslimat</TableHead>
-                    <TableHead className="text-right">Siparis</TableHead>
+                    <TableHead className="text-right">Sipariş</TableHead>
                     <TableHead className="text-right">Toplam Tutar</TableHead>
-                    <TableHead className="text-right">Ort. Teslim (Gun)</TableHead>
-                    <TableHead className="text-right">Urun Sayisi</TableHead>
+                    <TableHead className="text-right">Ort. Teslim (Gün)</TableHead>
+                    <TableHead className="text-right">Ürün Sayısı</TableHead>
                     <TableHead className="text-right">Sorunlar</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -912,7 +912,7 @@ function StokHareketleriTab({ branchId }: { branchId: string }) {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
         <Card data-testid="chart-monthly-movements">
           <CardHeader className="pb-1 pt-3 px-3">
-            <CardTitle className="text-xs">Aylik Giris / Cikis Karsilastirmasi</CardTitle>
+            <CardTitle className="text-xs">Aylık Giriş / Çıkış Karşılaştırması</CardTitle>
           </CardHeader>
           <CardContent className="px-3 pb-3">
             {monthlyChartData.length > 0 ? (

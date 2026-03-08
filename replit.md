@@ -85,6 +85,7 @@ The frontend utilizes React 18+ with TypeScript and Vite, employing Shadcn/ui (N
 - **Feedback Pattern Analysis**: Weekly job analyzes 30-day category averages per branch for alerts and improvement detection.
 - **WordPress-Style Data Export/Import**: Full system data export to ZIP (manifest.json + categorized table JSONs + SHA-256 checksum), background job processing with progress tracking, 3 export scopes (full/config_only/branch), 3 import modes (merge/full_replace/config_only), ZIP validation, bcrypt password safety, admin-only access with audit logging. Files: `server/lib/export-service.ts`, `server/lib/import-service.ts`, `server/routes/data-management.ts`.
 - **Setup Wizard**: 6-step setup wizard at `/setup` for initial system configuration (company info, admin account, SMTP, DB test). Backend at `server/routes/setup.ts` with default data seeding and demo user creation.
+- **Role Home Routes (Sprint 20A)**: Centralized `ROLE_HOME_ROUTES` mapping in `client/src/lib/role-routes.ts` used by login redirect, logo click in sidebar, and logo click in header. All 26 roles route to role-specific landing pages. Sidebar definitions exist for all roles in `server/menu-service.ts` SIDEBAR_ALLOWED_ITEMS. PDKS and Maaş menu items added for muhasebe/muhasebe_ik. Destek has dedicated DestekDashboard in hq-dashboard.tsx.
 
 ## External Dependencies
 - **OpenAI API**: Used for AI-powered vision analysis, chat completions, embeddings, and summary generation.

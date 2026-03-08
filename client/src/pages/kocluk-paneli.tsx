@@ -61,7 +61,7 @@ export default function KoclukPaneli() {
   if (!data) {
     return (
       <div className="p-4 max-w-2xl mx-auto" data-testid="kocluk-paneli-error">
-        <Card><CardContent className="p-6 text-center text-muted-foreground">Veriler yuklenemedi</CardContent></Card>
+        <Card><CardContent className="p-6 text-center text-muted-foreground">Veriler yüklenemedi</CardContent></Card>
       </div>
     );
   }
@@ -69,8 +69,8 @@ export default function KoclukPaneli() {
   return (
     <div className="p-4 space-y-4 max-w-2xl mx-auto overflow-y-auto h-full" data-testid="kocluk-paneli-page">
       <div data-testid="coach-header">
-        <h1 className="text-xl font-bold" data-testid="text-coach-title">Kocluk Paneli</h1>
-        <p className="text-sm text-muted-foreground">{data.totalBranches} sube takip ediliyor</p>
+        <h1 className="text-xl font-bold" data-testid="text-coach-title">Koçluk Paneli</h1>
+        <p className="text-sm text-muted-foreground">{data.totalBranches} şube takip ediliyor</p>
       </div>
 
       <div className="flex gap-3 overflow-x-auto pb-2" data-testid="branch-list">
@@ -123,7 +123,7 @@ export default function KoclukPaneli() {
                 </div>
                 <Link href={`/personel/${person.userId}`}>
                   <Button size="sm" variant="outline" data-testid={`btn-view-${person.userId}`}>
-                    Incele
+                    İncele
                   </Button>
                 </Link>
               </div>
@@ -136,7 +136,7 @@ export default function KoclukPaneli() {
         <Card data-testid="card-no-attention">
           <CardContent className="p-6 text-center">
             <GraduationCap className="h-8 w-8 mx-auto text-green-500 mb-2" />
-            <p className="text-sm text-muted-foreground">Tum personel normal durumda</p>
+            <p className="text-sm text-muted-foreground">Tüm personel normal durumda</p>
           </CardContent>
         </Card>
       )}
@@ -147,7 +147,7 @@ export default function KoclukPaneli() {
         <Link href="/hq-dashboard/coach">
           <Button variant="outline" className="w-full" data-testid="btn-detailed-dashboard">
             <ExternalLink className="h-4 w-4 mr-2" />
-            Detayli Koc Dashboard
+            Detaylı Koç Dashboard
           </Button>
         </Link>
       </div>

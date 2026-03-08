@@ -145,7 +145,7 @@ export async function getSupervisorSuggestions(branchId: number): Promise<Dobody
   const today = new Date().toISOString().split("T")[0];
 
   try {
-    const pendingStaff = await db
+    const pendingStaffRaw = await db
       .select({
         userId: checklistCompletions.userId,
         firstName: users.firstName,
@@ -161,6 +161,8 @@ export async function getSupervisorSuggestions(branchId: number): Promise<Dobody
         )
       )
       .limit(5);
+
+    const pendingStaff = pendingStaffRaw.filter((s, i, arr) => arr.findIndex(x => x.userId === s.userId) === i);
 
     if (pendingStaff.length > 0) {
       const names = pendingStaff.map(s => s.firstName || "Personel").slice(0, 3).join(", ");

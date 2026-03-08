@@ -429,7 +429,7 @@ export default function UrunKarti({ productId, onBack }: UrunKartiProps) {
   } else if (stockRatio <= 1.5) {
     stockColor = "text-yellow-600 dark:text-yellow-400";
     stockBg = "bg-yellow-500/10";
-    stockLabel = "Uyari";
+    stockLabel = "Uyarı";
   }
 
   const supplierChartData = productSuppliers
@@ -552,24 +552,24 @@ export default function UrunKarti({ productId, onBack }: UrunKartiProps) {
         <TabsContent value="tedarikci" className="mt-4">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between gap-2 pb-2 pt-3 px-4">
-              <CardTitle className="text-sm">Tedarikciler ({productSuppliers.length})</CardTitle>
+              <CardTitle className="text-sm">Tedarikçiler ({productSuppliers.length})</CardTitle>
               <Button size="sm" onClick={() => setIsAddSupplierOpen(true)} data-testid="button-add-supplier">
                 <Plus className="h-4 w-4 mr-1" />
-                Tedarikci Ekle
+                Tedarikçi Ekle
               </Button>
             </CardHeader>
             <CardContent className="p-0">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Tedarikci</TableHead>
+                    <TableHead>Tedarikçi</TableHead>
                     <TableHead className="text-right">Birim Fiyat (TL)</TableHead>
-                    <TableHead className="text-right">Min. Siparis</TableHead>
-                    <TableHead className="text-right">Tedarik Suresi (gun)</TableHead>
-                    <TableHead className="text-right">Odeme Vadesi (gun)</TableHead>
+                    <TableHead className="text-right">Min. Sipariş</TableHead>
+                    <TableHead className="text-right">Tedarik Süresi (gün)</TableHead>
+                    <TableHead className="text-right">Ödeme Vadesi (gün)</TableHead>
                     <TableHead className="text-right">Kalite Skoru</TableHead>
                     <TableHead>Durum</TableHead>
-                    <TableHead className="text-right">Islemler</TableHead>
+                    <TableHead className="text-right">İşlemler</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -628,7 +628,7 @@ export default function UrunKarti({ productId, onBack }: UrunKartiProps) {
           {supplierChartData.length > 0 && (
             <Card>
               <CardHeader className="pb-2 pt-3 px-4">
-                <CardTitle className="text-sm">Tedarikci Fiyat Karsilastirmasi</CardTitle>
+                <CardTitle className="text-sm">Tedarikçi Fiyat Karşılaştırması</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="h-64" data-testid="chart-price-comparison">
@@ -650,7 +650,7 @@ export default function UrunKarti({ productId, onBack }: UrunKartiProps) {
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between gap-2 pb-2 pt-3 px-4">
-              <CardTitle className="text-sm">Tedarikci Teklifleri ({quotes.length})</CardTitle>
+              <CardTitle className="text-sm">Tedarikçi Teklifleri ({quotes.length})</CardTitle>
               <Button size="sm" onClick={() => setIsAddQuoteOpen(true)} data-testid="button-add-quote">
                 <Plus className="h-4 w-4 mr-1" />
                 Yeni Teklif Al
@@ -662,7 +662,7 @@ export default function UrunKarti({ productId, onBack }: UrunKartiProps) {
                   <TableRow>
                     <TableHead>Tedarikci</TableHead>
                     <TableHead className="text-right">Fiyat (TL)</TableHead>
-                    <TableHead className="text-right">Min. Siparis</TableHead>
+                    <TableHead className="text-right">Min. Sipariş</TableHead>
                     <TableHead className="text-right">Tedarik Suresi</TableHead>
                     <TableHead className="text-right">Kargo Ucreti</TableHead>
                     <TableHead className="text-right">Vade (gun)</TableHead>
@@ -826,7 +826,7 @@ export default function UrunKarti({ productId, onBack }: UrunKartiProps) {
                   ) : (
                     <TableRow>
                       <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
-                        Henuz stok hareketi yok
+                        Henüz stok hareketi yok
                       </TableCell>
                     </TableRow>
                   )}
@@ -839,13 +839,13 @@ export default function UrunKarti({ productId, onBack }: UrunKartiProps) {
         <TabsContent value="siparisler" className="mt-4">
           <Card>
             <CardHeader className="pb-2 pt-3 px-4">
-              <CardTitle className="text-sm">Siparis Gecmisi ({purchaseOrderHistory.length})</CardTitle>
+              <CardTitle className="text-sm">Sipariş Geçmişi ({purchaseOrderHistory.length})</CardTitle>
             </CardHeader>
             <CardContent className="p-0">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Siparis No</TableHead>
+                    <TableHead>Sipariş No</TableHead>
                     <TableHead>Tedarikci</TableHead>
                     <TableHead>Tarih</TableHead>
                     <TableHead className="text-right">Miktar</TableHead>
@@ -965,7 +965,7 @@ export default function UrunKarti({ productId, onBack }: UrunKartiProps) {
                     onChange={(e) => setNewSupplierForm((p) => ({ ...p, isPrimary: e.target.checked }))}
                     data-testid="checkbox-is-primary"
                   />
-                  <span className="text-sm">Birincil Tedarikci</span>
+                  <span className="text-sm">Birincil Tedarikçi</span>
                 </label>
               </div>
             </div>

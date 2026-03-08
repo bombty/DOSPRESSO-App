@@ -288,7 +288,7 @@ export default function CEOCommandCenter() {
         <Card>
           <CardContent className="py-12 text-center">
             <AlertCircle className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
-            <p className="text-muted-foreground">Dashboard verileri yuklenemedi</p>
+            <p className="text-muted-foreground">Dashboard verileri yüklenemedi</p>
             <Button variant="outline" className="mt-3" onClick={() => refetch()} data-testid="button-retry">Tekrar Dene</Button>
           </CardContent>
         </Card>

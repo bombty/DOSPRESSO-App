@@ -706,7 +706,7 @@ export default function SatinalmaDashboard() {
           <CardHeader className="flex flex-row items-center justify-between pb-1 pt-3 px-3 gap-2">
             <CardTitle className="text-xs flex items-center gap-2">
               <Clock className="h-3.5 w-3.5 text-orange-500" />
-              Onay Bekleyen Siparisler
+              Onay Bekleyen Siparişler
             </CardTitle>
             <Badge variant="secondary" className="text-[10px]" data-testid="badge-pending-count">
               {pendingOrders?.length || 0} adet
@@ -719,7 +719,7 @@ export default function SatinalmaDashboard() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Siparis No</TableHead>
+                    <TableHead>Sipariş No</TableHead>
                     <TableHead>Tedarikci</TableHead>
                     <TableHead className="text-right">Tutar</TableHead>
                     <TableHead className="text-right">Tarih</TableHead>
@@ -835,7 +835,7 @@ export default function SatinalmaDashboard() {
                 <div className="p-3 rounded-lg bg-orange-500/10">
                   <div className="flex items-center gap-2 mb-1">
                     <ShoppingCart className="h-3.5 w-3.5 text-orange-600 dark:text-orange-400" />
-                    <span className="text-xs font-medium text-orange-700 dark:text-orange-400">Bekleyen Siparis</span>
+                    <span className="text-xs font-medium text-orange-700 dark:text-orange-400">Bekleyen Sipariş</span>
                   </div>
                   <div className="text-lg font-bold text-orange-700 dark:text-orange-400" data-testid="value-pending-orders">
                     {data?.pendingOrders || 0}
@@ -862,7 +862,7 @@ export default function SatinalmaDashboard() {
                   <div className="text-lg font-bold text-red-700 dark:text-red-400" data-testid="value-low-stock-alerts">
                     {data?.lowStockAlerts || 0}
                   </div>
-                  <span className="text-xs text-muted-foreground">Uyari</span>
+                  <span className="text-xs text-muted-foreground">Uyarı</span>
                 </div>
               </div>
             </div>
@@ -873,7 +873,7 @@ export default function SatinalmaDashboard() {
           <CardHeader className="flex flex-row items-center justify-between pb-1 pt-3 px-3 gap-2">
             <CardTitle className="text-xs flex items-center gap-2">
               <Star className="h-3.5 w-3.5 text-amber-500" />
-              Tedarikci Performans Ozeti
+              Tedarikçi Performans Özeti
             </CardTitle>
             <Badge variant="secondary" className="text-[10px]" data-testid="badge-supplier-count">
               Top 5
@@ -918,7 +918,7 @@ export default function SatinalmaDashboard() {
             ) : (
               <div className="text-center py-8 text-muted-foreground">
                 <Users className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                <p data-testid="text-no-suppliers">Tedarikci verisi yok</p>
+                <p data-testid="text-no-suppliers">Tedarikçi verisi yok</p>
               </div>
             )}
           </CardContent>

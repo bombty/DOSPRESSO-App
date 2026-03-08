@@ -424,6 +424,22 @@ const MENU_BLUEPRINT: SidebarMenuSection[] = [
         moduleKey: "goods_receipt",
         scope: "hq",
       },
+      {
+        id: "pdks",
+        titleTr: "PDKS",
+        path: "/pdks",
+        icon: "Fingerprint",
+        moduleKey: "attendance",
+        scope: "hq",
+      },
+      {
+        id: "maas",
+        titleTr: "Maaş Hesaplama",
+        path: "/maas",
+        icon: "Banknote",
+        moduleKey: "accounting",
+        scope: "hq",
+      },
     ],
   },
 
@@ -487,7 +503,7 @@ const MENU_BLUEPRINT: SidebarMenuSection[] = [
       },
       {
         id: "notifications",
-        titleTr: "Iletisim Merkezi",
+        titleTr: "İletişim Merkezi",
         path: "/bildirimler",
         icon: "Bell",
         moduleKey: "notifications",
@@ -681,11 +697,11 @@ const SIDEBAR_ALLOWED_ITEMS: Partial<Record<UserRoleType, string[]>> = {
   muhasebe_ik: [
     'dashboard', 'hr', 'shifts', 'attendance', 'branch-shift-tracking',
     'accounting-main', 'financial-management', 'financial-reports', 'reports',
-    'onboarding-programs', 'notifications', 'usage-guide', 'hq-support',
+    'onboarding-programs', 'pdks', 'maas', 'notifications', 'usage-guide', 'hq-support',
   ],
   muhasebe: [
     'dashboard', 'accounting-main', 'financial-management', 'financial-reports',
-    'reports', 'notifications', 'usage-guide', 'hq-support',
+    'reports', 'pdks', 'maas', 'notifications', 'usage-guide', 'hq-support',
   ],
   satinalma: [
     'dashboard', 'procurement-dashboard', 'stock-management', 'supplier-management',
@@ -707,6 +723,18 @@ const SIDEBAR_ALLOWED_ITEMS: Partial<Record<UserRoleType, string[]>> = {
   fabrika_operator: [
     'factory-dashboard', 'factory-kiosk', 'factory-quality', 'factory-stations',
     'notifications', 'usage-guide', 'hq-support',
+  ],
+  admin: [
+    'dashboard', 'branches-list', 'reports', 'performance-dashboard', 'hr',
+    'training-academy', 'knowledge-base', 'branch-health', 'customer-satisfaction',
+    'ai-assistant', 'agent-center', 'crm-main', 'notifications', 'usage-guide', 'hq-support',
+  ],
+  fabrika_sorumlu: [
+    'factory-dashboard', 'factory-kiosk', 'factory-quality', 'factory-stations',
+    'notifications', 'usage-guide', 'hq-support',
+  ],
+  fabrika_personel: [
+    'factory-dashboard', 'factory-kiosk', 'notifications', 'usage-guide',
   ],
 };
 

@@ -65,11 +65,11 @@ export default function HqStaffDashboard() {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "active":
-        return <Badge variant="default" className="bg-green-600">Calisiyor</Badge>;
+        return <Badge variant="default" className="bg-green-600">Çalışıyor</Badge>;
       case "on_break":
         return <Badge variant="secondary">Molada</Badge>;
       case "outside":
-        return <Badge className="bg-blue-600 text-white">Dis Gorevde</Badge>;
+        return <Badge className="bg-blue-600 text-white">Dış Görevde</Badge>;
       default:
         return <Badge variant="secondary">{status}</Badge>;
     }
@@ -122,7 +122,7 @@ export default function HqStaffDashboard() {
           <CardContent className="p-4 text-center">
             <Briefcase className="h-6 w-6 mx-auto mb-1 text-blue-500" />
             <p className="text-2xl font-bold" data-testid="text-outside">{outsideSessions.length}</p>
-            <p className="text-xs text-muted-foreground">Dis Gorevde</p>
+            <p className="text-xs text-muted-foreground">Dış Görevde</p>
           </CardContent>
         </Card>
       </div>

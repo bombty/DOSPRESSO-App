@@ -103,7 +103,7 @@ export default function BenimGunum() {
       return res.json();
     },
     onSuccess: () => {
-      toast({ title: "Islem tamamlandi" });
+      toast({ title: "İşlem tamamlandı" });
       queryClient.invalidateQueries({ queryKey: ["/api/my-day"] });
     },
   });
@@ -122,7 +122,7 @@ export default function BenimGunum() {
   if (!data) {
     return (
       <div className="p-4 max-w-lg mx-auto" data-testid="benim-gunum-error">
-        <Card><CardContent className="p-6 text-center text-muted-foreground">Veriler yuklenemedi</CardContent></Card>
+        <Card><CardContent className="p-6 text-center text-muted-foreground">Veriler yüklenemedi</CardContent></Card>
       </div>
     );
   }
@@ -158,7 +158,7 @@ export default function BenimGunum() {
               />
             </div>
             <p className="text-xs text-muted-foreground">
-              %{data.onboarding.progress || 0} tamamlandi
+              %{data.onboarding.progress || 0} tamamlandı
               {data.onboarding.mentorName && ` | Mentor: ${data.onboarding.mentorName}`}
             </p>
           </CardContent>
@@ -170,7 +170,7 @@ export default function BenimGunum() {
           <CardHeader className="pb-2 pt-4 px-4">
             <CardTitle className="text-base flex items-center gap-2">
               <Clock className="h-4 w-4" />
-              Bugun Yapilacaklar
+              Bugün Yapılacaklar
             </CardTitle>
           </CardHeader>
           <CardContent className="px-4 pb-4 space-y-2">
@@ -224,7 +224,7 @@ export default function BenimGunum() {
             <div className="mt-3 p-2 rounded-md bg-muted/50">
               <p className="text-xs text-muted-foreground">
                 Sonraki: <span className="font-medium">{data.careerProgress.nextLevel.titleTr}</span>
-                {" "}({data.careerProgress.nextLevel.remainingModules} modul kaldi)
+                {" "}({data.careerProgress.nextLevel.remainingModules} modül kaldı)
               </p>
             </div>
           )}
@@ -237,7 +237,7 @@ export default function BenimGunum() {
         <Link href="/sube/employee-dashboard">
           <Button variant="outline" className="w-full" data-testid="btn-detailed-dashboard">
             <ExternalLink className="h-4 w-4 mr-2" />
-            Detayli Dashboard
+            Detaylı Dashboard
           </Button>
         </Link>
       </div>

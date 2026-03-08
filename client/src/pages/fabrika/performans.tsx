@@ -429,7 +429,7 @@ export default function FabrikaPerformans() {
                         <Percent className="h-5 w-5 text-amber-500" />
                       </div>
                       <div>
-                        <p className="text-xs text-muted-foreground">Zaiyat Orani</p>
+                        <p className="text-xs text-muted-foreground">Zaiyat Oranı</p>
                         <p className="text-xl font-bold" data-testid="text-waste-percent">%{summary.avgWastePercent.toFixed(1)}</p>
                       </div>
                     </div>

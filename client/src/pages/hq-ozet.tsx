@@ -85,7 +85,7 @@ export default function HQOzet() {
       return res.json();
     },
     onSuccess: () => {
-      toast({ title: "Islem tamamlandi" });
+      toast({ title: "İşlem tamamlandı" });
       queryClient.invalidateQueries({ queryKey: ["/api/hq-summary"] });
     },
   });
@@ -105,7 +105,7 @@ export default function HQOzet() {
   if (!data) {
     return (
       <div className="p-4 max-w-2xl mx-auto" data-testid="hq-ozet-error">
-        <Card><CardContent className="p-6 text-center text-muted-foreground">Veriler yuklenemedi</CardContent></Card>
+        <Card><CardContent className="p-6 text-center text-muted-foreground">Veriler yüklenemedi</CardContent></Card>
       </div>
     );
   }
@@ -116,8 +116,8 @@ export default function HQOzet() {
   return (
     <div className="p-4 space-y-4 max-w-2xl mx-auto overflow-y-auto h-full" data-testid="hq-ozet-page">
       <div data-testid="hq-header">
-        <h1 className="text-xl font-bold" data-testid="text-hq-title">HQ Genel Bakis</h1>
-        <p className="text-sm text-muted-foreground">{data.branchStatus.total} sube</p>
+        <h1 className="text-xl font-bold" data-testid="text-hq-title">HQ Genel Bakış</h1>
+        <p className="text-sm text-muted-foreground">{data.branchStatus.total} şube</p>
       </div>
 
       <div className="grid grid-cols-3 gap-3" data-testid="status-grid">
@@ -145,20 +145,20 @@ export default function HQOzet() {
         <CardHeader className="pb-2 pt-4 px-4">
           <CardTitle className="text-base flex items-center gap-2">
             <Factory className="h-4 w-4" />
-            Fabrika Ozet
+            Fabrika Özet
           </CardTitle>
         </CardHeader>
         <CardContent className="px-4 pb-4">
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1" data-testid="stat-production">
               <div className="text-lg font-bold">{data.factory.todayProduction}</div>
-              <div className="text-xs text-muted-foreground">Bugunun Uretimi</div>
+              <div className="text-xs text-muted-foreground">Bugünün Üretimi</div>
             </div>
             <div className="space-y-1" data-testid="stat-waste">
               <div className="text-lg font-bold">
                 %{data.factory.wastePercentage}
               </div>
-              <div className="text-xs text-muted-foreground">Fire Orani</div>
+              <div className="text-xs text-muted-foreground">Fire Oranı</div>
             </div>
             <div className="space-y-1" data-testid="stat-shipments">
               <div className="flex items-center gap-1">
@@ -172,7 +172,7 @@ export default function HQOzet() {
                 <ShoppingCart className="h-4 w-4 text-purple-500" />
                 <span className="text-lg font-bold">{data.pendingOrders}</span>
               </div>
-              <div className="text-xs text-muted-foreground">Bekleyen Siparis</div>
+              <div className="text-xs text-muted-foreground">Bekleyen Sipariş</div>
             </div>
           </div>
         </CardContent>
@@ -193,13 +193,13 @@ export default function HQOzet() {
           <CardHeader className="pb-2 pt-4 px-4">
             <CardTitle className="text-base flex items-center gap-2">
               <TrendingUp className="h-4 w-4" />
-              Sube Siralamasi
+              Şube Sıralaması
             </CardTitle>
           </CardHeader>
           <CardContent className="px-4 pb-4 space-y-3">
             {topBranches.length > 0 && (
               <div>
-                <p className="text-xs font-medium text-muted-foreground mb-1">En iyi subeler</p>
+                <p className="text-xs font-medium text-muted-foreground mb-1">En iyi şubeler</p>
                 {topBranches.map((b, i) => (
                   <div key={b.id} className="flex items-center justify-between gap-2 py-1" data-testid={`branch-top-${b.id}`}>
                     <div className="flex items-center gap-2 min-w-0">
@@ -216,7 +216,7 @@ export default function HQOzet() {
             )}
             {bottomBranches.length > 0 && (
               <div>
-                <p className="text-xs font-medium text-muted-foreground mb-1">Dikkat gereken subeler</p>
+                <p className="text-xs font-medium text-muted-foreground mb-1">Dikkat gereken şubeler</p>
                 {bottomBranches.map((b) => (
                   <div key={b.id} className="flex items-center justify-between gap-2 py-1" data-testid={`branch-bottom-${b.id}`}>
                     <span className="text-sm truncate">{b.name}</span>

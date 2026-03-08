@@ -129,11 +129,11 @@ function MessageList({ messages, isLoading, onMessageClick }: {
     <ScrollArea className="h-[500px] pr-4">
       {isLoading ? (
         <div className="text-center py-8 text-muted-foreground">
-          Yukleniyor...
+          Yükleniyor...
         </div>
       ) : !messages || messages.length === 0 ? (
         <div className="text-center py-8 text-muted-foreground">
-          Henuz mesajiniz yok
+          Henüz mesajınız yok
         </div>
       ) : (
         <div className="space-y-4">

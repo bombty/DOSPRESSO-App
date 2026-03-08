@@ -647,10 +647,10 @@ export function DailyTaskSummaryWidget() {
             )}
           </div>
           <div className="flex-1">
-            <div className="text-sm font-semibold">Bugunun Gorevleri</div>
+            <div className="text-sm font-semibold">Bugünün Görevleri</div>
             <div className="flex items-center gap-2">
               <span className="text-xs text-muted-foreground">
-                {summary.daily.completed}/{summary.daily.total} tamamlandi
+                {summary.daily.completed}/{summary.daily.total} tamamlandı
               </span>
               {eventPending > 0 && (
                 <Badge variant="destructive" className="text-[9px] px-1 py-0">
