@@ -88,7 +88,7 @@ export async function getBaristaSuggestions(userId: string): Promise<DobodySugge
       const badge = nearBadges[0];
       suggestions.push({
         id: `badge-near-${badge.badgeId}`,
-        message: `"${badge.titleTr}" rozetine %${badge.progress} ulastin! Biraz daha caba ile kazanabilirsin.`,
+        message: `"${badge.titleTr}" rozetine %${badge.progress} ulaştın! Biraz daha çaba ile kazanabilirsin.`,
         actionType: "redirect",
         actionLabel: "Rozetlerim",
         payload: { route: "/akademi-badges" },
@@ -112,9 +112,9 @@ export async function getBaristaSuggestions(userId: string): Promise<DobodySugge
     if (overdueTraining.length > 0) {
       suggestions.push({
         id: `training-overdue-${overdueTraining[0].id}`,
-        message: "Tamamlanmamis egitim modulun var. Hemen baslayarak geride kalma!",
+        message: "Tamamlanmamış eğitim modülün var. Hemen başlayarak geride kalma!",
         actionType: "redirect",
-        actionLabel: "Egitime Git",
+        actionLabel: "Eğitime Git",
         payload: { route: "/akademi" },
         priority: "high",
         icon: "BookOpen",
@@ -136,7 +136,7 @@ export async function getBaristaSuggestions(userId: string): Promise<DobodySugge
     if (pendingChecklists.length > 0) {
       suggestions.push({
         id: `checklist-pending-${userId}`,
-        message: "Bugun tamamlanmamis checklist'in var. Unuttuysan hemen tamamla!",
+        message: "Bugün tamamlanmamış checklist'in var. Unuttuysan hemen tamamla!",
         actionType: "redirect",
         actionLabel: "Checklist'e Git",
         payload: { route: "/checklistler" },
@@ -235,9 +235,9 @@ export async function getSupervisorSuggestions(branchId: number): Promise<Dobody
     if (avgRating !== null && avgRating < 3.5) {
       suggestions.push({
         id: `feedback-low-${branchId}`,
-        message: `Son 7 gundeki musteri puani ortalamasi ${avgRating.toFixed(1)}. Dikkat gerektiren bir durum var.`,
+        message: `Son 7 gündeki müşteri puanı ortalaması ${avgRating.toFixed(1)}. Dikkat gerektiren bir durum var.`,
         actionType: "redirect",
-        actionLabel: "Geri Bildirimleri Gor",
+        actionLabel: "Geri Bildirimleri Gör",
         payload: { route: "/crm/geri-bildirimler" },
         priority: "critical",
         icon: "MessageSquareWarning",
@@ -346,9 +346,9 @@ export async function getHQSuggestions(): Promise<DobodySuggestion[]> {
       const ratingStr = br.avgRating ? parseFloat(String(br.avgRating)).toFixed(1) : "N/A";
       suggestions.push({
         id: `hq-low-rating-${br.branchId}`,
-        message: `${br.branchName} musteri puani dusuk (${ratingStr}). Inceleme yapilmali.`,
+        message: `${br.branchName} müşteri puanı düşük (${ratingStr}). İnceleme yapılmalı.`,
         actionType: "redirect",
-        actionLabel: "Subeler",
+        actionLabel: "Şubeler",
         payload: { route: "/subeler", branchId: br.branchId },
         priority: "critical",
         icon: "TrendingDown",
@@ -390,9 +390,9 @@ export async function getCoachSuggestions(userId: string): Promise<DobodySuggest
       if (suggestions.length >= MAX_SUGGESTIONS) break;
       suggestions.push({
         id: `score-dropping-${staff.usrId}`,
-        message: `${staff.firstName} ${staff.lastName} (${staff.branchName || "Sube"}) skoru dusuk: ${(staff.compositeScore || 0).toFixed(0)}. ${staff.dangerZoneMonths} aydir tehlike bolgesinde.`,
+        message: `${staff.firstName} ${staff.lastName} (${staff.branchName || "Şube"}) skoru düşük: ${(staff.compositeScore || 0).toFixed(0)}. ${staff.dangerZoneMonths} aydır tehlike bölgesinde.`,
         actionType: "redirect",
-        actionLabel: "Profili Gor",
+        actionLabel: "Profili Gör",
         targetUserId: staff.usrId,
         payload: { route: `/personel/${staff.usrId}` },
         priority: "critical",
@@ -423,9 +423,9 @@ export async function getCoachSuggestions(userId: string): Promise<DobodySuggest
       if (suggestions.length >= MAX_SUGGESTIONS) break;
       suggestions.push({
         id: `gate-ready-${ready.usrId}`,
-        message: `${ready.firstName} ${ready.lastName} terfi icin hazir (${ready.levelTitle}). Sinav sureci baslatilabilir.`,
+        message: `${ready.firstName} ${ready.lastName} terfi için hazır (${ready.levelTitle}). Sınav süreci başlatılabilir.`,
         actionType: "redirect",
-        actionLabel: "Degerlendirmeye Git",
+        actionLabel: "Değerlendirmeye Git",
         targetUserId: ready.usrId,
         payload: { route: `/personel/${ready.usrId}`, action: "promote" },
         priority: "medium",
@@ -496,9 +496,9 @@ export async function getFactorySuggestions(): Promise<DobodySuggestion[]> {
     if (pendingOrders.length > 0) {
       suggestions.push({
         id: "order-pending",
-        message: `${pendingOrders.length} sube siparisi onay bekliyor.`,
+        message: `${pendingOrders.length} şube siparişi onay bekliyor.`,
         actionType: "redirect",
-        actionLabel: "Siparisleri Gor",
+        actionLabel: "Siparişleri Gör",
         payload: { route: "/fabrika/dashboard", tab: "orders" },
         priority: "high",
         icon: "ShoppingCart",
@@ -531,9 +531,9 @@ export async function getFactorySuggestions(): Promise<DobodySuggestion[]> {
     if (wasteRate > 5 && total > 0) {
       suggestions.push({
         id: "waste-high",
-        message: `Son 30 gunde fire orani %${wasteRate.toFixed(1)}. Kalite kontrolu gozden gecirin.`,
+        message: `Son 30 günde fire oranı %${wasteRate.toFixed(1)}. Kalite kontrolü gözden geçirin.`,
         actionType: "redirect",
-        actionLabel: "Kalite Raporlari",
+        actionLabel: "Kalite Raporları",
         payload: { route: "/fabrika/dashboard", tab: "quality" },
         priority: "critical",
         icon: "AlertTriangle",
@@ -561,9 +561,9 @@ export async function getTrainerSuggestions(): Promise<DobodySuggestion[]> {
     if (unpublishedModules.length > 0) {
       suggestions.push({
         id: "trainer-pending-modules",
-        message: `${unpublishedModules.length} egitim modulu yayinlanmayi bekliyor.`,
+        message: `${unpublishedModules.length} eğitim modülü yayınlanmayı bekliyor.`,
         actionType: "redirect",
-        actionLabel: "Modulleri Gor",
+        actionLabel: "Modülleri Gör",
         payload: { route: "/egitim" },
         priority: "high",
         icon: "BookOpen",
@@ -588,9 +588,9 @@ export async function getTrainerSuggestions(): Promise<DobodySuggestion[]> {
     if (overdueCount > 0) {
       suggestions.push({
         id: "trainer-overdue-training",
-        message: `${overdueCount} personelin egitimi 3+ gun gecikti. Takip gerekiyor.`,
+        message: `${overdueCount} personelin eğitimi 3+ gün gecikti. Takip gerekiyor.`,
         actionType: "redirect",
-        actionLabel: "Geciken Egitimler",
+        actionLabel: "Geciken Eğitimler",
         payload: { route: "/egitim" },
         priority: "critical",
         icon: "AlertTriangle",
@@ -615,9 +615,9 @@ export async function getTrainerSuggestions(): Promise<DobodySuggestion[]> {
       if (passRate < 60) {
         suggestions.push({
           id: "trainer-low-quiz-pass",
-          message: `Son 30 gunde quiz basari orani %${passRate.toFixed(0)}. Icerik gozden gecirilmeli.`,
+          message: `Son 30 günde quiz başarı oranı %${passRate.toFixed(0)}. İçerik gözden geçirilmeli.`,
           actionType: "redirect",
-          actionLabel: "Quiz Sonuclari",
+          actionLabel: "Quiz Sonuçları",
           payload: { route: "/egitim" },
           priority: "high",
           icon: "TrendingDown",
@@ -698,7 +698,7 @@ export async function getMuhasebeSuggestions(): Promise<DobodySuggestion[]> {
     if (missingCount > 5) {
       suggestions.push({
         id: "muhasebe-missing-pdks",
-        message: `${missingCount} personelin bu ay icin bordro kaydi olusturulmamis.`,
+        message: `${missingCount} personelin bu ay için bordro kaydı oluşturulmamış.`,
         actionType: "redirect",
         actionLabel: "Puantaj Kontrol",
         payload: { route: "/pdks" },
@@ -906,9 +906,9 @@ export async function getFabrikaMudurSuggestions(): Promise<DobodySuggestion[]> 
       if (wasteRate > 5) {
         suggestions.push({
           id: "fabrika-mudur-high-waste",
-          message: `Bugunki fire orani %${wasteRate.toFixed(1)}. Normal ustu fire uretiliyor.`,
+          message: `Bugünkü fire oranı %${wasteRate.toFixed(1)}. Normal üstü fire üretiliyor.`,
           actionType: "redirect",
-          actionLabel: "Uretim Raporu",
+          actionLabel: "Üretim Raporu",
           payload: { route: "/fabrika/dashboard" },
           priority: "high",
           icon: "AlertTriangle",
@@ -920,9 +920,9 @@ export async function getFabrikaMudurSuggestions(): Promise<DobodySuggestion[]> 
     if (hour >= 12 && produced === 0) {
       suggestions.push({
         id: "fabrika-mudur-no-production",
-        message: "Bugun henuz uretim girisi yapilmamis. Istasyonlari kontrol edin.",
+        message: "Bugün henüz üretim girişi yapılmamış. İstasyonları kontrol edin.",
         actionType: "redirect",
-        actionLabel: "Uretim Girisi",
+        actionLabel: "Üretim Girişi",
         payload: { route: "/fabrika/dashboard" },
         priority: "critical",
         icon: "Factory",
@@ -938,9 +938,9 @@ export async function getFabrikaMudurSuggestions(): Promise<DobodySuggestion[]> 
     if (pendingCount > 0) {
       suggestions.push({
         id: "fabrika-mudur-pending-orders",
-        message: `${pendingCount} sube siparisi onay bekliyor.`,
+        message: `${pendingCount} şube siparişi onay bekliyor.`,
         actionType: "redirect",
-        actionLabel: "Siparisleri Gor",
+        actionLabel: "Siparişleri Gör",
         payload: { route: "/fabrika/dashboard", tab: "orders" },
         priority: "high",
         icon: "ShoppingCart",
@@ -973,9 +973,9 @@ export async function getFabrikaMudurSuggestions(): Promise<DobodySuggestion[]> 
     if (batchWasteRate > 5 && batchTotal > 0) {
       suggestions.push({
         id: "fabrika-mudur-batch-reject",
-        message: `Son 30 gunde parti red orani %${batchWasteRate.toFixed(1)}. Kalite surecleri incelenmeli.`,
+        message: `Son 30 günde parti red oranı %${batchWasteRate.toFixed(1)}. Kalite süreçleri incelenmeli.`,
         actionType: "redirect",
-        actionLabel: "Kalite Raporlari",
+        actionLabel: "Kalite Raporları",
         payload: { route: "/fabrika/dashboard", tab: "quality" },
         priority: "critical",
         icon: "XCircle",
@@ -1049,9 +1049,9 @@ export async function getSatinalmaSuggestions(): Promise<DobodySuggestion[]> {
     if (pendingCount > 0) {
       suggestions.push({
         id: "satinalma-pending-orders",
-        message: `${pendingCount} satin alma siparisi taslak durumunda.`,
+        message: `${pendingCount} satın alma siparişi taslak durumunda.`,
         actionType: "redirect",
-        actionLabel: "Siparisleri Gor",
+        actionLabel: "Siparişleri Gör",
         payload: { route: "/satinalma/siparis-yonetimi" },
         priority: "high",
         icon: "FileEdit",
@@ -1086,7 +1086,7 @@ export async function getMarketingSuggestions(): Promise<DobodySuggestion[]> {
         id: "marketing-active-campaigns",
         message: `${activeCount} aktif kampanya devam ediyor.`,
         actionType: "redirect",
-        actionLabel: "Kampanyalari Gor",
+        actionLabel: "Kampanyaları Gör",
         payload: { route: "/crm/kampanyalar" },
         priority: "low",
         icon: "Megaphone",
@@ -1138,9 +1138,9 @@ export async function getMarketingSuggestions(): Promise<DobodySuggestion[]> {
       const branchNames = branchScores.map(b => b.branchName).slice(0, 3).join(", ");
       suggestions.push({
         id: "marketing-declining-scores",
-        message: `${branchScores.length} subede musteri memnuniyeti dusuk: ${branchNames}`,
+        message: `${branchScores.length} şubede müşteri memnuniyeti düşük: ${branchNames}`,
         actionType: "redirect",
-        actionLabel: "Analizleri Gor",
+        actionLabel: "Analizleri Gör",
         payload: { route: "/crm/analizler" },
         priority: "high",
         icon: "TrendingDown",
@@ -1157,7 +1157,7 @@ export async function getMarketingSuggestions(): Promise<DobodySuggestion[]> {
       if (avgRating < 3.5) {
         suggestions.push({
           id: "marketing-overall-satisfaction",
-          message: `Genel musteri memnuniyet puani ${avgRating.toFixed(1)} - iyilestirme gerekiyor.`,
+          message: `Genel müşteri memnuniyet puanı ${avgRating.toFixed(1)} - iyileştirme gerekiyor.`,
           actionType: "redirect",
           actionLabel: "Geri Bildirimler",
           payload: { route: "/crm/geri-bildirimler" },
