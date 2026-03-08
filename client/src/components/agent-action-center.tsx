@@ -11,6 +11,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import {
   AlertTriangle,
@@ -30,6 +31,7 @@ import {
   Users,
   ArrowUpRight,
   RefreshCw,
+  Info,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Link } from "wouter";
@@ -80,15 +82,38 @@ const SEVERITY_CONFIG: Record<string, { label: string; variant: "default" | "sec
   critical: { label: "Kritik", variant: "destructive" },
 };
 
-function ActionCard({ action, onApprove, onReject }: {
+const INVALID_DEEP_LINKS = ["/sube-ozet", "/sube/employee-dashboard"];
+
+function getActionDeepLink(action: AgentAction): string | null {
+  const meta = action.metadata || {};
+  if (meta.targetUserId && meta.insightType === "score_dropping") {
+    return `/personel/${meta.targetUserId}`;
+  }
+  if (action.deepLink && !INVALID_DEEP_LINKS.includes(action.deepLink)) {
+    return action.deepLink;
+  }
+  return null;
+}
+
+function getApproveConsequence(action: AgentAction): string {
+  if (action.actionType === "remind") return "Hedef kullanıcıya hatırlatma bildirimi gönderilecek.";
+  if (action.actionType === "alert") return "Hedef kullanıcıya uyarı bildirimi gönderilecek.";
+  if (action.actionType === "escalate") return "Konu yükseltilecek ve ilgili kişilere bildirim gönderilecek.";
+  if (action.actionType === "suggest_task") return "Görev önerisi olarak kaydedilecek.";
+  return "Öneri onaylanmış olarak işaretlenecek.";
+}
+
+function ActionCard({ action, onApprove, onReject, onShowDetail }: {
   action: AgentAction;
-  onApprove: (id: number) => void;
-  onReject: (id: number) => void;
+  onApprove: (action: AgentAction) => void;
+  onReject: (action: AgentAction) => void;
+  onShowDetail: (action: AgentAction) => void;
 }) {
   const config = ACTION_TYPE_CONFIG[action.actionType] || ACTION_TYPE_CONFIG.alert;
   const severityConfig = SEVERITY_CONFIG[action.severity] || SEVERITY_CONFIG.med;
   const Icon = config.icon;
   const isPending = action.status === "pending";
+  const deepLink = getActionDeepLink(action);
 
   return (
     <Card className="hover-elevate" data-testid={`card-agent-action-${action.id}`}>
@@ -123,13 +148,24 @@ function ActionCard({ action, onApprove, onReject }: {
                   minute: "2-digit",
                 })}
               </span>
-              {action.deepLink && (
-                <Link href={action.deepLink}>
+              {deepLink ? (
+                <Link href={deepLink}>
                   <Button variant="ghost" size="sm" className="h-6 px-2 text-xs gap-1" data-testid={`link-action-deep-${action.id}`}>
                     <ExternalLink className="h-3 w-3" />
                     Detay
                   </Button>
                 </Link>
+              ) : (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 px-2 text-xs gap-1"
+                  onClick={() => onShowDetail(action)}
+                  data-testid={`button-action-detail-${action.id}`}
+                >
+                  <Info className="h-3 w-3" />
+                  Detay
+                </Button>
               )}
             </div>
           </div>
@@ -139,7 +175,7 @@ function ActionCard({ action, onApprove, onReject }: {
                 size="icon"
                 variant="ghost"
                 className="text-green-600 dark:text-green-400"
-                onClick={() => onApprove(action.id)}
+                onClick={() => onApprove(action)}
                 data-testid={`button-approve-${action.id}`}
               >
                 <CheckCircle2 className="h-4 w-4" />
@@ -148,7 +184,7 @@ function ActionCard({ action, onApprove, onReject }: {
                 size="icon"
                 variant="ghost"
                 className="text-red-600 dark:text-red-400"
-                onClick={() => onReject(action.id)}
+                onClick={() => onReject(action)}
                 data-testid={`button-reject-${action.id}`}
               >
                 <XCircle className="h-4 w-4" />
@@ -176,13 +212,45 @@ function ActionCard({ action, onApprove, onReject }: {
   );
 }
 
+function ActionContextSummary({ action }: { action: AgentAction }) {
+  const meta = action.metadata || {};
+  const details: string[] = [];
+
+  if (meta.targetUserName) details.push(`Personel: ${meta.targetUserName}`);
+  if (meta.branchName) details.push(`Şube: ${meta.branchName}`);
+  if (meta.score !== undefined) details.push(`Skor: ${meta.score}/100`);
+  if (meta.avgRating !== undefined) details.push(`Ortalama Puan: ${Number(meta.avgRating).toFixed(1)}`);
+  if (meta.lotCount !== undefined) details.push(`Lot Sayısı: ${meta.lotCount}`);
+  if (meta.itemCount !== undefined) details.push(`Ürün Sayısı: ${meta.itemCount}`);
+  if (meta.slaBreachCount !== undefined) details.push(`SLA İhlali: ${meta.slaBreachCount}`);
+  if (meta.rate !== undefined) details.push(`Tamamlama: %${meta.rate}`);
+  if (meta.feedbackCount !== undefined) details.push(`Değerlendirme: ${meta.feedbackCount}`);
+
+  if (details.length === 0) return null;
+
+  return (
+    <div className="text-sm text-muted-foreground space-y-1 mt-2" data-testid="text-action-context">
+      {details.map((d, i) => (
+        <div key={i}>{d}</div>
+      ))}
+    </div>
+  );
+}
+
 export function AgentActionCenter({ skillFilter }: { skillFilter?: string }) {
   const { toast } = useToast();
   const [statusFilter, setStatusFilter] = useState<string>("pending");
-  const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
-  const [rejectActionId, setRejectActionId] = useState<number | null>(null);
-  const [rejectReason, setRejectReason] = useState("");
   const [showAll, setShowAll] = useState(false);
+
+  const [approveDialogOpen, setApproveDialogOpen] = useState(false);
+  const [approveAction, setApproveAction] = useState<AgentAction | null>(null);
+
+  const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
+  const [rejectAction, setRejectAction] = useState<AgentAction | null>(null);
+  const [rejectReason, setRejectReason] = useState("");
+
+  const [detailDialogOpen, setDetailDialogOpen] = useState(false);
+  const [detailAction, setDetailAction] = useState<AgentAction | null>(null);
 
   const summaryQuery = useQuery<AgentSummary>({
     queryKey: ["/api/agent/actions/summary"],
@@ -210,6 +278,8 @@ export function AgentActionCenter({ skillFilter }: { skillFilter?: string }) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/agent/actions"] });
       queryClient.invalidateQueries({ queryKey: ["/api/agent/actions/summary"] });
+      setApproveDialogOpen(false);
+      setApproveAction(null);
       toast({ title: "Öneri onaylandı" });
     },
     onError: () => {
@@ -225,6 +295,7 @@ export function AgentActionCenter({ skillFilter }: { skillFilter?: string }) {
       queryClient.invalidateQueries({ queryKey: ["/api/agent/actions"] });
       queryClient.invalidateQueries({ queryKey: ["/api/agent/actions/summary"] });
       setRejectDialogOpen(false);
+      setRejectAction(null);
       setRejectReason("");
       toast({ title: "Öneri reddedildi" });
     },
@@ -233,15 +304,31 @@ export function AgentActionCenter({ skillFilter }: { skillFilter?: string }) {
     },
   });
 
-  const handleReject = (id: number) => {
-    setRejectActionId(id);
+  const handleApprove = (action: AgentAction) => {
+    setApproveAction(action);
+    setApproveDialogOpen(true);
+  };
+
+  const confirmApprove = () => {
+    if (approveAction) {
+      approveMutation.mutate(approveAction.id);
+    }
+  };
+
+  const handleReject = (action: AgentAction) => {
+    setRejectAction(action);
     setRejectDialogOpen(true);
   };
 
   const confirmReject = () => {
-    if (rejectActionId !== null) {
-      rejectMutation.mutate({ id: rejectActionId, reason: rejectReason });
+    if (rejectAction) {
+      rejectMutation.mutate({ id: rejectAction.id, reason: rejectReason });
     }
+  };
+
+  const handleShowDetail = (action: AgentAction) => {
+    setDetailAction(action);
+    setDetailDialogOpen(true);
   };
 
   const summary = summaryQuery.data;
@@ -334,8 +421,9 @@ export function AgentActionCenter({ skillFilter }: { skillFilter?: string }) {
                 <ActionCard
                   key={action.id}
                   action={action}
-                  onApprove={(id) => approveMutation.mutate(id)}
+                  onApprove={handleApprove}
                   onReject={handleReject}
+                  onShowDetail={handleShowDetail}
                 />
               ))}
               {total > actions.length && !showAll && (
@@ -365,17 +453,73 @@ export function AgentActionCenter({ skillFilter }: { skillFilter?: string }) {
         </CardContent>
       </Card>
 
+      <Dialog open={approveDialogOpen} onOpenChange={setApproveDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Öneriyi Onayla</DialogTitle>
+            <DialogDescription>Bu öneriyi onaylamak istediğinize emin misiniz?</DialogDescription>
+          </DialogHeader>
+          {approveAction && (
+            <div className="space-y-3">
+              <div className="p-3 rounded-md bg-muted">
+                <div className="font-medium text-sm" data-testid="text-approve-title">
+                  {approveAction.title}
+                </div>
+                {approveAction.description && (
+                  <p className="text-sm text-muted-foreground mt-1">
+                    {approveAction.description}
+                  </p>
+                )}
+                <ActionContextSummary action={approveAction} />
+              </div>
+              <div className="text-sm text-muted-foreground">
+                <span className="font-medium">Onayladığınızda:</span>
+                <p className="mt-1">{getApproveConsequence(approveAction)}</p>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setApproveDialogOpen(false)} data-testid="button-cancel-approve">
+              İptal
+            </Button>
+            <Button
+              onClick={confirmApprove}
+              disabled={approveMutation.isPending}
+              data-testid="button-confirm-approve"
+            >
+              {approveMutation.isPending ? "İşleniyor..." : "Onayla"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={rejectDialogOpen} onOpenChange={setRejectDialogOpen}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Öneriyi Reddet</DialogTitle>
+            <DialogDescription>Bu öneriyi reddetmek istediğinize emin misiniz?</DialogDescription>
           </DialogHeader>
-          <Textarea
-            placeholder="Red nedeni (isteğe bağlı)"
-            value={rejectReason}
-            onChange={(e) => setRejectReason(e.target.value)}
-            data-testid="input-reject-reason"
-          />
+          {rejectAction && (
+            <div className="space-y-3">
+              <div className="p-3 rounded-md bg-muted">
+                <div className="font-medium text-sm" data-testid="text-reject-title">
+                  {rejectAction.title}
+                </div>
+                {rejectAction.description && (
+                  <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
+                    {rejectAction.description}
+                  </p>
+                )}
+                <ActionContextSummary action={rejectAction} />
+              </div>
+              <Textarea
+                placeholder="Red nedeni (isteğe bağlı)"
+                value={rejectReason}
+                onChange={(e) => setRejectReason(e.target.value)}
+                data-testid="input-reject-reason"
+              />
+            </div>
+          )}
           <DialogFooter>
             <Button variant="outline" onClick={() => setRejectDialogOpen(false)} data-testid="button-cancel-reject">
               İptal
@@ -387,6 +531,51 @@ export function AgentActionCenter({ skillFilter }: { skillFilter?: string }) {
               data-testid="button-confirm-reject"
             >
               {rejectMutation.isPending ? "İşleniyor..." : "Reddet"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={detailDialogOpen} onOpenChange={setDetailDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Öneri Detayı</DialogTitle>
+            <DialogDescription>Mr. Dobody tarafından oluşturulan öneri bilgileri</DialogDescription>
+          </DialogHeader>
+          {detailAction && (
+            <div className="space-y-3">
+              <div>
+                <div className="font-medium text-sm" data-testid="text-detail-title">
+                  {detailAction.title}
+                </div>
+                {detailAction.description && (
+                  <p className="text-sm text-muted-foreground mt-2">
+                    {detailAction.description}
+                  </p>
+                )}
+              </div>
+              <ActionContextSummary action={detailAction} />
+              <div className="flex items-center gap-2 flex-wrap text-xs text-muted-foreground">
+                <span>
+                  {new Date(detailAction.createdAt).toLocaleDateString("tr-TR", {
+                    day: "numeric",
+                    month: "long",
+                    year: "numeric",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
+                </span>
+                {detailAction.status !== "pending" && (
+                  <Badge variant="outline" className="text-xs">
+                    {detailAction.status === "approved" ? "Onaylandı" : detailAction.status === "rejected" ? "Reddedildi" : "Süresi Doldu"}
+                  </Badge>
+                )}
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDetailDialogOpen(false)} data-testid="button-close-detail">
+              Kapat
             </Button>
           </DialogFooter>
         </DialogContent>

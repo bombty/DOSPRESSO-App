@@ -1,14 +1,22 @@
 import { db } from "../../db";
 import {
-  checklistCompletions, trainingAssignments, trainingMaterials, users, userCareerProgress,
+  checklistCompletions, trainingAssignments, trainingMaterials, users, userCareerProgress, branches,
 } from "@shared/schema";
 import { eq, and, gte, lt, lte, count, sql } from "drizzle-orm";
 import { registerSkill, type AgentSkill, type SkillContext, type SkillInsight, type SkillAction } from "./skill-registry";
 
+async function getBranchName(branchId?: number): Promise<string> {
+  if (!branchId) return "";
+  try {
+    const [b] = await db.select({ name: branches.name }).from(branches).where(eq(branches.id, branchId)).limit(1);
+    return b?.name || "";
+  } catch { return ""; }
+}
+
 const teamTrackerSkill: AgentSkill = {
   id: "team_tracker",
-  name: "Ekip Takipcisi",
-  description: "Supervisor ve mudurlerin ekip durumunu takip etmesi",
+  name: "Ekip Takipçisi",
+  description: "Supervisor ve müdürlerin ekip durumunu takip etmesi",
   targetRoles: ["supervisor", "supervisor_buddy", "mudur"],
   schedule: "hourly",
   autonomyLevel: "suggest_approve",
@@ -77,10 +85,11 @@ const teamTrackerSkill: AgentSkill = {
         .limit(5);
 
       if (overdueTrainings.length > 0) {
+        const names = overdueTrainings.map((t) => `${t.firstName} ${t.lastName}`).join(", ");
         insights.push({
           type: "training_overdue",
           severity: "warning",
-          message: `${overdueTrainings.length} personelin egitimi 3+ gundur bekliyor`,
+          message: `${overdueTrainings.length} personelin eğitimi 3+ gündür bekliyor: ${names}`,
           data: { trainings: overdueTrainings.map((t) => ({ userId: t.userId, name: `${t.firstName} ${t.lastName}`, module: t.title })) },
           requiresAI: false,
         });
@@ -88,9 +97,6 @@ const teamTrackerSkill: AgentSkill = {
     } catch {}
 
     try {
-      const twoWeeksAgo = new Date();
-      twoWeeksAgo.setDate(twoWeeksAgo.getDate() - 14);
-
       const droppedScores = await db
         .select({
           userId: userCareerProgress.userId,
@@ -113,7 +119,7 @@ const teamTrackerSkill: AgentSkill = {
         insights.push({
           type: "score_dropping",
           severity: "warning",
-          message: `${droppedScores.length} personelin skoru dusuk (<55)`,
+          message: `${droppedScores.length} personelin skoru düşük (<55)`,
           data: { users: droppedScores.map((u) => ({ userId: u.userId, name: `${u.firstName} ${u.lastName}`, score: Math.round(u.compositeScore || 0) })) },
           requiresAI: true,
         });
@@ -128,43 +134,64 @@ const teamTrackerSkill: AgentSkill = {
 
     for (const insight of insights) {
       if (insight.type === "checklist_late") {
-        const firstUser = insight.data.users?.[0];
-        if (firstUser) {
-          actions.push({
-            actionType: "remind",
-            targetUserId: firstUser.userId,
-            targetRoleScope: "branch_floor",
+        const userList = insight.data.users || [];
+        const names = userList.map((u: any) => u.name).slice(0, 3).join(", ");
+        actions.push({
+          actionType: "remind",
+          targetUserId: userList[0]?.userId || context.userId,
+          targetRoleScope: "branch_floor",
+          branchId: context.branchId,
+          title: `Checklist Hatırlatması: ${names}`,
+          description: (insight as any).aiMessage || `${userList.length} personelin checklist'i 30+ dakikadır tamamlanmadı: ${names}`,
+          deepLink: "/checklistler",
+          severity: "med",
+          metadata: {
+            targetUsers: userList,
             branchId: context.branchId,
-            title: `Checklist hatirlatmasi`,
-            description: (insight as any).aiMessage || insight.message,
-            deepLink: "/sube-ozet",
-            severity: "med",
-          });
-        }
+            insightType: "checklist_late",
+          },
+        });
       }
 
       if (insight.type === "training_overdue") {
+        const trainings = insight.data.trainings || [];
+        const names = trainings.map((t: any) => t.name).slice(0, 3).join(", ");
         actions.push({
           actionType: "remind",
           targetUserId: context.userId,
           branchId: context.branchId,
-          title: "Egitim gecikmesi",
-          description: (insight as any).aiMessage || insight.message,
-          deepLink: "/sube/employee-dashboard",
+          title: `Eğitim Gecikmesi: ${trainings.length} personel`,
+          description: (insight as any).aiMessage || `${trainings.length} personelin eğitimi 3+ gündür bekliyor: ${names}`,
+          deepLink: "/akademi",
           severity: "med",
+          metadata: {
+            targetUsers: trainings,
+            branchId: context.branchId,
+            insightType: "training_overdue",
+          },
         });
       }
 
       if (insight.type === "score_dropping") {
-        actions.push({
-          actionType: "alert",
-          targetUserId: context.userId,
-          branchId: context.branchId,
-          title: "Performans uyarisi",
-          description: (insight as any).aiMessage || insight.message,
-          deepLink: "/sube/employee-dashboard",
-          severity: "high",
-        });
+        const userList = insight.data.users || [];
+        for (const u of userList) {
+          actions.push({
+            actionType: "alert",
+            targetUserId: context.userId,
+            branchId: context.branchId,
+            title: `Performans Uyarısı: ${u.name} (${u.score}/100)`,
+            description: (insight as any).aiMessage || `${u.name} composite skoru ${u.score}/100 — düşük performans bölgesinde. Takip gerekiyor.`,
+            deepLink: `/personel/${u.userId}`,
+            severity: "high",
+            metadata: {
+              targetUserName: u.name,
+              targetUserId: u.userId,
+              score: u.score,
+              branchId: context.branchId,
+              insightType: "score_dropping",
+            },
+          });
+        }
       }
     }
 

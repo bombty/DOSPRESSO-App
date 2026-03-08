@@ -46,6 +46,27 @@ function checkThrottle(userId: string, skillId: string): boolean {
   return true;
 }
 
+async function checkDuplicate(targetUserId: string, title: string, skillId: string): Promise<boolean> {
+  try {
+    const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const existing = await db
+      .select({ id: agentPendingActions.id })
+      .from(agentPendingActions)
+      .where(
+        and(
+          eq(agentPendingActions.targetUserId, targetUserId),
+          eq(agentPendingActions.title, title),
+          eq(agentPendingActions.status, "pending"),
+          gte(agentPendingActions.createdAt, oneDayAgo)
+        )
+      )
+      .limit(1);
+    return existing.length > 0;
+  } catch {
+    return false;
+  }
+}
+
 export async function processSkillActions(
   actions: SkillAction[],
   skill: AgentSkill,
@@ -64,6 +85,12 @@ export async function processSkillActions(
       continue;
     }
 
+    const existingDup = await checkDuplicate(targetUserId, action.title, skill.id);
+    if (existingDup) {
+      throttled++;
+      continue;
+    }
+
     if (skill.autonomyLevel === "full_auto") {
       if (isQuietHour()) {
         try {
@@ -77,7 +104,7 @@ export async function processSkillActions(
             deepLink: action.deepLink || null,
             severity: action.severity,
             status: "pending",
-            metadata: { skillId: skill.id, queued: true, queuedAt: new Date().toISOString() },
+            metadata: { ...(action.metadata || {}), skillId: skill.id, queued: true, queuedAt: new Date().toISOString() },
           });
           queued++;
         } catch (err) {
@@ -113,14 +140,14 @@ export async function processSkillActions(
           deepLink: action.deepLink || null,
           severity: action.severity,
           status: "pending",
-          metadata: { skillId: skill.id },
+          metadata: { ...(action.metadata || {}), skillId: skill.id },
         });
 
         const approverUserId = runUserId || targetUserId;
         await storage.createNotification({
           userId: approverUserId,
           type: "agent_suggestion",
-          title: `Mr. Dobody oneri bekliyor`,
+          title: `Mr. Dobody öneri bekliyor`,
           message: action.title,
           link: "/agent-merkezi",
           isRead: false,

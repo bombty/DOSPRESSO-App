@@ -5,8 +5,8 @@ import { registerSkill, type AgentSkill, type SkillContext, type SkillInsight, t
 
 const trainingOptimizerSkill: AgentSkill = {
   id: "training_optimizer",
-  name: "Egitim Optimizasyoncusu",
-  description: "Egitim tamamlama oranları ve modül performansı analizi",
+  name: "Eğitim Optimizasyoncusu",
+  description: "Eğitim tamamlama oranları ve modül performansı analizi",
   targetRoles: ["trainer", "coach"],
   schedule: "weekly",
   autonomyLevel: "info_only",
@@ -42,7 +42,7 @@ const trainingOptimizerSkill: AgentSkill = {
         insights.push({
           type: "overall_completion_rate",
           severity: rate >= 80 ? "positive" : rate >= 50 ? "info" : "warning",
-          message: `Son 30 gun egitim tamamlama orani: %${rate} (${completed}/${assigned})`,
+          message: `Son 30 gün eğitim tamamlama oranı: %${rate} (${completed}/${assigned})`,
           data: { assigned, completed, rate },
           requiresAI: rate < 60,
         });
@@ -75,7 +75,7 @@ const trainingOptimizerSkill: AgentSkill = {
         insights.push({
           type: "low_completion_modules",
           severity: "warning",
-          message: `Dusuk tamamlama oranli moduller: ${names}`,
+          message: `Düşük tamamlama oranlı modüller: ${names}`,
           data: { modules: lowCompletionModules },
           requiresAI: true,
         });
@@ -94,7 +94,7 @@ const trainingOptimizerSkill: AgentSkill = {
         insights.push({
           type: "high_completion_modules",
           severity: "positive",
-          message: `Yuksek tamamlama oranli moduller: ${names}`,
+          message: `Yüksek tamamlama oranlı modüller: ${names}`,
           data: { modules: highCompletionModules },
           requiresAI: false,
         });
@@ -108,13 +108,29 @@ const trainingOptimizerSkill: AgentSkill = {
     const actions: SkillAction[] = [];
 
     for (const insight of insights) {
+      let title: string;
+      if (insight.type === "overall_completion_rate") {
+        title = `Eğitim Özeti: %${insight.data.rate} tamamlama`;
+      } else if (insight.type === "low_completion_modules") {
+        const moduleNames = (insight.data.modules || []).map((m: any) => m.title).slice(0, 2).join(", ");
+        title = `Modül İyileştirme Önerisi: ${moduleNames}`;
+      } else {
+        title = `Eğitim Başarısı`;
+      }
+
       actions.push({
         actionType: "report",
         targetUserId: context.userId,
-        title: insight.type === "overall_completion_rate" ? "Egitim ozeti" : insight.type === "low_completion_modules" ? "Modul iyilestirme onerisi" : "Egitim basarisi",
+        title,
         description: (insight as any).aiMessage || insight.message,
         deepLink: "/hq-dashboard/academy",
         severity: insight.severity === "warning" ? "med" : "low",
+        metadata: {
+          rate: insight.data.rate,
+          assigned: insight.data.assigned,
+          completed: insight.data.completed,
+          insightType: insight.type,
+        },
       });
     }
 

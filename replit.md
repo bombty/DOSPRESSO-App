@@ -36,9 +36,10 @@ The frontend uses React 18+ with TypeScript and Vite, employing Shadcn/ui (New Y
 - **Cost Management System**: Comprehensive product cost calculation integrated with procurement.
 - **Factory Shift & Production Planning**: Shift planning, batch tracking, performance monitoring, kiosk PIN authentication, production/waste recording, and fault reporting.
 - **Mr. Dobody Agent Engine**: Autonomous AI agent system ("Read-Only AI, Write-Through Human") for analyzing data and proposing user-approved actions. Includes rule-based suggestion engine, modular skill engine, and proactive notifications.
-  - **Flow Mode**: Active work-flow guide for role-specific prioritized tasks.
+  - **Flow Mode**: Active work-flow guide for role-specific prioritized tasks. CGO/CEO flow includes pending agent action count.
   - **Task Manager**: Admin/HQ-created manual flow tasks for users' Flow Mode.
   - **Avatar Management**: DB-backed avatar system with time-windowed and role-based display.
+  - **Agent Center UX**: Enriched suggestion titles with person/branch names and metrics. Approve/reject confirmation dialogs with full context. Detail dialog for suggestions without valid deep links. Write-path deduplication (24h window) to prevent duplicate pending actions.
 - **CRM — Müşteri 360°**: Comprehensive customer relationship management including feedback, complaints, campaigns, and analytics.
 - **Fabrika Uretim-Stok-Sevkiyat Zinciri**: Shipment system with status workflow, pre-dispatch stock validation, automatic inventory deduction, 2-stage quality control, HACCP records, LOT/Parti tracking, and SKT background jobs.
 - **Branch Order & Stock Management**: Full branch order lifecycle, inventory system with stock movements, waste recording, and expiring product alerts.

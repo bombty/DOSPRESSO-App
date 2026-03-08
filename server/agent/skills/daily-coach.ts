@@ -8,8 +8,8 @@ import { registerSkill, type AgentSkill, type SkillContext, type SkillInsight, t
 
 const dailyCoachSkill: AgentSkill = {
   id: "daily_coach",
-  name: "Gunluk Koc",
-  description: "Barista ve stajyerler icin gunluk motivasyon ve rehberlik",
+  name: "Günlük Koç",
+  description: "Barista ve stajyerler için günlük motivasyon ve rehberlik",
   targetRoles: ["stajyer", "bar_buddy", "barista"],
   schedule: "daily",
   autonomyLevel: "full_auto",
@@ -36,7 +36,7 @@ const dailyCoachSkill: AgentSkill = {
         insights.push({
           type: "checklist_pending",
           severity: "info",
-          message: "Bugunun checklist'i henuz tamamlanmadi",
+          message: "Bugünün checklist'i henüz tamamlanmadı",
           data: { count: pendingChecklists.length },
           requiresAI: false,
         });
@@ -63,7 +63,7 @@ const dailyCoachSkill: AgentSkill = {
         insights.push({
           type: "training_assigned",
           severity: "info",
-          message: `${pendingTrainings.length} egitim modulu seni bekliyor`,
+          message: `${pendingTrainings.length} eğitim modülü seni bekliyor`,
           data: { modules: pendingTrainings.map((t) => t.title) },
           requiresAI: false,
         });
@@ -85,17 +85,15 @@ const dailyCoachSkill: AgentSkill = {
           insights.push({
             type: "streak_motivation",
             severity: "positive",
-            message: `${streak.currentStreak} gunluk ogrenme serisi! Harika gidiyorsun`,
+            message: `${streak.currentStreak} günlük öğrenme serisi! Harika gidiyorsun`,
             data: { currentStreak: streak.currentStreak, bestStreak: streak.bestStreak },
             requiresAI: true,
           });
         } else if (streak.currentStreak >= 2) {
-          const yesterday = new Date();
-          yesterday.setDate(yesterday.getDate() - 1);
           insights.push({
             type: "streak_continue",
             severity: "info",
-            message: `${streak.currentStreak} gunluk serin var. Bugun devam et!`,
+            message: `${streak.currentStreak} günlük serin var. Bugün devam et!`,
             data: { currentStreak: streak.currentStreak },
             requiresAI: false,
           });
@@ -125,7 +123,7 @@ const dailyCoachSkill: AgentSkill = {
         insights.push({
           type: "badge_near",
           severity: "positive",
-          message: `${b.badgeName} rozetine %${b.progress} ulastin! Az kaldi`,
+          message: `${b.badgeName} rozetine %${b.progress} ulaştın! Az kaldı`,
           data: { badgeId: b.badgeId, badgeName: b.badgeName, progress: b.progress },
           requiresAI: false,
         });
@@ -144,26 +142,32 @@ const dailyCoachSkill: AgentSkill = {
     if (checklist) parts.push("Checklist bekliyor");
 
     const training = insights.find((i) => i.type === "training_assigned");
-    if (training) parts.push(`${training.data.modules?.length || 1} egitim modulu`);
+    if (training) parts.push(`${training.data.modules?.length || 1} eğitim modülü`);
 
     const streak = insights.find((i) => i.type === "streak_motivation" || i.type === "streak_continue");
-    if (streak) parts.push(`Streak: ${streak.data.currentStreak} gun`);
+    if (streak) parts.push(`Streak: ${streak.data.currentStreak} gün`);
 
     const badge = insights.find((i) => i.type === "badge_near");
-    if (badge) parts.push(`${badge.data.badgeName} yakinda!`);
+    if (badge) parts.push(`${badge.data.badgeName} yakında!`);
 
     const enrichedInsight = insights.find((i) => (i as any).aiMessage);
-    const description = (enrichedInsight as any)?.aiMessage || `Gunaydin! ${parts.join(" | ")}`;
+    const description = (enrichedInsight as any)?.aiMessage || `Günaydın! ${parts.join(" | ")}`;
 
     return [
       {
         actionType: "remind",
         targetUserId: context.userId,
         branchId: context.branchId,
-        title: "Mr. Dobody: Gunluk Rehber",
+        title: "Mr. Dobody: Günlük Rehber",
         description,
         deepLink: "/benim-gunum",
         severity: "low",
+        metadata: {
+          hasChecklist: !!checklist,
+          hasTraining: !!training,
+          streakDays: streak?.data.currentStreak,
+          insightType: "daily_summary",
+        },
       },
     ];
   },

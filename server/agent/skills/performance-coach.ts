@@ -5,8 +5,8 @@ import { registerSkill, type AgentSkill, type SkillContext, type SkillInsight, t
 
 const performanceCoachSkill: AgentSkill = {
   id: "performance_coach",
-  name: "Performans Kocu",
-  description: "Haftalik performans ozeti ve gelisim onerileri",
+  name: "Performans Koçu",
+  description: "Haftalık performans özeti ve gelişim önerileri",
   targetRoles: ["barista", "bar_buddy", "stajyer"],
   schedule: "weekly",
   autonomyLevel: "full_auto",
@@ -49,14 +49,14 @@ const performanceCoachSkill: AgentSkill = {
 
         const scoreLabels: Record<string, string> = {
           practical: "Pratik & Checklist",
-          training: "Egitim",
+          training: "Eğitim",
           attendance: "Devam & Dakiklik",
         };
 
         insights.push({
           type: "weekly_score_summary",
           severity: score >= 70 ? "positive" : score >= 50 ? "info" : "warning",
-          message: `Haftalik skor: ${score}/100. Guclu alan: ${scoreLabels[strongest[0]]} (${strongest[1]}). Gelistirilecek: ${scoreLabels[weakest[0]]} (${weakest[1]})`,
+          message: `Haftalık skor: ${score}/100. Güçlü alan: ${scoreLabels[strongest[0]]} (${strongest[1]}). Geliştirilecek: ${scoreLabels[weakest[0]]} (${weakest[1]})`,
           data: {
             compositeScore: score,
             level: level?.titleTr || "Belirsiz",
@@ -99,7 +99,7 @@ const performanceCoachSkill: AgentSkill = {
             insights.push({
               type: "peer_comparison_positive",
               severity: "positive",
-              message: `Sube ortalamasinin ${diff} puan ustundesin (Sen: ${mine}, Ortalama: ${avg})`,
+              message: `Şube ortalamasının ${diff} puan üstündesin (Sen: ${mine}, Ortalama: ${avg})`,
               data: { myScore: mine, peerAvg: avg, diff },
               requiresAI: false,
             });
@@ -107,7 +107,7 @@ const performanceCoachSkill: AgentSkill = {
             insights.push({
               type: "peer_comparison_below",
               severity: "info",
-              message: `Sube ortalamasinin ${Math.abs(diff)} puan altindasin — gelisim firsati!`,
+              message: `Şube ortalamasının ${Math.abs(diff)} puan altındasın — gelişim fırsatı!`,
               data: { myScore: mine, peerAvg: avg, diff },
               requiresAI: false,
             });
@@ -124,14 +124,24 @@ const performanceCoachSkill: AgentSkill = {
 
     const summary = insights.find((i) => i.type === "weekly_score_summary");
     if (summary) {
+      const score = summary.data.compositeScore || 0;
+      const strongest = summary.data.strongest?.label || "";
+      const weakest = summary.data.weakest?.label || "";
       actions.push({
         actionType: "report",
         targetUserId: context.userId,
         branchId: context.branchId,
-        title: "Mr. Dobody: Haftalik Performans",
-        description: (summary as any).aiMessage || summary.message,
+        title: `Mr. Dobody: Haftalık Performans (${score}/100)`,
+        description: (summary as any).aiMessage || `Haftalık skor: ${score}/100. Güçlü: ${strongest}. Geliştirilecek: ${weakest}.`,
         deepLink: "/benim-gunum",
         severity: "low",
+        metadata: {
+          compositeScore: score,
+          level: summary.data.level,
+          strongest: summary.data.strongest,
+          weakest: summary.data.weakest,
+          insightType: "weekly_score_summary",
+        },
       });
     }
 

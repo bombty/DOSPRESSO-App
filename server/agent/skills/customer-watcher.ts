@@ -3,10 +3,18 @@ import { customerFeedback, branches } from "@shared/schema";
 import { eq, and, gte, lte, avg, count, sql } from "drizzle-orm";
 import { registerSkill, type AgentSkill, type SkillContext, type SkillInsight, type SkillAction } from "./skill-registry";
 
+async function getBranchName(branchId?: number): Promise<string> {
+  if (!branchId) return "";
+  try {
+    const [b] = await db.select({ name: branches.name }).from(branches).where(eq(branches.id, branchId)).limit(1);
+    return b?.name || "";
+  } catch { return ""; }
+}
+
 const customerWatcherSkill: AgentSkill = {
   id: "customer_watcher",
-  name: "Musteri Nobetcisi",
-  description: "Musteri memnuniyet trendlerini izler",
+  name: "Müşteri Nöbetçisi",
+  description: "Müşteri memnuniyet trendlerini izler",
   targetRoles: ["supervisor", "mudur", "cgo", "coach"],
   schedule: "hourly",
   autonomyLevel: "info_only",
@@ -21,6 +29,10 @@ const customerWatcherSkill: AgentSkill = {
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
     const targetBranchId = context.branchId;
+    let branchName = "";
+    if (targetBranchId) {
+      branchName = await getBranchName(targetBranchId);
+    }
 
     try {
       if (targetBranchId) {
@@ -39,8 +51,8 @@ const customerWatcherSkill: AgentSkill = {
           insights.push({
             type: "low_rating_recent",
             severity: "warning",
-            message: `Son 24 saatte ${lowRatings[0]?.cnt} dusuk puan (1-2 yildiz) geri bildirim geldi`,
-            data: { count: lowRatings[0]?.cnt, branchId: targetBranchId },
+            message: `Son 24 saatte ${lowRatings[0]?.cnt} düşük puan (1-2 yıldız) geri bildirim geldi`,
+            data: { count: lowRatings[0]?.cnt, branchId: targetBranchId, branchName },
             requiresAI: false,
           });
         }
@@ -66,16 +78,16 @@ const customerWatcherSkill: AgentSkill = {
           insights.push({
             type: "branch_avg_low",
             severity: "warning",
-            message: `Sube ortalama puani ${avgRating.toFixed(1)} (son 7 gun, ${feedbackCnt} degerlendirme)`,
-            data: { avgRating, feedbackCount: feedbackCnt, branchId: targetBranchId },
+            message: `Şube ortalama puanı ${avgRating.toFixed(1)} (son 7 gün, ${feedbackCnt} değerlendirme)`,
+            data: { avgRating, feedbackCount: feedbackCnt, branchId: targetBranchId, branchName },
             requiresAI: true,
           });
         } else if (feedbackCnt >= 3 && avgRating >= 4.5) {
           insights.push({
             type: "branch_avg_high",
             severity: "positive",
-            message: `Sube ortalama puani ${avgRating.toFixed(1)} — harika performans!`,
-            data: { avgRating, feedbackCount: feedbackCnt },
+            message: `Şube ortalama puanı ${avgRating.toFixed(1)} — harika performans!`,
+            data: { avgRating, feedbackCount: feedbackCnt, branchId: targetBranchId, branchName },
             requiresAI: false,
           });
         }
@@ -99,8 +111,8 @@ const customerWatcherSkill: AgentSkill = {
           insights.push({
             type: "feedback_sla_breach",
             severity: "critical",
-            message: `${slaBreached[0]?.cnt} geri bildirim SLA ihlali — yanitlanmamis`,
-            data: { count: slaBreached[0]?.cnt, branchId: targetBranchId },
+            message: `${slaBreached[0]?.cnt} geri bildirim SLA ihlali — yanıtlanmamış`,
+            data: { count: slaBreached[0]?.cnt, branchId: targetBranchId, branchName },
             requiresAI: false,
           });
         }
@@ -114,15 +126,26 @@ const customerWatcherSkill: AgentSkill = {
     const actions: SkillAction[] = [];
 
     for (const insight of insights) {
+      const branchName = insight.data.branchName || "";
+      const branchSuffix = branchName ? ` (${branchName})` : "";
+
       if (insight.type === "low_rating_recent" || insight.type === "branch_avg_low") {
+        const avgInfo = insight.data.avgRating ? ` — Ortalama: ${Number(insight.data.avgRating).toFixed(1)}` : "";
         actions.push({
           actionType: "alert",
           targetUserId: context.userId,
           branchId: context.branchId,
-          title: "Musteri memnuniyeti uyarisi",
+          title: `Müşteri Memnuniyeti Uyarısı${branchSuffix}`,
           description: (insight as any).aiMessage || insight.message,
           deepLink: "/crm",
           severity: insight.severity === "critical" ? "critical" : "med",
+          metadata: {
+            branchId: context.branchId,
+            branchName,
+            avgRating: insight.data.avgRating,
+            feedbackCount: insight.data.feedbackCount || insight.data.count,
+            insightType: insight.type,
+          },
         });
       }
 
@@ -131,10 +154,16 @@ const customerWatcherSkill: AgentSkill = {
           actionType: "escalate",
           targetUserId: context.userId,
           branchId: context.branchId,
-          title: "SLA ihlali — yanitlanmamis feedback",
+          title: `SLA İhlali${branchSuffix}: ${insight.data.count} yanıtlanmamış`,
           description: insight.message,
           deepLink: "/crm",
           severity: "high",
+          metadata: {
+            branchId: context.branchId,
+            branchName,
+            slaBreachCount: insight.data.count,
+            insightType: "feedback_sla_breach",
+          },
         });
       }
 
@@ -143,9 +172,15 @@ const customerWatcherSkill: AgentSkill = {
           actionType: "report",
           targetUserId: context.userId,
           branchId: context.branchId,
-          title: "Musteri memnuniyeti basarili!",
+          title: `Müşteri Memnuniyeti Başarılı${branchSuffix}`,
           description: insight.message,
           severity: "low",
+          metadata: {
+            branchId: context.branchId,
+            branchName,
+            avgRating: insight.data.avgRating,
+            insightType: "branch_avg_high",
+          },
         });
       }
     }

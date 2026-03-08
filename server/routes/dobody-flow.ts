@@ -24,6 +24,7 @@ import {
   isFactoryFloorRole,
   dobodyFlowTasks,
   dobodyFlowCompletions,
+  agentPendingActions,
   type UserRoleType,
 } from "@shared/schema";
 import { eq, and, sql, count, avg, lte, gte, desc, ne, or, inArray } from "drizzle-orm";
@@ -360,6 +361,27 @@ async function getCeoFlowTasks(userId: string): Promise<FlowTask[]> {
   } catch {}
 
   try {
+    const pendingAgentActions = await db
+      .select({ cnt: count() })
+      .from(agentPendingActions)
+      .where(eq(agentPendingActions.status, "pending"));
+
+    const pendingCount = pendingAgentActions[0]?.cnt || 0;
+    if (pendingCount > 0) {
+      flowTasks.push({
+        id: "agent-pending-review",
+        title: `${pendingCount} Mr. Dobody önerisi bekliyor`,
+        description: "Agent önerilerini inceleyin ve onaylayın/reddedin",
+        route: "/agent-merkezi",
+        estimatedMinutes: 10,
+        priority: pendingCount >= 5 ? "critical" : "high",
+        icon: "Shield",
+        completed: false,
+      });
+    }
+  } catch {}
+
+  try {
     const suggestions = await getHQSuggestions();
     if (suggestions.length > 0) {
       const topSuggestion = suggestions[0];
@@ -376,7 +398,7 @@ async function getCeoFlowTasks(userId: string): Promise<FlowTask[]> {
     }
   } catch {}
 
-  return flowTasks.slice(0, 3);
+  return flowTasks.slice(0, 5);
 }
 
 async function getCoachFlowTasks(userId: string): Promise<FlowTask[]> {

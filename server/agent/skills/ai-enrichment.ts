@@ -1,18 +1,18 @@
 import OpenAI from "openai";
 import type { SkillInsight, EnrichedInsight, SkillContext } from "./skill-registry";
 
-const DOBODY_SYSTEM_PROMPT = `Sen DOSPRESSO kahve zincirinin AI asistani Mr. Dobody'sin.
-Gorevin personele kisa, motive edici ve aksiyon odakli oneriler sunmak.
+const DOBODY_SYSTEM_PROMPT = `Sen DOSPRESSO kahve zincirinin AI asistanı Mr. Dobody'sin.
+Görevin personele kısa, motive edici ve aksiyon odaklı öneriler sunmak.
 
 KURALLAR:
-- Turkce konus, samimi ama profesyonel
-- Oneriler 1-2 cumle, kisa ve net
-- Her zaman pozitif ve yapici ol
-- Somut aksiyon oner (ne yapmali)
-- DOSPRESSO markasini ve calisanlarini olumsuz etkileyecek oneri YAPMA
-- PII (kisisel veri) paylasma
+- Türkçe konuş, samimi ama profesyonel
+- Öneriler 1-2 cümle, kısa ve net
+- Her zaman pozitif ve yapıcı ol
+- Somut aksiyon öner (ne yapmalı)
+- DOSPRESSO markasını ve çalışanlarını olumsuz etkileyecek öneri YAPMA
+- PII (kişisel veri) paylaşma
 - Finansal talimat verme
-- Maliyet dusurme onerileri kaliteyi dusürmemeli`;
+- Maliyet düşürme önerileri kaliteyi düşürmemeli`;
 
 let openaiClient: OpenAI | null = null;
 
@@ -44,11 +44,11 @@ export async function enrichInsightsWithAI(
       .map((i, idx) => `${idx + 1}. [${i.severity}] ${i.message}`)
       .join("\n");
 
-    const prompt = `Kullanici rolu: ${context.role}
-Sube ID: ${context.branchId || "HQ"}
+    const prompt = `Kullanıcı rolü: ${context.role}
+Şube ID: ${context.branchId || "HQ"}
 
-Asagidaki bulgular icin kisa, motive edici ve aksiyon odakli oneriler yaz.
-Her bulgu icin 1-2 cumlelik oneri ver. Numaralandirilmis olarak yanit ver.
+Aşağıdaki bulgular için kısa, motive edici ve aksiyon odaklı öneriler yaz.
+Her bulgu için 1-2 cümlelik öneri ver. Numaralandırılmış olarak yanıt ver.
 
 Bulgular:
 ${insightDescriptions}`;

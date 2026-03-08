@@ -5,7 +5,7 @@ import { registerSkill, type AgentSkill, type SkillContext, type SkillInsight, t
 
 const foodSafetySkill: AgentSkill = {
   id: "food_safety",
-  name: "Gida Guvenligi Nobetcisi",
+  name: "Gıda Güvenliği Nöbetçisi",
   description: "Kalite kontrol, SKT takibi ve HACCP izleme",
   targetRoles: ["gida_muhendisi", "fabrika_mudur"],
   schedule: "hourly",
@@ -53,7 +53,7 @@ const foodSafetySkill: AgentSkill = {
         insights.push({
           type: "skt_expiring_soon",
           severity: "warning",
-          message: `${expiringLots[0]?.cnt} lot'un SKT'si 3 gun icinde doluyor`,
+          message: `${expiringLots[0]?.cnt} lot'un SKT'si 3 gün içinde doluyor`,
           data: { count: expiringLots[0]?.cnt },
           requiresAI: false,
         });
@@ -76,7 +76,7 @@ const foodSafetySkill: AgentSkill = {
         insights.push({
           type: "skt_expired_in_stock",
           severity: "critical",
-          message: `ACIL: ${expiredLots[0]?.cnt} lot'un SKT'si gecmis!`,
+          message: `ACİL: ${expiredLots[0]?.cnt} lot'un SKT'si geçmiş!`,
           data: { count: expiredLots[0]?.cnt },
           requiresAI: false,
         });
@@ -94,10 +94,11 @@ const foodSafetySkill: AgentSkill = {
         actions.push({
           actionType: "alert",
           targetUserId: context.userId,
-          title: "Kalite kontrol bekliyor",
+          title: `Kalite Kontrol Bekliyor: ${insight.data.count} lot`,
           description: insight.message,
           deepLink: "/fabrika/kalite",
           severity: insight.severity === "critical" ? "high" : "med",
+          metadata: { lotCount: insight.data.count, insightType: "pending_quality_check" },
         });
       }
 
@@ -105,10 +106,11 @@ const foodSafetySkill: AgentSkill = {
         actions.push({
           actionType: "alert",
           targetUserId: context.userId,
-          title: "SKT uyarisi",
+          title: `SKT Uyarısı: ${insight.data.count} lot 3 gün içinde`,
           description: insight.message,
           deepLink: "/fabrika/dashboard",
           severity: "med",
+          metadata: { lotCount: insight.data.count, insightType: "skt_expiring_soon" },
         });
       }
 
@@ -116,10 +118,11 @@ const foodSafetySkill: AgentSkill = {
         actions.push({
           actionType: "escalate",
           targetUserId: context.userId,
-          title: "ACIL: SKT gecmis lot",
+          title: `ACİL: SKT Geçmiş ${insight.data.count} Lot`,
           description: insight.message,
           deepLink: "/fabrika/dashboard",
           severity: "critical",
+          metadata: { lotCount: insight.data.count, insightType: "skt_expired_in_stock" },
         });
       }
     }
