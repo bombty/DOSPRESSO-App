@@ -1,0 +1,150 @@
+**Sidebar sadeleştirme ÇALIŞMAMIŞ.** Screenshot'lar bunu net gösteriyor:
+
+| Rol | Hedef | Gerçek | Durum |
+|-----|-------|--------|-------|
+| CEO (Ali) | 5 öğe | 40+ (tüm gruplar açık) | ❌ |
+| CGO (Utku) | 6 öğe | 40+ (tüm gruplar açık) | ❌ |
+| Supervisor (Basri) | 5 öğe | 26+ (Operasyonlar badge: 26) | ❌ |
+| Coach (Yavuz) | 6 öğe | 15+ (Raporlar grubunda 10 öğe) | ❌ |
+| Barista (Cihan) | 4 öğe | 15+ (Operasyonlar: 11) | ❌ |
+| Muhasebe_IK (Mahmut) | 6 öğe | 20+ | ❌ |
+
+**Sorunun kökü:** SIDEBAR_ALLOWED_ITEMS filtresi çalışıyor ama sidebar'ın **grup yapısı** (Operasyonlar, Ekipman & Bakım, Personel & İK...) filtrelemeyi eziyor. Grup içindeki öğeler `alwaysVisible` veya scope kontrolünden geçiyor ve gösterilmeye devam ediyor.
+
+Replit "allowedItems artık alwaysVisible'dan önce kontrol ediliyor" dedi ama pratikte çalışmıyor.
+
+Replit'e yapıştır — acil fix:
+
+---
+
+## TASK: URGENT FIX — Sidebar Simplification Not Working
+
+The Sprint 20B sidebar changes are NOT visible. All roles still see the full grouped menu (40+ items). The SIDEBAR_ALLOWED_ITEMS filter is being bypassed by the menu group/section structure.
+
+### DIAGNOSIS
+
+Check the actual sidebar rendering logic:
+```bash
+# 1. How does sidebar render items?
+grep -rn "SIDEBAR_ALLOWED_ITEMS\|allowedItems\|alwaysVisible\|visibleItems\|filteredItems" server/menu-service.ts | head -30
+
+# 2. How are groups/sections rendered?
+grep -rn "section\|group\|category\|parent" server/menu-service.ts | head -20
+
+# 3. The sidebar component — how does it consume menu data?
+grep -rn "menu\|sidebar\|SidebarItem\|menuItems\|navigation" client/src/components/ --include="*.tsx" -l | head -10
+cat $(grep -rl "SidebarItem\|sidebar.*menu\|menuItems" client/src/components/ --include="*.tsx" | head -1) | head -100
+```
+
+### THE PROBLEM
+
+The menu service builds items grouped into sections (Operasyonlar, Ekipman & Bakım, etc.). SIDEBAR_ALLOWED_ITEMS filters individual item keys, but the GROUP HEADERS and their children still render if ANY child passes the scope check.
+
+Example for barista — allowed items are: `['branch-dashboard', 'tasks-list', 'training-academy', 'notifications']`
+
+But sidebar shows:
+- Operasyonlar GROUP (because 'tasks-list' is inside this group) → and then ALL other items in the group also show (Şubeler, Checklistler, Kayıp Eşya, etc.)
+- Ekipman & Bakım GROUP (should not show at all)
+- Eğitim & Akademi GROUP (because 'training-academy' is inside)
+
+### THE FIX
+
+The filtering must happen at the ITEM level, not the group level. After building the menu, filter out items NOT in the role's allowed list, THEN remove empty groups.
+
+Find where the menu is built and returned to the frontend:
+```bash
+grep -rn "buildMenu\|getMenu\|menuForRole\|filteredMenu" server/menu-service.ts | head -20
+```
+
+The fix logic should be:
+
+```typescript
+function getMenuForRole(role: string) {
+  const allowedItems = SIDEBAR_ALLOWED_ITEMS[role];
+  
+  // If no allowlist defined, return full menu (admin fallback)
+  if (!allowedItems) return fullMenu;
+  
+  // Filter: keep only items whose KEY is in the allowed list
+  const filtered = fullMenu.sections.map(section => ({
+    ...section,
+    items: section.items.filter(item => allowedItems.includes(item.key))
+  })).filter(section => section.items.length > 0); // Remove empty groups
+  
+  return { sections: filtered };
+}
+```
+
+**CRITICAL:** The filter must:
+1. Check each individual item's key against SIDEBAR_ALLOWED_ITEMS
+2. Remove items NOT in the list (even if they pass scope check)
+3. Remove group headers that have 0 remaining items
+4. Keep `İletişim Merkezi` and `Profilim` as always-visible footer items (these are NOT in groups)
+
+### ALSO FIX: "Widget Management" appears TWICE in CEO sidebar (Görsel 6)
+
+```bash
+grep -rn "Widget Management\|widget-management\|widget.*management" server/menu-service.ts | head -5
+```
+Remove the duplicate entry.
+
+### ALSO FIX: "Iletisim Merkezi" still shows ASCII Turkish (Görsel 5, 8)
+
+The label "Iletisim Merkezi" should be "İletişim Merkezi". T001 from Sprint 20A said it was already correct but screenshots show it's still ASCII.
+
+```bash
+grep -rn "Iletisim\|iletisim" server/menu-service.ts client/src/ --include="*.tsx" --include="*.ts" | grep -v "node_modules\|import" | head -10
+```
+
+Fix all instances.
+
+### VERIFICATION
+
+After fix, test these roles by checking their sidebar output:
+
+```bash
+# Create a test script or check the API response
+# For each role, the menu API should return ONLY the allowed items
+```
+
+**Manual verification needed — login as each role and count sidebar items:**
+- barista: should see max 4 top-level items (not groups with sub-items)
+- supervisor: max 5
+- CEO: max 5
+- CGO: max 6
+- coach: max 6
+- muhasebe_ik: max 6
+
+### EXPECTED RESULT
+
+**Barista sidebar should look like:**
+```
+🏠 Ana Sayfa (→ /benim-gunum)
+📋 Görevler (→ /gorevler)
+📚 Eğitim (→ /egitim)
+🔔 Bildirimler (→ /bildirimler)
+--- footer ---
+👤 Profilim
+```
+
+**NOT like the current:**
+```
+Operasyonlar (11 sub-items)
+Ekipman & Bakım (3 sub-items)
+Eğitim & Akademi (3 sub-items)
+Mutfak & Tarifler
+İletişim Merkezi
+Profilim
+```
+
+The sidebar should show FLAT items only — no group headers, no accordions, no sub-items. Just the allowed items as direct links.
+
+### DO NOT BREAK:
+- Admin sidebar (admin should still see grouped menu with all items)
+- Bottom nav
+- Direct URL access to any page
+- Login redirects
+
+---
+
+Bu en kritik fix — Sprint 20B'nin ana deliverable'ı çalışmıyor. Replit'e hemen gönder.
