@@ -682,7 +682,7 @@ ${pendingLeaveDetails.length > 0 ? pendingLeaveDetails.join("\n") : "- Bekleyen 
       const completedBatches = recentBatches.filter((b: any) => b.status === "completed" || b.status === "approved");
       const totalProduced = completedBatches.reduce((sum: number, b: any) => sum + Number(b.quantity || 0), 0);
 
-      roleDescription = role === "fabrika_mudur" ? "Fabrika Muduru" : role === "fabrika_teknisyen" ? "Fabrika Teknisyeni" : "Fabrika Sorumlusu";
+      roleDescription = role === "fabrika_mudur" ? "Fabrika Müdürü" : role === "fabrika_teknisyen" ? "Fabrika Teknisyeni" : "Fabrika Sorumlusu";
       roleContext = `FABRIKA DURUMU:
 - Toplam Ekipman: ${equipmentData.length}
 - Acik Arizalar: ${openFaults.length} (Kritik/Yuksek: ${criticalFaults.length})
@@ -780,7 +780,7 @@ ARIZA COZUM SURESI (Son 30 Gun):
         ? (recentFeedback.reduce((sum: number, fb: any) => sum + (fb.rating || 0), 0) / recentFeedback.length).toFixed(1)
         : "-";
 
-      roleDescription = `${branchName} ${role === "manager" ? "Muduru" : "Supervisoru"}`;
+      roleDescription = `${branchName} ${role === "manager" ? "Müdürü" : "Supervisoru"}`;
       roleContext = `SUBE DURUMU (${branchName}):
 - Aktif Personel: ${usersData.length}
 - Bekleyen Gorevler: ${pendingTasks.length}

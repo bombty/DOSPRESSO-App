@@ -169,7 +169,7 @@ export function registerHQDashboardRoutes(app: Express, isAuthenticated: any) {
 
     const fabrikaSummary = {
       label: 'Fabrika',
-      source: 'Fabrika Muduru',
+      source: 'Fabrika Müdürü',
       status: 'healthy' as const,
       mainMetric: `Ekipman durumu normal`,
       details: [

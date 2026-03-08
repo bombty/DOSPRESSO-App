@@ -5937,7 +5937,7 @@ export class DatabaseStorage implements IStorage {
     return `${year}-W${weekNumber.toString().padStart(2, '0')}`;
   }
 
-  async getTeamPerformanceAggregates(branchId: number): Promise<Array<{
+  async getTeamPerformanceAggregates(branchId: number, days: number = 7): Promise<Array<{
     userId: string;
     firstName: string | null;
     lastName: string | null;
@@ -5945,9 +5945,9 @@ export class DatabaseStorage implements IStorage {
     averageScore: number;
     totalDays: number;
   }>> {
-    const sevenDaysAgo = new Date();
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-    const startDate = sevenDaysAgo.toISOString().split('T')[0];
+    const startDateObj = new Date();
+    startDateObj.setDate(startDateObj.getDate() - days);
+    const startDate = startDateObj.toISOString().split('T')[0];
 
     console.log('[DEBUG] getTeamPerformanceAggregates branchId:', branchId, 'startDate:', startDate);
 

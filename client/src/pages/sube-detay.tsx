@@ -5,6 +5,7 @@ import { useBreadcrumb } from "@/components/breadcrumb-navigation";
 import { useAuth } from "@/hooks/useAuth";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { ROLE_LABELS } from "@/lib/turkish-labels";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -12,6 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { 
   ArrowLeft, Users, CheckCircle2, Clock, Wrench, TrendingUp, 
   Star, Award, ClipboardCheck, ThumbsUp, QrCode, MapPin, 
@@ -112,7 +114,8 @@ type Branch = {
 type User = {
   id: string;
   username: string;
-  fullName: string;
+  firstName: string | null;
+  lastName: string | null;
   role: string;
   branchId: number | null;
   hireDate: string | null;
@@ -153,6 +156,7 @@ export default function SubeDetayPage() {
   const [closingHours, setClosingHours] = useState("01:00");
   const [showCards, setShowCards] = useState(true);
   const [feedbackCopied, setFeedbackCopied] = useState(false);
+  const [scorePeriod, setScorePeriod] = useState("30");
   
   const isAdmin = user?.role && isHQRole(user.role as any);
 
@@ -190,6 +194,25 @@ export default function SubeDetayPage() {
   });
 
   useBreadcrumb(branchData?.branch?.name || '');
+
+  type StaffScore = {
+    userId: string;
+    firstName: string | null;
+    lastName: string | null;
+    username: string;
+    averageScore: number;
+    totalDays: number;
+  };
+  const { data: staffScores } = useQuery<StaffScore[]>({
+    queryKey: ['/api/branches', branchId, 'staff-scores', scorePeriod],
+    queryFn: async () => {
+      const res = await fetch(`/api/branches/${branchId}/staff-scores?days=${scorePeriod}`, { credentials: "include" });
+      if (!res.ok) throw new Error("Staff scores fetch failed");
+      return res.json();
+    },
+    enabled: !!branchId,
+  });
+  const staffScoreMap = new Map(staffScores?.map(s => [s.userId, s]) || []);
 
   // Fetch branch audit scores (6-section breakdown)
   interface AuditScoreResponse {
@@ -567,30 +590,50 @@ export default function SubeDetayPage() {
 
         <TabsContent value="personel" className="w-full space-y-2 sm:space-y-3">
           <Card>
-            <CardHeader>
-              <CardTitle>Şube Personeli</CardTitle>
-              <CardDescription>{staff.length} çalışan</CardDescription>
+            <CardHeader className="flex flex-row items-center justify-between gap-2 pb-2">
+              <div>
+                <CardTitle>Şube Personeli</CardTitle>
+                <CardDescription>{staff.length} çalışan</CardDescription>
+              </div>
+              <Select value={scorePeriod} onValueChange={setScorePeriod}>
+                <SelectTrigger className="w-36" data-testid="select-score-period">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="7">Son 1 Hafta</SelectItem>
+                  <SelectItem value="30">Son 1 Ay</SelectItem>
+                  <SelectItem value="90">Son 3 Ay</SelectItem>
+                  <SelectItem value="180">Son 6 Ay</SelectItem>
+                  <SelectItem value="365">Son 1 Yıl</SelectItem>
+                </SelectContent>
+              </Select>
             </CardHeader>
             <CardContent>
               {staff.length === 0 ? (
                 <p className="text-muted-foreground">Henüz personel eklenmemiş</p>
               ) : (
                 <div className="flex flex-col gap-3 sm:gap-4">
-                  {staff.map((emp) => (
+                  {staff.map((emp) => {
+                    const displayName = [emp.firstName, emp.lastName].filter(Boolean).join(" ") || emp.username;
+                    const periodScore = staffScoreMap.get(emp.id);
+                    const scoreVal = periodScore?.averageScore ?? emp.performanceScore ?? 0;
+                    const scoreColor = scoreVal > 70 ? "text-green-600 dark:text-green-400" : scoreVal > 50 ? "text-amber-600 dark:text-amber-400" : "text-red-600 dark:text-red-400";
+                    return (
                     <Link key={emp.id} href={`/personel-detay/${emp.id}`}>
                       <div className="flex items-center justify-between p-3 rounded-lg border hover-elevate active-elevate-2" data-testid={`employee-${emp.id}`}>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-1">
-                            <p className="font-semibold truncate">{emp.fullName}</p>
-                            <Badge variant="outline" className="flex-shrink-0">{emp.role}</Badge>
+                            <p className="font-semibold truncate" data-testid={`text-employee-name-${emp.id}`}>{displayName}</p>
+                            <Badge variant="outline" className="flex-shrink-0" data-testid={`badge-role-${emp.id}`}>{ROLE_LABELS[emp.role] || emp.role}</Badge>
                           </div>
-                          <div className="flex items-center gap-2">
-                            {emp.performanceScore !== undefined && (
-                              <div className="flex items-center gap-1" data-testid={`performance-${emp.id}`}>
-                                <Award className="h-3.5 w-3.5 text-amber-500" />
-                                <span className="text-xs font-medium">Skor: {emp.performanceScore.toFixed(1)}</span>
-                              </div>
-                            )}
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <div className="flex items-center gap-1" data-testid={`performance-${emp.id}`}>
+                              <Award className="h-3.5 w-3.5 text-amber-500" />
+                              <span className={`text-xs font-medium ${scoreColor}`}>{scoreVal}/100</span>
+                              {periodScore && (
+                                <span className="text-xs text-muted-foreground">({periodScore.totalDays} gün)</span>
+                              )}
+                            </div>
                             {emp.hireDate && (
                               <span className="text-xs text-muted-foreground">
                                 Başlangıç: {new Date(emp.hireDate).toLocaleDateString('tr-TR')}
@@ -598,12 +641,13 @@ export default function SubeDetayPage() {
                             )}
                           </div>
                         </div>
-                        <Badge variant={emp.isActive ? "default" : "secondary"} className="flex-shrink-0 ml-2">
+                        <Badge variant={emp.isActive ? "default" : "secondary"} className="flex-shrink-0 ml-2" data-testid={`badge-status-${emp.id}`}>
                           {emp.isActive ? "Aktif" : "Pasif"}
                         </Badge>
                       </div>
                     </Link>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </CardContent>

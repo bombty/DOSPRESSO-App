@@ -21,6 +21,12 @@ import { Settings, Plus, QrCode, Wrench, Calendar, MapPin, Pencil, AlertTriangle
 import { DialogFooter } from "@/components/ui/dialog";
 import { FaultReportDialog } from "@/components/fault-report-dialog";
 
+interface FaultRecord {
+  id: number;
+  equipmentId: number | null;
+  status: string;
+}
+
 interface EquipmentWithHealth extends EquipmentType {
   healthScore?: number;
 }
@@ -60,6 +66,18 @@ export default function Equipment() {
   const { data: criticalEquipment } = useQuery<EquipmentWithHealth[]>({
     queryKey: ["/api/equipment/critical"],
   });
+
+  const { data: faultsResponse } = useQuery<{ data: FaultRecord[]; total: number }>({
+    queryKey: ["/api/faults"],
+  });
+  const faults = Array.isArray(faultsResponse) ? faultsResponse : faultsResponse?.data;
+
+  const openFaultsByEquipment = (faults || []).reduce<Record<number, number>>((acc, fault) => {
+    if (fault.equipmentId && fault.status !== "cozuldu") {
+      acc[fault.equipmentId] = (acc[fault.equipmentId] || 0) + 1;
+    }
+    return acc;
+  }, {});
 
   const canCreate = user?.role && hasPermission(user.role as any, "equipment", "create");
   const canEdit = user?.role && hasPermission(user.role as any, "equipment", "edit");
@@ -994,25 +1012,37 @@ export default function Equipment() {
           {filteredEquipment.map((item) => {
             const metadata = EQUIPMENT_METADATA[item.equipmentType as keyof typeof EQUIPMENT_METADATA];
             const maintenanceStatus = getMaintenanceStatus(item);
+            const faultCount = openFaultsByEquipment[item.id] || 0;
+            const truncatedSerial = item.serialNumber && item.serialNumber.length > 20
+              ? item.serialNumber.substring(0, 20) + "..."
+              : item.serialNumber;
             
             return (
               <Card key={item.id} data-testid={`card-equipment-${item.id}`}>
-                <CardHeader>
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <CardTitle className="flex items-center gap-2">
-                        <Settings className="h-4 w-4" />
+                <CardHeader className="pb-2">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1 min-w-0">
+                      <CardTitle className="flex items-center gap-2 text-base">
+                        <Settings className="h-4 w-4 shrink-0" />
                         <Link href={`/ekipman-detay/${item.id}`} data-testid={`link-equipment-${item.id}`}>
                           <span className="hover-elevate rounded-sm px-1 -mx-1 cursor-pointer">
                             {metadata.nameTr}
                           </span>
                         </Link>
+                        {faultCount > 0 && (
+                          <Badge variant="destructive" className="shrink-0" data-testid={`badge-fault-count-${item.id}`}>
+                            <AlertTriangle className="h-3 w-3 mr-1" />
+                            {faultCount}
+                          </Badge>
+                        )}
                       </CardTitle>
-                      <CardDescription className="mt-1">
-                        S/N: {item.serialNumber}
-                      </CardDescription>
+                      {truncatedSerial && (
+                        <p className="text-xs text-muted-foreground mt-1 truncate" title={item.serialNumber || ""} data-testid={`text-serial-${item.id}`}>
+                          S/N: {truncatedSerial}
+                        </p>
+                      )}
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1 shrink-0">
                       {canEdit && (
                         <Button
                           variant="ghost"
@@ -1029,22 +1059,22 @@ export default function Equipment() {
                     </div>
                   </div>
                 </CardHeader>
-                <CardContent className="flex flex-col gap-3 sm:gap-4">
+                <CardContent className="flex flex-col gap-2">
                   <div className="flex items-center gap-2 text-sm">
-                    <MapPin className="h-4 w-4 text-muted-foreground" />
+                    <MapPin className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
                     <span data-testid={`text-branch-${item.id}`}>{getBranchName(item.branchId)}</span>
                   </div>
                   
                   {item.purchaseDate && (
                     <div className="flex items-center gap-2 text-sm">
-                      <Calendar className="h-4 w-4 text-muted-foreground" />
+                      <Calendar className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
                       <span>Alım: {new Date(item.purchaseDate).toLocaleDateString('tr-TR')}</span>
                     </div>
                   )}
 
                   {maintenanceStatus && (
                     <div className="flex items-center gap-2">
-                      <Wrench className="h-4 w-4 text-muted-foreground" />
+                      <Wrench className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
                       <Badge variant={maintenanceStatus.variant} data-testid={`badge-maintenance-${item.id}`}>
                         {maintenanceStatus.label}
                       </Badge>
@@ -1055,7 +1085,7 @@ export default function Equipment() {
                     const healthBadge = getHealthScoreBadge((item as EquipmentWithHealth).healthScore);
                     return healthBadge ? (
                       <div className="flex items-center gap-2">
-                        <Heart className={`h-4 w-4 ${healthBadge.color}`} />
+                        <Heart className={`h-3.5 w-3.5 shrink-0 ${healthBadge.color}`} />
                         <Badge variant={healthBadge.variant} data-testid={`badge-health-${item.id}`}>
                           {healthBadge.label}
                         </Badge>
@@ -1064,11 +1094,11 @@ export default function Equipment() {
                   })()}
 
                   {item.qrCodeUrl && (
-                    <div className="pt-2">
+                    <div className="pt-1">
                       <img 
                         src={item.qrCodeUrl} 
                         alt="QR Code" 
-                        className="h-24 w-24 mx-auto border rounded"
+                        className="h-20 w-20 mx-auto border rounded"
                         data-testid={`img-qr-${item.id}`}
                         loading="lazy"
                       />
@@ -1076,12 +1106,12 @@ export default function Equipment() {
                   )}
 
                   {item.notes && (
-                    <p className="text-sm text-muted-foreground pt-2 border-t">
+                    <p className="text-xs text-muted-foreground pt-1 border-t">
                       {item.notes}
                     </p>
                   )}
 
-                  <div className="pt-2 flex gap-2">
+                  <div className="pt-1 flex gap-2">
                     <Button
                       variant="outline"
                       size="sm"

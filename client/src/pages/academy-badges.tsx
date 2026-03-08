@@ -74,43 +74,45 @@ export default function AcademyBadges() {
           <CardContent className="p-3 flex items-center gap-2">
             <Info className="w-4 h-4 text-primary flex-shrink-0" />
             <p className="text-xs text-muted-foreground" data-testid="text-hq-badges-info">
-              Bu rozetler ekibinizin kazanabileceği başarılardır. Rozet sistemini inceleyerek ekibinizi daha iyi yönlendirebilirsiniz.
+              Bu rozetler şube personelinin kazanabileceği başarılardır. HQ personeli olarak rozet sistemini inceleyerek ekibinizi daha iyi yönlendirebilirsiniz.
             </p>
           </CardContent>
         </Card>
       )}
 
-      <div className="col-span-full grid grid-cols-3 md:grid-cols-3 gap-2">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm">Puan</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-lg font-bold">{totalPoints}</p>
-            <p className="text-xs text-muted-foreground">toplam</p>
-          </CardContent>
-        </Card>
+      {!isHQRole(user?.role as any) && (
+        <div className="col-span-full grid grid-cols-3 md:grid-cols-3 gap-2">
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm">Puan</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-lg font-bold">{totalPoints}</p>
+              <p className="text-xs text-muted-foreground">toplam</p>
+            </CardContent>
+          </Card>
 
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm">Açılan</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-lg font-bold">{unlockedBadges.length}/{allBadges.length}</p>
-            <Progress value={(unlockedBadges.length / allBadges.length) * 100} className="mt-1 h-1" />
-          </CardContent>
-        </Card>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm">Açılan</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-lg font-bold">{unlockedBadges.length}/{allBadges.length}</p>
+              <Progress value={(unlockedBadges.length / allBadges.length) * 100} className="mt-1 h-1" />
+            </CardContent>
+          </Card>
 
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm">Oran</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-lg font-bold">{Math.round((unlockedBadges.length / allBadges.length) * 100)}%</p>
-            <p className="text-xs text-muted-foreground">ortalama</p>
-          </CardContent>
-        </Card>
-      </div>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm">Oran</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-lg font-bold">{Math.round((unlockedBadges.length / allBadges.length) * 100)}%</p>
+              <p className="text-xs text-muted-foreground">ortalama</p>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {unlockedBadges.length > 0 && (
         <div className="col-span-full">
@@ -146,7 +148,7 @@ export default function AcademyBadges() {
         </div>
       )}
 
-      {lockedBadges.length > 0 && (
+      {lockedBadges.length > 0 && !isHQRole(user?.role as any) && (
         <div className="col-span-full">
           <h2 className="text-sm font-semibold mb-2 flex items-center gap-1">
             <Lock className="w-4 h-4 text-gray-400" />
@@ -165,6 +167,40 @@ export default function AcademyBadges() {
                         </div>
                         <div>
                           <CardTitle className="text-xs text-gray-500">{badge.titleTr}</CardTitle>
+                          <Badge variant="outline" className="mt-0.5 text-xs h-4">+{badge.points}</Badge>
+                        </div>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-xs text-muted-foreground line-clamp-1">{badge.descriptionTr}</p>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {isHQRole(user?.role as any) && allBadges.length > 0 && (
+        <div className="col-span-full">
+          <h2 className="text-sm font-semibold mb-2 flex items-center gap-1">
+            <Award className="w-4 h-4 text-primary" />
+            Tüm Rozetler ({allBadges.length})
+          </h2>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3">
+            {allBadges.map((badge: any) => {
+              const IconComponent = BADGE_ICONS[badge.iconName] || Star;
+              return (
+                <Card key={badge.id} className="hover-elevate">
+                  <CardHeader className="pb-2">
+                    <div className="flex items-start justify-between gap-1">
+                      <div className="flex items-center gap-1">
+                        <div className="p-1 bg-primary/20 rounded">
+                          <IconComponent className="w-3 h-3 text-primary" />
+                        </div>
+                        <div>
+                          <CardTitle className="text-xs">{badge.titleTr}</CardTitle>
                           <Badge variant="outline" className="mt-0.5 text-xs h-4">+{badge.points}</Badge>
                         </div>
                       </div>

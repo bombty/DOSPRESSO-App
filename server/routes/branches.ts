@@ -234,6 +234,31 @@ router.get('/api/branches/:branchId/detail', isAuthenticated, async (req, res) =
   }
 });
 
+router.get('/api/branches/:id/staff-scores', isAuthenticated, async (req: any, res) => {
+  try {
+    const user = req.user!;
+    const branchId = parseInt(req.params.id);
+    if (isNaN(branchId)) {
+      return res.status(400).json({ message: "Geçersiz şube ID" });
+    }
+    if (user.role && isHQRole(user.role as UserRoleType)) {
+    } else if (user.role && isBranchRole(user.role as UserRoleType)) {
+      if (user.branchId !== branchId) {
+        return res.status(403).json({ message: "Bu şubeye erişim yetkiniz yok" });
+      }
+    } else {
+      return res.status(403).json({ message: "Bu veriye erişim yetkiniz yok" });
+    }
+    const days = parseInt(req.query.days as string) || 30;
+    const validDays = Math.min(Math.max(days, 7), 365);
+    const scores = await storage.getTeamPerformanceAggregates(branchId, validDays);
+    res.json(scores);
+  } catch (error: any) {
+    console.error("Error fetching staff scores:", error);
+    res.status(500).json({ message: "Personel skorları yüklenirken hata oluştu" });
+  }
+});
+
 router.post('/api/branches', isAuthenticated, async (req, res) => {
   try {
     const user = req.user!;

@@ -95,7 +95,7 @@ const roleTitles: Record<string, string> = {
   trainer: "Trainer Komuta Merkezi",
   teknik: "Teknik Komuta Merkezi",
   fabrika: "Fabrika Komuta Merkezi",
-  fabrika_mudur: "Fabrika Muduru Komuta Merkezi",
+  fabrika_mudur: "Fabrika Müdürü Komuta Merkezi",
   destek: "Destek Komuta Merkezi",
   operasyon: "Operasyon Komuta Merkezi",
   marketing: "Pazarlama Komuta Merkezi",
@@ -106,7 +106,7 @@ function getDeptIcon(source: string) {
   switch (source) {
     case 'CGO': return <Building2 className="w-4 h-4" />;
     case 'Muhasebe & IK': return <Users className="w-4 h-4" />;
-    case 'Fabrika Muduru': return <Factory className="w-4 h-4" />;
+    case 'Fabrika Müdürü': return <Factory className="w-4 h-4" />;
     case 'Fabrika': return <Factory className="w-4 h-4" />;
     case 'Coach': return <ClipboardCheck className="w-4 h-4" />;
     case 'Kalite Kontrol': return <ShieldCheck className="w-4 h-4" />;
@@ -145,7 +145,7 @@ function AIAssistant() {
       return await res.json();
     },
     onSuccess: (data) => setAnswer(data.answer),
-    onError: (error: any) => toast({ title: "Hata", description: error?.message || "AI yanit veremedi", variant: "destructive" }),
+    onError: (error: any) => toast({ title: "Hata", description: error?.message || "AI yanıt veremedi", variant: "destructive" }),
   });
 
   const suggestions = [
@@ -161,16 +161,16 @@ function AIAssistant() {
         <CardHeader className="pb-2">
           <CardTitle className="text-base flex items-center gap-2">
             <Brain className="w-5 h-5 text-primary" />
-            AI Strateji Danismani
+            AI Strateji Danışmanı
           </CardTitle>
-          <p className="text-xs text-muted-foreground">DOSPRESSO verilerine dayali akilli oneriler</p>
+          <p className="text-xs text-muted-foreground">DOSPRESSO verilerine dayalı akıllı öneriler</p>
         </CardHeader>
         <CardContent>
           <div className="flex gap-2">
             <Textarea
               value={question}
               onChange={(e) => setQuestion(e.target.value)}
-              placeholder="Sorunuzu yazin..."
+              placeholder="Sorunuzu yazın..."
               className="flex-1"
               rows={2}
               data-testid="textarea-ai-question"
@@ -312,7 +312,7 @@ export default function CEOCommandCenter() {
           <div>
             <h1 className="text-xl font-bold" data-testid="heading-ceo-dashboard">{pageTitle}</h1>
             <p className="text-xs text-muted-foreground">
-              Son guncelleme: {new Date(dashboardData.lastUpdated).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}
+              Son güncelleme: {new Date(dashboardData.lastUpdated).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}
             </p>
           </div>
         </div>
@@ -331,7 +331,7 @@ export default function CEOCommandCenter() {
       <Tabs defaultValue="overview" className="w-full">
         <TabsList className="grid grid-cols-2 w-full max-w-xs">
           <TabsTrigger value="overview" data-testid="tab-overview">
-            <Eye className="w-4 h-4 mr-1.5" />Ozet
+            <Eye className="w-4 h-4 mr-1.5" />Özet
           </TabsTrigger>
           <TabsTrigger value="ai" data-testid="tab-ai">
             <Brain className="w-4 h-4 mr-1.5" />AI Asistan
@@ -359,7 +359,7 @@ export default function CEOCommandCenter() {
                       )}
                       <span className="flex-1">{alert.message}</span>
                       <Badge variant={alert.severity === 'critical' ? 'destructive' : 'secondary'} className="text-[10px]">
-                        {alert.severity === 'critical' ? 'Acil' : 'Uyari'}
+                        {alert.severity === 'critical' ? 'Acil' : 'Uyarı'}
                       </Badge>
                     </div>
                   ))}
@@ -373,7 +373,7 @@ export default function CEOCommandCenter() {
               <CardContent className="pt-4 pb-3 flex items-center gap-3">
                 <CheckCircle className="w-5 h-5 text-green-500 shrink-0" />
                 <div>
-                  <p className="text-sm font-medium">Her sey yolunda</p>
+                  <p className="text-sm font-medium">Her şey yolunda</p>
                   <p className="text-xs text-muted-foreground">Acil dikkat gerektiren bir konu yok</p>
                 </div>
               </CardContent>
@@ -400,7 +400,7 @@ export default function CEOCommandCenter() {
                 <CardContent className="pt-3 pb-2 px-3 text-center">
                   <AlertTriangle className={`w-5 h-5 mx-auto mb-1 ${dashboardData.kpiSummary.activeFaults > 5 ? 'text-red-500' : 'text-orange-500'}`} />
                   <p className="text-xl font-bold">{dashboardData.kpiSummary.activeFaults}</p>
-                  <p className="text-[10px] text-muted-foreground">Aktif Ariza</p>
+                  <p className="text-[10px] text-muted-foreground">Aktif Arıza</p>
                 </CardContent>
               </Card>
               <Card data-testid="ceo-kpi-uptime">
@@ -422,7 +422,7 @@ export default function CEOCommandCenter() {
                   <CardContent className="pt-3 pb-2 px-3 text-center">
                     <TrendingUp className="w-5 h-5 text-green-500 mx-auto mb-1" />
                     <p className="text-lg font-bold">{dashboardData.kpiSummary.monthlyRevenue}</p>
-                    <p className="text-[10px] text-muted-foreground">Aylik Ciro</p>
+                    <p className="text-[10px] text-muted-foreground">Aylık Ciro</p>
                   </CardContent>
                 </Card>
               )}
@@ -440,7 +440,7 @@ export default function CEOCommandCenter() {
                       <CardTitle className="text-sm">{dept.label}</CardTitle>
                     </div>
                     <Badge variant={getStatusVariant(dept.status)} className="text-[10px]">
-                      {dept.status === 'healthy' ? 'Iyi' : dept.status === 'warning' ? 'Izle' : 'Kritik'}
+                      {dept.status === 'healthy' ? 'İyi' : dept.status === 'warning' ? 'İzle' : 'Kritik'}
                     </Badge>
                   </div>
                   <p className="text-xs text-muted-foreground">Kaynak: {dept.source}</p>
@@ -475,9 +475,9 @@ export default function CEOCommandCenter() {
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm flex items-center gap-2">
                   <ShieldAlert className="w-4 h-4 text-red-500" />
-                  Suistimal Uyarilari ({abuseReport.totalAlerts})
+                  Suistimal Uyarıları ({abuseReport.totalAlerts})
                 </CardTitle>
-                <p className="text-xs text-muted-foreground">Son 30 gundeki asiri vardiya duzeltmeleri</p>
+                <p className="text-xs text-muted-foreground">Son 30 gündeki aşırı vardiya düzeltmeleri</p>
               </CardHeader>
               <CardContent>
                 <div className="space-y-2">
@@ -513,10 +513,10 @@ export default function CEOCommandCenter() {
                 <div>
                   <CardTitle className="text-sm flex items-center gap-2">
                     <ClipboardCheck className="w-4 h-4 text-primary" />
-                    Degerlendirme Kapsami
+                    Değerlendirme Kapsamı
                   </CardTitle>
                   <p className="text-xs text-muted-foreground">
-                    {evalCoverage.summary.month} - {evalCoverage.summary.daysLeft} gun kaldi
+                    {evalCoverage.summary.month} - {evalCoverage.summary.daysLeft} gün kaldı
                   </p>
                 </div>
                 <div className="text-right">
@@ -551,9 +551,9 @@ export default function CEOCommandCenter() {
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm flex items-center gap-2">
                   <User className="w-4 h-4" />
-                  Dikkat Edilmesi Gereken Yoneticiler
+                  Dikkat Edilmesi Gereken Yöneticiler
                 </CardTitle>
-                <p className="text-xs text-muted-foreground">En dusuk performans skoruna sahip 3 yonetici</p>
+                <p className="text-xs text-muted-foreground">En düşük performans skoruna sahip 3 yönetici</p>
               </CardHeader>
               <CardContent>
                 <div className="space-y-2">

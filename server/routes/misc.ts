@@ -9505,7 +9505,7 @@ Dusuk puanli alanlara odaklan ve pozitif, motive edici ol. JSON dizisi olarak ya
 
       const fabrikaSummary = {
         label: 'Fabrika & Ekipman',
-        source: 'Fabrika Muduru',
+        source: 'Fabrika Müdürü',
         status: brokenEquipment.filter((e: any) => e.status === 'broken').length > 0 ? 'critical' as const : brokenEquipment.length > 0 ? 'warning' as const : 'healthy' as const,
         mainMetric: `Ekipman uptime %${uptimePercent}`,
         details: [

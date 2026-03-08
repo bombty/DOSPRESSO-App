@@ -27,9 +27,15 @@ export default function Performance() {
     }
   }, [isHQ, userBranchId, selectedBranchId]);
 
+  const performanceUrl = selectedBranchId ? `/api/performance?branchId=${selectedBranchId}` : "/api/performance";
   const { data: metrics, isLoading: metricsLoading } = useQuery<PerformanceMetric[]>({
     queryKey: ["/api/performance", selectedBranchId],
-    enabled: selectedBranchId !== "", // Don't fetch until branch is determined
+    queryFn: async () => {
+      const res = await fetch(performanceUrl, { credentials: "include" });
+      if (!res.ok) throw new Error("Performance fetch failed");
+      return res.json();
+    },
+    enabled: selectedBranchId !== "",
   });
 
   const { data: branches, isLoading: branchesLoading } = useQuery<Branch[]>({
