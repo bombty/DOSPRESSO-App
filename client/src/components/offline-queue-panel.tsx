@@ -18,10 +18,10 @@ import { getQueueItems } from "@/lib/offline-queue";
 
 function timeAgo(ts: number): string {
   const diff = Math.floor((Date.now() - ts) / 1000);
-  if (diff < 60) return `${diff} sn once`;
-  if (diff < 3600) return `${Math.floor(diff / 60)} dk once`;
-  if (diff < 86400) return `${Math.floor(diff / 3600)} saat once`;
-  return `${Math.floor(diff / 86400)} gun once`;
+  if (diff < 60) return `${diff} sn önce`;
+  if (diff < 3600) return `${Math.floor(diff / 60)} dk önce`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)} saat önce`;
+  return `${Math.floor(diff / 86400)} gün önce`;
 }
 
 export function OfflineQueuePanel() {
@@ -41,7 +41,7 @@ export function OfflineQueuePanel() {
     return (
       <div className="flex items-center gap-2 text-muted-foreground text-sm py-2" data-testid="text-queue-empty">
         <CheckCircle2 className="h-4 w-4 text-green-500" />
-        Bekleyen gonderim yok
+        Bekleyen gönderim yok
       </div>
     );
   }
@@ -51,7 +51,7 @@ export function OfflineQueuePanel() {
       <div className="flex items-center justify-between gap-2 mb-2">
         <div className="flex items-center gap-2 text-sm font-medium">
           <Upload className="h-4 w-4" />
-          Bekleyen Gonderimler
+          Bekleyen Gönderimler
           <Badge variant="secondary" data-testid="badge-queue-count">{queueSize}</Badge>
         </div>
         <div className="flex items-center gap-1 flex-wrap">
@@ -63,7 +63,7 @@ export function OfflineQueuePanel() {
             data-testid="button-retry-all"
           >
             <RefreshCw className={`h-3.5 w-3.5 mr-1 ${isProcessing ? "animate-spin" : ""}`} />
-            {isProcessing ? "Gonderiliyor..." : "Tumunu Gonder"}
+            {isProcessing ? "Gönderiliyor..." : "Tümünü Gönder"}
           </Button>
           <AlertDialog>
             <AlertDialogTrigger asChild>
@@ -109,7 +109,7 @@ export function OfflineQueuePanel() {
                   variant={item.status === "failed" ? "destructive" : "secondary"}
                   className="text-[10px] px-1 py-0"
                 >
-                  {item.status === "pending" ? "Bekliyor" : item.status === "processing" ? "Gonderiliyor" : "Basarisiz"}
+                  {item.status === "pending" ? "Bekliyor" : item.status === "processing" ? "Gönderiliyor" : "Başarısız"}
                 </Badge>
               </div>
             </div>

@@ -820,9 +820,10 @@ export default function AcademyMyPath() {
     );
   }
 
-  const todayActions = data.actions.filter(a => a.priority <= 2);
-  const developmentActions = data.actions.filter(a => a.priority >= 3 && a.priority <= 4);
-  const optionalActions = data.actions.filter(a => a.priority >= 5);
+  const actions = data.actions || [];
+  const todayActions = actions.filter(a => a.priority <= 2);
+  const developmentActions = actions.filter(a => a.priority >= 3 && a.priority <= 4);
+  const optionalActions = actions.filter(a => a.priority >= 5);
 
   return (
     <div className="space-y-4 p-4 max-w-2xl mx-auto" data-testid="my-path-container">
@@ -892,7 +893,7 @@ export default function AcademyMyPath() {
         </div>
       )}
 
-      {data.actions.length === 0 && !data.onboarding && !data.activeGate && (
+      {actions.length === 0 && !data.onboarding && !data.activeGate && (
         <Card data-testid="no-actions">
           <CardContent className="p-6 text-center">
             <CheckCircle2 className="h-10 w-10 mx-auto text-green-500 mb-2" />

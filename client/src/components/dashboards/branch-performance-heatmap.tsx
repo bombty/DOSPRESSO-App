@@ -33,15 +33,15 @@ export function BranchPerformanceHeatmap({
                   )} text-white text-xs font-semibold`}
                 >
                   <div className="truncate text-xs">{score.branchName.split(' ')[0]}</div>
-                  <div className="font-bold">{score.compositeScore.toFixed(0)}</div>
+                  <div className="font-bold">{(score.compositeScore ?? 0).toFixed(0)}</div>
                 </div>
               </TooltipTrigger>
               <TooltipContent side="top" className="text-xs max-w-xs">
                 <div className="font-semibold">{score.branchName}</div>
-                <div>Personel: {score.employeePerformanceScore.toFixed(0)}</div>
-                <div>Ekipman: {score.equipmentScore.toFixed(0)}</div>
-                <div>Kalite: {score.qualityAuditScore.toFixed(0)}</div>
-                <div>Müşteri: {score.customerSatisfactionScore.toFixed(0)}</div>
+                <div>Personel: {(score.employeePerformanceScore ?? 0).toFixed(0)}</div>
+                <div>Ekipman: {(score.equipmentScore ?? 0).toFixed(0)}</div>
+                <div>Kalite: {(score.qualityAuditScore ?? 0).toFixed(0)}</div>
+                <div>Müşteri: {(score.customerSatisfactionScore ?? 0).toFixed(0)}</div>
               </TooltipContent>
             </Tooltip>
           ))}

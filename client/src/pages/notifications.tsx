@@ -168,22 +168,22 @@ const notificationTypeLabels: Record<string, string> = {
   warning: "Uyarı",
   alert: "Acil Uyarı",
   system: "Sistem",
-  quiz_passed: "Quiz Basarili",
-  quiz_failed: "Quiz Basarisiz",
-  module_completed: "Modul Tamamlandi",
-  badge_earned: "Rozet Kazanildi",
-  gate_passed: "Statu Atlama Basarili",
-  gate_failed: "Statu Atlama Basarisiz",
-  gate_request: "Statu Atlama Talebi",
-  gate_result: "Statu Atlama Sonucu",
-  certificate_earned: "Sertifika Kazanildi",
+  quiz_passed: "Quiz Başarılı",
+  quiz_failed: "Quiz Başarısız",
+  module_completed: "Modül Tamamlandı",
+  badge_earned: "Rozet Kazanıldı",
+  gate_passed: "Statü Atlama Başarılı",
+  gate_failed: "Statü Atlama Başarısız",
+  gate_request: "Statü Atlama Talebi",
+  gate_result: "Statü Atlama Sonucu",
+  certificate_earned: "Sertifika Kazanıldı",
   streak_milestone: "Seri Rekoru",
-  score_change: "Skor Degisimi",
-  recipe_updated: "Recete Guncellendi",
-  recipe_update: "Recete Guncellendi",
-  module_approval_pending: "Modul Onay Bekliyor",
-  module_approved: "Modul Onaylandi",
-  module_rejected: "Modul Reddedildi",
+  score_change: "Skor Değişimi",
+  recipe_updated: "Reçete Güncellendi",
+  recipe_update: "Reçete Güncellendi",
+  module_approval_pending: "Modül Onay Bekliyor",
+  module_approved: "Modül Onaylandı",
+  module_rejected: "Modül Reddedildi",
 };
 
 const NOTIFICATION_CATEGORIES: Record<string, { label: string; icon: any; types: string[] }> = {
@@ -192,7 +192,7 @@ const NOTIFICATION_CATEGORIES: Record<string, { label: string; icon: any; types:
   faults: { label: "Arızalar", icon: Wrench, types: ["fault_reported", "fault_assigned", "fault_resolved", "fault_updated", "fault_alert", "critical_fault", "critical_service_request", "maintenance_reminder", "recipe_updated", "recipe_update"] },
   checklists: { label: "Checklistler", icon: CheckSquare, types: ["checklist_reminder", "checklist_overdue", "capa_overdue"] },
   announcements: { label: "Duyurular", icon: Megaphone, types: ["announcement", "info", "warning", "alert", "system"] },
-  egitim: { label: "Egitim", icon: GraduationCap, types: ["quiz_passed", "quiz_failed", "module_completed", "badge_earned", "gate_passed", "gate_failed", "gate_request", "gate_result", "certificate_earned", "streak_milestone", "score_change", "training_assigned", "training_overdue", "training_reminder", "module_approval_pending", "module_approved", "module_rejected"] },
+  egitim: { label: "Eğitim", icon: GraduationCap, types: ["quiz_passed", "quiz_failed", "module_completed", "badge_earned", "gate_passed", "gate_failed", "gate_request", "gate_result", "certificate_earned", "streak_milestone", "score_change", "training_assigned", "training_overdue", "training_reminder", "module_approval_pending", "module_approved", "module_rejected"] },
   hr: { label: "IK", icon: Clock, types: ["shift_change", "shift_assigned", "shift_swap_request", "shift_swap_approved", "shift_swap_rejected", "shift_swap_completed", "shift_swap_pending_supervisor", "leave_request", "onboarding_complete"] },
   stock: { label: "Stok", icon: Package, types: ["stock_alert"] },
 };
@@ -474,11 +474,11 @@ const announcementPriorityLabels: Record<string, string> = {
 
 const announcementCategoryLabels: Record<string, string> = {
   general: "Genel",
-  new_product: "Yeni Urun",
+  new_product: "Yeni Ürün",
   policy: "Politika",
   campaign: "Kampanya",
   urgent: "Acil",
-  training: "Egitim",
+  training: "Eğitim",
   event: "Etkinlik",
 };
 
@@ -562,10 +562,10 @@ function EmbeddedMessages() {
     const d = new Date(date);
     const now = new Date();
     const diffMins = Math.floor((now.getTime() - d.getTime()) / 60000);
-    if (diffMins < 1) return "Simdi";
+    if (diffMins < 1) return "Şimdi";
     if (diffMins < 60) return `${diffMins} dk`;
     if (diffMins < 1440) return `${Math.floor(diffMins / 60)} saat`;
-    if (diffMins < 2880) return "Dun";
+    if (diffMins < 2880) return "Dün";
     return d.toLocaleDateString("tr-TR", { day: "numeric", month: "short" });
   };
 
@@ -595,7 +595,7 @@ function EmbeddedMessages() {
             <div className="flex items-center justify-between gap-2">
               <h2 className="text-lg font-semibold" data-testid="text-embedded-messages-title">Mesajlar</h2>
               <Button size="sm" variant="outline" onClick={() => window.location.href = '/mesajlar'} data-testid="button-open-full-messages">
-                Tam Gorunum
+                Tam Görünüm
               </Button>
             </div>
             <div className="relative">
@@ -610,9 +610,9 @@ function EmbeddedMessages() {
             </div>
             <div className="flex gap-1">
               {([
-                { key: "all" as const, label: "Tumunu", icon: MessageSquare },
-                { key: "unread" as const, label: "Okunmamis", icon: Mail, count: unreadTotal },
-                { key: "sent" as const, label: "Gonderdiklerim", icon: MailOpen },
+                { key: "all" as const, label: "Tümünü", icon: MessageSquare },
+                { key: "unread" as const, label: "Okunmamış", icon: Mail, count: unreadTotal },
+                { key: "sent" as const, label: "Gönderdiklerim", icon: MailOpen },
               ]).map((fb) => (
                 <Button
                   key={fb.key}
@@ -647,7 +647,7 @@ function EmbeddedMessages() {
             ) : filteredThreads.length === 0 ? (
               <div className="flex flex-col items-center justify-center p-8 text-center" data-testid="text-embedded-no-threads">
                 <MessageSquare className="w-10 h-10 text-muted-foreground/30 mb-2" />
-                <p className="text-sm text-muted-foreground">Mesaj bulunamadi</p>
+                <p className="text-sm text-muted-foreground">Mesaj bulunamadı</p>
               </div>
             ) : (
               <div>
@@ -694,8 +694,8 @@ function EmbeddedMessages() {
           {!selectedThreadId ? (
             <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground gap-3" data-testid="text-embedded-no-thread-selected">
               <MessageSquare className="w-14 h-14 text-muted-foreground/20" />
-              <p className="text-base font-medium">Bir konusma secin</p>
-              <p className="text-sm text-muted-foreground/70">Sol taraftan bir mesaj secin</p>
+              <p className="text-base font-medium">Bir konuşma seçin</p>
+              <p className="text-sm text-muted-foreground/70">Sol taraftan bir mesaj seçin</p>
             </div>
           ) : threadLoading ? (
             <div className="flex-1 flex flex-col">
@@ -857,8 +857,8 @@ function EmbeddedAnnouncements() {
       ) : (
         <EmptyState
           icon={Megaphone}
-          title="Henuz duyuru yok"
-          description="Yeni duyurular burada goruntulenecek."
+          title="Henüz duyuru yok"
+          description="Yeni duyurular burada görüntülenecek."
           data-testid="empty-state-embedded-announcements"
         />
       )}
@@ -952,10 +952,10 @@ export default function Notifications() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/notification-preferences'] });
-      toast({ title: "Basarili", description: "Bildirim tercihleri guncellendi" });
+      toast({ title: "Başarılı", description: "Bildirim tercihleri güncellendi" });
     },
     onError: () => {
-      toast({ title: "Hata", description: "Tercihler guncellenemedi", variant: "destructive" });
+      toast({ title: "Hata", description: "Tercihler güncellenemedi", variant: "destructive" });
     },
   });
   
@@ -1158,17 +1158,17 @@ export default function Notifications() {
                 data-testid="button-toggle-view-all"
               >
                 <Building2 className="w-3.5 h-3.5 mr-1.5" />
-                {viewAll ? 'Sistem Bildirimleri' : 'Kisisel'}
+                {viewAll ? 'Sistem Bildirimleri' : 'Kişisel'}
               </Button>
             )}
             {isAdmin && viewAll && branches && branches.length > 0 && (
               <Select value={branchFilter} onValueChange={setBranchFilter}>
                 <SelectTrigger className="w-[180px]" data-testid="select-branch-filter">
                   <Building2 className="w-3.5 h-3.5 mr-1.5 flex-shrink-0" />
-                  <SelectValue placeholder="Tum Subeler" />
+                  <SelectValue placeholder="Tüm Şubeler" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all" data-testid="branch-option-all">Tum Subeler</SelectItem>
+                  <SelectItem value="all" data-testid="branch-option-all">Tüm Şubeler</SelectItem>
                   {branches.map(branch => (
                     <SelectItem key={branch.id} value={String(branch.id)} data-testid={`branch-option-${branch.id}`}>
                       {branch.name}
@@ -1187,7 +1187,7 @@ export default function Notifications() {
                 data-testid="button-test-notification"
               >
                 <Plus className="w-3.5 h-3.5 mr-1.5" />
-                {testNotificationMutation.isPending ? "Gonderiliyor..." : "Test Bildirimi Gonder"}
+                {testNotificationMutation.isPending ? "Gönderiliyor..." : "Test Bildirimi Gönder"}
               </Button>
             )}
             {unreadCount > 0 && activeTab === "notifications" && (
@@ -1199,7 +1199,7 @@ export default function Notifications() {
                     data-testid="button-mark-all-read"
                   >
                     <CheckCheck className="w-4 h-4 mr-2" />
-                    Tumunu Okundu Isaretle
+                    Tümünü Okundu İşaretle
                   </Button>
                 </AlertDialogTrigger>
                 <AlertDialogContent data-testid="dialog-confirm-mark-all-read">
@@ -1216,7 +1216,7 @@ export default function Notifications() {
                       disabled={markAllAsReadMutation.isPending}
                       data-testid="button-dialog-confirm"
                     >
-                      Evet, Isaretle
+                      Evet, İşaretle
                     </AlertDialogAction>
                   </AlertDialogFooter>
                 </AlertDialogContent>
@@ -1483,8 +1483,8 @@ export default function Notifications() {
           ) : totalPending === 0 && (
             <EmptyState 
               icon={CheckCheck}
-              title="Bekleyen isiniz yok"
-              description="Tum gorevleriniz ve checklistleriniz tamamlanmis."
+              title="Bekleyen işiniz yok"
+              description="Tüm görevleriniz ve checklistleriniz tamamlanmış."
               data-testid="empty-state-pending"
             />
           )}
@@ -1527,30 +1527,30 @@ export default function Notifications() {
 const PREF_CATEGORIES = [
   {
     key: 'egitim',
-    label: 'Egitim Bildirimleri',
+    label: 'Eğitim Bildirimleri',
     icon: GraduationCap,
     types: [
-      { key: 'quiz_passed', label: 'Quiz basarili sonuclari' },
-      { key: 'quiz_failed', label: 'Quiz basarisiz sonuclari' },
-      { key: 'module_completed', label: 'Modul tamamlama' },
+      { key: 'quiz_passed', label: 'Quiz başarılı sonuçları' },
+      { key: 'quiz_failed', label: 'Quiz başarısız sonuçları' },
+      { key: 'module_completed', label: 'Modül tamamlama' },
       { key: 'badge_earned', label: 'Rozet kazanma' },
-      { key: 'gate_passed', label: 'Statu atlama basarili' },
-      { key: 'gate_failed', label: 'Statu atlama basarisiz' },
+      { key: 'gate_passed', label: 'Statü atlama başarılı' },
+      { key: 'gate_failed', label: 'Statü atlama başarısız' },
       { key: 'certificate_earned', label: 'Sertifika kazanma' },
       { key: 'streak_milestone', label: 'Seri rekoru' },
-      { key: 'score_change', label: 'Skor degisimi' },
-      { key: 'training_assigned', label: 'Egitim atama' },
+      { key: 'score_change', label: 'Skor değişimi' },
+      { key: 'training_assigned', label: 'Eğitim atama' },
     ],
   },
   {
     key: 'gorevler',
-    label: 'Gorev Bildirimleri',
+    label: 'Görev Bildirimleri',
     icon: ClipboardCheck,
     types: [
-      { key: 'task_assigned', label: 'Yeni gorev atamasi' },
-      { key: 'task_overdue', label: 'Gecikme uyarisi' },
-      { key: 'task_completed', label: 'Gorev tamamlama' },
-      { key: 'checklist_reminder', label: 'Checklist hatirlatma' },
+      { key: 'task_assigned', label: 'Yeni görev ataması' },
+      { key: 'task_overdue', label: 'Gecikme uyarısı' },
+      { key: 'task_completed', label: 'Görev tamamlama' },
+      { key: 'checklist_reminder', label: 'Checklist hatırlatma' },
     ],
   },
   {
@@ -1558,28 +1558,28 @@ const PREF_CATEGORIES = [
     label: 'Misafir Bildirimleri',
     icon: AlertCircle,
     types: [
-      { key: 'feedback_alert', label: 'Dusuk puan uyarisi' },
-      { key: 'complaint', label: 'Sikayet bildirimi' },
+      { key: 'feedback_alert', label: 'Düşük puan uyarısı' },
+      { key: 'complaint', label: 'Şikayet bildirimi' },
     ],
   },
   {
     key: 'recete',
-    label: 'Recete Bildirimleri',
+    label: 'Reçete Bildirimleri',
     icon: BookOpen,
     types: [
-      { key: 'recipe_updated', label: 'Recete guncelleme' },
-      { key: 'recipe_update', label: 'Yeni recete' },
+      { key: 'recipe_updated', label: 'Reçete güncelleme' },
+      { key: 'recipe_update', label: 'Yeni reçete' },
     ],
   },
   {
     key: 'sistem',
-    label: 'Diger Bildirimler',
+    label: 'Diğer Bildirimler',
     icon: Bell,
     types: [
-      { key: 'shift_assigned', label: 'Vardiya atamasi' },
+      { key: 'shift_assigned', label: 'Vardiya ataması' },
       { key: 'shift_swap_request', label: 'Vardiya takas talebi' },
-      { key: 'leave_request', label: 'Izin talebi' },
-      { key: 'stock_alert', label: 'Stok uyarisi' },
+      { key: 'leave_request', label: 'İzin talebi' },
+      { key: 'stock_alert', label: 'Stok uyarısı' },
       { key: 'announcement', label: 'Duyurular' },
     ],
   },

@@ -301,9 +301,9 @@ export default function Mesajlar() {
   const unreadTotal = useMemo(() => allThreads.reduce((sum, t) => sum + t.unreadCount, 0), [allThreads]);
 
   const filterButtons: { key: FilterType; label: string; icon: typeof Mail; count?: number }[] = [
-    { key: "all", label: "Tumunu", icon: MessageSquare },
-    { key: "unread", label: "Okunmamis", icon: Mail, count: unreadTotal },
-    { key: "sent", label: "Gonderdiklerim", icon: MailOpen },
+    { key: "all", label: "Tümünü", icon: MessageSquare },
+    { key: "unread", label: "Okunmamış", icon: Mail, count: unreadTotal },
+    { key: "sent", label: "Gönderdiklerim", icon: MailOpen },
   ];
 
   return (
@@ -461,8 +461,8 @@ export default function Mesajlar() {
           {!selectedThreadId ? (
             <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground gap-3" data-testid="text-no-thread-selected">
               <MessageSquare className="w-16 h-16 text-muted-foreground/20" />
-              <p className="text-lg font-medium">Bir konusma secin</p>
-              <p className="text-sm text-muted-foreground/70">Sol taraftan bir mesaj secin veya yeni mesaj gonderin</p>
+              <p className="text-lg font-medium">Bir konuşma seçin</p>
+              <p className="text-sm text-muted-foreground/70">Sol taraftan bir mesaj seçin veya yeni mesaj gönderin</p>
             </div>
           ) : threadLoading ? (
             <div className="flex-1 flex flex-col">
@@ -866,11 +866,11 @@ function NewMessageForm({
           <Label htmlFor="recipient">Alici</Label>
           <Select value={recipientId} onValueChange={setRecipientId}>
             <SelectTrigger id="recipient" data-testid="select-recipient">
-              <SelectValue placeholder="Kullanici secin" />
+              <SelectValue placeholder="Kullanıcı seçin" />
             </SelectTrigger>
             <SelectContent>
               {nonHqFilteredUsers.length === 0 ? (
-                <div className="p-2 text-sm text-muted-foreground">Mesaj gonderilebilecek kullanici yok</div>
+                <div className="p-2 text-sm text-muted-foreground">Mesaj gönderilebilecek kullanıcı yok</div>
               ) : (
                 nonHqFilteredUsers.map((u) => (
                   <SelectItem key={u.id} value={u.id}>
@@ -915,12 +915,12 @@ function NewMessageForm({
         {isLoading ? (
           <>
             <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-            Gonderiliyor...
+            Gönderiliyor...
           </>
         ) : (
           <>
             <Send className="w-4 h-4 mr-2" />
-            Gonder
+            Gönder
           </>
         )}
       </Button>

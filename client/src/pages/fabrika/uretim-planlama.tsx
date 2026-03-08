@@ -884,17 +884,17 @@ export default function FabrikaUretimPlanlama() {
                             )}
                           </TableCell>
                           <TableCell>
-                            {mat.currentStock !== null ? (
+                            {mat.currentStock != null ? (
                               <span className={mat.currentStock <= (mat.minimumStock || 0) ? 'text-red-500 font-medium' : ''}>
-                                {mat.currentStock.toFixed(2)} {mat.stockUnit}
+                                {(mat.currentStock ?? 0).toFixed(2)} {mat.stockUnit}
                               </span>
                             ) : (
                               <span className="text-muted-foreground">-</span>
                             )}
                           </TableCell>
                           <TableCell>
-                            {mat.minimumStock !== null ? (
-                              <span className="text-sm">{mat.minimumStock.toFixed(2)} {mat.stockUnit}</span>
+                            {mat.minimumStock != null ? (
+                              <span className="text-sm">{(mat.minimumStock ?? 0).toFixed(2)} {mat.stockUnit}</span>
                             ) : (
                               <span className="text-muted-foreground">-</span>
                             )}

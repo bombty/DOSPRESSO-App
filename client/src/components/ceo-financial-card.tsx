@@ -160,7 +160,7 @@ export function CEOFinancialCard() {
                 <div key={i} className="flex items-center justify-between gap-2" data-testid={`top-product-${i}`}>
                   <span className="text-xs truncate">{p.productName}</span>
                   <Badge variant="secondary" className="text-[10px] shrink-0">
-                    %{p.profitMargin.toFixed(1)}
+                    %{(p.profitMargin ?? 0).toFixed(1)}
                   </Badge>
                 </div>
               ))}
@@ -179,7 +179,7 @@ export function CEOFinancialCard() {
                 <div key={i} className="flex items-center justify-between gap-2" data-testid={`bottom-product-${i}`}>
                   <span className="text-xs truncate">{p.productName}</span>
                   <Badge variant={p.profitMargin < 0 ? "destructive" : "secondary"} className="text-[10px] shrink-0">
-                    %{p.profitMargin.toFixed(1)}
+                    %{(p.profitMargin ?? 0).toFixed(1)}
                   </Badge>
                 </div>
               ))}

@@ -89,7 +89,7 @@ export function AnalyticsCard() {
 
         {/* Average Info */}
         <div className="text-xs text-muted-foreground text-center p-2 bg-background/50 rounded border border-primary/10">
-          Ort. Vardiya Süresi: <span className="font-semibold text-foreground">{analytics.avgShiftLength.toFixed(1)} saat</span>
+          Ort. Vardiya Süresi: <span className="font-semibold text-foreground">{(analytics.avgShiftLength ?? 0).toFixed(1)} saat</span>
         </div>
       </CardContent>
     </Card>

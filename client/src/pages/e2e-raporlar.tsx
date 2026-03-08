@@ -454,7 +454,7 @@ export default function E2EReportsPage() {
     <div className="min-h-screen bg-background">
       <header className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="container flex h-14 items-center gap-4">
-          <Link href="/panel">
+          <Link href="/">
             <Button variant="ghost" size="icon" data-testid="button-back">
               <ArrowLeft className="h-4 w-4" />
             </Button>

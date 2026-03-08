@@ -91,8 +91,8 @@ export function MuhasebeDashboard({
       <div className="grid gap-1.5 grid-cols-2 md:grid-cols-3 lg:grid-cols-6">
         <KPICard icon={Building2} label="Şube" value={totalBranches} color="blue" />
         <KPICard icon={Users} label="Personel" value={activeEmployees} color="blue" />
-        <KPICard icon={TrendingUp} label="Ort. Skor" value={avgScoreBranches.toFixed(0)} color="green" />
-        <KPICard icon={AlertCircle} label="Onarım" value={`₺${(totalRepairCost / 1000).toFixed(1)}K`} color="orange" />
+        <KPICard icon={TrendingUp} label="Ort. Skor" value={(avgScoreBranches || 0).toFixed(0)} color="green" />
+        <KPICard icon={AlertCircle} label="Onarım" value={`₺${((totalRepairCost || 0) / 1000).toFixed(1)}K`} color="orange" />
         <KPICard icon={Calendar} label="İzin Bkl" value={pendingLeaves} color="purple" />
         <KPICard icon={Clock} label="Mesai Bkl" value={pendingOvertimes} color="amber" />
       </div>

@@ -391,7 +391,7 @@ function GenelTrendTab({ data }: { data: TrendData | undefined }) {
     },
     {
       title: "Fiyat Artışı Oranı",
-      value: "%" + summary.priceIncreaseRate.toFixed(1),
+      value: "%" + (summary.priceIncreaseRate ?? 0).toFixed(1),
       icon: Percent,
       color:
         summary.priceIncreaseRate > 50 ? "text-red-500" : "text-orange-500",
@@ -728,7 +728,7 @@ function TedarikciPerformansTab() {
         <SummaryCard title="Aktif Tedarikçi" value={summary.totalSuppliers.toString()} icon={Users} color="text-blue-500" bgColor="bg-blue-500/10" testId="sp-card-suppliers" />
         <SummaryCard title="Toplam Sipariş (90 Gün)" value={summary.totalOrders.toString()} icon={ShoppingCart} color="text-green-500" bgColor="bg-green-500/10" testId="sp-card-orders" />
         <SummaryCard title="Toplam Tutar" value={formatCurrency(summary.totalValue) + " TL"} icon={DollarSign} color="text-purple-500" bgColor="bg-purple-500/10" testId="sp-card-value" />
-        <SummaryCard title="Ort. Kalite Puanı" value={summary.avgQuality.toFixed(1)} icon={Star} color="text-yellow-500" bgColor="bg-yellow-500/10" testId="sp-card-quality" />
+        <SummaryCard title="Ort. Kalite Puanı" value={(summary.avgQuality ?? 0).toFixed(1)} icon={Star} color="text-yellow-500" bgColor="bg-yellow-500/10" testId="sp-card-quality" />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
@@ -1044,7 +1044,7 @@ function MaliyetAnaliziTab({ branchId }: { branchId: string }) {
         <SummaryCard title="Ort. Aylık Harcama" value={formatCurrency(summary.avgMonthlySpending) + " TL"} icon={BarChart3} color="text-purple-500" bgColor="bg-purple-500/10" testId="ca-card-monthly" />
         <SummaryCard
           title="6 Aylık Değişim"
-          value={(summary.changePercent >= 0 ? "+" : "") + summary.changePercent.toFixed(1) + "%"}
+          value={((summary.changePercent ?? 0) >= 0 ? "+" : "") + (summary.changePercent ?? 0).toFixed(1) + "%"}
           icon={summary.changePercent >= 0 ? TrendingUp : ArrowDownRight}
           color={summary.changePercent > 0 ? "text-red-500" : "text-green-500"}
           bgColor={summary.changePercent > 0 ? "bg-red-500/10" : "bg-green-500/10"}

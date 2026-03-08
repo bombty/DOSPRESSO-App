@@ -968,7 +968,7 @@ export default function PersonelDuzenle() {
                                 <SelectItem value="fired_performance">Performans Yetersizligi</SelectItem>
                                 <SelectItem value="fired_misconduct">Disiplin Ihlali</SelectItem>
                                 <SelectItem value="fired_restructuring">Yapisal Degisiklik</SelectItem>
-                                <SelectItem value="fired_probation">Deneme Suresi Basarisiz</SelectItem>
+                                <SelectItem value="fired_probation">Deneme Süresi Başarısız</SelectItem>
                                 <SelectItem value="fired_attendance">Devamsizlik</SelectItem>
                               </>
                             )}

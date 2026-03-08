@@ -98,7 +98,7 @@ export function AdminDashboard({
                     <div className="min-w-0">
                       <div className="font-semibold text-sm text-red-700">{score.branchName}</div>
                       <div className="text-xs text-muted-foreground">
-                        Skor: <span className="font-bold text-red-600">{score.compositeScore.toFixed(0)}%</span>
+                        Skor: <span className="font-bold text-red-600">{(score.compositeScore ?? 0).toFixed(0)}%</span>
                       </div>
                     </div>
                   </div>

@@ -1090,7 +1090,7 @@ function TedarikciPuanlama() {
                     <div className="flex items-center gap-2">
                       <div className="text-right">
                         <p className={`text-lg font-bold ${overallScore >= 80 ? "text-green-600 dark:text-green-400" : overallScore >= 60 ? "text-amber-600 dark:text-amber-400" : "text-red-600 dark:text-red-400"}`}>
-                          {overallScore.toFixed(1)}
+                          {(overallScore ?? 0).toFixed(1)}
                         </p>
                         <p className="text-xs text-muted-foreground">Genel Puan</p>
                       </div>

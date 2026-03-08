@@ -430,7 +430,7 @@ export default function FabrikaPerformans() {
                       </div>
                       <div>
                         <p className="text-xs text-muted-foreground">Zaiyat Oranı</p>
-                        <p className="text-xl font-bold" data-testid="text-waste-percent">%{summary.avgWastePercent.toFixed(1)}</p>
+                        <p className="text-xl font-bold" data-testid="text-waste-percent">%{(summary.avgWastePercent ?? 0).toFixed(1)}</p>
                       </div>
                     </div>
                   </CardContent>
@@ -443,7 +443,7 @@ export default function FabrikaPerformans() {
                       </div>
                       <div>
                         <p className="text-xs text-muted-foreground">Üretim/Saat</p>
-                        <p className="text-xl font-bold" data-testid="text-production-per-hour">{summary.avgProductionPerHour.toFixed(1)}</p>
+                        <p className="text-xl font-bold" data-testid="text-production-per-hour">{(summary.avgProductionPerHour ?? 0).toFixed(1)}</p>
                       </div>
                     </div>
                   </CardContent>
@@ -456,7 +456,7 @@ export default function FabrikaPerformans() {
                       </div>
                       <div>
                         <p className="text-xs text-muted-foreground">Toplam Saat</p>
-                        <p className="text-xl font-bold" data-testid="text-total-hours">{summary.totalHours.toFixed(1)}</p>
+                        <p className="text-xl font-bold" data-testid="text-total-hours">{(summary.totalHours ?? 0).toFixed(1)}</p>
                       </div>
                     </div>
                   </CardContent>
@@ -533,12 +533,12 @@ export default function FabrikaPerformans() {
                             </TableCell>
                             <TableCell>
                               <Badge variant={p.wastePercent < 5 ? "secondary" : p.wastePercent < 10 ? "outline" : "destructive"}>
-                                %{p.wastePercent.toFixed(1)}
+                                %{(p.wastePercent ?? 0).toFixed(1)}
                               </Badge>
                             </TableCell>
                             <TableCell>{p.totalBatches}</TableCell>
-                            <TableCell>{p.avgBatchSize.toFixed(1)}</TableCell>
-                            <TableCell>{p.avgProductionPerHour.toFixed(1)}</TableCell>
+                            <TableCell>{(p.avgBatchSize ?? 0).toFixed(1)}</TableCell>
+                            <TableCell>{(p.avgProductionPerHour ?? 0).toFixed(1)}</TableCell>
                             <TableCell>
                               <TrendBadge trend={p.trend} />
                             </TableCell>
@@ -609,11 +609,11 @@ export default function FabrikaPerformans() {
                           <div className="flex items-center gap-2">
                             <Progress value={worker.efficiency} className="w-16 h-2" />
                             <span className={worker.efficiency >= 80 ? "text-green-600" : worker.efficiency >= 60 ? "text-amber-600" : "text-red-600"}>
-                              %{worker.efficiency.toFixed(0)}
+                              %{(worker.efficiency ?? 0).toFixed(0)}
                             </span>
                           </div>
                         </TableCell>
-                        <TableCell>{worker.avgProductionPerHour.toFixed(1)}</TableCell>
+                        <TableCell>{(worker.avgProductionPerHour ?? 0).toFixed(1)}</TableCell>
                         <TableCell>
                           <div className="flex items-center gap-1">
                             <Badge className="bg-green-600 text-white">{worker.qualityApproved}</Badge>
@@ -657,7 +657,7 @@ export default function FabrikaPerformans() {
                   <div className="flex items-center justify-between flex-wrap gap-3">
                     <div className="flex items-center gap-3">
                       <div className="text-3xl font-bold" data-testid="text-current-score">
-                        {workerScore.currentScore.toFixed(0)}
+                        {(workerScore.currentScore ?? 0).toFixed(0)}
                       </div>
                       <span className="text-muted-foreground">Genel Skor</span>
                     </div>
@@ -850,24 +850,24 @@ export default function FabrikaPerformans() {
                           <TableCell>
                             <div className="flex items-center gap-2">
                               <Progress value={w.speedScore} className="w-16 h-2" />
-                              <span>{w.speedScore.toFixed(0)}</span>
+                              <span>{(w.speedScore ?? 0).toFixed(0)}</span>
                             </div>
                           </TableCell>
                           <TableCell>
                             <div className="flex items-center gap-2">
                               <Progress value={w.qualityScore} className="w-16 h-2" />
-                              <span>{w.qualityScore.toFixed(0)}</span>
+                              <span>{(w.qualityScore ?? 0).toFixed(0)}</span>
                             </div>
                           </TableCell>
                           <TableCell>
                             <div className="flex items-center gap-2">
                               <Progress value={w.consistencyScore} className="w-16 h-2" />
-                              <span>{w.consistencyScore.toFixed(0)}</span>
+                              <span>{(w.consistencyScore ?? 0).toFixed(0)}</span>
                             </div>
                           </TableCell>
                           <TableCell>
                             <Badge className={w.overallScore >= 80 ? "bg-green-600 text-white" : w.overallScore >= 60 ? "bg-amber-600 text-white" : "bg-red-600 text-white"}>
-                              {w.overallScore.toFixed(0)}
+                              {(w.overallScore ?? 0).toFixed(0)}
                             </Badge>
                           </TableCell>
                         </TableRow>
