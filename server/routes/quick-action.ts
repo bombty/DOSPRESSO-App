@@ -2,8 +2,8 @@ import { Router, type Express } from "express";
 import { db } from "../db";
 import { storage } from "../storage";
 import { isAuthenticated } from "../localAuth";
-import { aiAgentLogs, notifications, tasks, users, isHQRole, type UserRoleType } from "@shared/schema";
-import { eq } from "drizzle-orm";
+import { aiAgentLogs, notifications, tasks, users, branches, isHQRole, type UserRoleType } from "@shared/schema";
+import { eq, and } from "drizzle-orm";
 import { z } from "zod";
 
 const router = Router();
@@ -24,6 +24,19 @@ function isSupervisorPlus(req: any, res: any, next: any) {
   next();
 }
 
+const ROLE_LABELS: Record<string, string> = {
+  admin: "Admin", ceo: "CEO", cgo: "CGO",
+  muhasebe_ik: "Muhasebe/İK", muhasebe: "Muhasebe", satinalma: "Satınalma",
+  coach: "Koç", marketing: "Pazarlama", trainer: "Eğitmen",
+  kalite_kontrol: "Kalite Kontrol", gida_muhendisi: "Gıda Mühendisi",
+  fabrika_mudur: "Fabrika Müdür", teknik: "Teknik", destek: "Destek",
+  mudur: "Şube Müdürü", supervisor: "Supervisor", supervisor_buddy: "Supervisor Buddy",
+  barista: "Barista", bar_buddy: "Bar Buddy", stajyer: "Stajyer",
+  fabrika_operator: "Fabrika Operatör", fabrika_sorumlu: "Fabrika Sorumlu",
+  fabrika_personel: "Fabrika Personel", yatirimci_hq: "Yatırımcı HQ",
+  yatirimci_branch: "Yatırımcı Şube", fabrika: "Fabrika",
+};
+
 const quickActionSchema = z.object({
   actionType: z.enum(["send_notification", "create_task", "redirect", "send_message", "info"]),
   targetUserId: z.string().optional(),
@@ -33,6 +46,34 @@ const quickActionSchema = z.object({
   payload: z.record(z.any()).optional(),
   suggestionId: z.string().optional(),
 });
+
+async function findBranchSupervisor(branchId: number) {
+  const supervisorRoles = ["supervisor", "supervisor_buddy", "mudur"];
+  for (const role of supervisorRoles) {
+    const [found] = await db
+      .select({
+        id: users.id,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        role: users.role,
+        branchId: users.branchId,
+      })
+      .from(users)
+      .where(and(eq(users.branchId, branchId), eq(users.role, role)))
+      .limit(1);
+    if (found) return found;
+  }
+  return null;
+}
+
+async function getBranchName(branchId: number): Promise<string> {
+  try {
+    const [branch] = await db.select({ name: branches.name }).from(branches).where(eq(branches.id, branchId));
+    return branch?.name || `Şube #${branchId}`;
+  } catch {
+    return `Şube #${branchId}`;
+  }
+}
 
 router.post("/api/quick-action", isAuthenticated, isSupervisorPlus, async (req: any, res) => {
   const startTime = Date.now();
@@ -47,30 +88,91 @@ router.post("/api/quick-action", isAuthenticated, isSupervisorPlus, async (req: 
     let result: any = { success: true };
 
     if (actionType === "send_notification") {
-      if (!targetUserId || !title || !message) {
-        return res.status(400).json({ message: "send_notification için targetUserId, title ve message gereklidir" });
+      let resolvedTargetUserId = targetUserId;
+      let recipientName = "";
+      let recipientRole = "";
+      let branchName = "";
+
+      let targetBranchId: number | null = null;
+
+      if (!resolvedTargetUserId && payload?.branchId) {
+        const branchId = Number(payload.branchId);
+        if (!Number.isFinite(branchId) || branchId <= 0) {
+          return res.status(400).json({ message: "Geçersiz branchId" });
+        }
+        const supervisor = await findBranchSupervisor(branchId);
+        if (!supervisor) {
+          branchName = await getBranchName(branchId);
+          return res.status(404).json({
+            message: `${branchName} şubesinde supervisor bulunamadı`,
+          });
+        }
+        resolvedTargetUserId = supervisor.id;
+        recipientName = [supervisor.firstName, supervisor.lastName].filter(Boolean).join(" ") || "Bilinmiyor";
+        recipientRole = supervisor.role || "";
+        targetBranchId = supervisor.branchId ? Number(supervisor.branchId) : null;
+        branchName = await getBranchName(branchId);
       }
-      const [targetUser] = await db.select({ id: users.id, branchId: users.branchId }).from(users).where(eq(users.id, targetUserId));
-      if (!targetUser) {
-        return res.status(404).json({ message: "Hedef kullanıcı bulunamadı" });
+
+      if (!resolvedTargetUserId) {
+        return res.status(400).json({ message: "send_notification için targetUserId veya payload.branchId gereklidir" });
       }
+
+      if (!recipientName) {
+        const [targetUser] = await db
+          .select({
+            id: users.id,
+            firstName: users.firstName,
+            lastName: users.lastName,
+            role: users.role,
+            branchId: users.branchId,
+          })
+          .from(users)
+          .where(eq(users.id, resolvedTargetUserId));
+        if (!targetUser) {
+          return res.status(404).json({ message: "Hedef kullanıcı bulunamadı" });
+        }
+        recipientName = [targetUser.firstName, targetUser.lastName].filter(Boolean).join(" ") || "Bilinmiyor";
+        recipientRole = targetUser.role || "";
+        targetBranchId = targetUser.branchId ? Number(targetUser.branchId) : null;
+
+        if (targetUser.branchId && !branchName) {
+          branchName = await getBranchName(Number(targetUser.branchId));
+        }
+      }
+
       const senderRole = user.role as UserRoleType;
       if (!isHQRole(senderRole)) {
         const senderBranch = user.branchId ? Number(user.branchId) : null;
-        const targetBranch = targetUser.branchId ? Number(targetUser.branchId) : null;
-        if (senderBranch !== targetBranch) {
-          return res.status(403).json({ message: "Farkli subedeki kullaniciya bildirim gonderemezsiniz" });
+        if (senderBranch !== targetBranchId) {
+          return res.status(403).json({ message: "Farklı şubedeki kullanıcıya bildirim gönderemezsiniz" });
         }
       }
+
+      const notifTitle = title || "Hatırlatma";
+      const notifMessage = message || "Lütfen kontrol ediniz.";
+
       const notification = await storage.createNotification({
-        userId: targetUserId,
+        userId: resolvedTargetUserId,
         type: "quick_action",
-        title,
-        message,
+        title: notifTitle,
+        message: notifMessage,
         link: route || undefined,
         isRead: false,
       });
-      result = { success: true, notificationId: notification.id };
+
+      result = {
+        success: true,
+        notificationId: notification.id,
+        details: {
+          recipientName,
+          recipientRole: ROLE_LABELS[recipientRole] || recipientRole,
+          branch: branchName || "",
+          sentAt: new Date().toISOString(),
+          notificationTitle: notifTitle,
+          notificationMessage: notifMessage,
+        },
+      };
     } else if (actionType === "create_task") {
       if (!title) {
         return res.status(400).json({ message: "create_task için title gereklidir" });

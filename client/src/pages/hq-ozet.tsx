@@ -1,3 +1,4 @@
+import { useState, useCallback } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { Link } from "wouter";
@@ -7,6 +8,16 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
   Building2,
   AlertTriangle,
@@ -18,8 +29,9 @@ import {
   ExternalLink,
   Star,
   TrendingUp,
+  Bell,
 } from "lucide-react";
-import { DobodySuggestionList } from "@/components/dobody-suggestion-card";
+import { DobodySuggestionList, type DobodySuggestion } from "@/components/dobody-suggestion-card";
 import { DobodyFlowMode } from "@/components/dobody-flow-mode";
 
 interface HQSummaryData {
@@ -75,6 +87,7 @@ function StatusCard({ icon: Icon, label, value, color }: {
 export default function HQOzet() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const [pendingAction, setPendingAction] = useState<{ suggestion: DobodySuggestion; actionPayload: any } | null>(null);
 
   const { data, isLoading } = useQuery<HQSummaryData>({
     queryKey: ["/api/hq-summary"],
@@ -85,11 +98,48 @@ export default function HQOzet() {
       const res = await apiRequest("POST", "/api/quick-action", action);
       return res.json();
     },
-    onSuccess: () => {
-      toast({ title: "İşlem tamamlandı" });
+    onSuccess: (data: any) => {
+      setPendingAction(null);
+      if (data?.details) {
+        const d = data.details;
+        const time = d.sentAt ? new Date(d.sentAt).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" }) : "";
+        toast({
+          title: "Bildirim Gönderildi",
+          description: `${d.recipientName}${d.recipientRole ? ` (${d.recipientRole})` : ""}${d.branch ? ` — ${d.branch}` : ""}${time ? ` • ${time}` : ""}`,
+        });
+      } else {
+        toast({ title: "İşlem tamamlandı" });
+      }
       queryClient.invalidateQueries({ queryKey: ["/api/hq-summary"] });
     },
+    onError: () => {
+      setPendingAction(null);
+      toast({ title: "Hata", description: "İşlem gerçekleştirilemedi", variant: "destructive" });
+    },
   });
+
+  const handleSuggestionAction = useCallback((s: DobodySuggestion) => {
+    const actionPayload: any = {
+      actionType: s.actionType,
+      suggestionId: s.id,
+      title: s.actionLabel,
+      message: s.message,
+      ...(s.targetUserId ? { targetUserId: s.targetUserId } : {}),
+      ...(s.payload ? { payload: s.payload } : {}),
+    };
+
+    if (s.actionType === "send_notification") {
+      setPendingAction({ suggestion: s, actionPayload });
+    } else {
+      quickAction.mutate(actionPayload);
+    }
+  }, [quickAction]);
+
+  const confirmSendNotification = useCallback(() => {
+    if (pendingAction) {
+      quickAction.mutate(pendingAction.actionPayload);
+    }
+  }, [pendingAction, quickAction]);
 
   if (isLoading) {
     return (
@@ -187,11 +237,7 @@ export default function HQOzet() {
 
       <DobodySuggestionList
         suggestions={data.suggestions || []}
-        onAction={(s) => quickAction.mutate({
-          actionType: s.actionType === "send_notification" ? "info" : s.actionType,
-          suggestionId: s.id,
-          ...(s.targetUserId ? { targetUserId: s.targetUserId, title: s.actionLabel, message: s.message } : {}),
-        })}
+        onAction={handleSuggestionAction}
         isPending={quickAction.isPending}
       />
 
@@ -252,6 +298,36 @@ export default function HQOzet() {
           </Button>
         </Link>
       </div>
+
+      <AlertDialog open={!!pendingAction} onOpenChange={(open) => { if (!open) setPendingAction(null); }}>
+        <AlertDialogContent data-testid="dialog-confirm-notification">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <Bell className="h-5 w-5" />
+              Bildirim Gönder
+            </AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-2 text-sm">
+                <p>{pendingAction?.suggestion.message}</p>
+                <div className="p-3 rounded-md bg-muted/50 space-y-1">
+                  <p className="font-medium">{pendingAction?.actionPayload.title || "Hatırlatma"}</p>
+                  <p className="text-muted-foreground">{pendingAction?.actionPayload.message || "Lütfen kontrol ediniz."}</p>
+                </div>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="btn-cancel-notification">Vazgeç</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmSendNotification}
+              disabled={quickAction.isPending}
+              data-testid="btn-confirm-notification"
+            >
+              {quickAction.isPending ? "Gönderiliyor..." : "Gönder"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

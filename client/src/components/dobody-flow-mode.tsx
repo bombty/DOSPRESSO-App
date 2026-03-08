@@ -54,9 +54,8 @@ export function DobodyFlowMode({ userId, userRole, userName, branchId }: DobodyF
     }
   }, [userId, setUserId]);
 
-  const queryUrl = `/api/dobody/flow-tasks?userId=${userId}&role=${userRole}&branchId=${branchId || ""}`;
   const { data, isLoading } = useQuery<FlowTasksResponse>({
-    queryKey: [queryUrl],
+    queryKey: ["/api/dobody/flow-tasks"],
     enabled: userIdSet && !isDismissed && !isFlowActive,
   });
 

@@ -100,9 +100,21 @@ export default function SubeOzet() {
       const res = await apiRequest("POST", "/api/quick-action", action);
       return res.json();
     },
-    onSuccess: (result) => {
-      toast({ title: "İşlem tamamlandı", description: result.message });
+    onSuccess: (data: any) => {
+      if (data?.details) {
+        const d = data.details;
+        const time = d.sentAt ? new Date(d.sentAt).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" }) : "";
+        toast({
+          title: "Bildirim Gönderildi",
+          description: `${d.recipientName}${d.recipientRole ? ` (${d.recipientRole})` : ""}${d.branch ? ` — ${d.branch}` : ""}${time ? ` • ${time}` : ""}`,
+        });
+      } else {
+        toast({ title: "İşlem tamamlandı", description: data.message });
+      }
       queryClient.invalidateQueries({ queryKey: ["/api/branch-summary", branchId] });
+    },
+    onError: () => {
+      toast({ title: "Hata", description: "İşlem gerçekleştirilemedi", variant: "destructive" });
     },
   });
 

@@ -179,9 +179,9 @@ export async function getSupervisorSuggestions(branchId: number): Promise<Dobody
       const names = pendingStaff.map(s => s.firstName || "Personel").slice(0, 3).join(", ");
       suggestions.push({
         id: `checklist-pending-branch-${branchId}`,
-        message: `${pendingStaff.length} personelin bugunki checklist'i tamamlanmadi: ${names}`,
+        message: `${pendingStaff.length} personelin bugünkü checklist'i tamamlanmadı: ${names}`,
         actionType: "send_notification",
-        actionLabel: "Hatirlatma Gonder",
+        actionLabel: "Hatırlatma Gönder",
         payload: { userIds: pendingStaff.map(s => s.userId), type: "checklist_reminder" },
         priority: "high",
         icon: "ClipboardCheck",
@@ -209,9 +209,9 @@ export async function getSupervisorSuggestions(branchId: number): Promise<Dobody
       const itemNames = lowStockItems.map(i => i.productName).slice(0, 3).join(", ");
       suggestions.push({
         id: `stock-low-branch-${branchId}`,
-        message: `${lowStockItems.length} urun minimum stok seviyesinin altinda: ${itemNames}`,
+        message: `${lowStockItems.length} ürün minimum stok seviyesinin altında: ${itemNames}`,
         actionType: "redirect",
-        actionLabel: "Stok Yonetimi",
+        actionLabel: "Stok Yönetimi",
         payload: { route: `/satinalma/stok-yonetimi` },
         priority: "high",
         icon: "PackageX",
@@ -267,9 +267,9 @@ export async function getSupervisorSuggestions(branchId: number): Promise<Dobody
     if (overdueTrainings.length > 0) {
       suggestions.push({
         id: `training-overdue-branch-${branchId}`,
-        message: `${overdueTrainings.length} personelin egitimi 3+ gun gecikti.`,
+        message: `${overdueTrainings.length} personelin eğitimi 3+ gün gecikti.`,
         actionType: "send_notification",
-        actionLabel: "Hatirlatma Gonder",
+        actionLabel: "Hatırlatma Gönder",
         payload: {
           userIds: overdueTrainings.map(t => t.userId),
           type: "training_reminder",
@@ -314,9 +314,9 @@ export async function getHQSuggestions(): Promise<DobodySuggestion[]> {
       if (!activeSet.has(branch.id)) {
         suggestions.push({
           id: `branch-inactive-${branch.id}`,
-          message: `${branch.name} son 2 gundur checklist aktivitesi yok. Iletisime gecin.`,
+          message: `${branch.name} son 2 gündür checklist aktivitesi yok. İletişime geçin.`,
           actionType: "send_notification",
-          actionLabel: "Bildirim Gonder",
+          actionLabel: "Bildirim Gönder",
           targetUserId: undefined,
           payload: { branchId: branch.id, type: "branch_inactive_alert" },
           priority: "high",
@@ -656,7 +656,7 @@ export async function getMuhasebeSuggestions(): Promise<DobodySuggestion[]> {
         id: "muhasebe-pending-payroll",
         message: `${pendingPayroll} personelin bu ayki bordrosu taslak durumunda.`,
         actionType: "redirect",
-        actionLabel: "Bordro Yonetimi",
+        actionLabel: "Bordro Yönetimi",
         payload: { route: "/maas" },
         priority: "high",
         icon: "DollarSign",
@@ -728,9 +728,9 @@ export async function getKaliteKontrolSuggestions(): Promise<DobodySuggestion[]>
     if (pendingCount > 0) {
       suggestions.push({
         id: "kalite-pending-complaints",
-        message: `${pendingCount} yeni urun sikayeti inceleme bekliyor.`,
+        message: `${pendingCount} yeni ürün şikayeti inceleme bekliyor.`,
         actionType: "redirect",
-        actionLabel: "Sikayetleri Gor",
+        actionLabel: "Şikayetleri Gör",
         payload: { route: "/urun-sikayet" },
         priority: "high",
         icon: "MessageSquareWarning",
@@ -777,9 +777,9 @@ export async function getKaliteKontrolSuggestions(): Promise<DobodySuggestion[]>
     if (criticalCount > 0) {
       suggestions.push({
         id: "kalite-critical-complaints",
-        message: `${criticalCount} kritik seviye urun sikayeti arastirma asamasinda.`,
+        message: `${criticalCount} kritik seviye ürün şikayeti araştırma aşamasında.`,
         actionType: "redirect",
-        actionLabel: "Kritik Sikayetler",
+        actionLabel: "Kritik Şikayetler",
         payload: { route: "/urun-sikayet" },
         priority: "critical",
         icon: "AlertTriangle",
@@ -1003,9 +1003,9 @@ export async function getSatinalmaSuggestions(): Promise<DobodySuggestion[]> {
     if (criticalStock > 0) {
       suggestions.push({
         id: "satinalma-critical-stock",
-        message: `${criticalStock} urun minimum stok seviyesinin altinda.`,
+        message: `${criticalStock} ürün minimum stok seviyesinin altında.`,
         actionType: "redirect",
-        actionLabel: "Stok Yonetimi",
+        actionLabel: "Stok Yönetimi",
         payload: { route: "/satinalma/stok-yonetimi" },
         priority: "critical",
         icon: "PackageX",

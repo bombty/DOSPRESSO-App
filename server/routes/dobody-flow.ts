@@ -561,7 +561,7 @@ router.get("/api/dobody/flow-tasks", isAuthenticated, async (req: any, res) => {
       flowTasks = await getSupervisorFlowTasks(userId, branchId);
     } else if (userRole === "mudur" && branchId) {
       flowTasks = await getMudurFlowTasks(userId, branchId);
-    } else if (userRole === "ceo" || userRole === "cgo") {
+    } else if (userRole === "ceo" || userRole === "cgo" || userRole === "admin") {
       flowTasks = await getCeoFlowTasks(userId);
     } else if (userRole === "coach") {
       flowTasks = await getCoachFlowTasks(userId);
