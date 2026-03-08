@@ -73,6 +73,7 @@ The frontend utilizes React 18+ with TypeScript and Vite, employing Shadcn/ui (N
 - **Feedback Pattern Analysis**: Weekly job analyzes 30-day category averages per branch for alerts and improvement detection.
 - **WordPress-Style Data Export/Import**: Full system data export to ZIP, background job processing, 3 export scopes, 3 import modes, ZIP validation, and admin-only access with audit logging.
 - **Setup Wizard**: 6-step setup wizard for initial system configuration (company info, admin account, SMTP, DB test) with default data seeding and demo user creation.
+- **Sprint 20B UX Simplification**: Sidebar items reduced to ≤6 per role (except admin=15). Both `app-sidebar.tsx` and `hamburger-menu.tsx` use flat layout (no groups/accordion) when ≤6 items — items rendered as direct links. Hamburger menu switched from `/api/dashboard-modules` to filtered `/api/me/menu` endpoint. `SIDEBAR_ALLOWED_ITEMS` in `server/menu-service.ts` enforced before `alwaysVisible` check. Help (CircleHelp→/kullanim-kilavuzu) and Support (Headset→/hq-destek) added to header globally. IK page tabs grouped into 5 categories with role-based filtering. Role-based tab filtering added to 5 mega modules. 7 new Dobody suggestion functions wired to hq-summary. Hamburger hidden on mobile for ≤4-item roles. Turkish char fix: "Iletisim"→"İletişim".
 
 ## External Dependencies
 - **OpenAI API**: Used for AI-powered vision analysis, chat completions, embeddings, and summary generation.

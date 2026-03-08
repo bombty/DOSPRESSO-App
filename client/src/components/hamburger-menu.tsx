@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery } from "@tanstack/react-query";
@@ -43,6 +43,23 @@ import {
   Bell,
   Truck,
   LogOut,
+  LayoutDashboard,
+  ListChecks,
+  AlertTriangle,
+  Utensils,
+  DollarSign,
+  TrendingUp,
+  Target,
+  Clipboard,
+  Award,
+  FileBarChart,
+  UserPlus,
+  Cog,
+  Eye,
+  Layers,
+  BarChart,
+  PieChart,
+  Activity,
 } from "lucide-react";
 
 interface MenuCategory {
@@ -65,7 +82,9 @@ const ICON_MAP: Record<string, any> = {
   ShoppingCart, Settings, Briefcase, ClipboardList, Calendar, MessageSquare,
   BookOpen, Star, Calculator, Shield, Bot, Coffee, Headphones, FolderKanban,
   Megaphone, Database, Package, MapPin, FileText, CheckSquare, ClipboardCheck,
-  UserCheck, Heart, Bell, Truck,
+  UserCheck, Heart, Bell, Truck, LayoutDashboard, ListChecks, AlertTriangle,
+  Utensils, DollarSign, TrendingUp, Target, Clipboard, Award, FileBarChart,
+  UserPlus, Cog, Eye, Layers, BarChart, PieChart, Activity, Menu,
 };
 
 function getIconComponent(iconName: string | undefined): any {
@@ -79,57 +98,51 @@ export function HamburgerMenu() {
   const [, setLocation] = useLocation();
   const { user } = useAuth();
 
-  const { data: dashboardModulesData } = useQuery<any>({
-    queryKey: ["/api/dashboard-modules"],
-    enabled: !!user,
-    staleTime: 30000,
-  });
-
-  const { data: faults = [] } = useQuery<any[]>({
-    queryKey: ["/api/faults"],
+  const { data: menuData } = useQuery<any>({
+    queryKey: ["/api/me/menu"],
     queryFn: async () => {
-      const res = await fetch("/api/faults");
-      if (!res.ok) return [];
-      const data = await res.json();
-      return Array.isArray(data) ? data : (data.data || []);
+      const res = await fetch("/api/me/menu", { credentials: "include" });
+      if (!res.ok) throw new Error("Menu fetch failed");
+      return res.json();
     },
     enabled: !!user,
+    staleTime: 10000,
   });
 
-  const { data: tasks = [] } = useQuery<any[]>({
-    queryKey: ["/api/tasks"],
-    enabled: !!user,
-  });
+  const sections = menuData?.sections || [];
+  const totalItemCount = useMemo(() => {
+    return sections.reduce((sum: number, s: any) => sum + (s.items?.length || 0), 0);
+  }, [sections]);
+  const isFlat = totalItemCount <= 6;
 
-  const strategicRoles = ['ceo', 'cgo', 'admin'];
-  const isStrategicRole = user?.role ? strategicRoles.includes(user.role) : false;
-
-  const openFaults = faults.filter((f: any) => f.currentStage !== "kapatildi").length;
-  const pendingTasks = tasks.filter((t: any) => t.status === "beklemede").length;
-
-  const serverMegaModules = dashboardModulesData?.megaModules || [];
-
-  const categories: MenuCategory[] = serverMegaModules.map((mm: any) => ({
-    id: mm.id,
-    title: mm.title,
-    icon: getIconComponent(mm.icon),
-    items: (mm.items || []).map((item: any) => {
-      const itemPath = item.path || '';
-      let badge: number | undefined;
-      if (!isStrategicRole) {
-        if (itemPath.includes('gorev') || itemPath.includes('task')) badge = pendingTasks > 0 ? pendingTasks : undefined;
-        if (itemPath.includes('ariza') || itemPath.includes('fault')) badge = openFaults > 0 ? openFaults : undefined;
-      }
-
-      return {
-        id: item.path || item.id,
-        label: item.title,
+  const flatItems: MenuItem[] = useMemo(() => {
+    if (!isFlat) return [];
+    return sections.flatMap((section: any) =>
+      (section.items || []).map((item: any) => ({
+        id: item.id || item.path,
+        label: item.titleTr,
         path: item.path,
         icon: getIconComponent(item.icon),
-        badge,
-      };
-    }),
-  }));
+      }))
+    );
+  }, [isFlat, sections]);
+
+  const categories: MenuCategory[] = useMemo(() => {
+    if (isFlat) return [];
+    return sections
+      .filter((s: any) => s.items && s.items.length > 0)
+      .map((section: any) => ({
+        id: section.id,
+        title: section.titleTr,
+        icon: getIconComponent(section.icon),
+        items: (section.items || []).map((item: any) => ({
+          id: item.id || item.path,
+          label: item.titleTr,
+          path: item.path,
+          icon: getIconComponent(item.icon),
+        })),
+      }));
+  }, [isFlat, sections]);
 
   const handleNavigate = useCallback((path: string) => {
     setOpen(false);
@@ -202,82 +215,100 @@ export function HamburgerMenu() {
 
             <div className="mx-3 my-1 border-t" />
 
-            {categories
-              .filter((category) => category.items.length > 0)
-              .map((category) => {
-                const CategoryIcon = category.icon;
-                const isExpanded = expandedCategories.has(category.id);
-                const totalBadge = getCategoryBadgeCount(category);
-
-                if (category.items.length === 1) {
-                  const item = category.items[0];
-                  const ItemIcon = item.icon;
-                  return (
-                    <button
-                      key={category.id}
-                      onClick={() => handleNavigate(item.path)}
-                      className="w-full flex items-center gap-3 px-4 py-2.5 text-sm hover-elevate transition-colors"
-                      data-testid={`menu-item-${item.id}`}
-                    >
-                      <ItemIcon className="w-4 h-4 text-muted-foreground shrink-0" />
-                      <span className="flex-1 text-left font-medium truncate">{category.title}</span>
-                      {item.badge !== undefined && item.badge > 0 && (
-                        <Badge variant="destructive" className="text-[10px] h-5 px-1.5">
-                          {item.badge}
-                        </Badge>
-                      )}
-                      <ChevronRight className="w-3 h-3 text-muted-foreground shrink-0" />
-                    </button>
-                  );
-                }
-
+            {isFlat ? (
+              flatItems.map((item) => {
+                const ItemIcon = item.icon;
                 return (
-                  <div key={category.id}>
-                    <button
-                      onClick={() => toggleCategory(category.id)}
-                      className="w-full flex items-center gap-3 px-4 py-2.5 text-sm hover-elevate transition-colors"
-                      data-testid={`menu-category-${category.id}`}
-                    >
-                      <CategoryIcon className="w-4 h-4 text-muted-foreground shrink-0" />
-                      <span className="flex-1 text-left font-semibold truncate">{category.title}</span>
-                      {totalBadge > 0 && (
-                        <Badge variant="destructive" className="text-[10px] h-5 px-1.5 mr-1">
-                          {totalBadge}
-                        </Badge>
-                      )}
-                      <ChevronDown
-                        className={`w-3.5 h-3.5 text-muted-foreground shrink-0 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}
-                      />
-                    </button>
+                  <button
+                    key={item.id}
+                    onClick={() => handleNavigate(item.path)}
+                    className="w-full flex items-center gap-3 px-4 py-2.5 text-sm hover-elevate transition-colors"
+                    data-testid={`menu-item-${item.id}`}
+                  >
+                    <ItemIcon className="w-4 h-4 text-muted-foreground shrink-0" />
+                    <span className="flex-1 text-left font-medium truncate">{item.label}</span>
+                    <ChevronRight className="w-3 h-3 text-muted-foreground shrink-0" />
+                  </button>
+                );
+              })
+            ) : (
+              categories
+                .filter((category) => category.items.length > 0)
+                .map((category) => {
+                  const CategoryIcon = category.icon;
+                  const isExpanded = expandedCategories.has(category.id);
+                  const totalBadge = getCategoryBadgeCount(category);
 
-                    <div
-                      className={`overflow-hidden transition-all duration-200 ease-in-out ${isExpanded ? 'max-h-[800px] opacity-100' : 'max-h-0 opacity-0'}`}
-                    >
-                      <div className="ml-4 border-l border-border/50 mb-1">
-                        {category.items.map((item) => {
-                          const ItemIcon = item.icon;
-                          return (
-                            <button
-                              key={item.id}
-                              onClick={() => handleNavigate(item.path)}
-                              className="w-full flex items-center gap-2.5 pl-4 pr-4 py-2 text-[13px] hover-elevate transition-colors"
-                              data-testid={`menu-item-${item.id}`}
-                            >
-                              <ItemIcon className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                              <span className="flex-1 text-left truncate">{item.label}</span>
-                              {item.badge !== undefined && item.badge > 0 && (
-                                <Badge variant="destructive" className="text-[10px] h-4 px-1">
-                                  {item.badge}
-                                </Badge>
-                              )}
-                            </button>
-                          );
-                        })}
+                  if (category.items.length === 1) {
+                    const item = category.items[0];
+                    const ItemIcon = item.icon;
+                    return (
+                      <button
+                        key={category.id}
+                        onClick={() => handleNavigate(item.path)}
+                        className="w-full flex items-center gap-3 px-4 py-2.5 text-sm hover-elevate transition-colors"
+                        data-testid={`menu-item-${item.id}`}
+                      >
+                        <ItemIcon className="w-4 h-4 text-muted-foreground shrink-0" />
+                        <span className="flex-1 text-left font-medium truncate">{category.title}</span>
+                        {item.badge !== undefined && item.badge > 0 && (
+                          <Badge variant="destructive" className="text-[10px] h-5 px-1.5">
+                            {item.badge}
+                          </Badge>
+                        )}
+                        <ChevronRight className="w-3 h-3 text-muted-foreground shrink-0" />
+                      </button>
+                    );
+                  }
+
+                  return (
+                    <div key={category.id}>
+                      <button
+                        onClick={() => toggleCategory(category.id)}
+                        className="w-full flex items-center gap-3 px-4 py-2.5 text-sm hover-elevate transition-colors"
+                        data-testid={`menu-category-${category.id}`}
+                      >
+                        <CategoryIcon className="w-4 h-4 text-muted-foreground shrink-0" />
+                        <span className="flex-1 text-left font-semibold truncate">{category.title}</span>
+                        {totalBadge > 0 && (
+                          <Badge variant="destructive" className="text-[10px] h-5 px-1.5 mr-1">
+                            {totalBadge}
+                          </Badge>
+                        )}
+                        <ChevronDown
+                          className={`w-3.5 h-3.5 text-muted-foreground shrink-0 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}
+                        />
+                      </button>
+
+                      <div
+                        className={`overflow-hidden transition-all duration-200 ease-in-out ${isExpanded ? 'max-h-[800px] opacity-100' : 'max-h-0 opacity-0'}`}
+                      >
+                        <div className="ml-4 border-l border-border/50 mb-1">
+                          {category.items.map((item) => {
+                            const ItemIcon = item.icon;
+                            return (
+                              <button
+                                key={item.id}
+                                onClick={() => handleNavigate(item.path)}
+                                className="w-full flex items-center gap-2.5 pl-4 pr-4 py-2 text-[13px] hover-elevate transition-colors"
+                                data-testid={`menu-item-${item.id}`}
+                              >
+                                <ItemIcon className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                                <span className="flex-1 text-left truncate">{item.label}</span>
+                                {item.badge !== undefined && item.badge > 0 && (
+                                  <Badge variant="destructive" className="text-[10px] h-4 px-1">
+                                    {item.badge}
+                                  </Badge>
+                                )}
+                              </button>
+                            );
+                          })}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                })
+            )}
 
             <div className="mx-3 my-1 border-t" />
 
@@ -287,7 +318,7 @@ export function HamburgerMenu() {
               data-testid="menu-item-notifications"
             >
               <Bell className="w-4 h-4 text-muted-foreground" />
-              <span>Iletisim Merkezi</span>
+              <span>İletişim Merkezi</span>
             </button>
             <button
               onClick={() => handleNavigate(user ? `/personel/${user.id}` : "/login")}

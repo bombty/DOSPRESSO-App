@@ -200,7 +200,28 @@ export function AppSidebar() {
   }).filter(g => g.items.length > 0);
 
   const totalItemCount = sections.reduce((sum, s) => sum + s.items.length, 0);
+  const useFlatLayout = totalItemCount <= 6;
   const useHubPattern = totalItemCount >= 12;
+
+  const renderFlatItem = (item: SidebarMenuItemType) => {
+    const ItemIcon = getIconComponent(item.icon);
+    const badgeCount = item.badge ? badges[item.badge] : 0;
+    return (
+      <SidebarMenuItem key={item.id}>
+        <SidebarMenuButton asChild isActive={location === item.path || location.startsWith(item.path + '/')} data-testid={`link-${item.id}`}>
+          <Link href={item.path}>
+            <ItemIcon className="h-4 w-4" />
+            <span>{item.titleTr}</span>
+            {badgeCount > 0 && (
+              <Badge variant="destructive" className="ml-auto" data-testid={`badge-${item.id}`}>
+                {badgeCount}
+              </Badge>
+            )}
+          </Link>
+        </SidebarMenuButton>
+      </SidebarMenuItem>
+    );
+  };
 
   const renderMenuSection = (section: SidebarMenuSection) => {
     const IconComponent = getIconComponent(section.icon);
@@ -342,15 +363,19 @@ export function AppSidebar() {
                   <div className="my-2 border-t" />
                 </div>
               )}
-              {sectionsByGroup.map((grp, gi) => (
-                <div key={grp.group}>
-                  {gi > 0 && <div className="my-2 border-t" />}
-                  <div className="mt-2 mb-2 px-3 py-1 text-xs font-bold uppercase tracking-wide text-muted-foreground">
-                    {grp.label}
+              {useFlatLayout ? (
+                sections.flatMap(s => s.items).map(renderFlatItem)
+              ) : (
+                sectionsByGroup.map((grp, gi) => (
+                  <div key={grp.group}>
+                    {gi > 0 && <div className="my-2 border-t" />}
+                    <div className="mt-2 mb-2 px-3 py-1 text-xs font-bold uppercase tracking-wide text-muted-foreground">
+                      {grp.label}
+                    </div>
+                    {grp.items.map(renderMenuSection)}
                   </div>
-                  {grp.items.map(renderMenuSection)}
-                </div>
-              ))}
+                ))
+              )}
               
               {isError && sections.length === 0 && (
                 <div className="p-4 text-sm text-muted-foreground text-center">

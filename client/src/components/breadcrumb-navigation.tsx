@@ -125,7 +125,7 @@ const PATH_LABELS: Record<string, string> = {
   '/cgo-command-center': 'CGO Komuta Merkezi',
   '/ceo-command-center': 'CEO Komuta Merkezi',
   '/satinalma': 'Satınalma',
-  '/bildirimler': 'Iletisim Merkezi',
+  '/bildirimler': 'İletişim Merkezi',
   '/performans': 'Performans',
   '/performansim': 'Performansım',
   '/kalite-denetimi': 'Kalite Denetimi',
