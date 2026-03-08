@@ -2288,13 +2288,18 @@ const normalizeTimeGlobal = (timeStr: string): string => {
       const userId = req.user?.claims?.sub || req.user?.id;
       
       const objectFile = await objectStorageService.getObjectEntityFile(req.path);
-      const canAccess = await objectStorageService.canAccessObjectEntity({
-        objectFile,
-        userId: userId,
-      });
       
-      if (!canAccess) {
-        return res.sendStatus(403);
+      const isPublicAsset = req.path.startsWith('/objects/public/');
+      
+      if (!isPublicAsset) {
+        const canAccess = await objectStorageService.canAccessObjectEntity({
+          objectFile,
+          userId: userId,
+        });
+        
+        if (!canAccess) {
+          return res.sendStatus(403);
+        }
       }
       
       objectStorageService.downloadObject(objectFile, res);
