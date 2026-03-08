@@ -18,6 +18,7 @@ import { FeedbackHQWidget } from "@/components/feedback-dashboard-widget";
 import { CriticalAlerts } from "@/components/critical-alerts";
 import { DailyTaskPanel } from "@/components/daily-task-panel";
 import { MrDobody } from "@/components/mr-dobody";
+import { DobodyFlowMode } from "@/components/dobody-flow-mode";
 import { motion } from "framer-motion";
 import {
   TrendingUp,
@@ -1905,6 +1906,12 @@ export default function HQDashboard() {
 
   return (
     <div className="container mx-auto p-3 max-w-7xl space-y-3">
+      <DobodyFlowMode
+        userId={user?.id || ""}
+        userRole={user?.role || ""}
+        userName={`${user?.firstName || ""} ${user?.lastName || ""}`.trim()}
+        branchId={user?.branchId ? Number(user.branchId) : null}
+      />
         <UnifiedHero />
       <DailyTaskPanel />
       {!isCGO && <CriticalAlerts />}

@@ -28,6 +28,7 @@ import {
 } from "lucide-react";
 import logoUrl from "@assets/IMG_6637_1765138781125.png";
 import { ROLE_LABELS } from "@/lib/turkish-labels";
+import { DobodyFlowMode } from "@/components/dobody-flow-mode";
 
 interface BranchInfo {
   branchId: number;
@@ -147,6 +148,12 @@ export default function MerkezDashboard() {
       </div>
 
       <div className="container mx-auto p-3 space-y-3">
+        <DobodyFlowMode
+          userId={user?.id || ""}
+          userRole={user?.role || ""}
+          userName={`${user?.firstName || ""} ${user?.lastName || ""}`.trim()}
+          branchId={user?.branchId ? Number(user.branchId) : null}
+        />
         {isLoading ? (
           <div className="space-y-3">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-2">

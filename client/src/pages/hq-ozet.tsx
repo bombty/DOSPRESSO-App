@@ -20,6 +20,7 @@ import {
   TrendingUp,
 } from "lucide-react";
 import { DobodySuggestionList } from "@/components/dobody-suggestion-card";
+import { DobodyFlowMode } from "@/components/dobody-flow-mode";
 
 interface HQSummaryData {
   branchStatus: {
@@ -115,6 +116,12 @@ export default function HQOzet() {
 
   return (
     <div className="p-4 space-y-4 max-w-2xl mx-auto overflow-y-auto h-full" data-testid="hq-ozet-page">
+      <DobodyFlowMode
+        userId={user?.id || ""}
+        userRole={user?.role || ""}
+        userName={`${user?.firstName || ""} ${user?.lastName || ""}`.trim()}
+        branchId={user?.branchId ? Number(user.branchId) : null}
+      />
       <div data-testid="hq-header">
         <h1 className="text-xl font-bold" data-testid="text-hq-title">HQ Genel Bakış</h1>
         <p className="text-sm text-muted-foreground">{data.branchStatus.total} şube</p>

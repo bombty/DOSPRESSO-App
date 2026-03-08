@@ -34,6 +34,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { useLocation } from "wouter";
+import { DobodyFlowMode } from "@/components/dobody-flow-mode";
 
 interface DeptDetail {
   key: string;
@@ -300,6 +301,12 @@ export default function CEOCommandCenter() {
 
   return (
     <div className="p-3 sm:p-4 space-y-4">
+      <DobodyFlowMode
+        userId={user?.id || ""}
+        userRole={user?.role || ""}
+        userName={`${user?.firstName || ""} ${user?.lastName || ""}`.trim()}
+        branchId={user?.branchId ? Number(user.branchId) : null}
+      />
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div className="flex items-center gap-3">
           <div>

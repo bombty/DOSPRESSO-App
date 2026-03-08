@@ -13,6 +13,8 @@ import { ROLE_LABELS, ALERT_TYPE_LABELS } from "@/lib/turkish-labels";
 import { useState } from "react";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { useLocation } from "wouter";
+import { DobodyFlowMode } from "@/components/dobody-flow-mode";
+import { useAuth } from "@/hooks/useAuth";
 import {
   TrendingUp,
   Building2,
@@ -851,6 +853,7 @@ function AIStrategist() {
 }
 
 export default function CGOCommandCenter() {
+  const { user } = useAuth();
   const { toast } = useToast();
 
   const { data, isLoading, refetch, isRefetching } = useQuery<CGOData>({
@@ -890,6 +893,12 @@ export default function CGOCommandCenter() {
 
   return (
     <div className="container mx-auto p-4 space-y-4">
+      <DobodyFlowMode
+        userId={user?.id || ""}
+        userRole={user?.role || ""}
+        userName={`${user?.firstName || ""} ${user?.lastName || ""}`.trim()}
+        branchId={user?.branchId ? Number(user.branchId) : null}
+      />
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div>
           <h1 className="text-xl font-bold flex items-center gap-2" data-testid="text-cgo-title">

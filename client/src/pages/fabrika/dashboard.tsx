@@ -35,6 +35,7 @@ import {
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip as RechartsTooltip, CartesianGrid } from "recharts";
 import logoUrl from "@assets/IMG_6637_1765138781125.png";
 import { DailyTaskPanel } from "@/components/daily-task-panel";
+import { DobodyFlowMode } from "@/components/dobody-flow-mode";
 
 interface DashboardStats {
   activeWorkers: number;
@@ -223,6 +224,12 @@ export default function FabrikaDashboard() {
       </div>
 
       <div className="container mx-auto p-3 space-y-3">
+        <DobodyFlowMode
+          userId={user?.id || ""}
+          userRole={user?.role || ""}
+          userName={`${user?.firstName || ""} ${user?.lastName || ""}`.trim()}
+          branchId={user?.branchId ? Number(user.branchId) : null}
+        />
 
       {loadingStats ? (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-2">

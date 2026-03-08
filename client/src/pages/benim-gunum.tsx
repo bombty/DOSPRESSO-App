@@ -26,6 +26,7 @@ import {
   ExternalLink,
 } from "lucide-react";
 import { DobodySuggestionList } from "@/components/dobody-suggestion-card";
+import { DobodyFlowMode } from "@/components/dobody-flow-mode";
 
 interface MyDayData {
   greeting: string;
@@ -129,6 +130,12 @@ export default function BenimGunum() {
 
   return (
     <div className="p-4 space-y-4 max-w-lg mx-auto overflow-y-auto h-full" data-testid="benim-gunum-page">
+      <DobodyFlowMode
+        userId={user?.id || ""}
+        userRole={user?.role || ""}
+        userName={`${user?.firstName || ""} ${user?.lastName || ""}`.trim()}
+        branchId={user?.branchId ? Number(user.branchId) : null}
+      />
       <div className="space-y-1" data-testid="greeting-section">
         <h1 className="text-2xl font-bold" data-testid="text-greeting">
           {data.greeting}, {data.user.firstName}!

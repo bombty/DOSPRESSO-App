@@ -14,6 +14,7 @@ import {
   MessageSquare,
 } from "lucide-react";
 import { DobodySuggestionList } from "@/components/dobody-suggestion-card";
+import { DobodyFlowMode } from "@/components/dobody-flow-mode";
 
 interface FranchiseSummaryData {
   branches: Array<{
@@ -74,6 +75,12 @@ export default function FranchiseOzet() {
 
   return (
     <div className="p-4 space-y-4 max-w-lg mx-auto overflow-y-auto h-full" data-testid="franchise-ozet-page">
+      <DobodyFlowMode
+        userId={user?.id || ""}
+        userRole={user?.role || ""}
+        userName={`${user?.firstName || ""} ${user?.lastName || ""}`.trim()}
+        branchId={user?.branchId ? Number(user.branchId) : null}
+      />
       <div data-testid="franchise-header">
         <h1 className="text-xl font-bold" data-testid="text-franchise-title">Franchise Özet</h1>
         <p className="text-sm text-muted-foreground">{data.totalBranches} şube</p>

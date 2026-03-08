@@ -15,6 +15,8 @@ import { QRScannerModal } from "@/components/qr-scanner-modal";
 import { GlobalAIAssistant } from "@/components/global-ai-assistant";
 import { PushPermissionBanner } from "@/components/push-permission";
 import { useAuth } from "@/hooks/useAuth";
+import { DobodyFlowProvider } from "@/contexts/dobody-flow-context";
+import { DobodyMiniBar } from "@/components/dobody-mini-bar";
 import { OfflineBanner } from "@/components/offline-banner";
 import { NetworkStatusProvider } from "@/hooks/useNetworkStatus";
 import { useLanguageSync } from "@/hooks/useLanguageSync";
@@ -555,6 +557,9 @@ function AppContent() {
         <Router />
       </main>
       
+      {/* Flow Mode Mini-Bar */}
+      <DobodyMiniBar />
+      
       {/* Bottom Navigation */}
       <BottomNav />
       
@@ -574,9 +579,11 @@ export default function App() {
         <ThemeProvider>
           <NetworkStatusProvider>
             <TooltipProvider>
-              <BreadcrumbProvider>
-                <AppContent />
-              </BreadcrumbProvider>
+              <DobodyFlowProvider>
+                <BreadcrumbProvider>
+                  <AppContent />
+                </BreadcrumbProvider>
+              </DobodyFlowProvider>
               <Toaster />
               <PushPermissionBanner />
             </TooltipProvider>
