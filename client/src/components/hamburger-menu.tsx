@@ -201,19 +201,22 @@ export function HamburgerMenu() {
 
         <ScrollArea className="h-[calc(100vh-100px)]">
           <div className="py-1">
-            <button
-              onClick={() => {
-                const homePath = user?.role === 'ceo' ? '/ceo-command-center' : user?.role === 'cgo' ? '/cgo-command-center' : '/';
-                handleNavigate(homePath);
-              }}
-              className="w-full flex items-center gap-3 px-4 py-2.5 text-sm hover-elevate transition-colors"
-              data-testid="menu-item-home"
-            >
-              <Home className="w-4 h-4 text-primary" />
-              <span className="font-medium">Ana Sayfa</span>
-            </button>
-
-            <div className="mx-3 my-1 border-t" />
+            {!isFlat && (
+              <>
+                <button
+                  onClick={() => {
+                    const homePath = user?.role === 'ceo' ? '/ceo-command-center' : user?.role === 'cgo' ? '/cgo-command-center' : '/';
+                    handleNavigate(homePath);
+                  }}
+                  className="w-full flex items-center gap-3 px-4 py-2.5 text-sm hover-elevate transition-colors"
+                  data-testid="menu-item-home"
+                >
+                  <Home className="w-4 h-4 text-primary" />
+                  <span className="font-medium">Ana Sayfa</span>
+                </button>
+                <div className="mx-3 my-1 border-t" />
+              </>
+            )}
 
             {isFlat ? (
               flatItems.map((item) => {
@@ -312,14 +315,16 @@ export function HamburgerMenu() {
 
             <div className="mx-3 my-1 border-t" />
 
-            <button
-              onClick={() => handleNavigate("/bildirimler")}
-              className="w-full flex items-center gap-3 px-4 py-2.5 text-sm hover-elevate transition-colors"
-              data-testid="menu-item-notifications"
-            >
-              <Bell className="w-4 h-4 text-muted-foreground" />
-              <span>İletişim Merkezi</span>
-            </button>
+            {!isFlat && (
+              <button
+                onClick={() => handleNavigate("/bildirimler")}
+                className="w-full flex items-center gap-3 px-4 py-2.5 text-sm hover-elevate transition-colors"
+                data-testid="menu-item-notifications-footer"
+              >
+                <Bell className="w-4 h-4 text-muted-foreground" />
+                <span>İletişim Merkezi</span>
+              </button>
+            )}
             <button
               onClick={() => handleNavigate(user ? `/personel/${user.id}` : "/login")}
               className="w-full flex items-center gap-3 px-4 py-2.5 text-sm hover-elevate transition-colors"
