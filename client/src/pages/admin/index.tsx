@@ -74,6 +74,7 @@ export default function AdminDashboard() {
     { icon: Image, label: "Banner Yönetimi", href: "/admin/bannerlar", color: "bg-pink-500/10" },
     { icon: Bot, label: "Yapay Zeka", href: "/admin/yapay-zeka", color: "bg-emerald-500/10" },
     { icon: BookOpen, label: "AI Bilgi Yönetimi", href: "/admin/ai-bilgi-yonetimi", color: "bg-indigo-500/10" },
+    { icon: Bot, label: "Mr. Dobody Avatarları", href: "/admin/dobody-avatarlar", color: "bg-violet-500/10" },
   ];
 
   const stats = [

@@ -14787,3 +14787,19 @@ export const insertScheduledOffSchema = createInsertSchema(scheduledOffs).omit({
 });
 export type InsertScheduledOff = z.infer<typeof insertScheduledOffSchema>;
 export type ScheduledOff = typeof scheduledOffs.$inferSelect;
+
+export const dobodyAvatars = pgTable("dobody_avatars", {
+  id: serial("id").primaryKey(),
+  imageUrl: text("image_url").notNull(),
+  label: text("label"),
+  category: text("category").default("general").notNull(),
+  isActive: boolean("is_active").default(true).notNull(),
+  sortOrder: integer("sort_order").default(0).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+export const insertDobodyAvatarSchema = createInsertSchema(dobodyAvatars).omit({
+  id: true,
+  createdAt: true,
+});
+export type InsertDobodyAvatar = z.infer<typeof insertDobodyAvatarSchema>;
+export type DobodyAvatar = typeof dobodyAvatars.$inferSelect;

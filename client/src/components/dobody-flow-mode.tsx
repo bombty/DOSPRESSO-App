@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Bot, CheckCircle2, Clock, Flame, Trophy, X } from "lucide-react";
 import { useDobodyFlow, type FlowTask } from "@/contexts/dobody-flow-context";
+import { useDobodyAvatar } from "@/hooks/use-dobody-avatar";
 
 interface DobodyFlowModeProps {
   userId: string | number;
@@ -39,6 +40,9 @@ export function DobodyFlowMode({ userId, userRole, userName, branchId }: DobodyF
     dismissFlow,
     setUserId,
   } = useDobodyFlow();
+
+  const greetingAvatarUrl = useDobodyAvatar("greeting");
+  const completionAvatarUrl = useDobodyAvatar("celebrating");
 
   const [showCompletion, setShowCompletion] = useState(false);
   const [userIdSet, setUserIdSet] = useState(false);
@@ -96,11 +100,17 @@ export function DobodyFlowMode({ userId, userRole, userName, branchId }: DobodyF
         <CardContent className="p-4">
           <div className="flex items-center gap-3 mb-3">
             <div className="relative flex-shrink-0">
-              <img
-                src="/mascot/dobody_5.png"
-                alt="Mr. Dobody"
-                className="w-12 h-12 rounded-full object-cover"
-              />
+              {completionAvatarUrl ? (
+                <img
+                  src={completionAvatarUrl}
+                  alt="Mr. Dobody"
+                  className="w-12 h-12 object-contain"
+                />
+              ) : (
+                <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center">
+                  <Bot className="w-6 h-6 text-muted-foreground" />
+                </div>
+              )}
             </div>
             <div className="flex-1 min-w-0">
               <h3 className="font-semibold text-base" data-testid="text-completion-title">
@@ -157,11 +167,17 @@ export function DobodyFlowMode({ userId, userRole, userName, branchId }: DobodyF
       <CardContent className="p-4">
         <div className="flex items-center gap-3 mb-3">
           <div className="relative flex-shrink-0">
-            <img
-              src="/mascot/dobody_0.png"
-              alt="Mr. Dobody"
-              className="w-12 h-12 rounded-full object-cover"
-            />
+            {greetingAvatarUrl ? (
+              <img
+                src={greetingAvatarUrl}
+                alt="Mr. Dobody"
+                className="w-12 h-12 object-contain"
+              />
+            ) : (
+              <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center">
+                <Bot className="w-6 h-6 text-muted-foreground" />
+              </div>
+            )}
           </div>
           <div className="flex-1 min-w-0">
             <h3 className="font-semibold text-base" data-testid="text-flow-greeting">

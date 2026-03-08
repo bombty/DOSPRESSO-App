@@ -21,6 +21,7 @@ import hqSummaryRoutes from "./routes/hq-summary";
 import coachSummaryRoutes from "./routes/coach-summary";
 import franchiseSummaryRoutes from "./routes/franchise-summary";
 import dobodyFlowRoutes from "./routes/dobody-flow";
+import dobodyAvatarRoutes from "./routes/dobody-avatars";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated, createKioskSession, isKioskAuthenticated, deleteKioskSession, updateKioskStation } from "./localAuth";
@@ -1048,6 +1049,7 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
   app.use(coachSummaryRoutes);
   app.use(franchiseSummaryRoutes);
   app.use(dobodyFlowRoutes);
+  app.use(dobodyAvatarRoutes);
   async function seedDashboardWidgetItems() {
     try {
       const existingWidgets = await db.select().from(dashboardWidgetItems);

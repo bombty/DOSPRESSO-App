@@ -1,15 +1,16 @@
 import { useState } from "react";
-
-const TOTAL_CHARACTERS = 49;
+import { Bot } from "lucide-react";
+import { useDobodyAvatar } from "@/hooks/use-dobody-avatar";
 
 interface MrDobodyProps {
   size?: number;
   className?: string;
   message?: string;
+  category?: string;
 }
 
-export function MrDobody({ size = 80, className = "", message }: MrDobodyProps) {
-  const [characterIndex] = useState(() => Math.floor(Math.random() * TOTAL_CHARACTERS));
+export function MrDobody({ size = 80, className = "", message, category }: MrDobodyProps) {
+  const avatarUrl = useDobodyAvatar(category);
   
   return (
     <div className={`flex flex-col items-center gap-1 ${className}`} data-testid="mascot-dobody">
@@ -20,20 +21,25 @@ export function MrDobody({ size = 80, className = "", message }: MrDobodyProps) 
         </div>
       )}
       <div 
-        className="rounded-full overflow-hidden bg-background border-2 border-border flex items-center justify-center"
+        className="flex items-center justify-center"
         style={{ width: size, height: size }}
       >
-        <img 
-          src={`/mascot/dobody_${characterIndex}.png`}
-          alt="Mr. Dobody"
-          className="object-cover scale-150"
-          style={{ 
-            width: size, 
-            height: size,
-            objectPosition: 'center 30%',
-          }}
-          data-testid="img-dobody"
-        />
+        {avatarUrl ? (
+          <img 
+            src={avatarUrl}
+            alt="Mr. Dobody"
+            className="object-contain"
+            style={{ 
+              width: size, 
+              height: size,
+            }}
+            data-testid="img-dobody"
+          />
+        ) : (
+          <div className="flex items-center justify-center rounded-full bg-muted border border-border" style={{ width: size, height: size }}>
+            <Bot className="text-muted-foreground" style={{ width: size * 0.5, height: size * 0.5 }} />
+          </div>
+        )}
       </div>
     </div>
   );
@@ -54,5 +60,5 @@ const GREETINGS = [
 
 export function MrDobodyGreeting({ size = 64, className = "" }: { size?: number; className?: string }) {
   const [greeting] = useState(() => GREETINGS[Math.floor(Math.random() * GREETINGS.length)]);
-  return <MrDobody size={size} className={className} message={greeting} />;
+  return <MrDobody size={size} className={className} message={greeting} category="greeting" />;
 }

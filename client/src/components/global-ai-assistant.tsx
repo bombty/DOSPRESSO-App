@@ -3,6 +3,7 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
+import { useDobodyAvatar } from "@/hooks/use-dobody-avatar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
@@ -15,7 +16,8 @@ import {
   Sparkles,
   RefreshCw,
   Lightbulb,
-  ExternalLink
+  ExternalLink,
+  Bot
 } from "lucide-react";
 
 interface Message {
@@ -378,20 +380,21 @@ function renderMarkdownContent(content: string, navigate: (path: string) => void
   return elements;
 }
 
-const DOG_POSES = [
-  '/images/dobody/pose_wave.png',
-  '/images/dobody/pose_happy.png',
-  '/images/dobody/pose_think.png',
-  '/images/dobody/pose_stand.png',
-  '/images/dobody/pose_confident.png',
-  '/images/dobody/pose_curious.png',
-];
-
 function DobodyIcon({ className, size = 24 }: { className?: string; size?: number }) {
-  const [poseUrl] = useState(() => DOG_POSES[Math.floor(Math.random() * DOG_POSES.length)]);
+  const avatarUrl = useDobodyAvatar();
+  if (!avatarUrl) {
+    return (
+      <div
+        className={`flex items-center justify-center rounded-full bg-muted ${className || ""}`}
+        style={{ width: size, height: size }}
+      >
+        <Bot className="text-muted-foreground" style={{ width: size * 0.5, height: size * 0.5 }} />
+      </div>
+    );
+  }
   return (
     <img
-      src={poseUrl}
+      src={avatarUrl}
       alt="Mr. Dobody"
       className={className}
       style={{ 

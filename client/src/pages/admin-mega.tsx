@@ -31,7 +31,8 @@ import {
   BookOpen,
   ListTodo,
   LayoutGrid,
-  Trash2
+  Trash2,
+  Bot
 } from "lucide-react";
 
 const AdminDashboard = lazy(() => import("./admin/index"));
@@ -68,6 +69,7 @@ const AdminEmployeeTypes = lazy(() => import("./admin-employee-types"));
 const AdminWidgetYonetimi = lazy(() => import("./admin/widget-yonetimi"));
 const AdminHeroWidgetEditor = lazy(() => import("./admin/widget-editor"));
 const AdminAIPolitikalari = lazy(() => import("./admin/ai-politikalari"));
+const AdminDobodyAvatarlar = lazy(() => import("./admin/dobody-avatarlar"));
 
 interface TabConfig {
   id: string;
@@ -362,6 +364,15 @@ const ADMIN_TABS: TabConfig[] = [
     icon: <Shield className="h-4 w-4" />,
     group: "sistem",
     component: AdminAIPolitikalari
+  },
+  {
+    id: "dobody-avatarlar",
+    label: "Mr. Dobody Avatars",
+    labelTr: "Mr. Dobody Avatarları",
+    icon: <Bot className="h-4 w-4" />,
+    permissionModule: "admin_panel",
+    group: "icerik",
+    component: AdminDobodyAvatarlar
   }
 ];
 
@@ -408,7 +419,8 @@ const TAB_URL_MAP: Record<string, string> = {
   "pin-yonetimi": "/admin/pin-yonetimi",
   "kalite-kriterleri": "/admin/kalite-kriterleri",
   "personel-tipleri": "/admin/personel-tipleri",
-  "ai-politikalari": "/admin/ai-politikalari"
+  "ai-politikalari": "/admin/ai-politikalari",
+  "dobody-avatarlar": "/admin/dobody-avatarlar"
 };
 
 function getTabFromUrl(pathname: string): string | null {
