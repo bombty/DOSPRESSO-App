@@ -96,6 +96,15 @@ The frontend uses React 18+ with TypeScript and Vite, employing Shadcn/ui (New Y
   - CGO Summary View: "Özet" tab for CGO/CEO with routing stats by role, outcome distribution, strategic suggestions, and escalation list.
   - Seed Endpoint: `POST /api/admin/seed-agent-routing` creates 15 default routing rules.
 
+- **Sprint 25 — Security Hardening** (completed):
+  - Helmet.js CSP: Full CSP directives enabled for all environments (not just production). Added `wss://*` for WebSocket, `unsafe-eval` for Vite HMR, `crossOriginResourcePolicy: "cross-origin"` for S3 assets.
+  - Security Headers: `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Strict-Transport-Security`, `Referrer-Policy: strict-origin-when-cross-origin`, `Permissions-Policy: camera=(), microphone=(), geolocation=()` — all active in every environment.
+  - Rate Limiting: Login-specific limiter (10/15min) on `/api/login`, password reset limiter (3/hour) on `/api/forgot-password`. Layered with existing account lockout (5 attempts → 15min lock) and general API limiter (100/min).
+  - Secure Cookies: Verified httpOnly=true, secure=production, sameSite=lax, maxAge=8h.
+  - Error Response Sanitization: Removed `error.message` from all catch blocks in `factory.ts` (7 endpoints), `data-management.ts` (3 endpoints), `admin.ts` (8 health-check responses). Internal errors now return generic Turkish messages without stack traces.
+  - Audit Logging: Added `agent_action_approve` and `agent_action_reject` event types to `server/routes/agent.ts` with full context (title, category, targetUserId, reason).
+  - Service Worker: Cache version bumped to `dospresso-v11`.
+
 ## External Dependencies
 - **OpenAI API**: AI-powered vision analysis, chat completions, embeddings, and summary generation.
 - **Replit Auth**: User authentication via OpenID Connect.

@@ -2240,7 +2240,7 @@ const router = Router();
         await db.select({ count: sql`1` }).from(users);
         checks.push({ name: 'Veritabanı Bağlantısı', status: 'ok', latency: Date.now() - dbStart });
       } catch (e: any) {
-        checks.push({ name: 'Veritabanı Bağlantısı', status: 'error', error: e.message });
+        checks.push({ name: 'Veritabanı Bağlantısı', status: 'error', error: 'Bağlantı hatası' });
       }
 
       // 2. Personel verileri
@@ -2249,7 +2249,7 @@ const router = Router();
         const empCount = await db.select({ count: sql`COUNT(*)` }).from(users);
         checks.push({ name: 'Personel Verileri', status: 'ok', latency: Date.now() - empStart });
       } catch (e: any) {
-        checks.push({ name: 'Personel Verileri', status: 'error', error: e.message });
+        checks.push({ name: 'Personel Verileri', status: 'error', error: 'Sorgu hatası' });
       }
 
       // 3. Şube verileri
@@ -2258,7 +2258,7 @@ const router = Router();
         const branchCount = await db.select({ count: sql`COUNT(*)` }).from(branches);
         checks.push({ name: 'Şube Verileri', status: 'ok', latency: Date.now() - branchStart });
       } catch (e: any) {
-        checks.push({ name: 'Şube Verileri', status: 'error', error: e.message });
+        checks.push({ name: 'Şube Verileri', status: 'error', error: 'Sorgu hatası' });
       }
 
       // 4. Ekipman verileri
@@ -2267,7 +2267,7 @@ const router = Router();
         const eqCount = await db.select({ count: sql`COUNT(*)` }).from(equipment);
         checks.push({ name: 'Ekipman Verileri', status: 'ok', latency: Date.now() - eqStart });
       } catch (e: any) {
-        checks.push({ name: 'Ekipman Verileri', status: 'error', error: e.message });
+        checks.push({ name: 'Ekipman Verileri', status: 'error', error: 'Sorgu hatası' });
       }
 
       // 5. Görev verileri
@@ -2276,7 +2276,7 @@ const router = Router();
         const taskCount = await db.select({ count: sql`COUNT(*)` }).from(tasks);
         checks.push({ name: 'Görev Verileri', status: 'ok', latency: Date.now() - taskStart });
       } catch (e: any) {
-        checks.push({ name: 'Görev Verileri', status: 'error', error: e.message });
+        checks.push({ name: 'Görev Verileri', status: 'error', error: 'Sorgu hatası' });
       }
 
       // 6. Mesai verileri
@@ -2285,7 +2285,7 @@ const router = Router();
         const attCount = await db.select({ count: sql`COUNT(*)` }).from(shiftAttendance);
         checks.push({ name: 'Mesai Verileri', status: 'ok', latency: Date.now() - attendanceStart });
       } catch (e: any) {
-        checks.push({ name: 'Mesai Verileri', status: 'error', error: e.message });
+        checks.push({ name: 'Mesai Verileri', status: 'error', error: 'Sorgu hatası' });
       }
 
       // 7. İzin bakiyeleri
@@ -2294,7 +2294,7 @@ const router = Router();
         const leaveCount = await db.select({ count: sql`COUNT(*)` }).from(employeeLeaves);
         checks.push({ name: 'İzin Bakiyeleri', status: 'ok', latency: Date.now() - leaveStart });
       } catch (e: any) {
-        checks.push({ name: 'İzin Bakiyeleri', status: 'error', error: e.message });
+        checks.push({ name: 'İzin Bakiyeleri', status: 'error', error: 'Sorgu hatası' });
       }
 
       // 8. Resmi tatiller
@@ -2303,7 +2303,7 @@ const router = Router();
         const holidayCount = await db.select({ count: sql`COUNT(*)` }).from(publicHolidays);
         checks.push({ name: 'Resmi Tatiller', status: 'ok', latency: Date.now() - holidayStart });
       } catch (e: any) {
-        checks.push({ name: 'Resmi Tatiller', status: 'error', error: e.message });
+        checks.push({ name: 'Resmi Tatiller', status: 'error', error: 'Sorgu hatası' });
       }
 
       const allOk = checks.every(c => c.status === 'ok');

@@ -38,7 +38,8 @@ router.post('/api/admin/export', isAuthenticated, async (req: Request, res: Resp
 
     res.json({ jobId, status: 'processing' });
   } catch (error: any) {
-    res.status(500).json({ error: 'Export başlatılamadı: ' + error.message });
+    console.error("Export error:", error);
+    res.status(500).json({ error: 'Export başlatılamadı' });
   }
 });
 
@@ -107,7 +108,8 @@ router.post('/api/admin/import', isAuthenticated, upload.single('file'), async (
 
     res.json({ jobId, status: 'validating' });
   } catch (error: any) {
-    res.status(500).json({ error: 'Import başlatılamadı: ' + error.message });
+    console.error("Import error:", error);
+    res.status(500).json({ error: 'Import başlatılamadı' });
   }
 });
 
@@ -144,7 +146,8 @@ router.post('/api/admin/import/validate', isAuthenticated, upload.single('file')
     const result = await validateImport(req.file.buffer);
     res.json(result);
   } catch (error: any) {
-    res.status(500).json({ error: 'Validasyon hatası: ' + error.message });
+    console.error("Validation error:", error);
+    res.status(500).json({ error: 'Dosya doğrulama hatası oluştu' });
   }
 });
 

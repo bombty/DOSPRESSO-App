@@ -5079,7 +5079,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
       });
     } catch (error: any) {
       console.error("Factory seed error:", error);
-      res.status(500).json({ message: "Seed data olusturulamadi: " + error.message });
+      res.status(500).json({ message: "Seed data oluşturulamadı" });
     }
   });
 
@@ -5174,7 +5174,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
       res.status(201).json(result);
     } catch (error: any) {
       console.error("Roasting log create error:", error);
-      res.status(500).json({ message: "Kavurma kaydı oluşturulamadı: " + error.message });
+      res.status(500).json({ message: "Kavurma kaydı oluşturulamadı" });
     }
   });
 
@@ -5301,7 +5301,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
       res.status(201).json(lot);
     } catch (error: any) {
       console.error("LOT create error:", error);
-      res.status(500).json({ message: "LOT oluşturulamadı: " + error.message });
+      res.status(500).json({ message: "LOT oluşturulamadı" });
     }
   });
 
@@ -5435,7 +5435,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
       res.status(201).json({ session, message: "Vardiya başlatıldı" });
     } catch (error: any) {
       console.error("Quick start error:", error);
-      res.status(500).json({ message: "Vardiya başlatılamadı: " + error.message });
+      res.status(500).json({ message: "Vardiya başlatılamadı" });
     }
   });
 
@@ -5550,10 +5550,10 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
       });
     } catch (error: any) {
       if (error.message?.startsWith('INSUFFICIENT_SEMI:')) {
-        return res.status(400).json({ message: error.message.replace('INSUFFICIENT_SEMI: ', '') });
+        return res.status(400).json({ message: "Yetersiz yarı mamul stoku" });
       }
       console.error("Quick complete error:", error);
-      res.status(500).json({ message: "Üretim kaydedilemedi: " + error.message });
+      res.status(500).json({ message: "Üretim kaydedilemedi" });
     }
   });
 
@@ -5603,7 +5603,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
       });
     } catch (error: any) {
       console.error("Quick end error:", error);
-      res.status(500).json({ message: "Vardiya sonlandırılamadı: " + error.message });
+      res.status(500).json({ message: "Vardiya sonlandırılamadı" });
     }
   });
 
@@ -5695,7 +5695,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
       });
     } catch (error: any) {
       console.error("Test seed error:", error);
-      res.status(500).json({ message: "Test seed data oluşturulamadı: " + error.message });
+      res.status(500).json({ message: "Test seed data oluşturulamadı" });
     }
   });
 

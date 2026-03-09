@@ -71,10 +71,6 @@ interface HQSummaryData {
 function StatusCard({ icon: Icon, label, value, color }: {
   icon: any; label: string; value: number; color: string;
 }) {
-  
-  if (isLoading) return <LoadingState />;
-  if (isError) return <ErrorState onRetry={refetch} />;
-
   return (
     <Card>
       <CardContent className="p-4 flex items-center gap-3">

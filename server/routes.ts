@@ -604,30 +604,29 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
 
 function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.delete(identifier); }
 
+  const isDev = process.env.NODE_ENV !== 'production';
+  const cspDirectives: Record<string, string[]> = {
+    defaultSrc: ["'self'"],
+    scriptSrc: ["'self'", "'unsafe-inline'", ...(isDev ? ["'unsafe-eval'"] : []), "https://cdnjs.cloudflare.com"],
+    styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+    fontSrc: ["'self'", "data:", "https://fonts.gstatic.com"],
+    imgSrc: ["'self'", "data:", "blob:", "https:", "http:"],
+    connectSrc: ["'self'", "https://api.openai.com", "https://*.replit.dev", "https://*.replit.app", ...(isDev ? ["wss://*"] : ["wss://*.replit.dev", "wss://*.replit.app"])],
+    objectSrc: ["'none'"],
+    frameSrc: ["'self'", "https://www.youtube.com"],
+    baseUri: ["'self'"],
+    formAction: ["'self'"],
+  };
   app.use(helmet({
-    contentSecurityPolicy: process.env.NODE_ENV === 'production' ? {
-      directives: {
-        defaultSrc: ["'self'"],
-        scriptSrc: ["'self'", "'unsafe-inline'"],
-        styleSrc: ["'self'", "'unsafe-inline'"],
-        imgSrc: ["'self'", "data:", "blob:", "https:", "http:"],
-        connectSrc: ["'self'", "https://api.openai.com", "https://*.replit.dev", "https://*.replit.app"],
-        fontSrc: ["'self'", "data:"],
-        objectSrc: ["'none'"],
-        frameSrc: ["'self'", "https://www.youtube.com"],
-        baseUri: ["'self'"],
-        formAction: ["'self'"],
-      },
-    } : false,
+    contentSecurityPolicy: { directives: cspDirectives },
     crossOriginEmbedderPolicy: false,
+    crossOriginResourcePolicy: { policy: "cross-origin" },
     referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
   }));
 
   app.use((req, res, next) => {
     res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
-    if (process.env.NODE_ENV === 'production') {
-      res.setHeader('X-Frame-Options', 'DENY');
-    }
+    res.setHeader('X-Frame-Options', 'DENY');
     next();
   });
 
@@ -691,9 +690,29 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
     validate: false,
   });
 
+  const loginLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 10,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: 'Çok fazla giriş denemesi. 15 dakika sonra tekrar deneyin.' },
+    validate: false,
+  });
+
+  const passwordResetLimiter = rateLimit({
+    windowMs: 60 * 60 * 1000,
+    max: 3,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: 'Şifre sıfırlama limiti aşıldı. 1 saat sonra tekrar deneyin.' },
+  });
+
   app.use('/api/', generalLimiter);
 
   app.use(auditMiddleware());
+
+  app.use('/api/login', loginLimiter);
+  app.use('/api/auth/forgot-password', passwordResetLimiter);
 
   await setupAuth(app, authLimiter);
 

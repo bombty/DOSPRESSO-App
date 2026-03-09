@@ -10,6 +10,7 @@ import { eq, desc, and, count, sql, gte, or, inArray, ne } from "drizzle-orm";
 import { runAgentAnalysis } from "../services/agent-engine";
 import { getEscalationHistory, resolveEscalation, getUnresolvedEscalations } from "../services/agent-escalation";
 import { getSchedulerStatus } from "../services/agent-scheduler";
+import { auditLog } from "../audit";
 
 const router = Router();
 
@@ -309,6 +310,14 @@ router.post("/api/agent/actions/:id/approve", isAuthenticated, async (req: any, 
       }
     }
 
+    await auditLog(req, {
+      eventType: "agent_action_approve",
+      action: "approve",
+      resource: "agent_pending_actions",
+      resourceId: String(actionId),
+      details: { title: action.title, category: action.category, targetUserId: action.targetUserId },
+    });
+
     res.json({ 
       message: "Öneri onaylandı", 
       actionId,
@@ -366,6 +375,14 @@ router.post("/api/agent/actions/:id/reject", isAuthenticated, async (req: any, r
         console.error("[Agent] Rejection pattern insert error:", rejErr);
       }
     }
+
+    await auditLog(req, {
+      eventType: "agent_action_reject",
+      action: "reject",
+      resource: "agent_pending_actions",
+      resourceId: String(actionId),
+      details: { title: action.title, category: action.category, targetUserId: action.targetUserId, reason: reason || null },
+    });
 
     res.json({ message: "Öneri reddedildi", actionId });
   } catch (error: any) {
