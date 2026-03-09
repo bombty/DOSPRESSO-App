@@ -3,6 +3,7 @@ import { z } from "zod";
 import { isHQRole, isBranchRole, aiAgentLogs } from "@shared/schema";
 import { computeBranchHealthScores } from "../services/branch-health-scoring";
 import { db } from "../db";
+import { isAuthenticated } from "../localAuth";
 
 const router = Router();
 
@@ -71,7 +72,7 @@ function buildFallback(report: Awaited<ReturnType<typeof computeBranchHealthScor
   };
 }
 
-router.get("/api/ai/ops-copilot/summary", async (req: any, res: any) => {
+router.get("/api/ai/ops-copilot/summary", isAuthenticated, async (req: any, res: any) => {
   const startTime = Date.now();
   const user = req.user;
   if (!user) return res.status(401).json({ message: "Giriş yapmanız gerekiyor" });

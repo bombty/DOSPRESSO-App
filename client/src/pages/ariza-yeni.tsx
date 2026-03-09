@@ -16,7 +16,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { AlertTriangle, ArrowLeft, Upload, Loader2, CheckCircle2, Circle, ClipboardList } from "lucide-react";
+import { AlertTriangle, ArrowLeft, Upload, Loader2, CheckCircle2, Circle, ClipboardList, AlertCircle } from "lucide-react";
 import type { Equipment, Branch, EquipmentTroubleshootingStep } from "@shared/schema";
 
 const faultReportSchema = z.object({
@@ -50,11 +50,11 @@ export default function NewFaultReport() {
   const urlParams = new URLSearchParams(searchString);
   const urlEquipmentId = urlParams.get("equipmentId");
 
-  const { data: branches = [] } = useQuery<Branch[]>({
+  const { data: branches = [], isLoading: branchesLoading, isError, refetch } = useQuery<Branch[]>({
     queryKey: ["/api/branches"],
   });
 
-  const { data: equipment = [] } = useQuery<Equipment[]>({
+  const { data: equipment = [], isLoading: equipmentLoading } = useQuery<Equipment[]>({
     queryKey: ["/api/equipment"],
   });
 
@@ -218,6 +218,25 @@ export default function NewFaultReport() {
       form.setValue("equipmentName", selectedEq.equipmentType || "");
     }
   }, [form.watch("equipmentId"), selectedEq, urlEquipmentId]);
+
+  if (branchesLoading || equipmentLoading) {
+    return (
+      <div className="flex items-center justify-center p-8">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div className="flex flex-col items-center justify-center p-8 text-center">
+        <AlertCircle className="h-12 w-12 text-destructive mb-4" />
+        <h3 className="text-lg font-semibold">Bir hata oluştu</h3>
+        <p className="text-muted-foreground mt-2">Veriler yüklenirken sorun oluştu.</p>
+        <Button onClick={() => refetch()} className="mt-4" data-testid="button-retry">Tekrar Dene</Button>
+      </div>
+    );
+  }
 
   return (
     <div className="grid grid-cols-1 gap-2 sm:gap-3 max-w-2xl mx-auto">

@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
@@ -24,6 +25,7 @@ import {
   TrendingUp,
   Building2,
   Target,
+  AlertCircle,
 } from "lucide-react";
 
 interface BranchStats {
@@ -64,9 +66,20 @@ const STATUS_COLORS = {
 };
 
 export default function CapaRaporlari() {
-  const { data: report, isLoading } = useQuery<ReportData>({
+  const { data: report, isLoading, isError, refetch } = useQuery<ReportData>({
     queryKey: ['/api/corrective-actions/reports/branch-performance'],
   });
+
+  if (isError) {
+    return (
+      <div className="flex flex-col items-center justify-center p-8 text-center">
+        <AlertCircle className="h-12 w-12 text-destructive mb-4" />
+        <h3 className="text-lg font-semibold">Bir hata oluştu</h3>
+        <p className="text-muted-foreground mt-2">Veriler yüklenirken sorun oluştu.</p>
+        <Button onClick={() => refetch()} className="mt-4" data-testid="button-retry">Tekrar Dene</Button>
+      </div>
+    );
+  }
 
   if (isLoading) {
     return (

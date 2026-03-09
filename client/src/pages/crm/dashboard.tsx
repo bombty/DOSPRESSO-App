@@ -25,6 +25,8 @@ import {
   Pie,
   Legend,
 } from "recharts";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 interface DashboardKpis {
   todayFeedbackCount: number;
@@ -87,6 +89,10 @@ const CATEGORY_COLORS: Record<string, string> = {
 };
 
 function StarRating({ rating }: { rating: number }) {
+  
+  if (isLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
+
   return (
     <div className="flex items-center gap-0.5">
       {[1, 2, 3, 4, 5].map((star) => (
@@ -116,7 +122,7 @@ function StatusBadge({ status }: { status: string }) {
 }
 
 export default function CRMDashboard() {
-  const { data, isLoading } = useQuery<DashboardData>({
+  const { data, isLoading, isError, refetch } = useQuery<DashboardData>({
     queryKey: ["/api/crm/dashboard-stats"],
   });
 

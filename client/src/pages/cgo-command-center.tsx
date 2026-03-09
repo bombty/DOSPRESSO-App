@@ -856,7 +856,7 @@ export default function CGOCommandCenter() {
   const { user } = useAuth();
   const { toast } = useToast();
 
-  const { data, isLoading, refetch, isRefetching } = useQuery<CGOData>({
+  const { data, isLoading, refetch, isRefetching, isError } = useQuery<CGOData>({
     queryKey: ['/api/cgo/command-center'],
     refetchInterval: 60000,
   });
@@ -875,6 +875,17 @@ export default function CGOCommandCenter() {
           <Skeleton className="h-64" />
           <Skeleton className="h-64" />
         </div>
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div className="flex flex-col items-center justify-center p-8 text-center">
+        <AlertCircle className="h-12 w-12 text-destructive mb-4" />
+        <h3 className="text-lg font-semibold">Bir hata oluştu</h3>
+        <p className="text-muted-foreground mt-2">Veriler yüklenirken sorun oluştu.</p>
+        <Button onClick={() => refetch()} className="mt-4" data-testid="button-retry">Tekrar Dene</Button>
       </div>
     );
   }

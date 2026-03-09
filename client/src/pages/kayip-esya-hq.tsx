@@ -9,6 +9,8 @@ import { Briefcase, PackageCheck, Building2, MapPin, User, Calendar, Phone, Cloc
 import { format } from "date-fns";
 import { tr } from "date-fns/locale";
 import type { LostFoundItem, Branch } from "@shared/schema";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 const STATUS_LABELS: Record<string, string> = {
   bulunan: "Bulunan",
@@ -27,6 +29,10 @@ type LostFoundItemEnriched = LostFoundItem & {
 };
 
 function ItemSkeleton() {
+  
+  if (isLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
+
   return (
     <Card className="animate-pulse">
       <CardContent className="p-3">
@@ -43,7 +49,7 @@ export default function KayipEsyaHQPage() {
   const [selectedStatus, setSelectedStatus] = useState<string>("all");
   const [selectedItem, setSelectedItem] = useState<LostFoundItemEnriched | null>(null);
 
-  const { data: items = [], isLoading } = useQuery<LostFoundItemEnriched[]>({
+  const { data: items = [], isLoading, isError, refetch } = useQuery<LostFoundItemEnriched[]>({
     queryKey: ["/api/lost-found/all"],
   });
 

@@ -25,6 +25,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { format } from "date-fns";
 import { tr } from "date-fns/locale";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 const CATEGORY_LABELS: Record<HQSupportCategoryType, string> = {
   ariza: "Arıza",
@@ -73,7 +75,7 @@ export default function Destek() {
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
   const [selectedTicketId, setSelectedTicketId] = useState<number | null>(null);
 
-  const { data: tickets = [], isLoading } = useQuery<any[]>({
+  const { data: tickets = [], isLoading, isError, refetch } = useQuery<any[]>({
     queryKey: ["/api/hq-support/tickets"],
   });
 
@@ -158,6 +160,10 @@ export default function Destek() {
       </CardContent>
     </Card>
   );
+
+  
+  if (isLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
 
   return (
     <div className="p-4 pb-24 space-y-4">

@@ -41,6 +41,8 @@ import {
   type AuditTemplate,
   type AuditTemplateItem,
 } from "@shared/schema";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 // Template list with itemCount
 type AuditTemplateWithCount = AuditTemplate & { itemCount: number };
@@ -149,7 +151,7 @@ export default function DenetimSablonlariPage() {
   };
   
   // Use array-based query key for proper invalidation
-  const { data: templates = [], isLoading } = useQuery<AuditTemplateWithCount[]>({
+  const { data: templates = [], isLoading, isError, refetch } = useQuery<AuditTemplateWithCount[]>({
     queryKey: ['/api/audit-templates', filters],
     queryFn: async () => {
       const queryParams = new URLSearchParams(filters as Record<string, string>);
@@ -354,6 +356,10 @@ export default function DenetimSablonlariPage() {
   if (isLoading) {
     return <div className="flex items-center justify-center h-full">Yükleniyor...</div>;
   }
+
+  
+  if (isLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
 
   return (
     <div className="flex flex-col gap-3 sm:gap-4">

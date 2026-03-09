@@ -50,6 +50,8 @@ import { format } from "date-fns";
 import { tr } from "date-fns/locale";
 import { ObjectUploader } from "@/components/ObjectUploader";
 import { Upload, ImageIcon } from "lucide-react";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 interface Feedback {
   id: number;
@@ -201,7 +203,7 @@ export default function MisafirMemnuniyeti() {
     return params.toString();
   };
 
-  const { data: feedbacks = [], isLoading } = useQuery<Feedback[]>({
+  const { data: feedbacks = [], isLoading, isError, refetch } = useQuery<Feedback[]>({
     queryKey: ['/api/customer-feedback', filters.status, filters.source, filters.branchId, filters.priority, filters.suspicious, filters.feedbackType, filters.requiresContact],
     queryFn: async () => {
       const params = buildQueryParams();
@@ -401,6 +403,10 @@ export default function MisafirMemnuniyeti() {
       </CardContent>
     </Card>
   );
+
+  
+  if (isLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
 
   return (
     <div className="p-4 space-y-4">

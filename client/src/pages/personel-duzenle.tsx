@@ -39,6 +39,8 @@ import { isHQRole } from "@shared/schema";
 import { ObjectUploader } from "@/components/ObjectUploader";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { ROLE_LABELS } from "@/lib/turkish-labels";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 const employeeFormSchema = z.object({
   profileImageUrl: z.string().optional(),
@@ -86,7 +88,7 @@ export default function PersonelDuzenle() {
   const { toast } = useToast();
   const [, navigate] = useLocation();
 
-  const { data: employee, isLoading: employeeLoading } = useQuery<UserType>({
+  const { data: employee, isLoading: employeeLoading, isError, refetch } = useQuery<UserType>({
     queryKey: ["/api/personnel", id],
     queryFn: async () => {
       const response = await fetch(`/api/personnel/${id}`);
@@ -208,7 +210,11 @@ export default function PersonelDuzenle() {
   const canManage = currentUser && (isHQRole(currentUser.role as any) || currentUser.role === "admin");
 
   if (!canManage) {
-    return (
+    
+  if (employeeLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
+
+  return (
       <div className="flex flex-col gap-4 p-4">
         <Card className="p-8 text-center">
           <p className="text-lg font-medium">Yetkisiz Erişim</p>

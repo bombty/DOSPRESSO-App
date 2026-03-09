@@ -17,6 +17,8 @@ import {
   Package, Eye, ThumbsUp, Loader2, FileText, Search,
   Play, Send, QrCode, User, Filter
 } from "lucide-react";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 interface StockCount {
   id: number;
@@ -96,7 +98,7 @@ export default function StokSayimPage() {
   const isManager = user?.role === "admin" || user?.role === "fabrika_mudur";
   const canRequest = user?.role === "ceo" || user?.role === "cgo" || user?.role === "satinalma" || user?.role === "admin";
 
-  const { data: counts = [], isLoading } = useQuery<StockCount[]>({
+  const { data: counts = [], isLoading, isError, refetch } = useQuery<StockCount[]>({
     queryKey: ["/api/factory/stock-counts"],
   });
 
@@ -141,7 +143,11 @@ export default function StokSayimPage() {
   const historyCounts = counts.filter(c => c.status === "completed" || c.status === "approved");
 
   if (isLoading) {
-    return (
+    
+  if (isLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
+
+  return (
       <div className="flex items-center justify-center py-12">
         <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
       </div>

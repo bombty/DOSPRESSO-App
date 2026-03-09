@@ -20,6 +20,8 @@ import { format } from "date-fns";
 import { tr } from "date-fns/locale";
 import ReactMarkdown from "react-markdown";
 import rehypeSanitize from "rehype-sanitize";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 export default function ContentManagement() {
   const { toast } = useToast();
@@ -29,7 +31,7 @@ export default function ContentManagement() {
   const { deleteState, requestDelete, cancelDelete, confirmDelete } = useConfirmDelete();
 
   // Fetch all content
-  const { data: contents = [], isLoading } = useQuery<PageContent[]>({
+  const { data: contents = [], isLoading, isError, refetch } = useQuery<PageContent[]>({
     queryKey: ["/api/admin/page-content"],
     staleTime: 2 * 60 * 1000, // 2 minutes
   });
@@ -116,6 +118,10 @@ export default function ContentManagement() {
       publishedAt: content.publishedAt ? new Date(content.publishedAt).toISOString() : null,
     });
   };
+
+  
+  if (isLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
 
   return (
     <div className="container px-3 sm:px-4 py-4 sm:py-6">

@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useState } from "react";
-import { ArrowLeft, Send, MessageSquare } from "lucide-react";
+import { ArrowLeft, Send, MessageSquare, Loader2, AlertCircle } from "lucide-react";
 import { useLocation } from "wouter";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 
@@ -24,14 +24,16 @@ export default function BranchFeedback() {
   const [message, setMessage] = useState("");
 
   // Get user's branch
-  const { data: user } = useQuery<{ branchId?: number }>({ queryKey: ["/api/user"] });
+  const { data: user, isLoading: userLoading, isError, refetch } = useQuery<{ branchId?: number }>({ queryKey: ["/api/user"] });
   const branchId = user?.branchId;
 
   // Fetch feedbacks
-  const { data: feedbacks = [] } = useQuery<Feedback[]>({
+  const { data: feedbacks = [], isLoading: feedbacksLoading } = useQuery<Feedback[]>({
     queryKey: ["/api/feedback", branchId],
     enabled: !!branchId,
   });
+
+  const isLoading = userLoading || feedbacksLoading;
 
   // Send feedback mutation
   const { mutate: sendFeedback, isPending } = useMutation({
@@ -64,6 +66,25 @@ export default function BranchFeedback() {
     okundu: "bg-primary/10 text-primary",
     yanıtlandı: "bg-success/10 text-success",
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center p-8">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div className="flex flex-col items-center justify-center p-8 text-center">
+        <AlertCircle className="h-12 w-12 text-destructive mb-4" />
+        <h3 className="text-lg font-semibold">Bir hata oluştu</h3>
+        <p className="text-muted-foreground mt-2">Veriler yüklenirken sorun oluştu.</p>
+        <Button onClick={() => refetch()} className="mt-4" data-testid="button-retry">Tekrar Dene</Button>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-3 sm:gap-4 gap-2 sm:gap-3 p-3">

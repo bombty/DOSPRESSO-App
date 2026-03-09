@@ -47,6 +47,8 @@ import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isToday
 import { tr } from "date-fns/locale";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Trash2 } from "lucide-react";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 const statusConfig: Record<string, { label: string; color: string; bgColor: string }> = {
   todo: { label: "Yapılacak", color: "text-slate-600", bgColor: "bg-slate-100 dark:bg-slate-800" },
@@ -72,6 +74,10 @@ const priorityColors: Record<string, string> = {
 
 function DroppableColumn({ id, children, status }: { id: string; children: React.ReactNode; status: string }) {
   const { setNodeRef, isOver } = useDroppable({ id });
+  
+  if (isLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
+
   return (
     <div 
       ref={setNodeRef}
@@ -131,7 +137,7 @@ export default function ProjeDetay() {
     useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 5 } })
   );
 
-  const { data: project, isLoading } = useQuery<any>({
+  const { data: project, isLoading, isError, refetch } = useQuery<any>({
     queryKey: ["/api/projects", projectId],
     enabled: !!projectId,
   });

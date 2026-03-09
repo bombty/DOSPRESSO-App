@@ -30,6 +30,8 @@ import {
 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { ObjectUploader } from "@/components/ObjectUploader";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 type HubCategory = {
   id: number;
@@ -160,7 +162,11 @@ export default function AdminAcademy() {
   };
 
   if (!user || !isHQRole(user.role as UserRoleType)) {
-    return (
+    
+  if (isLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
+
+  return (
       <Card>
         <CardContent className="py-12">
           <div className="flex flex-col items-center justify-center text-center">
@@ -173,7 +179,7 @@ export default function AdminAcademy() {
     );
   }
 
-  const { data: hubCategories = [] } = useQuery<HubCategory[]>({
+  const { data: hubCategories = [], isError, refetch, isLoading } = useQuery<HubCategory[]>({
     queryKey: ["/api/academy/hub-categories"],
   });
 

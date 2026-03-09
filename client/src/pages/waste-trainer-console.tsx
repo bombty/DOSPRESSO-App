@@ -7,6 +7,8 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { GraduationCap, AlertTriangle, BookOpen, TrendingUp } from "lucide-react";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 export default function WasteTrainerConsole() {
   const { t } = useTranslation("common");
@@ -14,7 +16,7 @@ export default function WasteTrainerConsole() {
 
   const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
 
-  const { data: events = [], isLoading } = useQuery<any[]>({
+  const { data: events = [], isLoading, isError, refetch } = useQuery<any[]>({
     queryKey: ["/api/waste/events", "trainer"],
     queryFn: async () => {
       const res = await fetch(`/api/waste/events?from=${sevenDaysAgo}&responsibilityScope=prep_error`, { credentials: "include" });
@@ -61,6 +63,10 @@ export default function WasteTrainerConsole() {
       description: `${product} için eğitim atanabilir`,
     });
   }
+
+  
+  if (isLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
 
   return (
     <div className="space-y-4 p-4">

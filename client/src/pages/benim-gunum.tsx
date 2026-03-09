@@ -24,6 +24,7 @@ import {
   GraduationCap,
   User,
   ExternalLink,
+  AlertCircle,
 } from "lucide-react";
 import { DobodySuggestionList } from "@/components/dobody-suggestion-card";
 import { DobodyFlowMode } from "@/components/dobody-flow-mode";
@@ -94,7 +95,7 @@ export default function BenimGunum() {
   const { user } = useAuth();
   const { toast } = useToast();
 
-  const { data, isLoading } = useQuery<MyDayData>({
+  const { data, isLoading, isError, refetch } = useQuery<MyDayData>({
     queryKey: ["/api/my-day"],
   });
 
@@ -116,6 +117,17 @@ export default function BenimGunum() {
         <Skeleton className="h-32 w-full" />
         <Skeleton className="h-24 w-full" />
         <Skeleton className="h-24 w-full" />
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div className="flex flex-col items-center justify-center p-8 text-center">
+        <AlertCircle className="h-12 w-12 text-destructive mb-4" />
+        <h3 className="text-lg font-semibold">Bir hata oluştu</h3>
+        <p className="text-muted-foreground mt-2">Veriler yüklenirken sorun oluştu.</p>
+        <Button onClick={() => refetch()} className="mt-4" data-testid="button-retry">Tekrar Dene</Button>
       </div>
     );
   }

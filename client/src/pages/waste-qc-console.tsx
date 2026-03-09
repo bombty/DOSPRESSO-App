@@ -12,6 +12,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Boxes, AlertTriangle, Plus, Search, Factory } from "lucide-react";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 export default function WasteQCConsole() {
   const { t } = useTranslation("common");
@@ -24,7 +26,7 @@ export default function WasteQCConsole() {
 
   const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
 
-  const { data: lots = [], isLoading: lotsLoading } = useQuery<any[]>({
+  const { data: lots = [], isLoading: lotsLoading, isError, refetch } = useQuery<any[]>({
     queryKey: ["/api/waste/lots"],
   });
 
@@ -77,6 +79,10 @@ export default function WasteQCConsole() {
       toast({ title: "Hata", variant: "destructive" });
     }
   }
+
+  
+  if (lotsLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
 
   return (
     <div className="space-y-4 p-4">

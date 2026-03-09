@@ -10,6 +10,8 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { Loader2, Star, UserCheck, CalendarDays, Save, AlertTriangle, CheckCircle, Briefcase, Users, Clock, MessageSquare, Rocket, Sparkles, Wrench, SmilePlus } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 interface Employee {
   id: string;
@@ -66,7 +68,7 @@ export default function YoneticiDegerlendirme() {
   });
   const [notes, setNotes] = useState("");
 
-  const { data: employees = [], isLoading: employeesLoading } = useQuery<Employee[]>({
+  const { data: employees = [], isLoading: employeesLoading, isError, refetch } = useQuery<Employee[]>({
     queryKey: ["/api/users"],
   });
 
@@ -109,7 +111,11 @@ export default function YoneticiDegerlendirme() {
 
   const calculateOverall = () => {
     const values = Object.values(scores);
-    return (values.reduce((a, b) => a + b, 0) / values.length).toFixed(1);
+    
+  if (employeesLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
+
+  return (values.reduce((a, b) => a + b, 0) / values.length).toFixed(1);
   };
 
   const handleSubmit = () => {

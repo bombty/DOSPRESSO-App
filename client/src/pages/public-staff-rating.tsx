@@ -7,6 +7,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Star, Coffee, CheckCircle, AlertCircle, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 export default function PublicStaffRating() {
   const { token } = useParams<{ token: string }>();
@@ -22,7 +24,7 @@ export default function PublicStaffRating() {
   const [hoverRating, setHoverRating] = useState<{field: string, value: number} | null>(null);
 
   // Validate token and get staff info
-  const { data: tokenData, isLoading, error } = useQuery({
+  const { data: tokenData, isLoading, error, isError, refetch } = useQuery({
     queryKey: ["/api/public/staff-rating/validate", token],
     queryFn: async () => {
       const res = await fetch(`/api/public/staff-rating/validate/${token}`);
@@ -93,7 +95,11 @@ export default function PublicStaffRating() {
   ) => {
     const displayValue = hoverRating?.field === field ? hoverRating.value : value;
     
-    return (
+    
+  if (isLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
+
+  return (
       <div className="space-y-2">
         <Label className="text-sm font-medium">{label}</Label>
         <div className="flex gap-1">

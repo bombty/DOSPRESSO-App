@@ -14,6 +14,8 @@ import {
   Building2,
   AlertCircle,
 } from "lucide-react";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 interface HqActiveSession {
   session: {
@@ -39,10 +41,15 @@ export default function HqStaffDashboard() {
 
   useEffect(() => {
     const interval = setInterval(() => setNow(Date.now()), 30000);
-    return () => clearInterval(interval);
+
+  if (isLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
+
+
+  return () => clearInterval(interval);
   }, []);
 
-  const { data: sessions = [], isLoading, refetch } = useQuery<HqActiveSession[]>({
+  const { data: sessions = [], isLoading, refetch, isError } = useQuery<HqActiveSession[]>({
     queryKey: ["/api/hq/kiosk/active-sessions"],
     refetchInterval: 30000,
   });

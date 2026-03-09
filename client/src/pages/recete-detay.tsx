@@ -22,6 +22,8 @@ import {
   ArrowLeft, Clock, Coffee, ListCheck, Beaker, AlertTriangle, 
   Image, ChevronDown, ChevronUp, History, User, Star, Edit2, Plus, Trash2, Save, Loader2
 } from "lucide-react";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 type RecipeVersion = {
   id: number;
@@ -75,7 +77,7 @@ export default function ReceteDetay() {
   const [editAllergen, setEditAllergen] = useState("");
   const [editPhotoUrl, setEditPhotoUrl] = useState("");
 
-  const { data: recipe, isLoading } = useQuery({
+  const { data: recipe, isLoading, isError, refetch } = useQuery({
     queryKey: ["/api/academy/recipe", recipeId],
     queryFn: async () => {
       if (!recipeId) return null;
@@ -181,7 +183,11 @@ export default function ReceteDetay() {
   };
 
   if (isLoading) {
-    return (
+    
+  if (isLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
+
+  return (
       <div className="min-h-screen p-4">
         <ListSkeleton count={3} variant="card" showHeader />
       </div>

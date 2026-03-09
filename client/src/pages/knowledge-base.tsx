@@ -22,6 +22,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { insertKnowledgeBaseArticleSchema, type KnowledgeBaseArticle, type InsertKnowledgeBaseArticle, isHQRole } from "@shared/schema";
 import { BookOpen, Eye, Plus, CheckCircle, XCircle, Link2, Sparkles, Loader2 } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 export default function KnowledgeBase() {
   const { toast } = useToast();
@@ -39,7 +41,7 @@ export default function KnowledgeBase() {
     return null;
   }
 
-  const { data: articles, isLoading } = useQuery<KnowledgeBaseArticle[]>({
+  const { data: articles, isLoading, isError, refetch } = useQuery<KnowledgeBaseArticle[]>({
     queryKey: ["/api/knowledge-base"],
   });
 
@@ -171,6 +173,10 @@ export default function KnowledgeBase() {
       .sort((a, b) => b.score - a.score)
       .slice(0, 3); // En fazla 3 ilgili makale
   };
+
+  
+  if (isLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
 
   return (
     <div className="flex flex-col gap-3 sm:gap-4">

@@ -12,6 +12,8 @@ import {
   Clock, Star, Play, Sparkles, Award,
 } from "lucide-react";
 import { Link } from "wouter";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 const CAREER_LEVELS = [
   { id: 1, roleId: "stajyer", titleTr: "Stajyer", levelNumber: 1 },
@@ -39,7 +41,7 @@ export default function Academy() {
   const { user } = useAuth();
   const userIsHQ = isHQRole(user?.role as any) || user?.role === 'admin';
 
-  const { data: dailyRec, isLoading: dailyLoading } = useQuery<{
+  const { data: dailyRec, isLoading: dailyLoading, isError, refetch } = useQuery<{
     module: { id: number; title: string; category: string; duration: number; difficulty: string; level: string } | null;
     alreadyCompletedToday: boolean;
     totalCompleted: number;
@@ -106,6 +108,10 @@ export default function Academy() {
     : GraduationCap;
 
   const recentBadges = userBadges.slice(-5).reverse();
+
+  
+  if (dailyLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
 
   return (
     <div className="min-h-screen pb-20">

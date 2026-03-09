@@ -112,30 +112,62 @@ function getBackupBucketId(): string | null {
   return bucketId || null;
 }
 
-// Export table data to object storage with verification
+const LARGE_TABLE_BATCH_SIZE = 5000;
+const TABLE_EXPORT_TIMEOUT_MS = 60000;
+
 async function exportTableToStorage(tableName: string, backupId: string): Promise<{ success: boolean; rowCount: number; error?: string }> {
   try {
-    const result = await db.execute(sql.raw(`SELECT * FROM "${tableName}"`));
-    const rows = result.rows || [];
-    
     const bucketId = getBackupBucketId();
     if (!bucketId) {
       return { success: false, rowCount: 0, error: 'Object storage not configured' };
     }
-    
+
     const bucket = objectStorageClient.bucket(bucketId);
+
+    const countResult = await db.execute(sql.raw(`SELECT COUNT(*)::int as cnt FROM "${tableName}"`));
+    const totalRows = (countResult.rows[0] as any)?.cnt || 0;
+
+    if (totalRows > LARGE_TABLE_BATCH_SIZE) {
+      let allRows: any[] = [];
+      let offset = 0;
+      const startTime = Date.now();
+
+      while (offset < totalRows) {
+        if (Date.now() - startTime > TABLE_EXPORT_TIMEOUT_MS) {
+          console.warn(`⏱️ Tablo ${tableName} zaman aşımına uğradı (${totalRows} kayıt, ${offset} yedeklendi)`);
+          break;
+        }
+        const batchResult = await db.execute(sql.raw(`SELECT * FROM "${tableName}" LIMIT ${LARGE_TABLE_BATCH_SIZE} OFFSET ${offset}`));
+        allRows = allRows.concat(batchResult.rows || []);
+        offset += LARGE_TABLE_BATCH_SIZE;
+      }
+
+      const filePath = `.private/backups/${backupId}/${tableName}.json`;
+      const file = bucket.file(filePath);
+      const jsonData = JSON.stringify(allRows);
+      await file.save(jsonData, { contentType: 'application/json' });
+
+      const [exists] = await file.exists();
+      if (!exists) {
+        return { success: false, rowCount: 0, error: `Dosya kaydedildi fakat doğrulanamadı: ${filePath}` };
+      }
+
+      return { success: true, rowCount: allRows.length };
+    }
+
+    const result = await db.execute(sql.raw(`SELECT * FROM "${tableName}"`));
+    const rows = result.rows || [];
+
     const filePath = `.private/backups/${backupId}/${tableName}.json`;
     const file = bucket.file(filePath);
-    
-    const jsonData = JSON.stringify(rows, null, 2);
+    const jsonData = JSON.stringify(rows);
     await file.save(jsonData, { contentType: 'application/json' });
-    
-    // Verify file exists after save
+
     const [exists] = await file.exists();
     if (!exists) {
       return { success: false, rowCount: 0, error: `Dosya kaydedildi fakat doğrulanamadı: ${filePath}` };
     }
-    
+
     return { success: true, rowCount: rows.length };
   } catch (error: any) {
     return { success: false, rowCount: 0, error: error.message };

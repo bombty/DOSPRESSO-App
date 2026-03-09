@@ -19,6 +19,8 @@ import {
   Cpu,
   BarChart3,
   Filter,
+  Loader2,
+  AlertCircle,
 } from "lucide-react";
 
 interface AgentCenterStats {
@@ -70,6 +72,26 @@ export default function AgentMerkeziPage() {
   const user = userQuery.data;
   const isAdmin = user && ["admin", "ceo", "cgo"].includes(user.role);
   const stats = statsQuery.data;
+  const isLoading = userQuery.isLoading || statsQuery.isLoading;
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center p-8">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (statsQuery.isError) {
+    return (
+      <div className="flex flex-col items-center justify-center p-8 text-center">
+        <AlertCircle className="h-12 w-12 text-destructive mb-4" />
+        <h3 className="text-lg font-semibold">Bir hata oluştu</h3>
+        <p className="text-muted-foreground mt-2">Veriler yüklenirken sorun oluştu.</p>
+        <Button onClick={() => statsQuery.refetch()} className="mt-4" data-testid="button-retry">Tekrar Dene</Button>
+      </div>
+    );
+  }
 
   const tokenPercent = stats
     ? Math.min(

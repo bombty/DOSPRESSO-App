@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -11,6 +12,7 @@ import {
   Clock,
   Package,
   ShieldAlert,
+  AlertCircle,
 } from "lucide-react";
 import { SIGNAL_CODE_LABELS, SEVERITY_LABELS } from "@/lib/turkish-labels";
 
@@ -44,7 +46,7 @@ const SEVERITY_VARIANTS: Record<string, string> = {
 };
 
 export default function CoachKpiSignals() {
-  const { data: signals, isLoading } = useQuery<KpiSignal[]>({
+  const { data: signals, isLoading, isError, refetch } = useQuery<KpiSignal[]>({
     queryKey: ['/api/academy/kpi-signals'],
   });
 
@@ -54,6 +56,17 @@ export default function CoachKpiSignals() {
         <Skeleton className="h-12 w-full" />
         <Skeleton className="h-20 w-full" />
         <Skeleton className="h-20 w-full" />
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div className="flex flex-col items-center justify-center p-8 text-center">
+        <AlertCircle className="h-12 w-12 text-destructive mb-4" />
+        <h3 className="text-lg font-semibold">Bir hata oluştu</h3>
+        <p className="text-muted-foreground mt-2">Veriler yüklenirken sorun oluştu.</p>
+        <Button onClick={() => refetch()} className="mt-4" data-testid="button-retry">Tekrar Dene</Button>
       </div>
     );
   }

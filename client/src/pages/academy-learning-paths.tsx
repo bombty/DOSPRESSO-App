@@ -7,12 +7,14 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { ArrowLeft, Brain, Zap, Target, Loader, BookOpen } from "lucide-react";
 import { Link } from "wouter";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 export default function AcademyLearningPaths() {
   const { user } = useAuth();
   const userIsHQ = isHQRole(user?.role as any);
 
-  const { data: learningPaths = [], isLoading } = useQuery({
+  const { data: learningPaths = [], isLoading, isError, refetch } = useQuery({
     queryKey: ["/api/academy/learning-paths", user?.id],
     queryFn: async () => {
       if (!user?.id) return [];
@@ -55,6 +57,10 @@ export default function AcademyLearningPaths() {
       color: "from-green-100 to-green-50",
     },
   ];
+
+  
+  if (isLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
 
   return (
     <div className="max-w-5xl mx-auto px-3 sm:px-4 py-3 space-y-4">

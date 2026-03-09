@@ -52,6 +52,8 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 interface CariAccount {
   id: number;
@@ -101,7 +103,7 @@ export default function CariTakip() {
   const [isAddTransactionDialogOpen, setIsAddTransactionDialogOpen] = useState(false);
   const [selectedAccountId, setSelectedAccountId] = useState("");
 
-  const { data: stats, isLoading: statsLoading } = useQuery<DashboardStats>({
+  const { data: stats, isLoading: statsLoading, isError, refetch } = useQuery<DashboardStats>({
     queryKey: ['/api/cari/stats'],
   });
 
@@ -205,7 +207,11 @@ export default function CariTakip() {
   };
 
   if (statsLoading) {
-    return (
+    
+  if (statsLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
+
+  return (
       <div className="space-y-4">
         <Skeleton className="h-10 w-full" />
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

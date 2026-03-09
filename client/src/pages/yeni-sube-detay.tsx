@@ -68,6 +68,8 @@ import {
   Award,
 } from "lucide-react";
 import type { ProjectPhase, ProjectBudgetLine, ProjectVendor, ProjectRisk, PhaseSubTask, PhaseAssignment, ProcurementItem, ProcurementProposal } from "@shared/schema";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 const phaseFormSchema = z.object({
   title: z.string().min(1, "Faz adı zorunludur"),
@@ -329,6 +331,10 @@ function PhaseCard({ phase, onEdit, canEdit = true }: {
   const StatusIcon = phase.status === "completed" ? CheckCircle2 : 
                      phase.status === "in_progress" ? Clock : 
                      phase.status === "blocked" ? Ban : Clock;
+
+  
+  if (isLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
 
   return (
     <Card 
@@ -647,7 +653,7 @@ export default function YeniSubeDetay() {
     }
   }, [editingRisk, riskForm]);
 
-  const { data: project, isLoading } = useQuery<ProjectWithDetails>({
+  const { data: project, isLoading, isError, refetch } = useQuery<ProjectWithDetails>({
     queryKey: ["/api/new-shop-projects", projectId],
     enabled: !!projectId,
   });

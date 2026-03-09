@@ -48,6 +48,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import UrunKarti from "./urun-karti";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 interface InventoryItem {
   id: number;
@@ -122,7 +124,7 @@ export default function StokYonetimi() {
   const [movementType, setMovementType] = useState("");
 
   // Fetch stock movements for selected item
-  const { data: stockMovements } = useQuery<StockMovement[]>({
+  const { data: stockMovements, isError, refetch, isLoading } = useQuery<StockMovement[]>({
     queryKey: ['/api/inventory', selectedItem?.id, 'movements'],
     queryFn: async () => {
       if (!selectedItem) return [];
@@ -320,7 +322,11 @@ export default function StokYonetimi() {
   };
 
   if (selectedProductId) {
-    return (
+    
+  if (isLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
+
+  return (
       <UrunKarti
         productId={selectedProductId}
         onBack={() => setSelectedProductId(null)}

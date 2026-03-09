@@ -3,7 +3,8 @@ import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuth } from "@/hooks/useAuth";
-import { Banknote, CalendarDays, Clock, UserX } from "lucide-react";
+import { Banknote, CalendarDays, Clock, UserX, AlertCircle } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 const MONTHS = [
   { value: "1", label: "Ocak" }, { value: "2", label: "Şubat" }, { value: "3", label: "Mart" },
@@ -22,7 +23,7 @@ export default function BordromPage() {
   const [selectedMonth, setSelectedMonth] = useState(String(now.getMonth() + 1));
   const [selectedYear] = useState(String(now.getFullYear()));
 
-  const payrollQuery = useQuery<any[]>({
+  const payrollQuery = useQuery<any[], Error>({
     queryKey: ['/api/pdks-payroll/my', selectedYear, selectedMonth],
     queryFn: async () => {
       const res = await fetch(`/api/pdks-payroll/my?year=${selectedYear}&month=${selectedMonth}`, { credentials: 'include' });
@@ -48,7 +49,14 @@ export default function BordromPage() {
         </SelectContent>
       </Select>
 
-      {payrollQuery.isLoading ? (
+      {payrollQuery.isError ? (
+        <div className="flex flex-col items-center justify-center p-8 text-center">
+          <AlertCircle className="h-12 w-12 text-destructive mb-4" />
+          <h3 className="text-lg font-semibold">Bir hata oluştu</h3>
+          <p className="text-muted-foreground mt-2">Veriler yüklenirken sorun oluştu.</p>
+          <Button onClick={() => payrollQuery.refetch()} className="mt-4" data-testid="button-retry">Tekrar Dene</Button>
+        </div>
+      ) : payrollQuery.isLoading ? (
         <div className="p-8 text-center text-muted-foreground">Yükleniyor...</div>
       ) : !payroll ? (
         <Card>

@@ -19,6 +19,8 @@ import { DobodySuggestionList } from "@/components/dobody-suggestion-card";
 import { DobodyFlowMode } from "@/components/dobody-flow-mode";
 import { DobodyTaskAssignDialog } from "@/components/dobody-task-assign-dialog";
 import { Bot } from "lucide-react";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 interface CoachSummaryData {
   branches: Array<{ id: number; name: string }>;
@@ -49,12 +51,16 @@ export default function KoclukPaneli() {
   const { user } = useAuth();
   const [showAssignDialog, setShowAssignDialog] = useState(false);
 
-  const { data, isLoading } = useQuery<CoachSummaryData>({
+  const { data, isLoading, isError, refetch } = useQuery<CoachSummaryData>({
     queryKey: ["/api/coach-summary"],
   });
 
   if (isLoading) {
-    return (
+    
+  if (isLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
+
+  return (
       <div className="p-4 space-y-4 max-w-2xl mx-auto" data-testid="kocluk-paneli-loading">
         <Skeleton className="h-8 w-1/3" />
         <Skeleton className="h-32" />

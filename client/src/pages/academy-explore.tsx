@@ -34,6 +34,8 @@ import {
   Flower2,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 type StatusFilter = "all" | "not_started" | "in_progress" | "completed";
 
@@ -89,7 +91,7 @@ export default function AcademyExplore() {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
 
-  const { data: modules = [], isLoading: modulesLoading } = useQuery<any[]>({
+  const { data: modules = [], isLoading: modulesLoading, isError, refetch } = useQuery<any[]>({
     queryKey: ["/api/training/modules"],
   });
 
@@ -186,7 +188,11 @@ export default function AcademyExplore() {
   ];
 
   if (modulesLoading) {
-    return (
+    
+  if (modulesLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
+
+  return (
       <div className="p-4 space-y-4">
         <Skeleton className="h-10 w-full" />
         <div className="flex gap-2">

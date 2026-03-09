@@ -24,6 +24,8 @@ import {
   AlertTriangle
 } from "lucide-react";
 import { ConfirmDeleteDialog, useConfirmDelete } from "@/components/confirm-delete-dialog";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 interface WasteReason {
   id: number;
@@ -59,7 +61,7 @@ export default function AdminFabrikaFireSebepleri() {
   const [editingReason, setEditingReason] = useState<WasteReason | null>(null);
   const { deleteState, requestDelete, cancelDelete, confirmDelete } = useConfirmDelete();
 
-  const { data: reasons = [], isLoading, refetch } = useQuery<WasteReason[]>({
+  const { data: reasons = [], isLoading, refetch, isError } = useQuery<WasteReason[]>({
     queryKey: ['/api/factory/waste-reasons'],
   });
 
@@ -153,6 +155,10 @@ export default function AdminFabrikaFireSebepleri() {
       default: return 'bg-gray-600';
     }
   };
+
+  
+  if (isLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
 
   return (
     <div className="container mx-auto p-6 space-y-6">

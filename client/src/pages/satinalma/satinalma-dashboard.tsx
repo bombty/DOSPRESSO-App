@@ -49,6 +49,8 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { Html5Qrcode } from "html5-qrcode";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 interface DashboardData {
   totalSuppliers: number;
@@ -160,7 +162,12 @@ export default function SatinalmaDashboard() {
   const isHqRole = user && HQ_ROLES.includes(user.role);
 
   useEffect(() => {
-    return () => {
+
+  if (isLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
+
+
+  return () => {
       if (qrScannerRef.current) {
         qrScannerRef.current.stop().catch(() => {});
       }
@@ -272,7 +279,7 @@ export default function SatinalmaDashboard() {
     window.location.href = `/satinalma/stok-yonetimi?productId=${productId}`;
   };
 
-  const { data: branchesList } = useQuery<Branch[]>({
+  const { data: branchesList, isError, refetch, isLoading } = useQuery<Branch[]>({
     queryKey: ["/api/branches"],
     enabled: !!isHqRole,
   });

@@ -17,6 +17,8 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { ArrowLeft, Plus, Edit2, Trash2, Save, GripVertical, Loader2, Camera, CheckCircle2 } from "lucide-react";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 interface AuditTemplate {
   id: number;
@@ -104,7 +106,7 @@ export default function AdminKaliteDenetimSablonuDuzenle() {
     return <Redirect to="/" />;
   }
 
-  const { data: template, isLoading } = useQuery<AuditTemplate>({
+  const { data: template, isLoading, isError, refetch } = useQuery<AuditTemplate>({
     queryKey: ["/api/audit-templates", templateId],
     enabled: templateId > 0,
   });
@@ -238,7 +240,11 @@ export default function AdminKaliteDenetimSablonuDuzenle() {
   };
 
   if (isLoading) {
-    return (
+    
+  if (isLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
+
+  return (
       <div className="flex h-screen w-full items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
       </div>

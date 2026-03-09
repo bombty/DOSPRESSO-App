@@ -39,6 +39,8 @@ import {
 } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import type { Project, ProjectPhase, Branch } from "@shared/schema";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 const createProjectSchema = z.object({
   title: z.string().min(1, "Proje adı zorunludur"),
@@ -100,6 +102,10 @@ function PhaseStatusBadge({ status }: { status: string }) {
                status === "in_progress" ? Clock : 
                status === "blocked" ? Ban : Clock;
   
+  
+  if (isLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
+
   return (
     <Badge variant="outline" className={`${config.color} text-xs gap-1`}>
       <Icon className="h-3 w-3" />
@@ -167,7 +173,7 @@ export default function YeniSubeProjeler() {
     },
   });
 
-  const { data: projects, isLoading } = useQuery<NewShopProjectWithDetails[]>({
+  const { data: projects, isLoading, isError, refetch } = useQuery<NewShopProjectWithDetails[]>({
     queryKey: ["/api/new-shop-projects"],
   });
 

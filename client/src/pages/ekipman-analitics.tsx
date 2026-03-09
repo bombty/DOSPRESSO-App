@@ -2,17 +2,19 @@ import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
-import { TrendingUp, AlertTriangle, Zap, CheckCircle2, BarChart3 } from "lucide-react";
+import { TrendingUp, AlertTriangle, Zap, CheckCircle2, BarChart3, Loader2 } from "lucide-react";
 import { format } from "date-fns";
 import { tr } from "date-fns/locale";
 import type { EquipmentFault, Equipment } from "@shared/schema";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 interface EquipmentWithHealth extends Equipment {
   healthScore: number;
 }
 
 export default function EquipmentAnalytics() {
-  const { data: faults = [] } = useQuery<EquipmentFault[]>({
+  const { data: faults = [], isLoading: faultsLoading, isError, refetch } = useQuery<EquipmentFault[]>({
     queryKey: ["/api/faults"],
     queryFn: async () => {
       const res = await fetch("/api/faults", { credentials: "include" });
@@ -22,9 +24,11 @@ export default function EquipmentAnalytics() {
     },
   });
 
-  const { data: equipment = [] } = useQuery<EquipmentWithHealth[]>({
+  const { data: equipment = [], isLoading: equipmentLoading } = useQuery<EquipmentWithHealth[]>({
     queryKey: ["/api/equipment"],
   });
+
+  const isLoading = faultsLoading || equipmentLoading;
 
   const priorityMap: Record<string, string> = {
     critical: "kritik",
@@ -80,7 +84,11 @@ export default function EquipmentAnalytics() {
     const radius = outerRadius + 25;
     const x = cx + radius * Math.cos(-midAngle * RADIAN);
     const y = cy + radius * Math.sin(-midAngle * RADIAN);
-    return (
+    
+  if (faultsLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
+
+  return (
       <text x={x} y={y} fill="currentColor" textAnchor={x > cx ? "start" : "end"} dominantBaseline="central" fontSize={12}>
         {name}: {value}
       </text>
@@ -98,6 +106,14 @@ export default function EquipmentAnalytics() {
           }, 0) / resolvedFaults
       ) 
     : 0;
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center p-8">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-3 sm:gap-4">

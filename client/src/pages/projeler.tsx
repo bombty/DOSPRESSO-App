@@ -49,6 +49,8 @@ import {
 } from "lucide-react";
 import type { Project, ProjectPhase } from "@shared/schema";
 import { ROLE_LABELS } from "@/lib/turkish-labels";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 interface HQUser {
   id: string;
@@ -131,6 +133,10 @@ const newShopFormSchema = z.object({
 type NewShopFormValues = z.infer<typeof newShopFormSchema>;
 
 function PhaseSwimlanesPreview({ phases }: { phases: ProjectPhase[] }) {
+  
+  if (isLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
+
   return (
     <div className="flex items-center gap-1 mt-3">
       {phases.map((phase) => {
@@ -186,7 +192,7 @@ export default function Projeler() {
     },
   });
 
-  const { data: projects, isLoading } = useQuery<ProjectWithStats[]>({
+  const { data: projects, isLoading, isError, refetch } = useQuery<ProjectWithStats[]>({
     queryKey: ["/api/projects"],
   });
 

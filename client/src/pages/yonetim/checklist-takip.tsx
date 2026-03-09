@@ -17,6 +17,8 @@ import { AlertCircle, Search, CheckCircle2, Clock, XCircle, Eye, Star, Calendar,
 import { format } from "date-fns";
 import { tr } from "date-fns/locale";
 import type { ChecklistCompletion, User as UserType, Checklist, Branch } from "@shared/schema";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 type CompletionWithDetails = ChecklistCompletion & { 
   user: UserType; 
@@ -38,7 +40,11 @@ export default function ChecklistTrackingPage() {
 
   const hasAccess = user && (isHQRole(user.role) || ['branch_manager', 'supervisor', 'shift_lead'].includes(user.role));
   if (!hasAccess) {
-    return (
+    
+  if (isLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
+
+  return (
       <Card>
         <CardContent className="py-12">
           <div className="flex flex-col items-center justify-center text-center">
@@ -51,7 +57,7 @@ export default function ChecklistTrackingPage() {
     );
   }
 
-  const { data: branches = [] } = useQuery<Branch[]>({
+  const { data: branches = [], isError, refetch, isLoading } = useQuery<Branch[]>({
     queryKey: ['/api/branches'],
   });
 

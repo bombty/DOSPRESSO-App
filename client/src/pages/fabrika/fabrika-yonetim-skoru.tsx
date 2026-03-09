@@ -28,6 +28,8 @@ import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
 import { useState } from "react";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 const MONTHS = [
   "Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran",
@@ -39,6 +41,10 @@ function ScoreCircle({ score, label, icon: Icon, color }: { score: number; label
   const circumference = 2 * Math.PI * radius;
   const offset = circumference - (score / 100) * circumference;
   const scoreColor = score >= 80 ? "text-green-600" : score >= 50 ? "text-yellow-600" : "text-red-600";
+
+  
+  if (isLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
 
   return (
     <div className="flex flex-col items-center gap-1">
@@ -70,7 +76,7 @@ export default function FabrikaYonetimSkoru() {
   const isFabrikaMudur = user?.role === "fabrika_mudur" || user?.role === "admin";
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
 
-  const { data: scores, isLoading } = useQuery<any[]>({
+  const { data: scores, isLoading, isError, refetch } = useQuery<any[]>({
     queryKey: ["/api/factory-management-scores", selectedYear],
     queryFn: async () => {
       const res = await fetch(`/api/factory-management-scores?year=${selectedYear}`);

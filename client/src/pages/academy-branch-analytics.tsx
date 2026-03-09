@@ -7,12 +7,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line } from "recharts";
 import { ArrowLeft, Building2, TrendingUp, Users, Zap, Loader } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 export default function AcademyBranchAnalytics() {
   const { user } = useAuth();
 
   // Get branch performance data
-  const { data: branchMetrics = [], isLoading } = useQuery({
+  const { data: branchMetrics = [], isLoading, isError, refetch } = useQuery({
     queryKey: ["/api/academy/branch-analytics"],
     queryFn: async () => {
       const res = await fetch("/api/academy/branch-analytics", { credentials: "include" });
@@ -40,6 +42,10 @@ export default function AcademyBranchAnalytics() {
       completion: b.completionRate || 0,
       avgScore: b.avgScore || 0,
     }));
+
+  
+  if (isLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
 
   return (
     <div className="max-w-6xl mx-auto px-3 sm:px-4 py-3 space-y-4">

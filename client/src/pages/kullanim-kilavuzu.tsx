@@ -57,6 +57,8 @@ import {
   ArrowLeft,
   type LucideIcon,
 } from "lucide-react";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 interface RoleGuideContent {
   roleKey: string;
@@ -111,6 +113,10 @@ const CATEGORY_LABELS: Record<string, string> = {
 
 function RenderMarkdown({ content }: { content: string }) {
   const lines = content.split('\n');
+  
+  if (isLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
+
   return (
     <div className="prose prose-sm dark:prose-invert max-w-none space-y-2">
       {lines.map((line, i) => {
@@ -169,7 +175,7 @@ export default function KullanimKilavuzu() {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [selectedDoc, setSelectedDoc] = useState<GuideDoc | null>(null);
 
-  const { data: guide, isLoading } = useQuery<RoleGuideContent>({
+  const { data: guide, isLoading, isError, refetch } = useQuery<RoleGuideContent>({
     queryKey: ["/api/me/usage-guide"],
   });
 

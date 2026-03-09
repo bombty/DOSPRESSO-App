@@ -29,6 +29,8 @@ import {
   Camera
 } from "lucide-react";
 import { ConfirmDeleteDialog, useConfirmDelete } from "@/components/confirm-delete-dialog";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 interface QualitySpec {
   id: number;
@@ -106,7 +108,7 @@ export default function AdminFabrikaKaliteKriterleri() {
   const [selectedStation, setSelectedStation] = useState<number | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
 
-  const { data: specs = [], isLoading, refetch } = useQuery<QualitySpec[]>({
+  const { data: specs = [], isLoading, refetch, isError } = useQuery<QualitySpec[]>({
     queryKey: ['/api/factory/quality-specs'],
   });
 
@@ -247,6 +249,10 @@ export default function AdminFabrikaKaliteKriterleri() {
     const mt = MEASUREMENT_TYPES.find(t => t.value === type);
     return mt?.label || type;
   };
+
+  
+  if (isLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
 
   return (
     <div className="space-y-6 p-6">

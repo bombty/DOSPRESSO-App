@@ -26,6 +26,8 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Area, AreaChart } from "recharts";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 const rawMaterialSchema = z.object({
   code: z.string().min(1, "Kod gerekli"),
@@ -97,7 +99,7 @@ function formatPercent(value: string | number | null | undefined): string {
 
 function ProductCostDetail({ productId, onEditLabor, onEditRecipe, onDeleteIngredient, onAddIngredient }: { productId: number; onEditLabor?: (recipeId: number) => void; onEditRecipe?: (recipeId: number) => void; onDeleteIngredient?: (recipeId: number, ingredientId: number) => void; onAddIngredient?: (recipeId: number) => void }) {
   const { toast } = useToast();
-  const { data, isLoading } = useQuery<any>({
+  const { data, isLoading, isError, refetch } = useQuery<any>({
     queryKey: ['/api/product-costs', productId],
   });
 
@@ -177,7 +179,11 @@ function ProductCostDetail({ productId, onEditLabor, onEditRecipe, onDeleteIngre
   });
 
   if (isLoading) {
-    return (
+    
+  if (isLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
+
+  return (
       <div className="flex items-center justify-center py-8">
         <Loader2 className="w-6 h-6 animate-spin" />
       </div>

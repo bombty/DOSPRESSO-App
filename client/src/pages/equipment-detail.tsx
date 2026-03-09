@@ -29,6 +29,8 @@ import { ArrowLeft, Settings, Calendar, Wrench, AlertTriangle, MessageSquare, Do
 import { QRCodeSVG } from 'qrcode.react';
 import { format } from "date-fns";
 import { tr } from "date-fns/locale";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 interface EquipmentDetailResponse {
   id: number;
@@ -110,7 +112,7 @@ const TIMELINE_TYPE_COLORS: Record<string, string> = {
 
 function EquipmentTimeline({ equipmentId }: { equipmentId: number }) {
   const [, navigate] = useLocation();
-  const { data: timeline, isLoading } = useQuery<TimelineEvent[]>({
+  const { data: timeline, isLoading, isError, refetch } = useQuery<TimelineEvent[]>({
     queryKey: ['/api/equipment', equipmentId, 'timeline'],
     queryFn: async () => {
       const res = await fetch(`/api/equipment/${equipmentId}/timeline`);
@@ -121,7 +123,11 @@ function EquipmentTimeline({ equipmentId }: { equipmentId: number }) {
   });
 
   if (isLoading) {
-    return (
+    
+  if (isLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
+
+  return (
       <Card>
         <CardContent className="py-6">
           <div className="space-y-3">

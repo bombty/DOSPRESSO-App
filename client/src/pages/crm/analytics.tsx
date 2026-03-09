@@ -26,6 +26,8 @@ import {
   ResponsiveContainer,
   Cell,
 } from "recharts";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 interface DailyTrend {
   date: string;
@@ -72,7 +74,7 @@ export default function CRMAnalytics() {
   const queryParams: Record<string, any> = { days };
   if (branchId !== "all") queryParams.branchId = Number(branchId);
 
-  const { data, isLoading } = useQuery<AnalyticsData>({
+  const { data, isLoading, isError, refetch } = useQuery<AnalyticsData>({
     queryKey: ["/api/crm/analytics", queryParams],
   });
 
@@ -104,7 +106,11 @@ export default function CRMAnalytics() {
     });
 
   if (isLoading) {
-    return (
+    
+  if (isLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
+
+  return (
       <div className="space-y-4 p-4" data-testid="analytics-loading">
         <Skeleton className="h-10 w-full" />
         <Skeleton className="h-64 w-full" />

@@ -22,10 +22,12 @@ import {
 } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { isHQRole } from "@shared/schema";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 function KioskModeCard({ branchId }: { branchId: number }) {
   const { toast } = useToast();
-  const { data: kioskSettings } = useQuery<any>({
+  const { data: kioskSettings, isError, refetch, isLoading } = useQuery<any>({
     queryKey: ['/api/branches', branchId, 'kiosk', 'settings'],
     queryFn: async () => {
       const res = await fetch(`/api/branches/${branchId}/kiosk/settings`);
@@ -48,6 +50,10 @@ function KioskModeCard({ branchId }: { branchId: number }) {
   });
 
   const currentMode = kioskSettings?.kioskMode || 'pin';
+
+  
+  if (isLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
 
   return (
     <Card>

@@ -3,6 +3,7 @@ import { db } from '../db';
 import { sql } from 'drizzle-orm';
 import bcrypt from 'bcrypt';
 import { randomUUID } from 'crypto';
+import { isAuthenticated } from '../localAuth';
 
 const router = Router();
 
@@ -26,8 +27,13 @@ router.get('/api/setup/status', async (_req: Request, res: Response) => {
   }
 });
 
-router.post('/api/setup/initialize', async (req: Request, res: Response) => {
+router.post('/api/setup/initialize', isAuthenticated, async (req: Request, res: Response) => {
   try {
+    const user = req.user as any;
+    if (user?.role !== 'admin') {
+      return res.status(403).json({ error: 'Yalnızca admin bu işlemi yapabilir' });
+    }
+
     const userCountResult = await db.execute(sql`SELECT count(*)::int as cnt FROM users`);
     const userCount = (userCountResult.rows[0] as any)?.cnt || 0;
     if (userCount > 0) {

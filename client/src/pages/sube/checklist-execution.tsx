@@ -36,6 +36,8 @@ import {
   XCircle,
   CheckCircle
 } from "lucide-react";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 interface ChecklistTask {
   id: number;
@@ -106,7 +108,7 @@ export default function ChecklistExecutionPage() {
   const [showSubmitConfirm, setShowSubmitConfirm] = useState(false);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
 
-  const { data: completion, isLoading, refetch } = useQuery<ChecklistCompletion>({
+  const { data: completion, isLoading, refetch, isError } = useQuery<ChecklistCompletion>({
     queryKey: ['/api/checklist-completions', completionId],
     queryFn: async () => {
       const res = await fetch(`/api/checklist-completions/${completionId}`);
@@ -126,7 +128,11 @@ export default function ChecklistExecutionPage() {
       };
       updateElapsed();
       const interval = setInterval(updateElapsed, 1000);
-      return () => clearInterval(interval);
+      
+  if (isLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
+
+  return () => clearInterval(interval);
     }
   }, [completion?.startedAt]);
 

@@ -39,6 +39,8 @@ import { tr } from "date-fns/locale";
 import BannerEditor from "./banner-editor";
 import { ObjectUploader } from "@/components/ObjectUploader";
 import ReactMarkdown from "react-markdown";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 type AnnouncementWithUser = Announcement & {
   createdBy: { fullName: string };
@@ -87,7 +89,7 @@ export default function IcerikStudyosu() {
     return <Redirect to="/" />;
   }
 
-  const { data: announcements, isLoading: announcementsLoading } = useQuery<AnnouncementWithUser[]>({
+  const { data: announcements, isLoading: announcementsLoading, isError, refetch } = useQuery<AnnouncementWithUser[]>({
     queryKey: ['/api/announcements'],
   });
 
@@ -207,6 +209,10 @@ export default function IcerikStudyosu() {
   const publishedAnnouncements = announcements?.filter(a => a.publishedAt) || [];
   const carouselBanners = banners?.filter(b => b.isActive) || [];
   const draftBanners = banners?.filter(b => !b.isActive) || [];
+
+  
+  if (announcementsLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
 
   return (
     <div className="container mx-auto p-4 space-y-6">

@@ -39,6 +39,8 @@ import {
   Boxes,
   X
 } from "lucide-react";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 interface ProductionPlan {
   id: number;
@@ -175,7 +177,7 @@ export default function FabrikaUretimPlanlama() {
   const [loadingRecipeInfo, setLoadingRecipeInfo] = useState(false);
   const [historyFilter, setHistoryFilter] = useState({ search: '', status: 'all', dateFrom: '', dateTo: '' });
 
-  const { data: plans = [], isLoading, refetch } = useQuery<ProductionPlan[]>({
+  const { data: plans = [], isLoading, refetch, isError } = useQuery<ProductionPlan[]>({
     queryKey: ['/api/factory/production-plans'],
   });
 
@@ -416,6 +418,10 @@ export default function FabrikaUretimPlanlama() {
 
   const days = getDaysInMonth(currentDate);
   const weekDays = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'];
+
+  
+  if (isLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
 
   return (
     <div className="container mx-auto p-6 space-y-6">

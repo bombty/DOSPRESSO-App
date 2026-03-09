@@ -96,6 +96,8 @@ import {
   Cell,
   Legend,
 } from "recharts";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 type RiskStatus = 'healthy' | 'warning' | 'critical';
 type Trend = 'up' | 'down' | 'stable';
@@ -146,6 +148,10 @@ function getTrendIcon(trend: Trend) {
 function MetricCardComponent({ metric, testId }: { metric: MetricCard; testId?: string }) {
   const isClickable = !!metric.onClick;
   
+  
+  if (isLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
+
   return (
     <Card 
       className={isClickable ? "hover-elevate cursor-pointer" : ""} 
@@ -201,7 +207,7 @@ function AlertPanel({ alerts }: { alerts: Array<{ message: string; severity: Ris
 }
 
 function SatinalmaDashboard() {
-  const { data, isLoading } = useQuery<any>({
+  const { data, isLoading, isError, refetch } = useQuery<any>({
     queryKey: ['/api/hq-dashboard/satinalma'],
   });
 

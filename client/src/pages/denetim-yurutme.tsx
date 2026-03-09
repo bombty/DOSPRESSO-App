@@ -24,6 +24,8 @@ import { format } from "date-fns";
 import { tr } from "date-fns/locale";
 import jsPDF from "jspdf";
 import { createPDFWithHeader, addSection, addKeyValue, addTable, savePDF, checkPageBreak } from "@/lib/pdfHelper";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 type AuditTemplateItem = {
   id: number;
@@ -102,7 +104,7 @@ export default function DenetimYurutmePage() {
   const [viewMode, setViewMode] = useState<"wizard" | "list">("wizard");
 
   // Fetch audit instance
-  const { data: audit, isLoading } = useQuery<AuditInstance>({
+  const { data: audit, isLoading, isError, refetch } = useQuery<AuditInstance>({
     queryKey: ['/api/audit-instances', auditId],
     queryFn: () => fetch(`/api/audit-instances/${auditId}`, { credentials: 'include' }).then(res => {
       if (!res.ok) throw new Error('Denetim yüklenemedi');
@@ -379,7 +381,11 @@ export default function DenetimYurutmePage() {
   }
 
   if (!audit) {
-    return (
+    
+  if (isLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
+
+  return (
       <div className="flex flex-col items-center justify-center h-full grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
         <p className="text-lg text-muted-foreground">Denetim bulunamadı</p>
         <Link href="/denetimler">

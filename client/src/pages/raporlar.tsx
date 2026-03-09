@@ -27,6 +27,8 @@ import { addChartToPDF } from "@/lib/pdfHelper";
 import dospressoNavyLogo from "@assets/IMG_5044_1765665383658.jpeg";
 import { useAuth } from "@/hooks/useAuth";
 import { isHQRole, type UserRoleType } from "@shared/schema";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 interface Branch {
   id: number;
@@ -97,7 +99,7 @@ export default function Raporlar() {
   const qualityChartRef = useRef<HTMLDivElement>(null);
 
   // Fetch reports
-  const { data: reports = [], isLoading } = useQuery<DetailedReport[]>({
+  const { data: reports = [], isLoading, isError, refetch } = useQuery<DetailedReport[]>({
     queryKey: ["/api/detailed-reports"],
   });
 
@@ -565,6 +567,10 @@ export default function Raporlar() {
       description: "Raporlar Excel olarak indirildi",
     });
   };
+
+  
+  if (isLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
 
   return (
     <div className="container mx-auto p-4">

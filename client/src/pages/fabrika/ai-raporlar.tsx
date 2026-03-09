@@ -14,6 +14,8 @@ import {
   Loader2,
   Lightbulb
 } from "lucide-react";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 interface AIReport {
   type: string;
@@ -27,7 +29,7 @@ export default function FabrikaAIRaporlar() {
   const [activeTab, setActiveTab] = useState("rotation");
   const [period, setPeriod] = useState("weekly");
 
-  const { data: rotationReport, isLoading: loadingRotation, refetch: refetchRotation } = useQuery<AIReport>({
+  const { data: rotationReport, isLoading: loadingRotation, refetch: refetchRotation, isError } = useQuery<AIReport>({
     queryKey: ['/api/factory/ai-reports/rotation', period],
     queryFn: async () => {
       const res = await fetch(`/api/factory/ai-reports/rotation?period=${period}`, { credentials: 'include' });
@@ -72,7 +74,11 @@ export default function FabrikaAIRaporlar() {
 
   const renderReport = (report: AIReport | undefined, isLoading: boolean, type: string) => {
     if (isLoading) {
-      return (
+      
+  if (loadingRotation) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
+
+  return (
         <div className="flex items-center justify-center py-8">
           <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
         </div>

@@ -35,6 +35,8 @@ import {
   AlertTriangle,
   HelpCircle,
 } from "lucide-react";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 interface ManagementModule {
   id: number;
@@ -100,7 +102,7 @@ export default function AcademyContentManagement() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleteModuleId, setDeleteModuleId] = useState<number | null>(null);
 
-  const { data: modules, isLoading } = useQuery<ManagementModule[]>({
+  const { data: modules, isLoading, isError, refetch } = useQuery<ManagementModule[]>({
     queryKey: ["/api/academy/modules/management"],
   });
 
@@ -152,7 +154,12 @@ export default function AcademyContentManagement() {
   const categories = [...new Set((modules || []).map((m) => m.category).filter(Boolean))] as string[];
 
   if (isLoading) {
-    return (
+
+  if (isLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
+
+
+  return (
       <div className="space-y-4 p-4" data-testid="content-management-loading">
         <Skeleton className="h-12 w-full" />
         <Skeleton className="h-10 w-full" />

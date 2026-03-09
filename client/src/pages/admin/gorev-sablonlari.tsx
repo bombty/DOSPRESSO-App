@@ -15,6 +15,8 @@ import {
   ListTodo, Plus, Edit, Trash2, Save, Loader2, Filter
 } from "lucide-react";
 import { ConfirmDeleteDialog, useConfirmDelete } from "@/components/confirm-delete-dialog";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 interface TaskTemplate {
   id: number;
@@ -76,7 +78,7 @@ export default function GorevSablonlari() {
     ? "/api/admin/task-templates" 
     : `/api/admin/task-templates?role=${filterRole}`;
     
-  const { data: templates = [], isLoading } = useQuery<TaskTemplate[]>({
+  const { data: templates = [], isLoading, isError, refetch } = useQuery<TaskTemplate[]>({
     queryKey: [queryUrl],
   });
 
@@ -128,6 +130,10 @@ export default function GorevSablonlari() {
   });
 
   const totalActive = templates.filter(t => t.isActive).length;
+
+  
+  if (isLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
 
   return (
     <div className="space-y-3 p-3">

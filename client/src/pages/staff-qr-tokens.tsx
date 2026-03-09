@@ -13,6 +13,8 @@ import { ConfirmDeleteDialog, useConfirmDelete } from "@/components/confirm-dele
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { QRCodeSVG } from "qrcode.react";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 export default function StaffQrTokensPage() {
   const { toast } = useToast();
@@ -24,7 +26,7 @@ export default function StaffQrTokensPage() {
   const [selectedBranchId, setSelectedBranchId] = useState<string>("");
   const [selectedStaffId, setSelectedStaffId] = useState<string>("");
 
-  const { data: tokens, isLoading } = useQuery({
+  const { data: tokens, isLoading, isError, refetch } = useQuery({
     queryKey: ["/api/staff-qr-tokens"],
   });
 
@@ -86,6 +88,10 @@ export default function StaffQrTokensPage() {
   const filteredUsers = selectedBranchId
     ? (users as any[])?.filter((u: any) => u.branchId === parseInt(selectedBranchId) && u.isActive)
     : [];
+
+  
+  if (isLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
 
   return (
     <div className="container mx-auto py-6 space-y-6">

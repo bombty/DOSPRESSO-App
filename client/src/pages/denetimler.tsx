@@ -21,6 +21,8 @@ import {
   ClipboardList, Plus, FileText, CheckCircle2, Clock,
   Building2, User, Calendar
 } from "lucide-react";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 type AuditInstance = {
   id: number;
@@ -69,7 +71,7 @@ export default function DenetimlerPage() {
     ? `/api/audit-instances?${queryParams}` 
     : '/api/audit-instances';
 
-  const { data: audits = [], isLoading: auditsLoading } = useQuery<AuditInstance[]>({
+  const { data: audits = [], isLoading: auditsLoading, isError, refetch } = useQuery<AuditInstance[]>({
     queryKey: ['/api/audit-instances', filters],
     queryFn: () => fetch(queryUrl, { credentials: 'include' }).then(res => {
       if (!res.ok) throw new Error('Denetimler yüklenemedi');
@@ -134,6 +136,10 @@ export default function DenetimlerPage() {
   // Group audits by status
   const inProgressAudits = audits.filter(a => a.status === 'in_progress');
   const completedAudits = audits.filter(a => a.status === 'completed');
+
+  
+  if (auditsLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
 
   return (
     <div className="flex flex-col gap-3 sm:gap-4">

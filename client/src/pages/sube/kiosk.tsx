@@ -40,6 +40,8 @@ import {
   UserCheck
 } from "lucide-react";
 import { Html5QrcodeScanner } from "html5-qrcode";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 type KioskStep = 'password' | 'select-user' | 'enter-pin' | 'working' | 'end-shift-summary' | 'qr-scan' | 'qr-action';
 
@@ -198,7 +200,11 @@ export default function BranchKiosk() {
         console.error("QR scanner init error:", e);
       }
     }, 200);
-    return () => {
+    
+  if (loadingStaff) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
+
+  return () => {
       clearTimeout(timer);
       if (qrScannerRef.current) {
         try { qrScannerRef.current.clear(); } catch {}
@@ -291,7 +297,7 @@ export default function BranchKiosk() {
     }
   };
 
-  const { data: staffList = [], isLoading: loadingStaff, refetch: refetchStaff } = useQuery<StaffMember[]>({
+  const { data: staffList = [], isLoading: loadingStaff, refetch: refetchStaff, isError } = useQuery<StaffMember[]>({
     queryKey: ['/api/branches', branchId, 'kiosk', 'staff'],
     queryFn: async () => {
       const res = await fetch(`/api/branches/${branchId}/kiosk/staff`);

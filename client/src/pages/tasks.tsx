@@ -24,6 +24,8 @@ import { QuickTaskModal } from "@/components/quick-task-modal";
 import { type Task, type Branch, type User, isHQRole as checkIsHQRole, type TaskStatus, type TaskPriority, hasPermission, type UserRoleType } from "@shared/schema";
 import { Check, Clock, AlertCircle, CheckCircle2, PlayCircle, Search, X, Calendar, ChevronDown, Filter, XCircle, ArrowUp, ArrowDown, Eye, EyeOff, Building2, Send, Star, BarChart3 } from "lucide-react";
 import { format } from "date-fns";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 export default function Tasks() {
   const { user } = useAuth();
@@ -61,7 +63,7 @@ export default function Tasks() {
   const [selectedArchiveIds, setSelectedArchiveIds] = useState<number[]>([]);
   const [showCompleted, setShowCompleted] = useState(false);
 
-  const { data: tasks, isLoading } = useQuery<Task[]>({
+  const { data: tasks, isLoading, isError, refetch } = useQuery<Task[]>({
     queryKey: ["/api/tasks"],
   });
 
@@ -313,6 +315,10 @@ export default function Tasks() {
     
     return filtered;
   }, [tasks, searchQuery, activeTab, user, filterBranchId, filterAssigneeId, filterStatus, filterPriority, filterDateFrom, filterDateTo, sortConfig, assignmentFilter, showCompleted]);
+
+  
+  if (isLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
 
   return (
     <div className="max-w-6xl mx-auto px-3 sm:px-4 py-3 pb-24 space-y-4">

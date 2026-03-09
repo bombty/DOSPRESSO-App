@@ -36,6 +36,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { isHQRole } from "@shared/schema";
 import type { Checklist, ChecklistTask, UserRoleType } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 // Sortable Task Item Component
 function SortableTaskItem({ 
@@ -59,6 +61,10 @@ function SortableTaskItem({
     transition,
     opacity: isDragging ? 0.5 : 1,
   };
+
+  
+  if (isLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
 
   return (
     <div
@@ -111,7 +117,7 @@ export default function AdminChecklistManagement() {
   const [assignChecklist, setAssignChecklist] = useState<Checklist | null>(null);
   const [expandedChecklistId, setExpandedChecklistId] = useState<number | null>(null);
 
-  const { data: checklists, isLoading } = useQuery<Checklist[]>({
+  const { data: checklists, isLoading, isError, refetch } = useQuery<Checklist[]>({
     queryKey: ['/api/checklists'],
   });
 

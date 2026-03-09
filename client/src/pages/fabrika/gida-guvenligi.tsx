@@ -24,6 +24,8 @@ import {
   RefreshCw,
   TrendingUp,
 } from "lucide-react";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 interface HaccpRecord {
   id: number;
@@ -80,7 +82,7 @@ export default function GidaGuvenligi() {
     return qs ? `?${qs}` : "";
   };
 
-  const { data: records = [], isLoading: recordsLoading } = useQuery<HaccpRecord[]>({
+  const { data: records = [], isLoading: recordsLoading, isError, refetch } = useQuery<HaccpRecord[]>({
     queryKey: ['/api/factory/haccp', filterStation, filterResult],
     queryFn: async () => {
       const res = await fetch(`/api/factory/haccp${buildQueryString()}`, { credentials: 'include' });
@@ -172,6 +174,10 @@ export default function GidaGuvenligi() {
     "Allerjen Çapraz Kontaminasyon",
     "Son Ürün Sıcaklık Kontrolü",
   ];
+
+  
+  if (recordsLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
 
   return (
     <div className="container mx-auto p-6 space-y-6">

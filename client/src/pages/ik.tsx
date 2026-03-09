@@ -130,6 +130,8 @@ import { useLocation } from "wouter";
 import { CreateDisciplinaryDialog, CreateDisciplinaryDialogWithSelector } from "@/components/hr/DisciplinaryDialogs";
 import { EmployeeTermination, insertEmployeeTerminationSchema } from "@shared/schema";
 import { ROLE_LABELS } from "@/lib/turkish-labels";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 const warningTypeLabels: Record<string, string> = {
   verbal: "Sözlü Uyarı",
@@ -287,7 +289,7 @@ export default function IKPage() {
   const [newPassword, setNewPassword] = useState("");
 
   // Fetch branches
-  const { data: branches = [] } = useQuery<{ id: number; name: string }[]>({
+  const { data: branches = [], isError, refetch, isLoading } = useQuery<{ id: number; name: string }[]>({
     queryKey: ["/api/branches"],
   });
 
@@ -689,6 +691,10 @@ export default function IKPage() {
     };
     return labels[type] || type;
   };
+
+  
+  if (isLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
 
   return (
     <div className="w-full min-h-screen bg-background p-3 sm:p-4">

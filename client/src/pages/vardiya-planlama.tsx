@@ -18,6 +18,8 @@ import { Label } from "@/components/ui/label";
 import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, useDraggable, useDroppable, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Link } from "wouter";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 // Helper function to generate consistent color for each employee
 function getEmployeeColor(employeeId: string | number): string {
@@ -67,6 +69,10 @@ function DraggableShiftChip({ shift, employee, canEdit, onClick }: {
     e.preventDefault();
     if (!isDragging && shift?.id) onClick();
   };
+
+  
+  if (shiftsLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
 
   return (
     <div
@@ -164,7 +170,7 @@ export default function VardiyaPlanlama() {
   const canEditShifts = user?.role && editableRoles.includes(user.role);
   const isSupervisor = user?.role === 'supervisor' || user?.role === 'supervisor_buddy' || ['admin', 'hq_admin', 'hq_staff', 'destek'].includes(user?.role || '');
 
-  const { data: shifts, isLoading: shiftsLoading } = useQuery({
+  const { data: shifts, isLoading: shiftsLoading, isError, refetch } = useQuery({
     queryKey: ['/api/shifts'],
   });
 

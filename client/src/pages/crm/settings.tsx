@@ -3,6 +3,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ListSkeleton } from "@/components/list-skeleton";
 import { Clock, Bell, Users, Settings } from "lucide-react";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 interface FormSetting {
   id: number;
@@ -48,12 +50,16 @@ const ROLE_LABELS: Record<string, string> = {
 };
 
 export default function CRMSettings() {
-  const { data, isLoading } = useQuery<CRMSettingsData>({
+  const { data, isLoading, isError, refetch } = useQuery<CRMSettingsData>({
     queryKey: ["/api/crm/settings"],
   });
 
   if (isLoading) {
-    return (
+    
+  if (isLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
+
+  return (
       <div className="p-4">
         <ListSkeleton count={4} variant="card" showHeader />
       </div>

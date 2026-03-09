@@ -29,6 +29,8 @@ import {
 import logoUrl from "@assets/IMG_6637_1765138781125.png";
 import { ROLE_LABELS } from "@/lib/turkish-labels";
 import { DobodyFlowMode } from "@/components/dobody-flow-mode";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 interface BranchInfo {
   branchId: number;
@@ -92,7 +94,7 @@ export default function MerkezDashboard() {
   const { user } = useAuth();
   const [, setLocation] = useLocation();
 
-  const { data, isLoading, refetch } = useQuery<HQSummaryData>({
+  const { data, isLoading, refetch, isError } = useQuery<HQSummaryData>({
     queryKey: ["/api/hq-dashboard-summary"],
     refetchInterval: 60000,
   });
@@ -117,6 +119,10 @@ export default function MerkezDashboard() {
   const merkezIssues = criticalIssues.filter(i => i.area === 'merkez');
   const fabrikaIssues = criticalIssues.filter(i => i.area === 'fabrika');
   const subeIssues = criticalIssues.filter(i => i.area === 'sube');
+
+  
+  if (isLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
 
   return (
     <div className="min-h-screen bg-background">

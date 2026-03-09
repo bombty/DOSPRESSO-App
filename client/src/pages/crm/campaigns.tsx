@@ -16,6 +16,8 @@ import { z } from "zod";
 import { Plus, Megaphone, Calendar } from "lucide-react";
 import { format } from "date-fns";
 import { ListSkeleton } from "@/components/list-skeleton";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 const campaignFormSchema = z.object({
   title: z.string().min(1, "Başlık gerekli"),
@@ -91,7 +93,7 @@ export default function CRMCampaigns() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [isCreateOpen, setIsCreateOpen] = useState(false);
 
-  const { data: campaigns, isLoading } = useQuery<Campaign[]>({
+  const { data: campaigns, isLoading, isError, refetch } = useQuery<Campaign[]>({
     queryKey: ["/api/campaigns"],
   });
 
@@ -134,7 +136,11 @@ export default function CRMCampaigns() {
   );
 
   if (isLoading) {
-    return (
+    
+  if (isLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
+
+  return (
       <div className="p-4">
         <ListSkeleton count={4} variant="card" showHeader />
       </div>

@@ -25,6 +25,8 @@ import AcademyLearningPaths from "./academy-learning-paths";
 import AcademyAIAssistant from "./academy-ai-assistant";
 import AcademySupervisor from "./academy-supervisor";
 import AcademyTeamCompetitions from "./academy-team-competitions";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 type AcademySection = {
   key: string;
@@ -54,7 +56,7 @@ export default function AcademySuite() {
   const { toast } = useToast();
   const [activeSection, setActiveSection] = useState("general");
   
-  const { data: userPermissions = [] } = useQuery<any[]>({
+  const { data: userPermissions = [], isError, refetch, isLoading } = useQuery<any[]>({
     queryKey: ["/api/user/permissions"],
     queryFn: async () => {
       const res = await fetch("/api/user/permissions", { credentials: "include" });
@@ -95,7 +97,11 @@ export default function AcademySuite() {
   }, [visibleSections, activeSection]);
 
   if (!user) {
-    return (
+    
+  if (isLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
+
+  return (
       <div className="flex items-center justify-center min-h-screen">
         <Card className="w-full max-w-md">
           <CardHeader>

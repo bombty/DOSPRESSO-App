@@ -10,6 +10,8 @@ import { QrCode, Camera, CheckCircle, XCircle, Clock, MapPin, User, Smartphone }
 import type { ShiftAttendance } from "@shared/schema";
 import Uppy from "@uppy/core";
 import AwsS3 from "@uppy/aws-s3";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 export default function VardiyaCheckin() {
   const [method, setMethod] = useState<"qr" | "nfc" | null>(null);
@@ -26,12 +28,17 @@ export default function VardiyaCheckin() {
   const streamRef = useRef<MediaStream | null>(null);
   const nfcCardInputRef = useRef<HTMLInputElement | null>(null);
 
-  const { data: activeAttendance, isLoading } = useQuery<ShiftAttendance | null>({
+  const { data: activeAttendance, isLoading, isError, refetch } = useQuery<ShiftAttendance | null>({
     queryKey: ["/api/shift-attendance"],
   });
 
   useEffect(() => {
-    return () => {
+
+  if (isLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
+
+
+  return () => {
       if (scannerRef.current) {
         scannerRef.current.stop().catch(() => {});
       }

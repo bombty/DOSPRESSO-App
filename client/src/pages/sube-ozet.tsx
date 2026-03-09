@@ -24,6 +24,8 @@ import { DobodySuggestionList } from "@/components/dobody-suggestion-card";
 import { DobodyFlowMode } from "@/components/dobody-flow-mode";
 import { DobodyTaskAssignDialog } from "@/components/dobody-task-assign-dialog";
 import { Bot } from "lucide-react";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 interface BranchSummaryData {
   branch: { id: number; name: string };
@@ -71,6 +73,10 @@ function KPICard({ icon: Icon, label, value, sub, variant = "default" }: {
 }) {
   const borderClass = variant === "warning" ? "border-orange-500/30" :
     variant === "success" ? "border-green-500/30" : "";
+  
+  if (isLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
+
   return (
     <Card className={borderClass}>
       <CardContent className="p-3 flex flex-col items-center gap-1">
@@ -89,7 +95,7 @@ export default function SubeOzet() {
   const branchId = user?.branchId ? Number(user.branchId) : null;
   const [showAssignDialog, setShowAssignDialog] = useState(false);
 
-  const { data, isLoading } = useQuery<BranchSummaryData>({
+  const { data, isLoading, isError, refetch } = useQuery<BranchSummaryData>({
     queryKey: ["/api/branch-summary", branchId],
     queryFn: async () => {
       const res = await fetch(`/api/branch-summary/${branchId}`);

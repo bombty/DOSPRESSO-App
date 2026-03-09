@@ -23,6 +23,8 @@ import {
   Eye,
   EyeOff
 } from "lucide-react";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 export default function AdminEmailAyarlari() {
   const { user } = useAuth();
@@ -44,7 +46,7 @@ export default function AdminEmailAyarlari() {
     return <Redirect to="/" />;
   }
 
-  const { data: settings, isLoading } = useQuery<any>({
+  const { data: settings, isLoading, isError, refetch } = useQuery<any>({
     queryKey: ["/api/admin/email-settings"],
   });
 
@@ -112,6 +114,10 @@ export default function AdminEmailAyarlari() {
 
     saveMutation.mutate(formData);
   };
+
+  
+  if (isLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
 
   return (
     <div className="p-4 pb-24 space-y-4 max-w-2xl mx-auto">

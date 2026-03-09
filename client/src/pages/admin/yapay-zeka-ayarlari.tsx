@@ -32,6 +32,8 @@ import {
   Activity,
   Info
 } from "lucide-react";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 const AI_PROVIDERS = [
   { value: "openai", label: "OpenAI", icon: Sparkles, color: "text-green-500" },
@@ -132,7 +134,7 @@ export default function AdminYapayZekaAyarlari() {
     return <Redirect to="/" />;
   }
 
-  const { data: settings, isLoading } = useQuery<AISettings>({
+  const { data: settings, isLoading, isError, refetch } = useQuery<AISettings>({
     queryKey: ["/api/admin/ai-settings"],
   });
 
@@ -238,7 +240,11 @@ export default function AdminYapayZekaAyarlari() {
     const value = formData[field] as string || "";
     const isHidden = value === "********";
     
-    return (
+    
+  if (isLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
+
+  return (
       <div className="space-y-2">
         <Label>{label}</Label>
         <div className="flex gap-2">

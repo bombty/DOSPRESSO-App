@@ -52,6 +52,8 @@ import {
   Truck,
   ClipboardCheck
 } from "lucide-react";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 export default function MegaModulePage() {
   const [, setLocation] = useLocation();
@@ -59,7 +61,7 @@ export default function MegaModulePage() {
   const moduleId = params.moduleId as string;
   const { user } = useAuth();
 
-  const { data: menuResponse, isLoading } = useQuery<any>({
+  const { data: menuResponse, isLoading, isError, refetch } = useQuery<any>({
     queryKey: ["/api/me/menu"],
     enabled: !!user,
   });
@@ -414,7 +416,11 @@ export default function MegaModulePage() {
   } : allMenuSections.find((s: any) => s.id === moduleId);
 
   if (isLoading || isDashboardLoading) {
-    return (
+    
+  if (isLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
+
+  return (
       <div className="p-4 space-y-4">
         <ListSkeleton count={6} variant="card" showHeader />
       </div>

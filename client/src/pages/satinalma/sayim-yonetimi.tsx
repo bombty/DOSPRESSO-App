@@ -26,6 +26,8 @@ import {
   ScanLine, Hash, Boxes, Coffee, Croissant, Leaf, Droplets,
   Candy, Cookie, Salad, Wrench, Store, Truck,
 } from "lucide-react";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 const MONTHS = [
   "Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran",
@@ -100,7 +102,7 @@ export default function SayimYonetimi() {
   const [activeCategory, setActiveCategory] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
 
-  const { data: counts, isLoading } = useQuery<any[]>({
+  const { data: counts, isLoading, isError, refetch } = useQuery<any[]>({
     queryKey: ["/api/inventory-counts", filterYear],
     queryFn: async () => {
       const res = await fetch(`/api/inventory-counts?year=${filterYear}`);
@@ -220,6 +222,10 @@ export default function SayimYonetimi() {
   const activeCounts = counts?.filter(c => ["planned", "in_progress", "counting"].includes(c.status)) || [];
   const completedCounts = counts?.filter(c => ["completed", "review"].includes(c.status)) || [];
   const overdueCounts = counts?.filter(c => c.status === "overdue") || [];
+
+  
+  if (isLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
 
   return (
     <div className="space-y-3 p-3">

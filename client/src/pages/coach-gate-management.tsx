@@ -9,6 +9,7 @@ import {
   ShieldCheck,
   ChevronRight,
   Eye,
+  AlertCircle,
 } from "lucide-react";
 
 interface Gate {
@@ -30,7 +31,7 @@ interface Gate {
 export default function CoachGateManagement() {
   const { toast } = useToast();
 
-  const { data: gates, isLoading } = useQuery<Gate[]>({
+  const { data: gates, isLoading, isError, refetch } = useQuery<Gate[]>({
     queryKey: ['/api/academy/gates'],
   });
 
@@ -40,6 +41,17 @@ export default function CoachGateManagement() {
         <Skeleton className="h-12 w-full" />
         <Skeleton className="h-24 w-full" />
         <Skeleton className="h-24 w-full" />
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div className="flex flex-col items-center justify-center p-8 text-center">
+        <AlertCircle className="h-12 w-12 text-destructive mb-4" />
+        <h3 className="text-lg font-semibold">Bir hata oluştu</h3>
+        <p className="text-muted-foreground mt-2">Veriler yüklenirken sorun oluştu.</p>
+        <Button onClick={() => refetch()} className="mt-4" data-testid="button-retry">Tekrar Dene</Button>
       </div>
     );
   }

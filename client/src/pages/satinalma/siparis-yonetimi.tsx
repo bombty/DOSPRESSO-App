@@ -45,6 +45,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 interface PurchaseOrder {
   id: number;
@@ -104,7 +106,7 @@ const paymentMethodLabels: Record<string, string> = {
 };
 
 function PaymentStatusBadge({ orderId }: { orderId: number }) {
-  const { data: payments } = useQuery<PurchaseOrderPayment[]>({
+  const { data: payments, isError, refetch, isLoading } = useQuery<PurchaseOrderPayment[]>({
     queryKey: ["/api/purchase-order-payments", orderId],
     queryFn: async () => {
       const res = await fetch(`/api/purchase-order-payments?purchaseOrderId=${orderId}`, { credentials: "include" });
@@ -172,6 +174,10 @@ function PaymentDialog({ order, open, onOpenChange }: { order: PurchaseOrder; op
       status: "beklemede"
     });
   };
+
+  
+  if (isLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

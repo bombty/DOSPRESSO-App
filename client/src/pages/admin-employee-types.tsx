@@ -41,6 +41,7 @@ import {
   FileText,
   Building2,
   Loader2,
+  AlertCircle,
 } from "lucide-react";
 
 interface EmployeeType {
@@ -102,7 +103,7 @@ function EmployeeTypesTab() {
     allowedGroups: [] as string[],
   });
 
-  const { data: types = [], isLoading } = useQuery<EmployeeType[]>({
+  const { data: types = [], isLoading, isError, refetch } = useQuery<EmployeeType[]>({
     queryKey: ["/api/admin/employee-types"],
   });
 
@@ -200,6 +201,17 @@ function EmployeeTypesTab() {
     return (
       <div className="flex items-center justify-center py-12">
         <Loader2 className="animate-spin" />
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div className="flex flex-col items-center justify-center p-8 text-center">
+        <AlertCircle className="h-12 w-12 text-destructive mb-4" />
+        <h3 className="text-lg font-semibold">Bir hata oluştu</h3>
+        <p className="text-muted-foreground mt-2">Veriler yüklenirken sorun oluştu.</p>
+        <Button onClick={() => refetch()} className="mt-4" data-testid="button-retry">Tekrar Dene</Button>
       </div>
     );
   }

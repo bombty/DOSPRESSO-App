@@ -32,6 +32,8 @@ import {
   MessageSquare,
   X
 } from "lucide-react";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 interface TaskUser {
   id: string;
@@ -114,7 +116,7 @@ export default function ProjeGorevDetay() {
   const [newSubtask, setNewSubtask] = useState({ title: "", priority: "medium" });
   const [selectedDependsOnTaskId, setSelectedDependsOnTaskId] = useState("");
 
-  const { data: task, isLoading } = useQuery<TaskDetails>({
+  const { data: task, isLoading, isError, refetch } = useQuery<TaskDetails>({
     queryKey: ["/api/project-tasks", taskId],
     enabled: !!taskId,
   });
@@ -214,7 +216,11 @@ export default function ProjeGorevDetay() {
   };
 
   if (isLoading) {
-    return (
+    
+  if (isLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
+
+  return (
       <div className="p-4 space-y-4">
         <ListSkeleton count={4} variant="card" showHeader />
       </div>

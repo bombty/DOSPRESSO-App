@@ -41,6 +41,8 @@ import {
   Users
 } from "lucide-react";
 import { ObjectUploader } from "@/components/ObjectUploader";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 type KioskStep = 'select-user' | 'enter-pin' | 'select-station' | 'working' | 'stop-options' | 'production-entry' | 'end-shift-summary' | 'auto-logout' | 'fault-report';
 type BreakReason = 'mola' | 'yardim' | 'ozel_ihtiyac' | 'gorev_bitis' | 'vardiya_kapat';
@@ -122,7 +124,7 @@ export default function FactoryKiosk() {
   const [faultDescription, setFaultDescription] = useState('');
   const [faultStationId, setFaultStationId] = useState<number | null>(null);
 
-  const { data: staffList = [], isLoading: loadingStaff } = useQuery<StaffMember[]>({
+  const { data: staffList = [], isLoading: loadingStaff, isError, refetch } = useQuery<StaffMember[]>({
     queryKey: ['/api/factory/staff'],
   });
 
@@ -309,7 +311,11 @@ export default function FactoryKiosk() {
         });
       }, 1000);
     }
-    return () => clearInterval(interval);
+    
+  if (loadingStaff) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
+
+  return () => clearInterval(interval);
   }, [step]);
 
   useEffect(() => {

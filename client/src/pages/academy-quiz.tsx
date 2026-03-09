@@ -12,6 +12,8 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { ArrowLeft, CheckCircle, XCircle, Clock, Loader, ArrowRight, Zap, Lock, RefreshCw, Trophy, AlertTriangle, Eye, EyeOff, Timer, Shield, Flame, BookOpen, Star, TrendingUp } from "lucide-react";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 type AttemptInfo = {
   attempts: any[];
@@ -87,7 +89,7 @@ export default function AcademyQuiz() {
     }
   }, [isOnline, quizStarted, submitted, offlineWarningShown, toast]);
 
-  const { data: attemptInfo, isLoading: attemptsLoading } = useQuery<AttemptInfo>({
+  const { data: attemptInfo, isLoading: attemptsLoading, isError, refetch } = useQuery<AttemptInfo>({
     queryKey: [`/api/academy/quiz/${quizId}/attempts`],
     queryFn: async () => {
       const res = await fetch(`/api/academy/quiz/${quizId}/attempts`, { credentials: "include" });
@@ -249,7 +251,11 @@ export default function AcademyQuiz() {
       });
     }, 1000);
 
-    return () => clearInterval(interval);
+    
+  if (attemptsLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
+
+  return () => clearInterval(interval);
   }, [quizStarted, submitted, quiz.questions.length, doSubmit]);
 
   useEffect(() => {

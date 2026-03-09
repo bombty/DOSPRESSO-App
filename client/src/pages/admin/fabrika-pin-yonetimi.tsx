@@ -21,6 +21,8 @@ import {
   Trash2
 } from "lucide-react";
 import { ConfirmDeleteDialog, useConfirmDelete } from "@/components/confirm-delete-dialog";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 interface StaffUser {
   id: number;
@@ -48,7 +50,7 @@ export default function AdminFabrikaPinYonetimi() {
   const [newPin, setNewPin] = useState("");
   const [confirmPin, setConfirmPin] = useState("");
 
-  const { data: staff = [], isLoading: loadingStaff } = useQuery<StaffUser[]>({
+  const { data: staff = [], isLoading: loadingStaff, isError, refetch } = useQuery<StaffUser[]>({
     queryKey: ['/api/factory/staff'],
   });
 
@@ -184,6 +186,10 @@ export default function AdminFabrikaPinYonetimi() {
     };
     return roleMap[role] || role;
   };
+
+  
+  if (loadingStaff) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
 
   return (
     <div className="container mx-auto p-6 space-y-6">

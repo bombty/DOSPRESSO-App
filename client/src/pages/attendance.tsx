@@ -37,7 +37,7 @@ export default function AttendancePage() {
   const [uploadedPhotoUrl, setUploadedPhotoUrl] = useState<string | null>(null);
   const [photoQuota, setPhotoQuota] = useState({ remaining: 10, total: 10, used: 0 });
 
-  const { data: activeShift, isLoading: activeLoading } = useQuery<unknown>({
+  const { data: activeShift, isLoading: activeLoading, isError, refetch } = useQuery<unknown>({
     queryKey: ["/api/shift-attendance/active"],
     queryFn: async () => {
       try {
@@ -227,7 +227,14 @@ export default function AttendancePage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="w-full space-y-2 sm:space-y-3">
-            {activeLoading ? (
+            {isError ? (
+              <div className="flex flex-col items-center justify-center p-8 text-center">
+                <AlertCircle className="h-12 w-12 text-destructive mb-4" />
+                <h3 className="text-lg font-semibold">Bir hata oluştu</h3>
+                <p className="text-muted-foreground mt-2">Veriler yüklenirken sorun oluştu.</p>
+                <Button onClick={() => refetch()} className="mt-4" data-testid="button-retry">Tekrar Dene</Button>
+              </div>
+            ) : activeLoading ? (
               <ListSkeleton count={1} variant="row" />
             ) : activeShift ? (
               <>

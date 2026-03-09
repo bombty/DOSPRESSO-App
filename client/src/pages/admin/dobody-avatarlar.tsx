@@ -31,6 +31,8 @@ import {
   Users,
   Layers,
 } from "lucide-react";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 const CATEGORIES = [
   { value: "all", label: "Tümü" },
@@ -160,7 +162,7 @@ export default function AdminDobodyAvatarlar() {
     return <Redirect to="/" />;
   }
 
-  const { data: avatars = [], isLoading } = useQuery<DobodyAvatar[]>({
+  const { data: avatars = [], isLoading, isError, refetch } = useQuery<DobodyAvatar[]>({
     queryKey: ["/api/admin/dobody/avatars"],
   });
 
@@ -500,6 +502,10 @@ export default function AdminDobodyAvatarlar() {
       </div>
     </>
   );
+
+  
+  if (isLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
 
   return (
     <div className="p-4 pb-24 space-y-4">

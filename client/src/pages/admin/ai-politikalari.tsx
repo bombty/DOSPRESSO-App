@@ -38,6 +38,8 @@ import {
 } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Pencil, Trash2, Shield, Database, ScrollText, ChevronLeft, ChevronRight, Info } from "lucide-react";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 const SENSITIVITY_COLORS: Record<string, string> = {
   public: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
@@ -126,7 +128,7 @@ function DomainsTab() {
   const [editingDomain, setEditingDomain] = useState<AiDomain | null>(null);
   const [form, setForm] = useState({ key: "", labelTr: "", labelEn: "", description: "", sensitivity: "internal" });
 
-  const { data: domains = [], isLoading } = useQuery<AiDomain[]>({
+  const { data: domains = [], isLoading, isError, refetch } = useQuery<AiDomain[]>({
     queryKey: ["/api/admin/ai-domains"],
   });
 
@@ -182,6 +184,10 @@ function DomainsTab() {
   };
 
   if (isLoading) return <Skeleton className="h-64 w-full" />;
+
+  
+  if (isLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
 
   return (
     <div className="space-y-4">

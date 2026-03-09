@@ -7,11 +7,13 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { ArrowLeft, Brain, Zap, TrendingUp, CheckCircle, AlertCircle, BookOpen } from "lucide-react";
 import { Link } from "wouter";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 export default function AcademyAdaptiveEngine() {
   const { user } = useAuth();
 
-  const { data: recommendations = [] } = useQuery({
+  const { data: recommendations = [], isError, refetch, isLoading } = useQuery({
     queryKey: ["/api/academy/adaptive-recommendations", user?.id],
     queryFn: async () => {
       if (!user?.id) return [];
@@ -21,6 +23,10 @@ export default function AcademyAdaptiveEngine() {
     },
     enabled: !!user?.id,
   });
+
+  
+  if (isLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
 
   return (
     <div className="flex flex-col gap-3 sm:gap-4 gap-2 sm:gap-3 p-3">

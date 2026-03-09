@@ -4,6 +4,8 @@ import { Badge } from "@/components/ui/badge";
 import { ListSkeleton } from "@/components/list-skeleton";
 import { Clock, AlertTriangle, CheckCircle, XCircle } from "lucide-react";
 import { format } from "date-fns";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 interface PendingItem {
   id: number;
@@ -46,12 +48,16 @@ const SLA_STATUS_COLORS: Record<string, string> = {
 };
 
 export default function CRMSLATracking() {
-  const { data, isLoading } = useQuery<SLAData>({
+  const { data, isLoading, isError, refetch } = useQuery<SLAData>({
     queryKey: ["/api/crm/sla-tracking"],
   });
 
   if (isLoading) {
-    return (
+    
+  if (isLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
+
+  return (
       <div className="p-4">
         <ListSkeleton count={4} variant="card" showHeader />
       </div>

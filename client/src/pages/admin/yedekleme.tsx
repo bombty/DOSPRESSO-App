@@ -30,6 +30,8 @@ import {
 import { Link } from "wouter";
 import { format } from "date-fns";
 import { tr } from "date-fns/locale";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 interface RestorePoint {
   backupId: string;
@@ -76,7 +78,7 @@ export default function AdminYedekleme() {
     return <Redirect to="/" />;
   }
 
-  const { data: backupStatusData } = useQuery<BackupStatusData>({
+  const { data: backupStatusData, isError, refetch, isLoading } = useQuery<BackupStatusData>({
     queryKey: ["/api/system/backup-status"],
     refetchInterval: 60000,
   });
@@ -130,6 +132,10 @@ export default function AdminYedekleme() {
     { label: "Otomatik Yedekleme", status: "active", icon: HardDrive, description: "53+ kritik tablo koruması" },
     { label: "Oturum Güvenliği", status: "active", icon: Activity, description: "Session tabanlı kimlik doğrulama" },
   ];
+
+  
+  if (isLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
 
   return (
     <div className="p-4 pb-24 space-y-4">

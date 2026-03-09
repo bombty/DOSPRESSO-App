@@ -69,6 +69,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ROLE_LABELS } from "@/lib/turkish-labels";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 type PermissionAction = {
   id: number;
@@ -369,6 +371,10 @@ function DraggableModuleItem({
     setIsEditing(true);
   };
 
+  
+  if (isLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
+
   return (
     <div
       ref={setNodeRef}
@@ -581,7 +587,7 @@ function RoleTemplatesTab() {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [createForm, setCreateForm] = useState({ name: "", displayName: "", description: "", domain: "hq", baseRole: "", permissions: {} as Record<string, string[]> });
 
-  const { data: templates = [], isLoading } = useQuery<RoleTemplate[]>({
+  const { data: templates = [], isLoading, isError, refetch } = useQuery<RoleTemplate[]>({
     queryKey: ["/api/role-templates"],
   });
 

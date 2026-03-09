@@ -28,6 +28,7 @@ import {
   Target,
   User,
   Weight,
+  AlertCircle,
 } from "lucide-react";
 
 interface InspectionCategory {
@@ -97,7 +98,7 @@ export default function CoachSubeDenetim() {
   const [categoryNotes, setCategoryNotes] = useState<Record<string, string>>({});
   const [userOverridden, setUserOverridden] = useState<Record<string, boolean>>({});
 
-  const { data: categories, isLoading: categoriesLoading } = useQuery<InspectionCategory[]>({
+  const { data: categories, isLoading: categoriesLoading, isError, refetch } = useQuery<InspectionCategory[]>({
     queryKey: ["/api/inspection-categories"],
   });
 
@@ -228,6 +229,17 @@ export default function CoachSubeDenetim() {
     return (
       <div className="p-4 space-y-4">
         <ListSkeleton count={4} variant="card" showHeader />
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div className="flex flex-col items-center justify-center p-8 text-center">
+        <AlertCircle className="h-12 w-12 text-destructive mb-4" />
+        <h3 className="text-lg font-semibold">Bir hata oluştu</h3>
+        <p className="text-muted-foreground mt-2">Veriler yüklenirken sorun oluştu.</p>
+        <Button onClick={() => refetch()} className="mt-4" data-testid="button-retry">Tekrar Dene</Button>
       </div>
     );
   }

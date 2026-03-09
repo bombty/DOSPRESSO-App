@@ -15,6 +15,7 @@ import {
   BookOpen,
   FileText,
   ClipboardCheck,
+  AlertCircle,
 } from "lucide-react";
 
 interface ContentPack {
@@ -48,7 +49,7 @@ const CATEGORY_ICONS: Record<string, any> = {
 export default function CoachContentLibrary() {
   const { toast } = useToast();
 
-  const { data: packs, isLoading } = useQuery<ContentPack[]>({
+  const { data: packs, isLoading, isError, refetch } = useQuery<ContentPack[]>({
     queryKey: ['/api/academy/content-packs'],
   });
 
@@ -61,6 +62,17 @@ export default function CoachContentLibrary() {
           <Skeleton className="h-32 w-full" />
           <Skeleton className="h-32 w-full" />
         </div>
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div className="flex flex-col items-center justify-center p-8 text-center">
+        <AlertCircle className="h-12 w-12 text-destructive mb-4" />
+        <h3 className="text-lg font-semibold">Bir hata oluştu</h3>
+        <p className="text-muted-foreground mt-2">Veriler yüklenirken sorun oluştu.</p>
+        <Button onClick={() => refetch()} className="mt-4" data-testid="button-retry">Tekrar Dene</Button>
       </div>
     );
   }

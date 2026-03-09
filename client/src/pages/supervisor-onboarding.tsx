@@ -20,6 +20,8 @@ import {
   AlertTriangle,
   ChevronRight,
 } from "lucide-react";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 interface TeamOnboarding {
   id: number;
@@ -59,7 +61,7 @@ export default function SupervisorOnboarding() {
   const [approvalNotes, setApprovalNotes] = useState("");
   const [approvalRating, setApprovalRating] = useState(0);
 
-  const { data: teamProgress, isLoading: progressLoading } = useQuery<TeamOnboarding[]>({
+  const { data: teamProgress, isLoading: progressLoading, isError, refetch } = useQuery<TeamOnboarding[]>({
     queryKey: ["/api/academy/onboarding/team-progress"],
   });
 
@@ -94,7 +96,11 @@ export default function SupervisorOnboarding() {
   const pendingCount = (pendingApprovals || []).length;
 
   if (progressLoading) {
-    return (
+    
+  if (progressLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
+
+  return (
       <div className="space-y-4 p-4" data-testid="supervisor-onboarding-loading">
         <Skeleton className="h-12 w-full" />
         <Skeleton className="h-24 w-full" />

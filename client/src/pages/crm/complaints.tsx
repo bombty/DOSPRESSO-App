@@ -34,6 +34,8 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import { tr } from "date-fns/locale";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 interface Complaint {
   id: number;
@@ -97,7 +99,7 @@ export default function CRMComplaints() {
   const queryString = queryParams.toString();
   const complaintsUrl = `/api/crm/complaints${queryString ? `?${queryString}` : ""}`;
 
-  const { data: complaints, isLoading } = useQuery<Complaint[]>({
+  const { data: complaints, isLoading, isError, refetch } = useQuery<Complaint[]>({
     queryKey: ["/api/crm/complaints", typeFilter, branchFilter, statusFilter, priorityFilter, startDate, endDate],
     queryFn: async () => {
       const res = await fetch(complaintsUrl, { credentials: "include" });
@@ -225,7 +227,11 @@ export default function CRMComplaints() {
   };
 
   if (isLoading) {
-    return (
+    
+  if (isLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
+
+  return (
       <div className="p-3 flex flex-col gap-3" data-testid="loading-complaints">
         <Skeleton className="h-8 w-64" />
         <div className="flex flex-wrap gap-2">

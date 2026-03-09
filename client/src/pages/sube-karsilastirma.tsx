@@ -4,6 +4,8 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { BarChart3, Building, Trophy, TrendingUp, TrendingDown, AlertTriangle } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, CartesianGrid, Legend } from "recharts";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 type BranchComparison = {
   branchId: number;
@@ -29,12 +31,16 @@ const getScoreBadge = (score: number) => {
 };
 
 export default function SubeKarsilastirma() {
-  const { data: comparisonData, isLoading } = useQuery<BranchComparison[]>({
+  const { data: comparisonData, isLoading, isError, refetch } = useQuery<BranchComparison[]>({
     queryKey: ["/api/branch-audit-comparison"],
   });
 
   if (isLoading) {
-    return (
+    
+  if (isLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
+
+  return (
       <div className="p-4 space-y-4">
         <Skeleton className="h-12 w-64" />
         <Skeleton className="h-[400px] w-full" />

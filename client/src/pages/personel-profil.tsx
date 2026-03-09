@@ -30,6 +30,8 @@ import { useBreadcrumb } from "@/components/breadcrumb-navigation";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { ROLE_LABELS } from "@/lib/turkish-labels";
 import { RadarChart, PolarGrid, PolarAngleAxis, Radar, ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 type PersonnelProfile = {
   id: string;
@@ -102,7 +104,7 @@ export default function PersonelProfilPage() {
   };
 
   // Fetch personnel profile
-  const { data: profile, isLoading } = useQuery<PersonnelProfile>({
+  const { data: profile, isLoading, isError, refetch } = useQuery<PersonnelProfile>({
     queryKey: ['/api/personnel', id],
     queryFn: async () => {
       const res = await fetch(`/api/personnel/${id}`, {
@@ -317,7 +319,12 @@ export default function PersonelProfilPage() {
     if (profile?.performanceScore !== null && profile?.performanceScore !== undefined) return;
     if (profile?.attendanceRate !== null && profile?.attendanceRate !== undefined) return;
     const timer = setTimeout(() => setAcademyTimeout(true), 5000);
-    return () => clearTimeout(timer);
+
+  if (isLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
+
+
+  return () => clearTimeout(timer);
   }, [profile?.performanceScore, profile?.attendanceRate]);
   const { data: aiRecs, isLoading: isLoadingAiRecs, error: aiRecsError } = useQuery<AIRecommendations>({
     queryKey: ['/api/personnel', id, 'ai-recommendations'],

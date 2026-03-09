@@ -38,6 +38,8 @@ import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Plus, CalendarDays, Edit, Trash } from "lucide-react";
 import type { EmployeeAvailability } from "@shared/schema";
 import { insertEmployeeAvailabilitySchema } from "@shared/schema";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 const reasonMap: Record<string, string> = {
   unavailable: "Müsait Değil",
@@ -52,7 +54,7 @@ export default function PersonelMusaitlik() {
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [selectedAvailability, setSelectedAvailability] = useState<EmployeeAvailability | null>(null);
 
-  const { data: availabilities, isLoading } = useQuery<EmployeeAvailability[]>({
+  const { data: availabilities, isLoading, isError, refetch } = useQuery<EmployeeAvailability[]>({
     queryKey: ["/api/employee-availability"],
   });
 
@@ -173,7 +175,11 @@ export default function PersonelMusaitlik() {
   };
 
   if (isLoading) {
-    return (
+    
+  if (isLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
+
+  return (
       <div className="flex items-center justify-center min-h-screen">
         <p className="text-muted-foreground">Yükleniyor...</p>
       </div>

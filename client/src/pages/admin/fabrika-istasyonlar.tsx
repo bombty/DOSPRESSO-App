@@ -28,6 +28,8 @@ import {
   Save
 } from "lucide-react";
 import { ConfirmDeleteDialog, useConfirmDelete } from "@/components/confirm-delete-dialog";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 interface Station {
   id: number;
@@ -69,7 +71,7 @@ export default function AdminFabrikaIstasyonlar() {
   const [editingStation, setEditingStation] = useState<Station | null>(null);
   const { deleteState, requestDelete, cancelDelete, confirmDelete } = useConfirmDelete();
 
-  const { data: stations = [], isLoading, refetch } = useQuery<Station[]>({
+  const { data: stations = [], isLoading, refetch, isError } = useQuery<Station[]>({
     queryKey: ['/api/factory/stations'],
   });
 
@@ -161,6 +163,10 @@ export default function AdminFabrikaIstasyonlar() {
     const cat = CATEGORIES.find(c => c.value === category);
     return cat?.label || category || "Belirsiz";
   };
+
+  
+  if (isLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
 
   return (
     <div className="container mx-auto p-6 space-y-6">

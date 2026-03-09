@@ -47,6 +47,8 @@ import {
   Search,
   RefreshCw,
 } from "lucide-react";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 interface OrderItem {
   productId: number;
@@ -89,7 +91,7 @@ function SiparisVerTab({ branchId }: { branchId: number }) {
   const [notes, setNotes] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
 
-  const { data: products = [], isLoading: productsLoading } = useQuery<any[]>({
+  const { data: products = [], isLoading: productsLoading, isError, refetch } = useQuery<any[]>({
     queryKey: ["/api/factory/products"],
   });
 
@@ -160,6 +162,10 @@ function SiparisVerTab({ branchId }: { branchId: number }) {
       p.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       p.sku?.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  
+  if (productsLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
 
   return (
     <div className="space-y-4">

@@ -6,13 +6,15 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ScatterChart, Scatter, PieChart, Pie, Cell } from "recharts";
 import { ArrowLeft, TrendingUp, Users, Target, Zap, Loader } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
 
 export default function AcademyCohortAnalytics() {
   const { user } = useAuth();
 
-  const { data: cohortData = [], isLoading } = useQuery({
+  const { data: cohortData = [], isLoading, isError, refetch } = useQuery({
     queryKey: ["/api/academy/cohort-analytics"],
     queryFn: async () => {
       const res = await fetch("/api/academy/cohort-analytics", { credentials: "include" });
@@ -70,6 +72,10 @@ export default function AcademyCohortAnalytics() {
     { label: "Ort. Puan", value: "80.5", icon: Zap },
     { label: "Bırakma Oranı", value: "12%", icon: TrendingUp },
   ];
+
+  
+  if (isLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
 
   return (
     <div className="flex flex-col gap-3 sm:gap-4 gap-2 sm:gap-3 p-3">

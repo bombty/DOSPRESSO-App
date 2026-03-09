@@ -19,6 +19,8 @@ import machine2 from '@assets/stock_images/coffee_machine_equip_8e9d0f33.jpg';
 import machine3 from '@assets/stock_images/coffee_machine_equip_c7ddb01a.jpg';
 import machine4 from '@assets/stock_images/coffee_machine_equip_29a816b5.jpg';
 import { Html5Qrcode } from 'html5-qrcode';
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 const STATUS_LABELS = {
   'talep_edildi': 'Talep Edildi',
@@ -122,7 +124,7 @@ export default function ServiceRequestsManagement() {
   const [qrScannerOpen, setQrScannerOpen] = useState(false);
   const qrScannerRef = useRef<Html5Qrcode | null>(null);
 
-  const { data: branches = [] } = useQuery<Branch[]>({
+  const { data: branches = [], isError, refetch, isLoading } = useQuery<Branch[]>({
     queryKey: ['/api/branches'],
   });
 
@@ -325,7 +327,12 @@ export default function ServiceRequestsManagement() {
   };
 
   useEffect(() => {
-    return () => {
+
+  if (isLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
+
+
+  return () => {
       if (qrScannerRef.current) {
         qrScannerRef.current.stop().catch(console.error);
       }

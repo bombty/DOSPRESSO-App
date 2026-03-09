@@ -24,7 +24,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import {
   ArrowLeft, AlertTriangle, Clock, CheckCircle2, DollarSign, User, Download, Send,
   Copy, MessageSquare, History, Wrench, Building2, Phone, Mail, Shield, Settings,
-  ChevronRight, Loader2, Image as ImageIcon, Truck
+  ChevronRight, Loader2, Image as ImageIcon, Truck, AlertCircle
 } from "lucide-react";
 import jsPDF from "jspdf";
 import { format, differenceInHours } from "date-fns";
@@ -754,7 +754,7 @@ export default function FaultDetail() {
   const [commentText, setCommentText] = useState("");
   const chatEndRef = useRef<HTMLDivElement>(null);
 
-  const { data: detailData, isLoading } = useQuery<FaultDetailData>({
+  const { data: detailData, isLoading, isError, refetch } = useQuery<FaultDetailData>({
     queryKey: ["/api/faults", id, "detail"],
     queryFn: async () => {
       const res = await fetch(`/api/faults/${id}/detail`);
@@ -932,6 +932,17 @@ export default function FaultDetail() {
           {[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-20" />)}
         </div>
         <Skeleton className="h-96" />
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div className="flex flex-col items-center justify-center p-8 text-center">
+        <AlertCircle className="h-12 w-12 text-destructive mb-4" />
+        <h3 className="text-lg font-semibold">Bir hata oluştu</h3>
+        <p className="text-muted-foreground mt-2">Veriler yüklenirken sorun oluştu.</p>
+        <Button onClick={() => refetch()} className="mt-4" data-testid="button-retry">Tekrar Dene</Button>
       </div>
     );
   }

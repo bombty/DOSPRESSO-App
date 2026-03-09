@@ -22,6 +22,8 @@ import { Form, FormControl, FormField, FormItem, FormLabel } from "@/components/
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 const quizSchema = z.object({
   title: z.string().min(3, "Başlık en az 3 karakter olmalı"),
@@ -141,7 +143,11 @@ function RoleDashboardSection({
   onOpenAiProgram?: () => void;
 }) {
   if (isLoading) {
-    return (
+    
+  if (isLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
+
+  return (
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2" data-testid="role-dashboard-loading">
         {[1, 2, 3, 4].map((i) => (
           <Card key={i}>
@@ -666,7 +672,7 @@ export default function AcademyHQ() {
     defaultValues: { quizId: 1, question: "", options: ["", ""], correctAnswerIndex: 0 },
   });
 
-  const { data: pendingExams = [] } = useQuery({
+  const { data: pendingExams = [], isError, refetch, isLoading } = useQuery({
     queryKey: ["/api/academy/exam-requests-pending"],
     queryFn: async () => {
       const res = await fetch(`/api/academy/exam-requests?status=pending`, { credentials: "include" });

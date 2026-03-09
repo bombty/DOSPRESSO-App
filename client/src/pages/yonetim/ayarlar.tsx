@@ -13,6 +13,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { Loader2, Save, Mail, Upload, Image } from "lucide-react";
 import { ObjectUploader } from "@/components/ObjectUploader";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 type SiteSetting = {
   id: number;
@@ -31,7 +33,7 @@ export default function Settings() {
   const { toast } = useToast();
 
   // Fetch all settings
-  const { data: settings, isLoading } = useQuery<SiteSetting[]>({
+  const { data: settings, isLoading, isError, refetch } = useQuery<SiteSetting[]>({
     queryKey: ["/api/admin/settings"],
   });
 
@@ -196,7 +198,11 @@ export default function Settings() {
   };
 
   if (isLoading) {
-    return (
+    
+  if (isLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
+
+  return (
       <div className="container py-6 flex items-center justify-center" data-testid="text-loading">
         <Loader2 className="w-6 h-6 animate-spin" />
         <span className="ml-2">Yükleniyor...</span>

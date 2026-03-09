@@ -32,6 +32,8 @@ import {
 import { format } from "date-fns";
 import { tr } from "date-fns/locale";
 import { ConfirmDeleteDialog, useConfirmDelete } from "@/components/confirm-delete-dialog";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 const ROLE_OPTIONS = [
   { value: "all", label: "Tüm Kullanıcılar" },
@@ -69,7 +71,7 @@ export default function AdminBannerlar() {
     return <Redirect to="/" />;
   }
 
-  const { data: banners = [], isLoading } = useQuery<any[]>({
+  const { data: banners = [], isLoading, isError, refetch } = useQuery<any[]>({
     queryKey: ["/api/admin/banners"],
   });
 
@@ -195,6 +197,10 @@ export default function AdminBannerlar() {
     if (now > end) return { label: "Süresi Dolmuş", color: "bg-orange-500/10 text-orange-600" };
     return { label: "Aktif", color: "bg-green-500/10 text-green-600" };
   };
+
+  
+  if (isLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
 
   return (
     <div className="p-4 pb-24 space-y-4">

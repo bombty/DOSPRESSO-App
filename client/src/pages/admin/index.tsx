@@ -21,9 +21,12 @@ import {
   Image,
   Bot,
   Wrench,
-  BookOpen
+  BookOpen,
+  Loader2
 } from "lucide-react";
 import { Link, Redirect } from "wouter";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 interface SystemHealth {
   database: "healthy" | "warning" | "error";
@@ -45,18 +48,20 @@ export default function AdminDashboard() {
     return <Redirect to="/" />;
   }
 
-  const { data: pendingTickets = [] } = useQuery<any[]>({
+  const { data: pendingTickets = [], isLoading: ticketsLoading, isError, refetch } = useQuery<any[]>({
     queryKey: ["/api/hq-support/tickets"],
     select: (data) => data.filter((t: any) => t.status === "aktif"),
   });
 
-  const { data: users = [] } = useQuery<any[]>({
+  const { data: users = [], isLoading: usersLoading } = useQuery<any[]>({
     queryKey: ["/api/users"],
   });
 
-  const { data: branches = [] } = useQuery<any[]>({
+  const { data: branches = [], isLoading: branchesLoading } = useQuery<any[]>({
     queryKey: ["/api/branches"],
   });
+
+  const isLoading = ticketsLoading || usersLoading || branchesLoading;
 
   const systemHealth: SystemHealth = {
     database: "healthy",
@@ -94,6 +99,18 @@ export default function AdminDashboard() {
     if (status === "warning") return "Uyarı";
     return "Hata";
   };
+
+  if (isLoading) {
+    
+  if (ticketsLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
+
+  return (
+      <div className="flex items-center justify-center p-8">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="p-4 pb-24 space-y-6">

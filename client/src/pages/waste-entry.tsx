@@ -11,7 +11,9 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { AlertTriangle, CheckCircle2, Camera, Plus, Trash2 } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Camera, Plus, Trash2, Loader2 } from "lucide-react";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 const RESPONSIBILITY_SCOPES = [
   { value: "demand", labelTr: "Talep", labelEn: "Demand" },
@@ -52,11 +54,11 @@ export default function WasteEntry() {
   const [evidencePhotos, setEvidencePhotos] = useState<string[]>([]);
   const [validationIssues, setValidationIssues] = useState<any[]>([]);
 
-  const { data: categories = [] } = useQuery<any[]>({
+  const { data: categories = [], isLoading: categoriesLoading, isError, refetch } = useQuery<any[]>({
     queryKey: ["/api/waste/categories"],
   });
 
-  const { data: reasons = [] } = useQuery<any[]>({
+  const { data: reasons = [], isLoading: reasonsLoading } = useQuery<any[]>({
     queryKey: ["/api/waste/reasons", categoryId],
     queryFn: async () => {
       const url = categoryId
@@ -154,8 +156,21 @@ export default function WasteEntry() {
     }
   }
 
+  const isLoading = categoriesLoading || reasonsLoading;
   const blockingIssues = validationIssues.filter((i) => i.severity === "block");
   const warningIssues = validationIssues.filter((i) => i.severity === "warn");
+
+  if (isLoading) {
+    
+  if (categoriesLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
+
+  return (
+      <div className="flex items-center justify-center p-8">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4 p-4 max-w-2xl mx-auto">

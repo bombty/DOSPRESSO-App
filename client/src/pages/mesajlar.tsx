@@ -24,6 +24,8 @@ import type { Message, User } from "@shared/schema";
 import { isHQRole, isBranchRole, type UserRoleType } from "@shared/schema";
 import { useLocation } from "wouter";
 import { ROLE_LABELS } from "@/lib/turkish-labels";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 type ThreadSummary = {
   threadId: string;
@@ -63,7 +65,12 @@ export default function Mesajlar() {
 
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearch(searchQuery), 300);
-    return () => clearTimeout(timer);
+
+  if (threadsLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
+
+
+  return () => clearTimeout(timer);
   }, [searchQuery]);
 
   useEffect(() => {
@@ -74,7 +81,7 @@ export default function Mesajlar() {
     }
   }, [selectedThreadId]);
 
-  const { data: allThreads = [], isLoading: threadsLoading, isFetching: threadsFetching } = useQuery<ThreadSummary[]>({
+  const { data: allThreads = [], isLoading: threadsLoading, isFetching: threadsFetching, isError, refetch } = useQuery<ThreadSummary[]>({
     queryKey: ["/api/messages"],
     refetchInterval: 5000,
     refetchOnWindowFocus: true,

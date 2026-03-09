@@ -50,6 +50,8 @@ import {
   TrendingUp,
   ListTodo,
 } from "lucide-react";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 const ROLE_OPTIONS = [
   { value: "barista", label: "Barista" },
@@ -162,7 +164,7 @@ export default function DobodyGorevYonetimi() {
   const [statsTaskId, setStatsTaskId] = useState<number | null>(null);
   const [deleteTaskId, setDeleteTaskId] = useState<number | null>(null);
 
-  const { data: summary, isLoading: summaryLoading } = useQuery<SummaryData>({
+  const { data: summary, isLoading: summaryLoading, isError, refetch } = useQuery<SummaryData>({
     queryKey: ["/api/admin/dobody-tasks/summary"],
   });
 
@@ -212,7 +214,11 @@ export default function DobodyGorevYonetimi() {
   }, [tasksData, searchQuery]);
 
   if (summaryLoading || tasksLoading) {
-    return (
+    
+  if (summaryLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
+
+  return (
       <div className="space-y-4" data-testid="dobody-tasks-loading">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           {[1, 2, 3, 4].map((i) => (

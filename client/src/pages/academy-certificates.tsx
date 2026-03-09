@@ -7,6 +7,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ArrowLeft, Award, Download, Share2, Loader } from "lucide-react";
 import dospressoLogo from "@assets/IMG_6637_1765138781125.png";
 import certificationSeal from "@assets/image_1764796739092.png";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 const CAREER_LEVELS = [
   { id: 1, roleId: "stajyer", titleTr: "Stajyer", levelNumber: 1, certificateColor: "from-blue-100 to-blue-50" },
@@ -19,7 +21,7 @@ const CAREER_LEVELS = [
 export default function AcademyCertificates() {
   const { user } = useAuth();
 
-  const { data: userProgress } = useQuery({
+  const { data: userProgress, isError, refetch, isLoading } = useQuery({
     queryKey: ["/api/academy/career-progress", user?.id],
     queryFn: async () => {
       if (!user?.id) return null;
@@ -45,6 +47,10 @@ export default function AcademyCertificates() {
   const completedLevels = CAREER_LEVELS.filter(l => l.id <= (userProgress?.currentCareerLevelId || 0));
 
   const today = new Date().toLocaleDateString('tr-TR', { year: 'numeric', month: 'long', day: 'numeric' });
+
+  
+  if (isLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
 
   return (
     <div className="max-w-5xl mx-auto px-3 sm:px-4 py-3 space-y-4">

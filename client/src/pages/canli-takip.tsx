@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { RefreshCw, MapPin, Clock, Users, Wifi, WifiOff, Building2 } from "lucide-react";
+import { RefreshCw, MapPin, Clock, Users, Wifi, WifiOff, Building2, AlertCircle } from "lucide-react";
 import { format } from "date-fns";
 import { tr } from "date-fns/locale";
 
@@ -46,7 +46,7 @@ export default function CanliTakip() {
     ? selectedBranchId 
     : user?.branchId;
 
-  const { data: activeEmployees = [], isLoading, refetch, dataUpdatedAt } = useQuery<ActiveEmployee[]>({
+  const { data: activeEmployees = [], isLoading, refetch, dataUpdatedAt, isError } = useQuery<ActiveEmployee[]>({
     queryKey: ["/api/tracking/branch", effectiveBranchId],
     enabled: !!effectiveBranchId,
     refetchInterval: autoRefresh ? 30000 : false,
@@ -243,6 +243,13 @@ export default function CanliTakip() {
             <p className="text-muted-foreground">Lütfen takip edilecek şubeyi seçin</p>
           </CardContent>
         </Card>
+      ) : isError ? (
+        <div className="flex flex-col items-center justify-center p-8 text-center">
+          <AlertCircle className="h-12 w-12 text-destructive mb-4" />
+          <h3 className="text-lg font-semibold">Bir hata oluştu</h3>
+          <p className="text-muted-foreground mt-2">Veriler yüklenirken sorun oluştu.</p>
+          <Button onClick={() => refetch()} className="mt-4" data-testid="button-retry">Tekrar Dene</Button>
+        </div>
       ) : isLoading ? (
         <Card>
           <CardContent className="p-8 text-center">

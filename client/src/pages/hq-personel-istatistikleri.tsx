@@ -32,6 +32,8 @@ import {
   Legend,
 } from "recharts";
 import { ROLE_LABELS } from "@/lib/turkish-labels";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 const COLORS = [
   "hsl(var(--chart-1))",
@@ -68,7 +70,7 @@ interface PersonnelStats {
 export default function HQPersonelIstatistikleri() {
   const { user } = useAuth();
 
-  const { data: stats, isLoading } = useQuery<PersonnelStats>({
+  const { data: stats, isLoading, isError, refetch } = useQuery<PersonnelStats>({
     queryKey: ["/api/hq-personnel-stats"],
     enabled: !!user && (isHQRole(user.role as any) || user.role === "admin"),
   });
@@ -124,7 +126,11 @@ export default function HQPersonelIstatistikleri() {
   }, [stats]);
 
   if (!user || (!isHQRole(user.role as any) && user.role !== "admin")) {
-    return (
+    
+  if (isLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
+
+  return (
       <div className="flex items-center justify-center h-64">
         <p className="text-muted-foreground">Bu sayfaya erişim yetkiniz yok.</p>
       </div>

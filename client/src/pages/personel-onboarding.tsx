@@ -58,6 +58,8 @@ import { format } from "date-fns";
 import { tr } from "date-fns/locale";
 import { z } from "zod";
 import type { User, EmployeeOnboarding } from "@shared/schema";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 const statusLabels: Record<string, string> = {
   not_started: "Başlamadı",
@@ -112,6 +114,10 @@ function DaysRemainingBadge({ days }: { days: number | null }) {
   if (days === null) return null;
   const isOverdue = days < 0;
   const isUrgent = days >= 0 && days < 14;
+  
+  if (isLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
+
   return (
     <Badge
       variant={isOverdue || isUrgent ? "destructive" : "secondary"}
@@ -147,7 +153,7 @@ export default function PersonelOnboardingPage() {
 
   const isMentorEligible = user?.role && MENTOR_ROLES.includes(user.role);
 
-  const { data: onboardingRecords = [], isLoading } = useQuery<(EmployeeOnboarding & { user?: User })[]>({
+  const { data: onboardingRecords = [], isLoading, isError, refetch } = useQuery<(EmployeeOnboarding & { user?: User })[]>({
     queryKey: ["/api/employee-onboarding?filter=all"],
     enabled: !!user,
   });

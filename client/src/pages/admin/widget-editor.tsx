@@ -47,6 +47,8 @@ import {
   Save,
   type LucideIcon
 } from "lucide-react";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 const ICON_OPTIONS: { value: string; label: string; icon: LucideIcon }[] = [
   { value: "Target", label: "Target", icon: Target },
@@ -177,7 +179,7 @@ export default function WidgetEditor() {
     return <Redirect to="/" />;
   }
 
-  const { data: widgets = [], isLoading } = useQuery<DashboardWidgetItem[]>({
+  const { data: widgets = [], isLoading, isError, refetch } = useQuery<DashboardWidgetItem[]>({
     queryKey: ["/api/admin/dashboard-widgets"],
   });
 
@@ -289,6 +291,10 @@ export default function WidgetEditor() {
   }
 
   const sortedWidgets = [...widgets].sort((a, b) => a.displayOrder - b.displayOrder);
+
+  
+  if (isLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
 
   return (
     <div className="p-4 space-y-6">

@@ -39,6 +39,8 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import { tr } from "date-fns/locale";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 interface ProductComplaint {
   id: number;
@@ -169,7 +171,7 @@ export default function UrunSikayet() {
   const isKaliteKontrol = user?.role === "kalite_kontrol" || user?.role === "admin";
   const isBranchStaff = BRANCH_STAFF_ROLES.includes(user?.role || "");
 
-  const { data: complaints, isLoading } = useQuery<ProductComplaint[]>({
+  const { data: complaints, isLoading, isError, refetch } = useQuery<ProductComplaint[]>({
     queryKey: ["/api/product-complaints", statusFilter],
     queryFn: async () => {
       const params = statusFilter !== "all" ? `?status=${statusFilter}` : "";
@@ -264,6 +266,10 @@ export default function UrunSikayet() {
     const resolution = resolutionTexts[id];
     updateMutation.mutate({ id, status, resolution });
   }
+
+  
+  if (isLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
 
   return (
     <div className="p-4 md:p-6 space-y-6 max-w-6xl mx-auto">

@@ -122,7 +122,7 @@ export default function AksiyonTakipPage() {
     queryParams.set("priority", priorityFilter);
   }
 
-  const { data: capas = [], isLoading } = useQuery<CorrectiveAction[]>({
+  const { data: capas = [], isLoading, isError, refetch } = useQuery<CorrectiveAction[]>({
     queryKey: ['/api/corrective-actions', activeTab, priorityFilter],
     queryFn: () => fetch(`/api/corrective-actions?${queryParams}`, { credentials: 'include' }).then(res => {
       if (!res.ok) throw new Error('Aksiyonlar yüklenemedi');
@@ -358,7 +358,14 @@ export default function AksiyonTakipPage() {
             </TabsList>
 
             <TabsContent value={activeTab} className="mt-0">
-              {isLoading ? (
+              {isError ? (
+                <div className="flex flex-col items-center justify-center p-8 text-center">
+                  <AlertCircle className="h-12 w-12 text-destructive mb-4" />
+                  <h3 className="text-lg font-semibold">Bir hata oluştu</h3>
+                  <p className="text-muted-foreground mt-2">Veriler yüklenirken sorun oluştu.</p>
+                  <Button onClick={() => refetch()} className="mt-4" data-testid="button-retry">Tekrar Dene</Button>
+                </div>
+              ) : isLoading ? (
                 <div className="flex items-center justify-center py-12">
                   <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
                 </div>

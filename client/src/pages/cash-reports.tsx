@@ -72,7 +72,7 @@ export default function CashReports() {
     return params.toString() ? `?${params.toString()}` : '';
   };
 
-  const { data: reports, isLoading } = useQuery<CashReportWithRelations[]>({
+  const { data: reports, isLoading, isError, refetch } = useQuery<CashReportWithRelations[]>({
     queryKey: ['/api/cash-reports', dateFrom, dateTo],
     queryFn: async () => {
       const queryParams = buildQueryParams();
@@ -564,7 +564,14 @@ export default function CashReports() {
       )}
 
       <div className="w-full space-y-2 sm:space-y-3">
-        {isLoading ? (
+        {isError ? (
+          <div className="flex flex-col items-center justify-center p-8 text-center">
+            <AlertCircle className="h-12 w-12 text-destructive mb-4" />
+            <h3 className="text-lg font-semibold">Bir hata oluştu</h3>
+            <p className="text-muted-foreground mt-2">Veriler yüklenirken sorun oluştu.</p>
+            <Button onClick={() => refetch()} className="mt-4" data-testid="button-retry">Tekrar Dene</Button>
+          </div>
+        ) : isLoading ? (
           <ListSkeleton count={3} variant="card" />
         ) : filteredReports && filteredReports.length > 0 ? (
           filteredReports.map((report) => {

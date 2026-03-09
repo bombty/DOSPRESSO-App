@@ -32,6 +32,8 @@ import {
 import { Link } from "wouter";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { ROLE_LABELS } from "@/lib/turkish-labels";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 const ROLE_COLORS: Record<string, string> = {
   admin: "bg-red-500/10 text-red-600 dark:text-red-400",
@@ -66,7 +68,7 @@ export default function AdminKullanicilar() {
     return <Redirect to="/" />;
   }
 
-  const { data: users = [], isLoading } = useQuery<any[]>({
+  const { data: users = [], isLoading, isError, refetch } = useQuery<any[]>({
     queryKey: ["/api/users"],
   });
 
@@ -163,6 +165,10 @@ export default function AdminKullanicilar() {
   };
 
   const counts = getCategoryCounts();
+
+  
+  if (isLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
 
   return (
     <div className="p-3 sm:p-4 pb-24 space-y-3 sm:space-y-4">

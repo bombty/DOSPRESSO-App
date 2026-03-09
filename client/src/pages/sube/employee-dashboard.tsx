@@ -15,6 +15,8 @@ import {
   ArrowRight,
 } from "lucide-react";
 import logoUrl from "@assets/IMG_6637_1765138781125.png";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 interface EmployeeDashboardData {
   user: {
@@ -69,7 +71,7 @@ export default function EmployeeDashboard() {
 
   const userId = user?.id;
 
-  const { data, isLoading } = useQuery<EmployeeDashboardData>({
+  const { data, isLoading, isError, refetch } = useQuery<EmployeeDashboardData>({
     queryKey: ["/api/employee-dashboard", userId],
     queryFn: async () => {
       const res = await fetch(`/api/employee-dashboard/${userId}`);
@@ -100,7 +102,11 @@ export default function EmployeeDashboard() {
       });
     }, 1000);
 
-    return () => clearInterval(timer);
+    
+  if (isLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
+
+  return () => clearInterval(timer);
   }, [paused, user?.branchId, setLocation]);
 
   if (!userId) return null;

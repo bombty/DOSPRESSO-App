@@ -36,6 +36,8 @@ import {
 import { Link } from "wouter";
 import { format } from "date-fns";
 import { tr } from "date-fns/locale";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 interface AuditLogEntry {
   id: number;
@@ -175,7 +177,7 @@ export default function AdminAktiviteLoglar() {
     return params.toString();
   }, [page, searchTerm, eventTypeFilter, resourceFilter, startDate, endDate]);
 
-  const { data, isLoading } = useQuery<AuditLogResponse>({
+  const { data, isLoading, isError, refetch } = useQuery<AuditLogResponse>({
     queryKey: ["/api/admin/audit-logs", page, searchTerm, eventTypeFilter, resourceFilter, startDate, endDate],
     queryFn: async () => {
       const res = await fetch(`/api/admin/audit-logs?${buildQueryParams()}`);
@@ -223,6 +225,10 @@ export default function AdminAktiviteLoglar() {
   const logs = data?.logs || [];
   const pagination = data?.pagination;
   const hasActiveFilters = searchTerm || eventTypeFilter !== "all" || resourceFilter !== "all" || startDate || endDate;
+
+  
+  if (isLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
 
   return (
     <div className="p-4 pb-24 space-y-4">

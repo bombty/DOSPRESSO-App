@@ -31,6 +31,8 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   LineChart, Line, Legend, PieChart, Pie, Cell,
 } from "recharts";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 const MONTHS = [
   "Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran",
@@ -94,7 +96,7 @@ export default function MuhasebeRaporlama() {
 
   const isAuthorized = user?.role && (user.role === 'admin' || user.role === 'muhasebe_ik' || user.role === 'ceo' || isHQRole(user.role as any));
 
-  const { data: branches } = useQuery<any[]>({
+  const { data: branches, isError, refetch, isLoading } = useQuery<any[]>({
     queryKey: ["/api/branches"],
     enabled: !!isAuthorized,
   });
@@ -333,7 +335,11 @@ export default function MuhasebeRaporlama() {
   }, [reports, comparePeriod1, comparePeriod2]);
 
   if (!isAuthorized) {
-    return (
+    
+  if (isLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
+
+  return (
       <div className="flex items-center justify-center h-64">
         <p className="text-muted-foreground">Bu sayfaya erişim yetkiniz yok.</p>
       </div>

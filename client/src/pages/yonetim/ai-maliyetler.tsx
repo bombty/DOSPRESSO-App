@@ -5,6 +5,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { RefreshCw, DollarSign, TrendingDown, Calendar } from "lucide-react";
 import { useState } from "react";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 interface AICostAggregates {
   totalCost: number;
@@ -29,7 +31,7 @@ const FEATURE_LABELS: Record<string, string> = {
 export default function AICostDashboard() {
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
 
-  const { data, isLoading, refetch, isFetching } = useQuery<AICostAggregates>({
+  const { data, isLoading, refetch, isFetching, isError } = useQuery<AICostAggregates>({
     queryKey: ['/api/admin/ai-costs'],
   });
 
@@ -56,6 +58,10 @@ export default function AICostDashboard() {
   };
 
   const highestCostFeature = data?.costByFeature[0];
+
+  
+  if (isLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
 
   return (
     <div className="flex flex-col gap-3 sm:gap-4">

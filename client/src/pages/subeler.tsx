@@ -16,6 +16,8 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { EmptyState } from "@/components/empty-state";
 import { ConfirmDeleteDialog, useConfirmDelete } from "@/components/confirm-delete-dialog";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 export default function SubelerPage() {
   const { user } = useAuth();
@@ -25,7 +27,7 @@ export default function SubelerPage() {
   const [copiedBranchId, setCopiedBranchId] = useState<number | null>(null);
   const { deleteState, requestDelete, cancelDelete, confirmDelete } = useConfirmDelete();
 
-  const { data: branches = [], isLoading, error } = useQuery<Branch[]>({
+  const { data: branches = [], isLoading, error, isError, refetch } = useQuery<Branch[]>({
     queryKey: ["/api/branches"],
     enabled: !!user,
   });
@@ -136,7 +138,11 @@ export default function SubelerPage() {
   });
 
   if (isLoading) {
-    return (
+    
+  if (isLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
+
+  return (
       <div className="flex items-center justify-center h-full">
         <p className="text-muted-foreground">Yükleniyor...</p>
       </div>

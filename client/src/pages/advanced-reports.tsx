@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   FileText, Download, Building, Calendar, Users, 
-  TrendingUp, Award, ClipboardCheck, Loader2, BarChart3
+  TrendingUp, Award, ClipboardCheck, Loader2, BarChart3, AlertCircle
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -40,17 +40,19 @@ export default function AdvancedReportsPage() {
   const [generating, setGenerating] = useState<string | null>(null);
   const chartRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
-  const { data: branches } = useQuery({
+  const { data: branches, isLoading: branchesLoading, isError: branchesError, refetch: refetchBranches } = useQuery({
     queryKey: ["/api/branches"],
   });
 
-  const { data: users } = useQuery({
+  const { data: users, isLoading: usersLoading } = useQuery({
     queryKey: ["/api/users"],
   });
 
-  const { data: rankings } = useQuery({
+  const { data: rankings, isLoading: rankingsLoading } = useQuery({
     queryKey: ["/api/employee-of-month/rankings", selectedMonth, selectedYear, selectedBranchId],
   });
+
+  const isLoading = branchesLoading || usersLoading || rankingsLoading;
 
   const performanceData = (rankings as any[])?.slice(0, 10).map((r: any) => ({
     name: `${r.employee?.firstName?.substring(0, 8) || ""}`,
@@ -218,6 +220,25 @@ export default function AdvancedReportsPage() {
       setGenerating(null);
     }
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center p-8">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (branchesError) {
+    return (
+      <div className="flex flex-col items-center justify-center p-8 text-center">
+        <AlertCircle className="h-12 w-12 text-destructive mb-4" />
+        <h3 className="text-lg font-semibold">Bir hata oluştu</h3>
+        <p className="text-muted-foreground mt-2">Veriler yüklenirken sorun oluştu.</p>
+        <Button onClick={() => refetchBranches()} className="mt-4" data-testid="button-retry">Tekrar Dene</Button>
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto py-6 space-y-6">

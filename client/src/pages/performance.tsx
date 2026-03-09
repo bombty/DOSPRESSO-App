@@ -7,6 +7,8 @@ import type { PerformanceMetric, Branch } from "@shared/schema";
 import { isHQRole, type UserRoleType } from "@shared/schema";
 import { TrendingUp, TrendingDown, CheckCircle, AlertTriangle } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 export default function Performance() {
   const { user } = useAuth();
@@ -28,7 +30,7 @@ export default function Performance() {
   }, [isHQ, userBranchId, selectedBranchId]);
 
   const performanceUrl = selectedBranchId ? `/api/performance?branchId=${selectedBranchId}` : "/api/performance";
-  const { data: metrics, isLoading: metricsLoading } = useQuery<PerformanceMetric[]>({
+  const { data: metrics, isLoading: metricsLoading, isError, refetch } = useQuery<PerformanceMetric[]>({
     queryKey: ["/api/performance", selectedBranchId],
     queryFn: async () => {
       const res = await fetch(performanceUrl, { credentials: "include" });
@@ -53,6 +55,10 @@ export default function Performance() {
 
   const completionTrend = calculateTrend(latestMetric?.completionRate ?? 0, previousMetric?.completionRate ?? 0);
   const aiScoreTrend = calculateTrend(latestMetric?.averageAiScore ?? 0, previousMetric?.averageAiScore ?? 0);
+
+  
+  if (metricsLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
 
   return (
     <div className="flex flex-col gap-3 sm:gap-4">

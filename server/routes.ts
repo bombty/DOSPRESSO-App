@@ -366,6 +366,7 @@ import bcrypt from "bcrypt";
 import { z } from "zod";
 import { resolvePermissionScope, applyScopeFilter, getUserPermissions, getAllActionsGroupedByModule, getRoleGrants, upsertPermissionGrant, deletePermissionGrant, getRoleAccessibleModules } from "./permission-service";
 import adminRouter from "./routes/admin";
+import seedRouter from "./routes/seed";
 import factoryRouter from "./routes/factory";
 import academyRouter from "./routes/academy";
 import academyV2Router from "./routes/academy-v2";
@@ -700,6 +701,7 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
   app.use('/api/agent/run-now', agentRunLimiter);
 
   app.use(adminRouter);
+  app.use(seedRouter);
   app.use(factoryRouter);
   app.use(academyRouter);
   app.use(academyV2Router);

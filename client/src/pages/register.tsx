@@ -26,6 +26,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
 import logoUrl from "@assets/IMG_6637_1765138781125.png";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 const registerSchema = z.object({
   email: z.string().email("Geçerli bir email adresi girin"),
@@ -97,7 +99,7 @@ export default function Register() {
     },
   });
 
-  const { data: branches } = useQuery<any[]>({
+  const { data: branches, isLoading, isError, refetch } = useQuery<any[]>({
     queryKey: ['/api/public/branches'],
     enabled: !isHQ,
   });
@@ -139,6 +141,10 @@ export default function Register() {
   }
 
   const roleOptions = isHQ ? HQ_ROLES : BRANCH_ROLES;
+
+  
+  if (isLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-3">

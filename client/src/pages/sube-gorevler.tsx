@@ -8,6 +8,8 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { ArrowLeft, TrendingUp, Clock, CheckCircle2, AlertCircle, Users } from "lucide-react";
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, BarChart, Bar } from "recharts";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 type BranchTaskStats = {
   totalTasks: number;
@@ -29,7 +31,7 @@ export default function SubeGorevlerPage() {
   const { user } = useAuth();
   const branchId = parseInt(id || "0");
 
-  const { data: stats, isLoading } = useQuery<BranchTaskStats>({
+  const { data: stats, isLoading, isError, refetch } = useQuery<BranchTaskStats>({
     queryKey: [`/api/branches/${branchId}/task-stats`],
     enabled: !!branchId,
   });
@@ -47,7 +49,11 @@ export default function SubeGorevlerPage() {
   };
 
   if (isLoading) {
-    return (
+    
+  if (isLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
+
+  return (
       <div className="flex items-center justify-center h-full">
         <p className="text-muted-foreground">Veriler yükleniyor...</p>
       </div>

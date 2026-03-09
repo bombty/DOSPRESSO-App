@@ -19,6 +19,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Megaphone, Plus, Users, Calendar, TrendingUp } from "lucide-react";
 import { format } from "date-fns";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 const CreateCampaignFormSchema = z.object({
   name: z.string().min(1, "Kampanya adı gerekli"),
@@ -62,7 +64,7 @@ export default function KampanyaYonetimi() {
   const isHQ = !!(user?.role && isHQRole(user.role as any));
   const canManageCampaigns = isHQ;
 
-  const { data: campaigns, isLoading } = useQuery<Campaign[]>({
+  const { data: campaigns, isLoading, isError, refetch } = useQuery<Campaign[]>({
     queryKey: ["/api/campaigns"],
   });
 
@@ -132,7 +134,11 @@ export default function KampanyaYonetimi() {
   };
 
   if (isLoading) {
-    return (
+    
+  if (isLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
+
+  return (
       <div className="p-6">
         <ListSkeleton count={4} variant="card" showHeader />
       </div>

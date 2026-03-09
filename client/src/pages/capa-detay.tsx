@@ -116,7 +116,7 @@ export default function CapaDetayPage() {
                    user?.role === "hq_admin" || user?.role === "admin";
 
   // Fetch CAPA details with updates
-  const { data: capa, isLoading, error } = useQuery<CorrectiveAction>({
+  const { data: capa, isLoading, error, isError, refetch } = useQuery<CorrectiveAction>({
     queryKey: ['/api/corrective-actions', capaId],
     queryFn: () => fetch(`/api/corrective-actions/${capaId}`, { credentials: 'include' }).then(res => {
       if (!res.ok) throw new Error('CAPA yüklenemedi');
@@ -183,6 +183,17 @@ export default function CapaDetayPage() {
     return (
       <div className="flex items-center justify-center h-full">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div className="flex flex-col items-center justify-center p-8 text-center">
+        <AlertCircle className="h-12 w-12 text-destructive mb-4" />
+        <h3 className="text-lg font-semibold">Bir hata oluştu</h3>
+        <p className="text-muted-foreground mt-2">Veriler yüklenirken sorun oluştu.</p>
+        <Button onClick={() => refetch()} className="mt-4" data-testid="button-retry">Tekrar Dene</Button>
       </div>
     );
   }

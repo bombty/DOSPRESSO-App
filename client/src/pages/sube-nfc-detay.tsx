@@ -6,13 +6,15 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { Copy, RotateCcw, QrCode, Link as LinkIcon } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 export default function SubeNFCDetay() {
   const { id: idStr } = useParams();
   const id = parseInt(idStr || "0");
   const { toast } = useToast();
 
-  const { data: branch, isLoading, refetch } = useQuery<Branch>({
+  const { data: branch, isLoading, refetch, isError } = useQuery<Branch>({
     queryKey: [`/api/branches/${id}`],
   });
 
@@ -37,6 +39,10 @@ export default function SubeNFCDetay() {
       toast({ title: "İndirildi", description: "QR kod indirildi" });
     }
   };
+
+  
+  if (isLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
 
   return (
     <div className="flex flex-col gap-4 p-4">

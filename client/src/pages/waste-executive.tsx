@@ -7,6 +7,8 @@ import {
   AlertTriangle, TrendingDown, BarChart3, Target,
   ShieldAlert, Lightbulb, Clock
 } from "lucide-react";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 export default function WasteExecutive() {
   const { t } = useTranslation("common");
@@ -14,7 +16,7 @@ export default function WasteExecutive() {
   const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
   const fourteenDaysAgo = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString();
 
-  const { data: insights, isLoading } = useQuery<any>({
+  const { data: insights, isLoading, isError, refetch } = useQuery<any>({
     queryKey: ["/api/waste/insights/weekly", "executive"],
     queryFn: async () => {
       const res = await fetch(`/api/waste/insights/weekly?from=${sevenDaysAgo}`, { credentials: "include" });
@@ -60,7 +62,11 @@ export default function WasteExecutive() {
   }
 
   if (isLoading) {
-    return (
+    
+  if (isLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
+
+  return (
       <div className="space-y-4 p-4">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           {[1,2,3,4].map(i => <Skeleton key={i} className="h-24 w-full" />)}

@@ -35,6 +35,8 @@ import {
   Scale,
 } from "lucide-react";
 import { ConfirmDeleteDialog, useConfirmDelete } from "@/components/confirm-delete-dialog";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 interface EquipmentKnowledge {
   id: number;
@@ -125,6 +127,10 @@ function ContentSeedSection() {
 
   const anyPending = buttons.some(b => b.mutation.isPending);
 
+  
+  if (isLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
+
   return (
     <Card>
       <CardHeader>
@@ -209,7 +215,7 @@ export default function AdminAIBilgiYonetimi() {
     return <Redirect to="/" />;
   }
 
-  const { data: knowledgeItems = [], isLoading } = useQuery<EquipmentKnowledge[]>({
+  const { data: knowledgeItems = [], isLoading, isError, refetch } = useQuery<EquipmentKnowledge[]>({
     queryKey: ["/api/equipment-knowledge"],
   });
 

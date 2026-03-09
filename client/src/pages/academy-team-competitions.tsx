@@ -7,12 +7,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import { ArrowLeft, Flame, Trophy, Target, Users, Zap, Lock, Loader } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 export default function AcademyTeamCompetitions() {
   const { user } = useAuth();
 
   // Get team competitions data
-  const { data: competitions = [], isLoading } = useQuery({
+  const { data: competitions = [], isLoading, isError, refetch } = useQuery({
     queryKey: ["/api/academy/team-competitions"],
     queryFn: async () => {
       const res = await fetch("/api/academy/team-competitions", { credentials: "include" });
@@ -35,6 +37,10 @@ export default function AcademyTeamCompetitions() {
   const completedCompetitions = competitions.filter((c) => c.status === "completed");
 
   const chartData = activeCompetition?.leaderboard || [];
+
+  
+  if (isLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
 
   return (
     <div className="grid grid-cols-1 gap-2 p-3">

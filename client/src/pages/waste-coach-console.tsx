@@ -13,6 +13,8 @@ import {
   BarChart3, TrendingDown, AlertTriangle, Filter,
   ChevronDown, ChevronUp, ClipboardPlus, Eye
 } from "lucide-react";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 export default function WasteCoachConsole() {
   const { t, i18n } = useTranslation("common");
@@ -25,7 +27,7 @@ export default function WasteCoachConsole() {
 
   const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
 
-  const { data: events = [], isLoading } = useQuery<any[]>({
+  const { data: events = [], isLoading, isError, refetch } = useQuery<any[]>({
     queryKey: ["/api/waste/events", branchFilter, categoryFilter],
     queryFn: async () => {
       let url = `/api/waste/events?from=${sevenDaysAgo}`;
@@ -64,6 +66,10 @@ export default function WasteCoachConsole() {
       toast({ title: "Hata", variant: "destructive" });
     }
   }
+
+  
+  if (isLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
 
   return (
     <div className="space-y-4 p-4">

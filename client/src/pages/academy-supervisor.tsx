@@ -12,6 +12,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { ArrowLeft, Users, CheckCircle, Clock, AlertCircle, Check, X, BookOpen } from "lucide-react";
 import { Link } from "wouter";
 import { GateRequestsWidget } from "@/components/widgets/gate-requests-widget";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 export default function AcademySupervisor() {
   const { toast } = useToast();
@@ -20,7 +22,7 @@ export default function AcademySupervisor() {
   const [rejectReason, setRejectReason] = useState("");
 
   // Get team members
-  const { data: teamMembers = [], isLoading: teamLoading } = useQuery({
+  const { data: teamMembers = [], isLoading: teamLoading, isError, refetch } = useQuery({
     queryKey: ["/api/academy/team-members", user?.id],
     queryFn: async () => {
       if (!user?.id) return [];
@@ -80,6 +82,10 @@ export default function AcademySupervisor() {
       toast({ title: "Hata", description: error.message, variant: "destructive" });
     },
   });
+
+  
+  if (teamLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
 
   return (
     <div className="flex flex-col gap-3 sm:gap-4 gap-2 sm:gap-3 p-3">

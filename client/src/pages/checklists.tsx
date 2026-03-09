@@ -109,7 +109,7 @@ export default function Checklists() {
   
   const checklistEndpoint = canManageChecklists ? "/api/checklists" : "/api/checklists/my-assignments";
 
-  const { data: checklists, isLoading } = useQuery<any[]>({
+  const { data: checklists, isLoading, isError, refetch } = useQuery<any[]>({
     queryKey: [checklistEndpoint],
   });
 
@@ -882,7 +882,14 @@ export default function Checklists() {
         )}
       </div>
 
-      {isLoading ? (
+      {isError ? (
+        <div className="flex flex-col items-center justify-center p-8 text-center">
+          <AlertCircle className="h-12 w-12 text-destructive mb-4" />
+          <h3 className="text-lg font-semibold">Bir hata oluştu</h3>
+          <p className="text-muted-foreground mt-2">Veriler yüklenirken sorun oluştu.</p>
+          <Button onClick={() => refetch()} className="mt-4" data-testid="button-retry">Tekrar Dene</Button>
+        </div>
+      ) : isLoading ? (
         <ListSkeleton count={3} variant="row" showHeader={false} />
       ) : (
         <div className="grid gap-2 sm:gap-3">

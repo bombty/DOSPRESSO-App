@@ -4,13 +4,13 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useLocation } from "wouter";
-import { ArrowLeft, Award, Trophy, Flame } from "lucide-react";
+import { ArrowLeft, Award, Trophy, Flame, AlertCircle } from "lucide-react";
 
 export default function BadgeCollection() {
   const { user } = useAuth();
   const [, setLocation] = useLocation();
 
-  const { data: userBadges = [], isLoading } = useQuery({
+  const { data: userBadges = [], isLoading, isError, refetch } = useQuery({
     queryKey: ["/api/academy/user-badges", user?.id],
     queryFn: async () => {
       const res = await fetch("/api/academy/user-badges", { credentials: "include" });
@@ -36,6 +36,17 @@ export default function BadgeCollection() {
     roast_master: { bg: "bg-destructive/10 dark:bg-red-950", icon: Flame, text: "Kavurma Ustası" },
     coffee_pro: { bg: "bg-secondary/10 dark:bg-purple-950", icon: Trophy, text: "Kahve Pro" },
   };
+
+  if (isError) {
+    return (
+      <div className="flex flex-col items-center justify-center p-8 text-center">
+        <AlertCircle className="h-12 w-12 text-destructive mb-4" />
+        <h3 className="text-lg font-semibold">Bir hata oluştu</h3>
+        <p className="text-muted-foreground mt-2">Veriler yüklenirken sorun oluştu.</p>
+        <Button onClick={() => refetch()} className="mt-4" data-testid="button-retry">Tekrar Dene</Button>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-3 sm:gap-4 gap-2 sm:gap-3 p-3">

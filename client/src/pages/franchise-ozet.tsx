@@ -15,6 +15,8 @@ import {
 } from "lucide-react";
 import { DobodySuggestionList } from "@/components/dobody-suggestion-card";
 import { DobodyFlowMode } from "@/components/dobody-flow-mode";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 interface FranchiseSummaryData {
   branches: Array<{
@@ -41,7 +43,7 @@ export default function FranchiseOzet() {
   const { user } = useAuth();
   const { toast } = useToast();
 
-  const { data, isLoading } = useQuery<FranchiseSummaryData>({
+  const { data, isLoading, isError, refetch } = useQuery<FranchiseSummaryData>({
     queryKey: ["/api/franchise-summary"],
   });
 
@@ -69,7 +71,11 @@ export default function FranchiseOzet() {
   });
 
   if (isLoading) {
-    return (
+    
+  if (isLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
+
+  return (
       <div className="p-4 space-y-4 max-w-lg mx-auto" data-testid="franchise-ozet-loading">
         <Skeleton className="h-8 w-1/3" />
         <Skeleton className="h-32" />

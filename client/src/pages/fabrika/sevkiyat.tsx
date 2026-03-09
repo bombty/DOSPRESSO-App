@@ -30,6 +30,8 @@ import {
   AlertTriangle,
   FileText,
 } from "lucide-react";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 interface Shipment {
   id: number;
@@ -150,7 +152,7 @@ export default function FabrikaSevkiyat() {
     return qs ? `?${qs}` : "";
   };
 
-  const { data: shipments = [], isLoading: shipmentsLoading } = useQuery<Shipment[]>({
+  const { data: shipments = [], isLoading: shipmentsLoading, isError, refetch } = useQuery<Shipment[]>({
     queryKey: ['/api/factory/shipments', filterBranch, filterStatus],
     queryFn: async () => {
       const res = await fetch(`/api/factory/shipments${buildQueryString()}`, { credentials: 'include' });
@@ -417,7 +419,11 @@ export default function FabrikaSevkiyat() {
     const currentIdx = statusOrder.indexOf(shipment.status);
     const isCancelled = shipment.status === 'iptal';
 
-    return (
+    
+  if (shipmentsLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
+
+  return (
       <div className="flex items-center gap-2 py-3" data-testid="shipment-timeline">
         {steps.map((step, idx) => {
           const isCompleted = !isCancelled && idx <= currentIdx;

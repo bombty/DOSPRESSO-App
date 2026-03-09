@@ -53,6 +53,8 @@ import { Badge } from "@/components/ui/badge";
 import { ListSkeleton } from "@/components/list-skeleton";
 import { Plus, Check, X, Calendar, FileText } from "lucide-react";
 import { format } from "date-fns";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 const leaveTypeLabels: Record<string, string> = {
   annual: "Yıllık İzin",
@@ -73,7 +75,7 @@ export default function LeaveRequestsPage() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
 
-  const { data: leaveRequests = [], isLoading } = useQuery<any[]>({
+  const { data: leaveRequests = [], isLoading, isError, refetch } = useQuery<any[]>({
     queryKey: ["/api/leave-requests", statusFilter],
     queryFn: async () => {
       const params = new URLSearchParams();
@@ -102,6 +104,10 @@ export default function LeaveRequestsPage() {
     if (statusFilter !== "all" && req.status !== statusFilter) return false;
     return true;
   });
+
+  
+  if (isLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
 
   return (
     <div className="container mx-auto p-3 space-y-3 sm:space-y-4">

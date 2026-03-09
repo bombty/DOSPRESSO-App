@@ -45,6 +45,8 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 interface GoodsReceipt {
   id: number;
@@ -203,7 +205,7 @@ export default function MalKabul() {
   const queryString = queryParams.toString();
   const receiptsUrl = `/api/goods-receipts${queryString ? `?${queryString}` : ""}`;
 
-  const { data: receipts, isLoading } = useQuery<GoodsReceipt[]>({
+  const { data: receipts, isLoading, isError, refetch } = useQuery<GoodsReceipt[]>({
     queryKey: [receiptsUrl],
   });
 
@@ -531,7 +533,11 @@ export default function MalKabul() {
   };
 
   if (isLoading) {
-    return (
+    
+  if (isLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
+
+  return (
       <div className="space-y-4">
         <Skeleton className="h-10 w-full" />
         <Skeleton className="h-64 w-full" />

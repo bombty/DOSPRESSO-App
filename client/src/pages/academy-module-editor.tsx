@@ -25,6 +25,8 @@ import {
 } from "lucide-react";
 import { ImageUploader } from "@/components/image-uploader";
 import type { LucideIcon } from "lucide-react";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 interface TemplateStep {
   stepNumber: number;
@@ -547,6 +549,10 @@ function extractYouTubeId(url: string): string | null {
 function YouTubePreview({ url }: { url: string }) {
   const videoId = extractYouTubeId(url);
   if (!videoId) return null;
+  
+  if (isLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
+
   return (
     <div className="relative w-full aspect-video rounded-md overflow-hidden mt-2">
       <iframe
@@ -600,7 +606,7 @@ export default function AcademyModuleEditor() {
   const [scenarios, setScenarios] = useState<ScenarioItem[]>([]);
   const [supervisorChecklist, setSupervisorChecklist] = useState<string[]>([]);
 
-  const { data: existingModule, isLoading } = useQuery<TrainingModule>({
+  const { data: existingModule, isLoading, isError, refetch } = useQuery<TrainingModule>({
     queryKey: ['/api/training/modules', moduleId],
     queryFn: async () => {
       if (!moduleId) return null;

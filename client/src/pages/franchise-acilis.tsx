@@ -29,6 +29,8 @@ import {
   Briefcase, Send, MessageSquare, Loader2, Target,
   CheckCircle, Circle, ArrowRight
 } from "lucide-react";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 const CreateProjectSchema = z.object({
   name: z.string().min(1, "Proje adı gerekli"),
@@ -196,7 +198,7 @@ function ProjectList({ onSelectProject }: { onSelectProject: (id: number) => voi
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const isHQ = user?.role && isHQRole(user.role as any);
 
-  const { data: projects, isLoading } = useQuery<FranchiseProjectData[]>({
+  const { data: projects, isLoading, isError, refetch } = useQuery<FranchiseProjectData[]>({
     queryKey: ["/api/franchise-projects"],
   });
 
@@ -221,6 +223,10 @@ function ProjectList({ onSelectProject }: { onSelectProject: (id: number) => voi
   });
 
   if (isLoading) return <ListSkeleton count={3} variant="card" />;
+
+  
+  if (isLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
 
   return (
     <div className="space-y-4">

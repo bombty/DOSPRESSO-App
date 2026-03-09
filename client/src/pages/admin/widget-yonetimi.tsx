@@ -41,6 +41,8 @@ import {
   Store
 } from "lucide-react";
 import { ConfirmDeleteDialog, useConfirmDelete } from "@/components/confirm-delete-dialog";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 const ROLE_OPTIONS = [
   { value: "admin", label: "Admin" },
@@ -135,6 +137,10 @@ function WidgetPreview({ formData }: { formData: WidgetFormData }) {
   const Icon = getWidgetTypeIcon(formData.widgetType);
   const sizeClass = formData.size === "small" ? "w-36" : formData.size === "large" ? "w-64" : "w-48";
 
+  
+  if (isLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
+
   return (
     <Card className={`${sizeClass} overflow-visible`} data-testid="widget-preview">
       <CardHeader className="p-3 pb-1 flex flex-row items-center justify-between gap-1">
@@ -195,7 +201,7 @@ export default function AdminWidgetYonetimi() {
     return <Redirect to="/" />;
   }
 
-  const { data: widgets = [], isLoading } = useQuery<DashboardWidget[]>({
+  const { data: widgets = [], isLoading, isError, refetch } = useQuery<DashboardWidget[]>({
     queryKey: ["/api/admin/widgets"],
   });
 

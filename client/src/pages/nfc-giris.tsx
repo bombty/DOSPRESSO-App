@@ -7,6 +7,8 @@ import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Smartphone, CheckCircle, AlertCircle, Loader2, MapPin } from "lucide-react";
 import type { ShiftAttendance, Branch } from "@shared/schema";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 // Web NFC API types
 declare global {
@@ -27,7 +29,7 @@ export default function NFCGiris() {
   const [nfcSupported, setNfcSupported] = useState(true);
   const [scannedData, setScannedData] = useState<string | null>(null);
 
-  const { data: branch } = useQuery<Branch | null>({
+  const { data: branch, isError, refetch, isLoading } = useQuery<Branch | null>({
     queryKey: ["/api/branch"],
   });
 
@@ -103,7 +105,11 @@ export default function NFCGiris() {
   }, []);
 
   if (!nfcSupported) {
-    return (
+    
+  if (isLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
+
+  return (
       <div className="min-h-screen bg-gradient-to-b from-background to-muted p-4 flex items-center justify-center">
         <Card className="w-full max-w-md">
           <CardHeader>

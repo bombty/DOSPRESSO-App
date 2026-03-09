@@ -53,6 +53,8 @@ import {
   Legend,
   ResponsiveContainer,
 } from "recharts";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 interface TrendData {
   topOrderedProducts: Array<{
@@ -246,6 +248,10 @@ function formatMonthLabel(monthStr: string): string {
 }
 
 function LoadingSkeleton() {
+  
+  if (isLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
+
   return (
     <div className="space-y-4" data-testid="trend-loading">
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
@@ -695,7 +701,7 @@ function GenelTrendTab({ data }: { data: TrendData | undefined }) {
 }
 
 function TedarikciPerformansTab() {
-  const { data, isLoading } = useQuery<SupplierPerformanceData>({
+  const { data, isLoading, isError, refetch } = useQuery<SupplierPerformanceData>({
     queryKey: ["/api/satinalma/supplier-performance"],
   });
 

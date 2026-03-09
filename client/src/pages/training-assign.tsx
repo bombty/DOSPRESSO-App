@@ -21,6 +21,8 @@ import { Link } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { isHQRole } from "@shared/schema";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 export default function TrainingAssign() {
   const { user } = useAuth();
@@ -29,7 +31,7 @@ export default function TrainingAssign() {
   const [selectedRole, setSelectedRole] = useState("");
   const [dueDate, setDueDate] = useState("");
 
-  const { data: materials, isLoading: materialsLoading } = useQuery<any[]>({
+  const { data: materials, isLoading: materialsLoading, isError, refetch } = useQuery<any[]>({
     queryKey: ["/api/training/materials"],
     queryFn: async () => {
       const response = await fetch("/api/training/materials?status=published");
@@ -55,7 +57,11 @@ export default function TrainingAssign() {
   });
 
   if (!isHQRole(user?.role as any)) {
-    return (
+    
+  if (materialsLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
+
+  return (
       <div className="container mx-auto p-6">
         <Card>
           <CardContent className="pt-6">

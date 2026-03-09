@@ -21,6 +21,8 @@ import { Briefcase, PackageCheck, Clock, MapPin, User, Phone, Plus, Loader2, Cam
 import { format } from "date-fns";
 import { tr } from "date-fns/locale";
 import type { LostFoundItem, Branch } from "@shared/schema";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 const STATUS_LABELS: Record<string, string> = {
   bulunan: "Bulunan",
@@ -54,6 +56,10 @@ type LostFoundItemEnriched = LostFoundItem & {
 };
 
 function ItemSkeleton() {
+  
+  if (isLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
+
   return (
     <Card className="animate-pulse">
       <CardContent className="p-3">
@@ -77,7 +83,7 @@ export default function KayipEsyaPage() {
 
   const userIsHQ = isHQRole(user?.role);
 
-  const { data: branches = [] } = useQuery<Branch[]>({
+  const { data: branches = [], isError, refetch, isLoading } = useQuery<Branch[]>({
     queryKey: ["/api/branches"],
     enabled: userIsHQ,
   });

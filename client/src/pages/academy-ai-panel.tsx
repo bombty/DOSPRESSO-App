@@ -27,6 +27,8 @@ import {
   Download,
   XCircle,
 } from "lucide-react";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 interface AiAction {
   type: string;
@@ -150,6 +152,10 @@ const SCOPE_LABELS: Record<string, string> = {
 
 function EmployeePanel({ data }: { data: EmployeePanelData }) {
   const [, setLocation] = useLocation();
+
+  
+  if (isLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
 
   return (
     <div className="space-y-4" data-testid="employee-ai-panel">
@@ -596,7 +602,7 @@ function CoachPanel({ data }: { data: CoachPanelData }) {
 export default function AcademyAiPanel() {
   const { toast } = useToast();
 
-  const { data, isLoading, error, refetch } = useQuery<AiPanelData>({
+  const { data, isLoading, error, refetch, isError } = useQuery<AiPanelData>({
     queryKey: ["/api/academy/ai-panel"],
   });
 

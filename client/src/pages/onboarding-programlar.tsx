@@ -32,6 +32,8 @@ import {
   UserCheck,
   BookOpen,
 } from "lucide-react";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 interface OnboardingProgram {
   id: number;
@@ -104,7 +106,7 @@ export default function OnboardingProgramlar() {
 
   const isManager = ['admin', 'ceo', 'cgo', 'coach', 'trainer', 'mudur', 'supervisor', 'muhasebe_ik', 'fabrika_mudur'].includes(user?.role || '');
 
-  const { data: programs = [], isLoading: isProgramsLoading } = useQuery<OnboardingProgram[]>({
+  const { data: programs = [], isLoading: isProgramsLoading, isError, refetch } = useQuery<OnboardingProgram[]>({
     queryKey: ["/api/onboarding-programs"],
   });
 
@@ -166,7 +168,11 @@ export default function OnboardingProgramlar() {
     const completedCheckins = instanceDetail.checkins?.length || 0;
     const progressPercent = Math.min(100, Math.round((completedCheckins / totalWeeks) * 100));
 
-    return (
+    
+  if (isProgramsLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
+
+  return (
       <div className="min-h-screen bg-background">
         <div className="max-w-4xl mx-auto p-4 pb-24 space-y-4">
           <Button variant="ghost" size="sm" onClick={() => setSelectedInstance(null)} data-testid="button-back">

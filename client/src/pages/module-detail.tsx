@@ -18,6 +18,8 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { TrainingModule, isHQRole, hasPermission, type UserRoleType } from "@shared/schema";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 const objectivesEditSchema = z.object({
   objectives: z.array(z.string()).default([]),
@@ -114,7 +116,11 @@ export default function ModuleDetail() {
         return prev - 1;
       });
     }, 1000);
-    return () => clearInterval(timer);
+    
+  if (isLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
+
+  return () => clearInterval(timer);
   }, [quizStarted, quizFinished, quizTimeRemaining]);
 
   // Auto-finish quiz when time runs out
@@ -161,7 +167,7 @@ export default function ModuleDetail() {
   const [roleplayMessages, setRoleplayMessages] = useState<Array<{role: 'user' | 'customer'; message: string}>>([]);
   const [roleplayInput, setRoleplayInput] = useState("");
 
-  const { data: module, isLoading } = useQuery({
+  const { data: module, isLoading, isError, refetch } = useQuery({
     queryKey: ['/api/training/modules', moduleId],
     queryFn: async () => {
       if (!moduleId) return null;

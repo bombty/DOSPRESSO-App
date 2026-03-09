@@ -20,6 +20,8 @@ import { apiRequest, queryClient } from '@/lib/queryClient';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import type { Branch, Equipment as EquipmentType, InsertEquipmentServiceRequest } from '@shared/schema';
 import { insertEquipmentServiceRequestSchema } from '@shared/schema';
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 interface ServiceRequest {
   id: number;
@@ -122,7 +124,7 @@ export default function EquipmentManagement() {
   const qrScannerRef = useRef<Html5QrcodeScanner | null>(null);
 
   // Queries
-  const { data: branches = [] } = useQuery<Branch[]>({
+  const { data: branches = [], isError, refetch, isLoading } = useQuery<Branch[]>({
     queryKey: ['/api/branches'],
   });
 
@@ -269,7 +271,11 @@ export default function EquipmentManagement() {
         filtered = filtered.filter(sr => {
           const eq = equipment.find(e => e.id === sr.equipmentId);
           const branch = branches.find(b => b.id === eq?.branchId);
-          return (
+          
+  if (isLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
+
+  return (
             sr.notes?.toLocaleLowerCase('tr-TR').includes(query) ||
             sr.serviceProvider?.toLocaleLowerCase('tr-TR').includes(query) ||
             eq?.equipmentType.toLocaleLowerCase('tr-TR').includes(query) ||

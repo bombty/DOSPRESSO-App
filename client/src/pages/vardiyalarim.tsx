@@ -15,6 +15,8 @@ import { Clock, Sun, Sunset, Moon, ArrowRightLeft, Calendar, Check, X, Coffee, U
 import QrCheckinGenerator from "@/components/qr-checkin-generator";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 interface ShiftTask {
   id: number;
@@ -97,7 +99,7 @@ export default function Vardiyalarim() {
   const monthDays = eachDayOfInterval({ start: startOfMonth(new Date()), end: endOfMonth(new Date()) });
   const workDaysInMonth = monthDays.filter((d) => d.getDay() !== 0 && d.getDay() !== 6).length;
 
-  const { data: myShifts, isLoading } = useQuery<MyShift[]>({
+  const { data: myShifts, isLoading, isError, refetch } = useQuery<MyShift[]>({
     queryKey: ["/api/shifts/my", `start=${startDate}&end=${endDate}`],
     queryFn: async () => {
       const res = await fetch(`/api/shifts/my?start=${startDate}&end=${endDate}`);
@@ -358,7 +360,11 @@ export default function Vardiyalarim() {
 
   function EmployeePopover({ shift }: { shift: MyShift }) {
     const empName = shift.assignedTo?.fullName || `${shift.assignedTo?.firstName || ""} ${shift.assignedTo?.lastName || ""}`.trim() || "Bilinmeyen";
-    return (
+    
+  if (isLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
+
+  return (
       <Popover>
         <PopoverTrigger asChild>
           <button

@@ -9,6 +9,8 @@ import * as LucideIcons from "lucide-react";
 import { useBreadcrumb } from "@/components/breadcrumb-navigation";
 import { FavoriteStar } from "@/components/favorite-star";
 import type { SidebarMenuResponse, SidebarMenuSection } from "@shared/schema";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 const getIconComponent = (iconName: string): any => {
   const icons = LucideIcons as Record<string, any>;
@@ -32,7 +34,7 @@ export default function HubPage() {
   const sectionId = params.sectionId;
   const { user } = useAuth();
 
-  const { data: menuData, isLoading } = useQuery<SidebarMenuResponse>({
+  const { data: menuData, isLoading, isError, refetch } = useQuery<SidebarMenuResponse>({
     queryKey: ["sidebar-menu", user?.id],
     queryFn: async () => {
       const res = await fetch("/api/me/menu", { credentials: "include" });
@@ -53,7 +55,11 @@ export default function HubPage() {
   useBreadcrumb(section?.titleTr || "");
 
   if (isLoading) {
-    return (
+    
+  if (isLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
+
+  return (
       <div className="p-4 sm:p-6 space-y-6">
         <div className="space-y-2">
           <Skeleton className="h-8 w-48" />

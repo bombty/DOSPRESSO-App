@@ -39,6 +39,8 @@ import {
   Info,
   XCircle,
 } from "lucide-react";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 interface MyPathData {
   userId: string;
@@ -121,6 +123,10 @@ const TYPE_ICONS: Record<string, any> = {
 
 function ScoreBar({ label, value, max = 100 }: { label: string; value: number; max?: number }) {
   const percent = Math.min(100, Math.round((value / max) * 100));
+  
+  if (eligLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
+
   return (
     <div className="space-y-1" data-testid={`score-bar-${label}`}>
       <div className="flex items-center justify-between gap-2 text-xs">
@@ -551,7 +557,7 @@ function GateRequestButton({ data }: { data: MyPathData }) {
   const nextGate = data.nextGate;
   const hasActiveGate = !!data.activeGate;
 
-  const { data: eligibility, isLoading: eligLoading } = useQuery<GateEligibility>({
+  const { data: eligibility, isLoading: eligLoading, isError, refetch } = useQuery<GateEligibility>({
     queryKey: ['/api/academy/gates', nextGate?.gateId, 'eligibility', data.userId],
     queryFn: async () => {
       const res = await fetch(`/api/academy/gates/${nextGate?.gateId}/eligibility/${data.userId}`, { credentials: 'include' });

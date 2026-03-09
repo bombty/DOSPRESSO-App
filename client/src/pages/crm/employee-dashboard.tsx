@@ -15,6 +15,8 @@ import {
   BookOpen,
   ClipboardList
 } from "lucide-react";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 interface MyStatsData {
   user: {
@@ -54,6 +56,10 @@ interface MyStatsData {
 }
 
 function StatCardSkeleton() {
+  
+  if (isLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
+
   return (
     <Card>
       <CardHeader className="pb-1 pt-3 px-3">
@@ -68,7 +74,7 @@ function StatCardSkeleton() {
 }
 
 export default function EmployeeDashboard() {
-  const { data, isLoading, error } = useQuery<MyStatsData>({
+  const { data, isLoading, error, isError, refetch } = useQuery<MyStatsData>({
     queryKey: ['/api/crm/my-stats'],
   });
 

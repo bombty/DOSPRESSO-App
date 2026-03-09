@@ -6,11 +6,13 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ArrowLeft, Trophy, TrendingUp, Award, Flame } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 export default function AcademyLeaderboard() {
   const { user } = useAuth();
 
-  const { data: leaderboard } = useQuery({
+  const { data: leaderboard, isError, refetch, isLoading } = useQuery({
     queryKey: ["/api/academy/leaderboard"],
     queryFn: async () => {
       const res = await fetch(`/api/academy/leaderboard`, { credentials: "include" });
@@ -44,6 +46,10 @@ export default function AcademyLeaderboard() {
   ];
 
   const userRank = topPerformers.findIndex((p) => p.name === user?.firstName) + 1;
+
+  
+  if (isLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
 
   return (
     <div className="flex flex-col gap-3 sm:gap-4 gap-2 sm:gap-3 p-3">

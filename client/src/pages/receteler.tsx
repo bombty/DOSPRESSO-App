@@ -65,6 +65,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { isHQRole } from "@shared/schema";
 import { ImageUploader } from "@/components/image-uploader";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 type RecipeCategory = {
   id: number;
@@ -185,7 +187,11 @@ function formatJsonField(value: string | null | undefined): React.ReactNode {
     return null;
   }
   if (pgArr && pgArr.length > 0) {
-    return (
+    
+  if (loadingCategories) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
+
+  return (
       <ul className="list-disc list-inside space-y-1">
         {pgArr.map((item, i) => (
           <li key={i} className="text-sm">{item}</li>
@@ -291,7 +297,7 @@ export default function Receteler() {
   const [formServingNotes, setFormServingNotes] = useState("");
   const [ingredientDetailsOpen, setIngredientDetailsOpen] = useState(false);
 
-  const { data: categories = [], isLoading: loadingCategories } = useQuery<RecipeCategory[]>({
+  const { data: categories = [], isLoading: loadingCategories, isError, refetch } = useQuery<RecipeCategory[]>({
     queryKey: ["/api/academy/recipe-categories"],
   });
 

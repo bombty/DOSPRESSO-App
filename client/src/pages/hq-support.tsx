@@ -34,6 +34,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { format } from "date-fns";
 import { tr } from "date-fns/locale";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 // Category translations
 const CATEGORY_LABELS: Record<HQSupportCategoryType, string> = {
@@ -105,7 +107,7 @@ export default function HQSupport() {
   const pollingInterval = useAdaptivePolling(5000, 60000);
 
   // Fetch tickets with adaptive polling for real-time updates
-  const { data: tickets = [], isLoading } = useQuery<TicketWithRelations[]>({
+  const { data: tickets = [], isLoading, isError, refetch } = useQuery<TicketWithRelations[]>({
     queryKey: ["/api/hq-support/tickets"],
     refetchInterval: pollingInterval,
   });
@@ -132,6 +134,10 @@ export default function HQSupport() {
     });
     return grouped;
   };
+
+  
+  if (isLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
 
   return (
     <div className="flex flex-col gap-3 sm:gap-4">

@@ -47,6 +47,8 @@ import { ListChecks, Plus, Trash2, Users, UserPlus } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 interface RatingResponse extends TaskRating {}
 
@@ -77,7 +79,7 @@ export default function GorevDetay() {
   const [showCancelDialog, setShowCancelDialog] = useState(false);
   const [cancelReason, setCancelReason] = useState("");
 
-  const { data: task, isLoading } = useQuery<Task>({
+  const { data: task, isLoading, isError, refetch } = useQuery<Task>({
     queryKey: ["/api/tasks", id],
     queryFn: async () => {
       const response = await fetch(`/api/tasks/${id}`);
@@ -496,7 +498,11 @@ export default function GorevDetay() {
   }, [task?.id, currentUser?.id]);
 
   if (isLoading) {
-    return (
+    
+  if (isLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
+
+  return (
       <div className="flex flex-col gap-3 sm:gap-4 p-3 pb-32">
         <Skeleton className="h-12 w-64" />
         <Skeleton className="h-96 w-full" />

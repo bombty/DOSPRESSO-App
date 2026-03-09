@@ -49,6 +49,8 @@ import {
 } from "lucide-react";
 import { format, subDays } from "date-fns";
 import { tr } from "date-fns/locale";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 interface ShiftAttendance {
   id: number;
@@ -85,7 +87,7 @@ export default function HRReportsPage() {
   const [selectedBranchId, setSelectedBranchId] = useState<string>("all");
   const [reportType, setReportType] = useState<"attendance" | "personnel" | "training">("attendance");
 
-  const { data: attendanceRecords = [], isLoading: isLoadingAttendance } = useQuery<ShiftAttendance[]>({
+  const { data: attendanceRecords = [], isLoading: isLoadingAttendance, isError, refetch } = useQuery<ShiftAttendance[]>({
     queryKey: ['/api/shift-attendance', { dateFrom, dateTo }],
     queryFn: async () => {
       const params = new URLSearchParams();
@@ -193,6 +195,10 @@ export default function HRReportsPage() {
   };
 
   const isLoading = isLoadingAttendance || isLoadingEmployees;
+
+  
+  if (isLoadingAttendance) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
 
   return (
     <div className="flex flex-col gap-2 sm:gap-3">

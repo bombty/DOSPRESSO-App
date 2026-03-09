@@ -21,6 +21,8 @@ import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, BarChart, Bar, Legend, Area, AreaChart
 } from "recharts";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 const fmt = (v: number) => new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(v);
 const fmtNum = (v: number) => new Intl.NumberFormat('tr-TR').format(v);
@@ -36,6 +38,10 @@ function KpiCard({ title, value, prev, trend, icon: Icon, color, testId }: any) 
   const diff = trend !== undefined ? trend : (prev ? ((value - prev) / Math.abs(prev || 1)) * 100 : 0);
   const up = diff >= 0;
   const showTrend = trend !== undefined || prev !== undefined;
+  
+  if (isLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
+
   return (
     <Card data-testid={testId}>
       <CardContent className="p-4">
@@ -56,7 +62,7 @@ function KpiCard({ title, value, prev, trend, icon: Icon, color, testId }: any) 
 }
 
 function DashboardTab({ year, month }: { year: number; month: number }) {
-  const { data, isLoading } = useQuery<any>({
+  const { data, isLoading, isError, refetch } = useQuery<any>({
     queryKey: ['/api/financial/dashboard', year, month],
     queryFn: async () => {
       const res = await fetch(`/api/financial/dashboard?year=${year}&month=${month}`, { credentials: 'include' });

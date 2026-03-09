@@ -29,6 +29,8 @@ import {
   LogOut,
 } from "lucide-react";
 import logoUrl from "@assets/IMG_6637_1765138781125.png";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 interface WeeklyShift {
   id: number;
@@ -114,7 +116,7 @@ export default function SubeDashboard() {
   const hasBranchAccess = branchAuth || user?.branchId || selectedBranchId;
   const branchId = branchAuth?.id || user?.branchId || selectedBranchId;
 
-  const { data: branches, isLoading: branchesLoading } = useQuery<Array<{ id: number; name: string; city: string }>>({
+  const { data: branches, isLoading: branchesLoading, isError, refetch } = useQuery<Array<{ id: number; name: string; city: string }>>({
     queryKey: ["/api/branches"],
     enabled: !!needsBranchSelection,
   });
@@ -171,7 +173,11 @@ export default function SubeDashboard() {
   }, [authChecked, hasBranchAccess, needsBranchSelection, setLocation]);
 
   if (!authChecked) {
-    return (
+    
+  if (branchesLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
+
+  return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
       </div>

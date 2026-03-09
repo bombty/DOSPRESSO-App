@@ -54,6 +54,8 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 interface UrunKartiProps {
   productId: number;
@@ -240,7 +242,7 @@ export default function UrunKarti({ productId, onBack }: UrunKartiProps) {
     description: "",
   });
 
-  const { data: cardData, isLoading } = useQuery<ProductCardData>({
+  const { data: cardData, isLoading, isError, refetch } = useQuery<ProductCardData>({
     queryKey: ['/api/inventory', productId, 'card'],
     queryFn: async () => {
       const res = await fetch(`/api/inventory/${productId}/card`);
@@ -385,7 +387,11 @@ export default function UrunKarti({ productId, onBack }: UrunKartiProps) {
   };
 
   if (isLoading) {
-    return (
+    
+  if (isLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
+
+  return (
       <div className="space-y-4">
         <Skeleton className="h-10 w-32" />
         <Skeleton className="h-32 w-full" />

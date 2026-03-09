@@ -34,6 +34,8 @@ import {
 } from "lucide-react";
 import { format, differenceInHours, differenceInMinutes, isToday, parseISO } from "date-fns";
 import { tr } from "date-fns/locale";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 interface Feedback {
   id: number;
@@ -110,7 +112,7 @@ export default function KaliteKontrolDashboard() {
   const [responseType, setResponseType] = useState('resolution');
   const [showDetailDialog, setShowDetailDialog] = useState(false);
 
-  const { data: feedbacks = [], isLoading } = useQuery<Feedback[]>({
+  const { data: feedbacks = [], isLoading, isError, refetch } = useQuery<Feedback[]>({
     queryKey: ['/api/customer-feedback', 'pending'],
     queryFn: async () => {
       const res = await fetch('/api/customer-feedback?status=new,in_progress,awaiting_response', { credentials: 'include' });
@@ -240,7 +242,11 @@ export default function KaliteKontrolDashboard() {
   });
 
   if (isLoading) {
-    return (
+    
+  if (isLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
+
+  return (
       <div className="space-y-3 p-3">
         <Skeleton className="h-32 w-full" />
         <div className="grid grid-cols-2 md:grid-cols-4 gap-2">

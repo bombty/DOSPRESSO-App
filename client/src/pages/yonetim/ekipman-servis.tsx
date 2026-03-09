@@ -16,6 +16,8 @@ import type { Branch } from '@shared/schema';
 import { format, parseISO } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import { Html5Qrcode } from 'html5-qrcode';
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 // Status labels for unified system
 const FAULT_STATUS_LABELS = {
@@ -116,7 +118,7 @@ export default function EkipmanServis() {
   const [qrScannerOpen, setQrScannerOpen] = useState(false);
   const qrScannerRef = useRef<Html5Qrcode | null>(null);
 
-  const { data: branches = [] } = useQuery<Branch[]>({
+  const { data: branches = [], isError, refetch, isLoading } = useQuery<Branch[]>({
     queryKey: ['/api/branches'],
   });
 
@@ -262,7 +264,12 @@ export default function EkipmanServis() {
   };
 
   useEffect(() => {
-    return () => {
+
+  if (isLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
+
+
+  return () => {
       if (qrScannerRef.current) {
         qrScannerRef.current.stop().catch(console.error);
       }

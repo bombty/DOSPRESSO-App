@@ -20,6 +20,8 @@ import { EmptyState } from "@/components/empty-state";
 import { Settings, Plus, QrCode, Wrench, Calendar, MapPin, Pencil, AlertTriangle, Heart } from "lucide-react";
 import { DialogFooter } from "@/components/ui/dialog";
 import { FaultReportDialog } from "@/components/fault-report-dialog";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 interface FaultRecord {
   id: number;
@@ -55,7 +57,7 @@ export default function Equipment() {
   const [sortBy, setSortBy] = useState<"type" | "health">("type");
   const [faultReportEquipment, setFaultReportEquipment] = useState<EquipmentType | null>(null);
 
-  const { data: equipment, isLoading } = useQuery<EquipmentWithHealth[]>({
+  const { data: equipment, isLoading, isError, refetch } = useQuery<EquipmentWithHealth[]>({
     queryKey: ["/api/equipment"],
   });
 
@@ -286,7 +288,11 @@ export default function Equipment() {
       // Health filter
       if (healthFilter && healthFilter !== "all") {
         if (healthFilter === "critical") {
-          return (item.healthScore ?? 100) < 50;
+          
+  if (isLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
+
+  return (item.healthScore ?? 100) < 50;
         }
         if (healthFilter === "warning") {
           const score = item.healthScore ?? 100;

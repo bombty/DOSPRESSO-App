@@ -35,7 +35,8 @@ import {
   Bold,
   Italic,
   Send,
-  Loader2
+  Loader2,
+  AlertCircle
 } from "lucide-react";
 
 const PRESET_COLORS = [
@@ -295,7 +296,7 @@ export default function BannerEditor() {
   const [expiresAt, setExpiresAt] = useState<string>("");
 
   // Fetch branches for targeting
-  const { data: branches } = useQuery<{ id: number; name: string }[]>({
+  const { data: branches, isLoading, isError, refetch } = useQuery<{ id: number; name: string }[]>({
     queryKey: ["/api/branches"],
   });
 
@@ -705,6 +706,25 @@ export default function BannerEditor() {
   const selectedIcon = selectedElement?.type === "icon" ? iconElements.find((i) => i.id === selectedElement.id) : null;
   const rawSelectedImage = selectedElement?.type === "image" ? imageElements.find((i) => i.id === selectedElement.id) : null;
   const selectedImage = rawSelectedImage ? getImageWithDefaults(rawSelectedImage) : null;
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center p-8">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div className="flex flex-col items-center justify-center p-8 text-center">
+        <AlertCircle className="h-12 w-12 text-destructive mb-4" />
+        <h3 className="text-lg font-semibold">Bir hata oluştu</h3>
+        <p className="text-muted-foreground mt-2">Veriler yüklenirken sorun oluştu.</p>
+        <Button onClick={() => refetch()} className="mt-4" data-testid="button-retry">Tekrar Dene</Button>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background flex flex-col">

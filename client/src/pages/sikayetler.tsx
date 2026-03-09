@@ -13,6 +13,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { AlertCircle, CheckCircle2, Clock, AlertTriangle, MessageSquare, Timer } from "lucide-react";
 import { format } from "date-fns";
 import { tr } from "date-fns/locale";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 interface GuestComplaint {
   id: number;
@@ -48,7 +50,7 @@ export default function Sikayetler() {
   const [filterPriority, setFilterPriority] = useState<string>("all");
   const [filterStatus, setFilterStatus] = useState<string>("all");
 
-  const { data: complaints, isLoading: complaintsLoading } = useQuery<GuestComplaint[]>({
+  const { data: complaints, isLoading: complaintsLoading, isError, refetch } = useQuery<GuestComplaint[]>({
     queryKey: ["/api/guest-complaints"],
   });
 
@@ -127,7 +129,11 @@ export default function Sikayetler() {
     const hoursRemaining = (deadline.getTime() - now.getTime()) / (1000 * 60 * 60);
     
     if (complaint.slaBreached) {
-      return (
+      
+  if (complaintsLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
+
+  return (
         <Badge variant="destructive" data-testid={`badge-sla-${complaint.id}`}>
           <AlertCircle className="w-3 h-3 mr-1" />
           SLA İhlali

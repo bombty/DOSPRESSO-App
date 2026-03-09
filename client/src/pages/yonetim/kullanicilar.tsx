@@ -32,6 +32,8 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Search, Upload, UserCog, Download, ArrowUpDown, ChevronLeft, ChevronRight } from "lucide-react";
 import type { User, Branch } from "@shared/schema";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 export default function UserCRM() {
   const { toast } = useToast();
@@ -50,7 +52,7 @@ export default function UserCRM() {
   const [editBranch, setEditBranch] = useState<string | null>(null);
 
   // Fetch branches
-  const { data: branches = [] } = useQuery<Branch[]>({
+  const { data: branches = [], isError, refetch, isLoading } = useQuery<Branch[]>({
     queryKey: ["/api/branches"],
   });
 
@@ -237,6 +239,10 @@ export default function UserCRM() {
     const hqRoles = ["hq_admin", "hq_staff", "accountant", "hr_specialist"];
     return hqRoles.includes(role) ? "default" : "secondary";
   };
+
+  
+  if (isLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
 
   return (
     <div className="flex-1 overflow-auto p-6">

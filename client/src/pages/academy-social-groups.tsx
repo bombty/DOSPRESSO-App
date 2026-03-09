@@ -5,12 +5,14 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Users, MessageSquare, BookOpen, UserPlus } from "lucide-react";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 export default function AcademySocialGroups() {
   const { user } = useAuth();
   const [selectedGroup, setSelectedGroup] = useState<string | null>(null);
 
-  const { data: studyGroups = [] } = useQuery({
+  const { data: studyGroups = [], isError, refetch, isLoading } = useQuery({
     queryKey: ["/api/academy/study-groups", user?.id],
     queryFn: async () => {
       if (!user?.id) return [];
@@ -20,6 +22,10 @@ export default function AcademySocialGroups() {
     },
     enabled: !!user?.id,
   });
+
+  
+  if (isLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
 
   return (
     <div className="grid grid-cols-1 gap-2 p-3">

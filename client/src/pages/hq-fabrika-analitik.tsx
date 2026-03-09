@@ -35,6 +35,8 @@ import {
   Cell,
   Legend
 } from "recharts";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 interface ProductionStats {
   totalProduced: number;
@@ -61,7 +63,7 @@ export default function HQFabrikaAnalitik() {
   const [periodFilter, setPeriodFilter] = useState("week");
   const [activeTab, setActiveTab] = useState("overview");
 
-  const { data: stats, isLoading: loadingStats, refetch } = useQuery<ProductionStats>({
+  const { data: stats, isLoading: loadingStats, refetch, isError } = useQuery<ProductionStats>({
     queryKey: [`/api/factory/analytics/stats?period=${periodFilter}`],
   });
 
@@ -94,6 +96,10 @@ export default function HQFabrikaAnalitik() {
       default: return 'Bu Hafta';
     }
   };
+
+  
+  if (loadingStats) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
 
   return (
     <div className="container mx-auto p-6 space-y-6">

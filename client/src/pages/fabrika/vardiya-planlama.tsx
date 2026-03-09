@@ -43,6 +43,8 @@ import {
   Factory,
   Search,
 } from "lucide-react";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 const SHIFT_TYPES = [
   { value: "sabah", label: "Sabah", time: "06:00 - 14:00", color: "bg-amber-500" },
@@ -135,7 +137,7 @@ export default function FabrikaVardiyaPlanlama() {
   const startDate = formatDate(weekDates[0]);
   const endDate = formatDate(weekDates[6]);
 
-  const { data: shifts = [], isLoading: loadingShifts } = useQuery<any[]>({
+  const { data: shifts = [], isLoading: loadingShifts, isError, refetch } = useQuery<any[]>({
     queryKey: ["/api/factory-shifts", startDate, endDate],
     queryFn: async () => {
       const res = await fetch(`/api/factory-shifts?startDate=${startDate}&endDate=${endDate}`);
@@ -552,6 +554,10 @@ export default function FabrikaVardiyaPlanlama() {
     SHIFT_TYPES.find(s => s.value === type) || SHIFT_TYPES[0];
 
   const isToday = (d: Date) => formatDate(d) === formatDate(new Date());
+
+  
+  if (loadingShifts) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
 
   return (
     <div className="p-4 space-y-4">

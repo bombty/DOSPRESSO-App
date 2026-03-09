@@ -23,6 +23,8 @@ import {
   PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar,
   XAxis, YAxis, Tooltip, Legend, CartesianGrid,
 } from "recharts";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 const MONTHS = [
   "Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran",
@@ -47,7 +49,7 @@ export default function EmployeeOfMonthPage() {
 
   const isHQ = user?.role && (isHQRole(user.role as any) || user.role === 'admin');
 
-  const { data: branches } = useQuery({
+  const { data: branches, isError, refetch, isLoading } = useQuery({
     queryKey: ["/api/branches"],
   });
 
@@ -128,6 +130,10 @@ export default function EmployeeOfMonthPage() {
       .map(([name, wins]) => ({ name: name.length > 15 ? name.substring(0, 15) + '...' : name, wins }))
       .sort((a, b) => b.wins - a.wins);
   }, [awards, branches]);
+
+  if (isLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
+
 
   return (
     <div className="p-3 sm:p-4 space-y-4 max-w-7xl mx-auto" data-testid="employee-of-month-page">

@@ -6,13 +6,15 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { ArrowLeft, Brain, Zap, BookOpen, CheckCircle2, Circle, Lock, ArrowRight, Loader } from "lucide-react";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 export default function AcademyLearningPathDetail() {
   const { pathId } = useParams();
   const { user } = useAuth();
   const [, navigate] = useLocation();
 
-  const { data: pathDetail, isLoading } = useQuery({
+  const { data: pathDetail, isLoading, isError, refetch } = useQuery({
     queryKey: ["/api/academy/learning-paths", pathId, user?.id],
     queryFn: async () => {
       const res = await fetch(`/api/academy/learning-path-detail/${pathId}`, { credentials: "include" });
@@ -32,6 +34,10 @@ export default function AcademyLearningPathDetail() {
 
   const pathTitle = pathId === "1" ? "Hızlı Kariyer Yolu" : pathId === "2" ? "Barista Ustası Yolu" : "Temel Beceriler Yolu";
   const totalCompletion = Math.round(recommendedQuizzes.reduce((sum, q) => sum + q.completion, 0) / recommendedQuizzes.length);
+
+  
+  if (isLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
 
   return (
     <div className="max-w-5xl mx-auto px-3 sm:px-4 py-3 space-y-4">

@@ -30,6 +30,8 @@ import {
 } from "lucide-react";
 import { format, startOfWeek, endOfWeek, addWeeks, subWeeks } from "date-fns";
 import { tr } from "date-fns/locale";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 export default function FabrikaVardiyaUyumluluk() {
   const { user } = useAuth();
@@ -51,7 +53,7 @@ export default function FabrikaVardiyaUyumluluk() {
   const weekStartStr = format(selectedWeek, 'yyyy-MM-dd');
   const weekEndStr = format(endOfWeek(selectedWeek, { weekStartsOn: 1 }), 'yyyy-MM-dd');
 
-  const { data: dailyCompliance = [], isLoading: dailyLoading } = useQuery<any[]>({
+  const { data: dailyCompliance = [], isLoading: dailyLoading, isError, refetch } = useQuery<any[]>({
     queryKey: ['/api/factory', 'shift-compliance', 'daily', selectedDate, statusFilter],
     queryFn: async () => {
       const params = new URLSearchParams({ date: selectedDate });
@@ -107,6 +109,10 @@ export default function FabrikaVardiyaUyumluluk() {
       prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
     );
   };
+
+  
+  if (dailyLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
 
   return (
     <div className="p-4 pb-24 space-y-4">

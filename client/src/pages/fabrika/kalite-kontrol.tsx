@@ -39,6 +39,8 @@ import {
   Scale,
   Microscope,
 } from "lucide-react";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 interface ProductionOutput {
   id: number;
@@ -137,7 +139,7 @@ export default function FabrikaKaliteKontrol() {
   const [engHoldReason, setEngHoldReason] = useState("");
   const [engNotes, setEngNotes] = useState("");
 
-  const { data: pendingOutputs = [], isLoading: loadingPending, refetch: refetchPending } = useQuery<ProductionOutput[]>({
+  const { data: pendingOutputs = [], isLoading: loadingPending, refetch: refetchPending, isError } = useQuery<ProductionOutput[]>({
     queryKey: ['/api/factory/quality/pending'],
   });
 
@@ -497,6 +499,10 @@ export default function FabrikaKaliteKontrol() {
       </TableBody>
     </Table>
   );
+
+  
+  if (loadingPending) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
 
   return (
     <div className="container mx-auto p-6 space-y-6">

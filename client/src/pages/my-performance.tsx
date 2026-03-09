@@ -27,6 +27,8 @@ import {
   Radar, ResponsiveContainer, LineChart, Line, XAxis, YAxis,
   CartesianGrid, Tooltip, Legend, AreaChart, Area
 } from "recharts";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 type PeriodType = "monthly" | "quarterly" | "yearly" | "all";
 
@@ -51,7 +53,7 @@ export default function MyPerformancePage() {
   const [generatingTips, setGeneratingTips] = useState(false);
   const [generatingPDF, setGeneratingPDF] = useState(false);
 
-  const { data: user } = useQuery({
+  const { data: user, isError, refetch, isLoading } = useQuery({
     queryKey: ["/api/user"],
   });
 
@@ -160,6 +162,10 @@ export default function MyPerformancePage() {
       generateAITips();
     }
   }, [myPerformance]);
+
+  
+  if (isLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
 
   return (
     <div className="container mx-auto py-6 space-y-6">

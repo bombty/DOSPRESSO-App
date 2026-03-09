@@ -41,6 +41,8 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 interface Supplier {
   id: number;
@@ -76,7 +78,7 @@ export default function TedarikciYonetimi() {
   const queryString = queryParams.toString();
   const suppliersUrl = `/api/suppliers${queryString ? `?${queryString}` : ""}`;
 
-  const { data: suppliers, isLoading } = useQuery<Supplier[]>({
+  const { data: suppliers, isLoading, isError, refetch } = useQuery<Supplier[]>({
     queryKey: [suppliersUrl],
   });
 
@@ -134,7 +136,11 @@ export default function TedarikciYonetimi() {
   };
 
   if (isLoading) {
-    return (
+    
+  if (isLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
+
+  return (
       <div className="space-y-4">
         <Skeleton className="h-10 w-full" />
         <Skeleton className="h-64 w-full" />

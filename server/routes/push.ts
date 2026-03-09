@@ -3,6 +3,7 @@ import { db } from '../db';
 import { pushSubscriptions } from '@shared/schema';
 import { eq, and } from 'drizzle-orm';
 import { sendPushNotification, cleanExpiredSubscriptions } from '../lib/push-service';
+import { isAuthenticated } from '../localAuth';
 
 const router = Router();
 
@@ -14,7 +15,7 @@ router.get('/api/push/vapid-key', (req: Request, res: Response) => {
   res.json({ publicKey });
 });
 
-router.post('/api/push/subscribe', async (req: Request, res: Response) => {
+router.post('/api/push/subscribe', isAuthenticated, async (req: Request, res: Response) => {
   const user = req.user as any;
   if (!user?.id) return res.status(401).json({ error: 'Giriş gerekli' });
 
@@ -52,7 +53,7 @@ router.post('/api/push/subscribe', async (req: Request, res: Response) => {
   }
 });
 
-router.post('/api/push/unsubscribe', async (req: Request, res: Response) => {
+router.post('/api/push/unsubscribe', isAuthenticated, async (req: Request, res: Response) => {
   const user = req.user as any;
   if (!user?.id) return res.status(401).json({ error: 'Giriş gerekli' });
 
@@ -73,7 +74,7 @@ router.post('/api/push/unsubscribe', async (req: Request, res: Response) => {
   }
 });
 
-router.post('/api/push/test', async (req: Request, res: Response) => {
+router.post('/api/push/test', isAuthenticated, async (req: Request, res: Response) => {
   const user = req.user as any;
   if (!user?.id) return res.status(401).json({ error: 'Giriş gerekli' });
 
@@ -91,7 +92,7 @@ router.post('/api/push/test', async (req: Request, res: Response) => {
   }
 });
 
-router.post('/api/push/cleanup', async (req: Request, res: Response) => {
+router.post('/api/push/cleanup', isAuthenticated, async (req: Request, res: Response) => {
   const user = req.user as any;
   if (!user?.id || !['admin', 'ceo', 'cgo'].includes(user.role)) {
     return res.status(403).json({ error: 'Yetkisiz' });

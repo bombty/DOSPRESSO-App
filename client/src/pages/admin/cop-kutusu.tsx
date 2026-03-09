@@ -27,6 +27,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 interface TrashTableInfo {
   key: string;
@@ -49,7 +51,7 @@ export default function AdminCopKutusu() {
     return <Redirect to="/" />;
   }
 
-  const { data: tables, isLoading: tablesLoading } = useQuery<TrashTableInfo[]>({
+  const { data: tables, isLoading: tablesLoading, isError, refetch } = useQuery<TrashTableInfo[]>({
     queryKey: ["/api/trash/tables"],
   });
 
@@ -109,6 +111,10 @@ export default function AdminCopKutusu() {
     }
     setConfirmAction(null);
   }
+
+  
+  if (tablesLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
 
   return (
     <div className="space-y-6" data-testid="trash-page">

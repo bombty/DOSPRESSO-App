@@ -52,6 +52,8 @@ import {
   Pie,
   Cell,
 } from "recharts";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 const CreateAuditFormSchema = z.object({
   branchId: z.coerce.number({ required_error: "Şube seçimi gerekli" }),
@@ -145,7 +147,7 @@ export default function KaliteDenetimi() {
   const canCreateAudit = user?.role === 'coach' || user?.role === 'admin' || isHQ;
 
   // Dashboard analytics
-  const { data: dashboardStats, isLoading: statsLoading } = useQuery<DashboardStats>({
+  const { data: dashboardStats, isLoading: statsLoading, isError, refetch } = useQuery<DashboardStats>({
     queryKey: ["/api/audits/analytics/dashboard"],
   });
 
@@ -231,7 +233,11 @@ export default function KaliteDenetimi() {
       'D': 'bg-orange-500',
       'F': 'bg-red-500',
     };
-    return (
+    
+  if (statsLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
+
+  return (
       <Badge className={`${colors[grade] || 'bg-gray-500'} text-white`}>
         {grade} ({score}%)
       </Badge>

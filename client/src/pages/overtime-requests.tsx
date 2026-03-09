@@ -53,6 +53,8 @@ import { ListSkeleton } from "@/components/list-skeleton";
 import { EmptyState } from "@/components/empty-state";
 import { Plus, Check, X, Clock, AlertCircle } from "lucide-react";
 import { format } from "date-fns";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 const statusLabels: Record<string, string> = {
   pending: "Beklemede",
@@ -80,7 +82,7 @@ export default function OvertimeRequestsPage() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
 
-  const { data: overtimeRequests = [], isLoading } = useQuery<any[]>({
+  const { data: overtimeRequests = [], isLoading, isError, refetch } = useQuery<any[]>({
     queryKey: ["/api/overtime-requests", statusFilter],
     queryFn: async () => {
       const params = new URLSearchParams();
@@ -179,6 +181,10 @@ export default function OvertimeRequestsPage() {
     if (statusFilter !== "all" && req.status !== statusFilter) return false;
     return true;
   });
+
+  
+  if (isLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
 
   return (
     <div className="container mx-auto p-3 grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">

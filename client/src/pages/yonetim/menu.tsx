@@ -67,6 +67,8 @@ import {
   Award,
   Coffee
 } from "lucide-react";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 // Icon options for selection
 const lucideIconOptions = [
@@ -133,6 +135,10 @@ function SortableSection({
       coordinateGetter: sortableKeyboardCoordinates,
     })
   );
+
+  
+  if (isLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
 
   return (
     <Card ref={setNodeRef} style={style} className="mb-4">
@@ -272,7 +278,7 @@ export default function AdminMenuManagement() {
   const { deleteState: ruleDeleteState, requestDelete: requestRuleDelete, cancelDelete: cancelRuleDelete, confirmDelete: confirmRuleDelete } = useConfirmDelete();
 
   // TanStack Query - Fetch all menu data
-  const { data: menuData, isLoading } = useQuery<{
+  const { data: menuData, isLoading, isError, refetch } = useQuery<{
     sections: MenuSection[];
     items: MenuItem[];
     rules: MenuVisibilityRule[];

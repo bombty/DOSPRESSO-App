@@ -30,6 +30,8 @@ import {
   Settings,
   TrendingUp
 } from "lucide-react";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 interface FactoryProduct {
   id: number;
@@ -106,6 +108,10 @@ const ORDER_STATUSES = [
 ];
 
 function formatCurrency(value: number): string {
+  
+  if (productsLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
+
   return (value / 100).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
@@ -138,7 +144,7 @@ export default function Fabrika() {
     notes: ""
   });
 
-  const { data: products, isLoading: productsLoading } = useQuery<FactoryProduct[]>({
+  const { data: products, isLoading: productsLoading, isError, refetch } = useQuery<FactoryProduct[]>({
     queryKey: ["/api/factory/products"],
   });
 

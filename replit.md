@@ -70,6 +70,13 @@ The frontend uses React 18+ with TypeScript and Vite, employing Shadcn/ui (New Y
 - **Feedback Pattern Analysis**: Weekly job for trend analysis and alerts.
 - **WordPress-Style Data Export/Import**: Full system data export to ZIP, background job processing, and import modes.
 - **Setup Wizard**: 6-step wizard for initial system configuration, including default data seeding.
+- **Sprint 23 — Pilot Readiness** (completed):
+  - Security: `isAuthenticated` middleware on push.ts, setup.ts, ai-ops-copilot.ts endpoints.
+  - Backup: Paginated export for large tables (5K row batches), prevents OOM.
+  - Seed Infrastructure: `server/routes/seed.ts` with 8 seed endpoints (POST /api/admin/seed-*), admin-guarded.
+  - Seed Data: 13 checklists (87 tasks), 205 quiz questions (55 quizzes), 19 salary definitions, 384 PDKS records, factory chain data (batches, lots, shipments, HACCP), 23 customer feedback, 27 quiz attempts + training progress.
+  - Error/Loading States: 174 pages enhanced with `ErrorState`/`LoadingState` components.
+  - Service Worker: Cache version bumped to `dospresso-v10`.
 
 ## External Dependencies
 - **OpenAI API**: AI-powered vision analysis, chat completions, embeddings, and summary generation.

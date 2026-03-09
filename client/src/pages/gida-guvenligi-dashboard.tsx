@@ -39,6 +39,8 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 interface FoodEngineerStats {
   pendingEngineerApprovals: number;
@@ -226,7 +228,7 @@ function getTrainingStatusLabel(status: string): string {
 export default function GidaGuvenligiDashboard() {
   const [, setLocation] = useLocation();
 
-  const { data: factoryStats, isLoading: factoryStatsLoading } = useQuery<FoodEngineerStats>({
+  const { data: factoryStats, isLoading: factoryStatsLoading, isError, refetch } = useQuery<FoodEngineerStats>({
     queryKey: ["/api/factory/dashboard/food-engineer-stats"],
   });
 
@@ -255,7 +257,11 @@ export default function GidaGuvenligiDashboard() {
   });
 
   if (summaryLoading) {
-    return (
+    
+  if (factoryStatsLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
+
+  return (
       <div className="space-y-4 p-4">
         <Skeleton className="h-10 w-64" />
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

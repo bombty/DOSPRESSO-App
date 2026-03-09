@@ -69,7 +69,7 @@ export default function Announcements() {
 
   const isHQ = user?.role && isHQRole(user.role as any);
 
-  const { data: announcements, isLoading } = useQuery<AnnouncementWithUser[]>({
+  const { data: announcements, isLoading, isError, refetch } = useQuery<AnnouncementWithUser[]>({
     queryKey: ['/api/announcements'],
   });
 
@@ -614,7 +614,14 @@ export default function Announcements() {
         )}
       </div>
 
-      {isLoading ? (
+      {isError ? (
+        <div className="flex flex-col items-center justify-center p-8 text-center">
+          <AlertCircle className="h-12 w-12 text-destructive mb-4" />
+          <h3 className="text-lg font-semibold">Bir hata oluştu</h3>
+          <p className="text-muted-foreground mt-2">Veriler yüklenirken sorun oluştu.</p>
+          <Button onClick={() => refetch()} className="mt-4" data-testid="button-retry">Tekrar Dene</Button>
+        </div>
+      ) : isLoading ? (
         <ListSkeleton count={6} variant="card" />
       ) : announcements && announcements.length > 0 ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">

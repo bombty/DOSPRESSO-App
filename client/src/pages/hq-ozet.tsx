@@ -33,6 +33,8 @@ import {
 } from "lucide-react";
 import { DobodySuggestionList, type DobodySuggestion } from "@/components/dobody-suggestion-card";
 import { DobodyFlowMode } from "@/components/dobody-flow-mode";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 interface HQSummaryData {
   branchStatus: {
@@ -69,6 +71,10 @@ interface HQSummaryData {
 function StatusCard({ icon: Icon, label, value, color }: {
   icon: any; label: string; value: number; color: string;
 }) {
+  
+  if (isLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
+
   return (
     <Card>
       <CardContent className="p-4 flex items-center gap-3">
@@ -89,7 +95,7 @@ export default function HQOzet() {
   const { toast } = useToast();
   const [pendingAction, setPendingAction] = useState<{ suggestion: DobodySuggestion; actionPayload: any } | null>(null);
 
-  const { data, isLoading } = useQuery<HQSummaryData>({
+  const { data, isLoading, isError, refetch } = useQuery<HQSummaryData>({
     queryKey: ["/api/hq-summary"],
   });
 

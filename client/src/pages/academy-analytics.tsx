@@ -7,12 +7,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell, ResponsiveContainer as RC } from "recharts";
 import { ArrowLeft, Trophy, Target, TrendingUp, Users, Zap, Award, Loader } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 export default function AcademyAnalytics() {
   const { user } = useAuth();
 
   // Get user's career progress
-  const { data: userProgress } = useQuery({
+  const { data: userProgress, isError, refetch, isLoading } = useQuery({
     queryKey: ["/api/academy/career-progress", user?.id],
     queryFn: async () => {
       if (!user?.id) return null;
@@ -67,6 +69,10 @@ export default function AcademyAnalytics() {
   ];
 
   const colors = ["#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6"];
+
+  
+  if (isLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
 
   return (
     <div className="max-w-5xl mx-auto px-3 sm:px-4 py-3 space-y-4">

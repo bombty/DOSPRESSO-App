@@ -27,6 +27,8 @@ import {
   ImageIcon,
   Trash2,
 } from "lucide-react";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 const EQUIPMENT_TYPE_OPTIONS = [
   { value: "espresso", label: "Espresso Makinesi" },
@@ -95,7 +97,7 @@ export default function EkipmanKatalog() {
   if (typeFilter) queryParams.set("equipmentType", typeFilter);
   const queryString = queryParams.toString();
 
-  const { data: catalogItems, isLoading } = useQuery<EquipmentCatalog[]>({
+  const { data: catalogItems, isLoading, isError, refetch } = useQuery<EquipmentCatalog[]>({
     queryKey: ["/api/equipment-catalog", queryString ? `?${queryString}` : ""],
   });
 
@@ -281,7 +283,11 @@ export default function EkipmanKatalog() {
   const renderCatalogForm = (currentForm: ReturnType<typeof useForm<CatalogFormValues>>, onSubmit: (data: CatalogFormValues) => void, isPending: boolean, isEdit: boolean) => {
     const steps = isEdit ? editTroubleshootSteps : troubleshootSteps;
 
-    return (
+    
+  if (isLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
+
+  return (
       <Form {...currentForm}>
         <form onSubmit={currentForm.handleSubmit(onSubmit)} className="space-y-4 max-h-[70vh] overflow-y-auto pr-2">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

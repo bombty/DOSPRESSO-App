@@ -7,6 +7,8 @@ import { Progress } from "@/components/ui/progress";
 import { ArrowLeft, Award, Star, Zap, Flame, Trophy, Coffee, Users, Lock, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "wouter";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 const BADGE_ICONS: Record<string, any> = {
   'Star': Star,
@@ -21,7 +23,7 @@ export default function AcademyBadges() {
   const { user } = useAuth();
 
   // Fetch all available badges
-  const { data: allBadges = [], isLoading: badgesLoading } = useQuery({
+  const { data: allBadges = [], isLoading: badgesLoading, isError, refetch } = useQuery({
     queryKey: ["/api/academy/badges"],
     queryFn: async () => {
       const res = await fetch("/api/academy/badges", { credentials: "include" });
@@ -50,6 +52,10 @@ export default function AcademyBadges() {
   if (badgesLoading) {
     return <div className="p-6 text-center">Yükleniyor...</div>;
   }
+
+  
+  if (badgesLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
 
   return (
     <div className="flex flex-col gap-3 sm:gap-4 gap-2 sm:gap-3 p-3">

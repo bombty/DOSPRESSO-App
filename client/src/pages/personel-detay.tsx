@@ -71,6 +71,8 @@ import { CreateDisciplinaryDialog, AddResponseDialog, ResolveDialog } from "@/co
 import { OnboardingTaskDialog } from "@/components/hr/OnboardingTaskDialog";
 import { useBreadcrumb } from "@/components/breadcrumb-navigation";
 import { ROLE_LABELS } from "@/lib/turkish-labels";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 export default function PersonelDetay() {
   const { id } = useParams();
@@ -91,7 +93,7 @@ export default function PersonelDetay() {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
 
-  const { data: employee, isLoading: employeeLoading } = useQuery<User>({
+  const { data: employee, isLoading: employeeLoading, isError, refetch } = useQuery<User>({
     queryKey: ["/api/personnel", id],
     queryFn: async () => {
       const response = await fetch(`/api/personnel/${id}`);
@@ -469,7 +471,11 @@ export default function PersonelDetay() {
   const isLoading = employeeLoading;
 
   if (isLoading) {
-    return (
+    
+  if (employeeLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
+
+  return (
       <div className="container mx-auto p-3">
         <ListSkeleton count={4} variant="card" showHeader />
       </div>

@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { AlertTriangle, Clock, CheckCircle2, Wrench, Search, Building2, User } from "lucide-react";
+import { AlertTriangle, Clock, CheckCircle2, Wrench, Search, Building2, User, AlertCircle } from "lucide-react";
 import { EmptyStatePreset } from "@/components/empty-state";
 import { format, differenceInHours } from "date-fns";
 import { tr } from "date-fns/locale";
@@ -106,7 +106,7 @@ export default function FaultHub() {
   const [managePage, setManagePage] = useState(1);
   const debouncedSearch = useDebounce(searchText, 300);
 
-  const { data: rawFaults } = useQuery<unknown>({
+  const { data: rawFaults, isError, refetch } = useQuery<unknown>({
     queryKey: ["/api/faults"],
   });
   const faults = (Array.isArray(rawFaults) ? rawFaults : (rawFaults as any)?.data || []) as ExtendedFault[];
@@ -160,6 +160,16 @@ export default function FaultHub() {
     }
   }, [manageFaults.length, managePage]);
 
+  if (isError) {
+    return (
+      <div className="flex flex-col items-center justify-center p-8 text-center">
+        <AlertCircle className="h-12 w-12 text-destructive mb-4" />
+        <h3 className="text-lg font-semibold">Bir hata oluştu</h3>
+        <p className="text-muted-foreground mt-2">Veriler yüklenirken sorun oluştu.</p>
+        <Button onClick={() => refetch()} className="mt-4" data-testid="button-retry">Tekrar Dene</Button>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-6xl mx-auto px-3 sm:px-4 py-3 space-y-4">

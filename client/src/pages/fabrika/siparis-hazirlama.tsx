@@ -13,6 +13,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { Package, QrCode, ArrowRightFromLine, Search, Clock } from "lucide-react";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 interface InventoryItem {
   id: number;
@@ -45,7 +47,7 @@ export default function SiparisHazirlama() {
   const [qrCode, setQrCode] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
 
-  const { data: inventoryItems, isLoading: itemsLoading } = useQuery<InventoryItem[]>({
+  const { data: inventoryItems, isLoading: itemsLoading, isError, refetch } = useQuery<InventoryItem[]>({
     queryKey: ["/api/inventory?isActive=true"],
   });
 
@@ -125,6 +127,10 @@ export default function SiparisHazirlama() {
       return dateStr;
     }
   };
+
+  
+  if (itemsLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
 
   return (
     <div className="p-3 space-y-3">

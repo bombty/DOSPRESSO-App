@@ -34,6 +34,8 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import { tr } from "date-fns/locale";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 interface FeedbackListItem {
   id: number;
@@ -104,6 +106,10 @@ const categoryLabels: Record<string, string> = {
 };
 
 function StarDisplay({ rating, size = "sm" }: { rating: number; size?: "sm" | "md" }) {
+  
+  if (isLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
+
   return (
     <div className="flex gap-0.5" data-testid="star-display">
       {[1, 2, 3, 4, 5].map((s) => (
@@ -147,7 +153,7 @@ export default function CRMFeedback() {
     return params.toString();
   };
 
-  const { data: feedbacks = [], isLoading } = useQuery<FeedbackListItem[]>({
+  const { data: feedbacks = [], isLoading, isError, refetch } = useQuery<FeedbackListItem[]>({
     queryKey: ["/api/customer-feedback", filters],
     queryFn: async () => {
       const qs = buildParams();

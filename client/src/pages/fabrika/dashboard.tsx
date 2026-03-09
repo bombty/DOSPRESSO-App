@@ -36,6 +36,8 @@ import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip as Recharts
 import logoUrl from "@assets/IMG_6637_1765138781125.png";
 import { DailyTaskPanel } from "@/components/daily-task-panel";
 import { DobodyFlowMode } from "@/components/dobody-flow-mode";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 interface DashboardStats {
   activeWorkers: number;
@@ -98,7 +100,7 @@ export default function FabrikaDashboard() {
   const { user, isLoading: authLoading } = useAuth();
   const [, setLocation] = useLocation();
 
-  const { data: stats, isLoading: loadingStats, refetch } = useQuery<DashboardStats>({
+  const { data: stats, isLoading: loadingStats, refetch, isError } = useQuery<DashboardStats>({
     queryKey: ['/api/factory/dashboard/stats'],
     refetchInterval: 30000,
   });
@@ -156,7 +158,11 @@ export default function FabrikaDashboard() {
   }, [authLoading, user, setLocation]);
 
   if (authLoading || !user) {
-    return (
+    
+  if (loadingStats) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
+
+  return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
       </div>

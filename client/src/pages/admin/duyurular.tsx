@@ -43,6 +43,8 @@ import {
 import { format } from "date-fns";
 import { tr } from "date-fns/locale";
 import { ConfirmDeleteDialog, useConfirmDelete } from "@/components/confirm-delete-dialog";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 const ROLE_OPTIONS = [
   { value: "all", label: "Tüm Kullanıcılar" },
@@ -129,7 +131,7 @@ export default function AdminDuyurular() {
     return <Redirect to="/" />;
   }
 
-  const { data: announcements = [], isLoading } = useQuery<Announcement[]>({
+  const { data: announcements = [], isLoading, isError, refetch } = useQuery<Announcement[]>({
     queryKey: ["/api/admin/announcements"],
   });
 
@@ -328,6 +330,10 @@ export default function AdminDuyurular() {
     : announcements.filter(a => a.category === activeTab);
 
   const isFormValid = formData.title && formData.message;
+
+  
+  if (isLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
 
   return (
     <div className="p-4 pb-24 space-y-4">

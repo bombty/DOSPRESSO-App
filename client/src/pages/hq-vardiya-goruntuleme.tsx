@@ -8,6 +8,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { format, startOfWeek, addDays, parseISO } from "date-fns";
 import { tr } from "date-fns/locale";
 import { Calendar, ChevronLeft, ChevronRight, Building, Users, Clock, Eye } from "lucide-react";
+import { ErrorState } from "../components/error-state";
+import { LoadingState } from "../components/loading-state";
 
 function getEmployeeColor(employeeId: string | number): string {
   const colors = [
@@ -40,7 +42,7 @@ export default function HqVardiyaGoruntuleme() {
   const dateFrom = format(weekStart, 'yyyy-MM-dd');
   const dateTo = format(weekEnd, 'yyyy-MM-dd');
 
-  const { data: branches, isLoading: branchesLoading } = useQuery<any[]>({
+  const { data: branches, isLoading: branchesLoading, isError, refetch } = useQuery<any[]>({
     queryKey: ['/api/branches'],
   });
 
@@ -114,6 +116,10 @@ export default function HqVardiyaGoruntuleme() {
 
   const previousWeek = () => setWeekStart(addDays(weekStart, -7));
   const nextWeek = () => setWeekStart(addDays(weekStart, 7));
+
+  
+  if (branchesLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
 
   return (
     <div className="p-4 space-y-4 max-w-7xl mx-auto" data-testid="hq-vardiya-goruntuleme-page">
