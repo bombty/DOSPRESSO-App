@@ -998,4 +998,46 @@ router.post('/api/admin/seed-factory-extended', isAuthenticated, requireAdmin, a
   }
 });
 
+router.post('/api/admin/seed-agent-routing', isAuthenticated, requireAdmin, async (req: any, res) => {
+  try {
+    const existingCount = await db.execute(sql`SELECT COUNT(*) as cnt FROM agent_routing_rules`);
+    const cnt = Number((existingCount.rows[0] as any).cnt);
+    if (cnt > 0) {
+      return res.json({ success: true, message: `Zaten ${cnt} kural mevcut, atlanıyor`, skipped: true });
+    }
+
+    const rules = [
+      { category: 'performance', subcategory: 'low_score', description: 'Düşük performans skoru', primaryRole: 'coach', secondaryRole: 'supervisor', escalationRole: 'cgo', escalationDays: 3 },
+      { category: 'performance', subcategory: 'absence', description: 'Devamsızlık', primaryRole: 'supervisor', secondaryRole: 'coach', escalationRole: 'cgo', escalationDays: 3 },
+      { category: 'performance', subcategory: 'promotion_ready', description: 'Terfi hazırlığı', primaryRole: 'coach', secondaryRole: 'trainer', escalationRole: 'cgo', escalationDays: 7 },
+      { category: 'training', subcategory: 'overdue', description: 'Geciken eğitim', primaryRole: 'trainer', secondaryRole: 'supervisor', escalationRole: 'cgo', escalationDays: 5 },
+      { category: 'training', subcategory: 'low_quiz_score', description: 'Düşük sınav başarısı', primaryRole: 'trainer', secondaryRole: null, escalationRole: 'coach', escalationDays: 5 },
+      { category: 'operations', subcategory: 'checklist_missed', description: 'Checklist yapılmadı', primaryRole: 'supervisor', secondaryRole: 'mudur', escalationRole: 'cgo', escalationDays: 2 },
+      { category: 'operations', subcategory: 'stock_low', description: 'Düşük stok', primaryRole: 'supervisor', secondaryRole: 'satinalma', escalationRole: 'cgo', escalationDays: 1 },
+      { category: 'quality', subcategory: 'customer_complaint', description: 'Müşteri şikayeti', primaryRole: 'kalite_kontrol', secondaryRole: 'supervisor', escalationRole: 'cgo', escalationDays: 1 },
+      { category: 'quality', subcategory: 'low_satisfaction', description: 'Düşük memnuniyet', primaryRole: 'coach', secondaryRole: 'supervisor', escalationRole: 'cgo', escalationDays: 3 },
+      { category: 'factory', subcategory: 'production_miss', description: 'Üretim hedefi tutmadı', primaryRole: 'fabrika_mudur', secondaryRole: null, escalationRole: 'cgo', escalationDays: 2 },
+      { category: 'factory', subcategory: 'high_waste', description: 'Yüksek fire oranı', primaryRole: 'fabrika_mudur', secondaryRole: 'gida_muhendisi', escalationRole: 'cgo', escalationDays: 2 },
+      { category: 'factory', subcategory: 'haccp_fail', description: 'HACCP uyumsuzluk', primaryRole: 'gida_muhendisi', secondaryRole: 'fabrika_mudur', escalationRole: 'ceo', escalationDays: 1 },
+      { category: 'strategic', subcategory: 'branch_risk', description: 'Şube kapanma riski', primaryRole: 'cgo', secondaryRole: 'ceo', escalationRole: null, escalationDays: null },
+      { category: 'strategic', subcategory: 'franchise_issue', description: 'Franchise sorunu', primaryRole: 'cgo', secondaryRole: 'ceo', escalationRole: null, escalationDays: null },
+      { category: 'strategic', subcategory: 'trend_analysis', description: 'Genel trend analizi', primaryRole: 'cgo', secondaryRole: null, escalationRole: null, escalationDays: null },
+    ];
+
+    let inserted = 0;
+    for (const rule of rules) {
+      await db.execute(sql`
+        INSERT INTO agent_routing_rules (category, subcategory, description, primary_role, secondary_role, escalation_role, escalation_days)
+        VALUES (${rule.category}, ${rule.subcategory}, ${rule.description}, ${rule.primaryRole}, ${rule.secondaryRole}, ${rule.escalationRole}, ${rule.escalationDays})
+      `);
+      inserted++;
+    }
+
+    res.json({ success: true, inserted, message: `${inserted} yönlendirme kuralı eklendi` });
+  } catch (error: any) {
+    console.error('Seed agent routing error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 export default router;

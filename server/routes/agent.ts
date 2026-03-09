@@ -3,6 +3,7 @@ import { db } from "../db";
 import { storage } from "../storage";
 import { 
   agentPendingActions, agentRuns, agentEscalationHistory, 
+  agentActionOutcomes, agentRejectionPatterns, agentRoutingRules,
   users, notifications, aiAgentLogs, tasks, dobodyFlowTasks
 } from "@shared/schema";
 import { eq, desc, and, count, sql, gte, or, inArray, ne } from "drizzle-orm";
@@ -21,6 +22,12 @@ function isHQOrAdmin(req: any, res: any, next: any) {
   const role = req.user?.role;
   const hqRoles = ["admin", "ceo", "cgo", "coach", "trainer", "teknik", "ekipman_teknik", "satinalma", "muhasebe", "destek", "gida_muhendisi", "kalite_kontrol"];
   if (!hqRoles.includes(role)) return res.status(403).json({ message: "Yetkiniz yok" });
+  next();
+}
+
+function isAdminCgoCeo(req: any, res: any, next: any) {
+  const role = req.user?.role;
+  if (!["admin", "ceo", "cgo"].includes(role)) return res.status(403).json({ message: "Yetkiniz yok" });
   next();
 }
 
@@ -139,15 +146,16 @@ router.post("/api/agent/actions/:id/approve", isAuthenticated, async (req: any, 
 
     const [action] = await db.select().from(agentPendingActions).where(eq(agentPendingActions.id, actionId));
     if (!action) return res.status(404).json({ message: "Öneri bulunamadı" });
-    if (action.status !== "pending") return res.status(400).json({ message: "Bu öneri zaten işlenmiş" });
+    if (action.status !== "pending" && action.status !== "escalated") return res.status(400).json({ message: "Bu öneri zaten işlenmiş" });
 
     const adminRoles = ["admin", "ceo", "cgo"];
     const isAdmin = adminRoles.includes(user.role);
     const isTargetUser = action.targetUserId && action.targetUserId === String(user.id);
     const isRoleScopeFallback = !action.targetUserId && action.targetRoleScope === user.role &&
       (action.branchId === null || action.branchId === user.branchId);
+    const isEscalationTarget = action.status === "escalated" && action.escalationRole === user.role;
 
-    if (!isAdmin && !isTargetUser && !isRoleScopeFallback) {
+    if (!isAdmin && !isTargetUser && !isRoleScopeFallback && !isEscalationTarget) {
       return res.status(403).json({ message: "Bu öneriyi onaylama yetkiniz yok" });
     }
 
@@ -164,6 +172,8 @@ router.post("/api/agent/actions/:id/approve", isAuthenticated, async (req: any, 
       taskCreated?: boolean;
       notificationSent?: boolean;
       flowTaskCreated?: boolean;
+      followUpDate?: string;
+      outcomeTrackingCreated?: boolean;
     } = {};
 
     const meta = action.metadata as Record<string, any> || {};
@@ -239,6 +249,22 @@ router.post("/api/agent/actions/:id/approve", isAuthenticated, async (req: any, 
             createdById: String(user.id),
           });
           chainResult.flowTaskCreated = true;
+
+          const followUpDate = new Date();
+          followUpDate.setDate(followUpDate.getDate() + 7);
+
+          try {
+            await db.insert(agentActionOutcomes).values({
+              actionId,
+              taskId: newTask?.id || null,
+              initialScore: meta.score !== undefined ? Number(meta.score) : null,
+              followUpDate,
+            });
+            chainResult.outcomeTrackingCreated = true;
+            chainResult.followUpDate = followUpDate.toISOString().split("T")[0];
+          } catch (outcomeErr) {
+            console.error("[Agent] Outcome tracking insert error:", outcomeErr);
+          }
         }
       }
     }
@@ -265,6 +291,24 @@ router.post("/api/agent/actions/:id/approve", isAuthenticated, async (req: any, 
       }
     }
 
+    if (!chainResult.outcomeTrackingCreated && action.category) {
+      try {
+        const followUpDate = new Date();
+        followUpDate.setDate(followUpDate.getDate() + 7);
+
+        await db.insert(agentActionOutcomes).values({
+          actionId,
+          taskId: null,
+          initialScore: meta.score !== undefined ? Number(meta.score) : null,
+          followUpDate,
+        });
+        chainResult.outcomeTrackingCreated = true;
+        chainResult.followUpDate = followUpDate.toISOString().split("T")[0];
+      } catch (outcomeErr) {
+        console.error("[Agent] Fallback outcome tracking error:", outcomeErr);
+      }
+    }
+
     res.json({ 
       message: "Öneri onaylandı", 
       actionId,
@@ -284,15 +328,16 @@ router.post("/api/agent/actions/:id/reject", isAuthenticated, async (req: any, r
 
     const [action] = await db.select().from(agentPendingActions).where(eq(agentPendingActions.id, actionId));
     if (!action) return res.status(404).json({ message: "Öneri bulunamadı" });
-    if (action.status !== "pending") return res.status(400).json({ message: "Bu öneri zaten işlenmiş" });
+    if (action.status !== "pending" && action.status !== "escalated") return res.status(400).json({ message: "Bu öneri zaten işlenmiş" });
 
     const adminRoles = ["admin", "ceo", "cgo"];
     const isAdmin = adminRoles.includes(user.role);
     const isTargetUser = action.targetUserId && action.targetUserId === String(user.id);
     const isRoleScopeFallback = !action.targetUserId && action.targetRoleScope === user.role &&
       (action.branchId === null || action.branchId === user.branchId);
+    const isEscalationTarget = action.status === "escalated" && action.escalationRole === user.role;
 
-    if (!isAdmin && !isTargetUser && !isRoleScopeFallback) {
+    if (!isAdmin && !isTargetUser && !isRoleScopeFallback && !isEscalationTarget) {
       return res.status(403).json({ message: "Bu öneriyi reddetme yetkiniz yok" });
     }
 
@@ -302,6 +347,25 @@ router.post("/api/agent/actions/:id/reject", isAuthenticated, async (req: any, r
         rejectedReason: reason || null,
       })
       .where(eq(agentPendingActions.id, actionId));
+
+    if (action.category) {
+      const rejectionTargetUserId = action.targetUserId || (action.metadata as Record<string, any>)?.targetUserId;
+      try {
+        const expiresAt = new Date();
+        expiresAt.setDate(expiresAt.getDate() + 90);
+
+        await db.insert(agentRejectionPatterns).values({
+          targetUserId: rejectionTargetUserId || null,
+          category: action.category,
+          subcategory: action.subcategory || null,
+          rejectionReason: reason || null,
+          rejectedBy: String(user.id),
+          expiresAt,
+        });
+      } catch (rejErr) {
+        console.error("[Agent] Rejection pattern insert error:", rejErr);
+      }
+    }
 
     res.json({ message: "Öneri reddedildi", actionId });
   } catch (error: any) {
@@ -520,6 +584,103 @@ router.get("/api/agent/admin/stats", isAuthenticated, isHQOrAdmin, async (req: a
   } catch (error: any) {
     console.error("Agent admin stats error:", error);
     res.status(500).json({ message: "Agent istatistikleri alınamadı" });
+  }
+});
+
+router.get("/api/admin/agent-routing-rules", isAuthenticated, isAdminCgoCeo, async (req: any, res) => {
+  try {
+    const rules = await db.select().from(agentRoutingRules).orderBy(agentRoutingRules.category, agentRoutingRules.subcategory);
+    res.json(rules);
+  } catch (error: any) {
+    console.error("Get routing rules error:", error);
+    res.status(500).json({ message: "Yönlendirme kuralları alınamadı" });
+  }
+});
+
+router.patch("/api/admin/agent-routing-rules/:id", isAuthenticated, isAdminCgoCeo, async (req: any, res) => {
+  try {
+    const ruleId = Number(req.params.id);
+    const { primaryRole, secondaryRole, escalationRole, escalationDays, isActive, notifyBranchSupervisor, sendHqSummary } = req.body;
+
+    const updateData: Record<string, any> = {};
+    if (primaryRole !== undefined) updateData.primaryRole = primaryRole;
+    if (secondaryRole !== undefined) updateData.secondaryRole = secondaryRole;
+    if (escalationRole !== undefined) updateData.escalationRole = escalationRole;
+    if (escalationDays !== undefined) updateData.escalationDays = escalationDays;
+    if (isActive !== undefined) updateData.isActive = isActive;
+    if (notifyBranchSupervisor !== undefined) updateData.notifyBranchSupervisor = notifyBranchSupervisor;
+    if (sendHqSummary !== undefined) updateData.sendHqSummary = sendHqSummary;
+
+    await db.update(agentRoutingRules)
+      .set(updateData)
+      .where(eq(agentRoutingRules.id, ruleId));
+
+    res.json({ message: "Kural güncellendi", ruleId });
+  } catch (error: any) {
+    console.error("Update routing rule error:", error);
+    res.status(500).json({ message: "Kural güncellenemedi" });
+  }
+});
+
+router.get("/api/agent/cgo-summary", isAuthenticated, isAdminCgoCeo, async (req: any, res) => {
+  try {
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+    const [routingStats, escalatedActions, outcomeStats, strategicActions] = await Promise.all([
+      db.execute(sql`
+        SELECT 
+          COALESCE(target_role_scope, 'unknown') as role,
+          COUNT(*) as total,
+          COUNT(*) FILTER (WHERE status = 'approved') as approved,
+          COUNT(*) FILTER (WHERE status = 'rejected') as rejected,
+          COUNT(*) FILTER (WHERE status = 'pending') as pending
+        FROM agent_pending_actions
+        WHERE created_at >= ${thirtyDaysAgo.toISOString()}
+        AND category IS NOT NULL
+        GROUP BY target_role_scope
+        ORDER BY total DESC
+      `),
+      db.select()
+        .from(agentPendingActions)
+        .where(
+          and(
+            eq(agentPendingActions.status, "escalated"),
+            gte(agentPendingActions.createdAt, thirtyDaysAgo)
+          )
+        )
+        .orderBy(desc(agentPendingActions.createdAt))
+        .limit(20),
+      db.execute(sql`
+        SELECT 
+          outcome,
+          COUNT(*) as total
+        FROM agent_action_outcomes
+        WHERE created_at >= ${thirtyDaysAgo.toISOString()}
+        AND outcome IS NOT NULL
+        GROUP BY outcome
+      `),
+      db.select()
+        .from(agentPendingActions)
+        .where(
+          and(
+            eq(agentPendingActions.category, "strategic"),
+            eq(agentPendingActions.status, "pending"),
+          )
+        )
+        .orderBy(desc(agentPendingActions.createdAt))
+        .limit(10),
+    ]);
+
+    res.json({
+      routingStats: routingStats.rows,
+      escalatedActions,
+      outcomeStats: outcomeStats.rows,
+      strategicActions,
+    });
+  } catch (error: any) {
+    console.error("CGO summary error:", error);
+    res.status(500).json({ message: "CGO özeti alınamadı" });
   }
 });
 

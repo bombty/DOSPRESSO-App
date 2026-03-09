@@ -135,6 +135,8 @@ const performanceCoachSkill: AgentSkill = {
         description: (summary as any).aiMessage || `Haftalık skor: ${score}/100. Güçlü: ${strongest}. Geliştirilecek: ${weakest}.`,
         deepLink: "/benim-gunum",
         severity: "low",
+        category: "performance",
+        subcategory: "low_score",
         metadata: {
           compositeScore: score,
           level: summary.data.level,

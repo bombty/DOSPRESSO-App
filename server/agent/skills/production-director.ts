@@ -97,6 +97,8 @@ const productionDirectorSkill: AgentSkill = {
           description: (insight as any).aiMessage || insight.message,
           deepLink: "/fabrika/dashboard",
           severity: "med",
+          category: "factory",
+          subcategory: "production_miss",
         });
       }
 
@@ -108,6 +110,8 @@ const productionDirectorSkill: AgentSkill = {
           description: insight.message,
           deepLink: "/fabrika/dashboard",
           severity: "low",
+          category: "factory",
+          subcategory: "production_miss",
         });
       }
 
@@ -119,6 +123,8 @@ const productionDirectorSkill: AgentSkill = {
           description: insight.message,
           deepLink: "/fabrika/dashboard",
           severity: "low",
+          category: "factory",
+          subcategory: "production_miss",
         });
       }
     }

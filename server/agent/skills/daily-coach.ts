@@ -162,6 +162,8 @@ const dailyCoachSkill: AgentSkill = {
         description,
         deepLink: "/benim-gunum",
         severity: "low",
+        category: "operations",
+        subcategory: "checklist_missed",
         metadata: {
           hasChecklist: !!checklist,
           hasTraining: !!training,

@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { AgentActionCenter } from "@/components/agent-action-center";
 import { AgentAdminPanel } from "@/components/agent-admin-panel";
+import { AgentRoutingRulesPanel } from "@/components/agent-routing-rules";
+import { AgentCGOSummary } from "@/components/agent-cgo-summary";
 import { useQuery } from "@tanstack/react-query";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
@@ -71,6 +73,7 @@ export default function AgentMerkeziPage() {
 
   const user = userQuery.data;
   const isAdmin = user && ["admin", "ceo", "cgo"].includes(user.role);
+  const isCgoCeo = user && (user.role === "cgo" || user.role === "ceo");
   const stats = statsQuery.data;
   const isLoading = userQuery.isLoading || statsQuery.isLoading;
 
@@ -269,8 +272,14 @@ export default function AgentMerkeziPage() {
       )}
 
       {isAdmin ? (
-        <Tabs defaultValue="oneriler">
+        <Tabs defaultValue={isCgoCeo ? "ozet" : "oneriler"}>
           <TabsList>
+            {isCgoCeo && (
+              <TabsTrigger value="ozet" data-testid="tab-ozet">
+                <BarChart3 className="h-4 w-4 mr-1" />
+                Özet
+              </TabsTrigger>
+            )}
             <TabsTrigger value="oneriler" data-testid="tab-oneriler">
               <Shield className="h-4 w-4 mr-1" />
               Öneriler
@@ -279,12 +288,24 @@ export default function AgentMerkeziPage() {
               <Settings className="h-4 w-4 mr-1" />
               Yönetim
             </TabsTrigger>
+            <TabsTrigger value="yonlendirme" data-testid="tab-yonlendirme">
+              <Zap className="h-4 w-4 mr-1" />
+              Yönlendirme
+            </TabsTrigger>
           </TabsList>
+          {isCgoCeo && (
+            <TabsContent value="ozet">
+              <AgentCGOSummary />
+            </TabsContent>
+          )}
           <TabsContent value="oneriler">
             <AgentActionCenter skillFilter={skillFilter} />
           </TabsContent>
           <TabsContent value="yonetim">
             <AgentAdminPanel />
+          </TabsContent>
+          <TabsContent value="yonlendirme">
+            <AgentRoutingRulesPanel />
           </TabsContent>
         </Tabs>
       ) : (

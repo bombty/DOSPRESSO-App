@@ -109,13 +109,21 @@ const trainingOptimizerSkill: AgentSkill = {
 
     for (const insight of insights) {
       let title: string;
+      let actionCategory = "training";
+      let actionSubcategory = "overdue";
       if (insight.type === "overall_completion_rate") {
         title = `Eğitim Özeti: %${insight.data.rate} tamamlama`;
+        actionCategory = "training";
+        actionSubcategory = "overdue";
       } else if (insight.type === "low_completion_modules") {
         const moduleNames = (insight.data.modules || []).map((m: any) => m.title).slice(0, 2).join(", ");
         title = `Modül İyileştirme Önerisi: ${moduleNames}`;
+        actionCategory = "training";
+        actionSubcategory = "low_quiz_score";
       } else {
         title = `Eğitim Başarısı`;
+        actionCategory = "training";
+        actionSubcategory = "overdue";
       }
 
       actions.push({
@@ -125,6 +133,8 @@ const trainingOptimizerSkill: AgentSkill = {
         description: (insight as any).aiMessage || insight.message,
         deepLink: "/hq-dashboard/academy",
         severity: insight.severity === "warning" ? "med" : "low",
+        category: actionCategory,
+        subcategory: actionSubcategory,
         metadata: {
           rate: insight.data.rate,
           assigned: insight.data.assigned,

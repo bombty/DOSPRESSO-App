@@ -14390,6 +14390,10 @@ export const agentPendingActions = pgTable("agent_pending_actions", {
   approvedAt: timestamp("approved_at"),
   rejectedReason: text("rejected_reason"),
   expiresAt: timestamp("expires_at"),
+  category: varchar("category", { length: 50 }),
+  subcategory: varchar("subcategory", { length: 100 }),
+  escalationDate: timestamp("escalation_date"),
+  escalationRole: varchar("escalation_role", { length: 50 }),
   metadata: jsonb("metadata").$type<Record<string, any>>().default({}),
   createdAt: timestamp("created_at").defaultNow(),
 }, (table) => [
@@ -14398,6 +14402,8 @@ export const agentPendingActions = pgTable("agent_pending_actions", {
   index("agent_action_type_idx").on(table.actionType),
   index("agent_action_branch_idx").on(table.branchId),
   index("agent_action_created_idx").on(table.createdAt),
+  index("agent_action_category_idx").on(table.category),
+  index("agent_action_escalation_idx").on(table.escalationDate),
 ]);
 
 export const insertAgentPendingActionSchema = createInsertSchema(agentPendingActions).omit({
@@ -14462,6 +14468,82 @@ export const insertAgentEscalationHistorySchema = createInsertSchema(agentEscala
 });
 export type InsertAgentEscalationHistory = z.infer<typeof insertAgentEscalationHistorySchema>;
 export type AgentEscalationHistory = typeof agentEscalationHistory.$inferSelect;
+
+// ==================== Agent Engine — Routing Rules ====================
+
+export const agentRoutingRules = pgTable("agent_routing_rules", {
+  id: serial("id").primaryKey(),
+  category: varchar("category", { length: 50 }).notNull(),
+  subcategory: varchar("subcategory", { length: 100 }),
+  description: text("description"),
+  primaryRole: varchar("primary_role", { length: 50 }).notNull(),
+  secondaryRole: varchar("secondary_role", { length: 50 }),
+  escalationRole: varchar("escalation_role", { length: 50 }),
+  escalationDays: integer("escalation_days").default(3),
+  notifyBranchSupervisor: boolean("notify_branch_supervisor").default(true),
+  sendHqSummary: boolean("send_hq_summary").default(true),
+  isActive: boolean("is_active").default(true),
+  createdBy: varchar("created_by", { length: 255 }),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("agent_routing_category_idx").on(table.category, table.subcategory),
+  index("agent_routing_active_idx").on(table.isActive),
+]);
+
+export const insertAgentRoutingRuleSchema = createInsertSchema(agentRoutingRules).omit({
+  id: true,
+  createdAt: true,
+});
+export type InsertAgentRoutingRule = z.infer<typeof insertAgentRoutingRuleSchema>;
+export type AgentRoutingRule = typeof agentRoutingRules.$inferSelect;
+
+// ==================== Agent Engine — Action Outcomes ====================
+
+export const agentActionOutcomes = pgTable("agent_action_outcomes", {
+  id: serial("id").primaryKey(),
+  actionId: integer("action_id").notNull(),
+  taskId: integer("task_id"),
+  initialScore: real("initial_score"),
+  followUpScore: real("follow_up_score"),
+  outcome: varchar("outcome", { length: 20 }),
+  followUpDate: timestamp("follow_up_date"),
+  completedAt: timestamp("completed_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("agent_outcome_action_idx").on(table.actionId),
+  index("agent_outcome_followup_idx").on(table.followUpDate),
+  index("agent_outcome_status_idx").on(table.outcome),
+]);
+
+export const insertAgentActionOutcomeSchema = createInsertSchema(agentActionOutcomes).omit({
+  id: true,
+  createdAt: true,
+});
+export type InsertAgentActionOutcome = z.infer<typeof insertAgentActionOutcomeSchema>;
+export type AgentActionOutcome = typeof agentActionOutcomes.$inferSelect;
+
+// ==================== Agent Engine — Rejection Patterns ====================
+
+export const agentRejectionPatterns = pgTable("agent_rejection_patterns", {
+  id: serial("id").primaryKey(),
+  targetUserId: varchar("target_user_id", { length: 255 }),
+  category: varchar("category", { length: 50 }),
+  subcategory: varchar("subcategory", { length: 100 }),
+  rejectionReason: text("rejection_reason"),
+  rejectedBy: varchar("rejected_by", { length: 255 }),
+  rejectedAt: timestamp("rejected_at").defaultNow(),
+  expiresAt: timestamp("expires_at"),
+}, (table) => [
+  index("agent_rejection_target_idx").on(table.targetUserId, table.category),
+  index("agent_rejection_expires_idx").on(table.expiresAt),
+]);
+
+export const insertAgentRejectionPatternSchema = createInsertSchema(agentRejectionPatterns).omit({
+  id: true,
+  rejectedAt: true,
+});
+export type InsertAgentRejectionPattern = z.infer<typeof insertAgentRejectionPatternSchema>;
+export type AgentRejectionPattern = typeof agentRejectionPatterns.$inferSelect;
 
 // ========================================
 // FABRIKA SEVKİYAT SİSTEMİ

@@ -145,6 +145,8 @@ const teamTrackerSkill: AgentSkill = {
           description: (insight as any).aiMessage || `${userList.length} personelin checklist'i 30+ dakikadır tamamlanmadı: ${names}`,
           deepLink: "/checklistler",
           severity: "med",
+          category: "operations",
+          subcategory: "checklist_missed",
           metadata: {
             targetUsers: userList,
             branchId: context.branchId,
@@ -164,6 +166,8 @@ const teamTrackerSkill: AgentSkill = {
           description: (insight as any).aiMessage || `${trainings.length} personelin eğitimi 3+ gündür bekliyor: ${names}`,
           deepLink: "/akademi",
           severity: "med",
+          category: "training",
+          subcategory: "overdue",
           metadata: {
             targetUsers: trainings,
             branchId: context.branchId,
@@ -183,6 +187,8 @@ const teamTrackerSkill: AgentSkill = {
             description: (insight as any).aiMessage || `${u.name} composite skoru ${u.score}/100 — düşük performans bölgesinde. Takip gerekiyor.`,
             deepLink: `/personel/${u.userId}`,
             severity: "high",
+            category: "performance",
+            subcategory: "low_score",
             metadata: {
               targetUserName: u.name,
               targetUserId: u.userId,

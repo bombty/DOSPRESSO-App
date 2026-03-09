@@ -139,6 +139,8 @@ const customerWatcherSkill: AgentSkill = {
           description: (insight as any).aiMessage || insight.message,
           deepLink: "/crm",
           severity: insight.severity === "critical" ? "critical" : "med",
+          category: "quality",
+          subcategory: "low_satisfaction",
           metadata: {
             branchId: context.branchId,
             branchName,
@@ -158,6 +160,8 @@ const customerWatcherSkill: AgentSkill = {
           description: insight.message,
           deepLink: "/crm",
           severity: "high",
+          category: "quality",
+          subcategory: "customer_complaint",
           metadata: {
             branchId: context.branchId,
             branchName,
@@ -175,6 +179,8 @@ const customerWatcherSkill: AgentSkill = {
           title: `Müşteri Memnuniyeti Başarılı${branchSuffix}`,
           description: insight.message,
           severity: "low",
+          category: "quality",
+          subcategory: "low_satisfaction",
           metadata: {
             branchId: context.branchId,
             branchName,

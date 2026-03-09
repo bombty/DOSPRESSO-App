@@ -85,6 +85,16 @@ The frontend uses React 18+ with TypeScript and Vite, employing Shadcn/ui (New Y
   - Score Display: 0/100 scores now show "Henüz veri yok" instead of red 0/100 in `sube-detay.tsx` and `branch-scorecard.tsx`.
   - Turkish ASCII Fix: All remaining ASCII chars fixed in error-boundary, sube-detay, fabrika/dashboard, qr-checkin-generator, coach-sube-denetim, vardiya-planlama.
   - Test User Rename: 190+ test users renamed from "TBarista1 Test" to realistic Turkish names across all branches.
+- **Sprint 24B — Agent Intelligence Upgrade** (completed):
+  - Smart Routing: 3 new DB tables (`agent_routing_rules`, `agent_action_outcomes`, `agent_rejection_patterns`) + 9 indexes. `routeAgentAction()` in `server/agent/routing.ts` routes suggestions to correct role by category/subcategory, with branch-level user lookup and secondary notifications.
+  - Skill Categorization: All 8 agent skills tag actions with category/subcategory (performance, training, operations, quality, factory, strategic).
+  - Routing Integration: `processSkillActions()` in `skill-notifications.ts` uses routing for `suggest_approve` actions with category set. Rejection pattern check (90-day suppression window).
+  - Escalation System: Background job (`checkRoutingEscalations()`) runs hourly, auto-escalates overdue pending actions to escalationRole. Adds "escalated" status.
+  - Outcome Tracking: On approval, `agent_action_outcomes` record created with 7-day followUpDate. Daily 08:00 TR job (`checkActionOutcomes()`) checks score improvement and notifies approver.
+  - Rejection Learning: Reject endpoint auto-inserts `agent_rejection_patterns` with 90-day expiry. Routing function checks patterns before generating new suggestions.
+  - Admin Routing UI: "Yönlendirme" tab in Agent Merkezi for all admin/cgo/ceo roles. CRUD table for routing rules with inline edit dialog.
+  - CGO Summary View: "Özet" tab for CGO/CEO with routing stats by role, outcome distribution, strategic suggestions, and escalation list.
+  - Seed Endpoint: `POST /api/admin/seed-agent-routing` creates 15 default routing rules.
 
 ## External Dependencies
 - **OpenAI API**: AI-powered vision analysis, chat completions, embeddings, and summary generation.

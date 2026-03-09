@@ -4,7 +4,7 @@ import { eq, and, or, gte, lte, sql, count } from "drizzle-orm";
 import { getRoleGroup, ROLE_GROUP_MAP } from "./ai-policy-engine";
 import { runAgentAnalysis, runBatchAnalysis } from "./agent-engine";
 import { checkDailyActionLimit } from "./agent-safety";
-import { runEscalationCheck } from "./agent-escalation";
+import { runEscalationCheck, checkRoutingEscalations, checkActionOutcomes } from "./agent-escalation";
 import { getSkillsBySchedule, runSkillsForUser, ensureSkillsLoaded } from "../agent/skills/skill-registry";
 import { sendQueuedNotifications } from "../agent/skills/skill-notifications";
 
@@ -87,6 +87,8 @@ let skillHourlyInterval: NodeJS.Timeout | null = null;
 let skillDailyInterval: NodeJS.Timeout | null = null;
 let skillWeeklyInterval: NodeJS.Timeout | null = null;
 let skillQueueInterval: NodeJS.Timeout | null = null;
+let routingEscalationInterval: NodeJS.Timeout | null = null;
+let outcomeCheckInterval: NodeJS.Timeout | null = null;
 let isRunning = false;
 
 async function getUsersByRoleGroups(groups: string[]): Promise<{ id: string; role: string; branchId: number | null }[]> {
@@ -413,6 +415,30 @@ export function startAgentScheduler(): void {
   }, 30 * 60 * 1000);
   console.log("[SkillScheduler] Kuyruk kontrolü her 30 dakikada çalışacak.");
 
+  routingEscalationInterval = setInterval(async () => {
+    try {
+      const count = await checkRoutingEscalations();
+      if (count > 0) console.log(`[RoutingEscalation] ${count} aksiyon eskalasyon edildi`);
+    } catch (err) {
+      console.error("[RoutingEscalation] Hata:", err);
+    }
+  }, 60 * 60 * 1000);
+  console.log("[RoutingEscalation] Eskalasyon kontrolü her saat çalışacak.");
+
+  const outcomeDelayMs = getMillisUntilTurkeyTime(8, 0);
+  console.log(`[OutcomeTracking] Sonuç kontrolü ${Math.round(outcomeDelayMs / 60000)} dakika sonra çalışacak (08:00 TR)`);
+  setTimeout(() => {
+    checkActionOutcomes().catch(err => console.error("[OutcomeTracking] İlk çalışma hatası:", err));
+    outcomeCheckInterval = setInterval(async () => {
+      try {
+        const count = await checkActionOutcomes();
+        if (count > 0) console.log(`[OutcomeTracking] ${count} sonuç kontrolü tamamlandı`);
+      } catch (err) {
+        console.error("[OutcomeTracking] Hata:", err);
+      }
+    }, 24 * 60 * 60 * 1000);
+  }, outcomeDelayMs);
+
   console.log("[AgentScheduler] Agent Scheduler başarıyla başlatıldı.");
 }
 
@@ -450,6 +476,14 @@ export function stopAgentScheduler(): void {
   if (skillQueueInterval) {
     clearInterval(skillQueueInterval);
     skillQueueInterval = null;
+  }
+  if (routingEscalationInterval) {
+    clearInterval(routingEscalationInterval);
+    routingEscalationInterval = null;
+  }
+  if (outcomeCheckInterval) {
+    clearInterval(outcomeCheckInterval);
+    outcomeCheckInterval = null;
   }
 
   isRunning = false;

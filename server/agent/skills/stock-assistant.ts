@@ -102,6 +102,8 @@ const stockAssistantSkill: AgentSkill = {
           description: `${insight.data.items?.length} ürün minimum stok seviyesinin altında. Sipariş oluşturulması önerilir.`,
           deepLink: "/sube/siparis-stok",
           severity: insight.severity === "critical" ? "high" : "med",
+          category: "operations",
+          subcategory: "stock_low",
           metadata: {
             branchId: context.branchId,
             branchName,
@@ -119,6 +121,8 @@ const stockAssistantSkill: AgentSkill = {
           description: insight.message,
           deepLink: "/fabrika/dashboard",
           severity: "low",
+          category: "factory",
+          subcategory: "production_miss",
           metadata: { insightType: "factory_materials_monitored" },
         });
       }

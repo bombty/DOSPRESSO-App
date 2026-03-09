@@ -34,6 +34,8 @@ export interface SkillAction {
   severity: "low" | "med" | "high" | "critical";
   metadata?: Record<string, any>;
   skillId?: string;
+  category?: string;
+  subcategory?: string;
 }
 
 export interface AgentSkill {

@@ -3,6 +3,7 @@ import { storage } from "../storage";
 import { sendNotificationEmail } from "../email";
 import {
   agentPendingActions, agentEscalationHistory, agentRuns, users, branches,
+  agentActionOutcomes,
   type AgentPendingAction, type InsertAgentEscalationHistory,
   UserRole,
 } from "@shared/schema";
@@ -381,4 +382,167 @@ export async function runEscalationCheck(): Promise<{ results: EscalationResult[
 
     return { results: [], runId };
   }
+}
+
+export async function checkRoutingEscalations(): Promise<number> {
+  let escalated = 0;
+  try {
+    const overdueActions = await db.select()
+      .from(agentPendingActions)
+      .where(
+        and(
+          eq(agentPendingActions.status, "pending"),
+          sql`${agentPendingActions.escalationDate} IS NOT NULL`,
+          sql`${agentPendingActions.escalationDate} <= NOW()`,
+          sql`${agentPendingActions.escalationRole} IS NOT NULL`
+        )
+      );
+
+    for (const action of overdueActions) {
+      try {
+        const escalationRole = action.escalationRole!;
+        const escalationUsers = await db.select({
+          id: users.id,
+          firstName: users.firstName,
+          lastName: users.lastName,
+        }).from(users).where(
+          and(
+            eq(users.role, escalationRole),
+            eq(users.isActive, true)
+          )
+        ).limit(1);
+
+        const escalationUser = escalationUsers[0];
+        if (!escalationUser) continue;
+
+        await db.update(agentPendingActions)
+          .set({ status: "escalated" })
+          .where(eq(agentPendingActions.id, action.id));
+
+        const escalationUserName = [escalationUser.firstName, escalationUser.lastName].filter(Boolean).join(" ");
+        await storage.createNotification({
+          userId: escalationUser.id,
+          type: "agent_escalation",
+          title: "Eskalasyon: Bekleyen öneri süresi doldu",
+          message: `"${action.title}" önerisi süresi içinde işlenmedi ve size yönlendirildi.`,
+          link: "/agent-merkezi",
+        });
+
+        console.log(`[RoutingEscalation] Action #${action.id} → ${escalationRole} (${escalationUserName})`);
+        escalated++;
+      } catch (err) {
+        console.error(`[RoutingEscalation] Action #${action.id} error:`, err);
+      }
+    }
+
+    if (escalated > 0) {
+      console.log(`[RoutingEscalation] ${escalated} aksiyon eskalasyon yapıldı`);
+    }
+  } catch (err) {
+    console.error("[RoutingEscalation] checkRoutingEscalations error:", err);
+  }
+  return escalated;
+}
+
+export async function checkActionOutcomes(): Promise<number> {
+  let checked = 0;
+  try {
+    const dueOutcomes = await db.select()
+      .from(agentActionOutcomes)
+      .where(
+        and(
+          isNull(agentActionOutcomes.outcome),
+          sql`${agentActionOutcomes.followUpDate} <= NOW()`
+        )
+      );
+
+    for (const outcome of dueOutcomes) {
+      try {
+        const [action] = await db.select()
+          .from(agentPendingActions)
+          .where(eq(agentPendingActions.id, outcome.actionId));
+
+        if (!action) continue;
+
+        const meta = (action.metadata as Record<string, any>) || {};
+        const targetUserId = action.targetUserId || meta.targetUserId;
+
+        let followUpScore: number | null = null;
+        let outcomeResult: string = "no_data";
+
+        if (targetUserId) {
+          const scoreResult = await db.execute(sql`
+            SELECT COALESCE(
+              (SELECT AVG(score)::int FROM employee_evaluations 
+               WHERE evaluated_user_id = ${targetUserId} 
+               AND created_at >= NOW() - INTERVAL '30 days'),
+              NULL
+            ) as current_score
+          `);
+          const currentScore = (scoreResult.rows[0] as any)?.current_score;
+
+          if (currentScore !== null && currentScore !== undefined) {
+            followUpScore = Number(currentScore);
+
+            if (outcome.initialScore !== null) {
+              const diff = followUpScore - outcome.initialScore;
+              if (diff > 5) outcomeResult = "improved";
+              else if (diff < -5) outcomeResult = "declined";
+              else outcomeResult = "unchanged";
+            } else {
+              outcomeResult = "no_data";
+            }
+          }
+        }
+
+        await db.update(agentActionOutcomes)
+          .set({
+            followUpScore,
+            outcome: outcomeResult,
+            completedAt: new Date(),
+          })
+          .where(eq(agentActionOutcomes.id, outcome.id));
+
+        const approverUserId = action.approvedByUserId;
+        if (approverUserId) {
+          const targetName = targetUserId
+            ? await db.select({ firstName: users.firstName, lastName: users.lastName })
+                .from(users).where(eq(users.id, targetUserId)).then(r => {
+                  const u = r[0];
+                  return u ? [u.firstName, u.lastName].filter(Boolean).join(" ") : "Personel";
+                })
+            : "Personel";
+
+          const outcomeLabels: Record<string, string> = {
+            improved: "iyileşme gösterdi",
+            declined: "düşüş yaşadı",
+            unchanged: "değişim göstermedi",
+            no_data: "henüz veri yok",
+          };
+          const scoreText = followUpScore !== null && outcome.initialScore !== null
+            ? ` (${outcome.initialScore} → ${followUpScore})`
+            : "";
+
+          await storage.createNotification({
+            userId: approverUserId,
+            type: "agent_outcome",
+            title: "Sonuç Takibi: " + targetName,
+            message: `${targetName} ${outcomeLabels[outcomeResult] || outcomeResult}${scoreText}. Orijinal öneri: "${action.title}"`,
+            link: `/personel-detay/${targetUserId}`,
+          });
+        }
+
+        checked++;
+      } catch (err) {
+        console.error(`[OutcomeTracking] Outcome #${outcome.id} error:`, err);
+      }
+    }
+
+    if (checked > 0) {
+      console.log(`[OutcomeTracking] ${checked} sonuç kontrolü tamamlandı`);
+    }
+  } catch (err) {
+    console.error("[OutcomeTracking] checkActionOutcomes error:", err);
+  }
+  return checked;
 }

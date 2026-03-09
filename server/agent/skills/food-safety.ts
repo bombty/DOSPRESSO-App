@@ -98,6 +98,8 @@ const foodSafetySkill: AgentSkill = {
           description: insight.message,
           deepLink: "/fabrika/kalite",
           severity: insight.severity === "critical" ? "high" : "med",
+          category: "factory",
+          subcategory: "haccp_fail",
           metadata: { lotCount: insight.data.count, insightType: "pending_quality_check" },
         });
       }
@@ -110,6 +112,8 @@ const foodSafetySkill: AgentSkill = {
           description: insight.message,
           deepLink: "/fabrika/dashboard",
           severity: "med",
+          category: "factory",
+          subcategory: "haccp_fail",
           metadata: { lotCount: insight.data.count, insightType: "skt_expiring_soon" },
         });
       }
@@ -122,6 +126,8 @@ const foodSafetySkill: AgentSkill = {
           description: insight.message,
           deepLink: "/fabrika/dashboard",
           severity: "critical",
+          category: "factory",
+          subcategory: "haccp_fail",
           metadata: { lotCount: insight.data.count, insightType: "skt_expired_in_stock" },
         });
       }

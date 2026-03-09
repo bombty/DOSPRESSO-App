@@ -3,6 +3,7 @@ import { storage } from "../../storage";
 import { agentPendingActions, aiAgentLogs } from "@shared/schema";
 import { eq, and, gte, count } from "drizzle-orm";
 import type { AgentSkill, SkillAction } from "./skill-registry";
+import { routeAgentAction } from "../routing";
 
 const TURKEY_OFFSET_MS = 3 * 60 * 60 * 1000;
 const MAX_AGENT_NOTIFICATIONS_PER_TYPE_PER_DAY = 3;
@@ -104,6 +105,8 @@ export async function processSkillActions(
             deepLink: action.deepLink || null,
             severity: action.severity,
             status: "pending",
+            category: action.category || null,
+            subcategory: action.subcategory || null,
             metadata: { ...(action.metadata || {}), skillId: skill.id, queued: true, queuedAt: new Date().toISOString() },
           });
           queued++;
@@ -130,20 +133,52 @@ export async function processSkillActions(
       }
     } else if (skill.autonomyLevel === "suggest_approve") {
       try {
+        let routedTargetUserId = targetUserId;
+        let escalationDate: Date | null = null;
+        let escalationRole: string | null = null;
+        let routedTargetRole: string | null = null;
+
+        if (action.category) {
+          const routing = await routeAgentAction({
+            category: action.category,
+            subcategory: action.subcategory,
+            targetUserId: action.metadata?.targetUserId || targetUserId,
+            branchId: action.branchId,
+            title: action.title,
+            description: action.description,
+          });
+
+          if (routing === null) {
+            throttled++;
+            continue;
+          }
+
+          if (routing.targetUserId) {
+            routedTargetUserId = routing.targetUserId;
+          }
+          routedTargetRole = routing.targetRole;
+          escalationDate = routing.escalationDate;
+          escalationRole = routing.escalationRole;
+        }
+
         await db.insert(agentPendingActions).values({
           actionType: action.actionType,
-          targetUserId,
-          targetRoleScope: action.targetRoleScope || null,
+          targetUserId: routedTargetUserId,
+          targetRoleScope: routedTargetRole || action.targetRoleScope || null,
           branchId: action.branchId || null,
           title: action.title,
           description: action.description,
           deepLink: action.deepLink || null,
           severity: action.severity,
           status: "pending",
+          category: action.category || null,
+          subcategory: action.subcategory || null,
+          escalationDate,
+          escalationRole,
           metadata: { ...(action.metadata || {}), skillId: skill.id },
         });
 
-        const approverUserId = runUserId || targetUserId;
+        const approverUserId = routedTargetUserId || runUserId || targetUserId;
         await storage.createNotification({
           userId: approverUserId,
           type: "agent_suggestion",
