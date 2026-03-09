@@ -1,0 +1,355 @@
+Sprint 23 — audit bulgularına dayalı, pilot hazırlık sprint'i. Replit'e yapıştır:
+
+---
+
+## TASK: Sprint 23 — Pilot Readiness (Code Fixes + Seed Data Scripts)
+
+Based on the comprehensive system audit (63/100 pilot score), this sprint fixes code issues and creates seed data to bring the system to pilot-ready state. Target: 80+/100.
+
+### T001 — Fix Unprotected Endpoints (Security) (~1 hour)
+
+**Problem:** 8 endpoints lack authentication middleware.
+
+**A) push.ts — 5 endpoints:**
+```bash
+grep -n "router\.\(get\|post\|put\|delete\)" server/routes/push.ts | head -10
+```
+Add `isAuthenticated` middleware to ALL endpoints in push.ts:
+- POST /subscribe
+- POST /unsubscribe  
+- POST /test
+- POST /cleanup
+- GET /vapid-key (this one can stay public)
+
+**B) setup.ts — 2 endpoints:**
+```bash
+grep -n "router\.\(get\|post\)" server/routes/setup.ts | head -10
+```
+Add `isAuthenticated` + admin role check. Setup should only work for admin after initial setup:
+```typescript
+// GET /status can stay public (checks if setup is needed)
+// POST /initialize must require isAuthenticated + isAdmin
+```
+
+**C) ai-ops-copilot.ts — 1 endpoint:**
+```bash
+grep -n "router\.\(get\|post\)" server/routes/ai-ops-copilot.ts | head -10
+```
+Add `isAuthenticated` to all endpoints.
+
+### T002 — Fix Backup System (~30 min)
+
+**Problem:** Last backup was 23 hours ago despite RPO ≤ 1 hour target.
+
+```bash
+grep -rn "backup\|BACKUP" server/ --include="*.ts" | grep -i "schedule\|cron\|interval" | head -5
+```
+
+Check why backups are failing/stalling. Fix the scheduler. Verify a backup runs successfully after fix.
+
+### T003 — Seed Realistic Checklist Templates (~1 hour)
+
+**Problem:** Only 3 checklist templates for 22 branches. Need at minimum 10 templates.
+
+Create a seed script that adds these templates:
+
+```typescript
+const checklistTemplates = [
+  { title: "Sabah Açılış Kontrol Listesi", type: "opening", items: [
+    "Işıklar açıldı", "Klima/havalandırma çalışıyor", "Vitrin temizlendi",
+    "Kahve makinesi ısınmaya bırakıldı", "Süt stoku kontrol edildi",
+    "Kasa açılış sayımı yapıldı", "Müzik sistemi açıldı",
+    "Tezgah ve servis alanı temizlendi", "Çöpler boşaltıldı", "Menü panosu kontrol edildi"
+  ]},
+  { title: "Akşam Kapanış Kontrol Listesi", type: "closing", items: [
+    "Vitrin boşaltıldı ve temizlendi", "Kahve makinesi temizlendi ve kapatıldı",
+    "Blender ve ekipmanlar temizlendi", "Süt ve bozulabilir ürünler buzdolabına kaldırıldı",
+    "Kasa kapanış sayımı yapıldı", "Çöpler çıkarıldı",
+    "Zemin paspaslandı", "Işıklar kapatıldı", "Alarm sistemi aktif edildi"
+  ]},
+  { title: "Günlük Temizlik Kontrol Listesi", type: "cleaning", items: [
+    "Tezgah dezenfekte edildi", "Lavabo ve musluklar temizlendi",
+    "Tuvalet kontrol edildi", "Cam ve aynalar silindi",
+    "Ekipman yüzeyleri temizlendi", "Çöp kovaları dezenfekte edildi"
+  ]},
+  { title: "Haftalık Derin Temizlik", type: "deep_cleaning", items: [
+    "Buzdolabı içi temizlendi", "Fırın ve mikrodalga temizlendi",
+    "Havalandırma filtreleri kontrol edildi", "Depo düzenlendi",
+    "Ekipman bakımları yapıldı", "Dış cephe ve cam temizliği"
+  ]},
+  { title: "Vardiya Devir Teslim", type: "shift_handover", items: [
+    "Kasa sayımı eşleşiyor", "Açık siparişler devredildi",
+    "Ekipman durumu bilgilendirildi", "Stok eksikleri not edildi",
+    "Müşteri şikayetleri aktarıldı"
+  ]},
+  { title: "Hijyen Kontrol Listesi", type: "hygiene", items: [
+    "Personel kıyafetleri uygun", "Eldiven ve bone kullanımı",
+    "El yıkama prosedürü uygulanıyor", "Gıda saklama sıcaklıkları uygun",
+    "Son kullanma tarihleri kontrol edildi", "Çapraz kontaminasyon önlemi alındı"
+  ]},
+  { title: "Ekipman Günlük Kontrol", type: "equipment_daily", items: [
+    "Espresso makinesi basınç kontrolü", "Değirmen ayar kontrolü",
+    "Blender çalışma testi", "Buzdolabı sıcaklık kontrolü",
+    "Buz makinesi kontrol", "POS cihazı çalışıyor"
+  ]},
+  { title: "Stok Sayım Kontrol Listesi", type: "stock_count", items: [
+    "Kahve çekirdeği stoku", "Süt ve alternatif süt stoku",
+    "Şurup ve sos stoku", "Tek kullanımlık malzeme stoku",
+    "Temizlik malzemesi stoku", "Ambalaj malzemesi stoku"
+  ]},
+  { title: "Müşteri Deneyimi Kontrolü", type: "customer_experience", items: [
+    "Oturma alanları temiz ve düzenli", "Menü panosu güncel ve okunaklı",
+    "Müzik seviyesi uygun", "Aydınlatma yeterli",
+    "WiFi çalışıyor", "Priz noktaları erişilebilir"
+  ]},
+  { title: "Gıda Güvenliği Günlük Kontrol", type: "food_safety", items: [
+    "Buzdolabı sıcaklığı: 0-4°C", "Dondurucu sıcaklığı: -18°C altı",
+    "Sıcak servis sıcaklığı: 65°C üstü", "Son kullanma tarihleri kontrol edildi",
+    "FIFO kuralı uygulanıyor", "Temizlik kimyasalları gıdadan ayrı"
+  ]}
+];
+```
+
+Create an API endpoint `POST /api/admin/seed-checklists` that inserts these templates. Assign daily opening/closing checklists to ALL active branches.
+
+### T004 — Seed Quiz Questions (30→200+) (~2 hours)
+
+**Problem:** 30 quiz questions for 51 modules — less than 1 per module. Need at least 3-5 per active module.
+
+```bash
+# Find existing quiz question structure
+grep -rn "quiz_questions\|quizQuestion" server/ --include="*.ts" | grep "INSERT\|insert\|create\|schema" | head -10
+```
+
+Create a seed script `POST /api/admin/seed-quiz-questions` that uses AI to generate questions:
+
+For each training module that has 0-2 questions:
+1. Read the module content/title
+2. Use OpenAI API to generate 5 multiple-choice questions in Turkish
+3. Each question: question text + 4 options + correct answer index + difficulty (easy/medium/hard)
+4. Insert into quiz_questions table
+
+If AI generation is too slow, create a static seed with 200 realistic questions covering these categories:
+- Kahve bilgisi (espresso, latte, cold brew, kavurma)
+- Müşteri hizmeti (karşılama, şikayet yönetimi)
+- Hijyen ve gıda güvenliği (HACCP, sıcaklık, el yıkama)
+- Ekipman kullanımı (espresso makinesi, değirmen, blender)
+- Operasyon prosedürleri (açılış, kapanış, vardiya devir)
+- İş güvenliği (yangın, ilk yardım, acil durum)
+
+### T005 — Seed Position Salaries for All Roles (~30 min)
+
+**Problem:** Only 5 position_salaries defined but 19 active roles exist.
+
+```bash
+grep -rn "position_salaries" server/ --include="*.ts" | grep "INSERT\|insert\|seed" | head -5
+```
+
+Add salary definitions for ALL roles:
+
+```typescript
+const salaries = [
+  { role: 'stajyer', baseSalary: 33000, currency: 'TRY' },
+  { role: 'bar_buddy', baseSalary: 35000, currency: 'TRY' },
+  { role: 'barista', baseSalary: 38000, currency: 'TRY' },
+  { role: 'supervisor_buddy', baseSalary: 42000, currency: 'TRY' },
+  { role: 'supervisor', baseSalary: 45000, currency: 'TRY' },
+  { role: 'mudur', baseSalary: 49000, currency: 'TRY' },
+  { role: 'fabrika_personel', baseSalary: 34000, currency: 'TRY' },
+  { role: 'fabrika_sorumlu', baseSalary: 40000, currency: 'TRY' },
+  { role: 'fabrika_operator', baseSalary: 38000, currency: 'TRY' },
+  { role: 'fabrika_mudur', baseSalary: 52000, currency: 'TRY' },
+  { role: 'muhasebe', baseSalary: 45000, currency: 'TRY' },
+  { role: 'muhasebe_ik', baseSalary: 48000, currency: 'TRY' },
+  { role: 'satinalma', baseSalary: 45000, currency: 'TRY' },
+  { role: 'marketing', baseSalary: 45000, currency: 'TRY' },
+  { role: 'kalite_kontrol', baseSalary: 45000, currency: 'TRY' },
+  { role: 'gida_muhendisi', baseSalary: 52000, currency: 'TRY' },
+  { role: 'trainer', baseSalary: 45000, currency: 'TRY' },
+  { role: 'coach', baseSalary: 50000, currency: 'TRY' },
+  { role: 'teknik', baseSalary: 42000, currency: 'TRY' },
+  { role: 'destek', baseSalary: 38000, currency: 'TRY' },
+];
+```
+
+Insert only for roles that don't already have a salary defined (don't duplicate existing 5).
+
+### T006 — Seed PDKS Test Records (~1 hour)
+
+**Problem:** 0 PDKS records. The shift→PDKS→payroll chain cannot be verified.
+
+Create `POST /api/admin/seed-pdks` that generates realistic PDKS data for the last 30 days for the pilot branch (Işıklar, branch_id=5):
+
+For each active user in branch 5:
+- Generate daily check-in/check-out records
+- Morning shift: check-in ~08:00±15min, check-out ~16:00±15min
+- Evening shift: check-in ~14:00±15min, check-out ~22:00±15min
+- Randomly skip 2-3 days (absences) per month
+- Add some late arrivals (15-30 min late on ~20% of days)
+- Mark weekends as off (or based on scheduled_offs table)
+
+This will allow the payroll engine to calculate real deductions and overtime.
+
+### T007 — Seed Factory Chain Test Data (~2 hours)
+
+**Problem:** 0 production, 0 LOT, 0 shipment, 0 branch inventory. The entire factory module is untested with real data.
+
+Create `POST /api/admin/seed-factory-chain` that runs the FULL chain:
+
+**Step 1: Create 5 production batches** for popular products (donut, cinnaboom, cookie)
+```sql
+INSERT INTO production_batches (product_id, batch_number, quantity, produced_at, status)
+```
+
+**Step 2: Create production outputs** via factory_production_outputs (simulating kiosk entries)
+
+**Step 3: Create quality checks** — approve 4, set 1 to pending_engineer
+
+**Step 4: Create LOT numbers** for approved outputs
+```sql
+INSERT INTO production_lots (lot_number, product_id, quantity, expiry_date, status)
+```
+
+**Step 5: Create 2 shipments** to Işıklar branch
+- Shipment 1: status = 'teslim_edildi' (completed) — triggers branch inventory update
+- Shipment 2: status = 'hazirlaniyor' (pending)
+
+**Step 6: Verify branch_inventory** has records after shipment delivery
+
+**Step 7: Create 3 HACCP records** (2 pass, 1 warning)
+
+**Step 8: Create 1 coffee roasting log**
+
+Use actual factory_products IDs from the database. The seed should use the same transaction logic as real operations.
+
+### T008 — Seed Training Completions (~1 hour)
+
+**Problem:** 0 training completions, 2 user badges. Academy gamification is untested.
+
+Create `POST /api/admin/seed-training-completions` for pilot branch users:
+
+For 3-4 active baristas in Işıklar:
+- Complete 5-10 training modules each (with realistic progress over 30 days)
+- Generate quiz attempts (70-90% correct answers)
+- Trigger badge unlocks where applicable
+- Update composite scores
+
+This verifies the full training→quiz→badge→score chain.
+
+### T009 — Seed Customer Feedback (~30 min)
+
+**Problem:** Only 3 customer feedback records. CRM module barely testable.
+
+Create `POST /api/admin/seed-feedback` for Işıklar branch:
+
+Generate 20 realistic feedback entries over the last 30 days:
+- 12 positive (4-5 stars) with comments like "Kahve çok güzel", "Personel çok ilgili"
+- 5 neutral (3 stars) with comments like "Ortalama bir deneyim", "Bekleme süresi uzun"
+- 3 negative (1-2 stars) with comments like "Kahvem soğuk geldi", "Tezgah kirli idi"
+- Include response from supervisor for some entries
+- Track SLA times for responses
+
+### T010 — Add Error States to 25 Pages Without Them (~2 hours)
+
+**Problem:** 52 pages (32%) have no error state. If API fails, user sees blank page.
+
+```bash
+# Find pages without error handling
+grep -rL "isError\|error\|Error\|ErrorBoundary" client/src/pages/*.tsx | head -25
+```
+
+For each page found, add basic error handling:
+```typescript
+if (isError) {
+  return (
+    <div className="flex flex-col items-center justify-center p-8 text-center">
+      <AlertCircle className="h-12 w-12 text-red-500 mb-4" />
+      <h3 className="text-lg font-semibold">Bir hata oluştu</h3>
+      <p className="text-muted-foreground mt-2">Veriler yüklenirken sorun oluştu.</p>
+      <Button onClick={() => refetch()} className="mt-4">Tekrar Dene</Button>
+    </div>
+  );
+}
+```
+
+Focus on the 25 most important pages first — skip Academy sub-modules if time is limited.
+
+### T011 — Add Loading States to 25 Pages Without Them (~1 hour)
+
+**Problem:** 25 pages (15%) have no loading state.
+
+```bash
+grep -rL "isLoading\|loading\|Loading\|Spinner\|skeleton\|Skeleton" client/src/pages/*.tsx | head -25
+```
+
+Add consistent loading pattern:
+```typescript
+if (isLoading) {
+  return (
+    <div className="flex items-center justify-center p-8">
+      <Loader2 className="h-8 w-8 animate-spin text-primary" />
+    </div>
+  );
+}
+```
+
+### T012 — Service Worker Cache Bump (~5 min)
+
+Bump to next version after all changes.
+
+### VERIFICATION
+
+After all seeds run, verify counts:
+
+```sql
+SELECT 'checklist_templates' as t, COUNT(*) FROM checklist_templates
+UNION ALL SELECT 'quiz_questions', COUNT(*) FROM quiz_questions
+UNION ALL SELECT 'position_salaries', COUNT(*) FROM position_salaries
+UNION ALL SELECT 'pdks_records', COUNT(*) FROM pdks_records
+UNION ALL SELECT 'production_lots', COUNT(*) FROM production_lots
+UNION ALL SELECT 'factory_shipments', COUNT(*) FROM factory_shipments
+UNION ALL SELECT 'branch_inventory', COUNT(*) FROM branch_inventory
+UNION ALL SELECT 'haccp_check_records', COUNT(*) FROM haccp_check_records
+UNION ALL SELECT 'training_completions', COUNT(*) FROM training_completions
+UNION ALL SELECT 'customer_feedback', COUNT(*) FROM customer_feedback;
+```
+
+Expected minimums:
+- checklist_templates: 10+
+- quiz_questions: 150+
+- position_salaries: 19+
+- pdks_records: 500+ (30 days × ~20 users)
+- production_lots: 5+
+- factory_shipments: 2+
+- branch_inventory: 5+
+- haccp_check_records: 3+
+- training_completions: 30+
+- customer_feedback: 20+
+
+### PRIORITY ORDER: T001 → T002 → T005 → T003 → T004 → T006 → T007 → T008 → T009 → T010 → T011 → T012
+
+### DO NOT BREAK:
+- All existing data (INSERT only, no DELETE/UPDATE on existing records)
+- All Sprint 1-22 features
+- Background jobs
+- Agent system
+- Factory transaction safety
+
+### ACCEPTANCE CRITERIA:
+- [ ] 0 unprotected sensitive endpoints
+- [ ] Backup system running successfully
+- [ ] 10+ checklist templates with branch assignments
+- [ ] 150+ quiz questions across modules
+- [ ] 19+ position salary definitions
+- [ ] 500+ PDKS records for Işıklar branch
+- [ ] Factory chain has real data (lots, shipments, branch inventory)
+- [ ] 30+ training completions with badge unlocks
+- [ ] 20+ customer feedback entries
+- [ ] 25+ pages with error states added
+- [ ] 25+ pages with loading states added
+- [ ] All seed endpoints behind admin auth
+- [ ] Service Worker bumped
+
+---
+
+Bu Sprint 23 — 12 task, audit skorunu 63→80+ çıkaracak. Replit'e yapıştır.
