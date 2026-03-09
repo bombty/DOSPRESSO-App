@@ -3,6 +3,27 @@ import "./lib/i18n";
 import App from "./App";
 import "./index.css";
 
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.getRegistrations().then((registrations) => {
+    for (const reg of registrations) {
+      reg.unregister().then(() => {
+        console.log("[SW] Unregistered stale service worker:", reg.scope);
+      });
+    }
+  });
+  if ("caches" in window) {
+    caches.keys().then((names) => {
+      for (const name of names) {
+        if (name.startsWith("dospresso-v") && !name.startsWith("dospresso-v12")) {
+          caches.delete(name).then(() => {
+            console.log("[SW] Deleted old cache:", name);
+          });
+        }
+      }
+    });
+  }
+}
+
 const root = document.getElementById("root");
 if (!root) {
   console.error("Root element not found!");
