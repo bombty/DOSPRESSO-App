@@ -318,7 +318,7 @@ export async function getHQSuggestions(): Promise<DobodySuggestion[]> {
           actionType: "send_notification",
           actionLabel: "Bildirim Gönder",
           targetUserId: undefined,
-          payload: { branchId: branch.id, type: "branch_inactive_alert" },
+          payload: { branchId: branch.id, type: "branch_inactive_alert", route: `/subeler/${branch.id}` },
           priority: "high",
           icon: "AlertTriangle",
         });
@@ -348,8 +348,8 @@ export async function getHQSuggestions(): Promise<DobodySuggestion[]> {
         id: `hq-low-rating-${br.branchId}`,
         message: `${br.branchName} müşteri puanı düşük (${ratingStr}). İnceleme yapılmalı.`,
         actionType: "redirect",
-        actionLabel: "Şubeler",
-        payload: { route: "/subeler", branchId: br.branchId },
+        actionLabel: br.branchName || "Şube Detay",
+        payload: { route: `/subeler/${br.branchId}`, branchId: br.branchId },
         priority: "critical",
         icon: "TrendingDown",
       });
@@ -394,7 +394,7 @@ export async function getCoachSuggestions(userId: string): Promise<DobodySuggest
         actionType: "redirect",
         actionLabel: "Profili Gör",
         targetUserId: staff.usrId,
-        payload: { route: `/personel/${staff.usrId}` },
+        payload: { route: `/personel-detay/${staff.usrId}` },
         priority: "critical",
         icon: "TrendingDown",
       });
@@ -427,7 +427,7 @@ export async function getCoachSuggestions(userId: string): Promise<DobodySuggest
         actionType: "redirect",
         actionLabel: "Değerlendirmeye Git",
         targetUserId: ready.usrId,
-        payload: { route: `/personel/${ready.usrId}`, action: "promote" },
+        payload: { route: `/personel-detay/${ready.usrId}`, action: "promote" },
         priority: "medium",
         icon: "ArrowUpCircle",
       });

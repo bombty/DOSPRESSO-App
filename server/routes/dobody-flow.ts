@@ -183,7 +183,7 @@ async function getBaristaFlowTasks(userId: string, branchId: number | null): Pro
     for (const task of pendingTasks) {
       flowTasks.push({
         id: `task-${task.id}`,
-        title: "Görev",
+        title: `Görev: ${task.description.substring(0, 40)}`,
         description: task.description.substring(0, 80),
         route: "/gorevler",
         estimatedMinutes: 5,
@@ -255,22 +255,30 @@ async function getSupervisorFlowTasks(userId: string, branchId: number): Promise
   } catch {}
 
   try {
-    const lowStock = await db
-      .select({ cnt: count() })
+    const lowStockItems = await db
+      .select({
+        productName: factoryProducts.name,
+        currentStock: branchInventory.currentStock,
+        minimumStock: branchInventory.minimumStock,
+      })
       .from(branchInventory)
+      .innerJoin(factoryProducts, eq(branchInventory.productId, factoryProducts.id))
       .where(
         and(
           eq(branchInventory.branchId, branchId),
           sql`CAST(${branchInventory.currentStock} AS numeric) < CAST(${branchInventory.minimumStock} AS numeric)`
         )
-      );
+      )
+      .orderBy(sql`CAST(${branchInventory.currentStock} AS numeric) ASC`)
+      .limit(3);
 
-    const lowStockCount = lowStock[0]?.cnt || 0;
-    if (lowStockCount > 0) {
+    if (lowStockItems.length > 0) {
+      const firstItem = lowStockItems[0];
+      const others = lowStockItems.length > 1 ? ` +${lowStockItems.length - 1} ürün daha` : "";
       flowTasks.push({
         id: `stock-${branchId}`,
-        title: "Stok Uyarısı",
-        description: `${lowStockCount} ürün minimum stok altında`,
+        title: `Stok Uyarısı (${lowStockItems.length} ürün)`,
+        description: `${firstItem.productName} kritik seviyede (${firstItem.currentStock}/${firstItem.minimumStock})${others}`,
         route: "/satinalma/stok-yonetimi",
         estimatedMinutes: 5,
         priority: "high",
@@ -297,10 +305,16 @@ async function getSupervisorFlowTasks(userId: string, branchId: number): Promise
     const avgRating = fb?.avgRating ? parseFloat(String(fb.avgRating)) : 0;
     const fbCount = fb?.cnt || 0;
     if (fbCount > 0 && avgRating < 3.5) {
+      const branchInfo = await db
+        .select({ name: branches.name })
+        .from(branches)
+        .where(eq(branches.id, branchId))
+        .limit(1);
+      const branchName = branchInfo[0]?.name || "";
       flowTasks.push({
         id: `feedback-${branchId}`,
-        title: "Geri Bildirim Analizi",
-        description: `Son 7 gün ortalama: ${avgRating.toFixed(1)} - inceleme gerekli`,
+        title: branchName ? `Geri Bildirim: ${branchName}` : "Geri Bildirim Analizi",
+        description: `Son 7 gün: ${fbCount} değerlendirme, ort. ${avgRating.toFixed(1)}/5 — inceleme gerekli`,
         route: "/crm/geri-bildirimler",
         estimatedMinutes: 10,
         priority: "critical",
@@ -340,18 +354,46 @@ async function getCeoFlowTasks(userId: string): Promise<FlowTask[]> {
   const flowTasks: FlowTask[] = [];
 
   try {
-    const activeAlerts = await db
+    const alertsByBranch = await db
+      .select({
+        branchId: dashboardAlerts.contextId,
+        branchName: branches.name,
+        cnt: count(),
+      })
+      .from(dashboardAlerts)
+      .innerJoin(branches, eq(dashboardAlerts.contextId, branches.id))
+      .where(
+        and(
+          eq(dashboardAlerts.status, "active"),
+          eq(dashboardAlerts.context, "branch")
+        )
+      )
+      .groupBy(dashboardAlerts.contextId, branches.name)
+      .orderBy(desc(count()))
+      .limit(1);
+
+    const totalAlerts = await db
       .select({ cnt: count() })
       .from(dashboardAlerts)
       .where(eq(dashboardAlerts.status, "active"));
 
-    const alertCount = activeAlerts[0]?.cnt || 0;
-    if (alertCount > 0) {
+    const totalCount = totalAlerts[0]?.cnt || 0;
+
+    if (totalCount > 0) {
+      const worstBranch = alertsByBranch[0];
+      const targetRoute = worstBranch ? `/subeler/${worstBranch.branchId}` : "/subeler";
+      const title = worstBranch
+        ? `Şube Uyarıları: ${worstBranch.branchName} (${worstBranch.cnt} uyarı)`
+        : `Şube Uyarıları (${totalCount} aktif)`;
+      const description = worstBranch
+        ? `Toplam ${totalCount} aktif uyarı — en kritik: ${worstBranch.branchName}`
+        : `${totalCount} aktif uyarı var`;
+
       flowTasks.push({
         id: "ceo-alerts",
-        title: "Şube Uyarıları",
-        description: `${alertCount} aktif uyarı var`,
-        route: "/subeler",
+        title,
+        description,
+        route: targetRoute,
         estimatedMinutes: 5,
         priority: "critical",
         icon: "AlertTriangle",
@@ -421,16 +463,50 @@ async function getCoachFlowTasks(userId: string): Promise<FlowTask[]> {
   } catch {}
 
   if (flowTasks.length === 0) {
-    flowTasks.push({
-      id: "coach-branch-visit",
-      title: "Şube Ziyareti",
-      description: "Şubelerin performansını incele",
-      route: "/subeler",
-      estimatedMinutes: 15,
-      priority: "medium",
-      icon: "MapPin",
-      completed: false,
-    });
+    try {
+      const branchAlertCounts = await db
+        .select({
+          branchId: dashboardAlerts.contextId,
+          branchName: branches.name,
+          alertCount: count(),
+        })
+        .from(dashboardAlerts)
+        .innerJoin(branches, eq(dashboardAlerts.contextId, branches.id))
+        .where(
+          and(
+            eq(dashboardAlerts.status, "active"),
+            eq(dashboardAlerts.context, "branch")
+          )
+        )
+        .groupBy(dashboardAlerts.contextId, branches.name)
+        .orderBy(desc(count()))
+        .limit(1);
+
+      const worst = branchAlertCounts[0];
+      flowTasks.push({
+        id: "coach-branch-visit",
+        title: worst ? `Şube Ziyareti: ${worst.branchName}` : "Şube Ziyareti",
+        description: worst
+          ? `${worst.alertCount} aktif uyarı — performans incelemesi gerekli`
+          : "Şubelerin performansını incele",
+        route: worst ? `/subeler/${worst.branchId}` : "/subeler",
+        estimatedMinutes: 15,
+        priority: worst ? "high" : "medium",
+        icon: "MapPin",
+        completed: false,
+      });
+    } catch {
+      flowTasks.push({
+        id: "coach-branch-visit",
+        title: "Şube Ziyareti",
+        description: "Şubelerin performansını incele",
+        route: "/subeler",
+        estimatedMinutes: 15,
+        priority: "medium",
+        icon: "MapPin",
+        completed: false,
+      });
+    }
   }
 
   return flowTasks.slice(0, 3);
@@ -549,7 +625,7 @@ async function getDefaultFlowTasks(userId: string, role: string): Promise<FlowTa
     for (const task of pendingTasks) {
       flowTasks.push({
         id: `task-${task.id}`,
-        title: "Görev",
+        title: `Görev: ${task.description.substring(0, 40)}`,
         description: task.description.substring(0, 80),
         route: "/gorevler",
         estimatedMinutes: 10,

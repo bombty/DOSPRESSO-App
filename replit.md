@@ -35,11 +35,7 @@ The frontend uses React 18+ with TypeScript and Vite, employing Shadcn/ui (New Y
 - **Procurement Management System**: Full procurement module with Inventory, Supplier Management, Purchase Orders, and Goods Receipt, including approval roles.
 - **Cost Management System**: Comprehensive product cost calculation integrated with procurement.
 - **Factory Shift & Production Planning**: Shift planning, batch tracking, performance monitoring, kiosk PIN authentication, production/waste recording, and fault reporting.
-- **Mr. Dobody Agent Engine**: Autonomous AI agent system ("Read-Only AI, Write-Through Human") for analyzing data and proposing user-approved actions. Includes rule-based suggestion engine, modular skill engine, and proactive notifications.
-  - **Flow Mode**: Active work-flow guide for role-specific prioritized tasks. CGO/CEO flow includes pending agent action count.
-  - **Task Manager**: Admin/HQ-created manual flow tasks for users' Flow Mode.
-  - **Avatar Management**: DB-backed avatar system with time-windowed and role-based display.
-  - **Agent Center UX**: Enriched suggestion titles with person/branch names and metrics. Approve/reject confirmation dialogs with full context. Detail dialog for suggestions without valid deep links. Write-path deduplication (24h window) to prevent duplicate pending actions.
+- **Mr. Dobody Agent Engine**: Autonomous AI agent system ("Read-Only AI, Write-Through Human") for analyzing data and proposing user-approved actions. Includes rule-based suggestion engine, modular skill engine, and proactive notifications with an approval chain, smart routing, escalation, and outcome tracking.
 - **CRM — Müşteri 360°**: Comprehensive customer relationship management including feedback, complaints, campaigns, and analytics.
 - **Fabrika Uretim-Stok-Sevkiyat Zinciri**: Shipment system with status workflow, pre-dispatch stock validation, automatic inventory deduction, 2-stage quality control, HACCP records, LOT/Parti tracking, and SKT background jobs.
 - **Branch Order & Stock Management**: Full branch order lifecycle, inventory system with stock movements, waste recording, and expiring product alerts.
@@ -51,8 +47,8 @@ The frontend uses React 18+ with TypeScript and Vite, employing Shadcn/ui (New Y
 - **SLA Calculation**: Dynamic, time-based calculation by fault priority.
 - **Notifications**: Automatic in-app alerts and email notifications with deduplication and throttling.
 - **State Management**: TanStack Query for server state and localStorage for theme persistence.
-- **Security Hardening**: CSP headers, Permissions-Policy, Referrer-Policy, CORS whitelist, rate limiting, session fixation protection, and expanded audit logging.
-- **API Security**: Rate limiting and Factory RBAC for data access.
+- **Security Hardening**: CSP headers, Permissions-Policy, Referrer-Policy, CORS whitelist, rate limiting, session fixation protection, and expanded audit logging. Secure cookies are enforced.
+- **API Security**: Rate limiting and Factory RBAC for data access. Error responses are sanitized.
 - **Transaction Safety**: Atomic operations using Drizzle transactions.
 - **RAG Knowledge Base**: Vector-based semantic search using OpenAI embeddings.
 - **Gamification**: Integrated badges, career progression, leaderboards, team competitions, and daily learning streaks.
@@ -70,40 +66,6 @@ The frontend uses React 18+ with TypeScript and Vite, employing Shadcn/ui (New Y
 - **Feedback Pattern Analysis**: Weekly job for trend analysis and alerts.
 - **WordPress-Style Data Export/Import**: Full system data export to ZIP, background job processing, and import modes.
 - **Setup Wizard**: 6-step wizard for initial system configuration, including default data seeding.
-- **Sprint 23 — Pilot Readiness** (completed):
-  - Security: `isAuthenticated` middleware on push.ts, setup.ts, ai-ops-copilot.ts endpoints.
-  - Backup: Paginated export for large tables (5K row batches), prevents OOM.
-  - Seed Infrastructure: `server/routes/seed.ts` with 8 seed endpoints (POST /api/admin/seed-*), admin-guarded.
-  - Seed Data: 13 checklists (87 tasks), 205 quiz questions (55 quizzes), 19 salary definitions, 384 PDKS records, factory chain data (33 batches, 4 lots, 2 shipments, 3 HACCP), 23 customer feedback, 27 quiz attempts + training progress, 94 branch inventory, 15 training assignments, 5 announcements, 8 flow completions.
-  - Error/Loading States: 174 pages enhanced with `ErrorState`/`LoadingState` components.
-  - Service Worker: Cache version bumped to `dospresso-v10`.
-  - Pilot Readiness Score: 63 → **81/100** (target: 80+).
-- **Sprint 24 — Agent Approval Chain + Critical Fixes** (completed):
-  - Agent Approval Chain: CGO approves suggestion → supervisor gets notification + task (3-day deadline) + Flow Mode task. Full downstream chain in `server/routes/agent.ts`.
-  - Agent Deep Link Fix: `/personel/` → `/personel-detay/` route correction in `agent-action-center.tsx`. Fallback detail dialog for invalid links.
-  - Agent Deduplication: Read-time dedup by title+status in GET `/api/agent/actions`. Write-time dedup already existed in skill-notifications.ts.
-  - Score Display: 0/100 scores now show "Henüz veri yok" instead of red 0/100 in `sube-detay.tsx` and `branch-scorecard.tsx`.
-  - Turkish ASCII Fix: All remaining ASCII chars fixed in error-boundary, sube-detay, fabrika/dashboard, qr-checkin-generator, coach-sube-denetim, vardiya-planlama.
-  - Test User Rename: 190+ test users renamed from "TBarista1 Test" to realistic Turkish names across all branches.
-- **Sprint 24B — Agent Intelligence Upgrade** (completed):
-  - Smart Routing: 3 new DB tables (`agent_routing_rules`, `agent_action_outcomes`, `agent_rejection_patterns`) + 9 indexes. `routeAgentAction()` in `server/agent/routing.ts` routes suggestions to correct role by category/subcategory, with branch-level user lookup and secondary notifications.
-  - Skill Categorization: All 8 agent skills tag actions with category/subcategory (performance, training, operations, quality, factory, strategic).
-  - Routing Integration: `processSkillActions()` in `skill-notifications.ts` uses routing for `suggest_approve` actions with category set. Rejection pattern check (90-day suppression window).
-  - Escalation System: Background job (`checkRoutingEscalations()`) runs hourly, auto-escalates overdue pending actions to escalationRole. Adds "escalated" status.
-  - Outcome Tracking: On approval, `agent_action_outcomes` record created with 7-day followUpDate. Daily 08:00 TR job (`checkActionOutcomes()`) checks score improvement and notifies approver.
-  - Rejection Learning: Reject endpoint auto-inserts `agent_rejection_patterns` with 90-day expiry. Routing function checks patterns before generating new suggestions.
-  - Admin Routing UI: "Yönlendirme" tab in Agent Merkezi for all admin/cgo/ceo roles. CRUD table for routing rules with inline edit dialog.
-  - CGO Summary View: "Özet" tab for CGO/CEO with routing stats by role, outcome distribution, strategic suggestions, and escalation list.
-  - Seed Endpoint: `POST /api/admin/seed-agent-routing` creates 15 default routing rules.
-
-- **Sprint 25 — Security Hardening** (completed):
-  - Helmet.js CSP: Full CSP directives enabled for all environments (not just production). Added `wss://*` for WebSocket, `unsafe-eval` for Vite HMR, `crossOriginResourcePolicy: "cross-origin"` for S3 assets.
-  - Security Headers: `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Strict-Transport-Security`, `Referrer-Policy: strict-origin-when-cross-origin`, `Permissions-Policy: camera=(), microphone=(), geolocation=()` — all active in every environment.
-  - Rate Limiting: Login-specific limiter (10/15min) on `/api/login`, password reset limiter (3/hour) on `/api/forgot-password`. Layered with existing account lockout (5 attempts → 15min lock) and general API limiter (100/min).
-  - Secure Cookies: Verified httpOnly=true, secure=production, sameSite=lax, maxAge=8h.
-  - Error Response Sanitization: Removed `error.message` from all catch blocks in `factory.ts` (7 endpoints), `data-management.ts` (3 endpoints), `admin.ts` (8 health-check responses). Internal errors now return generic Turkish messages without stack traces.
-  - Audit Logging: Added `agent_action_approve` and `agent_action_reject` event types to `server/routes/agent.ts` with full context (title, category, targetUserId, reason).
-  - Service Worker: Cache version bumped to `dospresso-v11`.
 
 ## External Dependencies
 - **OpenAI API**: AI-powered vision analysis, chat completions, embeddings, and summary generation.
