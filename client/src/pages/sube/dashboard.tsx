@@ -124,7 +124,7 @@ export default function SubeDashboard() {
   const {
     data: dashboardData,
     isLoading,
-    refetch,
+    refetch: refetchDashboard,
   } = useQuery<DashboardData>({
     queryKey: ["/api/branch-dashboard-v2", branchId],
     queryFn: async () => {
@@ -151,7 +151,7 @@ export default function SubeDashboard() {
       });
     },
     onSuccess: () => {
-      refetch();
+      refetchDashboard();
       toast({ title: "Uyarı onaylandı" });
     },
   });
@@ -161,7 +161,7 @@ export default function SubeDashboard() {
       return apiRequest("PATCH", `/api/alerts/${alertId}/dismiss`, {});
     },
     onSuccess: () => {
-      refetch();
+      refetchDashboard();
       toast({ title: "Uyarı kapatıldı" });
     },
   });
@@ -324,7 +324,7 @@ export default function SubeDashboard() {
                 QR
               </Button>
             </Link>
-            <Button variant="outline" size="icon" onClick={() => refetch()} data-testid="button-refresh">
+            <Button variant="outline" size="icon" onClick={() => refetchDashboard()} data-testid="button-refresh">
               <RefreshCw className="h-3.5 w-3.5" />
             </Button>
             <Button variant="outline" size="sm" onClick={handleLogout} className="gap-1.5" data-testid="button-logout">

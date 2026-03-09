@@ -68,7 +68,7 @@ export default function UserCRM() {
   };
 
   // Fetch users with filters - tuple queryKey for proper cache invalidation
-  const { data: allUsers = [], isLoading } = useQuery<User[]>({
+  const { data: allUsers = [], isLoading: usersLoading } = useQuery<User[]>({
     queryKey: ['/api/admin/users', roleFilter, branchFilter, accountStatusFilter, searchQuery],
     queryFn: async () => {
       const res = await fetch(buildUsersQueryUrl(), {

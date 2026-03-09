@@ -57,7 +57,7 @@ export default function MyPerformancePage() {
     queryKey: ["/api/user"],
   });
 
-  const { data: periodData, isLoading } = useQuery<any>({
+  const { data: periodData, isLoading: periodLoading } = useQuery<any>({
     queryKey: [`/api/my-performance/periods?period=${activePeriod}`],
   });
 

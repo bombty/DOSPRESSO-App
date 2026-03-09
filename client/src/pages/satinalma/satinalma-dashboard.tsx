@@ -285,7 +285,7 @@ export default function SatinalmaDashboard() {
   });
 
   const dashboardQueryParam = selectedBranchId !== "all" ? `?branchId=${selectedBranchId}` : "";
-  const { data, isLoading } = useQuery<DashboardData>({
+  const { data, isLoading: dashboardLoading } = useQuery<DashboardData>({
     queryKey: ["/api/satinalma/dashboard", selectedBranchId],
     queryFn: async () => {
       const res = await fetch(`/api/satinalma/dashboard${dashboardQueryParam}`);

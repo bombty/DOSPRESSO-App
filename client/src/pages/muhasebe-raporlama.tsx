@@ -112,7 +112,7 @@ export default function MuhasebeRaporlama() {
     return branches;
   }, [branches, branchCategory]);
 
-  const { data: reports, isLoading } = useQuery<any[]>({
+  const { data: reports, isLoading: reportsLoading } = useQuery<any[]>({
     queryKey: ["/api/management-reports", reportTypeFilter, selectedYear, selectedBranch],
     queryFn: async () => {
       const params = new URLSearchParams();

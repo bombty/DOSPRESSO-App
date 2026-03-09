@@ -132,7 +132,7 @@ export default function ServiceRequestsManagement() {
     queryKey: ['/api/equipment'],
   });
 
-  const { data: serviceRequests = [], isLoading } = useQuery<ServiceRequestWithEquipment[]>({
+  const { data: serviceRequests = [], isLoading: requestsLoading } = useQuery<ServiceRequestWithEquipment[]>({
     queryKey: ['/api/service-requests', filterBranch !== 'all' ? parseInt(filterBranch) : undefined, filterStatus !== 'all' ? filterStatus : undefined],
   });
 

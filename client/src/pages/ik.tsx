@@ -304,7 +304,7 @@ export default function IKPage() {
     return [baseUrl];
   }, [user?.role, branchFilter]);
 
-  const { data: employees = [], isLoading } = useQuery<User[]>({
+  const { data: employees = [], isLoading: employeesLoading } = useQuery<User[]>({
     queryKey: employeesQueryKey,
     enabled: !!user,
   });

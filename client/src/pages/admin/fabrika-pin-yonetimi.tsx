@@ -54,7 +54,7 @@ export default function AdminFabrikaPinYonetimi() {
     queryKey: ['/api/factory/staff'],
   });
 
-  const { data: pins = [], isLoading: loadingPins, refetch } = useQuery<PinRecord[]>({
+  const { data: pins = [], isLoading: loadingPins, refetch: refetchPins } = useQuery<PinRecord[]>({
     queryKey: ['/api/factory/pins'],
   });
 

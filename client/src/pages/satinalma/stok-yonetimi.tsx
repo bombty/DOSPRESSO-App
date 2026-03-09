@@ -145,7 +145,7 @@ export default function StokYonetimi() {
     enabled: !!selectedItem && isDetailDialogOpen,
   });
 
-  const { data: items, isLoading } = useQuery<InventoryItem[]>({
+  const { data: items, isLoading: itemsLoading } = useQuery<InventoryItem[]>({
     queryKey: ['/api/inventory', { category, search, lowStock: showLowStock }],
     queryFn: async () => {
       const queryParams = new URLSearchParams();

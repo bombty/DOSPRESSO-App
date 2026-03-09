@@ -150,7 +150,7 @@ export function AgentCGOSummary() {
     );
   }
 
-  const totalOutcome = data.outcomeStats.reduce((s, o) => s + o.total, 0);
+  const totalOutcome = data.outcomeStats.reduce((s, o) => s + Number(o.total), 0);
 
   return (
     <div className="space-y-6" data-testid="agent-cgo-summary">
@@ -210,7 +210,7 @@ export function AgentCGOSummary() {
             {data.outcomeStats.map((stat) => {
               const config = OUTCOME_LABELS[stat.outcome] || OUTCOME_LABELS.no_data;
               const Icon = config.icon;
-              const pct = totalOutcome > 0 ? Math.round((stat.total / totalOutcome) * 100) : 0;
+              const pct = totalOutcome > 0 ? Math.round((Number(stat.total) / totalOutcome) * 100) : 0;
               return (
                 <Card key={stat.outcome} data-testid={`card-outcome-${stat.outcome}`}>
                   <CardContent className="p-3 flex items-center gap-3">

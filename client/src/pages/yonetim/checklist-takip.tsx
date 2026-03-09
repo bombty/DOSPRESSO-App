@@ -39,23 +39,6 @@ export default function ChecklistTrackingPage() {
   const [reviewNote, setReviewNote] = useState("");
 
   const hasAccess = user && (isHQRole(user.role) || ['branch_manager', 'supervisor', 'shift_lead'].includes(user.role));
-  if (!hasAccess) {
-    
-  if (isLoading) return <LoadingState />;
-  if (isError) return <ErrorState onRetry={refetch} />;
-
-  return (
-      <Card>
-        <CardContent className="py-12">
-          <div className="flex flex-col items-center justify-center text-center">
-            <AlertCircle className="h-12 w-12 text-destructive" />
-            <h3 className="font-semibold text-lg">Yetkisiz Erişim</h3>
-            <p className="text-muted-foreground">Bu sayfaya erişim yetkiniz yok.</p>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
 
   const { data: branches = [], isError, refetch, isLoading } = useQuery<Branch[]>({
     queryKey: ['/api/branches'],
@@ -63,7 +46,7 @@ export default function ChecklistTrackingPage() {
 
   const effectiveBranchId = filterBranchId === "all" ? undefined : parseInt(filterBranchId);
   
-  const { data: completions = [], isLoading } = useQuery<CompletionWithDetails[]>({
+  const { data: completions = [], isLoading: completionsLoading } = useQuery<CompletionWithDetails[]>({
     queryKey: ['/api/checklist-completions/manager/all', filterDate, effectiveBranchId, filterStatus === "all" ? undefined : filterStatus],
     queryFn: async () => {
       const params = new URLSearchParams();
@@ -90,6 +73,20 @@ export default function ChecklistTrackingPage() {
       toast({ title: "Hata", description: error.message, variant: "destructive" });
     },
   });
+
+  if (!hasAccess) {
+    return (
+      <Card>
+        <CardContent className="py-12">
+          <div className="flex flex-col items-center justify-center text-center">
+            <AlertCircle className="h-12 w-12 text-destructive" />
+            <h3 className="font-semibold text-lg">Yetkisiz Erişim</h3>
+            <p className="text-muted-foreground">Bu sayfaya erişim yetkiniz yok.</p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   const filteredCompletions = completions.filter((c) => {
     if (searchTerm) {

@@ -57,7 +57,7 @@ export default function EmployeeOfMonthPage() {
     queryKey: ["/api/employee-of-month/weights"],
   });
 
-  const { data: rankings, isLoading } = useQuery({
+  const { data: rankings, isLoading: rankingsLoading } = useQuery({
     queryKey: ["/api/employee-of-month/rankings", selectedMonth, selectedYear, viewMode === "branch" ? selectedBranchId : "all"],
   });
 

@@ -56,10 +56,6 @@ type LostFoundItemEnriched = LostFoundItem & {
 };
 
 function ItemSkeleton() {
-  
-  if (isLoading) return <LoadingState />;
-  if (isError) return <ErrorState onRetry={refetch} />;
-
   return (
     <Card className="animate-pulse">
       <CardContent className="p-3">
@@ -88,7 +84,7 @@ export default function KayipEsyaPage() {
     enabled: userIsHQ,
   });
 
-  const { data: items = [], isLoading } = useQuery<LostFoundItemEnriched[]>({
+  const { data: items = [], isLoading: itemsLoading } = useQuery<LostFoundItemEnriched[]>({
     queryKey: ["/api/lost-found"],
   });
 
