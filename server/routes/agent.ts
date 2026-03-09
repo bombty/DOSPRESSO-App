@@ -3,9 +3,9 @@ import { db } from "../db";
 import { storage } from "../storage";
 import { 
   agentPendingActions, agentRuns, agentEscalationHistory, 
-  users, notifications, aiAgentLogs
+  users, notifications, aiAgentLogs, tasks, dobodyFlowTasks
 } from "@shared/schema";
-import { eq, desc, and, count, sql, gte, or, inArray } from "drizzle-orm";
+import { eq, desc, and, count, sql, gte, or, inArray, ne } from "drizzle-orm";
 import { runAgentAnalysis } from "../services/agent-engine";
 import { getEscalationHistory, resolveEscalation, getUnresolvedEscalations } from "../services/agent-escalation";
 import { getSchedulerStatus } from "../services/agent-scheduler";
@@ -63,18 +63,22 @@ router.get("/api/agent/actions", isAuthenticated, async (req: any, res) => {
 
     const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
 
-    const [results, totalResult] = await Promise.all([
-      db.select().from(agentPendingActions)
-        .where(whereClause)
-        .orderBy(desc(agentPendingActions.createdAt))
-        .limit(limit)
-        .offset(offset),
-      db.select({ count: count() }).from(agentPendingActions).where(whereClause)
-    ]);
+    const results = await db.select().from(agentPendingActions)
+      .where(whereClause)
+      .orderBy(desc(agentPendingActions.createdAt));
 
-    const total = totalResult[0]?.count ?? 0;
+    const seen = new Set<string>();
+    const deduped = results.filter((a) => {
+      const key = `${a.title}__${a.status}__${a.targetUserId || ""}__${a.branchId || ""}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
 
-    res.json({ data: results, total, limit, offset });
+    const total = deduped.length;
+    const paged = deduped.slice(offset, offset + limit);
+
+    res.json({ data: paged, total, limit, offset });
   } catch (error: any) {
     console.error("Agent actions list error:", error);
     res.status(500).json({ message: "Agent önerileri alınamadı" });
@@ -155,25 +159,117 @@ router.post("/api/agent/actions/:id/approve", isAuthenticated, async (req: any, 
       })
       .where(eq(agentPendingActions.id, actionId));
 
-    if (action.actionType === "remind" && action.targetUserId) {
-      await storage.createNotification({
-        userId: action.targetUserId,
-        type: "agent_reminder",
-        title: action.title,
-        message: action.description || "",
-        link: action.deepLink || undefined,
-      });
-    } else if (action.actionType === "alert" && action.targetUserId) {
-      await storage.createNotification({
-        userId: action.targetUserId,
-        type: "agent_alert",
-        title: action.title,
-        message: action.description || "",
-        link: action.deepLink || undefined,
-      });
+    let chainResult: {
+      supervisorName?: string;
+      taskCreated?: boolean;
+      notificationSent?: boolean;
+      flowTaskCreated?: boolean;
+    } = {};
+
+    const meta = action.metadata as Record<string, any> || {};
+    const targetUserId = action.targetUserId || meta.targetUserId;
+
+    if (isAdmin && targetUserId) {
+      const [targetUser] = await db.select({
+        id: users.id,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        branchId: users.branchId,
+        role: users.role,
+      }).from(users).where(eq(users.id, String(targetUserId)));
+
+      if (targetUser && targetUser.branchId) {
+        const targetName = [targetUser.firstName, targetUser.lastName].filter(Boolean).join(" ");
+        const supervisors = await db.select({
+          id: users.id,
+          firstName: users.firstName,
+          lastName: users.lastName,
+        }).from(users).where(
+          and(
+            eq(users.branchId, targetUser.branchId),
+            or(eq(users.role, "supervisor"), eq(users.role, "mudur")),
+            eq(users.isActive, true),
+            ne(users.id, String(targetUserId))
+          )
+        );
+
+        const supervisor = supervisors[0];
+        if (supervisor) {
+          const supervisorName = [supervisor.firstName, supervisor.lastName].filter(Boolean).join(" ");
+          chainResult.supervisorName = supervisorName;
+
+          const approverName = [user.firstName, user.lastName].filter(Boolean).join(" ") || user.username;
+          const scoreInfo = meta.score !== undefined ? ` Skor: ${meta.score}/100.` : "";
+
+          await storage.createNotification({
+            userId: supervisor.id,
+            type: "agent_approval",
+            title: "Performans Değerlendirmesi İstendi",
+            message: `${targetName} için birebir görüşme yapmanız isteniyor.${scoreInfo} ${approverName} tarafından onaylandı.`,
+            link: `/personel-detay/${targetUserId}`,
+          });
+          chainResult.notificationSent = true;
+
+          const dueDate = new Date();
+          dueDate.setDate(dueDate.getDate() + 3);
+
+          const [newTask] = await db.insert(tasks).values({
+            description: `${targetName} ile birebir performans görüşmesi.${scoreInfo} ${approverName} tarafından istenen değerlendirme. Lütfen personel ile görüşme yapın ve sonucu not edin.`,
+            branchId: targetUser.branchId,
+            assignedToId: supervisor.id,
+            assignedById: String(user.id),
+            status: "beklemede",
+            priority: "yüksek",
+            dueDate,
+            autoGenerated: true,
+          }).returning({ id: tasks.id });
+          chainResult.taskCreated = !!newTask;
+
+          const today = new Date().toISOString().split("T")[0];
+          const endDate = dueDate.toISOString().split("T")[0];
+          await db.insert(dobodyFlowTasks).values({
+            title: `${targetName} görüşmesi (Yönetim talebi)`,
+            description: `${targetName} için performans görüşmesi yapılması gerekiyor.${scoreInfo}`,
+            navigateTo: `/personel-detay/${targetUserId}`,
+            priority: "high",
+            targetUsers: [supervisor.id],
+            startDate: today,
+            endDate,
+            isActive: true,
+            createdById: String(user.id),
+          });
+          chainResult.flowTaskCreated = true;
+        }
+      }
     }
 
-    res.json({ message: "Öneri onaylandı", actionId });
+    if (!chainResult.notificationSent) {
+      if (action.actionType === "remind" && action.targetUserId) {
+        await storage.createNotification({
+          userId: action.targetUserId,
+          type: "agent_reminder",
+          title: action.title,
+          message: action.description || "",
+          link: action.deepLink || undefined,
+        });
+        chainResult.notificationSent = true;
+      } else if (action.actionType === "alert" && action.targetUserId) {
+        await storage.createNotification({
+          userId: action.targetUserId,
+          type: "agent_alert",
+          title: action.title,
+          message: action.description || "",
+          link: action.deepLink || undefined,
+        });
+        chainResult.notificationSent = true;
+      }
+    }
+
+    res.json({ 
+      message: "Öneri onaylandı", 
+      actionId,
+      ...chainResult,
+    });
   } catch (error: any) {
     console.error("Agent approve error:", error);
     res.status(500).json({ message: "Onaylama hatası" });

@@ -215,7 +215,7 @@ export default function FabrikaDashboard() {
                 }
               }} className="gap-1.5" data-testid="button-kiosk-mode">
                 <Monitor className="h-3.5 w-3.5" />
-                Kiosk Ac
+                Kiosk Aç
               </Button>
             )}
             <Button variant="outline" size="icon" onClick={() => refetch()} data-testid="button-refresh">

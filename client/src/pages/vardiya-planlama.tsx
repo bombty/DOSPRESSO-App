@@ -1850,14 +1850,14 @@ function AIPlanModal({ open, onClose, weekStart, employees, branchId, existingSh
       
       const warningParts: string[] = [];
       if (missingEmployees.length > 0) {
-        warningParts.push(`${missingEmployees.length} personelin vardiyasi eksik`);
+        warningParts.push(`${missingEmployees.length} personelin vardiyası eksik`);
       }
       
-      const desc = `${mappedShifts.length} vardiya onerisi olusturuldu` + 
+      const desc = `${mappedShifts.length} vardiya önerisi oluşturuldu` + 
         (warningParts.length > 0 ? ` (${warningParts.join(', ')})` : '');
       
       toast({ 
-        title: data.cached ? "Onbellek Kullanildi" : "AI Plan Hazir", 
+        title: data.cached ? "Önbellek Kullanıldı" : "AI Plan Hazır", 
         description: desc,
         variant: missingEmployees.length > 0 ? "destructive" : "default",
       });

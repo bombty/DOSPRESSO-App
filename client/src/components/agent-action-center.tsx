@@ -86,16 +86,22 @@ const INVALID_DEEP_LINKS = ["/sube-ozet", "/sube/employee-dashboard"];
 
 function getActionDeepLink(action: AgentAction): string | null {
   const meta = action.metadata || {};
-  if (meta.targetUserId && meta.insightType === "score_dropping") {
-    return `/personel/${meta.targetUserId}`;
+  if (meta.targetUserId && (meta.insightType === "score_dropping" || meta.insightType === "low_performance")) {
+    return `/personel-detay/${meta.targetUserId}`;
   }
   if (action.deepLink && !INVALID_DEEP_LINKS.includes(action.deepLink)) {
-    return action.deepLink;
+    const fixed = action.deepLink.replace(/^\/personel\/([^/]+)$/, "/personel-detay/$1");
+    return fixed;
   }
   return null;
 }
 
 function getApproveConsequence(action: AgentAction): string {
+  const meta = action.metadata || {};
+  const hasTarget = action.targetUserId || meta.targetUserId;
+  if (hasTarget && (action.actionType === "alert" || action.actionType === "performance_note")) {
+    return "Şube supervisor'ına bildirim gönderilecek, performans görüşmesi görevi oluşturulacak ve Flow Mode'a eklenecek.";
+  }
   if (action.actionType === "remind") return "Hedef kullanıcıya hatırlatma bildirimi gönderilecek.";
   if (action.actionType === "alert") return "Hedef kullanıcıya uyarı bildirimi gönderilecek.";
   if (action.actionType === "escalate") return "Konu yükseltilecek ve ilgili kişilere bildirim gönderilecek.";
@@ -271,16 +277,31 @@ export function AgentActionCenter({ skillFilter }: { skillFilter?: string }) {
     refetchInterval: 60000,
   });
 
+  const [approveResult, setApproveResult] = useState<{
+    supervisorName?: string;
+    taskCreated?: boolean;
+    notificationSent?: boolean;
+    flowTaskCreated?: boolean;
+  } | null>(null);
+  const [approveResultDialogOpen, setApproveResultDialogOpen] = useState(false);
+
   const approveMutation = useMutation({
     mutationFn: async (id: number) => {
-      await apiRequest("POST", `/api/agent/actions/${id}/approve`);
+      const res = await apiRequest("POST", `/api/agent/actions/${id}/approve`);
+      return res.json();
     },
-    onSuccess: () => {
+    onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ["/api/agent/actions"] });
       queryClient.invalidateQueries({ queryKey: ["/api/agent/actions/summary"] });
       setApproveDialogOpen(false);
+
+      if (data.supervisorName && data.taskCreated) {
+        setApproveResult(data);
+        setApproveResultDialogOpen(true);
+      } else {
+        toast({ title: "Öneri onaylandı" });
+      }
       setApproveAction(null);
-      toast({ title: "Öneri onaylandı" });
     },
     onError: () => {
       toast({ title: "Onaylama hatası", variant: "destructive" });
@@ -295,9 +316,13 @@ export function AgentActionCenter({ skillFilter }: { skillFilter?: string }) {
       queryClient.invalidateQueries({ queryKey: ["/api/agent/actions"] });
       queryClient.invalidateQueries({ queryKey: ["/api/agent/actions/summary"] });
       setRejectDialogOpen(false);
+      const reason = rejectReason;
       setRejectAction(null);
       setRejectReason("");
-      toast({ title: "Öneri reddedildi" });
+      toast({ 
+        title: "Öneri reddedildi",
+        description: reason ? `Neden: ${reason}` : undefined,
+      });
     },
     onError: () => {
       toast({ title: "Reddetme hatası", variant: "destructive" });
@@ -576,6 +601,51 @@ export function AgentActionCenter({ skillFilter }: { skillFilter?: string }) {
           <DialogFooter>
             <Button variant="outline" onClick={() => setDetailDialogOpen(false)} data-testid="button-close-detail">
               Kapat
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={approveResultDialogOpen} onOpenChange={setApproveResultDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400" />
+              Öneri Onaylandı
+            </DialogTitle>
+            <DialogDescription>Onay zinciri tamamlandı</DialogDescription>
+          </DialogHeader>
+          {approveResult && (
+            <div className="space-y-3" data-testid="approve-result-details">
+              {approveResult.supervisorName && approveResult.notificationSent && (
+                <div className="flex items-start gap-2 p-3 rounded-md bg-muted">
+                  <Bell className="h-4 w-4 mt-0.5 text-blue-600 dark:text-blue-400 shrink-0" />
+                  <p className="text-sm">
+                    Supervisor <span className="font-medium">{approveResult.supervisorName}</span>'a bildirim gönderildi.
+                  </p>
+                </div>
+              )}
+              {approveResult.taskCreated && (
+                <div className="flex items-start gap-2 p-3 rounded-md bg-muted">
+                  <ClipboardCheck className="h-4 w-4 mt-0.5 text-green-600 dark:text-green-400 shrink-0" />
+                  <p className="text-sm">
+                    Performans görüşmesi görevi oluşturuldu — 3 gün içinde tamamlanmalı.
+                  </p>
+                </div>
+              )}
+              {approveResult.flowTaskCreated && (
+                <div className="flex items-start gap-2 p-3 rounded-md bg-muted">
+                  <Zap className="h-4 w-4 mt-0.5 text-amber-600 dark:text-amber-400 shrink-0" />
+                  <p className="text-sm">
+                    Supervisor'ın Flow Mode görev listesine eklendi.
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+          <DialogFooter>
+            <Button onClick={() => setApproveResultDialogOpen(false)} data-testid="button-close-approve-result">
+              Tamam
             </Button>
           </DialogFooter>
         </DialogContent>

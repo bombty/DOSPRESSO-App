@@ -47,9 +47,9 @@ export class ErrorBoundary extends Component<Props, State> {
             <CardContent className="p-6 text-center space-y-4">
               <AlertTriangle className="h-12 w-12 mx-auto text-destructive" />
               <div className="space-y-2">
-                <h2 className="text-lg font-semibold">Bir hata olustu</h2>
+                <h2 className="text-lg font-semibold">Bir hata oluştu</h2>
                 <p className="text-sm text-muted-foreground">
-                  Beklenmeyen bir hata meydana geldi. Lutfen sayfayi yeniden yuklemeyi deneyin.
+                  Beklenmeyen bir hata meydana geldi. Lütfen sayfayı yeniden yüklemeyi deneyin.
                 </p>
               </div>
               <div className="flex items-center justify-center gap-3 flex-wrap">
@@ -58,7 +58,7 @@ export class ErrorBoundary extends Component<Props, State> {
                   Tekrar Dene
                 </Button>
                 <Button onClick={this.handleReload} data-testid="button-error-reload">
-                  Sayfayi Yenile
+                  Sayfayı Yenile
                 </Button>
               </div>
             </CardContent>

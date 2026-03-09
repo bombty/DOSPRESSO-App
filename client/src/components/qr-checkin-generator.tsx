@@ -76,9 +76,9 @@ export default function QrCheckinGenerator() {
       <Card data-testid="card-qr-offline">
         <CardContent className="flex flex-col items-center justify-center p-6 gap-3">
           <WifiOff className="w-12 h-12 text-destructive" />
-          <p className="text-sm font-medium text-destructive">Baglanti yok</p>
+          <p className="text-sm font-medium text-destructive">Bağlantı yok</p>
           <p className="text-xs text-muted-foreground text-center">
-            QR kod olusturmak icin internet baglantisi gerekli
+            QR kod oluşturmak için internet bağlantısı gerekli
           </p>
         </CardContent>
       </Card>

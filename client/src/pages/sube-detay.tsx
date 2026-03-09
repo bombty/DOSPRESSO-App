@@ -530,7 +530,7 @@ export default function SubeDetayPage() {
               data-testid="button-open-kiosk"
             >
               <Monitor className="w-4 h-4 mr-2" />
-              Kiosk Ac
+              Kiosk Aç
             </Button>
           )}
           {!showCards && (
@@ -635,7 +635,11 @@ export default function SubeDetayPage() {
                           <div className="flex items-center gap-2 flex-wrap">
                             <div className="flex items-center gap-1" data-testid={`performance-${emp.id}`}>
                               <Award className="h-3.5 w-3.5 text-amber-500" />
-                              <span className={`text-xs font-medium ${scoreColor}`}>{scoreVal}/100</span>
+                              {scoreVal === 0 ? (
+                                <span className="text-xs font-medium text-muted-foreground">Henüz veri yok</span>
+                              ) : (
+                                <span className={`text-xs font-medium ${scoreColor}`}>{scoreVal}/100</span>
+                              )}
                               {periodScore && (
                                 <span className="text-xs text-muted-foreground">({periodScore.totalDays} gün)</span>
                               )}

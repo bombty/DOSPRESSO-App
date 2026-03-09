@@ -78,6 +78,13 @@ The frontend uses React 18+ with TypeScript and Vite, employing Shadcn/ui (New Y
   - Error/Loading States: 174 pages enhanced with `ErrorState`/`LoadingState` components.
   - Service Worker: Cache version bumped to `dospresso-v10`.
   - Pilot Readiness Score: 63 → **81/100** (target: 80+).
+- **Sprint 24 — Agent Approval Chain + Critical Fixes** (completed):
+  - Agent Approval Chain: CGO approves suggestion → supervisor gets notification + task (3-day deadline) + Flow Mode task. Full downstream chain in `server/routes/agent.ts`.
+  - Agent Deep Link Fix: `/personel/` → `/personel-detay/` route correction in `agent-action-center.tsx`. Fallback detail dialog for invalid links.
+  - Agent Deduplication: Read-time dedup by title+status in GET `/api/agent/actions`. Write-time dedup already existed in skill-notifications.ts.
+  - Score Display: 0/100 scores now show "Henüz veri yok" instead of red 0/100 in `sube-detay.tsx` and `branch-scorecard.tsx`.
+  - Turkish ASCII Fix: All remaining ASCII chars fixed in error-boundary, sube-detay, fabrika/dashboard, qr-checkin-generator, coach-sube-denetim, vardiya-planlama.
+  - Test User Rename: 190+ test users renamed from "TBarista1 Test" to realistic Turkish names across all branches.
 
 ## External Dependencies
 - **OpenAI API**: AI-powered vision analysis, chat completions, embeddings, and summary generation.

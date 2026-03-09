@@ -171,7 +171,7 @@ export default function CoachSubeDenetim() {
     onError: (error: Error) => {
       toast({
         title: "Hata",
-        description: error.message || "Denetim kaydedilirken hata olustu",
+        description: error.message || "Denetim kaydedilirken hata oluştu",
         variant: "destructive",
       });
     },

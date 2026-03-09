@@ -100,10 +100,16 @@ export function BranchScorecard() {
       <CardContent className="p-3">
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-baseline gap-1.5">
-            <span className={`text-3xl font-bold ${getScoreColor(scoreData.score)}`}>
-              {scoreData.score}
-            </span>
-            <span className="text-sm text-muted-foreground">/100</span>
+            {scoreData.score === 0 ? (
+              <span className="text-3xl font-bold text-muted-foreground">Henüz veri yok</span>
+            ) : (
+              <>
+                <span className={`text-3xl font-bold ${getScoreColor(scoreData.score)}`}>
+                  {scoreData.score}
+                </span>
+                <span className="text-sm text-muted-foreground">/100</span>
+              </>
+            )}
           </div>
           <div className="flex items-center gap-2">
             <Badge variant={isImproved ? "default" : "destructive"} className="text-[10px]">
