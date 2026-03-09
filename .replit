@@ -48,3 +48,6 @@ integrations = ["javascript_openai_ai_integrations:1.0.0", "javascript_database:
 [userenv.shared]
 VAPID_PUBLIC_KEY = "BBIUile6GzxxRXPMSW4gpP7WWXtTXBjT0B-TFqRI1xXYFK6IttjJ8jt-7T5J_589ILlpWYVVzNts1lU7kLo8u5s"
 VAPID_PRIVATE_KEY = "KFYIYAHhXSZgPyBWkGwOvVz5uL6YtBqTncRy1mnzZc8"
+
+[objectStorage]
+defaultBucketID = "replit-objstore-8d46a745-6e30-4f2e-b482-808e3d81d7a2"
