@@ -25,8 +25,8 @@ import {
   Loader2
 } from "lucide-react";
 import { Link, Redirect } from "wouter";
-import { ErrorState } from "../components/error-state";
-import { LoadingState } from "../components/loading-state";
+import { ErrorState } from "../../components/error-state";
+import { LoadingState } from "../../components/loading-state";
 
 interface SystemHealth {
   database: "healthy" | "warning" | "error";

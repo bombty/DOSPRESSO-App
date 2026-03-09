@@ -26,8 +26,8 @@ import {
   ScanLine, Hash, Boxes, Coffee, Croissant, Leaf, Droplets,
   Candy, Cookie, Salad, Wrench, Store, Truck,
 } from "lucide-react";
-import { ErrorState } from "../components/error-state";
-import { LoadingState } from "../components/loading-state";
+import { ErrorState } from "../../components/error-state";
+import { LoadingState } from "../../components/loading-state";
 
 const MONTHS = [
   "Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran",

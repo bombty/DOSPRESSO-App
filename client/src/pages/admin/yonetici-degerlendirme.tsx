@@ -10,8 +10,8 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { Loader2, Star, UserCheck, CalendarDays, Save, AlertTriangle, CheckCircle, Briefcase, Users, Clock, MessageSquare, Rocket, Sparkles, Wrench, SmilePlus } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { ErrorState } from "../components/error-state";
-import { LoadingState } from "../components/loading-state";
+import { ErrorState } from "../../components/error-state";
+import { LoadingState } from "../../components/loading-state";
 
 interface Employee {
   id: string;

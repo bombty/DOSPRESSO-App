@@ -28,8 +28,8 @@ import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
 import { useState } from "react";
-import { ErrorState } from "../components/error-state";
-import { LoadingState } from "../components/loading-state";
+import { ErrorState } from "../../components/error-state";
+import { LoadingState } from "../../components/loading-state";
 
 const MONTHS = [
   "Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran",

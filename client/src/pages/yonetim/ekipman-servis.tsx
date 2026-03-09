@@ -16,8 +16,8 @@ import type { Branch } from '@shared/schema';
 import { format, parseISO } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import { Html5Qrcode } from 'html5-qrcode';
-import { ErrorState } from "../components/error-state";
-import { LoadingState } from "../components/loading-state";
+import { ErrorState } from "../../components/error-state";
+import { LoadingState } from "../../components/loading-state";
 
 // Status labels for unified system
 const FAULT_STATUS_LABELS = {

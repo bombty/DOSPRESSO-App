@@ -36,8 +36,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { isHQRole } from "@shared/schema";
 import type { Checklist, ChecklistTask, UserRoleType } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
-import { ErrorState } from "../components/error-state";
-import { LoadingState } from "../components/loading-state";
+import { ErrorState } from "../../components/error-state";
+import { LoadingState } from "../../components/loading-state";
 
 // Sortable Task Item Component
 function SortableTaskItem({ 

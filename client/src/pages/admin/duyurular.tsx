@@ -43,8 +43,8 @@ import {
 import { format } from "date-fns";
 import { tr } from "date-fns/locale";
 import { ConfirmDeleteDialog, useConfirmDelete } from "@/components/confirm-delete-dialog";
-import { ErrorState } from "../components/error-state";
-import { LoadingState } from "../components/loading-state";
+import { ErrorState } from "../../components/error-state";
+import { LoadingState } from "../../components/loading-state";
 
 const ROLE_OPTIONS = [
   { value: "all", label: "Tüm Kullanıcılar" },

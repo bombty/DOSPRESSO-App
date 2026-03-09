@@ -30,8 +30,8 @@ import {
   AlertTriangle,
   FileText,
 } from "lucide-react";
-import { ErrorState } from "../components/error-state";
-import { LoadingState } from "../components/loading-state";
+import { ErrorState } from "../../components/error-state";
+import { LoadingState } from "../../components/loading-state";
 
 interface Shipment {
   id: number;

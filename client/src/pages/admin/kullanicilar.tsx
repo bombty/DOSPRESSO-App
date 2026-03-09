@@ -32,8 +32,8 @@ import {
 import { Link } from "wouter";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { ROLE_LABELS } from "@/lib/turkish-labels";
-import { ErrorState } from "../components/error-state";
-import { LoadingState } from "../components/loading-state";
+import { ErrorState } from "../../components/error-state";
+import { LoadingState } from "../../components/loading-state";
 
 const ROLE_COLORS: Record<string, string> = {
   admin: "bg-red-500/10 text-red-600 dark:text-red-400",

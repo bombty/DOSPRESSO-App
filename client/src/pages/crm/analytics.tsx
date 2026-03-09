@@ -26,8 +26,8 @@ import {
   ResponsiveContainer,
   Cell,
 } from "recharts";
-import { ErrorState } from "../components/error-state";
-import { LoadingState } from "../components/loading-state";
+import { ErrorState } from "../../components/error-state";
+import { LoadingState } from "../../components/loading-state";
 
 interface DailyTrend {
   date: string;

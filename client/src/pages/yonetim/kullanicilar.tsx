@@ -32,8 +32,8 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Search, Upload, UserCog, Download, ArrowUpDown, ChevronLeft, ChevronRight } from "lucide-react";
 import type { User, Branch } from "@shared/schema";
-import { ErrorState } from "../components/error-state";
-import { LoadingState } from "../components/loading-state";
+import { ErrorState } from "../../components/error-state";
+import { LoadingState } from "../../components/loading-state";
 
 export default function UserCRM() {
   const { toast } = useToast();

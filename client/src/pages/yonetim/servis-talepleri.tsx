@@ -19,8 +19,8 @@ import machine2 from '@assets/stock_images/coffee_machine_equip_8e9d0f33.jpg';
 import machine3 from '@assets/stock_images/coffee_machine_equip_c7ddb01a.jpg';
 import machine4 from '@assets/stock_images/coffee_machine_equip_29a816b5.jpg';
 import { Html5Qrcode } from 'html5-qrcode';
-import { ErrorState } from "../components/error-state";
-import { LoadingState } from "../components/loading-state";
+import { ErrorState } from "../../components/error-state";
+import { LoadingState } from "../../components/loading-state";
 
 const STATUS_LABELS = {
   'talep_edildi': 'Talep Edildi',

@@ -23,8 +23,8 @@ import {
   EyeOff,
   AlertTriangle
 } from "lucide-react";
-import { ErrorState } from "../components/error-state";
-import { LoadingState } from "../components/loading-state";
+import { ErrorState } from "../../components/error-state";
+import { LoadingState } from "../../components/loading-state";
 
 export default function AdminServisMailAyarlari() {
   const { user } = useAuth();

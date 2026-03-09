@@ -43,8 +43,8 @@ import {
   Factory,
   Search,
 } from "lucide-react";
-import { ErrorState } from "../components/error-state";
-import { LoadingState } from "../components/loading-state";
+import { ErrorState } from "../../components/error-state";
+import { LoadingState } from "../../components/loading-state";
 
 const SHIFT_TYPES = [
   { value: "sabah", label: "Sabah", time: "06:00 - 14:00", color: "bg-amber-500" },

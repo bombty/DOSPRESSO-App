@@ -50,8 +50,8 @@ import {
   TrendingUp,
   ListTodo,
 } from "lucide-react";
-import { ErrorState } from "../components/error-state";
-import { LoadingState } from "../components/loading-state";
+import { ErrorState } from "../../components/error-state";
+import { LoadingState } from "../../components/loading-state";
 
 const ROLE_OPTIONS = [
   { value: "barista", label: "Barista" },

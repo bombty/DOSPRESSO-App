@@ -17,8 +17,8 @@ import { AlertCircle, Search, CheckCircle2, Clock, XCircle, Eye, Star, Calendar,
 import { format } from "date-fns";
 import { tr } from "date-fns/locale";
 import type { ChecklistCompletion, User as UserType, Checklist, Branch } from "@shared/schema";
-import { ErrorState } from "../components/error-state";
-import { LoadingState } from "../components/loading-state";
+import { ErrorState } from "../../components/error-state";
+import { LoadingState } from "../../components/loading-state";
 
 type CompletionWithDetails = ChecklistCompletion & { 
   user: UserType; 

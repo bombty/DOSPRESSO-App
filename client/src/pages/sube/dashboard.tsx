@@ -29,8 +29,8 @@ import {
   LogOut,
 } from "lucide-react";
 import logoUrl from "@assets/IMG_6637_1765138781125.png";
-import { ErrorState } from "../components/error-state";
-import { LoadingState } from "../components/loading-state";
+import { ErrorState } from "../../components/error-state";
+import { LoadingState } from "../../components/loading-state";
 
 interface WeeklyShift {
   id: number;

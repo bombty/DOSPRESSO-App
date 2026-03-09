@@ -36,8 +36,8 @@ import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip as Recharts
 import logoUrl from "@assets/IMG_6637_1765138781125.png";
 import { DailyTaskPanel } from "@/components/daily-task-panel";
 import { DobodyFlowMode } from "@/components/dobody-flow-mode";
-import { ErrorState } from "../components/error-state";
-import { LoadingState } from "../components/loading-state";
+import { ErrorState } from "../../components/error-state";
+import { LoadingState } from "../../components/loading-state";
 
 interface DashboardStats {
   activeWorkers: number;

@@ -16,8 +16,8 @@ import { z } from "zod";
 import { Plus, Megaphone, Calendar } from "lucide-react";
 import { format } from "date-fns";
 import { ListSkeleton } from "@/components/list-skeleton";
-import { ErrorState } from "../components/error-state";
-import { LoadingState } from "../components/loading-state";
+import { ErrorState } from "../../components/error-state";
+import { LoadingState } from "../../components/loading-state";
 
 const campaignFormSchema = z.object({
   title: z.string().min(1, "Başlık gerekli"),

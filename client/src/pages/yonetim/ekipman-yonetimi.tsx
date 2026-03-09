@@ -20,8 +20,8 @@ import { apiRequest, queryClient } from '@/lib/queryClient';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import type { Branch, Equipment as EquipmentType, InsertEquipmentServiceRequest } from '@shared/schema';
 import { insertEquipmentServiceRequestSchema } from '@shared/schema';
-import { ErrorState } from "../components/error-state";
-import { LoadingState } from "../components/loading-state";
+import { ErrorState } from "../../components/error-state";
+import { LoadingState } from "../../components/loading-state";
 
 interface ServiceRequest {
   id: number;

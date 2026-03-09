@@ -30,8 +30,8 @@ import {
 import { Link } from "wouter";
 import { format } from "date-fns";
 import { tr } from "date-fns/locale";
-import { ErrorState } from "../components/error-state";
-import { LoadingState } from "../components/loading-state";
+import { ErrorState } from "../../components/error-state";
+import { LoadingState } from "../../components/loading-state";
 
 interface RestorePoint {
   backupId: string;

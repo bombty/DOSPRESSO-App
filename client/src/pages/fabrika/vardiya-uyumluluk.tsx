@@ -30,8 +30,8 @@ import {
 } from "lucide-react";
 import { format, startOfWeek, endOfWeek, addWeeks, subWeeks } from "date-fns";
 import { tr } from "date-fns/locale";
-import { ErrorState } from "../components/error-state";
-import { LoadingState } from "../components/loading-state";
+import { ErrorState } from "../../components/error-state";
+import { LoadingState } from "../../components/loading-state";
 
 export default function FabrikaVardiyaUyumluluk() {
   const { user } = useAuth();

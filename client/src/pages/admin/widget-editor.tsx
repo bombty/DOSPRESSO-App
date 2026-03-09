@@ -47,8 +47,8 @@ import {
   Save,
   type LucideIcon
 } from "lucide-react";
-import { ErrorState } from "../components/error-state";
-import { LoadingState } from "../components/loading-state";
+import { ErrorState } from "../../components/error-state";
+import { LoadingState } from "../../components/loading-state";
 
 const ICON_OPTIONS: { value: string; label: string; icon: LucideIcon }[] = [
   { value: "Target", label: "Target", icon: Target },

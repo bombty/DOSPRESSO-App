@@ -4,8 +4,8 @@ import { Badge } from "@/components/ui/badge";
 import { ListSkeleton } from "@/components/list-skeleton";
 import { Clock, AlertTriangle, CheckCircle, XCircle } from "lucide-react";
 import { format } from "date-fns";
-import { ErrorState } from "../components/error-state";
-import { LoadingState } from "../components/loading-state";
+import { ErrorState } from "../../components/error-state";
+import { LoadingState } from "../../components/loading-state";
 
 interface PendingItem {
   id: number;

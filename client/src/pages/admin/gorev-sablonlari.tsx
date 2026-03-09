@@ -15,8 +15,8 @@ import {
   ListTodo, Plus, Edit, Trash2, Save, Loader2, Filter
 } from "lucide-react";
 import { ConfirmDeleteDialog, useConfirmDelete } from "@/components/confirm-delete-dialog";
-import { ErrorState } from "../components/error-state";
-import { LoadingState } from "../components/loading-state";
+import { ErrorState } from "../../components/error-state";
+import { LoadingState } from "../../components/loading-state";
 
 interface TaskTemplate {
   id: number;

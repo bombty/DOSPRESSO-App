@@ -20,8 +20,8 @@ import { format } from "date-fns";
 import { tr } from "date-fns/locale";
 import ReactMarkdown from "react-markdown";
 import rehypeSanitize from "rehype-sanitize";
-import { ErrorState } from "../components/error-state";
-import { LoadingState } from "../components/loading-state";
+import { ErrorState } from "../../components/error-state";
+import { LoadingState } from "../../components/loading-state";
 
 export default function ContentManagement() {
   const { toast } = useToast();

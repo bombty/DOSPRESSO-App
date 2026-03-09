@@ -40,8 +40,8 @@ import {
   UserCheck
 } from "lucide-react";
 import { Html5QrcodeScanner } from "html5-qrcode";
-import { ErrorState } from "../components/error-state";
-import { LoadingState } from "../components/loading-state";
+import { ErrorState } from "../../components/error-state";
+import { LoadingState } from "../../components/loading-state";
 
 type KioskStep = 'password' | 'select-user' | 'enter-pin' | 'working' | 'end-shift-summary' | 'qr-scan' | 'qr-action';
 

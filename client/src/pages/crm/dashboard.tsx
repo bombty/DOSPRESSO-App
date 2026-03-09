@@ -25,8 +25,8 @@ import {
   Pie,
   Legend,
 } from "recharts";
-import { ErrorState } from "../components/error-state";
-import { LoadingState } from "../components/loading-state";
+import { ErrorState } from "../../components/error-state";
+import { LoadingState } from "../../components/loading-state";
 
 interface DashboardKpis {
   todayFeedbackCount: number;

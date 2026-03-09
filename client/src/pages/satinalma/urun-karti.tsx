@@ -54,8 +54,8 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
-import { ErrorState } from "../components/error-state";
-import { LoadingState } from "../components/loading-state";
+import { ErrorState } from "../../components/error-state";
+import { LoadingState } from "../../components/loading-state";
 
 interface UrunKartiProps {
   productId: number;
