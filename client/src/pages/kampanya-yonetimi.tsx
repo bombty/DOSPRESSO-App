@@ -135,8 +135,6 @@ export default function KampanyaYonetimi() {
 
   if (isLoading) {
     
-  if (isLoading) return <LoadingState />;
-  if (isError) return <ErrorState onRetry={refetch} />;
 
   return (
       <div className="p-6">

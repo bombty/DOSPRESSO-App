@@ -139,8 +139,6 @@ export default function SubelerPage() {
 
   if (isLoading) {
     
-  if (isLoading) return <LoadingState />;
-  if (isError) return <ErrorState onRetry={refetch} />;
 
   return (
       <div className="flex items-center justify-center h-full">

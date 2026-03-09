@@ -128,8 +128,6 @@ function ContentSeedSection() {
   const anyPending = buttons.some(b => b.mutation.isPending);
 
   
-  if (isLoading) return <LoadingState />;
-  if (isError) return <ErrorState onRetry={refetch} />;
 
   return (
     <Card>

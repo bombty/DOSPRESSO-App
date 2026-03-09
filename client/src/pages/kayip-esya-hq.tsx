@@ -30,8 +30,6 @@ type LostFoundItemEnriched = LostFoundItem & {
 
 function ItemSkeleton() {
   
-  if (isLoading) return <LoadingState />;
-  if (isError) return <ErrorState onRetry={refetch} />;
 
   return (
     <Card className="animate-pulse">

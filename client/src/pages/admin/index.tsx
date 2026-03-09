@@ -103,7 +103,6 @@ export default function AdminDashboard() {
   if (isLoading) {
     
   if (ticketsLoading) return <LoadingState />;
-  if (isError) return <ErrorState onRetry={refetch} />;
 
   return (
       <div className="flex items-center justify-center p-8">

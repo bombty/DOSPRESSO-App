@@ -72,8 +72,6 @@ export default function FranchiseOzet() {
 
   if (isLoading) {
     
-  if (isLoading) return <LoadingState />;
-  if (isError) return <ErrorState onRetry={refetch} />;
 
   return (
       <div className="p-4 space-y-4 max-w-lg mx-auto" data-testid="franchise-ozet-loading">

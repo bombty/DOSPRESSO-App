@@ -155,10 +155,6 @@ export default function AcademyContentManagement() {
 
   if (isLoading) {
 
-  if (isLoading) return <LoadingState />;
-  if (isError) return <ErrorState onRetry={refetch} />;
-
-
   return (
       <div className="space-y-4 p-4" data-testid="content-management-loading">
         <Skeleton className="h-12 w-full" />

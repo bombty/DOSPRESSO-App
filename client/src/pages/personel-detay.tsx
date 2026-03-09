@@ -473,7 +473,6 @@ export default function PersonelDetay() {
   if (isLoading) {
     
   if (employeeLoading) return <LoadingState />;
-  if (isError) return <ErrorState onRetry={refetch} />;
 
   return (
       <div className="container mx-auto p-3">

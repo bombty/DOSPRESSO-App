@@ -115,8 +115,6 @@ function DaysRemainingBadge({ days }: { days: number | null }) {
   const isOverdue = days < 0;
   const isUrgent = days >= 0 && days < 14;
   
-  if (isLoading) return <LoadingState />;
-  if (isError) return <ErrorState onRetry={refetch} />;
 
   return (
     <Badge

@@ -241,8 +241,6 @@ export default function AdminKaliteDenetimSablonuDuzenle() {
 
   if (isLoading) {
     
-  if (isLoading) return <LoadingState />;
-  if (isError) return <ErrorState onRetry={refetch} />;
 
   return (
       <div className="flex h-screen w-full items-center justify-center">

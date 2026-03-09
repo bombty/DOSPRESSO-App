@@ -144,8 +144,6 @@ function RoleDashboardSection({
 }) {
   if (isLoading) {
     
-  if (isLoading) return <LoadingState />;
-  if (isError) return <ErrorState onRetry={refetch} />;
 
   return (
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2" data-testid="role-dashboard-loading">

@@ -56,8 +56,6 @@ export default function HubPage() {
 
   if (isLoading) {
     
-  if (isLoading) return <LoadingState />;
-  if (isError) return <ErrorState onRetry={refetch} />;
 
   return (
       <div className="p-4 sm:p-6 space-y-6">

@@ -228,8 +228,6 @@ export default function CRMComplaints() {
 
   if (isLoading) {
     
-  if (isLoading) return <LoadingState />;
-  if (isError) return <ErrorState onRetry={refetch} />;
 
   return (
       <div className="p-3 flex flex-col gap-3" data-testid="loading-complaints">

@@ -249,8 +249,6 @@ function formatMonthLabel(monthStr: string): string {
 
 function LoadingSkeleton() {
   
-  if (isLoading) return <LoadingState />;
-  if (isError) return <ErrorState onRetry={refetch} />;
 
   return (
     <div className="space-y-4" data-testid="trend-loading">

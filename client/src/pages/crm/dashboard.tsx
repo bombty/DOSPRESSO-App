@@ -90,8 +90,6 @@ const CATEGORY_COLORS: Record<string, string> = {
 
 function StarRating({ rating }: { rating: number }) {
   
-  if (isLoading) return <LoadingState />;
-  if (isError) return <ErrorState onRetry={refetch} />;
 
   return (
     <div className="flex items-center gap-0.5">

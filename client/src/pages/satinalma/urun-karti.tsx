@@ -388,8 +388,6 @@ export default function UrunKarti({ productId, onBack }: UrunKartiProps) {
 
   if (isLoading) {
     
-  if (isLoading) return <LoadingState />;
-  if (isError) return <ErrorState onRetry={refetch} />;
 
   return (
       <div className="space-y-4">

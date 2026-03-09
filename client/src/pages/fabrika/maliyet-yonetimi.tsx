@@ -180,8 +180,6 @@ function ProductCostDetail({ productId, onEditLabor, onEditRecipe, onDeleteIngre
 
   if (isLoading) {
     
-  if (isLoading) return <LoadingState />;
-  if (isError) return <ErrorState onRetry={refetch} />;
 
   return (
       <div className="flex items-center justify-center py-8">

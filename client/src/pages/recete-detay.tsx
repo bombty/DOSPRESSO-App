@@ -184,8 +184,6 @@ export default function ReceteDetay() {
 
   if (isLoading) {
     
-  if (isLoading) return <LoadingState />;
-  if (isError) return <ErrorState onRetry={refetch} />;
 
   return (
       <div className="min-h-screen p-4">

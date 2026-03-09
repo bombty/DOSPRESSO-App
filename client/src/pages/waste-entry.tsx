@@ -163,7 +163,6 @@ export default function WasteEntry() {
   if (isLoading) {
     
   if (categoriesLoading) return <LoadingState />;
-  if (isError) return <ErrorState onRetry={refetch} />;
 
   return (
       <div className="flex items-center justify-center p-8">

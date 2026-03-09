@@ -107,8 +107,6 @@ const categoryLabels: Record<string, string> = {
 
 function StarDisplay({ rating, size = "sm" }: { rating: number; size?: "sm" | "md" }) {
   
-  if (isLoading) return <LoadingState />;
-  if (isError) return <ErrorState onRetry={refetch} />;
 
   return (
     <div className="flex gap-0.5" data-testid="star-display">

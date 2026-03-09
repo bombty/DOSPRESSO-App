@@ -499,8 +499,6 @@ export default function GorevDetay() {
 
   if (isLoading) {
     
-  if (isLoading) return <LoadingState />;
-  if (isError) return <ErrorState onRetry={refetch} />;
 
   return (
       <div className="flex flex-col gap-3 sm:gap-4 p-3 pb-32">

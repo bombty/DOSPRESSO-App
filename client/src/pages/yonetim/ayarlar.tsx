@@ -199,8 +199,6 @@ export default function Settings() {
 
   if (isLoading) {
     
-  if (isLoading) return <LoadingState />;
-  if (isError) return <ErrorState onRetry={refetch} />;
 
   return (
       <div className="container py-6 flex items-center justify-center" data-testid="text-loading">

@@ -76,7 +76,6 @@ export default function FabrikaAIRaporlar() {
     if (isLoading) {
       
   if (loadingRotation) return <LoadingState />;
-  if (isError) return <ErrorState onRetry={refetch} />;
 
   return (
         <div className="flex items-center justify-center py-8">

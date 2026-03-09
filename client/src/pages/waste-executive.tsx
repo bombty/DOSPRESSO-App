@@ -63,8 +63,6 @@ export default function WasteExecutive() {
 
   if (isLoading) {
     
-  if (isLoading) return <LoadingState />;
-  if (isError) return <ErrorState onRetry={refetch} />;
 
   return (
       <div className="space-y-4 p-4">
