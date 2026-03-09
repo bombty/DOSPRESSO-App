@@ -74,9 +74,10 @@ The frontend uses React 18+ with TypeScript and Vite, employing Shadcn/ui (New Y
   - Security: `isAuthenticated` middleware on push.ts, setup.ts, ai-ops-copilot.ts endpoints.
   - Backup: Paginated export for large tables (5K row batches), prevents OOM.
   - Seed Infrastructure: `server/routes/seed.ts` with 8 seed endpoints (POST /api/admin/seed-*), admin-guarded.
-  - Seed Data: 13 checklists (87 tasks), 205 quiz questions (55 quizzes), 19 salary definitions, 384 PDKS records, factory chain data (batches, lots, shipments, HACCP), 23 customer feedback, 27 quiz attempts + training progress.
+  - Seed Data: 13 checklists (87 tasks), 205 quiz questions (55 quizzes), 19 salary definitions, 384 PDKS records, factory chain data (33 batches, 4 lots, 2 shipments, 3 HACCP), 23 customer feedback, 27 quiz attempts + training progress, 94 branch inventory, 15 training assignments, 5 announcements, 8 flow completions.
   - Error/Loading States: 174 pages enhanced with `ErrorState`/`LoadingState` components.
   - Service Worker: Cache version bumped to `dospresso-v10`.
+  - Pilot Readiness Score: 63 → **81/100** (target: 80+).
 
 ## External Dependencies
 - **OpenAI API**: AI-powered vision analysis, chat completions, embeddings, and summary generation.

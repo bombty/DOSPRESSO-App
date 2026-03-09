@@ -726,4 +726,276 @@ router.post('/api/admin/seed-feedback', isAuthenticated, requireAdmin, async (re
   }
 });
 
+router.post('/api/admin/seed-branch-inventory', isAuthenticated, requireAdmin, async (req: any, res) => {
+  try {
+    const existing = await db.execute(sql`SELECT COUNT(*)::text as c FROM branch_inventory`);
+    if (parseInt((existing.rows[0] as any).c) > 10) {
+      return res.json({ success: true, message: 'Branch inventory already seeded', count: parseInt((existing.rows[0] as any).c) });
+    }
+
+    const branches = await db.execute(sql`SELECT id FROM branches WHERE is_active = true ORDER BY id`);
+    const products = await db.execute(sql`SELECT id, name FROM factory_products ORDER BY id LIMIT 15`);
+    const branchIds = branches.rows.map((b: any) => b.id);
+    const productList = products.rows as any[];
+
+    let inserted = 0;
+    for (const branchId of branchIds.slice(0, 10)) {
+      const numProducts = 8 + Math.floor(Math.random() * 5);
+      const selectedProducts = productList.sort(() => Math.random() - 0.5).slice(0, numProducts);
+      
+      for (const product of selectedProducts) {
+        const currentStock = Math.round((5 + Math.random() * 45) * 100) / 100;
+        const minStock = Math.round((3 + Math.random() * 7) * 100) / 100;
+        const units = ['adet', 'kg', 'litre', 'paket'];
+        const unit = units[Math.floor(Math.random() * units.length)];
+        const lastReceived = new Date(Date.now() - Math.random() * 7 * 86400000);
+
+        try {
+          await db.execute(sql`
+            INSERT INTO branch_inventory (branch_id, product_id, current_stock, minimum_stock, unit, last_received_at)
+            VALUES (${branchId}, ${product.id}, ${currentStock}, ${minStock}, ${unit}, ${lastReceived.toISOString()})
+            ON CONFLICT (branch_id, product_id) DO NOTHING
+          `);
+          inserted++;
+        } catch (e) {}
+      }
+    }
+
+    res.json({ success: true, inserted, branches: branchIds.slice(0, 10).length });
+  } catch (error: any) {
+    console.error('Seed branch inventory error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.post('/api/admin/seed-flow-completions', isAuthenticated, requireAdmin, async (req: any, res) => {
+  try {
+    const existing = await db.execute(sql`SELECT COUNT(*)::text as c FROM dobody_flow_completions`);
+    if (parseInt((existing.rows[0] as any).c) > 0) {
+      return res.json({ success: true, message: 'Flow completions already seeded', count: parseInt((existing.rows[0] as any).c) });
+    }
+
+    const flowTasks = await db.execute(sql`SELECT id FROM dobody_flow_tasks`);
+    const taskIds = flowTasks.rows.map((t: any) => t.id);
+    if (taskIds.length === 0) {
+      return res.json({ success: true, message: 'No flow tasks found', inserted: 0 });
+    }
+
+    const users = await db.execute(sql`SELECT id FROM users WHERE branch_id = 5 AND is_active = true AND role = 'barista' LIMIT 4`);
+    const userIds = users.rows.map((u: any) => u.id);
+
+    let inserted = 0;
+    for (const userId of userIds) {
+      for (const taskId of taskIds) {
+        if (Math.random() < 0.7) {
+          const completedAt = new Date(Date.now() - Math.random() * 14 * 86400000);
+          await db.execute(sql`
+            INSERT INTO dobody_flow_completions (task_id, user_id, completed_at)
+            VALUES (${taskId}, ${userId}, ${completedAt.toISOString()})
+          `);
+          inserted++;
+        }
+      }
+    }
+
+    res.json({ success: true, inserted });
+  } catch (error: any) {
+    console.error('Seed flow completions error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.post('/api/admin/seed-training-assignments', isAuthenticated, requireAdmin, async (req: any, res) => {
+  try {
+    const existing = await db.execute(sql`SELECT COUNT(*)::text as c FROM training_assignments`);
+    if (parseInt((existing.rows[0] as any).c) > 0) {
+      return res.json({ success: true, message: 'Training assignments already seeded', count: parseInt((existing.rows[0] as any).c) });
+    }
+
+    const adminId = '0ccb206f-2c38-431f-8520-291fe9788f50';
+    const articles = await db.execute(sql`SELECT id, title FROM knowledge_base_articles LIMIT 8`);
+    const articleList = articles.rows as any[];
+
+    if (articleList.length === 0) {
+      return res.json({ success: true, message: 'No KB articles found', inserted: 0 });
+    }
+
+    let materialCount = 0;
+    const materialIds: number[] = [];
+    for (const article of articleList) {
+      try {
+        const result = await db.execute(sql`
+          INSERT INTO training_materials (article_id, material_type, title, description, content, status, target_roles, created_by_id)
+          VALUES (${article.id}, 'reading', ${article.title}, ${'Eğitim materyali: ' + article.title}, ${'{"type":"reading","articleId":' + article.id + '}'}::jsonb, 'published', ARRAY['barista','stajyer','supervisor']::text[], ${adminId})
+          RETURNING id
+        `);
+        materialIds.push((result.rows[0] as any).id);
+        materialCount++;
+      } catch (e) {}
+    }
+
+    const users = await db.execute(sql`SELECT id FROM users WHERE branch_id = 5 AND is_active = true AND role IN ('barista','stajyer') LIMIT 4`);
+    const userIds = users.rows.map((u: any) => u.id);
+
+    let assignmentCount = 0;
+    for (const userId of userIds) {
+      const numAssignments = 3 + Math.floor(Math.random() * 3);
+      const selected = materialIds.sort(() => Math.random() - 0.5).slice(0, numAssignments);
+      
+      for (const materialId of selected) {
+        const dueDate = new Date(Date.now() + (7 + Math.random() * 14) * 86400000);
+        const statuses = ['assigned', 'assigned', 'in_progress', 'completed'];
+        const status = statuses[Math.floor(Math.random() * statuses.length)];
+        
+        try {
+          await db.execute(sql`
+            INSERT INTO training_assignments (material_id, user_id, branch_id, assigned_by_id, due_date, is_required, status)
+            VALUES (${materialId}, ${userId}, 5, ${adminId}, ${dueDate.toISOString().split('T')[0]}, true, ${status})
+          `);
+          assignmentCount++;
+        } catch (e) {}
+      }
+    }
+
+    res.json({ success: true, materials: materialCount, assignments: assignmentCount });
+  } catch (error: any) {
+    console.error('Seed training assignments error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.post('/api/admin/seed-announcements', isAuthenticated, requireAdmin, async (req: any, res) => {
+  try {
+    const existing = await db.execute(sql`SELECT COUNT(*)::text as c FROM announcements`);
+    if (parseInt((existing.rows[0] as any).c) >= 3) {
+      return res.json({ success: true, message: 'Announcements already seeded', count: parseInt((existing.rows[0] as any).c) });
+    }
+
+    const adminId = '0ccb206f-2c38-431f-8520-291fe9788f50';
+    const announcements = [
+      {
+        title: 'Pilot Dönemi Başladı',
+        message: 'Değerli ekip üyelerimiz, DOSPRESSO WebApp pilot dönemi resmi olarak başlamıştır. Tüm şube operasyonlarınızı bu platform üzerinden yönetebilirsiniz. Sorularınız için destek bölümünü kullanabilirsiniz.',
+        priority: 'high',
+        category: 'general',
+        showOnDashboard: true,
+        targetRoles: ['barista', 'supervisor', 'mudur', 'stajyer', 'admin', 'ceo', 'cgo'],
+      },
+      {
+        title: 'Yeni Checklist Sistemi Aktif',
+        message: 'Sabah açılış, akşam kapanış ve günlük temizlik checklist\'leri tüm şubelere atanmıştır. Vardiya başında ve sonunda checklist\'lerinizi tamamlamayı unutmayın. Performans değerlendirmelerinde checklist tamamlama oranları dikkate alınacaktır.',
+        priority: 'normal',
+        category: 'operations',
+        showOnDashboard: false,
+        targetRoles: ['barista', 'supervisor', 'mudur', 'stajyer'],
+      },
+      {
+        title: 'DOSPRESSO Academy Eğitimleri',
+        message: 'Kahve bilgisi, hijyen, müşteri ilişkileri ve ekipman kullanımı konularında yeni eğitim modülleri eklenmiştir. Akademi bölümünden eğitimlerinizi tamamlayarak sertifika ve rozet kazanabilirsiniz.',
+        priority: 'normal',
+        category: 'training',
+        showOnDashboard: true,
+        targetRoles: ['barista', 'supervisor', 'stajyer'],
+      },
+      {
+        title: 'Mart Ayı Kampanya Duyurusu',
+        message: 'Bu ay tüm şubelerde "2 al 1 öde" donut kampanyası başlıyor. Kampanya detayları ve POS ayarları için müdürünüzle iletişime geçin.',
+        priority: 'normal',
+        category: 'marketing',
+        showOnDashboard: false,
+        targetRoles: ['barista', 'supervisor', 'mudur', 'marketing'],
+      },
+      {
+        title: 'Bakım Bildirimi: Sistem Güncellemesi',
+        message: 'Bu hafta sonu (Cumartesi 02:00-04:00 arası) planlı sistem bakımı yapılacaktır. Bu süre zarfında platforma erişim kısıtlı olabilir.',
+        priority: 'low',
+        category: 'system',
+        showOnDashboard: false,
+        targetRoles: ['admin', 'mudur', 'supervisor'],
+      },
+    ];
+
+    let inserted = 0;
+    for (const ann of announcements) {
+      const publishedAt = new Date(Date.now() - Math.random() * 14 * 86400000);
+      const expiresAt = new Date(Date.now() + 30 * 86400000);
+      
+      const rolesArray = `{${ann.targetRoles.join(',')}}`;
+      await db.execute(sql`
+        INSERT INTO announcements (created_by_id, title, message, target_roles, priority, published_at, expires_at, category, show_on_dashboard)
+        VALUES (${adminId}, ${ann.title}, ${ann.message}, ${rolesArray}::text[], ${ann.priority}, ${publishedAt.toISOString()}, ${expiresAt.toISOString()}, ${ann.category}, ${ann.showOnDashboard})
+      `);
+      inserted++;
+    }
+
+    res.json({ success: true, inserted });
+  } catch (error: any) {
+    console.error('Seed announcements error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.post('/api/admin/seed-factory-extended', isAuthenticated, requireAdmin, async (req: any, res) => {
+  try {
+    const existingBatches = await db.execute(sql`SELECT COUNT(*)::text as c FROM production_batches`);
+    if (parseInt((existingBatches.rows[0] as any).c) > 20) {
+      return res.json({ success: true, message: 'Extended factory data already seeded' });
+    }
+
+    const products = await db.execute(sql`SELECT id, name FROM factory_products ORDER BY id LIMIT 10`);
+    const productList = products.rows as any[];
+    const adminId = '0ccb206f-2c38-431f-8520-291fe9788f50';
+    const factoryBranchId = 24;
+
+    let batchCount = 0;
+    let outputCount = 0;
+    let qcCount = 0;
+
+    for (let dayOffset = 1; dayOffset <= 10; dayOffset++) {
+      const prodDate = new Date(Date.now() - dayOffset * 86400000);
+      const dateStr = prodDate.toISOString().split('T')[0];
+      
+      const numBatches = 2 + Math.floor(Math.random() * 2);
+      for (let b = 0; b < numBatches; b++) {
+        const product = productList[Math.floor(Math.random() * productList.length)];
+        const qty = 50 + Math.floor(Math.random() * 150);
+        const batchNumber = 'BATCH-' + dateStr.replace(/-/g, '') + '-' + (b + 1);
+        const expiryDate = new Date(prodDate.getTime() + 30 * 86400000);
+
+        try {
+          const batchResult = await db.execute(sql`
+            INSERT INTO production_batches (product_id, batch_number, quantity, unit, production_date, expiry_date, status, quality_score, notes)
+            VALUES (${product.id}, ${batchNumber}, ${qty}, 'adet', ${dateStr}, ${expiryDate.toISOString().split('T')[0]}, 'completed', ${85 + Math.floor(Math.random() * 15)}, ${'Günlük üretim - ' + product.name})
+            ON CONFLICT DO NOTHING
+            RETURNING id
+          `);
+          if (batchResult.rows.length === 0) continue;
+          const batchId = (batchResult.rows[0] as any).id;
+          batchCount++;
+
+          await db.execute(sql`
+            INSERT INTO factory_production_outputs (batch_id, product_id, quantity, unit, quality_status, produced_at)
+            VALUES (${batchId}, ${product.id}, ${qty}, 'adet', 'approved', ${prodDate.toISOString()})
+          `);
+          outputCount++;
+
+          if (Math.random() < 0.5) {
+            const qcStatus = Math.random() < 0.85 ? 'approved' : 'pending_engineer';
+            await db.execute(sql`
+              INSERT INTO factory_quality_checks (batch_id, product_id, checked_by_id, check_type, status, notes, checked_at, parameters)
+              VALUES (${batchId}, ${product.id}, ${adminId}, 'final_inspection', ${qcStatus}, ${'Kalite kontrol - ' + dateStr}, ${new Date(prodDate.getTime() + 7 * 3600000).toISOString()}, '{"temperature":22,"humidity":45}'::jsonb)
+            `);
+            qcCount++;
+          }
+        } catch (e) {}
+      }
+    }
+
+    res.json({ success: true, batches: batchCount, outputs: outputCount, qualityChecks: qcCount, days: 10 });
+  } catch (error: any) {
+    console.error('Seed factory extended error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 export default router;
