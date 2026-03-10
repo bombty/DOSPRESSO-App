@@ -487,7 +487,17 @@ export async function startWeeklyBackupScheduler(): Promise<void> {
   
   await loadBackupHistory();
   
-  console.log('⏳ İlk backup atlandı - 1 saat sonra ilk saatlik backup çalışacak');
+  const needsImmediateBackup = !backupStatus.lastBackupDate || 
+    (Date.now() - backupStatus.lastBackupDate.getTime()) > 2 * 60 * 60 * 1000;
+  
+  if (needsImmediateBackup) {
+    console.log('⏳ Son backup 2+ saat önce — 30 saniye sonra ilk backup çalışacak');
+    setTimeout(async () => {
+      await runHourlyBackupWithRetention();
+    }, 30 * 1000);
+  } else {
+    console.log('✅ Güncel backup mevcut — sonraki saatlik döngüde devam edecek');
+  }
   
   hourlyIntervalHandle = setInterval(async () => {
     await runHourlyBackupWithRetention();
