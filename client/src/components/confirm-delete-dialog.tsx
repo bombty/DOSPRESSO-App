@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -9,6 +9,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Input } from "@/components/ui/input";
 import { Loader2 } from "lucide-react";
 
 interface ConfirmDeleteDialogProps {
@@ -20,6 +21,8 @@ interface ConfirmDeleteDialogProps {
   confirmText?: string;
   cancelText?: string;
   isLoading?: boolean;
+  requireTypeConfirm?: boolean;
+  typeConfirmText?: string;
 }
 
 export function ConfirmDeleteDialog({
@@ -31,11 +34,22 @@ export function ConfirmDeleteDialog({
   confirmText = "Evet, Sil",
   cancelText = "İptal",
   isLoading = false,
+  requireTypeConfirm = false,
+  typeConfirmText = "SİL",
 }: ConfirmDeleteDialogProps) {
   const [internalLoading, setInternalLoading] = useState(false);
+  const [typeInput, setTypeInput] = useState("");
   const loading = isLoading || internalLoading;
+  const typeConfirmValid = !requireTypeConfirm || typeInput === typeConfirmText;
+
+  useEffect(() => {
+    if (!open) {
+      setTypeInput("");
+    }
+  }, [open]);
 
   const handleConfirm = async () => {
+    if (!typeConfirmValid) return;
     try {
       setInternalLoading(true);
       await onConfirm();
@@ -51,6 +65,19 @@ export function ConfirmDeleteDialog({
           <AlertDialogTitle data-testid="text-delete-title">{title}</AlertDialogTitle>
           <AlertDialogDescription data-testid="text-delete-description">{description}</AlertDialogDescription>
         </AlertDialogHeader>
+        {requireTypeConfirm && (
+          <div className="space-y-2">
+            <p className="text-sm text-muted-foreground">
+              Onaylamak için <strong>"{typeConfirmText}"</strong> yazın:
+            </p>
+            <Input
+              value={typeInput}
+              onChange={(e) => setTypeInput(e.target.value)}
+              placeholder={typeConfirmText}
+              data-testid="input-type-confirm"
+            />
+          </div>
+        )}
         <AlertDialogFooter>
           <AlertDialogCancel disabled={loading} data-testid="button-delete-cancel">
             {cancelText}
@@ -60,7 +87,7 @@ export function ConfirmDeleteDialog({
               e.preventDefault();
               handleConfirm();
             }}
-            disabled={loading}
+            disabled={loading || !typeConfirmValid}
             className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             data-testid="button-delete-confirm"
           >

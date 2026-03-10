@@ -66,6 +66,12 @@ export async function ensureSkillsLoaded(): Promise<void> {
   await import("./food-safety");
   await import("./training-optimizer");
   await import("./performance-coach");
+  await import("./security-monitor");
+  await import("./stock-predictor");
+  await import("./waste-analyzer");
+  await import("./supplier-tracker");
+  await import("./burnout-predictor");
+  await import("./cost-analyzer");
 }
 
 export function registerSkill(skill: AgentSkill): void {

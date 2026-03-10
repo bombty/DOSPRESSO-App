@@ -54,6 +54,7 @@ import { computeAuditScore, getCAPAPriority, shouldCreateCAPA, isValidCAPATransi
 import { createAuditEntry, getAuditContext } from "../audit";
 import { handleApiError } from "./helpers";
 import { sendFeedbackThankYouEmail } from "../email";
+import { checkDataLock } from "../services/data-lock";
 
 const router = Router();
 
@@ -1975,7 +1976,15 @@ function ensurePermission(user: unknown, module: string, action: string, errorMe
       }
 
       const templateId = parseInt(req.params.id);
-      await db.delete(auditTemplates).where(eq(auditTemplates.id, templateId));
+      await db.update(auditTemplates).set({ deletedAt: new Date() }).where(eq(auditTemplates.id, templateId));
+      const ctx = getAuditContext(req);
+      await createAuditEntry(ctx, {
+        eventType: "data.soft_delete",
+        action: "soft_delete",
+        resource: "audit_templates",
+        resourceId: String(templateId),
+        details: { softDelete: true },
+      });
       res.json({ message: "Şablon silindi" });
     } catch (error: any) {
       console.error("Delete audit template error:", error);
@@ -4366,6 +4375,14 @@ function ensurePermission(user: unknown, module: string, action: string, errorMe
         return res.status(403).json({ message: "Yetkiniz yok" });
       }
 
+      const [existingFeedback] = await db.select({ createdAt: customerFeedback.createdAt, status: customerFeedback.status }).from(customerFeedback).where(eq(customerFeedback.id, feedbackId)).limit(1);
+      if (existingFeedback) {
+        const lockResult = await checkDataLock('customer_feedback', existingFeedback.createdAt || new Date(), existingFeedback.status || undefined);
+        if (lockResult.locked) {
+          return res.status(423).json({ error: 'Bu kayıt kilitli', reason: lockResult.reason, canRequestChange: lockResult.canRequestChange });
+        }
+      }
+
       const updateData: any = { 
         status, 
         reviewedById: userId,
@@ -4763,6 +4780,14 @@ function ensurePermission(user: unknown, module: string, action: string, errorMe
       const user = req.user!;
       const { id } = req.params;
       const { reviewNotes } = req.body;
+
+      const [existingFeedbackForLock] = await db.select({ createdAt: customerFeedback.createdAt, status: customerFeedback.status }).from(customerFeedback).where(eq(customerFeedback.id, parseInt(id))).limit(1);
+      if (existingFeedbackForLock) {
+        const lockResult = await checkDataLock('customer_feedback', existingFeedbackForLock.createdAt || new Date(), existingFeedbackForLock.status || undefined);
+        if (lockResult.locked) {
+          return res.status(423).json({ error: 'Bu kayıt kilitli', reason: lockResult.reason, canRequestChange: lockResult.canRequestChange });
+        }
+      }
 
       const [updated] = await db.update(customerFeedback)
         .set({

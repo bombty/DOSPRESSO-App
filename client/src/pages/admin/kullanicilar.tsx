@@ -9,6 +9,16 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -62,6 +72,8 @@ export default function AdminKullanicilar() {
   const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>("all");
   const [resetPasswordDialog, setResetPasswordDialog] = useState(false);
   const [userDetailDialog, setUserDetailDialog] = useState(false);
+  const [deactivateDialog, setDeactivateDialog] = useState(false);
+  const [deactivateConfirmInput, setDeactivateConfirmInput] = useState("");
   const [selectedUser, setSelectedUser] = useState<any>(null);
 
   if (user?.role !== "admin") {
@@ -289,10 +301,12 @@ export default function AdminKullanicilar() {
                         <DropdownMenuItem 
                           onClick={(e) => { 
                             e.stopPropagation();
-                            toggleStatusMutation.mutate({ 
-                              userId: userItem.id, 
-                              isActive: userItem.isActive === false 
-                            });
+                            if (userItem.isActive === false) {
+                              toggleStatusMutation.mutate({ userId: userItem.id, isActive: true });
+                            } else {
+                              setSelectedUser(userItem);
+                              setDeactivateDialog(true);
+                            }
                           }}
                           data-testid={`menu-toggle-status-${userItem.id}`}
                         >
@@ -398,10 +412,13 @@ export default function AdminKullanicilar() {
             </Button>
             <Button 
               variant={selectedUser?.isActive === false ? "default" : "destructive"}
-              onClick={() => toggleStatusMutation.mutate({ 
-                userId: selectedUser?.id, 
-                isActive: selectedUser?.isActive === false 
-              })}
+              onClick={() => {
+                if (selectedUser?.isActive === false) {
+                  toggleStatusMutation.mutate({ userId: selectedUser?.id, isActive: true });
+                } else {
+                  setDeactivateDialog(true);
+                }
+              }}
               disabled={toggleStatusMutation.isPending}
               data-testid="button-modal-toggle-status"
             >
@@ -420,6 +437,46 @@ export default function AdminKullanicilar() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Kullanıcı Pasif Yapma Onay Dialog */}
+      <AlertDialog open={deactivateDialog} onOpenChange={(open) => { setDeactivateDialog(open); if (!open) setDeactivateConfirmInput(""); }}>
+        <AlertDialogContent data-testid="deactivate-user-dialog">
+          <AlertDialogHeader>
+            <AlertDialogTitle data-testid="text-deactivate-title">Kullanıcıyı Pasif Yap</AlertDialogTitle>
+            <AlertDialogDescription data-testid="text-deactivate-description">
+              <strong>{selectedUser?.firstName} {selectedUser?.lastName}</strong> kullanıcısını pasif yapmak istediğinize emin misiniz?
+              Kullanıcı sisteme giriş yapamayacaktır.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="space-y-2">
+            <p className="text-sm text-muted-foreground">
+              Onaylamak için <strong>"SİL"</strong> yazın:
+            </p>
+            <Input
+              value={deactivateConfirmInput}
+              onChange={(e) => setDeactivateConfirmInput(e.target.value)}
+              placeholder="SİL"
+              data-testid="input-deactivate-confirm"
+            />
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-deactivate-cancel">İptal</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault();
+                toggleStatusMutation.mutate({ userId: selectedUser?.id, isActive: false });
+                setDeactivateDialog(false);
+                setDeactivateConfirmInput("");
+              }}
+              disabled={deactivateConfirmInput !== "SİL" || toggleStatusMutation.isPending}
+              className="bg-destructive text-destructive-foreground"
+              data-testid="button-deactivate-confirm"
+            >
+              Pasif Yap
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Şifre Sıfırlama Onay Dialog */}
       <Dialog open={resetPasswordDialog} onOpenChange={setResetPasswordDialog}>

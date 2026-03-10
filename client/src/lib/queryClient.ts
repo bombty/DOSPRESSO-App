@@ -1,5 +1,24 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
 
+export interface LockInfo {
+  reason: string;
+  tableName?: string;
+  recordId?: number | string;
+}
+
+type LockInfoListener = (info: LockInfo) => void;
+
+const lockListeners: Set<LockInfoListener> = new Set();
+
+export function onLockError(listener: LockInfoListener): () => void {
+  lockListeners.add(listener);
+  return () => { lockListeners.delete(listener); };
+}
+
+function emitLockError(info: LockInfo) {
+  lockListeners.forEach((fn) => fn(info));
+}
+
 export class NetworkError extends Error {
   constructor(message: string) {
     super(message);
@@ -45,6 +64,20 @@ export async function apiRequest(
     });
 
     clearTimeout(timeoutId);
+
+    if (res.status === 423) {
+      try {
+        const body = await res.clone().json();
+        emitLockError({
+          reason: body.reason || body.message || "Bu kayıt kilitlidir",
+          tableName: body.tableName,
+          recordId: body.recordId,
+        });
+      } catch {
+        emitLockError({ reason: "Bu kayıt kilitlidir" });
+      }
+    }
+
     await throwIfResNotOk(res);
     return res;
   } catch (error) {

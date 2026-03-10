@@ -71,6 +71,8 @@ const AdminHeroWidgetEditor = lazy(() => import("./admin/widget-editor"));
 const AdminAIPolitikalari = lazy(() => import("./admin/ai-politikalari"));
 const AdminDobodyAvatarlar = lazy(() => import("./admin/dobody-avatarlar"));
 const AdminDobodyGorevYonetimi = lazy(() => import("./admin/dobody-gorev-yonetimi"));
+const AdminVeriKilitleri = lazy(() => import("./admin/veri-kilitleri"));
+const AdminDegisiklikTalepleri = lazy(() => import("./admin/degisiklik-talepleri"));
 
 interface TabConfig {
   id: string;
@@ -383,6 +385,24 @@ const ADMIN_TABS: TabConfig[] = [
     permissionModule: "admin_panel",
     group: "operasyon",
     component: AdminDobodyGorevYonetimi
+  },
+  {
+    id: "veri-kilitleri",
+    label: "Data Locks",
+    labelTr: "Veri Kilitleri",
+    icon: <Lock className="h-4 w-4" />,
+    permissionModule: "admin_panel",
+    group: "sistem",
+    component: AdminVeriKilitleri
+  },
+  {
+    id: "degisiklik-talepleri",
+    label: "Change Requests",
+    labelTr: "Değişiklik Talepleri",
+    icon: <FileText className="h-4 w-4" />,
+    permissionModule: "admin_panel",
+    group: "sistem",
+    component: AdminDegisiklikTalepleri
   }
 ];
 
@@ -431,7 +451,9 @@ const TAB_URL_MAP: Record<string, string> = {
   "personel-tipleri": "/admin/personel-tipleri",
   "ai-politikalari": "/admin/ai-politikalari",
   "dobody-avatarlar": "/admin/dobody-avatarlar",
-  "dobody-gorevler": "/admin/dobody-gorevler"
+  "dobody-gorevler": "/admin/dobody-gorevler",
+  "veri-kilitleri": "/admin/veri-kilitleri",
+  "degisiklik-talepleri": "/admin/degisiklik-talepleri"
 };
 
 function getTabFromUrl(pathname: string): string | null {

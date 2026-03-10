@@ -1,7 +1,9 @@
+import { useState } from "react";
 import { useOfflineQueue } from "@/hooks/useOfflineQueue";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -11,7 +13,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Upload, Trash2, RefreshCw, Clock, CheckCircle2 } from "lucide-react";
 import { getQueueItems } from "@/lib/offline-queue";
@@ -26,6 +27,8 @@ function timeAgo(ts: number): string {
 
 export function OfflineQueuePanel() {
   const { queueSize, removeFromQueue, clearQueue, processQueue, isProcessing } = useOfflineQueue();
+  const [clearConfirmInput, setClearConfirmInput] = useState("");
+  const [clearDialogOpen, setClearDialogOpen] = useState(false);
 
   const currentItems = getQueueItems();
 
@@ -65,22 +68,41 @@ export function OfflineQueuePanel() {
             <RefreshCw className={`h-3.5 w-3.5 mr-1 ${isProcessing ? "animate-spin" : ""}`} />
             {isProcessing ? "Gönderiliyor..." : "Tümünü Gönder"}
           </Button>
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button size="sm" variant="ghost" data-testid="button-clear-all">
-                <Trash2 className="h-3.5 w-3.5" />
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
+          <Button size="sm" variant="ghost" onClick={() => setClearDialogOpen(true)} data-testid="button-clear-all">
+            <Trash2 className="h-3.5 w-3.5" />
+          </Button>
+          <AlertDialog open={clearDialogOpen} onOpenChange={(open) => { setClearDialogOpen(open); if (!open) setClearConfirmInput(""); }}>
+            <AlertDialogContent data-testid="clear-queue-dialog">
               <AlertDialogHeader>
-                <AlertDialogTitle>Tüm bekleyen gönderimler silinsin mi?</AlertDialogTitle>
-                <AlertDialogDescription>
+                <AlertDialogTitle data-testid="text-clear-title">Tüm bekleyen gönderimler silinsin mi?</AlertDialogTitle>
+                <AlertDialogDescription data-testid="text-clear-description">
                   Bu işlem geri alınamaz. Tüm bekleyen veriler kalıcı olarak silinecek.
                 </AlertDialogDescription>
               </AlertDialogHeader>
+              <div className="space-y-2">
+                <p className="text-sm text-muted-foreground">
+                  Onaylamak için <strong>"SİL"</strong> yazın:
+                </p>
+                <Input
+                  value={clearConfirmInput}
+                  onChange={(e) => setClearConfirmInput(e.target.value)}
+                  placeholder="SİL"
+                  data-testid="input-clear-confirm"
+                />
+              </div>
               <AlertDialogFooter>
-                <AlertDialogCancel>İptal</AlertDialogCancel>
-                <AlertDialogAction onClick={() => clearQueue()} data-testid="button-confirm-clear">
+                <AlertDialogCancel data-testid="button-cancel-clear">İptal</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={(e) => {
+                    e.preventDefault();
+                    clearQueue();
+                    setClearDialogOpen(false);
+                    setClearConfirmInput("");
+                  }}
+                  disabled={clearConfirmInput !== "SİL"}
+                  className="bg-destructive text-destructive-foreground"
+                  data-testid="button-confirm-clear"
+                >
                   Tümünü Sil
                 </AlertDialogAction>
               </AlertDialogFooter>

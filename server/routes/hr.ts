@@ -8,6 +8,7 @@ import { eq, desc, asc, and, or, gte, lte, sql, inArray, isNull, isNotNull, ne, 
 import { sendNotificationEmail, sendEmployeeOfMonthEmail } from "../email";
 import { sanitizeUser, sanitizeUsers, sanitizeUserForRole, sanitizeUsersForRole } from "../security";
 import { handleApiError } from "./helpers";
+import { checkDataLock } from "../services/data-lock";
 import bcrypt from "bcrypt";
 import multer from "multer";
 import { z } from "zod";
@@ -3913,7 +3914,15 @@ JSON formatında yanıt ver:
         return res.status(403).json({ message: 'Pozisyon silme yetkiniz yok' });
       }
 
-      await db.delete(jobPositions).where(eq(jobPositions.id, id));
+      await db.update(jobPositions).set({ deletedAt: new Date() }).where(eq(jobPositions.id, id));
+      const ctx = getAuditContext(req);
+      await createAuditEntry(ctx, {
+        eventType: "data.soft_delete",
+        action: "soft_delete",
+        resource: "job_positions",
+        resourceId: String(id),
+        details: { softDelete: true },
+      });
       res.json({ success: true });
     } catch (error: any) {
       console.error("Error deleting job position:", error);
@@ -6202,6 +6211,11 @@ MUTLAKA aşağıdaki JSON formatında yanıt ver:
       }
       
       const existing = existingResult.rows[0] as any;
+
+      const lockResult = await checkDataLock('payroll_records', existing.created_at ? new Date(existing.created_at) : new Date(), existing.status || undefined);
+      if (lockResult.locked) {
+        return res.status(423).json({ error: 'Bu kayıt kilitli', reason: lockResult.reason, canRequestChange: lockResult.canRequestChange });
+      }
       
       // Ödenmiş kayıt güncellenemez
       if (existing.status === 'paid') {
@@ -6264,6 +6278,15 @@ MUTLAKA aşağıdaki JSON formatında yanıt ver:
       if (isNaN(recordId)) {
         return res.status(400).json({ message: "Geçersiz ID" });
       }
+
+      const existingPayrollApprove = await db.execute(sql`SELECT created_at, status FROM payroll_records WHERE id = ${recordId}`);
+      if (existingPayrollApprove.rows.length > 0) {
+        const rec = existingPayrollApprove.rows[0] as any;
+        const lockResult = await checkDataLock('payroll_records', rec.created_at ? new Date(rec.created_at) : new Date(), rec.status || undefined);
+        if (lockResult.locked) {
+          return res.status(423).json({ error: 'Bu kayıt kilitli', reason: lockResult.reason, canRequestChange: lockResult.canRequestChange });
+        }
+      }
       
       const result = await db.execute(sql`
         UPDATE payroll_records SET
@@ -6300,6 +6323,15 @@ MUTLAKA aşağıdaki JSON formatında yanıt ver:
       
       if (isNaN(recordId)) {
         return res.status(400).json({ message: "Geçersiz ID" });
+      }
+
+      const existingPayrollPay = await db.execute(sql`SELECT created_at, status FROM payroll_records WHERE id = ${recordId}`);
+      if (existingPayrollPay.rows.length > 0) {
+        const rec = existingPayrollPay.rows[0] as any;
+        const lockResult = await checkDataLock('payroll_records', rec.created_at ? new Date(rec.created_at) : new Date(), rec.status || undefined);
+        if (lockResult.locked) {
+          return res.status(423).json({ error: 'Bu kayıt kilitli', reason: lockResult.reason, canRequestChange: lockResult.canRequestChange });
+        }
       }
       
       const result = await db.execute(sql`
@@ -6348,6 +6380,12 @@ MUTLAKA aşağıdaki JSON formatında yanıt ver:
       }
       
       const existing = existingResult.rows[0] as any;
+
+      const lockResult = await checkDataLock('payroll_records', existing.created_at ? new Date(existing.created_at) : new Date(), existing.status || undefined);
+      if (lockResult.locked) {
+        return res.status(423).json({ error: 'Bu kayıt kilitli', reason: lockResult.reason, canRequestChange: lockResult.canRequestChange });
+      }
+
       if (existing.status === 'paid') {
         return res.status(400).json({ message: "Ödenmiş bordro kaydı silinemez" });
       }

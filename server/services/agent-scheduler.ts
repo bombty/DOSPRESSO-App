@@ -1,12 +1,14 @@
 import { db } from "../db";
 import { users, branches, agentPendingActions, agentRuns, inventory, customerFeedback, equipmentFaults, productComplaints } from "@shared/schema";
-import { eq, and, or, gte, lte, sql, count } from "drizzle-orm";
+import { eq, and, or, gte, lte, sql, count, isNull, notInArray, lt } from "drizzle-orm";
 import { getRoleGroup, ROLE_GROUP_MAP } from "./ai-policy-engine";
 import { runAgentAnalysis, runBatchAnalysis } from "./agent-engine";
 import { checkDailyActionLimit } from "./agent-safety";
 import { runEscalationCheck, checkRoutingEscalations, checkActionOutcomes } from "./agent-escalation";
 import { getSkillsBySchedule, runSkillsForUser, ensureSkillsLoaded } from "../agent/skills/skill-registry";
 import { sendQueuedNotifications } from "../agent/skills/skill-notifications";
+import { auditLogSystem } from "../audit";
+import { storage } from "../storage";
 
 const TURKEY_OFFSET_MS = 3 * 60 * 60 * 1000;
 
@@ -77,6 +79,73 @@ function incrementTokenUsage(userId: string, roleGroup: string): void {
   tracker.daily++;
   tracker.weekly++;
   llmCallTracker.set(key, tracker);
+}
+
+let inactiveUsersInterval: NodeJS.Timeout | null = null;
+
+async function deactivateInactiveUsers(): Promise<void> {
+  console.log("[AgentScheduler] Inactive user deactivation starting...");
+  try {
+    const sixtyDaysAgo = new Date(Date.now() - 60 * 24 * 60 * 60 * 1000);
+
+    const inactiveUsers = await db
+      .select({ id: users.id, username: users.username, role: users.role })
+      .from(users)
+      .where(
+        and(
+          eq(users.isActive, true),
+          notInArray(users.role, ['admin', 'ceo']),
+          or(
+            and(
+              sql`${users.lastLoginAt} IS NOT NULL`,
+              lt(users.lastLoginAt, sixtyDaysAgo)
+            ),
+            and(
+              sql`${users.lastLoginAt} IS NULL`,
+              lt(users.createdAt, sixtyDaysAgo)
+            )
+          )
+        )
+      );
+
+    if (inactiveUsers.length === 0) {
+      console.log("[AgentScheduler] No inactive users found to deactivate.");
+      return;
+    }
+
+    for (const user of inactiveUsers) {
+      await db.update(users).set({ isActive: false }).where(eq(users.id, user.id));
+
+      await auditLogSystem({
+        eventType: "user.auto_deactivated",
+        action: "deactivate",
+        resource: "user",
+        resourceId: user.id,
+        details: {
+          username: user.username,
+          role: user.role,
+          reason: "inactive_60_days",
+        },
+        actorRole: "system",
+      });
+    }
+
+    const adminUsers = await storage.getUsersByRole('admin');
+    for (const admin of adminUsers) {
+      await storage.createNotification({
+        userId: admin.id,
+        title: "Inactive Users Deactivated",
+        message: `${inactiveUsers.length} user(s) deactivated due to 60+ days of inactivity: ${inactiveUsers.map(u => u.username).join(', ')}`,
+        type: "warning",
+        relatedType: "security",
+        relatedId: "inactive_users",
+      });
+    }
+
+    console.log(`[AgentScheduler] Deactivated ${inactiveUsers.length} inactive user(s).`);
+  } catch (err) {
+    console.error("[AgentScheduler] Inactive user deactivation error:", err);
+  }
 }
 
 let dailyInterval: NodeJS.Timeout | null = null;
@@ -425,6 +494,13 @@ export function startAgentScheduler(): void {
   }, 60 * 60 * 1000);
   console.log("[RoutingEscalation] Eskalasyon kontrolü her saat çalışacak.");
 
+  const inactiveUsersDelayMs = getMillisUntilTurkeyTime(2, 0);
+  console.log(`[AgentScheduler] Inactive user check ${Math.round(inactiveUsersDelayMs / 60000)} dakika sonra çalışacak (02:00 TR)`);
+  setTimeout(() => {
+    deactivateInactiveUsers();
+    inactiveUsersInterval = setInterval(deactivateInactiveUsers, 24 * 60 * 60 * 1000);
+  }, inactiveUsersDelayMs);
+
   const outcomeDelayMs = getMillisUntilTurkeyTime(8, 0);
   console.log(`[OutcomeTracking] Sonuç kontrolü ${Math.round(outcomeDelayMs / 60000)} dakika sonra çalışacak (08:00 TR)`);
   setTimeout(() => {
@@ -484,6 +560,10 @@ export function stopAgentScheduler(): void {
   if (outcomeCheckInterval) {
     clearInterval(outcomeCheckInterval);
     outcomeCheckInterval = null;
+  }
+  if (inactiveUsersInterval) {
+    clearInterval(inactiveUsersInterval);
+    inactiveUsersInterval = null;
   }
 
   isRunning = false;

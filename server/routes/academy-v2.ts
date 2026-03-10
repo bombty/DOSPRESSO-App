@@ -1304,7 +1304,16 @@ router.delete('/api/academy/onboarding/templates/:id', isAuthenticated, requireA
     if (activeAssignments[0]?.count > 0) {
       return res.status(400).json({ message: "Aktif atamaları olan şablon silinemez" });
     }
-    await db.delete(onboardingTemplates).where(eq(onboardingTemplates.id, templateId));
+    await db.update(onboardingTemplates).set({ deletedAt: new Date() }).where(eq(onboardingTemplates.id, templateId));
+    const { createAuditEntry, getAuditContext } = await import("../audit");
+    const ctx = getAuditContext(req);
+    await createAuditEntry(ctx, {
+      eventType: "data.soft_delete",
+      action: "soft_delete",
+      resource: "onboarding_templates",
+      resourceId: String(templateId),
+      details: { softDelete: true },
+    });
     res.json({ success: true });
   } catch (error: any) {
     handleApiError(res, error, "Şablon silinemedi");

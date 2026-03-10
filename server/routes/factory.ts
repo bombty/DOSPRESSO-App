@@ -2,7 +2,8 @@ import { Router } from "express";
 import { db } from "../db";
 import { storage } from "../storage";
 import { isAuthenticated, isKioskAuthenticated, createKioskSession } from "../localAuth";
-import { auditLog } from "../audit";
+import { auditLog, createAuditEntry, getAuditContext } from "../audit";
+import { checkDataLock } from "../services/data-lock";
 import { eq, desc, asc, and, or, gte, lte, sql, inArray, isNull, isNotNull, not, ne, count, sum, avg, max, min } from "drizzle-orm";
 import bcrypt from "bcrypt";
 import {
@@ -2871,6 +2872,11 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
         return res.status(404).json({ message: "Kalite kontrol kaydı bulunamadı" });
       }
 
+      const lockResult = await checkDataLock('factory_quality_checks', existingCheck.checkedAt || new Date(), existingCheck.decision);
+      if (lockResult.locked) {
+        return res.status(423).json({ error: 'Bu kayıt kilitli', reason: lockResult.reason, canRequestChange: lockResult.canRequestChange });
+      }
+
       if (existingCheck.decision !== 'pending_engineer') {
         return res.status(400).json({ message: "Bu kayıt gıda mühendisi onayı beklemiyordu" });
       }
@@ -4617,6 +4623,11 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
         return res.status(404).json({ message: "Sevkiyat bulunamadı" });
       }
 
+      const lockResult = await checkDataLock('factory_shipments', currentShipment.createdAt || new Date(), currentShipment.status);
+      if (lockResult.locked) {
+        return res.status(423).json({ error: 'Bu kayıt kilitli', reason: lockResult.reason, canRequestChange: lockResult.canRequestChange });
+      }
+
       const validTransitions: Record<string, string[]> = {
         'hazirlaniyor': ['sevk_edildi', 'iptal'],
         'sevk_edildi': ['teslim_edildi'],
@@ -4903,12 +4914,26 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
         return res.status(404).json({ message: "Sevkiyat bulunamadı" });
       }
 
+      const lockResult = await checkDataLock('factory_shipments', shipment.createdAt || new Date(), shipment.status);
+      if (lockResult.locked) {
+        return res.status(423).json({ error: 'Bu kayıt kilitli', reason: lockResult.reason, canRequestChange: lockResult.canRequestChange });
+      }
+
       if (shipment.status !== 'hazirlaniyor') {
         return res.status(400).json({ message: "Sadece 'hazırlanıyor' durumundaki sevkiyatlar silinebilir" });
       }
 
       await db.delete(factoryShipmentItems).where(eq(factoryShipmentItems.shipmentId, id));
-      await db.delete(factoryShipments).where(eq(factoryShipments.id, id));
+      await db.update(factoryShipments).set({ deletedAt: new Date() }).where(eq(factoryShipments.id, id));
+
+      const ctx = getAuditContext(req);
+      await createAuditEntry(ctx, {
+        eventType: "data.soft_delete",
+        action: "soft_delete",
+        resource: "factory_shipments",
+        resourceId: String(id),
+        details: { softDelete: true },
+      });
 
       res.json({ success: true, message: "Sevkiyat silindi" });
     } catch (error: any) {

@@ -12769,7 +12769,16 @@ Kurallar:
       if (!['admin', 'ceo', 'cgo'].includes(req.user.role)) {
         return res.status(403).json({ message: "Yetkiniz yok" });
       }
-      await db.delete(guideDocs).where(eq(guideDocs.id, parseInt(req.params.id)));
+      await db.update(guideDocs).set({ deletedAt: new Date() }).where(eq(guideDocs.id, parseInt(req.params.id)));
+      const { createAuditEntry: createAudit, getAuditContext: getCtx } = await import("../audit");
+      const ctx = getCtx(req);
+      await createAudit(ctx, {
+        eventType: "data.soft_delete",
+        action: "soft_delete",
+        resource: "guide_docs",
+        resourceId: String(req.params.id),
+        details: { softDelete: true },
+      });
       res.json({ message: "Doküman silindi" });
     } catch (error: any) {
       res.status(500).json({ message: "Silme başarısız" });

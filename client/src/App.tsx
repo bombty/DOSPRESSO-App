@@ -1,8 +1,9 @@
-import { useState, useEffect, lazy, Suspense, type ReactNode } from "react";
+import { useState, useEffect, useCallback, lazy, Suspense, type ReactNode } from "react";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { Switch, Route, useLocation } from "wouter";
-import { queryClient } from "./lib/queryClient";
+import { queryClient, onLockError, type LockInfo } from "./lib/queryClient";
 import { QueryClientProvider, useQuery } from "@tanstack/react-query";
+import { LockedRecordDialog } from "@/components/locked-record-dialog";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "@/contexts/theme-context";
@@ -572,6 +573,23 @@ function AppContent() {
   );
 }
 
+function GlobalLockDialogHost() {
+  const [lockInfo, setLockInfo] = useState<LockInfo | null>(null);
+  useEffect(() => {
+    return onLockError((info) => setLockInfo(info));
+  }, []);
+  const handleClose = useCallback(() => setLockInfo(null), []);
+  return (
+    <LockedRecordDialog
+      open={!!lockInfo}
+      onClose={handleClose}
+      reason={lockInfo?.reason}
+      tableName={lockInfo?.tableName}
+      recordId={lockInfo?.recordId}
+    />
+  );
+}
+
 export default function App() {
   return (
     <ErrorBoundary>
@@ -586,6 +604,7 @@ export default function App() {
               </DobodyFlowProvider>
               <Toaster />
               <PushPermissionBanner />
+              <GlobalLockDialogHost />
             </TooltipProvider>
           </NetworkStatusProvider>
         </ThemeProvider>

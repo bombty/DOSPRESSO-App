@@ -65,6 +65,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { isHQRole } from "@shared/schema";
 import { ImageUploader } from "@/components/image-uploader";
+import { ConfirmDeleteDialog } from "@/components/confirm-delete-dialog";
 import { ErrorState } from "../components/error-state";
 import { LoadingState } from "../components/loading-state";
 
@@ -577,10 +578,15 @@ export default function Receteler() {
     }
   };
 
+  const [deleteRecipeDialogOpen, setDeleteRecipeDialogOpen] = useState(false);
   const handleDeleteRecipe = () => {
     if (!editingRecipe) return;
-    if (!confirm("Bu reçeteyi silmek istediğinizden emin misiniz?")) return;
+    setDeleteRecipeDialogOpen(true);
+  };
+  const confirmDeleteRecipe = () => {
+    if (!editingRecipe) return;
     deleteRecipeMutation.mutate(editingRecipe.id);
+    setDeleteRecipeDialogOpen(false);
   };
 
   const unreadNotifications = useMemo(() => {
@@ -2015,6 +2021,15 @@ export default function Receteler() {
           </div>
         </DialogContent>
       </Dialog>
+
+      <ConfirmDeleteDialog
+        open={deleteRecipeDialogOpen}
+        onOpenChange={setDeleteRecipeDialogOpen}
+        onConfirm={confirmDeleteRecipe}
+        title="Reçeteyi silmek istediğinize emin misiniz?"
+        description="Bu reçete kalıcı olarak silinecektir. Bu işlem geri alınamaz."
+        isLoading={deleteRecipeMutation.isPending}
+      />
     </div>
   );
 }

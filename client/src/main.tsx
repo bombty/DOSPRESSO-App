@@ -14,7 +14,7 @@ if ("serviceWorker" in navigator) {
   if ("caches" in window) {
     caches.keys().then((names) => {
       for (const name of names) {
-        if (name.startsWith("dospresso-v") && !name.startsWith("dospresso-v12")) {
+        if (name.startsWith("dospresso-v") && !name.startsWith("dospresso-v13")) {
           caches.delete(name).then(() => {
             console.log("[SW] Deleted old cache:", name);
           });

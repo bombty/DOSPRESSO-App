@@ -7,10 +7,10 @@ import bcrypt from "bcrypt";
 import { z } from "zod";
 import { storage } from "./storage";
 import { db } from "./db";
-import { branches } from "@shared/schema";
+import { branches, sessions, users } from "@shared/schema";
 import { generateTasksForUser } from "./services/task-trigger-service";
-import { eq } from "drizzle-orm";
-import { auditLog } from "./audit";
+import { eq, sql } from "drizzle-orm";
+import { auditLog, createAuditEntry, getAuditContext } from "./audit";
 
 const loginSchema = z.object({
   username: z.string().min(1, "Kullanıcı adı zorunludur"),
@@ -266,15 +266,53 @@ export async function setupAuth(app: Express, authLimiter?: any) {
                 return res.status(500).json({ error: "Oturum kaydedilemedi" });
               }
             
+              const userId = (user as any).id;
+              const currentSid = req.sessionID;
+
+              (async () => {
+                try {
+                  const activeSessions = await db.execute(
+                    sql`SELECT sid FROM sessions WHERE sess->'passport'->>'user' = ${String(userId)} AND expire > NOW() ORDER BY expire ASC`
+                  );
+                  const sessionRows = activeSessions.rows || activeSessions;
+                  if (Array.isArray(sessionRows) && sessionRows.length >= 3) {
+                    const toRemove = (sessionRows as { sid: string }[])
+                      .filter(s => s.sid !== currentSid)
+                      .slice(0, sessionRows.length - 2);
+                    for (const oldSession of toRemove) {
+                      await db.execute(
+                        sql`DELETE FROM sessions WHERE sid = ${oldSession.sid}`
+                      );
+                      const auditCtx = getAuditContext(req);
+                      auditCtx.userId = String(userId);
+                      await createAuditEntry(auditCtx, {
+                        eventType: "security",
+                        action: "auth.session_forced_logout",
+                        resource: "session",
+                        resourceId: oldSession.sid,
+                        details: { reason: "concurrent_session_limit", maxSessions: 2, forcedOutSid: oldSession.sid },
+                      });
+                      console.log(`[Auth] Concurrent session limit: removed session ${oldSession.sid} for user ${userId}`);
+                    }
+                  }
+                } catch (sessionLimitErr) {
+                  console.error("[Auth] Session limit check error:", sessionLimitErr);
+                }
+              })();
+
               auditLog(req, {
                 eventType: "auth.login_success",
                 action: "login",
                 resource: "auth",
-                resourceId: (user as any).id,
+                resourceId: userId,
                 details: { username: (user as any).username, authType: "user" },
               });
 
-              generateTasksForUser((user as any).id).catch((err: any) => 
+              db.update(users).set({ lastLoginAt: new Date() }).where(eq(users.id, userId)).catch((err: any) =>
+                console.error("[Auth] lastLoginAt update error:", err.message)
+              );
+
+              generateTasksForUser(userId).catch((err: any) => 
                 console.error("[TaskTrigger] Login hook error:", err.message)
               );
 

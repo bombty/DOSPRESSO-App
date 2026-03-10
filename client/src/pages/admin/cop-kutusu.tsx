@@ -5,6 +5,7 @@ import { Redirect } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
@@ -46,6 +47,7 @@ export default function AdminCopKutusu() {
     id: string;
     displayName: string;
   } | null>(null);
+  const [deleteConfirmInput, setDeleteConfirmInput] = useState("");
 
   if (user?.role !== "admin" && user?.role !== "genel_mudur") {
     return <Redirect to="/" />;
@@ -249,13 +251,13 @@ export default function AdminCopKutusu() {
         </Card>
       )}
 
-      <AlertDialog open={!!confirmAction} onOpenChange={() => setConfirmAction(null)}>
-        <AlertDialogContent>
+      <AlertDialog open={!!confirmAction} onOpenChange={(open) => { if (!open) { setConfirmAction(null); setDeleteConfirmInput(""); } }}>
+        <AlertDialogContent data-testid="trash-confirm-dialog">
           <AlertDialogHeader>
-            <AlertDialogTitle>
+            <AlertDialogTitle data-testid="text-trash-action-title">
               {confirmAction?.type === "restore" ? "Kaydi Geri Yukle" : "Kalici Silme"}
             </AlertDialogTitle>
-            <AlertDialogDescription>
+            <AlertDialogDescription data-testid="text-trash-action-description">
               {confirmAction?.type === "restore" ? (
                 <>
                   <strong>{confirmAction.displayName}</strong> kaydini geri yuklemek istiyor musunuz?
@@ -270,10 +272,28 @@ export default function AdminCopKutusu() {
               )}
             </AlertDialogDescription>
           </AlertDialogHeader>
+          {confirmAction?.type === "delete" && (
+            <div className="space-y-2">
+              <p className="text-sm text-muted-foreground">
+                Onaylamak için <strong>"SİL"</strong> yazın:
+              </p>
+              <Input
+                value={deleteConfirmInput}
+                onChange={(e) => setDeleteConfirmInput(e.target.value)}
+                placeholder="SİL"
+                data-testid="input-permanent-delete-confirm"
+              />
+            </div>
+          )}
           <AlertDialogFooter>
             <AlertDialogCancel data-testid="button-cancel-action">İptal</AlertDialogCancel>
             <AlertDialogAction
-              onClick={handleConfirmAction}
+              onClick={(e) => {
+                e.preventDefault();
+                handleConfirmAction();
+                setDeleteConfirmInput("");
+              }}
+              disabled={confirmAction?.type === "delete" && deleteConfirmInput !== "SİL"}
               className={confirmAction?.type === "delete" ? "bg-destructive text-destructive-foreground" : ""}
               data-testid="button-confirm-action"
             >

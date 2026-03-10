@@ -2672,6 +2672,7 @@ export const users = pgTable("users", {
   notificationPreferences: jsonb("notification_preferences").$type<Record<string, boolean>>(),
   titleId: integer("title_id"),
   employeeTypeId: integer("employee_type_id"),
+  lastLoginAt: timestamp("last_login_at"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
   deletedAt: timestamp("deleted_at"),
@@ -4411,6 +4412,7 @@ export const announcements = pgTable("announcements", {
   expiresAt: timestamp("expires_at"), // Geçerlilik bitiş tarihi
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
+  deletedAt: timestamp("deleted_at"),
 }, (table) => ({
   publishedIdx: index("announcements_published_idx").on(table.publishedAt),
   categoryIdx: index("announcements_category_idx").on(table.category),
@@ -4968,6 +4970,7 @@ export const auditTemplates = pgTable("audit_templates", {
   createdById: varchar("created_by_id").notNull().references(() => users.id), // Keeping old column name
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
+  deletedAt: timestamp("deleted_at"),
 }, (table) => [
   index("audit_templates_type_idx").on(table.auditType),
   index("audit_templates_category_idx").on(table.category),
@@ -6557,6 +6560,7 @@ export const onboardingTemplates = pgTable("onboarding_templates", {
   createdById: varchar("created_by_id").notNull(), // Coach user ID
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
+  deletedAt: timestamp("deleted_at"),
 }, (table) => [
   index("onboarding_templates_target_role_idx").on(table.targetRole),
   index("onboarding_templates_active_idx").on(table.isActive),
@@ -8567,6 +8571,7 @@ export const jobPositions = pgTable("job_positions", {
   notes: text("notes"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
+  deletedAt: timestamp("deleted_at"),
 }, (table) => [
   index("job_positions_status_idx").on(table.status),
   index("job_positions_branch_idx").on(table.branchId),
@@ -13935,6 +13940,7 @@ export const guideDocs = pgTable("guide_docs", {
   createdBy: integer("created_by"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
+  deletedAt: timestamp("deleted_at"),
 }, (table) => [
   index("guide_docs_slug_idx").on(table.slug),
   index("guide_docs_category_idx").on(table.category),
@@ -14564,6 +14570,7 @@ export const factoryShipments = pgTable("factory_shipments", {
   deliveryNotes: text("delivery_notes"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
+  deletedAt: timestamp("deleted_at"),
 }, (table) => [
   index("factory_shipments_branch_idx").on(table.branchId),
   index("factory_shipments_status_idx").on(table.status),
@@ -14934,3 +14941,105 @@ export const insertDobodyFlowCompletionSchema = createInsertSchema(dobodyFlowCom
 });
 export type InsertDobodyFlowCompletion = z.infer<typeof insertDobodyFlowCompletionSchema>;
 export type DobodyFlowCompletion = typeof dobodyFlowCompletions.$inferSelect;
+
+// ========================================
+// DATA LOCK RULES — Sprint 27 Data Protection
+// ========================================
+export const dataLockRules = pgTable("data_lock_rules", {
+  id: serial("id").primaryKey(),
+  tableName: varchar("table_name", { length: 100 }).notNull().unique(),
+  lockAfterDays: integer("lock_after_days"),
+  lockOnStatus: varchar("lock_on_status", { length: 50 }),
+  lockImmediately: boolean("lock_immediately").default(false),
+  canRequestChange: boolean("can_request_change").default(true),
+  description: text("description"),
+  isActive: boolean("is_active").default(true).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertDataLockRuleSchema = createInsertSchema(dataLockRules).omit({
+  id: true,
+  createdAt: true,
+});
+export type InsertDataLockRule = z.infer<typeof insertDataLockRuleSchema>;
+export type DataLockRule = typeof dataLockRules.$inferSelect;
+
+// ========================================
+// DATA CHANGE REQUESTS — Sprint 27
+// ========================================
+export const dataChangeRequests = pgTable("data_change_requests", {
+  id: serial("id").primaryKey(),
+  tableName: varchar("table_name", { length: 100 }).notNull(),
+  recordId: integer("record_id").notNull(),
+  fieldName: varchar("field_name", { length: 100 }).notNull(),
+  currentValue: text("current_value"),
+  requestedValue: text("requested_value"),
+  reason: text("reason").notNull(),
+  supportingDocumentUrl: text("supporting_document_url"),
+  requestedBy: varchar("requested_by").references(() => users.id, { onDelete: "set null" }),
+  status: varchar("status", { length: 20 }).default("pending").notNull(),
+  reviewedBy: varchar("reviewed_by").references(() => users.id, { onDelete: "set null" }),
+  reviewNote: text("review_note"),
+  reviewedAt: timestamp("reviewed_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("dcr_table_record_idx").on(table.tableName, table.recordId),
+  index("dcr_status_idx").on(table.status),
+  index("dcr_requested_by_idx").on(table.requestedBy),
+]);
+
+export const insertDataChangeRequestSchema = createInsertSchema(dataChangeRequests).omit({
+  id: true,
+  status: true,
+  reviewedBy: true,
+  reviewNote: true,
+  reviewedAt: true,
+  createdAt: true,
+});
+export type InsertDataChangeRequest = z.infer<typeof insertDataChangeRequestSchema>;
+export type DataChangeRequest = typeof dataChangeRequests.$inferSelect;
+
+// ========================================
+// RECORD REVISIONS — Sprint 27
+// ========================================
+export const recordRevisions = pgTable("record_revisions", {
+  id: serial("id").primaryKey(),
+  tableName: varchar("table_name", { length: 100 }).notNull(),
+  recordId: integer("record_id").notNull(),
+  revisionNumber: integer("revision_number").notNull(),
+  fieldChanges: jsonb("field_changes").notNull(),
+  changedBy: varchar("changed_by").references(() => users.id, { onDelete: "set null" }),
+  changeSource: varchar("change_source", { length: 30 }).default("direct"),
+  changeRequestId: integer("change_request_id"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("rr_table_record_idx").on(table.tableName, table.recordId),
+  index("rr_changed_by_idx").on(table.changedBy),
+]);
+
+export const insertRecordRevisionSchema = createInsertSchema(recordRevisions).omit({
+  id: true,
+  createdAt: true,
+});
+export type InsertRecordRevision = z.infer<typeof insertRecordRevisionSchema>;
+export type RecordRevision = typeof recordRevisions.$inferSelect;
+
+// ========================================
+// DATA CHANGE LOG — Sprint 27
+// ========================================
+export const dataChangeLog = pgTable("data_change_log", {
+  id: serial("id").primaryKey(),
+  tableName: varchar("table_name", { length: 100 }).notNull(),
+  recordId: integer("record_id").notNull(),
+  fieldName: varchar("field_name", { length: 100 }).notNull(),
+  oldValue: text("old_value"),
+  newValue: text("new_value"),
+  changedBy: varchar("changed_by").references(() => users.id, { onDelete: "set null" }),
+  changedAt: timestamp("changed_at").defaultNow().notNull(),
+  changeReason: text("change_reason"),
+  changeRequestId: integer("change_request_id"),
+}, (table) => [
+  index("dcl_table_record_idx").on(table.tableName, table.recordId),
+  index("dcl_changed_by_idx").on(table.changedBy),
+  index("dcl_changed_at_idx").on(table.changedAt),
+]);

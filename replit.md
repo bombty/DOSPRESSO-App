@@ -21,7 +21,7 @@ The frontend uses React 18+ with TypeScript and Vite, employing Shadcn/ui (New Y
 - **Offline Resilience**: Service Worker, localStorage-based mutation queue, and API retry mechanisms.
 
 ### Feature Specifications
-- **Authentication & RBAC**: 14-role system with granular permissions and branch-level data filtering.
+- **Authentication & RBAC**: 21-role system with granular permissions, branch-level data filtering, concurrent session limit (max 2), and auto-deactivation of 60+ day inactive users.
 - **Equipment Management**: Lifecycle management, health monitoring, and maintenance scheduling.
 - **Unified Fault System**: Creation, assignment, workflow, escalation, photo documentation, cost tracking, QR-integrated reporting.
 - **SLA Monitoring**: Real-time tracking with automated alerts.
@@ -66,6 +66,9 @@ The frontend uses React 18+ with TypeScript and Vite, employing Shadcn/ui (New Y
 - **Feedback Pattern Analysis**: Weekly job for trend analysis and alerts.
 - **WordPress-Style Data Export/Import**: Full system data export to ZIP, background job processing, and import modes.
 - **Setup Wizard**: 6-step wizard for initial system configuration, including default data seeding.
+- **Data Protection (Sprint 27)**: Soft delete everywhere with audit logging, role-based write restrictions (admin-only user delete, payroll restrictions), data change log with field-level tracking, confirmation dialogs for destructive actions.
+- **Data Lock System**: 13 lock rules for time/status-based record locking (HTTP 423), change request workflow for locked records, record revision history tracking, admin UI for lock rule management.
+- **Proactive Agent Skills (6 new)**: Security Monitor (suspicious activity), Stock Predictor (depletion forecast), Waste Analyzer (station waste tracking), Supplier Tracker (reliability scoring), Burnout Predictor (employee risk), Cost Analyzer (trend analysis).
 
 ## External Dependencies
 - **OpenAI API**: AI-powered vision analysis, chat completions, embeddings, and summary generation.

@@ -350,8 +350,9 @@ export default function SubelerPage() {
           const id = confirmDelete();
           if (id) deleteMutation.mutate(id as number);
         }}
-        title="Silmek istediğinize emin misiniz?"
-        description="Bu şube silinecektir. Bu işlem geri alınamaz."
+        title="Şubeyi silmek istediğinize emin misiniz?"
+        description="Bu şube ve ilişkili tüm veriler silinecektir. Bu işlem geri alınamaz."
+        requireTypeConfirm
       />
     </div>
   );

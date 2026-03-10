@@ -40,6 +40,8 @@ import {
   insertTitleSchema,
   roleTemplates,
   insertRoleTemplateSchema,
+  dataLockRules,
+  recordRevisions,
 } from "@shared/schema";
 import { getAllActionsGroupedByModule, getRoleGrants, upsertPermissionGrant, deletePermissionGrant } from "../permission-service";
 import { generateArticleEmbeddings } from "../ai";
@@ -822,8 +824,8 @@ const router = Router();
   router.delete('/api/admin/users/:id', isAuthenticated, async (req: any, res) => {
     try {
       const user = req.user!;
-      if (!user.role || !isHQRole(user.role as UserRoleType)) {
-        return res.status(403).json({ message: "HQ yetkisi gerekli" });
+      if (user.role !== 'admin') {
+        return res.status(403).json({ message: "Kullanıcı silme yetkisi sadece admin rolüne aittir" });
       }
 
       const { id } = req.params;
@@ -2498,8 +2500,18 @@ const router = Router();
       
       const { id } = req.params;
       
-      await db.delete(announcements)
+      await db.update(announcements)
+        .set({ deletedAt: new Date() })
         .where(eq(announcements.id, parseInt(id)));
+      
+      const ctx = getAuditContext(req);
+      await createAuditEntry(ctx, {
+        eventType: "data.soft_delete",
+        action: "soft_delete",
+        resource: "announcements",
+        resourceId: String(id),
+        details: { softDelete: true },
+      });
       
       res.json({ success: true });
     } catch (error: any) {
@@ -3381,6 +3393,79 @@ const router = Router();
     } catch (error: any) {
       console.error("Assign user role error:", error);
       res.status(500).json({ message: "Rol atanamadı" });
+    }
+  });
+
+  router.get('/api/revisions/:tableName/:recordId', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      if (!isHQRole(user.role as UserRoleType)) {
+        return res.status(403).json({ message: "HQ yetkisi gerekli" });
+      }
+      const { tableName, recordId } = req.params;
+      const revisions = await db.select().from(recordRevisions)
+        .where(and(
+          eq(recordRevisions.tableName, tableName),
+          eq(recordRevisions.recordId, parseInt(recordId))
+        ))
+        .orderBy(desc(recordRevisions.revisionNumber));
+      res.json(revisions);
+    } catch (error: any) {
+      console.error("Get revisions error:", error);
+      res.status(500).json({ message: "Revizyon geçmişi alınamadı" });
+    }
+  });
+
+  router.get('/api/admin/data-lock-rules', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      if (user.role !== 'admin') {
+        return res.status(403).json({ message: "Admin yetkisi gerekli" });
+      }
+      const rules = await db.select().from(dataLockRules).orderBy(asc(dataLockRules.id));
+      res.json(rules);
+    } catch (error: any) {
+      console.error("Get data lock rules error:", error);
+      res.status(500).json({ message: "Kilit kuralları alınamadı" });
+    }
+  });
+
+  router.patch('/api/admin/data-lock-rules/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      if (user.role !== 'admin') {
+        return res.status(403).json({ message: "Admin yetkisi gerekli" });
+      }
+      const { id } = req.params;
+      const updateSchema = z.object({
+        lockAfterDays: z.number().nullable().optional(),
+        lockOnStatus: z.string().nullable().optional(),
+        lockImmediately: z.boolean().optional(),
+        canRequestChange: z.boolean().optional(),
+        isActive: z.boolean().optional(),
+        description: z.string().nullable().optional(),
+      });
+      const data = updateSchema.parse(req.body);
+      const [updated] = await db.update(dataLockRules)
+        .set(data)
+        .where(eq(dataLockRules.id, parseInt(id)))
+        .returning();
+      if (!updated) return res.status(404).json({ message: "Kural bulunamadı" });
+
+      const ctx = getAuditContext(req);
+      await createAuditEntry(ctx, {
+        eventType: "system.config_changed",
+        action: "updated",
+        resource: "data_lock_rules",
+        resourceId: id,
+        details: data,
+      });
+
+      res.json(updated);
+    } catch (error: any) {
+      console.error("Update data lock rule error:", error);
+      if (error.name === 'ZodError') return res.status(400).json({ message: "Geçersiz veri" });
+      res.status(500).json({ message: "Kilit kuralı güncellenemedi" });
     }
   });
 

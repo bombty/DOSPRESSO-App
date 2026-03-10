@@ -3,6 +3,7 @@ import { db } from '../db';
 import { monthlyPayroll, users, branches, positionSalaries } from '@shared/schema';
 import { eq, and, desc, sql } from 'drizzle-orm';
 import { isAuthenticated } from '../localAuth';
+import { checkDataLock } from '../services/data-lock';
 import { calculateBranchPayroll, savePayrollResults, calculatePayroll } from '../lib/payroll-engine';
 import { getMonthClassification } from '../lib/pdks-engine';
 
@@ -277,6 +278,15 @@ router.patch('/api/pdks-payroll/:id/approve', isAuthenticated, async (req: any, 
     }
 
     const id = Number(req.params.id);
+
+    const [existingPayroll] = await db.select({ createdAt: monthlyPayroll.createdAt, status: monthlyPayroll.status }).from(monthlyPayroll).where(eq(monthlyPayroll.id, id)).limit(1);
+    if (existingPayroll) {
+      const lockResult = await checkDataLock('monthly_payroll', existingPayroll.createdAt || new Date(), existingPayroll.status || undefined);
+      if (lockResult.locked) {
+        return res.status(423).json({ error: 'Bu kayıt kilitli', reason: lockResult.reason, canRequestChange: lockResult.canRequestChange });
+      }
+    }
+
     const [updated] = await db.update(monthlyPayroll)
       .set({
         status: 'approved',
