@@ -138,3 +138,26 @@ echo "SELECT COUNT(*) FROM sessions;" | psql
 - **CGO sees individual performance items**: Check agent routing rules (should see summary only)
 - **Supervisor gets wrong person's notification**: Check approval chain uses target person's branchId
 - **Factory kiosk won't start**: Check PIN exists and isn't locked (3 failed attempts = 15min lock)
+
+## Recently Discovered Bug Patterns (Sprint 27+)
+
+### "toFixed is not a function"
+Root cause: API returns string or null, not number. `?.toFixed()` still crashes on strings.
+Fix: ALWAYS use `Number(value ?? 0).toFixed(1)` — never `value?.toFixed(1)`
+
+### "filtered.filter is not a function"
+Root cause: API returns `{data: [...]}` but code expects `[...]`
+Fix: Normalize with `Array.isArray(data) ? data : (data?.data || [])`
+Known APIs that return objects: `/api/faults`, `/api/agent/actions`
+
+### "destroy is not a function" (useEffect)
+Root cause: JSX `return <Component />` inside useEffect body
+Fix: Move all `if (isLoading) return ...` OUTSIDE useEffect, AFTER all hooks
+
+### "Cannot read properties of undefined"
+Root cause: Nested object access without optional chaining
+Fix: Use full chain: `data?.stats?.rating` not `data.stats.rating`
+
+### "Importing a module script failed"
+Root cause: Vite lazy-loaded chunk has a TypeScript/syntax error preventing compilation
+Fix: Check the lazy-imported component file for syntax errors (missing braces, broken JSX)

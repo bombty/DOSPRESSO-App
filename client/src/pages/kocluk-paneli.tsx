@@ -56,9 +56,7 @@ export default function KoclukPaneli() {
   });
 
   if (isLoading) {
-    
-
-  return (
+    return (
       <div className="p-4 space-y-4 max-w-2xl mx-auto" data-testid="kocluk-paneli-loading">
         <Skeleton className="h-8 w-1/3" />
         <Skeleton className="h-32" />
@@ -67,9 +65,17 @@ export default function KoclukPaneli() {
     );
   }
 
-  if (!data) {
+  if (isError) {
     return (
       <div className="p-4 max-w-2xl mx-auto" data-testid="kocluk-paneli-error">
+        <ErrorState onRetry={() => refetch()} />
+      </div>
+    );
+  }
+
+  if (!data) {
+    return (
+      <div className="p-4 max-w-2xl mx-auto" data-testid="kocluk-paneli-empty">
         <Card><CardContent className="p-6 text-center text-muted-foreground">Veriler yüklenemedi</CardContent></Card>
       </div>
     );

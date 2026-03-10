@@ -42,18 +42,57 @@ grep -rn '"Save"\|"Cancel"\|"Delete"\|"Submit"\|"Loading\.\.\."\|"Error"\|"Succe
 
 DOSPRESSO's #1 crash cause: calling methods on undefined API responses.
 
-Check ALL `.toFixed()`, `.map()`, `.filter()`, `.length` calls:
+### 3a. toFixed/toLocaleString — ALWAYS wrap with Number()
 ```bash
-grep -rn "\.toFixed\|\.toLocaleString" client/src/ --include="*.tsx" | grep -v "??\||| 0\|?\.toFixed" | head -10
+grep -rn "\.toFixed\|\.toLocaleString" client/src/ --include="*.tsx" | grep -v "Number(\|?? 0\||| 0\|node_modules" | head -20
 ```
 
-Every API response must be null-guarded:
 ```typescript
 // WRONG: stats.avgRating.toFixed(1)
-// CORRECT: (stats?.avgRating ?? 0).toFixed(1)
+// WRONG: stats?.avgRating?.toFixed(1)  ← still crashes if avgRating is string
+// CORRECT: Number(stats?.avgRating ?? 0).toFixed(1)
 
+// WRONG: salary.toLocaleString()
+// CORRECT: Number(salary ?? 0).toLocaleString('tr-TR')
+```
+
+### 3b. Array methods — API may return object instead of array
+```bash
+grep -rn "\.map(\|\.filter(\|\.length\|\.reduce(" client/src/ --include="*.tsx" | grep "data\.\|result\.\|faults\.\|items\.\|records\." | grep -v "|| \[\]\|??\|Array.isArray\|node_modules" | head -20
+```
+
+```typescript
 // WRONG: data.map(...)
-// CORRECT: (data || []).map(...)
+// WRONG: faults.filter(...)
+
+// CORRECT — handle both array and {data:[]} format:
+const items = Array.isArray(data) ? data : (data?.data || data?.items || []);
+items.map(...)
+```
+
+### 3c. API Response Format Verification (Runtime Check)
+Some DOSPRESSO APIs return `{data: [...]}` not `[...]`. Known cases:
+- `/api/faults` → returns `{data: [...]}`
+- `/api/agent/actions` → returns `{actions: [...]}`
+- `/api/notifications` → may return `{notifications: [...]}`
+
+ALWAYS normalize in useQuery or useMemo:
+```typescript
+const { data: rawFaults } = useQuery({ queryKey: ['/api/faults'] });
+const faults = useMemo(() => 
+  Array.isArray(rawFaults) ? rawFaults : (rawFaults?.data || []),
+  [rawFaults]
+);
+```
+
+### 3d. PostgreSQL COUNT() returns string — wrap with Number()
+```bash
+grep -rn "reduce\|\.total\|\.count" client/src/ --include="*.tsx" | grep -v "Number(\|parseInt\|node_modules" | grep "total\|count" | head -10
+```
+
+```typescript
+// WRONG: data.reduce((s, o) => s + o.total, 0)  → "035" string concat
+// CORRECT: data.reduce((s, o) => s + Number(o.total), 0)  → 8
 ```
 
 ## 4. Drizzle ORM Patterns
@@ -105,7 +144,55 @@ if (isLoading) return <LoadingState />;
 if (isError) return <ErrorState onRetry={() => refetch()} />;
 ```
 
-## 9. Radix UI Package Safety
+## 9. React Hooks Safety
+
+### 9a. useEffect must NOT contain JSX returns
+```bash
+grep -rn "useEffect" client/src/ --include="*.tsx" -A 30 | grep -B 3 "return.*<\|return.*Loading\|return.*Error\|return.*null" | grep -v "cleanup\|clearInterval\|clearTimeout\|removeEventListener" | head -10
+```
+
+```typescript
+// WRONG — JSX inside useEffect:
+useEffect(() => {
+  if (isLoading) return <LoadingState />;  // CRASH: "destroy is not a function"
+}, []);
+
+// CORRECT — early returns BEFORE hooks, or AFTER all hooks:
+if (isLoading) return <LoadingState />;
+useEffect(() => { ... }, []);
+```
+
+### 9b. Hooks must come BEFORE early returns
+```bash
+# Find files where isLoading/isError return appears BEFORE a useQuery/useEffect
+for f in $(find client/src/pages -name "*.tsx"); do
+  EARLY=$(grep -n "return.*Loading\|return.*Error\|return.*null" "$f" | head -1 | cut -d: -f1)
+  HOOK=$(grep -n "useQuery\|useEffect\|useMemo\|useState" "$f" | tail -1 | cut -d: -f1)
+  if [ -n "$EARLY" ] && [ -n "$HOOK" ] && [ "$EARLY" -lt "$HOOK" ]; then
+    echo "⚠️ $f: early return at line $EARLY, hook at line $HOOK"
+  fi
+done 2>/dev/null | head -10
+```
+
+## 10. Runtime API Format Testing
+
+CRITICAL: After every sprint, verify API response formats match frontend expectations.
+
+```bash
+# Login and test actual API responses
+COOKIE=$(curl -s -c - -X POST http://localhost:5000/api/login \
+  -H "Content-Type: application/json" \
+  -d '{"username":"adminhq","password":"TestPass123!"}' | grep connect.sid | awk '{print $NF}')
+
+for EP in "/api/faults" "/api/equipment" "/api/notifications" "/api/agent/actions?status=pending" "/api/feedback?branchId=5"; do
+  RESP=$(curl -s -b "connect.sid=$COOKIE" "http://localhost:5000$EP" | head -c 50)
+  if echo "$RESP" | grep -q '^\['; then echo "$EP → array (OK)";
+  elif echo "$RESP" | grep -q '^{'; then echo "$EP → OBJECT (check frontend handles this!)";
+  fi
+done
+```
+
+## 11. Radix UI Package Safety
 
 NEVER install Radix packages with `^` caret. Pin exact versions.
 After ANY npm install, check:
@@ -114,11 +201,11 @@ find node_modules/@radix-ui -mindepth 2 -name "node_modules" -type d 2>/dev/null
 ```
 Must return empty. If nested packages found → downgrade the new package.
 
-## 10. Service Worker
+## 12. Service Worker
 
 After any frontend changes, bump the cache version in `client/public/service-worker.js`.
 
-## 11. Agent System Health
+## 13. Agent System Health
 
 Verify background jobs still running:
 ```bash

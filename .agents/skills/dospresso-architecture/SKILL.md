@@ -110,3 +110,18 @@ primary_role gets notification + task → escalation after N days → CGO sees s
 - Timestamps: always with timezone
 - Soft delete: isActive boolean + deletedAt timestamp
 - IDs: serial integer (not UUID, except users table which uses string IDs)
+
+## Sprint 27 Data Protection Tables
+- `data_lock_rules` — 13 time-based lock rules per table
+- `data_change_requests` — change request workflow (pending → approved/rejected)
+- `record_revisions` — immutable revision history for all changes
+- `data_change_log` — field-level change tracking
+
+## API Response Format Variations
+IMPORTANT: Not all APIs return arrays. Known object-wrapped responses:
+- `/api/faults` → `{data: [...]}`
+- `/api/agent/actions` → `{actions: [...]}`
+- `/api/admin/dobody-tasks` → `{tasks: [...]}`
+- Most other endpoints → direct array `[...]`
+
+Frontend MUST normalize: `Array.isArray(data) ? data : (data?.data || data?.actions || data?.tasks || data?.items || [])`
