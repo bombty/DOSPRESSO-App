@@ -292,7 +292,7 @@ async function checkEventTriggers(): Promise<void> {
       .select({ cnt: sql<number>`count(*)::int` })
       .from(customerFeedback)
       .where(and(
-        sql`${customerFeedback.responseText} IS NULL`,
+        isNull(customerFeedback.reviewedAt),
         lte(customerFeedback.createdAt, feedbackSlaThreshold),
         gte(customerFeedback.createdAt, new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000))
       ));

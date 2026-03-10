@@ -70,6 +70,13 @@ The frontend uses React 18+ with TypeScript and Vite, employing Shadcn/ui (New Y
 - **Data Lock System**: 13 lock rules for time/status-based record locking (HTTP 423), change request workflow for locked records, record revision history tracking, admin UI for lock rule management.
 - **Proactive Agent Skills (6 new)**: Security Monitor (suspicious activity), Stock Predictor (depletion forecast), Waste Analyzer (station waste tracking), Supplier Tracker (reliability scoring), Burnout Predictor (employee risk), Cost Analyzer (trend analysis).
 
+## Custom Agent Skills (`.agents/skills/`)
+- **dospresso-quality-gate**: 11-point quality control checklist run after every sprint (auth, Turkish UI, null safety, Drizzle patterns, data lock, soft delete, dark mode, error states, Radix safety, SW bump, agent health).
+- **dospresso-architecture**: Full architecture reference — tech stack, project structure, 21 roles, API conventions, business logic chains, module connections, DB naming.
+- **dospresso-debug-guide**: Step-by-step debug procedures for common issues — null crashes, auth chain, TanStack cache, Radix crashes, data lock 423s, role-specific tips.
+- **dospresso-sprint-planner**: Sprint planning rules — task sizing (S/M/L/XL), priority ordering, prompt template, post-sprint checklist, common pitfalls, module reference table.
+- **dospresso-radix-safety**: Radix UI package safety — pinned versions, nested package detection, override rules, recovery procedure. Prevents the dispatcher.useState crash (occurred 3 times).
+
 ## External Dependencies
 - **OpenAI API**: AI-powered vision analysis, chat completions, embeddings, and summary generation.
 - **Replit Auth**: User authentication via OpenID Connect.
