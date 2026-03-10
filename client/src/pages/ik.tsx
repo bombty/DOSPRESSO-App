@@ -1515,13 +1515,13 @@ export default function IKPage() {
                       <Card className="hover-elevate cursor-pointer" data-testid="stat-total-hours">
                         <CardContent className="p-3 space-y-1 text-center">
                           <p className="text-xs text-muted-foreground">Toplam Saat</p>
-                          <p className="text-xl sm:text-2xl font-bold">{attendanceTotals.totalWorkedHours.toFixed(1)}</p>
+                          <p className="text-xl sm:text-2xl font-bold">{(attendanceTotals.totalWorkedHours ?? 0).toFixed(1)}</p>
                         </CardContent>
                       </Card>
                       <Card className="hover-elevate cursor-pointer" data-testid="stat-overtime-hours">
                         <CardContent className="p-3 space-y-1 text-center">
                           <p className="text-xs text-muted-foreground">Fazla Mesai</p>
-                          <p className="text-xl sm:text-2xl font-bold text-orange-600">{attendanceTotals.totalOvertimeHours.toFixed(1)}s</p>
+                          <p className="text-xl sm:text-2xl font-bold text-orange-600">{(attendanceTotals.totalOvertimeHours ?? 0).toFixed(1)}s</p>
                         </CardContent>
                       </Card>
                       <Card className="hover-elevate cursor-pointer" data-testid="stat-late-arrivals">
@@ -1586,11 +1586,11 @@ export default function IKPage() {
                                 <Badge variant="secondary">{summary.totalShifts}</Badge>
                               </TableCell>
                               <TableCell className="text-right font-medium">
-                                {summary.totalWorkedHours.toFixed(1)}s
+                                {(summary.totalWorkedHours ?? 0).toFixed(1)}s
                               </TableCell>
                               <TableCell className="text-right">
                                 {summary.overtimeHours > 0 ? (
-                                  <Badge variant="default" className="bg-orange-600">{summary.overtimeHours.toFixed(1)}s</Badge>
+                                  <Badge variant="default" className="bg-orange-600">{(summary.overtimeHours ?? 0).toFixed(1)}s</Badge>
                                 ) : (
                                   <span className="text-muted-foreground">-</span>
                                 )}

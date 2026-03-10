@@ -316,16 +316,13 @@ export default function PersonelProfilPage() {
   const [academyTimeout, setAcademyTimeout] = useState(false);
 
   useEffect(() => {
-    if (profile?.performanceScore !== null && profile?.performanceScore !== undefined) return;
-    if (profile?.attendanceRate !== null && profile?.attendanceRate !== undefined) return;
+    const hasPerformance = profile?.performanceScore !== null && profile?.performanceScore !== undefined;
+    const hasAttendance = profile?.attendanceRate !== null && profile?.attendanceRate !== undefined;
+    if (hasPerformance && hasAttendance) return;
     const timer = setTimeout(() => setAcademyTimeout(true), 5000);
-
-  if (isLoading) return <LoadingState />;
-  if (isError) return <ErrorState onRetry={refetch} />;
-
-
-  return () => clearTimeout(timer);
+    return () => clearTimeout(timer);
   }, [profile?.performanceScore, profile?.attendanceRate]);
+
   const { data: aiRecs, isLoading: isLoadingAiRecs, error: aiRecsError } = useQuery<AIRecommendations>({
     queryKey: ['/api/personnel', id, 'ai-recommendations'],
     queryFn: async () => {
@@ -388,6 +385,14 @@ export default function PersonelProfilPage() {
     return (
       <div className="flex flex-col gap-3 sm:gap-4 p-3">
         <ListSkeleton count={4} variant="card" showHeader />
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full gap-3 p-3">
+        <ErrorState onRetry={refetch} />
       </div>
     );
   }
@@ -515,7 +520,7 @@ export default function PersonelProfilPage() {
 
       {/* Performance Overview Card */}
       {(() => {
-        const overall = perfSummary?.overallScore ?? performanceScore;
+        const overall = Number(perfSummary?.overallScore ?? performanceScore) || 0;
         const scoreColor = overall >= 75 ? "text-emerald-500" : overall >= 65 ? "text-amber-500" : "text-red-500";
         const ringColor = overall >= 75 ? "stroke-emerald-500" : overall >= 65 ? "stroke-amber-500" : "stroke-red-500";
         const isHQProfile = perfSummary?.isHQ ?? false;
@@ -583,7 +588,7 @@ export default function PersonelProfilPage() {
                           <span className="font-medium">{m.label}</span>
                           {m.weight && <span className="text-xs text-muted-foreground">({m.weight})</span>}
                         </div>
-                        <span className={`text-sm font-semibold ${mColor}`}>{m.value.toFixed(0)}%</span>
+                        <span className={`text-sm font-semibold ${mColor}`}>{(Number(m.value) || 0).toFixed(0)}%</span>
                       </div>
                       <Progress value={m.value} className="h-2" />
                     </div>
@@ -989,21 +994,21 @@ export default function PersonelProfilPage() {
                           <div>
                             <p className="text-sm text-muted-foreground">Temel Maaş</p>
                             <p className="text-base font-medium" data-testid="text-base-salary">
-                              {leaveSalary.salaryScale.baseSalary.toLocaleString('tr-TR')} ₺
+                              {(leaveSalary.salaryScale.baseSalary ?? 0).toLocaleString('tr-TR')} ₺
                             </p>
                           </div>
                           <div>
                             <p className="text-sm text-muted-foreground">Kasa Primi</p>
                             <p className="text-base font-medium" data-testid="text-cash-register-bonus">
-                              {leaveSalary.salaryScale.cashRegisterBonus > 0
-                                ? `${leaveSalary.salaryScale.cashRegisterBonus.toLocaleString('tr-TR')} ₺`
+                              {(leaveSalary.salaryScale.cashRegisterBonus ?? 0) > 0
+                                ? `${(leaveSalary.salaryScale.cashRegisterBonus ?? 0).toLocaleString('tr-TR')} ₺`
                                 : '-'}
                             </p>
                           </div>
                           <div>
                             <p className="text-sm text-muted-foreground">Performans Primi</p>
                             <p className="text-base font-medium" data-testid="text-performance-bonus">
-                              {leaveSalary.salaryScale.performanceBonus.toLocaleString('tr-TR')} ₺
+                              {(leaveSalary.salaryScale.performanceBonus ?? 0).toLocaleString('tr-TR')} ₺
                               <span className="text-xs text-muted-foreground ml-1">
                                 ({leaveSalary.salaryScale.bonusCalculationType === 'per_day' ? 'günlük' : 'aylık'})
                               </span>
@@ -1022,7 +1027,7 @@ export default function PersonelProfilPage() {
                               <p className="text-sm text-muted-foreground">Yemek Hak Edişi</p>
                               <p className="text-base font-medium" data-testid="text-meal-allowance">
                                 {leaveSalary.monthlyMealAllowance > 0
-                                  ? `${leaveSalary.monthlyMealAllowance.toLocaleString('tr-TR')} ₺`
+                                  ? `${(leaveSalary.monthlyMealAllowance ?? 0).toLocaleString('tr-TR')} ₺`
                                   : '-'}
                               </p>
                             </div>
@@ -1031,7 +1036,7 @@ export default function PersonelProfilPage() {
                             <p className="text-sm text-muted-foreground">Ücretsiz İzin Kesintisi</p>
                             <p className="text-base font-medium" data-testid="text-unpaid-deduction">
                               {leaveSalary.unpaidLeaveDays > 0
-                                ? `-${Math.round((leaveSalary.salaryScale.baseSalary / 30) * leaveSalary.unpaidLeaveDays).toLocaleString('tr-TR')} ₺`
+                                ? `-${Math.round(((leaveSalary.salaryScale.baseSalary ?? 0) / 30) * (leaveSalary.unpaidLeaveDays ?? 0)).toLocaleString('tr-TR')} ₺`
                                 : '0 ₺'}
                             </p>
                           </div>
@@ -1047,7 +1052,7 @@ export default function PersonelProfilPage() {
                             <p className="text-sm text-muted-foreground">Fazla Mesai</p>
                             <p className="text-base font-medium" data-testid="text-overtime">
                               {leaveSalary.overtimeHoursThisMonth > 0
-                                ? <>{leaveSalary.overtimeHoursThisMonth} saat | <span className="text-green-600 dark:text-green-400">+{leaveSalary.overtimeAmountThisMonth.toLocaleString('tr-TR')} ₺</span></>
+                                ? <>{leaveSalary.overtimeHoursThisMonth} saat | <span className="text-green-600 dark:text-green-400">+{(leaveSalary.overtimeAmountThisMonth ?? 0).toLocaleString('tr-TR')} ₺</span></>
                                 : '0 saat'}
                             </p>
                           </div>
@@ -1055,7 +1060,7 @@ export default function PersonelProfilPage() {
                             <p className="text-sm text-muted-foreground">Eksik Gün</p>
                             <p className="text-base font-medium" data-testid="text-missing-days">
                               {leaveSalary.missingDaysThisMonth > 0
-                                ? <>{leaveSalary.missingDaysThisMonth} gün | <span className="text-destructive">-{leaveSalary.missingDayDeduction.toLocaleString('tr-TR')} ₺</span></>
+                                ? <>{leaveSalary.missingDaysThisMonth} gün | <span className="text-destructive">-{(leaveSalary.missingDayDeduction ?? 0).toLocaleString('tr-TR')} ₺</span></>
                                 : '0 gün'}
                             </p>
                           </div>
@@ -1065,7 +1070,7 @@ export default function PersonelProfilPage() {
                           <div className="flex items-center justify-between gap-2">
                             <span className="text-sm font-bold">Tahmini Net Maaş</span>
                             <span className="text-base font-bold" data-testid="text-net-estimated-salary">
-                              {leaveSalary.netEstimatedSalary.toLocaleString('tr-TR')} ₺
+                              {(leaveSalary.netEstimatedSalary ?? 0).toLocaleString('tr-TR')} ₺
                             </span>
                           </div>
                         </div>
@@ -1076,7 +1081,7 @@ export default function PersonelProfilPage() {
                           <div>
                             <p className="text-sm text-muted-foreground">Temel Maaş</p>
                             <p className="text-base font-medium" data-testid="text-base-salary">
-                              {leaveSalary.baseSalary.toLocaleString('tr-TR')} ₺
+                              {(leaveSalary.baseSalary ?? 0).toLocaleString('tr-TR')} ₺
                             </p>
                           </div>
                           <div>
@@ -1091,7 +1096,7 @@ export default function PersonelProfilPage() {
                             <p className="text-sm text-muted-foreground">Fazla Mesai</p>
                             <p className="text-base font-medium" data-testid="text-overtime-fallback">
                               {leaveSalary.overtimeHoursThisMonth > 0
-                                ? <>{leaveSalary.overtimeHoursThisMonth} saat | <span className="text-green-600 dark:text-green-400">+{leaveSalary.overtimeAmountThisMonth.toLocaleString('tr-TR')} ₺</span></>
+                                ? <>{leaveSalary.overtimeHoursThisMonth} saat | <span className="text-green-600 dark:text-green-400">+{(leaveSalary.overtimeAmountThisMonth ?? 0).toLocaleString('tr-TR')} ₺</span></>
                                 : '0 saat'}
                             </p>
                           </div>
@@ -1099,7 +1104,7 @@ export default function PersonelProfilPage() {
                             <p className="text-sm text-muted-foreground">Eksik Gün</p>
                             <p className="text-base font-medium" data-testid="text-missing-days-fallback">
                               {leaveSalary.missingDaysThisMonth > 0
-                                ? <>{leaveSalary.missingDaysThisMonth} gün | <span className="text-destructive">-{leaveSalary.missingDayDeduction.toLocaleString('tr-TR')} ₺</span></>
+                                ? <>{leaveSalary.missingDaysThisMonth} gün | <span className="text-destructive">-{(leaveSalary.missingDayDeduction ?? 0).toLocaleString('tr-TR')} ₺</span></>
                                 : '0 gün'}
                             </p>
                           </div>
@@ -1109,7 +1114,7 @@ export default function PersonelProfilPage() {
                           <div className="flex items-center justify-between gap-2">
                             <span className="text-sm font-bold">Tahmini Net Maaş</span>
                             <span className="text-base font-bold" data-testid="text-net-estimated-salary-fallback">
-                              {leaveSalary.netEstimatedSalary.toLocaleString('tr-TR')} ₺
+                              {(leaveSalary.netEstimatedSalary ?? 0).toLocaleString('tr-TR')} ₺
                             </span>
                           </div>
                         </div>
@@ -1937,7 +1942,7 @@ export default function PersonelProfilPage() {
                             </div>
                             <div className="flex items-center gap-2">
                               <span className={`font-bold ${evColor}`} data-testid={`eval-score-${ev.id}`}>
-                                {ev.overallScore.toFixed(0)}/100
+                                {(Number(ev.overallScore) || 0).toFixed(0)}/100
                               </span>
                               <span className="text-xs text-muted-foreground">
                                 {ev.createdAt ? format(new Date(ev.createdAt), "dd MMM yyyy", { locale: tr }) : ""}

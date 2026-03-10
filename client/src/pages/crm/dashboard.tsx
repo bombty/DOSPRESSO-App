@@ -187,9 +187,9 @@ export default function CRMDashboard() {
                     {kpis.todayFeedbackCount}
                   </p>
                   <div className="flex items-center gap-1 mt-1">
-                    <StarRating rating={Math.round(kpis.avgRating)} />
+                    <StarRating rating={Math.round(kpis.avgRating ?? 0)} />
                     <span className="text-sm font-medium" data-testid="value-avg-rating">
-                      {kpis.avgRating.toFixed(1)}
+                      {(Number(kpis.avgRating) || 0).toFixed(1)}
                     </span>
                   </div>
                 </div>

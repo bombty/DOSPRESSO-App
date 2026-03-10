@@ -159,8 +159,8 @@ export default function CRMSLATracking() {
                       <td className="py-2.5" data-testid={`text-hours-${item.id}`}>
                         {item.hoursRemaining !== null
                           ? item.hoursRemaining < 0
-                            ? <span className="text-destructive font-medium">{Math.abs(item.hoursRemaining).toFixed(1)}s aşım</span>
-                            : <span>{item.hoursRemaining.toFixed(1)}s</span>
+                            ? <span className="text-destructive font-medium">{Math.abs(item.hoursRemaining ?? 0).toFixed(1)}s aşım</span>
+                            : <span>{(item.hoursRemaining ?? 0).toFixed(1)}s</span>
                           : "-"}
                       </td>
                     </tr>
@@ -209,7 +209,7 @@ export default function CRMSLATracking() {
                         </span>
                       </td>
                       <td className="py-2.5 hidden sm:table-cell" data-testid={`text-perf-avghours-${bp.branchId}`}>
-                        {bp.avgResponseHours !== null ? bp.avgResponseHours.toFixed(1) : "-"}
+                        {bp.avgResponseHours !== null ? (bp.avgResponseHours ?? 0).toFixed(1) : "-"}
                       </td>
                     </tr>
                   ))}

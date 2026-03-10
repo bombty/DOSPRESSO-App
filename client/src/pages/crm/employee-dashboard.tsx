@@ -200,7 +200,7 @@ export default function EmployeeDashboard() {
             </CardTitle>
           </CardHeader>
           <CardContent className="px-3 pb-3">
-            <div className="text-lg font-bold text-purple-600">{performance.taskRating.toFixed(1)}</div>
+            <div className="text-lg font-bold text-purple-600">{(performance.taskRating ?? 0).toFixed(1)}</div>
             <p className="text-[10px] text-muted-foreground">
               Görev değerlendirmesi
             </p>

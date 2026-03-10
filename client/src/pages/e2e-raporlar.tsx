@@ -144,9 +144,15 @@ export default function E2EReportsPage() {
     queryKey: ["/api/equipment"],
   });
 
-  const { data: faults = [], isLoading: isLoadingFaults, isError: isErrorFaults } = useQuery<Fault[]>({
+  const { data: faultsResponse, isLoading: isLoadingFaults, isError: isErrorFaults } = useQuery<{ data: Fault[] } | Fault[]>({
     queryKey: ["/api/faults"],
   });
+  const faults: Fault[] = useMemo(() => {
+    if (!faultsResponse) return [];
+    if (Array.isArray(faultsResponse)) return faultsResponse;
+    if (Array.isArray((faultsResponse as any).data)) return (faultsResponse as any).data;
+    return [];
+  }, [faultsResponse]);
 
   const performanceQueryKey = useMemo(() => {
     const params = new URLSearchParams();

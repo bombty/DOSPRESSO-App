@@ -575,7 +575,7 @@ export default function EmployeeOfMonthPage() {
                             <div className="text-right">
                               <p className="text-2xl font-bold">{yearlyAggregate[0].awards}</p>
                               <p className="text-xs text-muted-foreground">kez Ayın Elemanı</p>
-                              <p className="text-sm font-medium mt-1">Ort: {yearlyAggregate[0].avgScore.toFixed(1)}</p>
+                              <p className="text-sm font-medium mt-1">Ort: {(yearlyAggregate[0].avgScore ?? 0).toFixed(1)}</p>
                             </div>
                           </div>
                         </CardContent>
@@ -613,8 +613,8 @@ export default function EmployeeOfMonthPage() {
                                 {emp.awards}
                               </Badge>
                             </TableCell>
-                            <TableCell className="text-center text-sm">{emp.totalScore.toFixed(1)}</TableCell>
-                            <TableCell className="text-right font-bold">{emp.avgScore.toFixed(1)}</TableCell>
+                            <TableCell className="text-center text-sm">{(emp.totalScore ?? 0).toFixed(1)}</TableCell>
+                            <TableCell className="text-right font-bold">{(emp.avgScore ?? 0).toFixed(1)}</TableCell>
                           </TableRow>
                         ))}
                       </TableBody>
@@ -678,7 +678,7 @@ export default function EmployeeOfMonthPage() {
                     <div className="text-center p-3 rounded-md bg-muted/30">
                       <Star className="mx-auto h-5 w-5 text-purple-500 mb-1" />
                       <p className="text-xl font-bold">
-                        {yearlyAggregate.length > 0 ? yearlyAggregate[0].avgScore.toFixed(1) : '-'}
+                        {yearlyAggregate.length > 0 ? (yearlyAggregate[0].avgScore ?? 0).toFixed(1) : '-'}
                       </p>
                       <p className="text-xs text-muted-foreground">En Yüksek Ort. Puan</p>
                     </div>

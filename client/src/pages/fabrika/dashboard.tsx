@@ -326,7 +326,7 @@ export default function FabrikaDashboard() {
                     <p className="text-xs text-muted-foreground">Hammadde</p>
                   </div>
                   <div className="text-center">
-                    <p className="text-sm font-bold text-green-600" data-testid="text-cost-margin">%{costStats.avgProfitMargin.toFixed(1)}</p>
+                    <p className="text-sm font-bold text-green-600" data-testid="text-cost-margin">%{(costStats.avgProfitMargin ?? 0).toFixed(1)}</p>
                     <p className="text-xs text-muted-foreground">Ort. Kar Marjı</p>
                   </div>
                   <div className="text-center">
@@ -424,7 +424,7 @@ export default function FabrikaDashboard() {
                     {qualityOverview.todayChecked > 0 && (
                       <div className="flex items-center gap-2 mt-2">
                         <Progress value={qualityOverview.qualityRate} className="h-2 flex-1" />
-                        <span className="text-xs font-medium text-muted-foreground">%{qualityOverview.qualityRate.toFixed(0)}</span>
+                        <span className="text-xs font-medium text-muted-foreground">%{(qualityOverview.qualityRate ?? 0).toFixed(0)}</span>
                       </div>
                     )}
                     <div className="mt-2 flex justify-end">

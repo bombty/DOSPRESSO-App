@@ -430,7 +430,7 @@ export default function MisafirMemnuniyeti() {
         />
         <StatCard
           title="Ortalama Puan"
-          value={stats?.totalCount === 0 ? '-' : (stats?.avgRating?.toFixed(1) || '-')}
+          value={stats?.totalCount === 0 ? '-' : (Number(stats?.avgRating ?? 0).toFixed(1) || '-')}
           icon={Star}
           color="bg-yellow-500"
           subtitle={stats?.totalCount === 0 ? 'Henüz değerlendirme yok' : `(${stats?.totalCount || 0} değerlendirme)`}

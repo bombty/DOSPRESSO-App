@@ -940,7 +940,7 @@ export default function FabrikaPerformans() {
                         </div>
                         <div className="text-right">
                           <p className="font-semibold">{reason.count}</p>
-                          <p className="text-sm text-muted-foreground">%{reason.percentage.toFixed(1)}</p>
+                          <p className="text-sm text-muted-foreground">%{(reason.percentage ?? 0).toFixed(1)}</p>
                         </div>
                       </div>
                     ))}
@@ -1048,16 +1048,16 @@ export default function FabrikaPerformans() {
                         return (
                           <TableRow key={w.userId} data-testid={`row-score-update-${w.userId}`}>
                             <TableCell className="font-medium">{w.firstName} {w.lastName}</TableCell>
-                            <TableCell>{w.oldScore.toFixed(0)}</TableCell>
-                            <TableCell className="font-semibold">{w.newScore.toFixed(0)}</TableCell>
+                            <TableCell>{(w.oldScore ?? 0).toFixed(0)}</TableCell>
+                            <TableCell className="font-semibold">{(w.newScore ?? 0).toFixed(0)}</TableCell>
                             <TableCell>
                               {diff > 0 ? (
                                 <Badge className="bg-green-600 text-white">
-                                  <ArrowUpRight className="h-3 w-3 mr-1" />+{diff.toFixed(0)}
+                                  <ArrowUpRight className="h-3 w-3 mr-1" />+{(diff ?? 0).toFixed(0)}
                                 </Badge>
                               ) : diff < 0 ? (
                                 <Badge className="bg-red-600 text-white">
-                                  <ArrowDownRight className="h-3 w-3 mr-1" />{diff.toFixed(0)}
+                                  <ArrowDownRight className="h-3 w-3 mr-1" />{(diff ?? 0).toFixed(0)}
                                 </Badge>
                               ) : (
                                 <Badge variant="secondary">
