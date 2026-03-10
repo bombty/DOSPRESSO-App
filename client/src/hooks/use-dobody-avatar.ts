@@ -9,6 +9,8 @@ interface DobodyAvatarData {
   label: string | null;
 }
 
+const sessionAvatarCache = new Map<string, string>();
+
 export function useDobodyAvatar(category?: string): string | null {
   const { user } = useAuth();
 
@@ -21,6 +23,12 @@ export function useDobodyAvatar(category?: string): string | null {
   const avatarUrl = useMemo(() => {
     if (!avatars || avatars.length === 0) return null;
 
+    const cacheKey = category || "__default__";
+    const cached = sessionAvatarCache.get(cacheKey);
+    if (cached && avatars.some((a) => a.imageUrl === cached)) {
+      return cached;
+    }
+
     let filtered = avatars;
     if (category && category !== "all") {
       filtered = avatars.filter((a) => a.category === category);
@@ -28,7 +36,9 @@ export function useDobodyAvatar(category?: string): string | null {
     }
 
     const randomIndex = Math.floor(Math.random() * filtered.length);
-    return filtered[randomIndex].imageUrl;
+    const selected = filtered[randomIndex].imageUrl;
+    sessionAvatarCache.set(cacheKey, selected);
+    return selected;
   }, [avatars, category]);
 
   return avatarUrl;
