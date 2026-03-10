@@ -1103,7 +1103,7 @@ export default function MalKabul() {
             </div>
             
             <div className="space-y-2">
-              <Label>Kalite Puani (1-5)</Label>
+              <Label>Kalite Puanı (1-5)</Label>
               <div className="flex items-center gap-1">
                 {[1, 2, 3, 4, 5].map((score) => (
                   <Button

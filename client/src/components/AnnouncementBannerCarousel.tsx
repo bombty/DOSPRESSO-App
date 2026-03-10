@@ -194,7 +194,7 @@ export function AnnouncementBannerCarousel() {
                 <button
                   key={idx}
                   className={`w-2 h-2 rounded-full transition-colors ${
-                    idx === currentIndex ? "bg-white" : "bg-white/40"
+                    idx === currentIndex ? "bg-white dark:bg-white" : "bg-white/40"
                   }`}
                   onClick={(e) => { e.preventDefault(); e.stopPropagation(); setCurrentIndex(idx); }}
                   data-testid={`button-banner-dot-${idx}`}

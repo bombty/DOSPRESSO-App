@@ -94,7 +94,7 @@ export default function SubeNFCDetay() {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3 flex flex-col items-center">
-          <div className="bg-white p-4 rounded-md">
+          <div className="bg-white dark:bg-white p-4 rounded-md">
             <QRCodeSVG
               value={nfcUrl}
               size={200}

@@ -135,7 +135,7 @@ export function StarRatingDisplay({
       <StarRating value={rating} maxValue={maxRating} readonly size={size} />
       {showLabel && (
         <span className="text-sm text-muted-foreground">
-          ({rating.toFixed(1)}/5)
+          ({(rating ?? 0).toFixed(1)}/5)
         </span>
       )}
     </div>

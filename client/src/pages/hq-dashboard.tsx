@@ -1381,14 +1381,14 @@ function HQEscalatedFaults({ faults, onNavigate }: { faults: any[]; onNavigate: 
     doc.text("DOSPRESSO", pw / 2, 20, { align: "center" });
     doc.setFontSize(14);
     doc.setTextColor(100, 100, 100);
-    doc.text(sanitizeTurkishPDF("Ariza Raporu - Merkez Servis"), pw / 2, 28, { align: "center" });
+    doc.text(sanitizeTurkishPDF("Arıza Raporu - Merkez Servis"), pw / 2, 28, { align: "center" });
     doc.setDrawColor(139, 69, 19);
     doc.setLineWidth(0.5);
     doc.line(14, 35, pw - 14, 35);
     let y = 45;
     doc.setFontSize(16);
     doc.setTextColor(0, 0, 0);
-    doc.text(sanitizeTurkishPDF(`Ariza #${fault.id}`), 14, y); y += 10;
+    doc.text(sanitizeTurkishPDF(`Arıza #${fault.id}`), 14, y); y += 10;
     doc.setFontSize(11);
     doc.setTextColor(80, 80, 80);
     const addField = (l: string, v: string) => {

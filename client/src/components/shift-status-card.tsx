@@ -96,7 +96,7 @@ export function ShiftStatusCard() {
         {hoursWorked > 0 && (
           <div className="flex items-center justify-between text-xs p-2 bg-success/10 rounded border border-success/20">
             <span className="text-muted-foreground">Çalışma Süresi:</span>
-            <span className="font-bold text-success">{hoursWorked.toFixed(1)} saat</span>
+            <span className="font-bold text-success">{(hoursWorked ?? 0).toFixed(1)} saat</span>
           </div>
         )}
 

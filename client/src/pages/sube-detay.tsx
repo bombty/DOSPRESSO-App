@@ -869,7 +869,7 @@ export default function SubeDetayPage() {
                 <CardContent className="w-full space-y-2 sm:space-y-3">
                   {branch.qrCodeToken ? (
                     <div className="w-full space-y-2 sm:space-y-3">
-                      <div className="flex flex-col items-center p-3 bg-white rounded-lg">
+                      <div className="flex flex-col items-center p-3 bg-white dark:bg-white rounded-lg">
                         <QRCodeSVG 
                           id="branch-qr-code"
                           value={qrValue} 
@@ -971,7 +971,7 @@ export default function SubeDetayPage() {
                 <CardContent className="w-full space-y-2 sm:space-y-3">
                   {feedbackQrData?.qrCode ? (
                     <div className="w-full space-y-2 sm:space-y-3">
-                      <div className="flex flex-col items-center p-3 bg-white rounded-lg">
+                      <div className="flex flex-col items-center p-3 bg-white dark:bg-white rounded-lg">
                         <img 
                           src={feedbackQrData.qrCode} 
                           alt="Müşteri Geri Bildirim QR Kodu"

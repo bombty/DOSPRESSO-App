@@ -639,7 +639,7 @@ export default function PersonelDetay() {
                     Aktif
                   </Badge>
                 ) : (
-                  <Badge variant="outline" className="bg-background text-foreground border-gray-200 text-xs h-6">
+                  <Badge variant="outline" className="bg-background text-foreground border-border text-xs h-6">
                     <AlertCircle className="h-3 w-3 mr-1" />
                     Pasif
                   </Badge>

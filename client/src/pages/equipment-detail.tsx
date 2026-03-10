@@ -1351,7 +1351,7 @@ export default function EquipmentDetail() {
             <CardContent className="flex flex-col items-center gap-2 sm:gap-3">
               {equipment.qrCodeUrl ? (
                 <>
-                  <div className="bg-white p-6 rounded-lg border" data-testid="qr-code-container">
+                  <div className="bg-white dark:bg-white p-6 rounded-lg border" data-testid="qr-code-container">
                     <img 
                       src={equipment.qrCodeUrl} 
                       alt="Ekipman QR Kodu" 

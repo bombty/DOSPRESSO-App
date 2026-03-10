@@ -297,18 +297,18 @@ export function FaultReportDialog({ equipment, isOpen, onOpenChange }: FaultRepo
     const { doc, yPos: startY } = await createPDFWithHeader({
       title: 'ARIZA RAPORU',
       subtitle: `Rapor No: #${createdFault.id}`,
-      branchName: branchInfo?.name || 'Sube',
+      branchName: branchInfo?.name || 'Şube',
       reportDate: new Date(createdFault.createdAt || Date.now()),
     });
 
     const pw = doc.internal.pageSize.getWidth();
     let y = startY;
 
-    y = addSection(doc, 'Sube Bilgileri', y);
-    y = addKeyValue(doc, 'Sube', sanitizeText(branchInfo?.name || '-'), y);
+    y = addSection(doc, 'Şube Bilgileri', y);
+    y = addKeyValue(doc, 'Şube', sanitizeText(branchInfo?.name || '-'), y);
     y = addKeyValue(doc, 'Adres', sanitizeText(branchInfo?.address || '-'), y);
     y = addKeyValue(doc, 'Telefon', branchInfo?.phoneNumber || '-', y);
-    y = addKeyValue(doc, 'Mudur', sanitizeText(branchInfo?.managerName || '-'), y);
+    y = addKeyValue(doc, 'Müdür', sanitizeText(branchInfo?.managerName || '-'), y);
     y += 5;
 
     y = addSection(doc, 'Cihaz Bilgileri', y);
@@ -318,10 +318,10 @@ export function FaultReportDialog({ equipment, isOpen, onOpenChange }: FaultRepo
     y = addKeyValue(doc, 'Model', sanitizeText((equipment as any).model || '-'), y);
     y += 5;
 
-    y = addSection(doc, 'Ariza Detaylari', y);
-    y = addKeyValue(doc, 'Ariza No', `#${createdFault.id}`, y);
-    y = addKeyValue(doc, 'Sorumlu', isHQResponsible ? 'Merkez Teknik Ekip' : 'Sube Sorumlusu', y);
-    y = addKeyValue(doc, 'Oncelik', createdFault.priority === 'yuksek' ? 'Yuksek' : createdFault.priority === 'dusuk' ? 'Dusuk' : 'Orta', y);
+    y = addSection(doc, 'Arıza Detayları', y);
+    y = addKeyValue(doc, 'Arıza No', `#${createdFault.id}`, y);
+    y = addKeyValue(doc, 'Sorumlu', isHQResponsible ? 'Merkez Teknik Ekip' : 'Şube Sorumlusu', y);
+    y = addKeyValue(doc, 'Öncelik', createdFault.priority === 'yuksek' ? 'Yüksek' : createdFault.priority === 'dusuk' ? 'Düşük' : 'Orta', y);
     y = addKeyValue(doc, 'Raporlayan', sanitizeText(user?.firstName ? `${user.firstName} ${user.lastName || ''}` : 'Bilinmiyor'), y);
     if (createdFault.estimatedCost) {
       y = addKeyValue(doc, 'Tahmini Maliyet', `${createdFault.estimatedCost} TL`, y);
@@ -366,7 +366,7 @@ export function FaultReportDialog({ equipment, isOpen, onOpenChange }: FaultRepo
     y += 10;
     doc.setFontSize(9);
     doc.setTextColor(120, 120, 120);
-    doc.text(sanitizeText(`Ariza Referans: DOSPRESSO-F${createdFault.id}`), pw / 2, y, { align: 'center' });
+    doc.text(sanitizeText(`Arıza Referans: DOSPRESSO-F${createdFault.id}`), pw / 2, y, { align: 'center' });
     doc.text(sanitizeText(`Hızlı Erişim: /ariza-detay/${createdFault.id}`), pw / 2, y + 5, { align: 'center' });
 
     savePDF(doc, `DOSPRESSO_Ariza_${createdFault.id}_${format(new Date(), 'yyyyMMdd')}.pdf`);

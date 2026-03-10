@@ -114,7 +114,7 @@ export function PerformanceRow({ name, score, onClick, testId }: PerformanceRowP
         </div>
       </div>
       <Badge variant={score >= 80 ? "default" : "secondary"} className="flex-shrink-0">
-        {score.toFixed(0)}
+        {(score ?? 0).toFixed(0)}
       </Badge>
     </div>
   );

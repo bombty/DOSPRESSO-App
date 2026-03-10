@@ -92,7 +92,7 @@ export default function Kavurma() {
   };
 
   const weightLossCalc = formData.greenWeightKg && formData.roastedWeightKg
-    ? ((parseFloat(formData.greenWeightKg) - parseFloat(formData.roastedWeightKg)) / parseFloat(formData.greenWeightKg) * 100).toFixed(1)
+    ? (((parseFloat(formData.greenWeightKg) - parseFloat(formData.roastedWeightKg)) / (parseFloat(formData.greenWeightKg) || 1)) * 100).toFixed(1)
     : null;
 
   if (isLoading) {

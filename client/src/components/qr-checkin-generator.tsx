@@ -96,7 +96,7 @@ export default function QrCheckinGenerator() {
 
           <div className="relative">
             {qrPayload ? (
-              <div className={`p-3 bg-white rounded-md transition-opacity ${isRefreshing ? "opacity-50" : ""}`}>
+              <div className={`p-3 bg-white dark:bg-white rounded-md transition-opacity ${isRefreshing ? "opacity-50" : ""}`}>
                 <QRCodeSVG
                   value={JSON.stringify(qrPayload)}
                   size={220}

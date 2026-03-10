@@ -118,7 +118,7 @@ export async function createPDFWithHeader(options: PDFOptions): Promise<{ doc: j
   if (branchName) {
     doc.setFontSize(11);
     doc.setTextColor(COLORS.gray.r, COLORS.gray.g, COLORS.gray.b);
-    doc.text(`Sube: ${sanitizeText(branchName)}`, pageWidth / 2, yPos, { align: "center" });
+    doc.text(sanitizeText(`Şube: ${branchName}`), pageWidth / 2, yPos, { align: "center" });
     yPos += 6;
   }
 
@@ -479,7 +479,7 @@ export async function generateEmployeeOfMonthCertificate(options: CertificateOpt
   doc.setFont("helvetica", "bold");
   doc.setFontSize(36);
   doc.setTextColor(30, 58, 95); // Navy
-  doc.text("BASARI SERTIFIKASI", pageWidth / 2, yPos, { align: "center" });
+  doc.text(sanitizeText("BAŞARI SERTİFİKASI"), pageWidth / 2, yPos, { align: "center" });
   yPos += 18;
   
   // Star decoration
@@ -492,7 +492,7 @@ export async function generateEmployeeOfMonthCertificate(options: CertificateOpt
   doc.setFont("helvetica", "normal");
   doc.setFontSize(20);
   doc.setTextColor(139, 43, 35);
-  doc.text("AYIN ELEMANI", pageWidth / 2, yPos, { align: "center" });
+  doc.text(sanitizeText("AYIN ELEMANI"), pageWidth / 2, yPos, { align: "center" });
   yPos += 18;
   
   // Period
@@ -512,7 +512,7 @@ export async function generateEmployeeOfMonthCertificate(options: CertificateOpt
   doc.setFont("helvetica", "normal");
   doc.setFontSize(14);
   doc.setTextColor(100, 100, 100);
-  doc.text(sanitizeText(branchName) + " Subesi", pageWidth / 2, yPos, { align: "center" });
+  doc.text(sanitizeText(branchName + " Şubesi"), pageWidth / 2, yPos, { align: "center" });
   yPos += 18;
   
   // Description
@@ -529,7 +529,7 @@ export async function generateEmployeeOfMonthCertificate(options: CertificateOpt
   doc.setFont("helvetica", "bold");
   doc.setFontSize(16);
   doc.setTextColor(46, 125, 50); // Green
-  doc.text(`Performans Puani: ${score.toFixed(1)}/100`, pageWidth / 2, yPos, { align: "center" });
+  doc.text(sanitizeText(`Performans Puanı: ${score.toFixed(1)}/100`), pageWidth / 2, yPos, { align: "center" });
   yPos += 25;
   
   // Bottom section - Date and signature

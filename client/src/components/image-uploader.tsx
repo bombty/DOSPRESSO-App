@@ -55,8 +55,8 @@ export function ImageUploader({ value, onChange, purpose = "general", label, cla
       const data = await res.json();
       onChange(data.url);
 
-      if (data.optimizedSize) {
-        setSizeInfo(`${(data.optimizedSize / 1024).toFixed(0)} KB`);
+      if (data.optimizedSize != null) {
+        setSizeInfo(`${((data.optimizedSize ?? 0) / 1024).toFixed(0)} KB`);
       } else if (file.size) {
         setSizeInfo(`${(file.size / 1024).toFixed(0)} KB`);
       }

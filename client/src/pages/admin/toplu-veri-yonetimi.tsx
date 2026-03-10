@@ -438,7 +438,7 @@ export default function TopluVeriYonetimi() {
                       </div>
                       <div className="flex items-center gap-1">
                         <Database className="h-3 w-3 text-muted-foreground" />
-                        <span>{validationResult.summary.totalRecords.toLocaleString()} kayıt</span>
+                        <span>{(validationResult.summary.totalRecords ?? 0).toLocaleString()} kayıt</span>
                       </div>
                       <div>
                         <span className="text-muted-foreground">Kullanıcı:</span> {validationResult.summary.users}
@@ -561,7 +561,7 @@ export default function TopluVeriYonetimi() {
           </DialogHeader>
           {validationResult?.summary && (
             <div className="text-sm space-y-1 py-2">
-              <p>Toplam: <strong>{validationResult.summary.totalRecords.toLocaleString()}</strong> kayıt</p>
+              <p>Toplam: <strong>{(validationResult.summary.totalRecords ?? 0).toLocaleString()}</strong> kayıt</p>
               <p>Tahmini süre: <strong>{validationResult.summary.estimatedTime}</strong></p>
             </div>
           )}

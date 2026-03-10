@@ -720,7 +720,7 @@ function AssignmentsTab() {
     <div className="space-y-4">
       <div className="flex items-center justify-between flex-wrap gap-2">
         <h3 className="text-lg font-semibold" data-testid="text-assignments-title">
-          Sube Atamalari ({assignments.length})
+          Şube Atamaları ({assignments.length})
         </h3>
         <Button size="sm" onClick={() => setDialogOpen(true)} data-testid="button-create-assignment">
           <Plus />
@@ -744,7 +744,7 @@ function AssignmentsTab() {
             <TableRow key={a.id} data-testid={`row-assignment-${a.id}`}>
               <TableCell>
                 <Badge variant="outline">
-                  {a.orgScope === "branch" ? "Sube" : a.orgScope === "factory" ? "Fabrika" : a.orgScope}
+                  {a.orgScope === "branch" ? "Şube" : a.orgScope === "factory" ? "Fabrika" : a.orgScope}
                 </Badge>
               </TableCell>
               <TableCell>{a.orgId}</TableCell>
@@ -796,7 +796,7 @@ function AssignmentsTab() {
                   <SelectValue placeholder="Kapsam secin" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="branch">Sube</SelectItem>
+                  <SelectItem value="branch">Şube</SelectItem>
                   <SelectItem value="factory">Fabrika</SelectItem>
                 </SelectContent>
               </Select>
@@ -888,7 +888,7 @@ export default function AdminEmployeeTypes() {
               </TabsTrigger>
               <TabsTrigger value="assignments" data-testid="tab-assignments">
                 <Building2 className="mr-1" />
-                Sube Atamalari
+                Şube Atamaları
               </TabsTrigger>
             </TabsList>
             <TabsContent value="types">

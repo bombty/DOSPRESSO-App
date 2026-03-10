@@ -162,7 +162,7 @@ function ServiceNotificationCard({ fault }: { fault: any }) {
           method: "POST",
           body: { serviceNotificationDate: dateTime.toISOString(), serviceNotificationMethod: 'email' },
         },
-        "Ariza servis bildirimi",
+        "Arıza servis bildirimi",
         toast
       );
     },
@@ -347,7 +347,7 @@ function ServiceTrackingTab({ fault, equipment, branchName }: { fault: any; equi
           method: "PATCH",
           body: { toStatus: statusValue, comment: statusComment },
         },
-        "Ariza durum guncelleme",
+        "Arıza durum güncelleme",
         toast
       );
     },
@@ -835,7 +835,7 @@ export default function FaultDetail() {
           method: "POST",
           body: { message },
         },
-        "Ariza yorumu",
+        "Arıza yorumu",
         toast
       );
     },

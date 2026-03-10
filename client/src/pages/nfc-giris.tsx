@@ -177,7 +177,7 @@ export default function NFCGiris() {
                 <div className="flex items-center gap-2">
                   <MapPin className="h-4 w-4 text-blue-600" />
                   <span className="text-xs text-blue-700 dark:text-blue-200">
-                    Konum: {location.latitude.toFixed(4)}, {location.longitude.toFixed(4)}
+                    Konum: {(location.latitude ?? 0).toFixed(4)}, {(location.longitude ?? 0).toFixed(4)}
                   </span>
                 </div>
               </div>

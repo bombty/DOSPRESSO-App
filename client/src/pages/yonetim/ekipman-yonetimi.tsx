@@ -609,7 +609,7 @@ export default function EquipmentManagement() {
                           {branch?.name} • {req.serviceProvider || 'Technician atanmadı'}
                         </div>
                         {req.notes && <p className="text-sm mt-2">{req.notes.substring(0, 100)}</p>}
-                        <div className="text-xs text-muted-foreground mt-1">{hoursOld.toFixed(1)}s önce oluşturuldu</div>
+                        <div className="text-xs text-muted-foreground mt-1">{(hoursOld ?? 0).toFixed(1)}s önce oluşturuldu</div>
                       </div>
                       <div className="text-right">
                         <Badge className={STATUS_COLORS[req.status] || 'bg-secondary'}>

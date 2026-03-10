@@ -115,6 +115,7 @@ export default function YoneticiDegerlendirme() {
   if (employeesLoading) return <LoadingState />;
   if (isError) return <ErrorState onRetry={refetch} />;
 
+  if (values.length === 0) return "0.0";
   return (values.reduce((a, b) => a + b, 0) / values.length).toFixed(1);
   };
 

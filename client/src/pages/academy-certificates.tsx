@@ -141,11 +141,11 @@ export default function AcademyCertificates() {
 
               {/* Stats */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-4">
-                <div className="p-3 bg-white rounded-lg border">
+                <div className="p-3 bg-background rounded-lg border">
                   <p className="text-xs text-muted-foreground">Tamamlanan Sınavlar</p>
                   <p className="text-2xl font-bold">{quizStats?.completedQuizzes || 0}</p>
                 </div>
-                <div className="p-3 bg-white rounded-lg border">
+                <div className="p-3 bg-background rounded-lg border">
                   <p className="text-xs text-muted-foreground">Ortalama Puan</p>
                   <p className="text-2xl font-bold">{quizStats?.averageScore || 0}%</p>
                 </div>

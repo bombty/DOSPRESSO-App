@@ -141,7 +141,7 @@ export function AgentAdminPanel() {
                 </div>
                 <div>
                   <div className="text-2xl font-bold">
-                    {stats.llmTokens > 1000 ? `${(stats.llmTokens / 1000).toFixed(1)}K` : stats.llmTokens}
+                    {(stats.llmTokens ?? 0) > 1000 ? `${((stats.llmTokens ?? 0) / 1000).toFixed(1)}K` : (stats.llmTokens ?? 0)}
                   </div>
                   <div className="text-xs text-muted-foreground">LLM Token ({stats.llmCallCount} çağrı)</div>
                 </div>

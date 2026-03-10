@@ -225,7 +225,7 @@ function ActionContextSummary({ action }: { action: AgentAction }) {
   if (meta.targetUserName) details.push(`Personel: ${meta.targetUserName}`);
   if (meta.branchName) details.push(`Şube: ${meta.branchName}`);
   if (meta.score !== undefined) details.push(`Skor: ${meta.score}/100`);
-  if (meta.avgRating !== undefined) details.push(`Ortalama Puan: ${Number(meta.avgRating).toFixed(1)}`);
+  if (meta.avgRating !== undefined) details.push(`Ortalama Puan: ${Number(meta.avgRating ?? 0).toFixed(1)}`);
   if (meta.lotCount !== undefined) details.push(`Lot Sayısı: ${meta.lotCount}`);
   if (meta.itemCount !== undefined) details.push(`Ürün Sayısı: ${meta.itemCount}`);
   if (meta.slaBreachCount !== undefined) details.push(`SLA İhlali: ${meta.slaBreachCount}`);

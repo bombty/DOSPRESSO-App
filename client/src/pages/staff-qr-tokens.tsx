@@ -317,7 +317,7 @@ export default function StaffQrTokensPage() {
           <div className="flex flex-col items-center py-6">
             {selectedToken && (
               <>
-                <div className="p-4 bg-white rounded-lg">
+                <div className="p-4 bg-white dark:bg-white rounded-lg">
                   <QRCodeSVG
                     value={`${window.location.origin}/personel-degerlendirme/${selectedToken.token}`}
                     size={200}
