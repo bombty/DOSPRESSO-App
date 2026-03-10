@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'dospresso-v13';
+const CACHE_VERSION = 'dospresso-v14';
 const STATIC_CACHE = CACHE_VERSION + '-static';
 const API_CACHE = CACHE_VERSION + '-api';
 

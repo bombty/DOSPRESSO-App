@@ -676,7 +676,7 @@ export default function MisafirMemnuniyeti() {
                         {item.value && item.value > 0 ? (
                           <>
                             <StarDisplay rating={Math.round(item.value)} size="sm" />
-                            <span className="font-medium">{item.value.toFixed(1)}</span>
+                            <span className="font-medium">{Number(item.value ?? 0).toFixed(1)}</span>
                           </>
                         ) : (
                           <span className="text-muted-foreground text-sm">-</span>
