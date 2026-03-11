@@ -24,6 +24,8 @@ import {
   customerFeedback,
   feedbackResponses,
   feedbackFormSettings,
+  feedbackCustomQuestions,
+  feedbackIpBlocks,
   branches,
   users,
   guestComplaints,
@@ -3724,6 +3726,44 @@ function ensurePermission(user: unknown, module: string, action: string, errorMe
 
       // === HARD REJECT CHECKS ===
 
+      // Hard Reject 0: Check IP block list
+      if (userIp) {
+        const ipBlock = await db.select().from(feedbackIpBlocks)
+          .where(and(
+            eq(feedbackIpBlocks.ipAddress, userIp),
+            sql`(${feedbackIpBlocks.branchId} IS NULL OR ${feedbackIpBlocks.branchId} = ${branch[0].id})`,
+            sql`(${feedbackIpBlocks.blockedUntil} IS NULL OR ${feedbackIpBlocks.blockedUntil} > NOW())`
+          )).limit(1);
+        if (ipBlock.length > 0) {
+          return res.status(429).json({
+            message: "Bu IP adresinden geri bildirim gönderimine izin verilmiyor. Lütfen daha sonra tekrar deneyiniz."
+          });
+        }
+
+        // Auto-block: Same IP, 3+ submissions in last hour → temporary 24h block
+        const oneHourAgo = new Date();
+        oneHourAgo.setHours(oneHourAgo.getHours() - 1);
+        const recentIpCount = await db.select({ count: sql<number>`count(*)` })
+          .from(customerFeedback)
+          .where(and(
+            sql`${customerFeedback.userIp} = ${userIp}`,
+            sql`${customerFeedback.feedbackDate} >= ${oneHourAgo}`
+          ));
+        if (recentIpCount[0]?.count >= 3) {
+          const blockedUntil = new Date();
+          blockedUntil.setHours(blockedUntil.getHours() + 24);
+          await db.insert(feedbackIpBlocks).values({
+            ipAddress: userIp,
+            branchId: branch[0].id,
+            reason: `Otomatik engel: 1 saat içinde ${recentIpCount[0].count} gönderim`,
+            blockedUntil,
+          });
+          return res.status(429).json({
+            message: "Çok fazla geri bildirim gönderdiniz. Lütfen 24 saat sonra tekrar deneyiniz."
+          });
+        }
+      }
+
       // Hard Reject 1: Same device_fingerprint + same branch in last 24 hours → 429
       if (deviceFingerprint) {
         const twentyFourHoursAgo = new Date();
@@ -4743,6 +4783,226 @@ function ensurePermission(user: unknown, module: string, action: string, errorMe
     } catch (error: any) {
       console.error("Error saving feedback form settings:", error);
       res.status(500).json({ message: "Form ayarları kaydedilemedi" });
+    }
+  });
+
+  // ========================================
+  // FEEDBACK CUSTOM QUESTIONS
+  // ========================================
+
+  router.get('/api/feedback-custom-questions/:branchId', isAuthenticated, async (req: any, res) => {
+    try {
+      const branchId = parseInt(req.params.branchId);
+      if (isNaN(branchId)) return res.status(400).json({ message: "Geçersiz şube ID" });
+      if (!hasPermission(req.user?.role, 'customer_satisfaction', 'view')) {
+        return res.status(403).json({ message: "Yetkiniz yok" });
+      }
+      if (isBranchRole(req.user?.role) && req.user?.branchId !== branchId) {
+        return res.status(403).json({ message: "Sadece kendi şubenizi görüntüleyebilirsiniz" });
+      }
+      const questions = await db.select().from(feedbackCustomQuestions)
+        .where(eq(feedbackCustomQuestions.branchId, branchId))
+        .orderBy(feedbackCustomQuestions.sortOrder);
+      res.json(questions);
+    } catch (error) {
+      console.error("Error fetching custom questions:", error);
+      res.status(500).json({ message: "Sorular yüklenemedi" });
+    }
+  });
+
+  router.get('/api/feedback-custom-questions/public/:branchId', async (req: any, res) => {
+    try {
+      const branchId = parseInt(req.params.branchId);
+      if (isNaN(branchId)) return res.status(400).json({ message: "Geçersiz şube ID" });
+      const questions = await db.select().from(feedbackCustomQuestions)
+        .where(and(eq(feedbackCustomQuestions.branchId, branchId), eq(feedbackCustomQuestions.isActive, true)))
+        .orderBy(feedbackCustomQuestions.sortOrder);
+      res.json(questions);
+    } catch (error) {
+      res.status(500).json({ message: "Sorular yüklenemedi" });
+    }
+  });
+
+  router.post('/api/feedback-custom-questions', isAuthenticated, async (req: any, res) => {
+    try {
+      if (!hasPermission(req.user?.role, 'customer_satisfaction', 'edit')) {
+        return res.status(403).json({ message: "Yetkiniz yok" });
+      }
+      const { branchId, questionTr, questionType } = req.body;
+      if (!branchId || !questionTr) return res.status(400).json({ message: "Şube ID ve Türkçe soru zorunludur" });
+      if (isBranchRole(req.user?.role) && req.user?.branchId !== branchId) {
+        return res.status(403).json({ message: "Sadece kendi şubeniz için soru ekleyebilirsiniz" });
+      }
+
+      const maxOrder = await db.select({ max: sql<number>`COALESCE(MAX(sort_order), 0)` })
+        .from(feedbackCustomQuestions).where(eq(feedbackCustomQuestions.branchId, branchId));
+
+      const [question] = await db.insert(feedbackCustomQuestions).values({
+        branchId,
+        questionTr,
+        questionEn: req.body.questionEn || null,
+        questionDe: req.body.questionDe || null,
+        questionAr: req.body.questionAr || null,
+        questionZh: req.body.questionZh || null,
+        questionKo: req.body.questionKo || null,
+        questionFr: req.body.questionFr || null,
+        questionType: questionType || "rating",
+        sortOrder: (maxOrder[0]?.max || 0) + 1,
+      }).returning();
+
+      res.json(question);
+    } catch (error) {
+      console.error("Error creating custom question:", error);
+      res.status(500).json({ message: "Soru eklenemedi" });
+    }
+  });
+
+  router.put('/api/feedback-custom-questions/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      if (!hasPermission(req.user?.role, 'customer_satisfaction', 'edit')) {
+        return res.status(403).json({ message: "Yetkiniz yok" });
+      }
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ message: "Geçersiz ID" });
+
+      if (isBranchRole(req.user?.role)) {
+        const [existing] = await db.select().from(feedbackCustomQuestions).where(eq(feedbackCustomQuestions.id, id)).limit(1);
+        if (!existing || existing.branchId !== req.user?.branchId) {
+          return res.status(403).json({ message: "Bu soru üzerinde yetkiniz yok" });
+        }
+      }
+
+      const updates: any = { updatedAt: new Date() };
+      if (req.body.questionTr !== undefined) updates.questionTr = req.body.questionTr;
+      if (req.body.questionEn !== undefined) updates.questionEn = req.body.questionEn;
+      if (req.body.questionDe !== undefined) updates.questionDe = req.body.questionDe;
+      if (req.body.questionAr !== undefined) updates.questionAr = req.body.questionAr;
+      if (req.body.questionZh !== undefined) updates.questionZh = req.body.questionZh;
+      if (req.body.questionKo !== undefined) updates.questionKo = req.body.questionKo;
+      if (req.body.questionFr !== undefined) updates.questionFr = req.body.questionFr;
+      if (req.body.questionType !== undefined) updates.questionType = req.body.questionType;
+      if (req.body.isActive !== undefined) updates.isActive = req.body.isActive;
+      if (req.body.sortOrder !== undefined) updates.sortOrder = req.body.sortOrder;
+
+      const [result] = await db.update(feedbackCustomQuestions).set(updates)
+        .where(eq(feedbackCustomQuestions.id, id)).returning();
+      if (!result) return res.status(404).json({ message: "Soru bulunamadı" });
+      res.json(result);
+    } catch (error) {
+      console.error("Error updating custom question:", error);
+      res.status(500).json({ message: "Soru güncellenemedi" });
+    }
+  });
+
+  router.delete('/api/feedback-custom-questions/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      if (!hasPermission(req.user?.role, 'customer_satisfaction', 'edit')) {
+        return res.status(403).json({ message: "Yetkiniz yok" });
+      }
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ message: "Geçersiz ID" });
+      if (isBranchRole(req.user?.role)) {
+        const [existing] = await db.select().from(feedbackCustomQuestions).where(eq(feedbackCustomQuestions.id, id)).limit(1);
+        if (!existing || existing.branchId !== req.user?.branchId) {
+          return res.status(403).json({ message: "Bu soru üzerinde yetkiniz yok" });
+        }
+      }
+      await db.delete(feedbackCustomQuestions).where(eq(feedbackCustomQuestions.id, id));
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ message: "Soru silinemedi" });
+    }
+  });
+
+  router.post('/api/feedback-custom-questions/:id/translate', isAuthenticated, async (req: any, res) => {
+    try {
+      if (!hasPermission(req.user?.role, 'customer_satisfaction', 'edit')) {
+        return res.status(403).json({ message: "Yetkiniz yok" });
+      }
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ message: "Geçersiz ID" });
+      const [question] = await db.select().from(feedbackCustomQuestions)
+        .where(eq(feedbackCustomQuestions.id, id)).limit(1);
+      if (!question) return res.status(404).json({ message: "Soru bulunamadı" });
+
+      const { OpenAI } = await import("openai");
+      const openai = new OpenAI();
+      const prompt = `Translate the following Turkish survey question to these languages. Return ONLY a valid JSON object with keys: en, de, ar, zh, ko, fr. No markdown, no explanation.
+
+Turkish question: "${question.questionTr}"`;
+
+      const completion = await openai.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages: [{ role: "user", content: prompt }],
+        temperature: 0.3,
+        max_tokens: 500,
+      });
+
+      const content = completion.choices[0]?.message?.content || "{}";
+      const cleaned = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+      const translations = JSON.parse(cleaned);
+
+      const [updated] = await db.update(feedbackCustomQuestions).set({
+        questionEn: translations.en || question.questionEn,
+        questionDe: translations.de || question.questionDe,
+        questionAr: translations.ar || question.questionAr,
+        questionZh: translations.zh || question.questionZh,
+        questionKo: translations.ko || question.questionKo,
+        questionFr: translations.fr || question.questionFr,
+        updatedAt: new Date(),
+      }).where(eq(feedbackCustomQuestions.id, id)).returning();
+
+      res.json(updated);
+    } catch (error: any) {
+      console.error("Error translating question:", error);
+      res.status(500).json({ message: "Çeviri yapılamadı" });
+    }
+  });
+
+  // ========================================
+  // FEEDBACK IP BLOCKS
+  // ========================================
+
+  router.get('/api/feedback-ip-blocks', isAuthenticated, async (req: any, res) => {
+    try {
+      if (!hasPermission(req.user?.role, 'customer_satisfaction', 'view')) {
+        return res.status(403).json({ message: "Yetkiniz yok" });
+      }
+      const conditions = [];
+      if (isBranchRole(req.user?.role) && req.user?.branchId) {
+        conditions.push(
+          or(
+            eq(feedbackIpBlocks.branchId, req.user.branchId),
+            isNull(feedbackIpBlocks.branchId)
+          )
+        );
+      }
+      const blocks = await db.select().from(feedbackIpBlocks)
+        .where(conditions.length > 0 ? and(...conditions) : undefined)
+        .orderBy(sql`created_at DESC`).limit(200);
+      res.json(blocks);
+    } catch (error) {
+      res.status(500).json({ message: "IP blokları yüklenemedi" });
+    }
+  });
+
+  router.delete('/api/feedback-ip-blocks/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      if (!hasPermission(req.user?.role, 'customer_satisfaction', 'edit')) {
+        return res.status(403).json({ message: "Yetkiniz yok" });
+      }
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ message: "Geçersiz ID" });
+      if (isBranchRole(req.user?.role)) {
+        const [existing] = await db.select().from(feedbackIpBlocks).where(eq(feedbackIpBlocks.id, id)).limit(1);
+        if (!existing || (existing.branchId !== null && existing.branchId !== req.user?.branchId)) {
+          return res.status(403).json({ message: "Bu IP engeli üzerinde yetkiniz yok" });
+        }
+      }
+      await db.delete(feedbackIpBlocks).where(eq(feedbackIpBlocks.id, id));
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ message: "IP blok silinemedi" });
     }
   });
 

@@ -5481,6 +5481,53 @@ export const insertFeedbackFormSettingsSchema = createInsertSchema(feedbackFormS
 export type InsertFeedbackFormSettings = z.infer<typeof insertFeedbackFormSettingsSchema>;
 export type FeedbackFormSettings = typeof feedbackFormSettings.$inferSelect;
 
+export const feedbackCustomQuestions = pgTable("feedback_custom_questions", {
+  id: serial("id").primaryKey(),
+  branchId: integer("branch_id").notNull().references(() => branches.id, { onDelete: "cascade" }),
+  questionTr: text("question_tr").notNull(),
+  questionEn: text("question_en"),
+  questionDe: text("question_de"),
+  questionAr: text("question_ar"),
+  questionZh: text("question_zh"),
+  questionKo: text("question_ko"),
+  questionFr: text("question_fr"),
+  questionType: varchar("question_type", { length: 20 }).notNull().default("rating"),
+  isActive: boolean("is_active").notNull().default(true),
+  sortOrder: integer("sort_order").notNull().default(0),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("feedback_custom_questions_branch_idx").on(table.branchId),
+]);
+
+export const insertFeedbackCustomQuestionSchema = createInsertSchema(feedbackCustomQuestions).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertFeedbackCustomQuestion = z.infer<typeof insertFeedbackCustomQuestionSchema>;
+export type FeedbackCustomQuestion = typeof feedbackCustomQuestions.$inferSelect;
+
+export const feedbackIpBlocks = pgTable("feedback_ip_blocks", {
+  id: serial("id").primaryKey(),
+  ipAddress: varchar("ip_address", { length: 45 }).notNull(),
+  branchId: integer("branch_id").references(() => branches.id, { onDelete: "cascade" }),
+  reason: text("reason"),
+  blockedUntil: timestamp("blocked_until"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("feedback_ip_blocks_ip_idx").on(table.ipAddress),
+  index("feedback_ip_blocks_branch_idx").on(table.branchId),
+]);
+
+export const insertFeedbackIpBlockSchema = createInsertSchema(feedbackIpBlocks).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type FeedbackIpBlock = typeof feedbackIpBlocks.$inferSelect;
+
 // ========================================
 // MAINTENANCE SCHEDULES (Proaktif Bakım)
 // ========================================
