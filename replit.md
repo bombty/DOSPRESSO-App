@@ -26,7 +26,7 @@ The frontend uses React 18+ with TypeScript and Vite, employing Shadcn/ui (New Y
 - **Unified Fault System**: Creation, assignment, workflow, escalation, photo documentation, cost tracking, QR-integrated reporting.
 - **SLA Monitoring**: Real-time tracking with automated alerts.
 - **AI Integration**: AI photo verification, RAG-enabled knowledge base, AI Academy Chat Assistant, Adaptive Learning Engine, and smart recommendations. AI Policy Console V2 for configurable data access.
-- **DOSPRESSO Academy (LMS)**: Comprehensive training with career progression, quizzes, gamification, certification, and AI learning paths.
+- **DOSPRESSO Academy (LMS)**: Comprehensive training with career progression, quizzes, gamification, certification, and AI learning paths. Features a Learnify/Duolingo-style landing page at `/akademi` with hero section, daily recommendation, weekly stats, mandatory/optional module separation, 8 standardized categories grid, quick links, and role-based management tools. Tab-based mega module accessible via sub-paths (e.g., `/akademi/benim-yolum`, `/akademi/kesfet`). Training module categories standardized from 21 to 8: barista_temelleri, hijyen_guvenlik, receteler, musteri_iliskileri, ekipman, yonetim, onboarding, genel_gelisim.
 - **Daily Task Guidance**: Role-based task templates with personalized lists and AI recommendations.
 - **Advanced Task Workflow**: Approvals, Q&A, deadline extension, scheduled delivery, bulk assignment, and subtask management.
 - **Checklist Management System**: Time-windowed tasks with photo validation and performance weighting.

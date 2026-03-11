@@ -40,13 +40,20 @@ import { LoadingState } from "../components/loading-state";
 type StatusFilter = "all" | "not_started" | "in_progress" | "completed";
 
 const CATEGORY_LABELS: Record<string, string> = {
+  barista_temelleri: "Barista Temelleri",
+  hijyen_guvenlik: "Hijyen & Güvenlik",
+  receteler: "Reçeteler",
+  musteri_iliskileri: "Müşteri İlişkileri",
+  ekipman: "Ekipman Kullanımı",
+  yonetim: "Yönetim & Liderlik",
+  onboarding: "Oryantasyon",
+  genel_gelisim: "Genel Gelişim",
   barista: "Barista",
   supervisor: "Supervisor",
   hygiene: "Hijyen",
   culture: "Kültür",
   safety: "Güvenlik",
   recipe: "Reçete",
-  onboarding: "Oryantasyon",
   general: "Genel",
   management: "Yönetim",
   customer_service: "Müşteri Hizmetleri",
@@ -188,11 +195,7 @@ export default function AcademyExplore() {
   ];
 
   if (modulesLoading) {
-    
-  if (modulesLoading) return <LoadingState />;
-  if (isError) return <ErrorState onRetry={refetch} />;
-
-  return (
+    return (
       <div className="p-4 space-y-4">
         <Skeleton className="h-10 w-full" />
         <div className="flex gap-2">
@@ -208,6 +211,8 @@ export default function AcademyExplore() {
       </div>
     );
   }
+
+  if (isError) return <ErrorState onRetry={refetch} />;
 
   return (
     <div className="p-4 space-y-4">

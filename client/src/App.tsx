@@ -373,7 +373,7 @@ function Router() {
           <Route path="/recete/:id" component={ReceteDetay} />
           <Route path="/egitim/:id" component={ModuleDetail} />
           <Route path="/egitim-ata" component={TrainingAssign} />
-          <Route path="/egitim">{() => { if (typeof window !== 'undefined') window.location.href = '/akademi-hq'; return null; }}</Route>
+          <Route path="/egitim">{() => { if (typeof window !== 'undefined') window.location.href = '/akademi'; return null; }}</Route>
           <Route path="/bildirimler" component={Notifications} />
           <Route path="/duyurular">{() => <HQOnly><IcerikStudyosu /></HQOnly>}</Route>
           <Route path="/icerik-studyosu">{() => <HQOnly><IcerikStudyosu /></HQOnly>}</Route>

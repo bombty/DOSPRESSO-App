@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   GraduationCap,
   BookOpen,
@@ -29,6 +30,7 @@ import {
   Signal,
   UserCog,
   Eye,
+  Home,
 } from "lucide-react";
 
 const AcademyMyPath = lazy(() => import("./academy-my-path"));
@@ -58,6 +60,7 @@ const CoachTeamProgress = lazy(() => import("./coach-team-progress"));
 const AcademyAiPanel = lazy(() => import("./academy-ai-panel"));
 const AcademyExplore = lazy(() => import("./academy-explore"));
 const AcademyContentManagement = lazy(() => import("./academy-content-management"));
+const AcademyLandingPage = lazy(() => import("./academy-landing"));
 
 import {
   type AcademyViewMode,
@@ -376,7 +379,7 @@ function TabSkeleton() {
 }
 
 const TAB_URL_MAP: Record<string, string> = {
-  "benim-yolum": "/akademi",
+  "benim-yolum": "/akademi/benim-yolum",
   "genel-egitimler": "/akademi/genel-egitimler",
   "kesfet": "/akademi/kesfet",
   "bilgi-bankasi": "/akademi/bilgi-bankasi",
@@ -405,10 +408,8 @@ const TAB_URL_MAP: Record<string, string> = {
 };
 
 function getTabFromUrl(pathname: string, viewMode: AcademyViewMode): string | null {
-  const defaultTab = getAcademyDefaultTab(viewMode === 'coach' ? 'coach' : viewMode === 'supervisor' ? 'supervisor' : 'barista');
-  if (pathname === "/akademi" || pathname === "/akademi/") return defaultTab;
+  if (pathname === "/akademi" || pathname === "/akademi/") return null;
   const sortedEntries = Object.entries(TAB_URL_MAP)
-    .filter(([tabId]) => tabId !== defaultTab)
     .sort((a, b) => b[1].length - a[1].length);
   for (const [tabId, url] of sortedEntries) {
     if (pathname === url || pathname.startsWith(url + "/")) {
@@ -481,6 +482,8 @@ export default function AkademiMegaModule() {
   }, [visibleGroups, activeGroup, firstVisibleGroup]);
   
   useEffect(() => {
+    const isLanding = location === "/akademi" || location === "/akademi/" || location === "/egitim" || location === "/egitim/";
+    if (isLanding) return;
     if (!tabsInActiveGroup.find(t => t.id === activeTab)) {
       setActiveTab(firstTabInGroup);
       const url = TAB_URL_MAP[firstTabInGroup];
@@ -488,7 +491,7 @@ export default function AkademiMegaModule() {
         setLocation(url);
       }
     }
-  }, [tabsInActiveGroup, activeTab, firstTabInGroup]);
+  }, [tabsInActiveGroup, activeTab, firstTabInGroup, location]);
   
   useEffect(() => {
     const tabFromUrl = getTabFromUrl(location, viewMode);
@@ -523,6 +526,8 @@ export default function AkademiMegaModule() {
     }
   };
 
+  const isBasePath = location === "/akademi" || location === "/akademi/" || location === "/egitim" || location === "/egitim/";
+
   if (visibleTabs.length === 0) {
     return (
       <div className="p-6">
@@ -541,12 +546,55 @@ export default function AkademiMegaModule() {
     );
   }
 
+  if (isBasePath) {
+    return (
+      <div className="flex flex-col h-full">
+        <div className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50">
+          <div className="px-4 py-3">
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <div className="flex items-center gap-2">
+                <GraduationCap className="h-6 w-6 text-indigo-600 dark:text-indigo-400" />
+                <h1 className="text-xl font-semibold">DOSPRESSO Akademi</h1>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  const defaultTab = getAcademyDefaultTab(viewMode);
+                  const url = TAB_URL_MAP[defaultTab];
+                  if (url) setLocation(url);
+                }}
+                data-testid="button-all-tabs"
+              >
+                <BookOpen className="h-4 w-4 mr-1" />
+                Tüm Modüller
+              </Button>
+            </div>
+          </div>
+        </div>
+        <div className="flex-1 overflow-auto">
+          <Suspense fallback={<TabSkeleton />}>
+            <AcademyLandingPage />
+          </Suspense>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col h-full">
-      <div className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-10">
+      <div className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50">
         <div className="px-4 py-3">
           <div className="flex items-center gap-2 mb-3">
-            <GraduationCap className="h-6 w-6 text-indigo-600" />
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setLocation("/akademi")}
+              data-testid="button-back-landing"
+            >
+              <Home className="h-5 w-5" />
+            </Button>
+            <GraduationCap className="h-6 w-6 text-indigo-600 dark:text-indigo-400" />
             <div>
               <h1 className="text-xl font-semibold">DOSPRESSO Akademi</h1>
               <p className="text-sm text-muted-foreground">
