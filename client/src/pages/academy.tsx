@@ -30,11 +30,25 @@ const DIFFICULTY_COLORS: Record<string, string> = {
 };
 
 const CATEGORY_ICONS: Record<string, any> = {
-  "Barista Temelleri": BookOpen,
-  "Reçeteler": Star,
-  "Ekip Yönetimi": TrendingUp,
-  "Kalite": Award,
-  "Genel": GraduationCap,
+  barista_temelleri: BookOpen,
+  hijyen_guvenlik: Award,
+  receteler: Star,
+  musteri_iliskileri: Star,
+  ekipman: TrendingUp,
+  yonetim: TrendingUp,
+  onboarding: GraduationCap,
+  genel_gelisim: GraduationCap,
+};
+
+const CATEGORY_DISPLAY: Record<string, string> = {
+  barista_temelleri: "Barista Temelleri",
+  hijyen_guvenlik: "Hijyen & Güvenlik",
+  receteler: "Reçeteler",
+  musteri_iliskileri: "Müşteri İlişkileri",
+  ekipman: "Ekipman Kullanımı",
+  yonetim: "Yönetim & Liderlik",
+  onboarding: "Oryantasyon",
+  genel_gelisim: "Genel Gelişim",
 };
 
 export default function Academy() {
@@ -169,7 +183,7 @@ export default function Academy() {
                   <div className="flex items-center gap-2 mt-1.5 flex-wrap">
                     <span className="text-xs text-muted-foreground flex items-center gap-1" data-testid="text-daily-category">
                       <BookOpen className="w-3 h-3" />
-                      {dailyRec.module.category}
+                      {CATEGORY_DISPLAY[dailyRec.module.category] || dailyRec.module.category}
                     </span>
                     <span className="text-xs text-muted-foreground flex items-center gap-1" data-testid="text-daily-duration">
                       <Clock className="w-3 h-3" />
