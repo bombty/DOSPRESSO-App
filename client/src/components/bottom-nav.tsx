@@ -173,7 +173,7 @@ const NAV_ITEM_CONFIG: Record<string, NavItemConfig> = {
     getPath: (user) => {
       if (!user) return "/crm";
       switch (user.role) {
-        case 'coach': return "/crm/geri-bildirimler";
+        case 'coach': return "/misafir-memnuniyeti";
         case 'satinalma': return "/crm";
         case 'muhasebe': return "/crm";
         case 'muhasebe_ik': return "/crm";

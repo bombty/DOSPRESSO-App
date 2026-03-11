@@ -36,7 +36,8 @@ The frontend uses React 18+ with TypeScript and Vite, employing Shadcn/ui (New Y
 - **Cost Management System**: Comprehensive product cost calculation integrated with procurement.
 - **Factory Shift & Production Planning**: Shift planning, batch tracking, performance monitoring, kiosk PIN authentication, production/waste recording, and fault reporting.
 - **Mr. Dobody Agent Engine**: Autonomous AI agent system ("Read-Only AI, Write-Through Human") for analyzing data and proposing user-approved actions. Includes rule-based suggestion engine, modular skill engine, and proactive notifications with an approval chain, smart routing, escalation, and outcome tracking.
-- **CRM — Müşteri 360°**: Comprehensive customer relationship management including feedback, complaints, campaigns, and analytics.
+- **CRM — İş İlişkileri**: Business relations module with campaign management, ticket/support system (branch-to-HQ requests), and business analytics. Guest feedback separated into dedicated module.
+- **Misafir Memnuniyeti (Guest Satisfaction)**: Standalone mega module for guest feedback management — QR ratings, guest complaints (auto-created from low ratings), SLA tracking, form settings, and satisfaction analytics. Accessible by kalite_kontrol, coach, supervisor, mudur, cgo, admin roles.
 - **Fabrika Uretim-Stok-Sevkiyat Zinciri**: Shipment system with status workflow, pre-dispatch stock validation, automatic inventory deduction, 2-stage quality control, HACCP records, LOT/Parti tracking, and SKT background jobs.
 - **Branch Order & Stock Management**: Full branch order lifecycle, inventory system with stock movements, waste recording, and expiring product alerts.
 - **PDKS (Personel Devam Kontrol Sistemi)**: Kiosk-integrated attendance tracking with day classification and monthly summaries.

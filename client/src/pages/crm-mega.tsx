@@ -8,19 +8,15 @@ import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { HQ_ROLES } from "@shared/schema";
 import {
   LayoutDashboard,
-  MessageSquareHeart,
-  AlertTriangle,
   Megaphone,
-  Clock,
+  TicketCheck,
   BarChart3,
   Settings,
 } from "lucide-react";
 
 const CRMDashboard = lazy(() => import("@/pages/crm/dashboard"));
-const CRMFeedback = lazy(() => import("@/pages/crm/feedback"));
 const CRMComplaints = lazy(() => import("@/pages/crm/complaints"));
 const CRMCampaigns = lazy(() => import("@/pages/crm/campaigns"));
-const CRMSLATracking = lazy(() => import("@/pages/crm/sla-tracking"));
 const CRMAnalytics = lazy(() => import("@/pages/crm/analytics"));
 const CRMSettings = lazy(() => import("@/pages/crm/settings"));
 const EmployeeDashboard = lazy(() => import("@/pages/crm/employee-dashboard"));
@@ -42,20 +38,6 @@ const CRM_TABS: TabConfig[] = [
     component: CRMDashboard,
   },
   {
-    id: "geri-bildirimler",
-    labelTr: "Geri Bildirimler",
-    icon: <MessageSquareHeart className="h-4 w-4" />,
-    permissionModule: "crm_feedback",
-    component: CRMFeedback,
-  },
-  {
-    id: "sikayetler",
-    labelTr: "Şikayetler",
-    icon: <AlertTriangle className="h-4 w-4" />,
-    permissionModule: "crm_complaints",
-    component: CRMComplaints,
-  },
-  {
     id: "kampanyalar",
     labelTr: "Kampanyalar",
     icon: <Megaphone className="h-4 w-4" />,
@@ -63,11 +45,11 @@ const CRM_TABS: TabConfig[] = [
     component: CRMCampaigns,
   },
   {
-    id: "sla",
-    labelTr: "SLA Takibi",
-    icon: <Clock className="h-4 w-4" />,
-    permissionModule: "crm_feedback",
-    component: CRMSLATracking,
+    id: "ticket-talepler",
+    labelTr: "Ticket / Talepler",
+    icon: <TicketCheck className="h-4 w-4" />,
+    permissionModule: "crm_complaints",
+    component: CRMComplaints,
   },
   {
     id: "analizler",
@@ -87,10 +69,8 @@ const CRM_TABS: TabConfig[] = [
 
 const TAB_URL_MAP: Record<string, string> = {
   dashboard: "/crm",
-  "geri-bildirimler": "/crm/geri-bildirimler",
-  sikayetler: "/crm/sikayetler",
   kampanyalar: "/crm/kampanyalar",
-  sla: "/crm/sla",
+  "ticket-talepler": "/crm/ticket-talepler",
   analizler: "/crm/analizler",
   ayarlar: "/crm/ayarlar",
 };
@@ -174,7 +154,7 @@ export default function CRMMegaModule() {
     <div className="flex flex-col h-full">
       <div className="px-4 pt-3 pb-2">
         <h1 className="text-xl font-semibold" data-testid="text-crm-title">CRM — Müşteri İlişkileri</h1>
-        <p className="text-sm text-muted-foreground">Geri bildirim, şikayet, kampanya ve müşteri etkileşimleri</p>
+        <p className="text-sm text-muted-foreground">Kampanya, ticket/talep yönetimi ve müşteri etkileşimleri</p>
       </div>
 
       <Tabs value={activeTab} onValueChange={handleTabChange} className="flex-1 flex flex-col">

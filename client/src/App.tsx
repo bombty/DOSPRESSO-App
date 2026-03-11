@@ -190,6 +190,7 @@ const OperasyonMegaModule = lazy(() => import("@/pages/operasyon-mega"));
 const AdminMegaModule = lazy(() => import("@/pages/admin-mega"));
 const AkademiMegaModule = lazy(() => import("@/pages/akademi-mega"));
 const CRMMegaModule = lazy(() => import("@/pages/crm-mega"));
+const MisafirMemnuniyetiModul = lazy(() => import("@/pages/misafir-memnuniyeti-modul"));
 const CEOCommandCenter = lazy(() => import("@/pages/ceo-command-center"));
 const CGOCommandCenter = lazy(() => import("@/pages/cgo-command-center"));
 const HQDashboard = lazy(() => import("@/pages/hq-dashboard"));
@@ -404,9 +405,9 @@ function Router() {
           <Route path="/denetimler" component={Denetimler} />
           <Route path="/denetim/:id" component={DenetimYurutme} />
           <Route path="/capa/:id" component={CapaDetay} />
-          <Route path="/misafir-geri-bildirim">{() => { window.location.replace("/crm/geri-bildirimler"); return null; }}</Route>
-          <Route path="/misafir-memnuniyeti">{() => { window.location.replace("/crm/geri-bildirimler"); return null; }}</Route>
-          <Route path="/sikayetler">{() => { window.location.replace("/crm/sikayetler"); return null; }}</Route>
+          <Route path="/misafir-geri-bildirim">{() => { window.location.replace("/misafir-memnuniyeti"); return null; }}</Route>
+          <Route path="/misafir-memnuniyeti/:tab?" component={MisafirMemnuniyetiModul} />
+          <Route path="/sikayetler">{() => { window.location.replace("/crm/ticket-talepler"); return null; }}</Route>
           <Route path="/hq-destek" component={HQSupport} />
           <Route path="/kampanya-yonetimi">{() => { window.location.replace("/crm/kampanyalar"); return null; }}</Route>
           <Route path="/franchise-acilis" component={FranchiseAcilis} />
@@ -438,7 +439,7 @@ function Router() {
           <Route path="/kalite-kontrol-dashboard">{() => <HQOnly><KaliteKontrolDashboard /></HQOnly>}</Route>
           <Route path="/gida-guvenligi-dashboard">{() => <HQOnly><GidaGuvenligiDashboard /></HQOnly>}</Route>
           <Route path="/satinalma/:tab?" component={SatinalmaMega} />
-          <Route path="/urun-sikayet">{() => { window.location.replace("/crm/sikayetler"); return null; }}</Route>
+          <Route path="/urun-sikayet">{() => { window.location.replace("/crm/ticket-talepler"); return null; }}</Route>
           <Route path="/raporlar/sube-saglik" component={SubeSaglikSkoru} />
           <Route path="/sube-saglik-skoru" component={SubeSaglikSkoru} />
           <Route path="/sube-karsilastirma">{() => <HQOnly><SubeKarsilastirma /></HQOnly>}</Route>

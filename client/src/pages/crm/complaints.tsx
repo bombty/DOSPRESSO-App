@@ -248,8 +248,8 @@ export default function CRMComplaints() {
   return (
     <div className="p-3 flex flex-col gap-3 sm:gap-4" data-testid="page-crm-complaints">
       <div>
-        <h1 className="text-2xl font-bold" data-testid="heading-complaints">Şikayetler</h1>
-        <p className="text-sm text-muted-foreground mt-1">Misafir ve ürün şikayetlerini tek panelden yönetin</p>
+        <h1 className="text-2xl font-bold" data-testid="heading-complaints">Ticket / Talepler</h1>
+        <p className="text-sm text-muted-foreground mt-1">Şube geri bildirimleri ve ürün şikayetlerini tek panelden yönetin</p>
       </div>
 
       <div className="flex flex-wrap gap-2" data-testid="filter-bar">

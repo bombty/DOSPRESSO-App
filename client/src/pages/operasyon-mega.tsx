@@ -36,7 +36,7 @@ const Notifications = lazy(() => import("./notifications"));
 const Mesajlar = lazy(() => import("./mesajlar"));
 const NFCGiris = lazy(() => import("./nfc-giris"));
 const Destek = lazy(() => import("./destek"));
-const MisafirMemnuniyeti = lazy(() => import("./misafir-memnuniyeti"));
+const MisafirMemnuniyeti = lazy(() => import("./misafir-memnuniyeti-modul"));
 
 interface TabConfig {
   id: string;

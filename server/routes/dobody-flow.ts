@@ -315,7 +315,7 @@ async function getSupervisorFlowTasks(userId: string, branchId: number): Promise
         id: `feedback-${branchId}`,
         title: branchName ? `Geri Bildirim: ${branchName}` : "Geri Bildirim Analizi",
         description: `Son 7 gün: ${fbCount} değerlendirme, ort. ${avgRating.toFixed(1)}/5 — inceleme gerekli`,
-        route: "/crm/geri-bildirimler",
+        route: "/misafir-memnuniyeti",
         estimatedMinutes: 10,
         priority: "critical",
         icon: "MessageSquareWarning",

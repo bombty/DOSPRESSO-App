@@ -238,7 +238,7 @@ export async function getSupervisorSuggestions(branchId: number): Promise<Dobody
         message: `Son 7 gündeki müşteri puanı ortalaması ${avgRating.toFixed(1)}. Dikkat gerektiren bir durum var.`,
         actionType: "redirect",
         actionLabel: "Geri Bildirimleri Gör",
-        payload: { route: "/crm/geri-bildirimler" },
+        payload: { route: "/misafir-memnuniyeti" },
         priority: "critical",
         icon: "MessageSquareWarning",
       });
@@ -1160,7 +1160,7 @@ export async function getMarketingSuggestions(): Promise<DobodySuggestion[]> {
           message: `Genel müşteri memnuniyet puanı ${avgRating.toFixed(1)} - iyileştirme gerekiyor.`,
           actionType: "redirect",
           actionLabel: "Geri Bildirimler",
-          payload: { route: "/crm/geri-bildirimler" },
+          payload: { route: "/misafir-memnuniyeti" },
           priority: "critical",
           icon: "Star",
         });

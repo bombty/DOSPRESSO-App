@@ -411,10 +411,9 @@ export const PATH_TO_PERMISSION_MAP: Record<string, PermissionModule> = {
   '/maliyet-yonetimi': 'cost_management',
   // CRM
   '/crm': 'crm_dashboard',
-  '/crm/geri-bildirimler': 'crm_feedback',
-  '/crm/sikayetler': 'crm_complaints',
+  '/misafir-memnuniyeti': 'crm_feedback',
+  '/crm/ticket-talepler': 'crm_complaints',
   '/crm/kampanyalar': 'crm_campaigns',
-  '/crm/sla': 'crm_feedback',
   '/crm/analizler': 'crm_analytics',
   '/crm/ayarlar': 'crm_settings',
 };

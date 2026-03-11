@@ -1015,7 +1015,7 @@ router.post('/api/admin/seed-agent-routing', isAuthenticated, requireAdmin, asyn
       { category: 'operations', subcategory: 'checklist_missed', description: 'Checklist yapılmadı', primaryRole: 'supervisor', secondaryRole: 'mudur', escalationRole: 'cgo', escalationDays: 2 },
       { category: 'operations', subcategory: 'stock_low', description: 'Düşük stok', primaryRole: 'supervisor', secondaryRole: 'satinalma', escalationRole: 'cgo', escalationDays: 1 },
       { category: 'quality', subcategory: 'customer_complaint', description: 'Müşteri şikayeti', primaryRole: 'kalite_kontrol', secondaryRole: 'supervisor', escalationRole: 'cgo', escalationDays: 1 },
-      { category: 'quality', subcategory: 'low_satisfaction', description: 'Düşük memnuniyet', primaryRole: 'coach', secondaryRole: 'supervisor', escalationRole: 'cgo', escalationDays: 3 },
+      { category: 'quality', subcategory: 'low_satisfaction', description: 'Düşük memnuniyet', primaryRole: 'kalite_kontrol', secondaryRole: 'supervisor', escalationRole: 'cgo', escalationDays: 3 },
       { category: 'factory', subcategory: 'production_miss', description: 'Üretim hedefi tutmadı', primaryRole: 'fabrika_mudur', secondaryRole: null, escalationRole: 'cgo', escalationDays: 2 },
       { category: 'factory', subcategory: 'high_waste', description: 'Yüksek fire oranı', primaryRole: 'fabrika_mudur', secondaryRole: 'gida_muhendisi', escalationRole: 'cgo', escalationDays: 2 },
       { category: 'factory', subcategory: 'haccp_fail', description: 'HACCP uyumsuzluk', primaryRole: 'gida_muhendisi', secondaryRole: 'fabrika_mudur', escalationRole: 'ceo', escalationDays: 1 },
