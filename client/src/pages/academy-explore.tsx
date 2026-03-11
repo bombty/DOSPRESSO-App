@@ -48,17 +48,6 @@ const CATEGORY_LABELS: Record<string, string> = {
   yonetim: "Yönetim & Liderlik",
   onboarding: "Oryantasyon",
   genel_gelisim: "Genel Gelişim",
-  barista: "Barista",
-  supervisor: "Supervisor",
-  hygiene: "Hijyen",
-  culture: "Kültür",
-  safety: "Güvenlik",
-  recipe: "Reçete",
-  general: "Genel",
-  management: "Yönetim",
-  customer_service: "Müşteri Hizmetleri",
-  equipment: "Ekipman",
-  quality: "Kalite",
 };
 
 const DIFFICULTY_LABELS: Record<string, { label: string; color: string }> = {
@@ -75,18 +64,14 @@ const ICON_MAP: Record<string, any> = {
 
 function getCategoryIcon(category: string) {
   const iconMap: Record<string, any> = {
-    barista: Coffee,
-    supervisor: Target,
-    hygiene: Droplets,
-    culture: Star,
-    safety: Zap,
-    recipe: Coffee,
+    barista_temelleri: Coffee,
+    hijyen_guvenlik: Droplets,
+    receteler: Coffee,
+    musteri_iliskileri: Star,
+    ekipman: Package,
+    yonetim: Target,
     onboarding: GraduationCap,
-    general: BookOpen,
-    management: Target,
-    customer_service: Star,
-    equipment: Package,
-    quality: CheckCircle,
+    genel_gelisim: BookOpen,
   };
   return iconMap[category] || BookOpen;
 }
