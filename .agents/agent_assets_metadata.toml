@@ -18,3 +18,9 @@ id = "TigHSPvqUX_QFEBFBPjEv"
 uri = "file://.local/tasks/crm-audit-report.md"
 type = "text"
 title = "DOSPRESSO CRM Audit Raporu — Sprint 30A"
+
+[[outputs]]
+id = "ms10TMTaS35WSf5xRDJ4l"
+uri = "file://.local/tasks/onboarding-akademi-audit-raporu.md"
+type = "text"
+title = "DOSPRESSO Onboarding & Akademi Sistemi — IT Audit Raporu"
