@@ -6,3 +6,9 @@ id = "10kGPGY7ceOJciAmqHGxh"
 uri = "file://.local/crm-audit-report.md"
 type = "text"
 title = "DOSPRESSO CRM & Communication Audit Report"
+
+[[outputs]]
+id = "tQDbJv7tZplyVPBYqY7pi"
+uri = "file://.local/crm-architecture-review.md"
+type = "text"
+title = "CRM Architecture Review — Codebase vs Design Document Analysis"
