@@ -158,10 +158,6 @@ export default function AdminDobodyAvatarlar() {
     applyRoles: false,
   });
 
-  if (user?.role !== "admin") {
-    return <Redirect to="/" />;
-  }
-
   const { data: avatars = [], isLoading, isError, refetch } = useQuery<DobodyAvatar[]>({
     queryKey: ["/api/admin/dobody/avatars"],
   });
@@ -274,6 +270,10 @@ export default function AdminDobodyAvatarlar() {
       toast({ title: "Hata", description: "Toplu güncelleme başarısız", variant: "destructive" });
     },
   });
+
+  if (user?.role !== "admin") {
+    return <Redirect to="/" />;
+  }
 
   function resolveTimeValues(form: {
     timePreset: string;

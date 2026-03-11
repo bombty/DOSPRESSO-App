@@ -197,10 +197,6 @@ export default function AdminWidgetYonetimi() {
   const [formData, setFormData] = useState<WidgetFormData>(defaultFormData);
   const { deleteState, requestDelete, cancelDelete, confirmDelete } = useConfirmDelete();
 
-  if (user?.role !== "admin") {
-    return <Redirect to="/" />;
-  }
-
   const { data: widgets = [], isLoading, isError, refetch } = useQuery<DashboardWidget[]>({
     queryKey: ["/api/admin/widgets"],
   });
@@ -269,6 +265,10 @@ export default function AdminWidgetYonetimi() {
       toast({ title: "Hata", description: "Modül görünürlüğü güncellenemedi", variant: "destructive" });
     },
   });
+
+  if (user?.role !== "admin") {
+    return <Redirect to="/" />;
+  }
 
   function resetForm() {
     setFormData(defaultFormData);

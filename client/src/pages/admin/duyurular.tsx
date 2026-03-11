@@ -127,9 +127,6 @@ export default function AdminDuyurular() {
   });
 
   const allowedRoles = ["admin", "coach", "destek"];
-  if (!allowedRoles.includes(user?.role || "")) {
-    return <Redirect to="/" />;
-  }
 
   const { data: announcements = [], isLoading, isError, refetch } = useQuery<Announcement[]>({
     queryKey: ["/api/admin/announcements"],
@@ -181,6 +178,10 @@ export default function AdminDuyurular() {
       toast({ title: "Hata", description: "Duyuru silinemedi", variant: "destructive" });
     },
   });
+
+  if (!allowedRoles.includes(user?.role || "")) {
+    return <Redirect to="/" />;
+  }
 
   const resetForm = () => {
     setFormData({

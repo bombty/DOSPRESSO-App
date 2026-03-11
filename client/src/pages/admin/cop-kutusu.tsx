@@ -49,10 +49,6 @@ export default function AdminCopKutusu() {
   } | null>(null);
   const [deleteConfirmInput, setDeleteConfirmInput] = useState("");
 
-  if (user?.role !== "admin" && user?.role !== "genel_mudur") {
-    return <Redirect to="/" />;
-  }
-
   const { data: tables, isLoading: tablesLoading, isError, refetch } = useQuery<TrashTableInfo[]>({
     queryKey: ["/api/trash/tables"],
   });
@@ -89,6 +85,10 @@ export default function AdminCopKutusu() {
       toast({ title: "Hata", description: err.message, variant: "destructive" });
     },
   });
+
+  if (user?.role !== "admin" && user?.role !== "genel_mudur") {
+    return <Redirect to="/" />;
+  }
 
   const totalTrash = tables?.reduce((sum, t) => sum + t.count, 0) || 0;
 

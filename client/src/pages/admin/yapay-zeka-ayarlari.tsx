@@ -130,10 +130,6 @@ export default function AdminYapayZekaAyarlari() {
     rateLimitPerMinute: 60,
   });
 
-  if (user?.role !== "admin") {
-    return <Redirect to="/" />;
-  }
-
   const { data: settings, isLoading, isError, refetch } = useQuery<AISettings>({
     queryKey: ["/api/admin/ai-settings"],
   });
@@ -186,6 +182,10 @@ export default function AdminYapayZekaAyarlari() {
       toast({ title: "Hata", description: "Ayarlar kaydedilemedi", variant: "destructive" });
     },
   });
+
+  if (user?.role !== "admin") {
+    return <Redirect to="/" />;
+  }
 
   const handleTestConnection = async () => {
     setIsTesting(true);

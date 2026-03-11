@@ -372,6 +372,25 @@ export default function BannerEditor() {
     }
   });
 
+  const handleMouseMove = useCallback(
+    (e: React.MouseEvent) => {
+      if (!dragging || !canvasRef.current) return;
+
+      const rect = canvasRef.current.getBoundingClientRect();
+      const newX = Math.max(0, Math.min(rect.width - 50, e.clientX - rect.left - dragging.offsetX));
+      const newY = Math.max(0, Math.min(rect.height - 30, e.clientY - rect.top - dragging.offsetY));
+
+      if (dragging.type === "text") {
+        updateTextElement(dragging.id, { x: newX, y: newY });
+      } else if (dragging.type === "icon") {
+        updateIconElement(dragging.id, { x: newX, y: newY });
+      } else if (dragging.type === "image") {
+        updateImageElement(dragging.id, { x: newX, y: newY });
+      }
+    },
+    [dragging, textElements, iconElements, imageElements]
+  );
+
   if (!user || !["admin", "supervisor"].includes(user.role || "")) {
     return <Redirect to="/" />;
   }
@@ -518,25 +537,6 @@ export default function BannerEditor() {
       });
     }
   };
-
-  const handleMouseMove = useCallback(
-    (e: React.MouseEvent) => {
-      if (!dragging || !canvasRef.current) return;
-
-      const rect = canvasRef.current.getBoundingClientRect();
-      const newX = Math.max(0, Math.min(rect.width - 50, e.clientX - rect.left - dragging.offsetX));
-      const newY = Math.max(0, Math.min(rect.height - 30, e.clientY - rect.top - dragging.offsetY));
-
-      if (dragging.type === "text") {
-        updateTextElement(dragging.id, { x: newX, y: newY });
-      } else if (dragging.type === "icon") {
-        updateIconElement(dragging.id, { x: newX, y: newY });
-      } else if (dragging.type === "image") {
-        updateImageElement(dragging.id, { x: newX, y: newY });
-      }
-    },
-    [dragging, textElements, iconElements, imageElements]
-  );
 
   const handleMouseUp = () => {
     setDragging(null);

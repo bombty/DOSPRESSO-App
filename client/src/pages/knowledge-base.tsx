@@ -35,14 +35,9 @@ export default function KnowledgeBase() {
   const [aiTopic, setAiTopic] = useState("");
   const isHQ = user?.role && isHQRole(user.role as any);
 
-  // Redirect non-HQ users away
-  if (user && !isHQ) {
-    setLocation("/");
-    return null;
-  }
-
   const { data: articles, isLoading, isError, refetch } = useQuery<KnowledgeBaseArticle[]>({
     queryKey: ["/api/knowledge-base"],
+    enabled: !!isHQ,
   });
 
   const form = useForm<InsertKnowledgeBaseArticle>({
@@ -122,6 +117,12 @@ export default function KnowledgeBase() {
       toast({ title: "Hata", description: error.message || "Taslak oluşturulamadı", variant: "destructive" });
     },
   });
+
+  // Redirect non-HQ users away
+  if (user && !isHQ) {
+    setLocation("/");
+    return null;
+  }
 
   const categoryLabels: Record<string, string> = {
     all: "Tümü",

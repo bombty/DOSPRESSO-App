@@ -76,10 +76,6 @@ export default function AdminKullanicilar() {
   const [deactivateConfirmInput, setDeactivateConfirmInput] = useState("");
   const [selectedUser, setSelectedUser] = useState<any>(null);
 
-  if (user?.role !== "admin") {
-    return <Redirect to="/" />;
-  }
-
   const { data: users = [], isLoading, isError, refetch } = useQuery<any[]>({
     queryKey: ["/api/users"],
   });
@@ -126,6 +122,10 @@ export default function AdminKullanicilar() {
       toast({ title: "Hata", description: "Personel tipi güncellenemedi", variant: "destructive" });
     },
   });
+
+  if (user?.role !== "admin") {
+    return <Redirect to="/" />;
+  }
 
   const getBranchName = (branchId: number | null) => {
     if (!branchId) return "HQ";

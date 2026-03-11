@@ -209,10 +209,6 @@ export default function AdminAIBilgiYonetimi() {
     isActive: true,
   });
 
-  if (user?.role !== "admin") {
-    return <Redirect to="/" />;
-  }
-
   const { data: knowledgeItems = [], isLoading, isError, refetch } = useQuery<EquipmentKnowledge[]>({
     queryKey: ["/api/equipment-knowledge"],
   });
@@ -352,6 +348,10 @@ export default function AdminAIBilgiYonetimi() {
       toast({ title: "Hata", description: error.message, variant: "destructive" });
     },
   });
+
+  if (user?.role !== "admin") {
+    return <Redirect to="/" />;
+  }
 
   const resetForm = () => {
     setFormData({

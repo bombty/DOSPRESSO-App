@@ -42,10 +42,6 @@ export default function AdminEmailAyarlari() {
   });
   const [hasChanges, setHasChanges] = useState(false);
 
-  if (user?.role !== "admin") {
-    return <Redirect to="/" />;
-  }
-
   const { data: settings, isLoading, isError, refetch } = useQuery<any>({
     queryKey: ["/api/admin/email-settings"],
   });
@@ -88,6 +84,10 @@ export default function AdminEmailAyarlari() {
       toast({ title: "Hata", description: "Test e-postası gönderilemedi", variant: "destructive" });
     },
   });
+
+  if (user?.role !== "admin") {
+    return <Redirect to="/" />;
+  }
 
   const handleChange = (field: string, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));

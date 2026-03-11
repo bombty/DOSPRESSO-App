@@ -46,10 +46,6 @@ export default function FabrikaVardiyaUyumluluk() {
   const isHQ = user && isHQRole(user.role as any);
   const canAccess = user?.role === 'admin' || user?.role === 'fabrika_mudur' || isHQ || user?.role === 'muhasebe';
 
-  if (!canAccess) {
-    return <Redirect to="/" />;
-  }
-
   const weekStartStr = format(selectedWeek, 'yyyy-MM-dd');
   const weekEndStr = format(endOfWeek(selectedWeek, { weekStartsOn: 1 }), 'yyyy-MM-dd');
 
@@ -62,6 +58,7 @@ export default function FabrikaVardiyaUyumluluk() {
       if (!res.ok) return [];
       return res.json();
     },
+    enabled: canAccess,
   });
 
   const { data: weeklySummaries, isLoading: weeklyLoading } = useQuery<any>({
@@ -71,6 +68,7 @@ export default function FabrikaVardiyaUyumluluk() {
       if (!res.ok) return { all: [], withMissingHours: [], totalMissingMinutes: 0 };
       return res.json();
     },
+    enabled: canAccess,
   });
 
   const reportToAccountingMutation = useMutation({
@@ -91,6 +89,10 @@ export default function FabrikaVardiyaUyumluluk() {
       toast({ title: "Hata", description: "Bildirim gönderilemedi", variant: "destructive" });
     },
   });
+
+  if (!canAccess) {
+    return <Redirect to="/" />;
+  }
 
   const getStatusBadge = (status: string, score: number) => {
     if (status === 'compliant' || score >= 90) {

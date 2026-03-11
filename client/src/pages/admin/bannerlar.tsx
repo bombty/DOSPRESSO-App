@@ -67,10 +67,6 @@ export default function AdminBannerlar() {
     isActive: true,
   });
 
-  if (user?.role !== "admin") {
-    return <Redirect to="/" />;
-  }
-
   const { data: banners = [], isLoading, isError, refetch } = useQuery<any[]>({
     queryKey: ["/api/admin/banners"],
   });
@@ -114,6 +110,10 @@ export default function AdminBannerlar() {
       toast({ title: "Hata", description: "Banner silinemedi", variant: "destructive" });
     },
   });
+
+  if (user?.role !== "admin") {
+    return <Redirect to="/" />;
+  }
 
   const resetForm = () => {
     setFormData({

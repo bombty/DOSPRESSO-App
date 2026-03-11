@@ -74,10 +74,6 @@ export default function AdminYedekleme() {
   const [isRestoring, setIsRestoring] = useState(false);
   const [selectedRestorePoint, setSelectedRestorePoint] = useState<string | null>(null);
 
-  if (user?.role !== "admin") {
-    return <Redirect to="/" />;
-  }
-
   const { data: backupStatusData, isError, refetch, isLoading } = useQuery<BackupStatusData>({
     queryKey: ["/api/system/backup-status"],
     refetchInterval: 60000,
@@ -117,6 +113,10 @@ export default function AdminYedekleme() {
       setIsRestoring(false);
     },
   });
+
+  if (user?.role !== "admin") {
+    return <Redirect to="/" />;
+  }
 
   const handleRestore = (backupId: string) => {
     if (!confirm("Bu geri yükleme noktasına dönmek istediğinizden emin misiniz? Bu işlem mevcut verilerin üzerine yazacaktır.")) return;

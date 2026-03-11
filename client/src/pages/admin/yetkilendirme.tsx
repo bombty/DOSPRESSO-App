@@ -1400,10 +1400,6 @@ export default function AdminYetkilendirme() {
     }
   }, [rolePermissions, selectedRole]);
 
-  if (user?.role !== "admin") {
-    return <Redirect to="/" />;
-  }
-
   const saveMutation = useMutation({
     mutationFn: (data: { role: string; permissions: PermissionState }) => {
       // Convert {view, edit} format to {actions} format for storage
@@ -1436,6 +1432,42 @@ export default function AdminYetkilendirme() {
     },
   });
 
+  const createRoleMutation = useMutation({
+    mutationFn: (data: { roleName: string; scope: string; description: string }) =>
+      apiRequest("POST", "/api/admin/roles", data),
+    onSuccess: () => {
+      toast({ title: "Rol oluşturuldu" });
+      setIsNewRoleDialogOpen(false);
+      setNewRoleName("");
+      setNewRoleScope("hq");
+      setNewRoleDescription("");
+      window.location.reload();
+    },
+    onError: (err) => {
+      toast({ title: "Hata", description: err.message, variant: "destructive" });
+    },
+  });
+
+  const createModuleMutation = useMutation({
+    mutationFn: (data: { moduleKey: string; label: string; megaModuleId: string }) =>
+      apiRequest("POST", "/api/admin/mega-modules/add-module", data),
+    onSuccess: () => {
+      toast({ title: "Modül eklendi" });
+      setIsNewModuleDialogOpen(false);
+      setNewModuleKey("");
+      setNewModuleLabel("");
+      setNewModuleMegaModule("operations");
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/mega-modules"] });
+    },
+    onError: (err: Error) => {
+      toast({ title: "Hata", description: err.message, variant: "destructive" });
+    },
+  });
+
+  if (user?.role !== "admin") {
+    return <Redirect to="/" />;
+  }
+
   const handleToggle = (moduleKey: string, type: "view" | "edit") => {
     setPermissions(prev => {
       const current = prev[moduleKey] || { view: false, edit: false };
@@ -1461,22 +1493,6 @@ export default function AdminYetkilendirme() {
     }
   };
 
-  const createRoleMutation = useMutation({
-    mutationFn: (data: { roleName: string; scope: string; description: string }) =>
-      apiRequest("POST", "/api/admin/roles", data),
-    onSuccess: () => {
-      toast({ title: "Rol oluşturuldu" });
-      setIsNewRoleDialogOpen(false);
-      setNewRoleName("");
-      setNewRoleScope("hq");
-      setNewRoleDescription("");
-      window.location.reload();
-    },
-    onError: (err) => {
-      toast({ title: "Hata", description: err.message, variant: "destructive" });
-    },
-  });
-
   const handleCreateRole = () => {
     if (!newRoleName.trim()) {
       toast({ title: "Hata", description: "Rol adı gerekli", variant: "destructive" });
@@ -1484,23 +1500,6 @@ export default function AdminYetkilendirme() {
     }
     createRoleMutation.mutate({ roleName: newRoleName.trim().toLocaleLowerCase('tr-TR'), scope: newRoleScope, description: newRoleDescription });
   };
-
-  // Yeni modül ekleme mutation
-  const createModuleMutation = useMutation({
-    mutationFn: (data: { moduleKey: string; label: string; megaModuleId: string }) =>
-      apiRequest("POST", "/api/admin/mega-modules/add-module", data),
-    onSuccess: () => {
-      toast({ title: "Modül eklendi" });
-      setIsNewModuleDialogOpen(false);
-      setNewModuleKey("");
-      setNewModuleLabel("");
-      setNewModuleMegaModule("operations");
-      queryClient.invalidateQueries({ queryKey: ["/api/admin/mega-modules"] });
-    },
-    onError: (err: Error) => {
-      toast({ title: "Hata", description: err.message, variant: "destructive" });
-    },
-  });
 
   const handleCreateModule = () => {
     if (!newModuleKey.trim()) {

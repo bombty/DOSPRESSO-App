@@ -55,10 +55,6 @@ export default function AdminKaliteDenetimSablonlari() {
   const [selectedTemplate, setSelectedTemplate] = useState<AuditTemplate | null>(null);
   const { deleteState, requestDelete, cancelDelete, confirmDelete } = useConfirmDelete();
 
-  if (user?.role !== "admin" && user?.role !== "coach") {
-    return <Redirect to="/" />;
-  }
-
   const form = useForm<CreateTemplateFormValues>({
     resolver: zodResolver(CreateTemplateSchema),
     defaultValues: { title: "", description: "", category: "" },
@@ -100,6 +96,10 @@ export default function AdminKaliteDenetimSablonlari() {
       toast({ title: "Hata", description: error.message, variant: "destructive" });
     },
   });
+
+  if (user?.role !== "admin" && user?.role !== "coach") {
+    return <Redirect to="/" />;
+  }
 
   const handleCreate = form.handleSubmit((data) => createMutation.mutate(data));
 

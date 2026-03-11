@@ -85,20 +85,19 @@ export default function IcerikStudyosu() {
 
   const isHQ = user?.role && isHQRole(user.role as any);
 
-  if (!isHQ) {
-    return <Redirect to="/" />;
-  }
-
   const { data: announcements, isLoading: announcementsLoading, isError, refetch } = useQuery<AnnouncementWithUser[]>({
     queryKey: ['/api/announcements'],
+    enabled: !!isHQ,
   });
 
   const { data: banners, isLoading: bannersLoading } = useQuery<BannerItem[]>({
     queryKey: ['/api/admin/banners'],
+    enabled: !!isHQ,
   });
 
   const { data: branches } = useQuery<Branch[]>({
     queryKey: ['/api/branches'],
+    enabled: !!isHQ,
   });
 
   const form = useForm<InsertAnnouncement>({
@@ -164,6 +163,10 @@ export default function IcerikStudyosu() {
       toast({ title: "Hata", description: "İçerik silinemedi", variant: "destructive" });
     },
   });
+
+  if (!isHQ) {
+    return <Redirect to="/" />;
+  }
 
   const handlePublishFromBanner = (banner: BannerItem) => {
     setSelectedBanner(banner);

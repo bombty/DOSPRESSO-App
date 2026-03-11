@@ -161,9 +161,6 @@ export default function AdminAktiviteLoglar() {
   const [drawerOpen, setDrawerOpen] = useState(false);
 
   const hqRoles = ["admin", "ceo", "cgo", "muhasebe_ik", "muhasebe", "satinalma", "coach", "marketing", "trainer", "kalite_kontrol", "gida_muhendisi", "fabrika_mudur", "teknik", "destek", "fabrika", "yatirimci_hq"];
-  if (!user?.role || !hqRoles.includes(user.role)) {
-    return <Redirect to="/" />;
-  }
 
   const buildQueryParams = useCallback(() => {
     const params = new URLSearchParams();
@@ -194,6 +191,10 @@ export default function AdminAktiviteLoglar() {
       return res.json();
     },
   });
+
+  if (!user?.role || !hqRoles.includes(user.role)) {
+    return <Redirect to="/" />;
+  }
 
   const handleExportCSV = () => {
     const params = new URLSearchParams();

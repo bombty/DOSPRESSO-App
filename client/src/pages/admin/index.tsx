@@ -44,10 +44,6 @@ interface PendingApproval {
 export default function AdminDashboard() {
   const { user } = useAuth();
 
-  if (user?.role !== "admin") {
-    return <Redirect to="/" />;
-  }
-
   const { data: pendingTickets = [], isLoading: ticketsLoading, isError, refetch } = useQuery<any[]>({
     queryKey: ["/api/hq-support/tickets"],
     select: (data) => data.filter((t: any) => t.status === "aktif"),
@@ -60,6 +56,10 @@ export default function AdminDashboard() {
   const { data: branches = [], isLoading: branchesLoading } = useQuery<any[]>({
     queryKey: ["/api/branches"],
   });
+
+  if (user?.role !== "admin") {
+    return <Redirect to="/" />;
+  }
 
   const isLoading = ticketsLoading || usersLoading || branchesLoading;
 

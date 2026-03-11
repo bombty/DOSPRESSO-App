@@ -102,10 +102,6 @@ export default function AdminKaliteDenetimSablonuDuzenle() {
   const [editingItemId, setEditingItemId] = useState<number | null>(null);
   const [deleteItemId, setDeleteItemId] = useState<number | null>(null);
 
-  if (user?.role !== "admin" && user?.role !== "coach") {
-    return <Redirect to="/" />;
-  }
-
   const { data: template, isLoading, isError, refetch } = useQuery<AuditTemplate>({
     queryKey: ["/api/audit-templates", templateId],
     enabled: templateId > 0,
@@ -206,6 +202,10 @@ export default function AdminKaliteDenetimSablonuDuzenle() {
       toast({ title: "Hata", description: error.message || "Madde silinemedi", variant: "destructive" });
     },
   });
+
+  if (user?.role !== "admin" && user?.role !== "coach") {
+    return <Redirect to="/" />;
+  }
 
   const handleSaveTemplate = templateForm.handleSubmit((data) => {
     updateTemplateMutation.mutate(data);

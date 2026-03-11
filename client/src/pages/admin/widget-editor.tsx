@@ -175,10 +175,6 @@ export default function WidgetEditor() {
   const [allRolesChecked, setAllRolesChecked] = useState(true);
   const { deleteState, requestDelete, cancelDelete, confirmDelete } = useConfirmDelete();
 
-  if (user?.role !== "admin" && user?.role !== "ceo") {
-    return <Redirect to="/" />;
-  }
-
   const { data: widgets = [], isLoading, isError, refetch } = useQuery<DashboardWidgetItem[]>({
     queryKey: ["/api/admin/dashboard-widgets"],
   });
@@ -235,6 +231,10 @@ export default function WidgetEditor() {
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard-widgets"] });
     },
   });
+
+  if (user?.role !== "admin" && user?.role !== "ceo") {
+    return <Redirect to="/" />;
+  }
 
   function resetForm() {
     setFormData(defaultFormData);
