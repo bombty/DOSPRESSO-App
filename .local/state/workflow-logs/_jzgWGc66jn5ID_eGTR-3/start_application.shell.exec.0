@@ -1,0 +1,141 @@
+[1G[0K⠙[1G[0K
+> rest-express@1.0.0 dev
+> NODE_ENV=development tsx server/index.ts
+
+[1G[0K⠙[1G[0K🧹 AI log cleanup job started (daily at 03:30 Europe/Istanbul)
+✅ Badge seeding complete
+Hatırlatma sistemi başlatıldı - Her 5 dakikada bir kontrol edilecek
+Zamanlanmis gorev iletim sistemi baslatildi - Her dakika kontrol edilecek
+📦 Stok uyarı sistemi başlatıldı - Her saat kontrol edilecek
+📋 Onboarding tamamlama bildirim sistemi başlatıldı - Her 10 dakikada bir kontrol edilecek
+Teklif hatirlatma sistemi baslatildi - Her 24 saatte bir kontrol edilecek
+📦 Bildirim arşivleme sistemi başlatıldı - Günlük 02:00'de çalışacak
+[AgentScheduler] Agent Scheduler başlatılıyor...
+[AgentScheduler] Günlük analiz 293 dakika sonra çalışacak (06:00 TR)
+[AgentScheduler] Haftalık özet 6173 dakika sonra çalışacak (Pazartesi 08:00 TR)
+[AgentScheduler] Event-triggered kontrol her 15 dakikada çalışacak.
+[AgentScheduler] Escalation kontrol her 1 saatte çalışacak.
+[SkillScheduler] Saatlik skill'ler her 1 saatte çalışacak (07:00-20:00 TR).
+[SkillScheduler] Günlük skill'ler 353 dakika sonra çalışacak (07:00 TR)
+[SkillScheduler] Haftalık skill'ler 6233 dakika sonra çalışacak (Pazartesi 09:00 TR)
+[SkillScheduler] Kuyruk kontrolü her 30 dakikada çalışacak.
+[RoutingEscalation] Eskalasyon kontrolü her saat çalışacak.
+[AgentScheduler] Inactive user check 53 dakika sonra çalışacak (02:00 TR)
+[OutcomeTracking] Sonuç kontrolü 413 dakika sonra çalışacak (08:00 TR)
+[AgentScheduler] Agent Scheduler başarıyla başlatıldı.
+10:06:58 PM [express] serving on port 5000
+10:06:58 PM [express] 🔌 DB diagnostics: connected=true, NODE_ENV=development, users=245
+Hatırlatma gönderildi: Görev 4756, Kullanıcı 47a30f2d-b348-4ac5-a29f-c7a640aaafc5, Sayı: 4/10
+10:06:58 PM [express] 🔐 Admin user exists (id=0ccb206f-2c38-431f-8520-291fe9788f50), password synced from ADMIN_BOOTSTRAP_PASSWORD env
+10:06:58 PM [express] ✅ Admin user verified: accountStatus=approved, isActive=true
+🌱 Starting roles seed...
+Hatırlatma gönderildi: Görev 4755, Kullanıcı f8319722-c617-4694-aeae-98b5789b0b97, Sayı: 4/10
+Hatırlatma gönderildi: Görev 4729, Kullanıcı 0bd4c7ce-e685-44f7-9915-0aee001af8ce, Sayı: 9/10
+Hatırlatma gönderildi: Görev 4728, Kullanıcı 4cfa0da6-b32c-40f1-bda5-b613f1a53bbc, Sayı: 8/10
+Hatırlatma gönderildi: Görev 4727, Kullanıcı 9487cc4b-a10d-4f4b-bc4f-0e042e159394, Sayı: 8/10
+Hatırlatma gönderildi: Görev 4726, Kullanıcı 4aa226d5-8151-4eb0-9ad8-2edb246e1c7c, Sayı: 8/10
+Hatırlatma gönderildi: Görev 4711, Kullanıcı 47a30f2d-b348-4ac5-a29f-c7a640aaafc5, Sayı: 9/10
+Hatırlatma gönderildi: Görev 4709, Kullanıcı f8319722-c617-4694-aeae-98b5789b0b97, Sayı: 2/10
+✅ Roles seed completed:
+   - Inserted: 0 new roles
+   - Skipped: 21 existing roles
+   - Total: 21 system roles
+🌱 Starting permission modules seed from registry...
+Hatırlatma gönderildi: Görev 4687, Kullanıcı 4aa226d5-8151-4eb0-9ad8-2edb246e1c7c, Sayı: 6/10
+Hatırlatma gönderildi: Görev 4686, Kullanıcı 18fc2ddd-4b18-47b7-b12f-36a989c02ee4, Sayı: 2/10
+Hatırlatma gönderildi: Görev 4684, Kullanıcı ee76fb82-2a78-4ae6-9792-0f483fa15636, Sayı: 2/10
+Hatırlatma gönderildi: Görev 4663, Kullanıcı 38f93cb4-0135-4402-99cf-b62c4e338546, Sayı: 6/10
+Hatırlatma gönderildi: Görev 4660, Kullanıcı 0bd4c7ce-e685-44f7-9915-0aee001af8ce, Sayı: 6/10
+Hatırlatma gönderildi: Görev 4657, Kullanıcı 47a30f2d-b348-4ac5-a29f-c7a640aaafc5, Sayı: 6/10
+Hatırlatma gönderildi: Görev 4656, Kullanıcı f8319722-c617-4694-aeae-98b5789b0b97, Sayı: 6/10
+Hatırlatma gönderildi: Görev 4651, Kullanıcı 83b203d4-2280-4066-a5a1-bf8922689bb6, Sayı: 10/10
+Hatırlatma gönderildi: Görev 4650, Kullanıcı 4aa226d5-8151-4eb0-9ad8-2edb246e1c7c, Sayı: 10/10
+Hatırlatma gönderildi: Görev 4649, Kullanıcı ee76fb82-2a78-4ae6-9792-0f483fa15636, Sayı: 10/10
+Hatırlatma gönderildi: Görev 4648, Kullanıcı 83b203d4-2280-4066-a5a1-bf8922689bb6, Sayı: 10/10
+Hatırlatma gönderildi: Görev 4614, Kullanıcı 47a30f2d-b348-4ac5-a29f-c7a640aaafc5, Sayı: 9/10
+Hatırlatma gönderildi: Görev 4613, Kullanıcı f8319722-c617-4694-aeae-98b5789b0b97, Sayı: 9/10
+Hatırlatma gönderildi: Görev 4573, Kullanıcı 47a30f2d-b348-4ac5-a29f-c7a640aaafc5, Sayı: 9/10
+Hatırlatma gönderildi: Görev 4564, Kullanıcı 47a30f2d-b348-4ac5-a29f-c7a640aaafc5, Sayı: 2/10
+Hatırlatma gönderildi: Görev 4556, Kullanıcı 47a30f2d-b348-4ac5-a29f-c7a640aaafc5, Sayı: 9/10
+Hatırlatma gönderildi: Görev 4547, Kullanıcı f88ea501-837b-4a32-a617-0f67419732af, Sayı: 9/10
+Hatırlatma gönderildi: Görev 4541, Kullanıcı 47a30f2d-b348-4ac5-a29f-c7a640aaafc5, Sayı: 9/10
+Hatırlatma gönderildi: Görev 4525, Kullanıcı f8319722-c617-4694-aeae-98b5789b0b97, Sayı: 9/10
+Hatırlatma gönderildi: Görev 4519, Kullanıcı f8319722-c617-4694-aeae-98b5789b0b97, Sayı: 6/10
+Hatırlatma gönderildi: Görev 4518, Kullanıcı 47a30f2d-b348-4ac5-a29f-c7a640aaafc5, Sayı: 5/10
+Hatırlatma gönderildi: Görev 4464, Kullanıcı f8319722-c617-4694-aeae-98b5789b0b97, Sayı: 5/10
+Hatırlatma gönderildi: Görev 4461, Kullanıcı 47a30f2d-b348-4ac5-a29f-c7a640aaafc5, Sayı: 5/10
+Hatırlatma gönderildi: Görev 4459, Kullanıcı f8319722-c617-4694-aeae-98b5789b0b97, Sayı: 2/10
+Hatırlatma gönderildi: Görev 4457, Kullanıcı f8319722-c617-4694-aeae-98b5789b0b97, Sayı: 2/10
+Hatırlatma gönderildi: Görev 4455, Kullanıcı 6d5b583c-f03f-4a27-bd03-c616e745302e, Sayı: 2/10
+Hatırlatma gönderildi: Görev 4454, Kullanıcı f8319722-c617-4694-aeae-98b5789b0b97, Sayı: 2/10
+Hatırlatma gönderildi: Görev 4453, Kullanıcı 6d5b583c-f03f-4a27-bd03-c616e745302e, Sayı: 2/10
+Hatırlatma gönderildi: Görev 4451, Kullanıcı f8319722-c617-4694-aeae-98b5789b0b97, Sayı: 2/10
+Hatırlatma gönderildi: Görev 4446, Kullanıcı 6226c602-ac2e-4241-88e5-5070fb227ea1, Sayı: 2/10
+Hatırlatma gönderildi: Görev 4444, Kullanıcı 9487cc4b-a10d-4f4b-bc4f-0e042e159394, Sayı: 2/10
+Hatırlatma gönderildi: Görev 4443, Kullanıcı 6d5b583c-f03f-4a27-bd03-c616e745302e, Sayı: 2/10
+Hatırlatma gönderildi: Görev 4442, Kullanıcı 83b203d4-2280-4066-a5a1-bf8922689bb6, Sayı: 2/10
+Hatırlatma gönderildi: Görev 4441, Kullanıcı 6e240549-a1fe-4107-a93f-64d4c699901f, Sayı: 2/10
+Hatırlatma gönderildi: Görev 4439, Kullanıcı 47a30f2d-b348-4ac5-a29f-c7a640aaafc5, Sayı: 2/10
+Hatırlatma gönderildi: Görev 4425, Kullanıcı 6226c602-ac2e-4241-88e5-5070fb227ea1, Sayı: 2/10
+Hatırlatma gönderildi: Görev 4415, Kullanıcı 47a30f2d-b348-4ac5-a29f-c7a640aaafc5, Sayı: 2/10
+Hatırlatma gönderildi: Görev 4409, Kullanıcı f8319722-c617-4694-aeae-98b5789b0b97, Sayı: 2/10
+Hatırlatma gönderildi: Görev 4408, Kullanıcı 83b203d4-2280-4066-a5a1-bf8922689bb6, Sayı: 2/10
+Hatırlatma gönderildi: Görev 4405, Kullanıcı hq-yavuz-coach, Sayı: 2/10
+Hatırlatma gönderildi: Görev 3295, Kullanıcı 47a30f2d-b348-4ac5-a29f-c7a640aaafc5, Sayı: 9/10
+Hatırlatma gönderildi: Görev 4359, Kullanıcı 38f93cb4-0135-4402-99cf-b62c4e338546, Sayı: 2/10
+Hatırlatma gönderildi: Görev 4365, Kullanıcı 41d2a9f0-f3be-45d0-90cc-e2aa585cfcc9, Sayı: 1/10
+Hatırlatma gönderildi: Görev 4378, Kullanıcı b8743987-e5d4-47f5-9a6f-08112d21d6c6, Sayı: 1/10
+Hatırlatma gönderildi: Görev 3327, Kullanıcı 47a30f2d-b348-4ac5-a29f-c7a640aaafc5, Sayı: 1/10
+Hatırlatma gönderildi: Görev 4389, Kullanıcı cd3b8fba-26d3-45e8-9fda-d7bcbaa9ed95, Sayı: 1/10
+✅ Permission modules seed completed:
+   - Inserted: 0 new modules
+   - Updated: 123 existing modules
+   - Total modules in registry: 123
+🌱 Starting role permissions seed...
+✅ Role permissions seed completed:
+   - Inserted: 0 new permissions
+   - Skipped: 2028 existing permissions (preserved)
+   - Total: 2028 role-module combinations
+🌱 Starting role templates seed...
+✅ Role templates seed completed:
+   - Inserted: 17 templates
+   - Skipped: 0 existing templates
+   - Total: 17 default templates
+🌱 Starting admin menu seed (simplified structure)...
+✅ Simplified admin menu seed completed:
+   - Sections processed: 12
+   - Menu items inserted: 0
+   - Menu items skipped (already exist): 53
+   - Total menu items: 53
+🌱 Clearing old service requests...
+✅ Service requests seed completed: 6 requests created
+🍵 Starting DOSPRESSO recipe seed...
+✅ DOSPRESSO recipes already seeded (145 recipes in 10 categories). Skipping.
+✅ Default audit template already exists
+10:07:03 PM [express] Shift reminder job started (runs every 10 minutes)
+10:07:03 PM [express] Composite score update job started (daily at 03:00 Europe/Istanbul)
+10:07:03 PM [express] Danger zone check job initialized (runs monthly on 1st)
+10:07:03 PM [express] Task trigger daily scheduler started (08:00 Europe/Istanbul)
+10:07:03 PM [express] SKT expiry check job started (runs every 6 hours)
+SLA kontrol sistemi başlatıldı - Her 15 dakikada bir kontrol edilecek
+Fotoğraf temizleme sistemi başlatıldı - Her 6 saatte bir kontrol edilecek
+Müşteri geri bildirim SLA kontrol sistemi başlatıldı - Her saat kontrol edilecek
+Feedback pattern analiz sistemi baslatildi - Pazartesi 08:00 Europe/Istanbul
+📅 Saatlik backup scheduler başlatıldı (RPO ≤ 1 saat)
+🗑️ No expired checklist photos found
+10:07:03 PM [express] 🏥 Sistem sağlık durumu: HEALTHY
+10:07:03 PM [express]    ✅ Veritabanı bağlantısı aktif
+10:07:03 PM [express]    ✅ Veritabanı erişilebilir
+10:07:03 PM [express]    ✅ Son başarılı backup: 11.03.2026 20:11:45 (115 dk önce)
+📚 10 backup kaydı veritabanından yüklendi
+✅ Güncel backup mevcut — sonraki saatlik döngüde devam edecek
+⏰ Saatlik backup aktif: her 60 dakikada bir çalışacak
+📋 Onboarding check: found 0 completed assignments awaiting manager notification
+⚠️ Throttled notification for user 47a30f2d-b348-4ac5-a29f-c7a640aaafc5: daily limit (20) reached, type: task_overdue
+⚠️ Throttled notification for user 47a30f2d-b348-4ac5-a29f-c7a640aaafc5: daily limit (20) reached, type: task_overdue
+📦 Stock check completed - 0 products with min stock defined
+SLA breach re-notification for feedback #11 at Gaziantep İbrahimli
+SLA breach re-notification for feedback #12 at Antalya Lara
+SLA breach re-notification for feedback #13 at Işıklar
+Feedback SLA check: 0 new breaches, 3 ongoing
+Stale quote reminder sent to 0 users (5 already notified) for 115 products

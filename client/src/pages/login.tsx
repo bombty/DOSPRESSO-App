@@ -128,10 +128,21 @@ export default function Login() {
       navigate(target);
     },
     onError: (error) => {
-      setError(error.message || t("loginFailed"));
+      let displayMessage = error.message || t("loginFailed");
+      try {
+        const match = error.message?.match(/^\d+:\s*(.+)$/s);
+        if (match) {
+          const parsed = JSON.parse(match[1]);
+          if (parsed.error) {
+            displayMessage = parsed.error;
+          }
+        }
+      } catch {
+      }
+      setError(displayMessage);
       toast({
         title: t("loginFailed"),
-        description: error.message || t("loginFailedDesc"),
+        description: displayMessage,
         variant: "destructive",
       });
     },

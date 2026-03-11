@@ -1,0 +1,17 @@
+VERDICT: REJECTED
+The core requirement to reset Mahmut/Basri/Cihan passwords to bcrypt("0000") is not implemented in the diff. server/seed-comprehensive.ts (unchanged in the diff) recreates Basri/Cihan with a shared hashedPassword, but it does not updaVERDICT: REJECTED
+te the existing HQ user (hq-mahmut-ik) or provide any migration/seed change to reset those three accounts explicitly. Without a DB update or seed/migration change, the login fix remains incomplete even though rate limits and remaining-attempts messaging were adjusted correctly.
+
+Security: none observed.
+
+Next actions:
+1) Add a seed/migration (or direct DB update) that sets hashed_password for Mahmut, Basri, Cihan to bcrypt("0000") and ensure it runs in the target environment.
+2) Confirm the login error messaging still displays remaining attempts after the backend change and that the front-end surfaces it as intended.
+3) Re-run tests for login and lockout thresholds after applying the password reset.The core requirement to reset Mahmut/Basri/Cihan passwords to bcrypt("0000") is not implemented in the diff. server/seed-comprehensive.ts (unchanged in the diff) recreates Basri/Cihan with a shared hashedPassword, but it does not update the existing HQ user (hq-mahmut-ik) or provide any migration/seed change to reset those three accounts explicitly. Without a DB update or seed/migration change, the login fix remains incomplete even though rate limits and remaining-attempts messaging were adjusted correctly.
+
+Security: none observed.
+
+Next actions:
+1) Add a seed/migration (or direct DB update) that sets hashed_password for Mahmut, Basri, Cihan to bcrypt("0000") and ensure it runs in the target environment.
+2) Confirm the login error messaging still displays remaining attempts after the backend change and that the front-end surfaces it as intended.
+3) Re-run tests for login and lockout thresholds after applying the password reset.

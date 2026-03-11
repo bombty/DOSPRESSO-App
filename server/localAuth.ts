@@ -17,7 +17,7 @@ const loginSchema = z.object({
   password: z.string().min(1, "Şifre zorunludur"),
 });
 
-const LOGIN_LOCKOUT_MAX_ATTEMPTS = 5;
+const LOGIN_LOCKOUT_MAX_ATTEMPTS = 10;
 const LOGIN_LOCKOUT_WINDOW_MS = 15 * 60 * 1000;
 const LOGIN_LOCKOUT_DURATION_MS = 15 * 60 * 1000;
 
@@ -44,7 +44,7 @@ function checkLoginLockout(username: string): { locked: boolean; remainingMs: nu
   return { locked: false, remainingMs: 0 };
 }
 
-function recordFailedLogin(username: string): boolean {
+function recordFailedLogin(username: string): { locked: boolean; remainingAttempts: number } {
   const normalizedUsername = username.toLocaleLowerCase('tr-TR');
   const now = Date.now();
   let record = loginAttempts.get(normalizedUsername);
@@ -52,7 +52,7 @@ function recordFailedLogin(username: string): boolean {
   if (!record || (now - record.firstAttemptAt > LOGIN_LOCKOUT_WINDOW_MS)) {
     record = { count: 1, firstAttemptAt: now, lockedUntil: null };
     loginAttempts.set(normalizedUsername, record);
-    return false;
+    return { locked: false, remainingAttempts: LOGIN_LOCKOUT_MAX_ATTEMPTS - 1 };
   }
   
   record.count++;
@@ -60,11 +60,11 @@ function recordFailedLogin(username: string): boolean {
   if (record.count >= LOGIN_LOCKOUT_MAX_ATTEMPTS) {
     record.lockedUntil = now + LOGIN_LOCKOUT_DURATION_MS;
     loginAttempts.set(normalizedUsername, record);
-    return true;
+    return { locked: true, remainingAttempts: 0 };
   }
   
   loginAttempts.set(normalizedUsername, record);
-  return false;
+  return { locked: false, remainingAttempts: LOGIN_LOCKOUT_MAX_ATTEMPTS - record.count };
 }
 
 function clearLoginAttempts(username: string): void {
@@ -369,16 +369,16 @@ export async function setupAuth(app: Express, authLimiter?: any) {
         return;
       }
       
-      const justLocked = recordFailedLogin(username);
+      const loginResult = recordFailedLogin(username);
       
       auditLog(req, {
         eventType: "auth.login_failed",
         action: "login_failed",
         resource: "auth",
-        details: { username, reason: info?.message || "Invalid credentials", accountLocked: justLocked },
+        details: { username, reason: info?.message || "Invalid credentials", accountLocked: loginResult.locked, remainingAttempts: loginResult.remainingAttempts },
       });
 
-      if (justLocked) {
+      if (loginResult.locked) {
         console.warn(`[Auth] Account locked: ${username} (${LOGIN_LOCKOUT_MAX_ATTEMPTS} failed attempts)`);
         try {
           const adminUsers = await storage.getUsersByRole('admin');
@@ -402,7 +402,10 @@ export async function setupAuth(app: Express, authLimiter?: any) {
         });
       }
 
-      return res.status(401).json({ error: info?.message || "Kullanıcı adı veya şifre hatalı" });
+      return res.status(401).json({ 
+        error: `Kullanıcı adı veya şifre hatalı. ${loginResult.remainingAttempts} deneme hakkınız kaldı.`,
+        remainingAttempts: loginResult.remainingAttempts,
+      });
     })(req, res, next);
   });
 

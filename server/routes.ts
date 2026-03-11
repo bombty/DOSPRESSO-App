@@ -667,7 +667,7 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
 
   const authLimiter = rateLimit({
     windowMs: 60 * 1000,
-    max: 20,
+    max: 50,
     standardHeaders: true,
     legacyHeaders: false,
     message: { error: 'Çok fazla giriş denemesi, lütfen bekleyin' },
@@ -695,7 +695,7 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
 
   const loginLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
-    max: 10,
+    max: 50,
     standardHeaders: true,
     legacyHeaders: false,
     message: { error: 'Çok fazla giriş denemesi. 15 dakika sonra tekrar deneyin.' },
