@@ -137,10 +137,6 @@ function WidgetPreview({ formData }: { formData: WidgetFormData }) {
   const Icon = getWidgetTypeIcon(formData.widgetType);
   const sizeClass = formData.size === "small" ? "w-36" : formData.size === "large" ? "w-64" : "w-48";
 
-  
-  if (isLoading) return <LoadingState />;
-  if (isError) return <ErrorState onRetry={refetch} />;
-
   return (
     <Card className={`${sizeClass} overflow-visible`} data-testid="widget-preview">
       <CardHeader className="p-3 pb-1 flex flex-row items-center justify-between gap-1">

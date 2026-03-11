@@ -62,10 +62,6 @@ function SortableTaskItem({
     opacity: isDragging ? 0.5 : 1,
   };
 
-  
-  if (isLoading) return <LoadingState />;
-  if (isError) return <ErrorState onRetry={refetch} />;
-
   return (
     <div
       ref={setNodeRef}

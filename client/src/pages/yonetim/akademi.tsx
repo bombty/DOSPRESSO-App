@@ -161,24 +161,6 @@ export default function AdminAcademy() {
     setRecipeDialogOpen(true);
   };
 
-  if (!user || !isHQRole(user.role as UserRoleType)) {
-    
-  if (isLoading) return <LoadingState />;
-  if (isError) return <ErrorState onRetry={refetch} />;
-
-  return (
-      <Card>
-        <CardContent className="py-12">
-          <div className="flex flex-col items-center justify-center text-center">
-            <AlertCircle className="h-12 w-12 text-destructive" />
-            <h3 className="font-semibold text-lg mt-2">Yetkisiz Erişim</h3>
-            <p className="text-muted-foreground">Bu sayfaya erişim yetkiniz yok.</p>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
-
   const { data: hubCategories = [], isError, refetch, isLoading } = useQuery<HubCategory[]>({
     queryKey: ["/api/academy/hub-categories"],
   });
@@ -207,6 +189,23 @@ export default function AdminAcademy() {
   const { data: recipes = [] } = useQuery<Recipe[]>({
     queryKey: ["/api/academy/recipes"],
   });
+
+  if (!user || !isHQRole(user.role as UserRoleType)) {
+    return (
+      <Card>
+        <CardContent className="py-12">
+          <div className="flex flex-col items-center justify-center text-center">
+            <AlertCircle className="h-12 w-12 text-destructive" />
+            <h3 className="font-semibold text-lg mt-2">Yetkisiz Erişim</h3>
+            <p className="text-muted-foreground">Bu sayfaya erişim yetkiniz yok.</p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (isLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
 
   const activeModules = modules.filter((m: any) => m.isActive !== false);
   const activeQuizzes = quizzes.filter((q: any) => q.isActive !== false);

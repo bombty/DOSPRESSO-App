@@ -102,10 +102,6 @@ function PhaseStatusBadge({ status }: { status: string }) {
                status === "in_progress" ? Clock : 
                status === "blocked" ? Ban : Clock;
   
-  
-  if (isLoading) return <LoadingState />;
-  if (isError) return <ErrorState onRetry={refetch} />;
-
   return (
     <Badge variant="outline" className={`${config.color} text-xs gap-1`}>
       <Icon className="h-3 w-3" />

@@ -371,10 +371,6 @@ function DraggableModuleItem({
     setIsEditing(true);
   };
 
-  
-  if (isLoading) return <LoadingState />;
-  if (isError) return <ErrorState onRetry={refetch} />;
-
   return (
     <div
       ref={setNodeRef}

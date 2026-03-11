@@ -175,10 +175,6 @@ function PaymentDialog({ order, open, onOpenChange }: { order: PurchaseOrder; op
     });
   };
 
-  
-  if (isLoading) return <LoadingState />;
-  if (isError) return <ErrorState onRetry={refetch} />;
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md" data-testid="dialog-payment">

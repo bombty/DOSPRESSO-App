@@ -74,9 +74,6 @@ function KPICard({ icon: Icon, label, value, sub, variant = "default" }: {
   const borderClass = variant === "warning" ? "border-orange-500/30" :
     variant === "success" ? "border-green-500/30" : "";
   
-  if (isLoading) return <LoadingState />;
-  if (isError) return <ErrorState onRetry={refetch} />;
-
   return (
     <Card className={borderClass}>
       <CardContent className="p-3 flex flex-col items-center gap-1">

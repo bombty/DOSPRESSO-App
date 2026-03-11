@@ -38,9 +38,6 @@ function KpiCard({ title, value, prev, trend, icon: Icon, color, testId }: any) 
   const diff = trend !== undefined ? trend : (prev ? ((value - prev) / Math.abs(prev || 1)) * 100 : 0);
   const up = diff >= 0;
   const showTrend = trend !== undefined || prev !== undefined;
-  
-  if (isLoading) return <LoadingState />;
-  if (isError) return <ErrorState onRetry={refetch} />;
 
   return (
     <Card data-testid={testId}>

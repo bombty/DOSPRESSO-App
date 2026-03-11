@@ -123,9 +123,6 @@ const TYPE_ICONS: Record<string, any> = {
 
 function ScoreBar({ label, value, max = 100 }: { label: string; value: number; max?: number }) {
   const percent = Math.min(100, Math.round((value / max) * 100));
-  
-  if (eligLoading) return <LoadingState />;
-  if (isError) return <ErrorState onRetry={refetch} />;
 
   return (
     <div className="space-y-1" data-testid={`score-bar-${label}`}>

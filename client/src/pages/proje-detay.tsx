@@ -74,9 +74,6 @@ const priorityColors: Record<string, string> = {
 
 function DroppableColumn({ id, children, status }: { id: string; children: React.ReactNode; status: string }) {
   const { setNodeRef, isOver } = useDroppable({ id });
-  
-  if (isLoading) return <LoadingState />;
-  if (isError) return <ErrorState onRetry={refetch} />;
 
   return (
     <div 

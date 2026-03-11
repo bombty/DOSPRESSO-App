@@ -41,18 +41,16 @@ export default function HqStaffDashboard() {
 
   useEffect(() => {
     const interval = setInterval(() => setNow(Date.now()), 30000);
-
-  if (isLoading) return <LoadingState />;
-  if (isError) return <ErrorState onRetry={refetch} />;
-
-
-  return () => clearInterval(interval);
+    return () => clearInterval(interval);
   }, []);
 
   const { data: sessions = [], isLoading, refetch, isError } = useQuery<HqActiveSession[]>({
     queryKey: ["/api/hq/kiosk/active-sessions"],
     refetchInterval: 30000,
   });
+
+  if (isLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
 
   const activeSessions = sessions.filter((s) => s.session.status === "active");
   const breakSessions = sessions.filter((s) => s.session.status === "on_break");

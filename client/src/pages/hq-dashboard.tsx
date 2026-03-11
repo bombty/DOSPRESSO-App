@@ -147,10 +147,6 @@ function getTrendIcon(trend: Trend) {
 
 function MetricCardComponent({ metric, testId }: { metric: MetricCard; testId?: string }) {
   const isClickable = !!metric.onClick;
-  
-  
-  if (isLoading) return <LoadingState />;
-  if (isError) return <ErrorState onRetry={refetch} />;
 
   return (
     <Card 

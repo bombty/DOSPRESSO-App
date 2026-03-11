@@ -162,12 +162,7 @@ export default function SatinalmaDashboard() {
   const isHqRole = user && HQ_ROLES.includes(user.role);
 
   useEffect(() => {
-
-  if (isLoading) return <LoadingState />;
-  if (isError) return <ErrorState onRetry={refetch} />;
-
-
-  return () => {
+    return () => {
       if (qrScannerRef.current) {
         qrScannerRef.current.stop().catch(() => {});
       }

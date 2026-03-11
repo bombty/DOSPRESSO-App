@@ -136,10 +136,6 @@ function SortableSection({
     })
   );
 
-  
-  if (isLoading) return <LoadingState />;
-  if (isError) return <ErrorState onRetry={refetch} />;
-
   return (
     <Card ref={setNodeRef} style={style} className="mb-4">
       <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">

@@ -188,11 +188,7 @@ function formatJsonField(value: string | null | undefined): React.ReactNode {
     return null;
   }
   if (pgArr && pgArr.length > 0) {
-    
-  if (loadingCategories) return <LoadingState />;
-  if (isError) return <ErrorState onRetry={refetch} />;
-
-  return (
+    return (
       <ul className="list-disc list-inside space-y-1">
         {pgArr.map((item, i) => (
           <li key={i} className="text-sm">{item}</li>

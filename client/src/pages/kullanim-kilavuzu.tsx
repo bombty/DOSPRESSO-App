@@ -114,9 +114,6 @@ const CATEGORY_LABELS: Record<string, string> = {
 function RenderMarkdown({ content }: { content: string }) {
   const lines = content.split('\n');
   
-  if (isLoading) return <LoadingState />;
-  if (isError) return <ErrorState onRetry={refetch} />;
-
   return (
     <div className="prose prose-sm dark:prose-invert max-w-none space-y-2">
       {lines.map((line, i) => {

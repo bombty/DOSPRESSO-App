@@ -70,10 +70,6 @@ function DraggableShiftChip({ shift, employee, canEdit, onClick }: {
     if (!isDragging && shift?.id) onClick();
   };
 
-  
-  if (shiftsLoading) return <LoadingState />;
-  if (isError) return <ErrorState onRetry={refetch} />;
-
   return (
     <div
       ref={setNodeRef}

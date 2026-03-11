@@ -108,10 +108,6 @@ const ORDER_STATUSES = [
 ];
 
 function formatCurrency(value: number): string {
-  
-  if (productsLoading) return <LoadingState />;
-  if (isError) return <ErrorState onRetry={refetch} />;
-
   return (value / 100).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 

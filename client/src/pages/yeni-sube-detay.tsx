@@ -332,10 +332,6 @@ function PhaseCard({ phase, onEdit, canEdit = true }: {
                      phase.status === "in_progress" ? Clock : 
                      phase.status === "blocked" ? Ban : Clock;
 
-  
-  if (isLoading) return <LoadingState />;
-  if (isError) return <ErrorState onRetry={refetch} />;
-
   return (
     <Card 
       className={`${canEdit ? 'cursor-pointer hover-elevate' : ''} transition-all`}

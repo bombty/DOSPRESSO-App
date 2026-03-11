@@ -42,10 +42,6 @@ function ScoreCircle({ score, label, icon: Icon, color }: { score: number; label
   const offset = circumference - (score / 100) * circumference;
   const scoreColor = score >= 80 ? "text-green-600" : score >= 50 ? "text-yellow-600" : "text-red-600";
 
-  
-  if (isLoading) return <LoadingState />;
-  if (isError) return <ErrorState onRetry={refetch} />;
-
   return (
     <div className="flex flex-col items-center gap-1">
       <div className="relative w-20 h-20">

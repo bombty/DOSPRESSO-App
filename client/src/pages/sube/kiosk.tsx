@@ -200,9 +200,6 @@ export default function BranchKiosk() {
         console.error("QR scanner init error:", e);
       }
     }, 200);
-    
-  if (loadingStaff) return <LoadingState />;
-  if (isError) return <ErrorState onRetry={refetch} />;
 
   return () => {
       clearTimeout(timer);

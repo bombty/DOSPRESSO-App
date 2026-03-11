@@ -133,10 +133,6 @@ const newShopFormSchema = z.object({
 type NewShopFormValues = z.infer<typeof newShopFormSchema>;
 
 function PhaseSwimlanesPreview({ phases }: { phases: ProjectPhase[] }) {
-  
-  if (isLoading) return <LoadingState />;
-  if (isError) return <ErrorState onRetry={refetch} />;
-
   return (
     <div className="flex items-center gap-1 mt-3">
       {phases.map((phase) => {

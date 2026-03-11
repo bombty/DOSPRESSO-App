@@ -549,9 +549,6 @@ function extractYouTubeId(url: string): string | null {
 function YouTubePreview({ url }: { url: string }) {
   const videoId = extractYouTubeId(url);
   if (!videoId) return null;
-  
-  if (isLoading) return <LoadingState />;
-  if (isError) return <ErrorState onRetry={refetch} />;
 
   return (
     <div className="relative w-full aspect-video rounded-md overflow-hidden mt-2">
