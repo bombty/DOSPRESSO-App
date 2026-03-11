@@ -102,12 +102,11 @@ export default function EmployeeDashboard() {
       });
     }, 1000);
 
-    
+    return () => clearInterval(timer);
+  }, [paused, user?.branchId, setLocation]);
+
   if (isLoading) return <LoadingState />;
   if (isError) return <ErrorState onRetry={refetch} />;
-
-  return () => clearInterval(timer);
-  }, [paused, user?.branchId, setLocation]);
 
   if (!userId) return null;
 

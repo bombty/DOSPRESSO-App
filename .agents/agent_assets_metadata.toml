@@ -24,3 +24,15 @@ id = "ms10TMTaS35WSf5xRDJ4l"
 uri = "file://.local/tasks/onboarding-akademi-audit-raporu.md"
 type = "text"
 title = "DOSPRESSO Onboarding & Akademi Sistemi — IT Audit Raporu"
+
+[[outputs]]
+id = "WJg9v0BalTGZOcp61Lij-"
+uri = "file://.local/tasks/onboarding-architectural-assessment.md"
+type = "text"
+title = "DOSPRESSO Onboarding — Architectural Assessment (IT Consultant)"
+
+[[outputs]]
+id = "1xQ8aSmw_m7hUfItukwdF"
+uri = "file://.local/tasks/dashboard-ui-audit-report.md"
+type = "text"
+title = "DOSPRESSO Dashboard UI/UX Audit Raporu"
