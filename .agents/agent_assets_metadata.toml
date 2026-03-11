@@ -12,3 +12,9 @@ id = "tQDbJv7tZplyVPBYqY7pi"
 uri = "file://.local/crm-architecture-review.md"
 type = "text"
 title = "CRM Architecture Review — Codebase vs Design Document Analysis"
+
+[[outputs]]
+id = "TigHSPvqUX_QFEBFBPjEv"
+uri = "file://.local/tasks/crm-audit-report.md"
+type = "text"
+title = "DOSPRESSO CRM Audit Raporu — Sprint 30A"

@@ -5419,7 +5419,7 @@ export type FeedbackResponse = typeof feedbackResponses.$inferSelect;
 
 export const feedbackFormSettings = pgTable("feedback_form_settings", {
   id: serial("id").primaryKey(),
-  branchId: integer("branch_id").notNull().references(() => branches.id, { onDelete: "cascade" }),
+  branchId: integer("branch_id").references(() => branches.id, { onDelete: "cascade" }),
   
   // Banner / Visual customization
   bannerUrl: text("banner_url"), // Custom banner image URL
