@@ -1,6 +1,6 @@
 import { db } from "./db";
 import { academyHubCategories, trainingModules } from "@shared/schema";
-import { eq, sql, inArray, isNull, or } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 
 const STANDARD_CATEGORIES = [
   { slug: "barista_temelleri", titleTr: "Barista Temelleri", titleEn: "Barista Basics", description: "Kahve hazırlama, espresso, süt işleme teknikleri", iconName: "Coffee", colorHex: "#8B5CF6", displayOrder: 1 },
