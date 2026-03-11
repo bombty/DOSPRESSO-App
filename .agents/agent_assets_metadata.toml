@@ -42,3 +42,15 @@ id = "LT_LLiKNNx40tmiE3e8Be"
 uri = "file://.local/tasks/learning-development-deep-audit.md"
 type = "text"
 title = "DOSPRESSO L&D Ecosystem — Complete Deep-Dive Audit Report"
+
+[[outputs]]
+id = "DWoqGFYEFX89GnCsmERCG"
+uri = "file://.local/tasks/flow-academy-technical-assessment.md"
+type = "text"
+title = "Flow Akademi — UI/UX & Technical Feasibility Assessment"
+
+[[outputs]]
+id = "T1PoMEPT7-n7WcNMrCXZg"
+uri = "file://.local/tasks/flow-academy-buddy-roles-supplement.md"
+type = "text"
+title = "Flow Akademi — Bar Buddy & Supervisor Buddy Ek Rapor"
