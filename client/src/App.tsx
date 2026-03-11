@@ -119,6 +119,8 @@ const AdvancedReportsPage = lazy(() => import("@/pages/advanced-reports"));
 const MyPerformancePage = lazy(() => import("@/pages/my-performance"));
 
 const FranchiseAcilis = lazy(() => import("@/pages/franchise-acilis"));
+const FranchiseYatirimcilar = lazy(() => import("@/pages/franchise-yatirimcilar"));
+const FranchiseYatirimciDetay = lazy(() => import("@/pages/franchise-yatirimci-detay"));
 const DenetimSablonlari = lazy(() => import("@/pages/denetim-sablonlari"));
 const DenetimYurutme = lazy(() => import("@/pages/denetim-yurutme"));
 const Denetimler = lazy(() => import("@/pages/denetimler"));
@@ -411,6 +413,8 @@ function Router() {
           <Route path="/hq-destek" component={HQSupport} />
           <Route path="/kampanya-yonetimi">{() => { window.location.replace("/crm/kampanyalar"); return null; }}</Route>
           <Route path="/franchise-acilis" component={FranchiseAcilis} />
+          <Route path="/franchise-yatirimcilar" component={FranchiseYatirimcilar} />
+          <Route path="/franchise-yatirimcilar/:id" component={FranchiseYatirimciDetay} />
           <Route path="/yonetim/icerik" component={AdminContentManagement} />
           <Route path="/yonetim/ayarlar" component={Settings} />
           <Route path="/yonetim/kullanicilar" component={UserCRM} />

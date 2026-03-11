@@ -459,6 +459,14 @@ const MENU_BLUEPRINT: SidebarMenuSection[] = [
         moduleKey: "crm_dashboard",
         scope: "hq",
       },
+      {
+        id: "franchise-investors",
+        titleTr: "Yatırımcılar",
+        path: "/franchise-yatirimcilar",
+        icon: "Building2",
+        moduleKey: "crm_dashboard",
+        scope: "hq",
+      },
     ],
   },
 
@@ -645,10 +653,10 @@ const SIDEBAR_ALLOWED_ITEMS: Partial<Record<UserRoleType, string[]>> = {
     'branch-dashboard', 'reports', 'notifications',
   ],
   ceo: [
-    'dashboard', 'reports', 'ai-assistant', 'notifications', 'crm-main',
+    'dashboard', 'reports', 'ai-assistant', 'notifications', 'crm-main', 'franchise-investors',
   ],
   cgo: [
-    'dashboard', 'branches-list', 'reports', 'customer-satisfaction', 'ai-assistant', 'notifications',
+    'dashboard', 'branches-list', 'reports', 'customer-satisfaction', 'franchise-investors', 'notifications',
   ],
   yatirimci_hq: [
     'dashboard', 'reports', 'notifications',
@@ -695,7 +703,7 @@ const SIDEBAR_ALLOWED_ITEMS: Partial<Record<UserRoleType, string[]>> = {
   admin: [
     'dashboard', 'branches-list', 'reports', 'performance-dashboard', 'hr',
     'training-academy', 'knowledge-base', 'branch-health', 'customer-satisfaction',
-    'ai-assistant', 'agent-center', 'crm-main', 'notifications', 'usage-guide', 'hq-support',
+    'ai-assistant', 'agent-center', 'crm-main', 'franchise-investors', 'notifications', 'usage-guide', 'hq-support',
   ],
   fabrika_sorumlu: [
     'factory-dashboard', 'factory-kiosk', 'factory-quality', 'notifications',

@@ -416,6 +416,7 @@ export const PATH_TO_PERMISSION_MAP: Record<string, PermissionModule> = {
   '/crm/kampanyalar': 'crm_campaigns',
   '/crm/analizler': 'crm_analytics',
   '/crm/ayarlar': 'crm_settings',
+  '/franchise-yatirimcilar': 'crm_dashboard',
 };
 
 // Permission Matrix: Define what each role can do
@@ -15042,3 +15043,63 @@ export const dataChangeLog = pgTable("data_change_log", {
   index("dcl_changed_by_idx").on(table.changedBy),
   index("dcl_changed_at_idx").on(table.changedAt),
 ]);
+
+// ==================== Franchise Investors ====================
+
+export const franchiseInvestors = pgTable("franchise_investors", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").references(() => users.id, { onDelete: "set null" }),
+  fullName: varchar("full_name", { length: 200 }).notNull(),
+  phone: varchar("phone", { length: 20 }),
+  email: varchar("email", { length: 200 }),
+  companyName: varchar("company_name", { length: 200 }),
+  taxNumber: varchar("tax_number", { length: 50 }),
+  contractStart: date("contract_start"),
+  contractEnd: date("contract_end"),
+  contractRenewalReminder: boolean("contract_renewal_reminder").default(true),
+  investmentAmount: numeric("investment_amount", { precision: 12, scale: 2 }),
+  monthlyRoyaltyRate: numeric("monthly_royalty_rate", { precision: 5, scale: 2 }).default("5.0"),
+  notes: text("notes"),
+  status: varchar("status", { length: 20 }).default("active"),
+  isDeleted: boolean("is_deleted").default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("fi_user_id_idx").on(table.userId),
+  index("fi_status_idx").on(table.status),
+]);
+
+export const insertFranchiseInvestorSchema = createInsertSchema(franchiseInvestors).omit({ id: true, createdAt: true, updatedAt: true, isDeleted: true });
+export type InsertFranchiseInvestor = z.infer<typeof insertFranchiseInvestorSchema>;
+export type FranchiseInvestor = typeof franchiseInvestors.$inferSelect;
+
+export const franchiseInvestorBranches = pgTable("franchise_investor_branches", {
+  id: serial("id").primaryKey(),
+  investorId: integer("investor_id").notNull().references(() => franchiseInvestors.id, { onDelete: "cascade" }),
+  branchId: integer("branch_id").notNull().references(() => branches.id, { onDelete: "cascade" }),
+  ownershipPercentage: numeric("ownership_percentage", { precision: 5, scale: 2 }).default("100"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("fib_investor_idx").on(table.investorId),
+  index("fib_branch_idx").on(table.branchId),
+]);
+
+export const insertFranchiseInvestorBranchSchema = createInsertSchema(franchiseInvestorBranches).omit({ id: true, createdAt: true });
+export type InsertFranchiseInvestorBranch = z.infer<typeof insertFranchiseInvestorBranchSchema>;
+export type FranchiseInvestorBranch = typeof franchiseInvestorBranches.$inferSelect;
+
+export const franchiseInvestorNotes = pgTable("franchise_investor_notes", {
+  id: serial("id").primaryKey(),
+  investorId: integer("investor_id").notNull().references(() => franchiseInvestors.id, { onDelete: "cascade" }),
+  title: varchar("title", { length: 200 }),
+  content: text("content"),
+  noteType: varchar("note_type", { length: 30 }).default("meeting"),
+  createdBy: varchar("created_by").references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("fin_investor_idx").on(table.investorId),
+]);
+
+export const insertFranchiseInvestorNoteSchema = createInsertSchema(franchiseInvestorNotes).omit({ id: true, createdAt: true });
+export type InsertFranchiseInvestorNote = z.infer<typeof insertFranchiseInvestorNoteSchema>;
+export type FranchiseInvestorNote = typeof franchiseInvestorNotes.$inferSelect;
