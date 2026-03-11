@@ -36,3 +36,9 @@ id = "1xQ8aSmw_m7hUfItukwdF"
 uri = "file://.local/tasks/dashboard-ui-audit-report.md"
 type = "text"
 title = "DOSPRESSO Dashboard UI/UX Audit Raporu"
+
+[[outputs]]
+id = "LT_LLiKNNx40tmiE3e8Be"
+uri = "file://.local/tasks/learning-development-deep-audit.md"
+type = "text"
+title = "DOSPRESSO L&D Ecosystem — Complete Deep-Dive Audit Report"
