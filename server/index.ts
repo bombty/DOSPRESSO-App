@@ -11,6 +11,7 @@ import { seedServiceRequests } from "./seed-service-requests";
 import { seedDospressoRecipes } from "./seed-dospresso-recipes";
 import { seedDefaultAuditTemplate } from "./seed-audit-template";
 import { seedRoles } from "./seed-roles";
+import { seedAcademyCategories } from "./seed-academy-categories";
 import { startWeeklyBackupScheduler, performHealthCheck } from "./backup";
 import { startTrackingCleanup } from "./tracking";
 import bcrypt from "bcrypt";
@@ -188,6 +189,11 @@ app.use((req, res, next) => {
       console.error("Error seeding DOSPRESSO recipes:", error);
     });
     
+    // Seed academy categories (idempotent)
+    await seedAcademyCategories().catch((error) => {
+      console.error("Error seeding academy categories:", error);
+    });
+
     // Seed default audit template (idempotent)
     await seedDefaultAuditTemplate().catch((error) => {
       console.error("Error seeding audit template:", error);

@@ -95,7 +95,14 @@ export default function AcademyExplore() {
   const { user } = useAuth();
   const [, navigate] = useLocation();
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+
+  const initialCategory = (() => {
+    if (typeof window === "undefined") return null;
+    const params = new URLSearchParams(window.location.search);
+    return params.get("kategori") || null;
+  })();
+
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(initialCategory);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
 
   const { data: modules = [], isLoading: modulesLoading, isError, refetch } = useQuery<any[]>({

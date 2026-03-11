@@ -469,6 +469,116 @@ export default function AcademyLanding() {
           </div>
         )}
 
+        {user?.role === "stajyer" && (
+          <Card className="border-teal-500/20 bg-gradient-to-r from-teal-500/10 to-transparent" data-testid="section-stajyer-onboarding">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-10 h-10 rounded-full bg-teal-500/20 flex items-center justify-center flex-shrink-0">
+                  <GraduationCap className="h-5 w-5 text-teal-600 dark:text-teal-400" />
+                </div>
+                <div>
+                  <h2 className="font-semibold text-sm" data-testid="text-onboarding-title">Oryantasyon Programı</h2>
+                  <p className="text-xs text-muted-foreground">Yeni başlayan olarak tamamlaman gereken adımlar</p>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <Button
+                  variant="outline"
+                  className="justify-start gap-2"
+                  onClick={() => navigate("/akademi/kesfet?kategori=onboarding")}
+                  data-testid="button-stajyer-onboarding"
+                >
+                  <Target className="h-4 w-4" />
+                  <span className="text-xs">Oryantasyon Modülleri</span>
+                </Button>
+                <Button
+                  variant="outline"
+                  className="justify-start gap-2"
+                  onClick={() => navigate("/akademi/kesfet?kategori=barista_temelleri")}
+                  data-testid="button-stajyer-barista"
+                >
+                  <Coffee className="h-4 w-4" />
+                  <span className="text-xs">Barista Temelleri</span>
+                </Button>
+                <Button
+                  variant="outline"
+                  className="justify-start gap-2"
+                  onClick={() => navigate("/akademi/kesfet?kategori=hijyen_guvenlik")}
+                  data-testid="button-stajyer-hygiene"
+                >
+                  <ShieldCheck className="h-4 w-4" />
+                  <span className="text-xs">Hijyen & Güvenlik</span>
+                </Button>
+                <Button
+                  variant="outline"
+                  className="justify-start gap-2"
+                  onClick={() => navigate("/akademi/benim-yolum")}
+                  data-testid="button-stajyer-path"
+                >
+                  <TrendingUp className="h-4 w-4" />
+                  <span className="text-xs">Kariyer Yolum</span>
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {(user?.role === "barista" || user?.role === "bar_buddy") && (
+          <Card className="border-violet-500/20 bg-gradient-to-r from-violet-500/10 to-transparent" data-testid="section-barista-focus">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-10 h-10 rounded-full bg-violet-500/20 flex items-center justify-center flex-shrink-0">
+                  <Coffee className="h-5 w-5 text-violet-600 dark:text-violet-400" />
+                </div>
+                <div>
+                  <h2 className="font-semibold text-sm" data-testid="text-barista-focus-title">
+                    {user?.role === "barista" ? "Barista Gelişim Merkezi" : "Bar Buddy Gelişim Merkezi"}
+                  </h2>
+                  <p className="text-xs text-muted-foreground">Becerilerini geliştir, sınavlara hazırlan</p>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <Button
+                  variant="outline"
+                  className="justify-start gap-2"
+                  onClick={() => navigate("/akademi/kesfet?kategori=barista_temelleri")}
+                  data-testid="button-barista-skills"
+                >
+                  <Coffee className="h-4 w-4" />
+                  <span className="text-xs">Barista Becerileri</span>
+                </Button>
+                <Button
+                  variant="outline"
+                  className="justify-start gap-2"
+                  onClick={() => navigate("/akademi/kesfet?kategori=receteler")}
+                  data-testid="button-barista-recipes"
+                >
+                  <ChefHat className="h-4 w-4" />
+                  <span className="text-xs">Reçeteler</span>
+                </Button>
+                <Button
+                  variant="outline"
+                  className="justify-start gap-2"
+                  onClick={() => navigate("/akademi/benim-yolum")}
+                  data-testid="button-barista-career"
+                >
+                  <TrendingUp className="h-4 w-4" />
+                  <span className="text-xs">Kariyer Yolum</span>
+                </Button>
+                <Button
+                  variant="outline"
+                  className="justify-start gap-2"
+                  onClick={() => navigate("/akademi/rozetler")}
+                  data-testid="button-barista-badges"
+                >
+                  <Award className="h-4 w-4" />
+                  <span className="text-xs">Rozetlerim</span>
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         <div data-testid="section-categories">
           <div className="flex items-center justify-between gap-2 mb-2">
             <div className="flex items-center gap-2">
@@ -496,7 +606,7 @@ export default function AcademyLanding() {
                 <Card
                   key={slug}
                   className="cursor-pointer hover-elevate"
-                  onClick={() => navigate("/akademi/kesfet")}
+                  onClick={() => navigate(`/akademi/kesfet?kategori=${slug}`)}
                   data-testid={`card-category-${slug}`}
                 >
                   <CardContent className="p-3">
