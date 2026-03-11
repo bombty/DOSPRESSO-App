@@ -91,19 +91,6 @@ export default function AdminChecklistManagement() {
   const { user } = useAuth();
   const { toast } = useToast();
   
-  if (!user || !isHQRole(user.role as UserRoleType)) {
-    return (
-      <Card>
-        <CardContent className="py-12">
-          <div className="flex flex-col items-center justify-center text-center">
-            <AlertCircle className="h-12 w-12 text-destructive" />
-            <h3 className="font-semibold text-lg">Yetkisiz Erişim</h3>
-            <p className="text-muted-foreground">Bu sayfaya erişim yetkiniz yok.</p>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
   const [filterFrequency, setFilterFrequency] = useState<string>("all");
   const [filterCategory, setFilterCategory] = useState<string>("all");
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
@@ -199,6 +186,20 @@ export default function AdminChecklistManagement() {
   const toggleExpand = (id: number) => {
     setExpandedChecklistId(expandedChecklistId === id ? null : id);
   };
+
+  if (!user || !isHQRole(user.role as UserRoleType)) {
+    return (
+      <Card>
+        <CardContent className="py-12">
+          <div className="flex flex-col items-center justify-center text-center">
+            <AlertCircle className="h-12 w-12 text-destructive" />
+            <h3 className="font-semibold text-lg">Yetkisiz Erişim</h3>
+            <p className="text-muted-foreground" data-testid="text-unauthorized">Bu sayfaya erişim yetkiniz yok.</p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <div className="w-full space-y-2 sm:space-y-3">

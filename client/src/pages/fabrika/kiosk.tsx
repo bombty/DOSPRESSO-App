@@ -311,10 +311,6 @@ export default function FactoryKiosk() {
         });
       }, 1000);
     }
-    
-  if (loadingStaff) return <LoadingState />;
-  if (isError) return <ErrorState onRetry={refetch} />;
-
   return () => clearInterval(interval);
   }, [step]);
 

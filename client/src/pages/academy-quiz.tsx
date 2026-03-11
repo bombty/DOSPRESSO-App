@@ -250,11 +250,6 @@ export default function AcademyQuiz() {
         return prev - 1;
       });
     }, 1000);
-
-    
-  if (attemptsLoading) return <LoadingState />;
-  if (isError) return <ErrorState onRetry={refetch} />;
-
   return () => clearInterval(interval);
   }, [quizStarted, submitted, quiz.questions.length, doSubmit]);
 

@@ -65,11 +65,6 @@ export default function Mesajlar() {
 
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearch(searchQuery), 300);
-
-  if (threadsLoading) return <LoadingState />;
-  if (isError) return <ErrorState onRetry={refetch} />;
-
-
   return () => clearTimeout(timer);
   }, [searchQuery]);
 

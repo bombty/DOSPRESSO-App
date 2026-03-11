@@ -574,23 +574,6 @@ export default function AcademyHQ() {
   const { deleteState, requestDelete, cancelDelete, confirmDelete } = useConfirmDelete();
   
   const canManageTraining = user && hasPermission(user.role as UserRoleType, 'training', 'edit');
-  if (user && !canManageTraining) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Card className="w-full max-w-md">
-          <CardHeader>
-            <CardTitle>Yetkisiz Erişim</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-muted-foreground">Bu sayfaya erişim yetkiniz bulunmamaktadır.</p>
-            <Button onClick={() => window.location.href = "/"} className="mt-4 w-full">
-              Ana Sayfaya Dön
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
   
   const [selectedExamId, setSelectedExamId] = useState<number | null>(null);
   const [isCreateQuizOpen, setIsCreateQuizOpen] = useState(false);
@@ -640,10 +623,6 @@ export default function AcademyHQ() {
     signatureLabel: 'DOSPRESSO Eğitim Müdürü',
     footerText: '',
   });
-
-  if (!user || !canManageTraining) {
-    return <div className="p-6 text-center text-destructive">Erişim Reddedildi</div>;
-  }
 
   const quizForm = useForm({
     resolver: zodResolver(quizSchema),
@@ -1086,6 +1065,24 @@ export default function AcademyHQ() {
       queryClient.invalidateQueries({ queryKey: [`/api/academy/quiz/${selectedQuizId}/questions`] });
     },
   });
+
+  if (user && !canManageTraining) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Card className="w-full max-w-md">
+          <CardHeader>
+            <CardTitle>Yetkisiz Erişim</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-muted-foreground">Bu sayfaya erişim yetkiniz bulunmamaktadır.</p>
+            <Button onClick={() => window.location.href = "/"} className="mt-4 w-full" data-testid="button-go-home">
+              Ana Sayfaya Dön
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="grid grid-cols-1 gap-2 p-3">

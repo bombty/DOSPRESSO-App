@@ -181,18 +181,6 @@ export default function SubeDetayPage() {
     }
   });
 
-  // Authorization: Supervisor can only view their own branch
-  if (user?.role === 'supervisor' && user?.branchId !== branchId) {
-    return (
-      <div className="flex flex-col items-center justify-center h-full grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
-        <p className="text-lg text-muted-foreground">Bu şubeye erişim yetkiniz yok</p>
-        <Link href="/subeler">
-          <Button variant="default">Şubelere Dön</Button>
-        </Link>
-      </div>
-    );
-  }
-
   // Fetch comprehensive branch details with scores and staff
   const { data: branchData, isLoading: branchLoading, refetch } = useQuery<BranchDetails>({
     queryKey: [`/api/branches/${branchId}/detail`],
@@ -308,6 +296,17 @@ export default function SubeDetayPage() {
       setClosingHours(branchData.branch.closingHours?.substring(0, 5) || "01:00");
     }
   }, [branchData]);
+
+  if (user?.role === 'supervisor' && user?.branchId !== branchId) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full gap-2">
+        <p className="text-lg text-muted-foreground">Bu şubeye erişim yetkiniz yok</p>
+        <Link href="/subeler">
+          <Button variant="default" data-testid="button-back-branches">Şubelere Dön</Button>
+        </Link>
+      </div>
+    );
+  }
 
   if (branchLoading) {
     return <div className="flex items-center justify-center h-full">Yükleniyor...</div>;

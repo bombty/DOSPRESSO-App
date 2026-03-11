@@ -272,9 +272,6 @@ export default function EquipmentManagement() {
           const eq = equipment.find(e => e.id === sr.equipmentId);
           const branch = branches.find(b => b.id === eq?.branchId);
           
-  if (isLoading) return <LoadingState />;
-  if (isError) return <ErrorState onRetry={refetch} />;
-
   return (
             sr.notes?.toLocaleLowerCase('tr-TR').includes(query) ||
             sr.serviceProvider?.toLocaleLowerCase('tr-TR').includes(query) ||

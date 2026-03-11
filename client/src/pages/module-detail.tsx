@@ -116,10 +116,6 @@ export default function ModuleDetail() {
         return prev - 1;
       });
     }, 1000);
-    
-  if (isLoading) return <LoadingState />;
-  if (isError) return <ErrorState onRetry={refetch} />;
-
   return () => clearInterval(timer);
   }, [quizStarted, quizFinished, quizTimeRemaining]);
 

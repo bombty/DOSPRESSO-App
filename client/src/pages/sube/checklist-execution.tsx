@@ -128,10 +128,6 @@ export default function ChecklistExecutionPage() {
       };
       updateElapsed();
       const interval = setInterval(updateElapsed, 1000);
-      
-  if (isLoading) return <LoadingState />;
-  if (isError) return <ErrorState onRetry={refetch} />;
-
   return () => clearInterval(interval);
     }
   }, [completion?.startedAt]);
