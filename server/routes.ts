@@ -618,17 +618,18 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
     frameSrc: ["'self'", "https://www.youtube.com"],
     baseUri: ["'self'"],
     formAction: ["'self'"],
+    frameAncestors: ["'self'", "https://*.replit.dev", "https://*.replit.app", "https://*.repl.co"],
   };
   app.use(helmet({
     contentSecurityPolicy: { directives: cspDirectives },
     crossOriginEmbedderPolicy: false,
     crossOriginResourcePolicy: { policy: "cross-origin" },
     referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
+    frameguard: false,
   }));
 
   app.use((req, res, next) => {
     res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
-    res.setHeader('X-Frame-Options', 'DENY');
     next();
   });
 
