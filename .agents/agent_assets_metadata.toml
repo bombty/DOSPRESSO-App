@@ -54,3 +54,9 @@ id = "T1PoMEPT7-n7WcNMrCXZg"
 uri = "file://.local/tasks/flow-academy-buddy-roles-supplement.md"
 type = "text"
 title = "Flow Akademi — Bar Buddy & Supervisor Buddy Ek Rapor"
+
+[[outputs]]
+id = "0Ku9r2UzYjSUTEYraUFQf"
+uri = "file://DOSPRESSO_Akademi_Audit_Raporu.md"
+type = "text"
+title = "DOSPRESSO Akademi Modülü - Teknik Audit Raporu"
