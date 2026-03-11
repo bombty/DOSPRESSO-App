@@ -1,0 +1,8 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "10kGPGY7ceOJciAmqHGxh"
+uri = "file://.local/crm-audit-report.md"
+type = "text"
+title = "DOSPRESSO CRM & Communication Audit Report"
