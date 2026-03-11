@@ -407,7 +407,8 @@ const TAB_URL_MAP: Record<string, string> = {
   "ai-kanit": "/akademi/ai-kanit",
 };
 
-function getTabFromUrl(pathname: string, viewMode: AcademyViewMode): string | null {
+function getTabFromUrl(rawPath: string, viewMode: AcademyViewMode): string | null {
+  const pathname = rawPath.split("?")[0];
   if (pathname === "/akademi" || pathname === "/akademi/") return null;
   const sortedEntries = Object.entries(TAB_URL_MAP)
     .sort((a, b) => b[1].length - a[1].length);
@@ -482,8 +483,8 @@ export default function AkademiMegaModule() {
   }, [visibleGroups, activeGroup, firstVisibleGroup]);
   
   useEffect(() => {
-    const isLanding = location === "/akademi" || location === "/akademi/" || location === "/egitim" || location === "/egitim/";
-    if (isLanding) return;
+    const cp = location.split("?")[0];
+    if (cp === "/akademi" || cp === "/akademi/" || cp === "/egitim" || cp === "/egitim/") return;
     if (!tabsInActiveGroup.find(t => t.id === activeTab)) {
       setActiveTab(firstTabInGroup);
       const url = TAB_URL_MAP[firstTabInGroup];
@@ -526,7 +527,8 @@ export default function AkademiMegaModule() {
     }
   };
 
-  const isBasePath = location === "/akademi" || location === "/akademi/" || location === "/egitim" || location === "/egitim/";
+  const cleanPath = location.split("?")[0];
+  const isBasePath = cleanPath === "/akademi" || cleanPath === "/akademi/" || cleanPath === "/egitim" || cleanPath === "/egitim/";
 
   if (visibleTabs.length === 0) {
     return (
