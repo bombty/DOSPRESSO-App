@@ -60,3 +60,9 @@ id = "0Ku9r2UzYjSUTEYraUFQf"
 uri = "file://DOSPRESSO_Akademi_Audit_Raporu.md"
 type = "text"
 title = "DOSPRESSO Akademi Modülü - Teknik Audit Raporu"
+
+[[outputs]]
+id = "KWsEqNnbZxUO-lzDom02q"
+uri = "file://.local/dospresso-full-audit-report.md"
+type = "text"
+title = "DOSPRESSO Full Audit Report (English)"
