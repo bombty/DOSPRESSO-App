@@ -22,16 +22,23 @@ export async function seedPermissionModules() {
         .where(eq(permissionModules.moduleKey, module.moduleKey));
       
       if (existing) {
-        // Update existing module with latest data from registry
-        await db
-          .update(permissionModules)
-          .set({
-            moduleName: module.moduleName,
-            category: module.category,
-            description: module.description,
-          })
-          .where(eq(permissionModules.moduleKey, module.moduleKey));
-        updatedCount++;
+        const needsUpdate =
+          existing.moduleName !== module.moduleName ||
+          existing.category !== module.category ||
+          existing.description !== module.description;
+        if (needsUpdate) {
+          await db
+            .update(permissionModules)
+            .set({
+              moduleName: module.moduleName,
+              category: module.category,
+              description: module.description,
+            })
+            .where(eq(permissionModules.moduleKey, module.moduleKey));
+          updatedCount++;
+        } else {
+          skippedCount++;
+        }
         continue;
       }
       
@@ -50,6 +57,7 @@ export async function seedPermissionModules() {
     console.log(`✅ Permission modules seed completed:`);
     console.log(`   - Inserted: ${insertedCount} new modules`);
     console.log(`   - Updated: ${updatedCount} existing modules`);
+    console.log(`   - Skipped: ${skippedCount} unchanged modules`);
     console.log(`   - Total modules in registry: ${MODULES.length}`);
     
   } catch (error) {
