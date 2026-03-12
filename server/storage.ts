@@ -5338,221 +5338,245 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getGuestComplaints(branchId?: number, status?: string, priority?: string): Promise<GuestComplaint[]> {
-    const conditions: SQL[] = [];
-    if (branchId !== undefined) conditions.push(eq(guestComplaints.branchId, branchId));
-    if (status) conditions.push(eq(guestComplaints.status, status));
-    if (priority) conditions.push(eq(guestComplaints.priority, priority));
-    
-    return await db.select()
-      .from(guestComplaints)
-      .where(conditions.length > 0 ? and(...conditions) : undefined)
-      .orderBy(desc(guestComplaints.complaintDate));
+    try {
+      const conditions: SQL[] = [];
+      if (branchId !== undefined) conditions.push(eq(guestComplaints.branchId, branchId));
+      if (status) conditions.push(eq(guestComplaints.status, status));
+      if (priority) conditions.push(eq(guestComplaints.priority, priority));
+      
+      return await db.select()
+        .from(guestComplaints)
+        .where(conditions.length > 0 ? and(...conditions) : undefined)
+        .orderBy(desc(guestComplaints.complaintDate));
+    } catch (e: any) {
+      if (e?.code === '42P01') return [];
+      throw e;
+    }
   }
 
   async createGuestComplaint(data: InsertGuestComplaint): Promise<GuestComplaint> {
-    let responseDeadline: Date | null = null;
-    
-    if (data.priority === "critical") {
-      responseDeadline = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
-    } else if (data.priority === "high") {
-      responseDeadline = new Date(Date.now() + 48 * 60 * 60 * 1000); // 48 hours
-    } else if (data.priority === "medium") {
-      responseDeadline = new Date(Date.now() + 72 * 60 * 60 * 1000); // 72 hours
-    } else {
-      responseDeadline = new Date(Date.now() + 96 * 60 * 60 * 1000); // 96 hours (low)
+    try {
+      let responseDeadline: Date | null = null;
+      
+      if (data.priority === "critical") {
+        responseDeadline = new Date(Date.now() + 24 * 60 * 60 * 1000);
+      } else if (data.priority === "high") {
+        responseDeadline = new Date(Date.now() + 48 * 60 * 60 * 1000);
+      } else if (data.priority === "medium") {
+        responseDeadline = new Date(Date.now() + 72 * 60 * 60 * 1000);
+      } else {
+        responseDeadline = new Date(Date.now() + 96 * 60 * 60 * 1000);
+      }
+      
+      const [complaint] = await db.insert(guestComplaints)
+        .values({
+          ...data,
+          responseDeadline,
+        })
+        .returning();
+      
+      return complaint;
+    } catch (e: any) {
+      if (e?.code === '42P01') return {} as GuestComplaint;
+      throw e;
     }
-    
-    const [complaint] = await db.insert(guestComplaints)
-      .values({
-        ...data,
-        responseDeadline,
-      })
-      .returning();
-    
-    return complaint;
   }
 
   async updateGuestComplaint(id: number, updates: Partial<InsertGuestComplaint>): Promise<GuestComplaint | undefined> {
-    const [updated] = await db.update(guestComplaints)
-      .set({
-        ...updates,
-        updatedAt: new Date(),
-      })
-      .where(eq(guestComplaints.id, id))
-      .returning();
-    return updated;
+    try {
+      const [updated] = await db.update(guestComplaints)
+        .set({
+          ...updates,
+          updatedAt: new Date(),
+        })
+        .where(eq(guestComplaints.id, id))
+        .returning();
+      return updated;
+    } catch (e: any) {
+      if (e?.code === '42P01') return undefined;
+      throw e;
+    }
   }
 
   async resolveGuestComplaint(id: number, resolvedById: string, resolutionNotes: string, customerSatisfaction?: number): Promise<GuestComplaint | undefined> {
-    const [updated] = await db.update(guestComplaints)
-      .set({
-        status: "resolved",
-        resolvedById,
-        resolvedAt: new Date(),
-        resolutionNotes,
-        customerSatisfaction,
-        updatedAt: new Date(),
-      })
-      .where(eq(guestComplaints.id, id))
-      .returning();
-    return updated;
+    try {
+      const [updated] = await db.update(guestComplaints)
+        .set({
+          status: "resolved",
+          resolvedById,
+          resolvedAt: new Date(),
+          resolutionNotes,
+          customerSatisfaction,
+          updatedAt: new Date(),
+        })
+        .where(eq(guestComplaints.id, id))
+        .returning();
+      return updated;
+    } catch (e: any) {
+      if (e?.code === '42P01') return undefined;
+      throw e;
+    }
   }
 
   async checkSLABreaches(): Promise<void> {
-    const now = new Date();
-    
-    // Get admin user for system notifications
-    const adminUser = await db.select()
-      .from(users)
-      .where(eq(users.role, 'admin'))
-      .limit(1);
-    
-    if (adminUser.length === 0) {
-      console.log('[checkSLABreaches] No admin user found, skipping SLA check');
-      return;
-    }
-    
-    const adminId = adminUser[0].id;
-    
-    // Get all active complaints with deadlines
-    const activeComplaints = await db.select()
-      .from(guestComplaints)
-      .where(and(
-        sql`${guestComplaints.status} NOT IN ('resolved', 'closed')`,
-        sql`${guestComplaints.responseDeadline} IS NOT NULL`
-      ));
-    
-    for (const complaint of activeComplaints) {
-      const deadline = new Date(complaint.responseDeadline!);
-      const timeToDeadline = deadline.getTime() - now.getTime();
-      const totalTime = deadline.getTime() - new Date(complaint.complaintDate).getTime();
-      const percentRemaining = (timeToDeadline / totalTime) * 100;
+    try {
+      const now = new Date();
       
-      // 100% breach - deadline passed
-      if (timeToDeadline <= 0 && !complaint.slaBreached) {
-        await db.update(guestComplaints)
-          .set({
-            slaBreached: true,
-            updatedAt: new Date(),
-          })
-          .where(eq(guestComplaints.id, complaint.id));
-        
-        // Send breach notification to branch supervisor and HQ
-        await this.createNotification({
-          userId: adminId,
-          title: "SLA İhlali: Şikayet Süresi Doldu",
-          message: `Şikayet #${complaint.id} yanıt süresi aşıldı. Acil müdahale gerekiyor! Şube: ${complaint.branchId}, Öncelik: ${complaint.priority}`,
-          type: "alert",
-          link: `/sikayetler/${complaint.id}`,
-        });
+      const adminUser = await db.select()
+        .from(users)
+        .where(eq(users.role, 'admin'))
+        .limit(1);
+      
+      if (adminUser.length === 0) {
+        console.log('[checkSLABreaches] No admin user found, skipping SLA check');
+        return;
       }
-      // 80% escalation - 20% time remaining
-      else if (percentRemaining <= 20 && percentRemaining > 0 && !complaint.slaBreached) {
-        // Check if escalation notification already sent (prevent spam)
-        const existingEscalation = await db.select()
-          .from(notifications)
-          .where(and(
-            eq(notifications.type, 'warning'),
-            eq(notifications.link, `/sikayetler/${complaint.id}`),
-            sql`${notifications.message} LIKE '%80% yaklaştı%'`
-          ))
-          .limit(1);
+      
+      const adminId = adminUser[0].id;
+      
+      const activeComplaints = await db.select()
+        .from(guestComplaints)
+        .where(and(
+          sql`${guestComplaints.status} NOT IN ('resolved', 'closed')`,
+          sql`${guestComplaints.responseDeadline} IS NOT NULL`
+        ));
+      
+      for (const complaint of activeComplaints) {
+        const deadline = new Date(complaint.responseDeadline!);
+        const timeToDeadline = deadline.getTime() - now.getTime();
+        const totalTime = deadline.getTime() - new Date(complaint.complaintDate).getTime();
+        const percentRemaining = (timeToDeadline / totalTime) * 100;
         
-        if (existingEscalation.length === 0) {
-          // Send 80% escalation warning
+        if (timeToDeadline <= 0 && !complaint.slaBreached) {
+          await db.update(guestComplaints)
+            .set({ slaBreached: true, updatedAt: new Date() })
+            .where(eq(guestComplaints.id, complaint.id));
+          
           await this.createNotification({
             userId: adminId,
-            title: "SLA Uyarısı: Süre Azalıyor",
-            message: `Şikayet #${complaint.id} yanıt süresinin %80'ine yaklaştı. Kalan süre: ${Math.ceil(timeToDeadline / (1000 * 60 * 60))} saat. Şube: ${complaint.branchId}, Öncelik: ${complaint.priority}`,
-            type: "warning",
+            title: "SLA İhlali: Şikayet Süresi Doldu",
+            message: `Şikayet #${complaint.id} yanıt süresi aşıldı. Acil müdahale gerekiyor! Şube: ${complaint.branchId}, Öncelik: ${complaint.priority}`,
+            type: "alert",
             link: `/sikayetler/${complaint.id}`,
           });
+        } else if (percentRemaining <= 20 && percentRemaining > 0 && !complaint.slaBreached) {
+          const existingEscalation = await db.select()
+            .from(notifications)
+            .where(and(
+              eq(notifications.type, 'warning'),
+              eq(notifications.link, `/sikayetler/${complaint.id}`),
+              sql`${notifications.message} LIKE '%80% yaklaştı%'`
+            ))
+            .limit(1);
+          
+          if (existingEscalation.length === 0) {
+            await this.createNotification({
+              userId: adminId,
+              title: "SLA Uyarısı: Süre Azalıyor",
+              message: `Şikayet #${complaint.id} yanıt süresinin %80'ine yaklaştı. Kalan süre: ${Math.ceil(timeToDeadline / (1000 * 60 * 60))} saat. Şube: ${complaint.branchId}, Öncelik: ${complaint.priority}`,
+              type: "warning",
+              link: `/sikayetler/${complaint.id}`,
+            });
+          }
         }
       }
+    } catch (e: any) {
+      if (e?.code === '42P01') return;
+      throw e;
     }
   }
 
   async getGuestComplaintStats(branchId?: number, startDate?: Date, endDate?: Date): Promise<any> {
-    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-    const start = startDate || thirtyDaysAgo;
-    const end = endDate || new Date();
-    
-    const whereConditions = [
-      sql`${guestComplaints.complaintDate} >= ${start.toISOString()}`,
-      sql`${guestComplaints.complaintDate} <= ${end.toISOString()}`
-    ];
-    
-    if (branchId !== undefined) {
-      whereConditions.push(eq(guestComplaints.branchId, branchId));
+    try {
+      const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+      const start = startDate || thirtyDaysAgo;
+      const end = endDate || new Date();
+      
+      const whereConditions = [
+        sql`${guestComplaints.complaintDate} >= ${start.toISOString()}`,
+        sql`${guestComplaints.complaintDate} <= ${end.toISOString()}`
+      ];
+      
+      if (branchId !== undefined) {
+        whereConditions.push(eq(guestComplaints.branchId, branchId));
+      }
+      
+      const complaints = await db.select()
+        .from(guestComplaints)
+        .where(and(...whereConditions));
+      
+      const total = complaints.length;
+      const byStatus = complaints.reduce((acc: any, c: any) => {
+        acc[c.status] = (acc[c.status] || 0) + 1;
+        return acc;
+      }, {});
+      const byPriority = complaints.reduce((acc: any, c: any) => {
+        acc[c.priority] = (acc[c.priority] || 0) + 1;
+        return acc;
+      }, {});
+      const slaBreachCount = complaints.filter((c: any) => c.slaBreached).length;
+      const resolved = complaints.filter((c: any) => c.resolvedAt);
+      const avgResolutionTime = resolved.length > 0
+        ? resolved.reduce((sum: number, c: any) => {
+            const diff = new Date(c.resolvedAt).getTime() - new Date(c.complaintDate).getTime();
+            return sum + diff;
+          }, 0) / resolved.length / (1000 * 60 * 60)
+        : 0;
+      
+      return {
+        total,
+        byStatus,
+        byPriority,
+        slaBreachCount,
+        avgResolutionTimeHours: Math.round(avgResolutionTime * 10) / 10,
+      };
+    } catch (e: any) {
+      if (e?.code === '42P01') return { total: 0, byStatus: {}, byPriority: {}, slaBreachCount: 0, avgResolutionTimeHours: 0 };
+      throw e;
     }
-    
-    const complaints = await db.select()
-      .from(guestComplaints)
-      .where(and(...whereConditions));
-    
-    const total = complaints.length;
-    const byStatus = complaints.reduce((acc: any, c: any) => {
-      acc[c.status] = (acc[c.status] || 0) + 1;
-      return acc;
-    }, {});
-    const byPriority = complaints.reduce((acc: any, c: any) => {
-      acc[c.priority] = (acc[c.priority] || 0) + 1;
-      return acc;
-    }, {});
-    const slaBreachCount = complaints.filter((c: any) => c.slaBreached).length;
-    const resolved = complaints.filter((c: any) => c.resolvedAt);
-    const avgResolutionTime = resolved.length > 0
-      ? resolved.reduce((sum: number, c: any) => {
-          const diff = new Date(c.resolvedAt).getTime() - new Date(c.complaintDate).getTime();
-          return sum + diff;
-        }, 0) / resolved.length / (1000 * 60 * 60)
-      : 0;
-    
-    return {
-      total,
-      byStatus,
-      byPriority,
-      slaBreachCount,
-      avgResolutionTimeHours: Math.round(avgResolutionTime * 10) / 10,
-    };
   }
 
   async getGuestComplaintHeatmap(branchId?: number, startDate?: Date, endDate?: Date): Promise<any> {
-    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-    const start = startDate || thirtyDaysAgo;
-    const end = endDate || new Date();
-    
-    const whereConditions = [
-      sql`${guestComplaints.complaintDate} >= ${start.toISOString()}`,
-      sql`${guestComplaints.complaintDate} <= ${end.toISOString()}`
-    ];
-    
-    if (branchId !== undefined) {
-      whereConditions.push(eq(guestComplaints.branchId, branchId));
-    }
-    
-    const complaints = await db.select()
-      .from(guestComplaints)
-      .where(and(...whereConditions));
-    
-    const heatmapData: any = {};
-    
-    complaints.forEach((complaint: any) => {
-      const date = new Date(complaint.complaintDate);
-      const dayKey = date.toISOString().split('T')[0];
-      const hour = date.getHours();
-      const branchKey = complaint.branchId;
+    try {
+      const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+      const start = startDate || thirtyDaysAgo;
+      const end = endDate || new Date();
       
-      if (!heatmapData[branchKey]) {
-        heatmapData[branchKey] = {};
+      const whereConditions = [
+        sql`${guestComplaints.complaintDate} >= ${start.toISOString()}`,
+        sql`${guestComplaints.complaintDate} <= ${end.toISOString()}`
+      ];
+      
+      if (branchId !== undefined) {
+        whereConditions.push(eq(guestComplaints.branchId, branchId));
       }
-      if (!heatmapData[branchKey][dayKey]) {
-        heatmapData[branchKey][dayKey] = {};
-      }
-      heatmapData[branchKey][dayKey][hour] = (heatmapData[branchKey][dayKey][hour] || 0) + 1;
-    });
-    
-    return heatmapData;
+      
+      const complaints = await db.select()
+        .from(guestComplaints)
+        .where(and(...whereConditions));
+      
+      const heatmapData: any = {};
+      
+      complaints.forEach((complaint: any) => {
+        const date = new Date(complaint.complaintDate);
+        const dayKey = date.toISOString().split('T')[0];
+        const hour = date.getHours();
+        const branchKey = complaint.branchId;
+        
+        if (!heatmapData[branchKey]) {
+          heatmapData[branchKey] = {};
+        }
+        if (!heatmapData[branchKey][dayKey]) {
+          heatmapData[branchKey][dayKey] = {};
+        }
+        heatmapData[branchKey][dayKey][hour] = (heatmapData[branchKey][dayKey][hour] || 0) + 1;
+      });
+      
+      return heatmapData;
+    } catch (e: any) {
+      if (e?.code === '42P01') return {};
+      throw e;
+    }
   }
 
   async getEquipmentTroubleshootingSteps(equipmentType: string): Promise<EquipmentTroubleshootingStep[]> {
@@ -6172,14 +6196,19 @@ export class DatabaseStorage implements IStorage {
           sql`${customerFeedback.feedbackDate} >= CAST(${sql.raw(`'${startDate.toISOString().split('T')[0]}'`)} AS date)`
         ));
       
-      const complaints = await db.select({
-        count: sql<number>`CAST(COUNT(*) AS INTEGER)`,
-      })
-        .from(guestComplaints)
-        .where(and(
-          eq(guestComplaints.branchId, branch.id),
-          sql`${guestComplaints.complaintDate} >= CAST(${sql.raw(`'${startDate.toISOString()}'`)} AS timestamp)`
-        ));
+      let complaints = [{ count: 0 }];
+      try {
+        complaints = await db.select({
+          count: sql<number>`CAST(COUNT(*) AS INTEGER)`,
+        })
+          .from(guestComplaints)
+          .where(and(
+            eq(guestComplaints.branchId, branch.id),
+            sql`${guestComplaints.complaintDate} >= CAST(${sql.raw(`'${startDate.toISOString()}'`)} AS timestamp)`
+          ));
+      } catch (e: any) {
+        if (e?.code !== '42P01') throw e;
+      }
       
       const feedbackPoints = 
         (positiveFeedback[0]?.count5 ?? 0) * 5 +
@@ -6297,13 +6326,17 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(customerFeedback.feedbackDate))
       .limit(10);
 
-    // Get recent complaints (last 10)
-    const recentComplaints = await db
-      .select()
-      .from(guestComplaints)
-      .where(eq(guestComplaints.branchId, branchId))
-      .orderBy(desc(guestComplaints.complaintDate))
-      .limit(10);
+    let recentComplaints: any[] = [];
+    try {
+      recentComplaints = await db
+        .select()
+        .from(guestComplaints)
+        .where(eq(guestComplaints.branchId, branchId))
+        .orderBy(desc(guestComplaints.complaintDate))
+        .limit(10);
+    } catch (e: any) {
+      if (e?.code !== '42P01') throw e;
+    }
 
     return {
       branch,

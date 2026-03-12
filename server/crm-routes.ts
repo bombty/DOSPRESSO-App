@@ -39,15 +39,21 @@ export function registerCRMRoutes(app: Express, isAuthenticated: any) {
       }).from(customerFeedback)
         .where(gte(customerFeedback.createdAt, thirtyDaysAgo));
 
-      const [openGuestComplaints] = await db.select({
-        count: count(),
-      }).from(guestComplaints)
-        .where(inArray(guestComplaints.status, ['new', 'assigned', 'in_progress']));
+      let openGuestComplaints = { count: 0 };
+      try {
+        [openGuestComplaints] = await db.select({
+          count: count(),
+        }).from(guestComplaints)
+          .where(inArray(guestComplaints.status, ['new', 'assigned', 'in_progress']));
+      } catch (e: any) { if (e?.code !== '42P01') throw e; }
 
-      const [openProductComplaints] = await db.select({
-        count: count(),
-      }).from(productComplaints)
-        .where(inArray(productComplaints.status, ['new', 'investigating']));
+      let openProductComplaints = { count: 0 };
+      try {
+        [openProductComplaints] = await db.select({
+          count: count(),
+        }).from(productComplaints)
+          .where(inArray(productComplaints.status, ['new', 'investigating']));
+      } catch (e: any) { if (e?.code !== '42P01') throw e; }
 
       const branchStats = await db.select({
         branchId: customerFeedback.branchId,
@@ -150,67 +156,71 @@ export function registerCRMRoutes(app: Express, isAuthenticated: any) {
       let productResults: any[] = [];
 
       if (!type || type === 'misafir' || type === 'all') {
-        const guestQuery = db.select({
-          id: guestComplaints.id,
-          type: sql<string>`'misafir'`,
-          branchId: guestComplaints.branchId,
-          branchName: branches.name,
-          status: guestComplaints.status,
-          priority: guestComplaints.priority,
-          title: guestComplaints.subject,
-          description: guestComplaints.description,
-          category: guestComplaints.complaintCategory,
-          customerName: guestComplaints.customerName,
-          slaBreached: guestComplaints.slaBreached,
-          responseDeadline: guestComplaints.responseDeadline,
-          assignedToId: guestComplaints.assignedToId,
-          createdAt: guestComplaints.createdAt,
-          resolvedAt: guestComplaints.resolvedAt,
-        }).from(guestComplaints)
-          .innerJoin(branches, eq(guestComplaints.branchId, branches.id));
+        try {
+          const guestQuery = db.select({
+            id: guestComplaints.id,
+            type: sql<string>`'misafir'`,
+            branchId: guestComplaints.branchId,
+            branchName: branches.name,
+            status: guestComplaints.status,
+            priority: guestComplaints.priority,
+            title: guestComplaints.subject,
+            description: guestComplaints.description,
+            category: guestComplaints.complaintCategory,
+            customerName: guestComplaints.customerName,
+            slaBreached: guestComplaints.slaBreached,
+            responseDeadline: guestComplaints.responseDeadline,
+            assignedToId: guestComplaints.assignedToId,
+            createdAt: guestComplaints.createdAt,
+            resolvedAt: guestComplaints.resolvedAt,
+          }).from(guestComplaints)
+            .innerJoin(branches, eq(guestComplaints.branchId, branches.id));
 
-        const conditions: any[] = [];
-        if (branchId) conditions.push(eq(guestComplaints.branchId, Number(branchId)));
-        if (status) conditions.push(eq(guestComplaints.status, String(status)));
-        if (priority) conditions.push(eq(guestComplaints.priority, String(priority)));
-        if (startDate) conditions.push(gte(guestComplaints.createdAt, new Date(String(startDate))));
-        if (endDate) conditions.push(lte(guestComplaints.createdAt, new Date(String(endDate))));
+          const conditions: any[] = [];
+          if (branchId) conditions.push(eq(guestComplaints.branchId, Number(branchId)));
+          if (status) conditions.push(eq(guestComplaints.status, String(status)));
+          if (priority) conditions.push(eq(guestComplaints.priority, String(priority)));
+          if (startDate) conditions.push(gte(guestComplaints.createdAt, new Date(String(startDate))));
+          if (endDate) conditions.push(lte(guestComplaints.createdAt, new Date(String(endDate))));
 
-        guestResults = conditions.length > 0 
-          ? await guestQuery.where(and(...conditions))
-          : await guestQuery;
+          guestResults = conditions.length > 0 
+            ? await guestQuery.where(and(...conditions))
+            : await guestQuery;
+        } catch (e: any) { if (e?.code !== '42P01') throw e; }
       }
 
       if (!type || type === 'urun' || type === 'all') {
-        const productQuery = db.select({
-          id: productComplaints.id,
-          type: sql<string>`'urun'`,
-          branchId: productComplaints.branchId,
-          branchName: branches.name,
-          status: productComplaints.status,
-          priority: productComplaints.severity,
-          title: productComplaints.productName,
-          description: productComplaints.description,
-          category: productComplaints.complaintType,
-          customerName: sql<string>`NULL`,
-          slaBreached: sql<boolean>`false`,
-          responseDeadline: sql<string>`NULL`,
-          assignedToId: productComplaints.assignedToId,
-          createdAt: productComplaints.createdAt,
-          resolvedAt: productComplaints.resolvedAt,
-        }).from(productComplaints)
-          .innerJoin(branches, eq(productComplaints.branchId, branches.id));
+        try {
+          const productQuery = db.select({
+            id: productComplaints.id,
+            type: sql<string>`'urun'`,
+            branchId: productComplaints.branchId,
+            branchName: branches.name,
+            status: productComplaints.status,
+            priority: productComplaints.severity,
+            title: productComplaints.productName,
+            description: productComplaints.description,
+            category: productComplaints.complaintType,
+            customerName: sql<string>`NULL`,
+            slaBreached: sql<boolean>`false`,
+            responseDeadline: sql<string>`NULL`,
+            assignedToId: productComplaints.assignedToId,
+            createdAt: productComplaints.createdAt,
+            resolvedAt: productComplaints.resolvedAt,
+          }).from(productComplaints)
+            .innerJoin(branches, eq(productComplaints.branchId, branches.id));
 
-        const conditions: any[] = [];
-        if (branchId) conditions.push(eq(productComplaints.branchId, Number(branchId)));
-        if (status) conditions.push(eq(productComplaints.status, String(status)));
-        if (priority) conditions.push(eq(productComplaints.severity, String(priority)));
-        if (startDate) conditions.push(gte(productComplaints.createdAt, new Date(String(startDate))));
-        if (endDate) conditions.push(lte(productComplaints.createdAt, new Date(String(endDate))));
+          const conditions: any[] = [];
+          if (branchId) conditions.push(eq(productComplaints.branchId, Number(branchId)));
+          if (status) conditions.push(eq(productComplaints.status, String(status)));
+          if (priority) conditions.push(eq(productComplaints.severity, String(priority)));
+          if (startDate) conditions.push(gte(productComplaints.createdAt, new Date(String(startDate))));
+          if (endDate) conditions.push(lte(productComplaints.createdAt, new Date(String(endDate))));
 
-        productResults = conditions.length > 0
-          ? await productQuery.where(and(...conditions))
-          : await productQuery;
+          productResults = conditions.length > 0
+            ? await productQuery.where(and(...conditions))
+            : await productQuery;
+        } catch (e: any) { if (e?.code !== '42P01') throw e; }
       }
 
       const combined = [...guestResults, ...productResults]
