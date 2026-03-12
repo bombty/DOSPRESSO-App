@@ -261,10 +261,7 @@ export const NAV_ITEMS: NavItem[] = [
     descriptionKey: "nav.desc.academy",
     defaultDescTR: "Eğitim & Gelişim",
     defaultDescEN: "Training & Development",
-    getRoute: (user) => {
-      const hqRoles = ["ceo", "cgo", "admin", "muhasebe", "muhasebe_ik", "satinalma", "marketing", "pazarlama", "teknik", "destek", "trainer", "coach", "kalite_kontrol", "fabrika_mudur", "fabrika", "yatirimci_hq", "ekipman_teknik", "ik"];
-      return hqRoles.includes(user?.role) ? "/akademi-hq" : "/akademi";
-    },
+    getRoute: () => "/akademi",
   },
   {
     id: "academy-hq",

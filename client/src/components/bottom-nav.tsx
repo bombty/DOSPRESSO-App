@@ -43,10 +43,7 @@ const NAV_ITEM_CONFIG: Record<string, NavItemConfig> = {
     labelKey: "nav.academy",
     defaultLabelTR: "Akademi",
     defaultLabelEN: "Academy",
-    getPath: (user) => {
-      const hqRoles = ['ceo', 'cgo', 'admin', 'muhasebe', 'muhasebe_ik', 'satinalma', 'marketing', 'pazarlama', 'teknik', 'destek', 'trainer', 'coach', 'kalite_kontrol', 'fabrika_mudur', 'fabrika', 'yatirimci_hq', 'ekipman_teknik', 'ik'];
-      return hqRoles.includes(user?.role) ? "/akademi-hq" : "/akademi";
-    },
+    getPath: () => "/akademi",
   },
   reports: {
     icon: BarChart3,
