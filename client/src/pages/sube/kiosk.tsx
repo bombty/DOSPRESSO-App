@@ -8,6 +8,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
 import { useLocation, useParams } from "wouter";
 import {
   AlertDialog,
@@ -84,15 +85,27 @@ interface Task {
   dueDate: string | null;
 }
 
+const KIOSK_HQ_ROLES = ['admin', 'ceo', 'cgo', 'coach', 'trainer', 'muhasebe', 'satinalma', 'teknik', 'destek', 'fabrika', 'yatirimci_hq'];
+
 export default function BranchKiosk() {
   const { toast } = useToast();
+  const { user } = useAuth();
   const [, setLocation] = useLocation();
   const params = useParams();
   
-  // Check for existing branch auth from sessionStorage (from branch dashboard login)
   const [branchAuth, setBranchAuth] = useState<any>(null);
   const [authChecked, setAuthChecked] = useState(false);
   
+  const { data: allowedRolesData } = useQuery<{ roles: string[] }>({
+    queryKey: ["/api/branch-dashboard-allowed-roles"],
+    queryFn: async () => {
+      const res = await fetch("/api/branch-dashboard-allowed-roles");
+      if (!res.ok) return { roles: [] };
+      return res.json();
+    },
+    staleTime: 60000,
+  });
+
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const branchAuthStr = sessionStorage.getItem('branchAuth');
@@ -100,7 +113,6 @@ export default function BranchKiosk() {
         try {
           const parsed = JSON.parse(branchAuthStr);
           setBranchAuth(parsed);
-          // If branch auth exists, skip password step and go directly to user selection
           setStep('select-user');
         } catch (e) {
           console.error('Failed to parse branchAuth', e);
@@ -109,6 +121,14 @@ export default function BranchKiosk() {
       setAuthChecked(true);
     }
   }, []);
+
+  useEffect(() => {
+    if (!authChecked || branchAuth) return;
+    const allowedRoles = allowedRolesData?.roles || [];
+    if (user && !KIOSK_HQ_ROLES.includes(user.role || '') && !allowedRoles.includes(user.role || '')) {
+      setLocation("/");
+    }
+  }, [authChecked, branchAuth, user, allowedRolesData, setLocation]);
   
   // Use branchAuth.id if available, otherwise fall back to route params or default
   const branchId = branchAuth?.id || (params.branchId ? parseInt(params.branchId) : 1);

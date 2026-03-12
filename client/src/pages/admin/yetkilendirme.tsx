@@ -61,7 +61,8 @@ import {
   Factory,
   Star,
   Pencil,
-  Check
+  Check,
+  Monitor
 } from "lucide-react";
 import { Link, Redirect } from "wouter";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -769,6 +770,155 @@ function RoleTemplatesTab() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+    </div>
+  );
+}
+
+function AccessSettingsTab() {
+  const { toast } = useToast();
+  const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
+  const [hasChanges, setHasChanges] = useState(false);
+
+  const { data: currentSetting, isLoading } = useQuery<{ roles: string[] }>({
+    queryKey: ["/api/branch-dashboard-allowed-roles"],
+    queryFn: async () => {
+      const res = await fetch("/api/branch-dashboard-allowed-roles");
+      if (!res.ok) return { roles: [] };
+      return res.json();
+    },
+  });
+
+  useEffect(() => {
+    if (currentSetting) {
+      setSelectedRoles(currentSetting.roles || []);
+    }
+  }, [currentSetting]);
+
+  const saveMutation = useMutation({
+    mutationFn: async (roles: string[]) => {
+      return apiRequest("PATCH", "/api/admin/settings/branch_dashboard_allowed_roles", {
+        value: JSON.stringify(roles),
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/branch-dashboard-allowed-roles"] });
+      setHasChanges(false);
+      toast({ title: "Erişim ayarları kaydedildi" });
+    },
+    onError: () => {
+      toast({ title: "Kaydetme hatası", variant: "destructive" });
+    },
+  });
+
+  const toggleRole = (role: string) => {
+    setSelectedRoles(prev => {
+      const next = prev.includes(role) ? prev.filter(r => r !== role) : [...prev, role];
+      setHasChanges(true);
+      return next;
+    });
+  };
+
+  if (isLoading) return <LoadingState />;
+
+  const allBranchRoles = ROLE_GROUPS_BASE.sube.roles;
+  const allFactoryRoles = ROLE_GROUPS_BASE.fabrika.roles;
+
+  return (
+    <div className="p-4 space-y-4 overflow-auto flex-1">
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between gap-2 flex-wrap">
+          <div>
+            <CardTitle className="text-base flex items-center gap-2">
+              <Monitor className="h-4 w-4" />
+              Şube Dashboard & Kiosk Erişim Ayarları
+            </CardTitle>
+            <CardDescription>
+              Hangi rollerin şube dashboard ve kiosk sistemine erişebileceğini belirleyin. Kiosk sistemi sabit noktada çalışır — burada seçilen roller normal giriş ile de erişebilir.
+            </CardDescription>
+          </div>
+          <Button
+            onClick={() => saveMutation.mutate(selectedRoles)}
+            disabled={!hasChanges || saveMutation.isPending}
+            data-testid="button-save-access-settings"
+          >
+            <Save className="h-4 w-4 mr-1.5" />
+            {saveMutation.isPending ? "Kaydediliyor..." : "Kaydet"}
+          </Button>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="p-3 rounded-md bg-muted/50 text-sm text-muted-foreground space-y-1">
+            <p>Sabit istasyon girişi (branchAuth) her zaman erişebilir — bu ayardan bağımsızdır.</p>
+            <p>HQ rolleri (admin, ceo, cgo, coach vb.) her zaman erişim hakkına sahiptir.</p>
+            <p>Aşağıdaki rolleri aktif ederseniz, bu roller normal kullanıcı girişi ile de şube dashboard ve kiosk'a ulaşabilir.</p>
+          </div>
+
+          <div>
+            <h3 className="font-medium text-sm mb-2">Şube Rolleri</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {allBranchRoles.map(role => (
+                <div
+                  key={role}
+                  className="flex items-center justify-between p-2.5 rounded-md border cursor-pointer hover-elevate"
+                  onClick={() => toggleRole(role)}
+                  data-testid={`toggle-role-${role}`}
+                >
+                  <div className="flex items-center gap-2">
+                    <Coffee className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-sm">{ROLE_LABELS[role] || role}</span>
+                  </div>
+                  <Switch
+                    checked={selectedRoles.includes(role)}
+                    onCheckedChange={() => toggleRole(role)}
+                    data-testid={`switch-role-${role}`}
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <Separator />
+
+          <div>
+            <h3 className="font-medium text-sm mb-2">Fabrika Rolleri</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {allFactoryRoles.map(role => (
+                <div
+                  key={role}
+                  className="flex items-center justify-between p-2.5 rounded-md border cursor-pointer hover-elevate"
+                  onClick={() => toggleRole(role)}
+                  data-testid={`toggle-role-${role}`}
+                >
+                  <div className="flex items-center gap-2">
+                    <Factory className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-sm">{ROLE_LABELS[role] || role}</span>
+                  </div>
+                  <Switch
+                    checked={selectedRoles.includes(role)}
+                    onCheckedChange={() => toggleRole(role)}
+                    data-testid={`switch-role-${role}`}
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {selectedRoles.length > 0 && (
+            <>
+              <Separator />
+              <div>
+                <h3 className="font-medium text-sm mb-2">Aktif Erişim Rolleri</h3>
+                <div className="flex flex-wrap gap-1.5">
+                  {selectedRoles.map(role => (
+                    <Badge key={role} variant="secondary" data-testid={`badge-active-role-${role}`}>
+                      {ROLE_LABELS[role] || role}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            </>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }
@@ -1554,6 +1704,10 @@ export default function AdminYetkilendirme() {
               <Star className="h-4 w-4 mr-1.5" />
               Ünvanlar
             </TabsTrigger>
+            <TabsTrigger value="access-settings" data-testid="tab-access-settings">
+              <Monitor className="h-4 w-4 mr-1.5" />
+              Erişim
+            </TabsTrigger>
           </TabsList>
         </Tabs>
       </div>
@@ -1894,6 +2048,11 @@ export default function AdminYetkilendirme() {
       {/* Titles Tab Content */}
       {activeTab === "titles" && (
         <TitlesTab />
+      )}
+
+      {/* Access Settings Tab Content */}
+      {activeTab === "access-settings" && (
+        <AccessSettingsTab />
       )}
 
       {/* Rol Ekle Modal */}

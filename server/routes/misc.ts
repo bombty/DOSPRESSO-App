@@ -953,6 +953,24 @@ const normalizeTimeGlobal = (timeStr: string): string => {
     }
   });
 
+  router.get('/api/branch-dashboard-allowed-roles', async (req, res) => {
+    try {
+      const setting = await storage.getSiteSetting('branch_dashboard_allowed_roles');
+      if (setting && setting.value) {
+        try {
+          const roles = JSON.parse(setting.value);
+          return res.json({ roles: Array.isArray(roles) ? roles : [] });
+        } catch {
+          return res.json({ roles: [] });
+        }
+      }
+      return res.json({ roles: [] });
+    } catch (error: any) {
+      console.error("Error fetching branch dashboard roles:", error);
+      res.json({ roles: [] });
+    }
+  });
+
   // GET /api/mega-module-mapping - Dashboard için mega-modül mapping (DB'den dinamik)
   // GET /api/dashboard-modules - Dashboard için kullanıcının erişebildiği modüller (mega-modüle göre gruplu)
   // Bu endpoint yetkilendirme ile tam senkronize - DOĞRUDAN mega_module_items tablosundan sayılar alınır

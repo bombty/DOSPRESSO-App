@@ -56,7 +56,7 @@ interface EmployeeDashboardData {
 }
 
 const REDIRECT_SECONDS = 10;
-const BRANCH_DASHBOARD_ROLES = ['mudur', 'supervisor', 'admin', 'ceo', 'cgo', 'coach', 'trainer'];
+const HQ_ROLES = ['admin', 'ceo', 'cgo', 'coach', 'trainer', 'muhasebe', 'satinalma', 'teknik', 'destek', 'fabrika', 'yatirimci_hq'];
 
 const SHIFT_TYPE_LABELS: Record<string, string> = {
   morning: "Sabah Vardiyası",
@@ -67,9 +67,27 @@ const SHIFT_TYPE_LABELS: Record<string, string> = {
 export default function EmployeeDashboard() {
   const { user } = useAuth();
   const [, setLocation] = useLocation();
-  const canAccessBranchDashboard = BRANCH_DASHBOARD_ROLES.includes(user?.role || '');
   const [countdown, setCountdown] = useState(REDIRECT_SECONDS);
-  const [paused, setPaused] = useState(!canAccessBranchDashboard);
+
+  const { data: allowedRolesData } = useQuery<{ roles: string[] }>({
+    queryKey: ["/api/branch-dashboard-allowed-roles"],
+    queryFn: async () => {
+      const res = await fetch("/api/branch-dashboard-allowed-roles");
+      if (!res.ok) return { roles: [] };
+      return res.json();
+    },
+    staleTime: 60000,
+  });
+
+  const allowedRoles = allowedRolesData?.roles || [];
+  const canAccessBranchDashboard = HQ_ROLES.includes(user?.role || '') || allowedRoles.includes(user?.role || '');
+  const [paused, setPaused] = useState(true);
+
+  useEffect(() => {
+    if (allowedRolesData) {
+      setPaused(!canAccessBranchDashboard);
+    }
+  }, [allowedRolesData, canAccessBranchDashboard]);
 
   const userId = user?.id;
 

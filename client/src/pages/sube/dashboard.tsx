@@ -88,7 +88,6 @@ const SHIFT_TYPE_LABELS: Record<string, string> = {
 const DAY_NAMES = ["Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz"];
 
 const HQ_ROLES = ['admin', 'ceo', 'cgo', 'coach', 'trainer', 'muhasebe', 'satinalma', 'teknik', 'destek', 'fabrika', 'yatirimci_hq'];
-const BRANCH_DASHBOARD_ROLES = ['mudur', 'supervisor'];
 
 export default function SubeDashboard() {
   const { user } = useAuth();
@@ -97,6 +96,16 @@ export default function SubeDashboard() {
   const [branchAuth, setBranchAuth] = useState<any>(null);
   const [authChecked, setAuthChecked] = useState(false);
   const [selectedBranchId, setSelectedBranchId] = useState<number | null>(null);
+
+  const { data: allowedRolesData } = useQuery<{ roles: string[] }>({
+    queryKey: ["/api/branch-dashboard-allowed-roles"],
+    queryFn: async () => {
+      const res = await fetch("/api/branch-dashboard-allowed-roles");
+      if (!res.ok) return { roles: [] };
+      return res.json();
+    },
+    staleTime: 60000,
+  });
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -167,7 +176,9 @@ export default function SubeDashboard() {
     },
   });
 
-  const isBranchOnlyUser = user && !HQ_ROLES.includes(user.role || '') && !BRANCH_DASHBOARD_ROLES.includes(user.role || '');
+  const allowedRoles = allowedRolesData?.roles || [];
+  const isRoleAllowed = user && (HQ_ROLES.includes(user.role || '') || allowedRoles.includes(user.role || ''));
+  const isUnauthorizedUser = user && !isRoleAllowed && !branchAuth;
 
   useEffect(() => {
     if (authChecked && !hasBranchAccess && !needsBranchSelection) {
@@ -176,10 +187,10 @@ export default function SubeDashboard() {
   }, [authChecked, hasBranchAccess, needsBranchSelection, setLocation]);
 
   useEffect(() => {
-    if (authChecked && isBranchOnlyUser && !branchAuth) {
+    if (authChecked && isUnauthorizedUser) {
       setLocation("/");
     }
-  }, [authChecked, isBranchOnlyUser, branchAuth, setLocation]);
+  }, [authChecked, isUnauthorizedUser, setLocation]);
 
   if (!authChecked) {
     
