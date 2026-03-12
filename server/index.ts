@@ -16,6 +16,7 @@ import { startWeeklyBackupScheduler, stopBackupScheduler, performHealthCheck } f
 import { startTrackingCleanup, stopTrackingCleanup } from "./tracking";
 import { startAgentScheduler, stopAgentScheduler } from "./services/agent-scheduler";
 import { cache, aiRateLimiter } from "./cache";
+import { schedulerManager } from "./scheduler-manager";
 import bcrypt from "bcrypt";
 import { db } from "./db";
 import { users, productionLots, tasks, notifications as notificationsTable } from "@shared/schema";
@@ -28,7 +29,6 @@ process.on('unhandledRejection', (reason: unknown, promise: Promise<unknown>) =>
 
 let httpServer: import('http').Server | null = null;
 let schedulerInitTimeout: NodeJS.Timeout | null = null;
-const trackedIntervals: NodeJS.Timeout[] = [];
 
 process.on('uncaughtException', (error: Error) => {
   console.error('[UncaughtException] Uncaught exception:', error);
@@ -213,7 +213,8 @@ app.use((req, res, next) => {
       startWeeklyBackupScheduler();
       startTrackingCleanup();
       
-      log(`All schedulers initialized (total startup: ${Date.now() - startupTime}ms)`);
+      schedulerManager.start();
+      log(`All schedulers initialized (${schedulerManager.getJobCount()} jobs, total startup: ${Date.now() - startupTime}ms)`);
       
       performHealthCheck().then(health => {
         log(`System health: ${health.status.toUpperCase()}`);
@@ -299,29 +300,24 @@ async function ensureAdminUserApproved() {
   }
 }
 
-function trackInterval(interval: NodeJS.Timeout): NodeJS.Timeout {
-  trackedIntervals.push(interval);
-  return interval;
-}
-
 function startShiftReminderJob() {
   storage.sendShiftReminders().catch((error: Error | unknown) => {
     console.error("Error sending shift reminders:", error);
   });
   
-  trackInterval(setInterval(async () => {
+  schedulerManager.registerInterval('shift-reminder', async () => {
     try {
       await storage.sendShiftReminders();
     } catch (error) {
       console.error("Error in shift reminder job:", error);
     }
-  }, 10 * 60 * 1000));
+  }, 10 * 60 * 1000);
   
   log("Shift reminder job started (runs every 10 minutes)");
 }
 
 function startCompositeScoreUpdateJob() {
-  trackInterval(setInterval(async () => {
+  schedulerManager.registerInterval('composite-score', async () => {
     const nowTR = new Date(new Date().toLocaleString("en-US", { timeZone: "Europe/Istanbul" }));
     if (nowTR.getHours() === 3 && nowTR.getMinutes() < 10) {
       try {
@@ -331,13 +327,13 @@ function startCompositeScoreUpdateJob() {
         console.error("Error in composite score update job:", error);
       }
     }
-  }, 10 * 60 * 1000));
+  }, 10 * 60 * 1000);
 
   log("Composite score update job started (daily at 03:00 Europe/Istanbul)");
 }
 
 function startDangerZoneCheckJob() {
-  trackInterval(setInterval(async () => {
+  schedulerManager.registerInterval('danger-zone', async () => {
     const now = new Date();
     if (now.getDate() === 1 && now.getHours() === 0) {
       try {
@@ -347,13 +343,13 @@ function startDangerZoneCheckJob() {
         console.error("Error in danger zone check job:", error);
       }
     }
-  }, 60 * 60 * 1000));
+  }, 60 * 60 * 1000);
   
   log("Danger zone check job initialized (runs monthly on 1st)");
 }
 
 function startDailyTaskTriggerJob() {
-  trackInterval(setInterval(async () => {
+  schedulerManager.registerInterval('task-trigger', async () => {
     const nowTR = new Date(new Date().toLocaleString("en-US", { timeZone: "Europe/Istanbul" }));
     if (nowTR.getHours() === 8 && nowTR.getMinutes() < 10) {
       try {
@@ -364,7 +360,7 @@ function startDailyTaskTriggerJob() {
         console.error("[TaskTrigger] Daily generation error:", error);
       }
     }
-  }, 10 * 60 * 1000));
+  }, 10 * 60 * 1000);
 
   log("Task trigger daily scheduler started (08:00 Europe/Istanbul)");
 }
@@ -396,7 +392,7 @@ function startScheduledTaskDeliveryJob() {
     } catch (error: any) { console.error("Scheduled task delivery initial run error:", error); }
   })();
 
-  trackInterval(setInterval(async () => {
+  schedulerManager.registerInterval('task-delivery', async () => {
     try {
       const now = new Date();
       const scheduledTasks = await db.select().from(tasks)
@@ -435,13 +431,13 @@ function startScheduledTaskDeliveryJob() {
     } catch (error: any) {
       console.error("Scheduled task delivery error:", error);
     }
-  }, 5 * 60 * 1000));
+  }, 5 * 60 * 1000);
 
   log("Scheduled task delivery job started (runs every 5 minutes)");
 }
 
 function startSktExpiryCheckJob() {
-  trackInterval(setInterval(async () => {
+  schedulerManager.registerInterval('skt-expiry', async () => {
     try {
       const now = new Date();
       const sevenDaysLater = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
@@ -511,7 +507,7 @@ function startSktExpiryCheckJob() {
     } catch (error) {
       console.error("[SKT] Expiry check error:", error);
     }
-  }, 6 * 60 * 60 * 1000));
+  }, 6 * 60 * 60 * 1000);
 
   log("SKT expiry check job started (runs every 6 hours)");
 }
@@ -524,13 +520,9 @@ function forceShutdown(signal: string) {
     schedulerInitTimeout = null;
   }
 
-  for (const interval of trackedIntervals) {
-    clearInterval(interval);
-  }
-  trackedIntervals.length = 0;
+  schedulerManager.stop();
 
   try { stopAllReminderSystems(); } catch {}
-
   try { stopAgentScheduler(); } catch {}
   try { stopBackupScheduler(); } catch {}
   try { stopTrackingCleanup(); } catch {}
