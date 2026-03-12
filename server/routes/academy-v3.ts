@@ -150,6 +150,7 @@ router.get("/api/v3/academy/home-data", isAuthenticated, async (req, res) => {
       .where(
         and(
           gte(webinars.webinarDate, sql`NOW()`),
+          inArray(webinars.status, ["scheduled", "live"]),
           sql`(${webinars.targetRoles} = '{}'::text[] OR ${webinars.targetRoles} @> ARRAY[${userRole}]::text[])`
         )
       )
