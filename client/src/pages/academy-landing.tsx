@@ -160,9 +160,6 @@ export default function AcademyLanding() {
     enabled: !!user?.id,
   });
 
-  const { data: hubCategories = [] } = useQuery<any[]>({
-    queryKey: ["/api/academy/hub-categories"],
-  });
 
   const userProgress: any[] = (() => {
     if (!userProgressData) return [];
@@ -206,6 +203,8 @@ export default function AcademyLanding() {
 
   const mandatoryIncomplete = mandatoryModules.filter((m: any) => getModuleStatus(m.id) !== "completed");
   const mandatoryCompleted = mandatoryModules.filter((m: any) => getModuleStatus(m.id) === "completed");
+
+  const inProgressModules = approvedModules.filter((m: any) => getModuleStatus(m.id) === "in_progress");
 
   const categoryGroups = approvedModules.reduce<Record<string, any[]>>((acc, m: any) => {
     const cat = m.category || "genel_gelisim";
@@ -497,6 +496,51 @@ export default function AcademyLanding() {
                 </CardContent>
               </Card>
             ) : null}
+
+            {inProgressModules.length > 0 && (
+              <div data-testid="section-resume">
+                <div className="flex items-center gap-2 mb-2">
+                  <Play className="h-4 w-4 text-primary" />
+                  <h2 className="font-extrabold text-sm">Kaldığın Yerden Devam Et</h2>
+                </div>
+                <div className="space-y-2">
+                  {inProgressModules.slice(0, 3).map((m: any) => {
+                    const catCfg = CATEGORY_CONFIG[m.category] || CATEGORY_CONFIG.genel_gelisim;
+                    const CatIcon = catCfg.icon;
+                    const prog = getModuleProgress(m.id);
+
+                    return (
+                      <Card
+                        key={m.id}
+                        className="cursor-pointer hover-elevate border-primary/20 bg-primary/5"
+                        onClick={() => navigate(`/akademi-modul/${m.id}`)}
+                        data-testid={`card-resume-${m.id}`}
+                      >
+                        <CardContent className="p-3">
+                          <div className="flex items-center gap-3">
+                            <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${catCfg.gradient} flex items-center justify-center flex-shrink-0`}>
+                              <CatIcon className="h-4 w-4 text-white" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="font-bold text-[13px] line-clamp-1" data-testid={`text-resume-title-${m.id}`}>{m.title}</p>
+                              <div className="flex items-center gap-2 mt-1">
+                                <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
+                                  <div className="h-full bg-primary rounded-full" style={{ width: `${prog}%` }} />
+                                </div>
+                                <span className="text-[11px] text-muted-foreground flex-shrink-0">{prog}%</span>
+                              </div>
+                            </div>
+                            <Button size="sm" className="flex-shrink-0" data-testid={`button-resume-${m.id}`}>
+                              Devam
+                            </Button>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
             <div data-testid="section-categories">
               <div className="flex items-center justify-between gap-2 mb-2">
@@ -861,6 +905,7 @@ export default function AcademyLanding() {
                 { label: "Bilgi Bankası", icon: Library, path: "/akademi/bilgi-bankasi", color: "text-blue-600 dark:text-blue-400", bgColor: "bg-blue-100 dark:bg-blue-900/30" },
                 { label: "AI Asistan", icon: Brain, path: "/akademi/ai-kanit", color: "text-purple-600 dark:text-purple-400", bgColor: "bg-purple-100 dark:bg-purple-900/30" },
                 { label: "Benim Yolum", icon: TrendingUp, path: "/akademi/benim-yolum", color: "text-primary", bgColor: "bg-primary/10" },
+                { label: "Sınavlar", icon: ClipboardCheck, path: "/akademi/sinavlar", color: "text-rose-600 dark:text-rose-400", bgColor: "bg-rose-100 dark:bg-rose-900/30" },
                 { label: "Rozetlerim", icon: Award, path: "/akademi/rozetler", color: "text-amber-600 dark:text-amber-400", bgColor: "bg-amber-100 dark:bg-amber-900/30" },
                 { label: "Sıralama", icon: Trophy, path: "/akademi/siralama", color: "text-yellow-600 dark:text-yellow-400", bgColor: "bg-yellow-100 dark:bg-yellow-900/30" },
               ].map((link) => {
