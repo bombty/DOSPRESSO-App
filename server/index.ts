@@ -2,7 +2,7 @@ import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { storage } from "./storage";
-import { startReminderSystem, startSLACheckSystem, startPhotoCleanupSystem, startFeedbackSlaCheckSystem, startFeedbackPatternAnalysisSystem, startStockAlertSystem, startOnboardingCompletionSystem, startStaleQuoteReminderSystem, startNotificationArchiveSystem, stopAllReminderSystems } from "./reminders";
+import { startReminderSystem, startSLACheckSystem, startPhotoCleanupSystem, startFeedbackSlaCheckSystem, startFeedbackPatternAnalysisSystem, startStockAlertSystem, startOnboardingCompletionSystem, startStaleQuoteReminderSystem, startNotificationArchiveSystem, stopAllReminderSystems, checkOnboardingCompletions, checkAndArchiveIfTime, checkLowStockNotifications, checkFeedbackSlaBreaches } from "./reminders";
 import { seedRolePermissions } from "./seed-role-permissions";
 import { seedPermissionModules } from "./seed-permission-modules";
 import { seedRoleTemplates } from "./seed-role-templates";
@@ -156,30 +156,25 @@ app.use((req, res, next) => {
     await logDbDiagnostics();
     await bootstrapAdminUser();
     await ensureAdminUserApproved();
-    
-    await seedRoles().catch((error) => {
-      console.error("Error seeding roles:", error);
-    });
-    
-    await seedPermissionModules().catch((error) => {
-      console.error("Error seeding permission modules:", error);
-    });
-    
-    await seedRolePermissions().catch((error) => {
-      console.error("Error seeding role permissions:", error);
-    });
-    
-    const independentSeedResults = await Promise.allSettled([
-      seedRoleTemplates(),
+
+    const roleChain = async () => {
+      await seedRoles();
+      await seedPermissionModules();
+      await seedRolePermissions();
+      await seedRoleTemplates();
+    };
+
+    const allSeedResults = await Promise.allSettled([
+      roleChain(),
       seedAdminMenu(),
       seedServiceRequests(),
       seedDospressoRecipes(),
       seedAcademyCategories(),
       seedDefaultAuditTemplate(),
     ]);
-    
-    const seedNames = ['roleTemplates', 'adminMenu', 'serviceRequests', 'recipes', 'academyCategories', 'auditTemplate'];
-    independentSeedResults.forEach((result, i) => {
+
+    const seedNames = ['roleChain', 'adminMenu', 'serviceRequests', 'recipes', 'academyCategories', 'auditTemplate'];
+    allSeedResults.forEach((result, i) => {
       if (result.status === 'rejected') {
         console.error(`Error seeding ${seedNames[i]}:`, result.reason);
       }
@@ -191,22 +186,23 @@ app.use((req, res, next) => {
     log("Schedulers will start in 30 seconds (lazy init)...");
     schedulerManager.registerTimeout('scheduler-lazy-init', () => {
       startReminderSystem();
-      startShiftReminderJob();
-      startCompositeScoreUpdateJob();
-      startDangerZoneCheckJob();
-      startDailyTaskTriggerJob();
+      startConsolidated10MinJobs();
       startSktExpiryCheckJob();
       startScheduledTaskDeliveryJob();
       
       startSLACheckSystem();
       startPhotoCleanupSystem();
-      startFeedbackSlaCheckSystem();
       startFeedbackPatternAnalysisSystem();
-      
-      startStockAlertSystem();
-      startOnboardingCompletionSystem();
       startStaleQuoteReminderSystem();
+      
+      startFeedbackSlaCheckSystem();
+      startStockAlertSystem();
+      startConsolidatedHourlyJobs();
+      
+      startOnboardingCompletionSystem();
       startNotificationArchiveSystem();
+      startConsolidated10MinExtras();
+      
       startAgentScheduler();
       
       startWeeklyBackupScheduler();
@@ -299,69 +295,56 @@ async function ensureAdminUserApproved() {
   }
 }
 
-function startShiftReminderJob() {
+function startConsolidated10MinJobs() {
   storage.sendShiftReminders().catch((error: Error | unknown) => {
     console.error("Error sending shift reminders:", error);
   });
-  
-  schedulerManager.registerInterval('shift-reminder', async () => {
-    try {
-      await storage.sendShiftReminders();
-    } catch (error) {
-      console.error("Error in shift reminder job:", error);
-    }
-  }, 10 * 60 * 1000);
-  
-  log("Shift reminder job started (runs every 10 minutes)");
-}
 
-function startCompositeScoreUpdateJob() {
-  schedulerManager.registerInterval('composite-score', async () => {
+  schedulerManager.registerInterval('tick-10min', async () => {
+    try { await storage.sendShiftReminders(); } catch (e) { console.error("Error in shift reminder:", e); }
+
     const nowTR = new Date(new Date().toLocaleString("en-US", { timeZone: "Europe/Istanbul" }));
     if (nowTR.getHours() === 3 && nowTR.getMinutes() < 10) {
       try {
         const result = await storage.runAllCompositeScoreUpdates();
         log(`Composite score update: ${result.processed} users, ${result.dangerCount} danger, ${result.warningCount} warning`);
-      } catch (error) {
-        console.error("Error in composite score update job:", error);
-      }
+      } catch (e) { console.error("Error in composite score update:", e); }
     }
-  }, 10 * 60 * 1000);
 
-  log("Composite score update job started (daily at 03:00 Europe/Istanbul)");
-}
-
-function startDangerZoneCheckJob() {
-  schedulerManager.registerInterval('danger-zone', async () => {
-    const now = new Date();
-    if (now.getDate() === 1 && now.getHours() === 0) {
-      try {
-        const result = await storage.runAllDangerZoneChecks();
-        log(`Danger zone check: ${result.processed} processed, ${result.warnings} warnings, ${result.demotions} demotions`);
-      } catch (error) {
-        console.error("Error in danger zone check job:", error);
-      }
-    }
-  }, 60 * 60 * 1000);
-  
-  log("Danger zone check job initialized (runs monthly on 1st)");
-}
-
-function startDailyTaskTriggerJob() {
-  schedulerManager.registerInterval('task-trigger', async () => {
-    const nowTR = new Date(new Date().toLocaleString("en-US", { timeZone: "Europe/Istanbul" }));
     if (nowTR.getHours() === 8 && nowTR.getMinutes() < 10) {
       try {
         const { generateTasksForAllActiveUsers } = await import("./services/task-trigger-service");
         const result = await generateTasksForAllActiveUsers();
         log(`[TaskTrigger] Daily: ${result.usersProcessed} users, ${result.totalCreated} created, ${result.totalSkipped} skipped`);
-      } catch (error) {
-        console.error("[TaskTrigger] Daily generation error:", error);
-      }
+      } catch (e) { console.error("[TaskTrigger] Daily generation error:", e); }
     }
   }, 10 * 60 * 1000);
 
-  log("Task trigger daily scheduler started (08:00 Europe/Istanbul)");
+  log("Consolidated 10-min tick started (shift-reminder + composite-score@03:00 + task-trigger@08:00)");
+}
+
+function startConsolidatedHourlyJobs() {
+  schedulerManager.registerInterval('tick-1hr', async () => {
+    try { await checkLowStockNotifications(); } catch (e) { console.error("Error in stock alert:", e); }
+    try { await checkFeedbackSlaBreaches(); } catch (e) { console.error("Error in feedback SLA:", e); }
+
+    const now = new Date();
+    if (now.getDate() === 1 && now.getHours() === 0) {
+      try {
+        const result = await storage.runAllDangerZoneChecks();
+        log(`Danger zone check: ${result.processed} processed, ${result.warnings} warnings, ${result.demotions} demotions`);
+      } catch (e) { console.error("Error in danger zone check:", e); }
+    }
+  }, 60 * 60 * 1000);
+  log("Consolidated hourly tick started (stock-alert + feedback-sla + danger-zone@1st)");
+}
+
+function startConsolidated10MinExtras() {
+  schedulerManager.registerInterval('tick-10min-extras', async () => {
+    try { await checkOnboardingCompletions(); } catch (e) { console.error("Error in onboarding check:", e); }
+    try { await checkAndArchiveIfTime(); } catch (e) { console.error("Error in notification archive:", e); }
+  }, 10 * 60 * 1000);
+  log("Consolidated 10-min extras tick started (onboarding-check + notification-archive@02:00)");
 }
 
 function startScheduledTaskDeliveryJob() {

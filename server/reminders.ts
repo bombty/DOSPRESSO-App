@@ -731,7 +731,7 @@ async function checkEvaluationReminders() {
 }
 
 export function startReminderSystem() {
-  if (schedulerManager.hasJob('reminder')) {
+  if (schedulerManager.hasJob('reminder-tick-10min')) {
     console.log("Hatirlatma sistemi zaten calisiyor");
     return;
   }
@@ -741,14 +741,14 @@ export function startReminderSystem() {
   checkAndSendReminders();
   checkEvaluationReminders();
   
-  schedulerManager.registerInterval('reminder', () => {
+  schedulerManager.registerInterval('reminder-tick-10min', () => {
     checkAndSendReminders();
     checkEvaluationReminders();
   }, REMINDER_INTERVAL);
 }
 
 export function stopReminderSystem() {
-  schedulerManager.removeJob('reminder');
+  schedulerManager.removeJob('reminder-tick-10min');
 }
 
 export function startSLACheckSystem() {
@@ -1043,16 +1043,12 @@ export async function notifyTeknikNewFault(faultId: number, faultTitle: string, 
 }
 
 export function startStockAlertSystem() {
-  if (schedulerManager.hasJob('stock-alert')) return;
-  console.log("📦 Stok uyari sistemi baslatildi - Her saat kontrol edilecek");
-  
+  console.log("📦 Stok uyari sistemi baslatildi - Saatlik tick'e eklendi");
   schedulerManager.registerTimeout('stock-alert-init', () => checkLowStockNotifications(), 30000);
-  schedulerManager.registerInterval('stock-alert', checkLowStockNotifications, STOCK_CHECK_INTERVAL);
 }
 
 export function stopStockAlertSystem() {
   schedulerManager.removeJob('stock-alert-init');
-  schedulerManager.removeJob('stock-alert');
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -1412,29 +1408,21 @@ export async function checkFeedbackSlaBreaches() {
 }
 
 export function startFeedbackSlaCheckSystem() {
-  if (schedulerManager.hasJob('feedback-sla')) return;
-  console.log("Musteri geri bildirim SLA kontrol sistemi baslatildi - Her saat kontrol edilecek");
-
+  console.log("Musteri geri bildirim SLA kontrol sistemi baslatildi - Saatlik tick'e eklendi");
   schedulerManager.registerTimeout('feedback-sla-init', () => checkFeedbackSlaBreaches(), 45000);
-  schedulerManager.registerInterval('feedback-sla', checkFeedbackSlaBreaches, FEEDBACK_SLA_CHECK_INTERVAL);
 }
 
 export function stopFeedbackSlaCheckSystem() {
   schedulerManager.removeJob('feedback-sla-init');
-  schedulerManager.removeJob('feedback-sla');
 }
 
 export function startOnboardingCompletionSystem() {
-  if (schedulerManager.hasJob('onboarding-check')) return;
-  console.log("📋 Onboarding tamamlama bildirim sistemi baslatildi - Her 10 dakikada bir kontrol edilecek");
-  
+  console.log("📋 Onboarding tamamlama bildirim sistemi baslatildi - 10 dakikalik tick'e eklendi");
   schedulerManager.registerTimeout('onboarding-check-init', () => checkOnboardingCompletions(), 20000);
-  schedulerManager.registerInterval('onboarding-check', checkOnboardingCompletions, ONBOARDING_CHECK_INTERVAL);
 }
 
 export function stopOnboardingCompletionSystem() {
   schedulerManager.removeJob('onboarding-check-init');
-  schedulerManager.removeJob('onboarding-check');
 }
 
 export async function archiveOldNotifications() {
@@ -1460,32 +1448,27 @@ export async function archiveOldNotifications() {
 let archiveRanToday = false;
 
 export function startNotificationArchiveSystem() {
-  if (schedulerManager.hasJob('notification-archive')) return;
-  console.log("📦 Bildirim arsivleme sistemi baslatildi - Gunluk 02:00'de calisacak");
-
+  console.log("📦 Bildirim arsivleme sistemi baslatildi - 10 dakikalik tick'e eklendi (Gunluk 02:00)");
   schedulerManager.registerTimeout('notification-archive-init', () => archiveOldNotifications(), 5000);
+}
 
-  const checkAndArchive = async () => {
-    const now = new Date();
-    const istanbulHour = new Date(now.toLocaleString('en-US', { timeZone: 'Europe/Istanbul' })).getHours();
-    const istanbulMinute = new Date(now.toLocaleString('en-US', { timeZone: 'Europe/Istanbul' })).getMinutes();
+export async function checkAndArchiveIfTime() {
+  const now = new Date();
+  const istanbulHour = new Date(now.toLocaleString('en-US', { timeZone: 'Europe/Istanbul' })).getHours();
+  const istanbulMinute = new Date(now.toLocaleString('en-US', { timeZone: 'Europe/Istanbul' })).getMinutes();
 
-    if (istanbulHour === 2 && istanbulMinute >= 0 && istanbulMinute <= 10) {
-      if (!archiveRanToday) {
-        archiveRanToday = true;
-        await archiveOldNotifications();
-      }
-    } else {
-      archiveRanToday = false;
+  if (istanbulHour === 2 && istanbulMinute >= 0 && istanbulMinute <= 10) {
+    if (!archiveRanToday) {
+      archiveRanToday = true;
+      await archiveOldNotifications();
     }
-  };
-
-  schedulerManager.registerInterval('notification-archive', checkAndArchive, 10 * 60 * 1000);
+  } else {
+    archiveRanToday = false;
+  }
 }
 
 export function stopNotificationArchiveSystem() {
   schedulerManager.removeJob('notification-archive-init');
-  schedulerManager.removeJob('notification-archive');
 }
 
 // ═══════════════════════════════════════════════════════════════

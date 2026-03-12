@@ -448,7 +448,7 @@ export function startAgentScheduler(): void {
   schedulerManager.registerInterval('agent-event-check', checkEventTriggers, 15 * 60 * 1000);
   console.log("[AgentScheduler] Event-triggered kontrol her 15 dakikada calisacak.");
 
-  schedulerManager.registerInterval('agent-escalation', async () => {
+  schedulerManager.registerInterval('agent-hourly-tick', async () => {
     try {
       const result = await runEscalationCheck();
       if (result.results.length > 0) {
@@ -457,11 +457,17 @@ export function startAgentScheduler(): void {
     } catch (err) {
       console.error("[AgentScheduler] Escalation check error:", err);
     }
-  }, 60 * 60 * 1000);
-  console.log("[AgentScheduler] Escalation kontrol her 1 saatte calisacak.");
 
-  schedulerManager.registerInterval('skill-hourly', runHourlySkills, 60 * 60 * 1000);
-  console.log("[SkillScheduler] Saatlik skill'ler her 1 saatte calisacak (07:00-20:00 TR).");
+    try { await runHourlySkills(); } catch (err) { console.error("[SkillScheduler] Hourly skills error:", err); }
+
+    try {
+      const cnt = await checkRoutingEscalations();
+      if (cnt > 0) console.log(`[RoutingEscalation] ${cnt} aksiyon eskalasyon edildi`);
+    } catch (err) {
+      console.error("[RoutingEscalation] Hata:", err);
+    }
+  }, 60 * 60 * 1000);
+  console.log("[AgentScheduler] Consolidated hourly tick (escalation + skills + routing) her 1 saatte calisacak.");
 
   const dailySkillDelayMs = getMillisUntilTurkeyTime(7, 0);
   console.log(`[SkillScheduler] Gunluk skill'ler ${Math.round(dailySkillDelayMs / 60000)} dakika sonra calisacak (07:00 TR)`);
@@ -485,15 +491,6 @@ export function startAgentScheduler(): void {
   }, 30 * 60 * 1000);
   console.log("[SkillScheduler] Kuyruk kontrolu her 30 dakikada calisacak.");
 
-  schedulerManager.registerInterval('routing-escalation', async () => {
-    try {
-      const cnt = await checkRoutingEscalations();
-      if (cnt > 0) console.log(`[RoutingEscalation] ${cnt} aksiyon eskalasyon edildi`);
-    } catch (err) {
-      console.error("[RoutingEscalation] Hata:", err);
-    }
-  }, 60 * 60 * 1000);
-  console.log("[RoutingEscalation] Eskalasyon kontrolu her saat calisacak.");
 
   const inactiveUsersDelayMs = getMillisUntilTurkeyTime(2, 0);
   console.log(`[AgentScheduler] Inactive user check ${Math.round(inactiveUsersDelayMs / 60000)} dakika sonra calisacak (02:00 TR)`);
@@ -524,9 +521,9 @@ export function stopAgentScheduler(): void {
 
   const agentJobs = [
     'agent-daily-delay', 'agent-daily', 'agent-weekly-delay', 'agent-weekly',
-    'agent-event-check', 'agent-escalation', 'skill-hourly', 'skill-daily-delay',
+    'agent-event-check', 'agent-hourly-tick', 'skill-daily-delay',
     'skill-daily', 'skill-weekly-delay', 'skill-weekly', 'skill-queue',
-    'routing-escalation', 'inactive-users-delay', 'inactive-users',
+    'inactive-users-delay', 'inactive-users',
     'outcome-delay', 'outcome-check'
   ];
   for (const name of agentJobs) {
