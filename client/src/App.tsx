@@ -189,6 +189,7 @@ const YeniSubeMegaModule = lazy(() => import("@/pages/yeni-sube-mega"));
 const OperasyonMegaModule = lazy(() => import("@/pages/operasyon-mega"));
 const AdminMegaModule = lazy(() => import("@/pages/admin-mega"));
 const AkademiMegaModule = lazy(() => import("@/pages/akademi-mega"));
+const AkademiV3 = lazy(() => import("@/pages/akademi-v3/index"));
 const CRMMegaModule = lazy(() => import("@/pages/crm-mega"));
 const MisafirMemnuniyetiModul = lazy(() => import("@/pages/misafir-memnuniyeti-modul"));
 const CEOCommandCenter = lazy(() => import("@/pages/ceo-command-center"));
@@ -342,6 +343,7 @@ function Router() {
           <Route path="/ekipman-analitics" component={EquipmentAnalytics} />
           <Route path="/qr-tara" component={QRScanner} />
           <Route path="/bilgi-bankasi" component={KnowledgeBase} />
+          <Route path="/akademi-v3/*?" component={AkademiV3} />
           <Route path="/akademi/*?" component={AkademiMegaModule} />
           <Route path="/akademi-modul-editor/:id" component={AcademyModuleEditor} />
           <Route path="/akademi-modul-editor" component={AcademyModuleEditor} />
