@@ -1,5 +1,6 @@
 import { db } from "./db";
 import { sql } from "drizzle-orm";
+import { schedulerManager } from "./scheduler-manager";
 
 // In-memory tracking of active employees
 interface ActiveEmployee {
@@ -81,14 +82,12 @@ export function removeEmployeeLocation(userId: string): void {
   activeEmployees.delete(userId);
 }
 
-let trackingCleanupInterval: NodeJS.Timeout | null = null;
-
 export function startTrackingCleanup(): void {
-  if (trackingCleanupInterval) {
+  if (schedulerManager.hasJob('tracking-cleanup')) {
     console.log("[Tracking] Cleanup already running, skipping.");
     return;
   }
-  trackingCleanupInterval = setInterval(() => {
+  schedulerManager.registerInterval('tracking-cleanup', () => {
     const now = Date.now();
     const tenMinutesAgo = now - 10 * 60 * 1000;
 
@@ -107,9 +106,5 @@ export function startTrackingCleanup(): void {
 }
 
 export function stopTrackingCleanup(): void {
-  if (trackingCleanupInterval) {
-    clearInterval(trackingCleanupInterval);
-    trackingCleanupInterval = null;
-    console.log("[Tracking] Cleanup stopped.");
-  }
+  schedulerManager.removeJob('tracking-cleanup');
 }

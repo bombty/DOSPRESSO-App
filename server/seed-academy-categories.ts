@@ -48,6 +48,23 @@ const STANDARD_SLUGS = new Set(STANDARD_CATEGORIES.map(c => c.slug));
 export async function seedAcademyCategories() {
   console.log("🎓 Starting academy categories seed...");
 
+  const existingCats = await db.select({ slug: academyHubCategories.slug, isActive: academyHubCategories.isActive }).from(academyHubCategories);
+  const existingSlugs = new Set(existingCats.filter(c => c.isActive).map(c => c.slug));
+  const standardSlugsArr = STANDARD_CATEGORIES.map(c => c.slug);
+  const allMatch = standardSlugsArr.every(s => existingSlugs.has(s)) && existingSlugs.size === standardSlugsArr.length;
+
+  if (allMatch) {
+    const allModules = await db.select({ id: trainingModules.id, category: trainingModules.category }).from(trainingModules);
+    const needsMigration = allModules.some(m => {
+      const cat = m.category || "";
+      return !STANDARD_SLUGS.has(cat);
+    });
+    if (!needsMigration) {
+      console.log(`✅ Academy categories already up to date (${existingSlugs.size} categories, 0 modules need migration). Skipping.`);
+      return;
+    }
+  }
+
   await db.update(academyHubCategories).set({ isActive: false });
 
   for (const cat of STANDARD_CATEGORIES) {

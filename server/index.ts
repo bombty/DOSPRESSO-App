@@ -28,7 +28,6 @@ process.on('unhandledRejection', (reason: unknown, promise: Promise<unknown>) =>
 });
 
 let httpServer: import('http').Server | null = null;
-let schedulerInitTimeout: NodeJS.Timeout | null = null;
 
 process.on('uncaughtException', (error: Error) => {
   console.error('[UncaughtException] Uncaught exception:', error);
@@ -190,7 +189,7 @@ app.use((req, res, next) => {
     log(`Seeds completed in ${seedDuration}ms`);
     
     log("Schedulers will start in 30 seconds (lazy init)...");
-    schedulerInitTimeout = setTimeout(() => {
+    schedulerManager.registerTimeout('scheduler-lazy-init', () => {
       startReminderSystem();
       startShiftReminderJob();
       startCompositeScoreUpdateJob();
@@ -514,11 +513,6 @@ function startSktExpiryCheckJob() {
 
 function forceShutdown(signal: string) {
   console.log(`${signal} received, shutting down...`);
-
-  if (schedulerInitTimeout) {
-    clearTimeout(schedulerInitTimeout);
-    schedulerInitTimeout = null;
-  }
 
   schedulerManager.stop();
 

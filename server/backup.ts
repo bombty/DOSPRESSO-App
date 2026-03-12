@@ -4,6 +4,7 @@ import { sql, desc, eq } from "drizzle-orm";
 import * as schema from "@shared/schema";
 import { objectStorageClient } from "./objectStorage";
 import { auditLogSystem } from "./audit";
+import { schedulerManager } from "./scheduler-manager";
 
 // Backup status tracking (cached from database)
 interface BackupStatus {
@@ -460,8 +461,6 @@ async function notifyAdminsAboutBackup(backupRecord: schema.BackupRecord): Promi
 // Hourly backup scheduler with mutex lock to prevent overlapping runs
 let backupSchedulerRunning = false;
 let backupJobRunning = false;
-let backupDelayTimeout: ReturnType<typeof setTimeout> | null = null;
-let hourlyIntervalHandle: ReturnType<typeof setInterval> | null = null;
 
 const RETENTION_LIMITS = {
   hourly: 48,
@@ -493,18 +492,18 @@ export async function startWeeklyBackupScheduler(): Promise<void> {
   
   if (needsImmediateBackup) {
     console.log('⏳ Son backup 2+ saat once — 30 saniye sonra ilk backup calisacak');
-    backupDelayTimeout = setTimeout(async () => {
+    schedulerManager.registerTimeout('backup-delay', async () => {
       await runHourlyBackupWithRetention();
     }, 30 * 1000);
   } else {
-    console.log('✅ Güncel backup mevcut — sonraki saatlik döngüde devam edecek');
+    console.log('✅ Guncel backup mevcut — sonraki saatlik dongude devam edecek');
   }
   
-  hourlyIntervalHandle = setInterval(async () => {
+  schedulerManager.registerInterval('backup-hourly', async () => {
     await runHourlyBackupWithRetention();
   }, HOURLY_INTERVAL_MS);
   
-  console.log(`⏰ Saatlik backup aktif: her ${HOURLY_INTERVAL_MS / 1000 / 60} dakikada bir çalışacak`);
+  console.log(`⏰ Saatlik backup aktif: her ${HOURLY_INTERVAL_MS / 1000 / 60} dakikada bir calisacak`);
 }
 
 async function runHourlyBackupWithRetention(): Promise<void> {
@@ -624,14 +623,8 @@ export async function triggerManualBackup(): Promise<schema.BackupRecord> {
 
 // Get backup status
 export function stopBackupScheduler(): void {
-  if (backupDelayTimeout) {
-    clearTimeout(backupDelayTimeout);
-    backupDelayTimeout = null;
-  }
-  if (hourlyIntervalHandle) {
-    clearInterval(hourlyIntervalHandle);
-    hourlyIntervalHandle = null;
-  }
+  schedulerManager.removeJob('backup-delay');
+  schedulerManager.removeJob('backup-hourly');
   backupSchedulerRunning = false;
   console.log("[Backup] Scheduler stopped.");
 }

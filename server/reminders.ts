@@ -5,15 +5,13 @@ import { db } from "./db";
 import { correctiveActions, users, auditInstances, branches, factoryProducts, employeeOnboardingAssignments, onboardingTemplates, notifications, staffEvaluations, employeeOnboarding, hqSupportTickets, hqSupportMessages, HQ_SUPPORT_STATUS, inventory, supplierQuotes, customerFeedback } from "@shared/schema";
 import { eq, lt, and, ne, lte, or, inArray, gt, gte, count, max, sql } from "drizzle-orm";
 import { ObjectStorageService } from "./objectStorage";
+import { schedulerManager } from "./scheduler-manager";
 
 const REMINDER_INTERVAL = 10 * 60 * 1000; // 10 minutes in milliseconds
 const MAINTENANCE_WARNING_DAYS = 7; // Notify 7 days before maintenance due
 const SLA_CHECK_INTERVAL = 15 * 60 * 1000; // 15 minutes in milliseconds
 const OVERDUE_REMINDER_INTERVAL = 24 * 60 * 60 * 1000; // 24 hours - max 1 overdue reminder per task per day
 const CAPA_REMINDER_INTERVAL = 4 * 60 * 60 * 1000; // 4 hours for CAPA reminders
-
-let reminderInterval: NodeJS.Timeout | null = null;
-let slaInterval: NodeJS.Timeout | null = null;
 
 const sentCapaNotifications = new Map<number, number>();
 const sentOnboardingReminderKeys = new Set<string>();
@@ -733,8 +731,8 @@ async function checkEvaluationReminders() {
 }
 
 export function startReminderSystem() {
-  if (reminderInterval) {
-    console.log("Hatırlatma sistemi zaten çalışıyor");
+  if (schedulerManager.hasJob('reminder')) {
+    console.log("Hatirlatma sistemi zaten calisiyor");
     return;
   }
 
@@ -743,39 +741,31 @@ export function startReminderSystem() {
   checkAndSendReminders();
   checkEvaluationReminders();
   
-  reminderInterval = setInterval(() => {
+  schedulerManager.registerInterval('reminder', () => {
     checkAndSendReminders();
     checkEvaluationReminders();
   }, REMINDER_INTERVAL);
 }
 
 export function stopReminderSystem() {
-  if (reminderInterval) {
-    clearInterval(reminderInterval);
-    reminderInterval = null;
-    console.log("Hatırlatma sistemi durduruldu");
-  }
+  schedulerManager.removeJob('reminder');
 }
 
 export function startSLACheckSystem() {
-  if (slaInterval) {
-    console.log("SLA kontrol sistemi zaten çalışıyor");
+  if (schedulerManager.hasJob('sla-check')) {
+    console.log("SLA kontrol sistemi zaten calisiyor");
     return;
   }
 
-  console.log("SLA kontrol sistemi başlatıldı - Her 15 dakikada bir kontrol edilecek");
+  console.log("SLA kontrol sistemi baslatildi - Her 15 dakikada bir kontrol edilecek");
   
   storage.checkSLABreaches();
   
-  slaInterval = setInterval(() => storage.checkSLABreaches(), SLA_CHECK_INTERVAL);
+  schedulerManager.registerInterval('sla-check', () => storage.checkSLABreaches(), SLA_CHECK_INTERVAL);
 }
 
 export function stopSLACheckSystem() {
-  if (slaInterval) {
-    clearInterval(slaInterval);
-    slaInterval = null;
-    console.log("SLA kontrol sistemi durduruldu");
-  }
+  schedulerManager.removeJob('sla-check');
 }
 
 // ========================================
@@ -784,7 +774,6 @@ export function stopSLACheckSystem() {
 
 // Check for expired photos every 6 hours
 const PHOTO_CLEANUP_INTERVAL = 6 * 60 * 60 * 1000; // 6 hours
-let photoCleanupInterval: NodeJS.Timeout | null = null;
 
 async function cleanupExpiredPhotos() {
   try {
@@ -863,24 +852,20 @@ async function cleanupExpiredTicketPhotos() {
 }
 
 export function startPhotoCleanupSystem() {
-  console.log("Fotoğraf temizleme sistemi başlatıldı - Her 6 saatte bir kontrol edilecek");
+  if (schedulerManager.hasJob('photo-cleanup')) return;
+  console.log("Fotograf temizleme sistemi baslatildi - Her 6 saatte bir kontrol edilecek");
   
-  // Run initial cleanup
   cleanupExpiredPhotos();
   cleanupExpiredTicketPhotos();
   
-  photoCleanupInterval = setInterval(() => {
+  schedulerManager.registerInterval('photo-cleanup', () => {
     cleanupExpiredPhotos();
     cleanupExpiredTicketPhotos();
   }, PHOTO_CLEANUP_INTERVAL);
 }
 
 export function stopPhotoCleanupSystem() {
-  if (photoCleanupInterval) {
-    clearInterval(photoCleanupInterval);
-    photoCleanupInterval = null;
-    console.log("Fotoğraf temizleme sistemi durduruldu");
-  }
+  schedulerManager.removeJob('photo-cleanup');
 }
 
 // ========================================
@@ -888,7 +873,6 @@ export function stopPhotoCleanupSystem() {
 // ========================================
 
 const MONTHLY_CHECK_INTERVAL = 24 * 60 * 60 * 1000; // Once per day
-let monthlyCalculationInterval: NodeJS.Timeout | null = null;
 let lastMonthlyCheck: Date | null = null;
 
 async function checkMonthlyEmployeeOfMonth() {
@@ -925,20 +909,16 @@ async function checkMonthlyEmployeeOfMonth() {
 }
 
 export function startMonthlyCalculationSystem() {
-  console.log("Aylık Ayın Elemanı hesaplama sistemi başlatıldı - Her gün kontrol edilecek");
+  if (schedulerManager.hasJob('monthly-calc')) return;
+  console.log("Aylik Ayin Elemani hesaplama sistemi baslatildi - Her gun kontrol edilecek");
   
-  // Run initial check
-  setTimeout(checkMonthlyEmployeeOfMonth, 10000); // Delay 10s to let DB initialize
-  
-  monthlyCalculationInterval = setInterval(checkMonthlyEmployeeOfMonth, MONTHLY_CHECK_INTERVAL);
+  schedulerManager.registerTimeout('monthly-calc-init', () => checkMonthlyEmployeeOfMonth(), 10000);
+  schedulerManager.registerInterval('monthly-calc', checkMonthlyEmployeeOfMonth, MONTHLY_CHECK_INTERVAL);
 }
 
 export function stopMonthlyCalculationSystem() {
-  if (monthlyCalculationInterval) {
-    clearInterval(monthlyCalculationInterval);
-    monthlyCalculationInterval = null;
-    console.log("Aylık hesaplama sistemi durduruldu");
-  }
+  schedulerManager.removeJob('monthly-calc-init');
+  schedulerManager.removeJob('monthly-calc');
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -950,7 +930,6 @@ const STOCK_CHECK_INTERVAL = 60 * 60 * 1000; // 1 hour
 const sentStockAlerts = new Map<number, number>(); // productId -> lastNotifiedAt
 const STOCK_ALERT_COOLDOWN = 24 * 60 * 60 * 1000; // 24 hours between alerts for same product
 
-let stockAlertInterval: NodeJS.Timeout | null = null;
 
 export async function checkLowStockNotifications() {
   try {
@@ -1064,20 +1043,16 @@ export async function notifyTeknikNewFault(faultId: number, faultTitle: string, 
 }
 
 export function startStockAlertSystem() {
-  console.log("📦 Stok uyarı sistemi başlatıldı - Her saat kontrol edilecek");
+  if (schedulerManager.hasJob('stock-alert')) return;
+  console.log("📦 Stok uyari sistemi baslatildi - Her saat kontrol edilecek");
   
-  // Run initial check after delay
-  setTimeout(checkLowStockNotifications, 30000);
-  
-  stockAlertInterval = setInterval(checkLowStockNotifications, STOCK_CHECK_INTERVAL);
+  schedulerManager.registerTimeout('stock-alert-init', () => checkLowStockNotifications(), 30000);
+  schedulerManager.registerInterval('stock-alert', checkLowStockNotifications, STOCK_CHECK_INTERVAL);
 }
 
 export function stopStockAlertSystem() {
-  if (stockAlertInterval) {
-    clearInterval(stockAlertInterval);
-    stockAlertInterval = null;
-    console.log("Stok uyarı sistemi durduruldu");
-  }
+  schedulerManager.removeJob('stock-alert-init');
+  schedulerManager.removeJob('stock-alert');
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -1085,7 +1060,6 @@ export function stopStockAlertSystem() {
 // ═══════════════════════════════════════════════════════════════
 
 const ONBOARDING_CHECK_INTERVAL = 10 * 60 * 1000; // 10 minutes
-let onboardingCheckInterval: NodeJS.Timeout | null = null;
 
 export async function checkOnboardingCompletions() {
   try {
@@ -1170,7 +1144,6 @@ export async function checkOnboardingCompletions() {
 // ═══════════════════════════════════════════════════════════════
 
 const STALE_QUOTE_CHECK_INTERVAL = 24 * 60 * 60 * 1000; // 24 hours
-let staleQuoteInterval: NodeJS.Timeout | null = null;
 
 export async function checkStaleQuoteReminders() {
   try {
@@ -1242,19 +1215,16 @@ export async function checkStaleQuoteReminders() {
 }
 
 export function startStaleQuoteReminderSystem() {
+  if (schedulerManager.hasJob('stale-quote')) return;
   console.log("Teklif hatirlatma sistemi baslatildi - Her 24 saatte bir kontrol edilecek");
   
-  setTimeout(checkStaleQuoteReminders, 60000);
-  
-  staleQuoteInterval = setInterval(checkStaleQuoteReminders, STALE_QUOTE_CHECK_INTERVAL);
+  schedulerManager.registerTimeout('stale-quote-init', () => checkStaleQuoteReminders(), 60000);
+  schedulerManager.registerInterval('stale-quote', checkStaleQuoteReminders, STALE_QUOTE_CHECK_INTERVAL);
 }
 
 export function stopStaleQuoteReminderSystem() {
-  if (staleQuoteInterval) {
-    clearInterval(staleQuoteInterval);
-    staleQuoteInterval = null;
-    console.log("Teklif hatirlatma sistemi durduruldu");
-  }
+  schedulerManager.removeJob('stale-quote-init');
+  schedulerManager.removeJob('stale-quote');
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -1262,7 +1232,6 @@ export function stopStaleQuoteReminderSystem() {
 // ═══════════════════════════════════════════════════════════════
 
 const FEEDBACK_SLA_CHECK_INTERVAL = 60 * 60 * 1000; // 1 hour
-let feedbackSlaInterval: NodeJS.Timeout | null = null;
 
 
 export async function checkFeedbackSlaBreaches() {
@@ -1443,37 +1412,29 @@ export async function checkFeedbackSlaBreaches() {
 }
 
 export function startFeedbackSlaCheckSystem() {
-  if (feedbackSlaInterval) return;
-  console.log("Müşteri geri bildirim SLA kontrol sistemi başlatıldı - Her saat kontrol edilecek");
+  if (schedulerManager.hasJob('feedback-sla')) return;
+  console.log("Musteri geri bildirim SLA kontrol sistemi baslatildi - Her saat kontrol edilecek");
 
-  setTimeout(checkFeedbackSlaBreaches, 45000);
-
-  feedbackSlaInterval = setInterval(checkFeedbackSlaBreaches, FEEDBACK_SLA_CHECK_INTERVAL);
+  schedulerManager.registerTimeout('feedback-sla-init', () => checkFeedbackSlaBreaches(), 45000);
+  schedulerManager.registerInterval('feedback-sla', checkFeedbackSlaBreaches, FEEDBACK_SLA_CHECK_INTERVAL);
 }
 
 export function stopFeedbackSlaCheckSystem() {
-  if (feedbackSlaInterval) {
-    clearInterval(feedbackSlaInterval);
-    feedbackSlaInterval = null;
-    console.log("Feedback SLA kontrol sistemi durduruldu");
-  }
+  schedulerManager.removeJob('feedback-sla-init');
+  schedulerManager.removeJob('feedback-sla');
 }
 
 export function startOnboardingCompletionSystem() {
-  console.log("📋 Onboarding tamamlama bildirim sistemi başlatıldı - Her 10 dakikada bir kontrol edilecek");
+  if (schedulerManager.hasJob('onboarding-check')) return;
+  console.log("📋 Onboarding tamamlama bildirim sistemi baslatildi - Her 10 dakikada bir kontrol edilecek");
   
-  // Run initial check after delay
-  setTimeout(checkOnboardingCompletions, 20000);
-  
-  onboardingCheckInterval = setInterval(checkOnboardingCompletions, ONBOARDING_CHECK_INTERVAL);
+  schedulerManager.registerTimeout('onboarding-check-init', () => checkOnboardingCompletions(), 20000);
+  schedulerManager.registerInterval('onboarding-check', checkOnboardingCompletions, ONBOARDING_CHECK_INTERVAL);
 }
 
 export function stopOnboardingCompletionSystem() {
-  if (onboardingCheckInterval) {
-    clearInterval(onboardingCheckInterval);
-    onboardingCheckInterval = null;
-    console.log("Onboarding bildirim sistemi durduruldu");
-  }
+  schedulerManager.removeJob('onboarding-check-init');
+  schedulerManager.removeJob('onboarding-check');
 }
 
 export async function archiveOldNotifications() {
@@ -1496,13 +1457,13 @@ export async function archiveOldNotifications() {
   }
 }
 
-let archiveInterval: ReturnType<typeof setInterval> | null = null;
 let archiveRanToday = false;
 
 export function startNotificationArchiveSystem() {
-  console.log("📦 Bildirim arşivleme sistemi başlatıldı - Günlük 02:00'de çalışacak");
+  if (schedulerManager.hasJob('notification-archive')) return;
+  console.log("📦 Bildirim arsivleme sistemi baslatildi - Gunluk 02:00'de calisacak");
 
-  setTimeout(() => archiveOldNotifications(), 5000);
+  schedulerManager.registerTimeout('notification-archive-init', () => archiveOldNotifications(), 5000);
 
   const checkAndArchive = async () => {
     const now = new Date();
@@ -1519,22 +1480,18 @@ export function startNotificationArchiveSystem() {
     }
   };
 
-  archiveInterval = setInterval(checkAndArchive, 10 * 60 * 1000);
+  schedulerManager.registerInterval('notification-archive', checkAndArchive, 10 * 60 * 1000);
 }
 
 export function stopNotificationArchiveSystem() {
-  if (archiveInterval) {
-    clearInterval(archiveInterval);
-    archiveInterval = null;
-    console.log("Bildirim arşivleme sistemi durduruldu");
-  }
+  schedulerManager.removeJob('notification-archive-init');
+  schedulerManager.removeJob('notification-archive');
 }
 
 // ═══════════════════════════════════════════════════════════════
 // WEEKLY FEEDBACK PATTERN ANALYSIS - Tekrarlayan Sorun Pattern Analizi
 // ═══════════════════════════════════════════════════════════════
 
-let feedbackPatternInterval: ReturnType<typeof setInterval> | null = null;
 let feedbackPatternRanThisWeek = false;
 
 const FEEDBACK_CATEGORIES = [
@@ -1749,7 +1706,7 @@ export async function checkFeedbackPatterns() {
 }
 
 export function startFeedbackPatternAnalysisSystem() {
-  if (feedbackPatternInterval) return;
+  if (schedulerManager.hasJob('feedback-pattern')) return;
   console.log("Feedback pattern analiz sistemi baslatildi - Pazartesi 08:00 Europe/Istanbul");
 
   const checkAndRun = async () => {
@@ -1767,15 +1724,11 @@ export function startFeedbackPatternAnalysisSystem() {
     }
   };
 
-  feedbackPatternInterval = setInterval(checkAndRun, 5 * 60 * 1000);
+  schedulerManager.registerInterval('feedback-pattern', checkAndRun, 5 * 60 * 1000);
 }
 
 export function stopFeedbackPatternAnalysisSystem() {
-  if (feedbackPatternInterval) {
-    clearInterval(feedbackPatternInterval);
-    feedbackPatternInterval = null;
-    console.log("Feedback pattern analiz sistemi durduruldu");
-  }
+  schedulerManager.removeJob('feedback-pattern');
 }
 
 export function stopAllReminderSystems() {

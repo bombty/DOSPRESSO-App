@@ -7,19 +7,46 @@ interface RegisteredJob {
 }
 
 class SchedulerManager {
-  private jobs: RegisteredJob[] = [];
+  private jobs = new Map<string, RegisteredJob>();
   private running = false;
 
   registerInterval(name: string, fn: () => void, ms: number): TimerHandle {
+    if (this.jobs.has(name)) {
+      const existing = this.jobs.get(name)!;
+      if (existing.type === 'interval') clearInterval(existing.handle);
+      else clearTimeout(existing.handle);
+    }
     const handle = setInterval(fn, ms);
-    this.jobs.push({ name, type: 'interval', handle });
+    this.jobs.set(name, { name, type: 'interval', handle });
     return handle;
   }
 
   registerTimeout(name: string, fn: () => void, ms: number): TimerHandle {
-    const handle = setTimeout(fn, ms);
-    this.jobs.push({ name, type: 'timeout', handle });
+    if (this.jobs.has(name)) {
+      const existing = this.jobs.get(name)!;
+      if (existing.type === 'interval') clearInterval(existing.handle);
+      else clearTimeout(existing.handle);
+    }
+    const wrappedFn = () => {
+      fn();
+      this.jobs.delete(name);
+    };
+    const handle = setTimeout(wrappedFn, ms);
+    this.jobs.set(name, { name, type: 'timeout', handle });
     return handle;
+  }
+
+  hasJob(name: string): boolean {
+    return this.jobs.has(name);
+  }
+
+  removeJob(name: string): void {
+    const job = this.jobs.get(name);
+    if (job) {
+      if (job.type === 'interval') clearInterval(job.handle);
+      else clearTimeout(job.handle);
+      this.jobs.delete(name);
+    }
   }
 
   start() {
@@ -27,14 +54,11 @@ class SchedulerManager {
   }
 
   stop() {
-    for (const job of this.jobs) {
-      if (job.type === 'interval') {
-        clearInterval(job.handle);
-      } else {
-        clearTimeout(job.handle);
-      }
+    for (const job of this.jobs.values()) {
+      if (job.type === 'interval') clearInterval(job.handle);
+      else clearTimeout(job.handle);
     }
-    this.jobs.length = 0;
+    this.jobs.clear();
     this.running = false;
   }
 
@@ -43,11 +67,11 @@ class SchedulerManager {
   }
 
   getJobCount() {
-    return this.jobs.length;
+    return this.jobs.size;
   }
 
   getJobNames(): string[] {
-    return this.jobs.map(j => j.name);
+    return Array.from(this.jobs.keys());
   }
 }
 

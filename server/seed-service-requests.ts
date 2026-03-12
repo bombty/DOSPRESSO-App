@@ -1,12 +1,15 @@
 import { db } from "./db";
 import { equipmentServiceRequests, users, equipment, branches } from "@shared/schema";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 
 export async function seedServiceRequests() {
   try {
-    // Always delete and reseed to ensure fresh data
-    await db.delete(equipmentServiceRequests);
-    console.log("🌱 Clearing old service requests...");
+    const [existing] = await db.select({ cnt: sql`count(*)::int` }).from(equipmentServiceRequests);
+    if (existing && (existing as any).cnt > 0) {
+      console.log(`✅ Service requests already seeded (${(existing as any).cnt} records). Skipping.`);
+      return;
+    }
+    console.log("🌱 Seeding service requests...");
 
     // Get users for createdById and updatedById
     const adminUser = await db.select().from(users).where(eq(users.username, "admin"));

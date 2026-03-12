@@ -9,6 +9,7 @@ import { getSkillsBySchedule, runSkillsForUser, ensureSkillsLoaded } from "../ag
 import { sendQueuedNotifications } from "../agent/skills/skill-notifications";
 import { auditLogSystem } from "../audit";
 import { storage } from "../storage";
+import { schedulerManager } from "../scheduler-manager";
 
 const TURKEY_OFFSET_MS = 3 * 60 * 60 * 1000;
 
@@ -419,164 +420,117 @@ function getMillisUntilNextMonday(targetHour: number, targetMinute: number): num
   return target.getTime() - turkeyNow.getTime();
 }
 
-const pendingTimeouts: NodeJS.Timeout[] = [];
-
-function trackTimeout(fn: () => void, delayMs: number): NodeJS.Timeout {
-  const t = setTimeout(fn, delayMs);
-  pendingTimeouts.push(t);
-  return t;
-}
-
 export function startAgentScheduler(): void {
   if (isRunning) {
-    console.log("[AgentScheduler] Zaten çalışıyor, tekrar başlatılmadı.");
+    console.log("[AgentScheduler] Zaten calisiyor, tekrar baslatilmadi.");
     return;
   }
 
   isRunning = true;
-  console.log("[AgentScheduler] Agent Scheduler başlatılıyor...");
+  console.log("[AgentScheduler] Agent Scheduler baslatiliyor...");
 
   const dailyDelayMs = getMillisUntilTurkeyTime(6, 0);
-  console.log(`[AgentScheduler] Günlük analiz ${Math.round(dailyDelayMs / 60000)} dakika sonra çalışacak (06:00 TR)`);
+  console.log(`[AgentScheduler] Gunluk analiz ${Math.round(dailyDelayMs / 60000)} dakika sonra calisacak (06:00 TR)`);
 
-  trackTimeout(() => {
+  schedulerManager.registerTimeout('agent-daily-delay', () => {
     runDailyAnalysis();
-    dailyInterval = setInterval(runDailyAnalysis, 24 * 60 * 60 * 1000);
+    schedulerManager.registerInterval('agent-daily', runDailyAnalysis, 24 * 60 * 60 * 1000);
   }, dailyDelayMs);
 
   const weeklyDelayMs = getMillisUntilNextMonday(8, 0);
-  console.log(`[AgentScheduler] Haftalık özet ${Math.round(weeklyDelayMs / 60000)} dakika sonra çalışacak (Pazartesi 08:00 TR)`);
+  console.log(`[AgentScheduler] Haftalik ozet ${Math.round(weeklyDelayMs / 60000)} dakika sonra calisacak (Pazartesi 08:00 TR)`);
 
-  trackTimeout(() => {
+  schedulerManager.registerTimeout('agent-weekly-delay', () => {
     runWeeklySummary();
-    weeklyInterval = setInterval(runWeeklySummary, 7 * 24 * 60 * 60 * 1000);
+    schedulerManager.registerInterval('agent-weekly', runWeeklySummary, 7 * 24 * 60 * 60 * 1000);
   }, weeklyDelayMs);
 
-  eventCheckInterval = setInterval(checkEventTriggers, 15 * 60 * 1000);
-  console.log("[AgentScheduler] Event-triggered kontrol her 15 dakikada çalışacak.");
+  schedulerManager.registerInterval('agent-event-check', checkEventTriggers, 15 * 60 * 1000);
+  console.log("[AgentScheduler] Event-triggered kontrol her 15 dakikada calisacak.");
 
-  escalationInterval = setInterval(async () => {
+  schedulerManager.registerInterval('agent-escalation', async () => {
     try {
       const result = await runEscalationCheck();
       if (result.results.length > 0) {
-        console.log(`[AgentScheduler] Escalation check: ${result.results.length} aksiyon yükseltildi`);
+        console.log(`[AgentScheduler] Escalation check: ${result.results.length} aksiyon yukseltildi`);
       }
     } catch (err) {
       console.error("[AgentScheduler] Escalation check error:", err);
     }
   }, 60 * 60 * 1000);
-  console.log("[AgentScheduler] Escalation kontrol her 1 saatte çalışacak.");
+  console.log("[AgentScheduler] Escalation kontrol her 1 saatte calisacak.");
 
-  skillHourlyInterval = setInterval(runHourlySkills, 60 * 60 * 1000);
-  console.log("[SkillScheduler] Saatlik skill'ler her 1 saatte çalışacak (07:00-20:00 TR).");
+  schedulerManager.registerInterval('skill-hourly', runHourlySkills, 60 * 60 * 1000);
+  console.log("[SkillScheduler] Saatlik skill'ler her 1 saatte calisacak (07:00-20:00 TR).");
 
   const dailySkillDelayMs = getMillisUntilTurkeyTime(7, 0);
-  console.log(`[SkillScheduler] Günlük skill'ler ${Math.round(dailySkillDelayMs / 60000)} dakika sonra çalışacak (07:00 TR)`);
-  trackTimeout(() => {
+  console.log(`[SkillScheduler] Gunluk skill'ler ${Math.round(dailySkillDelayMs / 60000)} dakika sonra calisacak (07:00 TR)`);
+  schedulerManager.registerTimeout('skill-daily-delay', () => {
     runDailySkills();
-    skillDailyInterval = setInterval(runDailySkills, 24 * 60 * 60 * 1000);
+    schedulerManager.registerInterval('skill-daily', runDailySkills, 24 * 60 * 60 * 1000);
   }, dailySkillDelayMs);
 
   const weeklySkillDelayMs = getMillisUntilNextMonday(9, 0);
-  console.log(`[SkillScheduler] Haftalık skill'ler ${Math.round(weeklySkillDelayMs / 60000)} dakika sonra çalışacak (Pazartesi 09:00 TR)`);
-  trackTimeout(() => {
+  console.log(`[SkillScheduler] Haftalik skill'ler ${Math.round(weeklySkillDelayMs / 60000)} dakika sonra calisacak (Pazartesi 09:00 TR)`);
+  schedulerManager.registerTimeout('skill-weekly-delay', () => {
     runWeeklySkills();
-    skillWeeklyInterval = setInterval(runWeeklySkills, 7 * 24 * 60 * 60 * 1000);
+    schedulerManager.registerInterval('skill-weekly', runWeeklySkills, 7 * 24 * 60 * 60 * 1000);
   }, weeklySkillDelayMs);
 
-  skillQueueInterval = setInterval(async () => {
+  schedulerManager.registerInterval('skill-queue', async () => {
     try {
       const sent = await sendQueuedNotifications();
-      if (sent > 0) console.log(`[SkillScheduler] Kuyruklu bildirim: ${sent} gönderildi`);
+      if (sent > 0) console.log(`[SkillScheduler] Kuyruklu bildirim: ${sent} gonderildi`);
     } catch {}
   }, 30 * 60 * 1000);
-  console.log("[SkillScheduler] Kuyruk kontrolü her 30 dakikada çalışacak.");
+  console.log("[SkillScheduler] Kuyruk kontrolu her 30 dakikada calisacak.");
 
-  routingEscalationInterval = setInterval(async () => {
+  schedulerManager.registerInterval('routing-escalation', async () => {
     try {
-      const count = await checkRoutingEscalations();
-      if (count > 0) console.log(`[RoutingEscalation] ${count} aksiyon eskalasyon edildi`);
+      const cnt = await checkRoutingEscalations();
+      if (cnt > 0) console.log(`[RoutingEscalation] ${cnt} aksiyon eskalasyon edildi`);
     } catch (err) {
       console.error("[RoutingEscalation] Hata:", err);
     }
   }, 60 * 60 * 1000);
-  console.log("[RoutingEscalation] Eskalasyon kontrolü her saat çalışacak.");
+  console.log("[RoutingEscalation] Eskalasyon kontrolu her saat calisacak.");
 
   const inactiveUsersDelayMs = getMillisUntilTurkeyTime(2, 0);
-  console.log(`[AgentScheduler] Inactive user check ${Math.round(inactiveUsersDelayMs / 60000)} dakika sonra çalışacak (02:00 TR)`);
-  trackTimeout(() => {
+  console.log(`[AgentScheduler] Inactive user check ${Math.round(inactiveUsersDelayMs / 60000)} dakika sonra calisacak (02:00 TR)`);
+  schedulerManager.registerTimeout('inactive-users-delay', () => {
     deactivateInactiveUsers();
-    inactiveUsersInterval = setInterval(deactivateInactiveUsers, 24 * 60 * 60 * 1000);
+    schedulerManager.registerInterval('inactive-users', deactivateInactiveUsers, 24 * 60 * 60 * 1000);
   }, inactiveUsersDelayMs);
 
   const outcomeDelayMs = getMillisUntilTurkeyTime(8, 0);
-  console.log(`[OutcomeTracking] Sonuç kontrolü ${Math.round(outcomeDelayMs / 60000)} dakika sonra çalışacak (08:00 TR)`);
-  trackTimeout(() => {
+  console.log(`[OutcomeTracking] Sonuc kontrolu ${Math.round(outcomeDelayMs / 60000)} dakika sonra calisacak (08:00 TR)`);
+  schedulerManager.registerTimeout('outcome-delay', () => {
     checkActionOutcomes().catch(err => console.error("[OutcomeTracking] Ilk calisma hatasi:", err));
-    outcomeCheckInterval = setInterval(async () => {
+    schedulerManager.registerInterval('outcome-check', async () => {
       try {
-        const count = await checkActionOutcomes();
-        if (count > 0) console.log(`[OutcomeTracking] ${count} sonuc kontrolu tamamlandi`);
+        const cnt = await checkActionOutcomes();
+        if (cnt > 0) console.log(`[OutcomeTracking] ${cnt} sonuc kontrolu tamamlandi`);
       } catch (err) {
         console.error("[OutcomeTracking] Hata:", err);
       }
     }, 24 * 60 * 60 * 1000);
   }, outcomeDelayMs);
 
-  console.log("[AgentScheduler] Agent Scheduler başarıyla başlatıldı.");
+  console.log("[AgentScheduler] Agent Scheduler basariyla baslatildi.");
 }
 
 export function stopAgentScheduler(): void {
   if (!isRunning) return;
 
-  for (const t of pendingTimeouts) {
-    clearTimeout(t);
-  }
-  pendingTimeouts.length = 0;
-
-  if (dailyInterval) {
-    clearInterval(dailyInterval);
-    dailyInterval = null;
-  }
-  if (weeklyInterval) {
-    clearInterval(weeklyInterval);
-    weeklyInterval = null;
-  }
-  if (eventCheckInterval) {
-    clearInterval(eventCheckInterval);
-    eventCheckInterval = null;
-  }
-  if (escalationInterval) {
-    clearInterval(escalationInterval);
-    escalationInterval = null;
-  }
-  if (skillHourlyInterval) {
-    clearInterval(skillHourlyInterval);
-    skillHourlyInterval = null;
-  }
-  if (skillDailyInterval) {
-    clearInterval(skillDailyInterval);
-    skillDailyInterval = null;
-  }
-  if (skillWeeklyInterval) {
-    clearInterval(skillWeeklyInterval);
-    skillWeeklyInterval = null;
-  }
-  if (skillQueueInterval) {
-    clearInterval(skillQueueInterval);
-    skillQueueInterval = null;
-  }
-  if (routingEscalationInterval) {
-    clearInterval(routingEscalationInterval);
-    routingEscalationInterval = null;
-  }
-  if (outcomeCheckInterval) {
-    clearInterval(outcomeCheckInterval);
-    outcomeCheckInterval = null;
-  }
-  if (inactiveUsersInterval) {
-    clearInterval(inactiveUsersInterval);
-    inactiveUsersInterval = null;
+  const agentJobs = [
+    'agent-daily-delay', 'agent-daily', 'agent-weekly-delay', 'agent-weekly',
+    'agent-event-check', 'agent-escalation', 'skill-hourly', 'skill-daily-delay',
+    'skill-daily', 'skill-weekly-delay', 'skill-weekly', 'skill-queue',
+    'routing-escalation', 'inactive-users-delay', 'inactive-users',
+    'outcome-delay', 'outcome-check'
+  ];
+  for (const name of agentJobs) {
+    schedulerManager.removeJob(name);
   }
 
   isRunning = false;
