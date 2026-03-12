@@ -22,7 +22,7 @@ import {
   ChefHat, Sparkles, ArrowRight, Zap,
   BarChart3, Library, Settings2, Brain,
   AlertTriangle, X,
-  Calendar, ClipboardCheck, Lock,
+  Calendar, ClipboardCheck, Lock, Video,
 } from "lucide-react";
 
 import baristaTemelleriImg from "@assets/academy/barista_temelleri.png";
@@ -116,6 +116,79 @@ function ScoreBar({ label, value, icon }: { label: string; value: number; icon: 
         <div className={`h-full ${color} rounded-full transition-all duration-1000`} style={{ width: `${value}%` }} />
       </div>
       <div className={`text-xs font-bold mt-1 ${textColor}`}>{Number(value ?? 0).toFixed(0)}%</div>
+    </div>
+  );
+}
+
+function UpcomingWebinarsSection({ navigate }: { navigate: (path: string) => void }) {
+  const { user } = useAuth();
+  const { data: homeData } = useQuery<any>({
+    queryKey: ["/api/v3/academy/home-data"],
+    enabled: !!user?.id,
+  });
+
+  const webinars = homeData?.upcomingWebinars || [];
+  if (webinars.length === 0) return null;
+
+  return (
+    <div data-testid="section-upcoming-webinars">
+      <div className="flex items-center justify-between gap-2 mb-2">
+        <div className="flex items-center gap-2">
+          <Video className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+          <h2 className="font-extrabold text-sm">Yaklaşan Webinarlar</h2>
+        </div>
+        <Button variant="ghost" size="sm" onClick={() => navigate("/akademi/webinarlar")} data-testid="button-see-all-webinars">
+          Tümünü Gör
+        </Button>
+      </div>
+      <div className="space-y-2">
+        {webinars.map((w: any) => {
+          const d = new Date(w.webinarDate);
+          const dateStr = d.toLocaleDateString("tr-TR", { day: "numeric", month: "short" });
+          const timeStr = d.toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" });
+
+          return (
+            <Card
+              key={w.id}
+              className="cursor-pointer hover-elevate"
+              onClick={() => navigate("/akademi/webinarlar")}
+              data-testid={`card-upcoming-webinar-${w.id}`}
+            >
+              <CardContent className="p-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-600 to-indigo-800 flex items-center justify-center flex-shrink-0">
+                    <Video className="h-4 w-4 text-white" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-bold text-[13px] line-clamp-1">{w.title}</p>
+                    <div className="flex items-center gap-2 mt-0.5 text-[11px] text-muted-foreground flex-wrap">
+                      <span className="flex items-center gap-0.5">
+                        <Calendar className="h-3 w-3" />
+                        {dateStr}
+                      </span>
+                      <span className="flex items-center gap-0.5">
+                        <Clock className="h-3 w-3" />
+                        {timeStr}
+                      </span>
+                      {w.hostName && <span>{w.hostName}</span>}
+                    </div>
+                  </div>
+                  {w.isRegistered ? (
+                    <Badge variant="default" className="text-[10px] flex-shrink-0">
+                      <CheckCircle className="h-3 w-3 mr-0.5" />
+                      Kayıtlı
+                    </Badge>
+                  ) : (
+                    <Button size="sm" variant="outline" className="flex-shrink-0" data-testid={`button-register-webinar-${w.id}`}>
+                      Kayıt Ol
+                    </Button>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -515,6 +588,8 @@ export default function AcademyLanding() {
                 </CardContent>
               </Card>
             ) : null}
+
+            <UpcomingWebinarsSection navigate={navigate} />
 
             {inProgressModules.length > 0 && (
               <div data-testid="section-resume">

@@ -303,6 +303,7 @@ function startMaster10MinTick() {
     try { await storage.sendShiftReminders(); } catch (e) { console.error("Error in shift reminder:", e); }
     try { await checkOnboardingCompletions(); } catch (e) { console.error("Error in onboarding check:", e); }
     try { await checkAndArchiveIfTime(); } catch (e) { console.error("Error in notification archive:", e); }
+    try { const { checkWebinarReminders } = await import("./routes/academy-v3"); await checkWebinarReminders(); } catch (e) { console.error("Error in webinar reminder:", e); }
 
     const nowTR = new Date(new Date().toLocaleString("en-US", { timeZone: "Europe/Istanbul" }));
     if (nowTR.getHours() === 3 && nowTR.getMinutes() < 10) {
@@ -321,7 +322,7 @@ function startMaster10MinTick() {
     }
   }, 10 * 60 * 1000);
 
-  log("Master 10-min tick started (reminders + shift + onboarding + archive + composite@03:00 + task-trigger@08:00)");
+  log("Master 10-min tick started (reminders + shift + onboarding + archive + webinar-reminder + composite@03:00 + task-trigger@08:00)");
 }
 
 function startConsolidatedHourlyJobs() {

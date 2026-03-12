@@ -32,6 +32,7 @@ import {
   UserCog,
   Eye,
   Home,
+  Video,
 } from "lucide-react";
 
 const AcademyMyPath = lazy(() => import("./academy-my-path"));
@@ -61,6 +62,7 @@ const CoachTeamProgress = lazy(() => import("./coach-team-progress"));
 const AcademyAiPanel = lazy(() => import("./academy-ai-panel"));
 const AcademyExplore = lazy(() => import("./academy-explore"));
 const AcademyContentManagement = lazy(() => import("./academy-content-management"));
+const AcademyWebinars = lazy(() => import("./academy-webinars"));
 const AcademyLandingPage = lazy(() => import("./academy-landing"));
 
 import {
@@ -133,6 +135,16 @@ const AKADEMI_TABS: TabConfig[] = [
     group: "egitim",
     roleVisibility: "employee",
     component: AcademyExplore
+  },
+  {
+    id: "webinarlar",
+    label: "Webinars",
+    labelTr: "Webinarlar",
+    icon: <Video className="h-4 w-4" />,
+    permissionModule: "academy",
+    group: "egitim",
+    roleVisibility: "all",
+    component: AcademyWebinars
   },
   {
     id: "bilgi-bankasi",
@@ -383,6 +395,7 @@ const TAB_URL_MAP: Record<string, string> = {
   "benim-yolum": "/akademi/benim-yolum",
   "genel-egitimler": "/akademi/genel-egitimler",
   "kesfet": "/akademi/kesfet",
+  "webinarlar": "/akademi/webinarlar",
   "bilgi-bankasi": "/akademi/bilgi-bankasi",
   "rozetler": "/akademi/rozetler",
   "sertifikalar": "/akademi/sertifikalar",

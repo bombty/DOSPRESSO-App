@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { db } from "../db";
+import { storage } from "../storage";
 import { isAuthenticated } from "../localAuth";
 import {
   trainingModules,
@@ -12,7 +13,7 @@ import {
   webinarRegistrations,
   insertWebinarSchema,
 } from "@shared/schema";
-import { eq, desc, and, sql, gte, ilike, isNull } from "drizzle-orm";
+import { eq, desc, and, sql, gte, lte, ilike, isNull, inArray } from "drizzle-orm";
 
 const router = Router();
 
@@ -279,6 +280,7 @@ router.post("/api/v3/academy/webinars", isAuthenticated, async (req, res) => {
 
     const parsed = insertWebinarSchema.safeParse({
       ...req.body,
+      webinarDate: req.body.webinarDate ? new Date(req.body.webinarDate) : undefined,
       createdBy: user.id,
     });
     if (!parsed.success) {
@@ -383,5 +385,175 @@ router.delete("/api/v3/academy/webinars/:id/register", isAuthenticated, async (r
     res.status(500).json({ error: "Kayıt silinirken hata oluştu" });
   }
 });
+
+router.get("/api/v3/academy/webinars/:id/participants", isAuthenticated, async (req, res) => {
+  try {
+    const user = req.user as any;
+    if (!isHQUser(user.role)) {
+      return res.status(403).json({ error: "Bu işlem için yetkiniz yok" });
+    }
+
+    const webinarId = parseInt(req.params.id);
+    if (isNaN(webinarId)) return res.status(400).json({ error: "Geçersiz ID" });
+
+    const participants = await db
+      .select({
+        id: webinarRegistrations.id,
+        userId: webinarRegistrations.userId,
+        registeredAt: webinarRegistrations.registeredAt,
+        attended: webinarRegistrations.attended,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        role: users.role,
+        branchId: users.branchId,
+      })
+      .from(webinarRegistrations)
+      .innerJoin(users, eq(webinarRegistrations.userId, users.id))
+      .where(eq(webinarRegistrations.webinarId, webinarId))
+      .orderBy(webinarRegistrations.registeredAt);
+
+    res.json(participants);
+  } catch (error: any) {
+    console.error("academy-v3 webinar participants error:", error);
+    res.status(500).json({ error: "Katılımcılar yüklenirken hata oluştu" });
+  }
+});
+
+router.patch("/api/v3/academy/webinars/:id/attendance", isAuthenticated, async (req, res) => {
+  try {
+    const user = req.user as any;
+    if (!isHQUser(user.role)) {
+      return res.status(403).json({ error: "Bu işlem için yetkiniz yok" });
+    }
+
+    const webinarId = parseInt(req.params.id);
+    if (isNaN(webinarId)) return res.status(400).json({ error: "Geçersiz ID" });
+
+    const { userIds, attended } = req.body;
+    if (!Array.isArray(userIds) || typeof attended !== "boolean") {
+      return res.status(400).json({ error: "userIds (array) ve attended (boolean) gerekli" });
+    }
+
+    await db
+      .update(webinarRegistrations)
+      .set({ attended })
+      .where(
+        and(
+          eq(webinarRegistrations.webinarId, webinarId),
+          inArray(webinarRegistrations.userId, userIds)
+        )
+      );
+
+    res.json({ success: true, updated: userIds.length });
+  } catch (error: any) {
+    console.error("academy-v3 webinar attendance error:", error);
+    res.status(500).json({ error: "Katılım durumu güncellenirken hata oluştu" });
+  }
+});
+
+router.get("/api/v3/academy/webinars/admin/all", isAuthenticated, async (req, res) => {
+  try {
+    const user = req.user as any;
+    if (!isHQUser(user.role)) {
+      return res.status(403).json({ error: "Bu işlem için yetkiniz yok" });
+    }
+
+    const { status: statusFilter } = req.query;
+    const conditions: any[] = [];
+    if (statusFilter && typeof statusFilter === "string") {
+      conditions.push(eq(webinars.status, statusFilter));
+    }
+
+    const list = await db
+      .select({
+        id: webinars.id,
+        title: webinars.title,
+        description: webinars.description,
+        hostName: webinars.hostName,
+        webinarDate: webinars.webinarDate,
+        durationMinutes: webinars.durationMinutes,
+        meetingLink: webinars.meetingLink,
+        targetRoles: webinars.targetRoles,
+        status: webinars.status,
+        isLive: webinars.isLive,
+        maxParticipants: webinars.maxParticipants,
+        createdBy: webinars.createdBy,
+        createdAt: webinars.createdAt,
+        registrationCount: sql<number>`(SELECT count(*) FROM webinar_registrations wr WHERE wr.webinar_id = ${webinars.id})::int`,
+      })
+      .from(webinars)
+      .where(conditions.length > 0 ? and(...conditions) : undefined)
+      .orderBy(desc(webinars.webinarDate));
+
+    res.json(list);
+  } catch (error: any) {
+    console.error("academy-v3 admin webinars error:", error);
+    res.status(500).json({ error: "Webinarlar yüklenirken hata oluştu" });
+  }
+});
+
+const sentWebinarReminders = new Set<string>();
+
+export async function checkWebinarReminders() {
+  try {
+    const now = new Date();
+    const oneHourLater = new Date(now.getTime() + 60 * 60 * 1000);
+    const oneDayLater = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+    const tenMinWindow = 10 * 60 * 1000;
+
+    const upcomingWebinars = await db
+      .select()
+      .from(webinars)
+      .where(
+        and(
+          eq(webinars.status, "scheduled"),
+          gte(webinars.webinarDate, now)
+        )
+      );
+
+    for (const webinar of upcomingWebinars) {
+      const webinarTime = new Date(webinar.webinarDate).getTime();
+      const diffToOneHour = Math.abs(webinarTime - oneHourLater.getTime());
+      const diffToOneDay = Math.abs(webinarTime - oneDayLater.getTime());
+
+      let reminderType: string | null = null;
+      let reminderMessage = "";
+
+      if (diffToOneHour < tenMinWindow) {
+        reminderType = "webinar_reminder_1h";
+        reminderMessage = `"${webinar.title}" webinarı 1 saat sonra başlıyor!`;
+      } else if (diffToOneDay < tenMinWindow) {
+        reminderType = "webinar_reminder_1d";
+        reminderMessage = `"${webinar.title}" webinarı yarın gerçekleşecek.`;
+      }
+
+      if (reminderType) {
+        const dedupeKey = `${webinar.id}_${reminderType}`;
+        if (sentWebinarReminders.has(dedupeKey)) continue;
+
+        const registrations = await db
+          .select({ userId: webinarRegistrations.userId })
+          .from(webinarRegistrations)
+          .where(eq(webinarRegistrations.webinarId, webinar.id));
+
+        for (const reg of registrations) {
+          try {
+            await storage.createNotification({
+              userId: reg.userId,
+              type: reminderType,
+              title: "Webinar Hatırlatma",
+              message: reminderMessage,
+              link: "/akademi/webinarlar",
+            });
+          } catch {}
+        }
+
+        sentWebinarReminders.add(dedupeKey);
+      }
+    }
+  } catch (error) {
+    console.error("Webinar reminder check error:", error);
+  }
+}
 
 export default router;
