@@ -308,7 +308,7 @@ router.patch("/api/v3/academy/webinars/:id", isAuthenticated, async (req, res) =
     const [existing] = await db.select().from(webinars).where(eq(webinars.id, id));
     if (!existing) return res.status(404).json({ error: "Webinar bulunamadı" });
 
-    const { title, description, hostName, webinarDate, durationMinutes, meetingLink, targetRoles, isLive, status, maxParticipants } = req.body;
+    const { title, description, hostName, webinarDate, durationMinutes, meetingLink, recordingUrl, targetRoles, isLive, status, maxParticipants } = req.body;
 
     const updateData: Record<string, any> = { updatedAt: new Date() };
     if (title !== undefined) updateData.title = title;
@@ -317,6 +317,7 @@ router.patch("/api/v3/academy/webinars/:id", isAuthenticated, async (req, res) =
     if (webinarDate !== undefined) updateData.webinarDate = new Date(webinarDate);
     if (durationMinutes !== undefined) updateData.durationMinutes = durationMinutes;
     if (meetingLink !== undefined) updateData.meetingLink = meetingLink;
+    if (recordingUrl !== undefined) updateData.recordingUrl = recordingUrl;
     if (targetRoles !== undefined) updateData.targetRoles = targetRoles;
     if (isLive !== undefined) updateData.isLive = isLive;
     if (status !== undefined) updateData.status = status;
@@ -327,6 +328,87 @@ router.patch("/api/v3/academy/webinars/:id", isAuthenticated, async (req, res) =
   } catch (error: any) {
     console.error("academy-v3 webinar update error:", error);
     res.status(500).json({ error: "Webinar güncellenirken hata oluştu" });
+  }
+});
+
+router.post("/api/v3/academy/webinars/:id/cancel", isAuthenticated, async (req, res) => {
+  try {
+    const user = req.user as any;
+    if (!isHQUser(user.role)) {
+      return res.status(403).json({ error: "Bu işlem için yetkiniz yok" });
+    }
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) return res.status(400).json({ error: "Geçersiz ID" });
+
+    const [existing] = await db.select().from(webinars).where(eq(webinars.id, id));
+    if (!existing) return res.status(404).json({ error: "Webinar bulunamadı" });
+    if (existing.status === "cancelled") return res.status(400).json({ error: "Webinar zaten iptal edilmiş" });
+
+    const [updated] = await db.update(webinars)
+      .set({ status: "cancelled", isLive: false, updatedAt: new Date() })
+      .where(eq(webinars.id, id))
+      .returning();
+
+    const registrations = await db
+      .select({ userId: webinarRegistrations.userId })
+      .from(webinarRegistrations)
+      .where(eq(webinarRegistrations.webinarId, id));
+
+    for (const reg of registrations) {
+      try {
+        await storage.createNotification({
+          userId: reg.userId,
+          type: "webinar_cancelled",
+          title: "Webinar İptal Edildi",
+          message: `"${existing.title}" webinarı iptal edildi.`,
+          link: "/akademi/webinarlar",
+        });
+      } catch {}
+    }
+
+    res.json(updated);
+  } catch (error: any) {
+    console.error("academy-v3 webinar cancel error:", error);
+    res.status(500).json({ error: "Webinar iptal edilirken hata oluştu" });
+  }
+});
+
+router.post("/api/v3/academy/webinars/:id/complete", isAuthenticated, async (req, res) => {
+  try {
+    const user = req.user as any;
+    if (!isHQUser(user.role)) {
+      return res.status(403).json({ error: "Bu işlem için yetkiniz yok" });
+    }
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) return res.status(400).json({ error: "Geçersiz ID" });
+
+    const [existing] = await db.select().from(webinars).where(eq(webinars.id, id));
+    if (!existing) return res.status(404).json({ error: "Webinar bulunamadı" });
+    if (existing.status === "completed") return res.status(400).json({ error: "Webinar zaten tamamlanmış" });
+
+    const { recordingUrl } = req.body || {};
+    const updateData: Record<string, any> = { status: "completed", isLive: false, updatedAt: new Date() };
+    if (recordingUrl) updateData.recordingUrl = recordingUrl;
+
+    const [updated] = await db.update(webinars)
+      .set(updateData)
+      .where(eq(webinars.id, id))
+      .returning();
+
+    await db
+      .update(webinarRegistrations)
+      .set({ status: "missed" })
+      .where(
+        and(
+          eq(webinarRegistrations.webinarId, id),
+          eq(webinarRegistrations.attended, false)
+        )
+      );
+
+    res.json(updated);
+  } catch (error: any) {
+    console.error("academy-v3 webinar complete error:", error);
+    res.status(500).json({ error: "Webinar tamamlanırken hata oluştu" });
   }
 });
 
@@ -347,9 +429,19 @@ router.post("/api/v3/academy/webinars/:id/register", isAuthenticated, async (req
       return res.status(400).json({ error: "Bu webinara artık kayıt yapılamaz" });
     }
 
+    if (existing.maxParticipants) {
+      const [{ count: regCount }] = await db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(webinarRegistrations)
+        .where(eq(webinarRegistrations.webinarId, webinarId));
+      if (regCount >= existing.maxParticipants) {
+        return res.status(400).json({ error: "Webinar kontenjanı dolmuştur" });
+      }
+    }
+
     const [reg] = await db
       .insert(webinarRegistrations)
-      .values({ webinarId, userId: user.id })
+      .values({ webinarId, userId: user.id, status: "registered" })
       .onConflictDoNothing()
       .returning();
 
@@ -434,9 +526,15 @@ router.patch("/api/v3/academy/webinars/:id/attendance", isAuthenticated, async (
       return res.status(400).json({ error: "userIds (array) ve attended (boolean) gerekli" });
     }
 
+    const updateData: Record<string, any> = {
+      attended,
+      status: attended ? "attended" : "registered",
+      attendedAt: attended ? new Date() : null,
+    };
+
     await db
       .update(webinarRegistrations)
-      .set({ attended })
+      .set(updateData)
       .where(
         and(
           eq(webinarRegistrations.webinarId, webinarId),

@@ -15166,6 +15166,7 @@ export const webinars = pgTable("webinars", {
   webinarDate: timestamp("webinar_date").notNull(),
   durationMinutes: integer("duration_minutes"),
   meetingLink: text("meeting_link"),
+  recordingUrl: text("recording_url"),
   targetRoles: text("target_roles").array().default(sql`'{}'::text[]`),
   isLive: boolean("is_live").default(false),
   status: text("status").default("scheduled"),
@@ -15189,6 +15190,8 @@ export const webinarRegistrations = pgTable("webinar_registrations", {
   userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   registeredAt: timestamp("registered_at").defaultNow(),
   attended: boolean("attended").default(false),
+  attendedAt: timestamp("attended_at"),
+  status: text("status").default("registered"),
 }, (table) => [
   index("wr_webinar_idx").on(table.webinarId),
   index("wr_user_idx").on(table.userId),

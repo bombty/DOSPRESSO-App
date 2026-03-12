@@ -83,6 +83,7 @@ interface WebinarFormData {
   webinarDate: string;
   durationMinutes: number;
   meetingLink: string;
+  recordingUrl: string;
   targetRoles: string[];
   maxParticipants: number | null;
   status: string;
@@ -95,6 +96,7 @@ const emptyForm: WebinarFormData = {
   webinarDate: "",
   durationMinutes: 60,
   meetingLink: "",
+  recordingUrl: "",
   targetRoles: [],
   maxParticipants: null,
   status: "scheduled",
@@ -137,6 +139,8 @@ function WebinarCard({
   onRegister,
   onUnregister,
   onViewParticipants,
+  onCancel,
+  onComplete,
   registerPending,
 }: {
   webinar: any;
@@ -145,6 +149,8 @@ function WebinarCard({
   onRegister: (id: number) => void;
   onUnregister: (id: number) => void;
   onViewParticipants: (w: any) => void;
+  onCancel: (id: number) => void;
+  onComplete: (id: number) => void;
   registerPending: boolean;
 }) {
   const upcoming = isUpcoming(webinar.webinarDate);
@@ -271,6 +277,39 @@ function WebinarCard({
                 Katılımcılar
               </Button>
             )}
+            {isHQ && webinar.status === "scheduled" && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => onCancel(webinar.id)}
+                data-testid={`button-cancel-webinar-${webinar.id}`}
+              >
+                <XCircle className="h-4 w-4 mr-1" />
+                İptal Et
+              </Button>
+            )}
+            {isHQ && (webinar.status === "live" || webinar.status === "scheduled") && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => onComplete(webinar.id)}
+                data-testid={`button-complete-webinar-${webinar.id}`}
+              >
+                <CheckCircle className="h-4 w-4 mr-1" />
+                Tamamla
+              </Button>
+            )}
+            {webinar.recordingUrl && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => window.open(webinar.recordingUrl, "_blank")}
+                data-testid={`button-recording-${webinar.id}`}
+              >
+                <ExternalLink className="h-4 w-4 mr-1" />
+                Kayıt İzle
+              </Button>
+            )}
           </div>
         </div>
       </CardContent>
@@ -381,6 +420,7 @@ function WebinarFormDialog({
         webinarDate: editingWebinar.webinarDate ? formatDateTimeLocal(editingWebinar.webinarDate) : "",
         durationMinutes: editingWebinar.durationMinutes || 60,
         meetingLink: editingWebinar.meetingLink || "",
+        recordingUrl: editingWebinar.recordingUrl || "",
         targetRoles: editingWebinar.targetRoles || [],
         maxParticipants: editingWebinar.maxParticipants || null,
         status: editingWebinar.status || "scheduled",
@@ -503,6 +543,17 @@ function WebinarFormDialog({
               data-testid="input-webinar-max"
             />
           </div>
+          {isEditing && (
+            <div>
+              <Label>Kayıt URL</Label>
+              <Input
+                value={form.recordingUrl}
+                onChange={e => setForm(p => ({ ...p, recordingUrl: e.target.value }))}
+                placeholder="https://youtube.com/..."
+                data-testid="input-webinar-recording"
+              />
+            </div>
+          )}
           {isEditing && (
             <div>
               <Label>Durum</Label>
@@ -692,6 +743,32 @@ export default function AcademyWebinars() {
     },
   });
 
+  const cancelMut = useMutation({
+    mutationFn: async (webinarId: number) => {
+      await apiRequest("POST", `/api/v3/academy/webinars/${webinarId}/cancel`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/v3/academy/webinars"] });
+      toast({ title: "Webinar iptal edildi" });
+    },
+    onError: () => {
+      toast({ title: "İptal işlemi başarısız", variant: "destructive" });
+    },
+  });
+
+  const completeMut = useMutation({
+    mutationFn: async (webinarId: number) => {
+      await apiRequest("POST", `/api/v3/academy/webinars/${webinarId}/complete`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/v3/academy/webinars"] });
+      toast({ title: "Webinar tamamlandı" });
+    },
+    onError: () => {
+      toast({ title: "Tamamlama işlemi başarısız", variant: "destructive" });
+    },
+  });
+
   const handleEdit = (w: any) => {
     setEditingWebinar(w);
     setFormOpen(true);
@@ -809,6 +886,8 @@ export default function AcademyWebinars() {
                         onRegister={(id) => registerMut.mutate(id)}
                         onUnregister={(id) => unregisterMut.mutate(id)}
                         onViewParticipants={(w) => setParticipantsWebinar(w)}
+                        onCancel={(id) => cancelMut.mutate(id)}
+                        onComplete={(id) => completeMut.mutate(id)}
                         registerPending={registerMut.isPending || unregisterMut.isPending}
                       />
                     ))}
@@ -834,6 +913,8 @@ export default function AcademyWebinars() {
                   onRegister={(id) => registerMut.mutate(id)}
                   onUnregister={(id) => unregisterMut.mutate(id)}
                   onViewParticipants={(w) => setParticipantsWebinar(w)}
+                  onCancel={(id) => cancelMut.mutate(id)}
+                  onComplete={(id) => completeMut.mutate(id)}
                   registerPending={registerMut.isPending || unregisterMut.isPending}
                 />
               ))
