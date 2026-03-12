@@ -261,7 +261,7 @@ const MENU_BLUEPRINT: SidebarMenuSection[] = [
       {
         id: "training-academy",
         titleTr: "Akademi",
-        path: "/egitim",
+        path: "/akademi",
         icon: "GraduationCap",
         moduleKey: "training",
         scope: "both",
