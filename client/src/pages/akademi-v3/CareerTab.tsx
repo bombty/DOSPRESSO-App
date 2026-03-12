@@ -23,6 +23,13 @@ const CAREER_LEVELS = [
   { id: "supervisor", label: "Supervisor", levelNum: 5, icon: Award, colorClass: "text-pink-500 dark:text-pink-400 border-pink-500/30 bg-pink-500/10" },
 ];
 
+const DEFAULT_GATES = [
+  { id: "moduller", title: "Modüller", progress: 0, status: "pending" },
+  { id: "sinav", title: "Sınav", progress: 0, status: "pending" },
+  { id: "pratik", title: "Pratik", progress: 0, status: "pending" },
+  { id: "onay", title: "Onay", progress: 0, status: "pending" },
+];
+
 function CareerSkeleton() {
   return (
     <div className="space-y-4 p-4" data-testid="career-skeleton">
@@ -179,14 +186,13 @@ export default function CareerTab() {
         </div>
       </div>
 
-      {gates.length > 0 && (
-        <div data-testid="gate-progress-section">
-          <h2 className="text-sm font-semibold mb-3 flex items-center gap-2 flex-wrap">
-            <Target className="h-4 w-4 text-muted-foreground" />
-            Kapı İlerlemesi
-          </h2>
-          <div className="space-y-2">
-            {gates.map((gate: any, idx: number) => {
+      <div data-testid="gate-progress-section">
+        <h2 className="text-sm font-semibold mb-3 flex items-center gap-2 flex-wrap">
+          <Target className="h-4 w-4 text-muted-foreground" />
+          Kapı İlerlemesi
+        </h2>
+        <div className="grid grid-cols-2 gap-2">
+          {(gates.length > 0 ? gates : DEFAULT_GATES).map((gate: any, idx: number) => {
               const gateProgress = Number(gate.progress ?? 0);
               const isActive = gate.status === "in_progress" || gate.status === "active";
               const isPassed = gate.status === "passed" || gate.status === "completed";
@@ -216,9 +222,8 @@ export default function CareerTab() {
                 </Card>
               );
             })}
-          </div>
         </div>
-      )}
+      </div>
 
       <div data-testid="badge-collection">
         <h2 className="text-sm font-semibold mb-3 flex items-center gap-2 flex-wrap">

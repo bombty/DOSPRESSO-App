@@ -65,11 +65,36 @@ router.get("/api/v3/academy/home-data", isAuthenticated, async (req, res) => {
         .where(eq(learningStreaks.userId, userId))
         .limit(1);
 
+      const totalModules = await db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(trainingModules)
+        .where(and(eq(trainingModules.isActive, true), isNull(trainingModules.deletedAt)));
+      const completedModules = await db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(userTrainingProgress)
+        .where(and(eq(userTrainingProgress.userId, userId), eq(userTrainingProgress.status, "completed")));
+      const totalMod = totalModules[0]?.count || 0;
+      const completedMod = completedModules[0]?.count || 0;
+
+      const quizAvg = Number(progress[0].trainingScore ?? 0);
+      const completionRate = totalMod > 0 ? Math.round((completedMod / totalMod) * 100) : 0;
+
+      const gates = [
+        { id: "moduller", title: "Modüller", progress: completionRate, status: completionRate >= 100 ? "completed" : completionRate > 0 ? "in_progress" : "pending" },
+        { id: "sinav", title: "Sınav", progress: quizAvg, status: quizAvg >= 70 ? "completed" : quizAvg > 0 ? "in_progress" : "pending" },
+        { id: "pratik", title: "Pratik", progress: Math.min(100, completionRate * 0.8), status: completionRate > 50 ? "in_progress" : "pending" },
+        { id: "onay", title: "Onay", progress: 0, status: "pending" },
+      ];
+
       return {
         currentLevel: level[0] || null,
         compositeScore: Number(progress[0].compositeScore ?? 0),
         trainingScore: Number(progress[0].trainingScore ?? 0),
         learningStreak: streakRow[0]?.currentStreak ?? 0,
+        quizAvg,
+        completionRate,
+        evalAvg: 0,
+        gates,
       };
     })();
 
@@ -673,6 +698,62 @@ export async function checkWebinarReminders() {
     console.error("Webinar reminder check error:", error);
   }
 }
+
+router.post("/api/v3/academy/seed-webinars", isAuthenticated, async (req, res) => {
+  try {
+    const user = req.user as any;
+    if (user.role !== "admin") {
+      return res.status(403).json({ error: "Admin yetkisi gerekli" });
+    }
+
+    const existing = await db.select({ count: sql<number>`count(*)::int` }).from(webinars);
+    if ((existing[0]?.count || 0) >= 3) {
+      return res.json({ message: "Webinar seed verileri zaten mevcut", count: existing[0]?.count });
+    }
+
+    const seedWebinars = [
+      {
+        title: "Yeni Ürün Tanıtımı: Berry Serisi",
+        description: "Yeni berry serisi ürünlerinin tanıtımı ve hazırlanış teknikleri",
+        hostName: "Ürün Geliştirme Ekibi",
+        webinarDate: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000),
+        durationMinutes: 45,
+        status: "scheduled" as const,
+        targetRoles: ["barista", "stajyer", "bar_buddy"],
+        createdBy: user.id,
+      },
+      {
+        title: "KVKK Güncellemesi",
+        description: "2026 KVKK yönetmelik değişiklikleri ve şube uyum gereklilikleri",
+        hostName: "Hukuk Departmanı",
+        webinarDate: new Date(Date.now() + 8 * 24 * 60 * 60 * 1000),
+        durationMinutes: 60,
+        status: "scheduled" as const,
+        targetRoles: [] as string[],
+        createdBy: user.id,
+      },
+      {
+        title: "Q1 Değerlendirme",
+        description: "2026 ilk çeyrek performans değerlendirmesi ve hedef gözden geçirme",
+        hostName: "Yönetim Kurulu",
+        webinarDate: new Date(Date.now() + 16 * 24 * 60 * 60 * 1000),
+        durationMinutes: 90,
+        status: "scheduled" as const,
+        targetRoles: ["mudur", "supervisor"],
+        createdBy: user.id,
+      },
+    ];
+
+    for (const w of seedWebinars) {
+      await db.insert(webinars).values(w);
+    }
+
+    res.json({ message: "3 webinar seed edildi", count: 3 });
+  } catch (error: any) {
+    console.error("academy-v3 seed-webinars error:", error);
+    res.status(500).json({ error: "Seed işlemi başarısız" });
+  }
+});
 
 router.get("/api/v3/academy/category-counts", isAuthenticated, async (req, res) => {
   try {
