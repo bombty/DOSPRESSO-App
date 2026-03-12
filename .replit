@@ -54,6 +54,7 @@ waitForPort = 5000
 
 [agent]
 integrations = ["javascript_openai_ai_integrations:1.0.0", "javascript_database:1.0.0", "javascript_object_storage:1.0.0", "javascript_log_in_with_replit:1.0.0"]
+expertMode = true
 
 [userenv]
 
@@ -66,4 +67,4 @@ defaultBucketID = "replit-objstore-8d46a745-6e30-4f2e-b482-808e3d81d7a2"
 
 [postMerge]
 path = "scripts/post-merge.sh"
-timeoutMs = 120000
+timeoutMs = 180000
