@@ -81,9 +81,14 @@ export function removeEmployeeLocation(userId: string): void {
   activeEmployees.delete(userId);
 }
 
-// Clean up stale entries every 10 minutes
+let trackingCleanupInterval: NodeJS.Timeout | null = null;
+
 export function startTrackingCleanup(): void {
-  setInterval(() => {
+  if (trackingCleanupInterval) {
+    console.log("[Tracking] Cleanup already running, skipping.");
+    return;
+  }
+  trackingCleanupInterval = setInterval(() => {
     const now = Date.now();
     const tenMinutesAgo = now - 10 * 60 * 1000;
 
@@ -96,7 +101,15 @@ export function startTrackingCleanup(): void {
     });
 
     if (removed > 0) {
-      console.log(`🧹 Tracking cleanup: ${removed} stale entries removed`);
+      console.log(`[Tracking] Cleanup: ${removed} stale entries removed`);
     }
-  }, 10 * 60 * 1000); // Run every 10 minutes
+  }, 10 * 60 * 1000);
+}
+
+export function stopTrackingCleanup(): void {
+  if (trackingCleanupInterval) {
+    clearInterval(trackingCleanupInterval);
+    trackingCleanupInterval = null;
+    console.log("[Tracking] Cleanup stopped.");
+  }
 }

@@ -6,7 +6,7 @@ import { correctiveActions, users, auditInstances, branches, factoryProducts, em
 import { eq, lt, and, ne, lte, or, inArray, gt, gte, count, max, sql } from "drizzle-orm";
 import { ObjectStorageService } from "./objectStorage";
 
-const REMINDER_INTERVAL = 5 * 60 * 1000; // 5 minutes in milliseconds
+const REMINDER_INTERVAL = 10 * 60 * 1000; // 10 minutes in milliseconds
 const MAINTENANCE_WARNING_DAYS = 7; // Notify 7 days before maintenance due
 const SLA_CHECK_INTERVAL = 15 * 60 * 1000; // 15 minutes in milliseconds
 const OVERDUE_REMINDER_INTERVAL = 24 * 60 * 60 * 1000; // 24 hours - max 1 overdue reminder per task per day
@@ -738,7 +738,7 @@ export function startReminderSystem() {
     return;
   }
 
-  console.log("Hatırlatma sistemi başlatıldı - Her 5 dakikada bir kontrol edilecek");
+  console.log("Hatirlatma sistemi baslatildi - Her 10 dakikada bir kontrol edilecek");
   
   checkAndSendReminders();
   checkEvaluationReminders();
@@ -1776,4 +1776,18 @@ export function stopFeedbackPatternAnalysisSystem() {
     feedbackPatternInterval = null;
     console.log("Feedback pattern analiz sistemi durduruldu");
   }
+}
+
+export function stopAllReminderSystems() {
+  stopReminderSystem();
+  stopSLACheckSystem();
+  stopPhotoCleanupSystem();
+  stopMonthlyCalculationSystem();
+  stopStockAlertSystem();
+  stopStaleQuoteReminderSystem();
+  stopFeedbackSlaCheckSystem();
+  stopOnboardingCompletionSystem();
+  stopNotificationArchiveSystem();
+  stopFeedbackPatternAnalysisSystem();
+  console.log("[Reminders] All reminder systems stopped.");
 }

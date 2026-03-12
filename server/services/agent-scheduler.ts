@@ -419,6 +419,14 @@ function getMillisUntilNextMonday(targetHour: number, targetMinute: number): num
   return target.getTime() - turkeyNow.getTime();
 }
 
+const pendingTimeouts: NodeJS.Timeout[] = [];
+
+function trackTimeout(fn: () => void, delayMs: number): NodeJS.Timeout {
+  const t = setTimeout(fn, delayMs);
+  pendingTimeouts.push(t);
+  return t;
+}
+
 export function startAgentScheduler(): void {
   if (isRunning) {
     console.log("[AgentScheduler] Zaten çalışıyor, tekrar başlatılmadı.");
@@ -431,7 +439,7 @@ export function startAgentScheduler(): void {
   const dailyDelayMs = getMillisUntilTurkeyTime(6, 0);
   console.log(`[AgentScheduler] Günlük analiz ${Math.round(dailyDelayMs / 60000)} dakika sonra çalışacak (06:00 TR)`);
 
-  setTimeout(() => {
+  trackTimeout(() => {
     runDailyAnalysis();
     dailyInterval = setInterval(runDailyAnalysis, 24 * 60 * 60 * 1000);
   }, dailyDelayMs);
@@ -439,7 +447,7 @@ export function startAgentScheduler(): void {
   const weeklyDelayMs = getMillisUntilNextMonday(8, 0);
   console.log(`[AgentScheduler] Haftalık özet ${Math.round(weeklyDelayMs / 60000)} dakika sonra çalışacak (Pazartesi 08:00 TR)`);
 
-  setTimeout(() => {
+  trackTimeout(() => {
     runWeeklySummary();
     weeklyInterval = setInterval(runWeeklySummary, 7 * 24 * 60 * 60 * 1000);
   }, weeklyDelayMs);
@@ -464,14 +472,14 @@ export function startAgentScheduler(): void {
 
   const dailySkillDelayMs = getMillisUntilTurkeyTime(7, 0);
   console.log(`[SkillScheduler] Günlük skill'ler ${Math.round(dailySkillDelayMs / 60000)} dakika sonra çalışacak (07:00 TR)`);
-  setTimeout(() => {
+  trackTimeout(() => {
     runDailySkills();
     skillDailyInterval = setInterval(runDailySkills, 24 * 60 * 60 * 1000);
   }, dailySkillDelayMs);
 
   const weeklySkillDelayMs = getMillisUntilNextMonday(9, 0);
   console.log(`[SkillScheduler] Haftalık skill'ler ${Math.round(weeklySkillDelayMs / 60000)} dakika sonra çalışacak (Pazartesi 09:00 TR)`);
-  setTimeout(() => {
+  trackTimeout(() => {
     runWeeklySkills();
     skillWeeklyInterval = setInterval(runWeeklySkills, 7 * 24 * 60 * 60 * 1000);
   }, weeklySkillDelayMs);
@@ -496,19 +504,19 @@ export function startAgentScheduler(): void {
 
   const inactiveUsersDelayMs = getMillisUntilTurkeyTime(2, 0);
   console.log(`[AgentScheduler] Inactive user check ${Math.round(inactiveUsersDelayMs / 60000)} dakika sonra çalışacak (02:00 TR)`);
-  setTimeout(() => {
+  trackTimeout(() => {
     deactivateInactiveUsers();
     inactiveUsersInterval = setInterval(deactivateInactiveUsers, 24 * 60 * 60 * 1000);
   }, inactiveUsersDelayMs);
 
   const outcomeDelayMs = getMillisUntilTurkeyTime(8, 0);
   console.log(`[OutcomeTracking] Sonuç kontrolü ${Math.round(outcomeDelayMs / 60000)} dakika sonra çalışacak (08:00 TR)`);
-  setTimeout(() => {
-    checkActionOutcomes().catch(err => console.error("[OutcomeTracking] İlk çalışma hatası:", err));
+  trackTimeout(() => {
+    checkActionOutcomes().catch(err => console.error("[OutcomeTracking] Ilk calisma hatasi:", err));
     outcomeCheckInterval = setInterval(async () => {
       try {
         const count = await checkActionOutcomes();
-        if (count > 0) console.log(`[OutcomeTracking] ${count} sonuç kontrolü tamamlandı`);
+        if (count > 0) console.log(`[OutcomeTracking] ${count} sonuc kontrolu tamamlandi`);
       } catch (err) {
         console.error("[OutcomeTracking] Hata:", err);
       }
@@ -520,6 +528,11 @@ export function startAgentScheduler(): void {
 
 export function stopAgentScheduler(): void {
   if (!isRunning) return;
+
+  for (const t of pendingTimeouts) {
+    clearTimeout(t);
+  }
+  pendingTimeouts.length = 0;
 
   if (dailyInterval) {
     clearInterval(dailyInterval);

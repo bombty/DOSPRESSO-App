@@ -358,11 +358,11 @@ import { eq, desc, asc, sql, and, or, isNull, isNotNull, inArray, lte, gte, ne, 
 import { analyzeTaskPhoto, analyzeFaultPhoto, analyzeDressCodePhoto, generateArticleEmbeddings, generateEmbedding, answerQuestionWithRAG, answerTechnicalQuestion, generateAISummary, generateQuizQuestionsFromLesson, generateFlashcardsFromLesson, evaluateBranchPerformance, diagnoseFault, generateTrainingModule, processUploadedFile, generateBranchSummaryReport, generateArticleDraft, generatePersonalSummaryReport, verifyChecklistPhoto, generateEquipmentKnowledgeFromManual, researchEquipmentTroubleshooting } from "./ai";
 import multer from "multer";
 import { generateTrainingMaterialBundle } from "./ai-motor";
-import { updateEmployeeLocation, getActiveBranchEmployees, getEmployeeLocation, removeEmployeeLocation, startTrackingCleanup } from "./tracking";
+import { updateEmployeeLocation, getActiveBranchEmployees, getEmployeeLocation, removeEmployeeLocation } from "./tracking";
 import { compressChecklistPhotoBase64 } from "./photo-utils";
 import { gatherAIAssistantContext } from "./ai-assistant-context";
 import { sendNotificationEmail, sendEmployeeOfMonthEmail } from "./email";
-import { startReminderSystem, startStockAlertSystem, startOnboardingCompletionSystem, startStaleQuoteReminderSystem, startNotificationArchiveSystem, notifyTeknikNewFault, notifySatinalmaLowStock } from "./reminders";
+import { notifyTeknikNewFault, notifySatinalmaLowStock } from "./reminders";
 import bcrypt from "bcrypt";
 import { z } from "zod";
 import { resolvePermissionScope, applyScopeFilter, getUserPermissions, getAllActionsGroupedByModule, getRoleGrants, upsertPermissionGrant, deletePermissionGrant, getRoleAccessibleModules } from "./permission-service";
@@ -394,7 +394,7 @@ import setupRouter from "./routes/setup";
 import pdksRouter from "./routes/pdks";
 import payrollRouter from "./routes/payroll";
 import changeRequestsRouter from "./routes/change-requests";
-import { startAgentScheduler, stopAgentScheduler, getSchedulerStatus } from "./services/agent-scheduler";
+
 
 // Multer configuration for file uploads (memory storage)
 const uploadStorage = multer.memoryStorage();
@@ -1005,55 +1005,7 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
   });
 
 
-  startReminderSystem();
-
-  setInterval(async () => {
-    try {
-      const now = new Date();
-      const scheduledTasks = await db.select().from(tasks)
-        .where(and(
-          eq(tasks.isDelivered, false),
-          lte(tasks.scheduledDeliveryAt, now),
-          eq(tasks.status, 'zamanlanmis')
-        ));
-
-      for (const task of scheduledTasks) {
-        await storage.updateTask(task.id, {
-          isDelivered: true,
-          status: 'beklemede',
-        });
-
-        if (task.assignedToId && task.assignedById) {
-          const assigner = await storage.getUser(task.assignedById);
-          const assignerName = assigner?.firstName && assigner?.lastName
-            ? `${assigner.firstName} ${assigner.lastName}`
-            : 'Bir yönetici';
-
-          await storage.createNotification({
-            userId: task.assignedToId,
-            type: 'task_assigned',
-            title: 'Yeni Görev Atandı',
-            message: `${assignerName} size yeni bir görev atadı: "${task.description?.substring(0, 50)}..."`,
-            link: `/gorevler?taskId=${task.id}`,
-            branchId: task.branchId,
-          });
-        }
-      }
-
-      if (scheduledTasks.length > 0) {
-        console.log(`${scheduledTasks.length} zamanlanmis gorev iletildi`);
-      }
-    } catch (error: any) {
-      console.error("Scheduled task delivery error:", error);
-    }
-  }, 60000);
-  console.log("Zamanlanmis gorev iletim sistemi baslatildi - Her dakika kontrol edilecek");
-
-  startStockAlertSystem();
-  startOnboardingCompletionSystem();
-  startStaleQuoteReminderSystem();
-  startNotificationArchiveSystem();
-  startAgentScheduler();
+  // Schedulers are started lazily from server/index.ts onServerReady() with 30s delay
   registerDailyTaskRoutes(app);
 
   registerSatinalmaRoutes(app, isAuthenticated);

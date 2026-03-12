@@ -460,6 +460,7 @@ async function notifyAdminsAboutBackup(backupRecord: schema.BackupRecord): Promi
 // Hourly backup scheduler with mutex lock to prevent overlapping runs
 let backupSchedulerRunning = false;
 let backupJobRunning = false;
+let backupDelayTimeout: ReturnType<typeof setTimeout> | null = null;
 let hourlyIntervalHandle: ReturnType<typeof setInterval> | null = null;
 
 const RETENTION_LIMITS = {
@@ -491,8 +492,8 @@ export async function startWeeklyBackupScheduler(): Promise<void> {
     (Date.now() - backupStatus.lastBackupDate.getTime()) > 2 * 60 * 60 * 1000;
   
   if (needsImmediateBackup) {
-    console.log('⏳ Son backup 2+ saat önce — 30 saniye sonra ilk backup çalışacak');
-    setTimeout(async () => {
+    console.log('⏳ Son backup 2+ saat once — 30 saniye sonra ilk backup calisacak');
+    backupDelayTimeout = setTimeout(async () => {
       await runHourlyBackupWithRetention();
     }, 30 * 1000);
   } else {
@@ -622,6 +623,19 @@ export async function triggerManualBackup(): Promise<schema.BackupRecord> {
 }
 
 // Get backup status
+export function stopBackupScheduler(): void {
+  if (backupDelayTimeout) {
+    clearTimeout(backupDelayTimeout);
+    backupDelayTimeout = null;
+  }
+  if (hourlyIntervalHandle) {
+    clearInterval(hourlyIntervalHandle);
+    hourlyIntervalHandle = null;
+  }
+  backupSchedulerRunning = false;
+  console.log("[Backup] Scheduler stopped.");
+}
+
 export function getBackupStatus(): BackupStatus {
   return { ...backupStatus };
 }

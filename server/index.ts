@@ -2,7 +2,7 @@ import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { storage } from "./storage";
-import { startSLACheckSystem, startPhotoCleanupSystem, startFeedbackSlaCheckSystem, startFeedbackPatternAnalysisSystem } from "./reminders";
+import { startReminderSystem, startSLACheckSystem, startPhotoCleanupSystem, startFeedbackSlaCheckSystem, startFeedbackPatternAnalysisSystem, startStockAlertSystem, startOnboardingCompletionSystem, startStaleQuoteReminderSystem, startNotificationArchiveSystem, stopAllReminderSystems } from "./reminders";
 import { seedRolePermissions } from "./seed-role-permissions";
 import { seedPermissionModules } from "./seed-permission-modules";
 import { seedRoleTemplates } from "./seed-role-templates";
@@ -12,11 +12,13 @@ import { seedDospressoRecipes } from "./seed-dospresso-recipes";
 import { seedDefaultAuditTemplate } from "./seed-audit-template";
 import { seedRoles } from "./seed-roles";
 import { seedAcademyCategories } from "./seed-academy-categories";
-import { startWeeklyBackupScheduler, performHealthCheck } from "./backup";
-import { startTrackingCleanup } from "./tracking";
+import { startWeeklyBackupScheduler, stopBackupScheduler, performHealthCheck } from "./backup";
+import { startTrackingCleanup, stopTrackingCleanup } from "./tracking";
+import { startAgentScheduler, stopAgentScheduler } from "./services/agent-scheduler";
+import { cache, aiRateLimiter } from "./cache";
 import bcrypt from "bcrypt";
 import { db } from "./db";
-import { users, productionLots, notifications as notificationsTable } from "@shared/schema";
+import { users, productionLots, tasks, notifications as notificationsTable } from "@shared/schema";
 import { eq, sql, count, and, lte, gte, ne, inArray, isNotNull } from "drizzle-orm";
 
 process.on('unhandledRejection', (reason: unknown, promise: Promise<unknown>) => {
@@ -25,6 +27,8 @@ process.on('unhandledRejection', (reason: unknown, promise: Promise<unknown>) =>
 });
 
 let httpServer: import('http').Server | null = null;
+let schedulerInitTimeout: NodeJS.Timeout | null = null;
+const trackedIntervals: NodeJS.Timeout[] = [];
 
 process.on('uncaughtException', (error: Error) => {
   console.error('[UncaughtException] Uncaught exception:', error);
@@ -148,87 +152,76 @@ app.use((req, res, next) => {
   }
 
   async function onServerReady() {
+    const startupTime = Date.now();
     
-    // CRITICAL: Admin bootstrap FIRST, before any seeds (production login depends on this)
     await logDbDiagnostics();
     await bootstrapAdminUser();
     await ensureAdminUserApproved();
     
-    // Seed system roles (idempotent)
     await seedRoles().catch((error) => {
       console.error("Error seeding roles:", error);
     });
     
-    // Seed permission modules (idempotent)
     await seedPermissionModules().catch((error) => {
       console.error("Error seeding permission modules:", error);
     });
     
-    // Seed role permissions from PERMISSIONS constant (idempotent)
     await seedRolePermissions().catch((error) => {
       console.error("Error seeding role permissions:", error);
     });
     
-    // Seed default role templates (idempotent)
-    await seedRoleTemplates().catch((error) => {
-      console.error("Error seeding role templates:", error);
+    const independentSeedResults = await Promise.allSettled([
+      seedRoleTemplates(),
+      seedAdminMenu(),
+      seedServiceRequests(),
+      seedDospressoRecipes(),
+      seedAcademyCategories(),
+      seedDefaultAuditTemplate(),
+    ]);
+    
+    const seedNames = ['roleTemplates', 'adminMenu', 'serviceRequests', 'recipes', 'academyCategories', 'auditTemplate'];
+    independentSeedResults.forEach((result, i) => {
+      if (result.status === 'rejected') {
+        console.error(`Error seeding ${seedNames[i]}:`, result.reason);
+      }
     });
     
-    // Seed admin menu structure (idempotent)
-    await seedAdminMenu().catch((error) => {
-      console.error("Error seeding admin menu:", error);
-    });
+    const seedDuration = Date.now() - startupTime;
+    log(`Seeds completed in ${seedDuration}ms`);
     
-    // Seed service requests (test data - idempotent)
-    await seedServiceRequests().catch((error) => {
-      console.error("Error seeding service requests:", error);
-    });
-    
-    // Seed DOSPRESSO recipes (replaces old generic recipes with actual products)
-    await seedDospressoRecipes().catch((error) => {
-      console.error("Error seeding DOSPRESSO recipes:", error);
-    });
-    
-    // Seed academy categories (idempotent)
-    await seedAcademyCategories().catch((error) => {
-      console.error("Error seeding academy categories:", error);
-    });
-
-    // Seed default audit template (idempotent)
-    await seedDefaultAuditTemplate().catch((error) => {
-      console.error("Error seeding audit template:", error);
-    });
-    
-    // Start shift reminder job (runs every 10 minutes)
-    startShiftReminderJob();
-    startCompositeScoreUpdateJob();
-    startDangerZoneCheckJob();
-    startDailyTaskTriggerJob();
-    startSktExpiryCheckJob();
-    
-    // Start SLA check system (runs every 15 minutes)
-    startSLACheckSystem();
-    startPhotoCleanupSystem();
-    
-    // Start feedback SLA breach check (runs every hour)
-    startFeedbackSlaCheckSystem();
-    
-    // Start weekly feedback pattern analysis (Mondays 08:00 Europe/Istanbul)
-    startFeedbackPatternAnalysisSystem();
-    
-    // Start weekly backup scheduler (runs every Sunday at midnight Turkey time)
-    startWeeklyBackupScheduler();
-
-    // Start real-time employee tracking cleanup (runs every 10 minutes)
-    startTrackingCleanup();
-    
-    // Perform initial health check
-    performHealthCheck().then(health => {
-      log(`🏥 Sistem sağlık durumu: ${health.status.toUpperCase()}`);
-      health.details.forEach(d => log(`   ${d}`));
-    }).catch(err => {
-      console.error('Health check hatası:', err);
-    });
+    log("Schedulers will start in 30 seconds (lazy init)...");
+    schedulerInitTimeout = setTimeout(() => {
+      startReminderSystem();
+      startShiftReminderJob();
+      startCompositeScoreUpdateJob();
+      startDangerZoneCheckJob();
+      startDailyTaskTriggerJob();
+      startSktExpiryCheckJob();
+      startScheduledTaskDeliveryJob();
+      
+      startSLACheckSystem();
+      startPhotoCleanupSystem();
+      startFeedbackSlaCheckSystem();
+      startFeedbackPatternAnalysisSystem();
+      
+      startStockAlertSystem();
+      startOnboardingCompletionSystem();
+      startStaleQuoteReminderSystem();
+      startNotificationArchiveSystem();
+      startAgentScheduler();
+      
+      startWeeklyBackupScheduler();
+      startTrackingCleanup();
+      
+      log(`All schedulers initialized (total startup: ${Date.now() - startupTime}ms)`);
+      
+      performHealthCheck().then(health => {
+        log(`System health: ${health.status.toUpperCase()}`);
+        health.details.forEach(d => log(`   ${d}`));
+      }).catch(err => {
+        console.error('Health check error:', err);
+      });
+    }, 30_000);
   }
 
   tryListen();
@@ -306,88 +299,149 @@ async function ensureAdminUserApproved() {
   }
 }
 
-// Background job for shift reminders
+function trackInterval(interval: NodeJS.Timeout): NodeJS.Timeout {
+  trackedIntervals.push(interval);
+  return interval;
+}
+
 function startShiftReminderJob() {
-  // Run immediately on startup
   storage.sendShiftReminders().catch((error: Error | unknown) => {
     console.error("Error sending shift reminders:", error);
   });
   
-  // Then run every 10 minutes
-  setInterval(async () => {
+  trackInterval(setInterval(async () => {
     try {
       await storage.sendShiftReminders();
-      log("Shift reminders sent successfully");
     } catch (error) {
       console.error("Error in shift reminder job:", error);
     }
-  }, 10 * 60 * 1000); // 10 minutes
+  }, 10 * 60 * 1000));
   
   log("Shift reminder job started (runs every 10 minutes)");
 }
 
 function startCompositeScoreUpdateJob() {
-  setInterval(async () => {
+  trackInterval(setInterval(async () => {
     const nowTR = new Date(new Date().toLocaleString("en-US", { timeZone: "Europe/Istanbul" }));
-    if (nowTR.getHours() === 3 && nowTR.getMinutes() < 5) {
+    if (nowTR.getHours() === 3 && nowTR.getMinutes() < 10) {
       try {
         const result = await storage.runAllCompositeScoreUpdates();
-        log(`Composite score update completed: ${result.processed} users, ${result.dangerCount} danger, ${result.warningCount} warning`);
+        log(`Composite score update: ${result.processed} users, ${result.dangerCount} danger, ${result.warningCount} warning`);
       } catch (error) {
         console.error("Error in composite score update job:", error);
       }
     }
-  }, 5 * 60 * 1000);
+  }, 10 * 60 * 1000));
 
   log("Composite score update job started (daily at 03:00 Europe/Istanbul)");
 }
 
-// Background job for danger zone checks (monthly on 1st)
 function startDangerZoneCheckJob() {
-  // Check on the 1st of each month at midnight
-  const checkIfFirstOfMonth = () => {
+  trackInterval(setInterval(async () => {
     const now = new Date();
-    return now.getDate() === 1 && now.getHours() === 0;
-  };
-  
-  // Run every hour to check if it's the 1st of month
-  setInterval(async () => {
-    if (checkIfFirstOfMonth()) {
+    if (now.getDate() === 1 && now.getHours() === 0) {
       try {
         const result = await storage.runAllDangerZoneChecks();
-        log(`Danger zone check completed: ${result.processed} processed, ${result.warnings} warnings, ${result.demotions} demotions`);
+        log(`Danger zone check: ${result.processed} processed, ${result.warnings} warnings, ${result.demotions} demotions`);
       } catch (error) {
         console.error("Error in danger zone check job:", error);
       }
     }
-  }, 60 * 60 * 1000); // Check every hour
+  }, 60 * 60 * 1000));
   
   log("Danger zone check job initialized (runs monthly on 1st)");
 }
 
 function startDailyTaskTriggerJob() {
-  const checkIfMorning = () => {
+  trackInterval(setInterval(async () => {
     const nowTR = new Date(new Date().toLocaleString("en-US", { timeZone: "Europe/Istanbul" }));
-    return nowTR.getHours() === 8 && nowTR.getMinutes() < 5;
-  };
-
-  setInterval(async () => {
-    if (checkIfMorning()) {
+    if (nowTR.getHours() === 8 && nowTR.getMinutes() < 10) {
       try {
         const { generateTasksForAllActiveUsers } = await import("./services/task-trigger-service");
         const result = await generateTasksForAllActiveUsers();
-        log(`[TaskTrigger] Daily generation: ${result.usersProcessed} users, ${result.totalCreated} created, ${result.totalSkipped} skipped`);
+        log(`[TaskTrigger] Daily: ${result.usersProcessed} users, ${result.totalCreated} created, ${result.totalSkipped} skipped`);
       } catch (error) {
         console.error("[TaskTrigger] Daily generation error:", error);
       }
     }
-  }, 5 * 60 * 1000);
+  }, 10 * 60 * 1000));
 
   log("Task trigger daily scheduler started (08:00 Europe/Istanbul)");
 }
 
+function startScheduledTaskDeliveryJob() {
+  (async () => {
+    try {
+      const now = new Date();
+      const scheduledTasks = await db.select().from(tasks)
+        .where(and(
+          eq(tasks.isDelivered, false),
+          lte(tasks.scheduledDeliveryAt, now),
+          eq(tasks.status, 'zamanlanmis')
+        ));
+      for (const task of scheduledTasks) {
+        await storage.updateTask(task.id, { isDelivered: true, status: 'beklemede' });
+        if (task.assignedToId && task.assignedById) {
+          const assigner = await storage.getUser(task.assignedById);
+          const assignerName = assigner?.firstName && assigner?.lastName
+            ? `${assigner.firstName} ${assigner.lastName}` : 'Bir yonetici';
+          await storage.createNotification({
+            userId: task.assignedToId, type: 'task_assigned', title: 'Yeni Gorev Atandi',
+            message: `${assignerName} size yeni bir gorev atadi: "${task.description?.substring(0, 50)}..."`,
+            link: `/gorevler?taskId=${task.id}`, branchId: task.branchId,
+          });
+        }
+      }
+      if (scheduledTasks.length > 0) console.log(`${scheduledTasks.length} zamanlanmis gorev iletildi (ilk calistirma)`);
+    } catch (error: any) { console.error("Scheduled task delivery initial run error:", error); }
+  })();
+
+  trackInterval(setInterval(async () => {
+    try {
+      const now = new Date();
+      const scheduledTasks = await db.select().from(tasks)
+        .where(and(
+          eq(tasks.isDelivered, false),
+          lte(tasks.scheduledDeliveryAt, now),
+          eq(tasks.status, 'zamanlanmis')
+        ));
+
+      for (const task of scheduledTasks) {
+        await storage.updateTask(task.id, {
+          isDelivered: true,
+          status: 'beklemede',
+        });
+
+        if (task.assignedToId && task.assignedById) {
+          const assigner = await storage.getUser(task.assignedById);
+          const assignerName = assigner?.firstName && assigner?.lastName
+            ? `${assigner.firstName} ${assigner.lastName}`
+            : 'Bir yonetici';
+
+          await storage.createNotification({
+            userId: task.assignedToId,
+            type: 'task_assigned',
+            title: 'Yeni Gorev Atandi',
+            message: `${assignerName} size yeni bir gorev atadi: "${task.description?.substring(0, 50)}..."`,
+            link: `/gorevler?taskId=${task.id}`,
+            branchId: task.branchId,
+          });
+        }
+      }
+
+      if (scheduledTasks.length > 0) {
+        console.log(`${scheduledTasks.length} zamanlanmis gorev iletildi`);
+      }
+    } catch (error: any) {
+      console.error("Scheduled task delivery error:", error);
+    }
+  }, 5 * 60 * 1000));
+
+  log("Scheduled task delivery job started (runs every 5 minutes)");
+}
+
 function startSktExpiryCheckJob() {
-  setInterval(async () => {
+  trackInterval(setInterval(async () => {
     try {
       const now = new Date();
       const sevenDaysLater = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
@@ -425,8 +479,8 @@ function startSktExpiryCheckJob() {
         const isExpired = lot.expiryDate && new Date(lot.expiryDate) < now;
         const notifType = isExpired ? 'skt_expired' : 'skt_warning';
         const message = isExpired
-          ? `LOT ${lot.lotNumber} son kullanma tarihi geçmiş! Acil müdahale gerekli.`
-          : `LOT ${lot.lotNumber} son kullanma tarihi 7 gün içinde dolacak.`;
+          ? `LOT ${lot.lotNumber} son kullanma tarihi gecmis! Acil mudahale gerekli.`
+          : `LOT ${lot.lotNumber} son kullanma tarihi 7 gun icinde dolacak.`;
 
         if (isExpired) {
           expiredIds.push(lot.id);
@@ -435,7 +489,7 @@ function startSktExpiryCheckJob() {
         const alreadySent = existingSet.has(`${notifType}:${message}`);
         if (!alreadySent) {
           for (const u of targetUsers) {
-            notifValues.push({ userId: u.id, type: notifType, title: isExpired ? 'SKT Süresi Dolmuş!' : 'SKT Uyarısı', message });
+            notifValues.push({ userId: u.id, type: notifType, title: isExpired ? 'SKT Suresi Dolmus!' : 'SKT Uyarisi', message });
           }
         }
       }
@@ -457,25 +511,31 @@ function startSktExpiryCheckJob() {
     } catch (error) {
       console.error("[SKT] Expiry check error:", error);
     }
-  }, 6 * 60 * 60 * 1000);
+  }, 6 * 60 * 60 * 1000));
 
   log("SKT expiry check job started (runs every 6 hours)");
 }
 
 function forceShutdown(signal: string) {
   console.log(`${signal} received, shutting down...`);
-  const activeHandles = (process as any)._getActiveHandles?.() || [];
-  const activeRequests = (process as any)._getActiveRequests?.() || [];
-  console.log(`Active handles: ${activeHandles.length}, active requests: ${activeRequests.length}`);
 
-  const clearAllIntervals = () => {
-    const highestId = Number(setInterval(() => {}, 100000));
-    for (let i = 0; i <= highestId; i++) {
-      clearInterval(i);
-    }
-  };
+  if (schedulerInitTimeout) {
+    clearTimeout(schedulerInitTimeout);
+    schedulerInitTimeout = null;
+  }
 
-  clearAllIntervals();
+  for (const interval of trackedIntervals) {
+    clearInterval(interval);
+  }
+  trackedIntervals.length = 0;
+
+  try { stopAllReminderSystems(); } catch {}
+
+  try { stopAgentScheduler(); } catch {}
+  try { stopBackupScheduler(); } catch {}
+  try { stopTrackingCleanup(); } catch {}
+  try { cache.destroy(); } catch {}
+  try { aiRateLimiter.destroy(); } catch {}
 
   if (httpServer) {
     httpServer.close(() => {
