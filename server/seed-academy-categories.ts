@@ -2,6 +2,7 @@ import { db } from "./db";
 import { academyHubCategories, trainingModules } from "@shared/schema";
 import { eq } from "drizzle-orm";
 
+
 const STANDARD_CATEGORIES = [
   { slug: "barista_temelleri", titleTr: "Barista Temelleri", titleEn: "Barista Basics", description: "Kahve hazırlama, espresso, süt işleme teknikleri", iconName: "Coffee", colorHex: "#8B5CF6", displayOrder: 1 },
   { slug: "hijyen_guvenlik", titleTr: "Hijyen & Güvenlik", titleEn: "Hygiene & Safety", description: "Gıda güvenliği, temizlik protokolleri, iş güvenliği", iconName: "ShieldCheck", colorHex: "#10B981", displayOrder: 2 },

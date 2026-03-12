@@ -1,6 +1,7 @@
 import { useState, useEffect, Suspense, lazy } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
+
 import { useDynamicPermissions } from "@/hooks/useDynamicPermissions";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
