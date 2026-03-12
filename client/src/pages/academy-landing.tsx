@@ -25,6 +25,15 @@ import {
   Calendar, ClipboardCheck, Lock,
 } from "lucide-react";
 
+import baristaTemelleriImg from "@assets/academy/barista_temelleri.png";
+import hijyenGuvenlikImg from "@assets/academy/hijyen_guvenlik.png";
+import recetelerImg from "@assets/academy/receteler.png";
+import musteriIliskileriImg from "@assets/academy/musteri_iliskileri.png";
+import ekipmanImg from "@assets/academy/ekipman.png";
+import yonetimImg from "@assets/academy/yonetim.png";
+import onboardingImg from "@assets/academy/onboarding.png";
+import genelGelisimImg from "@assets/academy/genel_gelisim.png";
+
 const CAREER_LEVELS = [
   { id: 1, roleId: "stajyer", titleTr: "Stajyer", levelNumber: 1 },
   { id: 2, roleId: "bar_buddy", titleTr: "Bar Buddy", levelNumber: 2 },
@@ -33,15 +42,15 @@ const CAREER_LEVELS = [
   { id: 5, roleId: "supervisor", titleTr: "Supervisor", levelNumber: 5 },
 ];
 
-const CATEGORY_CONFIG: Record<string, { icon: any; color: string; bgColor: string; gradient: string }> = {
-  barista_temelleri: { icon: Coffee, color: "text-violet-600 dark:text-violet-400", bgColor: "bg-violet-100 dark:bg-violet-900/30", gradient: "from-violet-600 to-violet-800" },
-  hijyen_guvenlik: { icon: ShieldCheck, color: "text-emerald-600 dark:text-emerald-400", bgColor: "bg-emerald-100 dark:bg-emerald-900/30", gradient: "from-emerald-600 to-emerald-800" },
-  receteler: { icon: ChefHat, color: "text-amber-600 dark:text-amber-400", bgColor: "bg-amber-100 dark:bg-amber-900/30", gradient: "from-amber-600 to-amber-800" },
-  musteri_iliskileri: { icon: Heart, color: "text-pink-600 dark:text-pink-400", bgColor: "bg-pink-100 dark:bg-pink-900/30", gradient: "from-pink-600 to-pink-800" },
-  ekipman: { icon: Wrench, color: "text-indigo-600 dark:text-indigo-400", bgColor: "bg-indigo-100 dark:bg-indigo-900/30", gradient: "from-indigo-600 to-indigo-800" },
-  yonetim: { icon: Users, color: "text-sky-600 dark:text-sky-400", bgColor: "bg-sky-100 dark:bg-sky-900/30", gradient: "from-sky-600 to-sky-800" },
-  onboarding: { icon: GraduationCap, color: "text-teal-600 dark:text-teal-400", bgColor: "bg-teal-100 dark:bg-teal-900/30", gradient: "from-teal-600 to-teal-800" },
-  genel_gelisim: { icon: BookOpen, color: "text-slate-600 dark:text-slate-400", bgColor: "bg-slate-100 dark:bg-slate-900/30", gradient: "from-slate-600 to-slate-800" },
+const CATEGORY_CONFIG: Record<string, { icon: any; color: string; bgColor: string; gradient: string; thumbnail: string }> = {
+  barista_temelleri: { icon: Coffee, color: "text-violet-600 dark:text-violet-400", bgColor: "bg-violet-100 dark:bg-violet-900/30", gradient: "from-violet-600 to-violet-800", thumbnail: baristaTemelleriImg },
+  hijyen_guvenlik: { icon: ShieldCheck, color: "text-emerald-600 dark:text-emerald-400", bgColor: "bg-emerald-100 dark:bg-emerald-900/30", gradient: "from-emerald-600 to-emerald-800", thumbnail: hijyenGuvenlikImg },
+  receteler: { icon: ChefHat, color: "text-amber-600 dark:text-amber-400", bgColor: "bg-amber-100 dark:bg-amber-900/30", gradient: "from-amber-600 to-amber-800", thumbnail: recetelerImg },
+  musteri_iliskileri: { icon: Heart, color: "text-pink-600 dark:text-pink-400", bgColor: "bg-pink-100 dark:bg-pink-900/30", gradient: "from-pink-600 to-pink-800", thumbnail: musteriIliskileriImg },
+  ekipman: { icon: Wrench, color: "text-indigo-600 dark:text-indigo-400", bgColor: "bg-indigo-100 dark:bg-indigo-900/30", gradient: "from-indigo-600 to-indigo-800", thumbnail: ekipmanImg },
+  yonetim: { icon: Users, color: "text-sky-600 dark:text-sky-400", bgColor: "bg-sky-100 dark:bg-sky-900/30", gradient: "from-sky-600 to-sky-800", thumbnail: yonetimImg },
+  onboarding: { icon: GraduationCap, color: "text-teal-600 dark:text-teal-400", bgColor: "bg-teal-100 dark:bg-teal-900/30", gradient: "from-teal-600 to-teal-800", thumbnail: onboardingImg },
+  genel_gelisim: { icon: BookOpen, color: "text-slate-600 dark:text-slate-400", bgColor: "bg-slate-100 dark:bg-slate-900/30", gradient: "from-slate-600 to-slate-800", thumbnail: genelGelisimImg },
 };
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -563,26 +572,50 @@ export default function AcademyLanding() {
                   <ChevronRight className="h-3 w-3 ml-0.5" />
                 </Button>
               </div>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-2 gap-2.5">
                 {activeCategories.map(([slug, config]) => {
                   const count = categoryGroups[slug]?.length || 0;
                   const CatIcon = config.icon;
                   const completedInCat = (categoryGroups[slug] || []).filter((m: any) => getModuleStatus(m.id) === "completed").length;
+                  const progressPct = count > 0 ? Math.round((completedInCat / count) * 100) : 0;
 
                   return (
                     <button
                       key={slug}
-                      className="rounded-xl p-3 text-center cursor-pointer transition-transform bg-gradient-to-br from-muted/60 to-muted/30 border border-border/50 hover-elevate"
+                      className="rounded-xl cursor-pointer transition-transform border border-border/50 hover-elevate overflow-visible text-left"
                       onClick={() => navigate(`/akademi/kesfet?kategori=${slug}`)}
                       data-testid={`card-category-${slug}`}
                     >
-                      <div className={`w-9 h-9 rounded-lg ${config.bgColor} flex items-center justify-center mx-auto mb-1.5`}>
-                        <CatIcon className={`h-4 w-4 ${config.color}`} />
+                      <div className="relative h-20 rounded-t-xl overflow-hidden">
+                        <img
+                          src={config.thumbnail}
+                          alt={CATEGORY_LABELS[slug]}
+                          className="w-full h-full object-cover"
+                          loading="lazy"
+                        />
+                        <div className={`absolute inset-0 bg-gradient-to-t ${config.gradient} opacity-30`} />
+                        <div className="absolute bottom-1.5 left-1.5">
+                          <Badge variant="secondary" className="text-[9px] bg-background/80 backdrop-blur-sm">
+                            {count} modül
+                          </Badge>
+                        </div>
                       </div>
-                      <p className="font-bold text-[10px] line-clamp-1 leading-tight">{CATEGORY_LABELS[slug]}</p>
-                      <p className="text-[10px] text-muted-foreground mt-0.5">
-                        {completedInCat > 0 ? `${completedInCat}/${count}` : `${count} modül`}
-                      </p>
+                      <div className="p-2.5">
+                        <div className="flex items-center gap-1.5 mb-1">
+                          <CatIcon className={`h-3.5 w-3.5 ${config.color} flex-shrink-0`} />
+                          <p className="font-bold text-[11px] line-clamp-1 leading-tight">{CATEGORY_LABELS[slug]}</p>
+                        </div>
+                        {completedInCat > 0 ? (
+                          <div className="flex items-center gap-1.5">
+                            <div className="flex-1 h-1 bg-muted rounded-full overflow-hidden">
+                              <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${progressPct}%` }} />
+                            </div>
+                            <span className="text-[9px] text-muted-foreground flex-shrink-0">{completedInCat}/{count}</span>
+                          </div>
+                        ) : (
+                          <p className="text-[10px] text-muted-foreground">Keşfet</p>
+                        )}
+                      </div>
                     </button>
                   );
                 })}
