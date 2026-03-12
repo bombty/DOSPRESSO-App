@@ -1,13 +1,22 @@
 import { db } from './db';
 import { menuSections, menuItems } from '@shared/schema';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, sql } from 'drizzle-orm';
 
-/**
- * Seeds simplified admin menu with 12 logical categories, no duplicates
- * IDEMPOTENT: Uses ON CONFLICT DO UPDATE for sections and checks for existing items
- */
+const EXPECTED_SECTIONS = 12;
+const EXPECTED_ITEMS = 53;
+
 export async function seedAdminMenu() {
   console.log("🌱 Starting admin menu seed (simplified structure)...");
+
+  const [sectionCount] = await db.select({ cnt: sql`count(*)::int` }).from(menuSections);
+  const [itemCount] = await db.select({ cnt: sql`count(*)::int` }).from(menuItems);
+  const sections = (sectionCount as any)?.cnt ?? 0;
+  const items = (itemCount as any)?.cnt ?? 0;
+
+  if (sections >= EXPECTED_SECTIONS && items >= EXPECTED_ITEMS) {
+    console.log(`✅ Admin menu already seeded (${sections} sections, ${items} items). Skipping.`);
+    return;
+  }
   
   let sectionsInserted = 0;
   let itemsInserted = 0;
