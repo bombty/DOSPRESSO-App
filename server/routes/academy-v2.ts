@@ -719,8 +719,39 @@ router.get('/api/academy/my-path', isAuthenticated, async (req: any, res) => {
     const userRole = req.user!.role;
     const actions: any[] = [];
 
-    const [progress] = await db.select().from(userCareerProgress)
+    let [progress] = await db.select().from(userCareerProgress)
       .where(eq(userCareerProgress.userId, userId));
+
+    if (!progress) {
+      const [stajyerLevel] = await db.select().from(careerLevels)
+        .where(eq(careerLevels.levelNumber, 1))
+        .limit(1);
+
+      if (stajyerLevel) {
+        const [newProgress] = await db.insert(userCareerProgress)
+          .values({
+            userId,
+            currentCareerLevelId: stajyerLevel.id,
+            completedModuleIds: [],
+            averageQuizScore: 0,
+            totalQuizzesAttempted: 0,
+            trainingScore: 0,
+            practicalScore: 0,
+            attendanceScore: 0,
+            managerScore: 0,
+            compositeScore: 0,
+            dangerZoneMonths: 0,
+          })
+          .onConflictDoNothing()
+          .returning();
+        if (newProgress) {
+          progress = newProgress;
+        } else {
+          [progress] = await db.select().from(userCareerProgress)
+            .where(eq(userCareerProgress.userId, userId));
+        }
+      }
+    }
 
     let currentLevel: any = null;
     if (progress) {

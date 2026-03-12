@@ -641,13 +641,13 @@ const SIDEBAR_ALLOWED_ITEMS: Partial<Record<UserRoleType, string[]>> = {
     'branch-dashboard', 'tasks-list', 'training-academy', 'notifications',
   ],
   supervisor: [
-    'branch-dashboard', 'tasks-list', 'customer-satisfaction', 'notifications', 'ai-assistant', 'branch-stock-orders',
+    'branch-dashboard', 'tasks-list', 'customer-satisfaction', 'notifications', 'ai-assistant', 'branch-stock-orders', 'crm-main',
   ],
   supervisor_buddy: [
     'branch-dashboard', 'tasks-list', 'notifications', 'ai-assistant', 'hq-support',
   ],
   mudur: [
-    'branch-dashboard', 'tasks-list', 'reports', 'customer-satisfaction', 'notifications', 'branch-stock-orders',
+    'branch-dashboard', 'tasks-list', 'reports', 'customer-satisfaction', 'notifications', 'branch-stock-orders', 'crm-main',
   ],
   yatirimci_branch: [
     'branch-dashboard', 'reports', 'notifications',
@@ -656,13 +656,13 @@ const SIDEBAR_ALLOWED_ITEMS: Partial<Record<UserRoleType, string[]>> = {
     'dashboard', 'reports', 'ai-assistant', 'notifications', 'crm-main', 'franchise-investors',
   ],
   cgo: [
-    'dashboard', 'branches-list', 'reports', 'customer-satisfaction', 'franchise-investors', 'notifications',
+    'dashboard', 'branches-list', 'reports', 'customer-satisfaction', 'franchise-investors', 'notifications', 'crm-main',
   ],
   yatirimci_hq: [
     'dashboard', 'reports', 'notifications',
   ],
   coach: [
-    'dashboard', 'branches-list', 'branch-inspection', 'customer-satisfaction', 'training-academy', 'notifications',
+    'dashboard', 'branches-list', 'branch-inspection', 'customer-satisfaction', 'training-academy', 'notifications', 'crm-main',
   ],
   destek: [
     'dashboard', 'branches-list', 'faults', 'hq-support', 'notifications',
@@ -677,7 +677,7 @@ const SIDEBAR_ALLOWED_ITEMS: Partial<Record<UserRoleType, string[]>> = {
     'dashboard', 'food-safety', 'factory-quality', 'factory-dashboard', 'reports', 'notifications',
   ],
   marketing: [
-    'dashboard', 'campaign-management', 'customer-satisfaction', 'reports', 'notifications',
+    'dashboard', 'campaign-management', 'customer-satisfaction', 'reports', 'notifications', 'crm-main',
   ],
   muhasebe_ik: [
     'dashboard', 'hr', 'pdks', 'maas', 'reports', 'notifications',

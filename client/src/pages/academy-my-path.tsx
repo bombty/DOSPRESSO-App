@@ -899,11 +899,23 @@ export default function AcademyMyPath() {
       {actions.length === 0 && !data.onboarding && !data.activeGate && (
         <Card data-testid="no-actions">
           <CardContent className="p-6 text-center">
-            <CheckCircle2 className="h-10 w-10 mx-auto text-green-500 mb-2" />
-            <p className="font-medium">Tebrikler!</p>
-            <p className="text-sm text-muted-foreground mt-1">
-              Tüm adımlarınızı tamamladınız. Yeni içerikler yakında eklenecek.
-            </p>
+            {data.completedModuleCount > 0 ? (
+              <>
+                <CheckCircle2 className="h-10 w-10 mx-auto text-green-500 mb-2" />
+                <p className="font-medium">Tebrikler!</p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Tüm adımlarınızı tamamladınız. Yeni içerikler yakında eklenecek.
+                </p>
+              </>
+            ) : (
+              <>
+                <Target className="h-10 w-10 mx-auto text-primary mb-2" />
+                <p className="font-medium">Kariyer yolunuz henüz başlamadı</p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Eğitim modüllerini tamamlayarak kariyer yolculuğunuza başlayabilirsiniz.
+                </p>
+              </>
+            )}
           </CardContent>
         </Card>
       )}
