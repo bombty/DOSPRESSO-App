@@ -730,25 +730,15 @@ async function checkEvaluationReminders() {
   }
 }
 
-export function startReminderSystem() {
-  if (schedulerManager.hasJob('reminder-tick-10min')) {
-    console.log("Hatirlatma sistemi zaten calisiyor");
-    return;
-  }
-
-  console.log("Hatirlatma sistemi baslatildi - Her 10 dakikada bir kontrol edilecek");
-  
+export function initReminderSystem() {
+  console.log("Hatirlatma sistemi baslatildi (master 10-min tick'e eklendi)");
   checkAndSendReminders();
   checkEvaluationReminders();
-  
-  schedulerManager.registerInterval('reminder-tick-10min', () => {
-    checkAndSendReminders();
-    checkEvaluationReminders();
-  }, REMINDER_INTERVAL);
 }
 
-export function stopReminderSystem() {
-  schedulerManager.removeJob('reminder-tick-10min');
+export function runReminderTick() {
+  checkAndSendReminders();
+  checkEvaluationReminders();
 }
 
 export function startSLACheckSystem() {
@@ -1715,7 +1705,6 @@ export function stopFeedbackPatternAnalysisSystem() {
 }
 
 export function stopAllReminderSystems() {
-  stopReminderSystem();
   stopSLACheckSystem();
   stopPhotoCleanupSystem();
   stopMonthlyCalculationSystem();

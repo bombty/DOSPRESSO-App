@@ -2,7 +2,7 @@ import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { storage } from "./storage";
-import { startReminderSystem, startSLACheckSystem, startPhotoCleanupSystem, startFeedbackSlaCheckSystem, startFeedbackPatternAnalysisSystem, startStockAlertSystem, startOnboardingCompletionSystem, startStaleQuoteReminderSystem, startNotificationArchiveSystem, stopAllReminderSystems, checkOnboardingCompletions, checkAndArchiveIfTime, checkLowStockNotifications, checkFeedbackSlaBreaches } from "./reminders";
+import { initReminderSystem, runReminderTick, startSLACheckSystem, startPhotoCleanupSystem, startFeedbackSlaCheckSystem, startFeedbackPatternAnalysisSystem, startStockAlertSystem, startOnboardingCompletionSystem, startStaleQuoteReminderSystem, startNotificationArchiveSystem, stopAllReminderSystems, checkOnboardingCompletions, checkAndArchiveIfTime, checkLowStockNotifications, checkFeedbackSlaBreaches } from "./reminders";
 import { seedRolePermissions } from "./seed-role-permissions";
 import { seedPermissionModules } from "./seed-permission-modules";
 import { seedRoleTemplates } from "./seed-role-templates";
@@ -185,11 +185,13 @@ app.use((req, res, next) => {
     
     log("Schedulers will start in 30 seconds (lazy init)...");
     schedulerManager.registerTimeout('scheduler-lazy-init', () => {
-      startReminderSystem();
-      startConsolidated10MinJobs();
+      initReminderSystem();
+      startOnboardingCompletionSystem();
+      startNotificationArchiveSystem();
+      startMaster10MinTick();
+      
       startSktExpiryCheckJob();
       startScheduledTaskDeliveryJob();
-      
       startSLACheckSystem();
       startPhotoCleanupSystem();
       startFeedbackPatternAnalysisSystem();
@@ -198,10 +200,6 @@ app.use((req, res, next) => {
       startFeedbackSlaCheckSystem();
       startStockAlertSystem();
       startConsolidatedHourlyJobs();
-      
-      startOnboardingCompletionSystem();
-      startNotificationArchiveSystem();
-      startConsolidated10MinExtras();
       
       startAgentScheduler();
       
@@ -295,13 +293,16 @@ async function ensureAdminUserApproved() {
   }
 }
 
-function startConsolidated10MinJobs() {
+function startMaster10MinTick() {
   storage.sendShiftReminders().catch((error: Error | unknown) => {
     console.error("Error sending shift reminders:", error);
   });
 
-  schedulerManager.registerInterval('tick-10min', async () => {
+  schedulerManager.registerInterval('master-tick-10min', async () => {
+    try { runReminderTick(); } catch (e) { console.error("Error in reminder tick:", e); }
     try { await storage.sendShiftReminders(); } catch (e) { console.error("Error in shift reminder:", e); }
+    try { await checkOnboardingCompletions(); } catch (e) { console.error("Error in onboarding check:", e); }
+    try { await checkAndArchiveIfTime(); } catch (e) { console.error("Error in notification archive:", e); }
 
     const nowTR = new Date(new Date().toLocaleString("en-US", { timeZone: "Europe/Istanbul" }));
     if (nowTR.getHours() === 3 && nowTR.getMinutes() < 10) {
@@ -320,7 +321,7 @@ function startConsolidated10MinJobs() {
     }
   }, 10 * 60 * 1000);
 
-  log("Consolidated 10-min tick started (shift-reminder + composite-score@03:00 + task-trigger@08:00)");
+  log("Master 10-min tick started (reminders + shift + onboarding + archive + composite@03:00 + task-trigger@08:00)");
 }
 
 function startConsolidatedHourlyJobs() {
@@ -337,14 +338,6 @@ function startConsolidatedHourlyJobs() {
     }
   }, 60 * 60 * 1000);
   log("Consolidated hourly tick started (stock-alert + feedback-sla + danger-zone@1st)");
-}
-
-function startConsolidated10MinExtras() {
-  schedulerManager.registerInterval('tick-10min-extras', async () => {
-    try { await checkOnboardingCompletions(); } catch (e) { console.error("Error in onboarding check:", e); }
-    try { await checkAndArchiveIfTime(); } catch (e) { console.error("Error in notification archive:", e); }
-  }, 10 * 60 * 1000);
-  log("Consolidated 10-min extras tick started (onboarding-check + notification-archive@02:00)");
 }
 
 function startScheduledTaskDeliveryJob() {
