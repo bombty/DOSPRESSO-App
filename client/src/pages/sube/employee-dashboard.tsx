@@ -56,6 +56,7 @@ interface EmployeeDashboardData {
 }
 
 const REDIRECT_SECONDS = 10;
+const BRANCH_DASHBOARD_ROLES = ['mudur', 'supervisor', 'admin', 'ceo', 'cgo', 'coach', 'trainer'];
 
 const SHIFT_TYPE_LABELS: Record<string, string> = {
   morning: "Sabah Vardiyası",
@@ -66,8 +67,9 @@ const SHIFT_TYPE_LABELS: Record<string, string> = {
 export default function EmployeeDashboard() {
   const { user } = useAuth();
   const [, setLocation] = useLocation();
+  const canAccessBranchDashboard = BRANCH_DASHBOARD_ROLES.includes(user?.role || '');
   const [countdown, setCountdown] = useState(REDIRECT_SECONDS);
-  const [paused, setPaused] = useState(false);
+  const [paused, setPaused] = useState(!canAccessBranchDashboard);
 
   const userId = user?.id;
 
@@ -151,7 +153,7 @@ export default function EmployeeDashboard() {
             </div>
           </div>
 
-          {user?.branchId && (
+          {user?.branchId && canAccessBranchDashboard && (
             <div
               className="flex items-center gap-1.5 cursor-pointer"
               onClick={() => {

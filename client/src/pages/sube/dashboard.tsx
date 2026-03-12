@@ -88,6 +88,7 @@ const SHIFT_TYPE_LABELS: Record<string, string> = {
 const DAY_NAMES = ["Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz"];
 
 const HQ_ROLES = ['admin', 'ceo', 'cgo', 'coach', 'trainer', 'muhasebe', 'satinalma', 'teknik', 'destek', 'fabrika', 'yatirimci_hq'];
+const BRANCH_DASHBOARD_ROLES = ['mudur', 'supervisor'];
 
 export default function SubeDashboard() {
   const { user } = useAuth();
@@ -166,11 +167,19 @@ export default function SubeDashboard() {
     },
   });
 
+  const isBranchOnlyUser = user && !HQ_ROLES.includes(user.role || '') && !BRANCH_DASHBOARD_ROLES.includes(user.role || '');
+
   useEffect(() => {
     if (authChecked && !hasBranchAccess && !needsBranchSelection) {
       setLocation("/login");
     }
   }, [authChecked, hasBranchAccess, needsBranchSelection, setLocation]);
+
+  useEffect(() => {
+    if (authChecked && isBranchOnlyUser && !branchAuth) {
+      setLocation("/");
+    }
+  }, [authChecked, isBranchOnlyUser, branchAuth, setLocation]);
 
   if (!authChecked) {
     
