@@ -347,6 +347,8 @@ export const PATH_TO_PERMISSION_MAP: Record<string, PermissionModule> = {
   '/bordrom': 'employees',
   '/performans': 'performance',
   '/onboarding-programlar': 'hr',
+  '/akademi/personel-onboarding': 'academy',
+  '/akademi/onboarding-programlar': 'academy',
   
   // Training / Academy
   '/akademi': 'academy',

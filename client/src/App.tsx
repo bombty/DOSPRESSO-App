@@ -82,8 +82,6 @@ const BadgeCollection = lazy(() => import("@/pages/badge-collection"));
 const GorevDetay = lazy(() => import("@/pages/gorev-detay"));
 const SubeGorevler = lazy(() => import("@/pages/sube-gorevler"));
 const IK = lazy(() => import("@/pages/ik"));
-const PersonelOnboarding = lazy(() => import("@/pages/personel-onboarding"));
-const OnboardingProgramlar = lazy(() => import("@/pages/onboarding-programlar"));
 const LeaveRequests = lazy(() => import("@/pages/leave-requests"));
 const OvertimeRequests = lazy(() => import("@/pages/overtime-requests"));
 const Attendance = lazy(() => import("@/pages/attendance"));
@@ -322,8 +320,8 @@ function Router() {
           <Route path="/gelismis-raporlar" component={AdvancedReportsPage} />
           <Route path="/performansim" component={MyPerformancePage} />
           <Route path="/personel-duzenle/:id" component={PersonelDuzenle} />
-          <Route path="/personel-onboarding" component={PersonelOnboarding} />
-          <Route path="/onboarding-programlar" component={OnboardingProgramlar} />
+          <Route path="/personel-onboarding">{() => { if (typeof window !== 'undefined') window.location.href = '/akademi/personel-onboarding'; return null; }}</Route>
+          <Route path="/onboarding-programlar">{() => { if (typeof window !== 'undefined') window.location.href = '/akademi/onboarding-programlar'; return null; }}</Route>
           <Route path="/vardiyalar" component={Vardiyalar} />
           <Route path="/vardiya-planlama" component={VardiyaPlanlama} />
           <Route path="/vardiyalarim" component={Vardiyalarim} />

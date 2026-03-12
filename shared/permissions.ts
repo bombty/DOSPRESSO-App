@@ -75,10 +75,12 @@ export const ACADEMY_ROUTE_PERMISSIONS: AcademyRoutePermission[] = [
   { path: '/akademi/takim-yarismalar', requiredModule: 'team_competitions', requiredAction: 'view', visibility: 'all', labelTr: 'Takım Yarışmaları' },
   { path: '/akademi/ogrenme-yollari', requiredModule: 'learning_paths', requiredAction: 'view', visibility: 'all', labelTr: 'Öğrenme Yolları' },
   { path: '/akademi/uyarlanabilir-motor', requiredModule: 'adaptive_engine', requiredAction: 'view', visibility: 'all', labelTr: 'Uyarlanabilir Motor' },
-  { path: '/akademi/sosyal-gruplar', requiredModule: 'social_groups', requiredAction: 'view', visibility: 'all', labelTr: 'Sosyal Gruplar' },
   { path: '/akademi/supervisor', requiredModule: 'academy_supervisor', requiredAction: 'view', visibility: 'supervisor', labelTr: 'Supervisor Görünümü' },
   { path: '/akademi/supervisor-onboarding', requiredModule: 'academy_supervisor', requiredAction: 'view', visibility: 'supervisor', labelTr: 'Onboarding Onayları' },
-  { path: '/akademi/ai-kanit', requiredModule: 'academy', requiredAction: 'view', visibility: 'all', labelTr: 'AI Kanıt' },
+  { path: '/akademi/personel-onboarding', requiredModule: 'academy', requiredAction: 'view', visibility: 'coach', labelTr: 'Personel Onboarding' },
+  { path: '/akademi/onboarding-programlar', requiredModule: 'academy', requiredAction: 'view', visibility: 'supervisor', labelTr: 'Onboarding Programları' },
+  { path: '/akademi/ai-kanit', requiredModule: 'academy', requiredAction: 'view', visibility: 'coach', labelTr: 'AI Kanıt' },
+  { path: '/akademi/sosyal-gruplar', requiredModule: 'social_groups', requiredAction: 'view', visibility: 'coach', labelTr: 'Sosyal Gruplar' },
 ];
 
 export function canAccessAcademyRoute(role: UserRoleType, path: string): boolean {
@@ -103,9 +105,9 @@ export function canAccessAcademyRoute(role: UserRoleType, path: string): boolean
 export function getAcademyDefaultTab(role: string | undefined): string {
   const viewMode = getAcademyViewMode(role);
   switch (viewMode) {
-    case 'coach': return 'coach-gate-yonetim';
-    case 'supervisor': return 'benim-yolum';
-    default: return 'benim-yolum';
+    case 'coach': return 'coach-icerik-kutuphanesi';
+    case 'supervisor': return 'genel-egitimler';
+    default: return 'genel-egitimler';
   }
 }
 
