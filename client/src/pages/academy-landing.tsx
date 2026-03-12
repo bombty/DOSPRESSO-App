@@ -229,8 +229,18 @@ export default function AcademyLanding() {
 
   const filteredModules = approvedModules
     .filter(m => {
-      if (trainingFilter === "mandatory" && !m.isRequired) return false;
-      if (trainingFilter === "optional" && m.isRequired) return false;
+      if (trainingFilter === "mandatory") {
+        if (!m.isRequired) return false;
+        if (m.requiredForRole && m.requiredForRole.length > 0 && user?.role) {
+          if (!m.requiredForRole.includes(user.role)) return false;
+        }
+      }
+      if (trainingFilter === "optional") {
+        if (m.isRequired) {
+          if (!m.requiredForRole || m.requiredForRole.length === 0) return false;
+          if (user?.role && m.requiredForRole.includes(user.role)) return false;
+        }
+      }
       if (categoryFilter) {
         const cat = m.category || "genel_gelisim";
         return cat === categoryFilter;
