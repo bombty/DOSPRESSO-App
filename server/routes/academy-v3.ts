@@ -655,4 +655,31 @@ export async function checkWebinarReminders() {
   }
 }
 
+router.get("/api/v3/academy/category-counts", isAuthenticated, async (req, res) => {
+  try {
+    const counts = await db
+      .select({
+        category: trainingModules.category,
+        count: sql<number>`count(*)::int`,
+      })
+      .from(trainingModules)
+      .where(
+        and(
+          eq(trainingModules.isActive, true),
+          isNull(trainingModules.deletedAt)
+        )
+      )
+      .groupBy(trainingModules.category);
+
+    const result: Record<string, number> = {};
+    for (const row of counts) {
+      result[row.category || "genel"] = row.count;
+    }
+    res.json(result);
+  } catch (error: any) {
+    console.error("academy-v3 category-counts error:", error);
+    res.status(500).json({ error: "Kategori sayıları yüklenirken hata oluştu" });
+  }
+});
+
 export default router;

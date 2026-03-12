@@ -1,3 +1,5 @@
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -16,6 +18,7 @@ import {
   Star,
   Coffee,
   GraduationCap,
+  X,
 } from "lucide-react";
 
 interface HomeTabProps {
@@ -61,6 +64,12 @@ function HomeTabSkeleton() {
 
 export default function HomeTab({ homeData, isLoading, onNavigate }: HomeTabProps) {
   const { user } = useAuth();
+  const [dobodyDismissed, setDobodyDismissed] = useState(false);
+
+  const { data: categoryCounts } = useQuery<Record<string, number>>({
+    queryKey: ["/api/v3/academy/category-counts"],
+    enabled: !!user,
+  });
 
   if (isLoading || !homeData) {
     return <HomeTabSkeleton />;
@@ -92,9 +101,18 @@ export default function HomeTab({ homeData, isLoading, onNavigate }: HomeTabProp
 
   return (
     <div className="space-y-4 p-4 pb-8" data-testid="home-tab">
-      {urgentModule && (
-        <Card className="bg-gradient-to-br from-muted/50 to-muted/30 border-amber-500/25" data-testid="dobody-card">
-          <CardContent className="p-4">
+      {urgentModule && !dobodyDismissed && (
+        <Card className="bg-gradient-to-br from-muted/50 to-muted/30 border-amber-500/25 relative" data-testid="dobody-card">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="absolute top-2 right-2 h-6 w-6"
+            onClick={() => setDobodyDismissed(true)}
+            data-testid="dobody-dismiss"
+          >
+            <X className="h-4 w-4" />
+          </Button>
+          <CardContent className="p-4 pr-10">
             <div className="flex items-start gap-3">
               <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
                 <Bot className="h-5 w-5 text-primary" />
@@ -230,6 +248,7 @@ export default function HomeTab({ homeData, isLoading, onNavigate }: HomeTabProp
         <div className="grid grid-cols-3 gap-2">
           {CATEGORY_CONFIG.map((cat) => {
             const Icon = cat.icon;
+            const count = categoryCounts?.[cat.id] ?? 0;
             return (
               <Button
                 key={cat.id}
@@ -240,6 +259,9 @@ export default function HomeTab({ homeData, isLoading, onNavigate }: HomeTabProp
               >
                 <Icon className={`h-5 w-5 ${cat.colorClass}`} />
                 <span className="text-xs font-medium leading-tight text-left">{cat.label}</span>
+                <span className="text-xs text-muted-foreground" data-testid={`category-count-${cat.id}`}>
+                  {count} modül
+                </span>
               </Button>
             );
           })}
@@ -253,7 +275,7 @@ export default function HomeTab({ homeData, isLoading, onNavigate }: HomeTabProp
           data-testid="live-webinar-teaser"
         >
           <CardContent className="p-4">
-            <div className="flex items-center gap-2 mb-1">
+            <div className="flex items-center gap-2 mb-1 flex-wrap">
               <span className="w-2 h-2 rounded-full bg-destructive animate-pulse" />
               <span className="text-destructive text-xs font-bold uppercase tracking-widest">CANLI</span>
             </div>

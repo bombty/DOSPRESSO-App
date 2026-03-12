@@ -72,3 +72,9 @@ id = "tfXBBCg9G4NI4Idi9d7ld"
 uri = "file://DOSPRESSO_IT_Audit_Report_2026-03-12.md"
 type = "text"
 title = "DOSPRESSO IT Durum Audit Raporu — 12 Mart 2026"
+
+[[outputs]]
+id = "9e_UgF2LL0ZQ5Rrvq-mZP"
+uri = "file://.local/tasks/akademi-v3-audit-report.md"
+type = "text"
+title = "Akademi V3 — Kapsamlı Audit Raporu"
