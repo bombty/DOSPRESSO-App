@@ -29,7 +29,18 @@ import {
   PlayCircle,
 } from "lucide-react";
 
-const HQ_ROLES = ["admin", "ceo", "cgo", "coach", "trainer", "mudur", "supervisor", "muhasebe_ik", "fabrika_mudur"];
+const HQ_ROLES = ["admin", "ceo", "cgo", "coach", "trainer"];
+
+const TARGET_ROLE_OPTIONS = [
+  { id: "barista", label: "Barista" },
+  { id: "stajyer", label: "Stajyer" },
+  { id: "bar_buddy", label: "Bar Buddy" },
+  { id: "supervisor", label: "Süpervizör" },
+  { id: "mudur", label: "Müdür" },
+  { id: "coach", label: "Koç" },
+  { id: "trainer", label: "Eğitmen" },
+  { id: "kalite_kontrol", label: "Kalite Kontrol" },
+];
 
 function WebinarSkeleton() {
   return (
@@ -52,6 +63,7 @@ function CreateWebinarDialog({ onCreated }: { onCreated: () => void }) {
   const [durationMinutes, setDurationMinutes] = useState("60");
   const [meetingLink, setMeetingLink] = useState("");
   const [maxParticipants, setMaxParticipants] = useState("");
+  const [targetRoles, setTargetRoles] = useState<string[]>([]);
 
   const createMutation = useMutation({
     mutationFn: async (data: any) => {
@@ -80,6 +92,13 @@ function CreateWebinarDialog({ onCreated }: { onCreated: () => void }) {
     setDurationMinutes("60");
     setMeetingLink("");
     setMaxParticipants("");
+    setTargetRoles([]);
+  };
+
+  const toggleRole = (roleId: string) => {
+    setTargetRoles((prev) =>
+      prev.includes(roleId) ? prev.filter((r) => r !== roleId) : [...prev, roleId]
+    );
   };
 
   const handleSubmit = () => {
@@ -96,7 +115,7 @@ function CreateWebinarDialog({ onCreated }: { onCreated: () => void }) {
       durationMinutes: parseInt(durationMinutes) || 60,
       meetingLink: meetingLink.trim() || null,
       maxParticipants: maxParticipants ? parseInt(maxParticipants) : null,
-      targetRoles: [],
+      targetRoles: targetRoles.length > 0 ? targetRoles : [],
     });
   };
 
@@ -187,6 +206,24 @@ function CreateWebinarDialog({ onCreated }: { onCreated: () => void }) {
               onChange={(e) => setMeetingLink(e.target.value)}
               data-testid="input-webinar-link"
             />
+          </div>
+          <div>
+            <Label>Hedef Roller (opsiyonel)</Label>
+            <div className="flex flex-wrap gap-1.5 mt-1" data-testid="target-roles-selector">
+              {TARGET_ROLE_OPTIONS.map((role) => (
+                <Button
+                  key={role.id}
+                  type="button"
+                  size="sm"
+                  variant={targetRoles.includes(role.id) ? "default" : "outline"}
+                  onClick={() => toggleRole(role.id)}
+                  className="toggle-elevate"
+                  data-testid={`target-role-${role.id}`}
+                >
+                  {role.label}
+                </Button>
+              ))}
+            </div>
           </div>
           <div>
             <Label htmlFor="webinar-desc">Açıklama</Label>

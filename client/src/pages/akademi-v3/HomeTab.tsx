@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -25,6 +24,7 @@ interface HomeTabProps {
   homeData: any;
   isLoading: boolean;
   onNavigate: (tab: string) => void;
+  categoryCounts?: Record<string, number>;
 }
 
 const LEVEL_LABELS: Record<string, string> = {
@@ -62,14 +62,9 @@ function HomeTabSkeleton() {
   );
 }
 
-export default function HomeTab({ homeData, isLoading, onNavigate }: HomeTabProps) {
+export default function HomeTab({ homeData, isLoading, onNavigate, categoryCounts }: HomeTabProps) {
   const { user } = useAuth();
   const [dobodyDismissed, setDobodyDismissed] = useState(false);
-
-  const { data: categoryCounts } = useQuery<Record<string, number>>({
-    queryKey: ["/api/v3/academy/category-counts"],
-    enabled: !!user,
-  });
 
   if (isLoading || !homeData) {
     return <HomeTabSkeleton />;

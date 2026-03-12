@@ -2,18 +2,38 @@ import { useState, lazy, Suspense } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   Home,
   BookOpen,
   Video,
   Target,
+  Flame,
 } from "lucide-react";
 
 const HomeTab = lazy(() => import("./HomeTab"));
 const TrainingTab = lazy(() => import("./TrainingTab"));
 const WebinarTab = lazy(() => import("./WebinarTab"));
 const CareerTab = lazy(() => import("./CareerTab"));
+
+const ROLE_LABELS: Record<string, string> = {
+  admin: "Admin",
+  ceo: "CEO",
+  cgo: "CGO",
+  coach: "Koç",
+  trainer: "Eğitmen",
+  mudur: "Müdür",
+  supervisor: "Süpervizör",
+  barista: "Barista",
+  bar_buddy: "Bar Buddy",
+  stajyer: "Stajyer",
+  muhasebe_ik: "Muhasebe/İK",
+  fabrika_mudur: "Fabrika Müdür",
+  kalite_kontrol: "Kalite Kontrol",
+  depocu: "Depocu",
+};
 
 interface TabDef {
   id: string;
@@ -48,13 +68,50 @@ export default function AkademiV3() {
     enabled: !!user,
   });
 
+  const { data: categoryCounts } = useQuery<Record<string, number>>({
+    queryKey: ["/api/v3/academy/category-counts"],
+    enabled: !!user,
+  });
+
   const liveWebinarCount = homeData?.upcomingWebinars?.filter(
     (w: any) => w.status === "live"
   )?.length || 0;
 
+  const streak = Number(homeData?.career?.learningStreak ?? 0);
+  const initials = user
+    ? `${(user.firstName || user.username || "U")[0]}${(user.lastName || "")[0] || ""}`.toUpperCase()
+    : "?";
+  const roleLabel = ROLE_LABELS[user?.role || ""] || user?.role || "";
+
   return (
     <div className="min-h-full bg-background" data-testid="akademi-v3-shell">
       <div className="sticky top-0 z-50 bg-background border-b">
+        <div className="px-4 py-3 flex items-center gap-3 flex-wrap" data-testid="v3-header">
+          <Avatar className="h-9 w-9 shrink-0" data-testid="header-avatar">
+            <AvatarFallback className="text-xs font-semibold">{initials}</AvatarFallback>
+          </Avatar>
+          <div className="flex-1 min-w-0">
+            <div className="text-sm font-semibold truncate" data-testid="header-name">
+              {user?.firstName || user?.username}{user?.lastName ? ` ${user.lastName}` : ""}
+            </div>
+            <div className="text-xs text-muted-foreground flex items-center gap-1.5 flex-wrap" data-testid="header-meta">
+              <span data-testid="header-role">{roleLabel}</span>
+              {user?.branchId && homeData?.branchName && (
+                <>
+                  <span className="text-muted-foreground/50">·</span>
+                  <span data-testid="header-branch">{homeData.branchName}</span>
+                </>
+              )}
+            </div>
+          </div>
+          {streak > 0 && (
+            <Badge variant="secondary" className="shrink-0 gap-1" data-testid="header-streak">
+              <Flame className="h-3 w-3 text-orange-500" />
+              {streak} gün
+            </Badge>
+          )}
+        </div>
+
         <div className="flex flex-wrap" data-testid="akademi-v3-tabs">
           {TABS.map((tab) => {
             const Icon = tab.icon;
@@ -94,6 +151,7 @@ export default function AkademiV3() {
               homeData={homeData}
               isLoading={homeLoading}
               onNavigate={setActiveTab}
+              categoryCounts={categoryCounts}
             />
           )}
           {activeTab === "egitimler" && <TrainingTab />}

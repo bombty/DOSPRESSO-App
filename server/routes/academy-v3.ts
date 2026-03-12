@@ -12,6 +12,8 @@ import {
   webinars,
   webinarRegistrations,
   insertWebinarSchema,
+  branches,
+  learningStreaks,
 } from "@shared/schema";
 import { eq, desc, and, sql, gte, lte, ilike, isNull, inArray } from "drizzle-orm";
 
@@ -57,10 +59,17 @@ router.get("/api/v3/academy/home-data", isAuthenticated, async (req, res) => {
         .where(eq(careerLevels.id, progress[0].currentLevelId))
         .limit(1);
 
+      const streakRow = await db
+        .select({ currentStreak: learningStreaks.currentStreak })
+        .from(learningStreaks)
+        .where(eq(learningStreaks.userId, userId))
+        .limit(1);
+
       return {
         currentLevel: level[0] || null,
         compositeScore: Number(progress[0].compositeScore ?? 0),
         trainingScore: Number(progress[0].trainingScore ?? 0),
+        learningStreak: streakRow[0]?.currentStreak ?? 0,
       };
     })();
 
@@ -157,10 +166,20 @@ router.get("/api/v3/academy/home-data", isAuthenticated, async (req, res) => {
       .orderBy(webinars.webinarDate)
       .limit(3);
 
+    let branchName: string | null = null;
+    if (user.branchId) {
+      const branchRow = await db
+        .select({ name: branches.name })
+        .from(branches)
+        .where(eq(branches.id, user.branchId))
+        .limit(1);
+      branchName = branchRow[0]?.name || null;
+    }
+
     const keys = Object.keys(queries);
     const results = await Promise.all(Object.values(queries));
 
-    const response: Record<string, any> = {};
+    const response: Record<string, any> = { branchName };
     keys.forEach((key, i) => {
       response[key] = results[i];
     });
