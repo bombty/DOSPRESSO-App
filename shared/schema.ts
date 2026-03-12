@@ -3730,6 +3730,8 @@ export const trainingModules = pgTable("training_modules", {
   }>>().default([]), // AI Rol Yapma Senaryoları
   
   targetRoles: text("target_roles").array().default(sql`'{}'::text[]`),
+  isMandatory: boolean("is_mandatory").notNull().default(false),
+  deadlineDays: integer("deadline_days"),
   status: varchar("status", { length: 20 }).default("approved"),
   rejectionReason: text("rejection_reason"),
   createdBy: varchar("created_by").references(() => users.id), // VARCHAR - users.id is UUID
@@ -15150,3 +15152,49 @@ export const franchiseInvestorNotes = pgTable("franchise_investor_notes", {
 export const insertFranchiseInvestorNoteSchema = createInsertSchema(franchiseInvestorNotes).omit({ id: true, createdAt: true });
 export type InsertFranchiseInvestorNote = z.infer<typeof insertFranchiseInvestorNoteSchema>;
 export type FranchiseInvestorNote = typeof franchiseInvestorNotes.$inferSelect;
+
+// =============================================
+// Academy V3 — Webinars
+// =============================================
+
+export const webinars = pgTable("webinars", {
+  id: serial("id").primaryKey(),
+  title: text("title").notNull(),
+  description: text("description"),
+  hostName: text("host_name"),
+  hostUserId: varchar("host_user_id").references(() => users.id, { onDelete: "set null" }),
+  webinarDate: timestamp("webinar_date").notNull(),
+  durationMinutes: integer("duration_minutes"),
+  meetingLink: text("meeting_link"),
+  targetRoles: text("target_roles").array().default(sql`'{}'::text[]`),
+  isLive: boolean("is_live").default(false),
+  status: text("status").default("scheduled"),
+  branchId: integer("branch_id").references(() => branches.id, { onDelete: "set null" }),
+  maxParticipants: integer("max_participants"),
+  createdBy: varchar("created_by").references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("webinars_date_idx").on(table.webinarDate),
+  index("webinars_status_idx").on(table.status),
+]);
+
+export const insertWebinarSchema = createInsertSchema(webinars).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertWebinar = z.infer<typeof insertWebinarSchema>;
+export type Webinar = typeof webinars.$inferSelect;
+
+export const webinarRegistrations = pgTable("webinar_registrations", {
+  id: serial("id").primaryKey(),
+  webinarId: integer("webinar_id").notNull().references(() => webinars.id, { onDelete: "cascade" }),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  registeredAt: timestamp("registered_at").defaultNow(),
+  attended: boolean("attended").default(false),
+}, (table) => [
+  index("wr_webinar_idx").on(table.webinarId),
+  index("wr_user_idx").on(table.userId),
+  unique("wr_webinar_user_uniq").on(table.webinarId, table.userId),
+]);
+
+export const insertWebinarRegistrationSchema = createInsertSchema(webinarRegistrations).omit({ id: true, registeredAt: true });
+export type InsertWebinarRegistration = z.infer<typeof insertWebinarRegistrationSchema>;
+export type WebinarRegistration = typeof webinarRegistrations.$inferSelect;

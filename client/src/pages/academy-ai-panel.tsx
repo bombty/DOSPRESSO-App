@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import {
   Brain,
@@ -37,6 +38,8 @@ interface AiAction {
   signal: string;
   severity: "high" | "medium" | "low";
   estimatedMinutes: number;
+  deepLink?: string;
+  description?: string;
 }
 
 interface RiskSignal {
@@ -152,6 +155,7 @@ const SCOPE_LABELS: Record<string, string> = {
 
 function EmployeePanel({ data }: { data: EmployeePanelData }) {
   const [, setLocation] = useLocation();
+  const [detailAction, setDetailAction] = useState<AiAction | null>(null);
 
   return (
     <div className="space-y-4" data-testid="employee-ai-panel">
@@ -216,14 +220,24 @@ function EmployeePanel({ data }: { data: EmployeePanelData }) {
                             <Clock className="h-3 w-3" />
                             <span>{action.estimatedMinutes} dk</span>
                           </div>
-                          {linkConfig && (
+                          {action.deepLink ? (
                             <Button
                               size="sm"
                               variant="outline"
-                              onClick={() => setLocation(linkConfig.path)}
+                              onClick={() => setLocation(action.deepLink!)}
                               data-testid={`button-action-go-${idx}`}
                             >
-                              {linkConfig.label}
+                              {linkConfig?.label || "Detayları Gör"}
+                              <ArrowRight className="h-3 w-3 ml-1" />
+                            </Button>
+                          ) : (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => setDetailAction(action)}
+                              data-testid={`button-action-detail-${idx}`}
+                            >
+                              Detayları Gör
                               <ArrowRight className="h-3 w-3 ml-1" />
                             </Button>
                           )}
@@ -240,6 +254,25 @@ function EmployeePanel({ data }: { data: EmployeePanelData }) {
           </p>
         </CardContent>
       </Card>
+      <Dialog open={!!detailAction} onOpenChange={(open) => !open && setDetailAction(null)}>
+        <DialogContent data-testid="action-detail-dialog">
+          <DialogHeader>
+            <DialogTitle>{detailAction?.title}</DialogTitle>
+            <DialogDescription>
+              {detailAction?.reason}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            {detailAction?.description && (
+              <p className="text-sm text-foreground">{detailAction.description}</p>
+            )}
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <Clock className="h-3 w-3" />
+              <span>Tahmini süre: {detailAction?.estimatedMinutes} dk</span>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

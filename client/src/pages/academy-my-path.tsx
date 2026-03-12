@@ -38,6 +38,7 @@ import {
   ArrowUpCircle,
   Info,
   XCircle,
+  MapPin,
 } from "lucide-react";
 import { ErrorState } from "../components/error-state";
 import { LoadingState } from "../components/loading-state";
@@ -899,7 +900,7 @@ export default function AcademyMyPath() {
       {actions.length === 0 && !data.onboarding && !data.activeGate && (
         <Card data-testid="no-actions">
           <CardContent className="p-6 text-center">
-            {data.completedModuleCount > 0 ? (
+            {data.currentLevel && data.currentLevel.levelNumber >= 5 ? (
               <>
                 <CheckCircle2 className="h-10 w-10 mx-auto text-green-500 mb-2" />
                 <p className="font-medium">Tebrikler!</p>
@@ -909,10 +910,10 @@ export default function AcademyMyPath() {
               </>
             ) : (
               <>
-                <Target className="h-10 w-10 mx-auto text-primary mb-2" />
-                <p className="font-medium">Kariyer yolunuz henüz başlamadı</p>
+                <MapPin className="h-10 w-10 mx-auto text-primary mb-2" />
+                <p className="font-medium">Kariyer yolunuz henüz başlatılmamış</p>
                 <p className="text-sm text-muted-foreground mt-1">
-                  Eğitim modüllerini tamamlayarak kariyer yolculuğunuza başlayabilirsiniz.
+                  Mentorunuz sizi sisteme ekledikten sonra kariyer hedefleriniz burada görünecek.
                 </p>
               </>
             )}
