@@ -728,7 +728,7 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
   app.use(factoryRouter);
   app.use(academyRouter);
   app.use(academyV2Router);
-  app.use(academyV3Router);
+  app.use("/api/v3/academy", academyV3Router);
   app.use(equipmentRouter);
   app.use(tasksRouter);
   app.use(hrRouter);

@@ -25,7 +25,7 @@ function isHQUser(role: string): boolean {
   return HQ_ROLES.includes(role);
 }
 
-router.get("/api/v3/academy/home-data", isAuthenticated, async (req, res) => {
+router.get("/home-data", isAuthenticated, async (req, res) => {
   try {
     const user = req.user as any;
     const userId = user.id;
@@ -216,7 +216,7 @@ router.get("/api/v3/academy/home-data", isAuthenticated, async (req, res) => {
   }
 });
 
-router.get("/api/v3/academy/modules", isAuthenticated, async (req, res) => {
+router.get("/modules", isAuthenticated, async (req, res) => {
   try {
     const user = req.user as any;
     const userId = user.id;
@@ -271,7 +271,7 @@ router.get("/api/v3/academy/modules", isAuthenticated, async (req, res) => {
   }
 });
 
-router.get("/api/v3/academy/webinars", isAuthenticated, async (req, res) => {
+router.get("/webinars", isAuthenticated, async (req, res) => {
   try {
     const user = req.user as any;
     const userId = user.id;
@@ -316,7 +316,7 @@ router.get("/api/v3/academy/webinars", isAuthenticated, async (req, res) => {
   }
 });
 
-router.post("/api/v3/academy/webinars", isAuthenticated, async (req, res) => {
+router.post("/webinars", isAuthenticated, async (req, res) => {
   try {
     const user = req.user as any;
     if (!isHQUser(user.role)) {
@@ -340,7 +340,7 @@ router.post("/api/v3/academy/webinars", isAuthenticated, async (req, res) => {
   }
 });
 
-router.patch("/api/v3/academy/webinars/:id", isAuthenticated, async (req, res) => {
+router.patch("/webinars/:id", isAuthenticated, async (req, res) => {
   try {
     const user = req.user as any;
     if (!isHQUser(user.role)) {
@@ -376,7 +376,7 @@ router.patch("/api/v3/academy/webinars/:id", isAuthenticated, async (req, res) =
   }
 });
 
-router.post("/api/v3/academy/webinars/:id/cancel", isAuthenticated, async (req, res) => {
+router.post("/webinars/:id/cancel", isAuthenticated, async (req, res) => {
   try {
     const user = req.user as any;
     if (!isHQUser(user.role)) {
@@ -418,7 +418,7 @@ router.post("/api/v3/academy/webinars/:id/cancel", isAuthenticated, async (req, 
   }
 });
 
-router.post("/api/v3/academy/webinars/:id/complete", isAuthenticated, async (req, res) => {
+router.post("/webinars/:id/complete", isAuthenticated, async (req, res) => {
   try {
     const user = req.user as any;
     if (!isHQUser(user.role)) {
@@ -457,7 +457,7 @@ router.post("/api/v3/academy/webinars/:id/complete", isAuthenticated, async (req
   }
 });
 
-router.post("/api/v3/academy/webinars/:id/register", isAuthenticated, async (req, res) => {
+router.post("/webinars/:id/register", isAuthenticated, async (req, res) => {
   try {
     const user = req.user as any;
     const webinarId = parseInt(req.params.id);
@@ -501,7 +501,7 @@ router.post("/api/v3/academy/webinars/:id/register", isAuthenticated, async (req
   }
 });
 
-router.delete("/api/v3/academy/webinars/:id/register", isAuthenticated, async (req, res) => {
+router.delete("/webinars/:id/register", isAuthenticated, async (req, res) => {
   try {
     const user = req.user as any;
     const webinarId = parseInt(req.params.id);
@@ -523,7 +523,7 @@ router.delete("/api/v3/academy/webinars/:id/register", isAuthenticated, async (r
   }
 });
 
-router.get("/api/v3/academy/webinars/:id/participants", isAuthenticated, async (req, res) => {
+router.get("/webinars/:id/participants", isAuthenticated, async (req, res) => {
   try {
     const user = req.user as any;
     if (!isHQUser(user.role)) {
@@ -556,7 +556,7 @@ router.get("/api/v3/academy/webinars/:id/participants", isAuthenticated, async (
   }
 });
 
-router.patch("/api/v3/academy/webinars/:id/attendance", isAuthenticated, async (req, res) => {
+router.patch("/webinars/:id/attendance", isAuthenticated, async (req, res) => {
   try {
     const user = req.user as any;
     if (!isHQUser(user.role)) {
@@ -594,7 +594,7 @@ router.patch("/api/v3/academy/webinars/:id/attendance", isAuthenticated, async (
   }
 });
 
-router.get("/api/v3/academy/webinars/admin/all", isAuthenticated, async (req, res) => {
+router.get("/webinars/admin/all", isAuthenticated, async (req, res) => {
   try {
     const user = req.user as any;
     if (!isHQUser(user.role)) {
@@ -699,7 +699,7 @@ export async function checkWebinarReminders() {
   }
 }
 
-router.post("/api/v3/academy/seed-webinars", isAuthenticated, async (req, res) => {
+router.post("/seed-webinars", isAuthenticated, async (req, res) => {
   try {
     const user = req.user as any;
     if (user.role !== "admin") {
@@ -755,7 +755,7 @@ router.post("/api/v3/academy/seed-webinars", isAuthenticated, async (req, res) =
   }
 });
 
-router.get("/api/v3/academy/category-counts", isAuthenticated, async (req, res) => {
+router.get("/category-counts", isAuthenticated, async (req, res) => {
   try {
     const counts = await db
       .select({
@@ -781,5 +781,61 @@ router.get("/api/v3/academy/category-counts", isAuthenticated, async (req, res) 
     res.status(500).json({ error: "Kategori sayıları yüklenirken hata oluştu" });
   }
 });
+
+async function seedDefaultWebinars() {
+  try {
+    const existing = await db.select({ count: sql<number>`count(*)::int` }).from(webinars);
+    if ((existing[0]?.count || 0) >= 3) return;
+
+    const adminUser = await db
+      .select({ id: users.id })
+      .from(users)
+      .where(eq(users.role, "admin"))
+      .limit(1);
+    const createdBy = adminUser[0]?.id || "system";
+
+    const seedData = [
+      {
+        title: "Yeni Ürün Tanıtımı: Berry Serisi",
+        description: "Yeni berry serisi ürünlerinin tanıtımı ve hazırlanış teknikleri",
+        hostName: "Ürün Geliştirme Ekibi",
+        webinarDate: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000),
+        durationMinutes: 45,
+        status: "scheduled" as const,
+        targetRoles: ["barista", "stajyer", "bar_buddy"],
+        createdBy,
+      },
+      {
+        title: "KVKK Güncellemesi",
+        description: "2026 KVKK yönetmelik değişiklikleri ve şube uyum gereklilikleri",
+        hostName: "Hukuk Departmanı",
+        webinarDate: new Date(Date.now() + 8 * 24 * 60 * 60 * 1000),
+        durationMinutes: 60,
+        status: "scheduled" as const,
+        targetRoles: [] as string[],
+        createdBy,
+      },
+      {
+        title: "Q1 Değerlendirme",
+        description: "2026 ilk çeyrek performans değerlendirmesi ve hedef gözden geçirme",
+        hostName: "Yönetim Kurulu",
+        webinarDate: new Date(Date.now() + 16 * 24 * 60 * 60 * 1000),
+        durationMinutes: 90,
+        status: "scheduled" as const,
+        targetRoles: ["mudur", "supervisor"],
+        createdBy,
+      },
+    ];
+
+    for (const w of seedData) {
+      await db.insert(webinars).values(w);
+    }
+    console.log("[academy-v3] 3 default webinars seeded");
+  } catch (error) {
+    console.error("[academy-v3] Webinar seed error:", error);
+  }
+}
+
+seedDefaultWebinars();
 
 export default router;
