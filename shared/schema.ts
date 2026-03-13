@@ -9553,6 +9553,7 @@ export const factoryProducts = pgTable("factory_products", {
   name: varchar("name", { length: 200 }).notNull(),
   sku: varchar("sku", { length: 50 }).notNull().unique(),
   category: varchar("category", { length: 50 }).notNull(),
+  subCategory: varchar("sub_category", { length: 100 }),
   unit: varchar("unit", { length: 20 }).notNull(), // kg, lt, adet
   unitPrice: integer("unit_price").default(0), // Kuruş cinsinden
   minStock: integer("min_stock").default(0),
@@ -9886,6 +9887,30 @@ export const insertFactoryWasteReasonSchema = createInsertSchema(factoryWasteRea
 
 export type InsertFactoryWasteReason = z.infer<typeof insertFactoryWasteReasonSchema>;
 export type FactoryWasteReason = typeof factoryWasteReasons.$inferSelect;
+
+// Fabrika İstasyon Benchmark'ları
+export const factoryStationBenchmarks = pgTable("factory_station_benchmarks", {
+  id: serial("id").primaryKey(),
+  stationName: varchar("station_name", { length: 200 }).notNull(),
+  stationKey: varchar("station_key", { length: 100 }).notNull().unique(),
+  minWorkers: integer("min_workers").notNull().default(1),
+  maxWorkers: integer("max_workers").notNull().default(4),
+  benchmarkWorkers: integer("benchmark_workers").notNull(),
+  outputPerHour: integer("output_per_hour").notNull(),
+  outputUnit: varchar("output_unit", { length: 50 }).notNull().default("adet"),
+  prepTimeMinutes: integer("prep_time_minutes").notNull().default(15),
+  cleanTimeMinutes: integer("clean_time_minutes").notNull().default(15),
+  wasteTolerancePercent: numeric("waste_tolerance_percent", { precision: 5, scale: 2 }).notNull().default("5.00"),
+  warningThresholdPercent: numeric("warning_threshold_percent", { precision: 5, scale: 2 }).notNull().default("70.00"),
+  starThresholdPercent: numeric("star_threshold_percent", { precision: 5, scale: 2 }).notNull().default("120.00"),
+  notes: text("notes"),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export type FactoryStationBenchmark = typeof factoryStationBenchmarks.$inferSelect;
+export type InsertFactoryStationBenchmark = typeof factoryStationBenchmarks.$inferInsert;
 
 // Vardiya Olay Kaydı (her aksiyon loglanır)
 export const factorySessionEvents = pgTable("factory_session_events", {

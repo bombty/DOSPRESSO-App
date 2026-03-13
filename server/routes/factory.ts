@@ -37,6 +37,9 @@ import {
   inventoryMovements,
   coffeeRoastingLogs,
   productionLots,
+  factoryStationBenchmarks,
+  factoryShiftProductions,
+  suppliers,
   users,
   branches,
   inventory,
@@ -5724,4 +5727,330 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
     }
   });
 
+  // GET /api/factory/station-benchmarks
+  router.get('/api/factory/station-benchmarks', isAuthenticated, async (req: any, res) => {
+    try {
+      const benchmarks = await db
+        .select()
+        .from(factoryStationBenchmarks)
+        .where(eq(factoryStationBenchmarks.isActive, true))
+        .orderBy(asc(factoryStationBenchmarks.id));
+      res.json(benchmarks);
+    } catch (error: any) {
+      console.error("Error fetching station benchmarks:", error);
+      res.status(500).json({ message: "Benchmark verileri getirilemedi" });
+    }
+  });
+
 export default router;
+
+// Seed functions — called once on startup
+export async function seedFactoryData() {
+  try {
+    // 1. Seed station benchmarks
+    const benchmarkData = [
+      {
+        stationName: "Donut Hamur Hattı",
+        stationKey: "donut_dough",
+        minWorkers: 2,
+        maxWorkers: 4,
+        benchmarkWorkers: 3,
+        outputPerHour: 900,
+        outputUnit: "adet",
+        prepTimeMinutes: 20,
+        cleanTimeMinutes: 20,
+        wasteTolerancePercent: "8.00",
+        warningThresholdPercent: "70.00",
+        starThresholdPercent: "120.00",
+        notes: "60kg hamur → ~1800 temiz ürün. Artan fire hamuru ve zaiyat donutlar ayrı ayrı tartılarak sisteme girilmeli."
+      },
+      {
+        stationName: "Donut Dolgu Hattı",
+        stationKey: "donut_filling",
+        minWorkers: 1,
+        maxWorkers: 2,
+        benchmarkWorkers: 1,
+        outputPerHour: 1800,
+        outputUnit: "adet",
+        prepTimeMinutes: 10,
+        cleanTimeMinutes: 10,
+        wasteTolerancePercent: "2.00",
+        warningThresholdPercent: "70.00",
+        starThresholdPercent: "120.00",
+        notes: "1 kişi saatte 1800 adet dolgu yapabilir."
+      },
+      {
+        stationName: "Donut Süsleme Hattı",
+        stationKey: "donut_decoration",
+        minWorkers: 2,
+        maxWorkers: 3,
+        benchmarkWorkers: 2,
+        outputPerHour: 1800,
+        outputUnit: "adet",
+        prepTimeMinutes: 15,
+        cleanTimeMinutes: 15,
+        wasteTolerancePercent: "3.00",
+        warningThresholdPercent: "70.00",
+        starThresholdPercent: "120.00",
+        notes: "2-3 kişi 1 saatte 1800 adet süsler. Ürün adı bu aşamada girilir (DNT kodu seçilir)."
+      },
+      {
+        stationName: "Kahve Kavurma",
+        stationKey: "coffee_roasting",
+        minWorkers: 1,
+        maxWorkers: 1,
+        benchmarkWorkers: 1,
+        outputPerHour: 30,
+        outputUnit: "kg",
+        prepTimeMinutes: 15,
+        cleanTimeMinutes: 10,
+        wasteTolerancePercent: "5.00",
+        warningThresholdPercent: "70.00",
+        starThresholdPercent: "120.00",
+        notes: "1 kişi saatte 30kg kahve kavurur."
+      },
+      {
+        stationName: "Kahve Paketleme",
+        stationKey: "coffee_packaging",
+        minWorkers: 1,
+        maxWorkers: 2,
+        benchmarkWorkers: 1,
+        outputPerHour: 30,
+        outputUnit: "kg",
+        prepTimeMinutes: 10,
+        cleanTimeMinutes: 10,
+        wasteTolerancePercent: "1.00",
+        warningThresholdPercent: "70.00",
+        starThresholdPercent: "120.00",
+        notes: "1 kişi saatte 30kg kahveyi 1kg ambalajlarda paketler (30 paket/saat)."
+      },
+      {
+        stationName: "Cheesecake Hattı",
+        stationKey: "cheesecake",
+        minWorkers: 2,
+        maxWorkers: 3,
+        benchmarkWorkers: 2,
+        outputPerHour: 384,
+        outputUnit: "adet",
+        prepTimeMinutes: 20,
+        cleanTimeMinutes: 20,
+        wasteTolerancePercent: "4.00",
+        warningThresholdPercent: "70.00",
+        starThresholdPercent: "120.00",
+        notes: "2-3 kişi saatte 384 adet cheesecake üretip pişirebilir."
+      },
+      {
+        stationName: "Cookie Hattı",
+        stationKey: "cookie",
+        minWorkers: 1,
+        maxWorkers: 2,
+        benchmarkWorkers: 1,
+        outputPerHour: 1000,
+        outputUnit: "adet",
+        prepTimeMinutes: 15,
+        cleanTimeMinutes: 15,
+        wasteTolerancePercent: "3.00",
+        warningThresholdPercent: "70.00",
+        starThresholdPercent: "120.00",
+        notes: "1-2 kişi saatte 1000 adet cookie (New York veya Crumble) üretir."
+      }
+    ];
+
+    for (const b of benchmarkData) {
+      await db.insert(factoryStationBenchmarks)
+        .values(b)
+        .onConflictDoNothing({ target: factoryStationBenchmarks.stationKey });
+    }
+    console.log("[FAB-SEED] 7 station benchmarks seeded.");
+
+    // 2. Seed factory products (65+ items)
+    const productData = [
+      { sku: "DNT-001", name: "Donut — Standart", category: "Donut", subCategory: "Standart", unitPrice: 3360, unit: "adet", description: "Boston Creme veya çeşitli dolgular" },
+      { sku: "DNT-002", name: "Donut — Gourmet", category: "Donut", subCategory: "Gourmet", unitPrice: 3950, unit: "adet", description: "Premium kaplama & dolgu" },
+      { sku: "DNT-003", name: "Almond", category: "Donut", subCategory: "Gourmet", unitPrice: 3950, unit: "adet", description: "Kaplama: Sütlü Çikolata, Badem | Dolgu: Boston Creme" },
+      { sku: "DNT-004", name: "Caramella", category: "Donut", subCategory: "Standart", unitPrice: 3360, unit: "adet", description: "Kaplama: Beyaz Çikolata, Esmer Şeker | Dolgu: Karamel" },
+      { sku: "DNT-005", name: "Black & White", category: "Donut", subCategory: "Standart", unitPrice: 3360, unit: "adet", description: "Kaplama: Sütlü + Beyaz Çikolata | Dolgu: Boston Creme" },
+      { sku: "DNT-006", name: "Cheesecake Donut", category: "Donut", subCategory: "Gourmet", unitPrice: 3950, unit: "adet", description: "Kaplama: Beyaz Çikolata, Bisküvi, Frambuaz Sos | Dolgu: Taze Peynir, Labne, Krema" },
+      { sku: "DNT-007", name: "Black Jack", category: "Donut", subCategory: "Gourmet", unitPrice: 3950, unit: "adet", description: "Kaplama: Bitter Çikolata, Çikolatalı Şeker | Dolgu: Pralin Çikolata" },
+      { sku: "DNT-008", name: "Chococino", category: "Donut", subCategory: "Standart", unitPrice: 3360, unit: "adet", description: "Kaplama: Beyaz Çikolata, Kahve, Çikolatalı Şeker | Dolgu: Pralin Çikolata" },
+      { sku: "DNT-009", name: "Classic", category: "Donut", subCategory: "Standart", unitPrice: 3360, unit: "adet", description: "Kaplama: Dekstroz Şekeri | Dolgu: Sade" },
+      { sku: "DNT-010", name: "Elmo Monster", category: "Donut", subCategory: "Standart", unitPrice: 3360, unit: "adet", description: "Kaplama: Beyaz Çikolata, Hindistan Cevizi | Dolgu: Boston Creme" },
+      { sku: "DNT-011", name: "Cocoblack", category: "Donut", subCategory: "Standart", unitPrice: 3360, unit: "adet", description: "Kaplama: Sütlü Çikolata, Hindistan Cevizi | Dolgu: Boston Creme" },
+      { sku: "DNT-012", name: "Green Mile", category: "Donut", subCategory: "Standart", unitPrice: 3360, unit: "adet", description: "Kaplama: Beyaz Çikolata, Antep Fıstığı | Dolgu: Karamel" },
+      { sku: "DNT-013", name: "Cookie Monster", category: "Donut", subCategory: "Standart", unitPrice: 3360, unit: "adet", description: "Kaplama: Beyaz Çikolata, Hindistan Cevizi | Dolgu: Boston Creme" },
+      { sku: "DNT-014", name: "Happy Face", category: "Donut", subCategory: "Standart", unitPrice: 3360, unit: "adet", description: "Kaplama: Sütlü Çikolata, Renkli Şeker | Dolgu: Pralin Çikolata" },
+      { sku: "DNT-015", name: "Hypnos", category: "Donut", subCategory: "Standart", unitPrice: 3360, unit: "adet", description: "Kaplama: Beyaz Çikolata, Tarçın, Esmer Şeker | Dolgu: Karamel" },
+      { sku: "DNT-016", name: "Nut Corner", category: "Donut", subCategory: "Gourmet", unitPrice: 3950, unit: "adet", description: "Kaplama: Sütlü Çikolata, Fındık Parçaları | Dolgu: Karamel" },
+      { sku: "DNT-017", name: "Kardeshian", category: "Donut", subCategory: "Standart", unitPrice: 3360, unit: "adet", description: "Kaplama: Siyah Belçika Çikolata, Frambuaz Şeker | Dolgu: Frambuaz" },
+      { sku: "DNT-018", name: "Nut on White", category: "Donut", subCategory: "Gourmet", unitPrice: 3950, unit: "adet", description: "Kaplama: Beyaz Çikolata, Fındık Parçaları | Dolgu: Boston Creme" },
+      { sku: "DNT-019", name: "Macchiato", category: "Donut", subCategory: "Standart", unitPrice: 3360, unit: "adet", description: "Kaplama: Beyaz Çikolata, Kahve | Dolgu: Boston Creme" },
+      { sku: "DNT-020", name: "Oreoloji", category: "Donut", subCategory: "Gourmet", unitPrice: 3950, unit: "adet", description: "Kaplama: Beyaz Çikolata, Oreo Bisküvi | Dolgu: Boston Creme" },
+      { sku: "DNT-021", name: "Pink Lady", category: "Donut", subCategory: "Standart", unitPrice: 3360, unit: "adet", description: "Kaplama: Pembe Belçika Çikolata, Renkli Şeker | Dolgu: Frambuaz" },
+      { sku: "DNT-022", name: "Snow White", category: "Donut", subCategory: "Standart", unitPrice: 3360, unit: "adet", description: "Kaplama: Beyaz Belçika Çikolata, Renkli Şeker | Dolgu: Frambuaz" },
+      { sku: "DNT-023", name: "Rainbow", category: "Donut", subCategory: "Standart", unitPrice: 3360, unit: "adet", description: "Kaplama: Sütlü Çikolata, Renkli Şeker | Dolgu: Karamel" },
+      { sku: "DNT-024", name: "Unicorn", category: "Donut", subCategory: "Standart", unitPrice: 3360, unit: "adet", description: "Kaplama: Beyaz Çikolata, Frambuaz | Dolgu: Vişne" },
+      { sku: "DNT-025", name: "Rihanna", category: "Donut", subCategory: "Gourmet", unitPrice: 3950, unit: "adet", description: "Kaplama: Sütlü Çikolata, Fındık Parçaları | Dolgu: Boston Creme" },
+      { sku: "TLI-001", name: "Everes Cake", category: "Tatlılar", subCategory: "Kek", unitPrice: 3600, unit: "adet", description: "Karamel parçacıklı kek" },
+      { sku: "TLI-002", name: "Bunny Cake", category: "Tatlılar", subCategory: "Kek", unitPrice: 3600, unit: "adet", description: "Havuçlu, tarçınlı kek" },
+      { sku: "TLI-003", name: "Cinnaboom (6'lı)", category: "Tatlılar", subCategory: "Cinnamon Roll", unitPrice: 3635, unit: "adet", description: "Vanilya, Tarçın, Tereyağ" },
+      { sku: "TLI-004", name: "Cinnaboom Brownie", category: "Tatlılar", subCategory: "Cinnamon Roll", unitPrice: 3635, unit: "adet", description: "Kakao, Vanilya, Tarçın, Tereyağ" },
+      { sku: "TLI-005", name: "Brownie", category: "Tatlılar", subCategory: "Brownie", unitPrice: 3600, unit: "adet", description: "Bitter & Sütlü Çikolatalı" },
+      { sku: "TLI-006", name: "Gold Brownie", category: "Tatlılar", subCategory: "Brownie", unitPrice: 3600, unit: "adet", description: "Beyaz Çikolatalı Brownie" },
+      { sku: "TLI-007", name: "Crumbel Cookie", category: "Tatlılar", subCategory: "Kurabiye", unitPrice: 4900, unit: "adet", description: "Yulaf, Beyaz Çikolata, Tereyağlı" },
+      { sku: "TLI-008", name: "New York Cookie", category: "Tatlılar", subCategory: "Kurabiye", unitPrice: 4900, unit: "adet", description: "Bitter, Sütlü, Beyaz Çikolatalı" },
+      { sku: "TLI-009", name: "Cheesecake (Bardak)", category: "Tatlılar", subCategory: "Cheesecake", unitPrice: 4500, unit: "adet", description: "Bisküvi, Tereyağ, Krem Peynir, Süt, Şeker, Vanilya, Çilek Püresi" },
+      { sku: "TLI-010", name: "Tiramisu", category: "Tatlılar", subCategory: "Tiramisu", unitPrice: 5000, unit: "adet", description: "Kedi Dili Bisküvi, Kahve, Mascarpone, Toz Şeker, Kakao" },
+      { sku: "TLI-011", name: "Pumkin Cheesecake", category: "Tatlılar", subCategory: "Cheesecake", unitPrice: 5500, unit: "adet", description: "Bal Kabaklı Cheesecake" },
+      { sku: "TLI-012", name: "Raspberry Cheesecake", category: "Tatlılar", subCategory: "Cheesecake", unitPrice: 5500, unit: "adet", description: "Frambuazlı Cheesecake" },
+      { sku: "TLI-013", name: "Oreo Cheesecake", category: "Tatlılar", subCategory: "Cheesecake", unitPrice: 5500, unit: "adet", description: "Oreo Bisküvili Cheesecake" },
+      { sku: "TLI-014", name: "Lotus Cheesecake", category: "Tatlılar", subCategory: "Cheesecake", unitPrice: 5500, unit: "adet", description: "Lotus Bisküvili Cheesecake" },
+      { sku: "TUZ-001", name: "Wrapitos Honey Chilli", category: "Tuzlular", subCategory: "Wrapito", unitPrice: 7700, unit: "adet", description: "Cheddar, Mozarella, Ballı Acı Soslu Tavuk" },
+      { sku: "TUZ-002", name: "Wrapitos BBQ Chicken", category: "Tuzlular", subCategory: "Wrapito", unitPrice: 7700, unit: "adet", description: "Cheddar, Mozarella, BBQ Soslu Tavuk" },
+      { sku: "TUZ-003", name: "Hi Five Cheese Mamabon", category: "Tuzlular", subCategory: "Mamabon Bagel", unitPrice: 4250, unit: "adet", description: "Haşhaşlı Bagel | Cheddar, Mozarella, Krem Peynir, Melt Kaşar, Çeçil" },
+      { sku: "TUZ-004", name: "Texas BBQ Mamabon", category: "Tuzlular", subCategory: "Mamabon Bagel", unitPrice: 4250, unit: "adet", description: "Susamlı Bagel | Köfte: Piliç Eti, Galeta Unu, Maydanoz, Baharat, BBQ Sos" },
+      { sku: "TUZ-005", name: "Croissant Sade Tereyağlı", category: "Tuzlular", subCategory: "Croissant", unitPrice: 4573, unit: "adet", description: "Tereyağlı Fransız Kruvasan" },
+      { sku: "TUZ-006", name: "Brezel", category: "Tuzlular", subCategory: "Brezel", unitPrice: 3800, unit: "adet", description: "Alman Simidi, Tuzlu" },
+      { sku: "SYR-001", name: "Mango Aromalı Şurup", category: "Şuruplar", subCategory: "Meyve", unitPrice: 16800, unit: "şişe", description: "950ml PET | Mango Meyvesi, Doğal Pancar Şekeri, Stevia" },
+      { sku: "SYR-002", name: "Misket Limon Aromalı Şurup", category: "Şuruplar", subCategory: "Meyve", unitPrice: 16800, unit: "şişe", description: "950ml PET | Limon, Lime, Doğal Pancar Şekeri, Stevia" },
+      { sku: "SYR-003", name: "Çilek Frambuaz Aromalı Şurup", category: "Şuruplar", subCategory: "Meyve", unitPrice: 16800, unit: "şişe", description: "950ml PET | Çilek, Frambuaz, Doğal Pancar Şekeri, Stevia" },
+      { sku: "SYR-004", name: "Hibiskus Aromalı Şurup", category: "Şuruplar", subCategory: "Çiçek", unitPrice: 16800, unit: "şişe", description: "950ml PET | Amber Tozu Öğütülmüş, Doğal Pancar Şekeri, Stevia" },
+      { sku: "SYR-005", name: "Şeftali Aromalı Şurup", category: "Şuruplar", subCategory: "Meyve", unitPrice: 16800, unit: "şişe", description: "950ml PET | Şeftali Meyvesi, Doğal Pancar Şekeri, Stevia" },
+      { sku: "SYR-006", name: "Yaban Mersini Aromalı Şurup", category: "Şuruplar", subCategory: "Meyve", unitPrice: 16800, unit: "şişe", description: "950ml PET | Yaban Mersini Meyvesi, Doğal Pancar Şekeri, Stevia" },
+      { sku: "SYR-007", name: "Kiraz Çiçeği Aromalı Şurup", category: "Şuruplar", subCategory: "Çiçek", unitPrice: 16800, unit: "şişe", description: "950ml PET | Kiraz Çiçeği ve Meyvesi, Doğal Pancar Şekeri, Stevia" },
+      { sku: "SYR-008", name: "Aloe Vera Aromalı Şurup", category: "Şuruplar", subCategory: "Bitkisel", unitPrice: 16800, unit: "şişe", description: "950ml PET | Aloe Vera, Salatalık, Doğal Pancar Şekeri, Stevia" },
+      { sku: "SYR-009", name: "Vanilya Aromalı Şurup", category: "Şuruplar", subCategory: "Klasik", unitPrice: 16800, unit: "şişe", description: "950ml PET | Vanilya Özü, Doğal Pancar Şekeri, Stevia" },
+      { sku: "SYR-010", name: "Nane Aromalı Şurup", category: "Şuruplar", subCategory: "Bitkisel", unitPrice: 16800, unit: "şişe", description: "950ml PET | Nane Bitkisi, Doğal Pancar Şekeri, Stevia" },
+      { sku: "SYR-011", name: "Fındık Aromalı Şurup", category: "Şuruplar", subCategory: "Kuruyemiş", unitPrice: 16800, unit: "şişe", description: "950ml PET | Fındık Öğütülmüş, Doğal Pancar Şekeri, Stevia" },
+      { sku: "SYR-012", name: "Karamel Aromalı Şurup", category: "Şuruplar", subCategory: "Klasik", unitPrice: 16800, unit: "şişe", description: "950ml PET | Doğal Pancar Şekeri, Stevia" },
+      { sku: "SYR-013", name: "Tarçın Aromalı Şurup", category: "Şuruplar", subCategory: "Baharat", unitPrice: 16800, unit: "şişe", description: "950ml PET | Tarçın Tozu, Doğal Pancar Şekeri, Stevia" },
+      { sku: "SYR-014", name: "Pikan Aromalı Şurup", category: "Şuruplar", subCategory: "Kuruyemiş", unitPrice: 16800, unit: "şişe", description: "950ml PET | Pikan Öğütülmüş, Doğal Pancar Şekeri, Stevia" },
+      { sku: "SYR-015", name: "Marshmallow Aromalı Şurup", category: "Şuruplar", subCategory: "Özel", unitPrice: 16800, unit: "şişe", description: "950ml PET | Marshmallow, Doğal Pancar Şekeri, Stevia" },
+      { sku: "SYR-016", name: "Chai Tea Aromalı Şurup", category: "Şuruplar", subCategory: "Çay", unitPrice: 16800, unit: "şişe", description: "950ml PET | Kakule, Tarçın, Anason, Zerdeçal, Defne, Karabiber, Yenibahar" },
+      { sku: "SYR-017", name: "Popcorn Aromalı Şurup", category: "Şuruplar", subCategory: "Özel", unitPrice: 16800, unit: "şişe", description: "950ml PET | Patlamış Mısır Öğütülmüş, Doğal Pancar Şekeri, Stevia" },
+      { sku: "SYR-018", name: "Bal Kabağı Aromalı Şurup", category: "Şuruplar", subCategory: "Özel", unitPrice: 16800, unit: "şişe", description: "950ml PET | Bal Kabağı, Doğal Pancar Şekeri, Stevia" },
+      { sku: "SYR-019", name: "Kola Aromalı Şurup", category: "Şuruplar", subCategory: "İçecek", unitPrice: 16800, unit: "şişe", description: "950ml PET | Kola Aroması, Doğal Pancar Şekeri, Stevia" },
+      { sku: "SYR-020", name: "Enerji İçeceği Aromalı Şurup", category: "Şuruplar", subCategory: "İçecek", unitPrice: 16800, unit: "şişe", description: "950ml PET | Enerji İçeceği Aroma, Kafein, Taurin, Doğal Pancar Şekeri, Stevia" },
+      { sku: "SYR-021", name: "Creamice Base Şurup", category: "Şuruplar", subCategory: "Özel", unitPrice: 16800, unit: "şişe", description: "950ml PET | Doğal Pancar Şekeri, Stevia" },
+      { sku: "SYR-022", name: "Pinkberry Şurup 950ml", category: "Şuruplar", subCategory: "Meyve", unitPrice: 16800, unit: "şişe", description: "950ml PET | Çilek, Frambuaz karışımı" },
+      { sku: "TOP-001", name: "Bombty Latte Toz 1000g", category: "Toz&Topping", subCategory: "Latte Tozu", unitPrice: 27269, unit: "adet", description: "PTS, Whey, Yağsız Süt Tozu, Vanilin, Hindistan Cevizi Yağı" },
+      { sku: "TOP-002", name: "Creamice Base 1000g", category: "Toz&Topping", subCategory: "Base Tozu", unitPrice: 26737, unit: "adet", description: "Sodyum Kazeinat, Yağsız Süt Tozu, Hindistan Cevizi Yağı, Vanilya" },
+      { sku: "TOP-003", name: "Golden Latte 1000g", category: "Toz&Topping", subCategory: "Latte Tozu", unitPrice: 23063, unit: "adet", description: "PTS, Zerdeçal, Karabiber, Zencefil, Hindistan Cevizi" },
+      { sku: "TOP-004", name: "Sıcak Çikolata 1000g", category: "Toz&Topping", subCategory: "Çikolata Tozu", unitPrice: 18261, unit: "adet", description: "Yağı Azaltılmış Çikolata %88, Kakao Tozu, Şeker" },
+      { sku: "TOP-005", name: "Cinnaboom Key Blend Toz", category: "Toz&Topping", subCategory: "Özel Karışım", unitPrice: 7845, unit: "adet", description: "Toz Şeker, Vanilin, Tarçın, Tuz" },
+      { sku: "TOP-006", name: "Matcha 250g", category: "Toz&Topping", subCategory: "Matcha", unitPrice: 83408, unit: "adet", description: "%100 Saf Ceremonial Grade Matcha" },
+      { sku: "TOP-007", name: "Classic Donut Dekstroz Toz", category: "Toz&Topping", subCategory: "Dekstroz", unitPrice: 15253, unit: "adet", description: "Dekstroz Tozu — Donut Kaplama" },
+      { sku: "TOP-008", name: "Pumpkin Latte 250g", category: "Toz&Topping", subCategory: "Latte Tozu", unitPrice: 36000, unit: "adet", description: "Bal Kabağı, Tarçın, Baharat karışımı" },
+      { sku: "TOP-009", name: "Doreo Crash 1000g", category: "Toz&Topping", subCategory: "Topping", unitPrice: 15806, unit: "adet", description: "PTS, Whey, Yağsız Süt Tozu, Vanilin, Hindistan Cevizi" },
+      { sku: "TOP-010", name: "Dextrose (Dekstroz) 1000g", category: "Toz&Topping", subCategory: "Topping", unitPrice: 15253, unit: "adet", description: "Dekstroz Tozu" },
+      { sku: "TOP-011", name: "Nut Mix 1000g", category: "Toz&Topping", subCategory: "Topping", unitPrice: 17424, unit: "adet", description: "Kavrulmuş Parça Fındık" },
+      { sku: "TOP-012", name: "Coconut 1000g", category: "Toz&Topping", subCategory: "Topping", unitPrice: 11050, unit: "adet", description: "Kurutulmuş Hindistan Cevizi" },
+      { sku: "TOP-013", name: "Dark Chocolate Sprinkles", category: "Toz&Topping", subCategory: "Sprinkles", unitPrice: 9545, unit: "adet", description: "PTS, Şeker, Bitkisel Yağ, Kakao Tozu" },
+      { sku: "TOP-014", name: "White Chocolate Sprinkles", category: "Toz&Topping", subCategory: "Sprinkles", unitPrice: 9545, unit: "adet", description: "PTS, Şeker, Bitkisel Yağ, Kakao Tozu" },
+      { sku: "TOP-015", name: "Blue Sprinkles 300g", category: "Toz&Topping", subCategory: "Sprinkles", unitPrice: 7000, unit: "adet", description: "Şeker, Nişasta, Renklendirici" },
+      { sku: "TOP-016", name: "Pink Sprinkles 300g", category: "Toz&Topping", subCategory: "Sprinkles", unitPrice: 7000, unit: "adet", description: "Şeker, Nişasta, Renklendirici" },
+      { sku: "TOP-017", name: "Yellow Sprinkles 300g", category: "Toz&Topping", subCategory: "Sprinkles", unitPrice: 7000, unit: "adet", description: "Şeker, Nişasta, Renklendirici" },
+      { sku: "TOP-018", name: "Strawberry Topping 1000g", category: "Toz&Topping", subCategory: "Sos Topping", unitPrice: 9545, unit: "adet", description: "Su, Şeker, Çilek Püresi" },
+      { sku: "KHV-001", name: "Espresso Roasted Beans 250g", category: "Kahveler", subCategory: "Çekirdek", unitPrice: 19046, unit: "paket", description: "%100 Arabica — Orta Koyu Kavrulmuş" },
+      { sku: "KHV-002", name: "Espresso Roasted Beans 1000g", category: "Kahveler", subCategory: "Çekirdek", unitPrice: 73770, unit: "paket", description: "%100 Arabica — Orta Koyu Kavrulmuş" },
+      { sku: "KHV-003", name: "Filter Coffee 250g", category: "Kahveler", subCategory: "Çekirdek", unitPrice: 21065, unit: "paket", description: "%100 Arabica — Orta Kavrulmuş" },
+      { sku: "KHV-004", name: "Filter Coffee 1000g", category: "Kahveler", subCategory: "Çekirdek", unitPrice: 78592, unit: "paket", description: "%100 Arabica — Orta Kavrulmuş" },
+      { sku: "KHV-005", name: "Turkish Coffee 250g", category: "Kahveler", subCategory: "Çekirdek", unitPrice: 16742, unit: "paket", description: "%100 Arabica — Açık Kavrulmuş" },
+      { sku: "KHV-006", name: "Decaf Coffee 1000g", category: "Kahveler", subCategory: "Çekirdek", unitPrice: 88372, unit: "paket", description: "%100 Arabica — Orta Kavrulmuş, Kafeinsiz" },
+      { sku: "KHV-007", name: "Creamice Instant Coffee 500g", category: "Kahveler", subCategory: "Granül", unitPrice: 28634, unit: "paket", description: "Espresso Blend Granül Çözünebilir Kahve" },
+      { sku: "CAY-001", name: "IQ Tea 500g", category: "Çaylar", subCategory: "Yeşil Çay", unitPrice: 32000, unit: "paket", description: "Yeşil Çay Tabanı, Nane, Baharat — Odak & Canlılık" },
+      { sku: "CAY-002", name: "Balance Tea 500g", category: "Çaylar", subCategory: "Rooibos", unitPrice: 48900, unit: "paket", description: "Rooibos, Lavanta, Gül — Sakinleştirici" },
+      { sku: "CAY-003", name: "Mandala Tea 500g", category: "Çaylar", subCategory: "Yeşil Çay", unitPrice: 34800, unit: "paket", description: "Yeşil Çay, Yasemin — Meditasyon" },
+      { sku: "CAY-004", name: "Teatox Tea 500g", category: "Çaylar", subCategory: "Detoks", unitPrice: 27600, unit: "paket", description: "Bitkisel Arınma Notaları" },
+      { sku: "CAY-005", name: "Do & You Tea 500g", category: "Çaylar", subCategory: "Rooibos", unitPrice: 49600, unit: "paket", description: "Rooibos, Çikolata Dokusu — Rahatlama" },
+      { sku: "CAY-006", name: "Forest Tea 500g", category: "Çaylar", subCategory: "Orman Meyveleri", unitPrice: 30800, unit: "paket", description: "Orman Meyveleri — Enerjik & Keyifli" },
+      { sku: "CAY-007", name: "Matcha 250g (Çay)", category: "Çaylar", subCategory: "Matcha", unitPrice: 83408, unit: "paket", description: "Japon Seremonisi Matcha" },
+      { sku: "CAY-008", name: "Siyah Çay 1kg", category: "Çaylar", subCategory: "Siyah Çay", unitPrice: 44286, unit: "paket", description: "Dospresso Siyah Çay" },
+    ];
+
+    for (const p of productData) {
+      await db.insert(factoryProducts)
+        .values(p)
+        .onConflictDoUpdate({
+          target: factoryProducts.sku,
+          set: {
+            name: sql`EXCLUDED.name`,
+            category: sql`EXCLUDED.category`,
+            subCategory: sql`EXCLUDED.sub_category`,
+            unitPrice: sql`EXCLUDED.unit_price`,
+            unit: sql`EXCLUDED.unit`,
+            description: sql`EXCLUDED.description`,
+            updatedAt: sql`NOW()`,
+          },
+        });
+    }
+    console.log(`[FAB-SEED] ${productData.length} factory products seeded.`);
+
+    // 3. Tag NULL product_id records in factory_shift_productions
+    await db.execute(sql`
+      UPDATE factory_shift_productions
+      SET notes = COALESCE(notes, '') || ' [Ürün tanımlanmamış — lütfen düzenleyin]'
+      WHERE product_id IS NULL AND (notes IS NULL OR notes NOT LIKE '%Ürün tanımlanmamış%')
+    `);
+    console.log("[FAB-SEED] Tagged NULL product_id records in factory_shift_productions.");
+
+    // 4. Seed 5 suppliers
+    const supplierData = [
+      {
+        code: "SUP-001",
+        name: "Öztürk Gıda Hammadde A.Ş.",
+        contactPerson: "Mehmet Öztürk",
+        phone: "0212 555 01 01",
+        email: "info@ozturkgida.com.tr",
+        categories: ["Hammadde — Şeker, Un, Yağ"],
+        notes: "Toz Şeker, Turyağ, Buğday Gluteni tedarikçisi. Haftalık teslimat.",
+      },
+      {
+        code: "SUP-002",
+        name: "Aromatek Aroma & Gıda San. Tic.",
+        contactPerson: "Ayşe Kara",
+        phone: "0216 444 02 02",
+        email: "satis@aromatek.com.tr",
+        categories: ["Aroma Verici & Katkı"],
+        notes: "Mango, Blueberry, Hibiscus, Çilek-Frambuaz, Nane aroma vericileri. Minimum sipariş 5kg.",
+      },
+      {
+        code: "SUP-003",
+        name: "Belçika Çikolata İthalat Ltd.",
+        contactPerson: "Eren Yıldız",
+        phone: "0212 333 03 03",
+        email: "info@belcikaciko.com.tr",
+        categories: ["Çikolata & Kakao"],
+        notes: "Beyaz, Sütlü, Bitter Konfiseri Para Çikolata (10kg bloklar). İtalyan & Belçika orijin.",
+      },
+      {
+        code: "SUP-004",
+        name: "Ambalaj Pro Packaging A.Ş.",
+        contactPerson: "Fatih Çelik",
+        phone: "0232 222 04 04",
+        email: "satis@ambalajpro.com.tr",
+        categories: ["Ambalaj — PET Şişe, Kapak, Etiket"],
+        notes: "1L PET şişe, kapak, şurup etiketi. Minimum 500 adet sipariş.",
+      },
+      {
+        code: "SUP-005",
+        name: "Süt & Süt Ürünleri Kooperatifi",
+        contactPerson: "Hasan Ak",
+        phone: "0342 111 05 05",
+        email: "tedarik@sutkooperatif.com.tr",
+        categories: ["Süt & Süt Ürünleri"],
+        notes: "Yağsız Süt Tozu, Mascarpone, Krem Peynir. Soğuk zincir teslimat, 2 günde kargo.",
+      },
+    ];
+
+    for (const s of supplierData) {
+      await db.insert(suppliers)
+        .values(s)
+        .onConflictDoNothing({ target: suppliers.code });
+    }
+    console.log("[FAB-SEED] 5 suppliers seeded.");
+
+    console.log("[FAB-SEED] All factory seed data completed successfully.");
+  } catch (error) {
+    console.error("[FAB-SEED] Error seeding factory data:", error);
+  }
+}
