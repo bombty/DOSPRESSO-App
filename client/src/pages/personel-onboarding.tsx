@@ -252,6 +252,8 @@ export default function PersonelOnboardingPage() {
     );
   }
 
+  if (isError) return <ErrorState onRetry={() => refetch()} />;
+
   const mentorEmployees = employees.filter(e => MENTOR_ROLES.includes(e.role || ""));
 
   const renderRecordCard = (record: EmployeeOnboarding & { user?: User }, showActions = true) => {
@@ -679,7 +681,7 @@ function StartOnboardingDialog({
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>Yeni Onboarding Baslat</DialogTitle>
+          <DialogTitle>Yeni Onboarding Başlat</DialogTitle>
           <DialogDescription>Personel icin onboarding sureci baslatmak uzere bilgileri girin</DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -693,7 +695,7 @@ function StartOnboardingDialog({
                   <Select onValueChange={field.onChange} value={field.value}>
                     <FormControl>
                       <SelectTrigger data-testid="select-employee">
-                        <SelectValue placeholder="Personel secin" />
+                        <SelectValue placeholder="Personel seçin" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
@@ -735,11 +737,11 @@ function StartOnboardingDialog({
               name="templateId"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Sablon</FormLabel>
+                  <FormLabel>Şablon</FormLabel>
                   <Select onValueChange={field.onChange} value={field.value}>
                     <FormControl>
                       <SelectTrigger data-testid="select-template">
-                        <SelectValue placeholder="Sablon secin" />
+                        <SelectValue placeholder="Şablon seçin" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
@@ -763,7 +765,7 @@ function StartOnboardingDialog({
                   <Select onValueChange={field.onChange} value={field.value}>
                     <FormControl>
                       <SelectTrigger data-testid="select-mentor">
-                        <SelectValue placeholder="Mentor secin" />
+                        <SelectValue placeholder="Mentor seçin" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
@@ -784,7 +786,7 @@ function StartOnboardingDialog({
               name="startDate"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Baslangic Tarihi</FormLabel>
+                  <FormLabel>Başlangıç Tarihi</FormLabel>
                   <FormControl>
                     <Input type="date" {...field} data-testid="input-start-date" />
                   </FormControl>
@@ -794,7 +796,7 @@ function StartOnboardingDialog({
             />
             <Button type="submit" disabled={isLoading} data-testid="button-submit-onboarding" className="gap-2">
               <Users className="h-4 w-4" />
-              Baslat
+              Başlat
             </Button>
           </form>
         </Form>
@@ -851,11 +853,11 @@ function MentorNoteDialog({
               name="rating"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Degerlendirme (1-5)</FormLabel>
+                  <FormLabel>Değerlendirme (1-5)</FormLabel>
                   <Select onValueChange={field.onChange} value={field.value}>
                     <FormControl>
                       <SelectTrigger data-testid="select-rating">
-                        <SelectValue placeholder="Puan secin" />
+                        <SelectValue placeholder="Puan seçin" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>

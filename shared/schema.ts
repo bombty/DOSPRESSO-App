@@ -6643,6 +6643,8 @@ export const onboardingTemplateSteps = pgTable("onboarding_template_steps", {
   mentorRoleType: varchar("mentor_role_type", { length: 50 }).notNull().default("barista"),
   trainingModuleId: integer("training_module_id"),
   requiredCompletion: boolean("required_completion").notNull().default(true),
+  isDeleted: boolean("is_deleted").default(false),
+  deletedAt: timestamp("deleted_at"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => [
@@ -6652,6 +6654,8 @@ export const onboardingTemplateSteps = pgTable("onboarding_template_steps", {
 
 export const insertOnboardingTemplateStepSchema = createInsertSchema(onboardingTemplateSteps).omit({
   id: true,
+  isDeleted: true,
+  deletedAt: true,
   createdAt: true,
   updatedAt: true,
 });

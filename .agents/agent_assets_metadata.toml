@@ -78,3 +78,9 @@ id = "9e_UgF2LL0ZQ5Rrvq-mZP"
 uri = "file://.local/tasks/akademi-v3-audit-report.md"
 type = "text"
 title = "Akademi V3 — Kapsamlı Audit Raporu"
+
+[[outputs]]
+id = "Ft11l28mPT_T7wS-a9u-i"
+uri = "file://.local/tasks/post-30c-audit-report.md"
+type = "text"
+title = "DOSPRESSO — Sprint 30C Sonrası Genel Audit Raporu"

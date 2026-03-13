@@ -2994,7 +2994,10 @@ JSON formatında yanıt ver:
 
       const steps = await db.select()
         .from(onboardingTemplateSteps)
-        .where(eq(onboardingTemplateSteps.templateId, templateId))
+        .where(and(
+          eq(onboardingTemplateSteps.templateId, templateId),
+          or(eq(onboardingTemplateSteps.isDeleted, false), isNull(onboardingTemplateSteps.isDeleted))
+        ))
         .orderBy(onboardingTemplateSteps.stepOrder);
 
       res.json(steps);
@@ -3088,7 +3091,8 @@ JSON formatında yanıt ver:
         return res.status(400).json({ message: "Geçersiz adım ID" });
       }
 
-      const [deleted] = await db.delete(onboardingTemplateSteps)
+      const [deleted] = await db.update(onboardingTemplateSteps)
+        .set({ isDeleted: true, deletedAt: new Date() })
         .where(eq(onboardingTemplateSteps.id, stepId))
         .returning();
 
