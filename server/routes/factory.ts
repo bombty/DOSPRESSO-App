@@ -5747,6 +5747,30 @@ export default router;
 // Seed functions — called once on startup
 export async function seedFactoryData() {
   try {
+    // 0. Ensure tables/columns exist (runtime DDL)
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS factory_station_benchmarks (
+        id SERIAL PRIMARY KEY,
+        station_name VARCHAR(200) NOT NULL,
+        station_key VARCHAR(100) NOT NULL UNIQUE,
+        min_workers INTEGER NOT NULL DEFAULT 1,
+        max_workers INTEGER NOT NULL DEFAULT 4,
+        benchmark_workers INTEGER NOT NULL,
+        output_per_hour INTEGER NOT NULL,
+        output_unit VARCHAR(50) NOT NULL DEFAULT 'adet',
+        prep_time_minutes INTEGER NOT NULL DEFAULT 15,
+        clean_time_minutes INTEGER NOT NULL DEFAULT 15,
+        waste_tolerance_percent NUMERIC(5,2) NOT NULL DEFAULT 5.00,
+        warning_threshold_percent NUMERIC(5,2) NOT NULL DEFAULT 70.00,
+        star_threshold_percent NUMERIC(5,2) NOT NULL DEFAULT 120.00,
+        notes TEXT,
+        is_active BOOLEAN NOT NULL DEFAULT true,
+        created_at TIMESTAMP DEFAULT NOW(),
+        updated_at TIMESTAMP DEFAULT NOW()
+      )
+    `);
+    await db.execute(sql`ALTER TABLE factory_products ADD COLUMN IF NOT EXISTS sub_category VARCHAR(100)`);
+
     // 1. Seed station benchmarks
     const benchmarkData = [
       {
@@ -5996,7 +6020,7 @@ export async function seedFactoryData() {
     // 4. Seed 5 suppliers
     const supplierData = [
       {
-        code: "SUP-001",
+        code: "TED-001",
         name: "Öztürk Gıda Hammadde A.Ş.",
         contactPerson: "Mehmet Öztürk",
         phone: "0212 555 01 01",
@@ -6005,7 +6029,7 @@ export async function seedFactoryData() {
         notes: "Toz Şeker, Turyağ, Buğday Gluteni tedarikçisi. Haftalık teslimat.",
       },
       {
-        code: "SUP-002",
+        code: "TED-002",
         name: "Aromatek Aroma & Gıda San. Tic.",
         contactPerson: "Ayşe Kara",
         phone: "0216 444 02 02",
@@ -6014,7 +6038,7 @@ export async function seedFactoryData() {
         notes: "Mango, Blueberry, Hibiscus, Çilek-Frambuaz, Nane aroma vericileri. Minimum sipariş 5kg.",
       },
       {
-        code: "SUP-003",
+        code: "TED-003",
         name: "Belçika Çikolata İthalat Ltd.",
         contactPerson: "Eren Yıldız",
         phone: "0212 333 03 03",
@@ -6023,7 +6047,7 @@ export async function seedFactoryData() {
         notes: "Beyaz, Sütlü, Bitter Konfiseri Para Çikolata (10kg bloklar). İtalyan & Belçika orijin.",
       },
       {
-        code: "SUP-004",
+        code: "TED-004",
         name: "Ambalaj Pro Packaging A.Ş.",
         contactPerson: "Fatih Çelik",
         phone: "0232 222 04 04",
@@ -6032,7 +6056,7 @@ export async function seedFactoryData() {
         notes: "1L PET şişe, kapak, şurup etiketi. Minimum 500 adet sipariş.",
       },
       {
-        code: "SUP-005",
+        code: "TED-005",
         name: "Süt & Süt Ürünleri Kooperatifi",
         contactPerson: "Hasan Ak",
         phone: "0342 111 05 05",
