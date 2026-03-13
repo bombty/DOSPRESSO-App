@@ -230,7 +230,13 @@ export function BottomNav() {
   const navKeys = userRole ? (NAV_ITEMS_BY_ROLE[userRole] || ['home', 'profile']) : ['home', 'profile'];
 
   const resolveLabel = (config: NavItemConfig) => {
-    return t(config.labelKey, { defaultValue: i18n.language === "en" ? config.defaultLabelEN : config.defaultLabelTR });
+    if (userRole === 'admin') {
+      return config.defaultLabelTR;
+    }
+    const fallback = i18n.language !== "en"
+      ? config.defaultLabelTR
+      : config.defaultLabelEN;
+    return t(config.labelKey, { defaultValue: fallback });
   };
 
   const navItems: NavItem[] = navKeys

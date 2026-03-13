@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import { useBreakpoint } from "@/hooks/use-mobile";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { queryClient, apiRequest } from "@/lib/queryClient";
@@ -583,14 +584,14 @@ function EmbeddedMessages() {
   };
 
   const unreadTotal = useMemo(() => allThreads.reduce((sum, t) => sum + t.unreadCount, 0), [allThreads]);
-  const isMobile = typeof window !== "undefined" && window.innerWidth < 768;
+  const { isMobile } = useBreakpoint();
   const showThreadList = !isMobile || !selectedThreadId;
   const showConversation = !isMobile || !!selectedThreadId;
 
   return (
     <div className="flex h-[calc(100vh-220px)] min-h-[400px] overflow-hidden rounded-md border" data-testid="embedded-messages-container">
       {showThreadList && (
-        <div className={`${isMobile ? "w-full" : "w-[340px] min-w-[280px]"} border-r flex flex-col bg-background`}>
+        <div className={`${isMobile ? "w-full" : "w-1/3 min-w-[280px] max-w-[380px]"} border-r flex flex-col bg-background`}>
           <div className="p-3 border-b space-y-2">
             <div className="flex items-center justify-between gap-2">
               <h2 className="text-lg font-semibold" data-testid="text-embedded-messages-title">Mesajlar</h2>
@@ -1163,7 +1164,7 @@ export default function Notifications() {
             )}
             {isAdmin && viewAll && branches && branches.length > 0 && (
               <Select value={branchFilter} onValueChange={setBranchFilter}>
-                <SelectTrigger className="w-[180px]" data-testid="select-branch-filter">
+                <SelectTrigger className="w-full sm:w-[180px]" data-testid="select-branch-filter">
                   <Building2 className="w-3.5 h-3.5 mr-1.5 flex-shrink-0" />
                   <SelectValue placeholder="Tüm Şubeler" />
                 </SelectTrigger>

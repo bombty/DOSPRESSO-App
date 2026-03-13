@@ -1150,6 +1150,7 @@ export default function IKPage() {
                 {isDisciplinaryLoading ? (
                   <ListSkeleton count={5} variant="row" />
                 ) : (
+                  <div className="overflow-x-auto">
                   <Table>
                     <TableHeader>
                       <TableRow>
@@ -1209,6 +1210,7 @@ export default function IKPage() {
                       )}
                     </TableBody>
                   </Table>
+                  </div>
                 )}
               </CardContent>
           </Card>
@@ -1245,6 +1247,7 @@ export default function IKPage() {
                 {isOnboardingLoading ? (
                   <ListSkeleton count={5} variant="row" />
                 ) : (
+                  <div className="overflow-x-auto">
                   <Table>
                     <TableHeader>
                       <TableRow>
@@ -1303,6 +1306,7 @@ export default function IKPage() {
                       )}
                     </TableBody>
                   </Table>
+                  </div>
                 )}
               </CardContent>
           </Card>
@@ -1340,6 +1344,7 @@ export default function IKPage() {
                 {isDocumentsLoading ? (
                   <ListSkeleton count={5} variant="row" />
                 ) : (
+                  <div className="overflow-x-auto">
                   <Table>
                     <TableHeader>
                       <TableRow>
@@ -1392,6 +1397,7 @@ export default function IKPage() {
                       )}
                     </TableBody>
                   </Table>
+                  </div>
                 )}
               </CardContent>
           </Card>
@@ -3209,6 +3215,7 @@ function RecruitmentSection() {
               <p className="text-sm text-muted-foreground">Henüz başvuru kaydı bulunmuyor.</p>
             </Card>
           ) : (
+            <div className="overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -3302,6 +3309,7 @@ function RecruitmentSection() {
                 })}
               </TableBody>
             </Table>
+            </div>
           )}
         </TabsContent>
 
@@ -3347,6 +3355,7 @@ function RecruitmentSection() {
               </p>
             </Card>
           ) : (
+            <div className="overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -3402,6 +3411,7 @@ function RecruitmentSection() {
                 })}
               </TableBody>
             </Table>
+            </div>
           )}
         </TabsContent>
       </Tabs>
@@ -5963,6 +5973,7 @@ function BatchDetailSheet({
                 <div className="space-y-2">
                   <p className="text-sm font-medium">İşlem Detayları ({results.length} satır)</p>
                   <div className="max-h-52 overflow-y-auto border rounded-md">
+                    <div className="overflow-x-auto">
                     <Table>
                       <TableHeader>
                         <TableRow>
@@ -5988,6 +5999,7 @@ function BatchDetailSheet({
                         ))}
                       </TableBody>
                     </Table>
+                    </div>
                   </div>
                 </div>
               )}
@@ -6144,6 +6156,7 @@ function ImportBatchHistory({ onDownloadErrorReport, userRole }: { onDownloadErr
             <p className="text-xs text-muted-foreground py-2" data-testid="text-no-batch-history">Henüz import geçmişi yok.</p>
           ) : (
             <div className="max-h-48 overflow-y-auto">
+              <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -6191,6 +6204,7 @@ function ImportBatchHistory({ onDownloadErrorReport, userRole }: { onDownloadErr
                   ))}
                 </TableBody>
               </Table>
+              </div>
             </div>
           )}
         </div>
@@ -6518,6 +6532,7 @@ function ImportEmployeesDialog({
                 </div>
               )}
               <div className="max-h-48 overflow-y-auto border rounded-md mt-1">
+                <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -6580,6 +6595,7 @@ function ImportEmployeesDialog({
                     })}
                   </TableBody>
                 </Table>
+                </div>
               </div>
             </div>
 
@@ -7016,6 +7032,7 @@ function ImportEmployeesDialog({
             )}
 
             <div className="max-h-48 overflow-y-auto border rounded-md">
+              <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -7038,6 +7055,7 @@ function ImportEmployeesDialog({
                   ))}
                 </TableBody>
               </Table>
+              </div>
             </div>
 
             <DialogFooter className="flex-wrap gap-2">

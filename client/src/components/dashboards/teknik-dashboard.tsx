@@ -46,7 +46,7 @@ export function TeknikDashboard({
 
       {/* System Health Gauges */}
       {!isLoading && (
-        <div className="grid gap-0.5 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-1 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
           {[
             { label: 'Çözüm', value: resolutionRate, icon: CheckCircle, color: resolutionRate >= 70 ? 'green' : 'yellow' },
             { label: 'Sistem', value: systemHealth, icon: Zap, color: systemHealth >= 70 ? 'green' : systemHealth >= 40 ? 'yellow' : 'red' },
@@ -86,7 +86,7 @@ export function TeknikDashboard({
       )}
 
       {/* Alert Stats */}
-      <div className="grid gap-0.5 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4">
+      <div className="grid gap-1 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4">
         <Card>
           <CardContent className="pt-1.5 pb-1.5 text-center">
             <div className="flex justify-center mb-0.5">

@@ -40,7 +40,7 @@ export function ManagerDashboard({
     <div className="space-y-3 md:space-y-6">
       {/* Performance Gauges */}
       {!isLoading && (
-        <div className="grid gap-0.5 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-1 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
           <GaugeCard label="Görev" value={completionRate} icon={CheckCircle} />
           <GaugeCard label="Takım" value={avgTeamPerf} icon={Users} />
           <GaugeCard label="Sağlık" value={healthScore} icon={Zap} />
@@ -48,7 +48,7 @@ export function ManagerDashboard({
       )}
 
       {/* KPI Cards - Manager View */}
-      <div className="grid gap-0.5 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4">
+      <div className="grid gap-1 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4">
         <KPICard icon={CheckCircle} label="Tamamlanan" value={`${completedTasks}/${totalTasks}`} color="green" onClick={() => navigate('/gorevler')} testId="card-completed-tasks" />
         <KPICard icon={Clock} label="Beklemede" value={`${pendingTasks}/${totalTasks}`} color="blue" onClick={() => navigate('/gorevler')} testId="card-pending-tasks" />
         <KPICard icon={AlertTriangle} label="Arızalar" value={openFaults} color="red" onClick={() => navigate('/ariza')} testId="card-faults" />

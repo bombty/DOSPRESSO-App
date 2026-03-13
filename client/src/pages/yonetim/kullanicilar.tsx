@@ -403,6 +403,7 @@ export default function UserCRM() {
               <p className="text-center text-muted-foreground py-8">Kullanıcı bulunamadı</p>
             ) : (
               <>
+                <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -555,6 +556,7 @@ export default function UserCRM() {
                     ))}
                   </TableBody>
                 </Table>
+                </div>
 
                 <div className="flex items-center justify-between mt-4">
                   <div className="text-sm text-muted-foreground">

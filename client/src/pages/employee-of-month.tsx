@@ -582,6 +582,7 @@ export default function EmployeeOfMonthPage() {
                       </Card>
                     )}
 
+                    <div className="overflow-x-auto">
                     <Table>
                       <TableHeader>
                         <TableRow>
@@ -619,6 +620,7 @@ export default function EmployeeOfMonthPage() {
                         ))}
                       </TableBody>
                     </Table>
+                    </div>
                   </>
                 )}
               </CardContent>

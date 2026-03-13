@@ -190,6 +190,7 @@ export default function AICostDashboard() {
                 <Skeleton className="h-10 w-full" />
               </div>
             ) : (
+              <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -218,6 +219,7 @@ export default function AICostDashboard() {
                   )}
                 </TableBody>
               </Table>
+              </div>
             )}
           </CardContent>
         </Card>
@@ -238,6 +240,7 @@ export default function AICostDashboard() {
                 <Skeleton className="h-10 w-full" />
               </div>
             ) : (
+              <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -266,6 +269,7 @@ export default function AICostDashboard() {
                   )}
                 </TableBody>
               </Table>
+              </div>
             )}
           </CardContent>
         </Card>
@@ -287,6 +291,7 @@ export default function AICostDashboard() {
               <Skeleton className="h-10 w-full" />
             </div>
           ) : (
+            <div className="overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -315,6 +320,7 @@ export default function AICostDashboard() {
                 )}
               </TableBody>
             </Table>
+            </div>
           )}
         </CardContent>
       </Card>

@@ -366,7 +366,7 @@ export default function KaliteKontrolDashboard() {
               <p className="text-muted-foreground">Bekleyen geri bildirim bulunmuyor</p>
             </div>
           ) : (
-            <ScrollArea className="h-[500px]">
+            <ScrollArea className="max-h-[70vh]">
               <div className="space-y-2 pr-4">
                 {sortedFeedbacks.map((feedback) => {
                   const remaining = getRemainingTime(feedback.responseDeadline);

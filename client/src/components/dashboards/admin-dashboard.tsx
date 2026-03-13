@@ -53,7 +53,7 @@ export function AdminDashboard({
     <div className="space-y-3 md:space-y-6">
       {/* Gauge Cards - Real-time KPI Monitoring */}
       {!isLoading && (
-        <div className="grid gap-0.5 grid-cols-2 md:grid-cols-5">
+        <div className="grid gap-1 grid-cols-2 sm:grid-cols-3 lg:grid-cols-5">
           <GaugeCard label="Personel" value={avgEmployeePerf} icon={Zap} />
           <GaugeCard label="Ekipman" value={avgEquipmentScore} icon={Zap} />
           <GaugeCard label="Kalite" value={avgQualityScore} icon={Zap} />
@@ -63,7 +63,7 @@ export function AdminDashboard({
       )}
 
       {/* KPI Cards Row */}
-      <div className="grid gap-0.5 grid-cols-2 md:grid-cols-5">
+      <div className="grid gap-1 grid-cols-2 sm:grid-cols-3 lg:grid-cols-5">
         <KPICard icon={Building2} label="Toplam Şubeler" value={totalBranches} color="blue" />
         <KPICard icon={AlertCircle} label="Açık Arızalar" value={openFaults} color="red" />
         <KPICard icon={CheckCircle} label="Kapanan" value={totalFaults - openFaults} color="green" />

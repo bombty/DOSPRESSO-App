@@ -560,7 +560,9 @@ function AppContent() {
       
       {/* Main Content */}
       <main className="flex-1 overflow-auto pb-20">
-        <Router />
+        <div className="max-w-[1600px] mx-auto w-full">
+          <Router />
+        </div>
       </main>
       
       {/* Flow Mode Mini-Bar */}

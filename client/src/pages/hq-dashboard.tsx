@@ -255,13 +255,13 @@ function SatinalmaDashboard() {
         <h2 className="text-base font-semibold" data-testid="text-dashboard-title">Satınalma</h2>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
         {metrics.map((metric: MetricCard, index: number) => (
           <MetricCardComponent key={index} metric={metric} />
         ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
         <Card className="lg:col-span-2" data-testid="chart-demand-forecast">
           <CardHeader className="pb-1 pt-3 px-3">
             <CardTitle className="text-xs flex items-center gap-1.5">
@@ -369,13 +369,13 @@ function FabrikaDashboard() {
         <h2 className="text-base font-semibold" data-testid="text-dashboard-title">Fabrika</h2>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
         {metrics.map((metric: MetricCard, index: number) => (
           <MetricCardComponent key={index} metric={metric} />
         ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
         <Card className="lg:col-span-2" data-testid="chart-production-tracking">
           <CardHeader className="pb-1 pt-3 px-3">
             <CardTitle className="text-xs flex items-center gap-1.5">
@@ -490,13 +490,13 @@ function IKDashboard() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
         {metrics.map((metric: MetricCard, index: number) => (
           <MetricCardComponent key={index} metric={metric} />
         ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
         <Card className="lg:col-span-2">
           <CardHeader className="pb-1 pt-3 px-3">
             <CardTitle className="text-xs flex items-center gap-1.5">
@@ -603,7 +603,7 @@ function CoachDashboard() {
         <h2 className="text-base font-semibold" data-testid="text-dashboard-title">Coach</h2>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
         {metrics.map((metric: MetricCard, index: number) => (
           <MetricCardComponent key={index} metric={metric} />
         ))}
@@ -619,7 +619,7 @@ function CoachDashboard() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-3">
         <Card 
           className="cursor-pointer" 
           onClick={() => setLocation('/sube-saglik-skoru')}
@@ -739,13 +739,13 @@ function MarketingDashboard() {
         <h2 className="text-base font-semibold" data-testid="text-dashboard-title">Marketing</h2>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
         {metrics.map((metric: MetricCard, index: number) => (
           <MetricCardComponent key={index} metric={metric} />
         ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-3">
         <Card>
           <CardHeader className="pb-1 pt-3 px-3">
             <CardTitle className="text-xs flex items-center gap-1.5">
@@ -846,13 +846,13 @@ function TrainerDashboard() {
         <h2 className="text-base font-semibold" data-testid="text-dashboard-title">Trainer</h2>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
         {metrics.map((metric: MetricCard, index: number) => (
           <MetricCardComponent key={index} metric={metric} />
         ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-3">
         <Card>
           <CardHeader className="pb-1 pt-3 px-3">
             <CardTitle className="text-xs flex items-center gap-1.5">
@@ -950,13 +950,13 @@ function KaliteDashboard() {
         <h2 className="text-base font-semibold" data-testid="text-dashboard-title">Kalite Kontrol</h2>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
         {metrics.map((metric: MetricCard, index: number) => (
           <MetricCardComponent key={index} metric={metric} />
         ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-3">
         <Card>
           <CardHeader className="pb-1 pt-3 px-3">
             <CardTitle className="text-xs flex items-center gap-1.5">
@@ -1127,7 +1127,7 @@ function CGODashboard() {
   return (
     <div className="space-y-3">
       {/* Genel Performans + Departman Sağlık */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
         <Card>
           <CardHeader className="pb-1 pt-3 px-3">
             <CardTitle className="text-xs flex items-center gap-1.5">
@@ -1202,6 +1202,7 @@ function CGODashboard() {
             </CardTitle>
           </CardHeader>
           <CardContent className="px-3 pb-3">
+            <div className="overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -1249,11 +1250,12 @@ function CGODashboard() {
                 ))}
               </TableBody>
             </Table>
+            </div>
           </CardContent>
         </Card>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-3">
         <Card>
           <CardHeader className="pb-1 pt-3 px-3">
             <CardTitle className="text-xs flex items-center gap-1.5">
@@ -1337,7 +1339,7 @@ function DashboardSkeleton() {
           </Card>
         ))}
       </div>
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-4">
         <Card>
           <CardContent className="p-4">
             <Skeleton className="h-48 w-full" />
@@ -1537,7 +1539,7 @@ function TeknikDashboard() {
         <h2 className="text-base font-semibold" data-testid="text-dashboard-title">Teknik Servis</h2>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
         {metrics.map((metric, index) => (
           <MetricCardComponent key={index} metric={metric} />
         ))}
@@ -1601,7 +1603,7 @@ function TeknikDashboard() {
 
       <HQEscalatedFaults faults={faults || []} onNavigate={setLocation} />
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-3">
         <Card
           className="hover-elevate cursor-pointer"
           onClick={() => setLocation('/operasyon/ariza')}
@@ -1681,7 +1683,7 @@ function DestekDashboard() {
         <h2 className="text-base font-semibold" data-testid="text-dashboard-title">Destek Merkezi</h2>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
         {metrics.map((metric: MetricCard, index: number) => (
           <MetricCardComponent key={index} metric={metric} />
         ))}
@@ -1794,7 +1796,7 @@ function GidaMuhendisiDashboard() {
         <h2 className="text-base font-semibold" data-testid="text-dashboard-title">Gıda Güvenliği & Kalite</h2>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
         {metrics.map((metric, index) => (
           <MetricCardComponent key={index} metric={metric} />
         ))}

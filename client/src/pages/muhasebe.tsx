@@ -295,7 +295,7 @@ function StokTab() {
           />
         </div>
         <Select value={category} onValueChange={setCategory}>
-          <SelectTrigger className="w-[150px]" data-testid="select-stok-category">
+          <SelectTrigger className="w-full sm:w-[150px]" data-testid="select-stok-category">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -668,7 +668,7 @@ export default function Muhasebe() {
           </div>
           <div className="flex items-center gap-2">
             <Select value={selectedYear.toString()} onValueChange={(v) => setSelectedYear(parseInt(v))}>
-              <SelectTrigger className="w-[120px]" data-testid="select-year">
+              <SelectTrigger className="w-full sm:w-[120px]" data-testid="select-year">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>

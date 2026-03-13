@@ -251,9 +251,9 @@ export default function CRMFeedback() {
 
       <Card data-testid="filter-bar">
         <CardContent className="p-3">
-          <div className="flex gap-2 overflow-x-auto pb-1" data-testid="filter-scroll">
+          <div className="flex gap-2 flex-wrap pb-1" data-testid="filter-scroll">
             <Select value={filters.branchId || "_all"} onValueChange={(v) => setFilters((f) => ({ ...f, branchId: v === "_all" ? "" : v }))}>
-              <SelectTrigger className="w-[150px] shrink-0" data-testid="filter-branch">
+              <SelectTrigger className="w-full sm:w-[150px] shrink-0" data-testid="filter-branch">
                 <SelectValue placeholder="Şube" />
               </SelectTrigger>
               <SelectContent>
@@ -268,19 +268,19 @@ export default function CRMFeedback() {
               type="date"
               value={filters.startDate}
               onChange={(e) => setFilters((f) => ({ ...f, startDate: e.target.value }))}
-              className="w-[140px] shrink-0"
+              className="w-full sm:w-[140px] shrink-0"
               data-testid="filter-start-date"
             />
             <Input
               type="date"
               value={filters.endDate}
               onChange={(e) => setFilters((f) => ({ ...f, endDate: e.target.value }))}
-              className="w-[140px] shrink-0"
+              className="w-full sm:w-[140px] shrink-0"
               data-testid="filter-end-date"
             />
 
             <Select value={filters.rating || "_all"} onValueChange={(v) => setFilters((f) => ({ ...f, rating: v === "_all" ? "" : v }))}>
-              <SelectTrigger className="w-[120px] shrink-0" data-testid="filter-rating">
+              <SelectTrigger className="w-full sm:w-[120px] shrink-0" data-testid="filter-rating">
                 <SelectValue placeholder="Puan" />
               </SelectTrigger>
               <SelectContent>
@@ -292,7 +292,7 @@ export default function CRMFeedback() {
             </Select>
 
             <Select value={filters.status || "_all"} onValueChange={(v) => setFilters((f) => ({ ...f, status: v === "_all" ? "" : v }))}>
-              <SelectTrigger className="w-[140px] shrink-0" data-testid="filter-status">
+              <SelectTrigger className="w-full sm:w-[140px] shrink-0" data-testid="filter-status">
                 <SelectValue placeholder="Durum" />
               </SelectTrigger>
               <SelectContent>
@@ -304,7 +304,7 @@ export default function CRMFeedback() {
             </Select>
 
             <Select value={filters.category || "_all"} onValueChange={(v) => setFilters((f) => ({ ...f, category: v === "_all" ? "" : v }))}>
-              <SelectTrigger className="w-[140px] shrink-0" data-testid="filter-category">
+              <SelectTrigger className="w-full sm:w-[140px] shrink-0" data-testid="filter-category">
                 <SelectValue placeholder="Kategori" />
               </SelectTrigger>
               <SelectContent>
@@ -315,7 +315,7 @@ export default function CRMFeedback() {
             </Select>
 
             <Select value={filters.source || "_all"} onValueChange={(v) => setFilters((f) => ({ ...f, source: v === "_all" ? "" : v }))}>
-              <SelectTrigger className="w-[130px] shrink-0" data-testid="filter-source">
+              <SelectTrigger className="w-full sm:w-[130px] shrink-0" data-testid="filter-source">
                 <SelectValue placeholder="Kaynak" />
               </SelectTrigger>
               <SelectContent>
@@ -566,7 +566,7 @@ export default function CRMFeedback() {
                   value={detail.status}
                   onValueChange={(v) => statusMutation.mutate({ id: detail.id, status: v })}
                 >
-                  <SelectTrigger className="w-[160px]" data-testid="select-update-status">
+                  <SelectTrigger className="w-full sm:w-[160px]" data-testid="select-update-status">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>

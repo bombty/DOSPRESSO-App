@@ -148,6 +148,7 @@ export default function LeaveRequestsPage() {
           {isLoading ? (
             <ListSkeleton count={5} variant="row" />
           ) : (
+            <div className="overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -220,6 +221,7 @@ export default function LeaveRequestsPage() {
                 )}
               </TableBody>
             </Table>
+            </div>
           )}
         </CardContent>
       </Card>

@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import { useBreakpoint } from "@/hooks/use-mobile";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { offlineErrorHandler } from "@/hooks/useOfflineMutation";
@@ -296,7 +297,7 @@ export default function Mesajlar() {
     return `${others[0].firstName} ${others[0].lastName} +${others.length - 1}`;
   };
 
-  const isMobile = typeof window !== "undefined" && window.innerWidth < 768;
+  const { isMobile } = useBreakpoint();
   const showThreadList = !isMobile || !selectedThreadId;
   const showConversation = !isMobile || !!selectedThreadId;
 
@@ -311,7 +312,7 @@ export default function Mesajlar() {
   return (
     <div className="flex h-full overflow-hidden" data-testid="messaging-container">
       {showThreadList && (
-        <div className={`${isMobile ? "w-full" : "w-[380px] min-w-[320px]"} border-r flex flex-col bg-background`}>
+        <div className={`${isMobile ? "w-full" : "w-1/3 min-w-[280px] max-w-[380px]"} border-r flex flex-col bg-background`}>
           <div className="p-3 border-b space-y-3">
             <div className="flex items-center justify-between gap-2">
               <h1 className="text-xl font-bold" data-testid="text-messages-title">Mesajlar</h1>

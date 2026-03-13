@@ -238,6 +238,7 @@ export default function StaffQrTokensPage() {
               Henüz QR token oluşturulmamış
             </div>
           ) : (
+            <div className="overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -302,6 +303,7 @@ export default function StaffQrTokensPage() {
                 ))}
               </TableBody>
             </Table>
+            </div>
           )}
         </CardContent>
       </Card>

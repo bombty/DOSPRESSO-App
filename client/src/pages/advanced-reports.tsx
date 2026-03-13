@@ -255,7 +255,7 @@ export default function AdvancedReportsPage() {
         
         <div className="flex flex-wrap items-center gap-3">
           <Select value={selectedMonth.toString()} onValueChange={(v) => setSelectedMonth(parseInt(v))}>
-            <SelectTrigger className="w-[140px]" data-testid="select-month">
+            <SelectTrigger className="w-full sm:w-[140px]" data-testid="select-month">
               <Calendar className="mr-2 h-4 w-4" />
               <SelectValue />
             </SelectTrigger>
@@ -267,7 +267,7 @@ export default function AdvancedReportsPage() {
           </Select>
           
           <Select value={selectedYear.toString()} onValueChange={(v) => setSelectedYear(parseInt(v))}>
-            <SelectTrigger className="w-[100px]" data-testid="select-year">
+            <SelectTrigger className="w-full sm:w-[100px]" data-testid="select-year">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -278,7 +278,7 @@ export default function AdvancedReportsPage() {
           </Select>
           
           <Select value={selectedBranchId} onValueChange={setSelectedBranchId}>
-            <SelectTrigger className="w-[160px]" data-testid="select-branch">
+            <SelectTrigger className="w-full sm:w-[160px]" data-testid="select-branch">
               <Building className="mr-2 h-4 w-4" />
               <SelectValue placeholder="Tüm şubeler" />
             </SelectTrigger>

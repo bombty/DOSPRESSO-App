@@ -126,7 +126,7 @@ function MessageList({ messages, isLoading, onMessageClick }: {
   onMessageClick: (m: Message) => void;
 }) {
   return (
-    <ScrollArea className="h-[500px] pr-4">
+    <ScrollArea className="max-h-[70vh] pr-4">
       {isLoading ? (
         <div className="text-center py-8 text-muted-foreground">
           Yükleniyor...

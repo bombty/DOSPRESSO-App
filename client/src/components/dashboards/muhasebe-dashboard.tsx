@@ -88,7 +88,7 @@ export function MuhasebeDashboard({
       </div>
 
       {/* Financial & HR KPIs - Compact Row */}
-      <div className="grid gap-1.5 grid-cols-2 md:grid-cols-3 lg:grid-cols-6">
+      <div className="grid gap-1.5 grid-cols-2 sm:grid-cols-3 lg:grid-cols-6">
         <KPICard icon={Building2} label="Şube" value={totalBranches} color="blue" />
         <KPICard icon={Users} label="Personel" value={activeEmployees} color="blue" />
         <KPICard icon={TrendingUp} label="Ort. Skor" value={(avgScoreBranches || 0).toFixed(0)} color="green" />

@@ -887,6 +887,7 @@ export default function PersonelDetay() {
                 </div>
               ) : documents && documents.length > 0 ? (
                 <div className="rounded-md border">
+                  <div className="overflow-x-auto">
                   <Table>
                     <TableHeader>
                       <TableRow>
@@ -965,6 +966,7 @@ export default function PersonelDetay() {
                       ))}
                     </TableBody>
                   </Table>
+                  </div>
                 </div>
               ) : (
                 <div className="text-center py-12 text-muted-foreground">
@@ -994,6 +996,7 @@ export default function PersonelDetay() {
                 </div>
               ) : attendanceHistory && attendanceHistory.length > 0 ? (
                 <div className="rounded-md border">
+                  <div className="overflow-x-auto">
                   <Table>
                     <TableHeader>
                       <TableRow>
@@ -1028,6 +1031,7 @@ export default function PersonelDetay() {
                       ))}
                     </TableBody>
                   </Table>
+                  </div>
                 </div>
               ) : (
                 <div className="text-center py-12 text-muted-foreground">
@@ -1057,6 +1061,7 @@ export default function PersonelDetay() {
                 </div>
               ) : receivedRatings && receivedRatings.length > 0 ? (
                 <div className="rounded-md border">
+                  <div className="overflow-x-auto">
                   <Table>
                     <TableHeader>
                       <TableRow>
@@ -1087,6 +1092,7 @@ export default function PersonelDetay() {
                       ))}
                     </TableBody>
                   </Table>
+                  </div>
                 </div>
               ) : (
                 <div className="text-center py-12 text-muted-foreground">
@@ -1164,6 +1170,7 @@ export default function PersonelDetay() {
                   {/* Son Puanlamalar */}
                   {satisfactionScore.recentRatings && satisfactionScore.recentRatings.length > 0 && (
                     <div className="rounded-md border">
+                      <div className="overflow-x-auto">
                       <Table>
                         <TableHeader>
                           <TableRow>
@@ -1194,6 +1201,7 @@ export default function PersonelDetay() {
                           ))}
                         </TableBody>
                       </Table>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -1234,6 +1242,7 @@ export default function PersonelDetay() {
                     ))}
                   </div>
                   <div className="rounded-md border">
+                    <div className="overflow-x-auto">
                     <Table>
                       <TableHeader>
                         <TableRow>
@@ -1264,6 +1273,7 @@ export default function PersonelDetay() {
                         ))}
                       </TableBody>
                     </Table>
+                    </div>
                   </div>
                 </div>
               ) : (
@@ -1351,6 +1361,7 @@ export default function PersonelDetay() {
                     <Skeleton className="h-16 w-full" />
                   ) : leaveRequests && leaveRequests.length > 0 ? (
                     <div className="rounded-md border">
+                      <div className="overflow-x-auto">
                       <Table>
                         <TableHeader>
                           <TableRow>
@@ -1381,6 +1392,7 @@ export default function PersonelDetay() {
                           ))}
                         </TableBody>
                       </Table>
+                      </div>
                     </div>
                   ) : (
                     <p className="text-sm text-muted-foreground text-center py-3">İzin talebi bulunmuyor</p>
@@ -1396,6 +1408,7 @@ export default function PersonelDetay() {
                     <Skeleton className="h-16 w-full" />
                   ) : overtimeRequests && overtimeRequests.length > 0 ? (
                     <div className="rounded-md border">
+                      <div className="overflow-x-auto">
                       <Table>
                         <TableHeader>
                           <TableRow>
@@ -1422,6 +1435,7 @@ export default function PersonelDetay() {
                           ))}
                         </TableBody>
                       </Table>
+                      </div>
                     </div>
                   ) : (
                     <p className="text-sm text-muted-foreground text-center py-3">Fazla mesai talebi bulunmuyor</p>

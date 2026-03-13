@@ -472,6 +472,7 @@ function SiparislerimTab({ branchId }: { branchId: number }) {
 
               <div>
                 <p className="text-sm font-medium mb-2">Ürünler</p>
+                <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -498,6 +499,7 @@ function SiparislerimTab({ branchId }: { branchId: number }) {
                     ))}
                   </TableBody>
                 </Table>
+                </div>
               </div>
             </div>
           ) : (

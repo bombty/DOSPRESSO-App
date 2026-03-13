@@ -52,7 +52,7 @@ export function MuhasebeIKDashboard() {
     return (
       <div className="space-y-3">
         <Skeleton className="h-10 w-full" />
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
           <Skeleton className="h-20" />
           <Skeleton className="h-20" />
         </div>
@@ -84,7 +84,7 @@ export function MuhasebeIKDashboard() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
         <Card className="bg-gradient-to-br from-blue-50 to-blue-100/50 dark:from-blue-950/30 dark:to-blue-900/20 border-blue-200/50 dark:border-blue-800/30">
           <CardContent className="p-3">
             <div className="flex items-center gap-2">
@@ -147,7 +147,7 @@ export function MuhasebeIKDashboard() {
           <CardTitle className="text-xs font-semibold text-slate-600 dark:text-slate-400">Hızlı Erişim</CardTitle>
         </CardHeader>
         <CardContent className="py-1 px-3 pb-3">
-          <div className="grid grid-cols-3 sm:grid-cols-6 gap-1.5">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-1.5">
             {quickActions.map((action) => (
               <Button
                 key={action.label}
