@@ -14,15 +14,14 @@ import {
   insertWebinarSchema,
   branches,
   learningStreaks,
+  isHQRole,
 } from "@shared/schema";
 import { eq, desc, and, sql, gte, lte, ilike, isNull, inArray } from "drizzle-orm";
 
 const router = Router();
 
-const HQ_ROLES = ["admin", "ceo", "cgo", "coach", "trainer"];
-
 function isHQUser(role: string): boolean {
-  return HQ_ROLES.includes(role);
+  return isHQRole(role as any);
 }
 
 router.get("/home-data", isAuthenticated, async (req, res) => {

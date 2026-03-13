@@ -29,7 +29,11 @@ import {
   PlayCircle,
 } from "lucide-react";
 
-const HQ_ROLES = ["admin", "ceo", "cgo", "coach", "trainer"];
+const HQ_ROLES = [
+  "admin", "ceo", "cgo", "muhasebe_ik", "muhasebe", "satinalma",
+  "coach", "marketing", "trainer", "kalite_kontrol", "gida_muhendisi",
+  "fabrika_mudur", "teknik", "destek", "fabrika", "yatirimci_hq",
+];
 
 const TARGET_ROLE_OPTIONS = [
   { id: "barista", label: "Barista" },

@@ -29,7 +29,9 @@ const FILTER_CATEGORIES = [
   { id: "barista_temelleri", label: "Barista" },
   { id: "hijyen_guvenlik", label: "Güvenlik" },
   { id: "ekipman", label: "Ekipman" },
+  { id: "musteri_iliskileri", label: "Müşteri" },
   { id: "yonetim", label: "Yönetim" },
+  { id: "onboarding", label: "Onboarding" },
   { id: "genel_gelisim", label: "Gelişim" },
 ];
 

@@ -41,6 +41,7 @@ const CATEGORY_CONFIG: { id: string; label: string; icon: typeof Coffee; colorCl
   { id: "ekipman", label: "Ekipman", icon: Wrench, colorClass: "text-blue-500 dark:text-blue-400" },
   { id: "musteri_iliskileri", label: "Müşteri Hizm.", icon: Star, colorClass: "text-yellow-500 dark:text-yellow-400" },
   { id: "yonetim", label: "Yönetim", icon: Users, colorClass: "text-purple-500 dark:text-purple-400" },
+  { id: "onboarding", label: "Onboarding", icon: BookOpen, colorClass: "text-cyan-500 dark:text-cyan-400" },
   { id: "genel_gelisim", label: "Genel Gelişim", icon: GraduationCap, colorClass: "text-pink-500 dark:text-pink-400" },
 ];
 
