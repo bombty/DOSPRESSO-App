@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { Card, CardContent } from "@/components/ui/card";
@@ -13,27 +13,7 @@ import {
   Search,
   AlertCircle,
 } from "lucide-react";
-
-const CATEGORY_LABELS: Record<string, string> = {
-  barista_temelleri: "Barista Temelleri",
-  hijyen_guvenlik: "Hijyen & Güvenlik",
-  ekipman: "Ekipman",
-  musteri_iliskileri: "Müşteri Hizmetleri",
-  yonetim: "Yönetim",
-  genel_gelisim: "Genel Gelişim",
-  onboarding: "Onboarding",
-};
-
-const FILTER_CATEGORIES = [
-  { id: "all", label: "Tümü" },
-  { id: "barista_temelleri", label: "Barista" },
-  { id: "hijyen_guvenlik", label: "Güvenlik" },
-  { id: "ekipman", label: "Ekipman" },
-  { id: "musteri_iliskileri", label: "Müşteri" },
-  { id: "yonetim", label: "Yönetim" },
-  { id: "onboarding", label: "Onboarding" },
-  { id: "genel_gelisim", label: "Gelişim" },
-];
+import { CATEGORY_LABELS, FILTER_CATEGORIES } from "./categoryConfig";
 
 function TrainingTabSkeleton() {
   return (
@@ -50,11 +30,19 @@ function TrainingTabSkeleton() {
   );
 }
 
-export default function TrainingTab() {
+interface TrainingTabProps {
+  initialCategory?: string;
+}
+
+export default function TrainingTab({ initialCategory }: TrainingTabProps) {
   const [, setLocation] = useLocation();
   const [filter, setFilter] = useState<"zorunlu" | "istege">("zorunlu");
-  const [categoryFilter, setCategoryFilter] = useState("all");
+  const [categoryFilter, setCategoryFilter] = useState(initialCategory || "all");
   const [searchTerm, setSearchTerm] = useState("");
+
+  useEffect(() => {
+    setCategoryFilter(initialCategory || "all");
+  }, [initialCategory]);
 
   const buildQueryString = () => {
     const params = new URLSearchParams();

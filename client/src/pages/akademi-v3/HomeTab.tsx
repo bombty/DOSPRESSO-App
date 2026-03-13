@@ -11,19 +11,15 @@ import {
   Clock,
   ChevronRight,
   Video,
-  Shield,
-  Wrench,
   Users,
-  Star,
-  Coffee,
-  GraduationCap,
   X,
 } from "lucide-react";
+import { CATEGORY_CONFIG } from "./categoryConfig";
 
 interface HomeTabProps {
   homeData: any;
   isLoading: boolean;
-  onNavigate: (tab: string) => void;
+  onNavigate: (tab: string, category?: string) => void;
   categoryCounts?: Record<string, number>;
 }
 
@@ -34,16 +30,6 @@ const LEVEL_LABELS: Record<string, string> = {
   supervisor_buddy: "Supervisor Buddy",
   supervisor: "Supervisor",
 };
-
-const CATEGORY_CONFIG: { id: string; label: string; icon: typeof Coffee; colorClass: string }[] = [
-  { id: "barista_temelleri", label: "Barista Temelleri", icon: Coffee, colorClass: "text-orange-500 dark:text-orange-400" },
-  { id: "hijyen_guvenlik", label: "Hijyen & Güvenlik", icon: Shield, colorClass: "text-green-500 dark:text-green-400" },
-  { id: "ekipman", label: "Ekipman", icon: Wrench, colorClass: "text-blue-500 dark:text-blue-400" },
-  { id: "musteri_iliskileri", label: "Müşteri Hizm.", icon: Star, colorClass: "text-yellow-500 dark:text-yellow-400" },
-  { id: "yonetim", label: "Yönetim", icon: Users, colorClass: "text-purple-500 dark:text-purple-400" },
-  { id: "onboarding", label: "Onboarding", icon: BookOpen, colorClass: "text-cyan-500 dark:text-cyan-400" },
-  { id: "genel_gelisim", label: "Genel Gelişim", icon: GraduationCap, colorClass: "text-pink-500 dark:text-pink-400" },
-];
 
 function HomeTabSkeleton() {
   return (
@@ -249,7 +235,7 @@ export default function HomeTab({ homeData, isLoading, onNavigate, categoryCount
               <Button
                 key={cat.id}
                 variant="outline"
-                onClick={() => onNavigate("egitimler")}
+                onClick={() => onNavigate("egitimler", cat.id)}
                 className="h-auto rounded-xl p-3 flex flex-col items-start gap-1 no-default-hover-elevate hover-elevate"
                 data-testid={`category-${cat.id}`}
               >

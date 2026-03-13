@@ -588,7 +588,7 @@ export default function AcademyModuleEditor() {
   const [requiredForRole, setRequiredForRole] = useState<string[]>([]);
   const [targetRoles, setTargetRoles] = useState<string[]>([]);
   const [isPublished, setIsPublished] = useState(false);
-  const [isRequired, setIsRequired] = useState(false);
+  const [isMandatory, setIsMandatory] = useState(false);
   const [heroImageUrl, setHeroImageUrl] = useState("");
 
   const [moduleStatus, setModuleStatus] = useState<string>("draft");
@@ -626,7 +626,7 @@ export default function AcademyModuleEditor() {
       setRequiredForRole(existingModule.requiredForRole || []);
       setTargetRoles((existingModule as any).targetRoles || []);
       setIsPublished(existingModule.isPublished || false);
-      setIsRequired(existingModule.isRequired || false);
+      setIsMandatory(existingModule.isMandatory || false);
       setHeroImageUrl(existingModule.heroImageUrl || "");
       setLearningObjectives(existingModule.learningObjectives || []);
       setSteps((existingModule.steps || []).map((s: any, i: number) => ({
@@ -691,7 +691,7 @@ export default function AcademyModuleEditor() {
     requiredForRole,
     targetRoles,
     isPublished: publish !== undefined ? publish : isPublished,
-    isRequired,
+    isMandatory,
     learningObjectives,
     steps: steps.map((s, i) => ({ stepNumber: i + 1, title: s.title, content: s.content, videoUrl: s.videoUrl, imageUrl: s.imageUrl })),
     quiz,
@@ -1169,7 +1169,7 @@ export default function AcademyModuleEditor() {
                     Yayinda
                   </label>
                   <label className="flex items-center gap-2 text-sm">
-                    <Switch checked={isRequired} onCheckedChange={setIsRequired} data-testid="switch-required" />
+                    <Switch checked={isMandatory} onCheckedChange={setIsMandatory} data-testid="switch-required" />
                     Zorunlu Modul
                   </label>
                 </div>

@@ -405,7 +405,7 @@ router.post("/webinars/:id/cancel", isAuthenticated, async (req, res) => {
           type: "webinar_cancelled",
           title: "Webinar İptal Edildi",
           message: `"${existing.title}" webinarı iptal edildi.`,
-          link: "/akademi/webinarlar",
+          link: "/akademi-v3?tab=webinar",
         });
       } catch {}
     }
@@ -685,7 +685,7 @@ export async function checkWebinarReminders() {
               type: reminderType,
               title: "Webinar Hatırlatma",
               message: reminderMessage,
-              link: "/akademi/webinarlar",
+              link: "/akademi-v3?tab=webinar",
             });
           } catch {}
         }
@@ -798,7 +798,7 @@ async function seedDefaultWebinars() {
         title: "Yeni Ürün Tanıtımı: Berry Serisi",
         description: "Yeni berry serisi ürünlerinin tanıtımı ve hazırlanış teknikleri",
         hostName: "Ürün Geliştirme Ekibi",
-        webinarDate: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000),
+        webinarDate: new Date("2026-04-01T10:00:00"),
         durationMinutes: 45,
         status: "scheduled" as const,
         targetRoles: ["barista", "stajyer", "bar_buddy"],
@@ -808,7 +808,7 @@ async function seedDefaultWebinars() {
         title: "KVKK Güncellemesi",
         description: "2026 KVKK yönetmelik değişiklikleri ve şube uyum gereklilikleri",
         hostName: "Hukuk Departmanı",
-        webinarDate: new Date(Date.now() + 8 * 24 * 60 * 60 * 1000),
+        webinarDate: new Date("2026-04-10T14:00:00"),
         durationMinutes: 60,
         status: "scheduled" as const,
         targetRoles: [] as string[],
@@ -818,7 +818,7 @@ async function seedDefaultWebinars() {
         title: "Q1 Değerlendirme",
         description: "2026 ilk çeyrek performans değerlendirmesi ve hedef gözden geçirme",
         hostName: "Yönetim Kurulu",
-        webinarDate: new Date(Date.now() + 16 * 24 * 60 * 60 * 1000),
+        webinarDate: new Date("2026-04-20T09:00:00"),
         durationMinutes: 90,
         status: "scheduled" as const,
         targetRoles: ["mudur", "supervisor"],
@@ -836,5 +836,14 @@ async function seedDefaultWebinars() {
 }
 
 seedDefaultWebinars();
+
+(async function migrateIsRequiredToIsMandatory() {
+  try {
+    await db.execute(sql`UPDATE training_modules SET is_mandatory = true WHERE is_required = true AND is_mandatory = false`);
+    console.log("[academy-v3] isRequired → isMandatory migration applied");
+  } catch (error) {
+    console.error("[academy-v3] isRequired → isMandatory migration error:", error);
+  }
+})();
 
 export default router;

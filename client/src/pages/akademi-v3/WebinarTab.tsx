@@ -29,11 +29,7 @@ import {
   PlayCircle,
 } from "lucide-react";
 
-const HQ_ROLES = [
-  "admin", "ceo", "cgo", "muhasebe_ik", "muhasebe", "satinalma",
-  "coach", "marketing", "trainer", "kalite_kontrol", "gida_muhendisi",
-  "fabrika_mudur", "teknik", "destek", "fabrika", "yatirimci_hq",
-];
+import { isHQRole, type UserRoleType } from "@shared/schema";
 
 const TARGET_ROLE_OPTIONS = [
   { id: "barista", label: "Barista" },
@@ -261,7 +257,7 @@ export default function WebinarTab() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [showPast, setShowPast] = useState(false);
-  const isHQ = user?.role && HQ_ROLES.includes(user.role);
+  const isHQ = user?.role && isHQRole(user.role as UserRoleType);
 
   const { data: webinars, isLoading } = useQuery<any[]>({
     queryKey: ["/api/v3/academy/webinars"],
@@ -302,7 +298,11 @@ export default function WebinarTab() {
   const upcomingWebinars = webinars?.filter((w) => w.status === "scheduled" && !w.isLive) || [];
   const pastWebinars = webinars?.filter((w) => w.status === "completed" || w.status === "cancelled") || [];
 
-  const isPending = registerMutation.isPending || unregisterMutation.isPending;
+  const pendingWebinarId = registerMutation.isPending
+    ? registerMutation.variables
+    : unregisterMutation.isPending
+      ? unregisterMutation.variables
+      : null;
 
   return (
     <div className="space-y-4 p-4 pb-8" data-testid="webinar-tab">
@@ -396,10 +396,10 @@ export default function WebinarTab() {
                           size="sm"
                           variant="outline"
                           onClick={() => unregisterMutation.mutate(w.id)}
-                          disabled={isPending}
+                          disabled={pendingWebinarId === w.id}
                           data-testid={`unregister-${w.id}`}
                         >
-                          {isPending ? (
+                          {pendingWebinarId === w.id ? (
                             <Loader2 className="h-3 w-3 animate-spin" />
                           ) : (
                             <>
@@ -412,10 +412,10 @@ export default function WebinarTab() {
                         <Button
                           size="sm"
                           onClick={() => registerMutation.mutate(w.id)}
-                          disabled={isPending}
+                          disabled={pendingWebinarId === w.id}
                           data-testid={`register-${w.id}`}
                         >
-                          {isPending ? (
+                          {pendingWebinarId === w.id ? (
                             <Loader2 className="h-3 w-3 animate-spin" />
                           ) : (
                             "Kaydol"

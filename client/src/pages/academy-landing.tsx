@@ -276,7 +276,7 @@ export default function AcademyLanding() {
   });
 
   const mandatoryModules = approvedModules.filter((m: any) => {
-    if (!m.isRequired) return false;
+    if (!m.isMandatory) return false;
     if (m.requiredForRole && m.requiredForRole.length > 0 && user?.role) {
       return m.requiredForRole.includes(user.role);
     }
@@ -312,13 +312,13 @@ export default function AcademyLanding() {
   const filteredModules = approvedModules
     .filter(m => {
       if (trainingFilter === "mandatory") {
-        if (!m.isRequired) return false;
+        if (!m.isMandatory) return false;
         if (m.requiredForRole && m.requiredForRole.length > 0 && user?.role) {
           if (!m.requiredForRole.includes(user.role)) return false;
         }
       }
       if (trainingFilter === "optional") {
-        if (m.isRequired) {
+        if (m.isMandatory) {
           if (!m.requiredForRole || m.requiredForRole.length === 0) return false;
           if (user?.role && m.requiredForRole.includes(user.role)) return false;
         }
@@ -840,7 +840,7 @@ export default function AcademyLanding() {
                             <p className="font-bold text-[13px] line-clamp-1 flex-1" data-testid={`text-module-title-${m.id}`}>
                               {m.title}
                             </p>
-                            {m.isRequired && (
+                            {m.isMandatory && (
                               <Badge variant="destructive" className="text-[9px] flex-shrink-0">Zorunlu</Badge>
                             )}
                           </div>

@@ -61,7 +61,21 @@ function TabSkeleton() {
 
 export default function AkademiV3() {
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState("ana");
+  const urlParams = new URLSearchParams(window.location.search);
+  const initialTab = urlParams.get("tab") || "ana";
+  const urlCategory = urlParams.get("category") || undefined;
+
+  const [activeTab, setActiveTab] = useState(initialTab);
+  const [selectedCategory, setSelectedCategory] = useState<string | undefined>(urlCategory);
+
+  const handleNavigate = (tab: string, category?: string) => {
+    setActiveTab(tab);
+    setSelectedCategory(category);
+    const params = new URLSearchParams();
+    params.set("tab", tab);
+    if (category) params.set("category", category);
+    window.history.replaceState(null, "", `/akademi-v3?${params.toString()}`);
+  };
 
   const { data: homeData, isLoading: homeLoading } = useQuery<any>({
     queryKey: ["/api/v3/academy/home-data"],
@@ -120,7 +134,7 @@ export default function AkademiV3() {
               <Button
                 key={tab.id}
                 variant="ghost"
-                onClick={() => setActiveTab(tab.id)}
+                onClick={() => handleNavigate(tab.id)}
                 className={`flex-1 rounded-none py-3 flex flex-col items-center gap-1 text-xs font-medium relative no-default-hover-elevate no-default-active-elevate ${
                   isActive
                     ? "text-primary border-b-2 border-primary"
@@ -150,11 +164,11 @@ export default function AkademiV3() {
             <HomeTab
               homeData={homeData}
               isLoading={homeLoading}
-              onNavigate={setActiveTab}
+              onNavigate={handleNavigate}
               categoryCounts={categoryCounts}
             />
           )}
-          {activeTab === "egitimler" && <TrainingTab />}
+          {activeTab === "egitimler" && <TrainingTab initialCategory={selectedCategory} />}
           {activeTab === "webinar" && <WebinarTab />}
           {activeTab === "kariyer" && <CareerTab />}
         </Suspense>

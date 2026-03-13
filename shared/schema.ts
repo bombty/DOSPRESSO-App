@@ -3685,7 +3685,8 @@ export const trainingModules = pgTable("training_modules", {
   level: varchar("level", { length: 50 }).default("beginner"), // beginner, intermediate, advanced
   estimatedDuration: integer("estimated_duration").default(30), // minutes
   isPublished: boolean("is_published").default(false),
-  isRequired: boolean("is_required").default(false), // Zorunlu modül mü?
+  /** @deprecated use isMandatory instead */
+  isRequired: boolean("is_required").default(false),
   requiredForRole: varchar("required_for_role", { length: 100 }).array(), // ["barista", "supervisor"]
   prerequisiteModuleIds: integer("prerequisite_module_ids").array(), // Must complete these first
   heroImageUrl: text("hero_image_url"), // Module banner image
