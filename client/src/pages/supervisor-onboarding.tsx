@@ -96,11 +96,7 @@ export default function SupervisorOnboarding() {
   const pendingCount = (pendingApprovals || []).length;
 
   if (progressLoading) {
-    
-  if (progressLoading) return <LoadingState />;
-  if (isError) return <ErrorState onRetry={refetch} />;
-
-  return (
+    return (
       <div className="space-y-4 p-4" data-testid="supervisor-onboarding-loading">
         <Skeleton className="h-12 w-full" />
         <Skeleton className="h-24 w-full" />
@@ -108,6 +104,7 @@ export default function SupervisorOnboarding() {
       </div>
     );
   }
+  if (isError) return <ErrorState onRetry={refetch} />;
 
   return (
     <div className="space-y-4 p-4 max-w-4xl mx-auto" data-testid="supervisor-onboarding">
