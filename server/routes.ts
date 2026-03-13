@@ -374,7 +374,7 @@ import academyV2Router from "./routes/academy-v2";
 import academyV3Router from "./routes/academy-v3";
 import equipmentRouter from "./routes/equipment";
 import tasksRouter from "./routes/tasks";
-import hrRouter from "./routes/hr";
+import hrRouter, { initOnboardingMigrations } from "./routes/hr";
 import branchesRouter from "./routes/branches";
 import shiftsRouter from "./routes/shifts";
 import operationsRouter from "./routes/operations";
@@ -1051,6 +1051,7 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
   }
   seedDashboardWidgetItems();
   seedFactoryData();
+  initOnboardingMigrations();
 
 
   const httpServer = createServer(app);

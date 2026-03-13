@@ -6791,3 +6791,13 @@ MUTLAKA aşağıdaki JSON formatında yanıt ver:
   });
 
 export default router;
+
+export async function initOnboardingMigrations() {
+  try {
+    await db.execute(sql`ALTER TABLE onboarding_template_steps ADD COLUMN IF NOT EXISTS is_deleted BOOLEAN DEFAULT false`);
+    await db.execute(sql`ALTER TABLE onboarding_template_steps ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP`);
+    console.log("[ONBOARDING] Soft delete columns ensured on onboarding_template_steps.");
+  } catch (error) {
+    console.error("[ONBOARDING] Migration error:", error);
+  }
+}
