@@ -6009,13 +6009,14 @@ export async function seedFactoryData() {
     }
     console.log(`[FAB-SEED] ${productData.length} factory products seeded.`);
 
-    // 3. Tag NULL product_id records in factory_shift_productions
-    await db.execute(sql`
+    // 3. Tag NULL product_id records in factory_shift_productions (if any exist)
+    // Note: product_id is NOT NULL in schema, so this is a safety net — typically 0 rows affected
+    const tagResult = await db.execute(sql`
       UPDATE factory_shift_productions
       SET notes = COALESCE(notes, '') || ' [Ürün tanımlanmamış — lütfen düzenleyin]'
       WHERE product_id IS NULL AND (notes IS NULL OR notes NOT LIKE '%Ürün tanımlanmamış%')
     `);
-    console.log("[FAB-SEED] Tagged NULL product_id records in factory_shift_productions.");
+    console.log(`[FAB-SEED] Tagged NULL product_id records in factory_shift_productions (product_id is NOT NULL constraint, 0 expected).`);
 
     // 4. Seed 5 suppliers
     const supplierData = [
@@ -6073,6 +6074,16 @@ export async function seedFactoryData() {
     }
     console.log("[FAB-SEED] 5 suppliers seeded.");
 
+    // 5. Verification report
+    const catCounts = await db.execute(sql`SELECT category, COUNT(*)::int as count FROM factory_products GROUP BY category ORDER BY count DESC`);
+    const nullCount = await db.execute(sql`SELECT COUNT(*)::int as null_product_records FROM factory_shift_productions WHERE product_id IS NULL`);
+    const benchRows = await db.execute(sql`SELECT station_name, benchmark_workers, output_per_hour, output_unit FROM factory_station_benchmarks ORDER BY id`);
+    const suppCount = await db.execute(sql`SELECT COUNT(*)::int as supplier_count FROM suppliers`);
+    console.log("[FAB-SEED] === VERIFICATION REPORT ===");
+    console.log("[FAB-SEED] Product counts by category:", JSON.stringify(catCounts.rows));
+    console.log("[FAB-SEED] NULL product records:", JSON.stringify(nullCount.rows));
+    console.log("[FAB-SEED] Station benchmarks:", JSON.stringify(benchRows.rows));
+    console.log("[FAB-SEED] Supplier count:", JSON.stringify(suppCount.rows));
     console.log("[FAB-SEED] All factory seed data completed successfully.");
   } catch (error) {
     console.error("[FAB-SEED] Error seeding factory data:", error);
