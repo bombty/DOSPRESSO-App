@@ -2595,7 +2595,10 @@ JSON formatında yanıt ver:
       }
 
       const steps = await db.select().from(onboardingTemplateSteps)
-        .where(eq(onboardingTemplateSteps.templateId, templateId))
+        .where(and(
+          eq(onboardingTemplateSteps.templateId, templateId),
+          or(eq(onboardingTemplateSteps.isDeleted, false), isNull(onboardingTemplateSteps.isDeleted))
+        ))
         .orderBy(asc(onboardingTemplateSteps.stepOrder));
 
       const onboarding = await storage.getOrCreateEmployeeOnboarding(userId, branchId, user.id);
@@ -2899,7 +2902,10 @@ JSON formatında yanıt ver:
 
       const steps = await db.select()
         .from(onboardingTemplateSteps)
-        .where(eq(onboardingTemplateSteps.templateId, templateId))
+        .where(and(
+          eq(onboardingTemplateSteps.templateId, templateId),
+          or(eq(onboardingTemplateSteps.isDeleted, false), isNull(onboardingTemplateSteps.isDeleted))
+        ))
         .orderBy(onboardingTemplateSteps.stepOrder);
 
       res.json({ ...template, steps });
@@ -3154,7 +3160,10 @@ JSON formatında yanıt ver:
       // Get template steps and create progress records
       const steps = await db.select()
         .from(onboardingTemplateSteps)
-        .where(eq(onboardingTemplateSteps.templateId, templateId));
+        .where(and(
+          eq(onboardingTemplateSteps.templateId, templateId),
+          or(eq(onboardingTemplateSteps.isDeleted, false), isNull(onboardingTemplateSteps.isDeleted))
+        ));
 
       if (steps.length > 0) {
         const progressRecords = steps.map(step => ({
@@ -3320,7 +3329,10 @@ JSON formatında yanıt ver:
       if (stepIds.length > 0) {
         const steps = await db.select()
           .from(onboardingTemplateSteps)
-          .where(inArray(onboardingTemplateSteps.id, stepIds));
+          .where(and(
+            inArray(onboardingTemplateSteps.id, stepIds),
+            or(eq(onboardingTemplateSteps.isDeleted, false), isNull(onboardingTemplateSteps.isDeleted))
+          ));
         
         stepsMap = steps.reduce((acc, step) => {
           acc[step.id] = step;
