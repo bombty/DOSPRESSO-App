@@ -684,12 +684,15 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
         return res.status(400).json({ message: "Zaten aktif bir vardiyası var", sessionId: existingSession.id });
       }
 
+      const now = new Date();
       // Create shift session
       const [session] = await db.insert(factoryShiftSessions).values({
         userId,
         stationId,
-        checkInTime: new Date(),
+        checkInTime: now,
         status: 'active',
+        phase: 'hazirlik',
+        prepStartedAt: now,
       }).returning();
 
       // Start production run
@@ -792,7 +795,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
   // Kiosk vardiya bitir
   router.post('/api/factory/kiosk/end-shift', isKioskAuthenticated, async (req, res) => {
     try {
-      const { sessionId, productionRunId, quantityProduced, producedUnit, quantityWaste, wasteUnit, wasteReasonId, wasteNotes, wasteReason, photoUrl } = req.body;
+      const { sessionId, productionRunId, quantityProduced, producedUnit, quantityWaste, wasteUnit, wasteReasonId, wasteNotes, wasteReason, photoUrl, productId, productName, wasteDoughKg, wasteProductCount } = req.body;
       
       if (!sessionId) {
         return res.status(400).json({ message: "Oturum ID gerekli" });
@@ -831,12 +834,16 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
           sessionId,
           userId: session.userId,
           stationId: session.stationId,
+          productId: productId || null,
+          productName: productName || null,
           producedQuantity: String(quantityProduced || 0),
           producedUnit: producedUnit || 'adet',
           wasteQuantity: String(quantityWaste || 0),
           wasteUnit: wasteUnit || 'adet',
           wasteReasonId: wasteReasonId || null,
           wasteNotes: wasteNotes || null,
+          wasteDoughKg: wasteDoughKg ? String(wasteDoughKg) : null,
+          wasteProductCount: wasteProductCount || null,
           photoUrl: photoUrl || null,
           qualityStatus: 'pending',
         });
@@ -1410,6 +1417,69 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
     } catch (error: any) {
       console.error("Error fetching session:", error);
       res.status(500).json({ message: "Oturum bilgisi alınamadı" });
+    }
+  });
+
+  // Phase transition for 3-phase timer
+  router.patch('/api/factory/kiosk/session/:sessionId/phase', isKioskAuthenticated, async (req, res) => {
+    try {
+      const sessionId = parseInt(req.params.sessionId);
+      const { phase } = req.body;
+      const validPhases = ['hazirlik', 'uretim', 'temizlik', 'tamamlandi'];
+      if (!validPhases.includes(phase)) {
+        return res.status(400).json({ message: "Geçersiz faz" });
+      }
+
+      const [session] = await db.select().from(factoryShiftSessions)
+        .where(eq(factoryShiftSessions.id, sessionId))
+        .limit(1);
+      if (!session) return res.status(404).json({ message: "Oturum bulunamadı" });
+
+      const kioskUserId = (req as any).kioskUserId;
+      if (kioskUserId && session.userId !== kioskUserId) {
+        return res.status(403).json({ message: "Bu oturumu güncelleme yetkiniz yok" });
+      }
+
+      const phaseOrder: Record<string, string> = { hazirlik: 'uretim', uretim: 'temizlik', temizlik: 'tamamlandi' };
+      const currentPhase = session.phase || 'hazirlik';
+      if (phaseOrder[currentPhase] !== phase) {
+        return res.status(400).json({ message: `Geçersiz faz geçişi: ${currentPhase} → ${phase}` });
+      }
+
+      const now = new Date();
+      const updates: Record<string, any> = { phase };
+
+      if (phase === 'uretim') {
+        updates.prodStartedAt = now;
+        if (session.prepStartedAt) {
+          updates.prepDurationMinutes = Math.floor(
+            (now.getTime() - new Date(session.prepStartedAt).getTime()) / 60000
+          );
+        }
+      } else if (phase === 'temizlik') {
+        updates.cleanStartedAt = now;
+        updates.prodEndedAt = now;
+        if (session.prodStartedAt) {
+          updates.prodDurationMinutes = Math.floor(
+            (now.getTime() - new Date(session.prodStartedAt).getTime()) / 60000
+          );
+        }
+      } else if (phase === 'tamamlandi') {
+        if (session.cleanStartedAt) {
+          updates.cleanDurationMinutes = Math.floor(
+            (now.getTime() - new Date(session.cleanStartedAt).getTime()) / 60000
+          );
+        }
+      }
+
+      await db.update(factoryShiftSessions)
+        .set(updates)
+        .where(eq(factoryShiftSessions.id, sessionId));
+
+      res.json({ success: true, phase, updatedAt: now });
+    } catch (error: any) {
+      console.error("Error updating phase:", error);
+      res.status(500).json({ message: "Faz güncellenemedi" });
     }
   });
 
@@ -2235,7 +2305,11 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
         wasteUnit,
         wasteReasonId,
         wasteNotes,
-        photoUrl
+        photoUrl,
+        productId,
+        productName,
+        wasteDoughKg,
+        wasteProductCount
       } = req.body;
 
       // Parse quantities safely
@@ -2276,8 +2350,10 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
         startedAt: new Date(),
       });
 
-      // If production data provided, save output with photo
-      if (parsedProduced > 0 || parsedWaste > 0 || photoUrl) {
+      const parsedDoughKg = parseFloat(wasteDoughKg) || 0;
+      const parsedProductCount = parseInt(wasteProductCount) || 0;
+
+      if (parsedProduced > 0 || parsedWaste > 0 || parsedDoughKg > 0 || parsedProductCount > 0 || photoUrl) {
         await db.insert(factoryProductionOutputs).values({
           sessionEventId: event.id,
           sessionId,
@@ -2291,6 +2367,10 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
           wasteNotes: wasteNotes || null,
           photoUrl: photoUrl || null,
           qualityStatus: 'pending',
+          productId: productId || null,
+          productName: productName || null,
+          wasteDoughKg: parsedDoughKg > 0 ? parsedDoughKg.toString() : null,
+          wasteProductCount: parsedProductCount > 0 ? parsedProductCount : null,
         });
       }
 
@@ -6087,5 +6167,29 @@ export async function seedFactoryData() {
     console.log("[FAB-SEED] All factory seed data completed successfully.");
   } catch (error) {
     console.error("[FAB-SEED] Error seeding factory data:", error);
+  }
+}
+
+export async function initFactoryKioskMigrations() {
+  try {
+    await db.execute(sql`
+      ALTER TABLE factory_shift_sessions
+        ADD COLUMN IF NOT EXISTS phase VARCHAR(20) DEFAULT 'hazirlik',
+        ADD COLUMN IF NOT EXISTS prep_started_at TIMESTAMP,
+        ADD COLUMN IF NOT EXISTS prod_started_at TIMESTAMP,
+        ADD COLUMN IF NOT EXISTS clean_started_at TIMESTAMP,
+        ADD COLUMN IF NOT EXISTS prod_ended_at TIMESTAMP,
+        ADD COLUMN IF NOT EXISTS prep_duration_minutes INTEGER,
+        ADD COLUMN IF NOT EXISTS prod_duration_minutes INTEGER,
+        ADD COLUMN IF NOT EXISTS clean_duration_minutes INTEGER
+    `);
+    await db.execute(sql`
+      ALTER TABLE factory_production_outputs
+        ADD COLUMN IF NOT EXISTS waste_dough_kg NUMERIC(8,2),
+        ADD COLUMN IF NOT EXISTS waste_product_count INTEGER
+    `);
+    console.log("[FAB-KIOSK] Phase + waste columns migration applied.");
+  } catch (error) {
+    console.error("[FAB-KIOSK] Migration error:", error);
   }
 }

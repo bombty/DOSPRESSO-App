@@ -819,7 +819,8 @@ export function registerFactoryShiftRoutes(app: Express) {
   app.get("/api/factory-shifts/my-assignment/:userId", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const { userId } = req.params;
-      const today = new Date().toISOString().split("T")[0];
+      const nowIstanbul = new Date(new Date().toLocaleString("en-US", { timeZone: "Europe/Istanbul" }));
+      const today = nowIstanbul.toISOString().split("T")[0];
 
       const assignments = await db.select({
         assignmentId: factoryShiftWorkers.id,

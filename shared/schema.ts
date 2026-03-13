@@ -9792,6 +9792,15 @@ export const factoryShiftSessions = pgTable("factory_shift_sessions", {
   
   status: varchar("status", { length: 20 }).default("active").notNull(), // active, completed, abandoned
   
+  phase: varchar("phase", { length: 20 }).default("hazirlik"), // hazirlik, uretim, temizlik, tamamlandi
+  prepStartedAt: timestamp("prep_started_at"),
+  prodStartedAt: timestamp("prod_started_at"),
+  cleanStartedAt: timestamp("clean_started_at"),
+  prodEndedAt: timestamp("prod_ended_at"),
+  prepDurationMinutes: integer("prep_duration_minutes"),
+  prodDurationMinutes: integer("prod_duration_minutes"),
+  cleanDurationMinutes: integer("clean_duration_minutes"),
+  
   notes: text("notes"),
   createdAt: timestamp("created_at").defaultNow(),
 }, (table) => [
@@ -10072,6 +10081,8 @@ export const factoryProductionOutputs = pgTable("factory_production_outputs", {
   wasteUnit: varchar("waste_unit", { length: 20 }),
   wasteReasonId: integer("waste_reason_id").references(() => factoryWasteReasons.id),
   wasteNotes: text("waste_notes"),
+  wasteDoughKg: numeric("waste_dough_kg", { precision: 8, scale: 2 }),
+  wasteProductCount: integer("waste_product_count"),
   
   // Süre
   durationMinutes: integer("duration_minutes"),

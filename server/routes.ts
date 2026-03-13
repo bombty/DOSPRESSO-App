@@ -368,7 +368,7 @@ import { z } from "zod";
 import { resolvePermissionScope, applyScopeFilter, getUserPermissions, getAllActionsGroupedByModule, getRoleGrants, upsertPermissionGrant, deletePermissionGrant, getRoleAccessibleModules } from "./permission-service";
 import adminRouter from "./routes/admin";
 import seedRouter from "./routes/seed";
-import factoryRouter, { seedFactoryData } from "./routes/factory";
+import factoryRouter, { seedFactoryData, initFactoryKioskMigrations } from "./routes/factory";
 import academyRouter from "./routes/academy";
 import academyV2Router from "./routes/academy-v2";
 import academyV3Router from "./routes/academy-v3";
@@ -1051,6 +1051,7 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
   }
   seedDashboardWidgetItems();
   seedFactoryData();
+  initFactoryKioskMigrations();
   initOnboardingMigrations();
 
 

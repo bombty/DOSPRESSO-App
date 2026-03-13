@@ -38,14 +38,22 @@ import {
   ImageIcon,
   X,
   CalendarOff,
-  Users
+  Users,
+  Maximize,
+  Minimize,
+  Wrench,
+  Sparkles,
+  SprayCan,
 } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { ObjectUploader } from "@/components/ObjectUploader";
 import { ErrorState } from "../../components/error-state";
 import { LoadingState } from "../../components/loading-state";
 
 type KioskStep = 'select-user' | 'enter-pin' | 'select-station' | 'working' | 'stop-options' | 'production-entry' | 'end-shift-summary' | 'auto-logout' | 'fault-report';
 type BreakReason = 'mola' | 'yardim' | 'ozel_ihtiyac' | 'gorev_bitis' | 'vardiya_kapat';
+type KioskPhase = 'hazirlik' | 'uretim' | 'temizlik' | 'tamamlandi';
+const PHASE_ORDER: KioskPhase[] = ['hazirlik', 'uretim', 'temizlik', 'tamamlandi'];
 
 interface StaffMember {
   id: string;
@@ -78,6 +86,17 @@ interface Session {
   totalProduced: number;
   totalWaste: number;
   status: string;
+  phase?: string;
+  prepStartedAt?: string;
+  prodStartedAt?: string;
+  cleanStartedAt?: string;
+}
+
+interface FactoryProduct {
+  id: number;
+  name: string;
+  category: string;
+  isActive: boolean;
 }
 
 interface ProductionRun {
@@ -123,6 +142,14 @@ export default function FactoryKiosk() {
   const [faultType, setFaultType] = useState<'machine' | 'product' | null>(null);
   const [faultDescription, setFaultDescription] = useState('');
   const [faultStationId, setFaultStationId] = useState<number | null>(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [currentPhase, setCurrentPhase] = useState<KioskPhase>('hazirlik');
+  const [phaseStartTime, setPhaseStartTime] = useState<Date>(new Date());
+  const [phaseDurations, setPhaseDurations] = useState({ hazirlik: 0, uretim: 0, temizlik: 0 });
+  const [selectedProductId, setSelectedProductId] = useState<number | null>(null);
+  const [productError, setProductError] = useState('');
+  const [wasteDoughKg, setWasteDoughKg] = useState('');
+  const [wasteProductCount, setWasteProductCount] = useState('');
 
   const { data: staffList = [], isLoading: loadingStaff, isError, refetch } = useQuery<StaffMember[]>({
     queryKey: ['/api/factory/staff'],
@@ -139,6 +166,19 @@ export default function FactoryKiosk() {
   const { data: activeWorkers = [] } = useQuery<any[]>({
     queryKey: ['/api/factory/active-workers'],
     refetchInterval: 5000,
+  });
+
+  const stationCategory = currentStationInfo?.category || null;
+  const { data: factoryProducts = [] } = useQuery<FactoryProduct[]>({
+    queryKey: ['/api/factory/products', stationCategory],
+    queryFn: async () => {
+      const url = stationCategory 
+        ? `/api/factory/products?category=${encodeURIComponent(stationCategory)}`
+        : '/api/factory/products';
+      const res = await apiRequest('GET', url);
+      return res.json();
+    },
+    enabled: step === 'production-entry' || step === 'working',
   });
 
   const { data: collaborativeScores } = useQuery<any>({
@@ -190,6 +230,9 @@ export default function FactoryKiosk() {
       setCurrentSession(data.session);
       setCurrentProductionRun(data.productionRun);
       setCurrentStationInfo(data.station);
+      setCurrentPhase('hazirlik');
+      setPhaseStartTime(new Date());
+      setPhaseDurations({ hazirlik: 0, uretim: 0, temizlik: 0 });
       setStep('working');
       toast({ title: "Vardiya başladı", description: `${data.station.name} istasyonunda çalışmaya başladın` });
     },
@@ -286,6 +329,11 @@ export default function FactoryKiosk() {
         setCurrentSession(data.session);
         setCurrentProductionRun(data.productionRun);
         setCurrentStationInfo(data.station);
+        if (data.session.phase) {
+          setCurrentPhase(data.session.phase as KioskPhase);
+        }
+        const phaseStart = data.session.cleanStartedAt || data.session.prodStartedAt || data.session.prepStartedAt || data.session.checkInTime;
+        if (phaseStart) setPhaseStartTime(new Date(phaseStart));
       }
     } catch (error) {
       console.error("Error fetching session:", error);
@@ -351,6 +399,46 @@ export default function FactoryKiosk() {
     startShiftMutation.mutate({ userId: selectedUser.id, stationId: selectedStation });
   };
 
+  const handleFullscreen = () => {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().catch((err) => {
+        console.warn("Fullscreen request failed:", err);
+      });
+      setIsFullscreen(true);
+    } else {
+      document.exitFullscreen().catch((err) => {
+        console.warn("Exit fullscreen failed:", err);
+      });
+      setIsFullscreen(false);
+    }
+  };
+
+  useEffect(() => {
+    const onFSChange = () => setIsFullscreen(!!document.fullscreenElement);
+    document.addEventListener('fullscreenchange', onFSChange);
+    return () => document.removeEventListener('fullscreenchange', onFSChange);
+  }, []);
+
+  const handlePhaseTransition = async (nextPhase: KioskPhase) => {
+    const now = new Date();
+    const elapsed = Math.floor((now.getTime() - phaseStartTime.getTime()) / 60000);
+    
+    setPhaseDurations(prev => ({ ...prev, [currentPhase]: elapsed }));
+    
+    if (currentSession) {
+      try {
+        await apiRequest("PATCH", `/api/factory/kiosk/session/${currentSession.id}/phase`, {
+          phase: nextPhase
+        });
+      } catch (e) {
+        console.warn("Phase transition API failed:", e);
+      }
+    }
+    
+    setCurrentPhase(nextPhase);
+    setPhaseStartTime(now);
+  };
+
   const handleStopClick = () => {
     setQuantityProduced('');
     setProducedUnit('adet');
@@ -361,6 +449,10 @@ export default function FactoryKiosk() {
     setTargetStationId(null);
     setSelectedBreakReason(null);
     setProductionPhotoUrl(null);
+    setSelectedProductId(null);
+    setProductError('');
+    setWasteDoughKg('');
+    setWasteProductCount('');
     setStep('stop-options');
   };
 
@@ -382,6 +474,14 @@ export default function FactoryKiosk() {
   const handleProductionSubmit = () => {
     if (!currentSession || !selectedBreakReason) return;
 
+    if ((parseFloat(quantityProduced) || 0) > 0 && !selectedProductId) {
+      setProductError("Lütfen bir ürün seçin");
+      return;
+    }
+    setProductError('');
+
+    const selectedProduct = factoryProducts.find(p => p.id === selectedProductId);
+
     if (selectedBreakReason === 'vardiya_kapat') {
       endShiftMutation.mutate({
         sessionId: currentSession.id,
@@ -393,6 +493,10 @@ export default function FactoryKiosk() {
         wasteReasonId: selectedWasteReason || undefined,
         wasteNotes: wasteNotes || undefined,
         photoUrl: productionPhotoUrl || undefined,
+        productId: selectedProductId || undefined,
+        productName: selectedProduct?.name || undefined,
+        wasteDoughKg: parseFloat(wasteDoughKg) || undefined,
+        wasteProductCount: parseInt(wasteProductCount) || undefined,
       });
     } else {
       logBreakMutation.mutate({
@@ -406,6 +510,10 @@ export default function FactoryKiosk() {
         wasteReasonId: selectedWasteReason || undefined,
         wasteNotes: wasteNotes || undefined,
         photoUrl: productionPhotoUrl || undefined,
+        productId: selectedProductId || undefined,
+        productName: selectedProduct?.name || undefined,
+        wasteDoughKg: parseFloat(wasteDoughKg) || undefined,
+        wasteProductCount: parseInt(wasteProductCount) || undefined,
       });
     }
   };
@@ -434,20 +542,38 @@ export default function FactoryKiosk() {
     setFaultType(null);
     setFaultDescription('');
     setFaultStationId(null);
+    setCurrentPhase('hazirlik');
+    setPhaseStartTime(new Date());
+    setPhaseDurations({ hazirlik: 0, uretim: 0, temizlik: 0 });
+    setSelectedProductId(null);
+    setProductError('');
+    setWasteDoughKg('');
+    setWasteProductCount('');
   };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center p-4">
-      <Button
-        variant="outline"
-        size="sm"
-        className="fixed top-4 right-4 z-50 bg-slate-700/80 border-slate-600 text-slate-200 backdrop-blur-sm"
-        onClick={() => setLocation('/')}
-        data-testid="button-kiosk-exit"
-      >
-        <LogOut className="h-4 w-4 mr-2" />
-        Kiosk'tan Cik
-      </Button>
+      <div className="fixed top-4 right-4 z-50 flex gap-2">
+        <Button
+          variant="outline"
+          size="icon"
+          className="bg-slate-700/80 border-slate-600 text-slate-200 backdrop-blur-sm"
+          onClick={handleFullscreen}
+          data-testid="button-fullscreen"
+        >
+          {isFullscreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          className="bg-slate-700/80 border-slate-600 text-slate-200 backdrop-blur-sm"
+          onClick={() => setLocation('/')}
+          data-testid="button-kiosk-exit"
+        >
+          <LogOut className="h-4 w-4 mr-2" />
+          Kiosk'tan Cik
+        </Button>
+      </div>
 
       <Card className="w-full max-w-2xl bg-slate-800/90 border-slate-700 text-white shadow-2xl">
         <CardHeader className="text-center border-b border-slate-700 pb-6">
@@ -642,8 +768,33 @@ export default function FactoryKiosk() {
 
               <Separator className="bg-slate-700" />
 
+              {/* 3-Phase Progress Bar */}
+              <div className="flex items-center gap-1 w-full" data-testid="phase-progress">
+                {[
+                  { key: 'hazirlik' as KioskPhase, label: 'Hazırlık', Icon: Wrench },
+                  { key: 'uretim' as KioskPhase, label: 'Üretim', Icon: Sparkles },
+                  { key: 'temizlik' as KioskPhase, label: 'Temizlik', Icon: SprayCan },
+                ].map((phase, index) => {
+                  const isDone = PHASE_ORDER.indexOf(currentPhase) > index;
+                  const isActive = currentPhase === phase.key;
+                  const PhaseIcon = phase.Icon;
+                  return (
+                    <div key={phase.key} className={cn(
+                      "flex-1 flex flex-col items-center gap-1 py-2 px-1 rounded-lg text-xs font-medium transition-all",
+                      isDone && "bg-green-900/40 text-green-400 border border-green-700",
+                      isActive && "bg-blue-900/40 text-blue-400 ring-2 ring-blue-500",
+                      !isDone && !isActive && "bg-slate-700/50 text-slate-500"
+                    )} data-testid={`phase-indicator-${phase.key}`}>
+                      <PhaseIcon className="h-4 w-4" />
+                      <span>{phase.label}</span>
+                      {isDone && <span className="text-[10px]">{phaseDurations[phase.key]}dk</span>}
+                    </div>
+                  );
+                })}
+              </div>
+
               <div className="bg-slate-700/50 rounded-lg p-4">
-                <div className="flex items-center gap-3 mb-4">
+                <div className="flex items-center gap-3">
                   <Factory className="h-6 w-6 text-amber-500" />
                   <div>
                     <p className="text-sm text-slate-400">Aktif İstasyon</p>
@@ -653,6 +804,49 @@ export default function FactoryKiosk() {
                   </div>
                 </div>
               </div>
+
+              {currentPhase === 'uretim' && (
+                <p className="text-xs text-slate-400 text-center" data-testid="text-perf-note">
+                  Sadece üretim süresi performansa sayılır
+                </p>
+              )}
+
+              {/* Phase transition buttons */}
+              {currentPhase === 'hazirlik' && (
+                <Button 
+                  className="w-full bg-blue-600 text-white text-lg h-14"
+                  onClick={() => handlePhaseTransition('uretim')}
+                  data-testid="button-phase-uretim"
+                >
+                  <Sparkles className="h-5 w-5 mr-2" />
+                  Üretime Başla
+                </Button>
+              )}
+
+              {currentPhase === 'uretim' && (
+                <Button 
+                  className="w-full bg-orange-500 text-white text-lg h-14"
+                  onClick={() => handlePhaseTransition('temizlik')}
+                  data-testid="button-phase-temizlik"
+                >
+                  <SprayCan className="h-5 w-5 mr-2" />
+                  Temizliğe Geç
+                </Button>
+              )}
+
+              {currentPhase === 'temizlik' && (
+                <Button 
+                  className="w-full bg-green-600 text-white text-lg h-14"
+                  onClick={async () => {
+                    await handlePhaseTransition('tamamlandi');
+                    handleStopClick();
+                  }}
+                  data-testid="button-phase-tamamla"
+                >
+                  <CheckCircle2 className="h-5 w-5 mr-2" />
+                  Görevi Tamamla
+                </Button>
+              )}
 
               {collaborativeScores?.isCollaborative && (
                 <Card className="bg-slate-700/30 border-slate-600">
@@ -831,15 +1025,41 @@ export default function FactoryKiosk() {
           {step === 'production-entry' && (
             <div className="space-y-6">
               <h3 className="text-xl font-semibold text-center text-slate-200">
-                {selectedBreakReason === 'gorev_bitis' ? 'Görev Sonlandırma' : 'Yardım Öncesi Kayıt'}
+                {selectedBreakReason === 'gorev_bitis' ? 'Görev Sonlandırma' : selectedBreakReason === 'vardiya_kapat' ? 'Vardiya Sonlandırma' : 'Yardım Öncesi Kayıt'}
               </h3>
               <p className="text-center text-slate-400">
-                {selectedBreakReason === 'gorev_bitis' 
+                {selectedBreakReason === 'gorev_bitis' || selectedBreakReason === 'vardiya_kapat'
                   ? 'Üretim ve zaiyat bilgilerini girin' 
                   : 'Mevcut üretimi kaydedin'}
               </p>
 
               <div className="space-y-4">
+                {/* Product selection - required */}
+                <div className="space-y-2">
+                  <Label className="text-slate-300 flex items-center gap-2">
+                    <Package className="h-4 w-4 text-amber-400" />
+                    Ürün Seçimi
+                  </Label>
+                  <Select 
+                    value={selectedProductId?.toString() || ''} 
+                    onValueChange={(v) => { setSelectedProductId(parseInt(v)); setProductError(''); }}
+                  >
+                    <SelectTrigger className={cn("bg-slate-700 border-slate-600 h-14", productError && "border-red-500")} data-testid="select-product">
+                      <SelectValue placeholder="Ürün seçin..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {factoryProducts.map((p) => (
+                        <SelectItem key={p.id} value={p.id.toString()}>
+                          {p.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {productError && (
+                    <p className="text-red-400 text-sm" data-testid="text-product-error">{productError}</p>
+                  )}
+                </div>
+
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label className="text-slate-300">Üretim Miktarı</Label>
@@ -872,38 +1092,75 @@ export default function FactoryKiosk() {
 
                 <Separator className="bg-slate-700" />
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
+                {/* Dual waste for dough stations, standard for others */}
+                {currentStationInfo?.code === 'donut_dough' || currentStationInfo?.name?.toLowerCase().includes('hamur') ? (
+                  <div className="space-y-3">
                     <Label className="text-slate-300 flex items-center gap-2">
                       <Trash2 className="h-4 w-4 text-red-400" />
-                      Zaiyat/Fire
+                      Fire Kayıtları
                     </Label>
-                    <Input
-                      type="number"
-                      placeholder="0"
-                      value={quantityWaste}
-                      onChange={(e) => setQuantityWaste(e.target.value)}
-                      className="bg-slate-700 border-slate-600 text-xl h-14 text-center"
-                      min="0"
-                      step="0.01"
-                      data-testid="input-quantity-waste"
-                    />
+                    <div className="space-y-2">
+                      <Label className="text-slate-400 text-xs">Fire Hamuru (kg)</Label>
+                      <Input
+                        type="number"
+                        placeholder="0.0"
+                        value={wasteDoughKg}
+                        onChange={(e) => setWasteDoughKg(e.target.value)}
+                        className="bg-slate-700 border-slate-600 text-xl h-14 text-center"
+                        min="0"
+                        step="0.01"
+                        data-testid="input-waste-dough-kg"
+                      />
+                      <p className="text-xs text-slate-500">Tartılan artan veya kullanılamaz hamur miktarı</p>
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-slate-400 text-xs">Zaiyat Donut (adet)</Label>
+                      <Input
+                        type="number"
+                        placeholder="0"
+                        value={wasteProductCount}
+                        onChange={(e) => setWasteProductCount(e.target.value)}
+                        className="bg-slate-700 border-slate-600 text-xl h-14 text-center"
+                        min="0"
+                        data-testid="input-waste-product-count"
+                      />
+                      <p className="text-xs text-slate-500">Pişirme sonrası zaiyat olan donut adedi</p>
+                    </div>
                   </div>
-                  <div className="space-y-2">
-                    <Label className="text-slate-300">Birim</Label>
-                    <Select value={wasteUnit} onValueChange={setWasteUnit}>
-                      <SelectTrigger className="bg-slate-700 border-slate-600 h-14">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="adet">Adet</SelectItem>
-                        <SelectItem value="kg">Kilogram</SelectItem>
-                        <SelectItem value="litre">Litre</SelectItem>
-                        <SelectItem value="paket">Paket</SelectItem>
-                      </SelectContent>
-                    </Select>
+                ) : (
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label className="text-slate-300 flex items-center gap-2">
+                        <Trash2 className="h-4 w-4 text-red-400" />
+                        Zaiyat/Fire
+                      </Label>
+                      <Input
+                        type="number"
+                        placeholder="0"
+                        value={quantityWaste}
+                        onChange={(e) => setQuantityWaste(e.target.value)}
+                        className="bg-slate-700 border-slate-600 text-xl h-14 text-center"
+                        min="0"
+                        step="0.01"
+                        data-testid="input-quantity-waste"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-slate-300">Birim</Label>
+                      <Select value={wasteUnit} onValueChange={setWasteUnit}>
+                        <SelectTrigger className="bg-slate-700 border-slate-600 h-14">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="adet">Adet</SelectItem>
+                          <SelectItem value="kg">Kilogram</SelectItem>
+                          <SelectItem value="litre">Litre</SelectItem>
+                          <SelectItem value="paket">Paket</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
-                </div>
+                )}
 
                 {parseFloat(quantityWaste) > 0 && (
                   <>
