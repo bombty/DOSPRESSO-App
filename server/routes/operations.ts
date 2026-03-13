@@ -44,6 +44,7 @@ import {
   insertAuditInstanceSchema,
   insertAuditInstanceItemSchema,
   insertCustomerFeedbackSchema,
+  insertChecklistAssignmentSchema,
   type InsertAuditTemplateItem,
 } from "@shared/schema";
 import { eq, desc, sql, and, or, inArray, lte, gte, isNull, type SQL } from "drizzle-orm";
@@ -74,8 +75,8 @@ class AuthorizationError extends Error {
   }
 }
 
-function ensurePermission(user: unknown, module: string, action: string, errorMessage?: string): void {
-  if (!hasPermission((user as any).role as UserRoleType, module, action)) {
+function ensurePermission(user: Express.User, module: string, action: string, errorMessage?: string): void {
+  if (!hasPermission(user.role as UserRoleType, module, action)) {
     throw new AuthorizationError(errorMessage || `Bu işlem için ${module} ${action} yetkiniz yok`);
   }
 }
@@ -363,15 +364,21 @@ function ensurePermission(user: unknown, module: string, action: string, errorMe
       const user = req.user!;
       ensurePermission(user, 'checklists', 'edit');
       
-      const { checklistId, scope, assignedUserId, branchId, role, shiftId, effectiveFrom, effectiveTo } = req.body;
-      
-      if (!checklistId || !scope) {
-        return res.status(400).json({ message: 'checklistId ve scope zorunludur' });
-      }
-      
-      if (!['user', 'branch', 'role'].includes(scope)) {
-        return res.status(400).json({ message: 'Geçersiz scope. user, branch veya role olmalıdır' });
-      }
+      const assignmentInputSchema = z.object({
+        checklistId: z.number({ required_error: 'checklistId zorunludur' }),
+        scope: z.enum(['user', 'branch', 'role'], { required_error: 'scope zorunludur' }),
+        assignedUserId: z.string().nullable().optional(),
+        branchId: z.number().nullable().optional(),
+        role: z.string().nullable().optional(),
+        shiftId: z.number().nullable().optional(),
+        effectiveFrom: z.string().nullable().optional(),
+        effectiveTo: z.string().nullable().optional(),
+        checklistName: z.string().optional(),
+        assignedToId: z.string().optional(),
+        userId: z.string().optional(),
+      });
+      const parsed = assignmentInputSchema.parse(req.body);
+      const { checklistId, scope, assignedUserId, branchId, role, shiftId, effectiveFrom, effectiveTo } = parsed;
       
       if (scope === 'user' && !assignedUserId) {
         return res.status(400).json({ message: 'Kullanıcı ataması için assignedUserId zorunludur' });
@@ -400,18 +407,19 @@ function ensurePermission(user: unknown, module: string, action: string, errorMe
       
       // Event task: notify assigned users about new checklist
       try {
-        const assignedUserId = req.body.assignedToId || req.body.userId;
-        if (assignedUserId) {
-          const branchInfo = req.body.branchId ? await storage.getBranch(req.body.branchId) : null;
+        const notifyUserId = parsed.assignedToId || parsed.userId;
+        if (notifyUserId) {
+          const branchInfo = parsed.branchId ? await storage.getBranch(parsed.branchId) : null;
           onChecklistAssigned(
-            req.body.checklistName || 'Checklist',
-            [assignedUserId],
+            parsed.checklistName || 'Checklist',
+            [notifyUserId],
             branchInfo?.name
           );
         }
       } catch (e) { console.error("Event task error:", e); }
       res.status(201).json(assignment);
     } catch (error: any) {
+      if (error.name === 'ZodError') return res.status(400).json({ message: "Geçersiz veri", errors: error.errors });
       console.error('Error creating checklist assignment:', error);
       res.status(500).json({ message: 'Atama oluşturulamadı' });
     }
@@ -424,7 +432,8 @@ function ensurePermission(user: unknown, module: string, action: string, errorMe
       ensurePermission(user, 'checklists', 'edit');
       
       const id = parseInt(req.params.id);
-      const updates = req.body;
+      if (isNaN(id)) return res.status(400).json({ message: "Geçersiz ID" });
+      const updates = insertChecklistAssignmentSchema.partial().parse(req.body);
       
       const updated = await storage.updateChecklistAssignment(id, updates);
       if (!updated) {
@@ -433,6 +442,7 @@ function ensurePermission(user: unknown, module: string, action: string, errorMe
       
       res.json(updated);
     } catch (error: any) {
+      if (error.name === 'ZodError') return res.status(400).json({ message: "Geçersiz veri", errors: error.errors });
       console.error('Error updating checklist assignment:', error);
       res.status(500).json({ message: 'Atama güncellenemedi' });
     }
@@ -463,11 +473,13 @@ function ensurePermission(user: unknown, module: string, action: string, errorMe
   router.post('/api/checklist-completions/start', isAuthenticated, async (req: any, res) => {
     try {
       const user = req.user!;
-      const { assignmentId, checklistId, branchId, shiftId } = req.body;
-      
-      if (!assignmentId || !checklistId) {
-        return res.status(400).json({ message: 'assignmentId ve checklistId zorunludur' });
-      }
+      const completionStartSchema = z.object({
+        assignmentId: z.number({ required_error: 'assignmentId zorunludur' }),
+        checklistId: z.number({ required_error: 'checklistId zorunludur' }),
+        branchId: z.number().nullable().optional(),
+        shiftId: z.number().nullable().optional(),
+      });
+      const { assignmentId, checklistId, branchId, shiftId } = completionStartSchema.parse(req.body);
       
       // Check if there's already an in-progress completion for today
       const today = new Date().toISOString().split('T')[0];
@@ -493,6 +505,7 @@ function ensurePermission(user: unknown, module: string, action: string, errorMe
       const completionWithTasks = await storage.getChecklistCompletionWithTasks(completion.id);
       res.status(201).json(completionWithTasks);
     } catch (error: any) {
+      if (error.name === 'ZodError') return res.status(400).json({ message: "Geçersiz veri", errors: error.errors });
       console.error('Error starting checklist completion:', error);
       res.status(500).json({ message: 'Checklist başlatılamadı' });
     }
@@ -534,7 +547,12 @@ function ensurePermission(user: unknown, module: string, action: string, errorMe
       const user = req.user!;
       const completionId = parseInt(req.params.completionId);
       const taskId = parseInt(req.params.taskId);
-      const { photoUrl, notes } = req.body;
+      if (isNaN(completionId) || isNaN(taskId)) return res.status(400).json({ message: "Geçersiz ID" });
+      const taskCompleteSchema = z.object({
+        photoUrl: z.string().nullable().optional(),
+        notes: z.string().nullable().optional(),
+      });
+      const { photoUrl, notes } = taskCompleteSchema.parse(req.body);
       
       const taskCompletion = await storage.completeChecklistTask({
         completionId,
@@ -547,6 +565,7 @@ function ensurePermission(user: unknown, module: string, action: string, errorMe
       res.json(taskCompletion);
     } catch (error: any) {
       console.error('Error completing task:', error);
+      if (error.name === 'ZodError') return res.status(400).json({ message: "Geçersiz veri", errors: error.errors });
       res.status(500).json({ message: 'Görev tamamlanamadı' });
     }
   });
@@ -557,9 +576,10 @@ function ensurePermission(user: unknown, module: string, action: string, errorMe
       const user = req.user!;
       const completionId = parseInt(req.params.completionId);
       const taskId = parseInt(req.params.taskId);
-      const { photoBase64 } = req.body;
-      
-      if (!photoBase64) {
+      if (isNaN(completionId) || isNaN(taskId)) return res.status(400).json({ message: "Geçersiz ID" });
+      const verifyPhotoSchema = z.object({ photoBase64: z.string() });
+      const parseResult = verifyPhotoSchema.safeParse(req.body);
+      if (!parseResult.success) {
         return res.status(400).json({ message: 'Fotoğraf gereklidir' });
       }
       
@@ -570,6 +590,7 @@ function ensurePermission(user: unknown, module: string, action: string, errorMe
       }
       
       // Compress uploaded photo
+      const { photoBase64 } = parseResult.data;
       const compressedPhoto = await compressChecklistPhotoBase64(photoBase64);
       const compressedBase64 = `data:image/webp;base64,${compressedPhoto.toString('base64')}`;
       
@@ -740,7 +761,12 @@ function ensurePermission(user: unknown, module: string, action: string, errorMe
       ensurePermission(user, 'checklists', 'edit');
       
       const id = parseInt(req.params.id);
-      const { score, reviewNote } = req.body;
+      if (isNaN(id)) return res.status(400).json({ message: "Geçersiz ID" });
+      const reviewSchema = z.object({
+        score: z.number().min(0).max(100),
+        reviewNote: z.string().nullable().optional(),
+      });
+      const { score, reviewNote } = reviewSchema.parse(req.body);
       
       const updated = await storage.updateChecklistCompletionScore(id, score, user.id, reviewNote);
       
@@ -751,6 +777,7 @@ function ensurePermission(user: unknown, module: string, action: string, errorMe
       res.json(updated);
     } catch (error: any) {
       console.error('Error reviewing completion:', error);
+      if (error.name === 'ZodError') return res.status(400).json({ message: "Geçersiz veri", errors: error.errors });
       res.status(500).json({ message: 'Değerlendirme kaydedilemedi' });
     }
   });
@@ -817,11 +844,15 @@ function ensurePermission(user: unknown, module: string, action: string, errorMe
       const user = req.user!;
       ensurePermission(user, 'checklists', 'edit');
       
-      const { checklistId, taskIds } = req.body;
-      
-      if (!checklistId || !Array.isArray(taskIds) || taskIds.length === 0) {
+      const reorderSchema = z.object({
+        checklistId: z.number(),
+        taskIds: z.array(z.number()).min(1, "taskIds dizisi boş olamaz"),
+      });
+      const parseResult = reorderSchema.safeParse(req.body);
+      if (!parseResult.success) {
         return res.status(400).json({ message: "checklistId ve taskIds dizisi gerekli" });
       }
+      const { checklistId, taskIds } = parseResult.data;
       
       // Update order for each task
       for (let i = 0; i < taskIds.length; i++) {
@@ -1119,11 +1150,15 @@ function ensurePermission(user: unknown, module: string, action: string, errorMe
   router.post('/api/faults/ai-diagnose', isAuthenticated, async (req: any, res) => {
     try {
       const user = req.user!;
-      const { equipmentType, faultDescription } = req.body;
-      
-      if (!equipmentType || !faultDescription) {
-        return res.status(400).json({ message: "Ekipman tipi ve arıza açıklaması zorunludur" });
+      const diagnoseSchema = z.object({
+        equipmentType: z.string().min(1, "Ekipman tipi zorunludur"),
+        faultDescription: z.string().min(1, "Arıza açıklaması zorunludur"),
+      });
+      const parseResult = diagnoseSchema.safeParse(req.body);
+      if (!parseResult.success) {
+        return res.status(400).json({ message: "Ekipman tipi ve arıza açıklaması zorunludur", errors: parseResult.error.errors });
       }
+      const { equipmentType, faultDescription } = parseResult.data;
 
       const diagnosis = await diagnoseFault(equipmentType, faultDescription, user.id);
       res.json(diagnosis);
@@ -1136,7 +1171,9 @@ function ensurePermission(user: unknown, module: string, action: string, errorMe
     try {
       const user = req.user!;
       const id = parseInt(req.params.id);
-      const { photoUrl } = req.body;
+      if (isNaN(id)) return res.status(400).json({ message: "Geçersiz ID" });
+      const faultPhotoSchema = z.object({ photoUrl: z.string().optional() });
+      const { photoUrl } = faultPhotoSchema.parse(req.body);
       const userId = req.user.id; // For rate limiting
       
       // Authorization: Branch users can only update faults from their own branch
@@ -1190,11 +1227,16 @@ function ensurePermission(user: unknown, module: string, action: string, errorMe
     try {
       const user = req.user!;
       const id = parseInt(req.params.id);
-      const { serviceNotificationDate, serviceNotificationMethod } = req.body;
-
-      if (!serviceNotificationDate) {
+      if (isNaN(id)) return res.status(400).json({ message: "Geçersiz ID" });
+      const serviceNotifSchema = z.object({
+        serviceNotificationDate: z.string().min(1, "Bildirim tarihi gerekli"),
+        serviceNotificationMethod: z.string().optional(),
+      });
+      const parseResult = serviceNotifSchema.safeParse(req.body);
+      if (!parseResult.success) {
         return res.status(400).json({ message: "Bildirim tarihi gerekli" });
       }
+      const { serviceNotificationDate, serviceNotificationMethod } = parseResult.data;
 
       const existingFault = await db.select().from(equipmentFaults).where(eq(equipmentFaults.id, id)).limit(1);
       if (!existingFault.length) {
@@ -1261,13 +1303,18 @@ function ensurePermission(user: unknown, module: string, action: string, errorMe
   router.put('/api/faults/:id/stage', isAuthenticated, async (req: any, res) => {
     try {
       const id = parseInt(req.params.id);
-      const { stage, notes } = req.body;
-      const userId = req.user.id;
-      const userRole = req.user.role;
-      
-      if (!stage) {
+      if (isNaN(id)) return res.status(400).json({ message: "Geçersiz ID" });
+      const stageSchema = z.object({
+        stage: z.string().min(1, "Stage is required"),
+        notes: z.string().nullable().optional(),
+      });
+      const parseResult = stageSchema.safeParse(req.body);
+      if (!parseResult.success) {
         return res.status(400).json({ message: "Stage is required" });
       }
+      const { stage, notes } = parseResult.data;
+      const userId = req.user.id;
+      const userRole = req.user.role;
       
       // Validate stage value
       const { FAULT_STAGES } = await import('@shared/schema');

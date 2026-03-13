@@ -95,6 +95,9 @@ export function registerInspectionRoutes(app: Express) {
       }
 
       const branchId = req.query.branchId ? parseInt(req.query.branchId as string) : undefined;
+      if (branchId !== undefined && isNaN(branchId)) {
+        return res.status(400).json({ message: "Geçersiz branchId" });
+      }
 
       let conditions: any[] = [];
       if (branchId) {
@@ -197,6 +200,7 @@ export function registerInspectionRoutes(app: Express) {
       }
 
       const id = parseInt(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ message: "Geçersiz ID" });
       const [audit] = await db.select({
         audit: branchQualityAudits,
         branchName: branches.name,
@@ -315,6 +319,7 @@ export function registerInspectionRoutes(app: Express) {
       }
 
       const id = parseInt(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ message: "Geçersiz ID" });
       const body = req.body;
 
       const updateData: any = { updatedAt: new Date() };

@@ -2,7 +2,7 @@
 import { Express } from "express";
 import { storage } from "./storage";
 import { db } from "./db";
-import { branches, users, equipmentFaults, checklistCompletions, customerFeedback, leaveRequests, overtimeRequests, monthlyPayrolls, inventory, purchaseOrders, suppliers, productComplaints, productionBatches, equipment, auditInstances, tasks, guestComplaints, franchiseProjects, factoryProducts, haccpControlPoints, haccpRecords, hygieneAudits, supplierCertifications, foodSafetyTrainings, foodSafetyDocuments } from "@shared/schema";
+import { branches, users, equipmentFaults, checklistCompletions, customerFeedback, leaveRequests, overtimeRequests, monthlyPayrolls, inventory, purchaseOrders, suppliers, productComplaints, productionBatches, equipment, auditInstances, tasks, guestComplaints, franchiseProjects, factoryProducts, haccpControlPoints, haccpRecords, hygieneAudits, supplierCertifications, foodSafetyTrainings, foodSafetyDocuments, insertHaccpControlPointSchema, insertHaccpRecordSchema, insertHygieneAuditSchema, insertSupplierCertificationSchema, insertFoodSafetyTrainingSchema, insertFoodSafetyDocumentSchema } from "@shared/schema";
 import { eq, and, inArray, sql, or, gte, count } from "drizzle-orm";
 import { computeBranchHealthScores } from "./services/branch-health-scoring";
 import { cache, generateCacheKey } from "./cache";
@@ -1416,9 +1416,11 @@ export function registerHQDashboardRoutes(app: Express, isAuthenticated: any) {
       if (!allowedRoles.includes(req.user.role)) {
         return res.status(403).json({ message: "Bu isleme yetkiniz yok" });
       }
-      const [cp] = await db.insert(haccpControlPoints).values({ ...req.body, createdById: req.user.id }).returning();
+      const validated = insertHaccpControlPointSchema.omit({ createdById: true }).parse(req.body);
+      const [cp] = await db.insert(haccpControlPoints).values({ ...validated, createdById: req.user.id }).returning();
       res.json(cp);
     } catch (error: any) {
+      if (error.name === 'ZodError') return res.status(400).json({ message: "Geçersiz veri", errors: error.errors });
       res.status(500).json({ message: "HACCP kontrol noktasi olusturulamadi", error: error.message });
     }
   });
@@ -1443,9 +1445,11 @@ export function registerHQDashboardRoutes(app: Express, isAuthenticated: any) {
       if (!allowedRoles.includes(req.user.role)) {
         return res.status(403).json({ message: "Bu isleme yetkiniz yok" });
       }
-      const [record] = await db.insert(haccpRecords).values({ ...req.body, recordedById: req.user.id }).returning();
+      const validated = insertHaccpRecordSchema.omit({ recordedById: true }).parse(req.body);
+      const [record] = await db.insert(haccpRecords).values({ ...validated, recordedById: req.user.id }).returning();
       res.json(record);
     } catch (error: any) {
+      if (error.name === 'ZodError') return res.status(400).json({ message: "Geçersiz veri", errors: error.errors });
       res.status(500).json({ message: "HACCP kaydi olusturulamadi", error: error.message });
     }
   });
@@ -1470,9 +1474,11 @@ export function registerHQDashboardRoutes(app: Express, isAuthenticated: any) {
       if (!allowedRoles.includes(req.user.role)) {
         return res.status(403).json({ message: "Bu isleme yetkiniz yok" });
       }
-      const [audit] = await db.insert(hygieneAudits).values({ ...req.body, auditorId: req.user.id }).returning();
+      const validated = insertHygieneAuditSchema.omit({ auditorId: true }).parse(req.body);
+      const [audit] = await db.insert(hygieneAudits).values({ ...validated, auditorId: req.user.id }).returning();
       res.json(audit);
     } catch (error: any) {
+      if (error.name === 'ZodError') return res.status(400).json({ message: "Geçersiz veri", errors: error.errors });
       res.status(500).json({ message: "Hijyen denetimi olusturulamadi", error: error.message });
     }
   });
@@ -1497,9 +1503,11 @@ export function registerHQDashboardRoutes(app: Express, isAuthenticated: any) {
       if (!allowedRoles.includes(req.user.role)) {
         return res.status(403).json({ message: "Bu isleme yetkiniz yok" });
       }
-      const [cert] = await db.insert(supplierCertifications).values({ ...req.body, verifiedById: req.user.id }).returning();
+      const validated = insertSupplierCertificationSchema.omit({ verifiedById: true }).parse(req.body);
+      const [cert] = await db.insert(supplierCertifications).values({ ...validated, verifiedById: req.user.id }).returning();
       res.json(cert);
     } catch (error: any) {
+      if (error.name === 'ZodError') return res.status(400).json({ message: "Geçersiz veri", errors: error.errors });
       res.status(500).json({ message: "Sertifika olusturulamadi", error: error.message });
     }
   });
@@ -1510,9 +1518,13 @@ export function registerHQDashboardRoutes(app: Express, isAuthenticated: any) {
       if (!allowedRoles.includes(req.user.role)) {
         return res.status(403).json({ message: "Bu isleme yetkiniz yok" });
       }
-      const [cert] = await db.update(supplierCertifications).set(req.body).where(eq(supplierCertifications.id, parseInt(req.params.id))).returning();
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ message: "Geçersiz ID" });
+      const validated = insertSupplierCertificationSchema.omit({ verifiedById: true }).partial().parse(req.body);
+      const [cert] = await db.update(supplierCertifications).set(validated).where(eq(supplierCertifications.id, id)).returning();
       res.json(cert);
     } catch (error: any) {
+      if (error.name === 'ZodError') return res.status(400).json({ message: "Geçersiz veri", errors: error.errors });
       res.status(500).json({ message: "Sertifika guncellenemedi", error: error.message });
     }
   });
@@ -1537,9 +1549,11 @@ export function registerHQDashboardRoutes(app: Express, isAuthenticated: any) {
       if (!allowedRoles.includes(req.user.role)) {
         return res.status(403).json({ message: "Bu isleme yetkiniz yok" });
       }
-      const [training] = await db.insert(foodSafetyTrainings).values({ ...req.body, trainerId: req.user.id }).returning();
+      const validated = insertFoodSafetyTrainingSchema.omit({ trainerId: true }).parse(req.body);
+      const [training] = await db.insert(foodSafetyTrainings).values({ ...validated, trainerId: req.user.id }).returning();
       res.json(training);
     } catch (error: any) {
+      if (error.name === 'ZodError') return res.status(400).json({ message: "Geçersiz veri", errors: error.errors });
       res.status(500).json({ message: "Egitim olusturulamadi", error: error.message });
     }
   });
@@ -1564,9 +1578,11 @@ export function registerHQDashboardRoutes(app: Express, isAuthenticated: any) {
       if (!allowedRoles.includes(req.user.role)) {
         return res.status(403).json({ message: "Bu isleme yetkiniz yok" });
       }
-      const [doc] = await db.insert(foodSafetyDocuments).values({ ...req.body, createdById: req.user.id }).returning();
+      const validated = insertFoodSafetyDocumentSchema.omit({ createdById: true }).parse(req.body);
+      const [doc] = await db.insert(foodSafetyDocuments).values({ ...validated, createdById: req.user.id }).returning();
       res.json(doc);
     } catch (error: any) {
+      if (error.name === 'ZodError') return res.status(400).json({ message: "Geçersiz veri", errors: error.errors });
       res.status(500).json({ message: "Dokuman olusturulamadi", error: error.message });
     }
   });

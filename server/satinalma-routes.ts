@@ -88,6 +88,7 @@ export function registerSatinalmaRoutes(app: Express, isAuthenticated: AuthMiddl
   app.get("/api/inventory/:id", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const id = parseInt(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ error: "Geçersiz ID" });
       const [item] = await db.select()
         .from(inventory)
         .where(eq(inventory.id, id));

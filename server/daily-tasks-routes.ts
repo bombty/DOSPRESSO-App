@@ -68,6 +68,7 @@ export function registerDailyTaskRoutes(app: Express) {
   app.post('/api/daily-tasks/:id/complete', isAuthenticated, async (req: any, res) => {
     try {
       const templateId = parseInt(req.params.id);
+      if (isNaN(templateId)) return res.status(400).json({ message: "Geçersiz ID" });
       const userId = req.user?.id;
       const { notes } = req.body;
       const frequency = (req.query.frequency as string) || 'daily';
@@ -111,6 +112,7 @@ export function registerDailyTaskRoutes(app: Express) {
   app.post('/api/daily-tasks/:id/uncomplete', isAuthenticated, async (req: any, res) => {
     try {
       const templateId = parseInt(req.params.id);
+      if (isNaN(templateId)) return res.status(400).json({ message: "Geçersiz ID" });
       const userId = req.user?.id;
       const frequency = (req.query.frequency as string) || 'daily';
 
@@ -209,6 +211,7 @@ export function registerDailyTaskRoutes(app: Express) {
   app.post('/api/daily-tasks/events/:id/complete', isAuthenticated, async (req: any, res) => {
     try {
       const taskId = parseInt(req.params.id);
+      if (isNaN(taskId)) return res.status(400).json({ message: "Geçersiz ID" });
       const userId = req.user?.id;
 
       const [updated] = await db.update(eventTriggeredTasks)
@@ -233,6 +236,7 @@ export function registerDailyTaskRoutes(app: Express) {
   app.post('/api/daily-tasks/events/:id/uncomplete', isAuthenticated, async (req: any, res) => {
     try {
       const taskId = parseInt(req.params.id);
+      if (isNaN(taskId)) return res.status(400).json({ message: "Geçersiz ID" });
       const userId = req.user?.id;
 
       const [updated] = await db.update(eventTriggeredTasks)
@@ -257,6 +261,7 @@ export function registerDailyTaskRoutes(app: Express) {
   app.delete('/api/daily-tasks/events/:id', isAuthenticated, async (req: any, res) => {
     try {
       const taskId = parseInt(req.params.id);
+      if (isNaN(taskId)) return res.status(400).json({ message: "Geçersiz ID" });
       const userId = req.user?.id;
 
       await db.delete(eventTriggeredTasks)

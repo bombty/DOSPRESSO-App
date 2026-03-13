@@ -537,7 +537,7 @@ class AuthorizationError extends Error {
 }
 
 // Permission enforcement helper
-function ensurePermission(user: unknown, module: string, action: string, errorMessage?: string): void {
+function ensurePermission(user: Express.User, module: string, action: string, errorMessage?: string): void {
   if (!hasPermission(user.role as UserRoleType, module , action )) {
     throw new AuthorizationError(errorMessage || `Bu işlem için ${module} ${action} yetkiniz yok`);
   }

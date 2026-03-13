@@ -85,6 +85,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
   router.get('/api/factory/products/:id', isAuthenticated, async (req: any, res) => {
     try {
       const id = parseInt(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ message: "Geçersiz ID" });
       const product = await storage.getFactoryProduct(id);
       if (!product) return res.status(404).json({ message: "Ürün bulunamadı" });
       res.json(product);
@@ -115,6 +116,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
         return res.status(403).json({ message: "Yetkiniz yok" });
       }
       const id = parseInt(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ message: "Geçersiz ID" });
       const product = await storage.updateFactoryProduct(id, req.body);
       res.json(product);
     } catch (error: any) {
@@ -130,6 +132,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
         return res.status(403).json({ message: "Yetkiniz yok" });
       }
       const id = parseInt(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ message: "Geçersiz ID" });
       await storage.deleteFactoryProduct(id);
       res.json({ success: true });
     } catch (error: any) {
@@ -142,6 +145,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
   router.get('/api/factory/batches', isAuthenticated, async (req: any, res) => {
     try {
       const productId = req.query.productId ? parseInt(req.query.productId as string) : undefined;
+      if (productId !== undefined && isNaN(productId)) return res.status(400).json({ message: "Geçersiz productId" });
       const status = req.query.status as string | undefined;
       const batches = await storage.getProductionBatches(productId, status);
       res.json(batches);
@@ -154,6 +158,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
   router.get('/api/factory/batches/:id', isAuthenticated, async (req: any, res) => {
     try {
       const id = parseInt(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ message: "Geçersiz ID" });
       const batch = await storage.getProductionBatch(id);
       if (!batch) return res.status(404).json({ message: "Parti bulunamadı" });
       res.json(batch);
@@ -187,6 +192,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
         return res.status(403).json({ message: "Yetkiniz yok" });
       }
       const id = parseInt(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ message: "Geçersiz ID" });
       const batch = await storage.updateProductionBatch(id, req.body);
       res.json(batch);
     } catch (error: any) {
@@ -199,6 +205,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
   router.get('/api/factory/orders', isAuthenticated, async (req: any, res) => {
     try {
       const branchId = req.query.branchId ? parseInt(req.query.branchId as string) : undefined;
+      if (branchId !== undefined && isNaN(branchId)) return res.status(400).json({ message: "Geçersiz branchId" });
       const status = req.query.status as string | undefined;
       const orders = await storage.getBranchOrders(branchId, status);
       res.json(orders);
@@ -211,6 +218,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
   router.get('/api/factory/orders/:id', isAuthenticated, async (req: any, res) => {
     try {
       const id = parseInt(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ message: "Geçersiz ID" });
       const order = await storage.getBranchOrder(id);
       if (!order) return res.status(404).json({ message: "Sipariş bulunamadı" });
       const items = await storage.getBranchOrderItems(id);
@@ -250,6 +258,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
   router.patch('/api/factory/orders/:id', isAuthenticated, async (req: any, res) => {
     try {
       const id = parseInt(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ message: "Geçersiz ID" });
       const updates: any = { ...req.body };
       
       if (req.body.status && ['confirmed', 'preparing', 'shipped', 'delivered'].includes(req.body.status)) {
@@ -268,6 +277,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
   router.get('/api/factory/inventory', isAuthenticated, async (req: any, res) => {
     try {
       const productId = req.query.productId ? parseInt(req.query.productId as string) : undefined;
+      if (productId !== undefined && isNaN(productId)) return res.status(400).json({ message: "Geçersiz productId" });
       const inventory = await storage.getFactoryInventory(productId);
       res.json(inventory);
     } catch (error: any) {
@@ -340,6 +350,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
   router.patch('/api/factory/stations/:id', isAuthenticated, async (req, res) => {
     try {
       const stationId = parseInt(req.params.id);
+      if (isNaN(stationId)) return res.status(400).json({ message: "Geçersiz ID" });
       const { name, code, description, category, targetHourlyOutput, maxCapacity, isActive, sortOrder } = req.body;
 
       const [updated] = await db.update(factoryStations)
@@ -371,6 +382,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
   router.delete('/api/factory/stations/:id', isAuthenticated, async (req, res) => {
     try {
       const stationId = parseInt(req.params.id);
+      if (isNaN(stationId)) return res.status(400).json({ message: "Geçersiz ID" });
 
       // Soft delete - just set isActive to false
       const [deleted] = await db.update(factoryStations)
@@ -451,6 +463,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
   router.patch('/api/factory/pins/:userId', isAuthenticated, async (req, res) => {
     try {
       const userId = parseInt(req.params.userId);
+      if (isNaN(userId)) return res.status(400).json({ message: "Geçersiz ID" });
       const { pin } = req.body;
 
       if (!pin || pin.length !== 4) {
@@ -483,6 +496,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
   router.post('/api/factory/pins/:userId/unlock', isAuthenticated, async (req, res) => {
     try {
       const userId = parseInt(req.params.userId);
+      if (isNaN(userId)) return res.status(400).json({ message: "Geçersiz ID" });
 
       const [updated] = await db.update(factoryStaffPins)
         .set({
@@ -507,6 +521,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
   router.delete('/api/factory/pins/:userId', isAuthenticated, async (req, res) => {
     try {
       const userId = parseInt(req.params.userId);
+      if (isNaN(userId)) return res.status(400).json({ message: "Geçersiz ID" });
 
       const [deleted] = await db.delete(factoryStaffPins)
         .where(eq(factoryStaffPins.userId, userId))
@@ -1316,6 +1331,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
   router.get('/api/factory/product-recipe-info/:productId', isAuthenticated, async (req: any, res) => {
     try {
       const productId = parseInt(req.params.productId);
+      if (isNaN(productId)) return res.status(400).json({ message: "Geçersiz ID" });
       
       // Get active recipe for this product
       const [recipe] = await db.execute(sql`
@@ -1424,6 +1440,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
   router.patch('/api/factory/kiosk/session/:sessionId/phase', isKioskAuthenticated, async (req, res) => {
     try {
       const sessionId = parseInt(req.params.sessionId);
+      if (isNaN(sessionId)) return res.status(400).json({ message: "Geçersiz ID" });
       const { phase } = req.body;
       const validPhases = ['hazirlik', 'uretim', 'temizlik', 'tamamlandi'];
       if (!validPhases.includes(phase)) {
@@ -1525,6 +1542,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
   router.patch('/api/factory/waste-reasons/:id', isAuthenticated, async (req, res) => {
     try {
       const reasonId = parseInt(req.params.id);
+      if (isNaN(reasonId)) return res.status(400).json({ message: "Geçersiz ID" });
       const { name, category, description, isActive, sortOrder } = req.body;
 
       const [updated] = await db.update(factoryWasteReasons)
@@ -1553,6 +1571,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
   router.delete('/api/factory/waste-reasons/:id', isAuthenticated, async (req, res) => {
     try {
       const reasonId = parseInt(req.params.id);
+      if (isNaN(reasonId)) return res.status(400).json({ message: "Geçersiz ID" });
 
       const [deleted] = await db.update(factoryWasteReasons)
         .set({ isActive: false })
@@ -1619,6 +1638,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
   router.patch('/api/factory/quality-specs/:id', isAuthenticated, async (req, res) => {
     try {
       const specId = parseInt(req.params.id);
+      if (isNaN(specId)) return res.status(400).json({ message: "Geçersiz ID" });
       const { stationId, productId, name, description, measurementType, unit, minValue, maxValue, targetValue, isRequired, requirePhoto, sortOrder, isActive } = req.body;
 
       const [updated] = await db.update(factoryQualitySpecs)
@@ -1656,6 +1676,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
   router.delete('/api/factory/quality-specs/:id', isAuthenticated, async (req, res) => {
     try {
       const specId = parseInt(req.params.id);
+      if (isNaN(specId)) return res.status(400).json({ message: "Geçersiz ID" });
 
       const [deleted] = await db.update(factoryQualitySpecs)
         .set({ isActive: false })
@@ -1677,7 +1698,9 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
   router.get('/api/factory/quality-specs/station/:stationId', isAuthenticated, async (req, res) => {
     try {
       const stationId = parseInt(req.params.stationId);
+      if (isNaN(stationId)) return res.status(400).json({ message: "Geçersiz stationId" });
       const productId = req.query.productId ? parseInt(req.query.productId as string) : null;
+      if (productId !== null && isNaN(productId)) return res.status(400).json({ message: "Geçersiz productId" });
 
       const specs = await db.select().from(factoryQualitySpecs)
         .where(and(
@@ -1740,6 +1763,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
   router.get('/api/factory/teams/:teamId/members', isAuthenticated, async (req, res) => {
     try {
       const teamId = parseInt(req.params.teamId);
+      if (isNaN(teamId)) return res.status(400).json({ message: "Geçersiz ID" });
       const members = await db.select({
         id: factoryTeamMembers.id,
         teamId: factoryTeamMembers.teamId,
@@ -1764,6 +1788,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
   router.post('/api/factory/teams/:teamId/members', isAuthenticated, async (req, res) => {
     try {
       const teamId = parseInt(req.params.teamId);
+      if (isNaN(teamId)) return res.status(400).json({ message: "Geçersiz ID" });
       const { userId, role } = req.body;
       const [member] = await db.insert(factoryTeamMembers).values({
         teamId,
@@ -2007,6 +2032,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
       }
       
       const planId = parseInt(req.params.id);
+      if (isNaN(planId)) return res.status(400).json({ message: "Geçersiz ID" });
       const { productId, stationId, plannedDate, targetQuantity, actualQuantity, status, notes } = req.body;
       const [updated] = await db.update(factoryProductionPlans)
         .set({
@@ -2131,6 +2157,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
   router.post('/api/factory/shift-compliance/:id/generate-suggestion', isAuthenticated, async (req, res) => {
     try {
       const complianceId = parseInt(req.params.id);
+      if (isNaN(complianceId)) return res.status(400).json({ message: "Geçersiz ID" });
       
       const [compliance] = await db.select()
         .from(factoryShiftCompliance)
@@ -2421,6 +2448,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
   router.get('/api/factory/collaborative-scores/:stationId', isKioskAuthenticated, async (req, res) => {
     try {
       const stationId = parseInt(req.params.stationId);
+      if (isNaN(stationId)) return res.status(400).json({ message: "Geçersiz ID" });
       const dateStr = req.query.date as string || new Date().toISOString().split('T')[0];
       
       const dayStart = new Date(dateStr + 'T00:00:00');
@@ -2930,6 +2958,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
       }
 
       const checkId = parseInt(req.params.checkId);
+      if (isNaN(checkId)) return res.status(400).json({ message: "Geçersiz ID" });
       const {
         decision, tasteTest, textureCheck, haccpCompliance,
         correctiveAction, holdReason, notes
@@ -4100,6 +4129,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
   router.get('/api/branches/:branchId/kiosk/settings', isAuthenticated, async (req: any, res) => {
     try {
       const branchId = parseInt(req.params.branchId);
+      if (isNaN(branchId)) return res.status(400).json({ message: "Geçersiz ID" });
       
       let [settings] = await db.select().from(branchKioskSettings)
         .where(eq(branchKioskSettings.branchId, branchId))
@@ -4478,6 +4508,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
         return res.status(403).json({ message: "Bu işlem için yetkiniz yok" });
       }
       const id = parseInt(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ message: "Geçersiz ID" });
 
       const [shipment] = await db.select({
         id: factoryShipments.id,
@@ -4697,6 +4728,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
       }
 
       const id = parseInt(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ message: "Geçersiz ID" });
       const { status, deliveryNotes } = req.body;
 
       const [currentShipment] = await db.select().from(factoryShipments)
@@ -4989,6 +5021,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
       }
 
       const id = parseInt(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ message: "Geçersiz ID" });
 
       const [shipment] = await db.select().from(factoryShipments)
         .where(eq(factoryShipments.id, id));

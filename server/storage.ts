@@ -5919,14 +5919,10 @@ export class DatabaseStorage implements IStorage {
       conditions.push(lte(employeePerformanceScores.date, endDate));
     }
 
-    console.log('[DEBUG] getPerformanceScores userId:', userId, 'startDate:', startDate, 'endDate:', endDate);
-
     const scores = await db.select()
       .from(employeePerformanceScores)
       .where(and(...conditions))
       .orderBy(desc(employeePerformanceScores.date));
-
-    console.log('[DEBUG] getPerformanceScores found scores:', scores.length);
     return scores;
   }
 
@@ -5973,8 +5969,6 @@ export class DatabaseStorage implements IStorage {
     startDateObj.setDate(startDateObj.getDate() - days);
     const startDate = startDateObj.toISOString().split('T')[0];
 
-    console.log('[DEBUG] getTeamPerformanceAggregates branchId:', branchId, 'startDate:', startDate);
-
     const scores = await db.select({
       userId: employeePerformanceScores.userId,
       dailyTotalScore: employeePerformanceScores.dailyTotalScore,
@@ -5990,8 +5984,6 @@ export class DatabaseStorage implements IStorage {
         gte(employeePerformanceScores.date, startDate)
       ))
       .orderBy(employeePerformanceScores.userId, desc(employeePerformanceScores.date));
-
-    console.log('[DEBUG] getTeamPerformanceAggregates found scores:', scores.length);
 
     // Group by user and calculate averages
     const userScores = new Map<string, { totalScore: number; count: number; user: any }>();
@@ -6038,8 +6030,6 @@ export class DatabaseStorage implements IStorage {
     const startDate = sevenDaysAgo.toISOString().split('T')[0];
     const endDate = new Date().toISOString().split('T')[0];
 
-    console.log('[DEBUG] getAllBranchesPerformanceAggregates startDate:', startDate);
-
     const scores = await db.select({
       branchId: employeePerformanceScores.branchId,
       branchName: branches.name,
@@ -6057,8 +6047,6 @@ export class DatabaseStorage implements IStorage {
       .innerJoin(branches, eq(employeePerformanceScores.branchId, branches.id))
       .where(gte(employeePerformanceScores.date, startDate))
       .orderBy(employeePerformanceScores.branchId);
-
-    console.log('[DEBUG] getAllBranchesPerformanceAggregates scores.length:', scores.length);
 
     // Group by branch and calculate averages for all metrics
     const branchScores = new Map<number, {

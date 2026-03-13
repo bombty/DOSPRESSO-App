@@ -757,7 +757,9 @@ router.post('/api/admin/seed-branch-inventory', isAuthenticated, requireAdmin, a
             ON CONFLICT (branch_id, product_id) DO NOTHING
           `);
           inserted++;
-        } catch (e) {}
+        } catch (e) {
+          console.warn('Seed branch inventory insert skipped:', (e as Error).message);
+        }
       }
     }
 
@@ -831,7 +833,9 @@ router.post('/api/admin/seed-training-assignments', isAuthenticated, requireAdmi
         `);
         materialIds.push((result.rows[0] as any).id);
         materialCount++;
-      } catch (e) {}
+      } catch (e) {
+        console.warn('Seed training material insert skipped:', (e as Error).message);
+      }
     }
 
     const users = await db.execute(sql`SELECT id FROM users WHERE branch_id = 5 AND is_active = true AND role IN ('barista','stajyer') LIMIT 4`);
@@ -853,7 +857,9 @@ router.post('/api/admin/seed-training-assignments', isAuthenticated, requireAdmi
             VALUES (${materialId}, ${userId}, 5, ${adminId}, ${dueDate.toISOString().split('T')[0]}, true, ${status})
           `);
           assignmentCount++;
-        } catch (e) {}
+        } catch (e) {
+          console.warn('Seed training assignment insert skipped:', (e as Error).message);
+        }
       }
     }
 
@@ -987,7 +993,9 @@ router.post('/api/admin/seed-factory-extended', isAuthenticated, requireAdmin, a
             `);
             qcCount++;
           }
-        } catch (e) {}
+        } catch (e) {
+          console.warn('Seed factory extended insert skipped:', (e as Error).message);
+        }
       }
     }
 
