@@ -65,7 +65,7 @@ import { Link } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { StarRating } from "@/components/star-rating";
-import type { User, EmployeeDocument, DisciplinaryReport, EmployeeOnboarding, EmployeeOnboardingTask } from "@shared/schema";
+import type { User, EmployeeDocument, DisciplinaryReport, EmployeeOnboarding, EmployeeOnboardingTask, UserRoleType } from "@shared/schema";
 import { isHQRole } from "@shared/schema";
 import { CreateDisciplinaryDialog, AddResponseDialog, ResolveDialog } from "@/components/hr/DisciplinaryDialogs";
 import { OnboardingTaskDialog } from "@/components/hr/OnboardingTaskDialog";
@@ -649,6 +649,74 @@ export default function PersonelDetay() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Skor Özeti Kartı - HQ rolleri ve kendi profilini görüntüleyen kullanıcılar için */}
+      {(currentUser && (isHQRole(currentUser.role as UserRoleType) || currentUser.id === id)) && (
+        <Card data-testid="card-score-summary">
+          <CardHeader className="pb-2">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <TrendingUp className="h-4 w-4" />
+              Skor Özeti
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {(satisfactionLoading || performanceLoading || receivedRatingsLoading) ? (
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3" data-testid="score-summary-loading">
+                <Skeleton className="h-16 w-full" />
+                <Skeleton className="h-16 w-full" />
+                <Skeleton className="h-16 w-full" />
+                <Skeleton className="h-16 w-full" />
+              </div>
+            ) : (satisfactionScore && (satisfactionScore.overallScore !== null || satisfactionScore.taskCount > 0)) || (receivedRatings && receivedRatings.length > 0) || (performanceScores && performanceScores.length > 0) ? (
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
+                <div className="text-center p-3 rounded-md border" data-testid="score-overall">
+                  <p className="text-2xl font-bold text-primary">
+                    {satisfactionScore?.overallScore !== null && satisfactionScore?.overallScore !== undefined
+                      ? satisfactionScore.overallScore.toFixed(0)
+                      : "-"}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">Memnuniyet / 100</p>
+                </div>
+                <div className="text-center p-3 rounded-md border" data-testid="score-task-rating">
+                  <div className="flex items-center justify-center gap-1">
+                    {satisfactionScore?.taskAverage !== null && satisfactionScore?.taskAverage !== undefined ? (
+                      <StarRating value={Math.round(satisfactionScore.taskAverage)} readonly size="sm" />
+                    ) : (
+                      <span className="text-2xl font-bold">-</span>
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Görev Puanı ({satisfactionScore?.taskCount || 0})
+                  </p>
+                </div>
+                <div className="text-center p-3 rounded-md border" data-testid="score-received-stars">
+                  <p className="text-2xl font-bold text-amber-500">
+                    {receivedRatings && receivedRatings.length > 0
+                      ? (receivedRatings.reduce((sum, r) => sum + r.finalRating, 0) / receivedRatings.length).toFixed(1)
+                      : "-"}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Yıldız Ort. ({receivedRatings?.length || 0})
+                  </p>
+                </div>
+                <div className="text-center p-3 rounded-md border" data-testid="score-performance">
+                  <p className="text-2xl font-bold text-primary">
+                    {performanceScores && performanceScores.length > 0
+                      ? (performanceScores[0].overallScore ?? performanceScores[0].score ?? "-")
+                      : "-"}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">Performans Skoru</p>
+                </div>
+              </div>
+            ) : (
+              <div className="text-center py-6 text-muted-foreground" data-testid="score-summary-empty">
+                <TrendingUp className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                <p className="text-sm">Henüz skor verisi bulunmuyor</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {(() => {
         const userRole = currentUser?.role as string;
