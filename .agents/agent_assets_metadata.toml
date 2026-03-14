@@ -84,3 +84,9 @@ id = "Ft11l28mPT_T7wS-a9u-i"
 uri = "file://.local/tasks/post-30c-audit-report.md"
 type = "text"
 title = "DOSPRESSO — Sprint 30C Sonrası Genel Audit Raporu"
+
+[[outputs]]
+id = "xhCTJg1UjHGk26srZ1X3-"
+uri = "file://.local/tasks/sistem-audit-raporu.md"
+type = "text"
+title = "DOSPRESSO Sistem Denetim Raporu"
